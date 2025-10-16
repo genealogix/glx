@@ -1,0 +1,8 @@
+# TEST: person-missing-id
+# EXPECT: invalid
+# ERROR: "id field is required"
+# DESCRIPTION: Person entity must have an id field
+
+version: 1.0
+
+

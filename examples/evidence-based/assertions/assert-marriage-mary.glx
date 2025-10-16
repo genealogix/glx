@@ -1,0 +1,14 @@
+id: assert-marriage-mary
+version: "1.0"
+type: marriage
+subject: person-ancestor-wife
+spouse: person-ancestor
+date: "1960-06-10"
+place: "Sacramento, California, USA"
+confidence: high
+
+sources:
+  - sources/source-marriage-record.glx
+
+created_at: "2024-01-20T12:15:00Z"
+created_by: demo-user

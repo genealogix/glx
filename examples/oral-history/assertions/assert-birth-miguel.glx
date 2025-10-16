@@ -1,0 +1,13 @@
+id: assert-birth-miguel
+version: "1.0"
+type: birth
+subject: person-sibling
+date: "1968-11-05"
+place: "Los Angeles, California, USA"
+confidence: medium
+
+sources:
+  - sources/source-oral-interview.glx
+
+created_at: "2024-01-20T14:00:00Z"
+created_by: demo-user

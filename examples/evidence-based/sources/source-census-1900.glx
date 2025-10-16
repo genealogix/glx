@@ -1,0 +1,13 @@
+id: source-census-1900
+version: "1.0"
+title: "1900 US Census - Smith Family"
+type: "Census Record"
+authors: ["US Census Bureau"]
+date: "1900-06-01"
+citation: "1900 US Federal Census, Sacramento, California, Enumeration District 45, Sheet 12"
+
+media:
+  - media/media-census-1900.glx
+
+created_at: "2024-01-20T11:35:00Z"
+created_by: demo-user

@@ -1,0 +1,14 @@
+id: person-bio-mom
+version: "1.0"
+
+concluded_identity:
+  primary_name: "Sarah Johnson"
+  gender: female
+  living: false
+
+relationships:
+  - relationships/rel-birth-sarah.glx
+  - relationships/rel-adoption-sarah.glx
+
+created_at: "2024-01-20T10:00:00Z"
+created_by: demo-user

@@ -1,0 +1,12 @@
+id: rel-parent-elena
+version: "1.0"
+type: parent-child
+persons:
+  - person-parent
+  - person-storyteller
+
+assertions:
+  - assertions/assert-birth-elena.glx
+
+created_at: "2024-01-20T14:05:00Z"
+created_by: demo-user

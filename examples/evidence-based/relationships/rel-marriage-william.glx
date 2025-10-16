@@ -1,0 +1,12 @@
+id: rel-marriage-william
+version: "1.0"
+type: marriage
+persons:
+  - person-ancestor
+  - person-ancestor-wife
+
+assertions:
+  - assertions/assert-marriage-william.glx
+
+created_at: "2024-01-20T11:15:00Z"
+created_by: demo-user

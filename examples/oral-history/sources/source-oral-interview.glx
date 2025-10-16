@@ -1,0 +1,14 @@
+id: source-oral-interview
+version: "1.0"
+title: "Oral History Interview - Elena Martinez"
+type: "Oral History"
+authors: ["Elena Martinez"]
+date: "2024-01-15"
+citation: "Personal interview with Elena Martinez, conducted by Maria Rodriguez, January 15, 2024, Los Angeles, California"
+
+media:
+  - media/media-interview-audio.glx
+  - media/media-interview-transcript.glx
+
+created_at: "2024-01-20T13:15:00Z"
+created_by: demo-user

@@ -1,0 +1,14 @@
+id: assert-immigration-carlos
+version: "1.0"
+type: immigration
+subject: person-parent
+date: "1955-08-20"
+place_from: "Guadalajara, Mexico"
+place_to: "Los Angeles, California, USA"
+confidence: medium
+
+sources:
+  - sources/source-oral-interview.glx
+
+created_at: "2024-01-20T13:55:00Z"
+created_by: demo-user

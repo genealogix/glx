@@ -1,0 +1,13 @@
+id: rel-sibling-elena
+version: "1.0"
+type: sibling
+persons:
+  - person-storyteller
+  - person-sibling
+
+assertions:
+  - assertions/assert-birth-elena.glx
+  - assertions/assert-birth-miguel.glx
+
+created_at: "2024-01-20T14:10:00Z"
+created_by: demo-user

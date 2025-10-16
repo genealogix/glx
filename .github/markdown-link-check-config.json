@@ -1,0 +1,14 @@
+{
+  "ignorePatterns": [
+    { "pattern": "^https://schema.genealogix.org/" },
+    { "pattern": "^https://github.com/genealogix/glx" }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://raw.githubusercontent.com/"],
+      "headers": { "User-Agent": "markdown-link-check" }
+    }
+  ]
+}
+
+

@@ -1,0 +1,8 @@
+id: media-family-stories
+version: "1.0"
+uri: "media/martinez-family-stories-2024.pdf"
+mime_type: "application/pdf"
+hash: "sha256:family345stories678..."
+
+created_at: "2024-01-20T13:35:00Z"
+created_by: demo-user

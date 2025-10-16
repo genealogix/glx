@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.genealogix.org/v1/relationship",
+  "title": "Relationship",
+  "description": "A relationship between persons",
+  "type": "object",
+  "required": ["id", "version", "type", "persons"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^rel-[a-f0-9]{8}$",
+      "description": "Unique identifier for this relationship"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version"
+    },
+    "type": {
+      "type": "string",
+      "description": "Relationship type key"
+    },
+    "persons": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "pattern": "^person-[a-f0-9]{8}$"
+      },
+      "description": "IDs of persons participating in relationship",
+      "uniqueItems": true
+    },
+    "assertions": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9/_-]+$" },
+      "uniqueItems": true
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "created_by": { "type": "string" },
+    "modified_at": { "type": "string", "format": "date-time" },
+    "modified_by": { "type": "string" }
+  },
+  "additionalProperties": false
+}
+
+

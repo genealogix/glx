@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.genealogix.org/v1/person",
+  "title": "Person",
+  "description": "An individual in the family archive",
+  "type": "object",
+  "required": ["id", "version"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^person-[a-f0-9]{8}$",
+      "description": "Unique identifier for this person",
+      "examples": ["person-a1b2c3d4"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version",
+      "examples": ["1.0", "1.1"]
+    },
+    "concluded_identity": {
+      "type": "object",
+      "description": "Researcher's conclusion about identity",
+      "properties": {
+        "primary_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Primary name for display"
+        },
+        "gender": {
+          "type": "string",
+          "description": "Gender identity"
+        },
+        "living": {
+          "type": "boolean",
+          "description": "Whether person is currently living"
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "description": "References to assertion files",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9/_-]+$"
+      },
+      "uniqueItems": true
+    },
+    "relationships": {
+      "type": "array",
+      "description": "References to relationship files",
+      "items": {
+        "type": "string",
+        "pattern": "^rel-[a-f0-9]{8}$"
+      },
+      "uniqueItems": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this person record was created"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User who created this record"
+    },
+    "modified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this person record was last modified"
+    },
+    "modified_by": {
+      "type": "string",
+      "description": "User who last modified this record"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
+
+

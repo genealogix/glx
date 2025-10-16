@@ -1,0 +1,13 @@
+id: assert-birth-william
+version: "1.0"
+type: birth
+subject: person-ancestor
+date: "1935-08-22"
+place: "Sacramento, California, USA"
+confidence: medium
+
+sources:
+  - sources/source-census-1900.glx
+
+created_at: "2024-01-20T12:00:00Z"
+created_by: demo-user

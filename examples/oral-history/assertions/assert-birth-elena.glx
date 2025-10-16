@@ -1,0 +1,14 @@
+id: assert-birth-elena
+version: "1.0"
+type: birth
+subject: person-storyteller
+date: "1965-07-20"
+place: "Guadalajara, Mexico"
+confidence: medium
+
+sources:
+  - sources/source-oral-interview.glx
+  - sources/source-family-stories.glx
+
+created_at: "2024-01-20T13:40:00Z"
+created_by: demo-user

@@ -1,0 +1,8 @@
+# TEST: person-minimal
+# EXPECT: valid
+# DESCRIPTION: Minimal valid person with only required fields
+
+id: person-a1b2c3d4
+version: 1.0
+
+

@@ -1,0 +1,18 @@
+id: person-parent
+version: "1.0"
+
+concluded_identity:
+  primary_name: "Carlos Martinez"
+  gender: male
+  living: false
+
+relationships:
+  - relationships/rel-parent-elena.glx
+  - relationships/rel-marriage-carlos.glx
+
+assertions:
+  - assertions/assert-birth-carlos.glx
+  - assertions/assert-immigration-carlos.glx
+
+created_at: "2024-01-20T13:05:00Z"
+created_by: demo-user

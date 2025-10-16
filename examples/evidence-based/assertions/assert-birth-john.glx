@@ -1,0 +1,13 @@
+id: assert-birth-john
+version: "1.0"
+type: birth
+subject: person-descendant
+date: "1985-03-15"
+place: "Sacramento, California, USA"
+confidence: high
+
+sources:
+  - sources/source-birth-certificate.glx
+
+created_at: "2024-01-20T11:55:00Z"
+created_by: demo-user

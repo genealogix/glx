@@ -1,0 +1,13 @@
+id: source-marriage-record
+version: "1.0"
+title: "Marriage License - William Smith & Mary Johnson"
+type: "Vital Record"
+authors: ["County Clerk, Sacramento County"]
+date: "1960-06-10"
+citation: "Sacramento County Clerk, Marriage License #60-789012"
+
+media:
+  - media/media-marriage-license.glx
+
+created_at: "2024-01-20T11:30:00Z"
+created_by: demo-user
