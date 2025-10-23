@@ -73,59 +73,61 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 ### Simple Citation to Book
 
 ```yaml
----
-id: citation-book001
-version: "1.0"
-source_id: "source-parish001"
-page: "125"
-quality: 3
-text_from_source: "John Smith married to Mary Jones, 15 May 1850"
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# citations/citation-book.glx
+citations:
+  citation-marriage-record:
+    version: "1.0"
+    source_id: source-parish-register
+    page: "125"
+    quality: 3
+    text_from_source: "John Smith married to Mary Jones, 15 May 1850"
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ### Citation with Online Source
 
 ```yaml
----
-id: citation-online001
-version: "1.0"
-source_id: "source-ancestry001"
-data_date: "1851"
-page: "Schedule 7, piece 1123"
-quality: 2
-locator:
-  url: "https://www.ancestry.com/..."
-  image_number: "87342534"
-text_from_source: |
-  Name: John Smith
-  Age: 35
-  Occupation: Blacksmith
-  Place of Birth: Leeds, Yorkshire, England
-quality: 2
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# citations/citation-online.glx
+citations:
+  citation-census-online:
+    version: "1.0"
+    source_id: source-ancestry-census
+    data_date: "1851"
+    page: "Schedule 7, piece 1123"
+    quality: 2
+    locator:
+      url: "https://www.ancestry.com/..."
+      image_number: "87342534"
+    text_from_source: |
+      Name: John Smith
+      Age: 35
+      Occupation: Blacksmith
+      Place of Birth: Leeds, Yorkshire, England
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ### Citation to Archive Document
 
 ```yaml
----
-id: citation-archive001
-version: "1.0"
-source_id: "source-wills001"
-repository_id: "repository-probate"
-page: "23"
-quality: 3
-locator:
-  item_number: "1876/X/150"
-  film_number: "100234"
-data_date: "1876"
-text_from_source: |
-  I, John Smith, being of sound mind, do hereby
-  bequeath all my goods and chattels...
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# citations/citation-will.glx
+citations:
+  citation-will-john:
+    version: "1.0"
+    source_id: source-probate-wills
+    repository_id: repository-probate
+    page: "23"
+    quality: 3
+    locator:
+      item_number: "1876/X/150"
+      film_number: "100234"
+    data_date: "1876"
+    text_from_source: |
+      I, John Smith, being of sound mind, do hereby
+      bequeath all my goods and chattels...
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ## Citation in Assertions
@@ -133,18 +135,18 @@ created_by: "researcher@example.com"
 Citations are primarily used within Assertions to provide evidence:
 
 ```yaml
-# In an Assertion entity
----
-id: assertion-birth001
-version: "1.0"
-subject: "person-abc123de"
-subject_type: "person"
-property: "birth_date"
-value: "15 JAN 1850"
-citations:
-  - citation-id: "citation-book001"
-    quality: 3
-    notes: "Primary source from parish register"
+# assertions/assertion-birth.glx
+assertions:
+  assertion-birth-john:
+    version: "1.0"
+    subject: person-john-smith
+    claim: birth_date
+    value: "1850-01-15"
+    citations:
+      - citation-parish-birth
+      - citation-census-birth
+    confidence: high
+    research_notes: "Primary source from parish register"
 ```
 
 ## Locator Object

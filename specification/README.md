@@ -83,31 +83,42 @@ This specification is under active development.
 ## Quick Example
 
 ```yaml
----
-# Person entity
-id: person-a1b2c3d4
-version: "1.0"
-concluded_identity:
-  primary_name: "John Smith"
-  gender: "male"
-  living: false
-names:
-  - id: name-xyz789ab
-    full: "John Smith"
-    given: "John"
-    surname: "Smith"
-    type: "birth"
+# persons/person-john-smith.glx
+persons:
+  person-john-smith-1850:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+      gender: male
+      living: false
+    notes: "Blacksmith in Leeds, Yorkshire"
+
+# events/event-birth.glx
 events:
-  - event-birth001  # References to Event entities
+  event-birth-john:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
+    participants:
+      - person: person-john-smith-1850
+        role: subject
+
+# relationships/rel-marriage.glx
 relationships:
-  - rel-marriage01  # References to Relationship entities
+  rel-marriage-john-mary:
+    version: "1.0"
+    type: marriage
+    persons:
+      - person-john-smith-1850
+      - person-mary-brown-1852
 ```
 
 ## Getting Started
 
 1. Read [Introduction](1-introduction.md) for overview
 2. Review [Entity Types](4-entity-types/) to understand data structure
-3. Check [File Structure](3-file-structure.md) for organization patterns
+3. Check [Archive Organization](3-archive-organization.md) for organization patterns
 4. See [examples/](../../examples/) for working examples
 5. Use [glx CLI](../../glx/) for validation
 

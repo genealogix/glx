@@ -13,22 +13,28 @@ A Place entity represents a geographic location relevant to the family archive. 
 Places form a tree structure where each place can have a parent place, enabling representation of administrative hierarchies and geographic containment relationships.
 
 ```yaml
-id: place-xyz789ab
-version: "1.0"
-name: "England"
-type: "country"
----
-id: place-abc123de
-version: "1.0"
-name: "Yorkshire"
-type: "county"
-parent_id: "place-xyz789ab"
----
-id: place-def456gh
-version: "1.0"
-name: "Leeds"
-type: "city"
-parent_id: "place-abc123de"
+# places/place-england.glx
+places:
+  place-england:
+    version: "1.0"
+    name: "England"
+    type: country
+
+# places/place-yorkshire.glx
+places:
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    type: county
+    parent: place-england
+
+# places/place-leeds.glx
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire
 ```
 
 ### Place Names
@@ -47,7 +53,7 @@ Each name can be classified and dated.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `id` | string | Unique identifier (format: `place-[hex8]`) |
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `version` | string | Schema version (e.g., "1.0") |
 | `name` | string | Current/primary place name |
 
@@ -55,7 +61,7 @@ Each name can be classified and dated.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `parent_id` | string | Reference to parent place in hierarchy |
+| `parent` or `parent_id` | string | Reference to parent place in hierarchy |
 | `type` | string | Place type (country, state, county, city, town, etc.) |
 | `alternative_names` | array | Historical/alternative names for this place |
 | `latitude` | number | WGS84 latitude coordinate |
@@ -123,39 +129,41 @@ residence:
 ### Simple Location
 
 ```yaml
----
-id: place-paris001
-version: "1.0"
-name: "Paris"
-type: "city"
-parent_id: "place-france01"
-latitude: 48.8566
-longitude: 2.3522
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# places/place-paris.glx
+places:
+  place-paris:
+    version: "1.0"
+    name: "Paris"
+    type: city
+    parent: place-france
+    latitude: 48.8566
+    longitude: 2.3522
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ### Complex Hierarchical Location
 
 ```yaml
----
-id: place-leeds-reg
-version: "1.0"
-name: "Leeds Registration District"
-type: "registration_district"
-parent_id: "place-yorkshire"
-alternative_names:
-  - name: "Leeds"
-    type: "informal"
-  - name: "West Riding of Yorkshire"
-    type: "historical"
-latitude: 53.8008
-longitude: -1.5491
-jurisdiction: "england.yorkshire.leeds"
-place_format: "City, County, Country"
-notes: "Historical registration district for civil registration purposes"
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# places/place-leeds-district.glx
+places:
+  place-leeds-registration:
+    version: "1.0"
+    name: "Leeds Registration District"
+    type: registration_district
+    parent: place-yorkshire
+    alternative_names:
+      - name: "Leeds"
+        type: "informal"
+      - name: "West Riding of Yorkshire"
+        type: "historical"
+    latitude: 53.8008
+    longitude: -1.5491
+    jurisdiction: "england.yorkshire.leeds"
+    place_format: "City, County, Country"
+    notes: "Historical registration district for civil registration purposes"
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ## File Organization

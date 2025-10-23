@@ -4,47 +4,49 @@
 
 ## Overview
 
-The Person entity represents an individual in the family archive. Each
-person is stored in a separate `.glx` file within the `persons/` directory.
+The Person entity represents an individual in the family archive. Person entities can be stored in any `.glx` file in the repository under the `persons` key.
 
-## File Location
+## File Format
 
+All GENEALOGIX files use entity type keys at the top level:
+
+```yaml
+# Any .glx file (commonly in persons/ directory)
+persons:
+  person-john-smith-1850:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
 ```
-persons/
-└── {person-id}.glx
-```
+
+**Key Points:**
+- Entity ID is the map key (`person-john-smith-1850`)
+- NO `id` field inside the entity object
+- IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
 ## Required Fields
 
-The following fields MUST be present in every Person file:
+### Entity ID (map key)
 
-### `id`
-
-- Type: String
-- Format: `person-{uuid}`
-- Required: Yes
-- Description: Unique identifier for this person
-
-Example:
-```yaml
-id: person-a1b2c3d4
-```
-
-Validation Rules:
-- MUST start with `person-`
-- MUST be followed by 8 hexadecimal characters
-- MUST be unique within the archive
+- Format: Any alphanumeric string with hyphens, 1-64 characters
+- Must be unique within the archive
+- Recommended formats:
+  - Descriptive: `person-john-smith-1850`, `person-mary-jones`
+  - Random hex: `person-a1b2c3d4` (for collaboration)
+  - Sequential: `person-001`, `person-002`
 
 ### `version`
 
 - Type: String
 - Format: `{major}.{minor}`
 - Required: Yes
-- Description: Schema version for this file
+- Description: Schema version
 
 Example:
 ```yaml
-version: 1.0
+persons:
+  person-john-smith:
+    version: "1.0"
 ```
 
 ## Optional Fields
@@ -92,36 +94,31 @@ Validation Rules:
 ## Complete Example
 
 ```yaml
-# persons/person-a1b2c3d4.glx
-id: person-a1b2c3d4
-version: 1.0
-
-concluded_identity:
-  primary_name: "Margaret Eleanor Smith"
-  gender: female
-  living: false
-
-assertions:
-  - biographical/birth/assert-birth-001
-  - biographical/death/assert-death-001
-
-relationships:
-  - rel-parent-child-001
-  - rel-marriage-002
-
-created_at: "2024-01-15T10:30:00Z"
-created_by: user-xyz
-modified_at: "2024-03-20T14:15:00Z"
-modified_by: user-abc
-
-notes: |
-  Family tradition says she was named after her grandmother.
-  Need to verify with census records.
-
-tags:
-  - maternal-line
-  - smith-family
-  - ohio-branch
+# persons/person-margaret-smith.glx
+persons:
+  person-margaret-smith-1825:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Margaret Eleanor Smith"
+      gender: female
+      living: false
+    assertions:
+      - assert-birth-margaret
+      - assert-death-margaret
+    relationships:
+      - rel-parent-child-margaret
+      - rel-marriage-margaret
+    created_at: "2024-01-15T10:30:00Z"
+    created_by: user-xyz
+    modified_at: "2024-03-20T14:15:00Z"
+    modified_by: user-abc
+    notes: |
+      Family tradition says she was named after her grandmother.
+      Need to verify with census records.
+    tags:
+      - maternal-line
+      - smith-family
+      - ohio-branch
 ```
 
 ## Schema Reference

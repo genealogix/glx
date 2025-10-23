@@ -6,45 +6,46 @@
 
 An Event (also called a Fact) entity represents a single occurrence in time, place, and context that is relevant to the family archive. Events can be lifecycle events (birth, marriage, death), attribute facts (occupation, residence), or custom events.
 
+## File Format
+
+All GENEALOGIX files use entity type keys at the top level:
+
+```yaml
+# Any .glx file (commonly in events/ directory)
+events:
+  event-birth-john-1850:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
+    participants:
+      - person: person-john-smith
+        role: subject
+```
+
+**Key Points:**
+- Entity ID is the map key (`event-birth-john-1850`)
+- NO `id` field inside the entity object
+- IDs can be descriptive or random, 1-64 alphanumeric/hyphens
+
 ## Core Concepts
 
 ### Lifecycle Events
 
-Standard events that occur in a person's life, recognized across genealogical systems:
-
-- **Birth**: Person's birth
-- **Death**: Person's death  
-- **Marriage**: Union of two people
-- **Divorce**: Dissolution of marriage
-- **Engagement**: Betrothal
-- **Adoption**: Adoption event
-- **Baptism**: Religious baptism ceremony
-- **Burial**: Interment
-- **Cremation**: Cremation of remains
-- **Christening**: Religious christening
+Standard events that occur in a person's life:
+- **Birth**, **Death**, **Marriage**, **Divorce**, **Engagement**, **Adoption**
+- **Baptism**, **Burial**, **Cremation**, **Christening**
 
 ### Attributes
 
-Characteristic facts about a person or family:
-
-- **Occupation**: Employment or trade
-- **Residence**: Place of residence during a period
-- **Education**: Educational institution or achievement
-- **Religion**: Religious affiliation or practice
-- **Title**: Nobility, courtesy, or honorific titles
-- **Nationality**: National citizenship
-- **Ethnicity**: Ethnic or racial identification
+Characteristic facts about a person:
+- **Occupation**, **Residence**, **Education**, **Religion**, **Title**
+- **Nationality**, **Ethnicity**
 
 ### Custom Events
 
-Researchers can define domain-specific events relevant to their research:
-
-- Military service
-- Migration/Immigration
-- Land transactions
-- Legal proceedings
-- Business partnerships
-- Community activities
+Domain-specific events:
+- Military service, Migration/Immigration, Land transactions, Legal proceedings
 
 ## Properties
 
@@ -52,7 +53,7 @@ Researchers can define domain-specific events relevant to their research:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `id` | string | Unique identifier (format: `event-[hex8]`) |
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `version` | string | Schema version (e.g., "1.0") |
 | `type` | string | Event type (birth, death, marriage, occupation, etc.) |
 
@@ -60,24 +61,21 @@ Researchers can define domain-specific events relevant to their research:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `date` | object | Date information with fuzzy support |
-| `date.value` | string | Main date expression |
-| `date.range_start` | string | Fuzzy date range start |
-| `date.range_end` | string | Fuzzy date range end |
-| `place_id` | string | Reference to Place entity |
+| `date` | string or object | Date as string or object with fuzzy support |
+| `date.value` | string | Main date expression (if object) |
+| `date.range_start` | string | Fuzzy date range start (if object) |
+| `date.range_end` | string | Fuzzy date range end (if object) |
+| `place` or `place_id` | string | Reference to Place entity |
 | `participants` | array | People involved in the event |
-| `participant.person_id` | string | Reference to Person entity |
-| `participant.role` | string | Role of participant (principal, witness, officiant, etc.) |
-| `participant.notes` | string | Notes about participant's involvement |
-| `attribute_value` | string | For attribute facts: the value (e.g., "blacksmith" for occupation) |
-| `age_text` | string | Age at time of event (e.g., "about 25", "infant") |
-| `cause_text` | string | Cause for event (e.g., "pneumonia" for death) |
-| `description` | string | Narrative description of the event |
-| `restrictions` | array | Restriction codes (confidential, locked, privacy) |
+| `participant.person` or `participant.person_id` | string | Reference to Person entity |
+| `participant.role` | string | Role of participant |
+| `participant.notes` | string | Notes about participant |
+| `value` | string | Value for attribute facts (e.g., "blacksmith" for occupation) |
+| `age_text` | string | Age at time of event |
+| `cause_text` | string | Cause for event |
+| `description` | string | Narrative description |
 | `created_at` | datetime | Creation timestamp |
 | `created_by` | string | User who created this record |
-| `modified_at` | datetime | Last modification timestamp |
-| `modified_by` | string | User who last modified this record |
 | `notes` | string | Free-form notes |
 
 ### Date Structure
@@ -132,50 +130,48 @@ GENEALOGIX defines standardized event type codes for interoperability:
 
 ## Usage Patterns
 
-### In Person Records
+### Birth Event Example
 
 ```yaml
+# events/event-birth.glx
 events:
-  - id: "event-birth001"
-    type: "birth"
-    date:
-      value: "15 JAN 1850"
-      range_start: "1850"
-      range_end: "1850"
-    place_id: "place-leeds123"
+  event-birth-john:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
     participants:
-      - person_id: "person-abc123de"
-        role: "principal"
+      - person: person-john-smith
+        role: principal
     created_at: "2025-01-15T10:30:00Z"
 ```
 
 ### Complex Event with Multiple Participants
 
 ```yaml
-id: event-marr001
-version: "1.0"
-type: "marriage"
-date:
-  value: "10 MAY 1875"
-  range_start: "1875"
-  range_end: "1875"
-place_id: "place-stpauls"
-participants:
-  - person_id: "person-groom"
-    role: "groom"
-  - person_id: "person-bride"
-    role: "bride"
-  - person_id: "person-witness1"
-    role: "witness"
-    notes: "First witness"
-  - person_id: "person-witness2"
-    role: "witness"
-    notes: "Second witness"
-  - person_id: "person-vicar"
-    role: "officiant"
-description: "Marriage celebrated at St Paul's Cathedral"
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# events/event-marriage.glx
+events:
+  event-marriage-john-mary:
+    version: "1.0"
+    type: marriage
+    date: "1875-05-10"
+    place: place-stpauls
+    participants:
+      - person: person-john-smith
+        role: groom
+      - person: person-mary-jones
+        role: bride
+      - person: person-thomas-brown
+        role: witness
+        notes: "First witness"
+      - person: person-sarah-white
+        role: witness
+        notes: "Second witness"
+      - person: person-reverend-black
+        role: officiant
+    description: "Marriage celebrated at St Paul's Cathedral"
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ## File Organization
@@ -239,16 +235,19 @@ For events with multiple participants, GLX uses the ASSO (Associate) tag pattern
 
 ## Confidence and Provenance
 
-Events inherit assertion model from parent person or relationship:
+Events can reference assertions for supporting evidence:
 
 ```yaml
-id: event-birth001
-version: "1.0"
-type: "birth"
-date:
-  value: "15 JAN 1850"
-assertions:
-  - assertion-birth001
+# events/event-birth.glx
+events:
+  event-birth-john:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
+    assertions:
+      - assert-birth-date
+      - assert-birth-place
 ```
 
 All supporting evidence for the event is stored in referenced Assertion entities.

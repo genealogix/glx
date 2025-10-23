@@ -29,7 +29,7 @@ GENEALOGIX supports various repository types:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `id` | string | Unique identifier (format: `repository-[hex8]`) |
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `version` | string | Schema version (e.g., "1.0") |
 | `name` | string | Name of the repository |
 
@@ -60,88 +60,91 @@ GENEALOGIX supports various repository types:
 ### Simple Local Repository
 
 ```yaml
----
-id: repository-leeds001
-version: "1.0"
-name: "Leeds Library - Local Studies"
-type: "library"
-address: "Market Street"
-city: "Leeds"
-state_province: "Yorkshire"
-country: "England"
-phone: "+44 113 247 6000"
-website: "https://www.leeds.gov.uk/libraries"
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# repositories/repository-leeds.glx
+repositories:
+  repository-leeds-library:
+    version: "1.0"
+    name: "Leeds Library - Local Studies"
+    type: library
+    address: "Market Street"
+    city: "Leeds"
+    state_province: "Yorkshire"
+    country: "England"
+    phone: "+44 113 247 6000"
+    website: "https://www.leeds.gov.uk/libraries"
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ### National Archive
 
 ```yaml
----
-id: repository-tna001
-version: "1.0"
-name: "The National Archives"
-type: "archive"
-address: "Kew, Richmond"
-city: "London"
-country: "England"
-phone: "+44 20 8876 3444"
-email: "enquiry@nationalarchives.gov.uk"
-website: "https://www.nationalarchives.gov.uk"
-access_hours: "Monday-Friday 9am-5pm"
-holding_types:
-  - "government records"
-  - "microfilm"
-  - "digital images"
-holding_types: ["documents", "microfilm", "digital"]
-access_restrictions: "Some records require appointment"
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# repositories/repository-tna.glx
+repositories:
+  repository-tna:
+    version: "1.0"
+    name: "The National Archives"
+    type: archive
+    address: "Kew, Richmond"
+    city: "London"
+    country: "England"
+    phone: "+44 20 8876 3444"
+    email: "enquiry@nationalarchives.gov.uk"
+    website: "https://www.nationalarchives.gov.uk"
+    access_hours: "Monday-Friday 9am-5pm"
+    holding_types:
+      - "government records"
+      - "microfilm"
+      - "digital images"
+    access_restrictions: "Some records require appointment"
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ### Online Database
 
 ```yaml
----
-id: repository-ancestry001
-version: "1.0"
-name: "Ancestry.com"
-type: "database"
-website: "https://www.ancestry.com"
-access_hours: "24/7"
-holding_types:
-  - "census records"
-  - "vital records"
-  - "military records"
-  - "church records"
-  - "newspapers"
-access_restrictions: "Subscription required"
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# repositories/repository-ancestry.glx
+repositories:
+  repository-ancestry:
+    version: "1.0"
+    name: "Ancestry.com"
+    type: database
+    website: "https://www.ancestry.com"
+    access_hours: "24/7"
+    holding_types:
+      - "census records"
+      - "vital records"
+      - "military records"
+      - "church records"
+      - "newspapers"
+    access_restrictions: "Subscription required"
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ### Church Archive
 
 ```yaml
----
-id: repository-church001
-version: "1.0"
-name: "St Paul's Cathedral Archive"
-type: "church"
-address: "St Paul's Churchyard"
-city: "London"
-country: "England"
-phone: "+44 20 7246 8348"
-email: "archive@stpauls.co.uk"
-holding_types:
-  - "parish registers"
-  - "marriage records"
-  - "baptismal records"
-  - "manuscripts"
-access_restrictions: "By appointment only"
-created_at: "2025-01-15T10:30:00Z"
-created_by: "researcher@example.com"
+# repositories/repository-church.glx
+repositories:
+  repository-stpauls:
+    version: "1.0"
+    name: "St Paul's Cathedral Archive"
+    type: church
+    address: "St Paul's Churchyard"
+    city: "London"
+    country: "England"
+    phone: "+44 20 7246 8348"
+    email: "archive@stpauls.co.uk"
+    holding_types:
+      - "parish registers"
+      - "marriage records"
+      - "baptismal records"
+      - "manuscripts"
+    access_restrictions: "By appointment only"
+    created_at: "2025-01-15T10:30:00Z"
+    created_by: "researcher@example.com"
 ```
 
 ## Repository in Sources
@@ -149,14 +152,14 @@ created_by: "researcher@example.com"
 Repositories are referenced from Source entities:
 
 ```yaml
-# In Source entity
----
-id: source-tna-wills
-version: "1.0"
-title: "Wills and Probate Records"
-repository_id: "repository-tna001"
-collection: "PROB 11"
-description: "Wills proved in the Prerogative Court of Canterbury"
+# sources/source-wills.glx
+sources:
+  source-tna-wills:
+    version: "1.0"
+    title: "Wills and Probate Records"
+    repository: repository-tna
+    collection: "PROB 11"
+    description: "Wills proved in the Prerogative Court of Canterbury"
 ```
 
 ## File Organization

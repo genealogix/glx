@@ -18,28 +18,26 @@ This approach loses the critical distinction between **evidence** (what sources 
 GENEALOGIX separates evidence from conclusions using **assertions**:
 
 ```yaml
-# Assertion (conclusion based on evidence)
-assertions/assertion-john-birth.glx:
-  id: assertion-john-birth
-  version: "1.0"
-  type: assertion
-  subject: person-john-smith
-  claim: born_on
-  value: "1850-01-15"
-  citations:
-    - citation-birth-certificate
-    - citation-baptism-record
-  confidence: high
+# assertions/assertion-john-birth.glx - Conclusion based on evidence
+assertions:
+  assertion-john-birth:
+    version: "1.0"
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations:
+      - citation-birth-certificate
+      - citation-baptism-record
+    confidence: high
 
-# Citation (specific evidence)
-citations/citation-birth-certificate.glx:
-  id: citation-birth-certificate
-  version: "1.0"
-  type: citation
-  source: source-gro-register
-  locator: "Certificate 1850-LEEDS-00145"
-  quality: 3
-  transcription: "John Smith, born January 15, 1850"
+# citations/citation-birth-certificate.glx - Specific evidence
+citations:
+  citation-birth-certificate:
+    version: "1.0"
+    source: source-gro-register
+    locator: "Certificate 1850-LEEDS-00145"
+    quality: 3
+    transcription: "John Smith, born January 15, 1850"
 ```
 
 ### Benefits of This Approach
@@ -97,23 +95,37 @@ A complete evidence chain requires:
 4. **Assertion**: Conclusion drawn from the citation
 
 ```yaml
-# Complete evidence chain example
-repositories/repository-gro.glx:
-  name: General Register Office
-  location: London, England
+# repositories/repository-gro.glx
+repositories:
+  repository-gro:
+    version: "1.0"
+    name: General Register Office
+    address: "London, England"
 
-sources/source-birth-register.glx:
-  title: England Birth Register 1850
-  repository: repository-gro
+# sources/source-birth-register.glx
+sources:
+  source-birth-register:
+    version: "1.0"
+    title: England Birth Register 1850
+    repository: repository-gro
 
-citations/citation-john-birth.glx:
-  source: source-birth-register
-  locator: "Volume 23, Page 145, Entry 23"
-  quality: 3
+# citations/citation-john-birth.glx
+citations:
+  citation-john-birth:
+    version: "1.0"
+    source: source-birth-register
+    locator: "Volume 23, Page 145, Entry 23"
+    quality: 3
 
-assertions/assertion-john-born.glx:
-  citations: [citation-john-birth]
-  claim: "John Smith was born on January 15, 1850"
+# assertions/assertion-john-born.glx
+assertions:
+  assertion-john-born:
+    version: "1.0"
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-john-birth]
+    confidence: high
 ```
 
 ## Provenance Tracking
@@ -131,16 +143,19 @@ Provenance is the complete history of how information came to be known, includin
 #### 1. Source Attribution
 Every assertion must reference specific citations:
 ```yaml
-assertions/assertion-smith-occupation.glx:
-  subject: person-john-smith
-  claim: occupation
-  value: blacksmith
-  citations:
-    - citation-1851-census
-    - citation-trade-directory
-    - citation-parish-record
-  researcher: researcher-jane-smith
-  research_date: "2024-03-15"
+# assertions/assertion-smith-occupation.glx
+assertions:
+  assertion-smith-occupation:
+    version: "1.0"
+    subject: person-john-smith
+    claim: occupation
+    value: blacksmith
+    citations:
+      - citation-1851-census
+      - citation-trade-directory
+      - citation-parish-record
+    created_by: researcher-jane-smith
+    created_at: "2024-03-15T10:00:00Z"
 ```
 
 #### 2. Change Tracking with Git
@@ -159,21 +174,24 @@ git log --since="2024-01-01" --until="2024-03-31"
 #### 3. Research Notes and Analysis
 Structured fields for documenting research decisions:
 ```yaml
-assertions/assertion-disputed-birth.glx:
-  subject: person-john-smith
-  claim: birth_date
-  value: "1850-01-15"
-  confidence: medium
-  research_notes: |
-    Two conflicting sources:
-    - Birth certificate: January 15, 1850 (preferred, higher quality)
-    - Baptism record: January 20, 1850 (5-day delay common)
+# assertions/assertion-disputed-birth.glx
+assertions:
+  assertion-disputed-birth:
+    version: "1.0"
+    subject: person-john-smith
+    claim: birth_date
+    value: "1850-01-15"
+    confidence: medium
+    research_notes: |
+      Two conflicting sources:
+      - Birth certificate: January 15, 1850 (preferred, higher quality)
+      - Baptism record: January 20, 1850 (5-day delay common)
 
-    Certificate takes precedence as primary direct evidence.
-    More research needed on baptism delay practices.
-  citations:
-    - citation-birth-cert
-    - citation-baptism-record
+      Certificate takes precedence as primary direct evidence.
+      More research needed on baptism delay practices.
+    citations:
+      - citation-birth-cert
+      - citation-baptism-record
 ```
 
 #### 4. Confidence Assessment
