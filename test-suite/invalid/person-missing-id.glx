@@ -1,8 +1,7 @@
-# TEST: person-missing-id
-# EXPECT: invalid
-# ERROR: "id field is required"
-# DESCRIPTION: Person entity must have an id field
-
-version: "1.0"
-
-
+# Invalid: Entity has 'id' field (should only be map key)
+persons:
+  person-12345678:
+    id: person-12345678
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Test Person"

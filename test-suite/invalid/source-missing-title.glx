@@ -1,6 +1,5 @@
-# Invalid source entity - missing title
-# Expected error: Required field 'title' is missing
-id: source-12345678
-version: "1.0"
-source_type: vital_record
-
+# Invalid: Missing required 'title' field
+sources:
+  source-12345678:
+    version: "1.0"
+    type: vital_record

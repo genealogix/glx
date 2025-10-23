@@ -1,0 +1,356 @@
+# Archive Organization
+
+This section describes the GENEALOGIX file format and recommended organization strategies for archives.
+
+## GLX File Format
+
+Every GENEALOGIX file uses the same universal structure:
+
+### Structure Requirements
+
+1. **Top-level keys are entity type plurals**: `persons`, `relationships`, `events`, `places`, `sources`, `citations`, `repositories`, `assertions`, `media`
+2. **Each key contains a map** where:
+   - Keys are entity IDs (e.g., `person-abc12345`)
+   - Values are entity objects
+3. **Entity ID is ONLY the map key** - it must NOT appear as a field in the entity object
+4. **Files may contain any combination** of entity types
+5. **Empty sections** can be omitted or left as `{}`
+
+### Basic Example
+
+```yaml
+# Any .glx or .yaml file
+persons:
+  person-abc12345:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+      birth_date: "1850-01-15"
+  
+  person-def67890:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Mary Brown"
+
+sources:
+  source-xyz11111:
+    version: "1.0"
+    title: "Birth Certificate"
+    type: vital_record
+
+# Other entity types can be empty or omitted
+events: {}
+relationships: {}
+```
+
+### Minimal Valid File
+
+```yaml
+persons:
+  person-abc12345:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+```
+
+## Validation Levels
+
+GENEALOGIX validation operates at two levels:
+
+### 1. File-Level Validation
+
+Each `.glx` file must:
+- Be valid YAML
+- Have at least one entity type key
+- Contain properly structured entities
+- NOT have `id` fields in entity objects (ID is the map key)
+
+### 2. Repository-Level Validation
+
+Across all files in an archive:
+- Entity IDs must be unique (no duplicates)
+- All cross-references must point to existing entities
+- Entity ID patterns must match their type (e.g., `person-` prefix for persons)
+
+## Organization Strategies
+
+The folder structure and file organization is a **recommended practice**, not a requirement. Choose the strategy that best fits your workflow.
+
+### One Entity Per File (Recommended for Collaboration)
+
+**Structure:**
+```
+family-archive/
+├── persons/
+│   ├── person-abc12345.glx
+│   └── person-def67890.glx
+├── sources/
+│   ├── source-xyz11111.glx
+│   └── source-mno22222.glx
+├── events/
+│   └── event-birth-abc.glx
+└── relationships/
+    └── rel-marriage-001.glx
+```
+
+**File Contents:**
+```yaml
+# persons/person-abc12345.glx
+persons:
+  person-abc12345:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+```
+
+**Benefits:**
+- Fine-grained Git diffs (see exactly what changed)
+- Parallel editing without conflicts
+- Easy merge conflict resolution
+- Clear file organization
+
+**Best for:**
+- Team research projects
+- Large archives (100+ entities)
+- Active collaboration workflows
+- Long-term maintenance
+
+### Single File Archive
+
+**Structure:**
+```
+family-archive/
+└── family.glx
+```
+
+**File Contents:**
+```yaml
+# family.glx
+persons:
+  person-abc12345:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+  person-def67890:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Mary Brown"
+
+relationships:
+  rel-marriage-001:
+    version: "1.0"
+    type: marriage
+    participants:
+      - person: person-abc12345
+        role: spouse
+      - person: person-def67890
+        role: spouse
+
+events:
+  event-birth-abc:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds-uk
+    participants:
+      - person: person-abc12345
+        role: subject
+
+places:
+  place-leeds-uk:
+    version: "1.0"
+    name: "Leeds"
+    type: city
+
+sources:
+  source-xyz11111:
+    version: "1.0"
+    title: "Birth Certificate"
+    type: vital_record
+
+citations: {}
+repositories: {}
+assertions: {}
+media: {}
+```
+
+**Benefits:**
+- Simple structure (one file to manage)
+- Easy backup and sharing
+- Quick overview of entire archive
+- Good for GEDCOM-style workflows
+
+**Best for:**
+- Personal research
+- Small family trees (<50 entities)
+- Quick exports/backups
+- Simple sharing scenarios
+
+### Hybrid Approach
+
+Mix and match as needed:
+
+**Structure:**
+```
+family-archive/
+├── core-family.glx          # Main family members and relationships
+├── sources/
+│   ├── vital-records.glx    # Multiple vital record sources
+│   └── census/
+│       ├── census-1850.glx
+│       └── census-1860.glx
+├── places/                  # Individual place files
+│   ├── place-leeds.glx
+│   └── place-yorkshire.glx
+└── media/
+    ├── photos.glx           # References to photo files
+    └── files/
+        ├── photo-001.jpg
+        └── photo-002.jpg
+```
+
+**Benefits:**
+- Flexibility to organize by logical groupings
+- Keep related entities together
+- Balance between organization and simplicity
+
+**Best for:**
+- Medium-sized archives
+- Mixed collaboration patterns
+- Gradual migration from single-file format
+
+## ID Format Standards
+
+All entity IDs follow structured patterns:
+
+| Entity Type | ID Prefix | Pattern | Example |
+|-------------|-----------|---------|---------|
+| Person | `person-` | `person-[a-f0-9]{8}` | `person-a1b2c3d4` |
+| Relationship | `rel-` | `rel-[a-f0-9]{8}` | `rel-1a2b3c4d` |
+| Event | `event-` | `event-[a-f0-9]{8}` | `event-2b3c4d5e` |
+| Place | `place-` | `place-[a-f0-9]{8}` | `place-3c4d5e6f` |
+| Source | `source-` | `source-[a-f0-9]{8}` | `source-4d5e6f7a` |
+| Citation | `citation-` | `citation-[a-f0-9]{8}` | `citation-5e6f7a8b` |
+| Repository | `repository-` | `repository-[a-f0-9]{8}` | `repository-6f7a8b9c` |
+| Assertion | `assertion-` | `assertion-[a-f0-9]{8}` | `assertion-7a8b9c0d` |
+| Media | `media-` | `media-[a-f0-9]{8}` | `media-8b9c0d1e` |
+
+### ID Generation
+
+```bash
+# Generate random 8-character hex ID
+echo "person-$(openssl rand -hex 4)"
+
+# Python
+import secrets
+f"person-{secrets.token_hex(4)}"
+
+# JavaScript
+const crypto = require('crypto');
+`person-${crypto.randomBytes(4).toString('hex')}`
+
+# Go
+import "crypto/rand"
+import "fmt"
+b := make([]byte, 4)
+rand.Read(b)
+fmt.Sprintf("person-%x", b)
+```
+
+## Important Notes
+
+- **Folder names are conventions**, not requirements
+- **Parser must scan ALL** `.glx` and `.yaml` files in the repository
+- **Duplicate entity IDs** across files is an error
+- **Entity type keys are required** at the top level of every file
+- **Entity IDs as map keys** - never as `id` field in the entity object
+- **Cross-references are validated** at repository level
+
+## Git Workflow Integration
+
+### .gitignore Recommendations
+
+```gitignore
+# GENEALOGIX Repository
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# Build artifacts
+bin/
+build/
+```
+
+### Recommended Git Practices
+
+**For multi-file archives:**
+```bash
+# Commit by entity type
+git add persons/
+git commit -m "Add Smith family members"
+
+git add sources/census/
+git commit -m "Add 1850 census sources"
+```
+
+**For single-file archives:**
+```bash
+# Commit with descriptive messages
+git add family.glx
+git commit -m "Add John Smith and birth event with sources"
+```
+
+## Migration Between Formats
+
+### Converting Multi-File to Single-File
+
+```bash
+# Using glx tool (future feature)
+glx convert --output family.glx persons/ events/ sources/
+```
+
+Manual approach: Copy all entity type sections from individual files into one file.
+
+### Converting Single-File to Multi-File
+
+```bash
+# Using glx tool (future feature)
+glx split family.glx --output-dir .
+```
+
+Manual approach: Extract each entity into its own file with the appropriate entity type key.
+
+## Validation
+
+```bash
+# Validate individual file
+glx validate family.glx
+
+# Validate entire repository (checks cross-references)
+glx validate
+
+# Validate specific directory
+glx validate persons/
+```
+
+## Best Practices
+
+1. **Choose one primary strategy** and stick with it for consistency
+2. **Use meaningful file names** that relate to content (e.g., `smith-family.glx`, `vital-records.glx`)
+3. **Group related entities** when using multi-file format
+4. **Commit frequently** with descriptive messages
+5. **Validate often** to catch errors early
+6. **Document your organization** in the repository README
+
+## Examples
+
+See the `examples/` directory for complete working examples:
+- `examples/complete-family/` - Multi-file organization
+- `examples/single-file/` - Single-file archive
+- `examples/mixed-format/` - Hybrid approach

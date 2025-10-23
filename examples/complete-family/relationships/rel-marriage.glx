@@ -1,0 +1,10 @@
+relationships:
+  rel-12345678:
+    version: "1.0"
+    type: marriage
+    persons:
+      - person-a1b2c3d4
+      - person-b2c3d4e5
+    start_event: event-23456789
+    description: "Marriage of John Smith and Mary Brown, May 10, 1875"
+

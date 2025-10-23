@@ -1,17 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/repository",
+  "$id": "https://schema.genealogix.org/v1/repository",
   "title": "Repository",
-  "description": "An institution or organization that holds genealogical sources",
+  "description": "An institution or organization that holds genealogical sources. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["id", "version", "name"],
+  "required": ["version", "name"],
   "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^repository-[a-f0-9]{8}$",
-      "description": "Unique identifier for this repository",
-      "examples": ["repository-a1b2c3d4"]
-    },
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",

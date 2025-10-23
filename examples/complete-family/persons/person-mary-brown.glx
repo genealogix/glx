@@ -1,0 +1,14 @@
+persons:
+  person-b2c3d4e5:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Mary Brown"
+      birth_date: "1852-03-20"
+      death_date: "1930-08-15"
+      gender: "female"
+      living: false
+    notes: "Wife of John Smith. Dressmaker by trade."
+    tags:
+      - "ancestor"
+      - "brown-family"
+

@@ -1,17 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/event",
+  "$id": "https://schema.genealogix.org/v1/event",
   "title": "Event/Fact",
-  "description": "A single occurrence in time and place relevant to the family archive",
+  "description": "A single occurrence in time and place relevant to the family archive. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["id", "version", "type"],
+  "required": ["version", "type"],
   "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^event-[a-f0-9]{8}$",
-      "description": "Unique identifier for this event",
-      "examples": ["event-a1b2c3d4"]
-    },
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",

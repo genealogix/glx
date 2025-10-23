@@ -46,8 +46,11 @@ Navigate to where you want your family archive and initialize it:
 mkdir my-family-archive
 cd my-family-archive
 
-# Initialize with standard directory structure
+# Initialize with multi-file structure (recommended for collaboration)
 glx init
+
+# OR initialize as a single file (recommended for personal use)
+glx init --single-file
 ```
 
 **What `glx init` creates:**

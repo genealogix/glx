@@ -1,10 +1,6 @@
-# TEST: citation-invalid-quality
-# EXPECT: invalid
-# ERROR: "quality must be between 0 and 3"
-# DESCRIPTION: Citation quality must be 0-3 scale
-
-id: citation-j0k1l2m3
-version: "1.0"
-type: citation
-source: source-test
-quality: 5  # Invalid: quality must be 0-3
+# Invalid: Quality rating out of range (must be 0-3)
+citations:
+  citation-12345678:
+    version: "1.0"
+    source_id: source-abc12345
+    quality: 5

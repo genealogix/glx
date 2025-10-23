@@ -9,13 +9,17 @@ GENEALOGIX defines a human-readable, version-controlled archive format for famil
 - **Human-readable YAML files** instead of binary or proprietary formats
 - **Structured data validation** with JSON Schema compliance
 - **Complete provenance tracking** from repository to conclusion
+- **Flexible organization** - archives can be a single file, many files, or any combination
 
 The specification covers:
 - 9 core entity types for comprehensive family history documentation
+- Universal file format with entity type keys
 - Evidence hierarchy from physical repositories to specific claims
 - Git workflow integration for collaborative research
 - Extensible schema system for future enhancements
 - Validation tools and conformance testing
+
+**File Format**: All GENEALOGIX files use the same structure with top-level entity type keys (persons, sources, etc.) containing maps of entities. Parsers collate all entities of each type across all .glx files in the repository.
 
 ## Design Principles
 

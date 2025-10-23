@@ -1,12 +1,7 @@
-# TEST: assertion-minimal
-# EXPECT: valid
-# DESCRIPTION: Minimal valid assertion with required fields (id, version, subject_id, property)
----
-id: assertion-test001
-version: "1.0"
-subject_id: "person-test001"
-property: "birth_date"
-
-
-
-
+assertions:
+  assertion-12345678:
+    version: "1.0"
+    subject: person-a1b2c3d4
+    claim: birth_date
+    sources:
+      - source-xyz12345

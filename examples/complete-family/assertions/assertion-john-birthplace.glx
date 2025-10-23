@@ -1,0 +1,13 @@
+assertions:
+  assertion-2b3c4d5e:
+    version: "1.0"
+    subject: person-a1b2c3d4
+    claim: birth_place
+    value: "Leeds, Yorkshire, England"
+    citations:
+      - citation-abc12345
+    confidence: high
+    sources:
+      - source-12345678
+    research_notes: "Birth place stated in parish register"
+

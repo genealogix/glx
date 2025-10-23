@@ -1,0 +1,15 @@
+assertions:
+  assertion-1a2b3c4d:
+    version: "1.0"
+    subject: person-a1b2c3d4
+    claim: birth_date
+    value: "1850-01-15"
+    citations:
+      - citation-abc12345
+      - citation-fedcba98
+    confidence: high
+    sources:
+      - source-12345678
+      - source-23456789
+    research_notes: "Birth date confirmed by parish register (primary) and 1851 census (secondary)"
+

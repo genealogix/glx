@@ -1,12 +1,6 @@
-# TEST: person-bad-id-format
-# EXPECT: invalid
-# ERROR: "id must match pattern"
-# DESCRIPTION: Person ID must follow person-{8hex} pattern
-
-id: john-smith  # Invalid: no prefix, contains letters
-version: "1.0"
-type: person
-name:
-  given: John
-  surname: Smith
-  display: John Smith
+# Invalid: Entity ID doesn't match required pattern
+persons:
+  bad-id-format:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Test Person"

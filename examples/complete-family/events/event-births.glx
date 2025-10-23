@@ -1,0 +1,31 @@
+events:
+  event-a1a2a3a4:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    place: place-d4e5f6a1
+    participants:
+      - person: person-a1b2c3d4
+        role: subject
+    description: "Birth of John Smith in Leeds"
+  
+  event-b1b2b3b4:
+    version: "1.0"
+    type: birth
+    date: "1852-03-20"
+    place: place-d4e5f6a1
+    participants:
+      - person: person-b2c3d4e5
+        role: subject
+    description: "Birth of Mary Brown in Leeds"
+  
+  event-c1c2c3c4:
+    version: "1.0"
+    type: birth
+    date: "1876-09-05"
+    place: place-d4e5f6a1
+    participants:
+      - person: person-c3d4e5f6
+        role: subject
+    description: "Birth of Jane Smith in Leeds"
+

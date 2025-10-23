@@ -1,0 +1,9 @@
+citations:
+  citation-abc12345:
+    version: "1.0"
+    source_id: source-12345678
+    quality: 3
+    locator: "Entry 145, Page 23, January 1850"
+    text_from_source: "John Smith, son of William Smith (blacksmith) and Elizabeth, born January 15, 1850"
+    notes: "Primary source - parish baptism register"
+

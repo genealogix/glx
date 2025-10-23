@@ -1,0 +1,9 @@
+sources:
+  source-23456789:
+    version: "1.0"
+    title: "1851 Census of England and Wales"
+    type: census_record
+    repository: repository-2b3c4d5e
+    date: "1851"
+    description: "National census conducted in 1851"
+

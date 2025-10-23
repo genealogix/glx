@@ -1,0 +1,13 @@
+assertions:
+  assertion-3c4d5e6f:
+    version: "1.0"
+    subject: rel-12345678
+    claim: marriage_date
+    value: "1875-05-10"
+    citations:
+      - citation-def67890
+    confidence: high
+    sources:
+      - source-12345678
+    research_notes: "Marriage date from parish register"
+

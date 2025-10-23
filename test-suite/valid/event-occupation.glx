@@ -1,13 +1,11 @@
-# Valid event entity - occupation
-# Tests occupation event with place and date
-id: event-23456789
-version: "1.0"
-event_type: occupation
-date: "1875"
-place: place-12345678
-participants:
-  - person: person-a1b2c3d4
-    role: subject
-value: "Blacksmith"
-description: "Worked as blacksmith in Leeds"
-
+events:
+  event-23456789:
+    version: "1.0"
+    type: "occupation"
+    date: "1875"
+    place: "place-12345678"
+    participants:
+      - person: "person-a1b2c3d4"
+        role: "subject"
+    value: "Blacksmith"
+    description: "Worked as blacksmith in Leeds"

@@ -15,7 +15,7 @@ Version 1.0.0 (Draft)
    - Provenance Tracking
    - Version Control Integration
 
-3. [File Structure](3-file-structure.md)
+3. [Archive Organization](3-archive-organization.md)
    - Repository Layout
    - Naming Conventions
    - File Organization Patterns

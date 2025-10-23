@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/glx-file.schema.json",
+  "title": "GENEALOGIX File",
+  "description": "Universal schema for any GENEALOGIX archive file. All GLX files use this structure with entity type keys containing maps of entities.",
+  "type": "object",
+  "properties": {
+    "persons": {
+      "type": "object",
+      "description": "Map of person entities, keyed by person ID",
+      "patternProperties": {
+        "^person-[a-f0-9]{8}$": {
+          "$ref": "person.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "relationships": {
+      "type": "object",
+      "description": "Map of relationship entities, keyed by relationship ID",
+      "patternProperties": {
+        "^rel-[a-f0-9]{8}$": {
+          "$ref": "relationship.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "events": {
+      "type": "object",
+      "description": "Map of event entities, keyed by event ID",
+      "patternProperties": {
+        "^event-[a-f0-9]{8}$": {
+          "$ref": "event.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "places": {
+      "type": "object",
+      "description": "Map of place entities, keyed by place ID",
+      "patternProperties": {
+        "^place-[a-f0-9]{8}$": {
+          "$ref": "place.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "object",
+      "description": "Map of source entities, keyed by source ID",
+      "patternProperties": {
+        "^source-[a-f0-9]{8}$": {
+          "$ref": "source.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "citations": {
+      "type": "object",
+      "description": "Map of citation entities, keyed by citation ID",
+      "patternProperties": {
+        "^citation-[a-f0-9]{8}$": {
+          "$ref": "citation.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "repositories": {
+      "type": "object",
+      "description": "Map of repository entities, keyed by repository ID",
+      "patternProperties": {
+        "^repository-[a-f0-9]{8}$": {
+          "$ref": "repository.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "assertions": {
+      "type": "object",
+      "description": "Map of assertion entities, keyed by assertion ID",
+      "patternProperties": {
+        "^assertion-[a-f0-9]{8}$": {
+          "$ref": "assertion.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "media": {
+      "type": "object",
+      "description": "Map of media entities, keyed by media ID",
+      "patternProperties": {
+        "^media-[a-f0-9]{8}$": {
+          "$ref": "media.schema.json"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "minProperties": 1,
+  "additionalProperties": false
+}
+

@@ -1,13 +1,11 @@
-# Valid assertion entity - medium confidence
-# Tests assertion with conflicting evidence
-id: assertion-23456789
-version: "1.0"
-subject: person-a1b2c3d4
-claim: birth_date
-value: "1850-01-15"
-citations:
-  - citation-12345678
-  - citation-23456789
-confidence: medium
-research_notes: "Two sources slightly disagree on exact date. Certificate preferred as primary source."
-
+assertions:
+  assertion-23456789:
+    version: "1.0"
+    subject: person-a1b2c3d4
+    claim: birth_date
+    value: "1850-01-15"
+    citations:
+      - citation-12345678
+      - citation-23456789
+    confidence: medium
+    research_notes: "Two sources slightly disagree on exact date. Certificate preferred as primary source."

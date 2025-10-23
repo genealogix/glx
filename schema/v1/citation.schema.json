@@ -2,16 +2,10 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://schema.genealogix.org/v1/citation",
   "title": "Citation",
-  "description": "A specific reference to evidence within a source",
+  "description": "A specific reference to evidence within a source. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["id", "version", "source_id"],
+  "required": ["version", "source_id"],
   "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^citation-[a-f0-9]{8}$",
-      "description": "Unique identifier for this citation",
-      "examples": ["citation-a1b2c3d4"]
-    },
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",

@@ -9,26 +9,36 @@ This guide provides recommended workflows and conventions for maintaining high-q
 **Always start with sources, not conclusions:**
 
 ```bash
-# ❌ Wrong: Start with assumptions
-persons/person-john-smith.glx:
-  birth: "1850-01-15"  # No evidence!
+# ❌ Wrong: Start with assumptions without evidence
 
 # ✅ Correct: Evidence-based approach
-sources/source-birth-cert.glx:  # Document the source first
-  title: Birth Certificate
-  type: vital_record
 
-citations/citation-birth-cert.glx:  # Cite specific evidence
-  source: source-birth-cert
-  quality: 3  # Primary evidence
+# sources/birth-cert.glx - Document the source first
+sources:
+  source-a1b2c3d4:
+    version: "1.0"
+    title: Birth Certificate
+    type: vital_record
 
-assertions/assertion-birth.glx:  # Then make evidence-based claims
-  subject: person-john-smith
-  claim: born_on
-  value: "1850-01-15"
-  citations: [citation-birth-cert]
-  confidence: high
+# citations/birth-citation.glx - Cite specific evidence
+citations:
+  citation-12345678:
+    version: "1.0"
+    source: source-a1b2c3d4
+    quality: 3
+
+# assertions/birth-assertion.glx - Then make evidence-based claims
+assertions:
+  assertion-abc12345:
+    version: "1.0"
+    subject: person-a1b2c3d4
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-12345678]
+    confidence: high
 ```
+
+**Note:** Entity IDs are map keys (e.g., `person-a1b2c3d4`), not `id` fields within entities.
 
 ### 2. Complete Evidence Chains
 

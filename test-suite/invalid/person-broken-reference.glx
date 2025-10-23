@@ -1,14 +1,8 @@
-# TEST: person-broken-reference
-# EXPECT: invalid
-# ERROR: "place 'place-nonexistent' not found"
-# DESCRIPTION: Person birth place must reference existing place
-
-id: person-i9j0k1l2
-version: "1.0"
-type: person
-name:
-  given: John
-  surname: Smith
-  display: John Smith
-birth:
-  place: place-nonexistent  # This place doesn't exist
+# Invalid: References non-existent relationship
+persons:
+  person-12345678:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Test Person"
+    relationships:
+      - rel-nonexistent

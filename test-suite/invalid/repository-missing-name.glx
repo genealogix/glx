@@ -1,11 +1,5 @@
-# TEST: repository-missing-name
-# EXPECT: invalid
-# ERROR: "name is required"
-# DESCRIPTION: Repository entity missing required name field
----
-id: repository-test002
-version: "1.0"
-
-
-
-
+# Invalid: Missing required 'name' field
+repositories:
+  repository-12345678:
+    version: "1.0"
+    type: library

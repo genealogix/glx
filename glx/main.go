@@ -20,7 +20,11 @@ func main() {
 			os.Exit(1)
 		}
 	case "init":
-		if err := runInit(); err != nil {
+		singleFile := false
+		if len(os.Args) > 2 && (os.Args[2] == "--single-file" || os.Args[2] == "-s") {
+			singleFile = true
+		}
+		if err := runInit(singleFile); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -41,12 +45,38 @@ func main() {
 func printUsage() {
 	fmt.Println("genealogix CLI")
 	fmt.Println("Usage:")
-	fmt.Println("  glx init                Initialize a new genealogix repository")
-	fmt.Println("  glx validate [paths]    Validate .glx files (defaults to current directory)")
-	fmt.Println("  glx check-schemas       Validate schema files for required metadata")
+	fmt.Println("  glx init [--single-file]  Initialize a new genealogix repository")
+	fmt.Println("                            (default: multi-file with folders)")
+	fmt.Println("  glx validate [paths]      Validate .glx files and cross-references")
+	fmt.Println("  glx check-schemas         Validate schema files for required metadata")
 }
 
-func runInit() error {
+func runInit(singleFile bool) error {
+	if singleFile {
+		// Create single-file archive template
+		template := `# GENEALOGIX Family Archive
+# Single-file format
+
+persons: {}
+relationships: {}
+events: {}
+places: {}
+sources: {}
+citations: {}
+repositories: {}
+assertions: {}
+media: {}
+`
+		if err := os.WriteFile("archive.glx", []byte(template), 0644); err != nil {
+			return fmt.Errorf("failed to create archive.glx: %v", err)
+		}
+
+		fmt.Println("Initialized single-file GENEALOGIX archive: archive.glx")
+		fmt.Println("Add entities under the appropriate type keys (persons, sources, etc.)")
+		fmt.Println("Entity IDs are map keys - don't include 'id' field in entities")
+		return nil
+	}
+
 	// Create directory structure for a genealogix repository
 	dirs := []string{
 		"persons",
@@ -151,12 +181,15 @@ See the [GENEALOGIX specification](https://github.com/genealogix/spec) for detai
 		return fmt.Errorf("failed to create README.md: %v", err)
 	}
 
-	fmt.Println("Initialized new genealogix repository")
+	fmt.Println("Initialized multi-file GENEALOGIX repository")
 	fmt.Println("Created directories:")
 	fmt.Println("  Core: persons/, relationships/, events/, places/")
 	fmt.Println("  Evidence: sources/, citations/, repositories/, assertions/")
 	fmt.Println("  Media: media/")
 	fmt.Println("Created .gitignore and README.md")
+	fmt.Println("")
+	fmt.Println("Each .glx file should have entity type keys at the top level.")
+	fmt.Println("Entity IDs are map keys - don't include 'id' field in entities.")
 
 	return nil
 }

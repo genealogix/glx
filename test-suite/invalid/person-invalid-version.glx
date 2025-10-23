@@ -1,12 +1,5 @@
-# TEST: person-invalid-version
-# EXPECT: invalid
-# ERROR: "version must match pattern"
-# DESCRIPTION: Version must be in major.minor format
-
-id: person-g7h8i9j0
-version: "1"  # Invalid: missing minor version
-type: person
-name:
-  given: John
-  surname: Smith
-  display: John Smith
+# Invalid: Version field is missing
+persons:
+  person-12345678:
+    concluded_identity:
+      primary_name: "Test Person"

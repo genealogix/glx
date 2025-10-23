@@ -1,12 +1,7 @@
-# TEST: assertion-missing-property
-# EXPECT: invalid
-# ERROR: "property is required"
-# DESCRIPTION: Assertion entity missing required property field
----
-id: assertion-test002
-version: "1.0"
-subject_id: "person-test001"
-
-
-
-
+# Invalid: Missing required 'claim' field
+assertions:
+  assertion-12345678:
+    version: "1.0"
+    subject: person-a1b2c3d4
+    sources:
+      - source-xyz12345

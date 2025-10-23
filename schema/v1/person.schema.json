@@ -2,16 +2,10 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/person.schema.json",
   "title": "Person",
-  "description": "An individual in the family archive",
+  "description": "An individual in the family archive. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["id", "version"],
+  "required": ["version"],
   "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^person-[a-f0-9]{8}$",
-      "description": "Unique identifier for this person",
-      "examples": ["person-a1b2c3d4"]
-    },
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",

@@ -1,17 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/place",
+  "$id": "https://schema.genealogix.org/v1/place",
   "title": "Place",
-  "description": "A geographic location in the family archive with support for hierarchies and alternative names",
+  "description": "A geographic location in the family archive with support for hierarchies and alternative names. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["id", "version", "name"],
+  "required": ["version", "name"],
   "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^place-[a-f0-9]{8}$",
-      "description": "Unique identifier for this place",
-      "examples": ["place-a1b2c3d4"]
-    },
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",

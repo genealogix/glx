@@ -2,93 +2,15 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-// ValidationIssue represents a single validation problem
-type ValidationIssue struct {
-	Path    string
-	Message string
-}
-
-// ValidateGLXFile validates a single GLX file and returns any issues found
-func ValidateGLXFile(path string, data map[string]interface{}) []string {
-	typ := detectGLXType(path)
-	var issues []string
-
-	switch typ {
-	case "config":
-		issues = append(issues, validateStringField(data, "version")...)
-		issues = append(issues, validateStringField(data, "schema")...)
-	case "schema-version":
-		issues = append(issues, validateStringField(data, "schema")...)
-	default:
-		// Only require id for actual entity types (not config/generic)
-		if typ != "generic" {
-			issues = append(issues, validateStringField(data, "id")...)
-		}
-		issues = append(issues, validateStringField(data, "version")...)
-
-		if typ == "person" {
-			ci, ok := data["concluded_identity"].(map[string]interface{})
-			if ok {
-				issues = append(issues, validateStringField(ci, "primary_name")...)
-			}
-		} else if typ == "relationship" {
-			issues = append(issues, validateStringField(data, "type")...)
-			persons, ok := data["persons"].([]interface{})
-			if !ok {
-				issues = append(issues, "persons must be an array")
-			} else {
-				if len(persons) < 2 {
-					issues = append(issues, "persons must contain at least two entries")
-				}
-				for idx, entry := range persons {
-					if _, ok := entry.(string); !ok {
-						issues = append(issues, fmt.Sprintf("persons[%d] must be a string", idx))
-					}
-				}
-			}
-		} else if typ == "event" {
-			issues = append(issues, validateStringField(data, "type")...)
-		} else if typ == "place" {
-			issues = append(issues, validateStringField(data, "name")...)
-		} else if typ == "source" {
-			issues = append(issues, validateStringField(data, "title")...)
-		} else if typ == "citation" {
-			issues = append(issues, validateStringField(data, "source_id")...)
-		} else if typ == "repository" {
-			issues = append(issues, validateStringField(data, "name")...)
-		} else if typ == "assertion" {
-			// Assertions require subject reference
-			if _, ok := data["subject"]; !ok {
-				if _, ok := data["subject_id"]; !ok {
-					issues = append(issues, "assertion must have subject or subject_id")
-				}
-			}
-			issues = append(issues, validateStringField(data, "property")...)
-		} else if typ == "media" {
-			// Media validation - uri is optional but title or file_path is recommended
-			if _, ok := data["file_path"]; !ok {
-				if _, ok := data["uri"]; !ok {
-					issues = append(issues, "media should have file_path or uri")
-				}
-			}
-		}
-	}
-
-	return issues
-}
-
-// DetectGLXType determines the entity type based on file path
-func DetectGLXType(path string) string {
-	return detectGLXType(path)
-}
-
-// ParseYAMLFile parses a YAML file into a map
+// ParseYAMLFile parses YAML content into a map
 func ParseYAMLFile(data []byte) (map[string]interface{}, error) {
 	var doc map[string]interface{}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
@@ -97,73 +19,414 @@ func ParseYAMLFile(data []byte) (map[string]interface{}, error) {
 	return doc, nil
 }
 
-func detectGLXType(path string) string {
-	n := filepath.ToSlash(path)
-	switch {
-	case strings.Contains(n, "/persons/"):
-		return "person"
-	case strings.Contains(n, "persons/"):
-		return "person"
-	case strings.Contains(n, "/relationships/"):
-		return "relationship"
-	case strings.Contains(n, "relationships/"):
-		return "relationship"
-	case strings.Contains(n, "/events/"):
-		return "event"
-	case strings.Contains(n, "events/"):
-		return "event"
-	case strings.Contains(n, "/places/"):
-		return "place"
-	case strings.Contains(n, "places/"):
-		return "place"
-	case strings.Contains(n, "/sources/"):
-		return "source"
-	case strings.Contains(n, "sources/"):
-		return "source"
-	case strings.Contains(n, "/citations/"):
-		return "citation"
-	case strings.Contains(n, "citations/"):
-		return "citation"
-	case strings.Contains(n, "/repositories/"):
-		return "repository"
-	case strings.Contains(n, "repositories/"):
-		return "repository"
-	case strings.Contains(n, "/assertions/"):
-		return "assertion"
-	case strings.Contains(n, "assertions/"):
-		return "assertion"
-	case strings.Contains(n, "/media/"):
-		return "media"
-	case strings.Contains(n, "media/"):
-		return "media"
-	case strings.Contains(n, "/.glx-archive/"):
-		base := filepath.Base(n)
-		if base == "metadata.glx" {
-			return "archive-metadata"
-		}
-	case strings.Contains(n, ".glx-archive/"):
-		base := filepath.Base(n)
-		if base == "metadata.glx" {
-			return "archive-metadata"
-		}
-		if base == "schema-version.glx" {
-			return "schema-version"
+// ValidateGLXFile validates a single GLX file
+func ValidateGLXFile(path string, doc map[string]interface{}) []string {
+	var issues []string
+
+	// Check for at least one entity type key
+	validKeys := []string{"persons", "relationships", "events", "places",
+		"sources", "citations", "repositories", "assertions", "media"}
+	hasValidKey := false
+	for _, key := range validKeys {
+		if _, exists := doc[key]; exists {
+			hasValidKey = true
+			break
 		}
 	}
-	return "generic"
+
+	if !hasValidKey {
+		return []string{"file must contain at least one entity type key (persons, relationships, events, places, sources, citations, repositories, assertions, media)"}
+	}
+
+	// Validate each entity type section
+	entityTypes := map[string]string{
+		"persons":       "person",
+		"relationships": "relationship",
+		"events":        "event",
+		"places":        "place",
+		"sources":       "source",
+		"citations":     "citation",
+		"repositories":  "repository",
+		"assertions":    "assertion",
+		"media":         "media",
+	}
+
+	for pluralKey, singularType := range entityTypes {
+		if entities, ok := doc[pluralKey].(map[string]interface{}); ok {
+			for entityID, entityData := range entities {
+				if entityMap, ok := entityData.(map[string]interface{}); ok {
+					// Reject if entity has an "id" field (map key is the ID)
+					if _, hasID := entityMap["id"]; hasID {
+						issues = append(issues, fmt.Sprintf("%s[%s]: entity must not have 'id' field - the map key is the ID", pluralKey, entityID))
+						continue
+					}
+
+					// Validate entity ID format
+					if !isValidEntityID(entityID, singularType) {
+						issues = append(issues, fmt.Sprintf("%s[%s]: invalid entity ID format (expected %s-[a-f0-9]{8})", pluralKey, entityID, getPrefixForType(singularType)))
+					}
+
+					// Validate individual entity
+					entityIssues := validateEntityByType(singularType, entityMap)
+					for _, issue := range entityIssues {
+						issues = append(issues, fmt.Sprintf("%s[%s]: %s", pluralKey, entityID, issue))
+					}
+				}
+			}
+		}
+	}
+
+	return issues
 }
 
-func validateStringField(doc map[string]interface{}, key string) []string {
-	val, ok := doc[key]
-	if !ok {
-		return []string{fmt.Sprintf("%s is required", key)}
+func isValidEntityID(id, entityType string) bool {
+	prefix := getPrefixForType(entityType)
+	if !strings.HasPrefix(id, prefix) {
+		return false
 	}
-	str, ok := val.(string)
-	if !ok {
-		return []string{fmt.Sprintf("%s must be a string", key)}
+	suffix := strings.TrimPrefix(id, prefix)
+	return len(suffix) == 8 && isHex(suffix)
+}
+
+func getPrefixForType(entityType string) string {
+	prefixes := map[string]string{
+		"person":       "person-",
+		"relationship": "rel-",
+		"event":        "event-",
+		"place":        "place-",
+		"source":       "source-",
+		"citation":     "citation-",
+		"repository":   "repository-",
+		"assertion":    "assertion-",
+		"media":        "media-",
 	}
-	if strings.TrimSpace(str) == "" {
-		return []string{fmt.Sprintf("%s cannot be empty", key)}
+	if prefix, ok := prefixes[entityType]; ok {
+		return prefix
 	}
-	return nil
+	return entityType + "-"
+}
+
+func isHex(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			return false
+		}
+	}
+	return true
+}
+
+func validateEntityByType(entityType string, entity map[string]interface{}) []string {
+	var issues []string
+
+	// Check for version field (required for all entities)
+	if _, hasVersion := entity["version"]; !hasVersion {
+		issues = append(issues, "version is required")
+	}
+
+	// Type-specific validation
+	switch entityType {
+	case "person":
+		// Persons don't have strict requirements beyond version
+	case "relationship":
+		if _, hasType := entity["type"]; !hasType {
+			issues = append(issues, "type is required")
+		}
+		if _, hasPersons := entity["persons"]; !hasPersons {
+			issues = append(issues, "persons is required")
+		}
+	case "event":
+		if _, hasType := entity["type"]; !hasType {
+			issues = append(issues, "type is required")
+		}
+	case "place":
+		if _, hasName := entity["name"]; !hasName {
+			issues = append(issues, "name is required")
+		}
+	case "source":
+		if _, hasTitle := entity["title"]; !hasTitle {
+			issues = append(issues, "title is required")
+		}
+	case "citation":
+		if _, hasSource := entity["source_id"]; !hasSource {
+			if _, hasSourceAlt := entity["source"]; !hasSourceAlt {
+				issues = append(issues, "source_id or source is required")
+			}
+		}
+	case "repository":
+		if _, hasName := entity["name"]; !hasName {
+			issues = append(issues, "name is required")
+		}
+	case "assertion":
+		if _, hasSubject := entity["subject"]; !hasSubject {
+			issues = append(issues, "subject is required")
+		}
+		if _, hasClaim := entity["claim"]; !hasClaim {
+			issues = append(issues, "claim is required")
+		}
+		if _, hasSources := entity["sources"]; !hasSources {
+			if _, hasCitations := entity["citations"]; !hasCitations {
+				issues = append(issues, "sources or citations is required")
+			}
+		}
+	case "media":
+		if _, hasURI := entity["uri"]; !hasURI {
+			if _, hasFilePath := entity["file_path"]; !hasFilePath {
+				issues = append(issues, "uri or file_path is required")
+			}
+		}
+	}
+
+	return issues
+}
+
+// CollectAllEntities walks all GLX files and collects entity IDs
+func CollectAllEntities(rootPath string) (map[string]map[string]bool, []string, error) {
+	allEntities := make(map[string]map[string]bool)
+	for _, entityType := range []string{"persons", "relationships", "events", "places",
+		"sources", "citations", "repositories", "assertions", "media"} {
+		allEntities[entityType] = make(map[string]bool)
+	}
+
+	var duplicates []string
+
+	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(d.Name())
+		if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+
+		doc, err := ParseYAMLFile(data)
+		if err != nil {
+			return nil
+		}
+
+		// Collect entity IDs from this file
+		for pluralKey, entities := range doc {
+			if entityMap, ok := entities.(map[string]interface{}); ok {
+				if _, exists := allEntities[pluralKey]; exists {
+					for entityID := range entityMap {
+						if allEntities[pluralKey][entityID] {
+							duplicates = append(duplicates, fmt.Sprintf("duplicate entity ID %s found in %s", entityID, path))
+						}
+						allEntities[pluralKey][entityID] = true
+					}
+				}
+			}
+		}
+		return nil
+	})
+
+	return allEntities, duplicates, err
+}
+
+// ValidateRepositoryReferences validates all cross-references across the entire repository
+func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[string]bool) []string {
+	var issues []string
+
+	filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(d.Name())
+		if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+
+		doc, err := ParseYAMLFile(data)
+		if err != nil {
+			return nil
+		}
+
+		// Validate relationships
+		if relationships, ok := doc["relationships"].(map[string]interface{}); ok {
+			for relID, relData := range relationships {
+				if rel, ok := relData.(map[string]interface{}); ok {
+					// Check participants reference valid persons
+					if participants, ok := rel["participants"].([]interface{}); ok {
+						for i, p := range participants {
+							if participant, ok := p.(map[string]interface{}); ok {
+								if personID, ok := participant["person"].(string); ok {
+									if !allEntities["persons"][personID] {
+										issues = append(issues, fmt.Sprintf("%s: relationships[%s].participants[%d].person references non-existent person: %s", path, relID, i, personID))
+									}
+								}
+							}
+						}
+					}
+					// Also check old format with persons array
+					if persons, ok := rel["persons"].([]interface{}); ok {
+						for i, p := range persons {
+							if personID, ok := p.(string); ok {
+								if !allEntities["persons"][personID] {
+									issues = append(issues, fmt.Sprintf("%s: relationships[%s].persons[%d] references non-existent person: %s", path, relID, i, personID))
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Validate events
+		if events, ok := doc["events"].(map[string]interface{}); ok {
+			for eventID, eventData := range events {
+				if event, ok := eventData.(map[string]interface{}); ok {
+					// Check place references
+					if placeID, ok := event["place"].(string); ok {
+						if !allEntities["places"][placeID] {
+							issues = append(issues, fmt.Sprintf("%s: events[%s].place references non-existent place: %s", path, eventID, placeID))
+						}
+					}
+					if placeID, ok := event["place_id"].(string); ok {
+						if !allEntities["places"][placeID] {
+							issues = append(issues, fmt.Sprintf("%s: events[%s].place_id references non-existent place: %s", path, eventID, placeID))
+						}
+					}
+					// Check participants reference valid persons
+					if participants, ok := event["participants"].([]interface{}); ok {
+						for i, p := range participants {
+							if participant, ok := p.(map[string]interface{}); ok {
+								if personID, ok := participant["person"].(string); ok {
+									if !allEntities["persons"][personID] {
+										issues = append(issues, fmt.Sprintf("%s: events[%s].participants[%d].person references non-existent person: %s", path, eventID, i, personID))
+									}
+								}
+								if personID, ok := participant["person_id"].(string); ok {
+									if !allEntities["persons"][personID] {
+										issues = append(issues, fmt.Sprintf("%s: events[%s].participants[%d].person_id references non-existent person: %s", path, eventID, i, personID))
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Validate places
+		if places, ok := doc["places"].(map[string]interface{}); ok {
+			for placeID, placeData := range places {
+				if place, ok := placeData.(map[string]interface{}); ok {
+					// Check parent place references
+					if parentID, ok := place["parent"].(string); ok {
+						if !allEntities["places"][parentID] {
+							issues = append(issues, fmt.Sprintf("%s: places[%s].parent references non-existent place: %s", path, placeID, parentID))
+						}
+					}
+					if parentID, ok := place["parent_id"].(string); ok {
+						if !allEntities["places"][parentID] {
+							issues = append(issues, fmt.Sprintf("%s: places[%s].parent_id references non-existent place: %s", path, placeID, parentID))
+						}
+					}
+				}
+			}
+		}
+
+		// Validate citations
+		if citations, ok := doc["citations"].(map[string]interface{}); ok {
+			for citationID, citationData := range citations {
+				if citation, ok := citationData.(map[string]interface{}); ok {
+					// Check source references
+					if sourceID, ok := citation["source"].(string); ok {
+						if !allEntities["sources"][sourceID] {
+							issues = append(issues, fmt.Sprintf("%s: citations[%s].source references non-existent source: %s", path, citationID, sourceID))
+						}
+					}
+					if sourceID, ok := citation["source_id"].(string); ok {
+						if !allEntities["sources"][sourceID] {
+							issues = append(issues, fmt.Sprintf("%s: citations[%s].source_id references non-existent source: %s", path, citationID, sourceID))
+						}
+					}
+					// Check repository references
+					if repoID, ok := citation["repository"].(string); ok {
+						if !allEntities["repositories"][repoID] {
+							issues = append(issues, fmt.Sprintf("%s: citations[%s].repository references non-existent repository: %s", path, citationID, repoID))
+						}
+					}
+					if repoID, ok := citation["repository_id"].(string); ok {
+						if !allEntities["repositories"][repoID] {
+							issues = append(issues, fmt.Sprintf("%s: citations[%s].repository_id references non-existent repository: %s", path, citationID, repoID))
+						}
+					}
+				}
+			}
+		}
+
+		// Validate sources
+		if sources, ok := doc["sources"].(map[string]interface{}); ok {
+			for sourceID, sourceData := range sources {
+				if source, ok := sourceData.(map[string]interface{}); ok {
+					// Check repository references
+					if repoID, ok := source["repository"].(string); ok {
+						if !allEntities["repositories"][repoID] {
+							issues = append(issues, fmt.Sprintf("%s: sources[%s].repository references non-existent repository: %s", path, sourceID, repoID))
+						}
+					}
+					if repoID, ok := source["repository_id"].(string); ok {
+						if !allEntities["repositories"][repoID] {
+							issues = append(issues, fmt.Sprintf("%s: sources[%s].repository_id references non-existent repository: %s", path, sourceID, repoID))
+						}
+					}
+				}
+			}
+		}
+
+		// Validate assertions
+		if assertions, ok := doc["assertions"].(map[string]interface{}); ok {
+			for assertionID, assertionData := range assertions {
+				if assertion, ok := assertionData.(map[string]interface{}); ok {
+					// Check subject references (could be person, event, relationship, place)
+					if subjectID, ok := assertion["subject"].(string); ok {
+						found := false
+						for _, entityType := range []string{"persons", "events", "relationships", "places"} {
+							if allEntities[entityType][subjectID] {
+								found = true
+								break
+							}
+						}
+						if !found {
+							issues = append(issues, fmt.Sprintf("%s: assertions[%s].subject references non-existent entity: %s", path, assertionID, subjectID))
+						}
+					}
+					// Check citations
+					if citations, ok := assertion["citations"].([]interface{}); ok {
+						for i, c := range citations {
+							if citationID, ok := c.(string); ok {
+								if !allEntities["citations"][citationID] {
+									issues = append(issues, fmt.Sprintf("%s: assertions[%s].citations[%d] references non-existent citation: %s", path, assertionID, i, citationID))
+								}
+							}
+						}
+					}
+					// Also check old format with sources
+					if sources, ok := assertion["sources"].([]interface{}); ok {
+						for i, s := range sources {
+							if sourceID, ok := s.(string); ok {
+								if !allEntities["sources"][sourceID] {
+									issues = append(issues, fmt.Sprintf("%s: assertions[%s].sources[%d] references non-existent source: %s", path, assertionID, i, sourceID))
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+
+	return issues
 }

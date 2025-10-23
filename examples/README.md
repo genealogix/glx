@@ -80,28 +80,41 @@ This directory contains complete, working GENEALOGIX archives demonstrating vari
 
 **GENEALOGIX Approach:**
 ```yaml
-# Complete evidence chain from repository to conclusion
-repositories/repository-leeds-library.glx:
-  name: Leeds Library Local Studies
-  contact: local.studies@leeds.gov.uk
+# repositories/repository-leeds.glx
+repositories:
+  repository-a1b2c3d4:
+    version: "1.0"
+    name: Leeds Library Local Studies
+    email: local.studies@leeds.gov.uk
 
-sources/source-parish-register.glx:
-  title: St. Paul's Parish Register
-  repository: repository-leeds-library
+# sources/parish-register.glx
+sources:
+  source-12345678:
+    version: "1.0"
+    title: St. Paul's Parish Register
+    repository: repository-a1b2c3d4
 
-citations/citation-birth-entry.glx:
-  source: source-parish-register
-  locator: "Entry 145, page 23"
-  quality: 3  # Primary evidence
-  transcription: "John, son of Thomas Smith, born January 15, 1850"
+# citations/birth-entry.glx
+citations:
+  citation-abc12345:
+    version: "1.0"
+    source: source-12345678
+    locator: "Entry 145, page 23"
+    quality: 3
+    transcription: "John, son of Thomas Smith, born January 15, 1850"
 
-assertions/assertion-john-birth.glx:
-  subject: person-john-smith
-  claim: born_on
-  value: "1850-01-15"
-  citations: [citation-birth-entry]
-  confidence: high
+# assertions/birth-assertion.glx
+assertions:
+  assertion-1a2b3c4d:
+    version: "1.0"
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-abc12345]
+    confidence: high
 ```
+
+**Note:** Entity IDs are map keys, not `id` fields. All GENEALOGIX files use this same structure.
 
 ### Collaboration Comparison
 

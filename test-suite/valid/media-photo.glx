@@ -1,12 +1,10 @@
-# Valid media entity - photograph
-# Tests photo media with metadata
-id: media-12345678
-version: "1.0"
-media_type: photo
-file_path: "photos/john-smith-1880.jpg"
-title: "Portrait of John Smith"
-description: "Studio portrait taken in Leeds, circa 1880"
-date: "1880"
-subjects:
-  - person-a1b2c3d4
-
+media:
+  media-12345678:
+    version: "1.0"
+    media_type: photo
+    file_path: "photos/john-smith-1880.jpg"
+    title: "Portrait of John Smith"
+    description: "Studio portrait taken in Leeds, circa 1880"
+    date: "1880"
+    subjects:
+      - person-a1b2c3d4

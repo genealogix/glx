@@ -1,14 +1,6 @@
-# TEST: event-missing-place
-# EXPECT: invalid
-# ERROR: "place field is required"
-# DESCRIPTION: Event must reference an existing place
-
-id: event-h8i9j0k1
-version: "1.0"
-type: event
-event_type: birth
-date: "1850-01-15"
-# Missing required place field
-participants:
-  - person: person-john-smith
-    role: subject
+# Invalid: References non-existent place
+events:
+  event-12345678:
+    version: "1.0"
+    type: birth
+    place: place-nonexistent

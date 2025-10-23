@@ -1,11 +1,9 @@
-# Valid repository entity - archive
-# Tests archive repository with full contact details
-id: repository-12345678
-version: "1.0"
-name: "The National Archives"
-repository_type: archive
-address: "Kew, Richmond, Surrey, TW9 4DU, United Kingdom"
-website: "https://www.nationalarchives.gov.uk"
-email: "research@nationalarchives.gov.uk"
-phone: "+44 20 8876 3444"
-
+repositories:
+  repository-12345678:
+    version: "1.0"
+    name: "The National Archives"
+    type: archive
+    address: "Kew, Richmond, Surrey, TW9 4DU, United Kingdom"
+    website: "https://www.nationalarchives.gov.uk"
+    email: "research@nationalarchives.gov.uk"
+    phone: "+44 20 8876 3444"

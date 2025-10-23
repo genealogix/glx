@@ -20,6 +20,7 @@ func runValidate(args []string) error {
 		reportLines []string
 	)
 
+	// First pass: validate each file individually
 	for _, root := range paths {
 		info, err := os.Stat(root)
 		if err != nil {
@@ -38,7 +39,8 @@ func runValidate(args []string) error {
 				if d.IsDir() {
 					return nil
 				}
-				if filepath.Ext(d.Name()) != ".glx" {
+				ext := filepath.Ext(d.Name())
+				if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
 					return nil
 				}
 				checked++
@@ -57,8 +59,9 @@ func runValidate(args []string) error {
 			continue
 		}
 
-		if filepath.Ext(root) != ".glx" {
-			reportLines = append(reportLines, fmt.Sprintf("✗ %s is not a .glx file", root))
+		ext := filepath.Ext(root)
+		if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
+			reportLines = append(reportLines, fmt.Sprintf("✗ %s is not a .glx/.yaml file", root))
 			hadError = true
 			continue
 		}
@@ -76,6 +79,47 @@ func runValidate(args []string) error {
 		return errors.New("no .glx files found to validate")
 	}
 
+	// Second pass: validate cross-references across all files in repository
+	for _, root := range paths {
+		info, err := os.Stat(root)
+		if err != nil {
+			continue
+		}
+
+		// If validating a directory, check for cross-reference issues
+		if info.IsDir() {
+			allEntities, duplicates, err := CollectAllEntities(root)
+			if err != nil {
+				reportLines = append(reportLines, fmt.Sprintf("✗ Cross-reference validation error: %v", err))
+				hadError = true
+			}
+
+			// Report duplicate IDs
+			if len(duplicates) > 0 {
+				hadError = true
+				reportLines = append(reportLines, "")
+				reportLines = append(reportLines, "Cross-reference issues:")
+				for _, dup := range duplicates {
+					reportLines = append(reportLines, fmt.Sprintf("  ✗ %s", dup))
+				}
+			}
+
+			// Check all references
+			refIssues := ValidateRepositoryReferences(root, allEntities)
+			if len(refIssues) > 0 {
+				hadError = true
+				if len(duplicates) == 0 {
+					reportLines = append(reportLines, "")
+					reportLines = append(reportLines, "Cross-reference issues:")
+				}
+				for _, issue := range refIssues {
+					reportLines = append(reportLines, fmt.Sprintf("  ✗ %s", issue))
+				}
+			}
+		}
+	}
+
+	// Print all results
 	for _, line := range reportLines {
 		fmt.Println(line)
 	}
@@ -84,7 +128,7 @@ func runValidate(args []string) error {
 		return errors.New("validation failed")
 	}
 
-	fmt.Printf("Validated %d file(s)\n", checked)
+	fmt.Printf("\nValidated %d file(s)\n", checked)
 	return nil
 }
 

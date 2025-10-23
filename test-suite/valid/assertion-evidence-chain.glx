@@ -1,25 +1,16 @@
-# TEST: assertion-evidence-chain
-# EXPECT: valid
-# DESCRIPTION: Assertion with complete evidence chain
-
-id: assertion-f6g7h8i9
-version: "1.0"
-type: assertion
-subject: person-john-smith
-claim: born_on
-value: "1850-01-15"
-confidence: high
-citations:
-  - citation-birth-certificate
-  - citation-baptism-record
-  - citation-census-1851
-research_notes: |
-  Multiple primary and secondary sources confirm birth date:
-  - Birth certificate: Jan 15, 1850 (quality 3, primary direct)
-  - Baptism record: Jan 20, 1850 (quality 3, primary direct)
-  - Census age: 25 in 1875 (quality 2, secondary direct)
-
-  Resolution: Birth certificate takes precedence as primary direct evidence.
-  5-day baptism delay is within normal range for working families.
-researcher: researcher-jane-smith
-research_date: "2024-03-15"
+assertions:
+  assertion-abc12345:
+    version: "1.0"
+    subject: person-xyz98765
+    claim: birth_date
+    value: "1850-01-15"
+    confidence: high
+    citations:
+      - citation-birth-cert
+      - citation-baptism-rec
+      - citation-census-1851
+    research_notes: |
+      Multiple primary and secondary sources confirm birth date:
+      - Birth certificate: Jan 15, 1850 (quality 3, primary direct)
+      - Baptism record: Jan 20, 1850 (quality 3, primary direct)
+      - Census age: 25 in 1875 (quality 2, secondary direct)

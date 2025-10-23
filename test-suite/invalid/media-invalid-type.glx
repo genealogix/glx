@@ -1,8 +1,7 @@
-# Invalid media entity - invalid media type
-# Expected error: media_type must be one of allowed values
-id: media-12345678
-version: "1.0"
-media_type: invalid_type
-file_path: "test.jpg"
-title: "Test photo"
-
+# Invalid: Invalid media_type value
+media:
+  media-12345678:
+    version: "1.0"
+    media_type: invalid_type
+    file_path: "test.jpg"
+    title: "Test photo"

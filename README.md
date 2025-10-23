@@ -53,24 +53,56 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 
 **GENEALOGIX Format:**
 ```yaml
-# Evidence chain
-sources/source-birth-cert.glx:
-  title: Birth Certificate
-  type: vital_record
+# sources/birth-cert.glx - Evidence chain
+sources:
+  source-birth-cert:
+    version: "1.0"
+    title: Birth Certificate
+    type: vital_record
 
-citations/citation-birth.glx:
-  source: source-birth-cert
-  locator: "Certificate 1850-LEEDS-00145"
-  quality: 3
-  transcription: "John Smith, born January 15, 1850"
+# citations/birth-citation.glx
+citations:
+  citation-birth:
+    version: "1.0"
+    source: source-birth-cert
+    locator: "Certificate 1850-LEEDS-00145"
+    quality: 3
+    transcription: "John Smith, born January 15, 1850"
 
-# Evidence-based conclusion
-assertions/assertion-john-birth.glx:
-  subject: person-john-smith
-  claim: born_on
-  value: "1850-01-15"
-  citations: [citation-birth]
-  confidence: high
+# assertions/birth-assertion.glx - Evidence-based conclusion
+assertions:
+  assertion-john-birth:
+    version: "1.0"
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-birth]
+    confidence: high
+```
+
+**OR as a single file:**
+```yaml
+# family.glx - All in one file
+sources:
+  source-birth-cert:
+    version: "1.0"
+    title: Birth Certificate
+    type: vital_record
+
+citations:
+  citation-birth:
+    version: "1.0"
+    source: source-birth-cert
+    quality: 3
+
+assertions:
+  assertion-john-birth:
+    version: "1.0"
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-birth]
+    confidence: high
 ```
 
 ## What is GENEALOGIX?
@@ -90,15 +122,42 @@ GENEALOGIX is an open standard for version-controlled family archives that provi
 # Install the glx CLI tool
 go install github.com/genealogix/spec/glx@latest
 
-# Create a new genealogix repository
+# Create a new genealogix repository (multi-file, recommended)
 glx init
 
-# Validate .glx files
+# Or create a single-file archive
+glx init --single-file
+
+# Validate .glx files (checks cross-references too)
 glx validate
 
 # Validate schema files
 glx check-schemas
 ```
+
+## File Format
+
+All GENEALOGIX files use the same structure:
+
+```yaml
+# Any .glx file
+persons:
+  person-a1b2c3d4:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+
+sources:
+  source-12345678:
+    version: "1.0"
+    title: "Birth Certificate"
+```
+
+**Key Points:**
+- Entity IDs are map keys (not `id` fields)
+- IDs must match pattern: `{type}-{8hex}` (e.g., `person-a1b2c3d4`)
+- Files can contain any combination of entity types
+- Parser collates all entities across all .glx files in repository
 
 ## Specification Status
 
