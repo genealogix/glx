@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/place",
+  "title": "Place",
+  "description": "A geographic location in the family archive with support for hierarchies and alternative names",
+  "type": "object",
+  "required": ["id", "version", "name"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^place-[a-f0-9]{8}$",
+      "description": "Unique identifier for this place",
+      "examples": ["place-a1b2c3d4"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version",
+      "examples": ["1.0"]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Primary name of the place"
+    },
+    "parent_id": {
+      "type": ["string", "null"],
+      "pattern": "^place-[a-f0-9]{8}$",
+      "description": "Reference to parent place in hierarchy"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "country",
+        "continent",
+        "state",
+        "province",
+        "county",
+        "district",
+        "region",
+        "city",
+        "town",
+        "parish",
+        "village",
+        "township",
+        "borough",
+        "ward",
+        "subdivision",
+        "registration_district",
+        "address",
+        "building",
+        "street",
+        "other"
+      ],
+      "description": "Type of geographic location"
+    },
+    "alternative_names": {
+      "type": "array",
+      "description": "Historical and alternative names for this place",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Alternative name text"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["historical", "spelling_variant", "native", "colloquial", "formal", "other"],
+            "description": "Classification of alternative name"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+            "description": "Language code (BCP-47 format)"
+          },
+          "date_range": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "description": "Start date/year (fuzzy format supported)"
+              },
+              "end": {
+                "type": "string",
+                "description": "End date/year or 'present'"
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "latitude": {
+      "type": ["number", "null"],
+      "minimum": -90,
+      "maximum": 90,
+      "description": "WGS84 latitude coordinate"
+    },
+    "longitude": {
+      "type": ["number", "null"],
+      "minimum": -180,
+      "maximum": 180,
+      "description": "WGS84 longitude coordinate"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code)"
+    },
+    "place_format": {
+      "type": "string",
+      "description": "Standard format string for this place hierarchy (GEDCOM PLAC.FORM style, e.g., 'City, County, Country')"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this place record was created"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User who created this record"
+    },
+    "modified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this place record was last modified"
+    },
+    "modified_by": {
+      "type": "string",
+      "description": "User who last modified this record"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about the place"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
+

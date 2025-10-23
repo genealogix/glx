@@ -6,7 +6,7 @@ The smallest valid GENEALOGIX archive with one person.
 
 ```
 minimal/
-├── .oracynth/
+├── .glx-archive/
 │   └── schema-version.glx
 ├── persons/
 │   └── person-abc123.glx

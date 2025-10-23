@@ -1,0 +1,26 @@
+---
+id: repository-leeds-library
+version: "1.0"
+name: "Leeds Library - Local Studies"
+type: "library"
+address: "Market Street"
+city: "Leeds"
+state_province: "Yorkshire"
+country: "England"
+postal_code: "LS1 2NA"
+phone: "+44 113 247 6000"
+website: "https://www.leeds.gov.uk/libraries"
+email: "localstudies@leeds.gov.uk"
+access_hours: "Monday-Friday 9am-5pm, Saturday 9am-4pm"
+holding_types:
+  - "books"
+  - "microfilm"
+  - "documents"
+  - "photographs"
+created_at: "2025-01-15T10:30:00Z"
+created_by: "genealogist@example.com"
+notes: "Major repository for Leeds and Yorkshire family history research"
+
+
+
+

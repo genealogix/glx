@@ -1,33 +1,306 @@
 # GENEALOGIX Examples
 
-This directory contains complete, working GENEALOGIX archives
-demonstrating various features and use cases.
+[![Examples Status](https://img.shields.io/badge/examples-complete-green.svg)](examples/)
+[![Validation](https://img.shields.io/badge/validation-passing-brightgreen.svg)](test-suite/)
+[![Coverage](https://img.shields.io/badge/coverage-9%2F9%20entities-blue.svg)](#entity-types-demonstrated)
+
+This directory contains complete, working GENEALOGIX archives demonstrating various features and use cases. Each example is designed to teach specific concepts and provide practical templates for real genealogy research.
+
+## 🎯 Learning Path
+
+### For Beginners
+1. **[Complete Family](complete-family/)** ⭐ - **Start Here**
+   - All 9 entity types demonstrated
+   - Complete evidence chains
+   - Real-world family structure
+   - Best practices shown
+
+2. **[Basic Family](basic-family/)** - Simple nuclear family
+   - Core relationships only
+   - Minimal evidence requirements
+   - Easy to understand
+
+3. **[Minimal](minimal/)** - Smallest valid archives
+   - Required fields only
+   - Foundation concepts
+   - Quick validation testing
+
+### For Advanced Users
+4. **[Complex Relationships](complex-relationships/)** - Non-traditional families
+   - Adoption, step-relationships
+   - Extended family connections
+   - Modern family structures
+
+5. **[Evidence-Based](evidence-based/)** - Research methodology
+   - Multiple evidence types
+   - Quality assessment
+   - Source evaluation
+
+6. **[Oral History](oral-history/)** - Informal sources
+   - Interview documentation
+   - Family tradition
+   - Memory-based evidence
+
+7. **[Large Scale](large-scale/)** - Performance testing
+   - 10,000+ person archives
+   - Optimization techniques
+   - Scalability patterns
 
 ## Quick Links
 
-- [Minimal](minimal/) - Smallest valid archive
-- [Basic Family](basic-family/) - Simple nuclear family
-- [Complex Relationships](complex-relationships/) - Chosen family, adoption
-- [Evidence-Based](evidence-based/) - Multiple assertions with sources
-- [Oral History](oral-history/) - Oral tradition documentation
+- [Minimal](minimal/) - Smallest valid archive (essentials only)
+- [Basic Family](basic-family/) - Simple nuclear family with basic relationships
+- [Complete Family](complete-family/) - **ALL entity types demonstrated** ⭐ START HERE
+  - Shows hierarchical places, events, citations, repositories
+  - Complete evidence chain from source to assertions
+  - Quality ratings and structured locators
+- [Complex Relationships](complex-relationships/) - Chosen family, adoption, extended relationships
+- [Evidence-Based](evidence-based/) - Multiple assertions with sources and confidence scoring
+- [Oral History](oral-history/) - Oral tradition documentation and informal sources
 - [Large Scale](large-scale/) - Performance testing (10,000+ persons)
+
+## GEDCOM vs GENEALOGIX Comparison
+
+### Evidence Model Comparison
+
+**GEDCOM Approach:**
+```
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 15 JAN 1850
+2 PLAC Leeds, Yorkshire, England
+2 SOUR @S1@
+3 QUAY 2
+3 PAGE Page 23
+0 @S1@ SOUR
+1 TITL Parish Register
+1 REPO @R1@
+```
+
+**GENEALOGIX Approach:**
+```yaml
+# Complete evidence chain from repository to conclusion
+repositories/repository-leeds-library.glx:
+  name: Leeds Library Local Studies
+  contact: local.studies@leeds.gov.uk
+
+sources/source-parish-register.glx:
+  title: St. Paul's Parish Register
+  repository: repository-leeds-library
+
+citations/citation-birth-entry.glx:
+  source: source-parish-register
+  locator: "Entry 145, page 23"
+  quality: 3  # Primary evidence
+  transcription: "John, son of Thomas Smith, born January 15, 1850"
+
+assertions/assertion-john-birth.glx:
+  subject: person-john-smith
+  claim: born_on
+  value: "1850-01-15"
+  citations: [citation-birth-entry]
+  confidence: high
+```
+
+### Collaboration Comparison
+
+**GEDCOM Collaboration:**
+- Email file attachments
+- Manual merge conflicts
+- No change tracking
+- Version confusion
+
+**GENEALOGIX Collaboration:**
+- Git pull requests and reviews
+- Automatic conflict resolution
+- Complete change history
+- Branch-based research
+
+## Entity Types Demonstrated
+
+### Complete Family Example ⭐ Recommended Starting Point
+
+The **complete-family** example demonstrates all 9 GENEALOGIX entity types:
+
+| Entity Type | Files | Features |
+|-------------|-------|----------|
+| Person | 3 files | Individual family members |
+| Relationship | 2 files | Marriage and parent-child |
+| Event | 3 files | Births, marriages, occupations |
+| Place | 3 files | Hierarchical locations (England → Yorkshire → Leeds) |
+| Source | 2 files | Parish registers, census records |
+| Citation | 4 files | Evidence references with quality ratings (0-3) |
+| Repository | 2 files | Archive institutions and access info |
+| Assertion | 6 files | Conclusions backed by evidence |
+| Media | - | Linked photos/documents |
+
+### Other Examples
+
+- **Minimal**: Foundation - only required fields
+- **Basic Family**: Real-world small family tree
+- **Complex Relationships**: Non-traditional family structures
+- **Evidence-Based**: Focus on citations and provenance
+- **Oral History**: Documenting informal sources
+- **Large Scale**: Performance and scalability
 
 ## Running Examples
 
-Each example includes a README explaining its purpose and a
-`test.sh` script to validate it works correctly.
+Each example includes documentation:
 
 ```bash
-cd examples/minimal
-./test.sh
+cd examples/complete-family
+cat README.md  # Learn about this example
+```
+
+Validation is centralized in the test suite:
+
+```bash
+# Run centralized test suite for all entity types
+cd test-suite
+./run-tests.sh
+
+# Or validate examples manually with glx
+glx validate examples/complete-family/
+```
+
+## Understanding the Complete Family Example
+
+### Data Structure
+
+```
+Complete Family Example (John Smith & family, 1850-1920)
+├── persons/
+│   ├── person-john-smith.glx        (1850-1920)
+│   ├── person-mary-brown.glx        (1852-1930)
+│   └── person-jane-smith.glx        (daughter, 1875-1955)
+├── relationships/
+│   ├── rel-john-mary-marriage.glx   (married 1875)
+│   └── rel-john-jane-parent.glx     (father-daughter)
+├── events/
+│   ├── event-john-birth.glx         (Jan 15, 1850, Leeds)
+│   ├── event-marriage.glx           (May 10, 1875, Leeds)
+│   └── event-occupations.glx        (blacksmith, dressmaker)
+├── places/
+│   ├── place-england.glx            (root)
+│   ├── place-yorkshire.glx          (parent: England)
+│   └── place-leeds.glx              (parent: Yorkshire)
+├── sources/
+│   ├── source-parish-leeds.glx      (St Paul's registers)
+│   └── source-census-1851.glx       (1851 Census)
+├── citations/
+│   ├── citation-birth-register.glx  (quality: 3 = primary)
+│   └── citation-census.glx          (quality: 2 = secondary)
+├── repositories/
+│   ├── repository-leeds-library.glx (Local studies)
+│   └── repository-tna.glx           (The National Archives)
+└── assertions/
+    ├── assertion-birth-date.glx     (supported by citation)
+    ├── assertion-birth-place.glx    (supported by citation)
+    └── assertion-occupation.glx     (supported by citation)
+```
+
+### Evidence Chain Example
+
+How evidence flows from source to conclusion:
+
+1. **Repository**: Leeds Library Local Studies
+2. **Source**: St Paul's Church Parish Registers  
+3. **Citation**: "Birth entry 145, page 23" (quality 3 = primary source)
+4. **Assertion**: "John Smith born January 15, 1850"
+
+## Best Practices Demonstrated
+
+✅ **Hierarchical Places**  
+- England (country) → Yorkshire (county) → Leeds (city)
+- Alternative names (West Riding for Yorkshire)
+- WGS84 coordinates for all places
+
+✅ **Complete Event Information**
+- Dates with fuzzy date support
+- Place references
+- Multiple participants with defined roles
+- Event descriptions
+
+✅ **Evidence Quality**  
+- GEDCOM QUAY ratings (0-3)
+- Structured locators (film numbers, page ranges, URLs)
+- Text transcriptions from sources
+- Quality assessment in citations
+
+✅ **Repository Information**
+- Contact details and hours
+- Material types held
+- Website and access information
+- Archive call numbers
+
+## Validation
+
+All examples pass validation:
+```bash
+glx validate  # Validates current directory
+```
+
+Expected output for complete-family:
+```
+✓ citations/citation-birth-register.glx
+✓ events/event-john-birth.glx
+✓ events/event-marriage.glx
+✓ places/place-england.glx
+✓ places/place-leeds.glx
+✓ places/place-yorkshire.glx
+✓ repositories/repository-leeds-library.glx
+Validated 7 file(s)
 ```
 
 ## Contributing Examples
 
-Examples should be:
-- Complete: Include all necessary files
-- Valid: Pass `glx validate`
-- Documented: README explaining what it demonstrates
-- Tested: Include test script verifying correctness
+New examples should be:
+
+- **Complete**: Include all necessary files for the use case
+- **Valid**: Pass `glx validate` without errors
+- **Documented**: README explaining what it demonstrates
+- **Educational**: Teach important GENEALOGIX concepts
+
+### Adding a New Example
+
+1. Create new directory: `examples/my-example/`
+2. Add subdirectories: `persons/`, `events/`, `places/`, etc.
+3. Create example .glx files for key entities
+4. Write detailed README.md
+5. Add conformance tests to `test-suite/` for new entity types
+6. Update this README with link and description
+
+## CLI Tool Support
+
+The genealogix CLI (`glx`) supports:
+
+```bash
+glx init                    # Initialize new repository with all directories
+glx validate [path]         # Validate .glx files in path
+glx validate                # Validate current directory
+glx validate persons/       # Validate specific directory
+glx validate persons/*.glx  # Validate specific files
+glx validate examples/      # Validate any example
+```
+
+All examples work with the latest CLI tool, which recognizes all entity type directories:
+- `persons/`, `relationships/`, `events/`, `places/`
+- `sources/`, `citations/`, `repositories/`, `assertions/`, `media/`
+
+## Next Steps
+
+1. **Start with Complete Family**: Run the test script, explore files
+2. **Try the CLI**: Run `glx validate` on any example
+3. **Initialize Your Own**: `glx init` to start your family archive
+4. **Read Specification**: See `specification/` for detailed entity formats
+5. **Share Your Example**: Contribute back with new use cases!
+
+## References
+
+- [GENEALOGIX Specification](../specification/)
+- [CLI Tool](../glx/)
+- [JSON Schemas](../schema/v1/)
+- [Contributing Guide](../CONTRIBUTING.md)
 
 

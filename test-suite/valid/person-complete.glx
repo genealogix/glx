@@ -1,0 +1,34 @@
+# TEST: person-complete
+# EXPECT: valid
+# DESCRIPTION: Person with all optional fields populated
+
+id: person-a1b2c3d4
+version: "1.0"
+type: person
+name:
+  given: John
+  surname: Smith
+  display: John Smith
+  nickname: Johnny
+alternative_names:
+  - John H. Smith
+  - J.H. Smith
+birth: "1850-01-15"
+death: "1920-03-10"
+gender: male
+occupation: blacksmith
+education: elementary
+religion: Church of England
+nationality: British
+residences:
+  - place: place-leeds
+    date: "1850-1920"
+    description: "Family home on Wellington Street"
+notes: |
+  John was a blacksmith in Leeds during the Industrial Revolution.
+  He worked at the ironworks on Wellington Street and was known
+  locally as a skilled craftsman.
+citations:
+  - citation-birth-cert
+  - citation-census-1851
+  - citation-death-cert

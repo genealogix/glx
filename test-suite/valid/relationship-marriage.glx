@@ -1,0 +1,13 @@
+# Valid relationship entity - marriage
+# Tests marriage relationship with start event
+id: rel-12345678
+version: "1.0"
+type: marriage
+participants:
+  - person: person-a1b2c3d4
+    role: spouse
+  - person: person-b2c3d4e5
+    role: spouse
+start_event: event-12345678
+description: "Marriage between John Smith and Mary Brown"
+

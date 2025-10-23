@@ -1,0 +1,205 @@
+# Place Entity
+
+[← Back to Entity Types](README.md)
+
+## Overview
+
+A Place entity represents a geographic location relevant to the family archive. Places form a hierarchical structure that supports genealogical research across varying levels of granularity (country, region, county, town, street, etc.).
+
+## Core Concepts
+
+### Place Hierarchy
+
+Places form a tree structure where each place can have a parent place, enabling representation of administrative hierarchies and geographic containment relationships.
+
+```yaml
+id: place-xyz789ab
+version: "1.0"
+name: "England"
+type: "country"
+---
+id: place-abc123de
+version: "1.0"
+name: "Yorkshire"
+type: "county"
+parent_id: "place-xyz789ab"
+---
+id: place-def456gh
+version: "1.0"
+name: "Leeds"
+type: "city"
+parent_id: "place-abc123de"
+```
+
+### Place Names
+
+Places support multiple names to represent:
+- Historical name changes
+- Alternative spellings and transliterations
+- Native language vs. colonial names
+- Informal/colloquial names
+
+Each name can be classified and dated.
+
+## Properties
+
+### Required Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Unique identifier (format: `place-[hex8]`) |
+| `version` | string | Schema version (e.g., "1.0") |
+| `name` | string | Current/primary place name |
+
+### Optional Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `parent_id` | string | Reference to parent place in hierarchy |
+| `type` | string | Place type (country, state, county, city, town, etc.) |
+| `alternative_names` | array | Historical/alternative names for this place |
+| `latitude` | number | WGS84 latitude coordinate |
+| `longitude` | number | WGS84 longitude coordinate |
+| `jurisdiction` | string | Formal jurisdiction identifier or code |
+| `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
+| `created_at` | datetime | Creation timestamp |
+| `created_by` | string | User who created this record |
+| `modified_at` | datetime | Last modification timestamp |
+| `modified_by` | string | User who last modified this record |
+| `notes` | string | Free-form notes about the place |
+
+### Alternative Names Structure
+
+```yaml
+alternative_names:
+  - name: "York"
+    type: "historical"
+    language: "en"
+    date_range:
+      start: "1066"
+      end: "present"
+  - name: "Jorvik"
+    type: "historical"
+    language: "en"
+    date_range:
+      start: "867"
+      end: "1066"
+```
+
+## Usage Patterns
+
+### In Events/Facts
+
+Places are referenced in events to indicate where the event occurred:
+
+```yaml
+type: "birth"
+place_id: "place-leeds123"
+```
+
+### In Addresses
+
+Places can be components of addresses within person records or residence events:
+
+```yaml
+residence:
+  place_id: "place-leeds123"
+  date: "1850-1900"
+```
+
+## GEDCOM Mapping
+
+| GLX Property | GEDCOM Element | Notes |
+|--------------|----------------|-------|
+| `id` | (synthetic) | Not in GEDCOM; generated from place data |
+| `name` | PLAC | Text value of PLAC tag |
+| `parent_id` | (implicit) | Represented in hierarchical PLAC structure |
+| `type` | PLAC.TYPE | Non-standard; used in extended GEDCOM |
+| `latitude` | PLAC.MAP.LATI | WGS84 latitude |
+| `longitude` | PLAC.MAP.LONG | WGS84 longitude |
+
+## Examples
+
+### Simple Location
+
+```yaml
+---
+id: place-paris001
+version: "1.0"
+name: "Paris"
+type: "city"
+parent_id: "place-france01"
+latitude: 48.8566
+longitude: 2.3522
+created_at: "2025-01-15T10:30:00Z"
+created_by: "researcher@example.com"
+```
+
+### Complex Hierarchical Location
+
+```yaml
+---
+id: place-leeds-reg
+version: "1.0"
+name: "Leeds Registration District"
+type: "registration_district"
+parent_id: "place-yorkshire"
+alternative_names:
+  - name: "Leeds"
+    type: "informal"
+  - name: "West Riding of Yorkshire"
+    type: "historical"
+latitude: 53.8008
+longitude: -1.5491
+jurisdiction: "england.yorkshire.leeds"
+place_format: "City, County, Country"
+notes: "Historical registration district for civil registration purposes"
+created_at: "2025-01-15T10:30:00Z"
+created_by: "researcher@example.com"
+```
+
+## File Organization
+
+Place files are typically stored in a `places/` directory:
+
+```
+places/
+├── countries/
+│   ├── place-england.glx
+│   ├── place-scotland.glx
+│   └── place-usa.glx
+├── regions/
+│   ├── place-yorkshire.glx
+│   ├── place-lancashire.glx
+│   └── place-massachusetts.glx
+└── cities/
+    ├── place-leeds.glx
+    ├── place-liverpool.glx
+    └── place-boston.glx
+```
+
+## Validation Rules
+
+- Place hierarchy must be acyclic (no circular parent references)
+- Coordinates, if present, must be valid WGS84 values
+- Parent place must exist before referencing it
+- At least one name (primary or alternative) must exist
+- Type should follow standardized taxonomy
+
+## Interoperability Considerations
+
+### GEDCOM Export
+
+Place hierarchies are flattened into comma-separated PLAC values:
+
+```
+Leeds, Yorkshire, England
+```
+
+### Gramps XML
+
+Places are mapped to Gramps location objects with proper hierarchy support.
+
+
+
+

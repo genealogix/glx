@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.org/v1/assertion",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/assertion",
   "title": "Assertion",
   "description": "A source-backed claim about an entity",
   "type": "object",

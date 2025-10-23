@@ -1,0 +1,11 @@
+# TEST: place-missing-name
+# EXPECT: invalid
+# ERROR: "name is required"
+# DESCRIPTION: Place entity missing required name field
+---
+id: place-test002
+version: "1.0"
+
+
+
+

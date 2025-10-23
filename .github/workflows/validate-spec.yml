@@ -19,17 +19,22 @@ jobs:
       
       - name: Check Schema References
         run: |
-          go run ./cmd/speccli check-schemas
+          go run ./glx/main.go check-schemas
   
   validate-examples:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       
-      - name: Install glx
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.19'
+      
+      - name: Install glx CLI
         run: |
-          # Install reference implementation
-          cargo install --git https://github.com/genealogix/glx
+          # Install Go-based CLI tool
+          go install ./glx
       
       - name: Validate All Examples
         run: |

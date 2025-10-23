@@ -1,0 +1,27 @@
+# TEST: citation-quality3
+# EXPECT: valid
+# DESCRIPTION: High-quality citation with transcription
+
+id: citation-e5f6g7h8
+version: "1.0"
+type: citation
+source: source-birth-certificate
+locator: "Certificate #1850-LEEDS-00145"
+quality: 3
+transcription: |
+  Registration District: Leeds
+  Birth in the Sub-district of Leeds in the County of York
+
+  When and where born: Fifteenth January 1850, 23 Wellington Street
+  Name: John
+  Sex: Boy
+  Name and surname of father: Thomas Smith
+  Name, surname and maiden surname of mother: Mary Smith formerly Brown
+  Occupation of father: Blacksmith
+  Signature, description and residence of informant: Thomas Smith, Father, 23 Wellington Street
+  When registered: Twentieth January 1850
+  Signature of registrar: J. Thompson, Registrar
+research_notes: |
+  Original certificate examined at Leeds Library Local Studies section.
+  Certificate matches baptism record timing (5 days later).
+  Father's occupation confirms blacksmith trade.

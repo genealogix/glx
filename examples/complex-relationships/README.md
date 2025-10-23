@@ -7,7 +7,7 @@ and complex relationship structures beyond traditional nuclear families.
 
 ```
 complex-relationships/
-├── .oracynth/
+├── .glx-archive/
 │   ├── config.glx
 │   └── schema-version.glx
 ├── persons/

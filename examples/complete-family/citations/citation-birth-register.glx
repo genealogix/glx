@@ -1,0 +1,25 @@
+---
+id: citation-john-birth-register
+version: "1.0"
+source_id: "source-parish-leeds"
+repository_id: "repository-leeds-library"
+page: "Entry 145, Page 23"
+data_date: "1850-01-15"
+quality: 3
+text_from_source: |
+  Birth: John Smith
+  Son of William Smith, Blacksmith
+  and Elizabeth [surname unclear]
+  Born: 15th January 1850
+  Registered: 20th January 1850
+locator:
+  film_number: "1234567"
+  item_number: "St Paul's Church Leeds 1850"
+  image_number: "0243"
+created_at: "2025-01-15T10:30:00Z"
+created_by: "genealogist@example.com"
+notes: "Primary source from parish register, excellent quality"
+
+
+
+

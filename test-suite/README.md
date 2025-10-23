@@ -21,17 +21,20 @@ This test suite validates implementations of the GENEALOGIX specification.
 ### `valid/`
 
 Files that MUST pass validation:
-- Minimal valid entities
-- Complete entities with all optional fields
-- Edge cases that should be accepted
+- **Minimal entities**: Only required fields populated
+- **Complete entities**: All optional fields populated
+- **Edge cases**: Boundary conditions and complex scenarios
+- **Real-world examples**: Practical usage patterns
+- **Evidence chains**: Complete citation and assertion relationships
 
 ### `invalid/`
 
 Files that MUST fail validation:
-- Missing required fields
-- Invalid field types
-- Malformed references
-- Schema violations
+- **Missing required fields**: Core fields like id, version, type
+- **Invalid formats**: Wrong ID patterns, date formats, quality ratings
+- **Broken references**: Nonexistent entity references
+- **Schema violations**: Wrong field types, invalid values
+- **Business rule violations**: Date inconsistencies, circular references
 
 ## Test File Naming
 
@@ -39,10 +42,22 @@ Files that MUST fail validation:
 {entity}-{scenario}.glx
 ```
 
-Examples:
-- `person-minimal.glx` - Minimal valid person
+### Valid Test Examples:
+- `person-minimal.glx` - Minimal valid person (required fields only)
+- `person-complete.glx` - Person with all optional fields
+- `event-complete.glx` - Event with participants and descriptions
+- `place-hierarchy.glx` - Place with parent and coordinates
+- `source-complete.glx` - Source with full publication details
+- `citation-quality3.glx` - High-quality citation with transcription
+- `assertion-evidence-chain.glx` - Assertion with complete evidence trail
+
+### Invalid Test Examples:
 - `person-missing-id.glx` - Person without required id
-- `person-bad-version.glx` - Person with invalid version format
+- `person-bad-id-format.glx` - Person with invalid ID format
+- `person-invalid-version.glx` - Person with malformed version
+- `event-missing-place.glx` - Event without required place reference
+- `person-broken-reference.glx` - Person referencing nonexistent place
+- `citation-invalid-quality.glx` - Citation with out-of-range quality
 
 ## Expected Results
 

@@ -1,35 +1,396 @@
-# Contributing to GENEALOGIX Spec
+# Contributing to GENEALOGIX
 
-Thanks for your interest in contributing!
+Thank you for your interest in contributing to GENEALOGIX! Whether you're a genealogist, developer, or both, we welcome contributions of all kinds.
 
-## How to Propose Changes
+## Table of Contents
 
-1. Open an issue describing the problem or proposal.
-2. For major changes, write an RFC (see `rfcs/`).
-3. Submit a pull request with your changes and reference the issue/RFC.
+- [How Can I Contribute?](#how-can-i-contribute)
+- [Development Environment Setup](#development-environment-setup)
+- [Code Organization](#code-organization)
+- [Testing Requirements](#testing-requirements)
+- [Documentation Standards](#documentation-standards)
+- [RFC Process](#rfc-process)
+- [Submitting Changes](#submitting-changes)
+- [Good First Issues](#good-first-issues)
+- [Code of Conduct](#code-of-conduct)
 
-## Development Workflow
+## How Can I Contribute?
 
-- Keep changes small and focused.
-- Update docs under `specification/` when changing behavior or definitions.
-- Update JSON Schemas under `schema/` to match spec changes.
-- Add or update examples under `examples/`.
-- Add or update conformance tests under `test-suite/`.
-- Update CLI tooling under `glx/` when adding automation or validation utilities.
+### For Genealogists
+
+- **Improve Examples**: Add real-world genealogy scenarios
+- **Documentation**: Clarify genealogical concepts and best practices
+- **Test Cases**: Contribute edge cases from your research experience
+- **Use Case Reports**: Share how GENEALOGIX works (or doesn't) for your needs
+
+### For Developers
+
+- **Bug Fixes**: Fix issues in the CLI tool or validation logic
+- **New Features**: Implement accepted RFCs
+- **Performance**: Optimize validation speed and memory usage
+- **Tooling**: Build integrations, converters, or utilities
+
+### For Everyone
+
+- **Bug Reports**: Use our [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml)
+- **Feature Requests**: Use our [feature request template](.github/ISSUE_TEMPLATE/feature_request.yml)
+- **Documentation**: Fix typos, improve clarity, add examples
+- **Community Support**: Help others in [Discussions](https://github.com/genealogix/spec/discussions)
+
+## Development Environment Setup
+
+### Prerequisites
+
+**Required:**
+- **Go 1.19+** - [Install Go](https://golang.org/doc/install)
+- **Git** - [Install Git](https://git-scm.com/downloads)
+
+**Optional but Recommended:**
+- **VS Code** with Go extension
+- **ajv-cli** for schema validation: `npm install -g ajv-cli`
+- **yamllint** for YAML validation: `pip install yamllint`
+
+### Initial Setup
+
+```bash
+# 1. Fork the repository on GitHub
+# 2. Clone your fork
+git clone https://github.com/YOUR_USERNAME/spec.git
+cd spec
+
+# 3. Add upstream remote
+git remote add upstream https://github.com/genealogix/spec.git
+
+# 4. Install CLI tool for testing
+go install ./glx
+
+# 5. Verify installation
+glx --help
+
+# 6. Run validation tests
+glx validate test-suite/valid/
+```
+
+### Development Workflow
+
+```bash
+# 1. Sync with upstream
+git fetch upstream
+git checkout main
+git merge upstream/main
+
+# 2. Create feature branch
+git checkout -b feature/my-contribution
+
+# 3. Make changes and test
+# ... edit files ...
+glx validate
+go test ./...
+
+# 4. Commit changes
+git add .
+git commit -m "Add feature X
+
+Detailed explanation of changes and why they're needed."
+
+# 5. Push and create PR
+git push origin feature/my-contribution
+# Open pull request on GitHub
+```
+
+## Code Organization
+
+### Repository Structure
+
+```
+genealogix/spec/
+├── specification/       # Specification documents (markdown)
+│   ├── 1-introduction.md
+│   ├── 2-core-concepts.md
+│   ├── 3-file-structure.md
+│   └── 4-entity-types/  # Per-entity specifications
+├── schema/             # JSON Schema definitions
+│   ├── v1/             # Version 1 schemas
+│   └── meta/           # Schema validation schemas
+├── examples/           # Working example archives
+│   └── complete-family/ # Best starting point
+├── test-suite/         # Validation test cases
+│   ├── valid/          # Should pass validation
+│   └── invalid/        # Should fail validation
+├── glx/               # CLI tool source code
+│   └── main.go
+├── docs/              # User and developer documentation
+│   ├── quickstart.md
+│   ├── guides/        # User guides
+│   ├── development/   # Developer guides
+│   └── diagrams/      # Architecture diagrams
+└── rfcs/              # Request for Comments (proposals)
+```
+
+### Understanding the Architecture
+
+**Key Concepts:**
+1. **Specification Documents** (`specification/`) define behavior and requirements
+2. **JSON Schemas** (`schema/`) enforce structure and validation rules
+3. **Examples** (`examples/`) demonstrate practical usage
+4. **Test Suite** (`test-suite/`) ensures conformance
+
+**Entity Types:**
+- 9 core entity types: Person, Relationship, Event, Place, Source, Citation, Repository, Assertion, Media
+- Each has: specification doc, JSON schema, examples, tests
+
+**Evidence Hierarchy:**
+- Repository → Source → Citation → Assertion
+- All genealogical claims must be backed by evidence
+
+## Testing Requirements
+
+### Running Tests
+
+```bash
+# Validate specification examples
+glx validate examples/
+
+# Validate test suite
+cd test-suite
+./run-tests.sh
+
+# Check JSON schemas
+glx check-schemas
+
+# Run Go tests (CLI tool)
+go test ./glx/...
+
+# Check links in documentation
+npm install -g markdown-link-check
+find . -name "*.md" -exec markdown-link-check {} \;
+```
+
+### Writing New Tests
+
+**Valid Test Cases** (`test-suite/valid/`):
+- Should pass validation
+- Test happy paths and optional fields
+- Include comments explaining what's being tested
+
+```yaml
+# test-suite/valid/person-with-multiple-names.glx
+id: person-12345678
+version: "1.0"
+concluded_identity:
+  primary_name: "John Smith"
+  alternative_names:
+    - "Jonathan Smith"
+    - "Juan Hernandez"  # Testing multilingual names
+```
+
+**Invalid Test Cases** (`test-suite/invalid/`):
+- Should fail validation with specific error
+- Test boundary conditions and error handling
+- Document expected error message
+
+```yaml
+# test-suite/invalid/person-invalid-id-format.glx
+# Expected error: ID must match pattern person-[a-f0-9]{8}
+id: invalid-id
+version: "1.0"
+```
+
+### Test Coverage Requirements
+
+- **Minimum**: 3 test cases per entity type (27 total for 9 entities)
+- **Recommended**: Cover all optional fields, edge cases, and error conditions
+- **Invalid tests**: At least 1 per common error type
+
+## Documentation Standards
+
+### Writing Style
+
+**For Specification Documents:**
+- Clear, precise, professional language
+- Define technical terms on first use
+- Include examples for complex concepts
+- Use consistent terminology throughout
+
+**For User Documentation:**
+- Friendly, helpful tone
+- Step-by-step instructions
+- Real-world examples
+- Anticipate common questions
+
+### Markdown Conventions
+
+```markdown
+# Top-level title (only one per document)
+
+## Major sections
+
+### Subsections
+
+**Bold** for emphasis and UI elements
+*Italic* for terms and file names
+`code` for commands, file names, and code elements
+
+Code blocks with language:
+\`\`\`bash
+command here
+\`\`\`
+
+Tables for structured comparisons
+Links with descriptive text: [see the guide](link)
+```
+
+### Genealogical Standards
+
+When documenting genealogical concepts:
+
+- **Use Standard Terminology**: Follow [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) where applicable
+- **Evidence Quality**: Explain primary/secondary and direct/indirect evidence
+- **Citation Standards**: Follow [Evidence Explained](https://www.evidenceexplained.com/) principles
+- **Date Formats**: Use ISO 8601 (YYYY-MM-DD) or historical variations documented
+- **Place Names**: Use historical names with modern equivalents
 
 ## RFC Process
 
-Major changes follow an RFC process adapted from Rust:
+Major changes to the specification require an RFC (Request for Comments).
 
-1. Draft your proposal by copying `rfcs/0000-template.md`.
-2. Submit a PR with the RFC for discussion.
-3. Maintainers will accept, reject, or request changes.
-4. Implement accepted RFCs and update spec/schemas/examples/tests accordingly.
+### When to Write an RFC
 
-See `rfcs/README.md` for details.
+**RFC Required:**
+- Changes to core data model or entity types
+- New required fields or breaking changes
+- Changes to validation rules or file format
+- Git workflow convention changes
+
+**RFC Not Required:**
+- Bug fixes
+- Documentation improvements
+- New examples
+- Minor clarifications
+
+### RFC Workflow
+
+1. **Draft**: Copy `rfcs/0000-template.md` to `rfcs/0000-my-feature.md`
+2. **Complete Template**: Fill out all sections thoroughly
+3. **Submit PR**: Create PR with your RFC
+4. **Discussion**: Community reviews and comments (minimum 7 days)
+5. **Decision**: Maintainers accept, reject, or request changes
+6. **Implementation**: After acceptance, implement the RFC
+7. **Finalization**: Rename to final number (e.g., `0005-my-feature.md`)
+
+See [`rfcs/README.md`](rfcs/README.md) for complete RFC guidelines.
+
+## Submitting Changes
+
+### Pull Request Process
+
+1. **Create Issue First**: For non-trivial changes, create an issue to discuss
+2. **Branch Naming**: Use descriptive names like `feature/add-xyz` or `fix/issue-123`
+3. **Commit Messages**: Follow [Conventional Commits](https://www.conventionalcommits.org/)
+   ```
+   type(scope): brief description
+   
+   Longer explanation if needed.
+   
+   Fixes #123
+   ```
+4. **PR Description**: Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md)
+5. **Testing**: Ensure all tests pass and add new tests for new features
+6. **Documentation**: Update relevant documentation
+
+### Review Process
+
+- Maintainers will review PRs within 3-5 business days
+- Address review comments promptly
+- Be open to feedback and iteration
+- Squash commits if requested before merge
+
+### What Makes a Good PR
+
+✅ **Good PR:**
+- Focused on a single issue or feature
+- Includes tests and documentation
+- Passes all CI checks
+- Has clear commit messages
+- References related issues
+
+❌ **Needs Improvement:**
+- Multiple unrelated changes
+- No tests or documentation updates
+- Fails validation or tests
+- Unclear purpose or description
+
+## Good First Issues
+
+Looking for where to start? Check issues labeled `good-first-issue`:
+
+**Documentation:**
+- Fix typos or improve clarity
+- Add examples to specification docs
+- Write migration guides from other formats
+
+**Testing:**
+- Add test cases for edge cases
+- Improve test coverage for entity types
+- Document expected validation errors
+
+**Examples:**
+- Create examples for specific scenarios
+- Add README files to examples
+- Improve example documentation
+
+**Tooling:**
+- Add helpful error messages to CLI
+- Improve validation output formatting
+- Add progress indicators for large archives
+
+## Community Guidelines
+
+### Communication Channels
+
+- **GitHub Issues**: Bug reports, feature requests
+- **GitHub Discussions**: Questions, ideas, show-and-tell
+- **Pull Requests**: Code and documentation contributions
+
+### Getting Help
+
+- Check existing issues and discussions first
+- Provide complete information when asking questions
+- Be patient and respectful
+- Help others when you can
+
+### Recognition
+
+Contributors are recognized in:
+- GitHub contributor graph
+- Release notes
+- Acknowledgments in major documentation updates
 
 ## Code of Conduct
 
-Be respectful and constructive. We welcome contributors of all backgrounds and experience levels.
+We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
+### Expected Behavior
+
+- Be respectful and constructive
+- Welcome newcomers
+- Focus on what's best for the community
+- Show empathy and kindness
+
+### Unacceptable Behavior
+
+- Harassment or discrimination
+- Trolling or insulting comments
+- Publishing others' private information
+- Any conduct inappropriate in a professional setting
+
+## Questions?
+
+- **Technical questions**: [GitHub Discussions](https://github.com/genealogix/spec/discussions)
+- **Security issues**: See [SECURITY.md](SECURITY.md)
+- **Private concerns**: Contact maintainers at conduct@genealogix.org
+
+---
+
+Thank you for contributing to GENEALOGIX! Together we're building a better future for genealogical research.
 

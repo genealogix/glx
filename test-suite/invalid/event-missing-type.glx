@@ -1,0 +1,11 @@
+# TEST: event-missing-type
+# EXPECT: invalid
+# ERROR: "type is required"
+# DESCRIPTION: Event entity missing required type field
+---
+id: event-test002
+version: "1.0"
+
+
+
+

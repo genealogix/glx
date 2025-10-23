@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.genealogix.org/v1/citation",
+  "title": "Citation",
+  "description": "A specific reference to evidence within a source",
+  "type": "object",
+  "required": ["id", "version", "source_id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^citation-[a-f0-9]{8}$",
+      "description": "Unique identifier for this citation",
+      "examples": ["citation-a1b2c3d4"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version",
+      "examples": ["1.0"]
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^source-[a-f0-9]{8}$",
+      "description": "Reference to Source entity"
+    },
+    "page": {
+      "type": "string",
+      "description": "Page number, record number, or location within source"
+    },
+    "data_date": {
+      "type": "string",
+      "description": "Date the data was recorded (for documentary sources)"
+    },
+    "text_from_source": {
+      "type": "string",
+      "description": "Transcription or excerpt from the source"
+    },
+    "quality": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3,
+      "description": "Evidence quality rating (GEDCOM QUAY compatible: 0=unreliable, 1=questionable, 2=secondary, 3=primary/direct)"
+    },
+    "locator": {
+      "type": "object",
+      "description": "Structured locator information for finding the source",
+      "properties": {
+        "film_number": {
+          "type": "string",
+          "description": "FamilySearch film number or microfilm reference"
+        },
+        "item_number": {
+          "type": "string",
+          "description": "Item number or accession number"
+        },
+        "image_number": {
+          "type": "string",
+          "description": "Image number or page identifier"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to online source"
+        },
+        "record_id": {
+          "type": "string",
+          "description": "Database record ID"
+        },
+        "database_collection": {
+          "type": "string",
+          "description": "Name of database collection"
+        }
+      },
+      "additionalProperties": false
+    },
+    "repository_id": {
+      "type": "string",
+      "pattern": "^repository-[a-f0-9]{8}$",
+      "description": "Reference to Repository where source is held"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this citation record was created"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User who created this record"
+    },
+    "modified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this citation record was last modified"
+    },
+    "modified_by": {
+      "type": "string",
+      "description": "User who last modified this record"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about the citation"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
+

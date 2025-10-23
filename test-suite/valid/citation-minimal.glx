@@ -1,0 +1,11 @@
+# TEST: citation-minimal
+# EXPECT: valid
+# DESCRIPTION: Minimal valid citation with required fields (id, version, source_id)
+---
+id: citation-test001
+version: "1.0"
+source_id: "source-test001"
+
+
+
+

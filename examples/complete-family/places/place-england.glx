@@ -1,0 +1,14 @@
+---
+id: place-england
+version: "1.0"
+name: "England"
+type: "country"
+latitude: 52.3555
+longitude: -1.1743
+created_at: "2025-01-15T10:30:00Z"
+created_by: "genealogist@example.com"
+notes: "United Kingdom constituent country"
+
+
+
+

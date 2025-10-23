@@ -1,0 +1,10 @@
+# Valid citation entity - quality 2
+# Tests secondary direct evidence quality rating
+id: citation-23456789
+version: "1.0"
+source: source-12345678
+quality: 2
+locator: "Page 45, Entry 123"
+transcription: "John Smith, age 25, born 1850"
+data_date: "1875-06-10"
+

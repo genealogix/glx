@@ -1,0 +1,11 @@
+# TEST: place-minimal
+# EXPECT: valid
+# DESCRIPTION: Minimal valid place with required fields (id, version, name)
+---
+id: place-test001
+version: "1.0"
+name: "Test Location"
+
+
+
+

@@ -7,7 +7,7 @@ family stories, and interviews as genealogical sources.
 
 ```
 oral-history/
-├── .oracynth/
+├── .glx-archive/
 │   ├── config.glx
 │   └── schema-version.glx
 ├── persons/

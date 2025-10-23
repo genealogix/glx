@@ -1,0 +1,11 @@
+# TEST: event-minimal
+# EXPECT: valid
+# DESCRIPTION: Minimal valid event with required fields (id, version, type)
+---
+id: event-test001
+version: "1.0"
+type: "birth"
+
+
+
+

@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/event",
+  "title": "Event/Fact",
+  "description": "A single occurrence in time and place relevant to the family archive",
+  "type": "object",
+  "required": ["id", "version", "type"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^event-[a-f0-9]{8}$",
+      "description": "Unique identifier for this event",
+      "examples": ["event-a1b2c3d4"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version",
+      "examples": ["1.0"]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "birth",
+        "death",
+        "marriage",
+        "divorce",
+        "engagement",
+        "adoption",
+        "baptism",
+        "confirmation",
+        "bar_mitzvah",
+        "bat_mitzvah",
+        "burial",
+        "cremation",
+        "residence",
+        "occupation",
+        "title",
+        "nationality",
+        "religion",
+        "education",
+        "other"
+      ],
+      "description": "Type of event or attribute"
+    },
+    "date": {
+      "type": "object",
+      "description": "Date information with fuzzy date support",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Main date expression (e.g., '15 JAN 1850', 'about 1850')"
+        },
+        "range_start": {
+          "type": "string",
+          "description": "Fuzzy date range start (e.g., '1845')"
+        },
+        "range_end": {
+          "type": "string",
+          "description": "Fuzzy date range end (e.g., '1855')"
+        }
+      }
+    },
+    "place_id": {
+      "type": "string",
+      "pattern": "^place-[a-f0-9]{8}$",
+      "description": "Reference to Place where event occurred"
+    },
+    "participants": {
+      "type": "array",
+      "description": "People involved in this event",
+      "items": {
+        "type": "object",
+        "required": ["person_id", "role"],
+        "properties": {
+          "person_id": {
+            "type": "string",
+            "pattern": "^person-[a-f0-9]{8}$",
+            "description": "Reference to Person entity"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "principal",
+              "principal1",
+              "principal2",
+              "bride",
+              "groom",
+              "witness",
+              "officiant",
+              "celebrant",
+              "godparent",
+              "proxy",
+              "informant",
+              "attending",
+              "other"
+            ],
+            "description": "Role of participant in event"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes about participant's involvement"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "attribute_value": {
+      "type": "string",
+      "description": "For attribute facts: the value (e.g., 'blacksmith' for occupation)"
+    },
+    "age_text": {
+      "type": "string",
+      "description": "Age at time of event (e.g., 'about 25', 'infant')"
+    },
+    "cause_text": {
+      "type": "string",
+      "description": "Cause for event (e.g., 'pneumonia' for death)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Narrative description of the event"
+    },
+    "restrictions": {
+      "type": "array",
+      "description": "Restriction codes for event visibility",
+      "items": {
+        "type": "string",
+        "enum": ["confidential", "locked", "privacy", "other"]
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "description": "References to assertion files providing evidence",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9/_-]+$"
+      },
+      "uniqueItems": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this event record was created"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User who created this record"
+    },
+    "modified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this event record was last modified"
+    },
+    "modified_by": {
+      "type": "string",
+      "description": "User who last modified this record"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about the event"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
+

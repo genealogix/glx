@@ -1,0 +1,11 @@
+# Valid source entity - vital record
+# Tests vital record source with repository reference
+id: source-12345678
+version: "1.0"
+title: "Birth Certificate for John Smith"
+source_type: vital_record
+repository: repository-a1b2c3d4
+author: "General Register Office"
+publication_date: "1850"
+description: "Official birth certificate"
+

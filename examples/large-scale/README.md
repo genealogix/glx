@@ -7,7 +7,7 @@ A GENEALOGIX archive designed for performance testing with
 
 ```
 large-scale/
-├── .oracynth/
+├── .glx-archive/
 │   ├── config.glx
 │   └── schema-version.glx
 ├── persons/

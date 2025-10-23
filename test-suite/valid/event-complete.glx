@@ -1,0 +1,31 @@
+# TEST: event-complete
+# EXPECT: valid
+# DESCRIPTION: Complete event with all participants and details
+
+id: event-b2c3d4e5
+version: "1.0"
+type: event
+event_type: marriage
+date: "1875-05-10"
+place: place-leeds-parish-church
+description: |
+  Marriage of John Smith and Mary Brown at St. Paul's Church, Leeds.
+  Ceremony performed by Rev. Thomas Johnson. Reception followed at
+  the bride's family home on Commercial Street.
+participants:
+  - person: person-john-smith
+    role: groom
+  - person: person-mary-brown
+    role: bride
+  - person: person-thomas-smith
+    role: witness
+  - person: person-sarah-jones
+    role: witness
+  - person: person-rev-johnson
+    role: officiant
+citations:
+  - citation-marriage-cert
+  - citation-parish-register
+notes: |
+  Witnesses were the groom's father and bride's sister.
+  Marriage certificate shows both could sign their names.

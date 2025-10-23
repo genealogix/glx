@@ -1,0 +1,17 @@
+---
+id: place-leeds
+version: "1.0"
+name: "Leeds"
+type: "city"
+parent_id: "place-yorkshire"
+latitude: 53.8008
+longitude: -1.5491
+place_format: "City, County, Country"
+jurisdiction: "england.yorkshire.leeds"
+created_at: "2025-01-15T10:30:00Z"
+created_by: "genealogist@example.com"
+notes: "Major city in Yorkshire, important for 19th century genealogy"
+
+
+
+

@@ -7,7 +7,7 @@ evidence evaluation, and assertion-based research methodology.
 
 ```
 evidence-based/
-├── .oracynth/
+├── .glx-archive/
 │   ├── config.glx
 │   └── schema-version.glx
 ├── persons/

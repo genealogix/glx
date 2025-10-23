@@ -7,7 +7,7 @@ with two children and basic relationship entries.
 
 ```
 basic-family/
-├── .oracynth/
+├── .glx-archive/
 │   ├── config.glx
 │   └── schema-version.glx
 ├── persons/

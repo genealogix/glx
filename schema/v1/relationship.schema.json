@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.org/v1/relationship",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/schema/v1/relationship",
   "title": "Relationship",
   "description": "A relationship between persons",
   "type": "object",

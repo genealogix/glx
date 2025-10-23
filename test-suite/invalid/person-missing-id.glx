@@ -3,6 +3,6 @@
 # ERROR: "id field is required"
 # DESCRIPTION: Person entity must have an id field
 
-version: 1.0
+version: "1.0"
 
 
