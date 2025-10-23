@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -61,9 +60,9 @@ func ValidateGLXFile(path string, doc map[string]interface{}) []string {
 						continue
 					}
 
-					// Validate entity ID format
-					if !isValidEntityID(entityID, singularType) {
-						issues = append(issues, fmt.Sprintf("%s[%s]: invalid entity ID format (expected %s-[a-f0-9]{8})", pluralKey, entityID, getPrefixForType(singularType)))
+					// Validate entity ID format (alphanumeric + hyphens, 1-64 chars)
+					if !isValidEntityID(entityID) {
+						issues = append(issues, fmt.Sprintf("%s[%s]: invalid entity ID (must be alphanumeric/hyphens, 1-64 chars)", pluralKey, entityID))
 					}
 
 					// Validate individual entity
@@ -79,36 +78,12 @@ func ValidateGLXFile(path string, doc map[string]interface{}) []string {
 	return issues
 }
 
-func isValidEntityID(id, entityType string) bool {
-	prefix := getPrefixForType(entityType)
-	if !strings.HasPrefix(id, prefix) {
+func isValidEntityID(id string) bool {
+	if len(id) < 1 || len(id) > 64 {
 		return false
 	}
-	suffix := strings.TrimPrefix(id, prefix)
-	return len(suffix) == 8 && isHex(suffix)
-}
-
-func getPrefixForType(entityType string) string {
-	prefixes := map[string]string{
-		"person":       "person-",
-		"relationship": "rel-",
-		"event":        "event-",
-		"place":        "place-",
-		"source":       "source-",
-		"citation":     "citation-",
-		"repository":   "repository-",
-		"assertion":    "assertion-",
-		"media":        "media-",
-	}
-	if prefix, ok := prefixes[entityType]; ok {
-		return prefix
-	}
-	return entityType + "-"
-}
-
-func isHex(s string) bool {
-	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+	for _, c := range id {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-') {
 			return false
 		}
 	}

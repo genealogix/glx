@@ -1,5 +1,5 @@
 persons:
-  person-a1b2c3d4:
+  person-john-smith-1850:
     version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
@@ -11,4 +11,3 @@ persons:
     tags:
       - "ancestor"
       - "smith-family"
-

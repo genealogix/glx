@@ -1,13 +1,8 @@
-id: source-family-stories
-version: "1.0"
-title: "Family Stories and Traditions"
-type: "Oral Tradition"
-authors: ["Elena Martinez", "Miguel Martinez"]
-date: "2024-01-10"
-citation: "Family stories passed down through generations, documented by Elena and Miguel Martinez"
-
-media:
-  - media/media-family-stories.glx
-
-created_at: "2024-01-20T13:20:00Z"
-created_by: demo-user
+sources:
+  source-family-stories:
+    version: "1.0"
+    title: "Martinez Family Stories Collection"
+    type: family_tradition
+    date: "2024"
+    created_at: "2024-01-20T13:20:00Z"
+    created_by: demo-user

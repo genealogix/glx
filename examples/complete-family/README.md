@@ -1,90 +1,106 @@
 # Complete Family Example
 
-This example demonstrates all 9 GENEALOGIX entity types with proper cross-references and evidence chains.
+This example demonstrates all 9 GENEALOGIX entity types with proper cross-references, evidence chains, and descriptive entity IDs.
 
 ## Family Structure
 
-**John Smith (person-a1b2c3d4)**
+**John Smith (person-john-smith-1850)**
 - Born: January 15, 1850 in Leeds
 - Died: June 20, 1920
 - Occupation: Blacksmith
 - Married: Mary Brown (May 10, 1875)
 
-**Mary Brown (person-b2c3d4e5)**
+**Mary Brown (person-mary-brown-1852)**
 - Born: March 20, 1852 in Leeds
 - Died: August 15, 1930
 - Occupation: Dressmaker
 - Married: John Smith (May 10, 1875)
 
-**Jane Smith (person-c3d4e5f6)**
+**Jane Smith (person-jane-smith-1876)**
 - Born: September 5, 1876 in Leeds
 - Died: December 10, 1955
 - Parents: John Smith and Mary Brown
 - Occupation: Dressmaker
 
-## Entity Breakdown
+## Entity IDs
+
+This example uses **descriptive IDs** to make the archive more human-readable:
+- `person-john-smith-1850` (person with birth year)
+- `place-leeds` (descriptive place name)
+- `event-birth-john` (event type + person)
+- `citation-john-birth` (what it cites)
+
+**Note:** You can use any ID format you prefer. For collaborative projects, random hex IDs (like `person-a1b2c3d4`) are recommended to avoid conflicts.
+
+## File Organization
 
 ### Persons (3 files)
-- `person-john-smith.glx` - person-a1b2c3d4
-- `person-mary-brown.glx` - person-b2c3d4e5
-- `person-jane-smith.glx` - person-c3d4e5f6
+- `persons/person-john-smith.glx` - John Smith (b. 1850)
+- `persons/person-mary-brown.glx` - Mary Brown (b. 1852)
+- `persons/person-jane-smith.glx` - Jane Smith (b. 1876)
 
 ### Relationships (2 files)
-- `rel-marriage.glx` - rel-12345678 (John & Mary marriage)
-- `rel-parent-child.glx` - rel-23456789, rel-34567890 (parent-child relationships)
+- `relationships/rel-marriage.glx` - Marriage relationship
+- `relationships/rel-parent-child.glx` - Parent-child relationships (2 relationships in one file)
 
 ### Events (3 files)
-- `event-births.glx` - 3 birth events
-- `event-marriage.glx` - 1 marriage event
-- `event-occupations.glx` - 2 occupation events
+- `events/event-births.glx` - 3 birth events (all in one file)
+- `events/event-marriage.glx` - 1 marriage event
+- `events/event-occupations.glx` - 2 occupation events
 
 ### Places (3 files)
-- `place-england.glx` - place-a1a1a1a1 (country)
-- `place-yorkshire.glx` - place-b2b2b2b2 (county, parent: England)
-- `place-leeds.glx` - place-d4e5f6a1 (city, parent: Yorkshire)
+- `places/place-england.glx` - England (country)
+- `places/place-yorkshire.glx` - Yorkshire (county, parent: England)
+- `places/place-leeds.glx` - Leeds (city, parent: Yorkshire)
 
 ### Sources (2 files)
-- `source-parish-register.glx` - source-12345678
-- `source-census.glx` - source-23456789
+- `sources/source-parish-register.glx` - St. Paul's Parish Register
+- `sources/source-census.glx` - 1851 Census
 
 ### Citations (3 files)
-- `citation-john-birth.glx` - citation-abc12345 (quality 3, primary)
-- `citation-marriage.glx` - citation-def67890 (quality 3, primary)
-- `citation-census.glx` - citation-fedcba98 (quality 2, secondary)
+- `citations/citation-john-birth.glx` - Birth citation (quality 3, primary)
+- `citations/citation-marriage.glx` - Marriage citation (quality 3, primary)
+- `citations/citation-census.glx` - Census citation (quality 2, secondary)
 
 ### Repositories (2 files)
-- `repository-leeds-library.glx` - repository-1a2b3c4d
-- `repository-national-archives.glx` - repository-2b3c4d5e
+- `repositories/repository-leeds-library.glx` - Leeds Library
+- `repositories/repository-national-archives.glx` - The National Archives
 
 ### Assertions (3 files)
-- `assertion-john-birth.glx` - Birth date assertion with multiple citations
-- `assertion-john-birthplace.glx` - Birth place assertion
-- `assertion-marriage.glx` - Marriage date assertion
+- `assertions/assertion-john-birth.glx` - Birth date with multiple citations
+- `assertions/assertion-john-birthplace.glx` - Birth place
+- `assertions/assertion-marriage.glx` - Marriage date
 
 ## Evidence Chain Example
 
 **Claim**: John Smith was born on January 15, 1850
 
 **Evidence Trail**:
-1. **Repository**: Leeds Library Local Studies (repository-1a2b3c4d)
-2. **Source**: St. Paul's Parish Register (source-12345678)
-3. **Citation**: Entry 145, Page 23 (citation-abc12345) - Quality 3 (primary)
-4. **Assertion**: Birth date = 1850-01-15 (assertion-1a2b3c4d) - High confidence
+1. **Repository**: Leeds Library Local Studies (`repository-leeds-library`)
+2. **Source**: St. Paul's Parish Register (`source-parish-leeds`)
+3. **Citation**: Entry 145, Page 23 (`citation-john-birth`) - Quality 3 (primary)
+4. **Assertion**: Birth date = 1850-01-15 (`assertion-john-birth-date`) - High confidence
+5. **Corroboration**: 1851 Census (`citation-census-john`) - Quality 2 (secondary)
 
 ## File Format
 
-All files use the unified GENEALOGIX format with entity type keys:
+All files use the unified GENEALOGIX format:
 
 ```yaml
 # persons/person-john-smith.glx
 persons:
-  person-a1b2c3d4:
+  person-john-smith-1850:
     version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
+      birth_date: "1850-01-15"
 ```
 
-**Note:** Entity IDs are map keys, NOT `id` fields within entities.
+**Key Points:**
+- Entity ID is the map key (`person-john-smith-1850`)
+- No `id` field inside the entity object
+- Entity type plural at top level (`persons`)
+- Files can contain multiple entities of the same type (see `events/event-births.glx`)
 
 ## Validation
 
@@ -94,17 +110,19 @@ glx validate
 ```
 
 Should validate successfully with:
-- All required fields present
-- All cross-references valid
-- Evidence chains complete
-- No duplicate entity IDs
+- ✓ All 21 files pass validation
+- ✓ All cross-references valid
+- ✓ Evidence chains complete
+- ✓ No duplicate entity IDs
 
 ## Key Features Demonstrated
 
 ✅ **All 9 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions, media  
+✅ **Descriptive IDs**: Human-readable entity identifiers  
 ✅ **Evidence Chains**: Complete provenance from repository to conclusion  
 ✅ **Quality Ratings**: Primary (3) and secondary (2) evidence  
 ✅ **Hierarchical Places**: England → Yorkshire → Leeds  
-✅ **Cross-References**: All entities properly linked  
+✅ **Cross-References**: All entities properly linked and validated  
 ✅ **Multi-Generation Family**: Parents and children with relationships  
-✅ **Unified Format**: Entity type keys at top level, IDs as map keys
+✅ **Flexible Files**: Some files have one entity, some have multiple  
+✅ **Unified Format**: All files use entity type keys at top level

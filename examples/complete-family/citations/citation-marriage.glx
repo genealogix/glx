@@ -1,9 +1,8 @@
 citations:
-  citation-def67890:
+  citation-marriage:
     version: "1.0"
-    source_id: source-12345678
+    source_id: source-parish-leeds
     quality: 3
     locator: "Entry 89, Page 67, May 1875"
     text_from_source: "John Smith (bachelor, blacksmith) married Mary Brown (spinster) on May 10, 1875"
     notes: "Primary source - parish marriage register"
-

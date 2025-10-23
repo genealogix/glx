@@ -1,5 +1,5 @@
 places:
-  place-a1a1a1a1:
+  place-england:
     version: "1.0"
     name: "England"
     type: country

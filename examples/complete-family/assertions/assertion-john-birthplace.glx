@@ -1,13 +1,12 @@
 assertions:
-  assertion-2b3c4d5e:
+  assertion-john-birth-place:
     version: "1.0"
-    subject: person-a1b2c3d4
+    subject: person-john-smith-1850
     claim: birth_place
     value: "Leeds, Yorkshire, England"
     citations:
-      - citation-abc12345
+      - citation-john-birth
     confidence: high
     sources:
-      - source-12345678
+      - source-parish-leeds
     research_notes: "Birth place stated in parish register"
-

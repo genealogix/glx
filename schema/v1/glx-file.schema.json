@@ -7,9 +7,9 @@
   "properties": {
     "persons": {
       "type": "object",
-      "description": "Map of person entities, keyed by person ID",
+      "description": "Map of person entities, keyed by person ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^person-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "person.schema.json"
         }
       },
@@ -17,9 +17,9 @@
     },
     "relationships": {
       "type": "object",
-      "description": "Map of relationship entities, keyed by relationship ID",
+      "description": "Map of relationship entities, keyed by relationship ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^rel-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "relationship.schema.json"
         }
       },
@@ -27,9 +27,9 @@
     },
     "events": {
       "type": "object",
-      "description": "Map of event entities, keyed by event ID",
+      "description": "Map of event entities, keyed by event ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^event-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "event.schema.json"
         }
       },
@@ -37,9 +37,9 @@
     },
     "places": {
       "type": "object",
-      "description": "Map of place entities, keyed by place ID",
+      "description": "Map of place entities, keyed by place ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^place-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "place.schema.json"
         }
       },
@@ -47,9 +47,9 @@
     },
     "sources": {
       "type": "object",
-      "description": "Map of source entities, keyed by source ID",
+      "description": "Map of source entities, keyed by source ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^source-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "source.schema.json"
         }
       },
@@ -57,9 +57,9 @@
     },
     "citations": {
       "type": "object",
-      "description": "Map of citation entities, keyed by citation ID",
+      "description": "Map of citation entities, keyed by citation ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^citation-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "citation.schema.json"
         }
       },
@@ -67,9 +67,9 @@
     },
     "repositories": {
       "type": "object",
-      "description": "Map of repository entities, keyed by repository ID",
+      "description": "Map of repository entities, keyed by repository ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^repository-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "repository.schema.json"
         }
       },
@@ -77,9 +77,9 @@
     },
     "assertions": {
       "type": "object",
-      "description": "Map of assertion entities, keyed by assertion ID",
+      "description": "Map of assertion entities, keyed by assertion ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^assertion-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "assertion.schema.json"
         }
       },
@@ -87,9 +87,9 @@
     },
     "media": {
       "type": "object",
-      "description": "Map of media entities, keyed by media ID",
+      "description": "Map of media entities, keyed by media ID (alphanumeric/hyphens, max 64 chars)",
       "patternProperties": {
-        "^media-[a-f0-9]{8}$": {
+        "^[a-zA-Z0-9-]{1,64}$": {
           "$ref": "media.schema.json"
         }
       },

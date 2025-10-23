@@ -1,5 +1,5 @@
 repositories:
-  repository-2b3c4d5e:
+  repository-tna:
     version: "1.0"
     name: "The National Archives"
     type: archive
@@ -8,4 +8,3 @@ repositories:
     email: "research@nationalarchives.gov.uk"
     phone: "+44 20 8876 3444"
     notes: "National archives of England and Wales"
-

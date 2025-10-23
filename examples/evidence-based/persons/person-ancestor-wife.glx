@@ -1,19 +1,11 @@
-id: person-ancestor-wife
-version: "1.0"
-
-concluded_identity:
-  primary_name: "Mary Johnson"
-  gender: female
-  living: false
-
-relationships:
-  - relationships/rel-marriage-william.glx
-  - relationships/rel-parent-john.glx
-
-assertions:
-  - assertions/assert-birth-mary.glx
-  - assertions/assert-death-mary.glx
-  - assertions/assert-marriage-mary.glx
-
-created_at: "2024-01-20T11:05:00Z"
-created_by: demo-user
+persons:
+  person-mary-jones:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Mary Jones"
+      birth_date: "1922-07-08"
+      death_date: "2010-01-15"
+      gender: female
+      living: false
+    created_at: "2024-01-20T11:05:00Z"
+    created_by: demo-user

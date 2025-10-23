@@ -1,31 +1,30 @@
 events:
-  event-a1a2a3a4:
+  event-birth-john:
     version: "1.0"
     type: birth
     date: "1850-01-15"
-    place: place-d4e5f6a1
+    place: place-leeds
     participants:
-      - person: person-a1b2c3d4
+      - person: person-john-smith-1850
         role: subject
     description: "Birth of John Smith in Leeds"
   
-  event-b1b2b3b4:
+  event-birth-mary:
     version: "1.0"
     type: birth
     date: "1852-03-20"
-    place: place-d4e5f6a1
+    place: place-leeds
     participants:
-      - person: person-b2c3d4e5
+      - person: person-mary-brown-1852
         role: subject
     description: "Birth of Mary Brown in Leeds"
   
-  event-c1c2c3c4:
+  event-birth-jane:
     version: "1.0"
     type: birth
     date: "1876-09-05"
-    place: place-d4e5f6a1
+    place: place-leeds
     participants:
-      - person: person-c3d4e5f6
+      - person: person-jane-smith-1876
         role: subject
     description: "Birth of Jane Smith in Leeds"
-

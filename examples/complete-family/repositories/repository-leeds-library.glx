@@ -1,5 +1,5 @@
 repositories:
-  repository-1a2b3c4d:
+  repository-leeds-library:
     version: "1.0"
     name: "Leeds Library - Local Studies"
     type: library

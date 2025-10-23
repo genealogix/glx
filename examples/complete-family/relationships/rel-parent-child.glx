@@ -1,17 +1,16 @@
 relationships:
-  rel-23456789:
+  rel-john-jane:
     version: "1.0"
     type: parent_child
     persons:
-      - person-a1b2c3d4
-      - person-c3d4e5f6
+      - person-john-smith-1850
+      - person-jane-smith-1876
     description: "John Smith is father of Jane Smith"
   
-  rel-34567890:
+  rel-mary-jane:
     version: "1.0"
     type: parent_child
     persons:
-      - person-b2c3d4e5
-      - person-c3d4e5f6
+      - person-mary-brown-1852
+      - person-jane-smith-1876
     description: "Mary Brown is mother of Jane Smith"
-

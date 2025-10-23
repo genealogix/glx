@@ -1,18 +1,10 @@
-id: person-storyteller
-version: "1.0"
-
-concluded_identity:
-  primary_name: "Elena Martinez"
-  gender: female
-  living: true
-
-relationships:
-  - relationships/rel-parent-elena.glx
-  - relationships/rel-sibling-elena.glx
-
-assertions:
-  - assertions/assert-birth-elena.glx
-  - assertions/assert-immigration-elena.glx
-
-created_at: "2024-01-20T13:00:00Z"
-created_by: demo-user
+persons:
+  person-elena-martinez:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Elena Martinez"
+      gender: female
+      living: true
+    notes: "Family storyteller, interviewed in 2024"
+    created_at: "2024-01-20T13:00:00Z"
+    created_by: demo-user

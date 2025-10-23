@@ -1,16 +1,10 @@
-id: person-sibling
-version: "1.0"
-
-concluded_identity:
-  primary_name: "Miguel Martinez"
-  gender: male
-  living: true
-
-relationships:
-  - relationships/rel-sibling-elena.glx
-
-assertions:
-  - assertions/assert-birth-miguel.glx
-
-created_at: "2024-01-20T13:10:00Z"
-created_by: demo-user
+persons:
+  person-miguel-martinez:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Miguel Martinez"
+      gender: male
+      living: true
+    notes: "Brother of Elena Martinez"
+    created_at: "2024-01-20T13:10:00Z"
+    created_by: demo-user

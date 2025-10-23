@@ -1,14 +1,12 @@
-id: assert-immigration-elena
-version: "1.0"
-type: immigration
-subject: person-storyteller
-date: "1980-03-15"
-place_from: "Guadalajara, Mexico"
-place_to: "Los Angeles, California, USA"
-confidence: medium
-
-sources:
-  - sources/source-oral-interview.glx
-
-created_at: "2024-01-20T13:45:00Z"
-created_by: demo-user
+assertions:
+  assert-immigration-elena:
+    version: "1.0"
+    subject: person-elena-martinez
+    claim: immigration_year
+    value: "1970"
+    sources:
+      - source-elena-interview
+    confidence: high
+    notes: "Immigration year from direct recollection"
+    created_at: "2024-01-20T14:00:00Z"
+    created_by: demo-user

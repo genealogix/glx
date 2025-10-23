@@ -1,9 +1,9 @@
 places:
-  place-b2b2b2b2:
+  place-yorkshire:
     version: "1.0"
     name: "Yorkshire"
     type: county
-    parent: place-a1a1a1a1
+    parent: place-england
     latitude: 53.9582
     longitude: -1.5701
     alternative_names:

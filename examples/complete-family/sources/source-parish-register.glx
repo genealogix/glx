@@ -1,9 +1,8 @@
 sources:
-  source-12345678:
+  source-parish-leeds:
     version: "1.0"
     title: "St. Paul's Parish Register - Leeds"
     type: church_register
-    repository: repository-1a2b3c4d
+    repository: repository-leeds-library
     date: "1849-1900"
     description: "Parish register containing baptisms, marriages, and burials for St. Paul's Church, Leeds"
-

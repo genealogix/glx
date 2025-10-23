@@ -1,16 +1,10 @@
-id: person-descendant
-version: "1.0"
-
-concluded_identity:
-  primary_name: "John Smith"
-  gender: male
-  living: true
-
-relationships:
-  - relationships/rel-parent-john.glx
-
-assertions:
-  - assertions/assert-birth-john.glx
-
-created_at: "2024-01-20T11:10:00Z"
-created_by: demo-user
+persons:
+  person-john-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith Jr."
+      birth_date: "1950-05-12"
+      gender: male
+      living: true
+    created_at: "2024-01-20T11:10:00Z"
+    created_by: demo-user

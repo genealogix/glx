@@ -1,8 +1,7 @@
-id: media-interview-audio
-version: "1.0"
-uri: "media/elena-martinez-interview-2024-01-15.mp3"
-mime_type: "audio/mpeg"
-hash: "sha256:oral123history456..."
-
-created_at: "2024-01-20T13:25:00Z"
-created_by: demo-user
+media:
+  media-interview-audio:
+    version: "1.0"
+    uri: "media/elena-martinez-interview-2024.mp3"
+    mime_type: "audio/mpeg"
+    created_at: "2024-01-20T12:05:00Z"
+    created_by: demo-user

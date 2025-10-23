@@ -1,19 +1,11 @@
-id: person-ancestor
-version: "1.0"
-
-concluded_identity:
-  primary_name: "William Smith"
-  gender: male
-  living: false
-
-relationships:
-  - relationships/rel-marriage-william.glx
-  - relationships/rel-parent-john.glx
-
-assertions:
-  - assertions/assert-birth-william.glx
-  - assertions/assert-death-william.glx
-  - assertions/assert-marriage-william.glx
-
-created_at: "2024-01-20T11:00:00Z"
-created_by: demo-user
+persons:
+  person-william-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "William Smith"
+      birth_date: "1920-03-15"
+      death_date: "2005-11-20"
+      gender: male
+      living: false
+    created_at: "2024-01-20T11:00:00Z"
+    created_by: demo-user

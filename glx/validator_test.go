@@ -1,32 +1,48 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
 func TestValidEntityID(t *testing.T) {
 	tests := []struct {
-		id         string
-		entityType string
-		valid      bool
+		id    string
+		valid bool
 	}{
-		{"person-12345678", "person", true},
-		{"person-abcdef12", "person", true},
-		{"person-12345", "person", false},     // too short
-		{"person-123456789", "person", false}, // too long
-		{"person-ABCDEF12", "person", false},  // uppercase
-		{"event-a1b2c3d4", "event", true},
-		{"place-12ab34cd", "place", true},
-		{"rel-xyz12345", "relationship", false}, // 'xyz' not hex
-		{"source-12345678", "source", true},
-		{"wrong-12345678", "person", false}, // wrong prefix
+		// Standard format
+		{"person-12345678", true},
+		{"person-abcdef12", true},
+		{"person-ABCDEF12", true},
+		{"event-a1b2c3d4", true},
+		{"place-12ab34cd", true},
+		{"source-12345678", true},
+
+		// Descriptive IDs
+		{"person-john-smith", true},
+		{"place-leeds-uk", true},
+		{"event-birth-john-1850", true},
+		{"source-parish-register", true},
+
+		// Edge cases
+		{"a", true},                      // single char OK
+		{strings.Repeat("x", 64), true},  // 64 chars OK
+		{strings.Repeat("x", 65), false}, // 65 chars too long
+		{"", false},                      // empty not OK
+
+		// Invalid characters
+		{"person_12345", false}, // underscore not allowed
+		{"person.12345", false}, // dot not allowed
+		{"person 12345", false}, // space not allowed
+		{"person@12345", false}, // special char not allowed
+		{"person/12345", false}, // slash not allowed
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.id, func(t *testing.T) {
-			got := isValidEntityID(tt.id, tt.entityType)
+			got := isValidEntityID(tt.id)
 			if got != tt.valid {
-				t.Errorf("isValidEntityID(%s, %s) = %v, want %v", tt.id, tt.entityType, got, tt.valid)
+				t.Errorf("isValidEntityID(%q) = %v, want %v", tt.id, got, tt.valid)
 			}
 		})
 	}
@@ -66,6 +82,30 @@ func TestValidateGLXFile_Person_WithIDField(t *testing.T) {
 	issues := ValidateGLXFile("test.glx", doc)
 	if len(issues) == 0 {
 		t.Error("expected validation issues for entity with 'id' field, got none")
+	}
+}
+
+func TestValidateGLXFile_DescriptiveIDs(t *testing.T) {
+	doc := map[string]interface{}{
+		"persons": map[string]interface{}{
+			"person-john-smith": map[string]interface{}{
+				"version": "1.0",
+				"concluded_identity": map[string]interface{}{
+					"primary_name": "John Smith",
+				},
+			},
+		},
+		"places": map[string]interface{}{
+			"place-leeds-yorkshire": map[string]interface{}{
+				"version": "1.0",
+				"name":    "Leeds",
+			},
+		},
+	}
+
+	issues := ValidateGLXFile("test.glx", doc)
+	if len(issues) > 0 {
+		t.Errorf("expected no issues for descriptive IDs, got %v", issues)
 	}
 }
 
@@ -148,7 +188,7 @@ func TestParseYAMLFile_Valid(t *testing.T) {
 }
 
 func TestParseYAMLFile_Invalid(t *testing.T) {
-	yaml := []byte("invalid: yaml: syntax")
+	yaml := []byte("invalid: yaml: syntax: error:")
 	_, err := ParseYAMLFile(yaml)
 	if err == nil {
 		t.Error("ParseYAMLFile() expected error for invalid YAML, got none")

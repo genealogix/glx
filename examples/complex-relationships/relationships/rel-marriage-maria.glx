@@ -1,9 +1,9 @@
-id: rel-marriage-001
-version: "1.0"
-type: marriage
-persons:
-  - person-adopt-mom
-  - person-adopt-dad
-
-created_at: "2024-01-20T10:35:00Z"
-created_by: demo-user
+relationships:
+  rel-marriage-johnson:
+    version: "1.0"
+    type: marriage
+    persons:
+      - person-adoptive-mother
+      - person-adoptive-father
+    created_at: "2024-01-20T10:35:00Z"
+    created_by: demo-user

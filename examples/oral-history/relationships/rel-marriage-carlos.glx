@@ -1,12 +1,9 @@
-id: rel-marriage-carlos
-version: "1.0"
-type: marriage
-persons:
-  - person-parent
-  - person-spouse
-
-assertions:
-  - assertions/assert-marriage-carlos.glx
-
-created_at: "2024-01-20T14:15:00Z"
-created_by: demo-user
+relationships:
+  rel-marriage-carlos:
+    version: "1.0"
+    type: marriage
+    persons:
+      - person-carlos-martinez
+      - person-elena-martinez
+    created_at: "2024-01-20T13:25:00Z"
+    created_by: demo-user

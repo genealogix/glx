@@ -1,23 +1,22 @@
 events:
-  event-d1d2d3d4:
+  event-john-occupation:
     version: "1.0"
     type: occupation
     date: "1870"
-    place: place-d4e5f6a1
+    place: place-leeds
     participants:
-      - person: person-a1b2c3d4
+      - person: person-john-smith-1850
         role: subject
     value: "Blacksmith"
     description: "John Smith worked as a blacksmith in Leeds"
   
-  event-e1e2e3e4:
+  event-jane-occupation:
     version: "1.0"
     type: occupation
     date: "1895"
-    place: place-d4e5f6a1
+    place: place-leeds
     participants:
-      - person: person-c3d4e5f6
+      - person: person-jane-smith-1876
         role: subject
     value: "Dressmaker"
     description: "Jane Smith worked as a dressmaker"
-

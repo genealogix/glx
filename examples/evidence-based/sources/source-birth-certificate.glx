@@ -1,13 +1,8 @@
-id: source-birth-cert
-version: "1.0"
-title: "Birth Certificate - John Smith"
-type: "Vital Record"
-authors: ["State of California"]
-date: "1985-03-15"
-citation: "California Department of Health Services, Birth Certificate #85-123456"
-
-media:
-  - media/media-birth-cert-scan.glx
-
-created_at: "2024-01-20T11:25:00Z"
-created_by: demo-user
+sources:
+  source-birth-cert-william:
+    version: "1.0"
+    title: "Birth Certificate - William Smith"
+    type: vital_record
+    date: "1920"
+    created_at: "2024-01-20T11:15:00Z"
+    created_by: demo-user

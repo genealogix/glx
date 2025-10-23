@@ -221,24 +221,29 @@ family-archive/
 
 ## ID Format Standards
 
-All entity IDs follow structured patterns:
+Entity IDs can be any unique identifier you choose, with the following constraints:
 
-| Entity Type | ID Prefix | Pattern | Example |
-|-------------|-----------|---------|---------|
-| Person | `person-` | `person-[a-f0-9]{8}` | `person-a1b2c3d4` |
-| Relationship | `rel-` | `rel-[a-f0-9]{8}` | `rel-1a2b3c4d` |
-| Event | `event-` | `event-[a-f0-9]{8}` | `event-2b3c4d5e` |
-| Place | `place-` | `place-[a-f0-9]{8}` | `place-3c4d5e6f` |
-| Source | `source-` | `source-[a-f0-9]{8}` | `source-4d5e6f7a` |
-| Citation | `citation-` | `citation-[a-f0-9]{8}` | `citation-5e6f7a8b` |
-| Repository | `repository-` | `repository-[a-f0-9]{8}` | `repository-6f7a8b9c` |
-| Assertion | `assertion-` | `assertion-[a-f0-9]{8}` | `assertion-7a8b9c0d` |
-| Media | `media-` | `media-[a-f0-9]{8}` | `media-8b9c0d1e` |
+**Requirements:**
+- 1-64 characters in length
+- Alphanumeric characters (a-z, A-Z, 0-9) and hyphens only
+- Must be unique across the entire repository
 
-### ID Generation
+**Recommended Format** (for collaboration):
+- Prefix with entity type for clarity: `person-`, `event-`, `place-`, etc.
+- Use random hex for uniqueness: `person-a1b2c3d4`, `event-12345678`
+- Keeps IDs short and collision-resistant
 
+**Alternative Formats** (also valid):
+- Descriptive: `person-john-smith-1850`, `place-leeds-yorkshire`
+- Sequential: `person-001`, `person-002`, `event-001`
+- UUID-style: `person-550e8400-e29b-41d4-a716`
+- Custom: Any format meeting the requirements above
+
+### ID Generation Examples
+
+**Random hex (recommended for collaboration):**
 ```bash
-# Generate random 8-character hex ID
+# Bash
 echo "person-$(openssl rand -hex 4)"
 
 # Python
@@ -251,11 +256,18 @@ const crypto = require('crypto');
 
 # Go
 import "crypto/rand"
-import "fmt"
 b := make([]byte, 4)
 rand.Read(b)
 fmt.Sprintf("person-%x", b)
 ```
+
+**Descriptive (easier for humans):**
+- `person-john-smith`
+- `event-birth-john-1850`
+- `place-leeds-uk`
+- `source-parish-register-leeds`
+
+**Note:** Descriptive IDs are fine for personal use but may cause conflicts when merging archives. Use random IDs for collaborative projects.
 
 ## Important Notes
 
