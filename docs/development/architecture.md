@@ -17,7 +17,7 @@ GENEALOGIX is a family history archive format with three main components:
 
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │             │    │             │    │             │
-│ Specification│───▶│  Schemas    │───▶│  CLI Tool   │
+│    Spec     │ ─> │  Schemas    │ -> │  CLI Tool   │
 │             │    │             │    │             │
 │ • Entity    │    │ • JSON      │    │ • glx       │
 │   Types     │    │   Schema    │    │   validate  │

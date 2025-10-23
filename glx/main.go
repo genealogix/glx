@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 )
@@ -158,108 +157,6 @@ See the [GENEALOGIX specification](https://github.com/genealogix/spec) for detai
 	fmt.Println("  Evidence: sources/, citations/, repositories/, assertions/")
 	fmt.Println("  Media: media/")
 	fmt.Println("Created .gitignore and README.md")
-
-	return nil
-}
-
-func runValidate(paths []string) error {
-	if len(paths) == 0 {
-		paths = []string{"."}
-	}
-
-	for _, path := range paths {
-		if err := validatePath(path); err != nil {
-			return fmt.Errorf("validation failed for %s: %v", path, err)
-		}
-	}
-
-	fmt.Printf("Validation completed successfully\n")
-	return nil
-}
-
-func runCheckSchemas() error {
-	// Validate that all schema files have required metadata
-	schemaDir := "schema/v1"
-	files, err := os.ReadDir(schemaDir)
-	if err != nil {
-		return fmt.Errorf("failed to read schema directory: %v", err)
-	}
-
-	requiredSchemas := map[string]bool{
-		"person.schema.json":       false,
-		"event.schema.json":        false,
-		"place.schema.json":        false,
-		"source.schema.json":       false,
-		"citation.schema.json":     false,
-		"repository.schema.json":   false,
-		"assertion.schema.json":    false,
-		"relationship.schema.json": false,
-		"media.schema.json":        false,
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		if _, exists := requiredSchemas[file.Name()]; exists {
-			requiredSchemas[file.Name()] = true
-
-			// Basic validation that it's a valid JSON schema
-			schemaPath := fmt.Sprintf("%s/%s", schemaDir, file.Name())
-			if err := validateSchemaFile(schemaPath); err != nil {
-				return fmt.Errorf("invalid schema %s: %v", file.Name(), err)
-			}
-		}
-	}
-
-	// Check that all required schemas are present
-	for schema, found := range requiredSchemas {
-		if !found {
-			return fmt.Errorf("missing required schema: %s", schema)
-		}
-	}
-
-	fmt.Println("All schema files are valid and present")
-	return nil
-}
-
-func validatePath(path string) error {
-	// This is a placeholder - in a full implementation, this would:
-	// 1. Walk the directory tree
-	// 2. Find all .glx files
-	// 3. Validate each file against appropriate schema
-	// 4. Check cross-references between entities
-	// 5. Report validation errors
-
-	fmt.Printf("Validating %s\n", path)
-	return nil
-}
-
-func validateSchemaFile(schemaPath string) error {
-	// This is a placeholder - in a full implementation, this would:
-	// 1. Parse the JSON schema
-	// 2. Validate it against the meta schema
-	// 3. Check for required fields like $id, $schema, title
-	// 4. Verify schema references are valid
-
-	data, err := os.ReadFile(schemaPath)
-	if err != nil {
-		return err
-	}
-
-	// Basic JSON validation
-	var schema map[string]interface{}
-	if err := json.Unmarshal(data, &schema); err != nil {
-		return err
-	}
-
-	// Check for required schema fields
-	requiredFields := []string{"$schema", "$id", "title", "type"}
-	for _, field := range requiredFields {
-		if _, exists := schema[field]; !exists {
-			return fmt.Errorf("missing required field: %s", field)
-		}
-	}
 
 	return nil
 }
