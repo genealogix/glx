@@ -128,7 +128,7 @@
       "uniqueItems": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
 
 

@@ -12,15 +12,24 @@
     "authors": { "type": "array", "items": { "type": "string" } },
     "date": { "type": "string" },
     "citation": { "type": "string" },
+    "description": { "type": "string" },
+    "repository": { "type": "string" },
+    "repository_id": { "type": "string" },
+    "creator": { "type": "string" },
+    "publication_info": { "type": "object" },
+    "language": { "type": "string" },
+    "coverage": { "type": "object" },
+    "notes": { "type": "string" },
     "media": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^media-[a-f0-9]{8}$" },
+      "items": { "type": "string" },
       "uniqueItems": true
     },
     "created_at": { "type": "string", "format": "date-time" },
     "created_by": { "type": "string" },
     "modified_at": { "type": "string", "format": "date-time" },
-    "modified_by": { "type": "string" }
+    "modified_by": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
   },
   "additionalProperties": false
 }

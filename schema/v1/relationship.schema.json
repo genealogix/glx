@@ -20,10 +20,39 @@
       "minItems": 2,
       "items": {
         "type": "string",
-        "pattern": "^person-[a-f0-9]{8}$"
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
       },
       "description": "IDs of persons participating in relationship",
       "uniqueItems": true
+    },
+    "participants": {
+      "type": "array",
+      "description": "Alternative format with participant objects",
+      "items": {
+        "type": "object",
+        "properties": {
+          "person": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
+          "role": { "type": "string" }
+        }
+      }
+    },
+    "start_event": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Event that started this relationship"
+    },
+    "end_event": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Event that ended this relationship"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the relationship"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Research notes"
     },
     "assertions": {
       "type": "array",
@@ -33,9 +62,8 @@
     "created_at": { "type": "string", "format": "date-time" },
     "created_by": { "type": "string" },
     "modified_at": { "type": "string", "format": "date-time" },
-    "modified_by": { "type": "string" }
+    "modified_by": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
-
-

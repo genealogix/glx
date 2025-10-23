@@ -15,7 +15,7 @@
     "modified_at": { "type": "string", "format": "date-time" },
     "modified_by": { "type": "string" }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
 
 

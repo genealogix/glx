@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 
+	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
 )
 
@@ -96,7 +98,76 @@ func validateEntityByType(entityType string, entity map[string]interface{}) []st
 	// Check for version field (required for all entities)
 	if _, hasVersion := entity["version"]; !hasVersion {
 		issues = append(issues, "version is required")
+		return issues
 	}
+
+	// Get schema file path
+	schemaPath := getSchemaPath(entityType)
+	if schemaPath == "" {
+		// Fallback to basic validation if schema not found
+		return basicValidateEntity(entityType, entity)
+	}
+
+	// Load and validate against JSON schema
+	schemaLoader := gojsonschema.NewReferenceLoader("file://" + schemaPath)
+
+	// Convert entity to JSON for validation
+	entityJSON, err := json.Marshal(entity)
+	if err != nil {
+		issues = append(issues, fmt.Sprintf("failed to marshal entity: %v", err))
+		return issues
+	}
+
+	documentLoader := gojsonschema.NewBytesLoader(entityJSON)
+
+	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	if err != nil {
+		// If schema validation fails, fall back to basic validation
+		return basicValidateEntity(entityType, entity)
+	}
+
+	if !result.Valid() {
+		for _, desc := range result.Errors() {
+			issues = append(issues, desc.String())
+		}
+	}
+
+	return issues
+}
+
+func getSchemaPath(entityType string) string {
+	schemaMap := map[string]string{
+		"person":       "schema/v1/person.schema.json",
+		"relationship": "schema/v1/relationship.schema.json",
+		"event":        "schema/v1/event.schema.json",
+		"place":        "schema/v1/place.schema.json",
+		"source":       "schema/v1/source.schema.json",
+		"citation":     "schema/v1/citation.schema.json",
+		"repository":   "schema/v1/repository.schema.json",
+		"assertion":    "schema/v1/assertion.schema.json",
+		"media":        "schema/v1/media.schema.json",
+	}
+
+	if schemaFile, ok := schemaMap[entityType]; ok {
+		// Try to find schema relative to current directory or absolute path
+		absPath, err := filepath.Abs(schemaFile)
+		if err == nil {
+			if _, err := os.Stat(absPath); err == nil {
+				return absPath
+			}
+		}
+		// Try relative to working directory
+		if _, err := os.Stat(schemaFile); err == nil {
+			abs, _ := filepath.Abs(schemaFile)
+			return abs
+		}
+	}
+
+	return ""
+}
+
+func basicValidateEntity(entityType string, entity map[string]interface{}) []string {
+	var issues []string
 
 	// Type-specific validation
 	switch entityType {

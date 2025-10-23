@@ -37,58 +37,55 @@
       ],
       "description": "Type of event or attribute"
     },
-    "date": {
-      "type": "object",
-      "description": "Date information with fuzzy date support",
-      "properties": {
-        "value": {
-          "type": "string",
-          "description": "Main date expression (e.g., '15 JAN 1850', 'about 1850')"
-        },
-        "range_start": {
-          "type": "string",
-          "description": "Fuzzy date range start (e.g., '1845')"
-        },
-        "range_end": {
-          "type": "string",
-          "description": "Fuzzy date range end (e.g., '1855')"
-        }
-      }
-    },
     "place_id": {
       "type": "string",
-      "pattern": "^place-[a-f0-9]{8}$",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to Place where event occurred"
+    },
+    "place": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Alternative field name for place reference"
+    },
+    "value": {
+      "type": "string",
+      "description": "Value for attribute facts (occupation, title, etc.)"
+    },
+    "date": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "value": { "type": "string" },
+            "range_start": { "type": "string" },
+            "range_end": { "type": "string" }
+          }
+        }
+      ]
     },
     "participants": {
       "type": "array",
       "description": "People involved in this event",
       "items": {
         "type": "object",
-        "required": ["person_id", "role"],
+        "anyOf": [
+          { "required": ["person_id"] },
+          { "required": ["person"] }
+        ],
         "properties": {
           "person_id": {
             "type": "string",
-            "pattern": "^person-[a-f0-9]{8}$",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
             "description": "Reference to Person entity"
+          },
+          "person": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Alternative field name for person reference"
           },
           "role": {
             "type": "string",
-            "enum": [
-              "principal",
-              "principal1",
-              "principal2",
-              "bride",
-              "groom",
-              "witness",
-              "officiant",
-              "celebrant",
-              "godparent",
-              "proxy",
-              "informant",
-              "attending",
-              "other"
-            ],
             "description": "Role of participant in event"
           },
           "notes": {
@@ -96,7 +93,7 @@
             "description": "Notes about participant's involvement"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       }
     },
     "attribute_value": {
@@ -163,7 +160,7 @@
       "uniqueItems": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
 
 

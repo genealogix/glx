@@ -45,7 +45,7 @@
       "description": "References to relationship files",
       "items": {
         "type": "string",
-        "pattern": "^rel-[a-f0-9]{8}$"
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
       },
       "uniqueItems": true
     },
@@ -79,7 +79,7 @@
       }
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
 
 

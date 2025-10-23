@@ -4,7 +4,11 @@
   "title": "Citation",
   "description": "A specific reference to evidence within a source. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "source_id"],
+  "required": ["version"],
+  "anyOf": [
+    { "required": ["source_id"] },
+    { "required": ["source"] }
+  ],
   "properties": {
     "version": {
       "type": "string",
@@ -14,8 +18,13 @@
     },
     "source_id": {
       "type": "string",
-      "pattern": "^source-[a-f0-9]{8}$",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to Source entity"
+    },
+    "source": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Alternative field name for source reference"
     },
     "page": {
       "type": "string",
@@ -29,6 +38,10 @@
       "type": "string",
       "description": "Transcription or excerpt from the source"
     },
+    "transcription": {
+      "type": "string",
+      "description": "Alternative field name for text_from_source"
+    },
     "quality": {
       "type": "integer",
       "minimum": 0,
@@ -36,41 +49,54 @@
       "description": "Evidence quality rating (GEDCOM QUAY compatible: 0=unreliable, 1=questionable, 2=secondary, 3=primary/direct)"
     },
     "locator": {
-      "type": "object",
-      "description": "Structured locator information for finding the source",
-      "properties": {
-        "film_number": {
+      "oneOf": [
+        {
           "type": "string",
-          "description": "FamilySearch film number or microfilm reference"
+          "description": "Simple string locator (e.g., 'Page 45, Entry 123')"
         },
-        "item_number": {
-          "type": "string",
-          "description": "Item number or accession number"
-        },
-        "image_number": {
-          "type": "string",
-          "description": "Image number or page identifier"
-        },
-        "url": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL to online source"
-        },
-        "record_id": {
-          "type": "string",
-          "description": "Database record ID"
-        },
-        "database_collection": {
-          "type": "string",
-          "description": "Name of database collection"
+        {
+          "type": "object",
+          "description": "Structured locator information for finding the source",
+          "properties": {
+            "film_number": {
+              "type": "string",
+              "description": "FamilySearch film number or microfilm reference"
+            },
+            "item_number": {
+              "type": "string",
+              "description": "Item number or accession number"
+            },
+            "image_number": {
+              "type": "string",
+              "description": "Image number or page identifier"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL to online source"
+            },
+            "record_id": {
+              "type": "string",
+              "description": "Database record ID"
+            },
+            "database_collection": {
+              "type": "string",
+              "description": "Name of database collection"
+            }
+          },
+          "additionalProperties": false
         }
-      },
-      "additionalProperties": false
+      ]
     },
     "repository_id": {
       "type": "string",
-      "pattern": "^repository-[a-f0-9]{8}$",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to Repository where source is held"
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Alternative field name for repository reference"
     },
     "created_at": {
       "type": "string",

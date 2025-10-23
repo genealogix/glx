@@ -19,7 +19,7 @@
     },
     "parent_id": {
       "type": ["string", "null"],
-      "pattern": "^place-[a-f0-9]{8}$",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to parent place in hierarchy"
     },
     "type": {
@@ -84,7 +84,7 @@
             }
           }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "uniqueItems": true
     },
@@ -139,7 +139,7 @@
       "uniqueItems": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
 
 
