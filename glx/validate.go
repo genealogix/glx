@@ -20,6 +20,13 @@ func runValidate(args []string) error {
 		reportLines []string
 	)
 
+	// Load vocabularies for validation
+	vocabs, err := LoadArchiveVocabularies(".")
+	if err != nil {
+		reportLines = append(reportLines, fmt.Sprintf("✗ Failed to load vocabularies: %v", err))
+		hadError = true
+	}
+
 	// First pass: validate each file individually
 	for _, root := range paths {
 		info, err := os.Stat(root)
@@ -44,7 +51,7 @@ func runValidate(args []string) error {
 					return nil
 				}
 				checked++
-				if issues := validateGLXFileFromPath(path); len(issues) > 0 {
+				if issues := validateGLXFileFromPath(path, vocabs); len(issues) > 0 {
 					hadError = true
 					reportLines = append(reportLines, formatValidationIssues(path, issues)...)
 				} else {
@@ -67,7 +74,7 @@ func runValidate(args []string) error {
 		}
 
 		checked++
-		if issues := validateGLXFileFromPath(root); len(issues) > 0 {
+		if issues := validateGLXFileFromPath(root, vocabs); len(issues) > 0 {
 			hadError = true
 			reportLines = append(reportLines, formatValidationIssues(root, issues)...)
 		} else {
@@ -132,7 +139,7 @@ func runValidate(args []string) error {
 	return nil
 }
 
-func validateGLXFileFromPath(path string) []string {
+func validateGLXFileFromPath(path string, vocabs *ArchiveVocabularies) []string {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return []string{fmt.Sprintf("read error: %v", err)}
@@ -143,7 +150,7 @@ func validateGLXFileFromPath(path string) []string {
 		return []string{fmt.Sprintf("YAML parse error: %v", err)}
 	}
 
-	return ValidateGLXFile(path, doc)
+	return ValidateGLXFile(path, doc, vocabs)
 }
 
 func formatValidationIssues(path string, issues []string) []string {

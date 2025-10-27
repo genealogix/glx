@@ -78,7 +78,7 @@ This specification is under active development.
 - **GEDCOM Compatible**: Can be imported from and exported to GEDCOM format
 - **Hierarchical Places**: Supports complex place hierarchies with historical variations
 - **Evidence Quality**: Uses GEDCOM QUAY standard for assessing source reliability
-- **Extensible**: Custom entity types and properties supported via registry
+- **Extensible**: Custom entity types and properties supported via repository-owned vocabularies
 
 ## Quick Example
 

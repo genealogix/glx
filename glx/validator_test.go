@@ -60,7 +60,7 @@ func TestValidateGLXFile_Person_Minimal(t *testing.T) {
 		},
 	}
 
-	issues := ValidateGLXFile("test.glx", doc)
+	issues := ValidateGLXFile("test.glx", doc, nil)
 	if len(issues) > 0 {
 		t.Errorf("expected no issues, got %v", issues)
 	}
@@ -79,7 +79,7 @@ func TestValidateGLXFile_Person_WithIDField(t *testing.T) {
 		},
 	}
 
-	issues := ValidateGLXFile("test.glx", doc)
+	issues := ValidateGLXFile("test.glx", doc, nil)
 	if len(issues) == 0 {
 		t.Error("expected validation issues for entity with 'id' field, got none")
 	}
@@ -103,7 +103,7 @@ func TestValidateGLXFile_DescriptiveIDs(t *testing.T) {
 		},
 	}
 
-	issues := ValidateGLXFile("test.glx", doc)
+	issues := ValidateGLXFile("test.glx", doc, nil)
 	if len(issues) > 0 {
 		t.Errorf("expected no issues for descriptive IDs, got %v", issues)
 	}
@@ -114,7 +114,7 @@ func TestValidateGLXFile_NoEntityTypeKeys(t *testing.T) {
 		"something": "invalid",
 	}
 
-	issues := ValidateGLXFile("test.glx", doc)
+	issues := ValidateGLXFile("test.glx", doc, nil)
 	if len(issues) == 0 {
 		t.Error("expected validation issues for file without entity type keys, got none")
 	}
@@ -130,7 +130,7 @@ func TestValidateGLXFile_Event_MissingType(t *testing.T) {
 		},
 	}
 
-	issues := ValidateGLXFile("test.glx", doc)
+	issues := ValidateGLXFile("test.glx", doc, nil)
 	if len(issues) == 0 {
 		t.Error("expected validation issues for event without type, got none")
 	}
@@ -146,7 +146,7 @@ func TestValidateGLXFile_Place_MissingName(t *testing.T) {
 		},
 	}
 
-	issues := ValidateGLXFile("test.glx", doc)
+	issues := ValidateGLXFile("test.glx", doc, nil)
 	if len(issues) == 0 {
 		t.Error("expected validation issues for place without name, got none")
 	}
@@ -170,7 +170,7 @@ func TestValidateGLXFile_MultipleEntityTypes(t *testing.T) {
 		},
 	}
 
-	issues := ValidateGLXFile("test.glx", doc)
+	issues := ValidateGLXFile("test.glx", doc, nil)
 	if len(issues) > 0 {
 		t.Errorf("expected no issues for file with multiple entity types, got %v", issues)
 	}

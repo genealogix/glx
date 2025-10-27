@@ -103,9 +103,13 @@ participants:
     role: "witness"
 ```
 
-## Standard Event Types
+## Event Types
 
-GENEALOGIX defines standardized event type codes for interoperability:
+Event types are defined in the archive's `vocabularies/event-types.glx` file. Each archive includes standard types and can define custom types as needed.
+
+### Standard Event Types
+
+GENEALOGIX provides standardized event type codes for interoperability:
 
 | Type | Category | GEDCOM Equivalent |
 |------|----------|-------------------|
@@ -127,6 +131,24 @@ GENEALOGIX defines standardized event type codes for interoperability:
 | `nationality` | Attribute | NATI |
 | `religion` | Attribute | RELI |
 | `education` | Attribute | EDUC |
+
+### Custom Event Types
+
+Archives can define custom event types in `vocabularies/event-types.glx`:
+
+```yaml
+event_types:
+  # ... standard types ...
+  
+  # Custom types
+  apprenticeship:
+    label: "Apprenticeship"
+    description: "Beginning of apprenticeship training"
+    category: "occupation"
+    custom: true
+```
+
+See [Custom Types](../6-extensibility/custom-types.md) for details on adding custom event types.
 
 ## Usage Patterns
 
@@ -226,12 +248,12 @@ For events with multiple participants, GLX uses the ASSO (Associate) tag pattern
 
 ## Validation Rules
 
-- Event type must be from standard or registered custom types
+- Event type must be defined in `vocabularies/event-types.glx`
 - At least one participant must be present (except for attribute-type events)
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
 - Date formats must follow genealogical date conventions
-- Participant roles must be from registered role types
+- Participant roles must be defined in `vocabularies/participant-roles.glx`
 
 ## Confidence and Provenance
 

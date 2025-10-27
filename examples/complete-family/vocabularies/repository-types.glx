@@ -1,0 +1,11 @@
+# GENEALOGIX Repository Types Vocabulary
+# Standard repository types for holding genealogical sources
+
+repository_types:
+  archive:
+    label: "Archive"
+    description: "Government or historical archive"
+  library:
+    label: "Library"
+    description: "Public, university, or specialty library"
+

@@ -115,6 +115,7 @@ GENEALOGIX is an open standard for version-controlled family archives that provi
 - **📋 Human-Readable Format**: Clear YAML files instead of binary formats
 - **✅ Schema Validation**: JSON Schema-based validation and error checking
 - **🔗 Complete Provenance**: Audit trail from repository to conclusion
+- **🎯 Repository-Owned Vocabularies**: Define custom types within each archive
 
 ## Quick Start
 
@@ -123,12 +124,13 @@ GENEALOGIX is an open standard for version-controlled family archives that provi
 go install github.com/genealogix/spec/glx@latest
 
 # Create a new genealogix repository (multi-file, recommended)
+# This creates entity directories AND vocabularies/ with standard types
 glx init
 
 # Or create a single-file archive
 glx init --single-file
 
-# Validate .glx files (checks cross-references too)
+# Validate .glx files (checks cross-references and vocabularies)
 glx validate
 
 # Validate schema files
@@ -155,9 +157,10 @@ sources:
 
 **Key Points:**
 - Entity IDs are map keys (not `id` fields)
-- IDs must match pattern: `{type}-{8hex}` (e.g., `person-a1b2c3d4`)
+- IDs can be descriptive or random (1-64 alphanumeric/hyphens): `person-john-smith` or `person-a1b2c3d4`
 - Files can contain any combination of entity types
 - Parser collates all entities across all .glx files in repository
+- Controlled vocabularies define valid types in `vocabularies/` directory
 
 ## Specification Status
 
@@ -217,7 +220,8 @@ GENEALOGIX is an open-source project that thrives on community participation:
 **Current Release:** v1.0.0 (Draft)
 - ✅ 9 core entity types defined
 - ✅ JSON Schema validation
-- ✅ CLI tool with basic validation
+- ✅ CLI tool with vocabulary-based validation
+- ✅ Repository-owned controlled vocabularies
 - ✅ Complete test suite
 - ✅ Comprehensive examples
 - 🔄 Community building and feedback
@@ -270,19 +274,32 @@ genealogix/spec/
 │   ├── README.md
 │   ├── 1-introduction.md
 │   ├── 2-core-concepts.md
-│   ├── 3-file-structure.md
+│   ├── 3-archive-organization.md
 │   ├── 4-entity-types/
 │   ├── 5-data-model/
 │   ├── 6-extensibility/
+│   │   └── custom-types.md        # Repository-owned vocabularies
 │   ├── 7-git-integration/
 │   └── 8-interoperability/
 ├── schema/
 │   ├── README.md
 │   ├── v1/
+│   │   ├── person.schema.json
+│   │   ├── relationship.schema.json
+│   │   ├── event.schema.json
+│   │   └── vocabularies/          # Vocabulary schemas
+│   │       ├── relationship-types.schema.json
+│   │       ├── event-types.schema.json
+│   │       └── ...
 │   └── meta/
 ├── examples/
 │   ├── README.md
-│   └── minimal/
+│   ├── basic-family/
+│   │   ├── persons/
+│   │   ├── relationships/
+│   │   └── vocabularies/          # Example vocabularies
+│   └── complete-family/
+│       └── vocabularies/
 ├── test-suite/
 │   ├── README.md
 │   ├── run-tests.sh
@@ -294,7 +311,9 @@ genealogix/spec/
 │   ├── 0001-initial-spec.md
 │   └── 0002-custom-relationship-types.md
 ├── glx/
-│   └── main.go
+│   ├── main.go
+│   ├── validator.go
+│   └── validate.go
 └── .devcontainer/
     └── devcontainer.json
 ```

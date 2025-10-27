@@ -1,0 +1,13 @@
+# GENEALOGIX Relationship Types Vocabulary
+# Standard relationship types for genealogical research
+
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "Legal or religious union of two people"
+    gedcom: "MARR"
+  parent-child:
+    label: "Parent-Child"
+    description: "Biological, adoptive, or legal parent-child relationship"
+    gedcom: "CHIL/FAMC"
+

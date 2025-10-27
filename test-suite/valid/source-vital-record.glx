@@ -4,6 +4,8 @@ sources:
     title: "Birth Certificate for John Smith"
     type: vital_record
     repository: repository-a1b2c3d4
-    author: "General Register Office"
-    publication_date: "1850"
+    authors:
+      - "General Register Office"
+    publication_info:
+      year: 1850
     description: "Official birth certificate"

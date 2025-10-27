@@ -1,0 +1,23 @@
+# GENEALOGIX Relationship Types Vocabulary
+# Includes custom relationship types for complex family structures
+
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "Legal or religious union of two people"
+    gedcom: "MARR"
+  parent-child:
+    label: "Parent-Child"
+    description: "Biological, adoptive, or legal parent-child relationship"
+    gedcom: "CHIL/FAMC"
+  adoption:
+    label: "Adoption"
+    description: "Legal adoption relationship"
+    gedcom: "ADOP"
+  
+  # Custom relationship type for chosen family
+  chosen-sibling:
+    label: "Chosen Sibling"
+    description: "Non-biological sibling relationship by choice"
+    custom: true
+

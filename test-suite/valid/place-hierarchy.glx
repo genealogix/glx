@@ -12,8 +12,10 @@ places:
       latitude: 53.7960
       longitude: -1.5479
     alternative_names:
-      - Loidis (historical)
-      - Ledes (medieval)
+      - name: Loidis
+        period: historical
+      - name: Ledes
+        period: medieval
     bounding_box:
       north: 53.8500
       south: 53.7400

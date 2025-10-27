@@ -1,0 +1,20 @@
+# GENEALOGIX Event Types Vocabulary
+# Standard event types for genealogical research
+
+event_types:
+  birth:
+    label: "Birth"
+    description: "Person's birth"
+    category: "lifecycle"
+    gedcom: "BIRT"
+  marriage:
+    label: "Marriage"
+    description: "Union of two people"
+    category: "lifecycle"
+    gedcom: "MARR"
+  occupation:
+    label: "Occupation"
+    description: "Employment or trade"
+    category: "attribute"
+    gedcom: "OCCU"
+

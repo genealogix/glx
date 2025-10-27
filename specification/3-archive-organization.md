@@ -89,8 +89,12 @@ family-archive/
 │   └── source-mno22222.glx
 ├── events/
 │   └── event-birth-abc.glx
-└── relationships/
-    └── rel-marriage-001.glx
+├── relationships/
+│   └── rel-marriage-001.glx
+└── vocabularies/
+    ├── relationship-types.glx
+    ├── event-types.glx
+    └── place-types.glx
 ```
 
 **File Contents:**
@@ -202,6 +206,10 @@ family-archive/
 ├── places/                  # Individual place files
 │   ├── place-leeds.glx
 │   └── place-yorkshire.glx
+├── vocabularies/            # Controlled vocabularies
+│   ├── relationship-types.glx
+│   ├── event-types.glx
+│   └── place-types.glx
 └── media/
     ├── photos.glx           # References to photo files
     └── files/
@@ -269,6 +277,46 @@ fmt.Sprintf("person-%x", b)
 
 **Note:** Descriptive IDs are fine for personal use but may cause conflicts when merging archives. Use random IDs for collaborative projects.
 
+## Vocabularies Directory
+
+Every GENEALOGIX archive should include a `vocabularies/` directory containing controlled vocabulary definitions. These files define valid types for entities:
+
+```
+vocabularies/
+├── relationship-types.glx    # Marriage, parent-child, adoption, etc.
+├── event-types.glx           # Birth, death, baptism, occupation, etc.
+├── place-types.glx           # Country, city, parish, etc.
+├── repository-types.glx      # Archive, library, church, etc.
+├── participant-roles.glx     # Principal, witness, officiant, etc.
+├── media-types.glx           # Photo, document, audio, etc.
+├── confidence-levels.glx     # High, medium, low, disputed
+└── quality-ratings.glx       # 0-3 (unreliable to primary evidence)
+```
+
+### Vocabulary Files
+
+Vocabulary files use the same GLX format with vocabulary-specific top-level keys:
+
+```yaml
+# vocabularies/relationship-types.glx
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "Legal or religious union of two people"
+    gedcom: "MARR"
+  parent-child:
+    label: "Parent-Child"
+    description: "Biological, adoptive, or legal parent-child relationship"
+    gedcom: "CHIL/FAMC"
+  # Add custom types as needed
+```
+
+### Initialization
+
+When you run `glx init`, the CLI automatically creates the `vocabularies/` directory with standard vocabulary templates. You can then customize these files to add archive-specific types.
+
+See [Custom Types](6-extensibility/custom-types.md) for details on defining custom vocabulary entries.
+
 ## Important Notes
 
 - **Folder names are conventions**, not requirements
@@ -277,6 +325,7 @@ fmt.Sprintf("person-%x", b)
 - **Entity type keys are required** at the top level of every file
 - **Entity IDs as map keys** - never as `id` field in the entity object
 - **Cross-references are validated** at repository level
+- **Vocabularies define valid types** - entities must reference types from vocabulary files
 
 ## Git Workflow Integration
 

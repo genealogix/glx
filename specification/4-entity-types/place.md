@@ -62,7 +62,7 @@ Each name can be classified and dated.
 | Property | Type | Description |
 |----------|------|-------------|
 | `parent` or `parent_id` | string | Reference to parent place in hierarchy |
-| `type` | string | Place type (country, state, county, city, town, etc.) |
+| `type` | string | Place type from `vocabularies/place-types.glx` |
 | `alternative_names` | array | Historical/alternative names for this place |
 | `latitude` | number | WGS84 latitude coordinate |
 | `longitude` | number | WGS84 longitude coordinate |
@@ -73,6 +73,16 @@ Each name can be classified and dated.
 | `modified_at` | datetime | Last modification timestamp |
 | `modified_by` | string | User who last modified this record |
 | `notes` | string | Free-form notes about the place |
+
+## Place Types
+
+Place types are defined in the archive's `vocabularies/place-types.glx` file. Standard types include:
+
+- **Administrative**: `country`, `state`, `county`, `registration_district`
+- **Geographic**: `city`, `town`, `village`, `address`, `building`, `street`
+- **Religious**: `parish`
+
+Archives can define custom place types as needed. See [Custom Types](../6-extensibility/custom-types.md) for details.
 
 ### Alternative Names Structure
 
