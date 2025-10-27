@@ -43,20 +43,6 @@ Version 1.0.0 (Draft)
    - [Provenance Tracking](5-data-model/provenance-tracking.md) - Audit trails
    - [Confidence Scales](5-data-model/confidence-scales.md) - Assessing reliability
 
-6. [Extensibility](6-extensibility/)
-   - [Custom Types](6-extensibility/custom-types.md)
-   - [Schema Registry](6-extensibility/schema-registry.md)
-   - [Versioning Strategy](6-extensibility/versioning.md)
-
-7. [Git Integration](7-git-integration/)
-   - [Merge Strategies](7-git-integration/merge-strategies.md)
-   - [Conflict Resolution](7-git-integration/conflict-resolution.md)
-   - [Branch Workflows](7-git-integration/branch-workflows.md)
-
-8. [Interoperability](8-interoperability/)
-   - [GEDCOM Mapping](8-interoperability/gedcom-mapping.md)
-   - [Gramps XML Mapping](8-interoperability/gramps-mapping.md)
-
 ## Normative References
 
 This specification uses RFC 2119 keywords (MUST, SHOULD, MAY) for

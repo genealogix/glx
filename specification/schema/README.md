@@ -74,6 +74,6 @@ These URIs serve the actual schema files via HTTP.
 
 ## Custom Extensions
 
-See [specification/6-extensibility/](../specification/6-extensibility/) for how to define custom schemas that extend the base format.
+Archives can extend the base format using repository-owned vocabularies. See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for details.
 
 

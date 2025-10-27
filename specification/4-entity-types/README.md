@@ -192,12 +192,12 @@ The GENEALOGIX specification allows extension through:
 - Custom relationship types
 - Custom tags and notes
 
-See [6-extensibility/](../6-extensibility/) for extension guidelines.
+See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for vocabulary and extension guidelines.
 
 ## See Also
 
 - [File Structure](../3-file-structure.md) - How entities are organized in files
 - [Data Model](../5-data-model/) - How entities relate to evidence and provenance
-- [Interoperability](../8-interoperability/) - How entities map to GEDCOM and other formats
+- Entity type documentation includes GEDCOM mapping information
 
 

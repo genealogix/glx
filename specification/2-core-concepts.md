@@ -353,6 +353,61 @@ events/event-wedding.glx:
 # glx validate will catch these errors
 ```
 
+## Repository-Owned Vocabularies
+
+### Archive-Level Type Definitions
+
+Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **repository-owned controlled vocabularies**. Each archive defines its own valid types in the `vocabularies/` directory, combining standardization with flexibility.
+
+### Why Archive-Level Vocabularies?
+
+1. **Autonomy**: No dependency on external registries or services
+2. **Flexibility**: Each archive can define types specific to its research context
+3. **Versioning**: Vocabulary changes are tracked with the archive in Git
+4. **Offline Work**: No internet connection required for validation
+5. **Collaboration**: Teams discuss and agree on types within their repository
+6. **Standards + Custom**: Provides standard types while allowing extensions
+
+### Standard Vocabulary Files
+
+When you initialize a new archive with `glx init`, standard vocabulary files are automatically created:
+
+```
+vocabularies/
+  relationship-types.glx   # Marriage, parent-child, adoption, etc.
+  event-types.glx         # Birth, death, baptism, occupation, etc.
+  place-types.glx         # Country, city, parish, etc.
+  repository-types.glx    # Archive, library, church, etc.
+  participant-roles.glx   # Principal, witness, godparent, etc.
+  media-types.glx         # Photo, document, audio, etc.
+  confidence-levels.glx   # High, medium, low, disputed
+  quality-ratings.glx     # 0-3 evidence quality scale
+```
+
+### Custom Type Example
+
+Archives can extend standard vocabularies with custom types:
+
+```yaml
+# vocabularies/relationship-types.glx
+relationship_types:
+  # Standard types
+  marriage:
+    label: "Marriage"
+    description: "Legal or religious union"
+    gedcom: "MARR"
+  
+  # Custom types for this archive's research
+  blood-brother:
+    label: "Blood Brother"
+    description: "Non-biological brotherhood bond through ceremony"
+    custom: true
+```
+
+### Validation
+
+The `glx validate` command ensures all entity types used in your archive are defined in the vocabulary files, preventing typos and maintaining consistency.
+
 This core concept architecture ensures that GENEALOGIX archives are reliable, verifiable, and maintainable over time.
 
 

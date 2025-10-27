@@ -132,11 +132,48 @@ GENEALOGIX provides standardized event type codes for interoperability:
 | `religion` | Attribute | RELI |
 | `education` | Attribute | EDUC |
 
-### Custom Event Types
+## Event Types Vocabulary
 
-Archives can define custom event types in `vocabularies/event-types.glx`:
+Event types are defined in `vocabularies/event-types.glx` within each archive.
+
+### Standard Event Types
 
 ```yaml
+# vocabularies/event-types.glx
+event_types:
+  birth:
+    label: "Birth"
+    description: "Person's birth"
+    category: "lifecycle"
+    gedcom: "BIRT"
+  baptism:
+    label: "Baptism"
+    description: "Religious baptism ceremony"
+    category: "religious"
+    gedcom: "BAPM"
+  marriage:
+    label: "Marriage"
+    description: "Marriage ceremony"
+    category: "lifecycle"
+    gedcom: "MARR"
+  death:
+    label: "Death"
+    description: "Person's death"
+    category: "lifecycle"
+    gedcom: "DEAT"
+  occupation:
+    label: "Occupation"
+    description: "Employment or profession"
+    category: "attribute"
+    gedcom: "OCCU"
+```
+
+### Adding Custom Event Types
+
+Add custom event types for specialized research:
+
+```yaml
+# vocabularies/event-types.glx
 event_types:
   # ... standard types ...
   
@@ -146,9 +183,17 @@ event_types:
     description: "Beginning of apprenticeship training"
     category: "occupation"
     custom: true
+  land-grant:
+    label: "Land Grant"
+    description: "Receipt of land grant or patent"
+    category: "property"
+    gedcom: "_LAND"
+    custom: true
 ```
 
-See [Custom Types](../6-extensibility/custom-types.md) for details on adding custom event types.
+### Validation
+
+The `glx validate` command ensures all event types are defined in the vocabulary file.
 
 ## Usage Patterns
 

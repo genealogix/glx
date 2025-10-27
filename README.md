@@ -276,10 +276,6 @@ genealogix/spec/
 │   ├── 3-archive-organization.md
 │   ├── 4-entity-types/
 │   ├── 5-data-model/
-│   ├── 6-extensibility/
-│   │   └── custom-types.md        # Repository-owned vocabularies
-│   ├── 7-git-integration/
-│   ├── 8-interoperability/
 │   ├── schema/                     # JSON Schemas
 │   │   ├── README.md
 │   │   ├── v1/

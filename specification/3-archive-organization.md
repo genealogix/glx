@@ -315,7 +315,7 @@ relationship_types:
 
 When you run `glx init`, the CLI automatically creates the `vocabularies/` directory with standard vocabulary templates. You can then customize these files to add archive-specific types.
 
-See [Custom Types](6-extensibility/custom-types.md) for details on defining custom vocabulary entries.
+See [Core Concepts](2-core-concepts.md#repository-owned-vocabularies) for details on defining custom vocabulary entries.
 
 ## Important Notes
 

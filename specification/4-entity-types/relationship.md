@@ -206,6 +206,74 @@ relationships/
 └── rel-godparent-001.glx
 ```
 
+## Relationship Types Vocabulary
+
+Relationship types are defined in `vocabularies/relationship-types.glx` within each archive. This allows both standard types and custom types specific to your research.
+
+### Standard Relationship Types
+
+```yaml
+# vocabularies/relationship-types.glx
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "Legal or religious union of two people"
+    gedcom: "MARR"
+  parent-child:
+    label: "Parent-Child"
+    description: "Biological, adoptive, or legal parent-child relationship"
+    gedcom: "CHIL/FAMC"
+  adoption:
+    label: "Adoption"
+    description: "Legal adoption relationship"
+    gedcom: "ADOP"
+  sibling:
+    label: "Sibling"
+    description: "Brother or sister relationship"
+    gedcom: "SIBL"
+  godparent:
+    label: "Godparent"
+    description: "Spiritual sponsor relationship"
+    custom: true
+```
+
+### Adding Custom Relationship Types
+
+You can add custom relationship types to your archive:
+
+```yaml
+# vocabularies/relationship-types.glx
+relationship_types:
+  # ... standard types ...
+  
+  # Custom types
+  blood-brother:
+    label: "Blood Brother"
+    description: "Non-biological brotherhood bond through ceremony"
+    custom: true
+  chosen-family:
+    label: "Chosen Family"
+    description: "Close familial bond without biological or legal tie"
+    custom: true
+```
+
+Once defined, use custom types in your relationship entities:
+
+```yaml
+# relationships/rel-blood-brothers.glx
+relationships:
+  rel-john-james-blood:
+    version: "1.0"
+    type: blood-brother  # Custom type from vocabulary
+    persons:
+      - person-john-smith
+      - person-james-brown
+```
+
+### Validation
+
+The `glx validate` command checks that all relationship types used in your archive are defined in the vocabulary file.
+
 ## GEDCOM Mapping
 
 Relationships map to GEDCOM family and individual structures:
@@ -221,4 +289,4 @@ Relationships map to GEDCOM family and individual structures:
 
 - [Person Entity](person.md) - Entities connected by relationships
 - [Event Entity](event.md) - Events that start/end relationships
-- [Custom Types](../6-extensibility/custom-types.md) - Defining custom relationship types
+- [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) - Overview of vocabulary system

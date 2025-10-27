@@ -137,12 +137,6 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Extensibility',
-          items: [
-            { text: 'Custom Types', link: '/specification/6-extensibility/custom-types' }
-          ]
-        },
-        {
           text: 'Schemas & RFCs',
           items: [
             { text: 'JSON Schemas', link: '/specification/schema/' },

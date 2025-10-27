@@ -74,15 +74,62 @@ Each name can be classified and dated.
 | `modified_by` | string | User who last modified this record |
 | `notes` | string | Free-form notes about the place |
 
-## Place Types
+## Place Types Vocabulary
 
-Place types are defined in the archive's `vocabularies/place-types.glx` file. Standard types include:
+Place types are defined in `vocabularies/place-types.glx` within each archive.
 
-- **Administrative**: `country`, `state`, `county`, `registration_district`
-- **Geographic**: `city`, `town`, `village`, `address`, `building`, `street`
-- **Religious**: `parish`
+### Standard Place Types
 
-Archives can define custom place types as needed. See [Custom Types](../6-extensibility/custom-types.md) for details.
+```yaml
+# vocabularies/place-types.glx
+place_types:
+  country:
+    label: "Country"
+    description: "Nation state or country"
+    category: "administrative"
+  state:
+    label: "State/Province"
+    description: "State, province, or region"
+    category: "administrative"
+  county:
+    label: "County"
+    description: "County or similar administrative division"
+    category: "administrative"
+  city:
+    label: "City"
+    description: "City or town"
+    category: "geographic"
+  parish:
+    label: "Parish"
+    description: "Church parish or ecclesiastical division"
+    category: "religious"
+```
+
+### Adding Custom Place Types
+
+Add custom place types for specialized research:
+
+```yaml
+# vocabularies/place-types.glx
+place_types:
+  # ... standard types ...
+  
+  # Custom types
+  plantation:
+    label: "Plantation"
+    description: "Agricultural estate or plantation"
+    category: "geographic"
+    custom: true
+  mission:
+    label: "Mission"
+    description: "Religious mission station"
+    category: "religious"
+    custom: true
+```
+
+### Validation
+
+The `glx validate` command checks that all place types are defined in the vocabulary file.
 
 ### Alternative Names Structure
 
