@@ -411,7 +411,7 @@ glx validate persons/
 
 ## Examples
 
-See the `examples/` directory for complete working examples:
-- `examples/complete-family/` - Multi-file organization
-- `examples/single-file/` - Single-file archive
-- `examples/mixed-format/` - Hybrid approach
+See the `docs/examples/` directory for complete working examples:
+- `docs/examples/complete-family/` - Multi-file organization
+- `docs/examples/single-file/` - Single-file archive
+- `docs/examples/mixed-format/` - Hybrid approach

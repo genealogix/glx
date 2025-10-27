@@ -123,7 +123,7 @@ persons:
 
 ## Schema Reference
 
-See [person.schema.json](../../schema/v1/person.schema.json) for the
+See [person.schema.json](../schema/v1/person.schema.json) for the
 complete JSON Schema definition.
 
 ## See Also

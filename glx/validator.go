@@ -47,15 +47,15 @@ func ValidateGLXFile(path string, doc map[string]interface{}, vocabs *ArchiveVoc
 			}
 		}
 
-	if !hasValidKey {
-		return []string{"file must contain at least one entity type key (persons, relationships, events, places, sources, citations, repositories, assertions, media)"}
-	}
+		if !hasValidKey {
+			return []string{"file must contain at least one entity type key (persons, relationships, events, places, sources, citations, repositories, assertions, media)"}
+		}
 
-	// If this is a vocabulary file, validate it as such
-	if isVocabFile {
-		return ValidateVocabularyFile(path, doc)
+		// If this is a vocabulary file, validate it as such
+		if isVocabFile {
+			return ValidateVocabularyFile(path, doc)
+		}
 	}
-}
 
 	// Validate each entity type section
 	entityTypes := map[string]string{
@@ -155,15 +155,15 @@ func validateEntityByType(entityType string, entity map[string]interface{}, voca
 
 func getSchemaPath(entityType string) string {
 	schemaMap := map[string]string{
-		"person":       "schema/v1/person.schema.json",
-		"relationship": "schema/v1/relationship.schema.json",
-		"event":        "schema/v1/event.schema.json",
-		"place":        "schema/v1/place.schema.json",
-		"source":       "schema/v1/source.schema.json",
-		"citation":     "schema/v1/citation.schema.json",
-		"repository":   "schema/v1/repository.schema.json",
-		"assertion":    "schema/v1/assertion.schema.json",
-		"media":        "schema/v1/media.schema.json",
+		"person":       "specification/schema/v1/person.schema.json",
+		"relationship": "specification/schema/v1/relationship.schema.json",
+		"event":        "specification/schema/v1/event.schema.json",
+		"place":        "specification/schema/v1/place.schema.json",
+		"source":       "specification/schema/v1/source.schema.json",
+		"citation":     "specification/schema/v1/citation.schema.json",
+		"repository":   "specification/schema/v1/repository.schema.json",
+		"assertion":    "specification/schema/v1/assertion.schema.json",
+		"media":        "specification/schema/v1/media.schema.json",
 	}
 
 	if schemaFile, ok := schemaMap[entityType]; ok {
@@ -348,14 +348,14 @@ func ValidateVocabularyFile(path string, doc map[string]interface{}) []string {
 
 func getVocabSchemaPath(vocabType string) string {
 	schemaMap := map[string]string{
-		"relationship_types": "schema/v1/vocabularies/relationship-types.schema.json",
-		"event_types":        "schema/v1/vocabularies/event-types.schema.json",
-		"place_types":        "schema/v1/vocabularies/place-types.schema.json",
-		"repository_types":   "schema/v1/vocabularies/repository-types.schema.json",
-		"participant_roles":  "schema/v1/vocabularies/participant-roles.schema.json",
-		"media_types":        "schema/v1/vocabularies/media-types.schema.json",
-		"confidence_levels":  "schema/v1/vocabularies/confidence-levels.schema.json",
-		"quality_ratings":    "schema/v1/vocabularies/quality-ratings.schema.json",
+		"relationship_types": "specification/schema/v1/vocabularies/relationship-types.schema.json",
+		"event_types":        "specification/schema/v1/vocabularies/event-types.schema.json",
+		"place_types":        "specification/schema/v1/vocabularies/place-types.schema.json",
+		"repository_types":   "specification/schema/v1/vocabularies/repository-types.schema.json",
+		"participant_roles":  "specification/schema/v1/vocabularies/participant-roles.schema.json",
+		"media_types":        "specification/schema/v1/vocabularies/media-types.schema.json",
+		"confidence_levels":  "specification/schema/v1/vocabularies/confidence-levels.schema.json",
+		"quality_ratings":    "specification/schema/v1/vocabularies/quality-ratings.schema.json",
 	}
 
 	if schemaFile, ok := schemaMap[vocabType]; ok {

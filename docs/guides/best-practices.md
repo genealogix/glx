@@ -1,3 +1,9 @@
+---
+title: Best Practices
+description: Recommended workflows and patterns for GENEALOGIX research.
+layout: doc
+---
+
 # Best Practices Guide
 
 This guide provides recommended workflows and conventions for maintaining high-quality GENEALOGIX archives.

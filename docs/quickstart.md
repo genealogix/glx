@@ -1,3 +1,9 @@
+---
+title: Quickstart Guide
+description: Get started with GENEALOGIX in 5 minutes - create your first family archive
+layout: doc
+---
+
 # Quickstart Guide
 
 Get started with GENEALOGIX in 5 minutes! This guide walks you through creating your first family archive.
@@ -276,7 +282,7 @@ glx init  # Already done - relationships/ directory exists
 glx validate
 
 # See all validation examples
-glx validate examples/complete-family/
+glx validate docs/examples/complete-family/
 ```
 
 ## Troubleshooting
@@ -299,7 +305,7 @@ glx validate examples/complete-family/
 🎉 **Congratulations!** You have a working GENEALOGIX archive.
 
 **Continue learning:**
-- [Complete Examples](../../examples/) - See all entity types in action
+- [Complete Examples](examples/) - See all entity types in action
 - [Specification](../../specification/) - Detailed format documentation
 - [Best Practices](../../docs/guides/best-practices.md) - Recommended workflows
 

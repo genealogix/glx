@@ -1,3 +1,9 @@
+---
+title: GENEALOGIX Specification
+description: Complete technical specification for the GENEALOGIX family archive format.
+layout: doc
+---
+
 # GENEALOGIX Specification
 
 Version 1.0.0 (Draft)
@@ -119,7 +125,7 @@ relationships:
 1. Read [Introduction](1-introduction.md) for overview
 2. Review [Entity Types](4-entity-types/) to understand data structure
 3. Check [Archive Organization](3-archive-organization.md) for organization patterns
-4. See [examples/](../../examples/) for working examples
+4. See [examples/](../docs/examples/) for working examples
 5. Use [glx CLI](../../glx/) for validation
 
 ## Contributing

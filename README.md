@@ -11,9 +11,9 @@ The official specification for the **GENEALOGIX (GLX)** family archive format - 
 ## Quick Links
 
 - [📖 Read the Specification](specification/)
-- [📋 JSON Schemas](schema/)
-- [💡 Examples](examples/)
-- [🧪 Test Suite](test-suite/)
+- [📋 JSON Schemas](specification/schema/)
+- [💡 Examples](docs/examples/)
+- [🧪 Test Suite](glx/tests/)
 - [🛠 CLI](glx/)
 - [🧱 Dev Container](.devcontainer/)
 
@@ -176,7 +176,6 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 ### 🐛 Issues & Bug Reports
 - [GitHub Issues](https://github.com/genealogix/spec/issues) - Report bugs and request features
-- [Security Issues](SECURITY.md) - Responsible disclosure for security vulnerabilities
 
 ### 💬 Discussion & Q&A
 - [GitHub Discussions](https://github.com/genealogix/spec/discussions) - Community conversations
@@ -192,14 +191,14 @@ GENEALOGIX is an open-source project that thrives on community participation:
 ### 🤝 Contributing
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
 - [Code of Conduct](CODE_OF_CONDUCT.md) - Community standards
-- [RFC Process](rfcs/) - Propose major changes through RFCs
+- [RFC Process](specification/rfcs/) - Propose major changes through RFCs
 - [Development Setup](docs/development/setup.md) - Set up development environment
 
 ### 🎯 Getting Help
 
 **For Users:**
 1. Start with the [Quickstart Guide](docs/quickstart.md)
-2. Explore [Complete Examples](examples/complete-family/)
+2. Explore [Complete Examples](docs/examples/complete-family/)
 3. Check [Common Pitfalls](docs/guides/common-pitfalls.md)
 4. Ask questions in [GitHub Discussions](https://github.com/genealogix/spec/discussions)
 
@@ -211,7 +210,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 **For Contributors:**
 1. Review [Contributing Guidelines](CONTRIBUTING.md)
-2. Understand the [RFC Process](rfcs/)
+2. Understand the [RFC Process](specification/rfcs/)
 3. Check [Schema Development](docs/development/schema-development.md)
 4. Follow [Best Practices](docs/guides/best-practices.md)
 
@@ -280,40 +279,56 @@ genealogix/spec/
 │   ├── 6-extensibility/
 │   │   └── custom-types.md        # Repository-owned vocabularies
 │   ├── 7-git-integration/
-│   └── 8-interoperability/
-├── schema/
-│   ├── README.md
-│   ├── v1/
-│   │   ├── person.schema.json
-│   │   ├── relationship.schema.json
-│   │   ├── event.schema.json
-│   │   └── vocabularies/          # Vocabulary schemas
-│   │       ├── relationship-types.schema.json
-│   │       ├── event-types.schema.json
-│   │       └── ...
-│   └── meta/
-├── examples/
-│   ├── README.md
-│   ├── basic-family/
-│   │   ├── persons/
-│   │   ├── relationships/
-│   │   └── vocabularies/          # Example vocabularies
-│   └── complete-family/
-│       └── vocabularies/
-├── test-suite/
-│   ├── README.md
-│   ├── run-tests.sh
-│   ├── valid/
-│   └── invalid/
-├── rfcs/
-│   ├── README.md
-│   ├── 0000-template.md
-│   ├── 0001-initial-spec.md
-│   └── 0002-custom-relationship-types.md
-├── glx/
+│   ├── 8-interoperability/
+│   ├── schema/                     # JSON Schemas
+│   │   ├── README.md
+│   │   ├── v1/
+│   │   │   ├── person.schema.json
+│   │   │   ├── relationship.schema.json
+│   │   │   ├── event.schema.json
+│   │   │   └── vocabularies/      # Vocabulary schemas
+│   │   │       ├── relationship-types.schema.json
+│   │   │       ├── event-types.schema.json
+│   │   │       └── ...
+│   │   └── meta/
+│   └── rfcs/                       # RFC proposals
+│       ├── README.md
+│       ├── 0000-template.md
+│       ├── 0001-initial-spec.md
+│       └── 0002-custom-relationship-types.md
+├── docs/
+│   ├── quickstart.md
+│   ├── guides/
+│   │   ├── best-practices.md
+│   │   ├── common-pitfalls.md
+│   │   ├── glossary.md
+│   │   └── migration-from-gedcom.md
+│   ├── development/
+│   │   ├── architecture.md
+│   │   ├── setup.md
+│   │   ├── testing-guide.md
+│   │   └── schema-development.md
+│   └── examples/                   # Example archives
+│       ├── README.md
+│       ├── basic-family/
+│       │   ├── persons/
+│       │   ├── relationships/
+│       │   └── vocabularies/      # Example vocabularies
+│       └── complete-family/
+│           └── vocabularies/
+├── glx/                            # Go CLI implementation
 │   ├── main.go
 │   ├── validator.go
-│   └── validate.go
+│   ├── validate.go
+│   └── tests/                      # Test fixtures
+│       ├── README.md
+│       ├── run-tests.sh
+│       ├── valid/
+│       └── invalid/
+├── website/                        # VitePress documentation site
+│   ├── package.json
+│   └── .vitepress/
+│       └── config.js
 └── .devcontainer/
     └── devcontainer.json
 ```

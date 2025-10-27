@@ -287,7 +287,7 @@ event_types:
 
 ## Schema Validation
 
-Vocabulary files are validated against their JSON schemas in `schema/v1/vocabularies/`. The schemas ensure:
+Vocabulary files are validated against their JSON schemas in `specification/schema/v1/vocabularies/`. The schemas ensure:
 
 - Required fields are present
 - Type keys follow naming conventions (alphanumeric with hyphens, 1-64 characters)

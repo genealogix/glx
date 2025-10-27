@@ -1,3 +1,9 @@
+---
+title: Common Pitfalls
+description: Avoid common mistakes when working with GENEALOGIX archives
+layout: doc
+---
+
 # Common Pitfalls Guide
 
 This guide helps you avoid the most frequent mistakes when working with GENEALOGIX archives.

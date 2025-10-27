@@ -1,3 +1,9 @@
+---
+title: Contributing Guide
+description: How to contribute to GENEALOGIX - for genealogists, developers, and everyone
+layout: doc
+---
+
 # Contributing to GENEALOGIX
 
 Thank you for your interest in contributing to GENEALOGIX! Whether you're a genealogist, developer, or both, we welcome contributions of all kinds.
@@ -68,7 +74,7 @@ go install ./glx
 glx --help
 
 # 6. Run validation tests
-glx validate test-suite/valid/
+glx validate glx/tests/valid/
 ```
 
 ### Development Workflow
@@ -108,32 +114,32 @@ genealogix/spec/
 │   ├── 1-introduction.md
 │   ├── 2-core-concepts.md
 │   ├── 3-file-structure.md
-│   └── 4-entity-types/  # Per-entity specifications
-├── schema/             # JSON Schema definitions
-│   ├── v1/             # Version 1 schemas
-│   └── meta/           # Schema validation schemas
-├── examples/           # Working example archives
-│   └── complete-family/ # Best starting point
-├── test-suite/         # Validation test cases
-│   ├── valid/          # Should pass validation
-│   └── invalid/        # Should fail validation
-├── glx/               # CLI tool source code
-│   └── main.go
-├── docs/              # User and developer documentation
+│   ├── 4-entity-types/  # Per-entity specifications
+│   ├── schema/          # JSON Schema definitions
+│   │   ├── v1/          # Version 1 schemas
+│   │   └── meta/        # Schema validation schemas
+│   └── rfcs/            # Request for Comments (proposals)
+├── docs/                # User and developer documentation
 │   ├── quickstart.md
-│   ├── guides/        # User guides
-│   ├── development/   # Developer guides
-│   └── diagrams/      # Architecture diagrams
-└── rfcs/              # Request for Comments (proposals)
+│   ├── guides/          # User guides
+│   ├── development/     # Developer guides
+│   ├── diagrams/        # Architecture diagrams
+│   └── examples/        # Working example archives
+│       └── complete-family/ # Best starting point
+└── glx/                 # CLI tool source code
+    ├── main.go
+    └── tests/           # Validation test cases
+        ├── valid/       # Should pass validation
+        └── invalid/     # Should fail validation
 ```
 
 ### Understanding the Architecture
 
 **Key Concepts:**
 1. **Specification Documents** (`specification/`) define behavior and requirements
-2. **JSON Schemas** (`schema/`) enforce structure and validation rules
-3. **Examples** (`examples/`) demonstrate practical usage
-4. **Test Suite** (`test-suite/`) ensures conformance
+2. **JSON Schemas** (`specification/schema/`) enforce structure and validation rules
+3. **Examples** (`docs/examples/`) demonstrate practical usage
+4. **Test Suite** (`glx/tests/`) ensures conformance
 
 **Entity Types:**
 - 9 core entity types: Person, Relationship, Event, Place, Source, Citation, Repository, Assertion, Media
@@ -149,10 +155,10 @@ genealogix/spec/
 
 ```bash
 # Validate specification examples
-glx validate examples/
+glx validate docs/examples/
 
 # Validate test suite
-cd test-suite
+cd glx/tests
 ./run-tests.sh
 
 # Check JSON schemas
@@ -168,13 +174,13 @@ find . -name "*.md" -exec markdown-link-check {} \;
 
 ### Writing New Tests
 
-**Valid Test Cases** (`test-suite/valid/`):
+**Valid Test Cases** (`glx/tests/valid/`):
 - Should pass validation
 - Test happy paths and optional fields
 - Include comments explaining what's being tested
 
 ```yaml
-# test-suite/valid/person-with-multiple-names.glx
+# glx/tests/valid/person-with-multiple-names.glx
 id: person-12345678
 version: "1.0"
 concluded_identity:
@@ -184,13 +190,13 @@ concluded_identity:
     - "Juan Hernandez"  # Testing multilingual names
 ```
 
-**Invalid Test Cases** (`test-suite/invalid/`):
+**Invalid Test Cases** (`glx/tests/invalid/`):
 - Should fail validation with specific error
 - Test boundary conditions and error handling
 - Document expected error message
 
 ```yaml
-# test-suite/invalid/person-invalid-id-format.glx
+# glx/tests/invalid/person-invalid-id-format.glx
 # Expected error: ID must match pattern person-[a-f0-9]{8}
 id: invalid-id
 version: "1.0"
@@ -270,7 +276,7 @@ Major changes to the specification require an RFC (Request for Comments).
 
 ### RFC Workflow
 
-1. **Draft**: Copy `rfcs/0000-template.md` to `rfcs/0000-my-feature.md`
+1. **Draft**: Copy `specification/rfcs/0000-template.md` to `specification/rfcs/0000-my-feature.md`
 2. **Complete Template**: Fill out all sections thoroughly
 3. **Submit PR**: Create PR with your RFC
 4. **Discussion**: Community reviews and comments (minimum 7 days)
@@ -278,7 +284,7 @@ Major changes to the specification require an RFC (Request for Comments).
 6. **Implementation**: After acceptance, implement the RFC
 7. **Finalization**: Rename to final number (e.g., `0005-my-feature.md`)
 
-See [`rfcs/README.md`](rfcs/README.md) for complete RFC guidelines.
+See [`specification/rfcs/README.md`](specification/rfcs/README.md) for complete RFC guidelines.
 
 ## Submitting Changes
 
@@ -387,7 +393,6 @@ We are committed to providing a welcoming and inclusive environment. Please read
 ## Questions?
 
 - **Technical questions**: [GitHub Discussions](https://github.com/genealogix/spec/discussions)
-- **Security issues**: See [SECURITY.md](SECURITY.md)
 - **Private concerns**: Contact maintainers at conduct@genealogix.org
 
 ---

@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/person.schema.json",
+  "title": "Person",
+  "description": "An individual in the family archive. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version",
+      "examples": ["1.0", "1.1"]
+    },
+    "concluded_identity": {
+      "type": "object",
+      "description": "Researcher's conclusion about identity",
+      "properties": {
+        "primary_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Primary name for display"
+        },
+        "gender": {
+          "type": "string",
+          "description": "Gender identity"
+        },
+        "living": {
+          "type": "boolean",
+          "description": "Whether person is currently living"
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "description": "References to assertion files",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9/_-]+$"
+      },
+      "uniqueItems": true
+    },
+    "relationships": {
+      "type": "array",
+      "description": "References to relationship files",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this person record was created"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User who created this record"
+    },
+    "modified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this person record was last modified"
+    },
+    "modified_by": {
+      "type": "string",
+      "description": "User who last modified this record"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+
+

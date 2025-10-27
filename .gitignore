@@ -6,6 +6,17 @@
 .DS_Store
 Thumbs.db
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# VitePress build output
+website/.vitepress/dist
+website/.vitepress/cache
+
 # IDE files
 .vscode/
 .idea/

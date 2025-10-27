@@ -1,3 +1,9 @@
+---
+title: Code of Conduct
+description: Community guidelines and standards for GENEALOGIX contributors
+layout: doc
+---
+
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge

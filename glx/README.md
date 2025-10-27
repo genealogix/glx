@@ -183,7 +183,7 @@ Examples:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GLX_SCHEMA_DIR` | Directory containing schema files | `schema/v1/` |
+| `GLX_SCHEMA_DIR` | Directory containing schema files | `specification/schema/v1/` |
 | `GLX_STRICT_MODE` | Enable strict validation | `false` |
 | `GLX_CACHE_SCHEMAS` | Cache compiled schemas | `true` |
 | `GLX_MAX_ERRORS` | Maximum errors to report | `100` |
@@ -407,7 +407,7 @@ ls -la file.glx
 **Schema compilation errors:**
 ```bash
 # Check schema syntax
-ajv compile -s schema/v1/person.schema.json
+ajv compile -s specification/schema/v1/person.schema.json
 
 # Validate schema files
 glx check-schemas
@@ -517,9 +517,9 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](../LICENSE) for de
 ## Related Projects
 
 - [GENEALOGIX Specification](../README.md) - Core specification
-- [Examples](../examples/) - Practical usage examples
-- [Test Suite](../test-suite/) - Validation tests
-- [Schemas](../schema/) - JSON Schema definitions
+- [Examples](../docs/examples/) - Practical usage examples
+- [Test Suite](tests/) - Validation tests
+- [Schemas](../specification/schema/) - JSON Schema definitions
 
 ---
 

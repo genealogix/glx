@@ -1,3 +1,9 @@
+---
+title: Glossary
+description: Key terms and concepts in GENEALOGIX
+layout: doc
+---
+
 # GENEALOGIX Glossary
 
 This glossary defines key terms used in the GENEALOGIX specification and documentation.

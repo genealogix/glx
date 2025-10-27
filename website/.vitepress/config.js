@@ -1,0 +1,242 @@
+import { defineConfig } from 'vitepress'
+
+export default defineConfig({
+  title: 'GENEALOGIX',
+  description: 'A modern, evidence-first, Git-native genealogy data standard',
+  
+  // Set the base URL for Cloudflare Pages deployment
+  base: '/',
+  
+  // Set source directory to parent (repository root)
+  // This allows VitePress to access all markdown files in the repo
+  srcDir: '..',
+  
+  // Ignore dead links temporarily during setup
+  ignoreDeadLinks: true,
+  
+  // Vite configuration for file watching in Docker/WSL
+  vite: {
+    server: {
+      watch: {
+        usePolling: true,
+        interval: 100
+      }
+    }
+  },
+  
+  // Rewrite paths to map source directories to desired URL structure
+  // Paths are now relative to srcDir (parent directory)
+  // IMPORTANT: Specific rewrites must come BEFORE wildcards
+  rewrites: {
+    // Website homepage
+    'website/index.md': 'index.md',
+    
+    // Docs section - specific files first
+    'docs/quickstart.md': 'quickstart.md',
+    'docs/examples/README.md': 'examples/index.md',
+    
+    // Root-level docs to development section
+    'CONTRIBUTING.md': 'development/contributing.md',
+    'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
+    'docs/examples/basic-family/README.md': 'examples/basic-family/index.md',
+    'docs/examples/complete-family/README.md': 'examples/complete-family/index.md',
+    'docs/examples/complex-relationships/README.md': 'examples/complex-relationships/index.md',
+    'docs/examples/evidence-based/README.md': 'examples/evidence-based/index.md',
+    'docs/examples/large-scale/README.md': 'examples/large-scale/index.md',
+    'docs/examples/minimal/README.md': 'examples/minimal/index.md',
+    'docs/examples/oral-history/README.md': 'examples/oral-history/index.md',
+    'docs/examples/single-file/README.md': 'examples/single-file/index.md',
+    'docs/guides/:page*': 'guides/:page*',
+    'docs/development/:page*': 'development/:page*',
+    'docs/examples/:page*': 'examples/:page*',
+    
+    // Specification section - specific files first, then wildcards
+    'specification/README.md': 'specification/index.md',
+    'specification/schema/README.md': 'specification/schema/index.md',
+    'specification/rfcs/README.md': 'specification/rfcs/index.md',
+    'specification/4-entity-types/README.md': 'specification/4-entity-types/index.md',
+    'specification/:page*': 'specification/:page*'
+  },
+
+  themeConfig: {
+    // Site logo and branding
+    logo: '/logo.svg',
+    siteTitle: 'GENEALOGIX',
+    
+    // Navigation bar
+    nav: [
+      { text: 'Home', link: '/' },
+      { text: 'Quickstart', link: '/quickstart' },
+      { 
+        text: 'Specification', 
+        items: [
+          { text: 'Overview', link: '/specification/' },
+          { text: 'Introduction', link: '/specification/1-introduction' },
+          { text: 'Core Concepts', link: '/specification/2-core-concepts' },
+          { text: 'Entity Types', link: '/specification/4-entity-types/' },
+          { text: 'JSON Schemas', link: '/specification/schema/' },
+          { text: 'RFCs', link: '/specification/rfcs/' }
+        ]
+      },
+      { 
+        text: 'Guides', 
+        items: [
+          { text: 'Best Practices', link: '/guides/best-practices' },
+          { text: 'Common Pitfalls', link: '/guides/common-pitfalls' },
+          { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' },
+          { text: 'Glossary', link: '/guides/glossary' }
+        ]
+      },
+      { text: 'Examples', link: '/examples/' },
+      { 
+        text: 'Development',
+        items: [
+          { text: 'Architecture', link: '/development/architecture' },
+          { text: 'Setup', link: '/development/setup' },
+          { text: 'Testing Guide', link: '/development/testing-guide' },
+          { text: 'Schema Development', link: '/development/schema-development' },
+          { text: 'Contributing Guide', link: '/development/contributing' },
+          { text: 'Code of Conduct', link: '/development/code-of-conduct' }
+        ]
+      },
+      { 
+        text: 'Links',
+        items: [
+          { text: 'GitHub', link: 'https://github.com/genealogix/spec' },
+          { text: 'Discussions', link: 'https://github.com/genealogix/spec/discussions' },
+          { text: 'Issues', link: 'https://github.com/genealogix/spec/issues' }
+        ]
+      }
+    ],
+
+    // Sidebar configuration
+    sidebar: {
+      '/specification/': [
+        {
+          text: 'Specification',
+          items: [
+            { text: 'Overview', link: '/specification/' },
+            { text: 'Introduction', link: '/specification/1-introduction' },
+            { text: 'Core Concepts', link: '/specification/2-core-concepts' },
+            { text: 'Archive Organization', link: '/specification/3-archive-organization' }
+          ]
+        },
+        {
+          text: 'Entity Types',
+          items: [
+            { text: 'Overview', link: '/specification/4-entity-types/' },
+            { text: 'Person', link: '/specification/4-entity-types/person' },
+            { text: 'Relationship', link: '/specification/4-entity-types/relationship' },
+            { text: 'Event', link: '/specification/4-entity-types/event' },
+            { text: 'Place', link: '/specification/4-entity-types/place' },
+            { text: 'Source', link: '/specification/4-entity-types/source' },
+            { text: 'Citation', link: '/specification/4-entity-types/citation' },
+            { text: 'Assertion', link: '/specification/4-entity-types/assertion' },
+            { text: 'Repository', link: '/specification/4-entity-types/repository' },
+            { text: 'Media', link: '/specification/4-entity-types/media' }
+          ]
+        },
+        {
+          text: 'Extensibility',
+          items: [
+            { text: 'Custom Types', link: '/specification/6-extensibility/custom-types' }
+          ]
+        },
+        {
+          text: 'Schemas & RFCs',
+          items: [
+            { text: 'JSON Schemas', link: '/specification/schema/' },
+            { text: 'RFCs', link: '/specification/rfcs/' }
+          ]
+        }
+      ],
+      '/guides/': [
+        {
+          text: 'User Guides',
+          items: [
+            { text: 'Best Practices', link: '/guides/best-practices' },
+            { text: 'Common Pitfalls', link: '/guides/common-pitfalls' },
+            { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' },
+            { text: 'Glossary', link: '/guides/glossary' }
+          ]
+        }
+      ],
+      '/development/': [
+        {
+          text: 'Developer Guides',
+          items: [
+            { text: 'Architecture', link: '/development/architecture' },
+            { text: 'Setup', link: '/development/setup' },
+            { text: 'Testing Guide', link: '/development/testing-guide' },
+            { text: 'Schema Development', link: '/development/schema-development' }
+          ]
+        },
+        {
+          text: 'Contributing',
+          items: [
+            { text: 'Contributing Guide', link: '/development/contributing' },
+            { text: 'Code of Conduct', link: '/development/code-of-conduct' }
+          ]
+        }
+      ],
+      '/examples/': [
+        {
+          text: 'Examples',
+          items: [
+            { text: 'Overview', link: '/examples/' }
+          ]
+        },
+        {
+          text: 'For Beginners',
+          items: [
+            { text: 'Complete Family ⭐', link: '/examples/complete-family/' },
+            { text: 'Basic Family', link: '/examples/basic-family/' },
+            { text: 'Minimal', link: '/examples/minimal/' }
+          ]
+        },
+        {
+          text: 'For Advanced Users',
+          items: [
+            { text: 'Complex Relationships', link: '/examples/complex-relationships/' },
+            { text: 'Evidence-Based', link: '/examples/evidence-based/' },
+            { text: 'Oral History', link: '/examples/oral-history/' },
+            { text: 'Large Scale', link: '/examples/large-scale/' },
+            { text: 'Single File', link: '/examples/single-file/' }
+          ]
+        }
+      ]
+    },
+
+    // Social links
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/genealogix/spec' }
+    ],
+
+    // Footer
+    footer: {
+      message: 'Licensed under Apache License 2.0',
+      copyright: 'Copyright © 2025 Oracynth, Inc.'
+    },
+
+    // Edit link
+    editLink: {
+      pattern: 'https://github.com/genealogix/spec/edit/main/:path',
+      text: 'Edit this page on GitHub'
+    },
+
+    // Last updated timestamp
+    lastUpdated: {
+      text: 'Last updated',
+      formatOptions: {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }
+    },
+
+    // Search
+    search: {
+      provider: 'local'
+    }
+  }
+})
+

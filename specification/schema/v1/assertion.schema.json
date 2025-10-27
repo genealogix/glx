@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/assertion",
+  "title": "Assertion",
+  "description": "A source-backed claim about an entity. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["version", "subject", "claim"],
+  "anyOf": [
+    { "required": ["sources"] },
+    { "required": ["citations"] }
+  ],
+  "properties": {
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+    "subject": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
+    "claim": { "type": "string", "minLength": 1 },
+    "value": { "type": "string" },
+    "type": { "type": "string" },
+    "evidence_type": { "type": "string" },
+    "confidence": { "type": "string" },
+    "research_notes": { "type": "string" },
+    "notes": { "type": "string" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
+      "uniqueItems": true
+    },
+    "citations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
+      "uniqueItems": true
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "created_by": { "type": "string" },
+    "modified_at": { "type": "string", "format": "date-time" },
+    "modified_by": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  },
+  "additionalProperties": true
+}

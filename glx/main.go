@@ -207,7 +207,7 @@ See the [GENEALOGIX specification](https://github.com/genealogix/spec) for detai
 
 func isSpecRepository() bool {
 	// Check if we're in the GENEALOGIX spec repository by looking for key files
-	specFiles := []string{"specification/README.md", "schema/v1/person.schema.json", "glx/main.go"}
+	specFiles := []string{"specification/README.md", "specification/schema/v1/person.schema.json", "glx/main.go"}
 	for _, file := range specFiles {
 		if _, err := os.Stat(file); err != nil {
 			return false

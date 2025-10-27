@@ -1,6 +1,12 @@
+---
+title: Introduction to GENEALOGIX
+description: Overview, purpose, and key concepts of the GENEALOGIX specification.
+layout: doc
+---
+
 # Introduction
 
-## Purpose and Scope
+## Purpose and Scope 
 
 GENEALOGIX defines a human-readable, version-controlled archive format for family history data. It addresses the limitations of existing genealogy formats by providing:
 
@@ -125,7 +131,7 @@ Converting from existing formats:
 The quickest way to understand GENEALOGIX is through examples:
 
 1. **Quick Start**: Follow the [5-minute tutorial](../../docs/quickstart.md)
-2. **Complete Examples**: Explore the [complete family example](../../examples/complete-family/)
+2. **Complete Examples**: Explore the [complete family example](../docs/examples/complete-family/)
 3. **Specification Details**: Read the detailed entity specifications in sections 4-8
 4. **Implementation**: Use the [CLI tool](../../glx/) for validation and management
 
@@ -135,7 +141,7 @@ GENEALOGIX is an open-source project welcoming contributions:
 
 - **Issues**: [Bug reports and feature requests](https://github.com/genealogix/spec/issues)
 - **Discussions**: [Community Q&A and collaboration](https://github.com/genealogix/spec/discussions)
-- **RFCs**: [Major changes through Request for Comments](../../rfcs/)
+- **RFCs**: [Major changes through Request for Comments](rfcs/)
 - **Contributing**: See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines
 
 ## Version History

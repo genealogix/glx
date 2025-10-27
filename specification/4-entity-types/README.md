@@ -181,7 +181,7 @@ All entities must:
 - Have valid, unique IDs in the correct format
 - Have version numbers (semantic versioning)
 - Have timestamps and creator information
-- Pass schema validation against JSON schemas in `schema/v1/`
+- Pass schema validation against JSON schemas in `specification/schema/v1/`
 - Maintain referential integrity (references to other entities must exist)
 
 ## Extension Points

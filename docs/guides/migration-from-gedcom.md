@@ -1,3 +1,9 @@
+---
+title: Migration from GEDCOM
+description: Guide for converting GEDCOM files to GENEALOGIX format
+layout: doc
+---
+
 # Migration from GEDCOM Guide
 
 This guide helps you convert existing GEDCOM files to GENEALOGIX format while preserving evidence and maintaining data quality.
