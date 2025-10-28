@@ -37,7 +37,6 @@ sources:
 
 **Key Points:**
 - Entity ID is the map key (`source-parish-register`)
-- NO `id` field inside the entity object
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
 ## Required Fields

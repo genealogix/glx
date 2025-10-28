@@ -1,4 +1,7 @@
 <script setup>
+import { ref, onMounted, watch } from 'vue'
+import { codeToHtml } from 'shiki'
+
 const props = defineProps({
   content: {
     type: String,
@@ -8,6 +11,33 @@ const props = defineProps({
     type: String,
     default: ''
   }
+})
+
+const highlightedCode = ref('')
+
+const highlightCode = async () => {
+  try {
+    highlightedCode.value = await codeToHtml(props.content, {
+      lang: 'yaml',
+      themes: {
+        light: 'github-light',
+        dark: 'github-dark'
+      },
+      defaultColor: false
+    })
+  } catch (error) {
+    console.error('Failed to highlight code:', error)
+    // Fallback to plain text
+    highlightedCode.value = `<pre><code>${props.content}</code></pre>`
+  }
+}
+
+onMounted(() => {
+  highlightCode()
+})
+
+watch(() => props.content, () => {
+  highlightCode()
 })
 </script>
 
@@ -20,7 +50,7 @@ const props = defineProps({
       <div class="language-yaml vp-adaptive-theme">
         <button title="Copy Code" class="copy"></button>
         <span class="lang">yaml</span>
-        <pre class="shiki shiki-themes github-light github-dark vp-code"><code>{{ content }}</code></pre>
+        <div v-html="highlightedCode"></div>
       </div>
     </div>
   </div>
@@ -45,25 +75,28 @@ const props = defineProps({
 .yaml-file-content .language-yaml {
   position: relative;
   margin: 16px 0;
-  background-color: var(--vp-code-block-bg);
   overflow-x: auto;
-  transition: background-color 0.5s;
   border-radius: 8px;
 }
 
-.yaml-file-content pre {
+/* Style for Shiki output - match VitePress defaults */
+.yaml-file-content :deep(pre) {
   margin: 0;
   padding: 20px 24px;
   overflow-x: auto;
-  line-height: 1.5;
+  line-height: var(--vp-code-line-height);
+  font-size: var(--vp-code-font-size);
+  border-radius: 8px;
+  background-color: var(--vp-code-block-bg);
+  transition: background-color 0.5s;
 }
 
-.yaml-file-content code {
+.yaml-file-content :deep(code) {
   display: block;
   width: fit-content;
   min-width: 100%;
   font-family: var(--vp-font-family-mono);
-  font-size: 14px;
+  font-size: var(--vp-code-font-size);
   color: var(--vp-code-block-color);
   transition: color 0.5s;
 }

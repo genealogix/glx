@@ -4,13 +4,20 @@ description: Standard vocabulary templates for GENEALOGIX archives
 ---
 
 <script setup>
-import YamlFile from '../../website/.vitepress/components/YamlFile.vue'
-import { data as vocabularies } from '../../website/.vitepress/data/vocabularies.data.js'
+import YamlFile from './.vitepress/components/YamlFile.vue'
+import { data as vocabularies } from './.vitepress/data/vocabularies.data.js'
 </script>
 
 # Standard Vocabularies
 
 GENEALOGIX includes a comprehensive set of standard vocabularies that define controlled types for events, relationships, places, sources, media, and more. These vocabularies are automatically copied to new archives during initialization with `glx init`.
+
+::: tip Archive Initialization
+When you run `glx init`, these standard vocabulary files are copied to your archive's `vocabularies/` directory. You can then customize them by:
+- Editing descriptions and labels
+- Adding custom types with `custom: true`
+- Adjusting to match your research focus
+:::
 
 ## Overview
 
@@ -32,7 +39,7 @@ Defines lifecycle events (birth, death, marriage), religious events (baptism, co
   title="vocabularies/event-types.glx"
 />
 
-**See Also:** [Event Entity Documentation](../4-entity-types/event) | [Vocabularies Specification](../4-entity-types/vocabularies#event-types-vocabulary)
+**See Also:** [Event Entity Documentation](/specification/4-entity-types/event) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#event-types-vocabulary)
 
 ---
 
@@ -45,7 +52,7 @@ Defines relationships between people including marriage, parent-child, sibling, 
   title="vocabularies/relationship-types.glx"
 />
 
-**See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-types-vocabulary)
+**See Also:** [Relationship Entity Documentation](/specification/4-entity-types/relationship) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#relationship-types-vocabulary)
 
 ---
 
@@ -58,7 +65,7 @@ Defines geographic and administrative place classifications from countries down 
   title="vocabularies/place-types.glx"
 />
 
-**See Also:** [Place Entity Documentation](../4-entity-types/place) | [Vocabularies Specification](../4-entity-types/vocabularies#place-types-vocabulary)
+**See Also:** [Place Entity Documentation](/specification/4-entity-types/place) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#place-types-vocabulary)
 
 ---
 
@@ -71,7 +78,7 @@ Defines categories of genealogical sources including vital records, census, chur
   title="vocabularies/source-types.glx"
 />
 
-**See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-types-vocabulary)
+**See Also:** [Source Entity Documentation](/specification/4-entity-types/source) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#source-types-vocabulary)
 
 ---
 
@@ -84,7 +91,7 @@ Defines categories of media objects including photographs, documents, audio reco
   title="vocabularies/media-types.glx"
 />
 
-**See Also:** [Media Entity Documentation](../4-entity-types/media) | [Vocabularies Specification](../4-entity-types/vocabularies#media-types-vocabulary)
+**See Also:** [Media Entity Documentation](/specification/4-entity-types/media) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#media-types-vocabulary)
 
 ---
 
@@ -97,7 +104,7 @@ Defines the 0-3 quality rating scale for citation evidence quality, compatible w
   title="vocabularies/quality-ratings.glx"
 />
 
-**See Also:** [Citation Entity Documentation](../4-entity-types/citation) | [Vocabularies Specification](../4-entity-types/vocabularies#quality-ratings-vocabulary)
+**See Also:** [Citation Entity Documentation](/specification/4-entity-types/citation) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#quality-ratings-vocabulary)
 
 ---
 
@@ -110,7 +117,7 @@ Defines confidence levels for assertions, providing an alternative to citation q
   title="vocabularies/confidence-levels.glx"
 />
 
-**See Also:** [Assertion Entity Documentation](../4-entity-types/assertion) | [Vocabularies Specification](../4-entity-types/vocabularies#confidence-levels-vocabulary)
+**See Also:** [Assertion Entity Documentation](/specification/4-entity-types/assertion) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#confidence-levels-vocabulary)
 
 ---
 
@@ -123,7 +130,7 @@ Defines roles that people play in events and relationships (principal, witness, 
   title="vocabularies/participant-roles.glx"
 />
 
-**See Also:** [Event Entity Documentation](../4-entity-types/event) | [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#participant-roles-vocabulary)
+**See Also:** [Event Entity Documentation](/specification/4-entity-types/event) | [Relationship Entity Documentation](/specification/4-entity-types/relationship) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#participant-roles-vocabulary)
 
 ---
 
@@ -136,15 +143,11 @@ Defines categories of institutions that hold genealogical sources (archives, lib
   title="vocabularies/repository-types.glx"
 />
 
-**See Also:** [Repository Entity Documentation](../4-entity-types/repository) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-types-vocabulary)
+**See Also:** [Repository Entity Documentation](/specification/4-entity-types/repository) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#repository-types-vocabulary)
 
 ---
 
 ## Customizing Vocabularies
-
-::: tip Complete Syntax Reference
-For detailed field requirements, validation rules, and exact syntax for each vocabulary type, see the [Vocabularies Specification](../4-entity-types/vocabularies).
-:::
 
 ### Adding Custom Types
 
@@ -184,6 +187,7 @@ The `glx validate` command ensures all types are properly defined:
 
 ```bash
 $ glx validate
+
 ✓ vocabularies/event-types.glx
 ✓ events/event-apprenticeship.glx
   - event type 'apprenticeship' found in vocabulary (custom)
@@ -191,14 +195,15 @@ $ glx validate
 
 ## Best Practices
 
-- **Use Standard Types First** - Standard types ensure GEDCOM compatibility and interoperability
-- **Document Custom Types** - Provide clear labels and descriptions for custom types
-- **Mark Custom Types** - Always include `custom: true` for non-standard types
-- **Map to GEDCOM** - Include GEDCOM mappings when possible (use `_TAG` format for custom tags)
-- **Keep Consistent** - Use consistent naming conventions (lowercase with hyphens)
+1. **Use Standard Types First** - Standard types ensure GEDCOM compatibility and interoperability
+2. **Document Custom Types** - Provide clear labels and descriptions for custom types
+3. **Mark Custom Types** - Always include `custom: true` for non-standard types
+4. **Map to GEDCOM** - Include GEDCOM mappings when possible (use `_TAG` format for custom tags)
+5. **Keep Consistent** - Use consistent naming conventions (lowercase with hyphens)
 
 ## See Also
 
-- [Vocabularies Documentation](../4-entity-types/vocabularies) - Complete vocabulary reference
-- [Core Concepts - Repository-Owned Vocabularies](../2-core-concepts#repository-owned-vocabularies)
-- [Archive Organization](../3-archive-organization#vocabularies-directory)
+- [Vocabularies Documentation](/specification/4-entity-types/vocabularies) - Complete vocabulary reference
+- [Core Concepts - Repository-Owned Vocabularies](/specification/2-core-concepts#repository-owned-vocabularies)
+- [Archive Organization](/specification/3-archive-organization#vocabularies-directory)
+

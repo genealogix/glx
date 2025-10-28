@@ -98,7 +98,6 @@ persons:
 
 **Key Points:**
 - Entity ID is the map key (`person-john-smith-1850`)
-- No `id` field inside the entity object
 - Entity type plural at top level (`persons`)
 - Files can contain multiple entities of the same type (see `events/event-births.glx`)
 

@@ -30,7 +30,6 @@ media:
 
 **Key Points:**
 - Entity ID is the map key (`media-birth-cert-scan`)
-- NO `id` field inside the entity object
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
 ## Required Fields

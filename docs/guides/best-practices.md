@@ -44,8 +44,6 @@ assertions:
     confidence: high
 ```
 
-**Note:** Entity IDs are map keys (e.g., `person-a1b2c3d4`), not `id` fields within entities.
-
 ### 2. Complete Evidence Chains
 
 **Every assertion needs a complete evidence chain:**

@@ -120,8 +120,6 @@ assertions:
     confidence: high
 ```
 
-**Note:** Entity IDs are map keys, not `id` fields. All GENEALOGIX files use this same structure.
-
 ### Collaboration Comparison
 
 **GEDCOM Collaboration:**

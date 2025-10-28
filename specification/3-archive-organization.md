@@ -63,7 +63,6 @@ Each `.glx` file must:
 - Be valid YAML
 - Have at least one entity type key
 - Contain properly structured entities
-- NOT have `id` fields in entity objects (ID is the map key)
 
 ### 2. Repository-Level Validation
 
