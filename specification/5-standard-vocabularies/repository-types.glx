@@ -1,0 +1,45 @@
+# Standard Repository Types
+# This file defines the standard repository types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding entries with `custom: true`.
+
+repository_types:
+  archive:
+    label: "Archive"
+    description: "Government or historical archive"
+  
+  library:
+    label: "Library"
+    description: "Public, university, or specialty library"
+  
+  church:
+    label: "Church"
+    description: "Church or religious organization archives"
+  
+  database:
+    label: "Online Database"
+    description: "Online genealogical database service"
+  
+  museum:
+    label: "Museum"
+    description: "Museum with genealogical collections"
+  
+  registry:
+    label: "Registry"
+    description: "Civil registration office or vital records office"
+  
+  historical_society:
+    label: "Historical Society"
+    description: "Local historical society"
+  
+  university:
+    label: "University"
+    description: "University special collections or archives"
+  
+  government_agency:
+    label: "Government Agency"
+    description: "Government record-keeping agency"
+  
+  other:
+    label: "Other"
+    description: "Other institution type"
+

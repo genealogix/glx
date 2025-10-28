@@ -16,7 +16,7 @@ GENEALOGIX uses **repository-owned vocabularies** to define controlled lists of 
 
 ## Vocabulary Files
 
-All vocabulary files are stored in:
+All vocabulary files are stored in the `vocabularies/` directory of each archive:
 ```
 vocabularies/
 ├── event-types.glx
@@ -30,6 +30,8 @@ vocabularies/
 └── repository-types.glx
 ```
 
+When initializing a new archive with `glx init`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates.
+
 ---
 
 ## Event Types Vocabulary
@@ -39,6 +41,8 @@ vocabularies/
 **Used By**: [Event Entity](event.md#event-types)
 
 **Purpose**: Defines all event and fact types used in the archive (birth, marriage, death, occupation, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Event Types](/specification/5-standard-vocabularies/#event-types) for the complete default vocabulary with all standard event types.
 
 ### Structure
 
@@ -83,71 +87,9 @@ event_types:
 
 ### Standard Event Types
 
-GENEALOGIX provides standardized event type codes for interoperability:
+**Standard Event Types**: GENEALOGIX provides 19 standardized event type codes including lifecycle events (birth, death, marriage), religious events (baptism, confirmation, bar/bat mitzvah), and attribute facts (occupation, residence, education, title, nationality, religion).
 
-| Type | Label | Category | GEDCOM | Description |
-|------|-------|----------|--------|-------------|
-| `birth` | Birth | Lifecycle | BIRT | Person's birth |
-| `death` | Death | Lifecycle | DEAT | Person's death |
-| `marriage` | Marriage | Lifecycle | MARR | Marriage ceremony |
-| `divorce` | Divorce | Lifecycle | DIV | Legal dissolution of marriage |
-| `engagement` | Engagement | Lifecycle | ENGA | Engagement to be married |
-| `adoption` | Adoption | Lifecycle | ADOP | Legal adoption |
-| `baptism` | Baptism | Religious | BAPM | Christian baptism ceremony |
-| `confirmation` | Confirmation | Religious | CONF | Religious confirmation |
-| `bar_mitzvah` | Bar Mitzvah | Religious | BARM | Jewish coming of age ceremony (male) |
-| `bat_mitzvah` | Bat Mitzvah | Religious | BATM | Jewish coming of age ceremony (female) |
-| `burial` | Burial | Lifecycle | BURI | Burial of remains |
-| `cremation` | Cremation | Lifecycle | CREM | Cremation of remains |
-| `christening` | Christening | Religious | CHR | Infant christening |
-| `residence` | Residence | Attribute | RESI | Place of residence |
-| `occupation` | Occupation | Attribute | OCCU | Employment or profession |
-| `title` | Title | Attribute | TITL | Nobility or honorific title |
-| `nationality` | Nationality | Attribute | NATI | National citizenship |
-| `religion` | Religion | Attribute | RELI | Religious affiliation |
-| `education` | Education | Attribute | EDUC | Educational achievement |
-
-**Complete Vocabulary Example:**
-
-```yaml
-# vocabularies/event-types.glx
-event_types:
-  birth:
-    label: "Birth"
-    description: "Person's birth"
-    category: "lifecycle"
-    gedcom: "BIRT"
-  
-  death:
-    label: "Death"
-    description: "Person's death"
-    category: "lifecycle"
-    gedcom: "DEAT"
-  
-  marriage:
-    label: "Marriage"
-    description: "Marriage ceremony"
-    category: "lifecycle"
-    gedcom: "MARR"
-  
-  baptism:
-    label: "Baptism"
-    description: "Religious baptism ceremony"
-    category: "religious"
-    gedcom: "BAPM"
-  
-  occupation:
-    label: "Occupation"
-    description: "Employment or profession"
-    category: "attribute"
-    gedcom: "OCCU"
-  
-  residence:
-    label: "Residence"
-    description: "Place of residence"
-    category: "attribute"
-    gedcom: "RESI"
-```
+**Complete List**: See [Standard Vocabularies - Event Types](/specification/5-standard-vocabularies/#event-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Custom Event Types
 
@@ -182,6 +124,8 @@ event_types:
 **Used By**: [Relationship Entity](relationship.md#relationship-types)
 
 **Purpose**: Defines all relationship types between persons (marriage, parent-child, sibling, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Relationship Types](/specification/5-standard-vocabularies/#relationship-types) for the complete default vocabulary with all standard relationship types.
 
 ### Structure
 
@@ -221,48 +165,9 @@ relationship_types:
 
 ### Standard Relationship Types
 
-GENEALOGIX provides standardized relationship type codes for interoperability:
+**Standard Relationship Types**: GENEALOGIX provides 8 standardized relationship type codes including marriage, parent-child, sibling, adoption, step-parent, godparent, guardian, and partner relationships.
 
-| Type | Label | GEDCOM | Description |
-|------|-------|--------|-------------|
-| `marriage` | Marriage | MARR | Legal or religious union of two people |
-| `parent-child` | Parent-Child | CHIL/FAMC | Biological, adoptive, or legal parent-child relationship |
-| `sibling` | Sibling | SIBL | Brother or sister relationship |
-| `adoption` | Adoption | ADOP | Legal adoption relationship |
-| `step-parent` | Step-Parent | - | Step-parent through marriage |
-| `godparent` | Godparent | - | Spiritual sponsor relationship |
-| `guardian` | Guardian | - | Legal guardian relationship |
-| `partner` | Partner | - | Domestic partnership or cohabitation |
-
-**Complete Vocabulary Example:**
-
-```yaml
-# vocabularies/relationship-types.glx
-relationship_types:
-  marriage:
-    label: "Marriage"
-    description: "Legal or religious union of two people"
-    gedcom: "MARR"
-  
-  parent-child:
-    label: "Parent-Child"
-    description: "Biological, adoptive, or legal parent-child relationship"
-    gedcom: "CHIL/FAMC"
-  
-  sibling:
-    label: "Sibling"
-    description: "Brother or sister relationship"
-    gedcom: "SIBL"
-  
-  adoption:
-    label: "Adoption"
-    description: "Legal adoption relationship"
-    gedcom: "ADOP"
-  
-  godparent:
-    label: "Godparent"
-    description: "Spiritual sponsor relationship"
-```
+**Complete List**: See [Standard Vocabularies - Relationship Types](/specification/5-standard-vocabularies/#relationship-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Custom Relationship Types
 
@@ -294,6 +199,8 @@ relationship_types:
 **Used By**: [Place Entity](place.md#place-types)
 
 **Purpose**: Defines geographic and administrative place classifications (country, state, city, parish, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Place Types](/specification/5-standard-vocabularies/#place-types) for the complete default vocabulary with all standard place types.
 
 ### Structure
 
@@ -339,52 +246,9 @@ place_types:
 
 ### Standard Place Types
 
-GENEALOGIX provides standardized place type codes for geographic and administrative classifications:
+**Standard Place Types**: GENEALOGIX provides 11 standardized place type codes including administrative divisions (country, state, county, district), geographic features (city, town, region, neighborhood, street, building), and religious divisions (parish).
 
-| Type | Label | Category | Description |
-|------|-------|----------|-------------|
-| `country` | Country | Administrative | Nation state or country |
-| `state` | State/Province | Administrative | State, province, or region |
-| `county` | County | Administrative | County or similar administrative division |
-| `city` | City | Geographic | City or town |
-| `town` | Town | Geographic | Town or village |
-| `parish` | Parish | Religious | Church parish or ecclesiastical division |
-| `district` | District | Administrative | Administrative district |
-| `region` | Region | Geographic | Geographic region |
-| `neighborhood` | Neighborhood | Geographic | Neighborhood or locality |
-| `street` | Street | Geographic | Street or road |
-| `building` | Building | Geographic | Specific building or structure |
-
-**Complete Vocabulary Example:**
-
-```yaml
-# vocabularies/place-types.glx
-place_types:
-  country:
-    label: "Country"
-    description: "Nation state or country"
-    category: "administrative"
-  
-  state:
-    label: "State/Province"
-    description: "State, province, or region"
-    category: "administrative"
-  
-  county:
-    label: "County"
-    description: "County or similar administrative division"
-    category: "administrative"
-  
-  city:
-    label: "City"
-    description: "City or town"
-    category: "geographic"
-  
-  parish:
-    label: "Parish"
-    description: "Church parish or ecclesiastical division"
-    category: "religious"
-```
+**Complete List**: See [Standard Vocabularies - Place Types](/specification/5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Custom Place Types
 
@@ -418,6 +282,8 @@ place_types:
 **Used By**: [Source Entity](source.md#source-types)
 
 **Purpose**: Defines categories of sources (vital records, census, church registers, newspapers, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Source Types](/specification/5-standard-vocabularies/#source-types) for the complete default vocabulary with all standard source types.
 
 ### Structure
 
@@ -456,56 +322,9 @@ source_types:
 
 ### Standard Source Types
 
-GENEALOGIX provides standardized source type codes for different categories of genealogical sources:
+**Standard Source Types**: GENEALOGIX provides 16 standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, and other.
 
-| Type | Label | Description |
-|------|-------|-------------|
-| `vital_record` | Vital Record | Birth, marriage, death certificates |
-| `census` | Census Record | Census records and population enumerations |
-| `church_register` | Church Register | Parish registers of baptisms, marriages, burials |
-| `military` | Military Record | Military service records, pension files |
-| `newspaper` | Newspaper | Newspapers, periodicals, gazettes |
-| `probate` | Probate Record | Wills, probate records, estate files |
-| `land` | Land Record | Deeds, land grants, property records |
-| `court` | Court Record | Court records, legal proceedings |
-| `immigration` | Immigration Record | Passenger lists, naturalization records |
-| `directory` | Directory | City directories, telephone books |
-| `book` | Published Book | Published genealogies, family histories |
-| `database` | Online Database | Online databases, compiled records |
-| `oral_history` | Oral History | Interviews, recorded memories |
-| `correspondence` | Correspondence | Letters, emails, personal papers |
-| `photograph` | Photograph Collection | Photo collections |
-| `other` | Other | Other source types |
-
-**Complete Vocabulary Example:**
-
-```yaml
-# vocabularies/source-types.glx
-source_types:
-  vital_record:
-    label: "Vital Record"
-    description: "Birth, marriage, death certificates"
-  
-  census:
-    label: "Census Record"
-    description: "Population census enumerations"
-  
-  church_register:
-    label: "Church Register"
-    description: "Parish registers of baptisms, marriages, burials"
-  
-  military:
-    label: "Military Record"
-    description: "Service records, pension files"
-  
-  newspaper:
-    label: "Newspaper"
-    description: "Newspapers, periodicals, gazettes"
-  
-  probate:
-    label: "Probate Record"
-    description: "Wills, probate records, estate files"
-```
+**Complete List**: See [Standard Vocabularies - Source Types](/specification/5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Custom Source Types
 
@@ -532,6 +351,8 @@ source_types:
 **Used By**: [Media Entity](media.md#media-types)
 
 **Purpose**: Defines categories of media objects (photographs, documents, audio, video, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Media Types](/specification/5-standard-vocabularies/#media-types) for the complete default vocabulary with all standard media types.
 
 ### Structure
 
@@ -576,43 +397,9 @@ media_types:
 
 ### Standard Media Types
 
-GENEALOGIX provides standardized media type codes for different categories of digital and physical media:
+**Standard Media Types**: GENEALOGIX provides 7 standardized media type codes including photograph, document, audio, video, scan, image, and certificate, each with default MIME types.
 
-| Type | Label | Default MIME Type | Description |
-|------|-------|------------------|-------------|
-| `photograph` | Photograph | image/jpeg | Photographic images |
-| `document` | Document | application/pdf | Scanned or digital documents |
-| `audio` | Audio Recording | audio/mpeg | Audio interviews or recordings |
-| `video` | Video Recording | video/mp4 | Video recordings or footage |
-| `scan` | Scan | image/tiff | High-resolution scans of documents |
-| `image` | Image | image/png | General images |
-| `certificate` | Certificate | image/tiff | Official certificates or licenses |
-
-**Complete Vocabulary Example:**
-
-```yaml
-# vocabularies/media-types.glx
-media_types:
-  photograph:
-    label: "Photograph"
-    description: "Photographic image"
-    mime_type: "image/jpeg"
-  
-  document:
-    label: "Document"
-    description: "Scanned or digital document"
-    mime_type: "application/pdf"
-  
-  audio:
-    label: "Audio Recording"
-    description: "Audio interview or recording"
-    mime_type: "audio/mpeg"
-  
-  video:
-    label: "Video Recording"
-    description: "Video recording or footage"
-    mime_type: "video/mp4"
-```
+**Complete List**: See [Standard Vocabularies - Media Types](/specification/5-standard-vocabularies/#media-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Custom Media Types
 
@@ -646,6 +433,8 @@ media_types:
 **Used By**: [Citation Entity](citation.md#evidence-quality), [Assertion Entity](assertion.md)
 
 **Purpose**: Defines the meaning of citation quality ratings (0-3 scale, GEDCOM QUAY compatible)
+
+**Standard Templates**: See [Standard Vocabularies - Quality Ratings](/specification/5-standard-vocabularies/#quality-ratings) for the complete default vocabulary with all standard ratings.
 
 ### Structure
 
@@ -710,6 +499,8 @@ See [Core Concepts - Evidence Hierarchy](../2-core-concepts.md#evidence-hierarch
 
 **Purpose**: Defines confidence levels for assertions (alternative to citation quality ratings)
 
+**Standard Templates**: See [Standard Vocabularies - Confidence Levels](/specification/5-standard-vocabularies/#confidence-levels) for the complete default vocabulary with all standard confidence levels.
+
 ### Structure
 
 ```yaml
@@ -764,6 +555,8 @@ See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
 
 **Purpose**: Defines categories of repositories (archives, libraries, churches, online databases, etc.)
 
+**Standard Templates**: See [Standard Vocabularies - Repository Types](/specification/5-standard-vocabularies/#repository-types) for the complete default vocabulary with all standard repository types.
+
 ### Structure
 
 ```yaml
@@ -817,6 +610,8 @@ See [Repository Entity](repository.md#repository-types) for the complete list of
 **Used By**: [Event Entity](event.md#participant-roles), [Relationship Entity](relationship.md#participant-roles)
 
 **Purpose**: Defines roles that people play in events and relationships (principal, witness, officiant, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Participant Roles](/specification/5-standard-vocabularies/#participant-roles) for the complete default vocabulary with all standard participant roles.
 
 ### Structure
 
@@ -1082,6 +877,7 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 
 ## See Also
 
+- **[Standard Vocabularies](/specification/5-standard-vocabularies/)** - Complete default vocabulary files with all standard types
 - [Core Concepts - Repository-Owned Vocabularies](../2-core-concepts.md#repository-owned-vocabularies)
 - [Archive Organization](../3-archive-organization.md) - Where vocabulary files are stored
 - [Event Entity](event.md) - Event types vocabulary

@@ -1,0 +1,40 @@
+# Standard Media Types
+# This file defines the standard media types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding entries with `custom: true`.
+
+media_types:
+  photograph:
+    label: "Photograph"
+    description: "Photographic images"
+    mime_type: "image/jpeg"
+  
+  document:
+    label: "Document"
+    description: "Scanned or digital documents"
+    mime_type: "application/pdf"
+  
+  audio:
+    label: "Audio Recording"
+    description: "Audio interviews or recordings"
+    mime_type: "audio/mpeg"
+  
+  video:
+    label: "Video Recording"
+    description: "Video recordings or footage"
+    mime_type: "video/mp4"
+  
+  scan:
+    label: "Scan"
+    description: "High-resolution scans of documents"
+    mime_type: "image/tiff"
+  
+  image:
+    label: "Image"
+    description: "General images"
+    mime_type: "image/png"
+  
+  certificate:
+    label: "Certificate"
+    description: "Official certificates or licenses"
+    mime_type: "image/tiff"
+

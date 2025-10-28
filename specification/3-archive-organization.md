@@ -313,9 +313,9 @@ relationship_types:
 
 ### Initialization
 
-When you run `glx init`, the CLI automatically creates the `vocabularies/` directory with standard vocabulary templates. You can then customize these files to add archive-specific types.
+When you run `glx init`, the CLI automatically creates the `vocabularies/` directory by copying the standard vocabulary templates from [Standard Vocabularies](5-standard-vocabularies/). You can then customize these files to add archive-specific types.
 
-See [Core Concepts](2-core-concepts.md#repository-owned-vocabularies) for details on defining custom vocabulary entries.
+See [Core Concepts](2-core-concepts.md#repository-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
 
 ## Important Notes
 

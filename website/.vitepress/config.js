@@ -55,6 +55,7 @@ export default defineConfig({
     'specification/schema/README.md': 'specification/schema/index.md',
     'specification/rfcs/README.md': 'specification/rfcs/index.md',
     'specification/4-entity-types/README.md': 'specification/4-entity-types/index.md',
+    'specification/5-standard-vocabularies/README.md': 'specification/5-standard-vocabularies/index.md',
     'specification/:page*': 'specification/:page*'
   },
 
@@ -74,6 +75,7 @@ export default defineConfig({
           { text: 'Introduction', link: '/specification/1-introduction' },
           { text: 'Core Concepts', link: '/specification/2-core-concepts' },
           { text: 'Entity Types', link: '/specification/4-entity-types/' },
+          { text: 'Standard Vocabularies', link: '/specification/5-standard-vocabularies/' },
           { text: 'JSON Schemas', link: '/specification/schema/' },
           { text: 'RFCs', link: '/specification/rfcs/' }
         ]
@@ -136,6 +138,48 @@ export default defineConfig({
             { text: 'Repository', link: '/specification/4-entity-types/repository' },
             { text: 'Media', link: '/specification/4-entity-types/media' }
           ]
+        },
+        {
+          text: 'Standard Vocabularies',
+          link: '/specification/5-standard-vocabularies/'
+        },
+        {
+          text: 'Schemas & RFCs',
+          items: [
+            { text: 'JSON Schemas', link: '/specification/schema/' },
+            { text: 'RFCs', link: '/specification/rfcs/' }
+          ]
+        }
+      ],
+      '/specification/5-standard-vocabularies/': [
+        {
+          text: 'Specification',
+          items: [
+            { text: 'Overview', link: '/specification/' },
+            { text: 'Introduction', link: '/specification/1-introduction' },
+            { text: 'Core Concepts', link: '/specification/2-core-concepts' },
+            { text: 'Archive Organization', link: '/specification/3-archive-organization' }
+          ]
+        },
+        {
+          text: 'Entity Types',
+          items: [
+            { text: 'Overview', link: '/specification/4-entity-types/' },
+            { text: 'Vocabularies', link: '/specification/4-entity-types/vocabularies' },
+            { text: 'Person', link: '/specification/4-entity-types/person' },
+            { text: 'Relationship', link: '/specification/4-entity-types/relationship' },
+            { text: 'Event', link: '/specification/4-entity-types/event' },
+            { text: 'Place', link: '/specification/4-entity-types/place' },
+            { text: 'Source', link: '/specification/4-entity-types/source' },
+            { text: 'Citation', link: '/specification/4-entity-types/citation' },
+            { text: 'Assertion', link: '/specification/4-entity-types/assertion' },
+            { text: 'Repository', link: '/specification/4-entity-types/repository' },
+            { text: 'Media', link: '/specification/4-entity-types/media' }
+          ]
+        },
+        {
+          text: 'Standard Vocabularies',
+          link: '/specification/5-standard-vocabularies/'
         },
         {
           text: 'Schemas & RFCs',

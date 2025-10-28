@@ -1,0 +1,122 @@
+# Standard Event Types
+# This file defines the standard event and fact types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding entries with `custom: true`.
+
+event_types:
+  # Lifecycle Events
+  birth:
+    label: "Birth"
+    description: "Person's birth"
+    category: "lifecycle"
+    gedcom: "BIRT"
+  
+  death:
+    label: "Death"
+    description: "Person's death"
+    category: "lifecycle"
+    gedcom: "DEAT"
+  
+  marriage:
+    label: "Marriage"
+    description: "Marriage ceremony"
+    category: "lifecycle"
+    gedcom: "MARR"
+  
+  divorce:
+    label: "Divorce"
+    description: "Legal dissolution of marriage"
+    category: "lifecycle"
+    gedcom: "DIV"
+  
+  engagement:
+    label: "Engagement"
+    description: "Engagement to be married"
+    category: "lifecycle"
+    gedcom: "ENGA"
+  
+  adoption:
+    label: "Adoption"
+    description: "Legal adoption"
+    category: "lifecycle"
+    gedcom: "ADOP"
+  
+  burial:
+    label: "Burial"
+    description: "Burial of remains"
+    category: "lifecycle"
+    gedcom: "BURI"
+  
+  cremation:
+    label: "Cremation"
+    description: "Cremation of remains"
+    category: "lifecycle"
+    gedcom: "CREM"
+  
+  # Religious Events
+  baptism:
+    label: "Baptism"
+    description: "Christian baptism ceremony"
+    category: "religious"
+    gedcom: "BAPM"
+  
+  confirmation:
+    label: "Confirmation"
+    description: "Religious confirmation"
+    category: "religious"
+    gedcom: "CONF"
+  
+  bar_mitzvah:
+    label: "Bar Mitzvah"
+    description: "Jewish coming of age ceremony (male)"
+    category: "religious"
+    gedcom: "BARM"
+  
+  bat_mitzvah:
+    label: "Bat Mitzvah"
+    description: "Jewish coming of age ceremony (female)"
+    category: "religious"
+    gedcom: "BATM"
+  
+  christening:
+    label: "Christening"
+    description: "Infant christening"
+    category: "religious"
+    gedcom: "CHR"
+  
+  # Attribute Facts
+  residence:
+    label: "Residence"
+    description: "Place of residence"
+    category: "attribute"
+    gedcom: "RESI"
+  
+  occupation:
+    label: "Occupation"
+    description: "Employment or profession"
+    category: "attribute"
+    gedcom: "OCCU"
+  
+  title:
+    label: "Title"
+    description: "Nobility or honorific title"
+    category: "attribute"
+    gedcom: "TITL"
+  
+  nationality:
+    label: "Nationality"
+    description: "National citizenship"
+    category: "attribute"
+    gedcom: "NATI"
+  
+  religion:
+    label: "Religion"
+    description: "Religious affiliation"
+    category: "attribute"
+    gedcom: "RELI"
+  
+  education:
+    label: "Education"
+    description: "Educational achievement"
+    category: "attribute"
+    gedcom: "EDUC"
+
