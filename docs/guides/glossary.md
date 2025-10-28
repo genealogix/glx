@@ -16,14 +16,19 @@ A complete GENEALOGIX repository containing family history data organized in a G
 ### Assertion
 A discrete, evidence-backed claim about a person, event, place, or relationship. Assertions separate conclusions from evidence, allowing multiple claims about the same fact with different supporting evidence.
 
+> **See Also:** For complete specification, see [Assertion Entity](../../specification/4-entity-types/assertion.md)
+
 **Example:**
 ```yaml
 assertions/assertion-john-birth.glx:
-  subject: person-john-smith
-  claim: born_on
-  value: "1850-01-15"
-  citations: [citation-birth-cert]
-  confidence: high
+  assertions:
+    assertion-john-birth:
+      version: "1.0"
+      subject: person-john-smith
+      claim: born_on
+      value: "1850-01-15"
+      citations: [citation-birth-cert]
+      confidence: high
 ```
 
 ## C
@@ -90,6 +95,8 @@ A unique identifier for each entity in the format `{type}-{8hex}` where type is 
 
 ### Media
 Supporting files such as photos, documents, audio recordings, or videos that provide evidence or context for genealogical assertions.
+
+> **See Also:** For complete specification, see [Media Entity](../../specification/4-entity-types/media.md)
 
 ## P
 
@@ -189,14 +196,19 @@ JSON Schema definitions that specify the structure, validation rules, and data t
 ### Source
 An original document, record, publication, or material containing genealogical information.
 
+> **See Also:** For complete specification, see [Source Entity](../../specification/4-entity-types/source.md)
+
 **Example:**
 ```yaml
 sources/source-parish-register.glx:
-  title: St. Paul's Parish Register
-  type: church_register
-  creator: "Church of England"
-  date: "1849-1855"
-  repository: repository-leeds-library
+  sources:
+    source-parish-register:
+      version: "1.0"
+      title: "St. Paul's Parish Register"
+      type: church_register
+      creator: "Church of England"
+      date: "1849-1855"
+      repository: repository-leeds-library
 ```
 
 ## T

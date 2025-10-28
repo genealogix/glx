@@ -4,6 +4,8 @@ This section explains the fundamental principles and architecture that make GENE
 
 ## Assertion-Aware Data Model
 
+> **See Also:** For complete assertion entity specification, see [Assertion Entity](4-entity-types/assertion.md)
+
 ### The Problem with Traditional Models
 Traditional genealogy software stores conclusions directly:
 ```
@@ -49,50 +51,83 @@ citations:
 
 ## Evidence Hierarchy
 
-### Four Dimensions of Evidence Quality
-GENEALOGIX evaluates evidence along four dimensions:
+### Evidence Chain Structure
 
-#### 1. Primary vs Secondary
-- **Primary**: Created at the time of the event
-  - Birth certificates, baptism records, marriage licenses
-  - Contemporary letters, diaries, newspapers
-- **Secondary**: Created later, based on primary sources
-  - Census records, compiled databases, published histories
+GENEALOGIX organizes genealogical evidence in a hierarchical chain from physical sources to conclusions:
 
-#### 2. Direct vs Indirect
-- **Direct**: Explicitly states the fact you're trying to prove
-  - Birth certificate showing birth date (direct evidence of birth)
-- **Indirect**: Requires inference or additional information
-  - Census showing age 25 in 1875 (indirect evidence of 1850 birth)
+**Complete Evidence Chain:**
+1. **Repository** - Physical or digital institution holding sources
+2. **Source** - Original document, record, or material
+3. **Citation** - Specific reference within the source
+4. **Media** (optional) - Digital images, scans, or recordings of the source
+5. **Assertion** - Evidence-based conclusion about a fact
 
-#### 3. Original vs Derivative
-- **Original**: First-hand, eyewitness account
-  - Handwritten parish register entry
-- **Derivative**: Copy, transcription, or compilation
-  - Published transcription of parish register
+Each level provides context and traceability for the research:
 
-#### 4. Information vs Evidence
-- **Information**: Raw data from a source
-- **Evidence**: Information + analysis + correlation with other evidence
+```
+Repository → Source → Citation → [Media] → Assertion
+   ↓           ↓         ↓          ↓          ↓
+Physical   Original  Specific   Digital   Researcher's
+Location   Material  Reference  Evidence  Conclusion
+```
 
-### Quality Rating System
-GENEALOGIX uses a 0-3 quality scale compatible with GEDCOM QUAY:
+**Media as Optional Link:**
+- Media entities (photographs, scans, audio) can document sources
+- Not required but highly recommended for preservation
+- Links between citation and assertion or directly to sources
+- See [Media Entity](4-entity-types/media.md) for details
 
-| Rating | Description | Example |
-|--------|-------------|---------|
-| **3** | Direct and primary evidence | Original birth certificate, contemporary baptism record |
-| **2** | Secondary evidence, officially recorded | Census record, published vital records index |
-| **1** | Questionable reliability | Undocumented oral history, conflicting sources |
-| **0** | Unreliable or estimated | Unverified family tradition, unsourced data |
+### Quality Rating Scale
 
-**GEDCOM Compatibility:** This scale maps 1:1 to GEDCOM 5.5.1 QUAY values, ensuring lossless interoperability.
+GENEALOGIX supports a **0-3 quality scale** primarily for GEDCOM compatibility:
 
-### Evidence Chain Completeness
-A complete evidence chain requires:
-1. **Repository**: Where the source is located
-2. **Source**: The original document or record
-3. **Citation**: Specific location within the source
-4. **Assertion**: Conclusion drawn from the citation
+| Rating | GEDCOM QUAY Equivalent |
+|--------|------------------------|
+| **3** | QUAY 3 |
+| **2** | QUAY 2 |
+| **1** | QUAY 1 |
+| **0** | QUAY 0 |
+
+**Important Notes:**
+- **Meaning is archive-defined**: Each archive can define what these ratings mean in their `vocabularies/quality-ratings.glx` file
+- **GEDCOM compatibility**: This scale provides 1:1 mapping with GEDCOM 5.5.1 QUAY values
+- **Quality is optional**: Archives can omit citation quality ratings entirely
+- **Use confidence instead**: Researchers can rely solely on assertion `confidence` levels (high/medium/low/disputed) rather than citation quality
+
+**Example Quality Vocabulary (Optional):**
+```yaml
+# vocabularies/quality-ratings.glx
+quality_ratings:
+  3:
+    label: "Primary source"
+    description: "Original document created at time of event"
+  2:
+    label: "Secondary source"
+    description: "Record created after event"
+  1:
+    label: "Questionable"
+    description: "Conflicting or unreliable evidence"
+  0:
+    label: "Estimated"
+    description: "No direct evidence, estimated from other data"
+```
+
+### Evidence Quality Assessment
+
+Genealogists traditionally evaluate evidence quality along multiple dimensions:
+
+**Common Dimensions:**
+- **Primary vs Secondary**: When was information recorded relative to event?
+- **Direct vs Indirect**: Does source explicitly state the fact?
+- **Original vs Derivative**: First-hand account or copy/transcription?
+- **Informant**: Who provided the information and their relationship to facts?
+
+**GENEALOGIX Approach:**
+- Quality dimensions inform the **citation quality rating** (if used)
+- Overall assessment captured in **assertion confidence level**
+- Detailed analysis documented in **research notes**
+
+### Evidence Chain Example
 
 ```yaml
 # repositories/repository-gro.glx

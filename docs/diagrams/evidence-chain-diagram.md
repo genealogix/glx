@@ -29,6 +29,12 @@ This diagram illustrates how evidence flows from physical repositories to specif
 
 ## Evidence Chain Components
 
+> **See Also:** For complete entity specifications, see:
+> - [Repository Entity](../../specification/4-entity-types/repository.md)
+> - [Source Entity](../../specification/4-entity-types/source.md)
+> - [Citation Entity](../../specification/4-entity-types/citation.md)
+> - [Assertion Entity](../../specification/4-entity-types/assertion.md)
+
 ### 1. Repository (Archive/Institution)
 **Physical location of sources**
 - Libraries, archives, churches, government offices

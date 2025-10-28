@@ -2,6 +2,699 @@
 
 [← Back to Entity Types](README.md)
 
-Defines source records capturing citations, provenance, and associated media.
+## Overview
 
+A Source entity represents an original document, record, publication, or material that contains genealogical information. Sources are the foundation of evidence-based research and form the middle layer of the evidence chain between repositories (where sources are held) and citations (specific references within sources).
 
+Sources can include:
+- Vital records (birth, marriage, death certificates)
+- Census records and population registers
+- Church registers (baptisms, marriages, burials)
+- Military records and service files
+- Newspapers and periodicals
+- Published family histories and genealogies
+- Wills, probate records, and court documents
+- Land records and deeds
+- Immigration and naturalization records
+- Oral histories and interviews
+- Online databases and digital collections
+
+## File Format
+
+All GENEALOGIX files use entity type keys at the top level:
+
+```yaml
+# Any .glx file (commonly in sources/ directory)
+sources:
+  source-parish-register:
+    version: "1.0"
+    title: "St. Paul's Parish Register, 1840-1860"
+    type: church_register
+    creator: "Church of England"
+    repository: repository-leeds-library
+    date: "1840/1860"
+```
+
+**Key Points:**
+- Entity ID is the map key (`source-parish-register`)
+- NO `id` field inside the entity object
+- IDs can be descriptive or random, 1-64 alphanumeric/hyphens
+
+## Required Fields
+
+### Entity ID (map key)
+
+- Format: Any alphanumeric string with hyphens, 1-64 characters
+- Must be unique within the archive
+- Recommended formats:
+  - Descriptive: `source-birth-register`, `source-1851-census`
+  - Random hex: `source-a1b2c3d4` (for collaboration)
+  - Sequential: `source-001`, `source-002`
+
+### `version`
+
+- Type: String
+- Format: `{major}.{minor}`
+- Required: Yes
+- Description: Schema version
+
+Example:
+```yaml
+sources:
+  source-census:
+    version: "1.0"
+```
+
+### `title`
+
+- Type: String
+- Required: Yes
+- Description: Full title of the source
+
+Example:
+```yaml
+title: "1851 Census of England and Wales"
+```
+
+## Optional Fields
+
+### `type`
+
+- Type: String
+- Required: No (but recommended)
+- Description: Classification of the source type
+
+Common source types:
+- `vital_record` - Birth, marriage, death certificates
+- `census` - Census records and enumerations
+- `church_register` - Parish registers, baptisms, marriages, burials
+- `military` - Military service records, pension files
+- `newspaper` - Newspapers, periodicals, gazettes
+- `probate` - Wills, probate records, estate files
+- `land` - Deeds, land grants, property records
+- `court` - Court records, legal proceedings
+- `immigration` - Passenger lists, naturalization records
+- `directory` - City directories, telephone books
+- `book` - Published genealogies, family histories
+- `database` - Online databases, compiled records
+- `oral_history` - Interviews, recorded memories
+- `correspondence` - Letters, emails, personal papers
+- `photograph` - Photo collections
+- `other` - Other source types
+
+Example:
+```yaml
+type: church_register
+```
+
+### `authors`
+
+- Type: Array of Strings
+- Required: No
+- Description: Author(s) or creator(s) of the source
+
+Example:
+```yaml
+authors:
+  - "Elizabeth Shown Mills"
+  - "John Doe"
+```
+
+### `creator`
+
+- Type: String
+- Required: No
+- Description: Creating organization or individual
+
+Example:
+```yaml
+creator: "General Register Office"
+```
+
+### `date`
+
+- Type: String
+- Required: No
+- Description: Publication date or date range covered by the source
+
+Formats:
+- Single date: `"1851"`
+- Date range: `"1840/1860"`
+- Publication date: `"2015-06-20"`
+
+Example:
+```yaml
+date: "1850/1855"
+```
+
+### `repository`
+
+- Type: String
+- Required: No (but recommended)
+- Description: Repository ID where this source is held
+
+Example:
+```yaml
+repository: repository-national-archives
+```
+
+### `repository_id`
+
+- Type: String
+- Required: No
+- Description: Call number, catalog ID, or reference number at the repository
+
+Example:
+```yaml
+repository_id: "HO 107/2319"
+```
+
+### `citation`
+
+- Type: String
+- Required: No
+- Description: Standard citation format for the source
+
+Example:
+```yaml
+citation: "1851 England Census, Yorkshire, Leeds, ED 5, folio 23"
+```
+
+### `description`
+
+- Type: String
+- Required: No
+- Description: Detailed description of the source content and scope
+
+Example:
+```yaml
+description: |
+  Parish registers for St. Paul's Church, Leeds, covering baptisms,
+  marriages, and burials from 1840 to 1860. Includes entries for
+  families in the Wellington Street area.
+```
+
+### `publication_info`
+
+- Type: Object
+- Required: No
+- Description: Publication details for published sources
+
+Structure:
+```yaml
+publication_info:
+  publisher: String
+  place: String
+  edition: String
+  isbn: String
+  pages: String
+```
+
+Example:
+```yaml
+publication_info:
+  publisher: "Genealogical Publishing Company"
+  place: "Baltimore, Maryland"
+  edition: "2nd Edition"
+  isbn: "978-0-8063-1234-5"
+  pages: "456"
+```
+
+### `language`
+
+- Type: String
+- Required: No
+- Description: Language(s) of the source
+
+Example:
+```yaml
+language: "English"
+```
+
+### `coverage`
+
+- Type: Object
+- Required: No
+- Description: Geographic and temporal coverage of the source
+
+Structure:
+```yaml
+coverage:
+  spatial: String or Array
+  temporal: String
+  subjects: Array
+```
+
+Example:
+```yaml
+coverage:
+  spatial: "Leeds, Yorkshire, England"
+  temporal: "1840-1860"
+  subjects:
+    - baptisms
+    - marriages
+    - burials
+```
+
+### `media`
+
+- Type: Array of Strings
+- Required: No
+- Description: References to media entities (scans, photos) of this source
+
+Example:
+```yaml
+media:
+  - media-register-scan-page-1
+  - media-register-scan-page-2
+```
+
+### Provenance Fields
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `notes` | string | Research notes about the source |
+| `created_at` | datetime | When this record was created |
+| `created_by` | string | Who created this record |
+| `modified_at` | datetime | When last modified |
+| `modified_by` | string | Who last modified |
+| `tags` | array | Tags for categorization |
+
+Example:
+```yaml
+notes: "Excellent condition, clearly legible"
+created_at: "2024-01-15T10:30:00Z"
+created_by: researcher-jane
+tags:
+  - primary-source
+  - church-records
+  - verified
+```
+
+## Usage Patterns
+
+### Vital Record
+
+```yaml
+# sources/source-birth-certificate.glx
+sources:
+  source-birth-cert-john-smith:
+    version: "1.0"
+    title: "Birth Certificate - John Smith, 1850"
+    type: vital_record
+    creator: "General Register Office"
+    date: "1850-01-15"
+    repository: repository-gro
+    repository_id: "GRO 1850/Q1/LEEDS/145"
+    description: "Original birth certificate for John Smith, born Leeds"
+    language: "English"
+    media:
+      - media-birth-cert-scan
+    tags:
+      - vital-record
+      - birth
+      - primary-source
+```
+
+### Census Record
+
+```yaml
+# sources/source-1851-census.glx
+sources:
+  source-census-1851-yorkshire:
+    version: "1.0"
+    title: "1851 Census of England and Wales"
+    type: census
+    creator: "UK Census Office"
+    date: "1851-03-30"
+    repository: repository-national-archives
+    repository_id: "HO 107/2319"
+    citation: "1851 England Census, Yorkshire, Leeds, ED 5"
+    description: |
+      Census enumeration for Leeds, Yorkshire, England.
+      Enumeration District 5, covering Wellington Street area.
+    coverage:
+      spatial: "Leeds, Yorkshire, England"
+      temporal: "1851-03-30"
+    language: "English"
+    tags:
+      - census
+      - 1851
+      - yorkshire
+```
+
+### Church Register
+
+```yaml
+# sources/source-parish-register.glx
+sources:
+  source-st-pauls-register:
+    version: "1.0"
+    title: "St. Paul's Cathedral Parish Register, 1840-1860"
+    type: church_register
+    creator: "Church of England"
+    date: "1840/1860"
+    repository: repository-leeds-archives
+    repository_id: "RDP73/1"
+    description: |
+      Parish registers for St. Paul's Cathedral, Leeds.
+      Includes baptisms, marriages, and burials.
+      
+      Coverage:
+      - Baptisms: 1840-1860
+      - Marriages: 1840-1860
+      - Burials: 1845-1860
+    coverage:
+      spatial: "Leeds, Yorkshire, England"
+      temporal: "1840-1860"
+      subjects:
+        - baptisms
+        - marriages
+        - burials
+    language: "English"
+    media:
+      - media-register-volume-1
+    notes: "Well preserved, some water damage to pages 45-50"
+    tags:
+      - parish-register
+      - church-of-england
+      - primary-source
+```
+
+### Published Book
+
+```yaml
+# sources/source-family-history.glx
+sources:
+  source-smith-family-book:
+    version: "1.0"
+    title: "The Smith Family of Yorkshire: A Genealogy"
+    type: book
+    authors:
+      - "Elizabeth Brown"
+    date: "1985"
+    publication_info:
+      publisher: "Yorkshire Genealogical Society"
+      place: "Leeds, Yorkshire"
+      edition: "1st Edition"
+      pages: "324"
+    repository: repository-family-history-library
+    description: |
+      Comprehensive genealogy of the Smith family of Leeds
+      and surrounding areas, 1750-1950. Includes source
+      citations and family group sheets.
+    coverage:
+      spatial:
+        - Leeds, Yorkshire
+        - Bradford, Yorkshire
+      temporal: "1750-1950"
+    language: "English"
+    tags:
+      - published-genealogy
+      - secondary-source
+      - smith-family
+```
+
+### Online Database
+
+```yaml
+# sources/source-ancestry-database.glx
+sources:
+  source-ancestry-uk-census:
+    version: "1.0"
+    title: "UK Census Collection, 1841-1911"
+    type: database
+    creator: "Ancestry.com"
+    date: "1841/1911"
+    repository: repository-ancestry
+    description: |
+      Digitized and indexed UK census records from 1841-1911.
+      Images and transcriptions available online.
+      
+      Subscription required for access.
+    citation: "Ancestry.com. UK Census Collection [database online]"
+    coverage:
+      spatial: "United Kingdom"
+      temporal: "1841-1911"
+    language: "English"
+    notes: "Digital images of original records"
+    tags:
+      - online-database
+      - census
+      - subscription-required
+```
+
+### Newspaper
+
+```yaml
+# sources/source-newspaper.glx
+sources:
+  source-leeds-mercury:
+    version: "1.0"
+    title: "Leeds Mercury"
+    type: newspaper
+    creator: "Leeds Mercury Publishing Company"
+    date: "1890-06-15"
+    repository: repository-british-library
+    repository_id: "NP 123.456"
+    description: "Daily newspaper published in Leeds, Yorkshire"
+    citation: "Leeds Mercury, 15 June 1890, page 3"
+    coverage:
+      spatial: "Leeds, Yorkshire, England"
+      temporal: "1890-06-15"
+    language: "English"
+```
+
+### Oral History
+
+```yaml
+# sources/source-interview.glx
+sources:
+  source-mary-smith-interview:
+    version: "1.0"
+    title: "Interview with Mary Smith"
+    type: oral_history
+    creator: "Mary Smith (interviewee)"
+    authors:
+      - "Jane Researcher (interviewer)"
+    date: "2020-03-15"
+    description: |
+      Oral history interview with Mary Smith discussing her
+      childhood in Leeds during the 1940s and 1950s. Family
+      stories, local history, and genealogical information.
+      
+      Duration: 60 minutes
+      Location: Leeds, Yorkshire
+    media:
+      - media-interview-audio
+      - media-interview-transcript
+    language: "English"
+    notes: "Recorded with permission, transcript available"
+    tags:
+      - oral-history
+      - interview
+      - 20th-century
+```
+
+## Source Types
+
+Source types can be defined in the archive's `vocabularies/source-types.glx` file:
+
+```yaml
+# vocabularies/source-types.glx
+source_types:
+  vital_record:
+    label: "Vital Record"
+    description: "Birth, marriage, death certificates"
+    
+  census:
+    label: "Census Record"
+    description: "Population census enumerations"
+    
+  church_register:
+    label: "Church Register"
+    description: "Parish registers of baptisms, marriages, burials"
+    
+  military:
+    label: "Military Record"
+    description: "Service records, pension files"
+    
+  newspaper:
+    label: "Newspaper"
+    description: "Newspapers, periodicals, gazettes"
+    
+  probate:
+    label: "Probate Record"
+    description: "Wills, probate records, estate files"
+    
+  oral_history:
+    label: "Oral History"
+    description: "Interviews, recorded memories"
+    custom: true
+```
+
+## File Organization
+
+Source files are typically organized by type or repository:
+
+```
+sources/
+├── vital-records/
+│   ├── source-birth-john.glx
+│   ├── source-marriage-john-mary.glx
+│   └── source-death-john.glx
+├── census/
+│   ├── source-1841-census.glx
+│   ├── source-1851-census.glx
+│   └── source-1861-census.glx
+├── church-registers/
+│   ├── source-st-pauls-register.glx
+│   └── source-holy-trinity-register.glx
+├── newspapers/
+│   └── source-leeds-mercury.glx
+├── books/
+│   └── source-smith-family-history.glx
+└── online/
+    └── source-ancestry-census.glx
+```
+
+## Relationship to Other Entities
+
+```
+Source
+    ├── held in → Repository (via repository field)
+    ├── referenced by → Citations (citations point to sources)
+    ├── documented by → Media (via media array)
+    └── may have → coverage information (geographic/temporal)
+
+Repository
+    └── holds → Sources (sources reference repository)
+
+Citation
+    └── references → Source (via source field)
+
+Media
+    └── documents → Source (media can be scans/photos of sources)
+```
+
+## Standard Citation Formats
+
+Sources should include proper bibliographic citations. Common formats:
+
+### Published Book
+```yaml
+citation: "Author Name, Book Title (Place: Publisher, Year), page number."
+```
+
+### Vital Record
+```yaml
+citation: "Certificate type, Person Name, Date; Place; Repository, Call Number."
+```
+
+### Census
+```yaml
+citation: "Year Census, Country, State/County, Enumeration District, Page; Repository."
+```
+
+### Church Register
+```yaml
+citation: "Church Name, Register Type, Date; Place; Repository."
+```
+
+### Newspaper
+```yaml
+citation: "Newspaper Title, Date, Page Number, Column."
+```
+
+## Validation Rules
+
+- `title` must be present and non-empty
+- If `repository` is specified, it must reference an existing Repository entity
+- If `media` array is present, all IDs must reference existing Media entities
+- `date` should follow standard date formats (YYYY, YYYY-MM-DD, or YYYY/YYYY for ranges)
+- `type` should be one of the defined source types if vocabularies are used
+
+## GEDCOM Mapping
+
+Source entities map to GEDCOM source records:
+
+| GLX Property | GEDCOM Element | Notes |
+|--------------|----------------|-------|
+| Entity ID | `@SOUR@` | Source record ID |
+| `title` | `SOUR.TITL` | Source title |
+| `authors[0]` | `SOUR.AUTH` | Author (first only in GEDCOM) |
+| `date` | `SOUR.DATE` | Publication date |
+| `creator` | `SOUR.AGNC` | Responsible agency |
+| `repository` | `SOUR.REPO` | Repository reference |
+| `repository_id` | `SOUR.REPO.CALN` | Call number |
+| `publication_info.publisher` | `SOUR.PUBL` | Publication info |
+| `description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
+
+GEDCOM Example:
+```
+0 @S1@ SOUR
+1 TITL St. Paul's Parish Register
+1 AUTH Church of England
+1 DATE 1840/1860
+1 REPO @R1@
+2 CALN RDP73/1
+1 NOTE Parish registers for baptisms, marriages, and burials
+```
+
+GENEALOGIX Equivalent:
+```yaml
+sources:
+  source-st-pauls:
+    version: "1.0"
+    title: "St. Paul's Parish Register"
+    creator: "Church of England"
+    date: "1840/1860"
+    repository: repository-leeds-archives
+    repository_id: "RDP73/1"
+    description: "Parish registers for baptisms, marriages, and burials"
+```
+
+## Best Practices
+
+### Complete Source Documentation
+
+Include as much bibliographic information as possible:
+- Full title
+- Author/creator
+- Date or date range
+- Repository location
+- Repository catalog number
+- Physical description (if relevant)
+
+### Consistent Citation Format
+
+Use consistent citation styles within your archive:
+- Follow established citation standards (Evidence Explained, Chicago Manual of Style, etc.)
+- Document your chosen citation style in archive documentation
+
+### Source Quality Assessment
+
+While citation quality ratings are optional, documenting source characteristics helps:
+- Primary vs. secondary nature
+- Original vs. derivative
+- Completeness and condition
+- Known limitations or biases
+
+### Digital Preservation
+
+Link media entities to sources for digital preservation:
+- Scan or photograph original sources
+- Store digital copies with source metadata
+- Include hash values for integrity verification
+
+## Schema Reference
+
+See [source.schema.json](../schema/v1/source.schema.json) for the complete JSON Schema definition.
+
+## See Also
+
+- [Core Concepts - Evidence Hierarchy](../2-core-concepts.md#evidence-hierarchy) - Understanding the evidence chain
+- [Repository Entity](repository.md) - Where sources are held
+- [Citation Entity](citation.md) - Specific references within sources
+- [Media Entity](media.md) - Digital preservation of sources
+- [Assertion Entity](assertion.md) - Conclusions drawn from sources
