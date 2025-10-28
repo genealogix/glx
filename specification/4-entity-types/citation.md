@@ -17,7 +17,7 @@ One source can have many citations referencing different pages or sections.
 
 ### Evidence Quality
 
-GENEALOGIX uses a 0-3 quality scale that maintains 1:1 compatibility with GEDCOM QUAY for interoperability:
+GENEALOGIX uses a 0-3 quality scale that maintains 1:1 compatibility with GEDCOM QUAY for interoperability.
 
 **Quality Scale (GEDCOM QUAY Compatible):**
 - **3**: Direct and primary evidence used, or by dominance of evidence
@@ -28,6 +28,11 @@ GENEALOGIX uses a 0-3 quality scale that maintains 1:1 compatibility with GEDCOM
   - Examples: Undocumented oral history, conflicting sources, estimated data
 - **0**: Unreliable evidence or estimated data
   - Examples: Unverified family tradition, unsourced online trees
+
+**See [Vocabularies - Quality Ratings](vocabularies.md#quality-ratings-vocabulary) for:**
+- Customizing quality rating definitions for your archive
+- Alternative approaches using confidence levels
+- Vocabulary file structure and validation
 
 **GEDCOM Interoperability:**
 This scale maps directly to GEDCOM 5.5.1 QUAY values (0→0, 1→1, 2→2, 3→3), ensuring lossless conversion between formats.

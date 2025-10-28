@@ -378,37 +378,13 @@ media:
 
 ## Media Types
 
-Media types can be defined in the archive's `vocabularies/media-types.glx` file:
+Media types are defined in the archive's `vocabularies/media-types.glx` file.
 
-```yaml
-# vocabularies/media-types.glx
-media_types:
-  photograph:
-    label: "Photograph"
-    description: "Photographic image"
-    mime_type: "image/jpeg"
-  
-  document:
-    label: "Document"
-    description: "Scanned or digital document"
-    mime_type: "application/pdf"
-  
-  audio:
-    label: "Audio Recording"
-    description: "Audio interview or recording"
-    mime_type: "audio/mpeg"
-  
-  video:
-    label: "Video Recording"
-    description: "Video recording or footage"
-    mime_type: "video/mp4"
-  
-  certificate:
-    label: "Certificate"
-    description: "Official certificate or license"
-    mime_type: "image/tiff"
-    custom: true
-```
+**See [Vocabularies - Media Types](vocabularies.md#media-types-vocabulary) for:**
+- Complete list of standard media types
+- How to add custom media types
+- Vocabulary file structure and examples
+- MIME type conventions
 
 ## File Organization
 

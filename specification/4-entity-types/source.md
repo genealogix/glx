@@ -498,40 +498,12 @@ sources:
 
 ## Source Types
 
-Source types can be defined in the archive's `vocabularies/source-types.glx` file:
+Source types are defined in the archive's `vocabularies/source-types.glx` file.
 
-```yaml
-# vocabularies/source-types.glx
-source_types:
-  vital_record:
-    label: "Vital Record"
-    description: "Birth, marriage, death certificates"
-    
-  census:
-    label: "Census Record"
-    description: "Population census enumerations"
-    
-  church_register:
-    label: "Church Register"
-    description: "Parish registers of baptisms, marriages, burials"
-    
-  military:
-    label: "Military Record"
-    description: "Service records, pension files"
-    
-  newspaper:
-    label: "Newspaper"
-    description: "Newspapers, periodicals, gazettes"
-    
-  probate:
-    label: "Probate Record"
-    description: "Wills, probate records, estate files"
-    
-  oral_history:
-    label: "Oral History"
-    description: "Interviews, recorded memories"
-    custom: true
-```
+**See [Vocabularies - Source Types](vocabularies.md#source-types-vocabulary) for:**
+- Complete list of standard source types
+- How to add custom source types
+- Vocabulary file structure and examples
 
 ## File Organization
 

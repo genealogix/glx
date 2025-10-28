@@ -23,6 +23,11 @@ GENEALOGIX supports various repository types:
 - **Government Agency**: Government record-keeping agency
 - **Other**: Other institution type
 
+**See [Vocabularies - Repository Types](vocabularies.md#repository-types-vocabulary) for:**
+- Complete list of standard repository types
+- How to add custom repository types
+- Vocabulary file structure and examples
+
 ## Properties
 
 ### Required Properties

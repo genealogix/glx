@@ -125,6 +125,7 @@ export default defineConfig({
           text: 'Entity Types',
           items: [
             { text: 'Overview', link: '/specification/4-entity-types/' },
+            { text: 'Vocabularies', link: '/specification/4-entity-types/vocabularies' },
             { text: 'Person', link: '/specification/4-entity-types/person' },
             { text: 'Relationship', link: '/specification/4-entity-types/relationship' },
             { text: 'Event', link: '/specification/4-entity-types/event' },

@@ -107,93 +107,11 @@ participants:
 
 Event types are defined in the archive's `vocabularies/event-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
-### Standard Event Types
-
-GENEALOGIX provides standardized event type codes for interoperability:
-
-| Type | Category | GEDCOM Equivalent |
-|------|----------|-------------------|
-| `birth` | Lifecycle | BIRT |
-| `death` | Lifecycle | DEAT |
-| `marriage` | Lifecycle | MARR |
-| `divorce` | Lifecycle | DIV |
-| `engagement` | Lifecycle | ENGA |
-| `adoption` | Lifecycle | ADOP |
-| `baptism` | Religious | BAPM |
-| `confirmation` | Religious | CONF |
-| `bar_mitzvah` | Religious | BARM |
-| `bat_mitzvah` | Religious | BATM |
-| `burial` | Lifecycle | BURI |
-| `cremation` | Lifecycle | CREM |
-| `residence` | Attribute | RESI |
-| `occupation` | Attribute | OCCU |
-| `title` | Attribute | TITL |
-| `nationality` | Attribute | NATI |
-| `religion` | Attribute | RELI |
-| `education` | Attribute | EDUC |
-
-## Event Types Vocabulary
-
-Event types are defined in `vocabularies/event-types.glx` within each archive.
-
-### Standard Event Types
-
-```yaml
-# vocabularies/event-types.glx
-event_types:
-  birth:
-    label: "Birth"
-    description: "Person's birth"
-    category: "lifecycle"
-    gedcom: "BIRT"
-  baptism:
-    label: "Baptism"
-    description: "Religious baptism ceremony"
-    category: "religious"
-    gedcom: "BAPM"
-  marriage:
-    label: "Marriage"
-    description: "Marriage ceremony"
-    category: "lifecycle"
-    gedcom: "MARR"
-  death:
-    label: "Death"
-    description: "Person's death"
-    category: "lifecycle"
-    gedcom: "DEAT"
-  occupation:
-    label: "Occupation"
-    description: "Employment or profession"
-    category: "attribute"
-    gedcom: "OCCU"
-```
-
-### Adding Custom Event Types
-
-Add custom event types for specialized research:
-
-```yaml
-# vocabularies/event-types.glx
-event_types:
-  # ... standard types ...
-  
-  # Custom types
-  apprenticeship:
-    label: "Apprenticeship"
-    description: "Beginning of apprenticeship training"
-    category: "occupation"
-    custom: true
-  land-grant:
-    label: "Land Grant"
-    description: "Receipt of land grant or patent"
-    category: "property"
-    gedcom: "_LAND"
-    custom: true
-```
-
-### Validation
-
-The `glx validate` command ensures all event types are defined in the vocabulary file.
+**See [Vocabularies - Event Types](vocabularies.md#event-types-vocabulary) for:**
+- Complete list of standard event types
+- How to add custom event types
+- Vocabulary file structure and examples
+- Validation requirements
 
 ## Usage Patterns
 
@@ -290,6 +208,16 @@ For events with multiple participants, GLX uses the ASSO (Associate) tag pattern
 1 ASSO person-vicar
 2 RELA Officiant
 ```
+
+## Participant Roles
+
+Participant roles (principal, witness, officiant, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
+
+**See [Vocabularies - Participant Roles](vocabularies.md#participant-roles-vocabulary) for:**
+- Complete list of standard participant roles
+- How to add custom roles
+- Vocabulary file structure and examples
+- Which roles apply to events vs. relationships
 
 ## Validation Rules
 

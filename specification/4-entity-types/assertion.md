@@ -128,6 +128,11 @@ Standard levels:
 - `low` - Limited evidence, requires more research
 - `disputed` - Multiple sources conflict, resolution unclear
 
+**See [Vocabularies - Confidence Levels](vocabularies.md#confidence-levels-vocabulary) for:**
+- Customizing confidence level definitions for your archive
+- Adding custom confidence levels
+- Vocabulary file structure and validation
+
 Example:
 ```yaml
 confidence: high

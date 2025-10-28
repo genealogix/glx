@@ -58,35 +58,11 @@ relationships:
 
 Relationship types are defined in the archive's `vocabularies/relationship-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
-### Standard Relationship Types
-
-| Type | Description | GEDCOM Equivalent |
-|------|-------------|-------------------|
-| `marriage` | Legal or religious union | MARR |
-| `parent-child` | Biological, adoptive, or legal parent-child | CHIL/FAMC |
-| `sibling` | Brother or sister relationship | SIB |
-| `adoption` | Legal adoption relationship | ADOP |
-| `step-parent` | Step-parent through marriage | - |
-| `godparent` | Spiritual sponsor relationship | - |
-| `guardian` | Legal guardian relationship | - |
-| `partner` | Domestic partnership or cohabitation | - |
-
-### Custom Relationship Types
-
-Archives can define custom relationship types in `vocabularies/relationship-types.glx`:
-
-```yaml
-relationship_types:
-  # ... standard types ...
-  
-  # Custom types
-  blood-brother:
-    label: "Blood Brother"
-    description: "Non-biological brotherhood bond through ceremony"
-    custom: true
-```
-
-See [Custom Types](../6-extensibility/custom-types.md) for details on adding custom relationship types.
+**See [Vocabularies - Relationship Types](vocabularies.md#relationship-types-vocabulary) for:**
+- Complete list of standard relationship types
+- How to add custom relationship types
+- Vocabulary file structure and examples
+- Validation requirements
 
 ## Usage Patterns
 
@@ -182,7 +158,15 @@ participants:
     notes: "Bride"
 ```
 
-Roles should be defined in `vocabularies/participant-roles.glx`.
+## Participant Roles
+
+Participant roles (spouse, parent, child, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
+
+**See [Vocabularies - Participant Roles](vocabularies.md#participant-roles-vocabulary) for:**
+- Complete list of standard participant roles
+- How to add custom roles
+- Vocabulary file structure and examples
+- Which roles apply to events vs. relationships
 
 ## Validation Rules
 
@@ -206,73 +190,6 @@ relationships/
 └── rel-godparent-001.glx
 ```
 
-## Relationship Types Vocabulary
-
-Relationship types are defined in `vocabularies/relationship-types.glx` within each archive. This allows both standard types and custom types specific to your research.
-
-### Standard Relationship Types
-
-```yaml
-# vocabularies/relationship-types.glx
-relationship_types:
-  marriage:
-    label: "Marriage"
-    description: "Legal or religious union of two people"
-    gedcom: "MARR"
-  parent-child:
-    label: "Parent-Child"
-    description: "Biological, adoptive, or legal parent-child relationship"
-    gedcom: "CHIL/FAMC"
-  adoption:
-    label: "Adoption"
-    description: "Legal adoption relationship"
-    gedcom: "ADOP"
-  sibling:
-    label: "Sibling"
-    description: "Brother or sister relationship"
-    gedcom: "SIBL"
-  godparent:
-    label: "Godparent"
-    description: "Spiritual sponsor relationship"
-    custom: true
-```
-
-### Adding Custom Relationship Types
-
-You can add custom relationship types to your archive:
-
-```yaml
-# vocabularies/relationship-types.glx
-relationship_types:
-  # ... standard types ...
-  
-  # Custom types
-  blood-brother:
-    label: "Blood Brother"
-    description: "Non-biological brotherhood bond through ceremony"
-    custom: true
-  chosen-family:
-    label: "Chosen Family"
-    description: "Close familial bond without biological or legal tie"
-    custom: true
-```
-
-Once defined, use custom types in your relationship entities:
-
-```yaml
-# relationships/rel-blood-brothers.glx
-relationships:
-  rel-john-james-blood:
-    version: "1.0"
-    type: blood-brother  # Custom type from vocabulary
-    persons:
-      - person-john-smith
-      - person-james-brown
-```
-
-### Validation
-
-The `glx validate` command checks that all relationship types used in your archive are defined in the vocabulary file.
 
 ## GEDCOM Mapping
 
