@@ -37,12 +37,6 @@ Version 1.0.0 (Draft)
    - [Repository](4-entity-types/repository.md) - Institutions holding sources
    - [Media](4-entity-types/media.md) - Photographs, documents, etc.
 
-5. [Data Model](5-data-model/)
-   - [Assertion Model](5-data-model/assertion-model.md) - Evidence framework
-   - [Evidence Hierarchy](5-data-model/evidence-hierarchy.md) - Provenance levels
-   - [Provenance Tracking](5-data-model/provenance-tracking.md) - Audit trails
-   - [Confidence Scales](5-data-model/confidence-scales.md) - Assessing reliability
-
 ## Normative References
 
 This specification uses RFC 2119 keywords (MUST, SHOULD, MAY) for

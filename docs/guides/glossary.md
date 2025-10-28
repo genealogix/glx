@@ -113,13 +113,15 @@ An individual human being with biographical information including name, dates, p
 **Example:**
 ```yaml
 persons/person-john-smith.glx:
-  id: person-john-smith
-  name:
-    given: John
-    surname: Smith
-    display: John Smith
-  birth: "1850-01-15"
-  death: "1920-03-10"
+  persons:
+    person-john-smith:
+      version: "1.0"
+      name:
+        given: John
+        surname: Smith
+        display: John Smith
+      birth: "1850-01-15"
+      death: "1920-03-10"
 ```
 
 ### Place
@@ -216,16 +218,16 @@ YAML Ain't Markup Language - the human-readable data serialization format used f
 ```yaml
 # This is a comment
 persons/person-john.glx:
-  id: person-john-smith
-  version: "1.0"
-  type: person
-  name:
-    given: John
-    surname: Smith
-  birth: "1850-01-15"
-  notes: |
-    John was a blacksmith in Leeds.
-    He worked at the ironworks on Wellington Street.
+  persons:
+    person-john-smith:
+      version: "1.0"
+      name:
+        given: John
+        surname: Smith
+      birth: "1850-01-15"
+      notes: |
+        John was a blacksmith in Leeds.
+        He worked at the ironworks on Wellington Street.
 ```
 
 ## File Structure Terms

@@ -122,39 +122,49 @@ git commit -m "Initial: Set up GENEALOGIX archive structure"
 ```yaml
 # Repository
 repositories/repository-gro.glx:
-  id: repository-gro
-  name: General Register Office
-  location: London, England
+  repositories:
+    repository-gro:
+      version: "1.0"
+      name: General Register Office
+      location: London, England
 
 # Source
 sources/source-birth-cert.glx:
-  id: source-birth-cert
-  title: Birth Certificate
-  type: vital_record
-  repository: repository-gro
+  sources:
+    source-birth-cert:
+      version: "1.0"
+      title: Birth Certificate
+      type: vital_record
+      repository: repository-gro
 
 # Citation
 citations/citation-birth-page23.glx:
-  id: citation-birth-page23
-  source: source-birth-cert
-  locator: "Page 23"
-  quality: 2  # GEDCOM QUAY 2 = secondary evidence
+  citations:
+    citation-birth-page23:
+      version: "1.0"
+      source: source-birth-cert
+      locator: "Page 23"
+      quality: 2  # GEDCOM QUAY 2 = secondary evidence
 
 # Person with evidence
 persons/person-john-smith.glx:
-  id: person-john-smith
-  name:
-    given: John
-    surname: Smith
-    display: John Smith
+  persons:
+    person-john-smith:
+      version: "1.0"
+      name:
+        given: John
+        surname: Smith
+        display: John Smith
 
 # Assertion (not direct field)
 assertions/assertion-john-birth.glx:
-  id: assertion-john-birth
-  subject: person-john-smith
-  claim: born_on
-  value: "1850-01-15"
-  citations: [citation-birth-page23]
+  assertions:
+    assertion-john-birth:
+      version: "1.0"
+      subject: person-john-smith
+      claim: born_on
+      value: "1850-01-15"
+      citations: [citation-birth-page23]
 ```
 
 ## GEDCOM Field Mapping

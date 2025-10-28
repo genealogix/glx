@@ -326,13 +326,13 @@ done
 **Test boundary conditions:**
 ```bash
 # Test minimal valid files
-ajv validate -s schema/v1/person.schema.json test-suite/valid/person-minimal.glx
+ajv validate -s schema/v1/person.schema.json glx/tests/valid/person-minimal.glx
 
 # Test maximum valid files
-ajv validate -s schema/v1/person.schema.json test-suite/valid/person-complete.glx
+ajv validate -s schema/v1/person.schema.json glx/tests/valid/person-complete.glx
 
 # Test invalid files
-ajv validate -s schema/v1/person.schema.json test-suite/invalid/person-missing-id.glx
+ajv validate -s schema/v1/person.schema.json glx/tests/invalid/person-missing-id.glx
 ```
 
 ## Schema Versioning
@@ -570,8 +570,8 @@ vim schema/v1/person.schema.json
 ajv compile -s schema/v1/person.schema.json
 
 # 3. Update tests
-vim test-suite/valid/person-updated.glx
-vim test-suite/invalid/person-old-format.glx
+vim glx/tests/valid/person-updated.glx
+vim glx/tests/invalid/person-old-format.glx
 
 # 4. Test examples
 glx validate examples/complete-family/persons/

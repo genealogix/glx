@@ -1,7 +1,7 @@
 relationships:
   rel-parent-elena:
     version: "1.0"
-    type: parent_child
+    type: parent-child
     persons:
       - person-carlos-martinez
       - person-elena-martinez

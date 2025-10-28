@@ -113,7 +113,7 @@ genealogix/spec/
 ├── specification/       # Specification documents (markdown)
 │   ├── 1-introduction.md
 │   ├── 2-core-concepts.md
-│   ├── 3-file-structure.md
+│   ├── 3-archive-organization.md
 │   ├── 4-entity-types/  # Per-entity specifications
 │   ├── schema/          # JSON Schema definitions
 │   │   ├── v1/          # Version 1 schemas

@@ -7,7 +7,7 @@ This guide explains the testing framework and how to write tests for GENEALOGIX 
 The GENEALOGIX test suite validates implementations against the specification:
 
 ```
-test-suite/
+glx/tests/
 ├── README.md           # Test suite documentation
 ├── run-tests.sh        # Test runner script
 ├── valid/             # Files that MUST pass validation
@@ -21,7 +21,7 @@ test-suite/
 
 **Purpose**: Ensure implementations accept correct GENEALOGIX files
 
-**Location**: `test-suite/valid/`
+**Location**: `glx/tests/valid/`
 
 **Characteristics**:
 - Minimal valid entities (only required fields)
@@ -31,7 +31,7 @@ test-suite/
 
 **Example**:
 ```yaml
-# test-suite/valid/person-minimal.glx
+# glx/tests/valid/person-minimal.glx
 # TEST: person-minimal
 # EXPECT: valid
 # DESCRIPTION: Minimal valid person with only required fields
@@ -49,7 +49,7 @@ name:
 
 **Purpose**: Ensure implementations reject incorrect files with appropriate errors
 
-**Location**: `test-suite/invalid/`
+**Location**: `glx/tests/invalid/`
 
 **Characteristics**:
 - Missing required fields
@@ -60,7 +60,7 @@ name:
 
 **Example**:
 ```yaml
-# test-suite/invalid/person-missing-id.glx
+# glx/tests/invalid/person-missing-id.glx
 # TEST: person-missing-id
 # EXPECT: invalid
 # ERROR: "id field is required"
@@ -116,7 +116,7 @@ Each test file must start with a header comment:
 
 **Run all tests**:
 ```bash
-cd test-suite
+cd glx/tests
 ./run-tests.sh
 ```
 
@@ -292,7 +292,7 @@ name:
 **Core test logic**:
 ```bash
 #!/bin/bash
-# test-suite/run-tests.sh
+# glx/tests/run-tests.sh
 
 VALIDATOR=${VALIDATOR:-glx}
 TEST_DIR=$1
@@ -505,13 +505,13 @@ diff before.txt after.txt
 ./run-tests.sh --verbose --fail-fast
 
 # Debug specific test
-glx validate test-suite/valid/person-minimal.glx
+glx validate glx/tests/valid/person-minimal.glx
 
 # Check test file format
-head -10 test-suite/valid/person-minimal.glx
+head -10 glx/tests/valid/person-minimal.glx
 
 # Verify validator behavior
-glx validate --debug test-suite/valid/person-minimal.glx
+glx validate --debug glx/tests/valid/person-minimal.glx
 ```
 
 ### Common Test Issues
@@ -548,7 +548,7 @@ ajv compile -s schema/v1/person.schema.json
 
 **Keep test documentation current**:
 ```markdown
-# test-suite/README.md
+# glx/tests/README.md
 
 ## Test Categories
 
@@ -600,10 +600,10 @@ alternative_names:
 **1. Create test files**:
 ```bash
 # Add to appropriate directory
-cp template.glx test-suite/valid/new-test.glx
+cp template.glx glx/tests/valid/new-test.glx
 
 # Edit test file
-vim test-suite/valid/new-test.glx
+vim glx/tests/valid/new-test.glx
 ```
 
 **2. Test locally**:
@@ -612,13 +612,13 @@ vim test-suite/valid/new-test.glx
 ./run-tests.sh | grep new-test
 
 # Verify behavior
-glx validate test-suite/valid/new-test.glx
+glx validate glx/tests/valid/new-test.glx
 ```
 
 **3. Update documentation**:
 ```bash
 # Update README
-vim test-suite/README.md
+vim glx/tests/README.md
 
 # Add test description
 # Update test counts
@@ -626,7 +626,7 @@ vim test-suite/README.md
 
 **4. Submit changes**:
 ```bash
-git add test-suite/valid/new-test.glx test-suite/README.md
+git add glx/tests/valid/new-test.glx glx/tests/README.md
 git commit -m "Add test for new validation rule
 
 - Test: new-test-name

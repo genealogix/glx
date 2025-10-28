@@ -2,6 +2,8 @@
 
 This diagram shows recommended Git workflows for collaborating on GENEALOGIX family archives.
 
+> **See Also:** For the canonical specification of Git integration and workflows, see [Core Concepts - Version Control Integration](../../specification/2-core-concepts.md#version-control-integration)
+
 ## Repository Structure
 
 ```

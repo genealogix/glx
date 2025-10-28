@@ -1,7 +1,7 @@
 relationships:
   rel-23456789:
     version: "1.0"
-    type: parent_child
+    type: parent-child
     persons:
       - person-a1b2c3d4
       - person-b2c3d4e5

@@ -275,7 +275,6 @@ genealogix/spec/
 │   ├── 2-core-concepts.md
 │   ├── 3-archive-organization.md
 │   ├── 4-entity-types/
-│   ├── 5-data-model/
 │   ├── schema/                     # JSON Schemas
 │   │   ├── README.md
 │   │   ├── v1/

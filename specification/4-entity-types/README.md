@@ -196,8 +196,8 @@ See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for voc
 
 ## See Also
 
-- [File Structure](../3-file-structure.md) - How entities are organized in files
-- [Data Model](../5-data-model/) - How entities relate to evidence and provenance
+- [Archive Organization](../3-archive-organization.md) - How entities are organized in files
+- [Core Concepts](../2-core-concepts.md#evidence-hierarchy) - How entities relate to evidence and provenance
 - Entity type documentation includes GEDCOM mapping information
 
 

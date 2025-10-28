@@ -2,6 +2,8 @@
 
 This diagram shows how the 9 GENEALOGIX entity types connect to form a complete family history archive.
 
+> **See Also:** For the canonical specification of entity types and their relationships, see [Entity Types](../../specification/4-entity-types/README.md#entity-relationships)
+
 ## Overview
 
 ```

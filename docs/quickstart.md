@@ -71,25 +71,25 @@ Create your first person file. All files use the `.glx` extension and are writte
 **Create `persons/person-john-smith.glx`:**
 ```yaml
 # persons/person-john-smith.glx
-id: person-john-smith
-version: "1.0"
-type: person
-
-# Basic information
-name:
-  given: John
-  surname: Smith
-  display: John Smith
-
-# Optional: Add birth information
-birth:
-  date: "1850-01-15"
-  place: place-leeds
-
-# Optional: Add biographical notes
-notes: |
-  John was a blacksmith in Leeds during the Industrial Revolution.
-  He worked at the ironworks on Wellington Street.
+persons:
+  person-john-smith:
+    version: "1.0"
+    
+    # Basic information
+    name:
+      given: John
+      surname: Smith
+      display: John Smith
+    
+    # Optional: Add birth information
+    birth:
+      date: "1850-01-15"
+      place: place-leeds
+    
+    # Optional: Add biographical notes
+    notes: |
+      John was a blacksmith in Leeds during the Industrial Revolution.
+      He worked at the ironworks on Wellington Street.
 ```
 
 ## Step 4: Add a Place
@@ -99,23 +99,23 @@ Create the place referenced in the birth information:
 **Create `places/place-leeds.glx`:**
 ```yaml
 # places/place-leeds.glx
-id: place-leeds
-version: "1.0"
-type: place
-
-name: Leeds
-type: city
-
-# Hierarchical location (optional)
-parent: place-yorkshire
-
-# Geographic coordinates (optional)
-coordinates:
-  latitude: 53.7960
-  longitude: -1.5479
-
-# Alternative names (optional)
-alternative_names:
+places:
+  place-leeds:
+    version: "1.0"
+    
+    name: Leeds
+    type: city
+    
+    # Hierarchical location (optional)
+    parent: place-yorkshire
+    
+    # Geographic coordinates (optional)
+    coordinates:
+      latitude: 53.7960
+      longitude: -1.5479
+    
+    # Alternative names (optional)
+    alternative_names:
   - West Riding
 
 notes: |
@@ -282,7 +282,7 @@ glx init  # Already done - relationships/ directory exists
 glx validate
 
 # See all validation examples
-glx validate docs/examples/complete-family/
+glx validate examples/complete-family/
 ```
 
 ## Troubleshooting

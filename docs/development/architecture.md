@@ -225,7 +225,7 @@ func runInit() error {
 
 **Valid Tests:**
 ```
-test-suite/valid/
+glx/tests/valid/
 ├── person-minimal.glx      # Minimal valid person
 ├── person-complete.glx     # All optional fields
 ├── event-standard.glx      # Standard event
@@ -236,7 +236,7 @@ test-suite/valid/
 
 **Invalid Tests:**
 ```
-test-suite/invalid/
+glx/tests/invalid/
 ├── person-missing-id.glx   # Missing required field
 ├── person-bad-id.glx       # Invalid ID format
 ├── event-no-place.glx      # Missing required place
@@ -248,7 +248,7 @@ test-suite/invalid/
 
 **Test Runner:**
 ```bash
-# test-suite/run-tests.sh
+# glx/tests/run-tests.sh
 #!/bin/bash
 VALIDATOR=${VALIDATOR:-glx}
 TEST_DIR=$1

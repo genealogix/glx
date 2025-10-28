@@ -2,6 +2,8 @@
 
 This diagram illustrates how evidence flows from physical repositories to specific genealogical claims in GENEALOGIX.
 
+> **See Also:** For the canonical specification of evidence hierarchy, see [Core Concepts - Evidence Hierarchy](../../specification/2-core-concepts.md#evidence-hierarchy)
+
 ## Evidence Hierarchy
 
 ```

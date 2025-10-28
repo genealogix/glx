@@ -176,7 +176,7 @@ Validation is centralized in the test suite:
 
 ```bash
 # Run centralized test suite for all entity types
-cd test-suite
+cd glx/tests
 ./run-tests.sh
 
 # Or validate examples manually with glx
@@ -283,11 +283,11 @@ New examples should be:
 
 ### Adding a New Example
 
-1. Create new directory: `examples/my-example/`
+1. Create new directory: `docs/examples/my-example/`
 2. Add subdirectories: `persons/`, `events/`, `places/`, etc.
 3. Create example .glx files for key entities
 4. Write detailed README.md
-5. Add conformance tests to `test-suite/` for new entity types
+5. Add conformance tests to `glx/tests/` for new entity types
 6. Update this README with link and description
 
 ## CLI Tool Support
@@ -317,9 +317,9 @@ All examples work with the latest CLI tool, which recognizes all entity type dir
 
 ## References
 
-- [GENEALOGIX Specification](../specification/)
-- [CLI Tool](../glx/)
-- [JSON Schemas](../schema/v1/)
-- [Contributing Guide](../CONTRIBUTING.md)
+- [GENEALOGIX Specification](../../specification/)
+- [CLI Tool](../../glx/)
+- [JSON Schemas](../../specification/schema/v1/)
+- [Contributing Guide](../../CONTRIBUTING.md)
 
 

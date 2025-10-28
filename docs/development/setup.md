@@ -153,7 +153,7 @@ pre-commit install
 **Full Test Suite:**
 ```bash
 # Run all validation tests
-cd test-suite
+cd glx/tests
 ./run-tests.sh
 
 # Run specific test categories
@@ -229,8 +229,8 @@ go run glx/main.go check-schemas
 find schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
 
 # Test with test suite
-cd test-suite
-./run-tests.sh --validator ../bin/glx
+cd glx/tests
+./run-tests.sh --validator ../../bin/glx
 ```
 
 ## Testing Framework
@@ -239,7 +239,7 @@ cd test-suite
 
 **Valid Tests:**
 ```bash
-test-suite/valid/
+glx/tests/valid/
 ├── person-minimal.glx        # Minimal valid person
 ├── person-complete.glx       # Person with all optional fields
 ├── event-birth.glx          # Standard birth event
@@ -250,7 +250,7 @@ test-suite/valid/
 
 **Invalid Tests:**
 ```bash
-test-suite/invalid/
+glx/tests/invalid/
 ├── person-missing-id.glx     # Missing required field
 ├── person-bad-format.glx     # Invalid ID format
 ├── event-no-place.glx       # Event without required place
@@ -262,7 +262,7 @@ test-suite/invalid/
 
 **Create valid test:**
 ```yaml
-# test-suite/valid/person-with-nickname.glx
+# glx/tests/valid/person-with-nickname.glx
 # TEST: person-with-nickname
 # EXPECT: valid
 # DESCRIPTION: Person with nickname and alternative names
@@ -282,7 +282,7 @@ alternative_names:
 
 **Create invalid test:**
 ```yaml
-# test-suite/invalid/person-missing-name.glx
+# glx/tests/invalid/person-missing-name.glx
 # TEST: person-missing-name
 # EXPECT: invalid
 # ERROR: "name field is required"
@@ -557,10 +557,10 @@ ls -la schema/v1/
 **Test suite issues:**
 ```bash
 # Check test file permissions
-chmod +x test-suite/run-tests.sh
+chmod +x glx/tests/run-tests.sh
 
 # Verify test file format
-head -5 test-suite/valid/person-minimal.glx
+head -5 glx/tests/valid/person-minimal.glx
 
 # Run with debug output
 ./run-tests.sh --verbose

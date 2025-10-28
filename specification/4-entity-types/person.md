@@ -130,6 +130,6 @@ complete JSON Schema definition.
 
 - [Assertion Entity](assertion.md)
 - [Relationship Entity](relationship.md)
-- [Provenance Tracking](../5-data-model/provenance-tracking.md)
+- [Provenance Tracking](../2-core-concepts.md#provenance-and-confidence)
 
 

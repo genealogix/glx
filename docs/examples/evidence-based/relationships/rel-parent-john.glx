@@ -1,7 +1,7 @@
 relationships:
   rel-parent-john:
     version: "1.0"
-    type: parent_child
+    type: parent-child
     persons:
       - person-william-smith
       - person-mary-jones
