@@ -46,19 +46,19 @@ GENEALOGIX is a family history archive format with three main components:
 
 ### Entity Type System
 
-GENEALOGIX defines 9 core entity types:
+GENEALOGIX defines 9 core entity types. The directory names shown in examples are common conventions (often used in examples) but are not required. Files can be organized in any structure as long as they use the correct entity type prefixes:
 
-| Entity Type | Directory | Purpose | Key Fields |
+| Entity Type | ID Prefix | Purpose | Key Fields |
 |-------------|-----------|---------|------------|
-| Person | `persons/` | Individual people | name, birth, death |
-| Relationship | `relationships/` | Family connections | participants, type |
-| Event | `events/` | Life events | type, date, place |
-| Place | `places/` | Geographic locations | name, hierarchy, coordinates |
-| Source | `sources/` | Original materials | title, creator, repository |
-| Citation | `citations/` | Evidence references | source, locator, quality |
-| Repository | `repositories/` | Archives/libraries | name, contact, holdings |
-| Assertion | `assertions/` | Evidence-based claims | subject, claim, citations |
-| Media | `media/` | Supporting files | format, description |
+| Person | `person-` | Individual people | name, birth, death |
+| Relationship | `rel-` | Family connections | participants, type |
+| Event | `event-` | Life events | type, date, place |
+| Place | `place-` | Geographic locations | name, hierarchy, coordinates |
+| Source | `source-` | Original materials | title, creator, repository |
+| Citation | `citation-` | Evidence references | source, locator, quality |
+| Repository | `repository-` | Archives/libraries | name, contact, holdings |
+| Assertion | `assertion-` | Evidence-based claims | subject, claim, citations |
+| Media | `media-` | Supporting files | format, description |
 
 ### File Format Design
 

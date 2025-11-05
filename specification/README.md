@@ -104,6 +104,22 @@ relationships:
       - person-mary-brown-1852
 ```
 
+## Documentation Conventions
+
+### Internal Links
+Internal links omit the .md file extension for VitePress compatibility:
+- ✓ Good: [Person Entity](4-entity-types/person)
+- ✗ Bad: [Person Entity](4-entity-types/person.md)
+
+This works correctly in both VitePress-generated site and raw markdown viewers.
+
+### File Organization
+Examples may show entities in single files or multiple files. Both are valid:
+- Single file: Simpler for small examples and personal archives
+- Multiple files: Better for collaboration (cleaner git diffs)
+
+See [Archive Organization](3-archive-organization) for details.
+
 ## Getting Started
 
 1. Read [Introduction](1-introduction.md) for overview

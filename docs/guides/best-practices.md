@@ -70,26 +70,34 @@ assertions/assertion-john-born.glx:
 
 ## File Organization
 
-### 1. Directory Structure Best Practices
+### 1. Directory Structure Recommendations
 
-**Use standard directory layout:**
+GENEALOGIX is flexible about file organization. You can use any structure that works for your workflow. The example below shows one common pattern (one-entity-per-file with dedicated directories), but many other approaches are equally valid.
+
+**Example: One-entity-per-file organization (good for collaboration):**
 ```
 family-archive/
-├── persons/           # One file per person
-├── relationships/     # Family connections only
-├── events/           # All life events
-├── places/           # Hierarchical geography
-├── sources/          # Original materials
-├── citations/        # Specific references
-├── repositories/     # Where sources are held
-├── assertions/       # Evidence-based conclusions
-└── media/           # Supporting files
+├── persons/           # Person entities
+├── relationships/     # Relationship entities
+├── events/           # Event entities
+├── places/           # Place entities
+├── sources/          # Source entities
+├── citations/        # Citation entities
+├── repositories/     # Repository entities
+├── assertions/       # Assertion entities
+└── media/           # Media entities
 ```
 
-**Avoid:**
-- Mixing entity types in directories
-- Deep nesting without clear purpose
-- Inconsistent naming patterns
+**Other valid approaches:**
+- **Single file**: All entities in one `family.glx` file (good for small archives)
+- **Hybrid**: Mix of single files and directories based on logical groupings
+- **Custom**: Any structure that makes sense for your research process
+
+**Key principles that matter:**
+- Use `.glx` file extension (required)
+- Entity type prefixes on IDs match actual entity types (required)
+- All references point to existing entities (required)
+- Consistent naming within your chosen structure (recommended)
 
 ### 2. ID Management
 

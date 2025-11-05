@@ -49,7 +49,7 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `id` | string | Unique identifier (format: `citation-[hex8]`) |
+| `id` | string | Unique identifier (format: `citation-{id}`) |
 | `version` | string | Schema version (e.g., "1.0") |
 | `source_id` | string | Reference to Source entity |
 
@@ -174,6 +174,8 @@ locator:
 ```
 
 ## File Organization
+
+**Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
 
 Citation files are typically embedded in assertion documents or organized by source:
 

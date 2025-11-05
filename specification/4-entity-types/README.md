@@ -9,7 +9,7 @@ Represents an individual in the family archive. Contains personal identity infor
 
 - **Key Properties**: Names, gender, living status, events, relationships
 - **File Format**: `.glx`
-- **ID Format**: `person-[hex8]`
+- **ID Format**: `person-{id}` (see below)
 - **GEDCOM Equivalent**: INDI (Individual Record)
 
 ### [Relationship](relationship.md)
@@ -17,7 +17,7 @@ Represents connections between people such as spouse, parent-child, and other fa
 
 - **Key Properties**: Relationship type, participants, start/end events
 - **File Format**: `.glx`
-- **ID Format**: `rel-[hex8]`
+- **ID Format**: `rel-{id}` (see below)
 - **GEDCOM Equivalent**: FAM (Family Record)
 
 ### [Event/Fact](event.md)
@@ -25,7 +25,7 @@ Represents occurrences in time and place: births, marriages, occupations, reside
 
 - **Key Properties**: Type, date, place, participants, description
 - **File Format**: `.glx`
-- **ID Format**: `event-[hex8]`
+- **ID Format**: `event-{id}` (see below)
 - **GEDCOM Equivalent**: BIRT, DEAT, MARR, OCCU, etc.
 
 ### [Place](place.md)
@@ -33,7 +33,7 @@ Represents geographic locations forming a hierarchical structure. Supports multi
 
 - **Key Properties**: Name, type, hierarchy, coordinates, alternative names
 - **File Format**: `.glx`
-- **ID Format**: `place-[hex8]`
+- **ID Format**: `place-{id}` (see below)
 - **GEDCOM Equivalent**: PLAC (Place structures)
 
 ### [Assertion](assertion.md)
@@ -41,7 +41,7 @@ Represents an evidence-based conclusion about a specific genealogical fact. Form
 
 - **Key Properties**: Subject, property, value, citations, confidence
 - **File Format**: `.glx`
-- **ID Format**: `assertion-[hex8]`
+- **ID Format**: `assertion-{id}` (see below)
 - **GEDCOM Equivalent**: Implicit (derived from GEDCOM structure and SOUR references)
 
 ### [Source](source.md)
@@ -49,7 +49,7 @@ Represents a bibliographic resource or information source. Can be books, documen
 
 - **Key Properties**: Title, author, publication info, repository
 - **File Format**: `.glx`
-- **ID Format**: `source-[hex8]`
+- **ID Format**: `source-{id}` (see below)
 - **GEDCOM Equivalent**: SOUR (Source Record)
 
 ### [Citation](citation.md)
@@ -57,7 +57,7 @@ Represents a specific reference to evidence within a source. Links sources to sp
 
 - **Key Properties**: Source reference, page, data date, quality, locator
 - **File Format**: `.glx`
-- **ID Format**: `citation-[hex8]`
+- **ID Format**: `citation-{id}` (see below)
 - **GEDCOM Equivalent**: SOUR.PAGE, SOUR.QUAY
 
 ### [Repository](repository.md)
@@ -65,7 +65,7 @@ Represents an institution or organization that holds genealogical sources (archi
 
 - **Key Properties**: Name, type, address, contact info, access restrictions
 - **File Format**: `.glx`
-- **ID Format**: `repository-[hex8]`
+- **ID Format**: `repository-{id}` (see below)
 - **GEDCOM Equivalent**: REPO (Repository Record)
 
 ### [Media](media.md)
@@ -73,7 +73,7 @@ Represents digital or physical media objects associated with genealogical entiti
 
 - **Key Properties**: Title, file path, MIME type, description
 - **File Format**: `.glx`
-- **ID Format**: `media-[hex8]`
+- **ID Format**: `media-{id}` (see below)
 - **GEDCOM Equivalent**: OBJE (Object/Media Record)
 
 ## Entity Relationships
@@ -142,6 +142,15 @@ Media
 | Repository | id, version, name | ✓ | ✓ | - |
 | Media | id, version | ✓ | ✓ | - |
 
+### ID Format Conventions
+
+Entity IDs use `{id}` as placeholder above. IDs can be any unique alphanumeric identifier with hyphens (1-64 chars). Common patterns:
+- **Random hex** (recommended for collaboration): person-a1b2c3d4, event-12345678
+- **Descriptive**: person-john-smith-1850, place-leeds-yorkshire
+- **Sequential**: person-001, event-001
+
+See [Archive Organization - ID Format Standards](../3-archive-organization#id-format-standards) for complete details and examples.
+
 ## ID Scheme
 
 Each entity type has a distinct ID prefix enabling quick entity type identification:
@@ -156,7 +165,7 @@ Each entity type has a distinct ID prefix enabling quick entity type identificat
 - `repository-XXXXXXXX`: Repository entities
 - `media-XXXXXXXX`: Media entities
 
-Where `XXXXXXXX` is an 8-character hexadecimal string.
+The ID suffix can be any format meeting requirements (1-64 alphanumeric and hyphens). An 8-character hex string is commonly used in examples and recommended for collaboration to minimize collision risk.
 
 ## Entity Lifecycle
 

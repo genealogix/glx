@@ -78,31 +78,30 @@ citations/citation-census-secondary.glx:
 
 ## File Organization Issues
 
-### 1. Wrong Directory Structure
+### 1. File Organization Flexibility
 
-**Problem:** Files in wrong directories
+**Important:** GENEALOGIX is flexible about file organization. The examples below show common patterns, but many other approaches are equally valid. The key requirement is that files are valid YAML with correct entity type prefixes.
+
+**Valid organization patterns:**
 ```bash
-# ❌ Wrong: Person file in events directory
-events/person-john-smith.glx  # Should be in persons/
-
-# ✅ Correct: Proper directory structure
-persons/person-john-smith.glx
-events/event-john-birth.glx
-```
-
-**Problem:** Mixed entity types
-```bash
-# ❌ Wrong: Multiple types in one directory
-persons/
-├── person-john.glx
-├── event-birth.glx    # Wrong directory!
-└── place-leeds.glx    # Wrong directory!
-
-# ✅ Correct: Each type in its own directory
+# Pattern 1: Dedicated directories per entity type
 persons/person-john.glx
 events/event-birth.glx
 places/place-leeds.glx
+
+# Pattern 2: Single file archive
+family.glx  # Contains all entities
+
+# Pattern 3: Hybrid with logical groupings
+core-family.glx  # Multiple entity types together
+sources/vital-records.glx
+sources/census/
 ```
+
+**What matters for validation:**
+- File extension must be `.glx` (required)
+- Entity IDs must have correct type prefixes (required)
+- All references must point to existing entities (required)
 
 ### 2. Incorrect ID Formats
 

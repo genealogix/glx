@@ -387,6 +387,8 @@ Media types are defined in the archive's `vocabularies/media-types.glx` file.
 
 ## File Organization
 
+**Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
+
 Media files and their metadata are typically organized by type:
 
 ```
@@ -445,6 +447,8 @@ uri: "/home/user/genealogy/media/photos/john-smith.jpg"
 ```
 
 ### File Organization
+
+**Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The examples below show organization patterns, but you can use any structure that fits your workflow.
 
 Organize media files alongside `.glx` metadata:
 ```

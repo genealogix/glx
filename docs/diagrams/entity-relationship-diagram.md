@@ -131,20 +131,22 @@ Birth Assertion: "John born Jan 15, 1850"
 
 ## File Structure Mapping
 
-This diagram corresponds to the recommended file structure:
+This diagram shows entity relationships, not file organization. Files can be organized in any structure. Below is one common example structure (one-entity-per-file with dedicated directories), but many other approaches are equally valid:
 
 ```
 family-archive/
-├── persons/           # Person entities
-├── relationships/     # Person ↔ Person connections
-├── events/           # Event entities
-├── places/           # Place entities (hierarchical)
-├── sources/          # Source entities
-├── citations/        # Citation entities
-├── repositories/     # Repository entities
-├── assertions/       # Assertion entities
-└── media/           # Supporting media files
+├── persons/           # Person entities (example)
+├── relationships/     # Relationship entities (example)
+├── events/           # Event entities (example)
+├── places/           # Place entities (example)
+├── sources/          # Source entities (example)
+├── citations/        # Citation entities (example)
+├── repositories/     # Repository entities (example)
+├── assertions/       # Assertion entities (example)
+└── media/           # Media entities (example)
 ```
+
+You could equally use a single file, hybrid structure, or any other organization that makes sense for your research.
 
 ## Implementation Notes
 

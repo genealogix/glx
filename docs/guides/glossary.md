@@ -248,16 +248,12 @@ persons/person-john.glx:
 The file extension used for all GENEALOGIX entity files. Pronounced "gl-ex" (genealogical exchange).
 
 ### Directory Structure
-The standardized organization of GENEALOGIX files:
-- `persons/` - Individual people
-- `relationships/` - Family connections
-- `events/` - Life events
-- `places/` - Geographic locations
-- `sources/` - Original materials
-- `citations/` - Evidence references
-- `repositories/` - Archives and libraries
-- `assertions/` - Evidence-based conclusions
-- `media/` - Supporting files
+Common organizational pattern for GENEALOGIX files (not required). Files can be organized in any structure. Common patterns include:
+- `persons/`, `relationships/`, `events/`, etc. - Dedicated directories per entity type (recommended for collaboration)
+- Single file - All entities in one `.glx` file (good for small archives)
+- Hybrid - Mix of directories and multi-entity files based on logical groupings
+
+What matters: entity type ID prefixes must be correct (`person-`, `event-`, etc.)
 
 ## Evidence Terms
 

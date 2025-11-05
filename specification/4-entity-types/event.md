@@ -160,6 +160,8 @@ events:
 
 ## File Organization
 
+**Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
+
 Event files are typically stored in a `events/` directory organized by type:
 
 ```
