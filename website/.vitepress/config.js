@@ -40,11 +40,7 @@ export default defineConfig({
     'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
     'docs/examples/basic-family/README.md': 'examples/basic-family/index.md',
     'docs/examples/complete-family/README.md': 'examples/complete-family/index.md',
-    'docs/examples/complex-relationships/README.md': 'examples/complex-relationships/index.md',
-    'docs/examples/evidence-based/README.md': 'examples/evidence-based/index.md',
-    'docs/examples/large-scale/README.md': 'examples/large-scale/index.md',
     'docs/examples/minimal/README.md': 'examples/minimal/index.md',
-    'docs/examples/oral-history/README.md': 'examples/oral-history/index.md',
     'docs/examples/single-file/README.md': 'examples/single-file/index.md',
     'docs/guides/:page*': 'guides/:page*',
     'docs/development/:page*': 'development/:page*',
@@ -233,16 +229,6 @@ export default defineConfig({
             { text: 'Minimal', link: '/examples/minimal/' }
           ]
         },
-        {
-          text: 'For Advanced Users',
-          items: [
-            { text: 'Complex Relationships', link: '/examples/complex-relationships/' },
-            { text: 'Evidence-Based', link: '/examples/evidence-based/' },
-            { text: 'Oral History', link: '/examples/oral-history/' },
-            { text: 'Large Scale', link: '/examples/large-scale/' },
-            { text: 'Single File', link: '/examples/single-file/' }
-          ]
-        }
       ]
     },
 
