@@ -31,26 +31,6 @@ This directory contains complete, working GENEALOGIX archives demonstrating vari
    - Foundation concepts
    - Quick validation testing
 
-### For Advanced Users
-4. **[Complex Relationships](complex-relationships/)** - Non-traditional families
-   - Adoption, step-relationships
-   - Extended family connections
-   - Modern family structures
-
-5. **[Evidence-Based](evidence-based/)** - Research methodology
-   - Multiple evidence types
-   - Quality assessment
-   - Source evaluation
-
-6. **[Oral History](oral-history/)** - Informal sources
-   - Interview documentation
-   - Family tradition
-   - Memory-based evidence
-
-7. **[Large Scale](large-scale/)** - Performance testing
-   - 10,000+ person archives
-   - Optimization techniques
-   - Scalability patterns
 
 ## Quick Links
 
@@ -60,10 +40,6 @@ This directory contains complete, working GENEALOGIX archives demonstrating vari
   - Shows hierarchical places, events, citations, repositories
   - Complete evidence chain from source to assertions
   - Quality ratings and structured locators
-- [Complex Relationships](complex-relationships/) - Chosen family, adoption, extended relationships
-- [Evidence-Based](evidence-based/) - Multiple assertions with sources and confidence scoring
-- [Oral History](oral-history/) - Oral tradition documentation and informal sources
-- [Large Scale](large-scale/) - Performance testing (10,000+ persons)
 
 ## GEDCOM vs GENEALOGIX Comparison
 
@@ -156,10 +132,6 @@ The **complete-family** example demonstrates all 9 GENEALOGIX entity types:
 
 - **Minimal**: Foundation - only required fields
 - **Basic Family**: Real-world small family tree
-- **Complex Relationships**: Non-traditional family structures
-- **Evidence-Based**: Focus on citations and provenance
-- **Oral History**: Documenting informal sources
-- **Large Scale**: Performance and scalability
 
 ## Running Examples
 

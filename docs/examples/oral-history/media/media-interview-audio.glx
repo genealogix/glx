@@ -1,7 +1,0 @@
-media:
-  media-interview-audio:
-    version: "1.0"
-    uri: "media/elena-martinez-interview-2024.mp3"
-    mime_type: "audio/mpeg"
-    created_at: "2024-01-20T12:05:00Z"
-    created_by: demo-user

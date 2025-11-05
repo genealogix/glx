@@ -1,9 +1,0 @@
-persons:
-  person-emma:
-    version: "1.0"
-    concluded_identity:
-      primary_name: "Emma Chen"
-      gender: female
-    notes: "Chosen sister (non-biological family connection)"
-    created_at: "2024-01-20T10:20:00Z"
-    created_by: demo-user
