@@ -25,10 +25,19 @@ A discrete, evidence-backed claim about a person, event, place, or relationship.
 ### Chain of Custody
 The documented path that evidence has taken from creation to current location, ensuring authenticity and reliability.
 
+### Claim
+A specific property or attribute being asserted about a subject in an assertion (e.g., "born_on", "occupation", "died_in").
+
 ### Citation
 A specific reference to a location within a source document, including quality assessment and optional transcription. Citations link evidence to assertions.
 
 > **See Also:** For complete specification, see [Citation Entity](../../specification/4-entity-types/citation.md)
+
+### Created At
+A timestamp field indicating when an entity record was originally created.
+
+### Created By
+A field indicating which researcher or system originally created an entity record.
 
 ### Conflicting Evidence Resolution
 The process of evaluating multiple sources with different conclusions and determining which to accept based on quality and corroboration.
@@ -37,6 +46,9 @@ The process of evaluating multiple sources with different conclusions and determ
 An assessment of how certain a conclusion is based on available evidence. Common levels include: high, medium, low, disputed.
 
 > **See Also:** For controlled vocabularies, see [Standard Vocabularies](../../specification/5-standard-vocabularies/)
+
+### Concluded Identity
+The resolved or determined identity of a person based on research, including primary name, birth/death dates, and other biographical information.
 
 ### Corroboration
 Supporting evidence from multiple independent sources that agree on a conclusion.
@@ -122,12 +134,23 @@ The regular expression pattern `{type}-{8hex}` used for all entity identifiers.
 ### Indirect Evidence
 Evidence that requires interpretation or additional information to support a conclusion.
 
+## L
+
+### Living Status
+A field indicating whether a person is alive or deceased, used for privacy and research considerations.
+
+### Locator
+A specific reference to a location within a source document, such as page number, entry number, film number, or URL.
+
 ## M
 
 ### Media
 Supporting files such as photos, documents, audio recordings, or videos that provide evidence or context for genealogical assertions.
 
 > **See Also:** For complete specification, see [Media Entity](../../specification/4-entity-types/media.md)
+
+### MIME Type
+Media type identifier (e.g., "image/jpeg", "application/pdf") that specifies the format of a media file.
 
 ## O
 
@@ -138,6 +161,9 @@ First-hand, eyewitness accounts or documents created at the time of the event.
 
 ### Participant
 A person involved in an event with a specific role such as subject, witness, officiant, parent, or spouse.
+
+### Participant Role
+The specific function or relationship a person has in an event (e.g., bride, groom, witness, officiant).
 
 ### Person
 An individual human being with biographical information including name, dates, places, and relationships.
@@ -157,6 +183,9 @@ When conflicting evidence exists, the conclusion supported by the majority of hi
 
 ### Primary Evidence
 Information created at the time of the event by someone with direct knowledge (birth certificates, contemporary letters).
+
+### Primary Name
+The preferred or most commonly used name for a person in genealogical records.
 
 ### Provenance
 The complete history of how information came to be known, including source attribution, chain of custody, author identification, and research context.
@@ -208,6 +237,9 @@ JSON Schema definitions that specify the structure, validation rules, and data t
 ### Schema Compliance
 Conformance to JSON Schema definitions that specify valid structure and data types for each entity.
 
+### Subject
+The entity (person, event, place, etc.) that an assertion makes a claim about.
+
 ### Secondary Evidence
 Information created later, often compiled from primary sources (census records, published indexes).
 
@@ -235,8 +267,16 @@ The text content of a source document, especially when the original is not direc
 ### Validation
 The process of checking GENEALOGIX files for syntax correctness, schema compliance, reference integrity, and structural consistency using the `glx validate` command.
 
+### Value
+The specific data or content of a claim in an assertion (e.g., "1850-01-15" for a birth date, "blacksmith" for an occupation).
+
 ### Version Field
 The schema version field (`version: "1.0"`) that indicates which specification version the file conforms to.
+
+### Vocabularies
+Controlled lists of valid types and categories used throughout a GENEALOGIX archive, stored in the `vocabularies/` directory.
+
+> **See Also:** For standard vocabularies, see [Standard Vocabularies](../../specification/5-standard-vocabularies/)
 
 ## W
 
