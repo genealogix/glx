@@ -244,15 +244,17 @@ When evidence suggests different conclusions:
 # 2. Use assertion with confidence level
 # 3. Add research note explaining discrepancy
 
-assertions/assertion-birth-date.glx:
-  citations:
-    - citation-birth-certificate  # Quality 3
-    - citation-baptism-record     # Quality 3
-  confidence: medium  # Multiple primary sources differ by 5 days
-  notes: |
-    Birth certificate shows January 15, baptism shows January 20.
-    Possible explanations: delayed baptism, transcription error.
-    More research needed to determine which is correct.
+assertions:
+  assertion-birth-date:
+    version: "1.0"
+    citations:
+      - citation-birth-certificate  # Quality 3
+      - citation-baptism-record     # Quality 3
+    confidence: medium  # Multiple primary sources differ by 5 days
+    notes: |
+      Birth certificate shows January 15, baptism shows January 20.
+      Possible explanations: delayed baptism, transcription error.
+      More research needed to determine which is correct.
 ```
 
 ## Release Management

@@ -15,15 +15,19 @@ This guide helps you avoid the most frequent mistakes when working with GENEALOG
 **Problem:** Making claims without evidence
 ```yaml
 # ❌ Wrong: Claim without evidence
-persons/person-john-smith.glx:
-  birth: "1850-01-15"  # No source!
+persons:
+  person-john-smith:
+    version: "1.0"
+    birth: "1850-01-15"  # No source!
 
 # ✅ Correct: Evidence-based approach
-assertions/assertion-birth.glx:
-  subject: person-john-smith
-  claim: born_on
-  value: "1850-01-15"
-  citations: [citation-birth-cert]
+assertions:
+  assertion-birth:
+    version: "1.0"
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-birth-cert]
 ```
 
 **Why this matters:**
@@ -37,14 +41,18 @@ assertions/assertion-birth.glx:
 **Problem:** Broken reference chains
 ```yaml
 # ❌ Wrong: Citation without source
-citations/citation-missing-source.glx:
-  source: source-nonexistent  # Source doesn't exist!
-  locator: "Page 23"
+citations:
+  citation-missing-source:
+    version: "1.0"
+    source: source-nonexistent  # Source doesn't exist!
+    locator: "Page 23"
 
 # ✅ Correct: Complete chain
-citations/citation-good.glx:
-  source: source-birth-register  # Source exists
-  locator: "Entry 145, Page 23"
+citations:
+  citation-good:
+    version: "1.0"
+    source: source-birth-register  # Source exists
+    locator: "Entry 145, Page 23"
 ```
 
 **Validation will catch this:**
@@ -58,16 +66,20 @@ glx validate
 **Problem:** Incorrect evidence quality assessment
 ```yaml
 # ❌ Wrong: Census as primary evidence
-citations/citation-census-primary.glx:
-  source: source-1851-census
-  quality: 3  # Too high for census!
-  notes: "This is primary evidence"
+citations:
+  citation-census-primary:
+    version: "1.0"
+    source: source-1851-census
+    quality: 3  # Too high for census!
+    notes: "This is primary evidence"
 
 # ✅ Correct: Census as secondary evidence
-citations/citation-census-secondary.glx:
-  source: source-1851-census
-  quality: 2  # Correct for census
-  notes: "Secondary source - created after the event"
+citations:
+  citation-census-secondary:
+    version: "1.0"
+    source: source-1851-census
+    quality: 2  # Correct for census
+    notes: "Secondary source - created after the event"
 ```
 
 **Quality guidelines:**
@@ -149,14 +161,17 @@ places/place-leeds.glx
 **Problem:** Inconsistent indentation
 ```yaml
 # ❌ Wrong: Mixed tabs and spaces
-persons/person-john.glx:
-  id: person-john
-   name: "John"  # Inconsistent indentation
+persons:
+  person-john:
+    version: "1.0"
+     name: "John"  # Inconsistent indentation
 
 # ✅ Correct: Consistent spacing
-persons/person-john.glx:
-  id: person-john
-  name: "John"
+persons:
+  person-john:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John"
 ```
 
 **Problem:** Wrong indentation level
@@ -216,16 +231,33 @@ spouse: null
 **Problem:** Nonexistent entity references
 ```yaml
 # ❌ Wrong: References don't exist
-events/event-wedding.glx:
-  place: place-nonexistent  # Place doesn't exist
-  participants:
-    - person: person-missing  # Person doesn't exist
+events:
+  event-wedding:
+    version: "1.0"
+    type: marriage
+    place: place-nonexistent  # Place doesn't exist
+    participants:
+      - person: person-missing  # Person doesn't exist
 
 # ✅ Correct: All references exist
-events/event-wedding.glx:
-  place: place-leeds-parish-church  # Place exists
-  participants:
-    - person: person-john-smith  # Person exists
+places:
+  place-leeds-parish-church:
+    version: "1.0"
+    name: "Leeds Parish Church"
+
+persons:
+  person-john-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+
+events:
+  event-wedding:
+    version: "1.0"
+    type: marriage
+    place: place-leeds-parish-church  # Place exists
+    participants:
+      - person: person-john-smith  # Person exists
 ```
 
 ### 2. Circular References
@@ -233,12 +265,24 @@ events/event-wedding.glx:
 **Problem:** Self-referencing or circular references
 ```yaml
 # ❌ Wrong: Self-reference
-places/place-leeds.glx:
-  parent: place-leeds  # Can't be parent of itself!
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    parent: place-leeds  # Can't be parent of itself!
 
 # ✅ Correct: Proper hierarchy
-places/place-leeds.glx:
-  parent: place-yorkshire  # Parent exists and is different
+places:
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    type: county
+
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire  # Parent exists and is different
 ```
 
 ### 3. Missing Required References
@@ -246,16 +290,25 @@ places/place-leeds.glx:
 **Problem:** Missing required entity references
 ```yaml
 # ❌ Wrong: Event without place
-events/event-birth.glx:
-  event_type: birth
-  date: "1850-01-15"
-  # Missing place reference!
+events:
+  event-birth:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    # Missing place reference!
 
 # ✅ Correct: Place reference included
-events/event-birth.glx:
-  event_type: birth
-  date: "1850-01-15"
-  place: place-leeds
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+
+events:
+  event-birth:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
 ```
 
 ## Validation Issues
@@ -265,16 +318,18 @@ events/event-birth.glx:
 **Problem:** Files don't match JSON Schema
 ```yaml
 # ❌ Wrong: Invalid field names
-persons/person-john.glx:
-  id: person-john
-  name: "John Smith"
-  birthdate: "1850-01-15"  # Wrong field name!
+persons:
+  person-john:
+    version: "1.0"
+    birthdate: "1850-01-15"  # Wrong field name!
 
 # ✅ Correct: Valid field names
-persons/person-john.glx:
-  id: person-john
-  name: "John Smith"
-  birth: "1850-01-15"  # Correct field name
+persons:
+  person-john:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+      birth_date: "1850-01-15"  # Correct field name
 ```
 
 **Check schema requirements:**
@@ -377,26 +432,31 @@ git commit -m "add validated data"
 **Problem:** Multiple conflicting claims
 ```yaml
 # ❌ Wrong: Conflicting assertions without resolution
-assertions/assertion-birth-1.glx:
-  claim: born_on
-  value: "1850-01-15"
-  citations: [citation-cert]
+assertions:
+  assertion-birth-1:
+    version: "1.0"
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-cert]
 
-assertions/assertion-birth-2.glx:
-  claim: born_on
-  value: "1850-01-20"  # Conflicts!
-  citations: [citation-baptism]
+  assertion-birth-2:
+    version: "1.0"
+    claim: born_on
+    value: "1850-01-20"  # Conflicts!
+    citations: [citation-baptism]
 
 # ✅ Correct: Single resolved assertion
-assertions/assertion-birth-resolved.glx:
-  claim: born_on
-  value: "1850-01-15"  # Resolved value
-  confidence: medium
-  research_notes: |
-    Conflicting evidence resolved:
-    - Birth cert: Jan 15 (quality 3) - preferred
-    - Baptism: Jan 20 (quality 3) - 5 day delay common
-  citations: [citation-cert, citation-baptism]
+assertions:
+  assertion-birth-resolved:
+    version: "1.0"
+    claim: born_on
+    value: "1850-01-15"  # Resolved value
+    confidence: medium
+    research_notes: |
+      Conflicting evidence resolved:
+      - Birth cert: Jan 15 (quality 3) - preferred
+      - Baptism: Jan 20 (quality 3) - 5 day delay common
+    citations: [citation-cert, citation-baptism]
 ```
 
 ### 2. Place Hierarchy Errors
@@ -404,26 +464,35 @@ assertions/assertion-birth-resolved.glx:
 **Problem:** Invalid place relationships
 ```yaml
 # ❌ Wrong: Circular or invalid hierarchy
-places/place-leeds.glx:
-  parent: place-leeds  # Self-reference!
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    parent: place-leeds  # Self-reference!
 
-places/place-yorkshire.glx:
-  parent: place-leeds  # Child can't be parent of parent!
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    parent: place-leeds  # Child can't be parent of parent!
 
 # ✅ Correct: Proper hierarchy
-places/place-england.glx:
-  name: England
-  type: country
+places:
+  place-england:
+    version: "1.0"
+    name: "England"
+    type: country
 
-places/place-yorkshire.glx:
-  name: Yorkshire
-  type: county
-  parent: place-england
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    type: county
+    parent: place-england
 
-places/place-leeds.glx:
-  name: Leeds
-  type: city
-  parent: place-yorkshire
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire
 ```
 
 ### 3. Event Participant Issues
@@ -431,21 +500,41 @@ places/place-leeds.glx:
 **Problem:** Missing or invalid participants
 ```yaml
 # ❌ Wrong: Event without participants
-events/event-marriage.glx:
-  event_type: marriage
-  date: "1875-05-10"
-  # Missing participants!
+events:
+  event-marriage:
+    version: "1.0"
+    type: marriage
+    date: "1875-05-10"
+    # Missing participants!
 
 # ✅ Correct: Proper participants
-events/event-marriage.glx:
-  event_type: marriage
-  date: "1875-05-10"
-  place: place-leeds-parish-church
-  participants:
-    - person: person-john-smith
-      role: groom
-    - person: person-mary-brown
-      role: bride
+places:
+  place-leeds-parish-church:
+    version: "1.0"
+    name: "Leeds Parish Church"
+
+persons:
+  person-john-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+
+  person-mary-brown:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Mary Brown"
+
+events:
+  event-marriage:
+    version: "1.0"
+    type: marriage
+    date: "1875-05-10"
+    place: place-leeds-parish-church
+    participants:
+      - person: person-john-smith
+        role: groom
+      - person: person-mary-brown
+        role: bride
 ```
 
 ## Performance Issues
@@ -455,21 +544,34 @@ events/event-marriage.glx:
 **Problem:** Overly complex single files
 ```yaml
 # ❌ Wrong: Massive person file
-persons/person-john.glx:
-  # 1000+ lines with everything
+persons:
+  person-john:
+    version: "1.0"
+    # 1000+ lines with everything
 
 # ✅ Correct: Split into focused files
-persons/person-john.glx:
-  # Basic info only
+persons:
+  person-john:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John"
+    # Basic info only
 
-events/event-john-birth.glx:
-  # Birth event
+events:
+  event-john-birth:
+    version: "1.0"
+    type: birth
+    # Birth event
 
-events/event-john-marriage.glx:
-  # Marriage event
+  event-john-marriage:
+    version: "1.0"
+    type: marriage
+    # Marriage event
 
-events/event-john-occupation.glx:
-  # Occupation events
+  event-john-occupation:
+    version: "1.0"
+    type: occupation
+    # Occupation events
 ```
 
 ### 2. Duplicate Data
@@ -477,20 +579,37 @@ events/event-john-occupation.glx:
 **Problem:** Same information in multiple places
 ```yaml
 # ❌ Wrong: Duplicate place info
-persons/person-john.glx:
-  birth_place: "Leeds, Yorkshire, England"
+persons:
+  person-john:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John"
+      birth_place: "Leeds, Yorkshire, England"
 
-places/place-leeds.glx:
-  name: "Leeds, Yorkshire, England"  # Duplicate!
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds, Yorkshire, England"  # Duplicate!
 
 # ✅ Correct: Single source of truth
-persons/person-john.glx:
-  birth_place: place-leeds  # Reference only
+places:
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    type: county
 
-places/place-leeds.glx:
-  name: "Leeds"
-  type: city
-  parent: place-yorkshire
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire
+
+persons:
+  person-john:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John"
+      birth_place: place-leeds  # Reference only
 ```
 
 ## Troubleshooting Checklist

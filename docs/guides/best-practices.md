@@ -50,22 +50,30 @@ assertions:
 
 ```yaml
 # Complete chain example
-repositories/repository-gro.glx:
-  name: General Register Office
-  location: London
+repositories:
+  repository-gro:
+    version: "1.0"
+    name: "General Register Office"
+    location: "London"
 
-sources/source-birth-register.glx:
-  title: Birth Register 1850
-  repository: repository-gro
+sources:
+  source-birth-register:
+    version: "1.0"
+    title: "Birth Register 1850"
+    repository: repository-gro
 
-citations/citation-entry-145.glx:
-  source: source-birth-register
-  locator: "Entry 145, Page 23"
-  quality: 3
+citations:
+  citation-entry-145:
+    version: "1.0"
+    source: source-birth-register
+    locator: "Entry 145, Page 23"
+    quality: 3
 
-assertions/assertion-john-born.glx:
-  citations: [citation-entry-145]
-  claim: "John Smith was born January 15, 1850"
+assertions:
+  assertion-john-born:
+    version: "1.0"
+    citations: [citation-entry-145]
+    claim: "John Smith was born January 15, 1850"
 ```
 
 ## File Organization
@@ -151,31 +159,37 @@ require('crypto').randomBytes(4).toString('hex')
 **Be specific in citations:**
 ```yaml
 # ✅ Good citation
-citations/citation-census.glx:
-  source: source-1851-census
-  locator: "HO107, Piece 2319, Folio 234, Page 23, Schedule 145"
-  quality: 2
-  transcription: |
-    "John Smith, Head, Married, 25, Blacksmith, born Leeds"
+citations:
+  citation-census:
+    version: "1.0"
+    source: source-1851-census
+    locator: "HO107, Piece 2319, Folio 234, Page 23, Schedule 145"
+    quality: 2
+    transcription: |
+      "John Smith, Head, Married, 25, Blacksmith, born Leeds"
 
 # ❌ Vague citation
-citations/citation-bad.glx:
-  source: source-1851-census
-  locator: "somewhere in the census"
-  quality: 2
+citations:
+  citation-bad:
+    version: "1.0"
+    source: source-1851-census
+    locator: "somewhere in the census"
+    quality: 2
 ```
 
 **Include transcriptions for important evidence:**
 ```yaml
-citations/citation-parish.glx:
-  source: source-st-pauls-register
-  locator: "Baptisms 1850, Entry 145"
-  quality: 3
-  transcription: |
-    "January 20th, 1850. John, son of Thomas Smith, blacksmith,
-    and Mary Smith, of 23 Wellington Street. Born January 15th."
-  notes: |
-    5-day delay between birth and baptism is typical for working families
+citations:
+  citation-parish:
+    version: "1.0"
+    source: source-st-pauls-register
+    locator: "Baptisms 1850, Entry 145"
+    quality: 3
+    transcription: |
+      "January 20th, 1850. John, son of Thomas Smith, blacksmith,
+      and Mary Smith, of 23 Wellington Street. Born January 15th."
+    notes: |
+      5-day delay between birth and baptism is typical for working families
 ```
 
 ## Git Workflow Best Practices
@@ -289,32 +303,38 @@ name_changes:
 **Use hierarchical place structure:**
 ```yaml
 # ✅ Hierarchical places
-places/place-england.glx:
-  name: England
-  type: country
+places:
+  place-england:
+    version: "1.0"
+    name: "England"
+    type: country
 
-places/place-yorkshire.glx:
-  name: Yorkshire
-  type: county
-  parent: place-england
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    type: county
+    parent: place-england
 
-places/place-leeds.glx:
-  name: Leeds
-  type: city
-  parent: place-yorkshire
-  coordinates:
-    latitude: 53.7960
-    longitude: -1.5479
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire
+    coordinates:
+      latitude: 53.7960
+      longitude: -1.5479
 ```
 
 **Include alternative names:**
 ```yaml
-places/place-yorkshire.glx:
-  name: Yorkshire
-  alternative_names:
-    - West Riding
-    - County of York
-  type: county
+places:
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    alternative_names:
+      - "West Riding"
+      - "County of York"
+    type: county
 ```
 
 ### 3. Event Types
@@ -338,13 +358,15 @@ event_types:
 
 **Document custom events clearly:**
 ```yaml
-events/event-custom.glx:
-  event_type: family_reunion
-  date: "1990-07-15"
-  place: place-leeds
-  description: |
-    Annual Smith family reunion at Roundhay Park.
-    Attended by 45 family members from 3 generations.
+events:
+  event-custom:
+    version: "1.0"
+    type: family_reunion
+    date: "1990-07-15"
+    place: place-leeds
+    description: |
+      Annual Smith family reunion at Roundhay Park.
+      Attended by 45 family members from 3 generations.
 ```
 
 ## Data Quality Standards
@@ -364,11 +386,14 @@ date: "1850-01-15/1850-01-20"  # Date range
 
 **Document date uncertainty:**
 ```yaml
-events/event-birth.glx:
-  date: "1850-01-15?"  # Questionable date
-  notes: |
-    Birth certificate shows January 15, but family tradition
-    says January 20. Certificate takes precedence as primary evidence.
+events:
+  event-birth:
+    version: "1.0"
+    type: birth
+    date: "1850-01-15?"  # Questionable date
+    notes: |
+      Birth certificate shows January 15, but family tradition
+      says January 20. Certificate takes precedence as primary evidence.
 ```
 
 ### 2. Place Accuracy
@@ -376,28 +401,32 @@ events/event-birth.glx:
 **Be specific about place precision:**
 ```yaml
 # ✅ Good place documentation
-places/place-23-wellington-st.glx:
-  name: 23 Wellington Street
-  type: address
-  parent: place-leeds
-  coordinates:
-    latitude: 53.7960
-    longitude: -1.5479
-  notes: |
-    Residential address from 1851 Census.
-    Street no longer exists, site now occupied by modern building.
+places:
+  place-23-wellington-st:
+    version: "1.0"
+    name: "23 Wellington Street"
+    type: address
+    parent: place-leeds
+    coordinates:
+      latitude: 53.7960
+      longitude: -1.5479
+    notes: |
+      Residential address from 1851 Census.
+      Street no longer exists, site now occupied by modern building.
 ```
 
 **Document place name changes:**
 ```yaml
-places/place-leeds.glx:
-  name: Leeds
-  alternative_names:
-    - Loidis (historical)
-    - Ledes (medieval)
-  type: city
-  notes: |
-    Place name evolution: Ledes (1086 Domesday Book) → Leeds (modern)
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    alternative_names:
+      - "Loidis (historical)"
+      - "Ledes (medieval)"
+    type: city
+    notes: |
+      Place name evolution: Ledes (1086 Domesday Book) → Leeds (modern)
 ```
 
 ## Collaboration Guidelines
@@ -430,23 +459,25 @@ places/place-leeds.glx:
 
 ```yaml
 # Conflicting birth dates
-assertions/assertion-john-birth-disputed.glx:
-  subject: person-john-smith
-  claim: birth_date
-  value: "1850-01-15"  # Preferred date
-  confidence: medium
-  research_notes: |
-    Conflicting evidence:
-    - Birth certificate: Jan 15, 1850 (quality 3) - PREFERRED
-    - Baptism record: Jan 20, 1850 (quality 3) - ALTERNATIVE
-    - Census age: 25 in 1875 (quality 2) - SUPPORTS 1850
+assertions:
+  assertion-john-birth-disputed:
+    version: "1.0"
+    subject: person-john-smith
+    claim: birth_date
+    value: "1850-01-15"  # Preferred date
+    confidence: medium
+    research_notes: |
+      Conflicting evidence:
+      - Birth certificate: Jan 15, 1850 (quality 3) - PREFERRED
+      - Baptism record: Jan 20, 1850 (quality 3) - ALTERNATIVE
+      - Census age: 25 in 1875 (quality 2) - SUPPORTS 1850
 
-    Resolution: Birth certificate takes precedence as primary direct evidence.
-    5-day baptism delay is within normal range for working families.
-  citations:
-    - citation-birth-cert
-    - citation-baptism
-    - citation-census-1875
+      Resolution: Birth certificate takes precedence as primary direct evidence.
+      5-day baptism delay is within normal range for working families.
+    citations:
+      - citation-birth-cert
+      - citation-baptism
+      - citation-census-1875
 ```
 
 ### 3. Review Process

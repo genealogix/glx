@@ -33,21 +33,27 @@ This guide helps you convert existing GEDCOM files to GENEALOGIX format while pr
 **GENEALOGIX Evidence:**
 ```yaml
 # Complete evidence chain
-sources/source-census.glx:
-  title: 1851 England Census
-  type: census
+sources:
+  source-census:
+    version: "1.0"
+    title: "1851 England Census"
+    type: census
 
-citations/citation-schedule.glx:
-  source: source-census
-  locator: "HO107, Piece 2319, Folio 234, Page 23, Schedule 145"
-  quality: 2  # Secondary source
-  transcription: "John Smith, Head, 25, Blacksmith"
+citations:
+  citation-schedule:
+    version: "1.0"
+    source: source-census
+    locator: "HO107, Piece 2319, Folio 234, Page 23, Schedule 145"
+    quality: 2  # Secondary source
+    transcription: "John Smith, Head, 25, Blacksmith"
 
-assertions/assertion-occupation.glx:
-  subject: person-john-smith
-  claim: occupation
-  value: blacksmith
-  citations: [citation-schedule]
+assertions:
+  assertion-occupation:
+    version: "1.0"
+    subject: person-john-smith
+    claim: occupation
+    value: blacksmith
+    citations: [citation-schedule]
 ```
 
 ## Migration Process
@@ -120,51 +126,40 @@ git commit -m "Initial: Set up GENEALOGIX archive structure"
 
 **GENEALOGIX Evidence Chain:**
 ```yaml
-# Repository
-repositories/repository-gro.glx:
-  repositories:
-    repository-gro:
-      version: "1.0"
-      name: General Register Office
-      location: London, England
+# Complete evidence chain in single file
+repositories:
+  repository-gro:
+    version: "1.0"
+    name: "General Register Office"
+    location: "London, England"
 
-# Source
-sources/source-birth-cert.glx:
-  sources:
-    source-birth-cert:
-      version: "1.0"
-      title: Birth Certificate
-      type: vital_record
-      repository: repository-gro
+sources:
+  source-birth-cert:
+    version: "1.0"
+    title: "Birth Certificate"
+    type: vital_record
+    repository: repository-gro
 
-# Citation
-citations/citation-birth-page23.glx:
-  citations:
-    citation-birth-page23:
-      version: "1.0"
-      source: source-birth-cert
-      locator: "Page 23"
-      quality: 2  # GEDCOM QUAY 2 = secondary evidence
+citations:
+  citation-birth-page23:
+    version: "1.0"
+    source: source-birth-cert
+    locator: "Page 23"
+    quality: 2  # GEDCOM QUAY 2 = secondary evidence
 
-# Person with evidence
-persons/person-john-smith.glx:
-  persons:
-    person-john-smith:
-      version: "1.0"
-      name:
-        given: John
-        surname: Smith
-        display: John Smith
+persons:
+  person-john-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
 
-# Assertion (not direct field)
-assertions/assertion-john-birth.glx:
-  assertions:
-    assertion-john-birth:
-      version: "1.0"
-      subject: person-john-smith
-      claim: born_on
-      value: "1850-01-15"
-      citations: [citation-birth-page23]
+assertions:
+  assertion-john-birth:
+    version: "1.0"
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations: [citation-birth-page23]
 ```
 
 ## GEDCOM Field Mapping
@@ -225,16 +220,20 @@ assertions/assertion-john-birth.glx:
 **Translation examples:**
 ```yaml
 # GEDCOM: 2 SOUR @S1@ 3 QUAY 2
-citations/citation-example.glx:
-  source: source-example
-  quality: 2  # Secondary evidence
-  notes: "GEDCOM QUAY: 2"
+citations:
+  citation-example:
+    version: "1.0"
+    source: source-example
+    quality: 2  # Secondary evidence
+    notes: "GEDCOM QUAY: 2"
 
 # GEDCOM: 2 SOUR @S1@ 3 QUAY 3
-citations/citation-primary.glx:
-  source: source-primary
-  quality: 3  # Primary evidence
-  notes: "GEDCOM QUAY: 3"
+citations:
+  citation-primary:
+    version: "1.0"
+    source: source-primary
+    quality: 3  # Primary evidence
+    notes: "GEDCOM QUAY: 3"
 ```
 
 ## Migration Tools
@@ -325,23 +324,30 @@ name:
 **GENEALOGIX places:**
 ```yaml
 # Hierarchical structure
-places/place-england.glx:
-  name: England
-  type: country
+places:
+  place-england:
+    version: "1.0"
+    name: "England"
+    type: country
 
-places/place-yorkshire.glx:
-  name: Yorkshire
-  type: county
-  parent: place-england
+  place-yorkshire:
+    version: "1.0"
+    name: "Yorkshire"
+    type: county
+    parent: place-england
 
-places/place-leeds.glx:
-  name: Leeds
-  type: city
-  parent: place-yorkshire
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire
 
 # Usage in events
-events/event-birth.glx:
-  place: place-leeds  # Reference, not text
+events:
+  event-birth:
+    version: "1.0"
+    type: birth
+    place: place-leeds  # Reference, not text
 ```
 
 ### 3. Date Standardization
@@ -376,15 +382,17 @@ date: "1850?"         # Uncertain
 **Solution:** Create basic citation structure
 ```yaml
 # Basic citation from minimal GEDCOM data
-citations/citation-basic.glx:
-  source: source-basic
-  quality: 2  # Default for GEDCOM sources
-  notes: |
-    Migrated from GEDCOM source.
-    Additional research needed for:
-    - Specific page/entry numbers
-    - Transcription of relevant text
-    - Quality assessment verification
+citations:
+  citation-basic:
+    version: "1.0"
+    source: source-basic
+    quality: 2  # Default for GEDCOM sources
+    notes: |
+      Migrated from GEDCOM source.
+      Additional research needed for:
+      - Specific page/entry numbers
+      - Transcription of relevant text
+      - Quality assessment verification
 ```
 
 ## Post-Migration Cleanup
@@ -415,15 +423,17 @@ glx validate sources/ citations/
 # Complete evidence chains
 
 # Example enhancement
-citations/citation-enhanced.glx:
-  source: source-birth-certificate
-  locator: "Certificate #1850-LEEDS-00145"
-  quality: 3  # Upgraded from GEDCOM QUAY 2
-  transcription: |
-    "Registration District: Leeds
-    Birth: January 15, 1850
-    Name: John Smith
-    Father: Thomas Smith, Blacksmith
+citations:
+  citation-enhanced:
+    version: "1.0"
+    source: source-birth-certificate
+    locator: "Certificate #1850-LEEDS-00145"
+    quality: 3  # Upgraded from GEDCOM QUAY 2
+    transcription: |
+      "Registration District: Leeds
+      Birth: January 15, 1850
+      Name: John Smith
+      Father: Thomas Smith, Blacksmith
     Mother: Mary Smith, formerly Brown"
 ```
 
@@ -483,30 +493,36 @@ git commit -m "Phase 3: Evidence quality enhanced"
 **Document original GEDCOM quality:**
 ```yaml
 # Track original GEDCOM quality
-sources/source-gedcom-original.glx:
-  title: Original GEDCOM Import
-  type: digital_file
-  notes: |
-    Migrated from family.ged on 2024-03-15
-    Original QUAY ratings preserved in citation notes
-    Evidence enhancement needed for research standards
+sources:
+  source-gedcom-original:
+    version: "1.0"
+    title: "Original GEDCOM Import"
+    type: digital_file
+    notes: |
+      Migrated from family.ged on 2024-03-15
+      Original QUAY ratings preserved in citation notes
+      Evidence enhancement needed for research standards
 
-citations/citation-from-gedcom.glx:
-  source: source-gedcom-original
-  quality: 2  # From GEDCOM QUAY 2
-  notes: "Original GEDCOM QUAY: 2, Page: 23"
+citations:
+  citation-from-gedcom:
+    version: "1.0"
+    source: source-gedcom-original
+    quality: 2  # From GEDCOM QUAY 2
+    notes: "Original GEDCOM QUAY: 2, Page: 23"
 ```
 
 ### 3. Research Notes
 
 **Document migration decisions:**
 ```yaml
-assertions/assertion-migrated.glx:
-  research_notes: |
-    Migrated from GEDCOM on 2024-03-15
-    Original: 2 DATE 15 JAN 1850, 2 SOUR @S1@, 3 QUAY 2
-    Quality upgraded from 2 to 3 based on source verification
-    Additional research confirmed birth certificate exists
+assertions:
+  assertion-migrated:
+    version: "1.0"
+    research_notes: |
+      Migrated from GEDCOM on 2024-03-15
+      Original: 2 DATE 15 JAN 1850, 2 SOUR @S1@, 3 QUAY 2
+      Quality upgraded from 2 to 3 based on source verification
+      Additional research confirmed birth certificate exists
 ```
 
 ## Migration Validation
@@ -568,11 +584,13 @@ glx validate sources/ repositories/
 **Handle GEDCOM custom events:**
 ```yaml
 # GEDCOM: 1 EVEN Graduation
-events/event-graduation.glx:
-  event_type: education_graduation
-  date: "1870"
-  place: place-leeds-university
-  description: "Graduated from Leeds Mechanics Institute"
+events:
+  event-graduation:
+    version: "1.0"
+    type: education_graduation
+    date: "1870"
+    place: place-leeds-university
+    description: "Graduated from Leeds Mechanics Institute"
 ```
 
 ### 2. Complex Relationships
@@ -580,13 +598,15 @@ events/event-graduation.glx:
 **Migrate non-standard relationships:**
 ```yaml
 # GEDCOM: 1 FAMC @F2@ (adoptive family)
-relationships/rel-adoptive-family.glx:
-  relationship_type: adoption
-  participants:
-    - person: person-child
-      role: adopted_child
-    - person: person-parent
-      role: adoptive_parent
+relationships:
+  rel-adoptive-family:
+    version: "1.0"
+    type: adoption
+    participants:
+      - person: person-child
+        role: adopted_child
+      - person: person-parent
+        role: adoptive_parent
 ```
 
 ### 3. Media Files
@@ -655,12 +675,14 @@ glx validate --migration-report
 # Complete evidence chains
 
 # Example enhancement
-citations/citation-enhanced.glx:
-  source: source-original-document
-  locator: "Document #1850-LEEDS-00145"
-  quality: 3  # Upgraded with research
-  transcription: "Full document text..."
-  research_notes: "Located original at Leeds Library, verified 2024-03-15"
+citations:
+  citation-enhanced:
+    version: "1.0"
+    source: source-original-document
+    locator: "Document #1850-LEEDS-00145"
+    quality: 3  # Upgraded with research
+    transcription: "Full document text..."
+    research_notes: "Located original at Leeds Library, verified 2024-03-15"
 ```
 
 ### 2. Git History Integration

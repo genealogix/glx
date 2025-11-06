@@ -252,14 +252,31 @@ Invalid:
 **Cross-entity references must exist:**
 ```yaml
 # ✅ Valid references
-events/event-wedding.glx:
-  place: place-leeds  # place-leeds.glx exists
-  participants:
-    - person: person-john  # person-john.glx exists
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+
+persons:
+  person-john:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John"
+
+events:
+  event-wedding:
+    version: "1.0"
+    type: marriage
+    place: place-leeds  # place-leeds exists above
+    participants:
+      - person: person-john  # person-john exists above
 
 # ❌ Invalid references
-events/event-bad.glx:
-  place: place-missing  # place-missing.glx doesn't exist!
+events:
+  event-bad:
+    version: "1.0"
+    type: marriage
+    place: place-missing  # place-missing doesn't exist!
 ```
 
 ### Evidence Chain Validation
@@ -267,15 +284,26 @@ events/event-bad.glx:
 **Complete evidence chains required:**
 ```yaml
 # ✅ Complete chain
-sources/source-cert.glx:        # Source exists
-citations/citation-cert.glx:    # Citation references source
-  source: source-cert
-assertions/assertion-birth.glx: # Assertion references citation
-  citations: [citation-cert]
+sources:
+  source-cert:
+    version: "1.0"
+    title: "Birth Certificate"
+
+citations:
+  citation-cert:
+    version: "1.0"
+    source: source-cert
+
+assertions:
+  assertion-birth:
+    version: "1.0"
+    citations: [citation-cert]
 
 # ❌ Broken chain
-assertions/assertion-broken.glx:
-  citations: [citation-missing]  # Citation doesn't exist!
+assertions:
+  assertion-broken:
+    version: "1.0"
+    citations: [citation-missing]  # Citation doesn't exist!
 ```
 
 ## Error Messages

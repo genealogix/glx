@@ -292,23 +292,31 @@ Archive   Material  Reference backed    Event/
 **Implementation:**
 ```yaml
 # Complete evidence chain
-repositories/repo-library.glx:
-  name: "Leeds Library"
+repositories:
+  repo-library:
+    version: "1.0"
+    name: "Leeds Library"
 
-sources/source-census.glx:
-  title: "1851 Census"
-  repository: repository-leeds-library
+sources:
+  source-census:
+    version: "1.0"
+    title: "1851 Census"
+    repository: repository-leeds-library
 
-citations/citation-schedule.glx:
-  source: source-census
-  locator: "HO107/2319/234/23"
-  quality: 2
+citations:
+  citation-schedule:
+    version: "1.0"
+    source: source-census
+    locator: "HO107/2319/234/23"
+    quality: 2
 
-assertions/assertion-occupation.glx:
-  subject: person-john-smith
-  claim: occupation
-  value: blacksmith
-  citations: [citation-schedule]
+assertions:
+  assertion-occupation:
+    version: "1.0"
+    subject: person-john-smith
+    claim: occupation
+    value: blacksmith
+    citations: [citation-schedule]
 ```
 
 ## Git Integration Architecture

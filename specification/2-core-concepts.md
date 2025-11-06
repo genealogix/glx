@@ -378,11 +378,30 @@ These relationships create validation requirements:
 GENEALOGIX enforces referential integrity:
 ```yaml
 # Valid: All referenced entities exist
-events/event-wedding.glx:
-  place: place-leeds-parish-church  # Must exist in places/
-  participants:
-    - person: person-john-smith     # Must exist in persons/
-    - person: person-mary-brown     # Must exist in persons/
+places:
+  place-leeds-parish-church:
+    version: "1.0"
+    name: "Leeds Parish Church"
+
+persons:
+  person-john-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+
+  person-mary-brown:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Mary Brown"
+
+events:
+  event-wedding:
+    version: "1.0"
+    type: marriage
+    place: place-leeds-parish-church  # Must exist in places/
+    participants:
+      - person: person-john-smith     # Must exist in persons/
+      - person: person-mary-brown     # Must exist in persons/
 
 # Invalid: Referenced entities don't exist
 # glx validate will catch these errors
