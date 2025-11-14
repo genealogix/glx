@@ -80,10 +80,10 @@ body:
 
   - type: checkboxes
     attributes:
-      label: RFC Required?
+      label: Specification Impact
       description: |
-        Major changes to the specification require an RFC (Request for Comments).
+        Major changes to the specification should be discussed via GitHub issues and discussions.
         Check this box if this feature would require changes to the core specification.
       options:
-        - label: This feature requires an RFC (spec changes)
+        - label: This feature requires specification changes (will need extended discussion)
           required: false

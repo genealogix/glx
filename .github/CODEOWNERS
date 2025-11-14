@@ -8,65 +8,60 @@
 
 # Default owners for everything in the repository
 # These owners will be requested for review when no other owner matches
-* @genealogix/maintainers
+# * @genealogix/maintainers
 
 # Core Specification Documents
-/specification/ @genealogix/specification-team
-/specification/1-introduction.md @genealogix/spec-leads
-/specification/2-core-concepts.md @genealogix/spec-leads
-/specification/3-file-structure.md @genealogix/spec-leads
-/specification/4-entity-types/ @genealogix/entity-experts
+# /specification/ @genealogix/specification-team
+# /specification/1-introduction.md @genealogix/spec-leads
+# /specification/2-core-concepts.md @genealogix/spec-leads
+# /specification/3-file-structure.md @genealogix/spec-leads
+# /specification/4-entity-types/ @genealogix/entity-experts
 
 # JSON Schemas - require validation expertise
-/schema/ @genealogix/schema-team
-/schema/v1/*.schema.json @genealogix/schema-team
-/schema/meta/ @genealogix/schema-team
+# /schema/ @genealogix/schema-team
+# /schema/v1/*.schema.json @genealogix/schema-team
+# /schema/meta/ @genealogix/schema-team
 
 # CLI Tool - require Go development expertise
-/glx/ @genealogix/cli-developers
-/glx/main.go @genealogix/cli-developers
-/glx/README.md @genealogix/cli-developers @genealogix/documentation-team
+# /glx/ @genealogix/cli-developers
+# /glx/main.go @genealogix/cli-developers
+# /glx/README.md @genealogix/cli-developers @genealogix/documentation-team
 
 # Examples - require genealogical expertise
-/examples/ @genealogix/genealogy-experts @genealogix/example-maintainers
-/examples/complete-family/ @genealogix/genealogy-experts
-/examples/README.md @genealogix/documentation-team
+# /examples/ @genealogix/genealogy-experts @genealogix/example-maintainers
+# /examples/complete-family/ @genealogix/genealogy-experts
+# /examples/README.md @genealogix/documentation-team
 
 # Test Suite - require testing expertise
-/test-suite/ @genealogix/testing-team
-/test-suite/run-tests.sh @genealogix/testing-team
-/test-suite/valid/ @genealogix/testing-team
-/test-suite/invalid/ @genealogix/testing-team
+# /test-suite/ @genealogix/testing-team
+# /test-suite/run-tests.sh @genealogix/testing-team
+# /test-suite/valid/ @genealogix/testing-team
+# /test-suite/invalid/ @genealogix/testing-team
 
 # Documentation
-/docs/ @genealogix/documentation-team
-/docs/quickstart.md @genealogix/documentation-team
-/docs/guides/ @genealogix/genealogy-experts @genealogix/documentation-team
-/docs/development/ @genealogix/developers @genealogix/documentation-team
-/docs/diagrams/ @genealogix/architects
-
-# RFCs - require broad review
-/rfcs/ @genealogix/rfc-reviewers
-/rfcs/0000-template.md @genealogix/spec-leads
-/rfcs/*.md @genealogix/rfc-reviewers
+# /docs/ @genealogix/documentation-team
+# /docs/quickstart.md @genealogix/documentation-team
+# /docs/guides/ @genealogix/genealogy-experts @genealogix/documentation-team
+# /docs/development/ @genealogix/developers @genealogix/documentation-team
+# /docs/diagrams/ @genealogix/architects
 
 # GitHub Configuration
-/.github/ @genealogix/maintainers
-/.github/workflows/ @genealogix/ci-maintainers
-/.github/ISSUE_TEMPLATE/ @genealogix/maintainers
-/.github/PULL_REQUEST_TEMPLATE.md @genealogix/maintainers
-/.github/CODEOWNERS @genealogix/maintainers
+# /.github/ @genealogix/maintainers
+# /.github/workflows/ @genealogix/ci-maintainers
+# /.github/ISSUE_TEMPLATE/ @genealogix/maintainers
+# /.github/PULL_REQUEST_TEMPLATE.md @genealogix/maintainers
+# /.github/CODEOWNERS @genealogix/maintainers
 
 # Community and Governance
-/CODE_OF_CONDUCT.md @genealogix/maintainers
-/CONTRIBUTING.md @genealogix/maintainers @genealogix/documentation-team
-/SECURITY.md @genealogix/security-team
-/LICENSE @genealogix/legal-team
+# /CODE_OF_CONDUCT.md @genealogix/maintainers
+# /CONTRIBUTING.md @genealogix/maintainers @genealogix/documentation-team
+# /SECURITY.md @genealogix/security-team
+# /LICENSE @genealogix/legal-team
 
 # Root level configuration and documentation
-/README.md @genealogix/maintainers @genealogix/documentation-team
-/CHANGELOG.md @genealogix/maintainers
-/.gitignore @genealogix/maintainers
+# /README.md @genealogix/maintainers @genealogix/documentation-team
+# /CHANGELOG.md @genealogix/maintainers
+# /.gitignore @genealogix/maintainers
 
 # Note: If specific teams don't exist yet, these can be replaced with
 # individual GitHub usernames (e.g., @username) or removed until teams

@@ -48,7 +48,6 @@
 - [ ] Tests pass
 - [ ] Documentation updated
 - [ ] Examples validate
-- [ ] RFC followed for spec changes
 - [ ] Backwards compatibility maintained
 
 ## Additional Context
