@@ -29,7 +29,7 @@ schema/
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.org/v1/person",
+  "$id": "https://schema.genealogix.io/v1/person",
   "title": "Person",
   "description": "An individual in the family archive",
   "version": "1.0"
@@ -45,7 +45,7 @@ schema/
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.org/v1/person",
+  "$id": "https://schema.genealogix.io/v1/person",
   "title": "Person",
   "description": "An individual in the family archive",
   "type": "object",
@@ -144,7 +144,7 @@ vim schema/v1/person.schema.json
 # Add standard header
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.org/v1/person",
+  "$id": "https://schema.genealogix.io/v1/person",
   "title": "Person",
   "description": "An individual in the family archive"
 }

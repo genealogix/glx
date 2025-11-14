@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.org/meta/schema",
+  "$id": "https://schema.genealogix.io/meta/schema",
   "title": "GENEALOGIX Meta-Schema",
   "description": "Meta-schema used to validate GENEALOGIX JSON Schemas",
   "type": "object",

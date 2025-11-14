@@ -65,9 +65,9 @@ Breaking (major version bump):
 All schemas use `$id` URIs that resolve to canonical versions:
 
 ```
-https://schema.genealogix.org/v1/person
-https://schema.genealogix.org/v1/relationship
-https://schema.genealogix.org/v1/assertion
+https://schema.genealogix.io/v1/person
+https://schema.genealogix.io/v1/relationship
+https://schema.genealogix.io/v1/assertion
 ```
 
 These URIs serve the actual schema files via HTTP.

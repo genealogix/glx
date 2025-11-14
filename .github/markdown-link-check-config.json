@@ -1,7 +1,6 @@
 {
   "ignorePatterns": [
-    { "pattern": "^https://schema.genealogix.org/" },
-    { "pattern": "^https://github.com/genealogix/glx" },
+    { "pattern": "^https://schema.genealogix.io/" },
     { "pattern": "^https://github.com/genealogix/spec" },
     { "pattern": "^https://www.bcgcertification.org" }
   ],

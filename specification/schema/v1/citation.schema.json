@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.org/v1/citation",
+  "$id": "https://schema.genealogix.io/v1/citation",
   "title": "Citation",
   "description": "A specific reference to evidence within a source. ID comes from the map key in the parent structure.",
   "type": "object",

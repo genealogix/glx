@@ -393,7 +393,7 @@ We are committed to providing a welcoming and inclusive environment. Please read
 ## Questions?
 
 - **Technical questions**: [GitHub Discussions](https://github.com/genealogix/spec/discussions)
-- **Private concerns**: Contact maintainers at conduct@genealogix.org
+- **Private concerns**: Contact maintainers at conduct@genealogix.io
 
 ---
 
