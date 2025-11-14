@@ -6,519 +6,236 @@ This guide helps you set up a development environment for working on the GENEALO
 
 ### Required Software
 
-**Core Requirements:**
 - **Go 1.25+**: For CLI tool development
 - **Git**: For version control
-- **Node.js 18+**: For schema validation and testing
-- **Python 3.8+**: For test scripts and validation tools
+- **Node.js 18+**: For static site generation (optional)
 
-**Optional but Recommended:**
-- **Docker**: For containerized development
-- **Visual Studio Code**: With YAML and Go extensions
-- **GitHub CLI**: For repository management
+### Install Go
 
-### Install Required Tools
-
-#### Go Installation
 ```bash
 # macOS
 brew install go
 
 # Ubuntu/Debian
-wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
-
-# Add to PATH
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-echo 'export PATH=$PATH:~/go/bin' >> ~/.bashrc
+wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
 
 # Verify
 go version
 ```
 
-#### Node.js Installation
-```bash
-# Using Node Version Manager (recommended)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install 18
-nvm use 18
-
-# Verify
-node --version
-npm --version
-```
-
-#### Python Installation
-```bash
-# Ubuntu/Debian
-sudo apt update
-sudo apt install python3 python3-pip python3-venv
-
-# macOS
-brew install python3
-
-# Verify
-python3 --version
-pip3 --version
-```
-
 ## Repository Setup
 
-### 1. Clone the Repository
+### Clone and Build
+
 ```bash
+# Clone repository
 git clone https://github.com/genealogix/spec.git
 cd spec
-```
 
-### 2. Set Up Go Module
-```bash
 # Download dependencies
 go mod download
 
-# Verify module setup
-go mod verify
+# Build CLI tool
+cd glx
+go build
+
+# Verify installation
+./glx --version
 ```
 
-### 3. Install Development Tools
+### Run Tests
+
 ```bash
-# Install glx CLI tool
-go install ./glx
+# Run all tests
+go test ./...
 
-# Install schema validation tools
-npm install -g ajv-cli
+# Run specific package tests
+go test ./glx/...
+go test ./lib/...
 
-# Set up Python virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements-dev.txt  # If available
+# Run with verbose output
+go test -v ./glx/...
 ```
 
 ## Development Environment
 
-### 1. IDE Configuration
+### IDE Configuration
 
-**Visual Studio Code:**
+**Visual Studio Code** (recommended):
+
+Install extensions:
+- Go (golang.go)
+- YAML (redhat.vscode-yaml)
+
+Configure YAML validation in `.vscode/settings.json`:
 ```json
-// .vscode/settings.json
 {
-  "go.toolsManagement.checkForUpdates": "local",
-  "go.useLanguageServer": true,
-  "yaml.schemas": {
-    "schema/v1/person.schema.json": ["persons/*.glx"],
-    "schema/v1/event.schema.json": ["events/*.glx"],
-    "schema/v1/place.schema.json": ["places/*.glx"]
-  },
   "yaml.validate": true,
-  "yaml.format.enable": true
+  "yaml.format.enable": true,
+  "go.useLanguageServer": true
 }
 ```
 
-**Recommended Extensions:**
-- Go (Google)
-- YAML (Red Hat)
-- GitLens
-- Prettier
-- JSON Schema Validator
+### Git Configuration
 
-### 2. Git Configuration
 ```bash
-# Set up Git for development
+# Basic setup
 git config user.name "Your Name"
 git config user.email "your.email@example.com"
 
-# Enable useful features
+# Recommended settings
 git config pull.rebase true
-git config rebase.autostash true
-
-# For Windows developers
-git config core.autocrlf false
-```
-
-### 3. Pre-commit Hooks (Future)
-```bash
-# Install pre-commit hooks when available
-pip install pre-commit
-pre-commit install
-
-# This will run validation before each commit
-# - YAML syntax checking
-# - Schema validation
-# - File naming validation
+git config core.autocrlf false  # Important for cross-platform
 ```
 
 ## Development Workflows
 
-### 1. Running Tests
+### CLI Development
 
-**Full Test Suite:**
 ```bash
-# Run all validation tests
-cd glx/tests
-./run-tests.sh
-
-# Run specific test categories
-./run-tests.sh valid
-./run-tests.sh invalid
-
-# Run with specific validator
-./run-tests.sh --validator /path/to/glx
-```
-
-**Schema Validation:**
-```bash
-# Validate all JSON schemas
-npm install -g ajv-cli
-find schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
-
-# Test schema compilation
-ajv compile -s schema/meta/schema.schema.json
-```
-
-**Example Validation:**
-```bash
-# Validate example archives
-glx validate examples/complete-family/
-glx validate examples/minimal/
-glx validate examples/basic-family/
-```
-
-### 2. CLI Development
-
-**Build and test the CLI:**
-```bash
-# Build the CLI
-cd glx
-go build -o ../bin/glx .
-
-# Test CLI functionality
-../bin/glx --help
-../bin/glx init test-repo
-../bin/glx validate test-repo/
-```
-
-**Development cycle:**
-```bash
-# Edit source code
-vim glx/main.go
+# Make changes to CLI code
+vim glx/cmd_validate.go
 
 # Build and test
-go build -o bin/glx glx/main.go
-bin/glx validate examples/complete-family/
+cd glx
+go build
+./glx validate ../docs/examples/basic-family/
 
 # Run tests
-go test ./...
+go test -v
 ```
 
-### 3. Schema Development
+### Schema Development
 
-**Validate schema changes:**
 ```bash
-# Check schema syntax
-ajv compile -s schema/v1/person.schema.json
+# Edit schema
+vim specification/schema/v1/person.schema.json
+
+# Rebuild CLI (schemas are embedded)
+cd glx
+go build
 
 # Test against examples
-glx validate examples/complete-family/persons/
+./glx validate ../docs/examples/complete-family/
 
-# Validate schema references
-go run glx/main.go check-schemas
+# Run schema validation tests
+go test -run TestRunCheckSchemas
 ```
 
-**Schema testing:**
+### Adding Test Data
+
 ```bash
-# Test schema compilation
-find schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
+# Add valid test file
+vim glx/testdata/valid/new-test.glx
 
-# Test with test suite
-cd glx/tests
-./run-tests.sh --validator ../../bin/glx
+# Add invalid test file
+vim glx/testdata/invalid/new-test.glx
+
+# Run tests
+go test ./glx/... -v
 ```
 
-## Testing Framework
+## Testing
 
-### 1. Test Suite Structure
+### Run Test Suite
 
-**Valid Tests:**
-```bash
-glx/tests/valid/
-├── person-minimal.glx        # Minimal valid person
-├── person-complete.glx       # Person with all optional fields
-├── event-birth.glx          # Standard birth event
-├── place-hierarchy.glx      # Place with parent
-├── citation-quality3.glx    # Primary evidence citation
-└── assertion-evidence.glx   # Assertion with evidence chain
-```
-
-**Invalid Tests:**
-```bash
-glx/tests/invalid/
-├── person-missing-id.glx     # Missing required field
-├── person-bad-format.glx     # Invalid ID format
-├── event-no-place.glx       # Event without required place
-├── citation-no-source.glx    # Citation without source
-└── place-circular-ref.glx    # Circular place reference
-```
-
-### 2. Adding New Tests
-
-**Create valid test:**
-```yaml
-# glx/tests/valid/person-with-nickname.glx
-# TEST: person-with-nickname
-# EXPECT: valid
-# DESCRIPTION: Person with nickname and alternative names
-
-id: person-a1b2c3d4
-version: "1.0"
-type: person
-name:
-  given: John
-  surname: Smith
-  display: John Smith
-  nickname: Johnny
-alternative_names:
-  - John Henry Smith
-  - J.H. Smith
-```
-
-**Create invalid test:**
-```yaml
-# glx/tests/invalid/person-missing-name.glx
-# TEST: person-missing-name
-# EXPECT: invalid
-# ERROR: "name field is required"
-# DESCRIPTION: Person entity must have a name field
-
-id: person-b2c3d4e5
-version: "1.0"
-type: person
-# Missing required name field
-```
-
-**Test file format:**
-```yaml
-# Comments at top of file
-# TEST: descriptive-name
-# EXPECT: valid|invalid
-# ERROR: "expected error message"
-# DESCRIPTION: What this test validates
-```
-
-### 3. Running Test Categories
-
-**Comprehensive testing:**
 ```bash
 # All tests
-./run-tests.sh
+go test ./...
 
-# Valid tests only
-./run-tests.sh valid
+# Specific tests
+go test ./glx/... -run TestValidateGLXFile
+go test ./lib/... -run TestGenerateTestData
 
-# Invalid tests only
-./run-tests.sh invalid
+# With coverage
+go test ./... -cover
 
-# With custom validator
-./run-tests.sh --validator /path/to/your-glx-implementation
-
-# Verbose output
-./run-tests.sh --verbose
-
-# Stop on first failure
-./run-tests.sh --fail-fast
+# With race detection
+go test ./... -race
 ```
 
-## Documentation Development
+### Validate Examples
 
-### 1. Building Documentation
-
-**Specification validation:**
 ```bash
-# Check specification completeness
-# Look for TODO comments
-grep -r "TODO" specification/
+# Validate all examples
+cd glx
+./glx validate ../docs/examples/
 
-# Check for broken internal links
-grep -r "\.\./\.\./" specification/ | grep -v "^Binary"
+# Validate specific example
+./glx validate ../docs/examples/basic-family/
 ```
 
-### 2. Example Validation
+### Check Schemas
 
-**Validate all examples:**
 ```bash
-# Check examples directory
-glx validate examples/
-
-# Test specific examples
-glx validate examples/complete-family/
-glx validate examples/minimal/
-glx validate examples/basic-family/
-
-# Check example completeness
-# Verify all entity types are demonstrated
-# Check evidence chains are complete
+# Ensure all schemas have required metadata
+cd glx
+./glx check-schemas
 ```
 
-## Continuous Integration
+## Building for Release
 
-### 1. Local CI Testing
+### Local Build
 
-**Run full CI pipeline locally:**
 ```bash
-# Schema validation
-npm install -g ajv-cli
-ajv compile -s schema/meta/schema.schema.json
-find schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
-
-# Example validation
-glx validate examples/
-
-# Test suite
-cd test-suite
-./run-tests.sh
+cd glx
+go build -o glx
 ```
 
-### 2. GitHub Actions
+### Cross-Platform Builds
 
-**Understand CI workflow:**
-```yaml
-# .github/workflows/validate-spec.yml
-jobs:
-  validate-schemas:     # JSON Schema validation
-  validate-examples:    # Example archive validation
-  test-conformance:     # Test suite execution
-```
+Uses GoReleaser (automated in CI):
 
-**Test CI locally:**
 ```bash
-# Simulate CI environment
-# Run all validation steps
-# Check for common CI failures
+# Install GoReleaser
+go install github.com/goreleaser/goreleaser@latest
+
+# Test release build locally
+goreleaser build --snapshot --clean
 ```
 
-## Debugging Tools
-
-### 1. Validation Debugging
-
-**Verbose validation:**
-```bash
-# Get detailed error messages
-glx validate --verbose examples/complete-family/
-
-# Check specific file
-glx validate --debug persons/person-example.glx
-
-# Schema validation details
-ajv validate -s schema/v1/person.schema.json persons/person-example.glx
-```
-
-**Debug YAML issues:**
-```bash
-# Check YAML syntax
-python3 -c "import yaml; yaml.safe_load(open('file.glx'))"
-
-# Validate with online tools
-# Use YAML validators for complex structures
-
-# Check indentation
-cat -A file.glx  # Show tabs vs spaces
-```
-
-### 2. Git Debugging
-
-**Find when issues were introduced:**
-```bash
-# Bisect for regressions
-git bisect start
-git bisect bad HEAD
-git bisect good v1.0.0
-git bisect run ./run-tests.sh
-
-# Find who changed what
-git blame specification/1-introduction.md
-
-# See file history
-git log --oneline --follow persons/person-example.glx
-```
-
-## Performance Optimization
-
-### 1. Large Archive Testing
-
-**Test with large datasets:**
-```bash
-# Generate test data
-# python3 scripts/generate-large-test.py
-
-# Validate performance
-time glx validate large-test-archive/
-
-# Profile validation
-go tool pprof bin/glx cpu.prof
-```
-
-### 2. Memory and Speed
-
-**Monitor resource usage:**
-```bash
-# Memory profiling
-go build -o bin/glx-profile glx/main.go
-./bin/glx-profile validate large-archive/
-
-# CPU profiling
-go tool pprof bin/glx-profile cpu.prof
-```
+Releases are automated via GitHub Actions on tag push.
 
 ## Contributing Workflow
 
-### 1. Development Process
+### Standard Process
 
-**Standard contribution workflow:**
 ```bash
-# 1. Create issue or find existing issue
-# 2. Create feature branch
-git checkout -b feature/new-validation-rule
+# 1. Create feature branch
+git checkout -b feature/your-feature
 
-# 3. Implement changes
+# 2. Make changes
 # Edit code, tests, documentation
 
-# 4. Validate changes
-glx validate
-./run-tests.sh
+# 3. Run tests
+go test ./...
 
-# 5. Commit with good message
+# 4. Validate examples
+cd glx && ./glx validate ../docs/examples/
+
+# 5. Commit changes
 git add .
-git commit -m "Add new validation rule for place coordinates
-
-- Validate WGS84 coordinate format
-- Add tests for valid/invalid coordinates
-- Update documentation with examples
-- Fixes issue #123"
+git commit -m "Description of changes"
 
 # 6. Push and create PR
-git push origin feature/new-validation-rule
+git push origin feature/your-feature
 ```
 
-### 2. Code Review Process
+### Before Submitting PR
 
-**Before submitting PR:**
-- [ ] All tests pass
-- [ ] Examples validate
+- [ ] All tests pass (`go test ./...`)
+- [ ] Examples validate (`glx validate docs/examples/`)
 - [ ] Documentation updated
-- [ ] Schema changes validated
-- [ ] Commit messages are descriptive
-
-**PR template includes:**
-- Description of changes
-- Testing performed
-- Breaking changes (if any)
-- Documentation updates
+- [ ] Commit messages are clear
 
 ## Troubleshooting
 
-### Common Setup Issues
+### Go Module Issues
 
-**Go module problems:**
 ```bash
-# Clear module cache
+# Clear cache
 go clean -modcache
 
 # Re-download dependencies
@@ -528,48 +245,37 @@ go mod download
 go mod verify
 ```
 
-**Schema validation issues:**
+### Build Issues
+
 ```bash
-# Check schema syntax
-ajv compile -s schema/v1/person.schema.json
+# Clean build artifacts
+go clean
 
-# Test with simple example
-glx validate examples/minimal/persons/
+# Rebuild with verbose output
+go build -v
 
-# Check file permissions
-ls -la schema/v1/
+# Check for missing dependencies
+go mod tidy
 ```
 
-**Test suite issues:**
+### Test Failures
+
 ```bash
-# Check test file permissions
-chmod +x glx/tests/run-tests.sh
+# Run specific failing test
+go test ./glx/... -run TestName -v
 
-# Verify test file format
-head -5 glx/tests/valid/person-minimal.glx
+# Check test data files
+ls -la glx/testdata/valid/
+ls -la glx/testdata/invalid/
 
-# Run with debug output
-./run-tests.sh --verbose
+# Validate test file manually
+cd glx
+./glx validate testdata/valid/person-minimal.glx
 ```
 
-### Getting Help
+## Getting Help
 
-**Development community:**
-- [GitHub Issues](https://github.com/genealogix/spec/issues) - Bug reports
-- [GitHub Discussions](https://github.com/genealogix/spec/discussions) - Q&A
-- [Contributing Guide](../../CONTRIBUTING.md) - Guidelines
-
-**Debug information:**
-```bash
-# Collect system info
-echo "Go version: $(go version)"
-echo "Node version: $(node --version)"
-echo "Python version: $(python3 --version)"
-echo "Git version: $(git --version)"
-
-# Repository status
-git status
-git log --oneline -5
-```
-
-This development setup provides everything needed to contribute to the GENEALOGIX specification and tools effectively.
+- [GitHub Issues](https://github.com/genealogix/spec/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/genealogix/spec/discussions) - Questions and discussions
+- [Specification](../../specification/README.md) - Formal specification
+- [CLI README](../../glx/README.md) - CLI tool documentation

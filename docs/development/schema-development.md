@@ -4,43 +4,34 @@ This guide explains how to develop and maintain JSON Schemas for GENEALOGIX enti
 
 ## Schema Overview
 
-GENEALOGIX uses JSON Schema (Draft 07) to define the structure and validation rules for all entity types.
+GENEALOGIX uses JSON Schema (Draft 07) to define structure and validation rules for all entity types.
 
 ### Schema Locations
 
-**Schema Files:**
 ```
-schema/
-├── meta/
-│   └── schema.schema.json     # Schema for schemas
-└── v1/
-    ├── person.schema.json     # Person entity
-    ├── event.schema.json      # Event entity
-    ├── place.schema.json      # Place entity
-    ├── source.schema.json     # Source entity
-    ├── citation.schema.json   # Citation entity
-    ├── repository.schema.json # Repository entity
-    ├── assertion.schema.json  # Assertion entity
-    ├── relationship.schema.json # Relationship entity
-    └── media.schema.json      # Media entity
+specification/schema/v1/
+├── person.schema.json
+├── event.schema.json
+├── place.schema.json
+├── source.schema.json
+├── citation.schema.json
+├── repository.schema.json
+├── assertion.schema.json
+├── relationship.schema.json
+├── media.schema.json
+└── vocabularies/
+    ├── event-types.schema.json
+    ├── relationship-types.schema.json
+    └── ... (other vocabularies)
 ```
 
-**Schema Metadata:**
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.io/v1/person",
-  "title": "Person",
-  "description": "An individual in the family archive",
-  "version": "1.0"
-}
-```
+Schemas are embedded in the Go binary via `specification/schema/v1/embed.go`.
 
 ## Schema Structure
 
-### Common Schema Elements
+### Required Elements
 
-**Every entity schema includes:**
+Every entity schema must include:
 
 ```json
 {
@@ -49,663 +40,198 @@ schema/
   "title": "Person",
   "description": "An individual in the family archive",
   "type": "object",
-  "required": ["id", "version", "type"],
+  "required": ["version"],
   "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^person-[a-f0-9]{8}$",
-      "description": "Unique identifier for this person"
-    },
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version"
-    },
-    "type": {
-      "type": "string",
-      "enum": ["person"],
-      "description": "Entity type"
+      "description": "Schema version",
+      "examples": ["1.0"]
     }
   },
   "additionalProperties": false
 }
 ```
 
-### Schema Components
+**Key Points:**
+- `$schema` and `$id` are required (validated by `glx check-schemas`)
+- `version` field is required for all entities
+- Use `additionalProperties: false` for strict validation
+- Entity IDs come from YAML map keys, not from an `id` field
 
-**1. Core Fields:**
-- `id`: Unique identifier with type prefix
-- `version`: Schema version (e.g., "1.0")
-- `type`: Entity type (e.g., "person")
+## Converting Specification to Schema
 
-**2. Entity-Specific Fields:**
-- Defined in `properties` object
-- Validation rules for each field
-- Optional vs required field specification
+### Process
 
-**3. Validation Rules:**
-- `required`: Array of required field names
-- `pattern`: Regular expression validation
-- `enum`: Allowed values
-- `format`: Standard format validation (date, uri, etc.)
+1. **Read the entity specification** in `specification/4-entity-types/{entity}.md`
+2. **Identify required vs optional fields** from the properties table
+3. **Define field types and patterns** based on descriptions
+4. **Add validation rules** for references, enums, and formats
+5. **Test against examples** in `docs/examples/`
 
-## Schema Development Process
+### Field Type Mapping
 
-### 1. Schema Design
+| Specification Type | JSON Schema Type | Notes |
+|-------------------|------------------|-------|
+| string | `"type": "string"` | Add pattern if format-specific |
+| integer | `"type": "integer"` | Add min/max if bounded |
+| boolean | `"type": "boolean"` | Use pointer in Go for optional |
+| array | `"type": "array"` | Define items schema |
+| object | `"type": "object"` | Define nested properties |
+| reference | `"type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$"` | Entity reference |
 
-**Start with specification:**
-```yaml
-# From specification
-person:
-  id: person-{8hex}
-  version: "1.0"
-  type: person
-  name:
-    given: string (required)
-    surname: string (required)
-    display: string (required)
-    nickname: string (optional)
-  birth: date (optional)
-  death: date (optional)
-```
+### Reference Fields
 
-**Convert to JSON Schema:**
+Reference fields follow a consistent pattern:
+
 ```json
 {
-  "type": "object",
-  "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^person-[a-f0-9]{8}$"
-    },
-    "name": {
-      "type": "object",
-      "properties": {
-        "given": {"type": "string"},
-        "surname": {"type": "string"},
-        "display": {"type": "string"},
-        "nickname": {"type": "string"}
-      },
-      "required": ["given", "surname", "display"],
-      "additionalProperties": false
-    }
-  },
-  "required": ["id", "version", "type", "name"]
-}
-```
-
-### 2. Schema Implementation
-
-**Create new schema file:**
-```bash
-# Create schema file
-vim schema/v1/person.schema.json
-
-# Add standard header
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.io/v1/person",
-  "title": "Person",
-  "description": "An individual in the family archive"
-}
-```
-
-**Define properties:**
-```json
-{
-  "type": "object",
-  "required": ["id", "version", "type", "name"],
-  "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^person-[a-f0-9]{8}$",
-      "description": "Unique identifier for this person"
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version"
-    },
-    "type": {
-      "type": "string",
-      "enum": ["person"],
-      "description": "Entity type"
-    },
-    "name": {
-      "type": "object",
-      "properties": {
-        "given": {
-          "type": "string",
-          "description": "Given name or first name"
-        },
-        "surname": {
-          "type": "string",
-          "description": "Family name or surname"
-        },
-        "display": {
-          "type": "string",
-          "description": "Full display name"
-        },
-        "nickname": {
-          "type": "string",
-          "description": "Common nickname or familiar name"
-        }
-      },
-      "required": ["given", "surname", "display"],
-      "additionalProperties": false
-    }
-  },
-  "additionalProperties": false
-}
-```
-
-### 3. Schema Testing
-
-**Validate schema syntax:**
-```bash
-# Test schema compilation
-ajv compile -s schema/v1/person.schema.json
-
-# Test against example files
-glx validate examples/complete-family/persons/
-
-# Test with minimal example
-echo '{
-  "id": "person-a1b2c3d4",
-  "version": "1.0",
-  "type": "person",
-  "name": {
-    "given": "John",
-    "surname": "Smith",
-    "display": "John Smith"
-  }
-}' | ajv validate -s schema/v1/person.schema.json -
-```
-
-## Schema Validation Rules
-
-### ID Pattern Validation
-
-**Standard ID patterns:**
-```json
-{
-  "person": "^person-[a-f0-9]{8}$",
-  "event": "^event-[a-f0-9]{8}$",
-  "place": "^place-[a-f0-9]{8}$",
-  "source": "^source-[a-f0-9]{8}$",
-  "citation": "^citation-[a-f0-9]{8}$",
-  "repository": "^repository-[a-f0-9]{8}$",
-  "assertion": "^assertion-[a-f0-9]{8}$",
-  "relationship": "^rel-[a-f0-9]{8}$",
-  "media": "^media-[a-f0-9]{8}$"
-}
-```
-
-**Pattern explanation:**
-- `^`: Start of string
-- `{type}-`: Entity type prefix
-- `[a-f0-9]{8}`: Exactly 8 lowercase hex characters
-- `$`: End of string
-
-### Date Validation
-
-**Date format patterns:**
-```json
-{
-  "date": {
+  "source": {
     "type": "string",
-    "pattern": "^\\d{4}(-\\d{2}(-\\d{2})?)?$|^\\d{4}\\?(-\\d{2}(-\\d{2})?)?$|^\\d{4}/\\d{4}$",
-    "description": "Date in ISO format or uncertain/between formats"
+    "pattern": "^[a-zA-Z0-9-]{1,64}$",
+    "description": "Reference to Source entity"
   }
 }
 ```
 
-**Supported date formats:**
-- `1850-01-15` (complete date)
-- `1850-01` (year and month)
-- `1850` (year only)
-- `1850?` (uncertain year)
-- `1849/1850` (between years)
+**Naming Convention:**
+- Use singular entity name (e.g., `source`, not `source_id`)
+- Pattern allows alphanumeric and hyphens, 1-64 characters
+- Description states what entity type is referenced
 
-### Reference Validation
+### Vocabulary References
 
-**Cross-entity references:**
+Vocabulary references (types, roles, etc.) use the same pattern:
+
 ```json
 {
-  "birth_place": {
+  "type": {
     "type": "string",
-    "pattern": "^place-[a-f0-9]{8}$",
-    "description": "Reference to place entity"
-  },
-  "citations": {
-    "type": "array",
-    "items": {
-      "type": "string",
-      "pattern": "^citation-[a-f0-9]{8}$"
-    },
-    "description": "References to citation entities"
+    "description": "Event type from event_types vocabulary"
   }
 }
 ```
 
-## Schema Testing
+Vocabulary values are validated at runtime, not in schema.
 
-### 1. Schema Compilation Tests
+## Schema Validation
 
-**Test all schemas compile:**
+### Testing Schemas
+
 ```bash
-# Test meta schema
-ajv compile -s schema/meta/schema.schema.json
+# Validate schema files have required metadata
+go test ./glx/... -run TestRunCheckSchemas
 
-# Test all entity schemas
-find schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
+# Validate all examples against schemas
+go test ./glx/... -run TestExamples
 
-# Test schema references
-ajv compile -r schema/v1/*.schema.json -s schema/v1/person.schema.json
+# Run full validation test suite
+go test ./glx/...
 ```
 
-### 2. Example Validation Tests
+### Common Validation Rules
 
-**Test schemas against examples:**
-```bash
-# Test person schema
-for file in examples/complete-family/persons/*.glx; do
-  echo "Testing $file"
-  ajv validate -s schema/v1/person.schema.json "$file"
-done
+- **Version**: Required, pattern `^\d+\.\d+$`
+- **Entity IDs**: Alphanumeric and hyphens, 1-64 chars
+- **References**: Must use singular entity names
+- **Arrays**: Use `uniqueItems: true` for ID arrays
+- **Enums**: Only for closed vocabularies (avoid when possible)
 
-# Test all entity types
-for entity in person event place source citation repository assertion relationship; do
-  echo "Testing $entity schema"
-  find examples -name "*.glx" -exec ajv validate -s "schema/v1/$entity.schema.json" {} \;
-done
-```
+## Schema Updates
 
-### 3. Edge Case Testing
+### Update Process
 
-**Test boundary conditions:**
-```bash
-# Test minimal valid files
-ajv validate -s schema/v1/person.schema.json glx/tests/valid/person-minimal.glx
-
-# Test maximum valid files
-ajv validate -s schema/v1/person.schema.json glx/tests/valid/person-complete.glx
-
-# Test invalid files
-ajv validate -s schema/v1/person.schema.json glx/tests/invalid/person-missing-id.glx
-```
-
-## Schema Versioning
-
-### Version Management
-
-**Schema versioning strategy:**
-```json
-{
-  "version": "1.0",
-  "schema_version": "1.0.0",
-  "extends": "1.0-base",
-  "compatibility": "backwards"
-}
-```
-
-**Version fields:**
-- `version`: Entity format version (e.g., "1.0")
-- `schema_version`: Schema specification version (e.g., "1.0.0")
-- `extends`: Previous version this extends
-- `compatibility`: Compatibility level (backwards, full, breaking)
-
-### Backwards Compatibility
-
-**Adding optional fields:**
-```json
-{
-  "properties": {
-    "new_field": {
-      "type": "string",
-      "description": "New optional field"
-    }
-  },
-  "compatibility": "backwards"
-}
-```
-
-**Extending enums:**
-```json
-{
-  "properties": {
-    "type": {
-      "enum": ["person", "person_extended"],  // Added new value
-      "default": "person"
-    }
-  }
-}
-```
+1. **Update specification** in `specification/4-entity-types/`
+2. **Modify JSON schema** in `specification/schema/v1/`
+3. **Update Go structs** in `lib/types.go` (add YAML and refType tags)
+4. **Update examples** to match new schema
+5. **Run tests** to verify changes
+6. **Update documentation** as needed
 
 ### Breaking Changes
 
-**When breaking changes are needed:**
-```json
-{
-  "version": "2.0",
-  "breaking_changes": [
-    "Removed deprecated field 'old_name'",
-    "Changed ID pattern to include timestamp",
-    "Made 'nickname' field required"
-  ],
-  "migration_guide": "See migration/v1-to-v2.md"
+Breaking changes require:
+- Major version bump (e.g., `1.0` → `2.0`)
+- Migration guide
+
+## Embedded Schemas
+
+Schemas are embedded in the Go binary:
+
+```go
+// specification/schema/v1/embed.go
+//go:embed person.schema.json
+var PersonSchema []byte
+
+var EntitySchemas = map[string][]byte{
+    "person": PersonSchema,
+    // ...
 }
 ```
 
-## Schema Documentation
-
-### Schema Comments
-
-**Document complex validation rules:**
-```json
-{
-  "date": {
-    "type": "string",
-    "pattern": "^\\d{4}(-\\d{2}(-\\d{2})?)?$",
-    "description": "Date in YYYY-MM-DD format, YYYY-MM, or YYYY",
-    "examples": ["1850-01-15", "1850-01", "1850"]
-  }
-}
+After modifying schemas, rebuild the CLI:
+```bash
+cd glx
+go build
 ```
 
-### Field Descriptions
+## Vocabulary Schemas
 
-**Provide clear field documentation:**
+Vocabulary schemas define controlled vocabularies:
+
 ```json
 {
-  "name": {
+  "type": "object",
+  "additionalProperties": {
     "type": "object",
-    "description": "Person's name information",
+    "required": ["label"],
     "properties": {
-      "given": {
+      "label": {
         "type": "string",
-        "description": "Given name or first name(s)",
-        "examples": ["John", "Mary Anne", "Jean-Pierre"]
+        "description": "Human-readable label"
       },
-      "surname": {
+      "description": {
         "type": "string",
-        "description": "Family name, surname, or last name",
-        "examples": ["Smith", "O'Connor", "García López"]
+        "description": "Detailed description"
       },
-      "display": {
-        "type": "string",
-        "description": "Full display name as it should appear",
-        "examples": ["John Smith", "Mary Anne O'Connor"]
+      "custom": {
+        "type": "boolean",
+        "description": "Whether this is a custom entry"
       }
     }
   }
 }
 ```
 
-## Schema Validation Tools
+Vocabulary entries can be defined in any `.glx` file in the archive.
 
-### 1. AJV CLI
+## Best Practices
 
-**Install and use AJV:**
-```bash
-npm install -g ajv-cli
+### Schema Design
 
-# Test single schema
-ajv compile -s schema/v1/person.schema.json
+- Keep schemas simple and focused
+- Use clear, descriptive field names
+- Provide helpful descriptions
+- Avoid overly restrictive patterns
+- Allow for extensibility
 
-# Test with data
-ajv validate -s schema/v1/person.schema.json data.glx
+### Validation Strategy
 
-# Test multiple schemas
-ajv compile -r schema/v1/*.schema.json -s schema/v1/person.schema.json
-```
+- JSON Schema validates structure and types
+- Go struct validation handles references
+- Fail fast on duplicates
+- Report all reference errors at once
 
-### 2. JSON Schema Validators
+### Documentation
 
-**Online validators:**
-- JSON Schema Validator (json-schema-validator.herokuapp.com)
-- JSON Schema Lint (jsonschemalint.com)
-- Schema Validation (jsonschema.net)
+- Keep schema docs in sync with specification
+- Update examples when schemas change
+- Document validation rules clearly
+- Link to relevant specification sections
 
-**Command line tools:**
-```bash
-# Python
-pip install jsonschema
-jsonschema -i data.json schema.json
+## See Also
 
-# Node.js
-npm install -g json-schema-cli
-json-schema-cli schema.json data.json
-```
-
-### 3. Custom Validation
-
-**GLX CLI validation:**
-```bash
-# Validate single file
-glx validate persons/person-example.glx
-
-# Validate directory
-glx validate examples/complete-family/
-
-# Validate with schema checking
-glx check-schemas
-```
-
-## Schema Best Practices
-
-### 1. Consistent Patterns
-
-**Use consistent validation patterns:**
-```json
-// ✅ Consistent ID patterns
-{
-  "person_id": "^person-[a-f0-9]{8}$",
-  "event_id": "^event-[a-f0-9]{8}$",
-  "place_id": "^place-[a-f0-9]{8}$"
-}
-
-// ✅ Consistent date patterns
-{
-  "date": "^\\d{4}(-\\d{2}(-\\d{2})?)?$",
-  "birth_date": "^\\d{4}(-\\d{2}(-\\d{2})?)?$",
-  "death_date": "^\\d{4}(-\\d{2}(-\\d{2})?)?$"
-}
-```
-
-### 2. Clear Error Messages
-
-**Provide helpful validation errors:**
-```json
-{
-  "id": {
-    "type": "string",
-    "pattern": "^person-[a-f0-9]{8}$",
-    "description": "Person ID must be 'person-' followed by 8 lowercase hex characters",
-    "errorMessage": "Person ID must match pattern: person-12345678 (8 hex characters)"
-  }
-}
-```
-
-### 3. Performance Optimization
-
-**Optimize for validation speed:**
-```json
-// ✅ Efficient patterns
-{
-  "id": {
-    "type": "string",
-    "pattern": "^person-[a-f0-9]{8}$"  // Simple pattern
-  }
-}
-
-// ❌ Inefficient patterns
-{
-  "id": {
-    "type": "string",
-    "pattern": "^person-(?:[a-f0-9]{8})$"  // Unnecessary groups
-  }
-}
-```
-
-## Schema Maintenance
-
-### 1. Schema Updates
-
-**Process for schema changes:**
-
-1. **Propose change**: Create GitHub issue or discussion
-2. **Update specification**: Document new requirements
-3. **Modify schema**: Update JSON Schema files
-4. **Add tests**: Create validation tests
-5. **Update examples**: Modify example files
-6. **Version update**: Bump version if needed
-
-**Example update process:**
-```bash
-# 1. Update schema
-vim schema/v1/person.schema.json
-
-# 2. Test schema
-ajv compile -s schema/v1/person.schema.json
-
-# 3. Update tests
-vim glx/tests/valid/person-updated.glx
-vim glx/tests/invalid/person-old-format.glx
-
-# 4. Test examples
-glx validate examples/complete-family/persons/
-
-# 5. Update documentation
-vim specification/4-entity-types/person.md
-```
-
-### 2. Schema Validation
-
-**Continuous schema validation:**
-```bash
-# Test all schemas compile
-find schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
-
-# Test schema consistency
-# Check for duplicate IDs
-# Verify reference patterns
-# Validate against meta schema
-```
-
-### 3. Schema Documentation
-
-**Keep documentation current:**
-```bash
-# Update schema docs when schemas change
-# Document new validation rules
-# Update examples to match schema
-# Add migration notes for breaking changes
-```
-
-## Advanced Schema Features
-
-### 1. Conditional Validation
-
-**Validate fields based on other fields:**
-```json
-{
-  "allOf": [
-    {
-      "if": {
-        "properties": {"relationship_type": {"const": "adoption"}}
-      },
-      "then": {
-        "required": ["adoption_date", "adoption_place"]
-      }
-    }
-  ]
-}
-```
-
-### 2. Cross-Schema References
-
-**Reference other schemas:**
-```json
-{
-  "person_reference": {
-    "$ref": "person.schema.json#/properties/id",
-    "description": "Reference to a person entity"
-  }
-}
-```
-
-### 3. Custom Validation Keywords
-
-**Extend validation with custom rules:**
-```json
-{
-  "birth_before_death": {
-    "type": "object",
-    "properties": {
-      "birth": {"type": "string"},
-      "death": {"type": "string"}
-    },
-    "customValidation": "birth_date_before_death_date"
-  }
-}
-```
-
-## Troubleshooting Schemas
-
-### Common Schema Issues
-
-**1. Pattern mismatches:**
-```json
-// Problem: Pattern too restrictive
-"pattern": "^person-[0-9]{8}$"  // Only numbers!
-
-// Solution: Allow hex characters
-"pattern": "^person-[a-f0-9]{8}$"
-```
-
-**2. Missing required fields:**
-```json
-// Problem: Schema requires field not in specification
-"required": ["id", "version", "type", "missing_field"]
-
-// Solution: Check specification requirements
-"required": ["id", "version", "type"]
-```
-
-**3. Reference validation:**
-```json
-// Problem: References don't match patterns
-"pattern": "^person-[a-f0-9]{8}$"  // Person schema
-"pattern": "^event-[a-f0-9]{8}$"   // Event schema
-
-// Solution: Use correct pattern for each entity type
-```
-
-### Schema Debugging
-
-**Debug validation errors:**
-```bash
-# Test with simple data
-echo '{"id": "person-a1b2c3d4", "version": "1.0", "type": "person", "name": {"given": "John", "surname": "Smith", "display": "John Smith"}}' | ajv validate -s schema/v1/person.schema.json -
-
-# Check schema compilation
-ajv compile -s schema/v1/person.schema.json
-
-# Validate against examples
-glx validate examples/minimal/persons/
-```
-
-### Performance Issues
-
-**Optimize schema performance:**
-```bash
-# Profile schema validation
-time ajv validate -s schema/v1/person.schema.json large-person-file.glx
-
-# Check for inefficient patterns
-# Use atomic groups where possible
-# Avoid unnecessary backtracking
-```
-
-This schema development guide ensures that GENEALOGIX schemas are well-designed, thoroughly tested, and properly maintained.
+- [Entity Types Specification](../../specification/4-entity-types/README.md)
+- [Archive Organization](../../specification/3-archive-organization.md)
+- [Testing Guide](testing-guide.md)
+- [CLI Validator](../../glx/validator.go)
