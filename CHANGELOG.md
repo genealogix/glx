@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Initial repository structure for the GENEALOGIX specification
 - Root documentation and contribution guidelines
 - Draft specification pages and JSON Schemas
-- Examples, conformance test suite, RFC process, and CLI scaffolding under `glx/`
+- Examples, conformance test suite, and CLI scaffolding under `glx/`
 - CI workflow for schema and example validation
 
 

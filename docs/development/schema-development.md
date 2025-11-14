@@ -554,7 +554,7 @@ glx check-schemas
 
 **Process for schema changes:**
 
-1. **Propose change**: Create GitHub issue or RFC
+1. **Propose change**: Create GitHub issue or discussion
 2. **Update specification**: Document new requirements
 3. **Modify schema**: Update JSON Schema files
 4. **Add tests**: Create validation tests

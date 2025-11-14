@@ -15,7 +15,6 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - [Code Organization](#code-organization)
 - [Testing Requirements](#testing-requirements)
 - [Documentation Standards](#documentation-standards)
-- [RFC Process](#rfc-process)
 - [Submitting Changes](#submitting-changes)
 - [Good First Issues](#good-first-issues)
 - [Code of Conduct](#code-of-conduct)
@@ -32,7 +31,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 ### For Developers
 
 - **Bug Fixes**: Fix issues in the CLI tool or validation logic
-- **New Features**: Implement accepted RFCs
+- **New Features**: Implement accepted proposals from GitHub issues/discussions
 - **Performance**: Optimize validation speed and memory usage
 - **Tooling**: Build integrations, converters, or utilities
 
@@ -118,7 +117,6 @@ genealogix/spec/
 │   ├── schema/          # JSON Schema definitions
 │   │   ├── v1/          # Version 1 schemas
 │   │   └── meta/        # Schema validation schemas
-│   └── rfcs/            # Request for Comments (proposals)
 ├── docs/                # User and developer documentation
 │   ├── quickstart.md
 │   ├── guides/          # User guides
@@ -252,35 +250,34 @@ When documenting genealogical concepts:
 - **Date Formats**: Use ISO 8601 (YYYY-MM-DD) or historical variations documented
 - **Place Names**: Use historical names with modern equivalents
 
-## RFC Process
+## Proposing Major Changes
 
-Major changes to the specification require an RFC (Request for Comments).
+Major changes to the specification are discussed through GitHub issues and discussions.
 
-### When to Write an RFC
+### When to Create a Proposal
 
-**RFC Required:**
+**Proposal Required (via GitHub Issue):**
 - Changes to core data model or entity types
 - New required fields or breaking changes
 - Changes to validation rules or file format
 - Git workflow convention changes
 
-**RFC Not Required:**
+**Proposal Not Required:**
 - Bug fixes
 - Documentation improvements
 - New examples
 - Minor clarifications
 
-### RFC Workflow
+### Proposal Workflow
 
-1. **Draft**: Copy `specification/rfcs/0000-template.md` to `specification/rfcs/0000-my-feature.md`
-2. **Complete Template**: Fill out all sections thoroughly
-3. **Submit PR**: Create PR with your RFC
-4. **Discussion**: Community reviews and comments (minimum 7 days)
-5. **Decision**: Maintainers accept, reject, or request changes
-6. **Implementation**: After acceptance, implement the RFC
-7. **Finalization**: Rename to final number (e.g., `0005-my-feature.md`)
+1. **Create Issue**: Open a GitHub issue describing your proposed change
+2. **Discussion**: Use GitHub Discussions for extended community discussion
+3. **Community Review**: Community reviews and comments (minimum 7 days)
+4. **Decision**: Maintainers accept, reject, or request changes
+5. **Implementation**: After acceptance, implement the change via pull request
+6. **Documentation**: Update relevant documentation as part of the implementation
 
-See [`specification/rfcs/README.md`](specification/rfcs/README.md) for complete RFC guidelines.
+For questions or to start a discussion, use [GitHub Discussions](https://github.com/genealogix/spec/discussions).
 
 ## Submitting Changes
 

@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-Version 1.0.0 (Draft)
+Version 0.0.0 (Pre-Release)
 
 ## Table of Contents
 
@@ -56,8 +56,8 @@ requirement levels.
 
 This specification is under active development.
 
-- **Version**: 1.0.0
-- **Status**: Draft
+- **Version**: 0.0.0
+- **Status**: Pre-Release
 - **Stability**: Experimental (breaking changes possible)
 
 ## Key Features
@@ -131,7 +131,7 @@ See [Archive Organization](3-archive-organization) for details.
 
 ## Contributing
 
-Major changes require an RFC. See [CONTRIBUTING.md](../CONTRIBUTING.md)
+Major changes are discussed via GitHub issues and discussions. See [CONTRIBUTING.md](../CONTRIBUTING.md)
 
 ## License
 

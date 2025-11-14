@@ -56,7 +56,7 @@ features:
   
   - icon: 🤝
     title: Open Standard
-    details: Apache 2.0 licensed specification with an active community and RFC-based governance.
+    details: Apache 2.0 licensed specification with an active community and open governance.
 ---
 
 ## Why GENEALOGIX?

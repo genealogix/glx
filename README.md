@@ -168,7 +168,7 @@ This specification follows [Semantic Versioning](https://semver.org/).
 
 - **Draft**: Under active development, may change significantly
 - **Release Candidate**: Stable, final review before release
-- **Released**: Production-ready, changes follow RFC process
+- **Released**: Production-ready, changes discussed via GitHub issues and discussions
 
 ## Community & Support
 
@@ -191,7 +191,6 @@ GENEALOGIX is an open-source project that thrives on community participation:
 ### 🤝 Contributing
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
 - [Code of Conduct](CODE_OF_CONDUCT.md) - Community standards
-- [RFC Process](specification/rfcs/) - Propose major changes through RFCs
 - [Development Setup](docs/development/setup.md) - Set up development environment
 
 ### 🎯 Getting Help
@@ -210,7 +209,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 **For Contributors:**
 1. Review [Contributing Guidelines](CONTRIBUTING.md)
-2. Understand the [RFC Process](specification/rfcs/)
+2. Review [GitHub Issues](https://github.com/genealogix/spec/issues) and [Discussions](https://github.com/genealogix/spec/discussions) for proposed changes
 3. Check [Schema Development](docs/development/schema-development.md)
 4. Follow [Best Practices](docs/guides/best-practices.md)
 
@@ -224,7 +223,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 - ✅ Complete test suite
 - ✅ Comprehensive examples
 - 🔄 Community building and feedback
-- 📋 RFC process for major changes
+- 📋 GitHub issues and discussions for major changes
 
 **Roadmap:**
 - v1.1: Enhanced validation and performance
@@ -286,11 +285,6 @@ genealogix/spec/
 │   │   │       ├── event-types.schema.json
 │   │   │       └── ...
 │   │   └── meta/
-│   └── rfcs/                       # RFC proposals
-│       ├── README.md
-│       ├── 0000-template.md
-│       ├── 0001-initial-spec.md
-│       └── 0002-custom-relationship-types.md
 ├── docs/
 │   ├── quickstart.md
 │   ├── guides/

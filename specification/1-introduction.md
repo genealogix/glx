@@ -141,7 +141,6 @@ GENEALOGIX is an open-source project welcoming contributions:
 
 - **Issues**: [Bug reports and feature requests](https://github.com/genealogix/spec/issues)
 - **Discussions**: [Community Q&A and collaboration](https://github.com/genealogix/spec/discussions)
-- **RFCs**: [Major changes through Request for Comments](rfcs/)
 - **Contributing**: See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines
 
 ## Version History

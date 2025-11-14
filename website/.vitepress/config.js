@@ -49,7 +49,6 @@ export default defineConfig({
     // Specification section - specific files first, then wildcards
     'specification/README.md': 'specification/index.md',
     'specification/schema/README.md': 'specification/schema/index.md',
-    'specification/rfcs/README.md': 'specification/rfcs/index.md',
     'specification/4-entity-types/README.md': 'specification/4-entity-types/index.md',
     'specification/5-standard-vocabularies/README.md': 'specification/5-standard-vocabularies/index.md',
     'specification/:page*': 'specification/:page*'
@@ -72,8 +71,7 @@ export default defineConfig({
           { text: 'Core Concepts', link: '/specification/2-core-concepts' },
           { text: 'Entity Types', link: '/specification/4-entity-types/' },
           { text: 'Standard Vocabularies', link: '/specification/5-standard-vocabularies/' },
-          { text: 'JSON Schemas', link: '/specification/schema/' },
-          { text: 'RFCs', link: '/specification/rfcs/' }
+          { text: 'JSON Schemas', link: '/specification/schema/' }
         ]
       },
       { 
@@ -140,10 +138,9 @@ export default defineConfig({
           link: '/specification/5-standard-vocabularies/'
         },
         {
-          text: 'Schemas & RFCs',
+          text: 'Schemas',
           items: [
-            { text: 'JSON Schemas', link: '/specification/schema/' },
-            { text: 'RFCs', link: '/specification/rfcs/' }
+            { text: 'JSON Schemas', link: '/specification/schema/' }
           ]
         }
       ],
@@ -178,10 +175,9 @@ export default defineConfig({
           link: '/specification/5-standard-vocabularies/'
         },
         {
-          text: 'Schemas & RFCs',
+          text: 'Schemas',
           items: [
-            { text: 'JSON Schemas', link: '/specification/schema/' },
-            { text: 'RFCs', link: '/specification/rfcs/' }
+            { text: 'JSON Schemas', link: '/specification/schema/' }
           ]
         }
       ],
