@@ -15,8 +15,9 @@
 package lib
 
 // GLXFile represents the top-level structure of a .glx file, which can
-// contain maps of different entity types.
+// contain maps of different entity types and vocabulary definitions.
 type GLXFile struct {
+	// Entity types
 	Persons       map[string]*Person       `yaml:"persons,omitempty"`
 	Relationships map[string]*Relationship `yaml:"relationships,omitempty"`
 	Events        map[string]*Event        `yaml:"events,omitempty"`
@@ -26,7 +27,24 @@ type GLXFile struct {
 	Repositories  map[string]*Repository   `yaml:"repositories,omitempty"`
 	Assertions    map[string]*Assertion    `yaml:"assertions,omitempty"`
 	Media         map[string]*Media        `yaml:"media,omitempty"`
+
+	// Vocabulary definitions
+	EventTypes        map[string]*EventType        `yaml:"event_types,omitempty"`
+	ParticipantRoles  map[string]*ParticipantRole  `yaml:"participant_roles,omitempty"`
+	ConfidenceLevels  map[string]*ConfidenceLevel  `yaml:"confidence_levels,omitempty"`
+	RelationshipTypes map[string]*RelationshipType `yaml:"relationship_types,omitempty"`
+	PlaceTypes        map[string]*PlaceType        `yaml:"place_types,omitempty"`
+	SourceTypes       map[string]*SourceType       `yaml:"source_types,omitempty"`
+	RepositoryTypes   map[string]*RepositoryType   `yaml:"repository_types,omitempty"`
+	MediaTypes        map[string]*MediaType        `yaml:"media_types,omitempty"`
+	QualityRatings    map[string]*QualityRating    `yaml:"quality_ratings,omitempty"`
 }
+
+// ============================================================================
+// Entity Types
+// ============================================================================
+//
+// The following types represent the core genealogical entities in a GLX archive.
 
 // Person represents an individual in the family archive.
 type Person struct {
@@ -197,4 +215,83 @@ type Media struct {
 	URI      string `yaml:"uri"`
 	MimeType string `yaml:"mime_type,omitempty"`
 	Hash     string `yaml:"hash,omitempty"`
+}
+
+// ============================================================================
+// Vocabulary Types
+// ============================================================================
+//
+// The following types represent standard vocabulary definitions used in GLX
+// archives. These vocabularies define controlled vocabularies for entity
+// properties like event types, relationship types, participant roles, etc.
+
+// EventType represents a standard event type vocabulary entry.
+type EventType struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	Category    string `yaml:"category,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
+	Custom      *bool  `yaml:"custom,omitempty"`
+}
+
+// ParticipantRole represents a standard participant role vocabulary entry.
+type ParticipantRole struct {
+	Label       string   `yaml:"label"`
+	Description string   `yaml:"description,omitempty"`
+	AppliesTo   []string `yaml:"applies_to,omitempty"`
+	Custom      *bool    `yaml:"custom,omitempty"`
+}
+
+// ConfidenceLevel represents a standard confidence level vocabulary entry.
+type ConfidenceLevel struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	Custom      *bool  `yaml:"custom,omitempty"`
+}
+
+// RelationshipType represents a standard relationship type vocabulary entry.
+type RelationshipType struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
+	Custom      *bool  `yaml:"custom,omitempty"`
+}
+
+// PlaceType represents a standard place type vocabulary entry.
+type PlaceType struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	Category    string `yaml:"category,omitempty"`
+	Custom      *bool  `yaml:"custom,omitempty"`
+}
+
+// SourceType represents a standard source type vocabulary entry.
+type SourceType struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	Custom      *bool  `yaml:"custom,omitempty"`
+}
+
+// RepositoryType represents a standard repository type vocabulary entry.
+type RepositoryType struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	Custom      *bool  `yaml:"custom,omitempty"`
+}
+
+// MediaType represents a standard media type vocabulary entry.
+type MediaType struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	MimeType    string `yaml:"mime_type,omitempty"`
+	Custom      *bool  `yaml:"custom,omitempty"`
+}
+
+// QualityRating represents a standard quality rating vocabulary entry.
+// Note: The key in the map is a string representation of the integer rating (0-3).
+type QualityRating struct {
+	Label       string   `yaml:"label"`
+	Description string   `yaml:"description,omitempty"`
+	Examples    []string `yaml:"examples,omitempty"`
+	Custom      *bool    `yaml:"custom,omitempty"`
 }
