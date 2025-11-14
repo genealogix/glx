@@ -1,6 +1,6 @@
 # GENEALOGIX Specification
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/genealogix/spec/releases)
+[![Version](https://img.shields.io/badge/version-0.0.0-blue.svg)](https://github.com/genealogix/spec/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![CI](https://github.com/genealogix/spec/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/spec/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/spec)](https://goreportcard.com/report/github.com/genealogix/spec)
@@ -19,7 +19,7 @@ The official specification for the **GENEALOGIX (GLX)** family archive format - 
 
 ## Current Version
 
-**Version:** 1.0.0  
+**Version:** 0.0.0  
 **Status:** Draft  
 **Last Updated:** 2025-10-15
 
@@ -117,12 +117,20 @@ GENEALOGIX is an open standard for version-controlled family archives that provi
 - **🔗 Complete Provenance**: Audit trail from repository to conclusion
 - **🎯 Repository-Owned Vocabularies**: Define custom types within each archive
 
-## Quick Start
+## Installation
+
+The recommended way to install the `glx` CLI is to download the latest pre-compiled binary for your operating system from the [GitHub Releases](https://github.com/genealogix/spec/releases) page.
+
+Alternatively, developers can install from source:
 
 ```bash
 # Install the glx CLI tool
 go install github.com/genealogix/spec/glx@latest
+```
 
+## Quick Start
+
+```bash
 # Create a new genealogix repository (multi-file, recommended)
 # This creates entity directories AND vocabularies/ with standard types
 glx init
@@ -215,7 +223,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 ### 📊 Project Status
 
-**Current Release:** v1.0.0 (Draft)
+**Current Release:** v0.0.0 (Draft)
 - ✅ 9 core entity types defined
 - ✅ JSON Schema validation
 - ✅ CLI tool with vocabulary-based validation

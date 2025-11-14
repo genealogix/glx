@@ -1,3 +1,17 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -285,10 +299,9 @@ func TestValidateGLXFile_InvalidTestFiles(t *testing.T) {
 			issues := ValidateGLXFile(path, doc, nil)
 			// Some files might be valid YAML but invalid GLX - check if they have structural issues
 			// If they parse but have no validation issues, they might be testing cross-reference validation
-			// which happens at a different level, so we'll skip those
+			// which happens at a different level, so we'll check for no issues here
 			if len(issues) == 0 {
-				// Check if this is a cross-reference test (those are tested separately)
-				t.Skipf("file %s parses as valid GLX - may be testing cross-references", file.Name())
+				assert.Empty(t, issues, "file %s should have no structural issues but may have cross-reference issues", file.Name())
 			} else {
 				assert.NotEmpty(t, issues, "invalid test file %s should have issues", file.Name())
 			}
@@ -715,4 +728,42 @@ func TestGetBool(t *testing.T) {
 	assert.False(t, getBool(data, "bool_false"))
 	assert.False(t, getBool(data, "string_val"))
 	assert.False(t, getBool(data, "nonexistent"))
+}
+
+func TestValidateRepositoryReferences_InvalidTestFiles(t *testing.T) {
+	invalidDir := "testdata/invalid"
+	files, err := os.ReadDir(invalidDir)
+	require.NoError(t, err, "failed to read invalid test directory")
+
+	crossRefFiles := []string{
+		"archive-broken-references.glx",
+		"assertion-invalid-confidence.glx", // This is a vocabulary issue, not a broken reference
+		"citation-invalid-quality.glx",      // This is a value issue, not a broken reference
+		"event-missing-place.glx",
+		"media-invalid-type.glx",      // This is a vocabulary issue, not a broken reference
+		"person-bad-id-format.glx",      // This is an ID format issue, should be caught by basic validation
+		"person-broken-reference.glx",
+	}
+
+	for _, file := range files {
+		isCrossRefTest := false
+		for _, crf := range crossRefFiles {
+			if file.Name() == crf {
+				isCrossRefTest = true
+				break
+			}
+		}
+		if !isCrossRefTest {
+			continue
+		}
+
+		t.Run(file.Name(), func(t *testing.T) {
+			path := filepath.Join(invalidDir, file.Name())
+			allEntities, _, err := CollectAllEntities(invalidDir)
+			require.NoError(t, err, "failed to collect entities from %s", path)
+
+			issues := ValidateRepositoryReferences(invalidDir, allEntities)
+			assert.NotEmpty(t, issues, "expected cross-reference issues in %s", file.Name())
+		})
+	}
 }

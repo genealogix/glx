@@ -4,12 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0-draft] - 2025-10-15
+## [0.0.0] - 2025-11-14
 ### Added
-- Initial repository structure for the GENEALOGIX specification
-- Root documentation and contribution guidelines
-- Draft specification pages and JSON Schemas
-- Examples, conformance test suite, and CLI scaffolding under `glx/`
-- CI workflow for schema and example validation
+- Initial release of the GENEALOGIX specification and `glx` CLI tool.
+- Core features include:
+  - `glx init`: Initialize a new GLX repository.
+  - `glx validate`: Validate GLX files for schema compliance and cross-reference integrity.
+  - `glx check-schemas`: Utility for checking schema metadata.
+- JSON Schemas for all core entity types.
+- A comprehensive test suite for the CLI tool.
+- Example GLX files and repositories.
 
 
