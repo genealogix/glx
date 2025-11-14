@@ -75,7 +75,7 @@ sources:
 citations:
   citation-abcdef12:
     version: "1.0"
-    source_id: source-12345678
+    source: source-12345678
     quality: 3
     locator: "Entry 145, Page 23"
     text_from_source: "John Smith, born January 15, 1850"

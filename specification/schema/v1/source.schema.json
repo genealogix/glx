@@ -13,8 +13,11 @@
     "date": { "type": "string" },
     "citation": { "type": "string" },
     "description": { "type": "string" },
-    "repository": { "type": "string" },
-    "repository_id": { "type": "string" },
+    "repository": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Reference to Repository where source is held"
+    },
     "creator": { "type": "string" },
     "publication_info": { "type": "object" },
     "language": { "type": "string" },

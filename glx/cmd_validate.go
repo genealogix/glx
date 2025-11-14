@@ -21,7 +21,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/genealogix/spec/lib"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var validateCmd = &cobra.Command{
@@ -78,7 +80,8 @@ func runValidate(args []string) error {
 		hadError = true
 	}
 
-	// First pass: validate each file individually
+	// Collect all GLX files to validate
+	var allGLXFiles []string
 	for _, root := range paths {
 		info, err := os.Stat(root)
 		if err != nil {
@@ -98,15 +101,8 @@ func runValidate(args []string) error {
 					return nil
 				}
 				ext := filepath.Ext(d.Name())
-				if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
-					return nil
-				}
-				checked++
-				if issues := validateGLXFileFromPath(path, vocabs); len(issues) > 0 {
-					hadError = true
-					reportLines = append(reportLines, formatValidationIssues(path, issues)...)
-				} else {
-					reportLines = append(reportLines, fmt.Sprintf("✓ %s", path))
+				if ext == ".glx" || ext == ".yaml" || ext == ".yml" {
+					allGLXFiles = append(allGLXFiles, path)
 				}
 				return nil
 			})
@@ -114,65 +110,87 @@ func runValidate(args []string) error {
 				reportLines = append(reportLines, fmt.Sprintf("✗ %s (walk error: %v)", root, err))
 				hadError = true
 			}
-			continue
-		}
-
-		ext := filepath.Ext(root)
-		if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
-			reportLines = append(reportLines, fmt.Sprintf("✗ %s is not a .glx/.yaml file", root))
-			hadError = true
-			continue
-		}
-
-		checked++
-		if issues := validateGLXFileFromPath(root, vocabs); len(issues) > 0 {
-			hadError = true
-			reportLines = append(reportLines, formatValidationIssues(root, issues)...)
 		} else {
-			reportLines = append(reportLines, fmt.Sprintf("✓ %s", root))
+			ext := filepath.Ext(root)
+			if ext == ".glx" || ext == ".yaml" || ext == ".yml" {
+				allGLXFiles = append(allGLXFiles, root)
+			} else {
+				reportLines = append(reportLines, fmt.Sprintf("✗ %s is not a .glx/.yaml file", root))
+				hadError = true
+			}
 		}
 	}
 
-	if checked == 0 {
+	if len(allGLXFiles) == 0 {
 		return errors.New("no .glx files found to validate")
 	}
 
-	// Second pass: validate cross-references across all files in repository
-	for _, root := range paths {
-		info, err := os.Stat(root)
+	// First pass: validate each file against JSON schema
+	mergedGLXFile := &lib.GLXFile{
+		Persons:          make(map[string]*lib.Person),
+		Relationships:    make(map[string]*lib.Relationship),
+		Events:           make(map[string]*lib.Event),
+		Places:           make(map[string]*lib.Place),
+		Sources:          make(map[string]*lib.Source),
+		Citations:        make(map[string]*lib.Citation),
+		Repositories:     make(map[string]*lib.Repository),
+		Assertions:       make(map[string]*lib.Assertion),
+		Media:            make(map[string]*lib.Media),
+		EventTypes:       make(map[string]*lib.EventType),
+		ParticipantRoles: make(map[string]*lib.ParticipantRole),
+		ConfidenceLevels: make(map[string]*lib.ConfidenceLevel),
+		RelationshipTypes: make(map[string]*lib.RelationshipType),
+		PlaceTypes:       make(map[string]*lib.PlaceType),
+		SourceTypes:      make(map[string]*lib.SourceType),
+		RepositoryTypes:  make(map[string]*lib.RepositoryType),
+		MediaTypes:       make(map[string]*lib.MediaType),
+		QualityRatings:   make(map[string]*lib.QualityRating),
+	}
+
+	for _, filePath := range allGLXFiles {
+		checked++
+		// Validate against JSON schema
+		issues := validateGLXFileFromPath(filePath, vocabs)
+		if len(issues) > 0 {
+			hadError = true
+			reportLines = append(reportLines, formatValidationIssues(filePath, issues)...)
+			continue // Skip parsing if schema validation failed
+		}
+
+		// Parse into struct
+		data, err := os.ReadFile(filePath)
 		if err != nil {
+			hadError = true
+			reportLines = append(reportLines, formatValidationIssues(filePath, []string{fmt.Sprintf("read error: %v", err)})...)
 			continue
 		}
 
-		// If validating a directory, check for cross-reference issues
-		if info.IsDir() {
-			allEntities, duplicates, err := CollectAllEntities(root)
-			if err != nil {
-				reportLines = append(reportLines, fmt.Sprintf("✗ Cross-reference validation error: %v", err))
-				hadError = true
-			}
+		var glxFile lib.GLXFile
+		if err := yaml.Unmarshal(data, &glxFile); err != nil {
+			hadError = true
+			reportLines = append(reportLines, formatValidationIssues(filePath, []string{fmt.Sprintf("YAML parse error: %v", err)})...)
+			continue
+		}
 
-			// Report duplicate IDs
-			if len(duplicates) > 0 {
-				hadError = true
-				reportLines = append(reportLines, "")
-				reportLines = append(reportLines, "Cross-reference issues:")
-				for _, dup := range duplicates {
-					reportLines = append(reportLines, fmt.Sprintf("  ✗ %s", dup))
-				}
-			}
+		// Merge into merged GLXFile (fail fast on duplicates)
+		duplicates := mergedGLXFile.Merge(&glxFile)
+		if len(duplicates) > 0 {
+			hadError = true
+			reportLines = append(reportLines, formatValidationIssues(filePath, duplicates)...)
+		} else {
+			reportLines = append(reportLines, fmt.Sprintf("✓ %s", filePath))
+		}
+	}
 
-			// Check all references
-			refIssues := ValidateRepositoryReferences(root, allEntities)
-			if len(refIssues) > 0 {
-				hadError = true
-				if len(duplicates) == 0 {
-					reportLines = append(reportLines, "")
-					reportLines = append(reportLines, "Cross-reference issues:")
-				}
-				for _, issue := range refIssues {
-					reportLines = append(reportLines, fmt.Sprintf("  ✗ %s", issue))
-				}
+	// Second pass: validate all references using struct-based validation
+	if !hadError || len(mergedGLXFile.Persons) > 0 || len(mergedGLXFile.Relationships) > 0 {
+		refIssues := ValidateReferencesWithStructs(mergedGLXFile)
+		if len(refIssues) > 0 {
+			hadError = true
+			reportLines = append(reportLines, "")
+			reportLines = append(reportLines, "Cross-reference issues:")
+			for _, issue := range refIssues {
+				reportLines = append(reportLines, fmt.Sprintf("  ✗ %s", issue))
 			}
 		}
 	}

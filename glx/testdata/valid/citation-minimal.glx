@@ -1,4 +1,4 @@
 citations:
   citation-12345678:
     version: "1.0"
-    source_id: source-abc12345
+    source: source-abc12345

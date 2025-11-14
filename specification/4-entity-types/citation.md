@@ -51,7 +51,7 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 |----------|------|-------------|
 | `id` | string | Unique identifier (format: `citation-{id}`) |
 | `version` | string | Schema version (e.g., "1.0") |
-| `source_id` | string | Reference to Source entity |
+| `source` | string | Reference to Source entity |
 
 ### Optional Properties
 
@@ -66,7 +66,7 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 | `locator.item_number` | string | Item number or accession number |
 | `locator.image_number` | string | Image or page identifier |
 | `locator.url` | string | URL to online source |
-| `repository_id` | string | Reference to Repository entity |
+| `repository` | string | Reference to Repository entity |
 | `media` | array | References to Media entities (scans, photos, documents) related to this citation |
 | `notes` | string | Free-form notes about the citation |
 | `tags` | array | User-defined tags for organization |
@@ -80,7 +80,7 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 citations:
   citation-marriage-record:
     version: "1.0"
-    source_id: source-parish-register
+    source: source-parish-register
     page: "125"
     quality: 3
     text_from_source: "John Smith married to Mary Jones, 15 May 1850"
@@ -93,7 +93,7 @@ citations:
 citations:
   citation-census-online:
     version: "1.0"
-    source_id: source-ancestry-census
+    source: source-ancestry-census
     data_date: "1851"
     page: "Schedule 7, piece 1123"
     quality: 2
@@ -114,8 +114,8 @@ citations:
 citations:
   citation-will-john:
     version: "1.0"
-    source_id: source-probate-wills
-    repository_id: repository-probate
+    source: source-probate-wills
+    repository: repository-probate
     page: "23"
     quality: 3
     locator:
@@ -206,7 +206,7 @@ Or more commonly, citations are referenced by ID from assertions.
 | GLX Property | GEDCOM Element | Notes |
 |--------------|----------------|-------|
 | `id` | (synthetic) | Not in GEDCOM |
-| `source_id` | SOUR | Source reference |
+| `source` | SOUR | Source reference |
 | `page` | SOUR.PAGE | Page within source |
 | `data_date` | SOUR.DATA.DATE | Date data was recorded |
 | `text_from_source` | SOUR.TEXT | Transcribed text |

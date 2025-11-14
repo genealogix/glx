@@ -1,7 +1,7 @@
 citations:
   citation-abc12345:
     version: "1.0"
-    source_id: source-xyz98765
+    source: source-xyz98765
     quality: 3
     page: "Page 12"
     text_from_source: "Birth registration for John Smith, January 15, 1850"

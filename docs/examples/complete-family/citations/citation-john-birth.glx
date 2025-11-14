@@ -1,7 +1,7 @@
 citations:
   citation-john-birth:
     version: "1.0"
-    source_id: source-parish-leeds
+    source: source-parish-leeds
     quality: 3
     locator: "Entry 145, Page 23, January 1850"
     text_from_source: "John Smith, son of William Smith (blacksmith) and Elizabeth, born January 15, 1850"

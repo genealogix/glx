@@ -64,9 +64,9 @@ Domain-specific events:
 | `date.value` | string | Main date expression (if object) |
 | `date.range_start` | string | Fuzzy date range start (if object) |
 | `date.range_end` | string | Fuzzy date range end (if object) |
-| `place` or `place_id` | string | Reference to Place entity |
+| `place` | string | Reference to Place entity |
 | `participants` | array | People involved in the event |
-| `participant.person` or `participant.person_id` | string | Reference to Person entity |
+| `participant.person` | string | Reference to Person entity |
 | `participant.role` | string | Role of participant |
 | `participant.notes` | string | Notes about participant |
 | `value` | string | Value for attribute facts (e.g., "blacksmith" for occupation) |
@@ -90,13 +90,13 @@ date:
 
 ```yaml
 participants:
-  - person_id: "person-abc123de"
+  - person: "person-abc123de"
     role: "principal"
     notes: "The bride"
-  - person_id: "person-def456gh"
+  - person: "person-def456gh"
     role: "officiant"
     notes: "The minister"
-  - person_id: "person-ghi789jk"
+  - person: "person-ghi789jk"
     role: "witness"
 ```
 

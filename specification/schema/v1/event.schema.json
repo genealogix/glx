@@ -37,15 +37,10 @@
       ],
       "description": "Type of event or attribute"
     },
-    "place_id": {
-      "type": "string",
-      "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "Reference to Place where event occurred"
-    },
     "place": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "Alternative field name for place reference"
+      "description": "Reference to Place where event occurred"
     },
     "value": {
       "type": "string",
@@ -69,20 +64,12 @@
       "description": "People involved in this event",
       "items": {
         "type": "object",
-        "anyOf": [
-          { "required": ["person_id"] },
-          { "required": ["person"] }
-        ],
+        "required": ["person"],
         "properties": {
-          "person_id": {
-            "type": "string",
-            "pattern": "^[a-zA-Z0-9-]{1,64}$",
-            "description": "Reference to Person entity"
-          },
           "person": {
             "type": "string",
             "pattern": "^[a-zA-Z0-9-]{1,64}$",
-            "description": "Alternative field name for person reference"
+            "description": "Reference to Person entity"
           },
           "role": {
             "type": "string",

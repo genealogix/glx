@@ -17,7 +17,7 @@
       "minLength": 1,
       "description": "Primary name of the place"
     },
-    "parent_id": {
+    "parent": {
       "type": ["string", "null"],
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to parent place in hierarchy"

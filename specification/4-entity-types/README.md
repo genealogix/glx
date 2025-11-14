@@ -138,7 +138,7 @@ Media
 | Place | id, version, name | ✓ | ✓ | ✓ (parent) |
 | Assertion | id, version, subject, property | ✓ | ✓ | - |
 | Source | id, version, title | ✓ | ✓ | - |
-| Citation | id, version, source_id | ✓ | ✓ | - |
+| Citation | id, version, source | ✓ | ✓ | - |
 | Repository | id, version, name | ✓ | ✓ | - |
 | Media | id, version | ✓ | ✓ | - |
 

@@ -4,11 +4,7 @@
   "title": "Citation",
   "description": "A specific reference to evidence within a source. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version"],
-  "anyOf": [
-    { "required": ["source_id"] },
-    { "required": ["source"] }
-  ],
+  "required": ["version", "source"],
   "properties": {
     "version": {
       "type": "string",
@@ -16,15 +12,10 @@
       "description": "Schema version",
       "examples": ["1.0"]
     },
-    "source_id": {
-      "type": "string",
-      "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "Reference to Source entity"
-    },
     "source": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "Alternative field name for source reference"
+      "description": "Reference to Source entity"
     },
     "page": {
       "type": "string",
@@ -88,15 +79,10 @@
         }
       ]
     },
-    "repository_id": {
-      "type": "string",
-      "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "Reference to Repository where source is held"
-    },
     "repository": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "Alternative field name for repository reference"
+      "description": "Reference to Repository where source is held"
     },
     "media": {
       "type": "array",

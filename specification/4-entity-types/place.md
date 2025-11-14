@@ -61,7 +61,7 @@ Each name can be classified and dated.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `parent` or `parent_id` | string | Reference to parent place in hierarchy |
+| `parent` | string | Reference to parent place in hierarchy |
 | `type` | string | Place type from `vocabularies/place-types.glx` |
 | `alternative_names` | array | Historical/alternative names for this place |
 | `latitude` | number | WGS84 latitude coordinate |
@@ -106,7 +106,7 @@ Places are referenced in events to indicate where the event occurred:
 
 ```yaml
 type: "birth"
-place_id: "place-leeds123"
+place: "place-leeds123"
 ```
 
 ### In Addresses
@@ -115,7 +115,7 @@ Places can be components of addresses within person records or residence events:
 
 ```yaml
 residence:
-  place_id: "place-leeds123"
+  place: "place-leeds123"
   date: "1850-1900"
 ```
 
@@ -125,7 +125,7 @@ residence:
 |--------------|----------------|-------|
 | `id` | (synthetic) | Not in GEDCOM; generated from place data |
 | `name` | PLAC | Text value of PLAC tag |
-| `parent_id` | (implicit) | Represented in hierarchical PLAC structure |
+| `parent` | (implicit) | Represented in hierarchical PLAC structure |
 | `type` | PLAC.TYPE | Non-standard; used in extended GEDCOM |
 | `latitude` | PLAC.MAP.LATI | WGS84 latitude |
 | `longitude` | PLAC.MAP.LONG | WGS84 longitude |

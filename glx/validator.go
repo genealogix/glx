@@ -20,6 +20,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/genealogix/spec/lib"
 	schema "github.com/genealogix/spec/specification/schema/v1"
@@ -227,10 +230,8 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 			issues = append(issues, "title is required")
 		}
 	case "citation":
-		if _, hasSource := entity["source_id"]; !hasSource {
-			if _, hasSourceAlt := entity["source"]; !hasSourceAlt {
-				issues = append(issues, "source_id or source is required")
-			}
+		if _, hasSource := entity["source"]; !hasSource {
+			issues = append(issues, "source is required")
 		}
 	case "repository":
 		if _, hasName := entity["name"]; !hasName {
@@ -540,11 +541,6 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 							issues = append(issues, fmt.Sprintf("%s: events[%s].place references non-existent place: %s", path, eventID, placeID))
 						}
 					}
-					if placeID, ok := event["place_id"].(string); ok {
-						if !allEntities["places"][placeID] {
-							issues = append(issues, fmt.Sprintf("%s: events[%s].place_id references non-existent place: %s", path, eventID, placeID))
-						}
-					}
 					// Check participants reference valid persons
 					if participants, ok := event["participants"].([]interface{}); ok {
 						for i, p := range participants {
@@ -552,11 +548,6 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 								if personID, ok := participant["person"].(string); ok {
 									if !allEntities["persons"][personID] {
 										issues = append(issues, fmt.Sprintf("%s: events[%s].participants[%d].person references non-existent person: %s", path, eventID, i, personID))
-									}
-								}
-								if personID, ok := participant["person_id"].(string); ok {
-									if !allEntities["persons"][personID] {
-										issues = append(issues, fmt.Sprintf("%s: events[%s].participants[%d].person_id references non-existent person: %s", path, eventID, i, personID))
 									}
 								}
 							}
@@ -576,11 +567,6 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 							issues = append(issues, fmt.Sprintf("%s: places[%s].parent references non-existent place: %s", path, placeID, parentID))
 						}
 					}
-					if parentID, ok := place["parent_id"].(string); ok {
-						if !allEntities["places"][parentID] {
-							issues = append(issues, fmt.Sprintf("%s: places[%s].parent_id references non-existent place: %s", path, placeID, parentID))
-						}
-					}
 				}
 			}
 		}
@@ -595,20 +581,10 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 							issues = append(issues, fmt.Sprintf("%s: citations[%s].source references non-existent source: %s", path, citationID, sourceID))
 						}
 					}
-					if sourceID, ok := citation["source_id"].(string); ok {
-						if !allEntities["sources"][sourceID] {
-							issues = append(issues, fmt.Sprintf("%s: citations[%s].source_id references non-existent source: %s", path, citationID, sourceID))
-						}
-					}
 					// Check repository references
 					if repoID, ok := citation["repository"].(string); ok {
 						if !allEntities["repositories"][repoID] {
 							issues = append(issues, fmt.Sprintf("%s: citations[%s].repository references non-existent repository: %s", path, citationID, repoID))
-						}
-					}
-					if repoID, ok := citation["repository_id"].(string); ok {
-						if !allEntities["repositories"][repoID] {
-							issues = append(issues, fmt.Sprintf("%s: citations[%s].repository_id references non-existent repository: %s", path, citationID, repoID))
 						}
 					}
 				}
@@ -623,11 +599,6 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 					if repoID, ok := source["repository"].(string); ok {
 						if !allEntities["repositories"][repoID] {
 							issues = append(issues, fmt.Sprintf("%s: sources[%s].repository references non-existent repository: %s", path, sourceID, repoID))
-						}
-					}
-					if repoID, ok := source["repository_id"].(string); ok {
-						if !allEntities["repositories"][repoID] {
-							issues = append(issues, fmt.Sprintf("%s: sources[%s].repository_id references non-existent repository: %s", path, sourceID, repoID))
 						}
 					}
 				}
@@ -679,4 +650,234 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 	})
 
 	return issues
+}
+
+// ValidateReferencesWithStructs validates all references using refType struct tags
+func ValidateReferencesWithStructs(glxFile *lib.GLXFile) []string {
+	var issues []string
+
+	// Build lookup maps for entities
+	entities := map[string]map[string]bool{
+		"persons":       makeKeySet(glxFile.Persons),
+		"relationships": makeKeySet(glxFile.Relationships),
+		"events":        makeKeySet(glxFile.Events),
+		"places":        makeKeySet(glxFile.Places),
+		"sources":       makeKeySet(glxFile.Sources),
+		"citations":     makeKeySet(glxFile.Citations),
+		"repositories":  makeKeySet(glxFile.Repositories),
+		"assertions":    makeKeySet(glxFile.Assertions),
+		"media":         makeKeySet(glxFile.Media),
+	}
+
+	// Build lookup maps for vocabularies
+	vocabs := map[string]map[string]bool{
+		"event_types":        makeKeySet(glxFile.EventTypes),
+		"relationship_types": makeKeySet(glxFile.RelationshipTypes),
+		"place_types":        makeKeySet(glxFile.PlaceTypes),
+		"source_types":       makeKeySet(glxFile.SourceTypes),
+		"repository_types":   makeKeySet(glxFile.RepositoryTypes),
+		"media_types":        makeKeySet(glxFile.MediaTypes),
+		"participant_roles":  makeKeySet(glxFile.ParticipantRoles),
+		"confidence_levels":  makeKeySet(glxFile.ConfidenceLevels),
+		"quality_ratings":    makeKeySet(glxFile.QualityRatings),
+	}
+
+	// Validate each entity type
+	issues = append(issues, validateEntityMap("persons", glxFile.Persons, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("relationships", glxFile.Relationships, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("events", glxFile.Events, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("places", glxFile.Places, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("sources", glxFile.Sources, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("citations", glxFile.Citations, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("repositories", glxFile.Repositories, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("assertions", glxFile.Assertions, entities, vocabs)...)
+	issues = append(issues, validateEntityMap("media", glxFile.Media, entities, vocabs)...)
+
+	return issues
+}
+
+func makeKeySet[T any](m map[string]*T) map[string]bool {
+	result := make(map[string]bool)
+	for k := range m {
+		result[k] = true
+	}
+	return result
+}
+
+func validateEntityMap[T any](entityType string, entities map[string]*T, allEntities, allVocabs map[string]map[string]bool) []string {
+	var issues []string
+	for id, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		issues = append(issues, validateEntityReferences(entityType, id, entity, allEntities, allVocabs)...)
+	}
+	return issues
+}
+
+func validateEntityReferences(entityType, entityID string, entity interface{}, allEntities, allVocabs map[string]map[string]bool) []string {
+	var issues []string
+
+	v := reflect.ValueOf(entity)
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return issues
+		}
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return issues
+	}
+
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		fieldValue := v.Field(i)
+
+		// Skip unexported fields
+		if !fieldValue.CanInterface() {
+			continue
+		}
+
+		// Get refType tag
+		refType := field.Tag.Get("refType")
+		if refType == "" {
+			// No refType tag, but check if it's a nested struct or slice that might contain references
+			if fieldValue.Kind() == reflect.Struct || (fieldValue.Kind() == reflect.Ptr && fieldValue.Elem().Kind() == reflect.Struct) {
+				// Recurse into nested structs
+				var nestedEntity interface{}
+				if fieldValue.Kind() == reflect.Ptr {
+					if fieldValue.IsNil() {
+						continue
+					}
+					nestedEntity = fieldValue.Interface()
+				} else {
+					nestedEntity = fieldValue.Addr().Interface()
+				}
+				issues = append(issues, validateEntityReferences(entityType, entityID, nestedEntity, allEntities, allVocabs)...)
+			} else if fieldValue.Kind() == reflect.Slice {
+				// Recurse into slice elements
+				for j := 0; j < fieldValue.Len(); j++ {
+					elem := fieldValue.Index(j)
+					if elem.Kind() == reflect.Struct || (elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.Struct) {
+						var nestedEntity interface{}
+						if elem.Kind() == reflect.Ptr {
+							if elem.IsNil() {
+								continue
+							}
+							nestedEntity = elem.Interface()
+						} else {
+							nestedEntity = elem.Addr().Interface()
+						}
+						issues = append(issues, validateEntityReferences(entityType, entityID, nestedEntity, allEntities, allVocabs)...)
+					}
+				}
+			}
+			continue
+		}
+
+		// Parse comma-delimited refType values
+		refTypes := strings.Split(refType, ",")
+		for i := range refTypes {
+			refTypes[i] = strings.TrimSpace(refTypes[i])
+		}
+
+		// Validate based on field type
+		switch fieldValue.Kind() {
+		case reflect.String:
+			if fieldValue.String() == "" {
+				continue
+			}
+			refValue := fieldValue.String()
+			// Check if it's a vocabulary reference or entity reference
+			found := false
+			for _, rt := range refTypes {
+				if allVocabs[rt] != nil && allVocabs[rt][refValue] {
+					found = true
+					break
+				}
+				if allEntities[rt] != nil && allEntities[rt][refValue] {
+					found = true
+					break
+				}
+			}
+			if !found {
+				issues = append(issues, fmt.Sprintf("%s[%s].%s references non-existent %s: %s", entityType, entityID, getYAMLTagName(field.Tag), strings.Join(refTypes, " or "), refValue))
+			}
+
+		case reflect.Slice:
+			if fieldValue.Len() == 0 {
+				continue
+			}
+			// For slices, validate each element
+			for j := 0; j < fieldValue.Len(); j++ {
+				elem := fieldValue.Index(j)
+				if elem.Kind() == reflect.String {
+					refValue := elem.String()
+					if refValue == "" {
+						continue
+					}
+					found := false
+					for _, rt := range refTypes {
+						if allVocabs[rt] != nil && allVocabs[rt][refValue] {
+							found = true
+							break
+						}
+						if allEntities[rt] != nil && allEntities[rt][refValue] {
+							found = true
+							break
+						}
+					}
+					if !found {
+						issues = append(issues, fmt.Sprintf("%s[%s].%s[%d] references non-existent %s: %s", entityType, entityID, getYAMLTagName(field.Tag), j, strings.Join(refTypes, " or "), refValue))
+					}
+				} else if elem.Kind() == reflect.Struct || (elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.Struct) {
+					// Recurse into nested structs in slices
+					var nestedEntity interface{}
+					if elem.Kind() == reflect.Ptr {
+						if elem.IsNil() {
+							continue
+						}
+						nestedEntity = elem.Interface()
+					} else {
+						nestedEntity = elem.Addr().Interface()
+					}
+					issues = append(issues, validateEntityReferences(entityType, entityID, nestedEntity, allEntities, allVocabs)...)
+				}
+			}
+
+		case reflect.Ptr:
+			// Handle pointer types (like *int for Quality)
+			if fieldValue.IsNil() {
+				continue
+			}
+			if fieldValue.Elem().Kind() == reflect.Int {
+				// Special handling for Quality (int pointer) -> quality_ratings (string map)
+				intValue := fieldValue.Elem().Int()
+				refValue := strconv.FormatInt(intValue, 10)
+				found := false
+				for _, rt := range refTypes {
+					if allVocabs[rt] != nil && allVocabs[rt][refValue] {
+						found = true
+						break
+					}
+				}
+				if !found {
+					issues = append(issues, fmt.Sprintf("%s[%s].%s references non-existent %s: %s", entityType, entityID, getYAMLTagName(field.Tag), strings.Join(refTypes, " or "), refValue))
+				}
+			}
+		}
+	}
+
+	return issues
+}
+
+func getYAMLTagName(tag reflect.StructTag) string {
+	yamlTag := tag.Get("yaml")
+	if yamlTag == "" {
+		return ""
+	}
+	// Extract the first part before comma
+	parts := strings.Split(yamlTag, ",")
+	return parts[0]
 }

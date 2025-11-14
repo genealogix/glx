@@ -14,6 +14,8 @@
 
 package lib
 
+import "fmt"
+
 // GLXFile represents the top-level structure of a .glx file, which can
 // contain maps of different entity types and vocabulary definitions.
 type GLXFile struct {
@@ -50,7 +52,7 @@ type GLXFile struct {
 type Person struct {
 	Version           string             `yaml:"version"`
 	ConcludedIdentity *ConcludedIdentity `yaml:"concluded_identity,omitempty"`
-	Relationships     []string           `yaml:"relationships,omitempty"`
+	Relationships     []string           `yaml:"relationships,omitempty" refType:"relationships"`
 	Notes             string             `yaml:"notes,omitempty"`
 	Tags              []string           `yaml:"tags,omitempty"`
 }
@@ -65,29 +67,28 @@ type ConcludedIdentity struct {
 // Relationship represents a relationship between two or more people.
 type Relationship struct {
 	Version      string                    `yaml:"version"`
-	Type         string                    `yaml:"type"`
-	Persons      []string                  `yaml:"persons,omitempty"`
+	Type         string                    `yaml:"type" refType:"relationship_types"`
+	Persons      []string                  `yaml:"persons,omitempty" refType:"persons"`
 	Participants []RelationshipParticipant `yaml:"participants,omitempty"`
-	StartEvent   string                    `yaml:"start_event,omitempty"`
-	EndEvent     string                    `yaml:"end_event,omitempty"`
+	StartEvent   string                    `yaml:"start_event,omitempty" refType:"events"`
+	EndEvent     string                    `yaml:"end_event,omitempty" refType:"events"`
 	Description  string                    `yaml:"description,omitempty"`
 	Notes        string                    `yaml:"notes,omitempty"`
-	Assertions   []string                  `yaml:"assertions,omitempty"`
+	Assertions   []string                  `yaml:"assertions,omitempty" refType:"assertions"`
 	Tags         []string                  `yaml:"tags,omitempty"`
 }
 
 // RelationshipParticipant defines a person's role in a relationship.
 type RelationshipParticipant struct {
-	Person string `yaml:"person"`
-	Role   string `yaml:"role,omitempty"`
+	Person string `yaml:"person" refType:"persons"`
+	Role   string `yaml:"role,omitempty" refType:"participant_roles"`
 }
 
 // Event represents a genealogical event.
 type Event struct {
 	Version      string             `yaml:"version"`
-	Type         string             `yaml:"type"`
-	PlaceID      string             `yaml:"place_id,omitempty"`
-	Place        string             `yaml:"place,omitempty"`
+	Type         string             `yaml:"type" refType:"event_types"`
+	PlaceID      string             `yaml:"place,omitempty" refType:"places"`
 	Value        string             `yaml:"value,omitempty"`
 	Date         *EventDate         `yaml:"date,omitempty"`
 	Participants []EventParticipant `yaml:"participants,omitempty"`
@@ -105,9 +106,8 @@ type EventDate struct {
 
 // EventParticipant defines a person's role in an event.
 type EventParticipant struct {
-	PersonID string `yaml:"person_id,omitempty"`
-	Person   string `yaml:"person,omitempty"`
-	Role     string `yaml:"role,omitempty"`
+	PersonID string `yaml:"person,omitempty" refType:"persons"`
+	Role     string `yaml:"role,omitempty" refType:"participant_roles"`
 	Notes    string `yaml:"notes,omitempty"`
 }
 
@@ -115,8 +115,8 @@ type EventParticipant struct {
 type Place struct {
 	Version          string            `yaml:"version"`
 	Name             string            `yaml:"name"`
-	ParentID         string            `yaml:"parent_id,omitempty"`
-	Type             string            `yaml:"type,omitempty"`
+	ParentID         string            `yaml:"parent,omitempty" refType:"places"`
+	Type             string            `yaml:"type,omitempty" refType:"place_types"`
 	AlternativeNames []AlternativeName `yaml:"alternative_names,omitempty"`
 	Latitude         *float64          `yaml:"latitude,omitempty"`
 	Longitude        *float64          `yaml:"longitude,omitempty"`
@@ -142,30 +142,28 @@ type DateRange struct {
 type Source struct {
 	Version         string   `yaml:"version"`
 	Title           string   `yaml:"title"`
-	Type            string   `yaml:"type,omitempty"`
+	Type            string   `yaml:"type,omitempty" refType:"source_types"`
 	Authors         []string `yaml:"authors,omitempty"`
 	Date            string   `yaml:"date,omitempty"`
 	Description     string   `yaml:"description,omitempty"`
-	RepositoryID    string   `yaml:"repository_id,omitempty"`
+	RepositoryID    string   `yaml:"repository,omitempty" refType:"repositories"`
 	PublicationInfo string   `yaml:"publication_info,omitempty"`
 	Notes           string   `yaml:"notes,omitempty"`
-	Media           []string `yaml:"media,omitempty"`
+	Media           []string `yaml:"media,omitempty" refType:"media"`
 	Tags            []string `yaml:"tags,omitempty"`
 }
 
 // Citation represents a citation of a source.
 type Citation struct {
 	Version        string   `yaml:"version"`
-	SourceID       string   `yaml:"source_id,omitempty"`
-	Source         string   `yaml:"source,omitempty"`
+	SourceID       string   `yaml:"source,omitempty" refType:"sources"`
 	Page           string   `yaml:"page,omitempty"`
 	TextFromSource string   `yaml:"text_from_source,omitempty"`
 	Transcription  string   `yaml:"transcription,omitempty"`
-	Quality        *int     `yaml:"quality,omitempty"`
+	Quality        *int     `yaml:"quality,omitempty" refType:"quality_ratings"`
 	Locator        *Locator `yaml:"locator,omitempty"`
-	RepositoryID   string   `yaml:"repository_id,omitempty"`
-	Repository     string   `yaml:"repository,omitempty"`
-	Media          []string `yaml:"media,omitempty"`
+	RepositoryID   string   `yaml:"repository,omitempty" refType:"repositories"`
+	Media          []string `yaml:"media,omitempty" refType:"media"`
 	Notes          string   `yaml:"notes,omitempty"`
 	Tags           []string `yaml:"tags,omitempty"`
 }
@@ -184,7 +182,7 @@ type Locator struct {
 type Repository struct {
 	Version    string   `yaml:"version"`
 	Name       string   `yaml:"name"`
-	Type       string   `yaml:"type,omitempty"`
+	Type       string   `yaml:"type,omitempty" refType:"repository_types"`
 	Address    string   `yaml:"address,omitempty"`
 	City       string   `yaml:"city,omitempty"`
 	State      string   `yaml:"state_province,omitempty"`
@@ -200,12 +198,12 @@ type Repository struct {
 // Assertion represents a conclusion made by a researcher.
 type Assertion struct {
 	Version    string   `yaml:"version"`
-	Subject    string   `yaml:"subject"`
+	Subject    string   `yaml:"subject" refType:"persons,events,relationships,places"`
 	Claim      string   `yaml:"claim"`
 	Value      string   `yaml:"value,omitempty"`
-	Confidence string   `yaml:"confidence,omitempty"`
-	Sources    []string `yaml:"sources,omitempty"`
-	Citations  []string `yaml:"citations,omitempty"`
+	Confidence string   `yaml:"confidence,omitempty" refType:"confidence_levels"`
+	Sources    []string `yaml:"sources,omitempty" refType:"sources"`
+	Citations  []string `yaml:"citations,omitempty" refType:"citations"`
 	Notes      string   `yaml:"notes,omitempty"`
 	Tags       []string `yaml:"tags,omitempty"`
 }
@@ -295,4 +293,53 @@ type QualityRating struct {
 	Description string   `yaml:"description,omitempty"`
 	Examples    []string `yaml:"examples,omitempty"`
 	Custom      *bool    `yaml:"custom,omitempty"`
+}
+
+// Merge combines another GLXFile into this one, returning duplicate IDs as errors.
+// Duplicates are fatal errors for both entities and vocabularies.
+func (g *GLXFile) Merge(other *GLXFile) []string {
+	var duplicates []string
+
+	// Merge entities (fail on duplicates)
+	duplicates = append(duplicates, mergeMap("persons", g.Persons, other.Persons)...)
+	duplicates = append(duplicates, mergeMap("relationships", g.Relationships, other.Relationships)...)
+	duplicates = append(duplicates, mergeMap("events", g.Events, other.Events)...)
+	duplicates = append(duplicates, mergeMap("places", g.Places, other.Places)...)
+	duplicates = append(duplicates, mergeMap("sources", g.Sources, other.Sources)...)
+	duplicates = append(duplicates, mergeMap("citations", g.Citations, other.Citations)...)
+	duplicates = append(duplicates, mergeMap("repositories", g.Repositories, other.Repositories)...)
+	duplicates = append(duplicates, mergeMap("assertions", g.Assertions, other.Assertions)...)
+	duplicates = append(duplicates, mergeMap("media", g.Media, other.Media)...)
+
+	// Merge vocabularies (ALSO fail on duplicates - treat same as entities)
+	duplicates = append(duplicates, mergeMap("event_types", g.EventTypes, other.EventTypes)...)
+	duplicates = append(duplicates, mergeMap("relationship_types", g.RelationshipTypes, other.RelationshipTypes)...)
+	duplicates = append(duplicates, mergeMap("place_types", g.PlaceTypes, other.PlaceTypes)...)
+	duplicates = append(duplicates, mergeMap("source_types", g.SourceTypes, other.SourceTypes)...)
+	duplicates = append(duplicates, mergeMap("repository_types", g.RepositoryTypes, other.RepositoryTypes)...)
+	duplicates = append(duplicates, mergeMap("media_types", g.MediaTypes, other.MediaTypes)...)
+	duplicates = append(duplicates, mergeMap("participant_roles", g.ParticipantRoles, other.ParticipantRoles)...)
+	duplicates = append(duplicates, mergeMap("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels)...)
+	duplicates = append(duplicates, mergeMap("quality_ratings", g.QualityRatings, other.QualityRatings)...)
+
+	return duplicates
+}
+
+// mergeMap is used for BOTH entities and vocabularies - duplicates are always errors
+func mergeMap[T any](mapType string, dest, src map[string]*T) []string {
+	var duplicates []string
+	if dest == nil {
+		return duplicates
+	}
+	if src == nil {
+		return duplicates
+	}
+	for k, v := range src {
+		if _, exists := dest[k]; exists {
+			duplicates = append(duplicates, fmt.Sprintf("duplicate %s ID: %s", mapType, k))
+		} else {
+			dest[k] = v
+		}
+	}
+	return duplicates
 }
