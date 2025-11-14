@@ -23,39 +23,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsSpecRepository(t *testing.T) {
-	// Test from current directory (should be spec repo)
-	result := isSpecRepository()
-	// This should be true if we're in the spec repository
-	// We can't easily test false case without mocking, so just verify it doesn't panic
-	assert.NotPanics(t, func() {
-		_ = isSpecRepository()
-	})
-	_ = result // Use result to avoid unused variable
-
-	// Test from a temporary directory (should be false)
-	tmpDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	result = isSpecRepository()
-	assert.False(t, result, "should return false for non-spec repository")
-}
-
 func TestRunInit_SingleFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
 
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	err = runInit(true)
+	err := runInit(tmpDir, true, 0)
 	assert.NoError(t, err)
 
 	// Check that archive.glx was created
@@ -72,14 +43,8 @@ func TestRunInit_SingleFile(t *testing.T) {
 
 func TestRunInit_MultiFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
 
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	err = runInit(false)
+	err := runInit(tmpDir, false, 0)
 	assert.NoError(t, err)
 
 	// Check that directories were created
@@ -124,30 +89,19 @@ func TestRunInit_MultiFile(t *testing.T) {
 	assert.NoError(t, err, "README.md should be created")
 }
 
-func TestRunInit_InSpecRepository(t *testing.T) {
-	// This should fail if we're in the spec repository
-	// Try to run init in the current directory (spec repo)
-	err := runInit(false)
-	if isSpecRepository() {
-		assert.Error(t, err, "should fail when run in spec repository")
-		assert.Contains(t, err.Error(), "specification repository")
-	} else {
-		// If we're not in spec repo, it might succeed
-		// Clean up if it did
-		if err == nil {
-			os.RemoveAll("persons")
-			os.RemoveAll("relationships")
-			os.RemoveAll("events")
-			os.RemoveAll("places")
-			os.RemoveAll("sources")
-			os.RemoveAll("citations")
-			os.RemoveAll("repositories")
-			os.RemoveAll("assertions")
-			os.RemoveAll("media")
-			os.RemoveAll("vocabularies")
-			os.Remove(".gitignore")
-			os.Remove("README.md")
-		}
+func TestRunInit_NonEmptyDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a dummy file to make the directory non-empty
+	dummyFile := filepath.Join(tmpDir, "dummy.txt")
+	err := os.WriteFile(dummyFile, []byte("hello"), 0644)
+	require.NoError(t, err)
+
+	// Now, try to initialize in the non-empty directory
+	err = runInit(tmpDir, false, 0)
+	assert.Error(t, err, "should fail when run in a non-empty directory")
+	if err != nil {
+		assert.Contains(t, err.Error(), "non-empty directory")
 	}
 }
 

@@ -131,14 +131,14 @@ go install github.com/genealogix/spec/glx@latest
 ## Quick Start
 
 ```bash
-# Create a new genealogix repository (multi-file, recommended)
-# This creates entity directories AND vocabularies/ with standard types
-glx init
+# Create a new genealogix repository in a new directory
+glx init my-family-archive
 
 # Or create a single-file archive
-glx init --single-file
+glx init my-family-archive --single-file
 
 # Validate .glx files (checks cross-references and vocabularies)
+cd my-family-archive
 glx validate
 
 # Validate schema files

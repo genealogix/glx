@@ -39,13 +39,14 @@ go install github.com/genealogix/spec/glx@latest
 ## Quick Start
 
 ```bash
-# Create a new family archive
-glx init
+# Create a new family archive in the `my-family-archive` directory
+glx init my-family-archive
 
 # Create a single-file archive
-glx init --single-file
+glx init my-family-archive --single-file
 
-# Validate all files in current directory
+# Validate all files in the new directory
+cd my-family-archive
 glx validate
 
 # Validate specific files or directories
@@ -65,7 +66,7 @@ Initialize a new GENEALOGIX archive.
 
 **Usage:**
 ```bash
-glx init [--single-file]
+glx init [directory] [--single-file]
 ```
 
 **Options:**
@@ -75,12 +76,12 @@ glx init [--single-file]
 
 **Multi-file archive (default):**
 ```bash
-glx init
+glx init my-family-archive
 ```
 
 Creates:
 ```
-.
+my-family-archive/
 ├── persons/
 ├── relationships/
 ├── events/
@@ -105,12 +106,12 @@ Creates:
 
 **Single-file archive:**
 ```bash
-glx init --single-file
+glx init my-family-archive --single-file
 ```
 
 Creates:
 ```
-.
+my-family-archive/
 └── archive.glx
 ```
 
