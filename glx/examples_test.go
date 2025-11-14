@@ -13,7 +13,7 @@ import (
 // TestExamples validates all example GLX files from docs/examples
 func TestExamples(t *testing.T) {
 	examplesDir := "../docs/examples"
-	
+
 	// Check if examples directory exists
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found - skipping examples validation")
@@ -107,24 +107,24 @@ func TestExamples(t *testing.T) {
 // TestExamplesDirectories validates that each example directory is structured correctly
 func TestExamplesDirectories(t *testing.T) {
 	examplesDir := "../docs/examples"
-	
+
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found")
 		return
 	}
 
 	examples := []string{"minimal", "basic-family", "complete-family", "single-file"}
-	
+
 	for _, example := range examples {
 		t.Run(example, func(t *testing.T) {
 			examplePath := filepath.Join(examplesDir, example)
 			info, err := os.Stat(examplePath)
-			
+
 			if os.IsNotExist(err) {
 				t.Skipf("example %s not found", example)
 				return
 			}
-			
+
 			require.NoError(t, err)
 			assert.True(t, info.IsDir(), "example should be a directory")
 
@@ -139,7 +139,7 @@ func TestExamplesDirectories(t *testing.T) {
 // TestExamplesCompleteFamily validates the complete-family example has all entity types
 func TestExamplesCompleteFamily(t *testing.T) {
 	completeFamilyDir := "../docs/examples/complete-family"
-	
+
 	if _, err := os.Stat(completeFamilyDir); os.IsNotExist(err) {
 		t.Skip("complete-family example not found")
 		return
@@ -155,19 +155,19 @@ func TestExamplesCompleteFamily(t *testing.T) {
 		t.Run(dir, func(t *testing.T) {
 			dirPath := filepath.Join(completeFamilyDir, dir)
 			info, err := os.Stat(dirPath)
-			
+
 			if os.IsNotExist(err) {
 				t.Skipf("directory %s not found in complete-family", dir)
 				return
 			}
-			
+
 			require.NoError(t, err)
 			assert.True(t, info.IsDir(), "%s should be a directory", dir)
 
 			// Check that directory contains at least one .glx file
 			files, err := os.ReadDir(dirPath)
 			require.NoError(t, err)
-			
+
 			hasGlxFile := false
 			for _, file := range files {
 				if !file.IsDir() && strings.HasSuffix(file.Name(), ".glx") {
@@ -175,7 +175,7 @@ func TestExamplesCompleteFamily(t *testing.T) {
 					break
 				}
 			}
-			
+
 			assert.True(t, hasGlxFile, "directory %s should contain at least one .glx file", dir)
 		})
 	}
@@ -184,7 +184,7 @@ func TestExamplesCompleteFamily(t *testing.T) {
 // TestExamplesSingleFile validates the single-file example
 func TestExamplesSingleFile(t *testing.T) {
 	singleFilePath := "../docs/examples/single-file/archive.glx"
-	
+
 	if _, err := os.Stat(singleFilePath); os.IsNotExist(err) {
 		t.Skip("single-file example not found")
 		return
@@ -199,7 +199,7 @@ func TestExamplesSingleFile(t *testing.T) {
 	// Single file should contain multiple entity types
 	entityTypes := []string{"persons", "relationships", "events", "places", "sources"}
 	foundTypes := 0
-	
+
 	for _, entityType := range entityTypes {
 		if _, exists := doc[entityType]; exists {
 			foundTypes++
@@ -212,18 +212,18 @@ func TestExamplesSingleFile(t *testing.T) {
 // TestExamplesValidation runs full validation on each example directory
 func TestExamplesValidation(t *testing.T) {
 	examplesDir := "../docs/examples"
-	
+
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found")
 		return
 	}
 
 	examples := []string{"minimal", "basic-family", "complete-family"}
-	
+
 	for _, example := range examples {
 		t.Run(example, func(t *testing.T) {
 			examplePath := filepath.Join(examplesDir, example)
-			
+
 			if _, err := os.Stat(examplePath); os.IsNotExist(err) {
 				t.Skipf("example %s not found", example)
 				return
@@ -242,4 +242,3 @@ func TestExamplesValidation(t *testing.T) {
 		})
 	}
 }
-

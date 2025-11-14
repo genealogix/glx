@@ -127,4 +127,3 @@ func TestRunCheckSchemas(t *testing.T) {
 		})
 	}
 }
-

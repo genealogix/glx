@@ -197,4 +197,3 @@ func formatValidationIssues(path string, issues []string) []string {
 	}
 	return lines
 }
-

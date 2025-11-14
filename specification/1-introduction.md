@@ -6,7 +6,7 @@ layout: doc
 
 # Introduction
 
-## Purpose and Scope 
+## Purpose and Scope
 
 GENEALOGIX defines a human-readable, version-controlled archive format for family history data. It addresses the limitations of existing genealogy formats by providing:
 

@@ -72,4 +72,3 @@ func runCheckSchemas() error {
 	fmt.Println("All schema files contain $schema and $id")
 	return nil
 }
-

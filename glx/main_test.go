@@ -180,4 +180,3 @@ func TestPrintUsage(t *testing.T) {
 		_ = rootCmd
 	})
 }
-

@@ -68,7 +68,7 @@ media: {}
 		return nil
 	}
 
-	// Create directory structure for a genealogix repository
+	// Create directory structure for a GENEALOGIX repository
 	dirs := []string{
 		"persons",
 		"relationships",
@@ -203,4 +203,3 @@ func isSpecRepository() bool {
 }
 
 // createStandardVocabularies is now in vocabularies_embed.go
-

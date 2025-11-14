@@ -27,4 +27,3 @@ func Execute() {
 func init() {
 	rootCmd.SetVersionTemplate("glx version {{.Version}}\n")
 }
-
