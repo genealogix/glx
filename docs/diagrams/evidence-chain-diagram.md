@@ -88,7 +88,7 @@ publication_info:
 ### 3. Citation (Specific Reference)
 **Exact location within a source**
 - Page numbers, entry numbers, timestamps
-- Quality assessment (0-3 scale)
+- Optional quality field (for GEDCOM compatibility)
 - Transcription of relevant text
 
 **Example:**
@@ -99,24 +99,33 @@ version: "1.0"
 type: citation
 source: source-parish-register
 locator: "Entry 145, page 23, January 1850"
-quality: 3  # Primary source, direct evidence
 transcription: |
   "January 15th, 1850. John, son of Thomas Smith, blacksmith,
   and Mary Smith, of 23 Wellington Street. Baptized January 20th."
 ```
 
-## Evidence Quality Scale
+### 4. Assertion (Evidence-Based Conclusion)
+**Claims about entities backed by citations**
+- Subject (what entity)
+- Claim (what property)
+- Value (the conclusion)
+- Confidence level (certainty)
+- Citations (supporting evidence)
 
-GENEALOGIX uses a 0-3 quality scale compatible with GEDCOM 5.5.1 QUAY:
+**Example:**
+```yaml
+# assertions/assertion-birth-date.glx
+id: assertion-birth-date
+version: "1.0"
+type: assertion
+subject: person-john-smith
+claim: birth_date
+value: "1850-01-15"
+confidence: high  # Multiple corroborating sources
+citations: [citation-birth-entry, citation-census]
+```
 
-| Quality | Description | Example |
-|---------|-------------|---------|
-| **3** | Direct and primary evidence | Original birth certificate, contemporary baptism record |
-| **2** | Secondary evidence, officially recorded | Census record, published vital records |
-| **1** | Questionable reliability | Undocumented oral history, conflicting sources |
-| **0** | Unreliable or estimated | Unverified family tradition, unsourced trees |
-
-**Note:** This scale maintains 1:1 compatibility with GEDCOM for seamless data exchange.
+The idiomatic GLX approach is to express certainty using assertion confidence levels rather than citation quality ratings. See [Confidence Levels Vocabulary](../../specification/5-standard-vocabularies/confidence-levels.glx).
 
 ## Evidence Flow Examples
 
@@ -162,12 +171,12 @@ value: "1850-01-15"
 
 # Multiple supporting citations
 citations:
-  - citation-birth-certificate    # Quality 3 - birth certificate
-  - citation-baptism-record       # Quality 3 - church record
-  - citation-census-1851          # Quality 2 - census record
-  - citation-family-bible         # Quality 1 - family record
+  - citation-birth-certificate
+  - citation-baptism-record
+  - citation-census-1851
+  - citation-family-bible
 
-confidence: high  # Multiple primary sources confirm
+confidence: high  # Multiple corroborating sources
 ```
 
 ## Validation Rules
@@ -185,33 +194,19 @@ confidence: high  # Multiple primary sources confirm
 ### Citation Validation
 - Must reference existing source
 - Locator should be specific and verifiable
-- Quality rating must be 0-3
 - Transcription should match claim when provided
 
-## Evidence Best Practices
-
-### 1. Primary vs Secondary Sources
-- **Primary**: Created at the time of the event (certificates, contemporary records)
-- **Secondary**: Created later (censuses, compiled records, histories)
-
-### 2. Direct vs Indirect Evidence
-- **Direct**: Explicitly states the fact (birth certificate shows birth date)
-- **Indirect**: Requires inference (census shows age, implying birth year)
-
-### 3. Original vs Derivative
-- **Original**: First-hand account
-- **Derivative**: Copy or compilation of original
-
-### 4. Information vs Evidence
-- **Information**: Data from a source
-- **Evidence**: Information + source analysis + correlation
+### Assertion Validation
+- Must reference existing entity as subject
+- Must include at least one citation
+- Confidence level should reflect strength of evidence
 
 ## Implementation in GENEALOGIX
 
-The evidence chain is enforced through:
+The evidence chain is enforced through validation:
 
 1. **Required References**: Citations must reference existing sources
-2. **Quality Tracking**: Each citation includes quality assessment
+2. **Confidence Levels**: Assertions express certainty (high, medium, low, disputed)
 3. **Multiple Support**: Assertions can reference multiple citations
 4. **Validation**: CLI validates entire evidence chains
 

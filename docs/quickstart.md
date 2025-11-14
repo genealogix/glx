@@ -208,9 +208,6 @@ source: source-parish-register
 # Specific location within the source
 locator: "Entry 145, page 23"
 
-# Evidence quality (0-3, where 3 is best)
-quality: 3
-
 # Optional: Transcription
 transcription: |
   "January 15th, 1850. John, son of Thomas Smith, blacksmith,

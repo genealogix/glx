@@ -32,7 +32,7 @@ git commit -m "Initial: GENEALOGIX archive structure"
 
 ### 2. Convert Entities
 
-**Manual conversion** (automated tools not yet available):
+**Manual conversion process:**
 
 1. Extract individuals → `persons/`
 2. Extract families → `relationships/`
@@ -110,14 +110,28 @@ assertions:
 
 ## Quality Translation
 
-GEDCOM QUAY maps directly to GENEALOGIX quality:
+GEDCOM QUAY maps 1:1 to GENEALOGIX citation quality field (maintained for compatibility). However, the idiomatic GLX approach is to use assertion confidence levels instead:
 
-| GEDCOM QUAY | GENEALOGIX Quality |
-|-------------|-------------------|
-| 0 | 0 |
-| 1 | 1 |
-| 2 | 2 |
-| 3 | 3 |
+```yaml
+# GEDCOM QUAY preserved in citation (optional)
+citations:
+  citation-from-gedcom:
+    version: "1.0"
+    source: source-census
+    quality: 2  # From GEDCOM QUAY
+
+# Idiomatic GLX: Use assertion confidence
+assertions:
+  assertion-birth:
+    version: "1.0"
+    subject: person-john
+    claim: birth_date
+    value: "1850-01-15"
+    confidence: high  # Preferred approach
+    citations: [citation-from-gedcom]
+```
+
+See [Confidence Levels](../../specification/5-standard-vocabularies/confidence-levels.glx) for the vocabulary.
 
 ## Common Challenges
 

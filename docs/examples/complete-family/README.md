@@ -58,9 +58,9 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 - `sources/source-census.glx` - 1851 Census
 
 ### Citations (3 files)
-- `citations/citation-john-birth.glx` - Birth citation (quality 3, primary)
-- `citations/citation-marriage.glx` - Marriage citation (quality 3, primary)
-- `citations/citation-census.glx` - Census citation (quality 2, secondary)
+- `citations/citation-john-birth.glx` - Birth citation with transcription
+- `citations/citation-marriage.glx` - Marriage citation with transcription
+- `citations/citation-census.glx` - Census citation with locator
 
 ### Repositories (2 files)
 - `repositories/repository-leeds-library.glx` - Leeds Library
@@ -78,9 +78,9 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 **Evidence Trail**:
 1. **Repository**: Leeds Library Local Studies (`repository-leeds-library`)
 2. **Source**: St. Paul's Parish Register (`source-parish-leeds`)
-3. **Citation**: Entry 145, Page 23 (`citation-john-birth`) - Quality 3 (primary)
-4. **Assertion**: Birth date = 1850-01-15 (`assertion-john-birth-date`) - High confidence
-5. **Corroboration**: 1851 Census (`citation-census-john`) - Quality 2 (secondary)
+3. **Citation**: Entry 145, Page 23 (`citation-john-birth`) with transcription
+4. **Assertion**: Birth date = 1850-01-15 (`assertion-john-birth-date`) - confidence: high
+5. **Corroboration**: 1851 Census (`citation-census-john`)
 
 ## File Format
 
@@ -119,7 +119,7 @@ Should validate successfully with:
 ✅ **All 9 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions, media  
 ✅ **Descriptive IDs**: Human-readable entity identifiers  
 ✅ **Evidence Chains**: Complete provenance from repository to conclusion  
-✅ **Quality Ratings**: Primary (3) and secondary (2) evidence  
+✅ **Confidence Levels**: Assertions express certainty (high, medium, low, disputed)  
 ✅ **Hierarchical Places**: England → Yorkshire → Leeds  
 ✅ **Cross-References**: All entities properly linked and validated  
 ✅ **Multi-Generation Family**: Parents and children with relationships  

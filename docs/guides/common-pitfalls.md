@@ -60,13 +60,32 @@ glx validate
 # ERROR: citations[citation-bad].source references non-existent sources: source-nonexistent
 ```
 
-### Incorrect Quality Ratings
+### Missing Confidence Levels
 
-Use appropriate quality ratings:
-- **3**: Original records (birth certificates)
-- **2**: Later records (census)
-- **1**: Family records (Bibles)
-- **0**: Compiled records (genealogies)
+**Problem:** Not expressing certainty about conclusions
+
+```yaml
+# ❌ Missing confidence assessment
+assertions:
+  assertion-birth:
+    version: "1.0"
+    subject: person-john
+    claim: birth_date
+    value: "1850-01-15"
+    citations: [citation-single-source]
+
+# ✅ Correct: Express confidence
+assertions:
+  assertion-birth:
+    version: "1.0"
+    subject: person-john
+    claim: birth_date
+    value: "1850-01-15"
+    confidence: high  # Multiple corroborating sources
+    citations: [citation-birth-cert, citation-baptism, citation-census]
+```
+
+Use assertion confidence levels (high, medium, low, disputed) rather than citation quality ratings for expressing certainty.
 
 ## File Format Issues
 

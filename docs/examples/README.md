@@ -82,7 +82,6 @@ citations:
     version: "1.0"
     source: source-12345678
     locator: "Entry 145, page 23"
-    quality: 3
     transcription: "John, son of Thomas Smith, born January 15, 1850"
 
 # assertions/birth-assertion.glx
@@ -93,7 +92,7 @@ assertions:
     claim: born_on
     value: "1850-01-15"
     citations: [citation-abc12345]
-    confidence: high
+    confidence: high  # Express certainty at assertion level
 ```
 
 ### Collaboration Comparison
@@ -123,7 +122,7 @@ The **complete-family** example demonstrates all 9 GENEALOGIX entity types:
 | Event | 3 files | Births, marriages, occupations |
 | Place | 3 files | Hierarchical locations (England → Yorkshire → Leeds) |
 | Source | 2 files | Parish registers, census records |
-| Citation | 4 files | Evidence references with quality ratings (0-3) |
+| Citation | 4 files | Evidence references with locators and transcriptions |
 | Repository | 2 files | Archive institutions and access info |
 | Assertion | 6 files | Conclusions backed by evidence |
 | Media | - | Linked photos/documents |
@@ -178,8 +177,8 @@ Complete Family Example (John Smith & family, 1850-1920)
 │   ├── source-parish-leeds.glx      (St Paul's registers)
 │   └── source-census-1851.glx       (1851 Census)
 ├── citations/
-│   ├── citation-birth-register.glx  (quality: 3 = primary)
-│   └── citation-census.glx          (quality: 2 = secondary)
+│   ├── citation-birth-register.glx  (with transcription)
+│   └── citation-census.glx          (with locator)
 ├── repositories/
 │   ├── repository-leeds-library.glx (Local studies)
 │   └── repository-tna.glx           (The National Archives)
@@ -195,8 +194,8 @@ How evidence flows from source to conclusion:
 
 1. **Repository**: Leeds Library Local Studies
 2. **Source**: St Paul's Church Parish Registers  
-3. **Citation**: "Birth entry 145, page 23" (quality 3 = primary source)
-4. **Assertion**: "John Smith born January 15, 1850"
+3. **Citation**: "Birth entry 145, page 23" with transcription
+4. **Assertion**: "John Smith born January 15, 1850" (confidence: high)
 
 ## Best Practices Demonstrated
 
@@ -211,11 +210,11 @@ How evidence flows from source to conclusion:
 - Multiple participants with defined roles
 - Event descriptions
 
-✅ **Evidence Quality**  
-- GEDCOM QUAY ratings (0-3)
+✅ **Evidence Documentation**  
+- Assertion confidence levels (high, medium, low, disputed)
 - Structured locators (film numbers, page ranges, URLs)
 - Text transcriptions from sources
-- Quality assessment in citations
+- Complete evidence chains
 
 ✅ **Repository Information**
 - Contact details and hours

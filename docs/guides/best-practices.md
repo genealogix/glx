@@ -32,15 +32,22 @@ assertions:
     confidence: high
 ```
 
-### Quality Assessment
+### Confidence Assessment
 
-Use the 0-3 quality scale consistently:
-- **3**: Original records created at time of event
-- **2**: Records created later from originals
-- **1**: Contemporary accounts, family records
-- **0**: Compiled records, oral history
+Use assertions with confidence levels to express certainty about conclusions:
 
-See [Citation Entity](../../specification/4-entity-types/citation.md#evidence-quality) for details.
+```yaml
+assertions:
+  assertion-birth-date:
+    version: "1.0"
+    subject: person-john-smith
+    claim: birth_date
+    value: "1850-01-15"
+    confidence: high  # high, medium, low, or disputed
+    citations: [citation-birth-cert, citation-baptism]
+```
+
+The optional `quality` field on citations exists for GEDCOM compatibility. For new research, use assertion confidence levels instead. See [Assertion Entity](../../specification/4-entity-types/assertion.md) and [Confidence Levels Vocabulary](../../specification/5-standard-vocabularies/confidence-levels.glx).
 
 ### Transcribe Key Evidence
 
@@ -51,7 +58,6 @@ citations:
   citation-parish:
     version: "1.0"
     source: source-parish-register
-    quality: 3
     transcription: |
       "January 20th, 1850. John, son of Thomas Smith, blacksmith,
       and Mary Smith, of 23 Wellington Street. Born January 15th."
