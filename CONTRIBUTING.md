@@ -48,7 +48,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 ### Prerequisites
 
 **Required:**
-- **Go 1.19+** - [Install Go](https://golang.org/doc/install)
+- **Go 1.25+** - [Install Go](https://golang.org/doc/install)
 - **Git** - [Install Git](https://git-scm.com/downloads)
 
 **Optional but Recommended:**

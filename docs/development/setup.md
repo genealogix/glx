@@ -7,7 +7,7 @@ This guide helps you set up a development environment for working on the GENEALO
 ### Required Software
 
 **Core Requirements:**
-- **Go 1.19+**: For CLI tool development
+- **Go 1.25+**: For CLI tool development
 - **Git**: For version control
 - **Node.js 18+**: For schema validation and testing
 - **Python 3.8+**: For test scripts and validation tools

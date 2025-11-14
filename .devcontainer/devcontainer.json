@@ -1,6 +1,6 @@
 {
   "name": "GENEALOGIX Spec",
-  "image": "mcr.microsoft.com/devcontainers/go:1.23",
+  "image": "mcr.microsoft.com/devcontainers/go:1.25",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22"
@@ -17,7 +17,8 @@
       "extensions": [
         "golang.Go",
         "esbenp.prettier-vscode",
-        "ms-azuretools.vscode-docker"
+        "ms-azuretools.vscode-docker",
+        "github.vscode-github-actions"
       ]
     }
   },

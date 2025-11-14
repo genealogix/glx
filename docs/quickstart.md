@@ -18,7 +18,7 @@ Get started with GENEALOGIX in 5 minutes! This guide walks you through creating 
 
 ## Prerequisites
 
-- **Go 1.19+** (for installing the CLI tool)
+- **Go 1.25+** (for installing the CLI tool)
 - **Git** (for version control)
 - **Text editor** (any editor that can edit YAML files)
 

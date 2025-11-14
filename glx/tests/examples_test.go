@@ -11,7 +11,7 @@ import (
 
 // TestValidExamples validates all example GLX files
 func TestValidExamples(t *testing.T) {
-	examplesDir := "../examples"
+	examplesDir := "../../docs/examples"
 
 	var validFiles []string
 	err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
@@ -44,6 +44,22 @@ func TestValidExamples(t *testing.T) {
 			var doc map[string]interface{}
 			if err := yaml.Unmarshal(data, &doc); err != nil {
 				t.Fatalf("failed to parse YAML in %s: %v", file, err)
+			}
+
+			// Skip vocabulary files - they have a different structure
+			vocabKeys := []string{"relationship_types", "event_types", "place_types", "repository_types",
+				"participant_roles", "media_types", "confidence_levels", "quality_ratings"}
+			isVocabFile := false
+			for _, key := range vocabKeys {
+				if _, exists := doc[key]; exists {
+					isVocabFile = true
+					break
+				}
+			}
+
+			if isVocabFile {
+				// Vocabulary files don't need entity type keys or version fields
+				return
 			}
 
 			// Check that file has at least one entity type key
