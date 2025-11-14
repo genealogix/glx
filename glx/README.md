@@ -1,7 +1,7 @@
 # GLX - GENEALOGIX CLI Tool
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/spec/glx)](https://goreportcard.com/report/github.com/genealogix/spec/glx)
-[![Coverage](https://img.shields.io/badge/coverage-70.6%25-yellow.svg)](coverage.out)
+[![Coverage](https://img.shields.io/badge/coverage-70.5%25-yellow.svg)](coverage.out)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#running-tests)
 
 The official command-line tool for working with GENEALOGIX (GLX) family archives. Validates GLX files, initializes new archives, and checks schema conformance.
@@ -11,7 +11,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
 - 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
-- 🧪 **Test Suite** - 69.1% code coverage with comprehensive test fixtures
+- 🧪 **Test Suite** - 70.5% code coverage with comprehensive test fixtures
 - 📚 **Examples Validation** - Automatically validates documentation examples
 
 ## Installation
