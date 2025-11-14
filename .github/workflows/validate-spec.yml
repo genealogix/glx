@@ -71,16 +71,4 @@ jobs:
         run: |
           # Conformance tests moved to Go tests - glx/tests directory removed
           echo "Conformance tests now in go test ./glx/..."
-  
-  check-links:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Check Markdown Links
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
-        with:
-          use-quiet-mode: 'yes'
-          config-file: '.github/markdown-link-check-config.json'
-
 

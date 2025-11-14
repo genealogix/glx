@@ -330,16 +330,6 @@ type: person
 
 ### 1. Building Documentation
 
-**Markdown validation:**
-```bash
-# Check markdown links
-npm install -g markdown-link-check
-find . -name "*.md" -exec markdown-link-check {} \;
-
-# Check with project config
-markdown-link-check .github/markdown-link-check-config.json
-```
-
 **Specification validation:**
 ```bash
 # Check specification completeness
@@ -384,9 +374,6 @@ glx validate examples/
 # Test suite
 cd test-suite
 ./run-tests.sh
-
-# Link checking
-markdown-link-check .github/markdown-link-check-config.json
 ```
 
 ### 2. GitHub Actions
@@ -398,7 +385,6 @@ jobs:
   validate-schemas:     # JSON Schema validation
   validate-examples:    # Example archive validation
   test-conformance:     # Test suite execution
-  check-links:         # Markdown link checking
 ```
 
 **Test CI locally:**

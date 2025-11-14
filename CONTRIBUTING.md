@@ -166,10 +166,6 @@ glx check-schemas
 
 # Run Go tests (CLI tool)
 go test ./glx/...
-
-# Check links in documentation
-npm install -g markdown-link-check
-find . -name "*.md" -exec markdown-link-check {} \;
 ```
 
 ### Writing New Tests
