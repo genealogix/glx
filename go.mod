@@ -25,3 +25,5 @@ require (
 // CLI tool for GENEALOGIX archives
 // Provides: glx init, glx validate, glx check-schemas
 // See: ./glx/main.go
+
+replace github.com/genealogix/spec => .
