@@ -1,212 +1,86 @@
-# GENEALOGIX CLI Tool (glx)
+# GLX - GENEALOGIX CLI Tool
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/genealogix/spec/glx.svg)](https://pkg.go.dev/github.com/genealogix/spec/glx)
-[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](../LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/spec/glx)](https://goreportcard.com/report/github.com/genealogix/spec/glx)
+[![Coverage](https://img.shields.io/badge/coverage-69.1%25-yellow.svg)](coverage.out)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#running-tests)
 
-The official command-line tool for working with GENEALOGIX family archives. Provides validation, repository initialization, and schema checking capabilities.
+The official command-line tool for working with GENEALOGIX (GLX) family archives. Validates GLX files, initializes new archives, and checks schema conformance.
 
 ## Features
 
-- **📋 Archive Validation**: Comprehensive validation of .glx files
-- **🔧 Repository Setup**: Initialize new genealogy repositories
-- **✅ Schema Checking**: Validate JSON Schema files
-- **🌳 Git Integration**: Works seamlessly with Git workflows
-- **🔍 Reference Integrity**: Cross-entity validation and error reporting
+- ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
+- 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
+- 📋 **Schema Validation** - Verify JSON schemas have required metadata
+- 🧪 **Test Suite** - 69.1% code coverage with comprehensive test fixtures
+- 📚 **Examples Validation** - Automatically validates documentation examples
 
 ## Installation
 
-### From Source (Recommended for Development)
+### From Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/genealogix/spec.git
-cd spec
+cd spec/glx
 
-# Install CLI tool
-go install ./glx
+# Build the tool
+go build -o glx .
 
-# Verify installation
-glx --help
+# Optional: Install to PATH
+go install
 ```
 
 ### Using Go Install
 
 ```bash
-# Install latest version
 go install github.com/genealogix/spec/glx@latest
-
-# Verify installation
-glx --help
-```
-
-### Binary Download (Future Release)
-
-```bash
-# Download from releases page
-wget https://github.com/genealogix/spec/releases/download/v1.0.0/glx-linux-amd64
-chmod +x glx-linux-amd64
-sudo mv glx-linux-amd64 /usr/local/bin/glx
 ```
 
 ## Quick Start
 
-### Initialize a New Repository
-
 ```bash
-# Create directory for your family archive
-mkdir my-family-history
-cd my-family-history
-
-# Initialize with standard structure
+# Create a new family archive
 glx init
 
-# Your repository now has:
-# persons/     - Individual records
-# events/      - Life events
-# places/      - Geographic locations
-# sources/     - Original materials
-# citations/   - Evidence references
-# repositories/ - Archives and libraries
-# assertions/  - Evidence-based conclusions
-# media/       - Supporting files
-# .gitignore   - Git ignore rules
-# README.md    - Repository documentation
-```
+# Create a single-file archive
+glx init --single-file
 
-### Validate Your Archive
-
-```bash
-# Validate entire archive
+# Validate all files in current directory
 glx validate
 
-# Validate specific directories
+# Validate specific files or directories
 glx validate persons/
-glx validate events/ places/
+glx validate archive.glx
+glx validate persons/ events/
 
-# Validate specific files
-glx validate persons/person-john-smith.glx
-glx validate events/event-birth.glx
-
-# Validate with glob patterns
-glx validate persons/*.glx
-glx validate **/*.glx
-```
-
-### Check Schema Files
-
-```bash
-# Validate all JSON schemas
+# Check JSON schemas
 glx check-schemas
-
-# This verifies:
-# - All required schema files exist
-# - Schemas are valid JSON
-# - Required metadata is present
-# - Schema references are correct
 ```
 
 ## Commands
 
 ### `glx init`
 
-Initialize a new GENEALOGIX repository with standard directory structure.
+Initialize a new GENEALOGIX archive.
 
+**Usage:**
 ```bash
-glx init [directory]
-
-Options:
-  directory    Target directory (default: current directory)
-
-Examples:
-  glx init                    # Initialize current directory
-  glx init my-family-archive  # Initialize specific directory
-  glx init ../family-project  # Initialize parent directory
+glx init [--single-file]
 ```
 
-**What it creates:**
-- Directory structure for all entity types
-- `.gitignore` file optimized for genealogy archives
-- `README.md` with repository documentation
-- Proper permissions for collaboration
+**Options:**
+- `--single-file`, `-s` - Create a single-file archive (default: multi-file)
 
-### `glx validate`
+**Examples:**
 
-Validate .glx files against JSON schemas and business rules.
-
+**Multi-file archive (default):**
 ```bash
-glx validate [paths...]
-
-Arguments:
-  paths    Files or directories to validate (default: current directory)
-
-Options:
-  -v, --verbose    Show detailed validation output
-  -q, --quiet      Suppress non-error output
-  -s, --strict     Fail on warnings as well as errors
-
-Examples:
-  glx validate                    # Validate current directory
-  glx validate persons/           # Validate persons directory
-  glx validate *.glx              # Validate specific files
-  glx validate examples/          # Validate all examples
-  glx validate --verbose          # Show detailed output
+glx init
 ```
 
-**Validation checks:**
-- ✅ YAML syntax correctness
-- ✅ JSON Schema compliance
-- ✅ Cross-entity reference integrity
-- ✅ ID format validation
-- ✅ Business rule compliance
-- ✅ Evidence chain completeness
-
-### `glx check-schemas`
-
-Validate JSON Schema files and their metadata.
-
-```bash
-glx check-schemas
-
-Examples:
-  glx check-schemas              # Check all schemas
+Creates:
 ```
-
-**Schema validation includes:**
-- ✅ Schema file existence (all 9 entity types)
-- ✅ JSON syntax correctness
-- ✅ Required metadata presence ($id, $schema, title)
-- ✅ Schema reference validity
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GLX_SCHEMA_DIR` | Directory containing schema files | `specification/schema/v1/` |
-| `GLX_STRICT_MODE` | Enable strict validation | `false` |
-| `GLX_CACHE_SCHEMAS` | Cache compiled schemas | `true` |
-| `GLX_MAX_ERRORS` | Maximum errors to report | `100` |
-
-### Configuration File (Future)
-
-```yaml
-# .glxconfig.yaml
-strict_mode: true
-schema_dir: "custom-schemas/"
-cache_schemas: true
-max_errors: 50
-custom_validators:
-  - "plugins/custom-rules.so"
-```
-
-## Validation Rules
-
-### File Structure Validation
-
-**Directory Structure:**
-```
-Valid directories:
+.
 ├── persons/
 ├── relationships/
 ├── events/
@@ -215,340 +89,316 @@ Valid directories:
 ├── citations/
 ├── repositories/
 ├── assertions/
-└── media/
-
-Invalid:
-├── people/      # Wrong name
-├── events       # Missing trailing slash
-├── Events/      # Wrong case
-└── mixed/       # Contains wrong entity types
+├── media/
+├── vocabularies/
+│   ├── relationship-types.glx
+│   ├── event-types.glx
+│   ├── place-types.glx
+│   ├── repository-types.glx
+│   ├── participant-roles.glx
+│   ├── media-types.glx
+│   ├── confidence-levels.glx
+│   └── quality-ratings.glx
+├── .gitignore
+└── README.md
 ```
 
-**File Extensions:**
-- ✅ Valid: `person-a1b2c3d4.glx`
-- ❌ Invalid: `person-a1b2c3d4.yaml`, `person-a1b2c3d4.json`
+**Single-file archive:**
+```bash
+glx init --single-file
+```
 
-### ID Format Validation
+Creates:
+```
+.
+└── archive.glx
+```
 
-**Pattern:** `{type}-{8hex}`
-- `person-` + 8 hex characters
-- `event-` + 8 hex characters
-- `place-` + 8 hex characters
-- etc.
+### `glx validate`
 
-**Valid IDs:**
-- ✅ `person-a1b2c3d4`
-- ✅ `event-1a2b3c4d`
-- ✅ `place-2b3c4d5e`
+Validate GLX files and verify cross-references.
 
-**Invalid IDs:**
-- ❌ `john-smith` (no prefix)
-- ❌ `person-abc` (too short)
-- ❌ `person-ABCDEFGH` (uppercase)
-- ❌ `person-a1b2c3d4e` (too long)
+**Usage:**
+```bash
+glx validate [paths...]
+```
 
-### Reference Validation
+**Validation Checks:**
+- ✓ YAML syntax correctness
+- ✓ Required fields presence
+- ✓ Entity ID format (alphanumeric + hyphens, 1-64 chars)
+- ✓ No 'id' fields in entities (IDs are map keys)
+- ✓ Version field presence
+- ✓ Entity type-specific validation
+- ✓ Cross-reference integrity
+- ✓ Duplicate ID detection
+- ✓ Vocabulary validation (if vocabularies/ exists)
 
-**Cross-entity references must exist:**
+**Examples:**
+
+```bash
+# Validate current directory
+glx validate
+
+# Validate specific directory
+glx validate persons/
+
+# Validate multiple paths
+glx validate persons/ events/ places/
+
+# Validate single file
+glx validate archive.glx
+
+# Validate example archives
+glx validate ../docs/examples/complete-family/
+```
+
+**Output:**
+```
+✓ persons/person-john-smith.glx
+✓ events/event-john-birth.glx
+✓ places/place-leeds.glx
+✗ citations/citation-error.glx
+  - source_id or source is required
+
+Validated 3 file(s)
+```
+
+### `glx check-schemas`
+
+Validate JSON schema files for required metadata.
+
+**Usage:**
+```bash
+glx check-schemas
+```
+
+**Checks:**
+- ✓ `$schema` field presence
+- ✓ `$id` field presence
+
+**Example:**
+```bash
+cd specification/
+glx check-schemas
+```
+
+## File Format
+
+GENEALOGIX uses YAML files with `.glx` extension. Entities are stored as maps where the key is the entity ID.
+
+### Single-File Format
+
 ```yaml
-# ✅ Valid references
-places:
-  place-leeds:
-    version: "1.0"
-    name: "Leeds"
-
+# archive.glx
 persons:
-  person-john:
+  person-john-smith:
     version: "1.0"
     concluded_identity:
-      primary_name: "John"
+      primary_name: "John Smith"
+
+relationships:
+  rel-marriage:
+    version: "1.0"
+    type: "marriage"
+    persons:
+      - person-john-smith
+      - person-mary-brown
 
 events:
-  event-wedding:
+  event-john-birth:
     version: "1.0"
-    type: marriage
-    place: place-leeds  # place-leeds exists above
+    type: "birth"
+    date: "1850-01-15"
+    place: place-leeds
+```
+
+### Multi-File Format
+
+Each file contains one entity type:
+
+```yaml
+# persons/person-john-smith.glx
+persons:
+  person-john-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+```
+
+```yaml
+# events/event-john-birth.glx
+events:
+  event-john-birth:
+    version: "1.0"
+    type: "birth"
+    date: "1850-01-15"
+    place: place-leeds
     participants:
-      - person: person-john  # person-john exists above
-
-# ❌ Invalid references
-events:
-  event-bad:
-    version: "1.0"
-    type: marriage
-    place: place-missing  # place-missing doesn't exist!
+      - person: person-john-smith
+        role: "principal"
 ```
 
-### Evidence Chain Validation
+## Project Structure
 
-**Complete evidence chains required:**
-```yaml
-# ✅ Complete chain
-sources:
-  source-cert:
-    version: "1.0"
-    title: "Birth Certificate"
-
-citations:
-  citation-cert:
-    version: "1.0"
-    source: source-cert
-
-assertions:
-  assertion-birth:
-    version: "1.0"
-    citations: [citation-cert]
-
-# ❌ Broken chain
-assertions:
-  assertion-broken:
-    version: "1.0"
-    citations: [citation-missing]  # Citation doesn't exist!
+```
+glx/
+├── main.go                  # CLI entry point
+├── validate.go              # Validation orchestration
+├── validator.go             # Core validation logic
+├── check_schemas.go         # Schema validation
+├── main_test.go            # Tests for main.go
+├── validate_test.go        # Tests for validation
+├── check_schemas_test.go   # Tests for schema checks
+├── examples_test.go        # Tests for docs/examples
+├── testdata/               # Test fixtures
+│   ├── valid/             # Valid test files
+│   │   ├── person-minimal.glx
+│   │   ├── archive-small-family.glx
+│   │   └── ...
+│   ├── invalid/           # Invalid test files
+│   │   ├── person-missing-id.glx
+│   │   ├── archive-broken-references.glx
+│   │   └── ...
+│   └── README.md          # Test data documentation
+└── README.md              # This file
 ```
 
-## Error Messages
+## Testing
 
-### Validation Error Format
+### Running Tests
 
 ```bash
-# Standard error format
-ERROR: file.glx:line:column: error_code: message
-  details and suggestions
+# Run all tests
+go test -v
 
-# Example
-ERROR: persons/person-john.glx:15:23: REF_NOT_FOUND: place 'place-missing' not found
-  Did you mean: place-leeds, place-yorkshire, place-england?
-  Create the missing place or fix the reference.
+# Run specific test
+go test -v -run TestValidate
+
+# Run with coverage
+go test -cover
+
+# Generate coverage report
+go test -coverprofile=coverage.out
+go tool cover -html=coverage.out
 ```
 
-### Common Error Codes
+### Test Coverage
 
-| Code | Description | Example |
-|------|-------------|---------|
-| `SYNTAX_ERROR` | YAML parsing failed | Invalid indentation |
-| `SCHEMA_VIOLATION` | JSON Schema violation | Missing required field |
-| `REF_NOT_FOUND` | Broken entity reference | Nonexistent ID |
-| `ID_INVALID` | Invalid ID format | Wrong pattern |
-| `DATE_INVALID` | Invalid date format | Wrong date syntax |
-| `QUALITY_INVALID` | Invalid quality rating | Out of 0-3 range |
+Current coverage: **69.1%**
 
-## Performance
+Covered areas:
+- ✓ Entity validation (persons, events, places, sources, etc.)
+- ✓ Cross-reference validation
+- ✓ Duplicate ID detection
+- ✓ Single-entity and multi-entity archives
+- ✓ Examples validation (36 files)
+- ✓ CLI commands (init, validate, check-schemas)
+- ✓ Error handling
 
-### Validation Speed
+### Test Categories
 
-**Typical performance:**
-- Small archive (10-50 files): < 1 second
-- Medium archive (100-500 files): 1-3 seconds
-- Large archive (1000+ files): 5-15 seconds
+#### Unit Tests (`validate_test.go`)
+- Entity ID validation
+- YAML parsing
+- Entity type-specific validation
+- Vocabulary loading
+- Cross-reference checking
+- Archive validation
 
-**Optimization tips:**
-```bash
-# Validate only changed files
-glx validate $(git diff --name-only)
-
-# Use caching
-export GLX_CACHE_SCHEMAS=true
-
-# Parallel validation (future)
-glx validate --parallel
-```
-
-### Memory Usage
-
-**Memory requirements:**
-- Base memory: ~10MB
-- Per file: ~1KB (including schema compilation)
-- Large archives: ~50MB for 1000+ files
-
-## Integration
-
-### Git Workflows
-
-**Pre-commit validation:**
-```bash
-# .git/hooks/pre-commit
-#!/bin/bash
-glx validate
-if [ $? -ne 0 ]; then
-    echo "Validation failed. Fix errors before committing."
-    exit 1
-fi
-```
-
-**GitHub Actions:**
-```yaml
-# .github/workflows/validate.yml
-- name: Validate Archive
-  run: glx validate
-
-- name: Schema Check
-  run: glx check-schemas
-```
-
-### IDE Integration
-
-**Visual Studio Code:**
-```json
-// settings.json
-{
-  "glx.validateOnSave": true,
-  "glx.validateOnType": false,
-  "glx.showValidationErrors": true
-}
-```
-
-**Vim:**
-```vim
-" .vimrc
-autocmd BufWritePost *.glx silent !glx validate <afile>
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**"Command not found: glx"**
-```bash
-# Check Go installation
-go version
-
-# Reinstall CLI
-go install github.com/genealogix/spec/glx@latest
-
-# Check PATH
-which glx
-echo $PATH
-```
-
-**Validation errors:**
-```bash
-# Check YAML syntax
-python3 -c "import yaml; yaml.safe_load(open('file.glx'))"
-
-# Validate against schema
-glx validate --verbose file.glx
-
-# Check file permissions
-ls -la file.glx
-```
-
-**Schema compilation errors:**
-```bash
-# Check schema syntax
-ajv compile -s specification/schema/v1/person.schema.json
-
-# Validate schema files
-glx check-schemas
-
-# Update schema URLs
-# Ensure GitHub URLs are accessible
-```
-
-### Debug Mode
-
-**Enable debug output:**
-```bash
-# Set debug environment variable
-export GLX_DEBUG=true
-
-# Run with debug
-glx validate --verbose
-
-# Check debug logs
-cat /tmp/glx-debug.log  # If available
-```
-
-### Getting Help
-
-**Community support:**
-- [GitHub Issues](https://github.com/genealogix/spec/issues) - Bug reports
-- [GitHub Discussions](https://github.com/genealogix/spec/discussions) - Q&A
-- [Documentation](../docs/) - Guides and tutorials
-
-**Development:**
-- [CLI Source Code](main.go) - Implementation details
-- [Test Suite](../test-suite/) - Validation tests
-- [Development Guide](../docs/development/) - Contributing guide
-
-## Contributing
-
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/genealogix/spec.git
-cd spec
-
-# Set up development environment
-go mod download
-go build -o bin/glx glx/main.go
-
-# Run tests
-go test ./glx/...
-
-# Install locally
-go install ./glx
-```
-
-### Adding New Commands
-
-**Command structure:**
-```go
-func main() {
-    switch os.Args[1] {
-    case "new-command":
-        runNewCommand()
-    case "validate":
-        runValidate(os.Args[2:])
-    // ... existing commands
-    }
-}
-
-func runNewCommand() error {
-    // Implementation
-    return nil
-}
-```
-
-### Testing CLI Changes
-
-```bash
-# Test new functionality
-go test ./glx/...
-
-# Manual testing
-glx --help
-glx validate examples/complete-family/
-
-# Integration testing
-cd /tmp && glx init test-repo && cd test-repo && glx validate
-```
-
-## Changelog
-
-### v1.0.0
-- Initial release
-- Basic validation functionality
+#### Integration Tests (`main_test.go`)
 - Repository initialization
-- Schema checking
+- Single-file vs multi-file creation
+- Vocabulary generation
+- Directory structure validation
 
-### v1.1.0 (Planned)
-- Enhanced error reporting
-- Performance optimizations
-- Plugin system for custom validation
-- Batch processing capabilities
+#### Examples Tests (`examples_test.go`)
+- Validates all 36 example files in `docs/examples/`
+- Tests minimal, basic-family, and complete-family examples
+- Verifies cross-reference integrity across examples
+- Checks example directory structure
+
+#### Schema Tests (`check_schemas_test.go`)
+- Schema metadata validation
+- Missing field detection
+
+### Test Fixtures
+
+**Valid test files** (23 files in `testdata/valid/`):
+- Single-entity tests (person-minimal.glx, event-complete.glx, etc.)
+- Multi-entity archives (archive-small-family.glx, archive-evidence-chain.glx, etc.)
+
+**Invalid test files** (18 files in `testdata/invalid/`):
+- Missing fields (person-missing-id.glx, event-missing-type.glx, etc.)
+- Broken references (archive-broken-references.glx)
+- Duplicate IDs (archive-duplicate-ids.glx)
+- Invalid formats (person-bad-id-format.glx)
+
+See [testdata/README.md](testdata/README.md) for complete test data documentation.
+
+## Development
+
+### Prerequisites
+
+- Go 1.25 or later
+- Git
+
+### Building
+
+```bash
+go build -o glx .
+```
+
+### Dependencies
+
+```go
+require (
+    github.com/xeipuuv/gojsonschema v1.2.0
+    github.com/stretchr/testify v1.11.1
+    gopkg.in/yaml.v3 v3.0.1
+)
+```
+
+### Code Organization
+
+- **`main.go`** - CLI commands and initialization
+- **`validate.go`** - Validation orchestration and reporting
+- **`validator.go`** - Core entity validation, cross-references, vocabularies
+- **`check_schemas.go`** - JSON schema metadata validation
+
+### Adding New Validation Rules
+
+1. Add logic to `validator.go::ValidateGLXFile()` or `basicValidateEntity()`
+2. Add test cases to `validate_test.go`
+3. Add test fixtures to `testdata/valid/` or `testdata/invalid/`
+4. Update documentation
+
+### Contributing
+
+Contributions are welcome! Please:
+
+1. Write tests for new functionality
+2. Ensure `go test -cover` shows increased coverage
+3. Run `go test -v` before submitting
+4. Follow Go conventions and idioms
+5. Update documentation
+
+## Related Documentation
+
+- [GENEALOGIX Specification](../specification/)
+- [JSON Schemas](../specification/schema/v1/)
+- [Examples](../docs/examples/)
+- [Test Data Documentation](testdata/README.md)
+- [Contributing Guide](../CONTRIBUTING.md)
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](../LICENSE) for details.
+Apache License 2.0 - See [LICENSE](../LICENSE) for details.
 
-## Related Projects
+## Support
 
-- [GENEALOGIX Specification](../README.md) - Core specification
-- [Examples](../docs/examples/) - Practical usage examples
-- [Test Suite](tests/) - Validation tests
-- [Schemas](../specification/schema/) - JSON Schema definitions
+- 📖 [Specification](../specification/)
+- 💡 [Examples](../docs/examples/)
+- 🐛 [Issue Tracker](https://github.com/genealogix/spec/issues)
+- 💬 [Discussions](https://github.com/genealogix/spec/discussions)
 
----
-
-**Part of the GENEALOGIX ecosystem** • [Main Repository](https://github.com/genealogix/spec)

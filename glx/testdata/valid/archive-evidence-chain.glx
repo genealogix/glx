@@ -1,0 +1,55 @@
+# Valid: Complete evidence chain from repository through to assertions
+repositories:
+  repository-national-archives:
+    version: "1.0"
+    name: "The National Archives"
+    type: "archive"
+    location: "Kew, London"
+    website: "https://www.nationalarchives.gov.uk"
+
+sources:
+  source-census-1881:
+    version: "1.0"
+    title: "1881 Census of England"
+    repository: repository-national-archives
+    date: "1881-04-03"
+
+citations:
+  citation-john-census:
+    version: "1.0"
+    source: source-census-1881
+    locator: "RG11/4567, folio 23, page 12"
+    quality: 2
+    transcription: "John Smith, age 31, born Leeds, occupation: blacksmith"
+
+persons:
+  person-john-smith:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+      birth_date: "1850-01-15"
+
+places:
+  place-leeds:
+    version: "1.0"
+    name: "Leeds"
+    type: "city"
+
+assertions:
+  assertion-john-birthplace:
+    version: "1.0"
+    subject: person-john-smith
+    claim: "Born in Leeds"
+    citations:
+      - citation-john-census
+    confidence: "high"
+    notes: "Census record confirms Leeds as birthplace"
+
+  assertion-john-occupation:
+    version: "1.0"
+    subject: person-john-smith
+    claim: "Occupation: blacksmith in 1881"
+    citations:
+      - citation-john-census
+    confidence: "high"
+

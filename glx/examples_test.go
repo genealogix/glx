@@ -1,0 +1,245 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// TestExamples validates all example GLX files from docs/examples
+func TestExamples(t *testing.T) {
+	examplesDir := "../docs/examples"
+	
+	// Check if examples directory exists
+	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
+		t.Skip("examples directory not found - skipping examples validation")
+		return
+	}
+
+	var validFiles []string
+	err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(path, ".glx") {
+			validFiles = append(validFiles, path)
+		}
+		return nil
+	})
+	require.NoError(t, err, "failed to walk examples directory")
+
+	if len(validFiles) == 0 {
+		t.Fatal("no .glx files found in examples directory")
+	}
+
+	t.Logf("Found %d example files to validate", len(validFiles))
+
+	for _, file := range validFiles {
+		t.Run(filepath.Base(file), func(t *testing.T) {
+			data, err := os.ReadFile(file)
+			require.NoError(t, err, "failed to read %s", file)
+
+			doc, err := ParseYAMLFile(data)
+			require.NoError(t, err, "failed to parse YAML in %s", file)
+
+			// Skip vocabulary files - they have a different structure
+			vocabKeys := []string{"relationship_types", "event_types", "place_types", "repository_types",
+				"participant_roles", "media_types", "confidence_levels", "quality_ratings"}
+			isVocabFile := false
+			for _, key := range vocabKeys {
+				if _, exists := doc[key]; exists {
+					isVocabFile = true
+					break
+				}
+			}
+
+			if isVocabFile {
+				// Vocabulary files don't need entity type keys
+				return
+			}
+
+			// Check that file has at least one entity type key
+			validKeys := []string{"persons", "relationships", "events", "places",
+				"sources", "citations", "repositories", "assertions", "media"}
+			hasValidKey := false
+			for _, key := range validKeys {
+				if _, exists := doc[key]; exists {
+					hasValidKey = true
+					break
+				}
+			}
+
+			if !hasValidKey {
+				t.Errorf("%s: file must contain at least one entity type key", file)
+			}
+
+			// Validate entity structure
+			for pluralKey, entities := range doc {
+				if entityMap, ok := entities.(map[string]interface{}); ok {
+					for entityID, entityData := range entityMap {
+						if entity, ok := entityData.(map[string]interface{}); ok {
+							// Check no 'id' field
+							if _, hasID := entity["id"]; hasID {
+								t.Errorf("%s: %s[%s] must not have 'id' field - the map key is the ID", file, pluralKey, entityID)
+							}
+
+							// Check version exists
+							if _, hasVersion := entity["version"]; !hasVersion {
+								t.Errorf("%s: %s[%s] missing required 'version' field", file, pluralKey, entityID)
+							}
+
+							// Validate ID format (alphanumeric + hyphens, 1-64 chars)
+							if !isValidEntityID(entityID) {
+								t.Errorf("%s: %s[%s] invalid ID format (must be alphanumeric/hyphens, 1-64 chars)", file, pluralKey, entityID)
+							}
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestExamplesDirectories validates that each example directory is structured correctly
+func TestExamplesDirectories(t *testing.T) {
+	examplesDir := "../docs/examples"
+	
+	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
+		t.Skip("examples directory not found")
+		return
+	}
+
+	examples := []string{"minimal", "basic-family", "complete-family", "single-file"}
+	
+	for _, example := range examples {
+		t.Run(example, func(t *testing.T) {
+			examplePath := filepath.Join(examplesDir, example)
+			info, err := os.Stat(examplePath)
+			
+			if os.IsNotExist(err) {
+				t.Skipf("example %s not found", example)
+				return
+			}
+			
+			require.NoError(t, err)
+			assert.True(t, info.IsDir(), "example should be a directory")
+
+			// Check for README
+			readmePath := filepath.Join(examplePath, "README.md")
+			_, err = os.Stat(readmePath)
+			assert.NoError(t, err, "example %s should have README.md", example)
+		})
+	}
+}
+
+// TestExamplesCompleteFamily validates the complete-family example has all entity types
+func TestExamplesCompleteFamily(t *testing.T) {
+	completeFamilyDir := "../docs/examples/complete-family"
+	
+	if _, err := os.Stat(completeFamilyDir); os.IsNotExist(err) {
+		t.Skip("complete-family example not found")
+		return
+	}
+
+	// Expected subdirectories for complete-family
+	expectedDirs := []string{
+		"persons", "relationships", "events", "places",
+		"sources", "citations", "repositories", "assertions",
+	}
+
+	for _, dir := range expectedDirs {
+		t.Run(dir, func(t *testing.T) {
+			dirPath := filepath.Join(completeFamilyDir, dir)
+			info, err := os.Stat(dirPath)
+			
+			if os.IsNotExist(err) {
+				t.Skipf("directory %s not found in complete-family", dir)
+				return
+			}
+			
+			require.NoError(t, err)
+			assert.True(t, info.IsDir(), "%s should be a directory", dir)
+
+			// Check that directory contains at least one .glx file
+			files, err := os.ReadDir(dirPath)
+			require.NoError(t, err)
+			
+			hasGlxFile := false
+			for _, file := range files {
+				if !file.IsDir() && strings.HasSuffix(file.Name(), ".glx") {
+					hasGlxFile = true
+					break
+				}
+			}
+			
+			assert.True(t, hasGlxFile, "directory %s should contain at least one .glx file", dir)
+		})
+	}
+}
+
+// TestExamplesSingleFile validates the single-file example
+func TestExamplesSingleFile(t *testing.T) {
+	singleFilePath := "../docs/examples/single-file/archive.glx"
+	
+	if _, err := os.Stat(singleFilePath); os.IsNotExist(err) {
+		t.Skip("single-file example not found")
+		return
+	}
+
+	data, err := os.ReadFile(singleFilePath)
+	require.NoError(t, err)
+
+	doc, err := ParseYAMLFile(data)
+	require.NoError(t, err)
+
+	// Single file should contain multiple entity types
+	entityTypes := []string{"persons", "relationships", "events", "places", "sources"}
+	foundTypes := 0
+	
+	for _, entityType := range entityTypes {
+		if _, exists := doc[entityType]; exists {
+			foundTypes++
+		}
+	}
+
+	assert.GreaterOrEqual(t, foundTypes, 3, "single-file example should contain at least 3 entity types")
+}
+
+// TestExamplesValidation runs full validation on each example directory
+func TestExamplesValidation(t *testing.T) {
+	examplesDir := "../docs/examples"
+	
+	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
+		t.Skip("examples directory not found")
+		return
+	}
+
+	examples := []string{"minimal", "basic-family", "complete-family"}
+	
+	for _, example := range examples {
+		t.Run(example, func(t *testing.T) {
+			examplePath := filepath.Join(examplesDir, example)
+			
+			if _, err := os.Stat(examplePath); os.IsNotExist(err) {
+				t.Skipf("example %s not found", example)
+				return
+			}
+
+			// Collect all entities for cross-reference validation
+			allEntities, duplicates, err := CollectAllEntities(examplePath)
+			require.NoError(t, err)
+
+			// Check for duplicate IDs
+			assert.Empty(t, duplicates, "example %s should not have duplicate entity IDs", example)
+
+			// Validate cross-references
+			refIssues := ValidateRepositoryReferences(examplePath, allEntities)
+			assert.Empty(t, refIssues, "example %s should not have broken references: %v", example, refIssues)
+		})
+	}
+}
+

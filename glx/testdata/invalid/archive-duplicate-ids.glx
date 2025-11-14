@@ -1,0 +1,21 @@
+# Invalid: Contains duplicate entity IDs
+persons:
+  person-duplicate:
+    version: "1.0"
+    concluded_identity:
+      primary_name: "John Smith"
+  
+  person-duplicate:  # ERROR: Duplicate ID
+    version: "1.0"
+    concluded_identity:
+      primary_name: "Mary Brown"
+
+places:
+  place-duplicate:
+    version: "1.0"
+    name: "Leeds"
+  
+  place-duplicate:  # ERROR: Duplicate ID
+    version: "1.0"
+    name: "Yorkshire"
+
