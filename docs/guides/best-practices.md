@@ -1,561 +1,182 @@
 ---
 title: Best Practices
-description: Recommended workflows and patterns for GENEALOGIX research.
+description: Practical recommendations for maintaining GENEALOGIX archives.
 layout: doc
 ---
 
 # Best Practices Guide
 
-This guide provides recommended workflows and conventions for maintaining high-quality GENEALOGIX archives.
+Practical recommendations for maintaining GENEALOGIX archives.
 
-## Research Workflow
+## Evidence Documentation
 
-### 1. Evidence-First Approach
+### Complete Evidence Chains
 
-**Always start with sources, not conclusions:**
+Link assertions to their supporting evidence:
 
-```bash
-# ❌ Wrong: Start with assumptions without evidence
-
-# ✅ Correct: Evidence-based approach
-
-# sources/birth-cert.glx - Document the source first
-sources:
-  source-a1b2c3d4:
-    version: "1.0"
-    title: Birth Certificate
-    type: vital_record
-
-# citations/birth-citation.glx - Cite specific evidence
+```yaml
 citations:
-  citation-12345678:
+  citation-birth-cert:
     version: "1.0"
-    source: source-a1b2c3d4
+    source: source-birth-register
     quality: 3
+    transcription: "John Smith, born January 15, 1850"
 
-# assertions/birth-assertion.glx - Then make evidence-based claims
 assertions:
-  assertion-abc12345:
+  assertion-john-birth:
     version: "1.0"
-    subject: person-a1b2c3d4
-    claim: born_on
+    subject: person-john-smith
+    claim: birth_date
     value: "1850-01-15"
-    citations: [citation-12345678]
+    citations: [citation-birth-cert]
     confidence: high
 ```
 
-### 2. Complete Evidence Chains
+### Quality Assessment
 
-**Every assertion needs a complete evidence chain:**
+Use the 0-3 quality scale consistently:
+- **3**: Original records created at time of event
+- **2**: Records created later from originals
+- **1**: Contemporary accounts, family records
+- **0**: Compiled records, oral history
 
-```yaml
-# Complete chain example
-repositories:
-  repository-gro:
-    version: "1.0"
-    name: "General Register Office"
-    location: "London"
+See [Citation Entity](../../specification/4-entity-types/citation.md#evidence-quality) for details.
 
-sources:
-  source-birth-register:
-    version: "1.0"
-    title: "Birth Register 1850"
-    repository: repository-gro
+### Transcribe Key Evidence
 
-citations:
-  citation-entry-145:
-    version: "1.0"
-    source: source-birth-register
-    locator: "Entry 145, Page 23"
-    quality: 3
+Include transcriptions for important sources:
 
-assertions:
-  assertion-john-born:
-    version: "1.0"
-    citations: [citation-entry-145]
-    claim: "John Smith was born January 15, 1850"
-```
-
-## File Organization
-
-### 1. Directory Structure Recommendations
-
-GENEALOGIX is flexible about file organization. You can use any structure that works for your workflow. The example below shows one common pattern (one-entity-per-file with dedicated directories), but many other approaches are equally valid.
-
-**Example: One-entity-per-file organization (good for collaboration):**
-```
-family-archive/
-├── persons/           # Person entities
-├── relationships/     # Relationship entities
-├── events/           # Event entities
-├── places/           # Place entities
-├── sources/          # Source entities
-├── citations/        # Citation entities
-├── repositories/     # Repository entities
-├── assertions/       # Assertion entities
-└── media/           # Media entities
-```
-
-**Other valid approaches:**
-- **Single file**: All entities in one `family.glx` file (good for small archives)
-- **Hybrid**: Mix of single files and directories based on logical groupings
-- **Custom**: Any structure that makes sense for your research process
-
-**Key principles that matter:**
-- Use `.glx` file extension (required)
-- Entity type prefixes on IDs match actual entity types (required)
-- All references point to existing entities (required)
-- Consistent naming within your chosen structure (recommended)
-
-### 2. ID Management
-
-**Generate IDs systematically:**
-```bash
-# Good: Structured IDs
-person-a1b2c3d4  # Person record
-event-b2c3d4e5   # Birth event
-place-c3d4e5f6   # Birth place
-source-d4e5f6g7  # Birth certificate
-citation-e5f6g7h8 # Specific citation
-
-# Avoid: Human-readable but fragile
-john-smith-person
-john-birth-event
-john-birth-place
-```
-
-**ID generation methods:**
-```bash
-# Command line
-echo "person-$(openssl rand -hex 4)"
-
-# Python
-import secrets
-f"person-{secrets.token_hex(4)}"
-
-# Node.js
-require('crypto').randomBytes(4).toString('hex')
-```
-
-## Quality Standards
-
-### 1. Evidence Quality Guidelines
-
-| Quality | When to Use | Example |
-|---------|-------------|---------|
-| **3** | Original records created at time of event | Birth certificates, baptism records |
-| **2** | Records created later but based on original | Census records, marriage indexes |
-| **1** | Family records, contemporary accounts | Family Bibles, letters |
-| **0** | Compiled records, oral history | Published genealogies, interviews |
-
-**Quality assessment checklist:**
-- Is this the original record or a copy?
-- Was it created at the time of the event or later?
-- Does it directly state the fact or require inference?
-- Are there multiple sources that agree?
-
-### 2. Citation Standards
-
-**Be specific in citations:**
-```yaml
-# ✅ Good citation
-citations:
-  citation-census:
-    version: "1.0"
-    source: source-1851-census
-    locator: "HO107, Piece 2319, Folio 234, Page 23, Schedule 145"
-    quality: 2
-    transcription: |
-      "John Smith, Head, Married, 25, Blacksmith, born Leeds"
-
-# ❌ Vague citation
-citations:
-  citation-bad:
-    version: "1.0"
-    source: source-1851-census
-    locator: "somewhere in the census"
-    quality: 2
-```
-
-**Include transcriptions for important evidence:**
 ```yaml
 citations:
   citation-parish:
     version: "1.0"
-    source: source-st-pauls-register
-    locator: "Baptisms 1850, Entry 145"
+    source: source-parish-register
     quality: 3
     transcription: |
       "January 20th, 1850. John, son of Thomas Smith, blacksmith,
       and Mary Smith, of 23 Wellington Street. Born January 15th."
-    notes: |
-      5-day delay between birth and baptism is typical for working families
 ```
 
-## Git Workflow Best Practices
+## Git Workflow
 
-### 1. Branch Strategy
+### Validation Before Commit
 
-**Use feature branches for research:**
-```bash
-# Research-specific investigations
-git checkout -b research/1851-census
-git checkout -b research/vital-records
-git checkout -b research/smith-occupation
+Always validate before committing:
 
-# Evidence integration
-git checkout -b evidence/1850-1900-integration
-
-# Documentation updates
-git checkout -b docs/update-place-hierarchy
-```
-
-**Branch naming conventions:**
-- `research/[topic]` - Research investigations
-- `evidence/[period]` - Evidence integration
-- `feature/[description]` - New functionality
-- `fix/[issue]` - Bug fixes
-- `docs/[area]` - Documentation updates
-
-### 2. Commit Message Standards
-
-**Clear, descriptive commit messages:**
-```bash
-# ✅ Good commit messages
-git commit -m "Add John Smith birth evidence
-
-- Birth certificate from GRO (quality 3)
-- Parish baptism record (quality 3)
-- 1851 Census confirmation (quality 2)
-- Confidence: high (multiple primary sources)"
-
-# ❌ Poor commit messages
-git commit -m "update"
-git commit -m "added stuff"
-git commit -m "john smith"
-```
-
-**Structure for complex changes:**
-```bash
-git commit -m "Integrate 1851 Census data for Smith family
-
-Added census evidence for 5 family members:
-- John Smith: occupation (blacksmith), residence
-- Mary Smith: age, birthplace
-- Jane Smith: birth year, school attendance
-- Thomas Smith: relationship to head, occupation
-
-Source: HO107, Piece 2319, Yorkshire
-Quality: 2 (secondary source)
-Validated: All citations reference existing sources"
-```
-
-### 3. Validation Before Commit
-
-**Always validate before committing:**
 ```bash
 # Validate entire archive
 glx validate
 
-# Check specific directories
-glx validate persons/ events/ places/
-
-# Validate specific files
-glx validate persons/person-john-smith.glx
-
-# Run full test suite for major changes
-cd /path/to/genealogix-spec
-glx validate examples/complete-family/
+# Validate specific changes
+glx validate persons/ events/
 ```
 
-## Naming Conventions
+### Descriptive Commits
 
-### 1. Person Names
+Write clear commit messages:
 
-**Use structured name format:**
-```yaml
-# ✅ Consistent format
-name:
-  given: John
-  surname: Smith
-  display: John Smith
+```bash
+# Good commit message
+git commit -m "Add 1851 Census evidence for Smith family
 
-# Include middle names
-name:
-  given: John Henry
-  surname: Smith
-  display: John Henry Smith
-
-# Handle name changes
-name_changes:
-  - date: "1880-03-15"
-    former: Mary Brown
-    new: Mary Smith
+- John Smith: occupation (blacksmith), residence
+- Mary Smith: age, birthplace
+- Source: HO107, Piece 2319, Yorkshire
+- Quality: 2 (secondary source)"
 ```
 
-**Standardize common variations:**
-- Use "Elizabeth" not "Elisabeth" (unless source-specific)
-- Include generational suffixes: "John Smith Jr.", "Mary Smith III"
-- Document alternative spellings in notes
+### Branch for Research
 
-### 2. Place Names
+Use branches for research investigations:
 
-**Use hierarchical place structure:**
-```yaml
-# ✅ Hierarchical places
-places:
-  place-england:
-    version: "1.0"
-    name: "England"
-    type: country
-
-  place-yorkshire:
-    version: "1.0"
-    name: "Yorkshire"
-    type: county
-    parent: place-england
-
-  place-leeds:
-    version: "1.0"
-    name: "Leeds"
-    type: city
-    parent: place-yorkshire
-    coordinates:
-      latitude: 53.7960
-      longitude: -1.5479
+```bash
+git checkout -b research/1851-census
+git checkout -b evidence/vital-records
 ```
 
-**Include alternative names:**
-```yaml
-places:
-  place-yorkshire:
-    version: "1.0"
-    name: "Yorkshire"
-    alternative_names:
-      - "West Riding"
-      - "County of York"
-    type: county
-```
+## Conflicting Evidence
 
-### 3. Event Types
-
-**Use standard event types:**
-```yaml
-# Standard life events
-event_types:
-  - birth
-  - baptism
-  - marriage
-  - death
-  - burial
-  - occupation
-  - residence
-  - education
-  - military_service
-  - immigration
-  - emigration
-```
-
-**Document custom events clearly:**
-```yaml
-events:
-  event-custom:
-    version: "1.0"
-    type: family_reunion
-    date: "1990-07-15"
-    place: place-leeds
-    description: |
-      Annual Smith family reunion at Roundhay Park.
-      Attended by 45 family members from 3 generations.
-```
-
-## Data Quality Standards
-
-### 1. Date Formats
-
-**Use ISO 8601 date formats:**
-```yaml
-# ✅ Standard formats
-date: "1850-01-15"        # Complete date
-date: "1850-01"           # Year and month
-date: "1850"              # Year only
-date: "1850?"             # Uncertain year
-date: "1849/1850"         # Between years
-date: "1850-01-15/1850-01-20"  # Date range
-```
-
-**Document date uncertainty:**
-```yaml
-events:
-  event-birth:
-    version: "1.0"
-    type: birth
-    date: "1850-01-15?"  # Questionable date
-    notes: |
-      Birth certificate shows January 15, but family tradition
-      says January 20. Certificate takes precedence as primary evidence.
-```
-
-### 2. Place Accuracy
-
-**Be specific about place precision:**
-```yaml
-# ✅ Good place documentation
-places:
-  place-23-wellington-st:
-    version: "1.0"
-    name: "23 Wellington Street"
-    type: address
-    parent: place-leeds
-    coordinates:
-      latitude: 53.7960
-      longitude: -1.5479
-    notes: |
-      Residential address from 1851 Census.
-      Street no longer exists, site now occupied by modern building.
-```
-
-**Document place name changes:**
-```yaml
-places:
-  place-leeds:
-    version: "1.0"
-    name: "Leeds"
-    alternative_names:
-      - "Loidis (historical)"
-      - "Ledes (medieval)"
-    type: city
-    notes: |
-      Place name evolution: Ledes (1086 Domesday Book) → Leeds (modern)
-```
-
-## Collaboration Guidelines
-
-### 1. Research Coordination
-
-**Use GitHub Issues for research planning:**
-```markdown
-# Research Plan: Smith Family Origins
-
-## Goals
-- Document Smith family in Leeds, 1800-1900
-- Find immigration/emigration patterns
-- Connect to other Smith families in Yorkshire
-
-## Assigned Tasks
-- [ ] 1851 Census analysis (@researcher1)
-- [ ] Parish register search (@researcher2)
-- [ ] Occupation records (@researcher3)
-
-## Evidence Standards
-- Primary sources only for vital events
-- Quality 2+ for residence/occupation data
-- All assertions must have citations
-```
-
-### 2. Conflict Resolution
-
-**Handle conflicting evidence systematically:**
+Document resolution when sources conflict:
 
 ```yaml
-# Conflicting birth dates
 assertions:
-  assertion-john-birth-disputed:
+  assertion-birth-date:
     version: "1.0"
     subject: person-john-smith
     claim: birth_date
-    value: "1850-01-15"  # Preferred date
+    value: "1850-01-15"
     confidence: medium
-    research_notes: |
-      Conflicting evidence:
-      - Birth certificate: Jan 15, 1850 (quality 3) - PREFERRED
-      - Baptism record: Jan 20, 1850 (quality 3) - ALTERNATIVE
-      - Census age: 25 in 1875 (quality 2) - SUPPORTS 1850
-
-      Resolution: Birth certificate takes precedence as primary direct evidence.
-      5-day baptism delay is within normal range for working families.
+    notes: |
+      Birth certificate: Jan 15 (quality 3) - preferred
+      Baptism record: Jan 20 (quality 3) - 5 day delay typical
+      Census age: supports 1850 (quality 2)
     citations:
       - citation-birth-cert
       - citation-baptism
-      - citation-census-1875
+      - citation-census
 ```
 
-### 3. Review Process
+## File Organization
 
-**Pull request review checklist:**
-- [ ] All new assertions have citations
-- [ ] Citation quality ratings are appropriate
-- [ ] Evidence chains are complete
-- [ ] Place hierarchy is correct
-- [ ] All files pass validation
-- [ ] ID formats are correct
-- [ ] No conflicting evidence without resolution
+GENEALOGIX is flexible about file organization. Choose what works for your workflow:
 
-## Maintenance Best Practices
+**One-entity-per-file** (good for collaboration):
+```
+persons/person-john.glx
+events/event-birth.glx
+```
 
-### 1. Regular Validation
+**Single file** (good for small archives):
+```
+family.glx  # All entities in one file
+```
+
+**Hybrid** (logical groupings):
+```
+core-family.glx
+sources/vital-records.glx
+```
+
+What matters:
+- Use `.glx` extension
+- Correct entity type prefixes on IDs
+- Valid references between entities
+
+## ID Generation
+
+Generate IDs systematically:
+
 ```bash
-# Daily validation during active research
+# Random hex (recommended for collaboration)
+person-a1b2c3d4
+event-b2c3d4e5
+
+# Command line generation
+echo "person-$(openssl rand -hex 4)"
+```
+
+Avoid human-readable IDs that may collide during collaboration.
+
+## Validation
+
+Run validation regularly:
+
+```bash
+# During active research
 glx validate
 
-# Weekly comprehensive check
-glx validate examples/complete-family/
+# Before commits
+glx validate
+git add .
+git commit -m "..."
 
-# Monthly evidence review
-git log --since="1 month ago" --oneline
-glx validate  # Ensure no regressions
+# After merges
+git merge research-branch
+glx validate
 ```
 
-### 2. Archive Backup
-```bash
-# Create regular backups
-git tag backup-$(date +%Y-%m-%d)
-git push origin backup-$(date +%Y-%m-%d)
+## See Also
 
-# Archive to external storage
-tar -czf smith-family-$(date +%Y-%m-%d).tar.gz .
-```
-
-### 3. Documentation Updates
-```bash
-# Update research status
-git checkout -b docs/update-research-status
-# Edit README.md with current status
-git commit -m "Update research status - 2024 Q1
-
-Completed:
-- 1851 Census integration
-- Birth certificate evidence
-- Place hierarchy setup
-
-In Progress:
-- 1861 Census research
-- Marriage record search
-- Occupation timeline"
-```
-
-## Quality Metrics
-
-### Research Completeness
-Track these metrics for archive quality:
-
-- **Evidence Coverage**: Percentage of assertions with citations
-- **Quality Distribution**: Breakdown of citation quality ratings
-- **Chain Completeness**: Percentage of complete evidence chains
-- **Validation Success**: Pass rate of `glx validate`
-
-**Example quality report:**
-```yaml
-archive_quality:
-  total_assertions: 150
-  cited_assertions: 145  # 96.7% coverage
-  quality_distribution:
-    quality_3: 45  # 30% primary direct
-    quality_2: 60  # 40% secondary direct
-    quality_1: 25  # 17% primary indirect
-    quality_0: 15  # 10% secondary indirect
-  complete_chains: 135  # 90% complete evidence chains
-  validation_pass: true
-```
-
-Following these best practices ensures that your GENEALOGIX archive maintains high quality, reliability, and research integrity over time.
+- [Common Pitfalls](common-pitfalls.md) - Avoid common mistakes
+- [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
+- [CLI Documentation](../../glx/README.md) - Command reference
