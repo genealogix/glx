@@ -1,10 +1,44 @@
 package main
 
-func main() {
-	Execute()
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/spf13/cobra"
+)
+
+var (
+	initSingleFile bool
+)
+
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize a new GENEALOGIX archive",
+	Long: `Initialize a new GENEALOGIX archive with the proper directory structure.
+
+By default, creates a multi-file archive with separate directories for each
+entity type (persons/, events/, places/, etc.) along with standard vocabulary
+files and supporting documentation.
+
+Use --single-file to create a single archive.glx file instead.`,
+	Example: `  # Initialize multi-file archive (default)
+  glx init
+
+  # Initialize single-file archive
+  glx init --single-file
+  glx init -s`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runInit(initSingleFile)
+	},
 }
 
-// Removed old runInit function - now in cmd_init.go
+func init() {
+	rootCmd.AddCommand(initCmd)
+	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
+}
+
+func runInit(singleFile bool) error {
 	// Check if we're in the GENEALOGIX spec repository (not a user archive)
 	if isSpecRepository() {
 		return fmt.Errorf("cannot run 'glx init' in the GENEALOGIX specification repository. Create a new directory for your family archive first")
@@ -575,3 +609,4 @@ quality_ratings:
 	fmt.Println("Created standard vocabulary files in vocabularies/")
 	return nil
 }
+
