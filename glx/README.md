@@ -1,7 +1,7 @@
 # GLX - GENEALOGIX CLI Tool
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/spec/glx)](https://goreportcard.com/report/github.com/genealogix/spec/glx)
-[![Coverage](https://img.shields.io/badge/coverage-69.1%25-yellow.svg)](coverage.out)
+[![Coverage](https://img.shields.io/badge/coverage-70.6%25-yellow.svg)](coverage.out)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#running-tests)
 
 The official command-line tool for working with GENEALOGIX (GLX) family archives. Validates GLX files, initializes new archives, and checks schema conformance.
@@ -353,18 +353,22 @@ go build -o glx .
 
 ```go
 require (
-    github.com/xeipuuv/gojsonschema v1.2.0
-    github.com/stretchr/testify v1.11.1
-    gopkg.in/yaml.v3 v3.0.1
+    github.com/spf13/cobra v1.10.1          // CLI framework
+    github.com/xeipuuv/gojsonschema v1.2.0  // JSON Schema validation
+    github.com/stretchr/testify v1.11.1      // Test assertions
+    gopkg.in/yaml.v3 v3.0.1                  // YAML parsing
 )
 ```
 
 ### Code Organization
 
-- **`main.go`** - CLI commands and initialization
-- **`validate.go`** - Validation orchestration and reporting
+- **`main.go`** - Entry point (calls Execute())
+- **`cmd_root.go`** - Cobra root command setup
+- **`cmd_init.go`** - `glx init` command implementation
+- **`cmd_validate.go`** - `glx validate` command implementation
+- **`cmd_check_schemas.go`** - `glx check-schemas` command implementation
+- **`vocabularies_embed.go`** - Embedded standard vocabulary files
 - **`validator.go`** - Core entity validation, cross-references, vocabularies
-- **`check_schemas.go`** - JSON schema metadata validation
 
 ### Adding New Validation Rules
 
