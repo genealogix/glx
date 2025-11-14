@@ -9,11 +9,7 @@
     "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
     "uri": { "type": "string", "minLength": 1 },
     "mime_type": { "type": "string" },
-    "hash": { "type": "string" },
-    "created_at": { "type": "string", "format": "date-time" },
-    "created_by": { "type": "string" },
-    "modified_at": { "type": "string", "format": "date-time" },
-    "modified_by": { "type": "string" }
+    "hash": { "type": "string" }
   },
   "additionalProperties": true
 }

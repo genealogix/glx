@@ -47,8 +47,6 @@ relationships:
 | `description` | string | Narrative description of the relationship |
 | `notes` | string | Research notes |
 | `assertions` | array | References to assertion entities |
-| `created_at` | datetime | Creation timestamp |
-| `created_by` | string | User who created this record |
 | `modified_at` | datetime | Last modification timestamp |
 | `modified_by` | string | User who last modified this record |
 | `tags` | array | Tags for categorization |

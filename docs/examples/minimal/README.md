@@ -23,9 +23,6 @@ version: 1.0
 
 concluded_identity:
   primary_name: "John Smith"
-  
-created_at: "2024-01-15T10:30:00Z"
-created_by: example-user
 ```
 
 ## Validation
@@ -45,5 +42,4 @@ glx validate .
 
 See [basic-family](../basic-family/) for a more complete example
 with relationships and assertions.
-
 

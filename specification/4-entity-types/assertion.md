@@ -191,15 +191,11 @@ type: biographical
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `created_at` | datetime | When this assertion was created |
-| `created_by` | string | Who created this assertion |
 | `modified_at` | datetime | When last modified |
 | `modified_by` | string | Who last modified |
 
 Example:
 ```yaml
-created_at: "2024-01-15T10:30:00Z"
-created_by: researcher-jane
 modified_at: "2024-03-20T14:15:00Z"
 modified_by: researcher-john
 ```
@@ -233,8 +229,6 @@ assertions:
     citations:
       - citation-birth-certificate
     confidence: high
-    created_at: "2024-01-15T10:00:00Z"
-    created_by: researcher-jane
 ```
 
 ### Assertion with Multiple Evidence Sources

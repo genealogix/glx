@@ -47,9 +47,6 @@ relationships:
   - relationships/rel-marriage.glx
   - relationships/rel-parent-alice.glx
   - relationships/rel-parent-bob.glx
-
-created_at: "2024-01-20T09:00:00Z"
-created_by: demo-user
 ```
 
 ### persons/person-father.glx
@@ -65,9 +62,6 @@ relationships:
   - relationships/rel-marriage.glx
   - relationships/rel-parent-alice.glx
   - relationships/rel-parent-bob.glx
-
-created_at: "2024-01-20T09:05:00Z"
-created_by: demo-user
 ```
 
 ### persons/person-child-alice.glx
@@ -81,9 +75,6 @@ concluded_identity:
 
 relationships:
   - relationships/rel-parent-alice.glx
-
-created_at: "2024-01-20T09:10:00Z"
-created_by: demo-user
 ```
 
 ### persons/person-child-bob.glx
@@ -97,9 +88,6 @@ concluded_identity:
 
 relationships:
   - relationships/rel-parent-bob.glx
-
-created_at: "2024-01-20T09:15:00Z"
-created_by: demo-user
 ```
 
 ### relationships/rel-marriage.glx
@@ -110,9 +98,6 @@ type: marriage
 persons:
   - person-11111111
   - person-22222222
-
-created_at: "2024-01-20T09:20:00Z"
-created_by: demo-user
 ```
 
 ### relationships/rel-parent-alice.glx
@@ -124,9 +109,6 @@ persons:
   - person-11111111
   - person-22222222
   - person-33333333
-
-created_at: "2024-01-20T09:25:00Z"
-created_by: demo-user
 ```
 
 ### relationships/rel-parent-bob.glx
@@ -138,9 +120,6 @@ persons:
   - person-11111111
   - person-22222222
   - person-44444444
-
-created_at: "2024-01-20T09:30:00Z"
-created_by: demo-user
 ```
 
 ## Validation

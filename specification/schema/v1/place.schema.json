@@ -108,24 +108,6 @@
       "type": "string",
       "description": "Standard format string for this place hierarchy (GEDCOM PLAC.FORM style, e.g., 'City, County, Country')"
     },
-    "created_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When this place record was created"
-    },
-    "created_by": {
-      "type": "string",
-      "description": "User who created this record"
-    },
-    "modified_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When this place record was last modified"
-    },
-    "modified_by": {
-      "type": "string",
-      "description": "User who last modified this record"
-    },
     "notes": {
       "type": "string",
       "description": "Free-form notes about the place"

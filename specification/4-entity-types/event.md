@@ -73,8 +73,6 @@ Domain-specific events:
 | `age_text` | string | Age at time of event |
 | `cause_text` | string | Cause for event |
 | `description` | string | Narrative description |
-| `created_at` | datetime | Creation timestamp |
-| `created_by` | string | User who created this record |
 | `notes` | string | Free-form notes |
 
 ### Date Structure
@@ -127,7 +125,6 @@ events:
     participants:
       - person: person-john-smith
         role: principal
-    created_at: "2025-01-15T10:30:00Z"
 ```
 
 ### Complex Event with Multiple Participants
@@ -154,8 +151,6 @@ events:
       - person: person-reverend-black
         role: officiant
     description: "Marriage celebrated at St Paul's Cathedral"
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ## File Organization

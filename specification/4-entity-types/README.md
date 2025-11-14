@@ -210,4 +210,17 @@ See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for voc
 - [Vocabularies](vocabularies.md) - Complete reference for all vocabulary types
 - Entity type documentation includes GEDCOM mapping information
 
+## Common Fields
+
+All entities share a common set of fields for versioning and traceability.
+
+| Field       | Type   | Description                               |
+|-------------|--------|-------------------------------------------|
+| `version`   | string | The schema version (e.g., `"1.0"`)        |
+| `notes`     | string | Free-form notes about the entity          |
+| `tags`      | array  | User-defined tags for organization        |
+
+- **IDs are map keys**: The unique ID for each entity is the key in the map (`person-a1b2c3d4`).
+- **Git Tracks Provenance**: Change history is handled by Git.
+
 

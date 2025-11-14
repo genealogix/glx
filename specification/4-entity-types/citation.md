@@ -86,8 +86,6 @@ citations:
     page: "125"
     quality: 3
     text_from_source: "John Smith married to Mary Jones, 15 May 1850"
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ### Citation with Online Source

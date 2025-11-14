@@ -49,24 +49,6 @@
       },
       "uniqueItems": true
     },
-    "created_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When this person record was created"
-    },
-    "created_by": {
-      "type": "string",
-      "description": "User who created this record"
-    },
-    "modified_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When this person record was last modified"
-    },
-    "modified_by": {
-      "type": "string",
-      "description": "User who last modified this record"
-    },
     "notes": {
       "type": "string",
       "description": "Free-form notes"

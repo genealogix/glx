@@ -68,10 +68,6 @@ Each name can be classified and dated.
 | `longitude` | number | WGS84 longitude coordinate |
 | `jurisdiction` | string | Formal jurisdiction identifier or code |
 | `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
-| `created_at` | datetime | Creation timestamp |
-| `created_by` | string | User who created this record |
-| `modified_at` | datetime | Last modification timestamp |
-| `modified_by` | string | User who last modified this record |
 | `notes` | string | Free-form notes about the place |
 
 ## Place Types
@@ -148,8 +144,6 @@ places:
     parent: place-france
     latitude: 48.8566
     longitude: 2.3522
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ### Complex Hierarchical Location
@@ -172,8 +166,6 @@ places:
     jurisdiction: "england.yorkshire.leeds"
     place_format: "City, County, Country"
     notes: "Historical registration district for civil registration purposes"
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ## File Organization

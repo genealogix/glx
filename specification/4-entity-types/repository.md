@@ -54,10 +54,6 @@ GENEALOGIX supports various repository types:
 | `access_hours` | string | Hours of operation/access |
 | `access_restrictions` | string | Any restrictions on access |
 | `holding_types` | array | Types of materials held (microfilm, digital, books, etc.) |
-| `created_at` | datetime | Creation timestamp |
-| `created_by` | string | User who created this record |
-| `modified_at` | datetime | Last modification timestamp |
-| `modified_by` | string | User who last modified this record |
 | `notes` | string | Free-form notes about repository |
 
 ## Usage Patterns
@@ -77,8 +73,6 @@ repositories:
     country: "England"
     phone: "+44 113 247 6000"
     website: "https://www.leeds.gov.uk/libraries"
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ### National Archive
@@ -102,8 +96,6 @@ repositories:
       - "microfilm"
       - "digital images"
     access_restrictions: "Some records require appointment"
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ### Online Database
@@ -124,8 +116,6 @@ repositories:
       - "church records"
       - "newspapers"
     access_restrictions: "Subscription required"
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ### Church Archive
@@ -148,8 +138,6 @@ repositories:
       - "baptismal records"
       - "manuscripts"
     access_restrictions: "By appointment only"
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ## Repository in Sources

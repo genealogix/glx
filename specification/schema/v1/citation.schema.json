@@ -98,24 +98,6 @@
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Alternative field name for repository reference"
     },
-    "created_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When this citation record was created"
-    },
-    "created_by": {
-      "type": "string",
-      "description": "User who created this record"
-    },
-    "modified_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When this citation record was last modified"
-    },
-    "modified_by": {
-      "type": "string",
-      "description": "User who last modified this record"
-    },
     "notes": {
       "type": "string",
       "description": "Free-form notes about the citation"

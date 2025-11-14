@@ -107,10 +107,6 @@ persons:
     relationships:
       - rel-parent-child-margaret
       - rel-marriage-margaret
-    created_at: "2024-01-15T10:30:00Z"
-    created_by: user-xyz
-    modified_at: "2024-03-20T14:15:00Z"
-    modified_by: user-abc
     notes: |
       Family tradition says she was named after her grandmother.
       Need to verify with census records.

@@ -31,10 +31,6 @@
       "items": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
       "uniqueItems": true
     },
-    "created_at": { "type": "string", "format": "date-time" },
-    "created_by": { "type": "string" },
-    "modified_at": { "type": "string", "format": "date-time" },
-    "modified_by": { "type": "string" },
     "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
   },
   "additionalProperties": true
