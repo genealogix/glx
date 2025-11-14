@@ -20,8 +20,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/genealogix/spec/lib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestIsValidEntityID(t *testing.T) {
@@ -672,7 +674,7 @@ func TestBasicValidateEntity(t *testing.T) {
 				"persons": []string{"person-1"},
 			},
 			vocabs: &ArchiveVocabularies{
-				RelationshipTypes: map[string]VocabEntry{
+				RelationshipTypes: map[string]*lib.RelationshipType{
 					"marriage": {},
 				},
 			},
@@ -689,45 +691,20 @@ func TestBasicValidateEntity(t *testing.T) {
 }
 
 func TestLoadVocabData(t *testing.T) {
-	data := map[string]interface{}{
-		"relationship_types": map[string]interface{}{
-			"marriage": map[string]interface{}{
-				"label":       "Marriage",
-				"description": "A marriage",
-				"gedcom":      "MARR",
-			},
-		},
-	}
-
-	target := make(map[string]VocabEntry)
-	err := loadVocabData(data, "relationship_types", &target)
+	yamlData := `
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "A marriage"
+    gedcom: "MARR"
+`
+	var glxFile lib.GLXFile
+	err := yaml.Unmarshal([]byte(yamlData), &glxFile)
 	assert.NoError(t, err)
-	assert.Len(t, target, 1)
-	assert.Equal(t, "Marriage", target["marriage"].Label)
-}
-
-func TestGetString(t *testing.T) {
-	data := map[string]interface{}{
-		"string_val": "test",
-		"int_val":    123,
-	}
-
-	assert.Equal(t, "test", getString(data, "string_val"))
-	assert.Equal(t, "", getString(data, "int_val"))
-	assert.Equal(t, "", getString(data, "nonexistent"))
-}
-
-func TestGetBool(t *testing.T) {
-	data := map[string]interface{}{
-		"bool_true":  true,
-		"bool_false": false,
-		"string_val": "test",
-	}
-
-	assert.True(t, getBool(data, "bool_true"))
-	assert.False(t, getBool(data, "bool_false"))
-	assert.False(t, getBool(data, "string_val"))
-	assert.False(t, getBool(data, "nonexistent"))
+	assert.Len(t, glxFile.RelationshipTypes, 1)
+	assert.NotNil(t, glxFile.RelationshipTypes["marriage"])
+	assert.Equal(t, "Marriage", glxFile.RelationshipTypes["marriage"].Label)
+	assert.Equal(t, "MARR", glxFile.RelationshipTypes["marriage"].GEDCOM)
 }
 
 func TestValidateRepositoryReferences_InvalidTestFiles(t *testing.T) {

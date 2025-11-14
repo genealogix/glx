@@ -21,6 +21,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/genealogix/spec/lib"
+	schema "github.com/genealogix/spec/specification/schema/v1"
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
 )
@@ -133,15 +135,15 @@ func validateEntityByType(entityType string, entity map[string]interface{}, voca
 		return issues
 	}
 
-	// Get schema file path
-	schemaPath := getSchemaPath(entityType)
-	if schemaPath == "" {
+	// Get schema bytes
+	schemaBytes := getSchemaBytes(entityType)
+	if schemaBytes == nil {
 		// Fallback to basic validation if schema not found
 		return basicValidateEntity(entityType, entity, vocabs)
 	}
 
 	// Load and validate against JSON schema
-	schemaLoader := gojsonschema.NewReferenceLoader("file://" + schemaPath)
+	schemaLoader := gojsonschema.NewBytesLoader(schemaBytes)
 
 	// Convert entity to JSON for validation
 	entityJSON, err := json.Marshal(entity)
@@ -167,35 +169,11 @@ func validateEntityByType(entityType string, entity map[string]interface{}, voca
 	return issues
 }
 
-func getSchemaPath(entityType string) string {
-	schemaMap := map[string]string{
-		"person":       "specification/schema/v1/person.schema.json",
-		"relationship": "specification/schema/v1/relationship.schema.json",
-		"event":        "specification/schema/v1/event.schema.json",
-		"place":        "specification/schema/v1/place.schema.json",
-		"source":       "specification/schema/v1/source.schema.json",
-		"citation":     "specification/schema/v1/citation.schema.json",
-		"repository":   "specification/schema/v1/repository.schema.json",
-		"assertion":    "specification/schema/v1/assertion.schema.json",
-		"media":        "specification/schema/v1/media.schema.json",
+func getSchemaBytes(entityType string) []byte {
+	if schemaBytes, ok := schema.EntitySchemas[entityType]; ok {
+		return schemaBytes
 	}
-
-	if schemaFile, ok := schemaMap[entityType]; ok {
-		// Try to find schema relative to current directory or absolute path
-		absPath, err := filepath.Abs(schemaFile)
-		if err == nil {
-			if _, err := os.Stat(absPath); err == nil {
-				return absPath
-			}
-		}
-		// Try relative to working directory
-		if _, err := os.Stat(schemaFile); err == nil {
-			abs, _ := filepath.Abs(schemaFile)
-			return abs
-		}
-	}
-
-	return ""
+	return nil
 }
 
 func basicValidateEntity(entityType string, entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
@@ -216,7 +194,7 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 		if relType, ok := entity["type"].(string); ok {
 			if vocabs != nil && len(vocabs.RelationshipTypes) > 0 {
 				if _, exists := vocabs.RelationshipTypes[relType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown relationship type '%s' - add to vocabularies/relationship-types.glx", relType))
+					issues = append(issues, fmt.Sprintf("unknown relationship type '%s' - add a relationship_types vocabulary entry", relType))
 				}
 			}
 		}
@@ -228,7 +206,7 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 		if eventType, ok := entity["type"].(string); ok {
 			if vocabs != nil && len(vocabs.EventTypes) > 0 {
 				if _, exists := vocabs.EventTypes[eventType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown event type '%s' - add to vocabularies/event-types.glx", eventType))
+					issues = append(issues, fmt.Sprintf("unknown event type '%s' - add an event_types vocabulary entry", eventType))
 				}
 			}
 		}
@@ -240,7 +218,7 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 		if placeType, ok := entity["type"].(string); ok {
 			if vocabs != nil && len(vocabs.PlaceTypes) > 0 {
 				if _, exists := vocabs.PlaceTypes[placeType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown place type '%s' - add to vocabularies/place-types.glx", placeType))
+					issues = append(issues, fmt.Sprintf("unknown place type '%s' - add a place_types vocabulary entry", placeType))
 				}
 			}
 		}
@@ -262,7 +240,7 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 		if repoType, ok := entity["type"].(string); ok {
 			if vocabs != nil && len(vocabs.RepositoryTypes) > 0 {
 				if _, exists := vocabs.RepositoryTypes[repoType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown repository type '%s' - add to vocabularies/repository-types.glx", repoType))
+					issues = append(issues, fmt.Sprintf("unknown repository type '%s' - add a repository_types vocabulary entry", repoType))
 				}
 			}
 		}
@@ -282,7 +260,7 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 		if confidence, ok := entity["confidence"].(string); ok {
 			if vocabs != nil && len(vocabs.ConfidenceLevels) > 0 {
 				if _, exists := vocabs.ConfidenceLevels[confidence]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown confidence level '%s' - add to vocabularies/confidence-levels.glx", confidence))
+					issues = append(issues, fmt.Sprintf("unknown confidence level '%s' - add a confidence_levels vocabulary entry", confidence))
 				}
 			}
 		}
@@ -290,7 +268,15 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 			qualityStr := fmt.Sprintf("%.0f", quality)
 			if vocabs != nil && len(vocabs.QualityRatings) > 0 {
 				if _, exists := vocabs.QualityRatings[qualityStr]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown quality rating '%s' - add to vocabularies/quality-ratings.glx", qualityStr))
+					issues = append(issues, fmt.Sprintf("unknown quality rating '%s' - add a quality_ratings vocabulary entry", qualityStr))
+				}
+			}
+		}
+		if quality, ok := entity["quality"].(*int); ok && quality != nil {
+			qualityStr := fmt.Sprintf("%d", *quality)
+			if vocabs != nil && len(vocabs.QualityRatings) > 0 {
+				if _, exists := vocabs.QualityRatings[qualityStr]; !exists {
+					issues = append(issues, fmt.Sprintf("unknown quality rating '%s' - add a quality_ratings vocabulary entry", qualityStr))
 				}
 			}
 		}
@@ -304,7 +290,7 @@ func basicValidateEntity(entityType string, entity map[string]interface{}, vocab
 		if mediaType, ok := entity["media_type"].(string); ok {
 			if vocabs != nil && len(vocabs.MediaTypes) > 0 {
 				if _, exists := vocabs.MediaTypes[mediaType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown media type '%s' - add to vocabularies/media-types.glx", mediaType))
+					issues = append(issues, fmt.Sprintf("unknown media type '%s' - add a media_types vocabulary entry", mediaType))
 				}
 			}
 		}
@@ -334,14 +320,14 @@ func ValidateVocabularyFile(path string, doc map[string]interface{}) []string {
 		return []string{"vocabulary file must contain exactly one vocabulary type key"}
 	}
 
-	// Get schema path for this vocabulary type
-	schemaPath := getVocabSchemaPath(vocabType)
-	if schemaPath == "" {
+	// Get schema bytes for this vocabulary type
+	schemaBytes := getVocabSchemaBytes(vocabType)
+	if schemaBytes == nil {
 		return []string{fmt.Sprintf("no schema found for vocabulary type: %s", vocabType)}
 	}
 
 	// Validate against JSON schema
-	schemaLoader := gojsonschema.NewReferenceLoader("file://" + schemaPath)
+	schemaLoader := gojsonschema.NewBytesLoader(schemaBytes)
 	entityJSON, err := json.Marshal(doc)
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("failed to marshal entity: %v", err))
@@ -360,144 +346,87 @@ func ValidateVocabularyFile(path string, doc map[string]interface{}) []string {
 	return issues
 }
 
-func getVocabSchemaPath(vocabType string) string {
-	schemaMap := map[string]string{
-		"relationship_types": "specification/schema/v1/vocabularies/relationship-types.schema.json",
-		"event_types":        "specification/schema/v1/vocabularies/event-types.schema.json",
-		"place_types":        "specification/schema/v1/vocabularies/place-types.schema.json",
-		"repository_types":   "specification/schema/v1/vocabularies/repository-types.schema.json",
-		"participant_roles":  "specification/schema/v1/vocabularies/participant-roles.schema.json",
-		"media_types":        "specification/schema/v1/vocabularies/media-types.schema.json",
-		"confidence_levels":  "specification/schema/v1/vocabularies/confidence-levels.schema.json",
-		"quality_ratings":    "specification/schema/v1/vocabularies/quality-ratings.schema.json",
-	}
-
-	if schemaFile, ok := schemaMap[vocabType]; ok {
-		absPath, err := filepath.Abs(schemaFile)
-		if err == nil {
-			if _, err := os.Stat(absPath); err == nil {
-				return absPath
-			}
-		}
-	}
-
-	return ""
-}
-
-type ArchiveVocabularies struct {
-	RelationshipTypes map[string]VocabEntry
-	EventTypes        map[string]VocabEntry
-	PlaceTypes        map[string]VocabEntry
-	RepositoryTypes   map[string]VocabEntry
-	ParticipantRoles  map[string]VocabEntry
-	MediaTypes        map[string]VocabEntry
-	ConfidenceLevels  map[string]VocabEntry
-	QualityRatings    map[string]VocabEntry
-}
-
-type VocabEntry struct {
-	Label       string
-	Description string
-	GEDCOM      string
-	Category    string
-	MimeType    string
-	Custom      bool
-}
-
-func LoadArchiveVocabularies(rootPath string) (*ArchiveVocabularies, error) {
-	vocabs := &ArchiveVocabularies{
-		RelationshipTypes: make(map[string]VocabEntry),
-		EventTypes:        make(map[string]VocabEntry),
-		PlaceTypes:        make(map[string]VocabEntry),
-		RepositoryTypes:   make(map[string]VocabEntry),
-		ParticipantRoles:  make(map[string]VocabEntry),
-		MediaTypes:        make(map[string]VocabEntry),
-		ConfidenceLevels:  make(map[string]VocabEntry),
-		QualityRatings:    make(map[string]VocabEntry),
-	}
-
-	// Load vocabulary files from vocabularies/ directory
-	vocabDir := filepath.Join(rootPath, "vocabularies")
-	if _, err := os.Stat(vocabDir); os.IsNotExist(err) {
-		// No vocabularies directory - use permissive mode
-		return vocabs, nil
-	}
-
-	// Load each vocabulary file
-	vocabFiles := map[string]func(map[string]interface{}) error{
-		"relationship-types.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "relationship_types", &vocabs.RelationshipTypes)
-		},
-		"event-types.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "event_types", &vocabs.EventTypes)
-		},
-		"place-types.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "place_types", &vocabs.PlaceTypes)
-		},
-		"repository-types.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "repository_types", &vocabs.RepositoryTypes)
-		},
-		"participant-roles.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "participant_roles", &vocabs.ParticipantRoles)
-		},
-		"media-types.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "media_types", &vocabs.MediaTypes)
-		},
-		"confidence-levels.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "confidence_levels", &vocabs.ConfidenceLevels)
-		},
-		"quality-ratings.glx": func(data map[string]interface{}) error {
-			return loadVocabData(data, "quality_ratings", &vocabs.QualityRatings)
-		},
-	}
-
-	for file, loader := range vocabFiles {
-		path := filepath.Join(vocabDir, file)
-		if data, err := os.ReadFile(path); err == nil {
-			var doc map[string]interface{}
-			if err := yaml.Unmarshal(data, &doc); err == nil {
-				if err := loader(doc); err != nil {
-					// Log error but continue
-					continue
-				}
-			}
-		}
-	}
-
-	return vocabs, nil
-}
-
-func loadVocabData(data map[string]interface{}, key string, target *map[string]VocabEntry) error {
-	if entities, ok := data[key].(map[string]interface{}); ok {
-		for entityID, entityData := range entities {
-			if entity, ok := entityData.(map[string]interface{}); ok {
-				entry := VocabEntry{
-					Label:       getString(entity, "label"),
-					Description: getString(entity, "description"),
-					GEDCOM:      getString(entity, "gedcom"),
-					Category:    getString(entity, "category"),
-					MimeType:    getString(entity, "mime_type"),
-					Custom:      getBool(entity, "custom"),
-				}
-				(*target)[entityID] = entry
-			}
-		}
+func getVocabSchemaBytes(vocabType string) []byte {
+	if schemaBytes, ok := schema.VocabularySchemas[vocabType]; ok {
+		return schemaBytes
 	}
 	return nil
 }
 
-func getString(data map[string]interface{}, key string) string {
-	if val, ok := data[key].(string); ok {
-		return val
-	}
-	return ""
+type ArchiveVocabularies struct {
+	RelationshipTypes map[string]*lib.RelationshipType
+	EventTypes        map[string]*lib.EventType
+	PlaceTypes        map[string]*lib.PlaceType
+	RepositoryTypes   map[string]*lib.RepositoryType
+	ParticipantRoles  map[string]*lib.ParticipantRole
+	MediaTypes        map[string]*lib.MediaType
+	ConfidenceLevels  map[string]*lib.ConfidenceLevel
+	QualityRatings    map[string]*lib.QualityRating
 }
 
-func getBool(data map[string]interface{}, key string) bool {
-	if val, ok := data[key].(bool); ok {
-		return val
+func LoadArchiveVocabularies(rootPath string) (*ArchiveVocabularies, error) {
+	vocabs := &ArchiveVocabularies{
+		RelationshipTypes: make(map[string]*lib.RelationshipType),
+		EventTypes:        make(map[string]*lib.EventType),
+		PlaceTypes:        make(map[string]*lib.PlaceType),
+		RepositoryTypes:   make(map[string]*lib.RepositoryType),
+		ParticipantRoles:  make(map[string]*lib.ParticipantRole),
+		MediaTypes:        make(map[string]*lib.MediaType),
+		ConfidenceLevels:  make(map[string]*lib.ConfidenceLevel),
+		QualityRatings:    make(map[string]*lib.QualityRating),
 	}
-	return false
+
+	// Walk all GLX files and extract vocabulary definitions from any file
+	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(d.Name())
+		if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+
+		var glxFile lib.GLXFile
+		if err := yaml.Unmarshal(data, &glxFile); err != nil {
+			// Skip files that can't be parsed
+			return nil
+		}
+
+		// Merge vocabulary definitions from this file
+		for k, v := range glxFile.RelationshipTypes {
+			vocabs.RelationshipTypes[k] = v
+		}
+		for k, v := range glxFile.EventTypes {
+			vocabs.EventTypes[k] = v
+		}
+		for k, v := range glxFile.PlaceTypes {
+			vocabs.PlaceTypes[k] = v
+		}
+		for k, v := range glxFile.RepositoryTypes {
+			vocabs.RepositoryTypes[k] = v
+		}
+		for k, v := range glxFile.ParticipantRoles {
+			vocabs.ParticipantRoles[k] = v
+		}
+		for k, v := range glxFile.MediaTypes {
+			vocabs.MediaTypes[k] = v
+		}
+		for k, v := range glxFile.ConfidenceLevels {
+			vocabs.ConfidenceLevels[k] = v
+		}
+		for k, v := range glxFile.QualityRatings {
+			vocabs.QualityRatings[k] = v
+		}
+
+		return nil
+	})
+
+	return vocabs, err
 }
 
 // CollectAllEntities walks all GLX files and collects entity IDs
