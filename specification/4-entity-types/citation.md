@@ -67,11 +67,9 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 | `locator.image_number` | string | Image or page identifier |
 | `locator.url` | string | URL to online source |
 | `repository_id` | string | Reference to Repository entity |
-| `created_at` | datetime | Creation timestamp |
-| `created_by` | string | User who created this record |
-| `modified_at` | datetime | Last modification timestamp |
-| `modified_by` | string | User who last modified this record |
+| `media` | array | References to Media entities (scans, photos, documents) related to this citation |
 | `notes` | string | Free-form notes about the citation |
+| `tags` | array | User-defined tags for organization |
 
 ## Usage Patterns
 
@@ -107,8 +105,6 @@ citations:
       Age: 35
       Occupation: Blacksmith
       Place of Birth: Leeds, Yorkshire, England
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
 ```
 
 ### Citation to Archive Document
@@ -129,8 +125,20 @@ citations:
     text_from_source: |
       I, John Smith, being of sound mind, do hereby
       bequeath all my goods and chattels...
-    created_at: "2025-01-15T10:30:00Z"
-    created_by: "researcher@example.com"
+```
+
+### Citation with Media References
+
+```yaml
+# citations/citation-photo.glx
+citations:
+  citation-photo:
+    version: "1.0"
+    source: source-photo-collection
+    locator: "Album 1, page 5"
+    media:
+      - media-john-photo
+    notes: "Photo provides visual evidence of person's appearance"
 ```
 
 ## Citation in Assertions

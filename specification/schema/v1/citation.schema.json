@@ -98,6 +98,15 @@
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Alternative field name for repository reference"
     },
+    "media": {
+      "type": "array",
+      "description": "References to Media entities (scans, photos, documents) related to this citation",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
     "notes": {
       "type": "string",
       "description": "Free-form notes about the citation"

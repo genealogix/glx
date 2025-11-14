@@ -165,6 +165,7 @@ type Citation struct {
 	Locator        *Locator `yaml:"locator,omitempty"`
 	RepositoryID   string   `yaml:"repository_id,omitempty"`
 	Repository     string   `yaml:"repository,omitempty"`
+	Media          []string `yaml:"media,omitempty"`
 	Notes          string   `yaml:"notes,omitempty"`
 	Tags           []string `yaml:"tags,omitempty"`
 }

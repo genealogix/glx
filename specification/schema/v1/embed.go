@@ -3,6 +3,7 @@ package v1
 import _ "embed"
 
 // Entity schemas
+//
 //go:embed person.schema.json
 var PersonSchema []byte
 
@@ -31,6 +32,7 @@ var AssertionSchema []byte
 var MediaSchema []byte
 
 // Vocabulary schemas
+//
 //go:embed vocabularies/relationship-types.schema.json
 var RelationshipTypesSchema []byte
 
@@ -79,4 +81,3 @@ var VocabularySchemas = map[string][]byte{
 	"confidence_levels":  ConfidenceLevelsSchema,
 	"quality_ratings":    QualityRatingsSchema,
 }
-
