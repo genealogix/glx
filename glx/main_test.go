@@ -105,6 +105,24 @@ func TestRunInit_NonEmptyDirectory(t *testing.T) {
 	}
 }
 
+func TestRunInit_WithTestData(t *testing.T) {
+	tmpDir := t.TempDir()
+	numPeople := 5
+
+	err := runInit(tmpDir, false, numPeople)
+	assert.NoError(t, err)
+
+	// Check that the person files were created
+	personFiles, err := os.ReadDir(filepath.Join(tmpDir, "persons"))
+	require.NoError(t, err)
+	assert.Len(t, personFiles, numPeople, "should create the correct number of person files")
+
+	// Check that event files were created (one birth per person)
+	eventFiles, err := os.ReadDir(filepath.Join(tmpDir, "events"))
+	require.NoError(t, err)
+	assert.Len(t, eventFiles, numPeople, "should create the correct number of event files")
+}
+
 func TestCreateStandardVocabularies(t *testing.T) {
 	tmpDir := t.TempDir()
 	originalDir, err := os.Getwd()
