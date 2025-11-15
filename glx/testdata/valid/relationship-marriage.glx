@@ -1,6 +1,5 @@
 relationships:
   rel-12345678:
-    version: "1.0"
     type: marriage
     persons:
       - person-a1b2c3d4

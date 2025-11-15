@@ -132,12 +132,6 @@ func isValidEntityID(id string) bool {
 func validateEntityByType(entityType string, entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
 	var issues []string
 
-	// Check for version field (required for all entities)
-	if _, hasVersion := entity["version"]; !hasVersion {
-		issues = append(issues, "version is required")
-		return issues
-	}
-
 	// Get schema bytes
 	schemaBytes := getSchemaBytes(entityType)
 	if schemaBytes == nil {

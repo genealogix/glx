@@ -1,18 +1,15 @@
 # Invalid: Multiple broken cross-references in multi-entity archive
 persons:
   person-john-smith:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
   
   person-mary-brown:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Brown"
 
 relationships:
   rel-marriage:
-    version: "1.0"
     type: "marriage"
     persons:
       - person-john-smith
@@ -20,7 +17,6 @@ relationships:
 
 events:
   event-john-birth:
-    version: "1.0"
     type: "birth"
     place: place-nonexistent  # ERROR: References non-existent place
     participants:
@@ -29,13 +25,11 @@ events:
 
 citations:
   citation-birth:
-    version: "1.0"
     source: source-nonexistent  # ERROR: References non-existent source
     locator: "Page 23"
 
 assertions:
   assertion-birth:
-    version: "1.0"
     subject: person-yet-another-nonexistent  # ERROR: References non-existent entity
     claim: "Birth date is 1850-01-15"
     citations:

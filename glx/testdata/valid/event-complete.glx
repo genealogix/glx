@@ -1,6 +1,5 @@
 events:
   event-abcdef12:
-    version: "1.0"
     type: "birth"
     date: "1850-01-15"
     place: "place-leeds-uk"

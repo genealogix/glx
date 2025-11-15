@@ -43,19 +43,6 @@ assertions:
   - Random hex: `assertion-a1b2c3d4` (for collaboration)
   - Sequential: `assertion-001`, `assertion-002`
 
-### `version`
-
-- Type: String
-- Format: `{major}.{minor}`
-- Required: Yes
-- Description: Schema version
-
-Example:
-```yaml
-assertions:
-  assertion-birth:
-```
-
 ### `subject`
 
 - Type: String

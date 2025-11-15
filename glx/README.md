@@ -129,7 +129,6 @@ glx validate [paths...]
 - ✓ Required fields presence
 - ✓ Entity ID format (alphanumeric + hyphens, 1-64 chars)
 - ✓ No 'id' fields in entities (IDs are map keys)
-- ✓ Version field presence
 - ✓ Entity type-specific validation
 - ✓ Cross-reference integrity
 - ✓ Duplicate ID detection

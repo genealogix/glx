@@ -76,7 +76,7 @@ Test files are standard GLX files:
 # glx/testdata/valid/person-minimal.glx
 persons:
   person-abc12345:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 ```
 
@@ -104,7 +104,7 @@ All entity types have test coverage:
 ### Validation Rules
 
 Tests cover:
-- **Required fields**: Missing version, missing required properties
+- **Required fields**: Missing required properties
 - **Field formats**: Invalid ID formats, invalid patterns
 - **References**: Broken entity references, broken vocabulary references
 - **Duplicates**: Duplicate entity IDs across files

@@ -33,19 +33,6 @@ persons:
   - Random hex: `person-a1b2c3d4` (for collaboration)
   - Sequential: `person-001`, `person-002`
 
-### `version`
-
-- Type: String
-- Format: `{major}.{minor}`
-- Required: Yes
-- Description: Schema version
-
-Example:
-```yaml
-persons:
-  person-john-smith:
-```
-
 ## Optional Fields
 
 ### `properties`
@@ -126,5 +113,3 @@ complete JSON Schema definition.
 - [Relationship Entity](relationship.md)
 - [Data Types](../6-data-types.md)
 - [Provenance Tracking](../2-core-concepts.md#provenance-and-confidence)
-
-

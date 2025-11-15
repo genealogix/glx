@@ -1,6 +1,5 @@
 relationships:
   rel-23456789:
-    version: "1.0"
     type: parent-child
     persons:
       - person-a1b2c3d4

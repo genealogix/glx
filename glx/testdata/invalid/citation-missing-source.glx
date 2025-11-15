@@ -1,5 +1,4 @@
 # Invalid: Missing required 'source' field
 citations:
   citation-12345678:
-    version: "1.0"
     page: "Page 45"

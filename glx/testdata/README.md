@@ -77,7 +77,6 @@ Tests: Media URI handling, media types, media-citation links.
 ### Single-Entity Validation Errors
 - `person-missing-id.glx` - Entity has 'id' field (should use map key)
 - `person-bad-id-format.glx` - Invalid ID format (not alphanumeric/hyphens)
-- `person-invalid-version.glx` - Malformed version field
 - `event-missing-type.glx` - Event without required type
 - `event-missing-place.glx` - Event without place reference
 - `place-missing-name.glx` - Place without required name
@@ -112,7 +111,6 @@ Tests: Duplicate ID detection.
 
 #### `archive-missing-fields.glx`
 Multiple entities with missing required fields:
-- Person without version
 - Event without type
 - Place without name
 - Source without title

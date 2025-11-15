@@ -47,29 +47,28 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 
 ### Required Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | string | Unique identifier (format: `citation-{id}`) |
-| `version` | string | Schema version (e.g., "1.0") |
-| `source` | string | Reference to Source entity |
+|| Property | Type | Description |
+||----------|------|-------------|
+|| `id` | string | Unique identifier (format: `citation-{id}`, map key) |
+|| `source` | string | Reference to Source entity |
 
 ### Optional Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `page` | string | Page number or locator within source |
-| `data_date` | string | Date the data was recorded (for documentary sources) |
-| `text_from_source` | string | Transcription or excerpt from the source |
-| `quality` | integer | Evidence quality (0-3, QUAY value) |
-| `locator` | object | Structured locator information |
-| `locator.film_number` | string | FamilySearch film number |
-| `locator.item_number` | string | Item number or accession number |
-| `locator.image_number` | string | Image or page identifier |
-| `locator.url` | string | URL to online source |
-| `repository` | string | Reference to Repository entity |
-| `media` | array | References to Media entities (scans, photos, documents) related to this citation |
-| `notes` | string | Free-form notes about the citation |
-| `tags` | array | User-defined tags for organization |
+|| Property | Type | Description |
+||----------|------|-------------|
+|| `page` | string | Page number or locator within source |
+|| `data_date` | string | Date the data was recorded (for documentary sources) |
+|| `text_from_source` | string | Transcription or excerpt from the source |
+|| `quality` | integer | Evidence quality (0-3, QUAY value) |
+|| `locator` | object | Structured locator information |
+|| `locator.film_number` | string | FamilySearch film number |
+|| `locator.item_number` | string | Item number or accession number |
+|| `locator.image_number` | string | Image or page identifier |
+|| `locator.url` | string | URL to online source |
+|| `repository` | string | Reference to Repository entity |
+|| `media` | array | References to Media entities (scans, photos, documents) related to this citation |
+|| `notes` | string | Free-form notes about the citation |
+|| `tags` | array | User-defined tags for organization |
 
 ## Usage Patterns
 
@@ -84,6 +83,8 @@ citations:
     quality: 3
     text_from_source: "John Smith married to Mary Jones, 15 May 1850"
 ```
+
+Note: The `id` is the map key (`citation-marriage-record`), not a separate field.
 
 ### Citation with Online Source
 
@@ -198,16 +199,16 @@ Or more commonly, citations are referenced by ID from assertions.
 
 ## GEDCOM Mapping
 
-| GLX Property | GEDCOM Element | Notes |
-|--------------|----------------|-------|
-| `id` | (synthetic) | Not in GEDCOM |
-| `source` | SOUR | Source reference |
-| `page` | SOUR.PAGE | Page within source |
-| `data_date` | SOUR.DATA.DATE | Date data was recorded |
-| `text_from_source` | SOUR.TEXT | Transcribed text |
-| `quality` | SOUR.QUAY | Evidence quality (0-3) |
-| `locator.url` | SOUR.OBJE.FILE | File/URL path |
-| `locator.film_number` | SOUR.REPO.CALN.VALUE | Media number |
+|| GLX Property | GEDCOM Element | Notes |
+||--------------|----------------|-------|
+|| `id` | (synthetic) | Not in GEDCOM |
+|| `source` | SOUR | Source reference |
+|| `page` | SOUR.PAGE | Page within source |
+|| `data_date` | SOUR.DATA.DATE | Date data was recorded |
+|| `text_from_source` | SOUR.TEXT | Transcribed text |
+|| `quality` | SOUR.QUAY | Evidence quality (0-3) |
+|| `locator.url` | SOUR.OBJE.FILE | File/URL path |
+|| `locator.film_number` | SOUR.REPO.CALN.VALUE | Media number |
 
 ## Validation Rules
 
@@ -242,7 +243,3 @@ When entering citations, consider:
 - [Source Entity](source.md) - Bibliographic resource
 - [Assertion Entity](assertion.md) - Evidence conclusions
 - [Repository Entity](repository.md) - Where sources are held
-
-
-
-

@@ -56,14 +56,12 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 # sources/birth-cert.glx - Evidence chain
 sources:
   source-birth-cert:
-    version: "1.0"
     title: Birth Certificate
     type: vital_record
 
 # citations/birth-citation.glx
 citations:
   citation-birth:
-    version: "1.0"
     source: source-birth-cert
     locator: "Certificate 1850-LEEDS-00145"
     quality: 3
@@ -72,7 +70,6 @@ citations:
 # assertions/birth-assertion.glx - Evidence-based conclusion
 assertions:
   assertion-john-birth:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"
@@ -85,19 +82,16 @@ assertions:
 # family.glx - All in one file
 sources:
   source-birth-cert:
-    version: "1.0"
     title: Birth Certificate
     type: vital_record
 
 citations:
   citation-birth:
-    version: "1.0"
     source: source-birth-cert
     quality: 3
 
 assertions:
   assertion-john-birth:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"
@@ -153,14 +147,12 @@ All GENEALOGIX files use the same structure:
 # Any .glx file
 persons:
   person-a1b2c3d4:
-    version: "1.0"
     properties:
       primary_name: "John Smith"
       born_on: "1850-01-15"
 
 sources:
   source-12345678:
-    version: "1.0"
     title: "Birth Certificate"
 ```
 

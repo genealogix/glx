@@ -42,7 +42,6 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 	// Generate a repository for the sources
 	repoID := fmt.Sprintf("repo-%s", gofakeit.UUID())
 	glxFile.Repositories[repoID] = &Repository{
-		Version: "1.0",
 		Name:    gofakeit.Company(),
 		Address: gofakeit.Address().Address,
 		City:    gofakeit.Address().City,
@@ -57,7 +56,6 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		living := gofakeit.Bool()
 
 		glxFile.Persons[personID] = &Person{
-			Version: "1.0",
 			ConcludedIdentity: &ConcludedIdentity{
 				PrimaryName: gofakeit.Name(),
 				Gender:      gofakeit.Gender(),
@@ -85,7 +83,6 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		}
 
 		glxFile.Events[eventID] = &Event{
-			Version: "1.0",
 			Type:    "birth",
 			PlaceID: placeID,
 			Date: &EventDate{
@@ -124,8 +121,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 			}
 
 			glxFile.Relationships[relID] = &Relationship{
-				Version: "1.0",
-				Type:    relType,
+				Type: relType,
 				Participants: []RelationshipParticipant{
 					{Person: p1, Role: roles[0]},
 					{Person: p2, Role: roles[1]},
@@ -141,9 +137,8 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 func generatePlace(glxFile *GLXFile) string {
 	placeID := fmt.Sprintf("place-%s", gofakeit.UUID())
 	glxFile.Places[placeID] = &Place{
-		Version: "1.0",
-		Name:    fmt.Sprintf("%s, %s", gofakeit.City(), gofakeit.Country()),
-		Type:    "city",
+		Name: fmt.Sprintf("%s, %s", gofakeit.City(), gofakeit.Country()),
+		Type: "city",
 	}
 	return placeID
 }
@@ -153,7 +148,6 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, claimType, repoID string
 	// Source
 	sourceID := fmt.Sprintf("source-%s", gofakeit.UUID())
 	glxFile.Sources[sourceID] = &Source{
-		Version:      "1.0",
 		Title:        fmt.Sprintf("%s Certificate", gofakeit.Word()),
 		Type:         "vital_record",
 		RepositoryID: repoID,
@@ -163,7 +157,6 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, claimType, repoID string
 	citationID := fmt.Sprintf("citation-%s", gofakeit.UUID())
 	quality := gofakeit.Number(2, 3)
 	glxFile.Citations[citationID] = &Citation{
-		Version:  "1.0",
 		SourceID: sourceID,
 		Quality:  &quality,
 		Locator: &Locator{
@@ -174,7 +167,6 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, claimType, repoID string
 	// Assertion
 	assertionID := fmt.Sprintf("assertion-%s", gofakeit.UUID())
 	glxFile.Assertions[assertionID] = &Assertion{
-		Version:   "1.0",
 		Subject:   subjectID,
 		Claim:     claimType,
 		Citations: []string{citationID},

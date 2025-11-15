@@ -1,6 +1,5 @@
 sources:
   source-12345678:
-    version: "1.0"
     title: "Birth Certificate for John Smith"
     type: vital_record
     repository: repository-a1b2c3d4

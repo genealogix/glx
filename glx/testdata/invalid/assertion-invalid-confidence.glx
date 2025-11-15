@@ -1,7 +1,6 @@
 # Invalid: Invalid confidence level
 assertions:
   assertion-12345678:
-    version: "1.0"
     subject: person-a1b2c3d4
     claim: birth_date
     value: "1850-01-15"

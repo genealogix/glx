@@ -69,7 +69,6 @@ place_properties:
 # Minimal test data to demonstrate properties in use
 persons:
   person-john:
-    version: "1.0"
     properties:
       primary_name: "John Smith"
       gender: "male"
@@ -82,21 +81,18 @@ persons:
     notes: "Test person"
 
   person-jane:
-    version: "1.0"
     properties:
       primary_name: "Jane Doe"
       gender: "female"
 
 events:
   event-birth:
-    version: "1.0"
     type: birth
     properties:
       occurred_on: "1850-01-15"
 
 relationships:
   rel-marriage:
-    version: "1.0"
     type: marriage
     persons:
       - person-john
@@ -106,7 +102,6 @@ relationships:
 
 places:
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     properties:
       population:

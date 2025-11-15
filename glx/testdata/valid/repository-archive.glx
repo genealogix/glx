@@ -1,6 +1,5 @@
 repositories:
   repository-12345678:
-    version: "1.0"
     name: "The National Archives"
     type: archive
     address: "Kew, Richmond, Surrey, TW9 4DU, United Kingdom"

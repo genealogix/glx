@@ -147,9 +147,10 @@ GENEALOGIX is an open-source project welcoming contributions:
 
 This specification follows semantic versioning:
 
-- **Version 1.0**: Initial release with 9 core entity types
-- **Version 1.1+**: Backwards-compatible enhancements
-- **Version 2.0**: May include breaking changes with migration path
+- **Version 0.0.0**: Initial pre-release
+- **Version 1.0**: Initial stable release (future)
+- **Version 1.1+**: Backwards-compatible enhancements (future)
+- **Version 2.0**: May include breaking changes with migration path (future)
 
 See [CHANGELOG.md](../../CHANGELOG.md) for detailed version history.
 

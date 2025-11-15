@@ -1,4 +1,3 @@
 events:
   event-12345678:
-    version: "1.0"
     type: "birth"

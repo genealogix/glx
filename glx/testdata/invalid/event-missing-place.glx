@@ -1,6 +1,5 @@
 # Invalid: References non-existent place
 events:
   event-12345678:
-    version: "1.0"
     type: birth
     place: place-nonexistent

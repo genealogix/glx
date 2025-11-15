@@ -52,7 +52,6 @@ Domain-specific events:
 | Property | Type | Description |
 |----------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
-| `version` | string | Schema version (e.g., "1.0") |
 | `type` | string | Event type (birth, death, marriage, occupation, etc.) |
 
 ### Optional Properties

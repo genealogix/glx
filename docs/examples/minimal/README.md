@@ -19,7 +19,6 @@ minimal/
 
 ```yaml
 id: person-abc123
-version: 1.0
 
 concluded_identity:
   primary_name: "John Smith"

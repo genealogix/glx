@@ -1,38 +1,28 @@
 # Invalid: Multiple entities with missing required fields
-persons:
-  person-no-version:
-    # ERROR: Missing version field
-    concluded_identity:
-      primary_name: "John Smith"
-
 events:
   event-no-type:
-    version: "1.0"
     # ERROR: Missing required 'type' field
     date: "1850-01-15"
 
 places:
   place-no-name:
-    version: "1.0"
     # ERROR: Missing required 'name' field
     type: "city"
 
 sources:
   source-no-title:
-    version: "1.0"
     # ERROR: Missing required 'title' field
     author: "Unknown"
 
 relationships:
   rel-no-type:
-    version: "1.0"
     # ERROR: Missing required 'type' field
-    persons:
-      - person-no-version
+    participants:
+      - person: person-nonexistent
+        role: spouse
 
 repositories:
   repo-no-name:
-    version: "1.0"
     # ERROR: Missing required 'name' field
     type: "archive"
 

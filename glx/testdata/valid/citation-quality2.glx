@@ -1,6 +1,5 @@
 citations:
   citation-23456789:
-    version: "1.0"
     source: source-12345678
     quality: 2
     locator: "Page 45, Entry 123"

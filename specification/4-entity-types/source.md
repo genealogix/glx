@@ -49,19 +49,6 @@ sources:
   - Random hex: `source-a1b2c3d4` (for collaboration)
   - Sequential: `source-001`, `source-002`
 
-### `version`
-
-- Type: String
-- Format: `{major}.{minor}`
-- Required: Yes
-- Description: Schema version
-
-Example:
-```yaml
-sources:
-  source-census:
-```
-
 ### `title`
 
 - Type: String

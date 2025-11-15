@@ -1,5 +1,4 @@
 # Invalid: Missing required 'name' field
 repositories:
   repository-12345678:
-    version: "1.0"
     type: library

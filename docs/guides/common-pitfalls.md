@@ -234,9 +234,6 @@ When `glx validate` fails:
 ### Common Errors
 
 ```bash
-# Missing required field
-ERROR: version is required
-
 # Broken reference
 ERROR: citations[citation-1].source references non-existent sources: source-missing
 FIX: Create the source or fix the reference

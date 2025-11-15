@@ -1,14 +1,12 @@
 # Valid: Archive with media references
 persons:
   person-john-smith:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
       birth_date: "1850-01-15"
 
 media:
   media-john-photo:
-    version: "1.0"
     uri: "file:///photos/john-smith-1900.jpg"
     media_type: "photo"
     title: "John Smith Portrait, circa 1900"
@@ -16,7 +14,6 @@ media:
     description: "Formal portrait photograph"
     
   media-census-scan:
-    version: "1.0"
     uri: "https://example.com/census/1881/page12.jpg"
     media_type: "document"
     title: "1881 Census Page Scan"
@@ -24,12 +21,10 @@ media:
 
 sources:
   source-photo-collection:
-    version: "1.0"
     title: "Smith Family Photo Collection"
 
 citations:
   citation-photo:
-    version: "1.0"
     source: source-photo-collection
     locator: "Album 1, page 5"
     media:

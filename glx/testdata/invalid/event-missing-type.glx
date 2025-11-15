@@ -1,5 +1,4 @@
 # Invalid: Missing required 'type' field
 events:
   event-12345678:
-    version: "1.0"
     date: "1850-01-15"

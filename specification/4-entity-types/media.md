@@ -42,19 +42,6 @@ media:
   - Random hex: `media-a1b2c3d4` (for collaboration)
   - Sequential: `media-001`, `media-002`
 
-### `version`
-
-- Type: String
-- Format: `{major}.{minor}`
-- Required: Yes
-- Description: Schema version
-
-Example:
-```yaml
-media:
-  media-photo:
-```
-
 ### `uri`
 
 - Type: String

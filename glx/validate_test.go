@@ -100,7 +100,7 @@ func TestParseYAMLFile(t *testing.T) {
 	}{
 		{
 			name:    "valid YAML",
-			data:    []byte("persons:\n  person-12345678:\n    version: \"1.0\""),
+			data:    []byte("persons:\n  person-12345678:\n    properties:\n      primary_name: \"John Doe\""),
 			wantErr: false,
 		},
 		{
@@ -142,8 +142,7 @@ func TestValidateGLXFile(t *testing.T) {
 			doc: map[string]interface{}{
 				"persons": map[string]interface{}{
 					"person-abc12345": map[string]interface{}{
-						"version": "1.0",
-						"concluded_identity": map[string]interface{}{
+						"properties": map[string]interface{}{
 							"primary_name": "John Doe",
 						},
 					},
@@ -156,9 +155,8 @@ func TestValidateGLXFile(t *testing.T) {
 			doc: map[string]interface{}{
 				"persons": map[string]interface{}{
 					"person-abc12345": map[string]interface{}{
-						"id":      "person-abc12345",
-						"version": "1.0",
-						"concluded_identity": map[string]interface{}{
+						"id": "person-abc12345",
+						"properties": map[string]interface{}{
 							"primary_name": "John Doe",
 						},
 					},
@@ -177,9 +175,7 @@ func TestValidateGLXFile(t *testing.T) {
 			name: "event missing type",
 			doc: map[string]interface{}{
 				"events": map[string]interface{}{
-					"event-12345678": map[string]interface{}{
-						"version": "1.0",
-					},
+					"event-12345678": map[string]interface{}{},
 				},
 			},
 			expect: 1,
@@ -188,9 +184,7 @@ func TestValidateGLXFile(t *testing.T) {
 			name: "place missing name",
 			doc: map[string]interface{}{
 				"places": map[string]interface{}{
-					"place-12345678": map[string]interface{}{
-						"version": "1.0",
-					},
+					"place-12345678": map[string]interface{}{},
 				},
 			},
 			expect: 1,
@@ -200,16 +194,14 @@ func TestValidateGLXFile(t *testing.T) {
 			doc: map[string]interface{}{
 				"persons": map[string]interface{}{
 					"person-a1b2c3d4": map[string]interface{}{
-						"version": "1.0",
-						"concluded_identity": map[string]interface{}{
+						"properties": map[string]interface{}{
 							"primary_name": "John Smith",
 						},
 					},
 				},
 				"places": map[string]interface{}{
 					"place-12345678": map[string]interface{}{
-						"version": "1.0",
-						"name":    "Leeds",
+						"name": "Leeds",
 					},
 				},
 			},
@@ -220,21 +212,7 @@ func TestValidateGLXFile(t *testing.T) {
 			doc: map[string]interface{}{
 				"persons": map[string]interface{}{
 					"person_with_underscore": map[string]interface{}{
-						"version": "1.0",
-						"concluded_identity": map[string]interface{}{
-							"primary_name": "John Doe",
-						},
-					},
-				},
-			},
-			expect: 1,
-		},
-		{
-			name: "missing version",
-			doc: map[string]interface{}{
-				"persons": map[string]interface{}{
-					"person-12345678": map[string]interface{}{
-						"concluded_identity": map[string]interface{}{
+						"properties": map[string]interface{}{
 							"primary_name": "John Doe",
 						},
 					},
@@ -368,10 +346,11 @@ func TestCollectAllEntities(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "test.glx")
 	testContent := `persons:
   person-123:
-    version: "1.0"
+    properties:
+      primary_name: "Test Person"
 places:
   place-456:
-    version: "1.0"
+    name: "Test Place"
 `
 	err := os.WriteFile(testFile, []byte(testContent), 0644)
 	require.NoError(t, err)
@@ -391,7 +370,8 @@ func TestValidateRepositoryReferences(t *testing.T) {
 	personsFile := filepath.Join(tmpDir, "persons.glx")
 	personsContent := `persons:
   person-123:
-    version: "1.0"
+    properties:
+      primary_name: "Test Person"
 `
 	err := os.WriteFile(personsFile, []byte(personsContent), 0644)
 	require.NoError(t, err)
@@ -399,7 +379,6 @@ func TestValidateRepositoryReferences(t *testing.T) {
 	eventsFile := filepath.Join(tmpDir, "events.glx")
 	eventsContent := `events:
   event-456:
-    version: "1.0"
     type: birth
     place: place-nonexistent
     participants:
@@ -483,8 +462,7 @@ func TestRunValidate(t *testing.T) {
 				testFile := filepath.Join(tmpDir, "test.glx")
 				content := `persons:
   person-123:
-    version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "Test"
 `
 				err := os.WriteFile(testFile, []byte(content), 0644)
@@ -501,8 +479,7 @@ func TestRunValidate(t *testing.T) {
 				testFile := filepath.Join(tmpDir, "test.glx")
 				content := `persons:
   person-123:
-    version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "Test"
 `
 				err := os.WriteFile(testFile, []byte(content), 0644)
@@ -586,9 +563,7 @@ func TestBasicValidateEntity(t *testing.T) {
 		{
 			name:       "relationship missing type",
 			entityType: "relationship",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 2, // missing type and persons
 		},
@@ -596,8 +571,7 @@ func TestBasicValidateEntity(t *testing.T) {
 			name:       "relationship missing persons",
 			entityType: "relationship",
 			entity: map[string]interface{}{
-				"version": "1.0",
-				"type":    "marriage",
+				"type": "marriage",
 			},
 			vocabs: nil,
 			expect: 1, // missing persons
@@ -605,63 +579,49 @@ func TestBasicValidateEntity(t *testing.T) {
 		{
 			name:       "event missing type",
 			entityType: "event",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 1,
 		},
 		{
 			name:       "place missing name",
 			entityType: "place",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 1,
 		},
 		{
 			name:       "source missing title",
 			entityType: "source",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 1,
 		},
 		{
 			name:       "citation missing source",
 			entityType: "citation",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 1,
 		},
 		{
 			name:       "repository missing name",
 			entityType: "repository",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 1,
 		},
 		{
 			name:       "assertion missing subject",
 			entityType: "assertion",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 3, // missing subject, claim, and sources/citations
 		},
 		{
 			name:       "media missing uri",
 			entityType: "media",
-			entity: map[string]interface{}{
-				"version": "1.0",
-			},
+			entity: map[string]interface{}{},
 			vocabs: nil,
 			expect: 1,
 		},
@@ -669,7 +629,6 @@ func TestBasicValidateEntity(t *testing.T) {
 			name:       "relationship with vocab validation",
 			entityType: "relationship",
 			entity: map[string]interface{}{
-				"version": "1.0",
 				"type":    "unknown-type",
 				"persons": []string{"person-1"},
 			},

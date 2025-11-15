@@ -1,7 +1,6 @@
 # Invalid: Invalid media_type value
 media:
   media-12345678:
-    version: "1.0"
     media_type: invalid_type
     file_path: "test.jpg"
     title: "Test photo"

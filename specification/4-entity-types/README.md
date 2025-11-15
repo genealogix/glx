@@ -132,15 +132,15 @@ Media
 
 | Entity | Required Fields | Unique ID | Versioned | Hierarchical |
 |--------|-----------------|-----------|-----------|--------------|
-| Person | id, version | ✓ | ✓ | - |
-| Relationship | id, version, type, people | ✓ | ✓ | - |
-| Event | id, version, type | ✓ | ✓ | - |
-| Place | id, version, name | ✓ | ✓ | ✓ (parent) |
-| Assertion | id, version, subject, property | ✓ | ✓ | - |
-| Source | id, version, title | ✓ | ✓ | - |
-| Citation | id, version, source | ✓ | ✓ | - |
-| Repository | id, version, name | ✓ | ✓ | - |
-| Media | id, version | ✓ | ✓ | - |
+| Person | id | ✓ | ✓ | - |
+| Relationship | id, type, people | ✓ | ✓ | - |
+| Event | id, type | ✓ | ✓ | - |
+| Place | id, name | ✓ | ✓ | ✓ (parent) |
+| Assertion | id, subject, property | ✓ | ✓ | - |
+| Source | id, title | ✓ | ✓ | - |
+| Citation | id, source | ✓ | ✓ | - |
+| Repository | id, name | ✓ | ✓ | - |
+| Media | id | ✓ | ✓ | - |
 
 ### ID Format Conventions
 
@@ -170,13 +170,12 @@ The ID suffix can be any format meeting requirements (1-64 alphanumeric and hyph
 ## Entity Lifecycle
 
 ### Creation
-- Each entity is created with a unique ID and version "1.0"
+- Each entity is created with a unique ID
 - `created_at` and `created_by` timestamps are recorded
 - Initial state is valid and complete
 
 ### Modification
 - Entities can be modified; only `modified_at` and `modified_by` change
-- Version number may increment for schema-breaking changes
 - All modifications are tracked in Git history
 
 ### Deletion
@@ -188,7 +187,6 @@ The ID suffix can be any format meeting requirements (1-64 alphanumeric and hyph
 
 All entities must:
 - Have valid, unique IDs in the correct format
-- Have version numbers (semantic versioning)
 - Have timestamps and creator information
 - Pass schema validation against JSON schemas in `specification/schema/v1/`
 - Maintain referential integrity (references to other entities must exist)
@@ -212,12 +210,10 @@ See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for voc
 
 ## Common Fields
 
-All entities share a common set of fields for versioning and traceability.
+All entities share a common set of fields for traceability and organization.
 
 | Field       | Type   | Description                               |
 |-------------|--------|-------------------------------------------|
-| `version`   | string | The schema version (e.g., `"1.0"`)        |
-| `notes`     | string | Free-form notes about the entity          |
 | `tags`      | array  | User-defined tags for organization        |
 
 - **IDs are map keys**: The unique ID for each entity is the key in the map (`person-a1b2c3d4`).

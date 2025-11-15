@@ -1,7 +1,8 @@
 # GLX TODO
 
 - Clean up `specification/4-entity-types/source.md`
-- Ensure all entity type files have a table with the properties and their types
-- Remove `version` field from all entities (Person, Event, Relationship, Place, Assertion, etc.) - versioning handled at archive level
+- Ensure all entity type files have a table with their normal fields, standard properties and their types
 - Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete.
 - remove the custom flag from all vocabularies and property definitions
+- remove glx archive folder references from all examples and documentation
+- remove references to gedcom import and export since it's not implemented yet

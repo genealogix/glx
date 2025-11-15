@@ -1,6 +1,5 @@
 media:
   media-12345678:
-    version: "1.0"
     uri: "file://photos/john-smith-1880.jpg"
     media_type: photo
     file_path: "photos/john-smith-1880.jpg"

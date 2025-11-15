@@ -1,6 +1,5 @@
 events:
   event-23456789:
-    version: "1.0"
     type: "occupation"
     date: "1875"
     place: "place-12345678"

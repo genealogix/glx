@@ -37,7 +37,6 @@ basic-family/
 ### persons/person-mother.glx
 ```yaml
 id: person-11111111
-version: 1.0
 concluded_identity:
   primary_name: "Mary Thompson"
   gender: female
@@ -52,7 +51,6 @@ relationships:
 ### persons/person-father.glx
 ```yaml
 id: person-22222222
-version: 1.0
 concluded_identity:
   primary_name: "Robert Thompson"
   gender: male
@@ -67,7 +65,6 @@ relationships:
 ### persons/person-child-alice.glx
 ```yaml
 id: person-33333333
-version: 1.0
 concluded_identity:
   primary_name: "Alice Thompson"
   gender: female
@@ -80,7 +77,6 @@ relationships:
 ### persons/person-child-bob.glx
 ```yaml
 id: person-44444444
-version: 1.0
 concluded_identity:
   primary_name: "Robert Thompson Jr."
   gender: male
@@ -93,7 +89,6 @@ relationships:
 ### relationships/rel-marriage.glx
 ```yaml
 id: rel-aaaa1111
-version: 1.0
 type: marriage
 persons:
   - person-11111111
@@ -103,7 +98,6 @@ persons:
 ### relationships/rel-parent-alice.glx
 ```yaml
 id: rel-bbbb2222
-version: 1.0
 type: parent-child
 persons:
   - person-11111111
@@ -114,7 +108,6 @@ persons:
 ### relationships/rel-parent-bob.glx
 ```yaml
 id: rel-cccc3333
-version: 1.0
 type: parent-child
 persons:
   - person-11111111

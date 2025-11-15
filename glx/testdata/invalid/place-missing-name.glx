@@ -1,5 +1,4 @@
 # Invalid: Missing required 'name' field
 places:
   place-12345678:
-    version: "1.0"
     type: city

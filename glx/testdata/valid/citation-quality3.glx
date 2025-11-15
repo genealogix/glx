@@ -1,6 +1,5 @@
 citations:
   citation-abc12345:
-    version: "1.0"
     source: source-xyz98765
     quality: 3
     page: "Page 12"

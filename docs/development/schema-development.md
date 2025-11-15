@@ -40,13 +40,12 @@ Every entity schema must include:
   "title": "Person",
   "description": "An individual in the family archive",
   "type": "object",
-  "required": ["version"],
+  "required": ["properties"],
   "properties": {
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version",
-      "examples": ["1.0"]
+    "properties": {
+      "type": "object",
+      "description": "Entity-specific properties",
+      "additionalProperties": true
     }
   },
   "additionalProperties": false
@@ -55,7 +54,6 @@ Every entity schema must include:
 
 **Key Points:**
 - `$schema` and `$id` are required (validated by `glx check-schemas`)
-- `version` field is required for all entities
 - Use `additionalProperties: false` for strict validation
 - Entity IDs come from YAML map keys, not from an `id` field
 
@@ -131,7 +129,6 @@ go test ./glx/...
 
 ### Common Validation Rules
 
-- **Version**: Required, pattern `^\d+\.\d+$`
 - **Entity IDs**: Alphanumeric and hyphens, 1-64 chars
 - **References**: Must use singular entity names
 - **Arrays**: Use `uniqueItems: true` for ID arrays

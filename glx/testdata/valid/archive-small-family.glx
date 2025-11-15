@@ -1,7 +1,6 @@
 # Valid multi-entity archive: Small family with complete relationships
 persons:
   person-john-smith:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
       gender: "male"
@@ -9,14 +8,12 @@ persons:
       death_date: "1920-06-20"
   
   person-mary-brown:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Brown"
       gender: "female"
       birth_date: "1852-03-20"
 
   person-jane-smith:
-    version: "1.0"
     concluded_identity:
       primary_name: "Jane Smith"
       gender: "female"
@@ -24,14 +21,12 @@ persons:
 
 relationships:
   rel-marriage-john-mary:
-    version: "1.0"
     type: "marriage"
     persons:
       - person-john-smith
       - person-mary-brown
   
   rel-parent-child-jane:
-    version: "1.0"
     type: "parent-child"
     persons:
       - person-john-smith
@@ -40,7 +35,6 @@ relationships:
 
 events:
   event-john-birth:
-    version: "1.0"
     type: "birth"
     date: "1850-01-15"
     place: place-leeds
@@ -49,7 +43,6 @@ events:
         role: "principal"
 
   event-marriage:
-    version: "1.0"
     type: "marriage"
     date: "1870-06-15"
     place: place-leeds
@@ -61,44 +54,37 @@ events:
 
 places:
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     type: "city"
     parent: place-yorkshire
   
   place-yorkshire:
-    version: "1.0"
     name: "Yorkshire"
     type: "county"
     parent: place-england
   
   place-england:
-    version: "1.0"
     name: "England"
     type: "country"
 
 sources:
   source-parish-register:
-    version: "1.0"
     title: "St Paul's Parish Register, Leeds"
     repository: repository-leeds-library
 
 repositories:
   repository-leeds-library:
-    version: "1.0"
     name: "Leeds Library Local Studies"
     type: "library"
 
 citations:
   citation-john-birth:
-    version: "1.0"
     source: source-parish-register
     locator: "Birth entry 145, page 23"
     quality: 3
 
 assertions:
   assertion-john-birthdate:
-    version: "1.0"
     subject: person-john-smith
     claim: "Birth date is January 15, 1850"
     citations:

@@ -35,7 +35,6 @@ GENEALOGIX supports various repository types:
 | Property | Type | Description |
 |----------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
-| `version` | string | Schema version (e.g., "1.0") |
 | `name` | string | Name of the repository |
 
 ### Optional Properties

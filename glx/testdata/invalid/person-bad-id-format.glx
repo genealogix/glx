@@ -1,6 +1,5 @@
 # Invalid: Entity ID doesn't match required pattern
 persons:
   bad-id-format:
-    version: "1.0"
     concluded_identity:
       primary_name: "Test Person"

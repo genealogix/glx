@@ -1,5 +1,4 @@
 # Invalid: Missing required 'title' field
 sources:
   source-12345678:
-    version: "1.0"
     type: vital_record

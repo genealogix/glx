@@ -32,7 +32,6 @@ relationships:
 | Property | Type | Description |
 |----------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
-| `version` | string | Schema version (e.g., "1.0") |
 | `type` | string | Relationship type from `vocabularies/relationship-types.glx` |
 | `participants` | array | Array of participant objects defining who is in the relationship |
 

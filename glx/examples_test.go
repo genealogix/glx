@@ -96,20 +96,15 @@ func TestExamples(t *testing.T) {
 				if entityMap, ok := entities.(map[string]interface{}); ok {
 					for entityID, entityData := range entityMap {
 						if entity, ok := entityData.(map[string]interface{}); ok {
-							// Check no 'id' field
-							if _, hasID := entity["id"]; hasID {
-								t.Errorf("%s: %s[%s] must not have 'id' field - the map key is the ID", file, pluralKey, entityID)
-							}
+						// Check no 'id' field
+						if _, hasID := entity["id"]; hasID {
+							t.Errorf("%s: %s[%s] must not have 'id' field - the map key is the ID", file, pluralKey, entityID)
+						}
 
-							// Check version exists
-							if _, hasVersion := entity["version"]; !hasVersion {
-								t.Errorf("%s: %s[%s] missing required 'version' field", file, pluralKey, entityID)
-							}
-
-							// Validate ID format (alphanumeric + hyphens, 1-64 chars)
-							if !isValidEntityID(entityID) {
-								t.Errorf("%s: %s[%s] invalid ID format (must be alphanumeric/hyphens, 1-64 chars)", file, pluralKey, entityID)
-							}
+						// Validate ID format (alphanumeric + hyphens, 1-64 chars)
+						if !isValidEntityID(entityID) {
+							t.Errorf("%s: %s[%s] invalid ID format (must be alphanumeric/hyphens, 1-64 chars)", file, pluralKey, entityID)
+						}
 						}
 					}
 				}

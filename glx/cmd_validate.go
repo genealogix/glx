@@ -21,9 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/genealogix/spec/lib"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 var validateCmd = &cobra.Command{

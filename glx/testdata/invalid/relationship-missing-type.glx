@@ -1,7 +1,6 @@
 # Invalid: Missing required 'type' field
 relationships:
   rel-12345678:
-    version: "1.0"
     participants:
       - person: person-a1b2c3d4
         role: spouse
