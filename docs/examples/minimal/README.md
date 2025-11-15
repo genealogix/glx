@@ -20,7 +20,7 @@ minimal/
 ```yaml
 id: person-abc123
 
-concluded_identity:
+properties:
   primary_name: "John Smith"
 ```
 

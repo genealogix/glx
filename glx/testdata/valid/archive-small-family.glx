@@ -1,20 +1,20 @@
 # Valid multi-entity archive: Small family with complete relationships
 persons:
   person-john-smith:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
       gender: "male"
       birth_date: "1850-01-15"
       death_date: "1920-06-20"
   
   person-mary-brown:
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
       gender: "female"
       birth_date: "1852-03-20"
 
   person-jane-smith:
-    concluded_identity:
+    properties:
       primary_name: "Jane Smith"
       gender: "female"
       birth_date: "1875-08-10"

@@ -1,6 +1,6 @@
 persons:
   person-father:
-    concluded_identity:
+    properties:
       primary_name: "Robert Thompson"
       gender: male
       living: false

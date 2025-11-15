@@ -47,9 +47,6 @@ An assessment of how certain a conclusion is based on available evidence. Common
 
 > **See Also:** For controlled vocabularies, see [Standard Vocabularies](../../specification/5-standard-vocabularies/)
 
-### Concluded Identity
-The resolved or determined identity of a person based on research, including primary name, birth/death dates, and other biographical information.
-
 ### Corroboration
 Supporting evidence from multiple independent sources that agree on a conclusion.
 

@@ -3,14 +3,14 @@
 
 persons:
   person-a1b2c3d4:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
       birth_date: "1850-01-15"
       death_date: "1920-06-20"
       gender: "male"
   
   person-b2c3d4e5:
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
       birth_date: "1852-03-20"
       gender: "female"

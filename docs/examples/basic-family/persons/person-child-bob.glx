@@ -1,6 +1,6 @@
 persons:
   person-bob:
-    concluded_identity:
+    properties:
       primary_name: "Robert Thompson Jr."
       gender: male
       living: true

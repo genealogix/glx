@@ -1,11 +1,11 @@
 # Invalid: Multiple broken cross-references in multi-entity archive
 persons:
   person-john-smith:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
   
   person-mary-brown:
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
 
 relationships:

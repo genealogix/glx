@@ -22,12 +22,12 @@ Every GENEALOGIX file uses the same universal structure:
 # Any .glx or .yaml file
 persons:
   person-abc12345:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
       birth_date: "1850-01-15"
   
   person-def67890:
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
 
 sources:
@@ -45,7 +45,7 @@ relationships: {}
 ```yaml
 persons:
   person-abc12345:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 ```
 
@@ -97,7 +97,7 @@ family-archive/
 # persons/person-abc12345.glx
 persons:
   person-abc12345:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 ```
 
@@ -126,10 +126,10 @@ family-archive/
 # family.glx
 persons:
   person-abc12345:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
   person-def67890:
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
 
 relationships:

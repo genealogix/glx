@@ -1,7 +1,7 @@
 # Invalid: References non-existent relationship
 persons:
   person-12345678:
-    concluded_identity:
+    properties:
       primary_name: "Test Person"
     relationships:
       - rel-nonexistent

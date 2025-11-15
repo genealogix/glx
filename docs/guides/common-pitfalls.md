@@ -142,7 +142,7 @@ persons:
 # ✅ Correct: Consistent
 persons:
   person-john:
-    concluded_identity:
+    properties:
       primary_name: "John"
 ```
 

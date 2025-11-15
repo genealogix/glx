@@ -515,7 +515,7 @@ GENEALOGIX Equivalent:
 ```yaml
 persons:
   person-john-smith:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 
 assertions:

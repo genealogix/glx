@@ -82,7 +82,7 @@ assertions:
 | GEDCOM | GENEALOGIX | Notes |
 |--------|------------|-------|
 | `INDI` | Person | Core entity |
-| `NAME` | Person.concluded_identity | Structured format |
+| `NAME` | Person.properties.primary_name | Structured format |
 | `BIRT` | Event (birth) | Separate entity |
 | `DEAT` | Event (death) | Separate entity |
 | `OCCU` | Event (occupation) | Separate entity |
@@ -139,7 +139,7 @@ See [Confidence Levels](../../specification/5-standard-vocabularies/confidence-l
 
 **GENEALOGIX:**
 ```yaml
-concluded_identity:
+properties:
   primary_name: "John Smith"
 ```
 

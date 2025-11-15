@@ -2,5 +2,5 @@
 persons:
   person-12345678:
     id: person-12345678
-    concluded_identity:
+    properties:
       primary_name: "Test Person"

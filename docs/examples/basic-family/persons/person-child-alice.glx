@@ -1,6 +1,6 @@
 persons:
   person-alice:
-    concluded_identity:
+    properties:
       primary_name: "Alice Thompson"
       gender: female
       living: true

@@ -193,13 +193,11 @@ GENEALOGIX uses YAML files with `.glx` extension. Entities are stored as maps wh
 # archive.glx
 persons:
   person-john-smith:
-    version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 
 relationships:
   rel-marriage:
-    version: "1.0"
     type: "marriage"
     persons:
       - person-john-smith
@@ -207,7 +205,6 @@ relationships:
 
 events:
   event-john-birth:
-    version: "1.0"
     type: "birth"
     date: "1850-01-15"
     place: place-leeds
@@ -221,8 +218,7 @@ Each file contains one entity type:
 # persons/person-john-smith.glx
 persons:
   person-john-smith:
-    version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 ```
 
@@ -230,7 +226,7 @@ persons:
 # events/event-john-birth.glx
 events:
   event-john-birth:
-    version: "1.0"
+    
     type: "birth"
     date: "1850-01-15"
     place: place-leeds

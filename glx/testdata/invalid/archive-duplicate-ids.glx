@@ -1,11 +1,11 @@
 # Invalid: Contains duplicate entity IDs
 persons:
   person-duplicate:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
   
   person-duplicate:  # ERROR: Duplicate ID
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
 
 places:

@@ -1,6 +1,6 @@
 persons:
   person-abcdef12:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
       gender: "male"
       living: false

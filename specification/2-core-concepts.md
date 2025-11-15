@@ -408,11 +408,11 @@ places:
 
 persons:
   person-john-smith:
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 
   person-mary-brown:
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
 
 events:

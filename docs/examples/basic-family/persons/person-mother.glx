@@ -1,6 +1,6 @@
 persons:
   person-mother:
-    concluded_identity:
+    properties:
       primary_name: "Mary Thompson"
       gender: female
       living: false

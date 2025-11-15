@@ -1,6 +1,6 @@
 persons:
   person-mary-brown-1852:
-    concluded_identity:
+    properties:
       primary_name: "Mary Brown"
       birth_date: "1852-03-20"
       death_date: "1930-08-15"
