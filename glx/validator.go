@@ -505,8 +505,8 @@ func CollectAllEntities(rootPath string) (map[string]map[string]bool, []string, 
 }
 
 // ValidateRepositoryReferences validates all cross-references across the entire repository
-func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[string]bool) []string {
-	var issues []string
+func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[string]bool) ([]string, []string) {
+	var issues, warnings []string
 
 	filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -532,7 +532,9 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 			for relID, relData := range relationships {
 				if rel, ok := relData.(map[string]interface{}); ok {
 					// Validate properties
-					issues = append(issues, validateEntityProperties(path, "relationships", relID, rel, allEntities, vocabs)...)
+					warns, errs := validateEntityProperties(path, "relationships", relID, rel, allEntities, vocabs)
+					warnings = append(warnings, warns...)
+					issues = append(issues, errs...)
 
 					// Check participants reference valid persons
 					if participants, ok := rel["participants"].([]interface{}); ok {
@@ -565,7 +567,9 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 			for eventID, eventData := range events {
 				if event, ok := eventData.(map[string]interface{}); ok {
 					// Validate properties
-					issues = append(issues, validateEntityProperties(path, "events", eventID, event, allEntities, vocabs)...)
+					warns, errs := validateEntityProperties(path, "events", eventID, event, allEntities, vocabs)
+					warnings = append(warnings, warns...)
+					issues = append(issues, errs...)
 
 					// Check place references
 					if placeID, ok := event["place"].(string); ok {
@@ -594,7 +598,9 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 			for placeID, placeData := range places {
 				if place, ok := placeData.(map[string]interface{}); ok {
 					// Validate properties
-					issues = append(issues, validateEntityProperties(path, "places", placeID, place, allEntities, vocabs)...)
+					warns, errs := validateEntityProperties(path, "places", placeID, place, allEntities, vocabs)
+					warnings = append(warnings, warns...)
+					issues = append(issues, errs...)
 
 					// Check parent place references
 					if parentID, ok := place["parent"].(string); ok {
@@ -606,11 +612,13 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 			}
 		}
 
-		// Validate persons (only needs property validation for now)
+		// Validate persons
 		if persons, ok := doc["persons"].(map[string]interface{}); ok {
 			for personID, personData := range persons {
 				if person, ok := personData.(map[string]interface{}); ok {
-					issues = append(issues, validateEntityProperties(path, "persons", personID, person, allEntities, vocabs)...)
+					warns, errs := validateEntityProperties(path, "persons", personID, person, allEntities, vocabs)
+					warnings = append(warnings, warns...)
+					issues = append(issues, errs...)
 				}
 			}
 		}
@@ -654,7 +662,9 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 			for assertionID, assertionData := range assertions {
 				if assertion, ok := assertionData.(map[string]interface{}); ok {
 					// Semantic validation for assertions
-					issues = append(issues, validateAssertionSemantics(path, assertionID, assertion, allEntities, vocabs)...)
+					warns, errs := validateAssertionSemantics(path, assertionID, assertion, allEntities, vocabs)
+					warnings = append(warnings, warns...)
+					issues = append(issues, errs...)
 
 					// Check subject references (could be person, event, relationship, place)
 					if subjectID, ok := assertion["subject"].(string); ok {
@@ -695,16 +705,15 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 
 		return nil
 	})
-
-	return issues
+	return issues, warnings
 }
 
 // validateEntityProperties validates the `properties` map on an entity.
-func validateEntityProperties(path, entityType, entityID string, entity map[string]interface{}, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) []string {
-	var issues []string
+func validateEntityProperties(path, entityType, entityID string, entity map[string]interface{}, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
 	properties, ok := entity["properties"].(map[string]interface{})
 	if !ok {
-		return issues // No properties to validate
+		return warnings, errors // No properties to validate
 	}
 
 	var vocab map[string]*lib.PropertyDefinition
@@ -718,18 +727,18 @@ func validateEntityProperties(path, entityType, entityID string, entity map[stri
 	case "places":
 		vocab = vocabs.PlaceProperties
 	default:
-		return issues // Not an entity type with properties
+		return warnings, errors // Not an entity type with properties
 	}
 
 	if vocab == nil {
-		issues = append(issues, fmt.Sprintf("warning: %s: %s[%s]: no property vocabulary found for entity type '%s'", path, entityType, entityID, entityType))
-		return issues
+		warnings = append(warnings, fmt.Sprintf("%s: %s[%s]: no property vocabulary found for entity type '%s'", path, entityType, entityID, entityType))
+		return warnings, errors
 	}
 
 	for key, value := range properties {
 		propDef, exists := vocab[key]
 		if !exists {
-			issues = append(issues, fmt.Sprintf("warning: %s: %s[%s]: unknown property '%s'", path, entityType, entityID, key))
+			warnings = append(warnings, fmt.Sprintf("%s: %s[%s]: unknown property '%s'", path, entityType, entityID, key))
 			continue
 		}
 
@@ -737,30 +746,30 @@ func validateEntityProperties(path, entityType, entityID string, entity map[stri
 		if propDef.ReferenceType != "" {
 			if refID, ok := value.(string); ok {
 				if _, refExists := allEntities[propDef.ReferenceType][refID]; !refExists {
-					issues = append(issues, fmt.Sprintf("%s: %s[%s]: property '%s' references non-existent %s: %s", path, entityType, entityID, key, propDef.ReferenceType, refID))
+					errors = append(errors, fmt.Sprintf("%s: %s[%s]: property '%s' references non-existent %s: %s", path, entityType, entityID, key, propDef.ReferenceType, refID))
 				}
 			}
 			// Note: This does not handle temporal values yet, as per the plan.
 		}
 	}
-	return issues
+	return warnings, errors
 }
 
 // validateAssertionSemantics performs semantic validation for a single assertion.
-func validateAssertionSemantics(path, assertionID string, assertion map[string]interface{}, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) []string {
-	var issues []string
+func validateAssertionSemantics(path, assertionID string, assertion map[string]interface{}, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
 	hasParticipant := assertion["participant"] != nil
 	hasClaim := assertion["claim"] != nil && assertion["claim"] != ""
 	hasValue := assertion["value"] != nil && assertion["value"] != ""
 
 	// Rule: `participant` and `value` are mutually exclusive
 	if hasParticipant && hasValue {
-		issues = append(issues, fmt.Sprintf("%s: assertions[%s]: participant and value cannot both be present", path, assertionID))
+		errors = append(errors, fmt.Sprintf("%s: assertions[%s]: participant and value cannot both be present", path, assertionID))
 	}
 
 	// Rule: `participant` and `claim` are mutually exclusive
 	if hasParticipant && hasClaim {
-		issues = append(issues, fmt.Sprintf("%s: assertions[%s]: participant and claim cannot both be present", path, assertionID))
+		errors = append(errors, fmt.Sprintf("%s: assertions[%s]: participant and claim cannot both be present", path, assertionID))
 	}
 
 	// Validate participant structure if it exists
@@ -769,38 +778,38 @@ func validateAssertionSemantics(path, assertionID string, assertion map[string]i
 			// Rule: participant.person must exist
 			if personID, ok := participant["person"].(string); ok {
 				if _, personExists := allEntities["persons"][personID]; !personExists {
-					issues = append(issues, fmt.Sprintf("%s: assertions[%s]: participant.person references non-existent person: %s", path, assertionID, personID))
+					errors = append(errors, fmt.Sprintf("%s: assertions[%s]: participant.person references non-existent person: %s", path, assertionID, personID))
 				}
 			} else {
-				issues = append(issues, fmt.Sprintf("%s: assertions[%s]: participant.person is required and must be a string", path, assertionID))
+				errors = append(errors, fmt.Sprintf("%s: assertions[%s]: participant.person is required and must be a string", path, assertionID))
 			}
 
 			// Rule: participant.role must exist in vocabulary if present
 			if role, ok := participant["role"].(string); ok && role != "" {
 				if _, roleExists := vocabs.ParticipantRoles[role]; !roleExists {
-					issues = append(issues, fmt.Sprintf("%s: assertions[%s]: participant.role references non-existent role: %s", path, assertionID, role))
+					errors = append(errors, fmt.Sprintf("%s: assertions[%s]: participant.role references non-existent role: %s", path, assertionID, role))
 				}
 			}
 		} else {
-			issues = append(issues, fmt.Sprintf("%s: assertions[%s]: participant must be a map", path, assertionID))
+			errors = append(errors, fmt.Sprintf("%s: assertions[%s]: participant must be a map", path, assertionID))
 		}
 	} else { // This is a claim-based assertion
 		subjectID, ok := assertion["subject"].(string)
 		if !ok || subjectID == "" {
 			// This is already caught by schema validation, but good to be safe.
-			return issues
+			return warnings, errors
 		}
 
 		entityType := getEntityType(subjectID, allEntities)
 		if entityType == "" {
 			// This is handled by the generic reference check, so we can skip.
-			return issues
+			return warnings, errors
 		}
 
 		claim, ok := assertion["claim"].(string)
 		if !ok || claim == "" {
 			// Already caught by schema validation.
-			return issues
+			return warnings, errors
 		}
 
 		var vocab map[string]*lib.PropertyDefinition
@@ -817,16 +826,14 @@ func validateAssertionSemantics(path, assertionID string, assertion map[string]i
 
 		if vocab != nil {
 			if _, exists := vocab[claim]; !exists {
-				// According to the plan, this is a soft warning, not a hard error.
-				// We will prepend "warning: " to the issue string.
-				issues = append(issues, fmt.Sprintf("warning: %s: assertions[%s]: unknown claim '%s' for entity type '%s'", path, assertionID, claim, entityType))
+				// This is a soft warning
+				warnings = append(warnings, fmt.Sprintf("%s: assertions[%s]: unknown claim '%s' for entity type '%s'", path, assertionID, claim, entityType))
 			}
 		} else {
-			issues = append(issues, fmt.Sprintf("warning: %s: assertions[%s]: no property vocabulary found for entity type '%s'", path, assertionID, entityType))
+			warnings = append(warnings, fmt.Sprintf("%s: assertions[%s]: no property vocabulary found for entity type '%s'", path, assertionID, entityType))
 		}
 	}
-
-	return issues
+	return warnings, errors
 }
 
 
