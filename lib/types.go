@@ -40,6 +40,12 @@ type GLXFile struct {
 	RepositoryTypes   map[string]*RepositoryType   `yaml:"repository_types,omitempty"`
 	MediaTypes        map[string]*MediaType        `yaml:"media_types,omitempty"`
 	QualityRatings    map[string]*QualityRating    `yaml:"quality_ratings,omitempty"`
+
+	// Property vocabularies
+	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
+	EventProperties        map[string]*PropertyDefinition `yaml:"event_properties,omitempty"`
+	RelationshipProperties map[string]*PropertyDefinition `yaml:"relationship_properties,omitempty"`
+	PlaceProperties        map[string]*PropertyDefinition `yaml:"place_properties,omitempty"`
 }
 
 // ============================================================================
@@ -50,18 +56,9 @@ type GLXFile struct {
 
 // Person represents an individual in the family archive.
 type Person struct {
-	Version           string             `yaml:"version"`
-	ConcludedIdentity *ConcludedIdentity `yaml:"concluded_identity,omitempty"`
-	Relationships     []string           `yaml:"relationships,omitempty" refType:"relationships"`
-	Notes             string             `yaml:"notes,omitempty"`
-	Tags              []string           `yaml:"tags,omitempty"`
-}
-
-// ConcludedIdentity represents a researcher's conclusion about an individual's identity.
-type ConcludedIdentity struct {
-	PrimaryName string `yaml:"primary_name,omitempty"`
-	Gender      string `yaml:"gender,omitempty"`
-	Living      *bool  `yaml:"living,omitempty"`
+	Properties map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes      string                 `yaml:"notes,omitempty"`
+	Tags       []string               `yaml:"tags,omitempty"`
 }
 
 // Relationship represents a relationship between two or more people.
@@ -72,9 +69,9 @@ type Relationship struct {
 	Participants []RelationshipParticipant `yaml:"participants,omitempty"`
 	StartEvent   string                    `yaml:"start_event,omitempty" refType:"events"`
 	EndEvent     string                    `yaml:"end_event,omitempty" refType:"events"`
+	Properties   map[string]interface{}    `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Description  string                    `yaml:"description,omitempty"`
 	Notes        string                    `yaml:"notes,omitempty"`
-	Assertions   []string                  `yaml:"assertions,omitempty" refType:"assertions"`
 	Tags         []string                  `yaml:"tags,omitempty"`
 }
 
@@ -86,15 +83,15 @@ type RelationshipParticipant struct {
 
 // Event represents a genealogical event.
 type Event struct {
-	Version      string             `yaml:"version"`
-	Type         string             `yaml:"type" refType:"event_types"`
-	PlaceID      string             `yaml:"place,omitempty" refType:"places"`
-	Value        string             `yaml:"value,omitempty"`
-	Date         *EventDate         `yaml:"date,omitempty"`
-	Participants []EventParticipant `yaml:"participants,omitempty"`
-	Description  string             `yaml:"description,omitempty"`
-	Notes        string             `yaml:"notes,omitempty"`
-	Tags         []string           `yaml:"tags,omitempty"`
+	Type         string                 `yaml:"type" refType:"event_types"`
+	PlaceID      string                 `yaml:"place,omitempty" refType:"places"`
+	Value        string                 `yaml:"value,omitempty"`
+	Date         *EventDate             `yaml:"date,omitempty"`
+	Participants []EventParticipant     `yaml:"participants,omitempty"`
+	Properties   map[string]interface{} `yaml:"properties,omitempty"`  // Vocabulary-defined properties
+	Description  string                 `yaml:"description,omitempty"`
+	Notes        string                 `yaml:"notes,omitempty"`
+	Tags         []string               `yaml:"tags,omitempty"`
 }
 
 // EventDate can be a simple string or a date range.
@@ -113,15 +110,15 @@ type EventParticipant struct {
 
 // Place represents a geographical location.
 type Place struct {
-	Version          string            `yaml:"version"`
-	Name             string            `yaml:"name"`
-	ParentID         string            `yaml:"parent,omitempty" refType:"places"`
-	Type             string            `yaml:"type,omitempty" refType:"place_types"`
-	AlternativeNames []AlternativeName `yaml:"alternative_names,omitempty"`
-	Latitude         *float64          `yaml:"latitude,omitempty"`
-	Longitude        *float64          `yaml:"longitude,omitempty"`
-	Notes            string            `yaml:"notes,omitempty"`
-	Tags             []string          `yaml:"tags,omitempty"`
+	Name             string                 `yaml:"name"`
+	ParentID         string                 `yaml:"parent,omitempty" refType:"places"`
+	Type             string                 `yaml:"type,omitempty" refType:"place_types"`
+	AlternativeNames []AlternativeName      `yaml:"alternative_names,omitempty"`
+	Latitude         *float64               `yaml:"latitude,omitempty"`
+	Longitude        *float64               `yaml:"longitude,omitempty"`
+	Properties       map[string]interface{} `yaml:"properties,omitempty"`  // Vocabulary-defined properties
+	Notes            string                 `yaml:"notes,omitempty"`
+	Tags             []string               `yaml:"tags,omitempty"`
 }
 
 // AlternativeName is a historical or alternative name for a place.
@@ -197,15 +194,22 @@ type Repository struct {
 
 // Assertion represents a conclusion made by a researcher.
 type Assertion struct {
-	Version    string   `yaml:"version"`
-	Subject    string   `yaml:"subject" refType:"persons,events,relationships,places"`
-	Claim      string   `yaml:"claim"`
-	Value      string   `yaml:"value,omitempty"`
-	Confidence string   `yaml:"confidence,omitempty" refType:"confidence_levels"`
-	Sources    []string `yaml:"sources,omitempty" refType:"sources"`
-	Citations  []string `yaml:"citations,omitempty" refType:"citations"`
-	Notes      string   `yaml:"notes,omitempty"`
-	Tags       []string `yaml:"tags,omitempty"`
+	Subject     string                `yaml:"subject" refType:"persons,events,relationships,places"`
+	Claim       string                `yaml:"claim,omitempty"`  // Optional, not present if participant exists
+	Value       string                `yaml:"value,omitempty"`  // Not present if participant exists
+	Participant *AssertionParticipant `yaml:"participant,omitempty"`  // Not present if value exists
+	Confidence  string                `yaml:"confidence,omitempty" refType:"confidence_levels"`
+	Sources     []string              `yaml:"sources,omitempty" refType:"sources"`
+	Citations   []string              `yaml:"citations,omitempty" refType:"citations"`
+	Notes       string                `yaml:"notes,omitempty"`
+	Tags        []string              `yaml:"tags,omitempty"`
+}
+
+// AssertionParticipant represents a participant in an assertion (used for participant-based claims).
+type AssertionParticipant struct {
+	Person string `yaml:"person" refType:"persons"`
+	Role   string `yaml:"role,omitempty" refType:"participant_roles"`
+	Notes  string `yaml:"notes,omitempty"`
 }
 
 // Media represents a media object, like a photo or document.
@@ -295,6 +299,23 @@ type QualityRating struct {
 	Custom      *bool    `yaml:"custom,omitempty"`
 }
 
+// PropertyDefinition defines a property that can be used on entities.
+// value_type and reference_type are mutually exclusive.
+type PropertyDefinition struct {
+	Label         string `yaml:"label"`
+	Description   string `yaml:"description,omitempty"`
+	ValueType     string `yaml:"value_type,omitempty"`      // string, date, integer, boolean
+	ReferenceType string `yaml:"reference_type,omitempty"`  // persons, places, events, relationships, etc.
+	Temporal      *bool  `yaml:"temporal,omitempty"`        // Can this property change over time?
+	Custom        *bool  `yaml:"custom,omitempty"`
+}
+
+// TemporalValue represents a single entry in the history of a temporal property.
+type TemporalValue struct {
+	Value interface{} `yaml:"value"`
+	Date  string      `yaml:"date,omitempty"`  // FamilySearch normalized date string
+}
+
 // Merge combines another GLXFile into this one, returning duplicate IDs as errors.
 // Duplicates are fatal errors for both entities and vocabularies.
 func (g *GLXFile) Merge(other *GLXFile) []string {
@@ -321,6 +342,12 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates = append(duplicates, mergeMap("participant_roles", g.ParticipantRoles, other.ParticipantRoles)...)
 	duplicates = append(duplicates, mergeMap("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels)...)
 	duplicates = append(duplicates, mergeMap("quality_ratings", g.QualityRatings, other.QualityRatings)...)
+
+	// Merge property vocabularies
+	duplicates = append(duplicates, mergeMap("person_properties", g.PersonProperties, other.PersonProperties)...)
+	duplicates = append(duplicates, mergeMap("event_properties", g.EventProperties, other.EventProperties)...)
+	duplicates = append(duplicates, mergeMap("relationship_properties", g.RelationshipProperties, other.RelationshipProperties)...)
+	duplicates = append(duplicates, mergeMap("place_properties", g.PlaceProperties, other.PlaceProperties)...)
 
 	return duplicates
 }

@@ -154,8 +154,9 @@ All GENEALOGIX files use the same structure:
 persons:
   person-a1b2c3d4:
     version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
+      born_on: "1850-01-15"
 
 sources:
   source-12345678:

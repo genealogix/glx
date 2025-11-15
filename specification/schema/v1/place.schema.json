@@ -2,20 +2,19 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://schema.genealogix.io/v1/place",
   "title": "Place",
-  "description": "A geographic location in the family archive with support for hierarchies and alternative names. ID comes from the map key in the parent structure.",
+  "description": "A geographical location. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "name"],
+  "required": ["name"],
   "properties": {
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version",
-      "examples": ["1.0"]
-    },
     "name": {
       "type": "string",
       "minLength": 1,
       "description": "Primary name of the place"
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the place",
+      "additionalProperties": true
     },
     "parent": {
       "type": ["string", "null"],

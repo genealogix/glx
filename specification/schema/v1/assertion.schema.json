@@ -4,34 +4,120 @@
   "title": "Assertion",
   "description": "A source-backed claim about an entity. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "subject", "claim"],
-  "anyOf": [
-    { "required": ["sources"] },
-    { "required": ["citations"] }
+  "required": ["subject"],
+  "allOf": [
+    {
+      "description": "Must have evidence - either sources or citations",
+      "anyOf": [
+        { "required": ["sources"] },
+        { "required": ["citations"] }
+      ]
+    },
+    {
+      "description": "Cannot have both claim and participant",
+      "not": {
+        "required": ["claim", "participant"]
+      }
+    },
+    {
+      "description": "Cannot have both value and participant",
+      "not": {
+        "required": ["value", "participant"]
+      }
+    },
+    {
+      "description": "Must have either claim or participant (but not both)",
+      "anyOf": [
+        { "required": ["claim"] },
+        { "required": ["participant"] }
+      ]
+    }
   ],
   "properties": {
-    "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
-    "subject": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
-    "claim": { "type": "string", "minLength": 1 },
-    "value": { "type": "string" },
-    "type": { "type": "string" },
-    "evidence_type": { "type": "string" },
-    "confidence": { "type": "string" },
-    "research_notes": { "type": "string" },
-    "notes": { "type": "string" },
+    "subject": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "The entity this assertion is about"
+    },
+    "claim": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The property or fact being claimed (required if not using participant)"
+    },
+    "value": {
+      "type": "string",
+      "description": "The concluded value of the claim (cannot be used with participant)"
+    },
+    "participant": {
+      "type": "object",
+      "description": "Participant in an event or relationship (mutually exclusive with claim/value)",
+      "required": ["person"],
+      "properties": {
+        "person": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]{1,64}$",
+          "description": "Person involved in the participant assertion (required)"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Role of the participant"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about this participant"
+        }
+      },
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "string",
+      "description": "Confidence level in this assertion"
+    },
+    "evidence_type": {
+      "type": "string",
+      "description": "Quality classification of evidence"
+    },
+    "research_notes": {
+      "type": "string",
+      "description": "Detailed research notes explaining the conclusion"
+    },
+    "notes": {
+      "type": "string",
+      "description": "General notes about the assertion"
+    },
+    "type": {
+      "type": "string",
+      "description": "Classification of assertion type"
+    },
     "sources": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
+      "description": "Direct source references",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
       "uniqueItems": true
     },
     "citations": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
+      "description": "Citation references providing evidence",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
       "uniqueItems": true
     },
-    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+    "tags": {
+      "type": "array",
+      "description": "Tags for categorization",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
   },
   "additionalProperties": true
 }

@@ -57,6 +57,18 @@ var ConfidenceLevelsSchema []byte
 //go:embed vocabularies/quality-ratings.schema.json
 var QualityRatingsSchema []byte
 
+//go:embed vocabularies/person-properties.schema.json
+var PersonPropertiesSchema []byte
+
+//go:embed vocabularies/event-properties.schema.json
+var EventPropertiesSchema []byte
+
+//go:embed vocabularies/relationship-properties.schema.json
+var RelationshipPropertiesSchema []byte
+
+//go:embed vocabularies/place-properties.schema.json
+var PlacePropertiesSchema []byte
+
 // EntitySchemas maps entity type names to their embedded schema content
 var EntitySchemas = map[string][]byte{
 	"person":       PersonSchema,
@@ -72,12 +84,16 @@ var EntitySchemas = map[string][]byte{
 
 // VocabularySchemas maps vocabulary type names to their embedded schema content
 var VocabularySchemas = map[string][]byte{
-	"relationship_types": RelationshipTypesSchema,
-	"event_types":        EventTypesSchema,
-	"place_types":        PlaceTypesSchema,
-	"repository_types":   RepositoryTypesSchema,
-	"participant_roles":  ParticipantRolesSchema,
-	"media_types":        MediaTypesSchema,
-	"confidence_levels":  ConfidenceLevelsSchema,
-	"quality_ratings":    QualityRatingsSchema,
+	"relationship_types":      RelationshipTypesSchema,
+	"event_types":             EventTypesSchema,
+	"place_types":             PlaceTypesSchema,
+	"repository_types":        RepositoryTypesSchema,
+	"participant_roles":       ParticipantRolesSchema,
+	"media_types":             MediaTypesSchema,
+	"confidence_levels":       ConfidenceLevelsSchema,
+	"quality_ratings":         QualityRatingsSchema,
+	"person_properties":       PersonPropertiesSchema,
+	"event_properties":        EventPropertiesSchema,
+	"relationship_properties": RelationshipPropertiesSchema,
+	"place_properties":        PlacePropertiesSchema,
 }

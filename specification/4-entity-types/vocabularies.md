@@ -694,6 +694,208 @@ Common relationship roles:
 
 ---
 
+## Property Vocabularies
+
+Property vocabularies define the custom properties available for each entity type. These properties represent "concluded" or "accepted" values and support flexible, extensible data modeling beyond the standard entity fields.
+
+### Overview
+
+Property vocabularies enable archives to:
+
+- Define custom properties for any entity type
+- Control property value types (string, date, integer, boolean)
+- Validate entity references for reference-type properties
+- Support temporal properties that change over time
+- Extend GENEALOGIX for domain-specific needs
+
+### Files
+
+Property vocabulary files are included in the `vocabularies/` directory:
+
+```
+vocabularies/
+├── person-properties.glx
+├── event-properties.glx
+├── relationship-properties.glx
+└── place-properties.glx
+```
+
+### Person Properties Vocabulary
+
+**File**: `vocabularies/person-properties.glx`
+
+**Used By**: [Person Entity](person.md#properties)
+
+**Purpose**: Defines properties that can be set on person entities (birth date, occupation, residence, etc.)
+
+### Standard Properties
+
+GENEALOGIX provides standard person properties:
+
+| Property | Type | Temporal | Description |
+|----------|------|----------|-------------|
+| `primary_name` | string | Yes | Person's primary or preferred name |
+| `given_name` | string | Yes | Given name(s) |
+| `family_name` | string | Yes | Family or surname |
+| `gender` | string | Yes | Gender identity |
+| `born_on` | date | No | Date of birth |
+| `born_at` | places | No | Place of birth |
+| `died_on` | date | No | Date of death |
+| `died_at` | places | No | Place of death |
+| `occupation` | string | Yes | Profession or trade |
+| `residence` | places | Yes | Place of residence |
+| `religion` | string | Yes | Religious affiliation |
+| `education` | string | Yes | Educational attainment |
+| `ethnicity` | string | Yes | Ethnic background |
+| `nationality` | string | Yes | National citizenship |
+
+### Event Properties Vocabulary
+
+**File**: `vocabularies/event-properties.glx`
+
+**Used By**: [Event Entity](event.md#properties)
+
+**Purpose**: Defines properties that can be set on event entities
+
+Event properties are generally less common than person properties, since most event data is structural (type, date, place, participants). Standard properties include:
+
+- `occurred_on` - When the event occurred
+- `occurred_at` - Where the event occurred
+- `description` - Event description
+- `notes` - Additional notes
+
+### Relationship Properties Vocabulary
+
+**File**: `vocabularies/relationship-properties.glx`
+
+**Used By**: [Relationship Entity](relationship.md#properties)
+
+**Purpose**: Defines properties that can be set on relationship entities
+
+Standard properties include:
+
+- `started_on` - When the relationship began
+- `ended_on` - When the relationship ended
+- `location` - Location of the relationship
+- `description` - Relationship description
+- `notes` - Additional notes
+
+### Place Properties Vocabulary
+
+**File**: `vocabularies/place-properties.glx`
+
+**Used By**: [Place Entity](place.md#properties)
+
+**Purpose**: Defines properties that can be set on place entities
+
+Standard properties include:
+
+- `existed_from` - When the place came into existence
+- `existed_to` - When the place ceased to exist
+- `population` - Population count (temporal)
+- `description` - Place description
+- `notes` - Additional notes
+
+### Property Definition Structure
+
+Each property in a property vocabulary is defined with the following fields:
+
+```yaml
+person_properties:
+  birth_date:
+    label: "Date of Birth"
+    description: "Person's date of birth"
+    value_type: date
+    temporal: false
+    custom: false
+  
+  residence:
+    label: "Residence"
+    description: "Place where person lived"
+    reference_type: places
+    temporal: true
+    custom: false
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label for the property |
+| `description` | No | Detailed description of the property |
+| `value_type` | No* | Data type: `string`, `date`, `integer`, or `boolean` |
+| `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
+| `temporal` | No | Whether property can change over time (default: false) |
+| `custom` | No | Mark as custom property (non-standard) |
+
+*Exactly one of `value_type` or `reference_type` should be specified (neither defaults to `string`)
+
+### Temporal Properties
+
+Properties marked with `temporal: true` support capturing how values change over time:
+
+```yaml
+properties:
+  occupation:
+    - value: "blacksmith"
+      date: "1880"
+    - value: "farmer"
+      date: "FROM 1885 TO 1920"
+  residence:
+    - value: "place-leeds"
+      date: "1900"
+    - value: "place-london"
+      date: "FROM 1920 TO 1950"
+```
+
+See [Data Types - Temporal Values](../6-data-types.md#temporal-values) for complete documentation.
+
+### Adding Custom Properties
+
+Add custom properties for archive-specific needs:
+
+```yaml
+# vocabularies/person-properties.glx
+person_properties:
+  # Standard properties...
+  
+  # Custom properties
+  militia_service:
+    label: "Militia Service"
+    description: "Service in local militia"
+    value_type: string
+    temporal: true
+    custom: true
+  
+  land_holdings:
+    label: "Land Holdings"
+    description: "Land owned by person"
+    reference_type: places
+    temporal: true
+    custom: true
+```
+
+### Context-Aware Validation
+
+Assertions use property vocabularies for context-aware claim validation:
+
+```yaml
+assertions:
+  assertion-john-birth:
+    subject: person-john
+    claim: born_on  # Validated against person_properties
+    value: "1850-01-15"
+    citations: [citation-birth]
+    confidence: high
+```
+
+The validator:
+1. Determines the subject's entity type (person, event, relationship, or place)
+2. Looks up the appropriate property vocabulary for that type
+3. Validates the `claim` against the vocabulary
+4. Emits warnings for unknown claims (allows flexibility for emerging properties)
+5. Validates the value according to the property's `value_type` or `reference_type`
+
+---
+
 ## Vocabulary Validation
 
 The `glx validate` command checks:

@@ -70,6 +70,7 @@ Domain-specific events:
 | `participant.role` | string | Role of participant |
 | `participant.notes` | string | Notes about participant |
 | `value` | string | Value for attribute facts (e.g., "blacksmith" for occupation) |
+| `properties` | object | Vocabulary-defined properties for the event |
 | `age_text` | string | Age at time of event |
 | `cause_text` | string | Cause for event |
 | `description` | string | Narrative description |
@@ -226,22 +227,7 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 
 ## Confidence and Provenance
 
-Events can reference assertions for supporting evidence:
-
-```yaml
-# events/event-birth.glx
-events:
-  event-birth-john:
-    version: "1.0"
-    type: birth
-    date: "1850-01-15"
-    place: place-leeds
-    assertions:
-      - assert-birth-date
-      - assert-birth-place
-```
-
-All supporting evidence for the event is stored in referenced Assertion entities.
+All supporting evidence for an event is stored in [Assertion Entities](assertion.md) that reference the event in their `subject` field. This keeps the event record clean while allowing for a rich, explicit evidence trail.
 
 ## See Also
 

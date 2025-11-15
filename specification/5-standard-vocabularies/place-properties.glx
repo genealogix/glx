@@ -1,0 +1,32 @@
+# Standard Place Properties
+# This file defines the standard properties for place entities.
+# Properties allow capturing historical information about places that doesn't
+# fit into the standard structural fields.
+
+place_properties:
+  existed_from:
+    label: "Existence Start"
+    description: "When the place came into existence"
+    value_type: date
+  
+  existed_to:
+    label: "Existence End"
+    description: "When the place ceased to exist"
+    value_type: date
+  
+  population:
+    label: "Population"
+    description: "Population count"
+    value_type: integer
+    temporal: true
+  
+  description:
+    label: "Place Description"
+    description: "Detailed description of the place"
+    value_type: string
+  
+  notes:
+    label: "Place Notes"
+    description: "Additional notes about the place"
+    value_type: string
+

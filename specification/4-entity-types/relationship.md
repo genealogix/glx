@@ -16,9 +16,9 @@ relationships:
   rel-marriage-john-mary:
     version: "1.0"
     type: marriage
-    persons:
-      - person-john-smith
-      - person-mary-jones
+    participants:
+      - person: person-john-smith
+      - person: person-mary-jones
     start_event: event-marriage-1875
 ```
 
@@ -35,18 +35,17 @@ relationships:
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `version` | string | Schema version (e.g., "1.0") |
 | `type` | string | Relationship type from `vocabularies/relationship-types.glx` |
-| `persons` | array | Array of person IDs participating in the relationship |
+| `participants` | array | Array of participant objects defining who is in the relationship |
 
 ### Optional Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `participants` | array | Alternative format with role information |
+| `properties` | object | Vocabulary-defined properties for the relationship |
 | `start_event` | string | Event that started this relationship |
 | `end_event` | string | Event that ended this relationship |
 | `description` | string | Narrative description of the relationship |
 | `notes` | string | Research notes |
-| `assertions` | array | References to assertion entities |
 | `modified_at` | datetime | Last modification timestamp |
 | `modified_by` | string | User who last modified this record |
 | `tags` | array | Tags for categorization |
@@ -71,9 +70,6 @@ relationships:
   rel-marriage-john-mary:
     version: "1.0"
     type: marriage
-    persons:
-      - person-john-smith
-      - person-mary-jones
     participants:
       - person: person-john-smith
         role: spouse
@@ -91,10 +87,6 @@ relationships:
   rel-parents-alice:
     version: "1.0"
     type: parent-child
-    persons:
-      - person-john-smith
-      - person-mary-smith
-      - person-alice-smith
     participants:
       - person: person-john-smith
         role: parent
@@ -112,10 +104,6 @@ relationships:
   rel-adoption-sarah:
     version: "1.0"
     type: adoption
-    persons:
-      - person-adoptive-father
-      - person-adoptive-mother
-      - person-adopted-child
     participants:
       - person: person-adoptive-father
         role: adoptive-parent
@@ -134,9 +122,9 @@ relationships:
   rel-john-james-blood:
     version: "1.0"
     type: blood-brother  # Custom type from vocabulary
-    persons:
-      - person-john-smith
-      - person-james-brown
+    participants:
+      - person: person-john-smith
+      - person: person-james-brown
     start_event: event-ceremony-1845
     description: "Blood brother ceremony witnessed by tribal elders"
 ```
@@ -168,10 +156,9 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 ## Validation Rules
 
 - Relationship type must be defined in `vocabularies/relationship-types.glx`
-- `persons` array must contain at least 2 person IDs
+- `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
-- If `participants` is used, the person IDs must match those in `persons`
 
 ## File Organization
 

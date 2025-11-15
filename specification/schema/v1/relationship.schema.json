@@ -4,35 +4,34 @@
   "title": "Relationship",
   "description": "A relationship between persons. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "type", "persons"],
+  "required": ["type", "participants"],
   "properties": {
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version"
-    },
     "type": {
       "type": "string",
       "description": "Relationship type key"
     },
-    "persons": {
-      "type": "array",
-      "minItems": 2,
-      "items": {
-        "type": "string",
-        "pattern": "^[a-zA-Z0-9-]{1,64}$"
-      },
-      "description": "IDs of persons participating in relationship",
-      "uniqueItems": true
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the relationship",
+      "additionalProperties": true
     },
     "participants": {
       "type": "array",
-      "description": "Alternative format with participant objects",
+      "description": "Participants in the relationship",
+      "minItems": 2,
       "items": {
         "type": "object",
+        "required": ["person"],
         "properties": {
-          "person": { "type": "string", "pattern": "^[a-zA-Z0-9-]{1,64}$" },
-          "role": { "type": "string" }
+          "person": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Reference to the person"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role of the participant in this relationship"
+          }
         }
       }
     },
@@ -53,11 +52,6 @@
     "notes": {
       "type": "string",
       "description": "Research notes"
-    },
-    "assertions": {
-      "type": "array",
-      "items": { "type": "string", "pattern": "^[a-z0-9/_-]+$" },
-      "uniqueItems": true
     },
     "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
   },

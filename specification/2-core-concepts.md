@@ -49,6 +49,38 @@ citations:
 4. **Research Transparency**: Clear audit trail from source to conclusion
 5. **Confidence Levels**: Assertions can express certainty based on evidence
 
+### Entity Properties vs. Assertions
+
+In addition to assertions (which provide evidence), GENEALOGIX entities can have **properties** that represent the researcher's current conclusions:
+
+```yaml
+# Direct properties on entity (quick recording, no evidence yet)
+persons:
+  person-john:
+    properties:
+      primary_name: "John Smith"
+      born_on: "1850-01-15"
+      occupation: "blacksmith"
+    notes: "Initial data entry"
+
+# Assertions provide evidence for these conclusions
+assertions:
+  assertion-john-occupation:
+    subject: person-john
+    claim: occupation
+    value: blacksmith
+    citations:
+      - citation-1851-census
+    confidence: high
+```
+
+**Key Points:**
+- **Properties** are quick ways to record current conclusions without evidence
+- **Assertions** formally document the evidence supporting those properties
+- Properties can be set before assertions are created (rapid data entry)
+- Assertions provide the research trail explaining WHY properties have certain values
+- Both mechanisms work together: properties for quick recording, assertions for research documentation
+
 ## Evidence Hierarchy
 
 ### Evidence Chain Structure

@@ -198,3 +198,9 @@ places/
 - At least one name (primary or alternative) must exist
 - Type should follow standardized taxonomy
 
+## See Also
+
+- [Event Entity](event.md)
+- [Vocabularies](vocabularies.md#place-types-vocabulary)
+- [Data Types](../6-data-types.md)
+

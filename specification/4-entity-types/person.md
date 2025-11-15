@@ -15,7 +15,7 @@ All GENEALOGIX files use entity type keys at the top level:
 persons:
   person-john-smith-1850:
     version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
 ```
 
@@ -50,45 +50,52 @@ persons:
 
 ## Optional Fields
 
-### `concluded_identity`
+### `properties`
 
 - Type: Object
 - Required: No
-- Description: The researcher's conclusion about this person's identity
+- Description: Vocabulary-defined properties representing the concluded/accepted values for this person
 
 Structure:
 ```yaml
-concluded_identity:
-  primary_name: String
-  gender: String
-  living: Boolean
+properties:
+  primary_name: String      # From person_properties vocabulary
+  given_name: String        # From person_properties vocabulary
+  family_name: String       # From person_properties vocabulary
+  gender: String            # From person_properties vocabulary
+  born_on: Date            # From person_properties vocabulary
+  born_at: "place-id"      # From person_properties vocabulary (reference)
+  died_on: Date            # From person_properties vocabulary
+  died_at: "place-id"      # From person_properties vocabulary (reference)
+  occupation: String        # From person_properties vocabulary
+  residence: "place-id"    # From person_properties vocabulary (reference)
 ```
 
 Example:
 ```yaml
-concluded_identity:
-  primary_name: "Margaret Eleanor Smith"
-  gender: female
-  living: false
+properties:
+  primary_name: "John Smith"
+  given_name: "John"
+  family_name: "Smith"
+  gender: "male"
+  born_on: "1850-01-15"
+  born_at: "place-leeds"
+  died_on: "1920-06-20"
+  died_at: "place-london"
+  occupation: "blacksmith"
+  residence:
+    - value: "place-leeds"
+      date: "1850-1900"
+    - value: "place-london"
+      date: "1900-1920"
 ```
 
-### `assertions`
-
-- Type: Array of Strings
-- Required: No
-- Description: References to assertion files about this person
-
-Example:
-```yaml
-assertions:
-  - biographical/birth/assert-birth-123
-  - biographical/death/assert-death-456
-```
-
-Validation Rules:
-- Each reference MUST point to a valid assertion file
-- Paths are relative to `assertions/` directory
-- File extension `.glx` is implied
+**Key Points:**
+- All properties are optional
+- Property names and types are validated against the `person_properties` vocabulary
+- Properties can be temporal (change over time) - see [Data Types](../6-data-types.md#temporal-values)
+- Custom properties can be added by extending the vocabulary
+- Living status is implied by the presence/absence of `died_on`
 
 ## Complete Example
 
@@ -97,16 +104,11 @@ Validation Rules:
 persons:
   person-margaret-smith-1825:
     version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "Margaret Eleanor Smith"
-      gender: female
-      living: false
-    assertions:
-      - assert-birth-margaret
-      - assert-death-margaret
-    relationships:
-      - rel-parent-child-margaret
-      - rel-marriage-margaret
+      gender: "female"
+      born_on: "1825-04-10"
+      died_on: "1890-11-22"
     notes: |
       Family tradition says she was named after her grandmother.
       Need to verify with census records.
@@ -125,6 +127,7 @@ complete JSON Schema definition.
 
 - [Assertion Entity](assertion.md)
 - [Relationship Entity](relationship.md)
+- [Data Types](../6-data-types.md)
 - [Provenance Tracking](../2-core-concepts.md#provenance-and-confidence)
 
 

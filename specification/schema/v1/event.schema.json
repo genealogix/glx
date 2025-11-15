@@ -2,16 +2,10 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://schema.genealogix.io/v1/event",
   "title": "Event/Fact",
-  "description": "A single occurrence in time and place relevant to the family archive. ID comes from the map key in the parent structure.",
+  "description": "A genealogical event. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "type"],
+  "required": ["type"],
   "properties": {
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version",
-      "examples": ["1.0"]
-    },
     "type": {
       "type": "string",
       "enum": [
@@ -36,6 +30,11 @@
         "other"
       ],
       "description": "Type of event or attribute"
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the event",
+      "additionalProperties": true
     },
     "place": {
       "type": "string",
@@ -106,15 +105,6 @@
         "type": "string",
         "enum": ["confidential", "locked", "privacy", "other"]
       }
-    },
-    "assertions": {
-      "type": "array",
-      "description": "References to assertion files providing evidence",
-      "items": {
-        "type": "string",
-        "pattern": "^[a-z0-9/_-]+$"
-      },
-      "uniqueItems": true
     },
     "notes": {
       "type": "string",

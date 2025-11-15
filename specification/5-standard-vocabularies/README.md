@@ -140,6 +140,79 @@ Defines categories of institutions that hold genealogical sources (archives, lib
 
 ---
 
+## Property Vocabularies
+
+Property vocabularies define the custom properties available for each entity type. These enable flexible, extensible data modeling for person, event, relationship, and place entities.
+
+### Person Properties
+
+Defines standard and custom properties for person entities (birth date, occupation, residence, etc.). Supports temporal properties that change over time.
+
+**File:** `vocabularies/person-properties.glx`
+
+**Standard Properties Include:**
+- `primary_name` - Person's primary name (temporal)
+- `given_name`, `family_name` - Name components (temporal)
+- `gender` - Gender identity (temporal)
+- `born_on` - Date of birth
+- `born_at` - Place of birth (reference)
+- `died_on` - Date of death
+- `died_at` - Place of death (reference)
+- `occupation` - Profession (temporal, reference or string)
+- `residence` - Place of residence (temporal, reference)
+- `religion`, `education`, `ethnicity`, `nationality` - Additional biographical attributes
+
+**See Also:** [Person Entity Documentation](../4-entity-types/person#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#person-properties-vocabulary)
+
+---
+
+### Event Properties
+
+Defines standard and custom properties for event entities.
+
+**File:** `vocabularies/event-properties.glx`
+
+**Standard Properties Include:**
+- `occurred_on` - When the event occurred
+- `occurred_at` - Where the event occurred (reference)
+- `description` - Event description
+
+**See Also:** [Event Entity Documentation](../4-entity-types/event#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#event-properties-vocabulary)
+
+---
+
+### Relationship Properties
+
+Defines standard and custom properties for relationship entities.
+
+**File:** `vocabularies/relationship-properties.glx`
+
+**Standard Properties Include:**
+- `started_on` - When the relationship began
+- `ended_on` - When the relationship ended
+- `location` - Location of the relationship (reference)
+- `description` - Relationship description
+
+**See Also:** [Relationship Entity Documentation](../4-entity-types/relationship#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-properties-vocabulary)
+
+---
+
+### Place Properties
+
+Defines standard and custom properties for place entities.
+
+**File:** `vocabularies/place-properties.glx`
+
+**Standard Properties Include:**
+- `existed_from` - When the place came into existence
+- `existed_to` - When the place ceased to exist
+- `population` - Population count (temporal)
+- `description` - Place description
+
+**See Also:** [Place Entity Documentation](../4-entity-types/place#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#place-properties-vocabulary)
+
+---
+
 ## Customizing Vocabularies
 
 ::: tip Complete Syntax Reference

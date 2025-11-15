@@ -26,14 +26,30 @@ var ConfidenceLevels []byte
 //go:embed quality-ratings.glx
 var QualityRatings []byte
 
+//go:embed person-properties.glx
+var PersonProperties []byte
+
+//go:embed event-properties.glx
+var EventProperties []byte
+
+//go:embed relationship-properties.glx
+var RelationshipProperties []byte
+
+//go:embed place-properties.glx
+var PlaceProperties []byte
+
 // Files maps output filenames to embedded content
 var Files = map[string][]byte{
-	"relationship-types.glx": RelationshipTypes,
-	"event-types.glx":        EventTypes,
-	"place-types.glx":        PlaceTypes,
-	"repository-types.glx":   RepositoryTypes,
-	"participant-roles.glx":  ParticipantRoles,
-	"media-types.glx":        MediaTypes,
-	"confidence-levels.glx":  ConfidenceLevels,
-	"quality-ratings.glx":    QualityRatings,
+	"relationship-types.glx":      RelationshipTypes,
+	"event-types.glx":             EventTypes,
+	"place-types.glx":             PlaceTypes,
+	"repository-types.glx":        RepositoryTypes,
+	"participant-roles.glx":       ParticipantRoles,
+	"media-types.glx":             MediaTypes,
+	"confidence-levels.glx":        ConfidenceLevels,
+	"quality-ratings.glx":         QualityRatings,
+	"person-properties.glx":       PersonProperties,
+	"event-properties.glx":        EventProperties,
+	"relationship-properties.glx": RelationshipProperties,
+	"place-properties.glx":        PlaceProperties,
 }

@@ -103,11 +103,45 @@ citations:
 
 ## Optional Fields
 
+### `participant`
+
+- Type: Object
+- Required: No (mutually exclusive with `claim` and `value`)
+- Description: Used for assertions about a person's participation in an event or relationship (instead of claiming a property value)
+
+Structure:
+```yaml
+participant:
+  person: "person-id"    # Reference to the person (required)
+  role: "participant-role"  # Role of the participant (optional)
+  notes: "string"        # Notes about the participant (optional)
+```
+
+**Key Points:**
+- When `participant` is present, `claim` and `value` must NOT be present
+- When `participant` is present, the implicit claim is "participant"
+- Useful for representing conflicting evidence about who participated in an event or relationship
+
+Example:
+```yaml
+assertions:
+  assertion-witness-john:
+    version: "1.0"
+    subject: event-marriage-1880
+    participant:
+      person: person-john-smith
+      role: witness
+      notes: "Listed as witness on marriage certificate"
+    citations:
+      - citation-marriage-cert
+    confidence: high
+```
+
 ### `value`
 
 - Type: String
-- Required: No (but highly recommended)
-- Description: The concluded value of the claim
+- Required: No for participant assertions; recommended for claim assertions
+- Description: The concluded value of the claim (not used with `participant`)
 
 Example:
 ```yaml
@@ -212,6 +246,84 @@ tags:
   - needs-review
   - conflicting-evidence
   - high-priority
+```
+
+## Participant Assertions
+
+Participant assertions represent evidence about who participated in an event or relationship, including conflicting evidence about participation and roles.
+
+### Participant Assertion Example
+
+```yaml
+# assertions/assertion-marriage-participants.glx
+assertions:
+  assertion-john-married:
+    version: "1.0"
+    subject: event-marriage-1880
+    participant:
+      person: person-john-smith
+      role: groom
+    citations:
+      - citation-marriage-cert
+    confidence: high
+  
+  assertion-jane-married:
+    version: "1.0"
+    subject: event-marriage-1880
+    participant:
+      person: person-jane-doe
+      role: bride
+    citations:
+      - citation-marriage-cert
+    confidence: high
+  
+  assertion-witness-thomas:
+    version: "1.0"
+    subject: event-marriage-1880
+    participant:
+      person: person-thomas-brown
+      role: witness
+      notes: "Witnessed marriage ceremony"
+    citations:
+      - citation-marriage-cert
+    confidence: high
+```
+
+### Conflicting Participant Evidence
+
+```yaml
+# assertions/assertion-conflicting-parents.glx
+assertions:
+  # One source claims person-john is the father
+  assertion-john-father-cert:
+    version: "1.0"
+    subject: event-birth-1850
+    participant:
+      person: person-john-smith
+      role: parent
+      notes: "Listed as father on birth certificate"
+    citations:
+      - citation-birth-cert
+    confidence: high
+  
+  # Another source claims person-thomas is the father
+  assertion-thomas-father-letter:
+    version: "1.0"
+    subject: event-birth-1850
+    participant:
+      person: person-thomas-brown
+      role: parent
+      notes: "Family letter suggests Thomas was the father"
+    citations:
+      - citation-family-letter
+    confidence: low
+    research_notes: |
+      Conflicting evidence about paternity:
+      - Birth certificate (primary source): John Smith
+      - Family letter (secondary source): Thomas Brown
+      
+      Certificate is more reliable, but letter provides alternative possibility.
+      Needs further research.
 ```
 
 ## Usage Patterns
@@ -455,3 +567,4 @@ See [assertion.schema.json](../schema/v1/assertion.schema.json) for the complete
 - [Citation Entity](citation.md) - Evidence references that support assertions
 - [Source Entity](source.md) - Original sources cited by assertions
 - [Person Entity](person.md) - Common subject of assertions
+- [Data Types](../6-data-types.md)

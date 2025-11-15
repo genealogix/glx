@@ -4,50 +4,12 @@
   "title": "Person",
   "description": "An individual in the family archive. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version"],
+  "required": [],
   "properties": {
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version",
-      "examples": ["1.0", "1.1"]
-    },
-    "concluded_identity": {
+    "properties": {
       "type": "object",
-      "description": "Researcher's conclusion about identity",
-      "properties": {
-        "primary_name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Primary name for display"
-        },
-        "gender": {
-          "type": "string",
-          "description": "Gender identity"
-        },
-        "living": {
-          "type": "boolean",
-          "description": "Whether person is currently living"
-        }
-      }
-    },
-    "assertions": {
-      "type": "array",
-      "description": "References to assertion files",
-      "items": {
-        "type": "string",
-        "pattern": "^[a-z0-9/_-]+$"
-      },
-      "uniqueItems": true
-    },
-    "relationships": {
-      "type": "array",
-      "description": "References to relationship files",
-      "items": {
-        "type": "string",
-        "pattern": "^[a-zA-Z0-9-]{1,64}$"
-      },
-      "uniqueItems": true
+      "description": "Vocabulary-defined properties of the person (birth date, gender, etc.)",
+      "additionalProperties": true
     },
     "notes": {
       "type": "string",

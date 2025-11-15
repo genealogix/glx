@@ -41,6 +41,11 @@ Version 0.0.0 (Pre-Release)
 5. [Standard Vocabularies](5-standard-vocabularies/)
    - Standard vocabulary templates for archive initialization
 
+6. [Data Types](6-data-types.md)
+   - Primitive Types (string, date, integer, boolean)
+   - Temporal Values
+   - Reference Types
+
 ## Normative References
 
 This specification uses RFC 2119 keywords (MUST, SHOULD, MAY) for
@@ -77,10 +82,10 @@ This specification is under active development.
 persons:
   person-john-smith-1850:
     version: "1.0"
-    concluded_identity:
+    properties:
       primary_name: "John Smith"
-      gender: male
-      living: false
+      gender: "male"
+      born_on: "1850-01-15"
     notes: "Blacksmith in Leeds, Yorkshire"
 
 # events/event-birth.glx
