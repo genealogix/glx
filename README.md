@@ -34,7 +34,7 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 | **Collaboration** | File sharing only | Git-native workflows |
 | **Evidence Tracking** | Basic source records | Complete evidence chains |
 | **Version Control** | Manual or difficult | Built-in Git integration |
-| **Human Readability** | Binary-like format | Clear YAML structure |
+| **Human Readability** | Don't even try | Clear YAML structure |
 | **Validation** | Syntax only | Schema-based validation |
 | **Extensibility** | Limited | JSON Schema based |
 
