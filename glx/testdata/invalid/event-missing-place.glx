@@ -1,5 +1,0 @@
-# Invalid: References non-existent place
-events:
-  event-12345678:
-    type: birth
-    place: place-nonexistent

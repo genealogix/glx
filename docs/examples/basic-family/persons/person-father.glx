@@ -3,8 +3,3 @@ persons:
     properties:
       primary_name: "Robert Thompson"
       gender: male
-      living: false
-    relationships:
-      - rel-marriage
-      - rel-parent-alice
-      - rel-parent-bob

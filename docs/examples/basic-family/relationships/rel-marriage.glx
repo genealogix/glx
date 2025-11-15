@@ -1,6 +1,8 @@
 relationships:
   rel-marriage:
     type: marriage
-    persons:
-      - person-mother
-      - person-father
+    participants:
+      - person: person-mother
+        role: spouse
+      - person: person-father
+        role: spouse

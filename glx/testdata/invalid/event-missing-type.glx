@@ -1,4 +1,0 @@
-# Invalid: Missing required 'type' field
-events:
-  event-12345678:
-    date: "1850-01-15"

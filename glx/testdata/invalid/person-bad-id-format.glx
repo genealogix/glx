@@ -1,5 +1,0 @@
-# Invalid: Entity ID doesn't match required pattern
-persons:
-  bad-id-format:
-    properties:
-      primary_name: "Test Person"

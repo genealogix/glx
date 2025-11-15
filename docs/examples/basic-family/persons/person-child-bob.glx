@@ -3,4 +3,3 @@ persons:
     properties:
       primary_name: "Robert Thompson Jr."
       gender: male
-      living: true

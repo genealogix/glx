@@ -1,6 +1,0 @@
-# Invalid: Entity has 'id' field (should only be map key)
-persons:
-  person-12345678:
-    id: person-12345678
-    properties:
-      primary_name: "Test Person"

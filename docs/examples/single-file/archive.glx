@@ -1,6 +1,27 @@
 # GENEALOGIX Family Archive - Single File Example
 # Demonstrates all entity types in one file
 
+person_properties:
+  primary_name:
+    label: "Primary Name"
+    description: "Person's primary or preferred name"
+    value_type: string
+  
+  birth_date:
+    label: "Birth Date"
+    description: "Date of birth"
+    value_type: date
+  
+  death_date:
+    label: "Death Date"
+    description: "Date of death"
+    value_type: date
+  
+  gender:
+    label: "Gender"
+    description: "Gender identity"
+    value_type: string
+
 persons:
   person-a1b2c3d4:
     properties:
@@ -18,9 +39,11 @@ persons:
 relationships:
   rel-12345678:
     type: marriage
-    persons:
-      - person-a1b2c3d4
-      - person-b2c3d4e5
+    participants:
+      - person: person-a1b2c3d4
+        role: spouse
+      - person: person-b2c3d4e5
+        role: spouse
     start_event: event-23456789
 
 events:

@@ -3,4 +3,3 @@ persons:
     properties:
       primary_name: "Mary Thompson"
       gender: female
-      living: false

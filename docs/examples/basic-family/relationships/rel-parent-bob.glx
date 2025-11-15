@@ -1,7 +1,8 @@
 relationships:
   rel-parent-bob:
     type: parent-child
-    persons:
-      - person-mother
-      - person-father
-      - person-bob
+    participants:
+      - person: person-father
+        role: parent
+      - person: person-bob
+        role: child

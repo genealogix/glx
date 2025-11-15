@@ -1,7 +1,8 @@
 relationships:
   rel-parent-alice:
     type: parent-child
-    persons:
-      - person-mother
-      - person-father
-      - person-alice
+    participants:
+      - person: person-father
+        role: parent
+      - person: person-alice
+        role: child

@@ -1,8 +1,8 @@
 assertions:
   assertion-john-birth-place:
     subject: person-john-smith-1850
-    claim: birth_place
-    value: "Leeds, Yorkshire, England"
+    claim: born_at
+    value: place-leeds
     citations:
       - citation-john-birth
     confidence: high

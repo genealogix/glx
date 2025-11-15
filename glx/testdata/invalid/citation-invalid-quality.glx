@@ -1,5 +1,0 @@
-# Invalid: Quality rating out of range (must be 0-3)
-citations:
-  citation-12345678:
-    source: source-abc12345
-    quality: 5

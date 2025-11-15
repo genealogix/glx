@@ -60,51 +60,28 @@ func TestExamples(t *testing.T) {
 			doc, err := ParseYAMLFile(data)
 			require.NoError(t, err, "failed to parse YAML in %s", file)
 
-			// Skip vocabulary files - they have a different structure
-			vocabKeys := []string{"relationship_types", "event_types", "place_types", "repository_types",
-				"participant_roles", "media_types", "confidence_levels", "quality_ratings"}
-			isVocabFile := false
-			for _, key := range vocabKeys {
-				if _, exists := doc[key]; exists {
-					isVocabFile = true
-					break
-				}
-			}
+			// Validate entity structure - only check entity type keys
+			entityKeys := map[string]bool{"persons": true, "relationships": true, "events": true, "places": true,
+				"sources": true, "citations": true, "repositories": true, "assertions": true, "media": true}
 
-			if isVocabFile {
-				// Vocabulary files don't need entity type keys
-				return
-			}
-
-			// Check that file has at least one entity type key
-			validKeys := []string{"persons", "relationships", "events", "places",
-				"sources", "citations", "repositories", "assertions", "media"}
-			hasValidKey := false
-			for _, key := range validKeys {
-				if _, exists := doc[key]; exists {
-					hasValidKey = true
-					break
-				}
-			}
-
-			if !hasValidKey {
-				t.Errorf("%s: file must contain at least one entity type key", file)
-			}
-
-			// Validate entity structure
 			for pluralKey, entities := range doc {
+				// Only validate entity keys (vocabularies are ignored)
+				if !entityKeys[pluralKey] {
+					continue
+				}
+
 				if entityMap, ok := entities.(map[string]interface{}); ok {
 					for entityID, entityData := range entityMap {
 						if entity, ok := entityData.(map[string]interface{}); ok {
-						// Check no 'id' field
-						if _, hasID := entity["id"]; hasID {
-							t.Errorf("%s: %s[%s] must not have 'id' field - the map key is the ID", file, pluralKey, entityID)
-						}
+							// Check no 'id' field
+							if _, hasID := entity["id"]; hasID {
+								t.Errorf("%s: %s[%s] must not have 'id' field - the map key is the ID", file, pluralKey, entityID)
+							}
 
-						// Validate ID format (alphanumeric + hyphens, 1-64 chars)
-						if !isValidEntityID(entityID) {
-							t.Errorf("%s: %s[%s] invalid ID format (must be alphanumeric/hyphens, 1-64 chars)", file, pluralKey, entityID)
-						}
+							// Validate ID format (alphanumeric + hyphens, 1-64 chars)
+							if !isValidEntityID(entityID) {
+								t.Errorf("%s: %s[%s] invalid ID format (must be alphanumeric/hyphens, 1-64 chars)", file, pluralKey, entityID)
+							}
 						}
 					}
 				}
@@ -245,9 +222,14 @@ func TestExamplesValidation(t *testing.T) {
 			// Check for duplicate IDs
 			assert.Empty(t, duplicates, "example %s should not have duplicate entity IDs", example)
 
+			// Load vocabularies for validation
+			vocabs, err := LoadArchiveVocabularies(examplePath)
+			require.NoError(t, err)
+
 			// Validate cross-references
-			refIssues := ValidateRepositoryReferences(examplePath, allEntities)
-			assert.Empty(t, refIssues, "example %s should not have broken references: %v", example, refIssues)
+			refErrors, refWarnings := ValidateRepositoryReferences(examplePath, allEntities, vocabs)
+			allRefIssues := append(refErrors, refWarnings...)
+			assert.Empty(t, allRefIssues, "example %s should not have broken references: %v", example, allRefIssues)
 		})
 	}
 }

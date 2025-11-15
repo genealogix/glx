@@ -1,0 +1,6 @@
+relationship_properties:
+  started_on:
+    label: "Start Date"
+    description: "When the relationship began"
+    value_type: date
+

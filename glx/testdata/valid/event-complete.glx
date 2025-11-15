@@ -1,9 +1,0 @@
-events:
-  event-abcdef12:
-    type: "birth"
-    date: "1850-01-15"
-    place: "place-leeds-uk"
-    participants:
-      - person: "person-12345678"
-        role: "subject"
-    description: "Birth of test person"

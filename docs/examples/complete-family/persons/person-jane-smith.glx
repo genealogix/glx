@@ -2,10 +2,9 @@ persons:
   person-jane-smith-1876:
     properties:
       primary_name: "Jane Smith"
-      birth_date: "1876-09-05"
-      death_date: "1955-12-10"
+      born_on: "1876-09-05"
+      died_on: "1955-12-10"
       gender: "female"
-      living: false
     notes: "Daughter of John Smith and Mary Brown."
     tags:
       - "descendant"

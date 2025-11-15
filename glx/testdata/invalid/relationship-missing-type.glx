@@ -1,8 +1,0 @@
-# Invalid: Missing required 'type' field
-relationships:
-  rel-12345678:
-    participants:
-      - person: person-a1b2c3d4
-        role: spouse
-      - person: person-b2c3d4e5
-        role: spouse

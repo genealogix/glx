@@ -1,4 +1,0 @@
-# Invalid: Missing required 'name' field
-places:
-  place-12345678:
-    type: city

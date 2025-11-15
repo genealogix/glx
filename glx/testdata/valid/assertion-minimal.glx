@@ -1,6 +1,0 @@
-assertions:
-  assertion-12345678:
-    subject: person-a1b2c3d4
-    claim: birth_date
-    sources:
-      - source-xyz12345

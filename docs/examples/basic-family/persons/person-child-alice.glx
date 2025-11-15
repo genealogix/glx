@@ -3,4 +3,3 @@ persons:
     properties:
       primary_name: "Alice Thompson"
       gender: female
-      living: true

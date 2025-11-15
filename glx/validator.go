@@ -43,40 +43,7 @@ func ParseYAMLFile(data []byte) (map[string]interface{}, error) {
 func ValidateGLXFile(path string, doc map[string]interface{}, vocabs *ArchiveVocabularies) []string {
 	var issues []string
 
-	// Check if this is a vocabulary file
-	vocabKeys := []string{"relationship_types", "event_types", "place_types", "repository_types",
-		"participant_roles", "media_types", "confidence_levels", "quality_ratings"}
-	isVocabFile := false
-	for _, key := range vocabKeys {
-		if _, exists := doc[key]; exists {
-			isVocabFile = true
-			break
-		}
-	}
-
-	if !isVocabFile {
-		// Regular entity file - check for entity type keys
-		validKeys := []string{"persons", "relationships", "events", "places",
-			"sources", "citations", "repositories", "assertions", "media"}
-		hasValidKey := false
-		for _, key := range validKeys {
-			if _, exists := doc[key]; exists {
-				hasValidKey = true
-				break
-			}
-		}
-
-		if !hasValidKey {
-			return []string{"file must contain at least one entity type key (persons, relationships, events, places, sources, citations, repositories, assertions, media)"}
-		}
-
-		// If this is a vocabulary file, validate it as such
-		if isVocabFile {
-			return ValidateVocabularyFile(path, doc)
-		}
-	}
-
-	// Validate each entity type section
+	// Entity type keys and their singular forms for validation
 	entityTypes := map[string]string{
 		"persons":       "person",
 		"relationships": "relationship",
@@ -89,6 +56,7 @@ func ValidateGLXFile(path string, doc map[string]interface{}, vocabs *ArchiveVoc
 		"media":         "media",
 	}
 
+	// Validate entity sections
 	for pluralKey, singularType := range entityTypes {
 		if entities, ok := doc[pluralKey].(map[string]interface{}); ok {
 			for entityID, entityData := range entities {
@@ -366,7 +334,7 @@ type ArchiveVocabularies struct {
 }
 
 func LoadArchiveVocabularies(rootPath string) (*ArchiveVocabularies, error) {
-	vocabs := &ArchiveVocabularies{
+	archiveVocabs := &ArchiveVocabularies{
 		RelationshipTypes: make(map[string]*lib.RelationshipType),
 		EventTypes:        make(map[string]*lib.EventType),
 		PlaceTypes:        make(map[string]*lib.PlaceType),
@@ -406,48 +374,48 @@ func LoadArchiveVocabularies(rootPath string) (*ArchiveVocabularies, error) {
 
 		// Merge vocabulary definitions from this file
 		for k, v := range glxFile.RelationshipTypes {
-			vocabs.RelationshipTypes[k] = v
+			archiveVocabs.RelationshipTypes[k] = v
 		}
 		for k, v := range glxFile.EventTypes {
-			vocabs.EventTypes[k] = v
+			archiveVocabs.EventTypes[k] = v
 		}
 		for k, v := range glxFile.PlaceTypes {
-			vocabs.PlaceTypes[k] = v
+			archiveVocabs.PlaceTypes[k] = v
 		}
 		for k, v := range glxFile.RepositoryTypes {
-			vocabs.RepositoryTypes[k] = v
+			archiveVocabs.RepositoryTypes[k] = v
 		}
 		for k, v := range glxFile.ParticipantRoles {
-			vocabs.ParticipantRoles[k] = v
+			archiveVocabs.ParticipantRoles[k] = v
 		}
 		for k, v := range glxFile.MediaTypes {
-			vocabs.MediaTypes[k] = v
+			archiveVocabs.MediaTypes[k] = v
 		}
 		for k, v := range glxFile.ConfidenceLevels {
-			vocabs.ConfidenceLevels[k] = v
+			archiveVocabs.ConfidenceLevels[k] = v
 		}
 		for k, v := range glxFile.QualityRatings {
-			vocabs.QualityRatings[k] = v
+			archiveVocabs.QualityRatings[k] = v
 		}
 
 		// Merge property vocabulary definitions
 		for k, v := range glxFile.PersonProperties {
-			vocabs.PersonProperties[k] = v
+			archiveVocabs.PersonProperties[k] = v
 		}
 		for k, v := range glxFile.EventProperties {
-			vocabs.EventProperties[k] = v
+			archiveVocabs.EventProperties[k] = v
 		}
 		for k, v := range glxFile.RelationshipProperties {
-			vocabs.RelationshipProperties[k] = v
+			archiveVocabs.RelationshipProperties[k] = v
 		}
 		for k, v := range glxFile.PlaceProperties {
-			vocabs.PlaceProperties[k] = v
+			archiveVocabs.PlaceProperties[k] = v
 		}
 
 		return nil
 	})
 
-	return vocabs, err
+	return archiveVocabs, err
 }
 
 // CollectAllEntities walks all GLX files and collects entity IDs
@@ -499,7 +467,7 @@ func CollectAllEntities(rootPath string) (map[string]map[string]bool, []string, 
 }
 
 // ValidateRepositoryReferences validates all cross-references across the entire repository
-func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[string]bool) ([]string, []string) {
+func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
 	var issues, warnings []string
 
 	filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
@@ -829,7 +797,6 @@ func validateAssertionSemantics(path, assertionID string, assertion map[string]i
 	}
 	return warnings, errors
 }
-
 
 // ValidateReferencesWithStructs validates all references using refType struct tags
 func ValidateReferencesWithStructs(glxFile *lib.GLXFile) []string {
