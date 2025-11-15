@@ -1,6 +1,5 @@
 sources:
   source-census-1851:
-    version: "1.0"
     title: "1851 Census of England and Wales"
     type: census_record
     repository: repository-tna

@@ -76,7 +76,6 @@ Test files are standard GLX files:
 # glx/testdata/valid/person-minimal.glx
 persons:
   person-abc12345:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
 ```

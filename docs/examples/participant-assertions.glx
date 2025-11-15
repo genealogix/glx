@@ -1,46 +1,39 @@
 # Participant Assertions Example
 # Demonstrates representing evidence about who participated in events and relationships
 
-version: "1.0"
 
 persons:
   person-john-smith:
-    version: "1.0"
     properties:
       primary_name: "John Smith"
       gender: "male"
       born_on: "1850-01-15"
 
   person-jane-doe:
-    version: "1.0"
     properties:
       primary_name: "Jane Doe"
       gender: "female"
       born_on: "1855-03-20"
 
   person-thomas-brown:
-    version: "1.0"
     properties:
       primary_name: "Thomas Brown"
       gender: "male"
 
 events:
   event-marriage-1880:
-    version: "1.0"
     type: marriage
     date: "1880-06-15"
     description: "Marriage of John Smith and Jane Doe"
 
 sources:
   source-marriage-certificate:
-    version: "1.0"
     title: "Marriage Certificate"
     type: vital_record
     date: "1880-06-15"
 
 citations:
   citation-marriage-cert:
-    version: "1.0"
     source: source-marriage-certificate
     quality: 3
     transcription: |
@@ -52,7 +45,6 @@ citations:
 # Participant assertions - showing who participated in the marriage event
 assertions:
   assertion-john-groom:
-    version: "1.0"
     subject: event-marriage-1880
     participant:
       person: person-john-smith
@@ -63,7 +55,6 @@ assertions:
     confidence: high
 
   assertion-jane-bride:
-    version: "1.0"
     subject: event-marriage-1880
     participant:
       person: person-jane-doe
@@ -74,7 +65,6 @@ assertions:
     confidence: high
 
   assertion-thomas-witness:
-    version: "1.0"
     subject: event-marriage-1880
     participant:
       person: person-thomas-brown

@@ -14,7 +14,6 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in persons/ directory)
 persons:
   person-john-smith-1850:
-    version: "1.0"
     properties:
       primary_name: "John Smith"
 ```
@@ -45,7 +44,6 @@ Example:
 ```yaml
 persons:
   person-john-smith:
-    version: "1.0"
 ```
 
 ## Optional Fields
@@ -103,7 +101,6 @@ properties:
 # persons/person-margaret-smith.glx
 persons:
   person-margaret-smith-1825:
-    version: "1.0"
     properties:
       primary_name: "Margaret Eleanor Smith"
       gender: "female"

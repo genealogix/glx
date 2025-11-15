@@ -1,6 +1,5 @@
 persons:
   person-jane-smith-1876:
-    version: "1.0"
     concluded_identity:
       primary_name: "Jane Smith"
       birth_date: "1876-09-05"

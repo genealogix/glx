@@ -244,7 +244,6 @@ Once defined, use custom types in your entities:
 # events/event-apprenticeship.glx
 events:
   event-john-apprentice:
-    version: "1.0"
     type: apprenticeship  # Custom type from vocabulary
     date: "1845-03-10"
     place: place-leeds

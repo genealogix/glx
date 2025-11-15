@@ -17,14 +17,12 @@ Link assertions to their supporting evidence:
 ```yaml
 citations:
   citation-birth-cert:
-    version: "1.0"
     source: source-birth-register
     quality: 3
     transcription: "John Smith, born January 15, 1850"
 
 assertions:
   assertion-john-birth:
-    version: "1.0"
     subject: person-john-smith
     claim: birth_date
     value: "1850-01-15"
@@ -39,7 +37,6 @@ Use assertions with confidence levels to express certainty about conclusions:
 ```yaml
 assertions:
   assertion-birth-date:
-    version: "1.0"
     subject: person-john-smith
     claim: birth_date
     value: "1850-01-15"
@@ -56,7 +53,6 @@ Include transcriptions for important sources:
 ```yaml
 citations:
   citation-parish:
-    version: "1.0"
     source: source-parish-register
     transcription: |
       "January 20th, 1850. John, son of Thomas Smith, blacksmith,
@@ -107,7 +103,6 @@ Document resolution when sources conflict:
 ```yaml
 assertions:
   assertion-birth-date:
-    version: "1.0"
     subject: person-john-smith
     claim: birth_date
     value: "1850-01-15"

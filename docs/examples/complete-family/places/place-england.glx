@@ -1,6 +1,5 @@
 places:
   place-england:
-    version: "1.0"
     name: "England"
     type: country
     latitude: 52.3555

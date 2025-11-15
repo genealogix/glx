@@ -1,6 +1,5 @@
 relationships:
   rel-marriage:
-    version: "1.0"
     type: marriage
     persons:
       - person-mother

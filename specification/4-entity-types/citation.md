@@ -79,7 +79,6 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 # citations/citation-book.glx
 citations:
   citation-marriage-record:
-    version: "1.0"
     source: source-parish-register
     page: "125"
     quality: 3
@@ -92,7 +91,6 @@ citations:
 # citations/citation-online.glx
 citations:
   citation-census-online:
-    version: "1.0"
     source: source-ancestry-census
     data_date: "1851"
     page: "Schedule 7, piece 1123"
@@ -113,7 +111,6 @@ citations:
 # citations/citation-will.glx
 citations:
   citation-will-john:
-    version: "1.0"
     source: source-probate-wills
     repository: repository-probate
     page: "23"
@@ -133,7 +130,6 @@ citations:
 # citations/citation-photo.glx
 citations:
   citation-photo:
-    version: "1.0"
     source: source-photo-collection
     locator: "Album 1, page 5"
     media:
@@ -149,7 +145,6 @@ Citations are primarily used within Assertions to provide evidence:
 # assertions/assertion-birth.glx
 assertions:
   assertion-birth-john:
-    version: "1.0"
     subject: person-john-smith
     claim: birth_date
     value: "1850-01-15"

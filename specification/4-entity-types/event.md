@@ -14,7 +14,6 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in events/ directory)
 events:
   event-birth-john-1850:
-    version: "1.0"
     type: birth
     date: "1850-01-15"
     place: place-leeds
@@ -119,7 +118,6 @@ Event types are defined in the archive's `vocabularies/event-types.glx` file. Ea
 # events/event-birth.glx
 events:
   event-birth-john:
-    version: "1.0"
     type: birth
     date: "1850-01-15"
     place: place-leeds
@@ -134,7 +132,6 @@ events:
 # events/event-marriage.glx
 events:
   event-marriage-john-mary:
-    version: "1.0"
     type: marriage
     date: "1875-05-10"
     place: place-stpauls

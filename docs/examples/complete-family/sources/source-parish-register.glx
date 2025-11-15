@@ -1,6 +1,5 @@
 sources:
   source-parish-leeds:
-    version: "1.0"
     title: "St. Paul's Parish Register - Leeds"
     type: church_register
     repository: repository-leeds-library

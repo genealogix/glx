@@ -16,14 +16,12 @@ Places form a tree structure where each place can have a parent place, enabling 
 # places/place-england.glx
 places:
   place-england:
-    version: "1.0"
     name: "England"
     type: country
 
 # places/place-yorkshire.glx
 places:
   place-yorkshire:
-    version: "1.0"
     name: "Yorkshire"
     type: county
     parent: place-england
@@ -31,7 +29,6 @@ places:
 # places/place-leeds.glx
 places:
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     type: city
     parent: place-yorkshire
@@ -138,7 +135,6 @@ residence:
 # places/place-paris.glx
 places:
   place-paris:
-    version: "1.0"
     name: "Paris"
     type: city
     parent: place-france
@@ -152,7 +148,6 @@ places:
 # places/place-leeds-district.glx
 places:
   place-leeds-registration:
-    version: "1.0"
     name: "Leeds Registration District"
     type: registration_district
     parent: place-yorkshire

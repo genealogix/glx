@@ -45,7 +45,6 @@ This diagram illustrates how evidence flows from physical repositories to specif
 ```yaml
 # repositories/repository-leeds-library.glx
 id: repository-leeds-library
-version: "1.0"
 type: repository
 name: Leeds Library Local Studies
 type: public_library
@@ -71,7 +70,6 @@ materials_held:
 ```yaml
 # sources/source-parish-register.glx
 id: source-parish-register
-version: "1.0"
 type: source
 title: St. Paul's Parish Register of Baptisms
 type: church_register
@@ -95,7 +93,6 @@ publication_info:
 ```yaml
 # citations/citation-birth-entry.glx
 id: citation-birth-entry
-version: "1.0"
 type: citation
 source: source-parish-register
 locator: "Entry 145, page 23, January 1850"
@@ -116,7 +113,6 @@ transcription: |
 ```yaml
 # assertions/assertion-birth-date.glx
 id: assertion-birth-date
-version: "1.0"
 type: assertion
 subject: person-john-smith
 claim: birth_date
@@ -163,7 +159,6 @@ A single assertion can be supported by multiple evidence chains:
 ```yaml
 # assertions/assertion-birth-date.glx
 id: assertion-birth-date
-version: "1.0"
 type: assertion
 subject: person-john-smith
 claim: born_on

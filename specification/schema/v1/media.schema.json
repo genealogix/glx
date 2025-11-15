@@ -4,9 +4,8 @@
   "title": "Media",
   "description": "A media object referenced by sources or entities. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "uri"],
+  "required": ["uri"],
   "properties": {
-    "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
     "uri": { "type": "string", "minLength": 1 },
     "mime_type": { "type": "string" },
     "hash": { "type": "string" }

@@ -1,6 +1,5 @@
 citations:
   citation-marriage:
-    version: "1.0"
     source: source-parish-leeds
     quality: 3
     locator: "Entry 89, Page 67, May 1875"

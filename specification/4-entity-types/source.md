@@ -27,7 +27,6 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in sources/ directory)
 sources:
   source-parish-register:
-    version: "1.0"
     title: "St. Paul's Parish Register, 1840-1860"
     type: church_register
     creator: "Church of England"
@@ -61,7 +60,6 @@ Example:
 ```yaml
 sources:
   source-census:
-    version: "1.0"
 ```
 
 ### `title`
@@ -298,7 +296,6 @@ tags:
 # sources/source-birth-certificate.glx
 sources:
   source-birth-cert-john-smith:
-    version: "1.0"
     title: "Birth Certificate - John Smith, 1850"
     type: vital_record
     creator: "General Register Office"
@@ -321,7 +318,6 @@ sources:
 # sources/source-1851-census.glx
 sources:
   source-census-1851-yorkshire:
-    version: "1.0"
     title: "1851 Census of England and Wales"
     type: census
     creator: "UK Census Office"
@@ -348,7 +344,6 @@ sources:
 # sources/source-parish-register.glx
 sources:
   source-st-pauls-register:
-    version: "1.0"
     title: "St. Paul's Cathedral Parish Register, 1840-1860"
     type: church_register
     creator: "Church of England"
@@ -386,7 +381,6 @@ sources:
 # sources/source-family-history.glx
 sources:
   source-smith-family-book:
-    version: "1.0"
     title: "The Smith Family of Yorkshire: A Genealogy"
     type: book
     authors:
@@ -420,7 +414,6 @@ sources:
 # sources/source-ancestry-database.glx
 sources:
   source-ancestry-uk-census:
-    version: "1.0"
     title: "UK Census Collection, 1841-1911"
     type: database
     creator: "Ancestry.com"
@@ -449,7 +442,6 @@ sources:
 # sources/source-newspaper.glx
 sources:
   source-leeds-mercury:
-    version: "1.0"
     title: "Leeds Mercury"
     type: newspaper
     creator: "Leeds Mercury Publishing Company"
@@ -470,7 +462,6 @@ sources:
 # sources/source-interview.glx
 sources:
   source-mary-smith-interview:
-    version: "1.0"
     title: "Interview with Mary Smith"
     type: oral_history
     creator: "Mary Smith (interviewee)"
@@ -618,7 +609,6 @@ GENEALOGIX Equivalent:
 ```yaml
 sources:
   source-st-pauls:
-    version: "1.0"
     title: "St. Paul's Parish Register"
     creator: "Church of England"
     date: "1840/1860"

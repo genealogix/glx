@@ -20,7 +20,6 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in assertions/ directory)
 assertions:
   assertion-john-birth-date:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"
@@ -55,7 +54,6 @@ Example:
 ```yaml
 assertions:
   assertion-birth:
-    version: "1.0"
 ```
 
 ### `subject`
@@ -126,7 +124,6 @@ Example:
 ```yaml
 assertions:
   assertion-witness-john:
-    version: "1.0"
     subject: event-marriage-1880
     participant:
       person: person-john-smith
@@ -258,7 +255,6 @@ Participant assertions represent evidence about who participated in an event or 
 # assertions/assertion-marriage-participants.glx
 assertions:
   assertion-john-married:
-    version: "1.0"
     subject: event-marriage-1880
     participant:
       person: person-john-smith
@@ -268,7 +264,6 @@ assertions:
     confidence: high
   
   assertion-jane-married:
-    version: "1.0"
     subject: event-marriage-1880
     participant:
       person: person-jane-doe
@@ -278,7 +273,6 @@ assertions:
     confidence: high
   
   assertion-witness-thomas:
-    version: "1.0"
     subject: event-marriage-1880
     participant:
       person: person-thomas-brown
@@ -296,7 +290,6 @@ assertions:
 assertions:
   # One source claims person-john is the father
   assertion-john-father-cert:
-    version: "1.0"
     subject: event-birth-1850
     participant:
       person: person-john-smith
@@ -308,7 +301,6 @@ assertions:
   
   # Another source claims person-thomas is the father
   assertion-thomas-father-letter:
-    version: "1.0"
     subject: event-birth-1850
     participant:
       person: person-thomas-brown
@@ -334,7 +326,6 @@ assertions:
 # assertions/assertion-john-birth.glx
 assertions:
   assertion-john-birth-date:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"
@@ -349,7 +340,6 @@ assertions:
 # assertions/assertion-john-occupation.glx
 assertions:
   assertion-john-occupation:
-    version: "1.0"
     subject: person-john-smith
     claim: occupation
     value: blacksmith
@@ -367,7 +357,6 @@ assertions:
 # assertions/assertion-mary-birth.glx
 assertions:
   assertion-mary-birth-disputed:
-    version: "1.0"
     subject: person-mary-jones
     claim: born_on
     value: "1852-03-10"
@@ -391,7 +380,6 @@ assertions:
 # assertions/assertion-residence.glx
 assertions:
   assertion-john-residence-1851:
-    version: "1.0"
     subject: person-john-smith
     claim: residence
     value: "Wellington Street, Leeds, Yorkshire"
@@ -412,7 +400,6 @@ assertions:
 # assertions/assertion-estimated-birth.glx
 assertions:
   assertion-thomas-birth-estimated:
-    version: "1.0"
     subject: person-thomas-brown
     claim: born_on
     value: "circa 1825"
@@ -541,13 +528,11 @@ GENEALOGIX Equivalent:
 ```yaml
 persons:
   person-john-smith:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
 
 assertions:
   assertion-john-birth:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"

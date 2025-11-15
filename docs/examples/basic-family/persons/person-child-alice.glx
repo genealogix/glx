@@ -1,6 +1,5 @@
 persons:
   person-alice:
-    version: "1.0"
     concluded_identity:
       primary_name: "Alice Thompson"
       gender: female

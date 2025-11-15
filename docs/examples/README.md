@@ -65,21 +65,18 @@ This directory contains complete, working GENEALOGIX archives demonstrating vari
 # repositories/repository-leeds.glx
 repositories:
   repository-a1b2c3d4:
-    version: "1.0"
     name: Leeds Library Local Studies
     email: local.studies@leeds.gov.uk
 
 # sources/parish-register.glx
 sources:
   source-12345678:
-    version: "1.0"
     title: St. Paul's Parish Register
     repository: repository-a1b2c3d4
 
 # citations/birth-entry.glx
 citations:
   citation-abc12345:
-    version: "1.0"
     source: source-12345678
     locator: "Entry 145, page 23"
     transcription: "John, son of Thomas Smith, born January 15, 1850"
@@ -87,7 +84,6 @@ citations:
 # assertions/birth-assertion.glx
 assertions:
   assertion-1a2b3c4d:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"

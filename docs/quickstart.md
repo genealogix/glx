@@ -73,7 +73,6 @@ Create your first person file. All files use the `.glx` extension and are writte
 # persons/person-john-smith.glx
 persons:
   person-john-smith:
-    version: "1.0"
     
     # Basic information
     name:
@@ -101,7 +100,6 @@ Create the place referenced in the birth information:
 # places/place-leeds.glx
 places:
   place-leeds:
-    version: "1.0"
     
     name: Leeds
     type: city
@@ -131,7 +129,6 @@ Create a structured birth event with evidence:
 ```yaml
 # events/event-john-birth.glx
 id: event-john-birth
-version: "1.0"
 type: event
 
 # Event type and date
@@ -179,7 +176,6 @@ Make your research more credible by adding source citations:
 ```yaml
 # sources/source-parish-register.glx
 id: source-parish-register
-version: "1.0"
 type: source
 
 title: St. Paul's Parish Register
@@ -200,7 +196,6 @@ publication_info:
 ```yaml
 # citations/citation-birth-entry.glx
 id: citation-birth-entry
-version: "1.0"
 type: citation
 
 source: source-parish-register
@@ -218,7 +213,6 @@ transcription: |
 ```yaml
 # persons/person-john-smith.glx
 id: person-john-smith
-version: "1.0"
 type: person
 
 name:

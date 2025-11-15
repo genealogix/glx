@@ -1,6 +1,5 @@
 events:
   event-john-occupation:
-    version: "1.0"
     type: occupation
     date: "1870"
     place: place-leeds
@@ -11,7 +10,6 @@ events:
     description: "John Smith worked as a blacksmith in Leeds"
   
   event-jane-occupation:
-    version: "1.0"
     type: occupation
     date: "1895"
     place: place-leeds

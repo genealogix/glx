@@ -1,6 +1,5 @@
 assertions:
   assertion-marriage-date:
-    version: "1.0"
     subject: rel-marriage-john-mary
     claim: marriage_date
     value: "1875-05-10"

@@ -246,7 +246,6 @@ When evidence suggests different conclusions:
 
 assertions:
   assertion-birth-date:
-    version: "1.0"
     citations:
       - citation-birth-certificate  # Quality 3
       - citation-baptism-record     # Quality 3

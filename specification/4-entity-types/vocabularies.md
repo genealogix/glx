@@ -947,7 +947,6 @@ event_types:
 # events/event-land-grant.glx
 events:
   event-john-land-grant:
-    version: "1.0"
     type: land-grant  # Custom type from vocabulary
     date: "1850-03-10"
     place: place-indiana

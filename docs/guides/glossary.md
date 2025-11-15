@@ -270,9 +270,6 @@ The process of checking GENEALOGIX files for syntax correctness, schema complian
 ### Value
 The specific data or content of a claim in an assertion (e.g., "1850-01-15" for a birth date, "blacksmith" for an occupation).
 
-### Version Field
-The schema version field (`version: "1.0"`) that indicates which specification version the file conforms to.
-
 ### Vocabularies
 Controlled lists of valid types and categories used throughout a GENEALOGIX archive, stored in the `vocabularies/` directory.
 

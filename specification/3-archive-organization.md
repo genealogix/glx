@@ -22,19 +22,16 @@ Every GENEALOGIX file uses the same universal structure:
 # Any .glx or .yaml file
 persons:
   person-abc12345:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
       birth_date: "1850-01-15"
   
   person-def67890:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Brown"
 
 sources:
   source-xyz11111:
-    version: "1.0"
     title: "Birth Certificate"
     type: vital_record
 
@@ -48,7 +45,6 @@ relationships: {}
 ```yaml
 persons:
   person-abc12345:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
 ```
@@ -101,7 +97,6 @@ family-archive/
 # persons/person-abc12345.glx
 persons:
   person-abc12345:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
 ```
@@ -131,17 +126,14 @@ family-archive/
 # family.glx
 persons:
   person-abc12345:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
   person-def67890:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Brown"
 
 relationships:
   rel-marriage-001:
-    version: "1.0"
     type: marriage
     participants:
       - person: person-abc12345
@@ -151,7 +143,6 @@ relationships:
 
 events:
   event-birth-abc:
-    version: "1.0"
     type: birth
     date: "1850-01-15"
     place: place-leeds-uk
@@ -161,13 +152,11 @@ events:
 
 places:
   place-leeds-uk:
-    version: "1.0"
     name: "Leeds"
     type: city
 
 sources:
   source-xyz11111:
-    version: "1.0"
     title: "Birth Certificate"
     type: vital_record
 

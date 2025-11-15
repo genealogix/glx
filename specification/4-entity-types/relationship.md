@@ -14,7 +14,6 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in relationships/ directory)
 relationships:
   rel-marriage-john-mary:
-    version: "1.0"
     type: marriage
     participants:
       - person: person-john-smith
@@ -68,7 +67,6 @@ Relationship types are defined in the archive's `vocabularies/relationship-types
 # relationships/rel-marriage.glx
 relationships:
   rel-marriage-john-mary:
-    version: "1.0"
     type: marriage
     participants:
       - person: person-john-smith
@@ -85,7 +83,6 @@ relationships:
 # relationships/rel-parent-child.glx
 relationships:
   rel-parents-alice:
-    version: "1.0"
     type: parent-child
     participants:
       - person: person-john-smith
@@ -102,7 +99,6 @@ relationships:
 # relationships/rel-adoption.glx
 relationships:
   rel-adoption-sarah:
-    version: "1.0"
     type: adoption
     participants:
       - person: person-adoptive-father
@@ -120,7 +116,6 @@ relationships:
 # relationships/rel-blood-brothers.glx
 relationships:
   rel-john-james-blood:
-    version: "1.0"
     type: blood-brother  # Custom type from vocabulary
     participants:
       - person: person-john-smith

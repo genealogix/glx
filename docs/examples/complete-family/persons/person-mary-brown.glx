@@ -1,6 +1,5 @@
 persons:
   person-mary-brown-1852:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Brown"
       birth_date: "1852-03-20"

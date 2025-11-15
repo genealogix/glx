@@ -64,7 +64,6 @@ GENEALOGIX supports various repository types:
 # repositories/repository-leeds.glx
 repositories:
   repository-leeds-library:
-    version: "1.0"
     name: "Leeds Library - Local Studies"
     type: library
     address: "Market Street"
@@ -81,7 +80,6 @@ repositories:
 # repositories/repository-tna.glx
 repositories:
   repository-tna:
-    version: "1.0"
     name: "The National Archives"
     type: archive
     address: "Kew, Richmond"
@@ -104,7 +102,6 @@ repositories:
 # repositories/repository-ancestry.glx
 repositories:
   repository-ancestry:
-    version: "1.0"
     name: "Ancestry.com"
     type: database
     website: "https://www.ancestry.com"
@@ -124,7 +121,6 @@ repositories:
 # repositories/repository-church.glx
 repositories:
   repository-stpauls:
-    version: "1.0"
     name: "St Paul's Cathedral Archive"
     type: church
     address: "St Paul's Churchyard"
@@ -148,7 +144,6 @@ Repositories are referenced from Source entities:
 # sources/source-wills.glx
 sources:
   source-tna-wills:
-    version: "1.0"
     title: "Wills and Probate Records"
     repository: repository-tna
     collection: "PROB 11"

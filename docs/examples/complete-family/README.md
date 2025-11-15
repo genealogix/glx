@@ -90,7 +90,6 @@ All files use the unified GENEALOGIX format:
 # persons/person-john-smith.glx
 persons:
   person-john-smith-1850:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
       birth_date: "1850-01-15"

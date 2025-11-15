@@ -4,9 +4,8 @@
   "title": "Source",
   "description": "A source record (document, oral history, media). ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "title"],
+  "required": ["title"],
   "properties": {
-    "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
     "title": { "type": "string", "minLength": 1 },
     "type": { "type": "string" },
     "authors": { "type": "array", "items": { "type": "string" } },

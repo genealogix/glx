@@ -3,7 +3,6 @@
 
 persons:
   person-a1b2c3d4:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
       birth_date: "1850-01-15"
@@ -11,7 +10,6 @@ persons:
       gender: "male"
   
   person-b2c3d4e5:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Brown"
       birth_date: "1852-03-20"
@@ -19,7 +17,6 @@ persons:
 
 relationships:
   rel-12345678:
-    version: "1.0"
     type: marriage
     persons:
       - person-a1b2c3d4
@@ -28,7 +25,6 @@ relationships:
 
 events:
   event-a1a2a3a4:
-    version: "1.0"
     type: birth
     date: "1850-01-15"
     place: place-c3d4e5f6
@@ -37,7 +33,6 @@ events:
         role: subject
   
   event-23456789:
-    version: "1.0"
     type: marriage
     date: "1875-05-10"
     place: place-c3d4e5f6
@@ -49,32 +44,27 @@ events:
 
 places:
   place-a1a1a1a1:
-    version: "1.0"
     name: "England"
     type: country
   
   place-b2b2b2b2:
-    version: "1.0"
     name: "Yorkshire"
     type: county
     parent: place-a1a1a1a1
   
   place-c3d4e5f6:
-    version: "1.0"
     name: "Leeds"
     type: city
     parent: place-b2b2b2b2
 
 sources:
   source-12345678:
-    version: "1.0"
     title: "St. Paul's Parish Register"
     type: church_register
     repository: repository-a1b2c3d4
 
 citations:
   citation-abcdef12:
-    version: "1.0"
     source: source-12345678
     quality: 3
     locator: "Entry 145, Page 23"
@@ -82,14 +72,12 @@ citations:
 
 repositories:
   repository-a1b2c3d4:
-    version: "1.0"
     name: "Leeds Library Local Studies"
     type: library
     website: "https://www.leeds.gov.uk/libraries"
 
 assertions:
   assertion-1a2b3c4d:
-    version: "1.0"
     subject: person-a1b2c3d4
     claim: birth_date
     value: "1850-01-15"

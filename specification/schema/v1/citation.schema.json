@@ -4,14 +4,8 @@
   "title": "Citation",
   "description": "A specific reference to evidence within a source. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["version", "source"],
+  "required": ["source"],
   "properties": {
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+$",
-      "description": "Schema version",
-      "examples": ["1.0"]
-    },
     "source": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",

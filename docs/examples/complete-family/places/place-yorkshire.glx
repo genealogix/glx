@@ -1,6 +1,5 @@
 places:
   place-yorkshire:
-    version: "1.0"
     name: "Yorkshire"
     type: county
     parent: place-england

@@ -23,7 +23,6 @@ GENEALOGIX separates evidence from conclusions using **assertions**:
 # assertions/assertion-john-birth.glx - Conclusion based on evidence
 assertions:
   assertion-john-birth:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"
@@ -35,7 +34,6 @@ assertions:
 # citations/citation-birth-certificate.glx - Specific evidence
 citations:
   citation-birth-certificate:
-    version: "1.0"
     source: source-gro-register
     locator: "Certificate 1850-LEEDS-00145"
     quality: 3
@@ -165,21 +163,18 @@ Genealogists traditionally evaluate evidence quality along multiple dimensions:
 # repositories/repository-gro.glx
 repositories:
   repository-gro:
-    version: "1.0"
     name: General Register Office
     address: "London, England"
 
 # sources/source-birth-register.glx
 sources:
   source-birth-register:
-    version: "1.0"
     title: England Birth Register 1850
     repository: repository-gro
 
 # citations/citation-john-birth.glx
 citations:
   citation-john-birth:
-    version: "1.0"
     source: source-birth-register
     locator: "Volume 23, Page 145, Entry 23"
     quality: 3
@@ -187,7 +182,6 @@ citations:
 # assertions/assertion-john-born.glx
 assertions:
   assertion-john-born:
-    version: "1.0"
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"
@@ -213,7 +207,6 @@ Every assertion must reference specific citations:
 # assertions/assertion-smith-occupation.glx
 assertions:
   assertion-smith-occupation:
-    version: "1.0"
     subject: person-john-smith
     claim: occupation
     value: blacksmith
@@ -244,7 +237,6 @@ Structured fields for documenting research decisions:
 # assertions/assertion-disputed-birth.glx
 assertions:
   assertion-disputed-birth:
-    version: "1.0"
     subject: person-john-smith
     claim: birth_date
     value: "1850-01-15"
@@ -412,23 +404,19 @@ GENEALOGIX enforces referential integrity:
 # Valid: All referenced entities exist
 places:
   place-leeds-parish-church:
-    version: "1.0"
     name: "Leeds Parish Church"
 
 persons:
   person-john-smith:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
 
   person-mary-brown:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Brown"
 
 events:
   event-wedding:
-    version: "1.0"
     type: marriage
     place: place-leeds-parish-church  # Must exist in places/
     participants:

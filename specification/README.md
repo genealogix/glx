@@ -81,7 +81,6 @@ This specification is under active development.
 # persons/person-john-smith.glx
 persons:
   person-john-smith-1850:
-    version: "1.0"
     properties:
       primary_name: "John Smith"
       gender: "male"
@@ -91,7 +90,6 @@ persons:
 # events/event-birth.glx
 events:
   event-birth-john:
-    version: "1.0"
     type: birth
     date: "1850-01-15"
     place: place-leeds
@@ -102,7 +100,6 @@ events:
 # relationships/rel-marriage.glx
 relationships:
   rel-marriage-john-mary:
-    version: "1.0"
     type: marriage
     persons:
       - person-john-smith-1850

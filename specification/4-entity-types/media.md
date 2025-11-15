@@ -21,7 +21,6 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in media/ directory)
 media:
   media-birth-cert-scan:
-    version: "1.0"
     uri: "media/documents/birth-certificate-john-smith.jpg"
     mime_type: "image/jpeg"
     title: "Birth Certificate - John Smith"
@@ -54,7 +53,6 @@ Example:
 ```yaml
 media:
   media-photo:
-    version: "1.0"
 ```
 
 ### `uri`
@@ -241,7 +239,6 @@ tags:
 # media/media-birth-certificate.glx
 media:
   media-birth-cert-john:
-    version: "1.0"
     uri: "media/documents/birth-certificate-john-smith-1850.pdf"
     mime_type: "application/pdf"
     title: "Birth Certificate - John Smith"
@@ -264,7 +261,6 @@ media:
 # media/media-family-portrait.glx
 media:
   media-smith-family-1890:
-    version: "1.0"
     uri: "media/photos/smith-family-portrait-1890.jpg"
     mime_type: "image/jpeg"
     title: "Smith Family Portrait, 1890"
@@ -298,7 +294,6 @@ media:
 # media/media-interview.glx
 media:
   media-interview-mary-2020:
-    version: "1.0"
     uri: "media/audio/interview-mary-smith-2020-03-15.mp3"
     mime_type: "audio/mpeg"
     title: "Oral History Interview - Mary Smith"
@@ -323,7 +318,6 @@ media:
 # media/media-census-image.glx
 media:
   media-census-1851-page:
-    version: "1.0"
     uri: "https://ancestry.com/imageviewer/1851-census-yorkshire-page-234"
     mime_type: "image/jpeg"
     title: "1851 Census - Yorkshire, Page 234"
@@ -347,7 +341,6 @@ media:
 # media/media-marriage-register.glx
 media:
   media-marriage-register-page:
-    version: "1.0"
     uri: "media/documents/st-pauls-marriage-register-1875-page-45.tiff"
     mime_type: "image/tiff"
     title: "Marriage Register - St Paul's Church, 1875"
@@ -509,7 +502,6 @@ GENEALOGIX Equivalent:
 ```yaml
 media:
   media-john-portrait:
-    version: "1.0"
     uri: "media/photos/john-smith.jpg"
     mime_type: "image/jpeg"
     title: "Portrait of John Smith"

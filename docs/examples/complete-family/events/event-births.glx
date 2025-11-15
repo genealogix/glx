@@ -1,6 +1,5 @@
 events:
   event-birth-john:
-    version: "1.0"
     type: birth
     date: "1850-01-15"
     place: place-leeds
@@ -10,7 +9,6 @@ events:
     description: "Birth of John Smith in Leeds"
   
   event-birth-mary:
-    version: "1.0"
     type: birth
     date: "1852-03-20"
     place: place-leeds
@@ -20,7 +18,6 @@ events:
     description: "Birth of Mary Brown in Leeds"
   
   event-birth-jane:
-    version: "1.0"
     type: birth
     date: "1876-09-05"
     place: place-leeds

@@ -1,6 +1,5 @@
 assertions:
   assertion-john-birth-date:
-    version: "1.0"
     subject: person-john-smith-1850
     claim: birth_date
     value: "1850-01-15"

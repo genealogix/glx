@@ -1,6 +1,5 @@
 relationships:
   rel-parent-alice:
-    version: "1.0"
     type: parent-child
     persons:
       - person-mother

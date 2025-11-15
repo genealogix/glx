@@ -1,6 +1,5 @@
 places:
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     type: city
     parent: place-yorkshire

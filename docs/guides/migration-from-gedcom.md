@@ -58,20 +58,17 @@ GEDCOM sources need to be expanded into complete evidence chains.
 ```yaml
 sources:
   source-birth-cert:
-    version: "1.0"
     title: "Birth Certificate"
     type: vital_record
 
 citations:
   citation-birth:
-    version: "1.0"
     source: source-birth-cert
     quality: 2
     page: "Page 23"
 
 assertions:
   assertion-birth-date:
-    version: "1.0"
     subject: person-john-smith
     claim: birth_date
     value: "1850-01-15"
@@ -116,14 +113,12 @@ GEDCOM QUAY maps 1:1 to GENEALOGIX citation quality field (maintained for compat
 # GEDCOM QUAY preserved in citation (optional)
 citations:
   citation-from-gedcom:
-    version: "1.0"
     source: source-census
     quality: 2  # From GEDCOM QUAY
 
 # Idiomatic GLX: Use assertion confidence
 assertions:
   assertion-birth:
-    version: "1.0"
     subject: person-john
     claim: birth_date
     value: "1850-01-15"
@@ -159,18 +154,15 @@ concluded_identity:
 ```yaml
 places:
   place-england:
-    version: "1.0"
     name: "England"
     type: country
 
   place-yorkshire:
-    version: "1.0"
     name: "Yorkshire"
     type: county
     parent: place-england
 
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     type: city
     parent: place-yorkshire

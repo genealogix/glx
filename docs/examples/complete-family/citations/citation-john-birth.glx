@@ -1,6 +1,5 @@
 citations:
   citation-john-birth:
-    version: "1.0"
     source: source-parish-leeds
     quality: 3
     locator: "Entry 145, Page 23, January 1850"

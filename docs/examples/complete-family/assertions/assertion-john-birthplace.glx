@@ -1,6 +1,5 @@
 assertions:
   assertion-john-birth-place:
-    version: "1.0"
     subject: person-john-smith-1850
     claim: birth_place
     value: "Leeds, Yorkshire, England"

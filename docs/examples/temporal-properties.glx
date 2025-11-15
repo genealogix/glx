@@ -1,18 +1,15 @@
 # Temporal Properties Example
 # Demonstrates how to represent properties that change over time
 
-version: "1.0"
 
 places:
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     type: city
     properties:
       existed_from: "1200"
 
   place-london:
-    version: "1.0"
     name: "London"
     type: city
     properties:
@@ -74,7 +71,6 @@ person_properties:
 
 persons:
   person-john-smith-1850:
-    version: "1.0"
     properties:
       # Non-temporal properties (single values)
       born_on: "1850-01-15"
@@ -128,35 +124,29 @@ persons:
 
 sources:
   source-1851-census:
-    version: "1.0"
     title: "1851 Census of England and Wales"
     type: census
 
   source-1881-census:
-    version: "1.0"
     title: "1881 Census of England and Wales"
     type: census
 
   source-trade-directory:
-    version: "1.0"
     title: "London Trade Directory 1875"
     type: directory
 
 citations:
   citation-1851-census:
-    version: "1.0"
     source: source-1851-census
     quality: 3
     transcription: "John Smith, age 1, born Leeds, father: James Smith"
 
   citation-1881-census:
-    version: "1.0"
     source: source-1881-census
     quality: 3
     transcription: "John Smith, age 31, occupation: blacksmith, residence: London"
 
   citation-trade-directory:
-    version: "1.0"
     source: source-trade-directory
     quality: 2
     transcription: "J. Smith - Blacksmith, 42 Oxford Street, London"
@@ -164,7 +154,6 @@ citations:
 # Assertions providing evidence for the properties
 assertions:
   assertion-occupation-1851:
-    version: "1.0"
     subject: person-john-smith-1850
     claim: occupation
     value: "farm laborer"
@@ -174,7 +163,6 @@ assertions:
     research_notes: "Census lists father's occupation; John was age 1"
 
   assertion-occupation-1881:
-    version: "1.0"
     subject: person-john-smith-1850
     claim: occupation
     value: "blacksmith"
@@ -185,7 +173,6 @@ assertions:
     research_notes: "Multiple sources confirm blacksmith trade in London"
 
   assertion-residence-london:
-    version: "1.0"
     subject: person-john-smith-1850
     claim: residence
     value: "place-london"

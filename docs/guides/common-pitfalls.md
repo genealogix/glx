@@ -18,13 +18,11 @@ Avoid common mistakes when working with GENEALOGIX archives.
 # ❌ Wrong: No evidence
 persons:
   person-john:
-    version: "1.0"
     # Claims without citations
 
 # ✅ Correct: Evidence-backed
 assertions:
   assertion-birth:
-    version: "1.0"
     subject: person-john
     claim: birth_date
     value: "1850-01-15"
@@ -39,18 +37,15 @@ assertions:
 # ❌ Wrong: Reference doesn't exist
 citations:
   citation-bad:
-    version: "1.0"
     source: source-nonexistent  # Doesn't exist!
 
 # ✅ Correct: Valid reference
 sources:
   source-census:
-    version: "1.0"
     title: "1851 Census"
 
 citations:
   citation-good:
-    version: "1.0"
     source: source-census  # Exists
 ```
 
@@ -68,7 +63,6 @@ glx validate
 # ❌ Missing confidence assessment
 assertions:
   assertion-birth:
-    version: "1.0"
     subject: person-john
     claim: birth_date
     value: "1850-01-15"
@@ -77,7 +71,6 @@ assertions:
 # ✅ Correct: Express confidence
 assertions:
   assertion-birth:
-    version: "1.0"
     subject: person-john
     claim: birth_date
     value: "1850-01-15"
@@ -97,13 +90,11 @@ Use assertion confidence levels (high, medium, low, disputed) rather than citati
 # ❌ Wrong: Old naming
 citations:
   citation-bad:
-    version: "1.0"
     source_id: source-census  # Wrong field name
 
 # ✅ Correct: Singular names
 citations:
   citation-good:
-    version: "1.0"
     source: source-census  # Correct field name
 ```
 
@@ -146,13 +137,11 @@ Use consistent spacing (not tabs):
 # ❌ Wrong: Inconsistent
 persons:
   person-john:
-    version: "1.0"
      name: "John"  # Wrong indentation
 
 # ✅ Correct: Consistent
 persons:
   person-john:
-    version: "1.0"
     concluded_identity:
       primary_name: "John"
 ```
@@ -178,18 +167,15 @@ notes: "Contains: special chars"
 # ❌ Wrong: Self-reference
 places:
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     parent: place-leeds  # Can't be own parent!
 
 # ✅ Correct: Proper hierarchy
 places:
   place-yorkshire:
-    version: "1.0"
     name: "Yorkshire"
 
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     parent: place-yorkshire
 ```
@@ -250,7 +236,6 @@ When `glx validate` fails:
 ```bash
 # Missing required field
 ERROR: version is required
-FIX: Add version: "1.0"
 
 # Broken reference
 ERROR: citations[citation-1].source references non-existent sources: source-missing

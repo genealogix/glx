@@ -59,7 +59,6 @@ Example:
 # persons/person-john-smith.glx
 persons:
   person-john-smith:
-    version: "1.0"
     concluded_identity:
       primary_name: "John Smith"
 ```

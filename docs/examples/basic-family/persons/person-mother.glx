@@ -1,6 +1,5 @@
 persons:
   person-mother:
-    version: "1.0"
     concluded_identity:
       primary_name: "Mary Thompson"
       gender: female
