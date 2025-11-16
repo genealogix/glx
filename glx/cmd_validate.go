@@ -66,104 +66,98 @@ func runValidate(args []string) error {
 	}
 
 	var (
-		checked     int
-		hadError    bool
-		reportLines []string
 		allWarnings []string
 		allErrors   []string
+		foundFiles  bool
 	)
 
-	// Load vocabularies for validation
-	vocabs, err := LoadArchiveVocabularies(".")
-	if err != nil {
-		allErrors = append(allErrors, fmt.Sprintf("Failed to load vocabularies: %v", err))
-		hadError = true
-	}
-
-	// First Pass: Discover all files and perform initial validation
-	allGLXFiles := discoverGLXFiles(paths, &allErrors)
-	if len(allGLXFiles) == 0 && !hadError {
-		return errors.New("no .glx files found to validate")
-	}
-
-	for _, filePath := range allGLXFiles {
-		checked++
-		issues := validateGLXFileFromPath(filePath, vocabs)
-		if len(issues) > 0 {
-			hadError = true
-			reportLines = append(reportLines, formatValidationIssues(filePath, issues)...)
-		} else {
-			reportLines = append(reportLines, fmt.Sprintf("✓ %s", filePath))
+	// For each path, load archive and validate
+	for _, rootPath := range paths {
+		info, err := os.Stat(rootPath)
+		if err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("stat error for %s: %v", rootPath, err))
+			continue
 		}
-	}
 
-	// Collect all entity IDs for cross-reference validation
-	allEntities, duplicates, err := CollectAllEntities(".")
-	if err != nil {
-		allErrors = append(allErrors, fmt.Sprintf("Failed to collect entities: %v", err))
-		hadError = true
-	}
-	if len(duplicates) > 0 {
-		hadError = true
-		allErrors = append(allErrors, duplicates...)
-	}
+		var archivePath string
+		if info.IsDir() {
+			archivePath = rootPath
+			// Check if directory contains any GLX files
+			hasGLXFiles := false
+			filepath.WalkDir(archivePath, func(path string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+				ext := filepath.Ext(d.Name())
+				if ext == ".glx" || ext == ".yaml" || ext == ".yml" {
+					hasGLXFiles = true
+					return filepath.SkipAll // Stop walking once we find one
+				}
+				return nil
+			})
+			if !hasGLXFiles {
+				allErrors = append(allErrors, fmt.Sprintf("no .glx files found in %s", rootPath))
+				continue
+			}
+		} else {
+			// If it's a file, check extension
+			ext := filepath.Ext(rootPath)
+			if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
+				allErrors = append(allErrors, fmt.Sprintf("%s is not a .glx/.yaml file", rootPath))
+				continue
+			}
+			archivePath = filepath.Dir(rootPath)
+			foundFiles = true
+		}
 
-	// Second pass: validate all cross-references if the first pass was clean
-	if !hadError {
-		refErrors, refWarnings := ValidateRepositoryReferences(".", allEntities, vocabs)
+		// Load and merge all GLX files from the archive
+		archive, duplicates, err := LoadArchive(archivePath)
+		if err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("Failed to load archive from %s: %v", archivePath, err))
+			continue
+		}
+
+		// Check if archive has any content
+		hasContent := len(archive.Persons) > 0 || len(archive.Relationships) > 0 || len(archive.Events) > 0 ||
+			len(archive.Places) > 0 || len(archive.Sources) > 0 || len(archive.Citations) > 0 ||
+			len(archive.Repositories) > 0 || len(archive.Assertions) > 0 || len(archive.Media) > 0
+		if hasContent {
+			foundFiles = true
+		}
+
+		// Report duplicate IDs as errors
+		if len(duplicates) > 0 {
+			allErrors = append(allErrors, duplicates...)
+		}
+
+		// Validate the merged archive
+		refErrors, refWarnings := ValidateArchive(archive, archivePath)
 		allErrors = append(allErrors, refErrors...)
 		allWarnings = append(allWarnings, refWarnings...)
 	}
 
-	// Format and print the final report
-	printValidationReport(reportLines, allWarnings, allErrors)
+	// Check if we found any files to validate
+	if !foundFiles && len(allErrors) == 0 {
+		return errors.New("no .glx files found to validate")
+	}
 
-	if len(allErrors) > 0 || hadError {
+	// Format and print the final report
+	printValidationReport(nil, allWarnings, allErrors)
+
+	if len(allErrors) > 0 {
 		return errors.New("validation failed")
 	}
 
-	fmt.Printf("\nValidated %d file(s) with %d warning(s).\n", checked, len(allWarnings))
+	fmt.Printf("\nValidation passed with %d warning(s).\n", len(allWarnings))
 	return nil
 }
 
-func discoverGLXFiles(paths []string, allErrors *[]string) []string {
-	var allGLXFiles []string
-	for _, root := range paths {
-		info, err := os.Stat(root)
-		if err != nil {
-			*allErrors = append(*allErrors, fmt.Sprintf("stat error for %s: %v", root, err))
-			continue
-		}
 
-		if info.IsDir() {
-			filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
-				if walkErr != nil {
-					*allErrors = append(*allErrors, fmt.Sprintf("walk error for %s: %v", path, walkErr))
-					return nil
-				}
-				if !d.IsDir() {
-					ext := filepath.Ext(d.Name())
-					if ext == ".glx" || ext == ".yaml" || ext == ".yml" {
-						allGLXFiles = append(allGLXFiles, path)
-					}
-				}
-				return nil
-			})
-		} else {
-			ext := filepath.Ext(root)
-			if ext == ".glx" || ext == ".yaml" || ext == ".yml" {
-				allGLXFiles = append(allGLXFiles, root)
-			} else {
-				*allErrors = append(*allErrors, fmt.Sprintf("%s is not a .glx/.yaml file", root))
-			}
+func printValidationReport(reportLines []string, allWarnings, allErrors []string) {
+	if reportLines != nil {
+		for _, line := range reportLines {
+			fmt.Println(line)
 		}
-	}
-	return allGLXFiles
-}
-
-func printValidationReport(reportLines, allWarnings, allErrors []string) {
-	for _, line := range reportLines {
-		fmt.Println(line)
 	}
 
 	if len(allErrors) > 0 {
@@ -181,24 +175,3 @@ func printValidationReport(reportLines, allWarnings, allErrors []string) {
 	}
 }
 
-func validateGLXFileFromPath(path string, vocabs *ArchiveVocabularies) []string {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return []string{fmt.Sprintf("read error: %v", err)}
-	}
-
-	doc, err := ParseYAMLFile(data)
-	if err != nil {
-		return []string{fmt.Sprintf("YAML parse error: %v", err)}
-	}
-
-	return ValidateGLXFile(path, doc, vocabs)
-}
-
-func formatValidationIssues(path string, issues []string) []string {
-	lines := []string{fmt.Sprintf("✗ %s", path)}
-	for _, issue := range issues {
-		lines = append(lines, fmt.Sprintf("  - %s", issue))
-	}
-	return lines
-}
