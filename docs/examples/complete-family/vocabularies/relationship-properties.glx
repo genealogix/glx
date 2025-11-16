@@ -1,16 +1,1 @@
-relationship_properties:
-  started_on:
-    label: "Start Date"
-    description: "When the relationship began"
-    value_type: date
-  
-  ended_on:
-    label: "End Date"
-    description: "When the relationship ended"
-    value_type: date
-  
-  location:
-    label: "Location"
-    description: "Location where the relationship occurred"
-    reference_type: places
-
+../../../../specification/5-standard-vocabularies/relationship-properties.glx

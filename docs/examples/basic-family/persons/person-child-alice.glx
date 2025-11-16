@@ -1,5 +1,6 @@
 persons:
   person-alice:
     properties:
-      primary_name: "Alice Thompson"
+      given_name: "Alice"
+      family_name: "Thompson"
       gender: female

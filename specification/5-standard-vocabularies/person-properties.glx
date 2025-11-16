@@ -4,12 +4,6 @@
 # Archives can extend this with custom properties by adding entries with `custom: true`.
 
 person_properties:
-  primary_name:
-    label: "Primary Name"
-    description: "Person's primary or preferred name"
-    value_type: string
-    temporal: true
-  
   given_name:
     label: "Given Name"
     description: "Given name(s) of the person"

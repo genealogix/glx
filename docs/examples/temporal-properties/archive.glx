@@ -1,7 +1,6 @@
 # Temporal Properties Example
 # Demonstrates how to represent properties that change over time
 
-
 places:
   place-leeds:
     name: "Leeds"
@@ -15,60 +14,6 @@ places:
     properties:
       existed_from: "47"
 
-# Property vocabularies defining temporal support
-person_properties:
-  primary_name:
-    label: "Primary Name"
-    description: "Person's primary name"
-    value_type: string
-    temporal: true
-
-  given_name:
-    label: "Given Name"
-    description: "Given name(s)"
-    value_type: string
-    temporal: true
-
-  family_name:
-    label: "Family Name"
-    description: "Family or surname"
-    value_type: string
-    temporal: true
-
-  gender:
-    label: "Gender"
-    description: "Gender identity"
-    value_type: string
-    temporal: true
-
-  born_on:
-    label: "Birth Date"
-    description: "Date of birth"
-    value_type: date
-
-  died_on:
-    label: "Death Date"
-    description: "Date of death"
-    value_type: date
-
-  occupation:
-    label: "Occupation"
-    description: "Profession or trade"
-    value_type: string
-    temporal: true
-
-  residence:
-    label: "Residence"
-    description: "Place of residence"
-    reference_type: places
-    temporal: true
-
-  nationality:
-    label: "Nationality"
-    description: "Citizenship"
-    value_type: string
-    temporal: true
-
 persons:
   person-john-smith-1850:
     properties:
@@ -77,10 +22,6 @@ persons:
       died_on: "1920-06-20"
 
       # Temporal properties (single or list with dates)
-      primary_name:
-        - value: "John Smith"
-          date: "1850"  # Birth name
-
       given_name:
         - value: "John"
           date: "1850"

@@ -100,7 +100,7 @@ func TestParseYAMLFile(t *testing.T) {
 	}{
 		{
 			name:    "valid YAML",
-			data:    []byte("persons:\n  person-12345678:\n    properties:\n      primary_name: \"John Doe\""),
+			data:    []byte("persons:\n  person-12345678:\n    properties:\n      given_name: \"John\"\n      family_name: \"Doe\""),
 			wantErr: false,
 		},
 		{
@@ -161,7 +161,8 @@ func TestCollectAllEntities(t *testing.T) {
 	testContent := `persons:
   person-123:
     properties:
-      primary_name: "Test Person"
+      given_name: "Test"
+      family_name: "Person"
 places:
   place-456:
     name: "Test Place"
@@ -185,7 +186,8 @@ func TestValidateRepositoryReferences(t *testing.T) {
 	personsContent := `persons:
   person-123:
     properties:
-      primary_name: "Test Person"
+      given_name: "Test"
+      family_name: "Person"
 `
 	err := os.WriteFile(personsFile, []byte(personsContent), 0644)
 	require.NoError(t, err)
@@ -278,27 +280,29 @@ func TestRunValidate(t *testing.T) {
 			setup: func() string {
 				tmpDir := t.TempDir()
 				testFile := filepath.Join(tmpDir, "test.glx")
-				content := `persons:
+			content := `persons:
   person-123:
     properties:
-      primary_name: "Test"
+      given_name: "Test"
+      family_name: "Person"
 `
-				err := os.WriteFile(testFile, []byte(content), 0644)
-				require.NoError(t, err)
-				return tmpDir
-			},
-			wantError: false,
+			err := os.WriteFile(testFile, []byte(content), 0644)
+			require.NoError(t, err)
+			return tmpDir
 		},
-		{
-			name: "validate directory",
-			args: []string{},
-			setup: func() string {
-				tmpDir := t.TempDir()
-				testFile := filepath.Join(tmpDir, "test.glx")
-				content := `persons:
+		wantError: false,
+	},
+	{
+		name: "validate directory",
+		args: []string{},
+		setup: func() string {
+			tmpDir := t.TempDir()
+			testFile := filepath.Join(tmpDir, "test.glx")
+			content := `persons:
   person-123:
     properties:
-      primary_name: "Test"
+      given_name: "Test"
+      family_name: "Person"
 `
 				err := os.WriteFile(testFile, []byte(content), 0644)
 				require.NoError(t, err)

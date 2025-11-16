@@ -1,5 +1,6 @@
 persons:
   person-bob:
     properties:
-      primary_name: "Robert Thompson Jr."
+      given_name: "Robert"
+      family_name: "Thompson"
       gender: male

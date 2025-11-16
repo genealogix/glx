@@ -1,4 +1,5 @@
 persons:
   person-abc123:
     properties:
-      primary_name: "Test Person"
+      given_name: "Test"
+      family_name: "Person"

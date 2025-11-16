@@ -1,11 +1,1 @@
-# GENEALOGIX Confidence Levels Vocabulary
-# Standard confidence levels for genealogical conclusions
-
-confidence_levels:
-  high:
-    label: "High"
-    description: "Multiple primary sources agree"
-  medium:
-    label: "Medium"
-    description: "Some conflicting evidence, but preponderance supports"
-
+../../../../specification/5-standard-vocabularies/confidence-levels.glx

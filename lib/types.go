@@ -85,7 +85,7 @@ type Event struct {
 	Type         string                 `yaml:"type" refType:"event_types"`
 	PlaceID      string                 `yaml:"place,omitempty" refType:"places"`
 	Value        string                 `yaml:"value,omitempty"`
-	Date         *EventDate             `yaml:"date,omitempty"`
+	Date         interface{}            `yaml:"date,omitempty"` // Can be string or EventDate struct
 	Participants []EventParticipant     `yaml:"participants,omitempty"`
 	Properties   map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Description  string                 `yaml:"description,omitempty"`
@@ -150,16 +150,16 @@ type Source struct {
 
 // Citation represents a citation of a source.
 type Citation struct {
-	SourceID       string   `yaml:"source,omitempty" refType:"sources"`
-	Page           string   `yaml:"page,omitempty"`
-	TextFromSource string   `yaml:"text_from_source,omitempty"`
-	Transcription  string   `yaml:"transcription,omitempty"`
-	Quality        *int     `yaml:"quality,omitempty" refType:"quality_ratings"`
-	Locator        *Locator `yaml:"locator,omitempty"`
-	RepositoryID   string   `yaml:"repository,omitempty" refType:"repositories"`
-	Media          []string `yaml:"media,omitempty" refType:"media"`
-	Notes          string   `yaml:"notes,omitempty"`
-	Tags           []string `yaml:"tags,omitempty"`
+	SourceID       string      `yaml:"source,omitempty" refType:"sources"`
+	Page           string      `yaml:"page,omitempty"`
+	TextFromSource string      `yaml:"text_from_source,omitempty"`
+	Transcription  string      `yaml:"transcription,omitempty"`
+	Quality        *int        `yaml:"quality,omitempty" refType:"quality_ratings"`
+	Locator        interface{} `yaml:"locator,omitempty"` // Can be string or Locator struct
+	RepositoryID   string      `yaml:"repository,omitempty" refType:"repositories"`
+	Media          []string    `yaml:"media,omitempty" refType:"media"`
+	Notes          string      `yaml:"notes,omitempty"`
+	Tags           []string    `yaml:"tags,omitempty"`
 }
 
 // Locator provides structured information for finding a source.

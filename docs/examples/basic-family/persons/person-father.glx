@@ -1,5 +1,6 @@
 persons:
   person-father:
     properties:
-      primary_name: "Robert Thompson"
+      given_name: "Robert"
+      family_name: "Thompson"
       gender: male

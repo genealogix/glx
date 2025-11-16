@@ -99,7 +99,7 @@ func TestExamplesDirectories(t *testing.T) {
 		return
 	}
 
-	examples := []string{"minimal", "basic-family", "complete-family", "single-file"}
+	examples := []string{"minimal", "basic-family", "complete-family", "single-file", "participant-assertions", "temporal-properties"}
 
 	for _, example := range examples {
 		t.Run(example, func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestExamplesValidation(t *testing.T) {
 		return
 	}
 
-	examples := []string{"minimal", "basic-family", "complete-family"}
+	examples := []string{"minimal", "basic-family", "complete-family", "single-file", "participant-assertions", "temporal-properties"}
 
 	for _, example := range examples {
 		t.Run(example, func(t *testing.T) {
@@ -215,21 +215,17 @@ func TestExamplesValidation(t *testing.T) {
 				return
 			}
 
-			// Collect all entities for cross-reference validation
-			allEntities, duplicates, err := CollectAllEntities(examplePath)
+			// Load and merge all GLX files from the archive
+			archive, duplicates, err := LoadArchive(examplePath)
 			require.NoError(t, err)
 
 			// Check for duplicate IDs
 			assert.Empty(t, duplicates, "example %s should not have duplicate entity IDs", example)
 
-			// Load vocabularies for validation
-			vocabs, err := LoadArchiveVocabularies(examplePath)
-			require.NoError(t, err)
-
-			// Validate cross-references
-			refErrors, refWarnings := ValidateRepositoryReferences(examplePath, allEntities, vocabs)
+			// Validate the merged archive
+			refErrors, refWarnings := ValidateArchive(archive, examplePath)
 			allRefIssues := append(refErrors, refWarnings...)
-			assert.Empty(t, allRefIssues, "example %s should not have broken references: %v", example, allRefIssues)
+			assert.Empty(t, allRefIssues, "example %s should not have validation issues: %v", example, allRefIssues)
 		})
 	}
 }

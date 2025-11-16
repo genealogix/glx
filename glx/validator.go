@@ -333,6 +333,239 @@ type ArchiveVocabularies struct {
 	PlaceProperties        map[string]*lib.PropertyDefinition
 }
 
+// ValidateArchive validates a merged GLXFile archive
+func ValidateArchive(archive *lib.GLXFile, rootPath string) ([]string, []string) {
+	var errors, warnings []string
+
+	// Build entity maps for reference validation
+	allEntities := make(map[string]map[string]bool)
+	allEntities["persons"] = make(map[string]bool)
+	allEntities["relationships"] = make(map[string]bool)
+	allEntities["events"] = make(map[string]bool)
+	allEntities["places"] = make(map[string]bool)
+	allEntities["sources"] = make(map[string]bool)
+	allEntities["citations"] = make(map[string]bool)
+	allEntities["repositories"] = make(map[string]bool)
+	allEntities["assertions"] = make(map[string]bool)
+	allEntities["media"] = make(map[string]bool)
+
+	for id := range archive.Persons {
+		allEntities["persons"][id] = true
+	}
+	for id := range archive.Relationships {
+		allEntities["relationships"][id] = true
+	}
+	for id := range archive.Events {
+		allEntities["events"][id] = true
+	}
+	for id := range archive.Places {
+		allEntities["places"][id] = true
+	}
+	for id := range archive.Sources {
+		allEntities["sources"][id] = true
+	}
+	for id := range archive.Citations {
+		allEntities["citations"][id] = true
+	}
+	for id := range archive.Repositories {
+		allEntities["repositories"][id] = true
+	}
+	for id := range archive.Assertions {
+		allEntities["assertions"][id] = true
+	}
+	for id := range archive.Media {
+		allEntities["media"][id] = true
+	}
+
+	// Build vocabulary struct from merged archive
+	vocabs := &ArchiveVocabularies{
+		RelationshipTypes:      archive.RelationshipTypes,
+		EventTypes:             archive.EventTypes,
+		PlaceTypes:             archive.PlaceTypes,
+		RepositoryTypes:        archive.RepositoryTypes,
+		ParticipantRoles:       archive.ParticipantRoles,
+		MediaTypes:             archive.MediaTypes,
+		ConfidenceLevels:       archive.ConfidenceLevels,
+		QualityRatings:         archive.QualityRatings,
+		PersonProperties:       archive.PersonProperties,
+		EventProperties:        archive.EventProperties,
+		RelationshipProperties: archive.RelationshipProperties,
+		PlaceProperties:        archive.PlaceProperties,
+	}
+
+	// Validate relationships
+	for relID, rel := range archive.Relationships {
+		// Validate properties
+		warns, errs := validateEntityPropertiesFromStruct("relationships", relID, rel.Properties, allEntities, vocabs)
+		warnings = append(warnings, warns...)
+		errors = append(errors, errs...)
+
+		// Check participants reference valid persons
+		for i, participant := range rel.Participants {
+			if !allEntities["persons"][participant.Person] {
+				errors = append(errors, fmt.Sprintf("relationships[%s].participants[%d].person references non-existent person: %s", relID, i, participant.Person))
+			}
+		}
+	}
+
+	// Validate events
+	for eventID, event := range archive.Events {
+		// Validate properties
+		warns, errs := validateEntityPropertiesFromStruct("events", eventID, event.Properties, allEntities, vocabs)
+		warnings = append(warnings, warns...)
+		errors = append(errors, errs...)
+
+		// Check place references
+		if event.PlaceID != "" && !allEntities["places"][event.PlaceID] {
+			errors = append(errors, fmt.Sprintf("events[%s].place references non-existent place: %s", eventID, event.PlaceID))
+		}
+
+		// Check participants reference valid persons
+		for i, participant := range event.Participants {
+			if !allEntities["persons"][participant.PersonID] {
+				errors = append(errors, fmt.Sprintf("events[%s].participants[%d].person references non-existent person: %s", eventID, i, participant.PersonID))
+			}
+		}
+	}
+
+	// Validate places
+	for placeID, place := range archive.Places {
+		// Validate properties
+		warns, errs := validateEntityPropertiesFromStruct("places", placeID, place.Properties, allEntities, vocabs)
+		warnings = append(warnings, warns...)
+		errors = append(errors, errs...)
+
+		// Check parent place references
+		if place.ParentID != "" && !allEntities["places"][place.ParentID] {
+			errors = append(errors, fmt.Sprintf("places[%s].parent references non-existent place: %s", placeID, place.ParentID))
+		}
+	}
+
+	// Validate persons
+	for personID, person := range archive.Persons {
+		warns, errs := validateEntityPropertiesFromStruct("persons", personID, person.Properties, allEntities, vocabs)
+		warnings = append(warnings, warns...)
+		errors = append(errors, errs...)
+	}
+
+	// Validate citations
+	for citationID, citation := range archive.Citations {
+		// Check source references
+		if citation.SourceID != "" && !allEntities["sources"][citation.SourceID] {
+			errors = append(errors, fmt.Sprintf("citations[%s].source references non-existent source: %s", citationID, citation.SourceID))
+		}
+		// Check repository references
+		if citation.RepositoryID != "" && !allEntities["repositories"][citation.RepositoryID] {
+			errors = append(errors, fmt.Sprintf("citations[%s].repository references non-existent repository: %s", citationID, citation.RepositoryID))
+		}
+	}
+
+	// Validate sources
+	for sourceID, source := range archive.Sources {
+		// Check repository references
+		if source.RepositoryID != "" && !allEntities["repositories"][source.RepositoryID] {
+			errors = append(errors, fmt.Sprintf("sources[%s].repository references non-existent repository: %s", sourceID, source.RepositoryID))
+		}
+	}
+
+	// Validate assertions
+	for assertionID, assertion := range archive.Assertions {
+		// Semantic validation for assertions
+		warns, errs := validateAssertionSemanticsFromStruct(assertionID, assertion, allEntities, vocabs)
+		warnings = append(warnings, warns...)
+		errors = append(errors, errs...)
+
+		// Check subject references (could be person, event, relationship, place)
+		found := false
+		for _, entityType := range []string{"persons", "events", "relationships", "places"} {
+			if allEntities[entityType][assertion.Subject] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			errors = append(errors, fmt.Sprintf("assertions[%s].subject references non-existent entity: %s", assertionID, assertion.Subject))
+		}
+
+		// Check citations
+		for i, citationID := range assertion.Citations {
+			if !allEntities["citations"][citationID] {
+				errors = append(errors, fmt.Sprintf("assertions[%s].citations[%d] references non-existent citation: %s", assertionID, i, citationID))
+			}
+		}
+
+		// Check sources
+		for i, sourceID := range assertion.Sources {
+			if !allEntities["sources"][sourceID] {
+				errors = append(errors, fmt.Sprintf("assertions[%s].sources[%d] references non-existent source: %s", assertionID, i, sourceID))
+			}
+		}
+	}
+
+	return errors, warnings
+}
+
+// LoadArchive loads and merges all GLX files from a directory into a single GLXFile struct
+func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
+	merged := &lib.GLXFile{
+		Persons:       make(map[string]*lib.Person),
+		Relationships: make(map[string]*lib.Relationship),
+		Events:        make(map[string]*lib.Event),
+		Places:        make(map[string]*lib.Place),
+		Sources:       make(map[string]*lib.Source),
+		Citations:     make(map[string]*lib.Citation),
+		Repositories:  make(map[string]*lib.Repository),
+		Assertions:    make(map[string]*lib.Assertion),
+		Media:         make(map[string]*lib.Media),
+
+		EventTypes:        make(map[string]*lib.EventType),
+		ParticipantRoles:  make(map[string]*lib.ParticipantRole),
+		ConfidenceLevels:  make(map[string]*lib.ConfidenceLevel),
+		RelationshipTypes: make(map[string]*lib.RelationshipType),
+		PlaceTypes:        make(map[string]*lib.PlaceType),
+		SourceTypes:       make(map[string]*lib.SourceType),
+		RepositoryTypes:   make(map[string]*lib.RepositoryType),
+		MediaTypes:        make(map[string]*lib.MediaType),
+		QualityRatings:    make(map[string]*lib.QualityRating),
+
+		PersonProperties:       make(map[string]*lib.PropertyDefinition),
+		EventProperties:        make(map[string]*lib.PropertyDefinition),
+		RelationshipProperties: make(map[string]*lib.PropertyDefinition),
+		PlaceProperties:        make(map[string]*lib.PropertyDefinition),
+	}
+
+	var allDuplicates []string
+
+	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(d.Name())
+		if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+
+		var glxFile lib.GLXFile
+		if err := yaml.Unmarshal(data, &glxFile); err != nil {
+			// Skip files that can't be parsed
+			return nil
+		}
+
+		// Merge this file into the combined archive
+		duplicates := merged.Merge(&glxFile)
+		allDuplicates = append(allDuplicates, duplicates...)
+
+		return nil
+	})
+
+	return merged, allDuplicates, err
+}
+
 func LoadArchiveVocabularies(rootPath string) (*ArchiveVocabularies, error) {
 	archiveVocabs := &ArchiveVocabularies{
 		RelationshipTypes: make(map[string]*lib.RelationshipType),
@@ -670,6 +903,51 @@ func ValidateRepositoryReferences(rootPath string, allEntities map[string]map[st
 	return issues, warnings
 }
 
+// validateEntityPropertiesFromStruct validates properties from a struct
+func validateEntityPropertiesFromStruct(entityType, entityID string, properties map[string]interface{}, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
+	if properties == nil {
+		return warnings, errors
+	}
+
+	var vocab map[string]*lib.PropertyDefinition
+	switch entityType {
+	case "persons":
+		vocab = vocabs.PersonProperties
+	case "events":
+		vocab = vocabs.EventProperties
+	case "relationships":
+		vocab = vocabs.RelationshipProperties
+	case "places":
+		vocab = vocabs.PlaceProperties
+	default:
+		return warnings, errors
+	}
+
+	if vocab == nil {
+		warnings = append(warnings, fmt.Sprintf("%s[%s]: no property vocabulary found for entity type '%s'", entityType, entityID, entityType))
+		return warnings, errors
+	}
+
+	for key, value := range properties {
+		propDef, exists := vocab[key]
+		if !exists {
+			warnings = append(warnings, fmt.Sprintf("%s[%s]: unknown property '%s'", entityType, entityID, key))
+			continue
+		}
+
+		// Validate reference_type if it exists
+		if propDef.ReferenceType != "" {
+			if refID, ok := value.(string); ok {
+				if _, refExists := allEntities[propDef.ReferenceType][refID]; !refExists {
+					errors = append(errors, fmt.Sprintf("%s[%s]: property '%s' references non-existent %s: %s", entityType, entityID, key, propDef.ReferenceType, refID))
+				}
+			}
+		}
+	}
+	return warnings, errors
+}
+
 // validateEntityProperties validates the `properties` map on an entity.
 func validateEntityProperties(path, entityType, entityID string, entity map[string]interface{}, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
 	var warnings, errors []string
@@ -712,6 +990,76 @@ func validateEntityProperties(path, entityType, entityID string, entity map[stri
 				}
 			}
 			// Note: This does not handle temporal values yet, as per the plan.
+		}
+	}
+	return warnings, errors
+}
+
+// validateAssertionSemanticsFromStruct validates assertion semantics from a struct
+func validateAssertionSemanticsFromStruct(assertionID string, assertion *lib.Assertion, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
+	hasParticipant := assertion.Participant != nil
+	hasClaim := assertion.Claim != ""
+	hasValue := assertion.Value != ""
+
+	// Rule: `participant` and `value` are mutually exclusive
+	if hasParticipant && hasValue {
+		errors = append(errors, fmt.Sprintf("assertions[%s]: participant and value cannot both be present", assertionID))
+	}
+
+	// Rule: `participant` and `claim` are mutually exclusive
+	if hasParticipant && hasClaim {
+		errors = append(errors, fmt.Sprintf("assertions[%s]: participant and claim cannot both be present", assertionID))
+	}
+
+	// Validate participant structure if it exists
+	if hasParticipant {
+		// Rule: participant.person must exist
+		if assertion.Participant.Person == "" {
+			errors = append(errors, fmt.Sprintf("assertions[%s]: participant.person is required", assertionID))
+		} else if !allEntities["persons"][assertion.Participant.Person] {
+			errors = append(errors, fmt.Sprintf("assertions[%s]: participant.person references non-existent person: %s", assertionID, assertion.Participant.Person))
+		}
+
+		// Rule: participant.role must exist in vocabulary if present
+		if assertion.Participant.Role != "" {
+			if _, roleExists := vocabs.ParticipantRoles[assertion.Participant.Role]; !roleExists {
+				errors = append(errors, fmt.Sprintf("assertions[%s]: participant.role references non-existent role: %s", assertionID, assertion.Participant.Role))
+			}
+		}
+	} else { // This is a claim-based assertion
+		if assertion.Subject == "" {
+			return warnings, errors
+		}
+
+		entityType := getEntityType(assertion.Subject, allEntities)
+		if entityType == "" {
+			return warnings, errors
+		}
+
+		if assertion.Claim == "" {
+			return warnings, errors
+		}
+
+		var vocab map[string]*lib.PropertyDefinition
+		switch entityType {
+		case "person":
+			vocab = vocabs.PersonProperties
+		case "event":
+			vocab = vocabs.EventProperties
+		case "relationship":
+			vocab = vocabs.RelationshipProperties
+		case "place":
+			vocab = vocabs.PlaceProperties
+		}
+
+		if vocab != nil {
+			if _, exists := vocab[assertion.Claim]; !exists {
+				// This is a soft warning
+				warnings = append(warnings, fmt.Sprintf("assertions[%s]: unknown claim '%s' for entity type '%s'", assertionID, assertion.Claim, entityType))
+			}
+		} else {
+			warnings = append(warnings, fmt.Sprintf("assertions[%s]: no property vocabulary found for entity type '%s'", assertionID, entityType))
 		}
 	}
 	return warnings, errors

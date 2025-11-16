@@ -1,17 +1,1 @@
-# GENEALOGIX Place Types Vocabulary
-# Standard place types for geographic hierarchy
-
-place_types:
-  country:
-    label: "Country"
-    description: "Nation state or country"
-    category: "administrative"
-  county:
-    label: "County"
-    description: "County or shire"
-    category: "administrative"
-  city:
-    label: "City"
-    description: "Major urban area or city"
-    category: "geographic"
-
+../../../../specification/5-standard-vocabularies/place-types.glx

@@ -1,6 +1,1 @@
-person_properties:
-  primary_name:
-    label: "Primary Name"
-    description: "Person's primary or preferred name"
-    value_type: string
-
+../../../../specification/5-standard-vocabularies/person-properties.glx

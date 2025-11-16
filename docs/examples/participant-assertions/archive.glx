@@ -5,19 +5,22 @@
 persons:
   person-john-smith:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       gender: "male"
       born_on: "1850-01-15"
 
   person-jane-doe:
     properties:
-      primary_name: "Jane Doe"
+      given_name: "Jane"
+      family_name: "Doe"
       gender: "female"
       born_on: "1855-03-20"
 
   person-thomas-brown:
     properties:
-      primary_name: "Thomas Brown"
+      given_name: "Thomas"
+      family_name: "Brown"
       gender: "male"
 
 events:
