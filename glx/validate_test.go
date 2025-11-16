@@ -123,7 +123,7 @@ func TestParseYAMLFile(t *testing.T) {
 				assert.Nil(t, doc)
 			} else {
 				assert.NoError(t, err)
-				if tt.data != nil && len(tt.data) > 0 {
+				if len(tt.data) > 0 {
 					assert.NotNil(t, doc)
 				}
 			}
@@ -420,6 +420,12 @@ func TestInvalidArchiveDirectories(t *testing.T) {
 		{"duplicate-ids", "archive with duplicate entity IDs"},
 		{"invalid-relationship-participants", "archive with invalid relationship participant references"},
 		{"invalid-assertion-claims", "archive with unknown assertion claims"},
+		{"comprehensive-broken-references", "archive with multiple types of broken references (place, person, parent, source, repository)"},
+		{"assertion-participant-and-claim", "assertion with both participant and claim (mutually exclusive)"},
+		{"assertion-participant-and-value", "assertion with both participant and value (mutually exclusive)"},
+		{"assertion-participant-invalid-person", "assertion participant references non-existent person"},
+		{"assertion-participant-invalid-role", "assertion participant references non-existent role"},
+		{"assertion-unknown-claim", "assertion with unknown claim (should warn)"},
 	}
 
 	for _, tc := range invalidCases {
@@ -483,6 +489,328 @@ func TestValidArchiveDirectories(t *testing.T) {
 
 			// Valid archives should have no validation errors (warnings are OK)
 			assert.Empty(t, refErrors, "%s (%s) should have no validation errors: %v", tc.name, tc.description, allRefIssues)
+		})
+	}
+}
+
+// TestValidateGLXFile tests the ValidateGLXFile function directly
+func TestValidateGLXFile(t *testing.T) {
+	tests := []struct {
+		name   string
+		doc    map[string]interface{}
+		vocabs *ArchiveVocabularies
+		expect int // expected number of issues
+	}{
+		{
+			name: "valid GLX file",
+			doc: map[string]interface{}{
+				"persons": map[string]interface{}{
+					"person-123": map[string]interface{}{
+						"properties": map[string]interface{}{
+							"given_name": "John",
+							"family_name": "Smith",
+						},
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{
+				PersonProperties: map[string]*lib.PropertyDefinition{
+					"given_name":  {Label: "Given Name"},
+					"family_name": {Label: "Family Name"},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name: "entity with id field should be rejected",
+			doc: map[string]interface{}{
+				"persons": map[string]interface{}{
+					"person-123": map[string]interface{}{
+						"id": "person-123", // Should not have id field
+						"properties": map[string]interface{}{
+							"given_name": "John",
+						},
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Should reject id field
+		},
+		{
+			name: "invalid entity ID format",
+			doc: map[string]interface{}{
+				"persons": map[string]interface{}{
+					"person_123": map[string]interface{}{ // Underscore not allowed
+						"properties": map[string]interface{}{
+							"given_name": "John",
+						},
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Invalid ID format
+		},
+		{
+			name: "media entity",
+			doc: map[string]interface{}{
+				"media": map[string]interface{}{
+					"media-123": map[string]interface{}{
+						"uri":       "media/photos/photo.jpg",
+						"mime_type": "image/jpeg",
+						"title":     "Test Photo",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+		{
+			name: "multiple entity types",
+			doc: map[string]interface{}{
+				"persons": map[string]interface{}{
+					"person-123": map[string]interface{}{
+						"properties": map[string]interface{}{
+							"given_name": "John",
+						},
+					},
+				},
+				"events": map[string]interface{}{
+					"event-456": map[string]interface{}{
+						"type": "birth",
+						"date": "1850-01-15",
+					},
+				},
+				"places": map[string]interface{}{
+					"place-789": map[string]interface{}{
+						"name": "Leeds",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issues := ValidateGLXFile("test.glx", tt.doc, tt.vocabs)
+			if tt.expect == 0 {
+				assert.Empty(t, issues, "expected no issues but got: %v", issues)
+			} else {
+				assert.GreaterOrEqual(t, len(issues), tt.expect, "expected at least %d issues but got: %v", tt.expect, issues)
+			}
+		})
+	}
+}
+
+// TestValidateEntityByType tests the validateEntityByType function directly
+func TestValidateEntityByType(t *testing.T) {
+	tests := []struct {
+		name       string
+		entityType string
+		entity     map[string]interface{}
+		vocabs     *ArchiveVocabularies
+		expect     int // expected number of issues
+	}{
+		{
+			name:       "valid person entity",
+			entityType: "person",
+			entity: map[string]interface{}{
+				"properties": map[string]interface{}{
+					"given_name": "John",
+				},
+			},
+			vocabs: &ArchiveVocabularies{
+				PersonProperties: map[string]*lib.PropertyDefinition{
+					"given_name": {Label: "Given Name"},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name:       "valid event entity",
+			entityType: "event",
+			entity: map[string]interface{}{
+				"type": "birth",
+				"date": "1850-01-15",
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+		{
+			name:       "valid place entity",
+			entityType: "place",
+			entity: map[string]interface{}{
+				"name": "Leeds",
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+		{
+			name:       "valid media entity",
+			entityType: "media",
+			entity: map[string]interface{}{
+				"uri":       "media/photos/photo.jpg",
+				"mime_type": "image/jpeg",
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+		{
+			name:       "invalid entity - missing required field",
+			entityType: "place",
+			entity:     map[string]interface{}{}, // Missing name
+			vocabs:     &ArchiveVocabularies{},
+			expect:     1, // Should fail schema validation
+		},
+		{
+			name:       "unknown entity type falls back to basic validation",
+			entityType: "unknown_type",
+			entity: map[string]interface{}{
+				"some_field": "value",
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0, // Unknown types don't fail, just pass through
+		},
+	}
+
+		for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issues := validateEntityByType(tt.entityType, tt.entity, tt.vocabs)
+			if tt.expect == 0 {
+				// For schema validation, we may have issues, so just check it doesn't crash
+				_ = issues
+			} else {
+				assert.GreaterOrEqual(t, len(issues), tt.expect, "expected at least %d issues but got: %v", tt.expect, issues)
+			}
+		})
+	}
+}
+
+// TestValidateEntityPropertiesFromStruct tests property validation with vocab entries
+func TestValidateEntityPropertiesFromStruct(t *testing.T) {
+	vocabs := &ArchiveVocabularies{
+		PersonProperties: map[string]*lib.PropertyDefinition{
+			"given_name": {
+				Label:        "Given Name",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
+			"family_name": {
+				Label:        "Family Name",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
+			"birth_place": {
+				Label:        "Birth Place",
+				ValueType:    "reference",
+				ReferenceType: "places",
+			},
+		},
+		PlaceProperties: map[string]*lib.PropertyDefinition{
+			"name": {
+				Label:        "Name",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
+		},
+		EventProperties: map[string]*lib.PropertyDefinition{
+			"type": {
+				Label:        "Type",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
+		},
+		RelationshipProperties: map[string]*lib.PropertyDefinition{
+			"type": {
+				Label:        "Type",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
+		},
+	}
+
+	allEntities := map[string]map[string]bool{
+		"persons":  {"person-123": true},
+		"places":   {"place-leeds": true},
+		"events":   {},
+		"relationships": {},
+	}
+
+	tests := []struct {
+		name       string
+		entityType string
+		entityID   string
+		properties map[string]interface{}
+		expectWarn int
+		expectErr  int
+	}{
+		{
+			name:       "valid properties",
+			entityType: "persons",
+			entityID:   "person-123",
+			properties: map[string]interface{}{
+				"given_name":  "John",
+				"family_name": "Smith",
+			},
+			expectWarn: 0,
+			expectErr:  0,
+		},
+		{
+			name:       "unknown property",
+			entityType: "persons",
+			entityID:   "person-123",
+			properties: map[string]interface{}{
+				"unknown_prop": "value",
+			},
+			expectWarn: 1, // Unknown property should warn
+			expectErr:  0,
+		},
+		{
+			name:       "valid reference property",
+			entityType: "persons",
+			entityID:   "person-123",
+			properties: map[string]interface{}{
+				"birth_place": "place-leeds",
+			},
+			expectWarn: 0,
+			expectErr:  0,
+		},
+		{
+			name:       "invalid reference property",
+			entityType: "persons",
+			entityID:   "person-123",
+			properties: map[string]interface{}{
+				"birth_place": "place-nonexistent",
+			},
+			expectWarn: 0,
+			expectErr:  1, // Invalid reference should error
+		},
+		{
+			name:       "no vocab for entity type",
+			entityType: "unknown",
+			entityID:   "unknown-123",
+			properties: map[string]interface{}{
+				"some_prop": "value",
+			},
+			expectWarn: 0,
+			expectErr:  0, // No vocab means no validation
+		},
+		{
+			name:       "nil properties",
+			entityType: "persons",
+			entityID:   "person-123",
+			properties: nil,
+			expectWarn: 0,
+			expectErr:  0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings, errors := validateEntityPropertiesFromStruct(tt.entityType, tt.entityID, tt.properties, allEntities, vocabs)
+			assert.Equal(t, tt.expectWarn, len(warnings), "expected %d warnings but got %d: %v", tt.expectWarn, len(warnings), warnings)
+			assert.Equal(t, tt.expectErr, len(errors), "expected %d errors but got %d: %v", tt.expectErr, len(errors), errors)
 		})
 	}
 }

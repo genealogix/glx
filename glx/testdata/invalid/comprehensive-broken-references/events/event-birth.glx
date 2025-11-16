@@ -1,0 +1,9 @@
+events:
+  event-birth:
+    type: birth
+    date: "1850-01-15"
+    place: place-nonexistent
+    participants:
+      - person: person-nonexistent
+        role: subject
+

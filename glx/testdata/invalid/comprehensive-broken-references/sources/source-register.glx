@@ -1,0 +1,5 @@
+sources:
+  source-register:
+    title: "Parish Register"
+    repository: repository-nonexistent
+

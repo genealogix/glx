@@ -152,7 +152,6 @@ func runValidate(args []string) error {
 	return nil
 }
 
-
 func printValidationReport(reportLines []string, allWarnings, allErrors []string) {
 	if reportLines != nil {
 		for _, line := range reportLines {
@@ -174,4 +173,3 @@ func printValidationReport(reportLines []string, allWarnings, allErrors []string
 		}
 	}
 }
-
