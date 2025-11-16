@@ -280,25 +280,25 @@ func TestRunValidate(t *testing.T) {
 			setup: func() string {
 				tmpDir := t.TempDir()
 				testFile := filepath.Join(tmpDir, "test.glx")
-			content := `persons:
+				content := `persons:
   person-123:
     properties:
       given_name: "Test"
       family_name: "Person"
 `
-			err := os.WriteFile(testFile, []byte(content), 0644)
-			require.NoError(t, err)
-			return tmpDir
+				err := os.WriteFile(testFile, []byte(content), 0644)
+				require.NoError(t, err)
+				return tmpDir
+			},
+			wantError: false,
 		},
-		wantError: false,
-	},
-	{
-		name: "validate directory",
-		args: []string{},
-		setup: func() string {
-			tmpDir := t.TempDir()
-			testFile := filepath.Join(tmpDir, "test.glx")
-			content := `persons:
+		{
+			name: "validate directory",
+			args: []string{},
+			setup: func() string {
+				tmpDir := t.TempDir()
+				testFile := filepath.Join(tmpDir, "test.glx")
+				content := `persons:
   person-123:
     properties:
       given_name: "Test"
@@ -385,9 +385,9 @@ func TestBasicValidateEntity(t *testing.T) {
 		{
 			name:       "relationship missing type",
 			entityType: "relationship",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 2, // missing type and persons
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     2, // missing type and persons
 		},
 		{
 			name:       "relationship missing persons",
@@ -401,51 +401,51 @@ func TestBasicValidateEntity(t *testing.T) {
 		{
 			name:       "event missing type",
 			entityType: "event",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 1,
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     1,
 		},
 		{
 			name:       "place missing name",
 			entityType: "place",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 1,
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     1,
 		},
 		{
 			name:       "source missing title",
 			entityType: "source",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 1,
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     1,
 		},
 		{
 			name:       "citation missing source",
 			entityType: "citation",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 1,
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     1,
 		},
 		{
 			name:       "repository missing name",
 			entityType: "repository",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 1,
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     1,
 		},
 		{
 			name:       "assertion missing subject",
 			entityType: "assertion",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 3, // missing subject, claim, and sources/citations
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     3, // missing subject, claim, and sources/citations
 		},
 		{
 			name:       "media missing uri",
 			entityType: "media",
-			entity: map[string]interface{}{},
-			vocabs: nil,
-			expect: 1,
+			entity:     map[string]interface{}{},
+			vocabs:     nil,
+			expect:     1,
 		},
 		{
 			name:       "relationship with vocab validation",
@@ -488,4 +488,82 @@ relationship_types:
 	assert.Equal(t, "MARR", glxFile.RelationshipTypes["marriage"].GEDCOM)
 }
 
-// TestValidateRepositoryReferences_InvalidTestFiles removed - testdata deleted
+// TestInvalidArchiveDirectories validates that invalid archive directories fail validation
+func TestInvalidArchiveDirectories(t *testing.T) {
+	invalidCases := []struct {
+		name        string
+		description string
+	}{
+		{"missing-vocabularies", "archive missing required vocabularies"},
+		{"broken-references", "archive with invalid entity references"},
+		{"invalid-properties", "archive with unknown properties"},
+		{"invalid-entity-ids", "archive with invalid entity IDs"},
+		{"duplicate-ids", "archive with duplicate entity IDs"},
+		{"invalid-relationship-participants", "archive with invalid relationship participant references"},
+		{"invalid-assertion-claims", "archive with unknown assertion claims"},
+	}
+
+	for _, tc := range invalidCases {
+		t.Run(tc.name, func(t *testing.T) {
+			archivePath := filepath.Join("testdata", "invalid", tc.name)
+
+			if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+				t.Skipf("test case %s not found", tc.name)
+				return
+			}
+
+			// Load and merge all GLX files from the archive
+			archive, duplicates, err := LoadArchive(archivePath)
+			require.NoError(t, err, "should be able to load invalid archive")
+
+			// Check that there are no duplicate IDs (some test cases should have duplicates)
+			if tc.name != "duplicate-ids" {
+				assert.Empty(t, duplicates, "invalid archive %s should not have duplicate entity IDs", tc.name)
+			} else {
+				assert.NotEmpty(t, duplicates, "duplicate-ids test case should have duplicate entity IDs")
+			}
+
+			// Validate the merged archive - should have errors
+			refErrors, refWarnings := ValidateArchive(archive, archivePath)
+			allRefIssues := append(refErrors, refWarnings...)
+
+			// All invalid test cases should have validation issues
+			assert.NotEmpty(t, allRefIssues, "%s (%s) should have validation issues: %v", tc.name, tc.description, allRefIssues)
+		})
+	}
+}
+
+// TestValidArchiveDirectories validates that valid archive directories pass validation
+func TestValidArchiveDirectories(t *testing.T) {
+	validCases := []struct {
+		name        string
+		description string
+	}{
+		{"minimal-example", "minimal valid archive"},
+	}
+
+	for _, tc := range validCases {
+		t.Run(tc.name, func(t *testing.T) {
+			archivePath := filepath.Join("testdata", "valid", tc.name)
+
+			if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+				t.Skipf("test case %s not found", tc.name)
+				return
+			}
+
+			// Load and merge all GLX files from the archive
+			archive, duplicates, err := LoadArchive(archivePath)
+			require.NoError(t, err, "should be able to load valid archive")
+
+			// Check for duplicate IDs
+			assert.Empty(t, duplicates, "valid archive %s should not have duplicate entity IDs", tc.name)
+
+			// Validate the merged archive - should have no errors
+			refErrors, refWarnings := ValidateArchive(archive, archivePath)
+			allRefIssues := append(refErrors, refWarnings...)
+
+			// Valid archives should have no validation errors (warnings are OK)
+			assert.Empty(t, refErrors, "%s (%s) should have no validation errors: %v", tc.name, tc.description, allRefIssues)
+		})
+	}
+}

@@ -1,0 +1,75 @@
+# Test file for participant-based assertions
+# Demonstrates the new participant assertion feature
+
+persons:
+  person-john:
+    version: "1.0"
+    properties:
+      primary_name: "John Smith"
+      gender: "male"
+  
+  person-jane:
+    version: "1.0"
+    properties:
+      primary_name: "Jane Doe"
+      gender: "female"
+  
+  person-thomas:
+    version: "1.0"
+    properties:
+      primary_name: "Thomas Brown"
+      gender: "male"
+
+events:
+  event-marriage-1880:
+    version: "1.0"
+    type: marriage
+    date:
+      value: "1880-06-15"
+
+sources:
+  source-marriage-cert:
+    version: "1.0"
+    title: "Marriage Certificate"
+    type: vital_record
+
+citations:
+  citation-marriage-cert:
+    version: "1.0"
+    source: source-marriage-cert
+    quality: 3
+    transcription: "John Smith married Jane Doe on June 15, 1880"
+
+# Participant assertions showing people involved in the marriage
+assertions:
+  assertion-john-groom:
+    version: "1.0"
+    subject: event-marriage-1880
+    participant:
+      person: person-john
+      role: groom
+    citations:
+      - citation-marriage-cert
+    confidence: high
+  
+  assertion-jane-bride:
+    version: "1.0"
+    subject: event-marriage-1880
+    participant:
+      person: person-jane
+      role: bride
+    citations:
+      - citation-marriage-cert
+    confidence: high
+  
+  assertion-thomas-witness:
+    version: "1.0"
+    subject: event-marriage-1880
+    participant:
+      person: person-thomas
+      role: witness
+      notes: "Witnessed the marriage ceremony"
+    citations:
+      - citation-marriage-cert
+    confidence: high
+

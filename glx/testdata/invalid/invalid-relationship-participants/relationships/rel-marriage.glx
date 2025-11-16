@@ -1,0 +1,8 @@
+relationships:
+  rel-marriage:
+    type: marriage
+    participants:
+      - person: person-nonexistent
+        role: spouse
+      - person: person-father
+        role: spouse

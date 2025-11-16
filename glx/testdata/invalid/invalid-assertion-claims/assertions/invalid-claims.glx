@@ -1,0 +1,6 @@
+assertions:
+  assertion-invalid-claim:
+    subject: person-father
+    claim: nonexistent_property
+    value: "some value"
+    confidence: high
