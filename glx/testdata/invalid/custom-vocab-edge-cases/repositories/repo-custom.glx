@@ -1,0 +1,6 @@
+repositories:
+  repo-custom:
+    name: "Custom Repository"
+    type: unknown-repo-type
+
+

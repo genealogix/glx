@@ -1,0 +1,5 @@
+media_types:
+  photo:
+    label: "Photo"
+
+

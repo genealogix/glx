@@ -141,7 +141,7 @@ func TestValidateVocabularyFile(t *testing.T) {
 		expect int // expected number of issues
 	}{
 		{
-			name: "valid vocabulary file",
+			name: "valid relationship_types vocabulary",
 			doc: map[string]interface{}{
 				"relationship_types": map[string]interface{}{
 					"marriage": map[string]interface{}{
@@ -149,7 +149,84 @@ func TestValidateVocabularyFile(t *testing.T) {
 					},
 				},
 			},
-			expect: 0, // May have issues if schema not found, but structure is valid
+			expect: 0,
+		},
+		{
+			name: "valid event_types vocabulary",
+			doc: map[string]interface{}{
+				"event_types": map[string]interface{}{
+					"birth": map[string]interface{}{
+						"label": "Birth",
+					},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name: "valid place_types vocabulary",
+			doc: map[string]interface{}{
+				"place_types": map[string]interface{}{
+					"city": map[string]interface{}{
+						"label": "City",
+					},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name: "valid repository_types vocabulary",
+			doc: map[string]interface{}{
+				"repository_types": map[string]interface{}{
+					"library": map[string]interface{}{
+						"label": "Library",
+					},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name: "valid participant_roles vocabulary",
+			doc: map[string]interface{}{
+				"participant_roles": map[string]interface{}{
+					"subject": map[string]interface{}{
+						"label": "Subject",
+					},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name: "valid media_types vocabulary",
+			doc: map[string]interface{}{
+				"media_types": map[string]interface{}{
+					"photo": map[string]interface{}{
+						"label": "Photo",
+					},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name: "valid confidence_levels vocabulary",
+			doc: map[string]interface{}{
+				"confidence_levels": map[string]interface{}{
+					"high": map[string]interface{}{
+						"label": "High",
+					},
+				},
+			},
+			expect: 0,
+		},
+		{
+			name: "valid quality_ratings vocabulary",
+			doc: map[string]interface{}{
+				"quality_ratings": map[string]interface{}{
+					"1": map[string]interface{}{
+						"label": "Questionable",
+					},
+				},
+			},
+			expect: 0,
 		},
 		{
 			name: "no vocabulary key",
@@ -157,6 +234,17 @@ func TestValidateVocabularyFile(t *testing.T) {
 				"something": "invalid",
 			},
 			expect: 1,
+		},
+		{
+			name: "unknown vocabulary type",
+			doc: map[string]interface{}{
+				"unknown_vocab_type": map[string]interface{}{
+					"key": map[string]interface{}{
+						"label": "Label",
+					},
+				},
+			},
+			expect: 1, // Should report no vocabulary key found
 		},
 	}
 
@@ -426,6 +514,7 @@ func TestInvalidArchiveDirectories(t *testing.T) {
 		{"assertion-participant-invalid-person", "assertion participant references non-existent person"},
 		{"assertion-participant-invalid-role", "assertion participant references non-existent role"},
 		{"assertion-unknown-claim", "assertion with unknown claim (should warn)"},
+		{"missing-required-fields", "archive with entities missing required fields"},
 	}
 
 	for _, tc := range invalidCases {
@@ -589,6 +678,188 @@ func TestValidateGLXFile(t *testing.T) {
 			vocabs: &ArchiveVocabularies{},
 			expect: 0,
 		},
+		{
+			name: "unknown entity type falls back to basic validation",
+			doc: map[string]interface{}{
+				"unknown_entities": map[string]interface{}{
+					"unknown-123": map[string]interface{}{
+						"some_field": "value",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0, // Unknown entity types don't fail, just pass through
+		},
+		{
+			name: "event with unknown type (schema validates enum)",
+			doc: map[string]interface{}{
+				"events": map[string]interface{}{
+					"event-unknown": map[string]interface{}{
+						"type": "unknown-event-type",
+						"date": "1850-01-15",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Schema rejects unknown type via enum
+		},
+		{
+			name: "relationship with unknown type (schema validates enum)",
+			doc: map[string]interface{}{
+				"relationships": map[string]interface{}{
+					"rel-unknown": map[string]interface{}{
+						"type": "unknown-rel-type",
+						"participants": []interface{}{
+							map[string]interface{}{
+								"person": "person-123",
+							},
+						},
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Schema rejects unknown type via enum
+		},
+		{
+			name: "place with unknown type (schema validates enum)",
+			doc: map[string]interface{}{
+				"places": map[string]interface{}{
+					"place-unknown": map[string]interface{}{
+						"name": "Leeds",
+						"type": "unknown-place-type",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Schema rejects unknown type via enum
+		},
+		{
+			name: "repository with unknown type (schema validates enum)",
+			doc: map[string]interface{}{
+				"repositories": map[string]interface{}{
+					"repo-unknown": map[string]interface{}{
+						"name": "Library",
+						"type": "unknown-repo-type",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Schema rejects unknown type via enum
+		},
+		{
+			name: "event missing type falls back to basic validation",
+			doc: map[string]interface{}{
+				"events": map[string]interface{}{
+					"event-missing-type": map[string]interface{}{
+						"date": "1850-01-15",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Should require type field
+		},
+		{
+			name: "relationship missing type falls back to basic validation",
+			doc: map[string]interface{}{
+				"relationships": map[string]interface{}{
+					"rel-missing-type": map[string]interface{}{
+						"participants": []interface{}{
+							map[string]interface{}{
+								"person": "person-123",
+							},
+						},
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 2, // Should require type and persons fields
+		},
+		{
+			name: "place missing name falls back to basic validation",
+			doc: map[string]interface{}{
+				"places": map[string]interface{}{
+					"place-missing-name": map[string]interface{}{
+						"type": "city",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Should require name field
+		},
+		{
+			name: "source missing title falls back to basic validation",
+			doc: map[string]interface{}{
+				"sources": map[string]interface{}{
+					"source-missing-title": map[string]interface{}{
+						"type": "book",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Should require title field
+		},
+		{
+			name: "citation missing source falls back to basic validation",
+			doc: map[string]interface{}{
+				"citations": map[string]interface{}{
+					"citation-missing-source": map[string]interface{}{
+						"locator": "Page 1",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Should require source field
+		},
+		{
+			name: "repository missing name falls back to basic validation",
+			doc: map[string]interface{}{
+				"repositories": map[string]interface{}{
+					"repo-missing-name": map[string]interface{}{
+						"type": "library",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Should require name field
+		},
+		{
+			name: "assertion missing subject falls back to basic validation",
+			doc: map[string]interface{}{
+				"assertions": map[string]interface{}{
+					"assertion-missing-subject": map[string]interface{}{
+						"claim": "given_name",
+						"value": "John",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 2, // Should require subject and sources/citations
+		},
+		{
+			name: "media missing both uri and file_path falls back to basic validation",
+			doc: map[string]interface{}{
+				"media": map[string]interface{}{
+					"media-missing": map[string]interface{}{
+						"mime_type": "image/jpeg",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Should require uri or file_path
+		},
+		{
+			name: "media with file_path instead of uri",
+			doc: map[string]interface{}{
+				"media": map[string]interface{}{
+					"media-filepath": map[string]interface{}{
+						"file_path": "media/photos/photo.jpg",
+						"mime_type": "image/jpeg",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 1, // Schema requires uri, but basic validation allows file_path - schema error is reported
+		},
 	}
 
 	for _, tt := range tests {
@@ -672,6 +943,50 @@ func TestValidateEntityByType(t *testing.T) {
 			vocabs: &ArchiveVocabularies{},
 			expect: 0, // Unknown types don't fail, just pass through
 		},
+		{
+			name:       "getEntityType test - person",
+			entityType: "person",
+			entity: map[string]interface{}{
+				"properties": map[string]interface{}{
+					"given_name": "John",
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+		{
+			name:       "getEntityType test - event",
+			entityType: "event",
+			entity: map[string]interface{}{
+				"type": "birth",
+				"date": "1850-01-15",
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+		{
+			name:       "getEntityType test - relationship",
+			entityType: "relationship",
+			entity: map[string]interface{}{
+				"type": "marriage",
+				"participants": []interface{}{
+					map[string]interface{}{
+						"person": "person-123",
+					},
+				},
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
+		{
+			name:       "getEntityType test - place",
+			entityType: "place",
+			entity: map[string]interface{}{
+				"name": "Leeds",
+			},
+			vocabs: &ArchiveVocabularies{},
+			expect: 0,
+		},
 	}
 
 		for _, tt := range tests {
@@ -713,6 +1028,11 @@ func TestValidateEntityPropertiesFromStruct(t *testing.T) {
 				ValueType:    "string",
 				ReferenceType: "",
 			},
+			"custom_place_prop": {
+				Label:        "Custom Place Property",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
 		},
 		EventProperties: map[string]*lib.PropertyDefinition{
 			"type": {
@@ -720,10 +1040,20 @@ func TestValidateEntityPropertiesFromStruct(t *testing.T) {
 				ValueType:    "string",
 				ReferenceType: "",
 			},
+			"custom_event_prop": {
+				Label:        "Custom Event Property",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
 		},
 		RelationshipProperties: map[string]*lib.PropertyDefinition{
 			"type": {
 				Label:        "Type",
+				ValueType:    "string",
+				ReferenceType: "",
+			},
+			"custom_rel_prop": {
+				Label:        "Custom Relationship Property",
 				ValueType:    "string",
 				ReferenceType: "",
 			},
@@ -785,6 +1115,66 @@ func TestValidateEntityPropertiesFromStruct(t *testing.T) {
 			},
 			expectWarn: 0,
 			expectErr:  1, // Invalid reference should error
+		},
+		{
+			name:       "event properties validation",
+			entityType: "events",
+			entityID:   "event-123",
+			properties: map[string]interface{}{
+				"custom_event_prop": "value",
+			},
+			expectWarn: 0,
+			expectErr:  0,
+		},
+		{
+			name:       "relationship properties validation",
+			entityType: "relationships",
+			entityID:   "rel-123",
+			properties: map[string]interface{}{
+				"custom_rel_prop": "value",
+			},
+			expectWarn: 0,
+			expectErr:  0,
+		},
+		{
+			name:       "place properties validation",
+			entityType: "places",
+			entityID:   "place-123",
+			properties: map[string]interface{}{
+				"custom_place_prop": "value",
+			},
+			expectWarn: 0,
+			expectErr:  0,
+		},
+		{
+			name:       "event properties with unknown property",
+			entityType: "events",
+			entityID:   "event-123",
+			properties: map[string]interface{}{
+				"unknown_event_prop": "value",
+			},
+			expectWarn: 1, // Unknown property should warn
+			expectErr:  0,
+		},
+		{
+			name:       "relationship properties with unknown property",
+			entityType: "relationships",
+			entityID:   "rel-123",
+			properties: map[string]interface{}{
+				"unknown_rel_prop": "value",
+			},
+			expectWarn: 1, // Unknown property should warn
+			expectErr:  0,
+		},
+		{
+			name:       "place properties with unknown property",
+			entityType: "places",
+			entityID:   "place-123",
+			properties: map[string]interface{}{
+				"unknown_place_prop": "value",
+			},
+			expectWarn: 1, // Unknown property should warn
+			expectErr:  0,
 		},
 		{
 			name:       "no vocab for entity type",

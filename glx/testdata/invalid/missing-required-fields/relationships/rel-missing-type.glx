@@ -1,0 +1,7 @@
+relationships:
+  rel-missing-type:
+    participants:
+      - person: person-123
+        role: subject
+
+

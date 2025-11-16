@@ -1,0 +1,6 @@
+media:
+  media-with-filepath:
+    file_path: "media/photos/photo.jpg"
+    mime_type: "image/jpeg"
+
+

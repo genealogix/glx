@@ -1,0 +1,5 @@
+places:
+  place-missing-name:
+    type: city
+
+

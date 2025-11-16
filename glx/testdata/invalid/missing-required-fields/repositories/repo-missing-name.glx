@@ -1,0 +1,5 @@
+repositories:
+  repo-missing-name:
+    type: library
+
+

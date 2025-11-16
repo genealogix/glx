@@ -161,3 +161,4 @@ In addition to data type definitions, properties can reference controlled vocabu
 - **media_types** - Standard media types
 - **quality_ratings** - Quality ratings for citations
 
+
