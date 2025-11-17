@@ -6,7 +6,9 @@ layout: doc
 
 # Migration from GEDCOM Guide
 
-Guide for converting GEDCOM files to GENEALOGIX format.
+Guide for manually converting GEDCOM files to GENEALOGIX format.
+
+**Note:** This guide describes the manual migration process. Automated import/export tools are not yet available but are planned for future releases.
 
 ## Key Differences
 

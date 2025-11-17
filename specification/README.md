@@ -70,9 +70,8 @@ This specification is under active development.
 - **Assertion-Based Model**: Every genealogical fact is supported by explicitly tracked evidence
 - **Multi-Tenant**: Supports family-level isolation within organizations
 - **Git-Native**: Built from the ground up for version control
-- **GEDCOM Compatible**: Can be imported from and exported to GEDCOM format
 - **Hierarchical Places**: Supports complex place hierarchies with historical variations
-- **Evidence Quality**: Uses GEDCOM QUAY standard for assessing source reliability
+- **Evidence Quality**: Supports GEDCOM QUAY standard (0-3 scale) for source reliability assessment; however, assertion confidence levels are the preferred GENEALOGIX approach and quality scales are customizable per archive
 - **Extensible**: Custom entity types and properties supported via repository-owned vocabularies
 
 ## Quick Example

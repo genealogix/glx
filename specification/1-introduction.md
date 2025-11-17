@@ -110,10 +110,10 @@ Libraries and archives preserving:
 
 ### Migration and Integration
 Converting from existing formats:
-- GEDCOM file import and cleanup
-- Legacy database migration
-- Paper record digitization
-- Integration with existing genealogy software
+- GEDCOM format compatibility guidance (manual conversion)
+- Legacy database migration patterns
+- Paper record digitization guidance
+- Integration with existing genealogy software workflows
 
 ## Comparison with Existing Formats
 
