@@ -3,23 +3,19 @@
 
 events:
   event-marriage:
-    version: "1.0"
     type: marriage
 
 sources:
   source-cert:
-    version: "1.0"
     title: "Certificate"
 
 citations:
   citation-cert:
-    version: "1.0"
     source: source-cert
 
 # This is INVALID - person-nonexistent does not exist
 assertions:
   assertion-invalid:
-    version: "1.0"
     subject: event-marriage
     participant:
       person: person-nonexistent  # ERROR: this person doesn't exist

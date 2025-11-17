@@ -3,12 +3,10 @@
 
 places:
   place-leeds:
-    version: "1.0"
     name: "Leeds"
     type: city
   
   place-london:
-    version: "1.0"
     name: "London"
     type: city
 
@@ -54,7 +52,6 @@ person_properties:
 # Person with properties
 persons:
   person-john:
-    version: "1.0"
     properties:
       primary_name: "John Smith"
       gender: "male"
@@ -77,7 +74,6 @@ persons:
       - emigrant
 
   person-jane:
-    version: "1.0"
     properties:
       primary_name: "Jane Doe"
       gender: "female"

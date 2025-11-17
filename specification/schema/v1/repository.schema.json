@@ -104,7 +104,7 @@
       "uniqueItems": true
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
 
 

@@ -8,9 +8,13 @@
   "properties": {
     "uri": { "type": "string", "minLength": 1 },
     "mime_type": { "type": "string" },
-    "hash": { "type": "string" }
+    "hash": { "type": "string" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "notes": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
 
 

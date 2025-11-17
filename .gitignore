@@ -32,4 +32,5 @@ website/.vitepress/cache
 ehthumbs.db
 Thumbs.db
 bin/
-glx/coverage.out
+coverage*.html
+coverage*.out
