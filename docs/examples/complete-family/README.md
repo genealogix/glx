@@ -1,3 +1,9 @@
+---
+title: Complete Family Example
+description: Demonstrates all 9 GENEALOGIX entity types with evidence chains and cross-references
+layout: doc
+---
+
 # Complete Family Example
 
 This example demonstrates all 9 GENEALOGIX entity types with proper cross-references, evidence chains, and descriptive entity IDs.
@@ -71,16 +77,15 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 - `assertions/assertion-john-birthplace.glx` - Birth place
 - `assertions/assertion-marriage.glx` - Marriage date
 
-## Evidence Chain Example
+## Evidence Chain in This Example
 
-**Claim**: John Smith was born on January 15, 1850
+This example demonstrates a complete evidence chain for John Smith's birth:
 
-**Evidence Trail**:
-1. **Repository**: Leeds Library Local Studies (`repository-leeds-library`)
-2. **Source**: St. Paul's Parish Register (`source-parish-leeds`)
-3. **Citation**: Entry 145, Page 23 (`citation-john-birth`) with transcription
-4. **Assertion**: Birth date = 1850-01-15 (`assertion-john-birth-date`) - confidence: high
-5. **Corroboration**: 1851 Census (`citation-census-john`)
+Repository → Source → Citation → Assertion
+
+- `repository-leeds-library` → `source-parish-register` → `citation-john-birth` → `assertion-john-birth`
+
+> **Learn More:** See [Core Concepts: Evidence Hierarchy](../../specification/2-core-concepts.md#evidence-hierarchy) for detailed explanation.
 
 ## File Format
 

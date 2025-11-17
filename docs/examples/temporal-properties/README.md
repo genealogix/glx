@@ -1,3 +1,9 @@
+---
+title: Temporal Properties Example
+description: Represents properties that change over time - occupations, residences, and name changes
+layout: doc
+---
+
 # Temporal Properties Example
 
 This example demonstrates how to represent properties that change over time using temporal values.

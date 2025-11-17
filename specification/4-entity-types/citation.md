@@ -1,3 +1,9 @@
+---
+title: Citation Entity
+description: Specific references to evidence with quality assessment and source linkage
+layout: doc
+---
+
 # Citation Entity
 
 [← Back to Entity Types](README.md)

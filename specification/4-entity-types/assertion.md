@@ -1,3 +1,9 @@
+---
+title: Assertion Entity
+description: Source-backed conclusions in GENEALOGIX - the core of the evidence model
+layout: doc
+---
+
 # Assertion Entity
 
 [← Back to Entity Types](README.md)

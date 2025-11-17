@@ -1,3 +1,9 @@
+---
+title: Architecture Guide
+description: Technical architecture of the GENEALOGIX CLI implementation
+layout: doc
+---
+
 # Architecture Guide
 
 This guide explains the technical architecture of the GENEALOGIX CLI implementation.

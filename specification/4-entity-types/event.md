@@ -1,3 +1,9 @@
+---
+title: Event/Fact Entity
+description: Occurrences in time and place - lifecycle events, facts, and attributes
+layout: doc
+---
+
 # Event/Fact Entity
 
 [← Back to Entity Types](README.md)

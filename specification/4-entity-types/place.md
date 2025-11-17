@@ -1,3 +1,9 @@
+---
+title: Place Entity
+description: Geographic locations with hierarchical organization for genealogical research
+layout: doc
+---
+
 # Place Entity
 
 [← Back to Entity Types](README.md)

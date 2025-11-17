@@ -15,88 +15,45 @@ This directory contains complete, working GENEALOGIX archives demonstrating vari
 ## 🎯 Learning Path
 
 ### For Beginners
-1. **[Complete Family](complete-family/)** ⭐ - **Start Here**
+1. **[Minimal](minimal/)** - Start with the basics
+   - Smallest valid archive
+   - Required fields only
+   - Foundation concepts
+
+2. **[Basic Family](basic-family/)** - Simple nuclear family
+   - Core relationships
+   - Minimal evidence requirements
+   - Easy to understand
+
+3. **[Complete Family](complete-family/)** ⭐ **Recommended**
    - All 9 entity types demonstrated
    - Complete evidence chains
    - Real-world family structure
    - Best practices shown
 
-2. **[Basic Family](basic-family/)** - Simple nuclear family
-   - Core relationships only
-   - Minimal evidence requirements
-   - Easy to understand
+### Advanced Concepts
+4. **[Single-File](single-file/)** - Single-file archives
+   - All entities in one file
+   - Portable format
+   - Simple backup/sharing
 
-3. **[Minimal](minimal/)** - Smallest valid archives
-   - Required fields only
-   - Foundation concepts
-   - Quick validation testing
+5. **[Temporal Properties](temporal-properties/)** - Time-changing values
+   - Properties that change over time
+   - Occupations, residences, names
+   - Date-stamped values
 
+6. **[Participant Assertions](participant-assertions/)** - Event participants
+   - Assertion-based participant roles
+   - Conflicting evidence about participants
+   - Evidence for relationships
 
-## Quick Links
+## Understanding Evidence Chains
 
-- [Minimal](minimal/) - Smallest valid archive (essentials only)
-- [Basic Family](basic-family/) - Simple nuclear family with basic relationships
-- [Complete Family](complete-family/) - **ALL entity types demonstrated** ⭐ START HERE
-  - Shows hierarchical places, events, citations, repositories
-  - Complete evidence chain from source to assertions
-  - Quality ratings and structured locators
+> **Learn More:** For a complete explanation of the evidence chain model, see [Core Concepts: Evidence Hierarchy](../../specification/2-core-concepts.md#evidence-hierarchy).
 
-## GEDCOM vs GENEALOGIX Comparison
+The examples below demonstrate how GENEALOGIX structures evidence from Repository → Source → Citation → Assertion. See the [complete-family](./complete-family/) example for a working implementation.
 
-### Evidence Model Comparison
-
-**GEDCOM Approach:**
-```
-0 @I1@ INDI
-1 NAME John /Smith/
-1 BIRT
-2 DATE 15 JAN 1850
-2 PLAC Leeds, Yorkshire, England
-2 SOUR @S1@
-3 QUAY 2
-3 PAGE Page 23
-0 @S1@ SOUR
-1 TITL Parish Register
-1 REPO @R1@
-```
-
-**GENEALOGIX Approach:**
-```yaml
-# repositories/repository-leeds.glx
-repositories:
-  repository-a1b2c3d4:
-    name: Leeds Library Local Studies
-    email: local.studies@leeds.gov.uk
-
-# sources/parish-register.glx
-sources:
-  source-12345678:
-    title: St. Paul's Parish Register
-    repository: repository-a1b2c3d4
-
-# citations/birth-entry.glx
-citations:
-  citation-abc12345:
-    source: source-12345678
-    locator: "Entry 145, page 23"
-    transcription: "John, son of Thomas Smith, born January 15, 1850"
-
-# assertions/birth-assertion.glx
-assertions:
-  assertion-1a2b3c4d:
-    subject: person-john-smith
-    claim: born_on
-    value: "1850-01-15"
-    citations: [citation-abc12345]
-    confidence: high  # Express certainty at assertion level
-```
-
-### Collaboration Comparison
-
-**GEDCOM Collaboration:**
-- Email file attachments
-- Manual merge conflicts
-- No change tracking
+### Collaboration with Git
 - Version confusion
 
 **GENEALOGIX Collaboration:**
@@ -148,50 +105,18 @@ cd glx/tests
 glx validate examples/complete-family/
 ```
 
-## Understanding the Complete Family Example
+## Example Descriptions
 
-### Data Structure
+| Example | Focus | Entity Types | Use Case |
+|---------|-------|--------------|----------|
+| **[Minimal](minimal/)** | Essentials | Person | Smallest valid archive |
+| **[Basic Family](basic-family/)** | Relationships | Person, Relationship | Nuclear family structure |
+| **[Complete Family](complete-family/)** ⭐ | All features | All 9 types | Comprehensive demonstration |
+| **[Single-File](single-file/)** | Portability | All in one file | Simple sharing/backup |
+| **[Temporal Properties](temporal-properties/)** | Time-changing data | Person with temporal values | Changing occupations/names |
+| **[Participant Assertions](participant-assertions/)** | Event participation | Assertion-based roles | Evidence-based participants |
 
-```
-Complete Family Example (John Smith & family, 1850-1920)
-├── persons/
-│   ├── person-john-smith.glx        (1850-1920)
-│   ├── person-mary-brown.glx        (1852-1930)
-│   └── person-jane-smith.glx        (daughter, 1875-1955)
-├── relationships/
-│   ├── rel-john-mary-marriage.glx   (married 1875)
-│   └── rel-john-jane-parent.glx     (father-daughter)
-├── events/
-│   ├── event-john-birth.glx         (Jan 15, 1850, Leeds)
-│   ├── event-marriage.glx           (May 10, 1875, Leeds)
-│   └── event-occupations.glx        (blacksmith, dressmaker)
-├── places/
-│   ├── place-england.glx            (root)
-│   ├── place-yorkshire.glx          (parent: England)
-│   └── place-leeds.glx              (parent: Yorkshire)
-├── sources/
-│   ├── source-parish-leeds.glx      (St Paul's registers)
-│   └── source-census-1851.glx       (1851 Census)
-├── citations/
-│   ├── citation-birth-register.glx  (with transcription)
-│   └── citation-census.glx          (with locator)
-├── repositories/
-│   ├── repository-leeds-library.glx (Local studies)
-│   └── repository-tna.glx           (The National Archives)
-└── assertions/
-    ├── assertion-birth-date.glx     (supported by citation)
-    ├── assertion-birth-place.glx    (supported by citation)
-    └── assertion-occupation.glx     (supported by citation)
-```
-
-### Evidence Chain Example
-
-How evidence flows from source to conclusion:
-
-1. **Repository**: Leeds Library Local Studies
-2. **Source**: St Paul's Church Parish Registers  
-3. **Citation**: "Birth entry 145, page 23" with transcription
-4. **Assertion**: "John Smith born January 15, 1850" (confidence: high)
+> **Tip:** See each example's README for detailed explanations and file structure.
 
 ## Best Practices Demonstrated
 

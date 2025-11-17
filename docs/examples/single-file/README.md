@@ -1,3 +1,9 @@
+---
+title: Single-File Archive Example
+description: Complete GENEALOGIX archive in a single file for simple sharing and backup
+layout: doc
+---
+
 # Single-File GENEALOGIX Example
 
 This example demonstrates a complete GENEALOGIX archive in a single file.

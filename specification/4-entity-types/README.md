@@ -1,3 +1,9 @@
+---
+title: Entity Types
+description: Core entity types in GENEALOGIX - person, relationship, event, place, source, citation, assertion, media, repository
+layout: doc
+---
+
 # Entity Types
 
 This section defines the core entity types in GENEALOGIX. Each entity represents a distinct concept in genealogical research and can be referenced, extended, and related to other entities.

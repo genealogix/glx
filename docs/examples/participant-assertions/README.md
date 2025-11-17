@@ -1,3 +1,9 @@
+---
+title: Participant Assertions Example
+description: Evidence about event and relationship participants using assertion-based roles
+layout: doc
+---
+
 # Participant Assertions Example
 
 This example demonstrates how to represent evidence about who participated in events and relationships using participant assertions.

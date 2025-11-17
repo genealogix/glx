@@ -1,3 +1,9 @@
+---
+title: Repository Entity
+description: Institutions and archives that hold genealogical sources
+layout: doc
+---
+
 # Repository Entity
 
 [← Back to Entity Types](README.md)

@@ -1,3 +1,9 @@
+---
+title: Schema Development Guide
+description: How to develop and maintain JSON Schemas for GENEALOGIX entity validation
+layout: doc
+---
+
 # Schema Development Guide
 
 This guide explains how to develop and maintain JSON Schemas for GENEALOGIX entity validation.

@@ -1,3 +1,9 @@
+---
+title: Development Setup Guide
+description: Set up your development environment for GENEALOGIX specification and tools
+layout: doc
+---
+
 # Development Setup Guide
 
 This guide helps you set up a development environment for working on the GENEALOGIX specification and tools.
