@@ -124,7 +124,7 @@ func resolveRefsWithRoot(obj interface{}, root map[string]interface{}) error {
 				if err != nil {
 					return fmt.Errorf("failed to resolve JSON pointer %s: %w", refStr, err)
 				}
-				
+
 				// Replace $ref with resolved content
 				delete(v, "$ref")
 				for key, value := range resolved {
@@ -219,13 +219,13 @@ func resolveJSONPointer(root map[string]interface{}, pointer string) (map[string
 	// Remove the leading #/
 	path := strings.TrimPrefix(pointer, "#/")
 	parts := strings.Split(path, "/")
-	
+
 	current := interface{}(root)
 	for _, part := range parts {
 		// Unescape JSON Pointer tokens
 		part = strings.ReplaceAll(part, "~1", "/")
 		part = strings.ReplaceAll(part, "~0", "~")
-		
+
 		switch v := current.(type) {
 		case map[string]interface{}:
 			var ok bool
@@ -237,12 +237,12 @@ func resolveJSONPointer(root map[string]interface{}, pointer string) (map[string
 			return nil, fmt.Errorf("invalid path: %s (not an object at: %s)", pointer, part)
 		}
 	}
-	
+
 	result, ok := current.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("pointer does not reference an object: %s", pointer)
 	}
-	
+
 	return result, nil
 }
 
@@ -285,7 +285,7 @@ func ValidateGLXFileStructure(doc map[string]interface{}) []string {
 		lib.EntityTypePlaces, lib.EntityTypeSources, lib.EntityTypeCitations,
 		lib.EntityTypeRepositories, lib.EntityTypeAssertions, lib.EntityTypeMedia,
 	}
-	
+
 	for _, entityType := range entityTypes {
 		if entities, ok := doc[entityType].(map[string]interface{}); ok {
 			for entityID := range entities {
@@ -390,21 +390,4 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 	})
 
 	return merged, allDuplicates, err
-}
-
-// isVocabularyType checks if a key is a known vocabulary type.
-func isVocabularyType(key string) bool {
-	vocabKeys := []string{
-		lib.VocabRelationshipTypes, lib.VocabEventTypes, lib.VocabPlaceTypes,
-		lib.VocabRepositoryTypes, lib.VocabParticipantRoles, lib.VocabMediaTypes,
-		lib.VocabConfidenceLevels, lib.VocabQualityRatings, lib.VocabSourceTypes,
-		lib.PropPersonProperties, lib.PropEventProperties,
-		lib.PropRelationshipProperties, lib.PropPlaceProperties,
-	}
-	for _, v := range vocabKeys {
-		if key == v {
-			return true
-		}
-	}
-	return false
 }
