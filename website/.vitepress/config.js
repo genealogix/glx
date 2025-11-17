@@ -42,6 +42,8 @@ export default defineConfig({
     'docs/examples/complete-family/README.md': 'examples/complete-family/index.md',
     'docs/examples/minimal/README.md': 'examples/minimal/index.md',
     'docs/examples/single-file/README.md': 'examples/single-file/index.md',
+    'docs/examples/temporal-properties/README.md': 'examples/temporal-properties/index.md',
+    'docs/examples/participant-assertions/README.md': 'examples/participant-assertions/index.md',
     'docs/guides/:page*': 'guides/:page*',
     'docs/development/:page*': 'development/:page*',
     'docs/examples/:page*': 'examples/:page*',
@@ -220,11 +222,19 @@ export default defineConfig({
         {
           text: 'For Beginners',
           items: [
-            { text: 'Complete Family ⭐', link: '/examples/complete-family/' },
+            { text: 'Minimal', link: '/examples/minimal/' },
             { text: 'Basic Family', link: '/examples/basic-family/' },
-            { text: 'Minimal', link: '/examples/minimal/' }
+            { text: 'Complete Family ⭐', link: '/examples/complete-family/' }
           ]
         },
+        {
+          text: 'Advanced Concepts',
+          items: [
+            { text: 'Single-File Archives', link: '/examples/single-file/' },
+            { text: 'Temporal Properties', link: '/examples/temporal-properties/' },
+            { text: 'Participant Assertions', link: '/examples/participant-assertions/' }
+          ]
+        }
       ]
     },
 
