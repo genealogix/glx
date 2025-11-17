@@ -177,7 +177,8 @@ go test ./glx/...
 # glx/tests/valid/person-with-multiple-names.glx
 id: person-12345678
 properties:
-  primary_name: "John Smith"
+  given_name: "John"
+  family_name: "Smith"
   alternative_names:
     - "Jonathan Smith"
     - "Juan Hernandez"  # Testing multilingual names
@@ -193,7 +194,8 @@ properties:
 # Expected error: ID must match pattern person-[a-f0-9]{8}
 id: invalid-id
 properties:
-  primary_name: "Test Person"
+  given_name: "Test"
+  family_name: "Person"
 ```
 
 ### Test Coverage Requirements

@@ -77,7 +77,8 @@ Test files are standard GLX files:
 persons:
   person-abc12345:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
 ```
 
 **Guidelines**:

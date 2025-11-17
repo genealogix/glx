@@ -362,14 +362,18 @@ func (glx *GLXFile) validatePropertyValue(
 				Message: fmt.Sprintf("%s[%s].properties.%s: non-temporal property has list value (expected simple value)",
 					entityType, entityID, propName),
 			})
+		} else {
+			// Validate the simple value against its value_type
+			glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s", propName), propValue, propDef.ValueType, result)
 		}
 		return
 	}
 
 	// Handle temporal properties: accept simple value OR list of {value, date} objects
-	switch propValue.(type) {
+	switch v := propValue.(type) {
 	case string, float64, int, bool:
-		// Simple value is fine for temporal properties
+		// Simple value is fine for temporal properties - validate it
+		glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s", propName), v, propDef.ValueType, result)
 		return
 	}
 
@@ -412,13 +416,159 @@ func (glx *GLXFile) validatePropertyValue(
 		}
 
 		// Optional: validate 'date' field exists (temporal items should have dates)
-		if _, hasDate := itemMap["date"]; !hasDate {
+		if dateVal, hasDate := itemMap["date"]; hasDate {
+			// Validate date format
+			if dateStr, ok := dateVal.(string); ok {
+				glx.validateDateFormat(entityType, entityID, fmt.Sprintf("properties.%s[%d].date", propName, i), dateStr, result)
+			}
+		} else {
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,
 				SourceID:   entityID,
 				Field:      fmt.Sprintf("properties.%s[%d].date", propName, i),
 				Message: fmt.Sprintf("%s[%s].properties.%s[%d]: temporal list item missing 'date' field",
 					entityType, entityID, propName, i),
+			})
+		}
+
+		// Validate the value field against the property's value_type
+		if value, hasValue := itemMap["value"]; hasValue && propDef.ValueType != "" {
+			glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s[%d].value", propName, i), value, propDef.ValueType, result)
+		}
+	}
+}
+
+// validateDateFormat validates a date string against GENEALOGIX date format.
+// GENEALOGIX uses FamilySearch-style keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT)
+// combined with ISO 8601-style dates (YYYY, YYYY-MM, YYYY-MM-DD).
+func (glx *GLXFile) validateDateFormat(entityType, entityID, field, dateStr string, result *ValidationResult) {
+	if dateStr == "" {
+		return // Empty dates are allowed
+	}
+
+	// Check for FamilySearch-style keywords
+	dateStr = strings.TrimSpace(dateStr)
+
+	// Valid patterns:
+	// - Simple: YYYY, YYYY-MM, YYYY-MM-DD
+	// - FROM YYYY TO YYYY
+	// - FROM YYYY
+	// - ABT YYYY, BEF YYYY, AFT YYYY
+	// - BET YYYY AND YYYY
+	// - CAL YYYY
+	// - INT YYYY (original)
+
+	// Simple validation: check for known keywords or ISO 8601-ish format
+	hasKeyword := strings.Contains(dateStr, "FROM") ||
+		strings.Contains(dateStr, "TO") ||
+		strings.Contains(dateStr, "ABT") ||
+		strings.Contains(dateStr, "BEF") ||
+		strings.Contains(dateStr, "AFT") ||
+		strings.Contains(dateStr, "BET") ||
+		strings.Contains(dateStr, "AND") ||
+		strings.Contains(dateStr, "CAL") ||
+		strings.Contains(dateStr, "INT")
+
+	// If no keywords, validate as simple ISO 8601-style date
+	if !hasKeyword {
+		if !isValidSimpleDate(dateStr) {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      field,
+				Message: fmt.Sprintf("%s[%s].%s: date '%s' should be in format YYYY, YYYY-MM, or YYYY-MM-DD, or use keywords like FROM, TO, ABT, BEF, AFT, BET, CAL, INT",
+					entityType, entityID, field, dateStr),
+			})
+		}
+	}
+	// If keywords present, assume valid (detailed parsing is complex and deferred)
+}
+
+// isValidSimpleDate checks if a string matches YYYY, YYYY-MM, or YYYY-MM-DD format
+func isValidSimpleDate(s string) bool {
+	// YYYY (4 digits)
+	if len(s) == 4 {
+		for _, c := range s {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+		return true
+	}
+
+	// YYYY-MM (7 characters)
+	if len(s) == 7 {
+		return s[4] == '-' && isDigits(s[0:4]) && isDigits(s[5:7])
+	}
+
+	// YYYY-MM-DD (10 characters)
+	if len(s) == 10 {
+		return s[4] == '-' && s[7] == '-' && isDigits(s[0:4]) && isDigits(s[5:7]) && isDigits(s[8:10])
+	}
+
+	return false
+}
+
+// isDigits checks if all characters in a string are digits
+func isDigits(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
+}
+
+// validateValueType validates a value against its declared value_type
+func (glx *GLXFile) validateValueType(entityType, entityID, field string, value interface{}, valueType string, result *ValidationResult) {
+	switch valueType {
+	case "string":
+		if _, ok := value.(string); !ok {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      field,
+				Message: fmt.Sprintf("%s[%s].%s: expected string value, got %T",
+					entityType, entityID, field, value),
+			})
+		}
+
+	case "integer":
+		// YAML parses integers as int or float64
+		switch value.(type) {
+		case int, int64, int32, float64:
+			// Valid integer representation
+		default:
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      field,
+				Message: fmt.Sprintf("%s[%s].%s: expected integer value, got %T",
+					entityType, entityID, field, value),
+			})
+		}
+
+	case "boolean":
+		if _, ok := value.(bool); !ok {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      field,
+				Message: fmt.Sprintf("%s[%s].%s: expected boolean value, got %T",
+					entityType, entityID, field, value),
+			})
+		}
+
+	case "date":
+		if dateStr, ok := value.(string); ok {
+			glx.validateDateFormat(entityType, entityID, field, dateStr, result)
+		} else {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      field,
+				Message: fmt.Sprintf("%s[%s].%s: date value should be a string, got %T",
+					entityType, entityID, field, value),
 			})
 		}
 	}

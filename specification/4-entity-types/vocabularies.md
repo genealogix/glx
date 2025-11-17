@@ -734,7 +734,6 @@ GENEALOGIX provides standard person properties:
 
 | Property | Type | Temporal | Description |
 |----------|------|----------|-------------|
-| `primary_name` | string | Yes | Person's primary or preferred name |
 | `given_name` | string | Yes | Given name(s) |
 | `family_name` | string | Yes | Family or surname |
 | `gender` | string | Yes | Gender identity |

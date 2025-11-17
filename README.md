@@ -75,6 +75,13 @@ assertions:
     value: "1850-01-15"
     citations: [citation-birth]
     confidence: high
+
+persons:
+  person-john-smith:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+      born_on: "1850-01-15"
 ```
 
 **OR as a single file:**
@@ -148,7 +155,8 @@ All GENEALOGIX files use the same structure:
 persons:
   person-a1b2c3d4:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       born_on: "1850-01-15"
 
 sources:

@@ -15,7 +15,8 @@ All GENEALOGIX files use entity type keys at the top level:
 persons:
   person-john-smith-1850:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
 ```
 
 **Key Points:**
@@ -44,7 +45,6 @@ persons:
 Structure:
 ```yaml
 properties:
-  primary_name: String      # From person_properties vocabulary
   given_name: String        # From person_properties vocabulary
   family_name: String       # From person_properties vocabulary
   gender: String            # From person_properties vocabulary
@@ -59,7 +59,6 @@ properties:
 Example:
 ```yaml
 properties:
-  primary_name: "John Smith"
   given_name: "John"
   family_name: "Smith"
   gender: "male"
@@ -89,7 +88,8 @@ properties:
 persons:
   person-margaret-smith-1825:
     properties:
-      primary_name: "Margaret Eleanor Smith"
+      given_name: "Margaret Eleanor"
+      family_name: "Smith"
       gender: "female"
       born_on: "1825-04-10"
       died_on: "1890-11-22"

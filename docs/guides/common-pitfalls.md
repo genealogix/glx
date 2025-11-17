@@ -143,7 +143,8 @@ persons:
 persons:
   person-john:
     properties:
-      primary_name: "John"
+      given_name: "John"
+      family_name: "Smith"
 ```
 
 ### Quoting

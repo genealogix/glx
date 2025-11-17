@@ -60,6 +60,7 @@ Example:
 persons:
   person-john-smith:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
 ```
 

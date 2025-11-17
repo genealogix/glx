@@ -151,7 +151,6 @@ Defines standard and custom properties for person entities (birth date, occupati
 **File:** `vocabularies/person-properties.glx`
 
 **Standard Properties Include:**
-- `primary_name` - Person's primary name (temporal)
 - `given_name`, `family_name` - Name components (temporal)
 - `gender` - Gender identity (temporal)
 - `born_on` - Date of birth

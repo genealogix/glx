@@ -12,7 +12,7 @@ places:
     name: "London"
     type: city
     properties:
-      existed_from: "47"
+      existed_from: "0047"
 
 persons:
   person-john-smith-1850:

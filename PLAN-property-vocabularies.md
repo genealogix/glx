@@ -45,7 +45,8 @@ Entities can have properties set in a dedicated `properties` section to represen
 persons:
   person-john:
     concluded_identity:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       birth_date: "1850-01-15"
       death_date: "1920-06-20"
 ```
@@ -56,14 +57,15 @@ persons:
   person-john:
     # Polymorphic properties from vocabulary
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       gender: "male"
       born_on: "1850-01-15"
       born_at: place-leeds
       died_on: "1920-06-20"
       occupation: "blacksmith"
       residence: place-leeds
-    
+
     notes: "Research notes"
     tags: [verified]
 ```
@@ -91,7 +93,8 @@ persons:
 persons:
   person-john:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       gender: "male"
     # No assertions or relationships arrays - referential integrity via forward references
 ```
@@ -121,12 +124,18 @@ persons:
 ```yaml
 # person-properties.glx
 person_properties:
-  primary_name:
-    label: "Primary Name"
-    description: "Person's primary or preferred name"
+  given_name:
+    label: "Given Name"
+    description: "Person's given name (first name)"
     value_type: string
     temporal: true  # Names can change
-  
+
+  family_name:
+    label: "Family Name"
+    description: "Person's family name (last name)"
+    value_type: string
+    temporal: true  # Names can change
+
   gender:
     label: "Gender"
     description: "Gender identity"
@@ -296,7 +305,7 @@ place_properties:
 #### 2.1 Flatten Person Entity
 - [ ] Update `specification/schema/v1/person.schema.json`:
   - Remove `concluded_identity` nesting
-  - Add properties directly at top level: `primary_name`, `born_on`, `died_on`, etc.
+  - Add properties directly at top level: `given_name`, `family_name`, `born_on`, `died_on`, etc.
   - Make properties optional (they're asserted, not required)
   - Add `additionalProperties: true` to allow custom properties
 - [ ] Update `lib/types.go` Person struct:
@@ -474,14 +483,15 @@ place_properties:
     - Remove `assertions` array
     - Remove `gender` field (moved to properties)
     - Remove `living` field (implied by died_on property)
-    - Add `properties` as optional object
+    - Add `properties` as optional object (containing given_name, family_name, etc.)
     - Document spec fields: `properties`, `notes`, `tags`
   - **Update all examples** to use new structure:
     ```yaml
     persons:
       person-john:
         properties:
-          primary_name: "John Smith"
+          given_name: "John"
+          family_name: "Smith"
           gender: "male"
           born_on: "1850-01-15"
           born_at: place-leeds
@@ -639,7 +649,7 @@ place_properties:
   - Remove `concluded_identity` nesting
   - Move `gender` into `properties` section
   - Remove `living` field (implied by died_on)
-  - Add `properties` section with: `primary_name`, `gender`, `born_on`, `born_at`, etc.
+  - Add `properties` section with: `given_name`, `family_name`, `gender`, `born_on`, `born_at`, etc.
   - Remove `relationships` arrays
   - Remove `assertions` arrays
 - [ ] Update assertion examples:
@@ -816,11 +826,11 @@ type Place struct {
 ### Naming Conventions
 
 **Go Struct Fields:**
-- Use descriptive names: `PrimaryName`, `BornOn`, `DiedOn`
+- Use descriptive names: `GivenName`, `FamilyName`, `BornOn`, `DiedOn`
 - Use `ID` suffix for references: `PersonID`, `PlaceID`
 
 **YAML Tags:**
-- Snake case: `primary_name`, `born_on`, `died_on`
+- Snake case: `given_name`, `family_name`, `born_on`, `died_on`
 - Singular entity names for references: `person`, `place`
 
 **Vocabulary Keys:**

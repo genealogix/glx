@@ -82,7 +82,8 @@ This specification is under active development.
 persons:
   person-john-smith-1850:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       gender: "male"
       born_on: "1850-01-15"
     notes: "Blacksmith in Leeds, Yorkshire"

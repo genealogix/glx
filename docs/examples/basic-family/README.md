@@ -38,10 +38,11 @@ basic-family/
 ```yaml
 id: person-11111111
 properties:
-  primary_name: "Mary Thompson"
+  given_name: "Mary"
+  family_name: "Thompson"
   gender: female
   living: false
-  
+
 relationships:
   - relationships/rel-marriage.glx
   - relationships/rel-parent-alice.glx
@@ -52,7 +53,8 @@ relationships:
 ```yaml
 id: person-22222222
 properties:
-  primary_name: "Robert Thompson"
+  given_name: "Robert"
+  family_name: "Thompson"
   gender: male
   living: false
 
@@ -66,7 +68,8 @@ relationships:
 ```yaml
 id: person-33333333
 properties:
-  primary_name: "Alice Thompson"
+  given_name: "Alice"
+  family_name: "Thompson"
   gender: female
   living: true
 
@@ -78,7 +81,8 @@ relationships:
 ```yaml
 id: person-44444444
 properties:
-  primary_name: "Robert Thompson Jr."
+  given_name: "Robert"
+  family_name: "Thompson"
   gender: male
   living: true
 

@@ -9,7 +9,8 @@ A sequence of Unicode characters. Strings are the default type when no specific 
 
 **Example:**
 ```yaml
-primary_name: "John Smith"
+given_name: "John"
+family_name: "Smith"
 occupation: "blacksmith"
 ```
 
@@ -30,55 +31,84 @@ custom: true
 ```
 
 ### Date
-A calendar date or fuzzy date specification. GENEALOGIX uses the FamilySearch Normalized Date Format (with the exclusion of the stillborn modifier) for standardized date representation.
+A calendar date or fuzzy date specification. GENEALOGIX uses ISO 8601-style dates (YYYY-MM-DD) combined with FamilySearch-inspired keywords for fuzzy dates.
 
 ## Date Format Standard
 
-GENEALOGIX uses the **FamilySearch Normalized Date Format** for all date representations. This format supports both precise dates and fuzzy/approximate dates commonly encountered in genealogical research.
+GENEALOGIX uses a **hybrid date format** combining:
+- **ISO 8601-style dates** for precise calendar dates
+- **FamilySearch-inspired keywords** for approximate, ranged, and calculated dates
+
+This format supports both precise dates and fuzzy/approximate dates commonly encountered in genealogical research.
 
 ### Format Specification
 
-The format consists of the following elements:
+**Simple Dates (ISO 8601-style):**
+- `YYYY` - Year only (4 digits required, e.g., `1850`, `2020`, `0047`)
+- `YYYY-MM` - Year and month (e.g., `1850-03`, `2020-12`)
+- `YYYY-MM-DD` - Full date (e.g., `1850-03-15`, `2020-12-31`)
 
-- **Simple Date:** `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`
-  - `2020` - Year only
-  - `2020-03` - Year and month
-  - `2020-03-15` - Year, month, and day
-
-- **Approximate Dates:** Prefixed with a modifier
-  - `ABT 2020` - About (approximate)
-  - `BEF 2020` - Before
-  - `AFT 2020` - After
-  - `BET 2020 AND 2025` - Between two dates
-  - `CAL 2020` - Calculated
+**Keyword Modifiers (FamilySearch-inspired):**
+- **Approximate Dates:**
+  - `ABT YYYY` - About/approximately (e.g., `ABT 1850`)
+  - `BEF YYYY` - Before (e.g., `BEF 1920`)
+  - `AFT YYYY` - After (e.g., `AFT 1880`)
+  - `CAL YYYY` - Calculated (e.g., `CAL 1850`)
 
 - **Date Ranges:**
-  - `FROM 2020 TO 2025` - Range of dates
-  - `FROM 2020` - Start date with no end
+  - `BET YYYY AND YYYY` - Between two dates (e.g., `BET 1880 AND 1890`)
+  - `FROM YYYY TO YYYY` - Range with start and end (e.g., `FROM 1900 TO 1950`)
+  - `FROM YYYY` - Open-ended range from a start date (e.g., `FROM 1900`)
 
 - **Interpreted Dates:**
-  - `INT 1999-03-15 (March 15, 1999)` - Interpreted/translated date
+  - `INT YYYY-MM-DD (original text)` - Interpreted from original source (e.g., `INT 1850-03-15 (March 15th, 1850)`)
+
+### Important Notes
+
+1. **Year Format:** Years must be exactly 4 digits. Pad with zeros for years before 1000 CE (e.g., `0047` for year 47, `0800` for year 800).
+
+2. **Keywords vs Full Format:** GENEALOGIX uses **keywords inspired by** the FamilySearch Normalized Date Format, but the underlying date representation uses ISO 8601-style dates (YYYY-MM-DD), not the full FamilySearch format.
+
+3. **Keyword Combinations:** Keywords can be combined with any simple date format (e.g., `ABT 1850`, `ABT 1850-03`, `ABT 1850-03-15`).
 
 ### Examples
 
 ```yaml
 # Precise dates
-born_on: "2020-03-15"
+born_on: "1850-03-15"      # Full date
+born_on: "1850-03"          # Year and month
+born_on: "1850"             # Year only
+born_on: "0047"             # Year 47 AD (zero-padded)
 
 # Approximate dates
-born_on: "ABT 1850"
-death_year: "BEF 1920"
+born_on: "ABT 1850"         # About 1850
+death_year: "BEF 1920"      # Before 1920
+married_on: "AFT 1880-06"   # After June 1880
 
 # Date ranges
 residence_dates:
-  - value: "Leeds"
-    date: "FROM 1900 TO 1950"
+  - value: "place-leeds"
+    date: "FROM 1900 TO 1950"  # Lived in Leeds 1900-1950
+  - value: "place-london"
+    date: "FROM 1950"           # Lived in London from 1950 onward
 
 # Fuzzy dates
-born_on: "BET 1880 AND 1890"
+born_on: "BET 1880 AND 1890"   # Born between 1880 and 1890
+
+# Calculated dates
+born_on: "CAL 1850"             # Birth year calculated from other evidence
+
+# Interpreted dates
+born_on: "INT 1850-03-15 (15th March 1850)"  # Original text preserved
 ```
 
-For detailed specifications, refer to the [FamilySearch Date Standard](https://www.familysearch.org/en/developer/docs/resources/date-standard).
+### Validation
+
+GENEALOGIX validates date formats at two levels:
+1. **Structure:** Dates must follow the format specifications above
+2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT) are recognized
+
+Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.
 
 ## Reference Types
 

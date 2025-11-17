@@ -23,12 +23,14 @@ Every GENEALOGIX file uses the same universal structure:
 persons:
   person-abc12345:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       birth_date: "1850-01-15"
-  
+
   person-def67890:
     properties:
-      primary_name: "Mary Brown"
+      given_name: "Mary"
+      family_name: "Brown"
 
 sources:
   source-xyz11111:
@@ -46,7 +48,8 @@ relationships: {}
 persons:
   person-abc12345:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
 ```
 
 ## Validation Levels
@@ -109,7 +112,8 @@ family-archive/
 persons:
   person-abc12345:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
 ```
 
 **Benefits:**
@@ -138,10 +142,12 @@ family-archive/
 persons:
   person-abc12345:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
   person-def67890:
     properties:
-      primary_name: "Mary Brown"
+      given_name: "Mary"
+      family_name: "Brown"
 
 relationships:
   rel-marriage-001:

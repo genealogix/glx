@@ -21,7 +21,8 @@ minimal/
 id: person-abc123
 
 properties:
-  primary_name: "John Smith"
+  given_name: "John"
+  family_name: "Smith"
 ```
 
 ## Validation

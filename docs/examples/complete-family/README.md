@@ -91,7 +91,8 @@ All files use the unified GENEALOGIX format:
 persons:
   person-john-smith-1850:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       birth_date: "1850-01-15"
 ```
 
