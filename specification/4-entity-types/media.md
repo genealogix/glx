@@ -1,3 +1,9 @@
+---
+title: Media Entity
+description: Digital and physical media objects - photographs, documents, audio, and video
+layout: doc
+---
+
 # Media Entity
 
 [← Back to Entity Types](README.md)

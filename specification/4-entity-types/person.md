@@ -1,3 +1,9 @@
+---
+title: Person Entity
+description: Individual representation in GENEALOGIX - identity, properties, and lifecycle
+layout: doc
+---
+
 # Person Entity
 
 [← Back to Entity Types](README.md)

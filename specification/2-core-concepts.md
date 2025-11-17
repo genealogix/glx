@@ -1,3 +1,9 @@
+---
+title: Core Concepts
+description: Fundamental principles and architecture of GENEALOGIX - assertions, evidence chains, and version control
+layout: doc
+---
+
 # Core Concepts
 
 This section explains the fundamental principles and architecture that make GENEALOGIX different from traditional genealogy formats.

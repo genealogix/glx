@@ -1,3 +1,9 @@
+---
+title: Data Types
+description: Fundamental data types used in GENEALOGIX - primitives, dates, temporal values, and complex structures
+layout: doc
+---
+
 # Data Types
 
 This document defines the fundamental data types used throughout the GENEALOGIX specification.

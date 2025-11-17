@@ -1,3 +1,9 @@
+---
+title: Archive Organization
+description: GLX file format, directory structure, validation, and organization strategies
+layout: doc
+---
+
 # Archive Organization
 
 This section describes the GENEALOGIX file format and recommended organization strategies for archives.

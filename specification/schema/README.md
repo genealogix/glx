@@ -1,3 +1,9 @@
+---
+title: GENEALOGIX JSON Schemas
+description: JSON Schema definitions for validating GENEALOGIX archives
+layout: doc
+---
+
 # GENEALOGIX JSON Schemas
 
 This directory contains JSON Schema definitions for validating

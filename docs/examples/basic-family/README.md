@@ -1,3 +1,9 @@
+---
+title: Basic Family Example
+description: Foundational GENEALOGIX archive with two-parent household and basic relationships
+layout: doc
+---
+
 # Basic Family Example
 
 A foundational GENEALOGIX archive demonstrating a two-parent household
@@ -36,87 +42,82 @@ basic-family/
 
 ### persons/person-mother.glx
 ```yaml
-id: person-11111111
-properties:
-  given_name: "Mary"
-  family_name: "Thompson"
-  gender: female
-  living: false
-
-relationships:
-  - relationships/rel-marriage.glx
-  - relationships/rel-parent-alice.glx
-  - relationships/rel-parent-bob.glx
+persons:
+  person-mother:
+    properties:
+      given_name: "Mary"
+      family_name: "Thompson"
+      gender: female
 ```
 
 ### persons/person-father.glx
 ```yaml
-id: person-22222222
-properties:
-  given_name: "Robert"
-  family_name: "Thompson"
-  gender: male
-  living: false
-
-relationships:
-  - relationships/rel-marriage.glx
-  - relationships/rel-parent-alice.glx
-  - relationships/rel-parent-bob.glx
+persons:
+  person-father:
+    properties:
+      given_name: "Robert"
+      family_name: "Thompson"
+      gender: male
 ```
 
 ### persons/person-child-alice.glx
 ```yaml
-id: person-33333333
-properties:
-  given_name: "Alice"
-  family_name: "Thompson"
-  gender: female
-  living: true
-
-relationships:
-  - relationships/rel-parent-alice.glx
+persons:
+  person-child-alice:
+    properties:
+      given_name: "Alice"
+      family_name: "Thompson"
+      gender: female
 ```
 
 ### persons/person-child-bob.glx
 ```yaml
-id: person-44444444
-properties:
-  given_name: "Robert"
-  family_name: "Thompson"
-  gender: male
-  living: true
-
-relationships:
-  - relationships/rel-parent-bob.glx
+persons:
+  person-child-bob:
+    properties:
+      given_name: "Robert"
+      family_name: "Thompson"
+      gender: male
 ```
 
 ### relationships/rel-marriage.glx
 ```yaml
-id: rel-aaaa1111
-type: marriage
-persons:
-  - person-11111111
-  - person-22222222
+relationships:
+  rel-marriage:
+    type: marriage
+    participants:
+      - person: person-mother
+        role: spouse
+      - person: person-father
+        role: spouse
 ```
 
 ### relationships/rel-parent-alice.glx
 ```yaml
-id: rel-bbbb2222
-type: parent-child
-persons:
-  - person-11111111
-  - person-22222222
-  - person-33333333
+relationships:
+  rel-parent-alice:
+    type: parent_child
+    participants:
+      - person: person-mother
+        role: parent
+      - person: person-father
+        role: parent
+      - person: person-child-alice
+        role: child
 ```
 
 ### relationships/rel-parent-bob.glx
 ```yaml
-id: rel-cccc3333
-type: parent-child
-persons:
-  - person-11111111
-  - person-22222222
-  - person-44444444
+relationships:
+  rel-parent-bob:
+    type: parent_child
+    participants:
+      - person: person-mother
+        role: parent
+      - person: person-father
+        role: parent
+      - person: person-child-bob
+        role: child
 ```
 
 ## Validation

@@ -1,3 +1,9 @@
+---
+title: Source Entity
+description: Original documents and records - the foundation of evidence-based genealogical research
+layout: doc
+---
+
 # Source Entity
 
 [← Back to Entity Types](README.md)

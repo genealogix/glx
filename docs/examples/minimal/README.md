@@ -1,3 +1,9 @@
+---
+title: Minimal Archive Example
+description: The smallest valid GENEALOGIX archive with one person
+layout: doc
+---
+
 # Minimal Archive Example
 
 The smallest valid GENEALOGIX archive with one person.

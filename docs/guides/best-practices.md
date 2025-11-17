@@ -10,29 +10,25 @@ Practical recommendations for maintaining GENEALOGIX archives.
 
 ## Evidence Documentation
 
+> **Background:** For an explanation of the assertion-based evidence model, see [Core Concepts](../../specification/2-core-concepts.md#assertion-aware-data-model).
+
 ### Complete Evidence Chains
 
-Link assertions to their supporting evidence:
+**Best Practice:** Always link assertions to their supporting citations. Never create "orphan" assertions without evidence.
 
 ```yaml
-citations:
-  citation-birth-cert:
-    source: source-birth-register
-    quality: 3
-    transcription: "John Smith, born January 15, 1850"
-
 assertions:
   assertion-john-birth:
     subject: person-john-smith
-    claim: birth_date
+    claim: born_on
     value: "1850-01-15"
-    citations: [citation-birth-cert]
+    citations: [citation-birth-cert]  # ✓ Always include citations
     confidence: high
 ```
 
 ### Confidence Assessment
 
-Use assertions with confidence levels to express certainty about conclusions:
+**Best Practice:** Assess confidence based on evidence quality, not personal opinion:
 
 ```yaml
 assertions:

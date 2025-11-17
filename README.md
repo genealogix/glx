@@ -1,3 +1,9 @@
+---
+title: GENEALOGIX Specification
+description: Modern, evidence-first, Git-native genealogy data standard
+layout: doc
+---
+
 # GENEALOGIX Specification
 
 [![Version](https://img.shields.io/badge/version-0.0.0-blue.svg)](https://github.com/genealogix/spec/releases)
@@ -53,58 +59,23 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 
 **GENEALOGIX Format:**
 ```yaml
-# sources/birth-cert.glx - Evidence chain
-sources:
-  source-birth-cert:
-    title: Birth Certificate
-    type: vital_record
-
-# citations/birth-citation.glx
-citations:
-  citation-birth:
-    source: source-birth-cert
-    locator: "Certificate 1850-LEEDS-00145"
-    quality: 3
-    transcription: "John Smith, born January 15, 1850"
-
-# assertions/birth-assertion.glx - Evidence-based conclusion
-assertions:
-  assertion-john-birth:
-    subject: person-john-smith
-    claim: born_on
-    value: "1850-01-15"
-    citations: [citation-birth]
-    confidence: high
-
 persons:
   person-john-smith:
     properties:
       given_name: "John"
       family_name: "Smith"
       born_on: "1850-01-15"
-```
-
-**OR as a single file:**
-```yaml
-# family.glx - All in one file
-sources:
-  source-birth-cert:
-    title: Birth Certificate
-    type: vital_record
-
-citations:
-  citation-birth:
-    source: source-birth-cert
-    quality: 3
 
 assertions:
   assertion-john-birth:
     subject: person-john-smith
     claim: born_on
     value: "1850-01-15"
-    citations: [citation-birth]
+    citations: [citation-birth-cert]
     confidence: high
 ```
+
+> **Learn More:** See [Core Concepts](specification/2-core-concepts.md) for the complete assertion model and evidence chain explanation.
 
 ## What is GENEALOGIX?
 

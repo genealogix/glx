@@ -1,3 +1,9 @@
+---
+title: Testing Guide
+description: Testing framework and practices for GENEALOGIX implementations
+layout: doc
+---
+
 # Testing Guide
 
 This guide explains the testing framework for GENEALOGIX implementations.

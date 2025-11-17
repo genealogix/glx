@@ -1,3 +1,9 @@
+---
+title: Relationship Entity
+description: Connections between persons in GENEALOGIX - biological, legal, and social relationships
+layout: doc
+---
+
 # Relationship Entity
 
 [← Back to Entity Types](README.md)

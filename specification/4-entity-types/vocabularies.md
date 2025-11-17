@@ -1,3 +1,9 @@
+---
+title: Vocabularies
+description: Repository-owned controlled lists for types, roles, and classifications
+layout: doc
+---
+
 # Vocabularies
 
 [← Back to Entity Types](README.md)

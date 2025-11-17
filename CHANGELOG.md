@@ -1,3 +1,9 @@
+---
+title: Changelog
+description: Version history and notable changes to the GENEALOGIX specification
+layout: doc
+---
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
