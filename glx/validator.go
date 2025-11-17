@@ -27,6 +27,44 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	// Entity type constants
+	EntityTypePersons       = "persons"
+	EntityTypeRelationships = "relationships"
+	EntityTypeEvents        = "events"
+	EntityTypePlaces        = "places"
+	EntityTypeSources       = "sources"
+	EntityTypeCitations     = "citations"
+	EntityTypeRepositories  = "repositories"
+	EntityTypeAssertions    = "assertions"
+	EntityTypeMedia         = "media"
+
+	// File extensions
+	FileExtGLX  = ".glx"
+	FileExtYAML = ".yaml"
+	FileExtYML  = ".yml"
+
+	// ID validation constants
+	MinEntityIDLength = 1
+	MaxEntityIDLength = 64
+
+	// Vocabulary file keys
+	VocabRelationshipTypes = "relationship_types"
+	VocabEventTypes        = "event_types"
+	VocabPlaceTypes        = "place_types"
+	VocabRepositoryTypes   = "repository_types"
+	VocabParticipantRoles  = "participant_roles"
+	VocabMediaTypes        = "media_types"
+	VocabConfidenceLevels  = "confidence_levels"
+	VocabQualityRatings    = "quality_ratings"
+
+	// Property vocabulary keys
+	PropPersonProperties       = "person_properties"
+	PropEventProperties        = "event_properties"
+	PropRelationshipProperties = "relationship_properties"
+	PropPlaceProperties        = "place_properties"
+)
+
 // ParseYAMLFile parses YAML content into a map
 func ParseYAMLFile(data []byte) (map[string]interface{}, error) {
 	var doc map[string]interface{}
@@ -42,15 +80,15 @@ func ValidateGLXFile(path string, doc map[string]interface{}, vocabs *ArchiveVoc
 
 	// Entity type keys and their singular forms for validation
 	entityTypes := map[string]string{
-		"persons":       "person",
-		"relationships": "relationship",
-		"events":        "event",
-		"places":        "place",
-		"sources":       "source",
-		"citations":     "citation",
-		"repositories":  "repository",
-		"assertions":    "assertion",
-		"media":         "media",
+		EntityTypePersons:       "person",
+		EntityTypeRelationships: "relationship",
+		EntityTypeEvents:        "event",
+		EntityTypePlaces:        "place",
+		EntityTypeSources:       "source",
+		EntityTypeCitations:     "citation",
+		EntityTypeRepositories:  "repository",
+		EntityTypeAssertions:    "assertion",
+		EntityTypeMedia:         "media",
 	}
 
 	// Validate entity sections
@@ -83,7 +121,7 @@ func ValidateGLXFile(path string, doc map[string]interface{}, vocabs *ArchiveVoc
 }
 
 func isValidEntityID(id string) bool {
-	if len(id) < 1 || len(id) > 64 {
+	if len(id) < MinEntityIDLength || len(id) > MaxEntityIDLength {
 		return false
 	}
 	for _, c := range id {
@@ -139,120 +177,196 @@ func getSchemaBytes(entityType string) []byte {
 }
 
 func basicValidateEntity(entityType string, entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
-	var issues []string
-
-	// Type-specific validation
+	// Delegate to type-specific validation functions
 	switch entityType {
 	case "person":
-		// Persons don't have strict requirements beyond version
+		return validatePersonEntity(entity, vocabs)
 	case "relationship":
-		if _, hasType := entity["type"]; !hasType {
-			issues = append(issues, "type is required")
-		}
-		if _, hasPersons := entity["persons"]; !hasPersons {
-			issues = append(issues, "persons is required")
-		}
-		// Validate against vocabularies if available
-		if relType, ok := entity["type"].(string); ok {
-			if vocabs != nil && len(vocabs.RelationshipTypes) > 0 {
-				if _, exists := vocabs.RelationshipTypes[relType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown relationship type '%s' - add a relationship_types vocabulary entry", relType))
-				}
-			}
-		}
+		return validateRelationshipEntity(entity, vocabs)
 	case "event":
-		if _, hasType := entity["type"]; !hasType {
-			issues = append(issues, "type is required")
-		}
-		// Validate against vocabularies if available
-		if eventType, ok := entity["type"].(string); ok {
-			if vocabs != nil && len(vocabs.EventTypes) > 0 {
-				if _, exists := vocabs.EventTypes[eventType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown event type '%s' - add an event_types vocabulary entry", eventType))
-				}
-			}
-		}
+		return validateEventEntity(entity, vocabs)
 	case "place":
-		if _, hasName := entity["name"]; !hasName {
-			issues = append(issues, "name is required")
-		}
-		// Validate against vocabularies if available
-		if placeType, ok := entity["type"].(string); ok {
-			if vocabs != nil && len(vocabs.PlaceTypes) > 0 {
-				if _, exists := vocabs.PlaceTypes[placeType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown place type '%s' - add a place_types vocabulary entry", placeType))
-				}
-			}
-		}
+		return validatePlaceEntity(entity, vocabs)
 	case "source":
-		if _, hasTitle := entity["title"]; !hasTitle {
-			issues = append(issues, "title is required")
-		}
+		return validateSourceEntity(entity, vocabs)
 	case "citation":
-		if _, hasSource := entity["source"]; !hasSource {
-			issues = append(issues, "source is required")
-		}
+		return validateCitationEntity(entity, vocabs)
 	case "repository":
-		if _, hasName := entity["name"]; !hasName {
-			issues = append(issues, "name is required")
-		}
-		// Validate against vocabularies if available
-		if repoType, ok := entity["type"].(string); ok {
-			if vocabs != nil && len(vocabs.RepositoryTypes) > 0 {
-				if _, exists := vocabs.RepositoryTypes[repoType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown repository type '%s' - add a repository_types vocabulary entry", repoType))
-				}
-			}
-		}
+		return validateRepositoryEntity(entity, vocabs)
 	case "assertion":
-		if _, hasSubject := entity["subject"]; !hasSubject {
-			issues = append(issues, "subject is required")
-		}
-		if _, hasClaim := entity["claim"]; !hasClaim {
-			issues = append(issues, "claim is required")
-		}
-		if _, hasSources := entity["sources"]; !hasSources {
-			if _, hasCitations := entity["citations"]; !hasCitations {
-				issues = append(issues, "sources or citations is required")
-			}
-		}
-		// Validate against vocabularies if available
-		if confidence, ok := entity["confidence"].(string); ok {
-			if vocabs != nil && len(vocabs.ConfidenceLevels) > 0 {
-				if _, exists := vocabs.ConfidenceLevels[confidence]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown confidence level '%s' - add a confidence_levels vocabulary entry", confidence))
-				}
-			}
-		}
-		if quality, ok := entity["quality"].(float64); ok {
-			qualityStr := fmt.Sprintf("%.0f", quality)
-			if vocabs != nil && len(vocabs.QualityRatings) > 0 {
-				if _, exists := vocabs.QualityRatings[qualityStr]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown quality rating '%s' - add a quality_ratings vocabulary entry", qualityStr))
-				}
-			}
-		}
-		if quality, ok := entity["quality"].(*int); ok && quality != nil {
-			qualityStr := fmt.Sprintf("%d", *quality)
-			if vocabs != nil && len(vocabs.QualityRatings) > 0 {
-				if _, exists := vocabs.QualityRatings[qualityStr]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown quality rating '%s' - add a quality_ratings vocabulary entry", qualityStr))
-				}
-			}
-		}
+		return validateAssertionEntity(entity, vocabs)
 	case "media":
-		if _, hasURI := entity["uri"]; !hasURI {
-			if _, hasFilePath := entity["file_path"]; !hasFilePath {
-				issues = append(issues, "uri or file_path is required")
-			}
+		return validateMediaEntity(entity, vocabs)
+	default:
+		return []string{fmt.Sprintf("unknown entity type: %s", entityType)}
+	}
+}
+
+// validatePersonEntity validates a person entity
+func validatePersonEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	// Persons don't have strict requirements beyond version
+	return nil
+}
+
+// validateRelationshipEntity validates a relationship entity
+func validateRelationshipEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields
+	if _, hasType := entity["type"]; !hasType {
+		issues = append(issues, "type field is required for relationships")
+	}
+	if _, hasPersons := entity["persons"]; !hasPersons {
+		issues = append(issues, "persons field is required for relationships")
+	}
+
+	// Validate against vocabularies if available
+	if relType, ok := entity["type"].(string); ok && vocabs != nil && len(vocabs.RelationshipTypes) > 0 {
+		if _, exists := vocabs.RelationshipTypes[relType]; !exists {
+			issues = append(issues, fmt.Sprintf("relationship type '%s' is not defined in vocabulary - add it to relationship_types or use a standard type", relType))
 		}
-		// Validate against vocabularies if available
-		if mediaType, ok := entity["media_type"].(string); ok {
-			if vocabs != nil && len(vocabs.MediaTypes) > 0 {
-				if _, exists := vocabs.MediaTypes[mediaType]; !exists {
-					issues = append(issues, fmt.Sprintf("unknown media type '%s' - add a media_types vocabulary entry", mediaType))
-				}
-			}
+	}
+
+	return issues
+}
+
+// validateEventEntity validates an event entity
+func validateEventEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields
+	if _, hasType := entity["type"]; !hasType {
+		issues = append(issues, "type field is required for events")
+	}
+
+	// Validate against vocabularies if available
+	if eventType, ok := entity["type"].(string); ok && vocabs != nil && len(vocabs.EventTypes) > 0 {
+		if _, exists := vocabs.EventTypes[eventType]; !exists {
+			issues = append(issues, fmt.Sprintf("event type '%s' is not defined in vocabulary - add it to event_types or use a standard type", eventType))
+		}
+	}
+
+	return issues
+}
+
+// validatePlaceEntity validates a place entity
+func validatePlaceEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields
+	if _, hasName := entity["name"]; !hasName {
+		issues = append(issues, "name field is required for places")
+	}
+
+	// Validate against vocabularies if available
+	if placeType, ok := entity["type"].(string); ok && vocabs != nil && len(vocabs.PlaceTypes) > 0 {
+		if _, exists := vocabs.PlaceTypes[placeType]; !exists {
+			issues = append(issues, fmt.Sprintf("place type '%s' is not defined in vocabulary - add it to place_types or use a standard type", placeType))
+		}
+	}
+
+	return issues
+}
+
+// validateSourceEntity validates a source entity
+func validateSourceEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields
+	if _, hasTitle := entity["title"]; !hasTitle {
+		issues = append(issues, "title field is required for sources")
+	}
+
+	return issues
+}
+
+// validateCitationEntity validates a citation entity
+func validateCitationEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields
+	if _, hasSource := entity["source"]; !hasSource {
+		issues = append(issues, "source field is required for citations")
+	}
+
+	return issues
+}
+
+// validateRepositoryEntity validates a repository entity
+func validateRepositoryEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields
+	if _, hasName := entity["name"]; !hasName {
+		issues = append(issues, "name field is required for repositories")
+	}
+
+	// Validate against vocabularies if available
+	if repoType, ok := entity["type"].(string); ok && vocabs != nil && len(vocabs.RepositoryTypes) > 0 {
+		if _, exists := vocabs.RepositoryTypes[repoType]; !exists {
+			issues = append(issues, fmt.Sprintf("repository type '%s' is not defined in vocabulary - add it to repository_types or use a standard type", repoType))
+		}
+	}
+
+	return issues
+}
+
+// validateAssertionEntity validates an assertion entity
+func validateAssertionEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields
+	if _, hasSubject := entity["subject"]; !hasSubject {
+		issues = append(issues, "subject field is required for assertions")
+	}
+	if _, hasClaim := entity["claim"]; !hasClaim {
+		issues = append(issues, "claim field is required for assertions")
+	}
+	if _, hasSources := entity["sources"]; !hasSources {
+		if _, hasCitations := entity["citations"]; !hasCitations {
+			issues = append(issues, "sources or citations field is required for assertions")
+		}
+	}
+
+	// Validate against vocabularies if available
+	if confidence, ok := entity["confidence"].(string); ok && vocabs != nil && len(vocabs.ConfidenceLevels) > 0 {
+		if _, exists := vocabs.ConfidenceLevels[confidence]; !exists {
+			issues = append(issues, fmt.Sprintf("confidence level '%s' is not defined in vocabulary - add it to confidence_levels or use a standard level", confidence))
+		}
+	}
+
+	// Handle quality rating validation (can be float64 or *int)
+	if quality, ok := entity["quality"].(float64); ok && vocabs != nil && len(vocabs.QualityRatings) > 0 {
+		qualityStr := fmt.Sprintf("%.0f", quality)
+		if _, exists := vocabs.QualityRatings[qualityStr]; !exists {
+			issues = append(issues, fmt.Sprintf("quality rating '%s' is not defined in vocabulary - add it to quality_ratings or use a standard rating", qualityStr))
+		}
+	}
+	if quality, ok := entity["quality"].(*int); ok && quality != nil && vocabs != nil && len(vocabs.QualityRatings) > 0 {
+		qualityStr := fmt.Sprintf("%d", *quality)
+		if _, exists := vocabs.QualityRatings[qualityStr]; !exists {
+			issues = append(issues, fmt.Sprintf("quality rating '%s' is not defined in vocabulary - add it to quality_ratings or use a standard rating", qualityStr))
+		}
+	}
+
+	return issues
+}
+
+// validateMediaEntity validates a media entity
+func validateMediaEntity(entity map[string]interface{}, vocabs *ArchiveVocabularies) []string {
+	var issues []string
+
+	// Check required fields - either uri or file_path must be present
+	if _, hasURI := entity["uri"]; !hasURI {
+		if _, hasFilePath := entity["file_path"]; !hasFilePath {
+			issues = append(issues, "uri or file_path field is required for media objects")
+		}
+	}
+
+	// Validate against vocabularies if available
+	if mediaType, ok := entity["media_type"].(string); ok && vocabs != nil && len(vocabs.MediaTypes) > 0 {
+		if _, exists := vocabs.MediaTypes[mediaType]; !exists {
+			issues = append(issues, fmt.Sprintf("media type '%s' is not defined in vocabulary - add it to media_types or use a standard type", mediaType))
 		}
 	}
 
@@ -264,8 +378,8 @@ func ValidateVocabularyFile(path string, doc map[string]interface{}) []string {
 	var issues []string
 
 	// Check for vocabulary type key
-	vocabKeys := []string{"relationship_types", "event_types", "place_types", "repository_types",
-		"participant_roles", "media_types", "confidence_levels", "quality_ratings"}
+	vocabKeys := []string{VocabRelationshipTypes, VocabEventTypes, VocabPlaceTypes, VocabRepositoryTypes,
+		VocabParticipantRoles, VocabMediaTypes, VocabConfidenceLevels, VocabQualityRatings}
 	hasVocabKey := false
 	var vocabType string
 	for _, key := range vocabKeys {
@@ -313,69 +427,85 @@ func getVocabSchemaBytes(vocabType string) []byte {
 	return nil
 }
 
+// ArchiveVocabularies holds all vocabulary definitions from a GLX archive.
+//
+// Vocabularies provide controlled vocabularies for entity properties and types.
+// They are used to validate that entity fields contain valid values and to provide
+// metadata about properties like their data types and validation rules.
 type ArchiveVocabularies struct {
+	// Entity type vocabularies - define valid types for entities
 	RelationshipTypes map[string]*lib.RelationshipType
 	EventTypes        map[string]*lib.EventType
 	PlaceTypes        map[string]*lib.PlaceType
 	RepositoryTypes   map[string]*lib.RepositoryType
 	ParticipantRoles  map[string]*lib.ParticipantRole
 	MediaTypes        map[string]*lib.MediaType
-	ConfidenceLevels  map[string]*lib.ConfidenceLevel
-	QualityRatings    map[string]*lib.QualityRating
 
-	// Property vocabularies
+	// Assertion vocabularies - define valid confidence and quality levels
+	ConfidenceLevels map[string]*lib.ConfidenceLevel
+	QualityRatings   map[string]*lib.QualityRating
+
+	// Property vocabularies - define custom properties for entities
 	PersonProperties       map[string]*lib.PropertyDefinition
 	EventProperties        map[string]*lib.PropertyDefinition
 	RelationshipProperties map[string]*lib.PropertyDefinition
 	PlaceProperties        map[string]*lib.PropertyDefinition
 }
 
-// ValidateArchive validates a merged GLXFile archive
-func ValidateArchive(archive *lib.GLXFile, rootPath string) ([]string, []string) {
-	var errors, warnings []string
-
-	// Build entity maps for reference validation
+// buildEntityMaps creates maps of all entity IDs for reference validation.
+//
+// This creates a lookup structure where each entity type maps to a set of valid IDs.
+// Used to quickly check if referenced entities exist during cross-reference validation.
+func buildEntityMaps(archive *lib.GLXFile) map[string]map[string]bool {
 	allEntities := make(map[string]map[string]bool)
-	allEntities["persons"] = make(map[string]bool)
-	allEntities["relationships"] = make(map[string]bool)
-	allEntities["events"] = make(map[string]bool)
-	allEntities["places"] = make(map[string]bool)
-	allEntities["sources"] = make(map[string]bool)
-	allEntities["citations"] = make(map[string]bool)
-	allEntities["repositories"] = make(map[string]bool)
-	allEntities["assertions"] = make(map[string]bool)
-	allEntities["media"] = make(map[string]bool)
+	allEntities[EntityTypePersons] = make(map[string]bool)
+	allEntities[EntityTypeRelationships] = make(map[string]bool)
+	allEntities[EntityTypeEvents] = make(map[string]bool)
+	allEntities[EntityTypePlaces] = make(map[string]bool)
+	allEntities[EntityTypeSources] = make(map[string]bool)
+	allEntities[EntityTypeCitations] = make(map[string]bool)
+	allEntities[EntityTypeRepositories] = make(map[string]bool)
+	allEntities[EntityTypeAssertions] = make(map[string]bool)
+	allEntities[EntityTypeMedia] = make(map[string]bool)
 
 	for id := range archive.Persons {
-		allEntities["persons"][id] = true
+		allEntities[EntityTypePersons][id] = true
 	}
 	for id := range archive.Relationships {
-		allEntities["relationships"][id] = true
+		allEntities[EntityTypeRelationships][id] = true
 	}
 	for id := range archive.Events {
-		allEntities["events"][id] = true
+		allEntities[EntityTypeEvents][id] = true
 	}
 	for id := range archive.Places {
-		allEntities["places"][id] = true
+		allEntities[EntityTypePlaces][id] = true
 	}
 	for id := range archive.Sources {
-		allEntities["sources"][id] = true
+		allEntities[EntityTypeSources][id] = true
 	}
 	for id := range archive.Citations {
-		allEntities["citations"][id] = true
+		allEntities[EntityTypeCitations][id] = true
 	}
 	for id := range archive.Repositories {
-		allEntities["repositories"][id] = true
+		allEntities[EntityTypeRepositories][id] = true
 	}
 	for id := range archive.Assertions {
-		allEntities["assertions"][id] = true
+		allEntities[EntityTypeAssertions][id] = true
 	}
 	for id := range archive.Media {
-		allEntities["media"][id] = true
+		allEntities[EntityTypeMedia][id] = true
 	}
 
-	// Build vocabulary struct from merged archive
-	vocabs := &ArchiveVocabularies{
+	return allEntities
+}
+
+// buildVocabularyStruct creates an ArchiveVocabularies struct from the archive.
+//
+// This extracts all vocabulary definitions from the merged archive into a single
+// structure that's easier to work with during validation. Vocabularies provide
+// controlled values for entity types, property definitions, and other enumerated fields.
+func buildVocabularyStruct(archive *lib.GLXFile) *ArchiveVocabularies {
+	return &ArchiveVocabularies{
 		RelationshipTypes:      archive.RelationshipTypes,
 		EventTypes:             archive.EventTypes,
 		PlaceTypes:             archive.PlaceTypes,
@@ -389,9 +519,52 @@ func ValidateArchive(archive *lib.GLXFile, rootPath string) ([]string, []string)
 		RelationshipProperties: archive.RelationshipProperties,
 		PlaceProperties:        archive.PlaceProperties,
 	}
+}
 
-	// Validate relationships
-	for relID, rel := range archive.Relationships {
+// ValidateArchive validates a merged GLXFile archive
+func ValidateArchive(archive *lib.GLXFile, rootPath string) ([]string, []string) {
+	var errors, warnings []string
+
+	allEntities := buildEntityMaps(archive)
+	vocabs := buildVocabularyStruct(archive)
+
+	// Validate each entity type
+	warns, errs := validateRelationships(archive.Relationships, allEntities, vocabs)
+	warnings = append(warnings, warns...)
+	errors = append(errors, errs...)
+
+	warns, errs = validateEvents(archive.Events, allEntities, vocabs)
+	warnings = append(warnings, warns...)
+	errors = append(errors, errs...)
+
+	warns, errs = validatePlaces(archive.Places, allEntities, vocabs)
+	warnings = append(warnings, warns...)
+	errors = append(errors, errs...)
+
+	warns, errs = validatePersons(archive.Persons, allEntities, vocabs)
+	warnings = append(warnings, warns...)
+	errors = append(errors, errs...)
+
+	warns, errs = validateCitations(archive.Citations, allEntities)
+	warnings = append(warnings, warns...)
+	errors = append(errors, errs...)
+
+	warns, errs = validateSources(archive.Sources, allEntities)
+	warnings = append(warnings, warns...)
+	errors = append(errors, errs...)
+
+	warns, errs = validateAssertions(archive.Assertions, allEntities, vocabs)
+	warnings = append(warnings, warns...)
+	errors = append(errors, errs...)
+
+	return errors, warnings
+}
+
+// validateRelationships validates all relationships in the archive
+func validateRelationships(relationships map[string]*lib.Relationship, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
+
+	for relID, rel := range relationships {
 		// Validate properties
 		warns, errs := validateEntityPropertiesFromStruct("relationships", relID, rel.Properties, allEntities, vocabs)
 		warnings = append(warnings, warns...)
@@ -399,74 +572,110 @@ func ValidateArchive(archive *lib.GLXFile, rootPath string) ([]string, []string)
 
 		// Check participants reference valid persons
 		for i, participant := range rel.Participants {
-			if !allEntities["persons"][participant.Person] {
+			if !allEntities[EntityTypePersons][participant.Person] {
 				errors = append(errors, fmt.Sprintf("relationships[%s].participants[%d].person references non-existent person: %s", relID, i, participant.Person))
 			}
 		}
 	}
 
-	// Validate events
-	for eventID, event := range archive.Events {
+	return warnings, errors
+}
+
+// validateEvents validates all events in the archive
+func validateEvents(events map[string]*lib.Event, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
+
+	for eventID, event := range events {
 		// Validate properties
 		warns, errs := validateEntityPropertiesFromStruct("events", eventID, event.Properties, allEntities, vocabs)
 		warnings = append(warnings, warns...)
 		errors = append(errors, errs...)
 
 		// Check place references
-		if event.PlaceID != "" && !allEntities["places"][event.PlaceID] {
+		if event.PlaceID != "" && !allEntities[EntityTypePlaces][event.PlaceID] {
 			errors = append(errors, fmt.Sprintf("events[%s].place references non-existent place: %s", eventID, event.PlaceID))
 		}
 
 		// Check participants reference valid persons
 		for i, participant := range event.Participants {
-			if !allEntities["persons"][participant.PersonID] {
+			if !allEntities[EntityTypePersons][participant.PersonID] {
 				errors = append(errors, fmt.Sprintf("events[%s].participants[%d].person references non-existent person: %s", eventID, i, participant.PersonID))
 			}
 		}
 	}
 
-	// Validate places
-	for placeID, place := range archive.Places {
+	return warnings, errors
+}
+
+// validatePlaces validates all places in the archive
+func validatePlaces(places map[string]*lib.Place, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
+
+	for placeID, place := range places {
 		// Validate properties
 		warns, errs := validateEntityPropertiesFromStruct("places", placeID, place.Properties, allEntities, vocabs)
 		warnings = append(warnings, warns...)
 		errors = append(errors, errs...)
 
 		// Check parent place references
-		if place.ParentID != "" && !allEntities["places"][place.ParentID] {
+		if place.ParentID != "" && !allEntities[EntityTypePlaces][place.ParentID] {
 			errors = append(errors, fmt.Sprintf("places[%s].parent references non-existent place: %s", placeID, place.ParentID))
 		}
 	}
 
-	// Validate persons
-	for personID, person := range archive.Persons {
+	return warnings, errors
+}
+
+// validatePersons validates all persons in the archive
+func validatePersons(persons map[string]*lib.Person, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
+
+	for personID, person := range persons {
 		warns, errs := validateEntityPropertiesFromStruct("persons", personID, person.Properties, allEntities, vocabs)
 		warnings = append(warnings, warns...)
 		errors = append(errors, errs...)
 	}
 
-	// Validate citations
-	for citationID, citation := range archive.Citations {
+	return warnings, errors
+}
+
+// validateCitations validates all citations in the archive
+func validateCitations(citations map[string]*lib.Citation, allEntities map[string]map[string]bool) ([]string, []string) {
+	var warnings, errors []string
+
+	for citationID, citation := range citations {
 		// Check source references
-		if citation.SourceID != "" && !allEntities["sources"][citation.SourceID] {
+		if citation.SourceID != "" && !allEntities[EntityTypeSources][citation.SourceID] {
 			errors = append(errors, fmt.Sprintf("citations[%s].source references non-existent source: %s", citationID, citation.SourceID))
 		}
 		// Check repository references
-		if citation.RepositoryID != "" && !allEntities["repositories"][citation.RepositoryID] {
+		if citation.RepositoryID != "" && !allEntities[EntityTypeRepositories][citation.RepositoryID] {
 			errors = append(errors, fmt.Sprintf("citations[%s].repository references non-existent repository: %s", citationID, citation.RepositoryID))
 		}
 	}
 
-	// Validate sources
-	for sourceID, source := range archive.Sources {
+	return warnings, errors
+}
+
+// validateSources validates all sources in the archive
+func validateSources(sources map[string]*lib.Source, allEntities map[string]map[string]bool) ([]string, []string) {
+	var warnings, errors []string
+
+	for sourceID, source := range sources {
 		// Check repository references
-		if source.RepositoryID != "" && !allEntities["repositories"][source.RepositoryID] {
+		if source.RepositoryID != "" && !allEntities[EntityTypeRepositories][source.RepositoryID] {
 			errors = append(errors, fmt.Sprintf("sources[%s].repository references non-existent repository: %s", sourceID, source.RepositoryID))
 		}
 	}
 
-	// Validate assertions
-	for assertionID, assertion := range archive.Assertions {
+	return warnings, errors
+}
+
+// validateAssertions validates all assertions in the archive
+func validateAssertions(assertions map[string]*lib.Assertion, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
+	var warnings, errors []string
+
+	for assertionID, assertion := range assertions {
 		// Semantic validation for assertions
 		warns, errs := validateAssertionSemanticsFromStruct(assertionID, assertion, allEntities, vocabs)
 		warnings = append(warnings, warns...)
@@ -474,7 +683,7 @@ func ValidateArchive(archive *lib.GLXFile, rootPath string) ([]string, []string)
 
 		// Check subject references (could be person, event, relationship, place)
 		found := false
-		for _, entityType := range []string{"persons", "events", "relationships", "places"} {
+		for _, entityType := range []string{EntityTypePersons, EntityTypeEvents, EntityTypeRelationships, EntityTypePlaces} {
 			if allEntities[entityType][assertion.Subject] {
 				found = true
 				break
@@ -486,20 +695,20 @@ func ValidateArchive(archive *lib.GLXFile, rootPath string) ([]string, []string)
 
 		// Check citations
 		for i, citationID := range assertion.Citations {
-			if !allEntities["citations"][citationID] {
+			if !allEntities[EntityTypeCitations][citationID] {
 				errors = append(errors, fmt.Sprintf("assertions[%s].citations[%d] references non-existent citation: %s", assertionID, i, citationID))
 			}
 		}
 
 		// Check sources
 		for i, sourceID := range assertion.Sources {
-			if !allEntities["sources"][sourceID] {
+			if !allEntities[EntityTypeSources][sourceID] {
 				errors = append(errors, fmt.Sprintf("assertions[%s].sources[%d] references non-existent source: %s", assertionID, i, sourceID))
 			}
 		}
 	}
 
-	return errors, warnings
+	return warnings, errors
 }
 
 // LoadArchive loads and merges all GLX files from a directory into a single GLXFile struct
@@ -538,7 +747,7 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 			return nil
 		}
 		ext := filepath.Ext(d.Name())
-		if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
+		if ext != FileExtGLX && ext != FileExtYAML && ext != FileExtYML {
 			return nil
 		}
 
@@ -574,13 +783,13 @@ func validateEntityPropertiesFromStruct(entityType, entityID string, properties 
 
 	var vocab map[string]*lib.PropertyDefinition
 	switch entityType {
-	case "persons":
+	case EntityTypePersons:
 		vocab = vocabs.PersonProperties
-	case "events":
+	case EntityTypeEvents:
 		vocab = vocabs.EventProperties
-	case "relationships":
+	case EntityTypeRelationships:
 		vocab = vocabs.RelationshipProperties
-	case "places":
+	case EntityTypePlaces:
 		vocab = vocabs.PlaceProperties
 	default:
 		return warnings, errors
@@ -611,7 +820,15 @@ func validateEntityPropertiesFromStruct(entityType, entityID string, properties 
 }
 
 
-// validateAssertionSemanticsFromStruct validates assertion semantics from a struct
+// validateAssertionSemanticsFromStruct validates assertion semantics from a struct.
+//
+// Assertions in GLX come in two forms:
+// 1. Participant-based assertions: claim something about a person's role in an event
+//    (has participant field, no claim or value fields)
+// 2. Claim-based assertions: claim a property value about an entity
+//    (has subject and claim fields, may have value field)
+//
+// This function validates the semantic rules for both types and checks references.
 func validateAssertionSemanticsFromStruct(assertionID string, assertion *lib.Assertion, allEntities map[string]map[string]bool, vocabs *ArchiveVocabularies) ([]string, []string) {
 	var warnings, errors []string
 	hasParticipant := assertion.Participant != nil
@@ -633,7 +850,7 @@ func validateAssertionSemanticsFromStruct(assertionID string, assertion *lib.Ass
 		// Rule: participant.person must exist
 		if assertion.Participant.Person == "" {
 			errors = append(errors, fmt.Sprintf("assertions[%s]: participant.person is required", assertionID))
-		} else if !allEntities["persons"][assertion.Participant.Person] {
+		} else if !allEntities[EntityTypePersons][assertion.Participant.Person] {
 			errors = append(errors, fmt.Sprintf("assertions[%s]: participant.person references non-existent person: %s", assertionID, assertion.Participant.Person))
 		}
 
@@ -684,16 +901,16 @@ func validateAssertionSemanticsFromStruct(assertionID string, assertion *lib.Ass
 
 // getEntityType determines the type of an entity based on its ID by checking against all known entities.
 func getEntityType(subjectID string, allEntities map[string]map[string]bool) string {
-	if _, exists := allEntities["persons"][subjectID]; exists {
+	if _, exists := allEntities[EntityTypePersons][subjectID]; exists {
 		return "person"
 	}
-	if _, exists := allEntities["events"][subjectID]; exists {
+	if _, exists := allEntities[EntityTypeEvents][subjectID]; exists {
 		return "event"
 	}
-	if _, exists := allEntities["relationships"][subjectID]; exists {
+	if _, exists := allEntities[EntityTypeRelationships][subjectID]; exists {
 		return "relationship"
 	}
-	if _, exists := allEntities["places"][subjectID]; exists {
+	if _, exists := allEntities[EntityTypePlaces][subjectID]; exists {
 		return "place"
 	}
 	return ""

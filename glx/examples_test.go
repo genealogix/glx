@@ -57,6 +57,13 @@ func TestExamples(t *testing.T) {
 			data, err := os.ReadFile(file)
 			require.NoError(t, err, "failed to read %s", file)
 
+			// Skip reference files that contain relative paths instead of YAML
+			content := strings.TrimSpace(string(data))
+			if strings.HasPrefix(content, "../") || strings.HasPrefix(content, "../../../../") {
+				t.Skipf("skipping reference file %s", file)
+				return
+			}
+
 			doc, err := ParseYAMLFile(data)
 			require.NoError(t, err, "failed to parse YAML in %s", file)
 
