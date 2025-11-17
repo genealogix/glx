@@ -1,6 +1,6 @@
 {
   "name": "genealogix-docs",
-  "version": "0.0.0",
+  "version": "0.0.0-beta.0",
   "description": "GENEALOGIX Specification Documentation Site",
   "scripts": {
     "docs:dev": "vitepress dev",
