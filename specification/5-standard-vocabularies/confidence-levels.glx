@@ -1,0 +1,23 @@
+# Standard Confidence Levels
+# This file defines the standard confidence levels for assertions.
+# These provide an alternative to citation quality ratings and reflect
+# overall confidence in conclusions based on all available evidence.
+# Archives can extend this with custom levels by adding entries with `custom: true`.
+
+confidence_levels:
+  high:
+    label: "High Confidence"
+    description: "Multiple high-quality sources agree, minimal uncertainty"
+  
+  medium:
+    label: "Medium Confidence"
+    description: "Some evidence supports conclusion, but conflicts or gaps exist"
+  
+  low:
+    label: "Low Confidence"
+    description: "Limited evidence, significant uncertainty"
+  
+  disputed:
+    label: "Disputed"
+    description: "Multiple sources conflict, resolution unclear"
+

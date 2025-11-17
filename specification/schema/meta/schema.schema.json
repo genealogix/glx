@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.genealogix.io/meta/schema",
+  "title": "GENEALOGIX Meta-Schema",
+  "description": "Meta-schema used to validate GENEALOGIX JSON Schemas",
+  "type": "object",
+  "required": ["$schema", "$id", "title", "type"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$id": { "type": "string" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "type": { "type": "string", "enum": ["object"] },
+    "additionalProperties": { "type": ["boolean", "object"] }
+  }
+}
+
+

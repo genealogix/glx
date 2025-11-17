@@ -1,0 +1,79 @@
+# Participant Assertions Example
+# Demonstrates representing evidence about who participated in events and relationships
+
+
+persons:
+  person-john-smith:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+      gender: "male"
+      born_on: "1850-01-15"
+
+  person-jane-doe:
+    properties:
+      given_name: "Jane"
+      family_name: "Doe"
+      gender: "female"
+      born_on: "1855-03-20"
+
+  person-thomas-brown:
+    properties:
+      given_name: "Thomas"
+      family_name: "Brown"
+      gender: "male"
+
+events:
+  event-marriage-1880:
+    type: marriage
+    date: "1880-06-15"
+    description: "Marriage of John Smith and Jane Doe"
+
+sources:
+  source-marriage-certificate:
+    title: "Marriage Certificate"
+    type: vital_record
+    date: "1880-06-15"
+
+citations:
+  citation-marriage-cert:
+    source: source-marriage-certificate
+    quality: 3
+    transcription: |
+      Marriage Certificate
+      Registered 15 June 1880
+      John Smith (age 30) married Jane Doe (age 25)
+      Witnesses: Thomas Brown, Mary Wilson
+
+# Participant assertions - showing who participated in the marriage event
+assertions:
+  assertion-john-groom:
+    subject: event-marriage-1880
+    participant:
+      person: person-john-smith
+      role: groom
+      notes: "Listed as groom on certificate"
+    citations:
+      - citation-marriage-cert
+    confidence: high
+
+  assertion-jane-bride:
+    subject: event-marriage-1880
+    participant:
+      person: person-jane-doe
+      role: bride
+      notes: "Listed as bride on certificate"
+    citations:
+      - citation-marriage-cert
+    confidence: high
+
+  assertion-thomas-witness:
+    subject: event-marriage-1880
+    participant:
+      person: person-thomas-brown
+      role: witness
+      notes: "First witness on marriage certificate"
+    citations:
+      - citation-marriage-cert
+    confidence: high
+

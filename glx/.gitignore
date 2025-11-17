@@ -1,0 +1,10 @@
+# Build artifacts
+glx
+*.exe
+*.test
+
+# Coverage reports
+coverage.out
+
+# Test artifacts
+*.tmp

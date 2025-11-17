@@ -1,0 +1,4 @@
+repository_types:
+  library:
+    label: "Library"
+

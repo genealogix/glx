@@ -1,0 +1,32 @@
+# Invalid: participant.role references non-existent role
+# This should fail validation - broken vocabulary reference
+
+persons:
+  person-john:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+
+events:
+  event-marriage:
+    type: marriage
+
+sources:
+  source-cert:
+    title: "Certificate"
+
+citations:
+  citation-cert:
+    source: source-cert
+
+# This is INVALID - role does not exist in participant_roles vocabulary
+assertions:
+  assertion-invalid:
+    subject: event-marriage
+    participant:
+      person: person-john
+      role: invalid-role  # ERROR: this role doesn't exist in vocabulary
+    citations:
+      - citation-cert
+    confidence: high
+

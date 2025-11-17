@@ -1,0 +1,8 @@
+assertions:
+  assertion-missing-subject:
+    claim: given_name
+    value: "John"
+    citations:
+      - citation-123
+
+

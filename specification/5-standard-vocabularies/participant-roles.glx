@@ -1,0 +1,85 @@
+# Standard Participant Roles
+# This file defines the standard roles that people play in events and relationships.
+# Archives can extend this with custom roles by adding entries with `custom: true`.
+
+participant_roles:
+  # Event Roles
+  principal:
+    label: "Principal"
+    description: "Primary person in the event"
+    applies_to:
+      - event
+  
+  subject:
+    label: "Subject"
+    description: "Subject of the event (alias for principal)"
+    applies_to:
+      - event
+  
+  witness:
+    label: "Witness"
+    description: "Person who witnessed the event"
+    applies_to:
+      - event
+  
+  officiant:
+    label: "Officiant"
+    description: "Person who officiated the ceremony"
+    applies_to:
+      - event
+  
+  informant:
+    label: "Informant"
+    description: "Person providing information"
+    applies_to:
+      - event
+  
+  groom:
+    label: "Groom"
+    description: "Male marriage participant"
+    applies_to:
+      - event
+  
+  bride:
+    label: "Bride"
+    description: "Female marriage participant"
+    applies_to:
+      - event
+  
+  # Relationship Roles
+  spouse:
+    label: "Spouse"
+    description: "Marriage partner"
+    applies_to:
+      - relationship
+  
+  parent:
+    label: "Parent"
+    description: "Parent in parent-child relationship"
+    applies_to:
+      - relationship
+  
+  child:
+    label: "Child"
+    description: "Child in parent-child relationship"
+    applies_to:
+      - relationship
+  
+  adoptive-parent:
+    label: "Adoptive Parent"
+    description: "Adoptive parent in adoption relationship"
+    applies_to:
+      - relationship
+  
+  adopted-child:
+    label: "Adopted Child"
+    description: "Adopted child in adoption relationship"
+    applies_to:
+      - relationship
+  
+  sibling:
+    label: "Sibling"
+    description: "Brother or sister"
+    applies_to:
+      - relationship
+

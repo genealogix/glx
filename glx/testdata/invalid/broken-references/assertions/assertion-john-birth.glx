@@ -1,0 +1,13 @@
+assertions:
+  assertion-john-birth-date:
+    subject: person-nonexistent
+    claim: born_on
+    value: "1850-01-15"
+    citations:
+      - citation-nonexistent
+      - citation-census-john
+    confidence: high
+    sources:
+      - source-nonexistent
+      - source-census-1851
+    research_notes: "Birth date confirmed by parish register (primary) and 1851 census (secondary)"

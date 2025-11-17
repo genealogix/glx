@@ -1,0 +1,7 @@
+places:
+  place-england:
+    name: "England"
+    type: country
+    latitude: 52.3555
+    longitude: -1.1743
+    notes: "United Kingdom constituent country"

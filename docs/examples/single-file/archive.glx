@@ -1,0 +1,190 @@
+# GENEALOGIX Family Archive - Single File Example
+# Demonstrates all entity types in one file
+
+# Vocabularies
+event_types:
+  birth:
+    label: "Birth"
+    description: "Birth of a person"
+    category: lifecycle
+  marriage:
+    label: "Marriage"
+    description: "Marriage ceremony"
+    category: lifecycle
+
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "Married couple"
+
+place_types:
+  country:
+    label: "Country"
+    description: "Sovereign nation"
+  county:
+    label: "County"
+    description: "County or administrative region"
+  city:
+    label: "City"
+    description: "City or town"
+
+source_types:
+  church_register:
+    label: "Church Register"
+    description: "Parish registers of baptisms, marriages, burials"
+
+repository_types:
+  library:
+    label: "Library"
+    description: "Public or private library"
+
+participant_roles:
+  subject:
+    label: "Subject"
+    description: "Subject of the event"
+    applies_to:
+      - event
+  groom:
+    label: "Groom"
+    description: "Male marriage participant"
+    applies_to:
+      - event
+  bride:
+    label: "Bride"
+    description: "Female marriage participant"
+    applies_to:
+      - event
+  spouse:
+    label: "Spouse"
+    description: "Marriage partner"
+    applies_to:
+      - relationship
+
+quality_ratings:
+  "3":
+    label: "Primary source"
+    description: "Original document created at time of event"
+
+confidence_levels:
+  high:
+    label: "High Confidence"
+    description: "Strong evidence with minimal doubt"
+
+# Property Definitions
+person_properties:
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
+    value_type: string
+    temporal: true
+  
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+    temporal: true
+  
+  born_on:
+    label: "Birth Date"
+    description: "Date of birth"
+    value_type: date
+  
+  died_on:
+    label: "Death Date"
+    description: "Date of death"
+    value_type: date
+  
+  gender:
+    label: "Gender"
+    description: "Gender identity"
+    value_type: string
+
+persons:
+  person-a1b2c3d4:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+      born_on: "1850-01-15"
+      died_on: "1920-06-20"
+      gender: "male"
+  
+  person-b2c3d4e5:
+    properties:
+      given_name: "Mary"
+      family_name: "Brown"
+      born_on: "1852-03-20"
+      gender: "female"
+
+relationships:
+  rel-12345678:
+    type: marriage
+    participants:
+      - person: person-a1b2c3d4
+        role: spouse
+      - person: person-b2c3d4e5
+        role: spouse
+    start_event: event-23456789
+
+events:
+  event-a1a2a3a4:
+    type: birth
+    date: "1850-01-15"
+    place: place-c3d4e5f6
+    participants:
+      - person: person-a1b2c3d4
+        role: subject
+  
+  event-23456789:
+    type: marriage
+    date: "1875-05-10"
+    place: place-c3d4e5f6
+    participants:
+      - person: person-a1b2c3d4
+        role: groom
+      - person: person-b2c3d4e5
+        role: bride
+
+places:
+  place-a1a1a1a1:
+    name: "England"
+    type: country
+  
+  place-b2b2b2b2:
+    name: "Yorkshire"
+    type: county
+    parent: place-a1a1a1a1
+  
+  place-c3d4e5f6:
+    name: "Leeds"
+    type: city
+    parent: place-b2b2b2b2
+
+sources:
+  source-12345678:
+    title: "St. Paul's Parish Register"
+    type: church_register
+    repository: repository-a1b2c3d4
+
+citations:
+  citation-abcdef12:
+    source: source-12345678
+    quality: 3
+    locator: "Entry 145, Page 23"
+    text_from_source: "John Smith, born January 15, 1850"
+
+repositories:
+  repository-a1b2c3d4:
+    name: "Leeds Library Local Studies"
+    type: library
+    website: "https://www.leeds.gov.uk/libraries"
+
+assertions:
+  assertion-1a2b3c4d:
+    subject: person-a1b2c3d4
+    claim: born_on
+    value: "1850-01-15"
+    citations:
+      - citation-abcdef12
+    confidence: high
+
+media: {}

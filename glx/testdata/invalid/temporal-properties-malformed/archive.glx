@@ -1,0 +1,72 @@
+# Invalid: Malformed temporal properties
+# These should produce validation errors/warnings
+
+places:
+  place-leeds:
+    name: "Leeds"
+    type: city
+
+# Vocabularies
+place_types:
+  city:
+    label: "City"
+    description: "A city or town"
+
+person_properties:
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
+    value_type: string
+    temporal: true
+
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+    temporal: true
+
+  gender:
+    label: "Gender"
+    description: "Gender identity"
+    value_type: string
+    temporal: true
+
+  birth_year:
+    label: "Birth Year"
+    description: "Year of birth"
+    value_type: integer
+    temporal: false  # Non-temporal property
+
+  occupation:
+    label: "Occupation"
+    description: "Profession or trade"
+    value_type: string
+    temporal: true
+
+  residence:
+    label: "Residence"
+    description: "Place of residence"
+    reference_type: places
+    temporal: true
+
+# Person with various malformed temporal properties
+persons:
+  person-invalid:
+    properties:
+      # ERROR: Non-temporal property with list value
+      birth_year:
+        - value: 1850
+          date: "1850"
+
+      # ERROR: Temporal list item missing 'value' field
+      given_name:
+        - date: "1850"
+
+      # ERROR: Temporal list item is not an object
+      family_name:
+        - "Smith"
+        - "Jones"
+
+      # WARNING: Temporal list item missing 'date' field
+      occupation:
+        - value: "blacksmith"

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/relationship",
+  "title": "Relationship",
+  "description": "A relationship between persons. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["type", "participants"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "Relationship type key"
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the relationship",
+      "additionalProperties": true
+    },
+    "participants": {
+      "type": "array",
+      "description": "Participants in the relationship",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["person"],
+        "properties": {
+          "person": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Reference to the person"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role of the participant in this relationship"
+          }
+        }
+      }
+    },
+    "start_event": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Event that started this relationship"
+    },
+    "end_event": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Event that ended this relationship"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the relationship"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Research notes"
+    },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  },
+  "additionalProperties": false
+}

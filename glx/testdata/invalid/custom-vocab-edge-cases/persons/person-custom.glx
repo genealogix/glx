@@ -1,0 +1,9 @@
+persons:
+  person-custom:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+      custom_property: "custom value"
+      birth_place: "place-leeds"
+
+

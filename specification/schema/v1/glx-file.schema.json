@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genealogix.org/schema/v1/glx-file.schema.json",
+  "title": "GENEALOGIX File",
+  "description": "A GENEALOGIX file can contain any combination of entities, vocabularies, and property definitions.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "persons": {
+      "type": "object",
+      "description": "Map of person entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "person.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "events": {
+      "type": "object",
+      "description": "Map of event entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "event.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "relationships": {
+      "type": "object",
+      "description": "Map of relationship entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "relationship.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "places": {
+      "type": "object",
+      "description": "Map of place entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "place.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "object",
+      "description": "Map of source entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "source.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "citations": {
+      "type": "object",
+      "description": "Map of citation entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "citation.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "repositories": {
+      "type": "object",
+      "description": "Map of repository entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "repository.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "assertions": {
+      "type": "object",
+      "description": "Map of assertion entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "assertion.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "media": {
+      "type": "object",
+      "description": "Map of media entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "media.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "event_types": {
+      "type": "object",
+      "description": "Event type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "relationship_types": {
+      "type": "object",
+      "description": "Relationship type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "place_types": {
+      "type": "object",
+      "description": "Place type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "repository_types": {
+      "type": "object",
+      "description": "Repository type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "participant_roles": {
+      "type": "object",
+      "description": "Participant role vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/participant-roles.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "media_types": {
+      "type": "object",
+      "description": "Media type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "confidence_levels": {
+      "type": "object",
+      "description": "Confidence level vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/confidence-levels.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "quality_ratings": {
+      "type": "object",
+      "description": "Quality rating vocabulary",
+      "patternProperties": {
+        "^[0-9]+$": { "$ref": "vocabularies/quality-ratings.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "source_types": {
+      "type": "object",
+      "description": "Source type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "person_properties": {
+      "type": "object",
+      "description": "Person property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/person-properties.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "event_properties": {
+      "type": "object",
+      "description": "Event property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-properties.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "relationship_properties": {
+      "type": "object",
+      "description": "Relationship property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-properties.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "place_properties": {
+      "type": "object",
+      "description": "Place property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-properties.schema.json" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

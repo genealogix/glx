@@ -1,0 +1,11 @@
+assertions:
+  assertion-john-birth-place:
+    subject: person-john-smith-1850
+    claim: born_at
+    value: place-leeds
+    citations:
+      - citation-john-birth
+    confidence: high
+    sources:
+      - source-parish-leeds
+    research_notes: "Birth place stated in parish register"

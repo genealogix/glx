@@ -1,0 +1,85 @@
+# Standard Person Properties
+# This file defines the standard properties for person entities.
+# These properties represent the concluded or accepted values for a person.
+# Archives can extend this with custom properties by adding entries with `custom: true`.
+
+person_properties:
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
+    value_type: string
+    temporal: true
+  
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+    temporal: true
+  
+  gender:
+    label: "Gender"
+    description: "Gender identity"
+    value_type: string
+    temporal: true
+  
+  born_on:
+    label: "Birth Date"
+    description: "Date of birth"
+    value_type: date
+  
+  born_at:
+    label: "Birth Place"
+    description: "Place of birth"
+    reference_type: places
+  
+  died_on:
+    label: "Death Date"
+    description: "Date of death"
+    value_type: date
+  
+  died_at:
+    label: "Death Place"
+    description: "Place of death"
+    reference_type: places
+  
+  occupation:
+    label: "Occupation"
+    description: "Profession or trade"
+    value_type: string
+    temporal: true
+  
+  residence:
+    label: "Residence"
+    description: "Place of residence"
+    reference_type: places
+    temporal: true
+  
+  religion:
+    label: "Religion"
+    description: "Religious affiliation"
+    value_type: string
+    temporal: true
+  
+  education:
+    label: "Education"
+    description: "Educational attainment"
+    value_type: string
+    temporal: true
+  
+  ethnicity:
+    label: "Ethnicity"
+    description: "Ethnic background"
+    value_type: string
+    temporal: true
+  
+  nationality:
+    label: "Nationality"
+    description: "National citizenship"
+    value_type: string
+    temporal: true
+  
+  notes:
+    label: "Personal Notes"
+    description: "Additional biographical notes"
+    value_type: string
+

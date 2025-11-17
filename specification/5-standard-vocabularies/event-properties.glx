@@ -1,0 +1,26 @@
+# Standard Event Properties
+# This file defines the standard properties for event entities.
+# Properties on events are generally less common than on persons, as most event
+# data is structural (type, date, place, participants).
+
+event_properties:
+  occurred_on:
+    label: "Event Date"
+    description: "When the event occurred"
+    value_type: date
+  
+  occurred_at:
+    label: "Event Location"
+    description: "Where the event occurred"
+    reference_type: places
+  
+  description:
+    label: "Event Description"
+    description: "Detailed description of the event"
+    value_type: string
+  
+  notes:
+    label: "Event Notes"
+    description: "Additional notes about the event"
+    value_type: string
+

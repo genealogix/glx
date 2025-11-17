@@ -1,0 +1,69 @@
+# Standard Source Types
+# This file defines the standard source types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding entries with `custom: true`.
+
+source_types:
+  vital_record:
+    label: "Vital Record"
+    description: "Birth, marriage, death certificates"
+  
+  census:
+    label: "Census Record"
+    description: "Census records and population enumerations"
+  
+  church_register:
+    label: "Church Register"
+    description: "Parish registers of baptisms, marriages, burials"
+  
+  military:
+    label: "Military Record"
+    description: "Military service records, pension files"
+  
+  newspaper:
+    label: "Newspaper"
+    description: "Newspapers, periodicals, gazettes"
+  
+  probate:
+    label: "Probate Record"
+    description: "Wills, probate records, estate files"
+  
+  land:
+    label: "Land Record"
+    description: "Deeds, land grants, property records"
+  
+  court:
+    label: "Court Record"
+    description: "Court records, legal proceedings"
+  
+  immigration:
+    label: "Immigration Record"
+    description: "Passenger lists, naturalization records"
+  
+  directory:
+    label: "Directory"
+    description: "City directories, telephone books"
+  
+  book:
+    label: "Published Book"
+    description: "Published genealogies, family histories"
+  
+  database:
+    label: "Online Database"
+    description: "Online databases, compiled records"
+  
+  oral_history:
+    label: "Oral History"
+    description: "Interviews, recorded memories"
+  
+  correspondence:
+    label: "Correspondence"
+    description: "Letters, emails, personal papers"
+  
+  photograph:
+    label: "Photograph Collection"
+    description: "Photo collections"
+  
+  other:
+    label: "Other"
+    description: "Other source types"
+

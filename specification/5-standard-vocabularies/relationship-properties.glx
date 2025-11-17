@@ -1,0 +1,31 @@
+# Standard Relationship Properties
+# This file defines the standard properties for relationship entities.
+# Properties on relationships are generally less common than on persons, as most
+# relationship data is structural (type, participants, events).
+
+relationship_properties:
+  started_on:
+    label: "Start Date"
+    description: "When the relationship began"
+    value_type: date
+  
+  ended_on:
+    label: "End Date"
+    description: "When the relationship ended"
+    value_type: date
+  
+  location:
+    label: "Location"
+    description: "Location where the relationship occurred"
+    reference_type: places
+  
+  description:
+    label: "Relationship Description"
+    description: "Detailed description of the relationship"
+    value_type: string
+  
+  notes:
+    label: "Relationship Notes"
+    description: "Additional notes about the relationship"
+    value_type: string
+

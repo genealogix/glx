@@ -1,0 +1,82 @@
+# Valid: Temporal property lists with {value, date} structure
+# Tests that temporal properties can accept lists of dated values
+
+places:
+  place-leeds:
+    name: "Leeds"
+    type: city
+
+  place-london:
+    name: "London"
+    type: city
+
+  place-york:
+    name: "York"
+    type: city
+
+# Vocabularies
+place_types:
+  city:
+    label: "City"
+    description: "A city or town"
+
+person_properties:
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
+    value_type: string
+    temporal: true
+
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+    temporal: true
+
+  occupation:
+    label: "Occupation"
+    description: "Profession or trade"
+    value_type: string
+    temporal: true
+
+  residence:
+    label: "Residence"
+    description: "Place of residence"
+    reference_type: places
+    temporal: true
+
+# Person using temporal lists with {value, date} structure
+persons:
+  person-jane:
+    properties:
+      # Temporal value_type property with dated list
+      given_name:
+        - value: "Jane"
+          date: "FROM 1850"
+        - value: "Jane Elizabeth"
+          date: "FROM 1870"
+
+      # Another temporal value_type with dated list
+      family_name:
+        - value: "Doe"
+          date: "FROM 1850 TO 1875"
+        - value: "Smith"
+          date: "FROM 1875"  # Married name
+
+      # Temporal value_type with occupation changes
+      occupation:
+        - value: "seamstress"
+          date: "1870"
+        - value: "teacher"
+          date: "FROM 1880 TO 1900"
+        - value: "retired"
+          date: "FROM 1900"
+
+      # Temporal reference_type property with dated list
+      residence:
+        - value: "place-leeds"
+          date: "FROM 1850 TO 1880"
+        - value: "place-york"
+          date: "FROM 1880 TO 1900"
+        - value: "place-london"
+          date: "FROM 1900"

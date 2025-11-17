@@ -1,0 +1,45 @@
+# Warning-level: Unknown claim not in property vocabulary
+# This should generate a warning but not fail - allows flexibility
+
+persons:
+  person-john:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+
+sources:
+  source-record:
+    title: "Historical Record"
+
+citations:
+  citation-record:
+    source: source-record
+
+# This assertion uses an unknown claim that's not in person_properties vocabulary
+# Should generate a WARNING but still validate (allows emerging properties)
+assertions:
+  assertion-custom-claim:
+    subject: person-john
+    claim: custom_property_not_in_vocab  # WARNING: unknown claim
+    value: "some value"
+    citations:
+      - citation-record
+    confidence: medium
+
+# Define person_properties vocabulary for this archive
+person_properties:
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
+    value_type: string
+
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+
+  born_on:
+    label: "Birth Date"
+    description: "Date of birth"
+    value_type: date
+

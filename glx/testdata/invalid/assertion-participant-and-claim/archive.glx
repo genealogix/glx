@@ -1,0 +1,33 @@
+# Invalid: Both participant and claim present
+# This should fail validation - they are mutually exclusive
+
+persons:
+  person-john:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+
+events:
+  event-marriage:
+    type: marriage
+
+sources:
+  source-cert:
+    title: "Certificate"
+
+citations:
+  citation-cert:
+    source: source-cert
+
+# This is INVALID - cannot have both participant and claim
+assertions:
+  assertion-invalid:
+    subject: event-marriage
+    participant:
+      person: person-john
+      role: groom
+    claim: some_claim  # ERROR: should not be present with participant
+    citations:
+      - citation-cert
+    confidence: high
+

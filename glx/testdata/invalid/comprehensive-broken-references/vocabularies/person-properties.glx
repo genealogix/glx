@@ -1,0 +1,18 @@
+person_properties:
+  given_name:
+    label: "Given Name"
+    type: string
+  family_name:
+    label: "Family Name"
+    type: string
+  born_on:
+    label: "Born On"
+    type: date
+  died_on:
+    label: "Died On"
+    type: date
+  birth_place:
+    label: "Birth Place"
+    type: reference
+    reference_type: places
+

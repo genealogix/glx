@@ -1,0 +1,5 @@
+persons:
+  person_invalid_id:
+    properties:
+      given_name: "Test"
+      family_name: "Person"

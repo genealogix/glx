@@ -1,0 +1,5 @@
+places:
+  place-leeds:
+    name: "Leeds"
+    parent: place-nonexistent-parent
+

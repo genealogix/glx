@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.genealogix.io/v1/place",
+  "title": "Place",
+  "description": "A geographical location. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Primary name of the place"
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the place",
+      "additionalProperties": true
+    },
+    "parent": {
+      "type": ["string", "null"],
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Reference to parent place in hierarchy"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "country",
+        "continent",
+        "state",
+        "province",
+        "county",
+        "district",
+        "region",
+        "city",
+        "town",
+        "parish",
+        "village",
+        "township",
+        "borough",
+        "ward",
+        "subdivision",
+        "registration_district",
+        "address",
+        "building",
+        "street",
+        "other"
+      ],
+      "description": "Type of geographic location"
+    },
+    "alternative_names": {
+      "type": "array",
+      "description": "Historical and alternative names for this place",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Alternative name text"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["historical", "spelling_variant", "native", "colloquial", "formal", "other"],
+            "description": "Classification of alternative name"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+            "description": "Language code (BCP-47 format)"
+          },
+          "date_range": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "description": "Start date/year (fuzzy format supported)"
+              },
+              "end": {
+                "type": "string",
+                "description": "End date/year or 'present'"
+              }
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "uniqueItems": true
+    },
+    "latitude": {
+      "type": ["number", "null"],
+      "minimum": -90,
+      "maximum": 90,
+      "description": "WGS84 latitude coordinate"
+    },
+    "longitude": {
+      "type": ["number", "null"],
+      "minimum": -180,
+      "maximum": 180,
+      "description": "WGS84 longitude coordinate"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code)"
+    },
+    "place_format": {
+      "type": "string",
+      "description": "Standard format string for this place hierarchy (GEDCOM PLAC.FORM style, e.g., 'City, County, Country')"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about the place"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
+

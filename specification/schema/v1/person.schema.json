@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/person.schema.json",
+  "title": "Person",
+  "description": "An individual in the family archive. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": [],
+  "properties": {
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the person (birth date, gender, etc.)",
+      "additionalProperties": true
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
+
+

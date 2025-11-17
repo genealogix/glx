@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schema.genealogix.io/v1/event",
+  "title": "Event/Fact",
+  "description": "A genealogical event. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["type"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "birth",
+        "death",
+        "marriage",
+        "divorce",
+        "engagement",
+        "adoption",
+        "baptism",
+        "confirmation",
+        "bar_mitzvah",
+        "bat_mitzvah",
+        "burial",
+        "cremation",
+        "residence",
+        "occupation",
+        "title",
+        "nationality",
+        "religion",
+        "education",
+        "other"
+      ],
+      "description": "Type of event or attribute"
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the event",
+      "additionalProperties": true
+    },
+    "place": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Reference to Place where event occurred"
+    },
+    "value": {
+      "type": "string",
+      "description": "Value for attribute facts (occupation, title, etc.)"
+    },
+    "date": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "value": { "type": "string" },
+            "range_start": { "type": "string" },
+            "range_end": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "participants": {
+      "type": "array",
+      "description": "People involved in this event",
+      "items": {
+        "type": "object",
+        "required": ["person"],
+        "properties": {
+          "person": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Reference to Person entity"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role of participant in event"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes about participant's involvement"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "attribute_value": {
+      "type": "string",
+      "description": "For attribute facts: the value (e.g., 'blacksmith' for occupation)"
+    },
+    "age_text": {
+      "type": "string",
+      "description": "Age at time of event (e.g., 'about 25', 'infant')"
+    },
+    "cause_text": {
+      "type": "string",
+      "description": "Cause for event (e.g., 'pneumonia' for death)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Narrative description of the event"
+    },
+    "restrictions": {
+      "type": "array",
+      "description": "Restriction codes for event visibility",
+      "items": {
+        "type": "string",
+        "enum": ["confidential", "locked", "privacy", "other"]
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about the event"
+    },
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
+

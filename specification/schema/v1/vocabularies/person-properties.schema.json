@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/vocabularies/person-properties.schema.json",
+  "title": "Person Properties Vocabulary",
+  "description": "Defines the standard and custom properties available for person entities",
+  "type": "object",
+  "required": ["person_properties"],
+  "properties": {
+    "person_properties": {
+      "type": "object",
+      "description": "Map of property definitions for persons",
+      "additionalProperties": {
+        "$ref": "#/definitions/PropertyDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "PropertyDefinition": {
+      "type": "object",
+      "description": "Definition of a single property",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the property"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the property"
+        },
+        "value_type": {
+          "type": "string",
+          "enum": ["string", "date", "integer", "boolean"],
+          "description": "Data type for non-reference properties"
+        },
+        "reference_type": {
+          "type": "string",
+          "enum": ["persons", "places", "events", "relationships", "sources", "citations", "repositories", "media"],
+          "description": "Entity type for reference properties"
+        },
+        "temporal": {
+          "type": "boolean",
+          "description": "Whether this property can vary over time"
+        },
+        "custom": {
+          "type": "boolean",
+          "description": "Whether this is a custom property defined by the archive"
+        }
+      },
+      "not": {
+        "required": ["value_type", "reference_type"]
+      }
+    }
+  }
+}
+
+

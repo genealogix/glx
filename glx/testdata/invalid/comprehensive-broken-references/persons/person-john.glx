@@ -1,0 +1,6 @@
+persons:
+  person-john:
+    properties:
+      given_name: "John"
+      family_name: "Smith"
+

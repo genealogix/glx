@@ -1,0 +1,6 @@
+persons:
+  person-alice:
+    properties:
+      given_name: "Alice"
+      family_name: "Thompson"
+      gender: female

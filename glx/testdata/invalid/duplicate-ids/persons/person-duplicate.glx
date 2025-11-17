@@ -1,0 +1,5 @@
+persons:
+  person-abc123:
+    properties:
+      given_name: "Duplicate"
+      family_name: "Person"

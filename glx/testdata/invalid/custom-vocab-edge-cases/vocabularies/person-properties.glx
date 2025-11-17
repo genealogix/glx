@@ -1,0 +1,16 @@
+person_properties:
+  given_name:
+    label: "Given Name"
+    value_type: string
+  family_name:
+    label: "Family Name"
+    value_type: string
+  custom_property:
+    label: "Custom Property"
+    value_type: string
+  birth_place:
+    label: "Birth Place"
+    value_type: reference
+    reference_type: places
+
+

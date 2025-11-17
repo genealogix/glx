@@ -1,0 +1,11 @@
+events:
+  event-marriage-1875:
+    type: marriage
+    date: "1875-05-10"
+    place: place-leeds
+    participants:
+      - person: person-john-smith-1850
+        role: groom
+      - person: person-mary-brown-1852
+        role: bride
+    description: "Marriage of John Smith and Mary Brown at St. Paul's Church, Leeds"

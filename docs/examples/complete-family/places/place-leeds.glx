@@ -1,0 +1,8 @@
+places:
+  place-leeds:
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire
+    latitude: 53.8008
+    longitude: -1.5491
+    notes: "Major industrial city in Yorkshire, England"

@@ -1,0 +1,10 @@
+assertions:
+  assertion-quality-int:
+    subject: person-123
+    claim: given_name
+    value: "John"
+    citations:
+      - citation-123
+    quality: 99
+
+

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/source",
+  "title": "Source",
+  "description": "A source record (document, oral history, media). ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["title"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "type": { "type": "string" },
+    "authors": { "type": "array", "items": { "type": "string" } },
+    "date": { "type": "string" },
+    "citation": { "type": "string" },
+    "description": { "type": "string" },
+    "repository": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Reference to Repository where source is held"
+    },
+    "creator": { "type": "string" },
+    "publication_info": { "type": "object" },
+    "language": { "type": "string" },
+    "coverage": { "type": "object" },
+    "notes": { "type": "string" },
+    "media": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  },
+  "additionalProperties": false
+}
+
+
