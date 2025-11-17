@@ -65,90 +65,105 @@ func runValidate(args []string) error {
 		paths = []string{"."}
 	}
 
-	var (
-		allWarnings []string
-		allErrors   []string
-		foundFiles  bool
-	)
+	var allErrors, allWarnings []string
+	var fileCount int
 
-	// For each path, load archive and validate
-	for _, rootPath := range paths {
-		info, err := os.Stat(rootPath)
-		if err != nil {
-			allErrors = append(allErrors, fmt.Sprintf("stat error for %s: %v", rootPath, err))
-			continue
-		}
-
-		var archivePath string
-		if info.IsDir() {
-			archivePath = rootPath
-			// Check if directory contains any GLX files
-			hasGLXFiles := false
-			filepath.WalkDir(archivePath, func(path string, d fs.DirEntry, err error) error {
-				if err != nil || d.IsDir() {
-					return nil
-				}
-				ext := filepath.Ext(d.Name())
-				if ext == ".glx" || ext == ".yaml" || ext == ".yml" {
-					hasGLXFiles = true
-					return filepath.SkipAll // Stop walking once we find one
-				}
+	// First pass: structural validation of all files
+	for _, path := range paths {
+		err := filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
 				return nil
-			})
-			if !hasGLXFiles {
-				allErrors = append(allErrors, fmt.Sprintf("no .glx files found in %s", rootPath))
-				continue
 			}
-		} else {
-			// If it's a file, check extension
-			ext := filepath.Ext(rootPath)
-			if ext != ".glx" && ext != ".yaml" && ext != ".yml" {
-				allErrors = append(allErrors, fmt.Sprintf("%s is not a .glx/.yaml file", rootPath))
-				continue
-			}
-			archivePath = filepath.Dir(rootPath)
-			foundFiles = true
-		}
 
-		// Load and merge all GLX files from the archive
-		archive, duplicates, err := LoadArchive(archivePath)
+			ext := filepath.Ext(d.Name())
+			if ext != FileExtGLX && ext != FileExtYAML && ext != FileExtYML {
+				return nil
+			}
+
+			fileCount++
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, err))
+				return nil // Continue to next file
+			}
+
+			doc, err := ParseYAMLFile(data)
+			if err != nil {
+				allErrors = append(allErrors, fmt.Sprintf("Error parsing YAML in %s: %v", filePath, err))
+				return nil // Continue
+			}
+
+			issues := ValidateGLXFileStructure(doc)
+			if len(issues) > 0 {
+				for _, issue := range issues {
+					allErrors = append(allErrors, fmt.Sprintf("Error in %s: %s", filePath, issue))
+				}
+			}
+			return nil
+		})
+
 		if err != nil {
-			allErrors = append(allErrors, fmt.Sprintf("Failed to load archive from %s: %v", archivePath, err))
-			continue
+			// This would be an error from WalkDir itself, not a validation error
+			fmt.Fprintf(os.Stderr, "Error walking directory %s: %v\n", path, err)
 		}
-
-		// Check if archive has any content
-		hasContent := len(archive.Persons) > 0 || len(archive.Relationships) > 0 || len(archive.Events) > 0 ||
-			len(archive.Places) > 0 || len(archive.Sources) > 0 || len(archive.Citations) > 0 ||
-			len(archive.Repositories) > 0 || len(archive.Assertions) > 0 || len(archive.Media) > 0
-		if hasContent {
-			foundFiles = true
-		}
-
-		// Report duplicate IDs as errors
-		if len(duplicates) > 0 {
-			allErrors = append(allErrors, duplicates...)
-		}
-
-		// Validate the merged archive
-		refErrors, refWarnings := ValidateArchive(archive, archivePath)
-		allErrors = append(allErrors, refErrors...)
-		allWarnings = append(allWarnings, refWarnings...)
 	}
-
-	// Check if we found any files to validate
-	if !foundFiles && len(allErrors) == 0 {
-		return errors.New("no .glx files found to validate")
-	}
-
-	// Format and print the final report
-	printValidationReport(nil, allWarnings, allErrors)
 
 	if len(allErrors) > 0 {
+		fmt.Fprintf(os.Stderr, "Found %d structural errors in %d files:\n", len(allErrors), fileCount)
+		for _, err := range allErrors {
+			fmt.Fprintf(os.Stderr, "- %s\n", err)
+		}
+		return errors.New("structural validation failed")
+	}
+
+	// Second pass: load and cross-reference validation
+	// We assume a single archive root for simplicity here. A more robust implementation
+	// might handle multiple disconnected roots.
+	archiveRoot := "."
+	if len(paths) == 1 {
+		info, err := os.Stat(paths[0])
+		if err == nil && info.IsDir() {
+			archiveRoot = paths[0]
+		}
+	}
+
+	archive, duplicates, err := LoadArchive(archiveRoot)
+	if err != nil {
+		// This error comes from LoadArchive if a file fails validation during load
+		fmt.Fprintf(os.Stderr, "Error loading archive: %v\n", err)
+		return err
+	}
+
+	if len(duplicates) > 0 {
+		allErrors = append(allErrors, duplicates...)
+	}
+
+	result := archive.Validate()
+
+	for _, warn := range result.Warnings {
+		allWarnings = append(allWarnings, warn.Message)
+	}
+	for _, err := range result.Errors {
+		allErrors = append(allErrors, err.Message)
+	}
+
+	fmt.Printf("Validated %d files.\n", fileCount)
+	if len(allWarnings) > 0 {
+		fmt.Printf("Found %d warnings:\n", len(allWarnings))
+		for _, warn := range allWarnings {
+			fmt.Printf("- ⚠️  %s\n", warn)
+		}
+	}
+
+	if len(allErrors) > 0 {
+		fmt.Fprintf(os.Stderr, "Found %d errors:\n", len(allErrors))
+		for _, err := range allErrors {
+			fmt.Fprintf(os.Stderr, "- ❌ %s\n", err)
+		}
 		return errors.New("validation failed")
 	}
 
-	fmt.Printf("\nValidation passed with %d warning(s).\n", len(allWarnings))
+	fmt.Println("✅ Archive is valid.")
 	return nil
 }
 

@@ -226,13 +226,21 @@ func TestExamplesValidation(t *testing.T) {
 			archive, duplicates, err := LoadArchive(examplePath)
 			require.NoError(t, err)
 
-			// Check for duplicate IDs
-			assert.Empty(t, duplicates, "example %s should not have duplicate entity IDs", example)
+		// Check for duplicate IDs
+		assert.Empty(t, duplicates, "example %s should not have duplicate entity IDs", example)
 
-			// Validate the merged archive
-			refErrors, refWarnings := ValidateArchive(archive, examplePath)
-			allRefIssues := append(refErrors, refWarnings...)
-			assert.Empty(t, allRefIssues, "example %s should not have validation issues: %v", example, allRefIssues)
+		// Validate the merged archive using new validation system
+		result := archive.Validate()
+		
+		// Collect all errors and warnings
+		var allRefIssues []string
+		for _, err := range result.Errors {
+			allRefIssues = append(allRefIssues, err.Message)
+		}
+		for _, warn := range result.Warnings {
+			allRefIssues = append(allRefIssues, warn.Message)
+		}
+		assert.Empty(t, allRefIssues, "example %s should not have validation issues: %v", example, allRefIssues)
 		})
 	}
 }

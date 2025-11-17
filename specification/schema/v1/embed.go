@@ -1,35 +1,15 @@
 package v1
 
-import _ "embed"
+import (
+	"embed"
+	_ "embed"
+)
 
-// Entity schemas
+// EntitySchemas contains all schema files including vocabularies
 //
-//go:embed person.schema.json
-var PersonSchema []byte
-
-//go:embed relationship.schema.json
-var RelationshipSchema []byte
-
-//go:embed event.schema.json
-var EventSchema []byte
-
-//go:embed place.schema.json
-var PlaceSchema []byte
-
-//go:embed source.schema.json
-var SourceSchema []byte
-
-//go:embed citation.schema.json
-var CitationSchema []byte
-
-//go:embed repository.schema.json
-var RepositorySchema []byte
-
-//go:embed assertion.schema.json
-var AssertionSchema []byte
-
-//go:embed media.schema.json
-var MediaSchema []byte
+//go:embed *.schema.json
+//go:embed vocabularies/*.schema.json
+var EntitySchemas embed.FS
 
 // Vocabulary schemas
 //
@@ -68,32 +48,3 @@ var RelationshipPropertiesSchema []byte
 
 //go:embed vocabularies/place-properties.schema.json
 var PlacePropertiesSchema []byte
-
-// EntitySchemas maps entity type names to their embedded schema content
-var EntitySchemas = map[string][]byte{
-	"person":       PersonSchema,
-	"relationship": RelationshipSchema,
-	"event":        EventSchema,
-	"place":        PlaceSchema,
-	"source":       SourceSchema,
-	"citation":     CitationSchema,
-	"repository":   RepositorySchema,
-	"assertion":    AssertionSchema,
-	"media":        MediaSchema,
-}
-
-// VocabularySchemas maps vocabulary type names to their embedded schema content
-var VocabularySchemas = map[string][]byte{
-	"relationship_types":      RelationshipTypesSchema,
-	"event_types":             EventTypesSchema,
-	"place_types":             PlaceTypesSchema,
-	"repository_types":        RepositoryTypesSchema,
-	"participant_roles":       ParticipantRolesSchema,
-	"media_types":             MediaTypesSchema,
-	"confidence_levels":       ConfidenceLevelsSchema,
-	"quality_ratings":         QualityRatingsSchema,
-	"person_properties":       PersonPropertiesSchema,
-	"event_properties":        EventPropertiesSchema,
-	"relationship_properties": RelationshipPropertiesSchema,
-	"place_properties":        PlacePropertiesSchema,
-}

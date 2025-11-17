@@ -1,6 +1,76 @@
 # GENEALOGIX Family Archive - Single File Example
 # Demonstrates all entity types in one file
 
+# Vocabularies
+event_types:
+  birth:
+    label: "Birth"
+    description: "Birth of a person"
+    category: lifecycle
+  marriage:
+    label: "Marriage"
+    description: "Marriage ceremony"
+    category: lifecycle
+
+relationship_types:
+  marriage:
+    label: "Marriage"
+    description: "Married couple"
+
+place_types:
+  country:
+    label: "Country"
+    description: "Sovereign nation"
+  county:
+    label: "County"
+    description: "County or administrative region"
+  city:
+    label: "City"
+    description: "City or town"
+
+source_types:
+  church_register:
+    label: "Church Register"
+    description: "Parish registers of baptisms, marriages, burials"
+
+repository_types:
+  library:
+    label: "Library"
+    description: "Public or private library"
+
+participant_roles:
+  subject:
+    label: "Subject"
+    description: "Subject of the event"
+    applies_to:
+      - event
+  groom:
+    label: "Groom"
+    description: "Male marriage participant"
+    applies_to:
+      - event
+  bride:
+    label: "Bride"
+    description: "Female marriage participant"
+    applies_to:
+      - event
+  spouse:
+    label: "Spouse"
+    description: "Marriage partner"
+    applies_to:
+      - relationship
+
+quality_ratings:
+  "3":
+    label: "Primary source"
+    description: "Original document created at time of event"
+
+confidence_levels:
+  high:
+    label: "High Confidence"
+    description: "Strong evidence with minimal doubt"
+
+# Property Definitions
 person_properties:
   given_name:
     label: "Given Name"

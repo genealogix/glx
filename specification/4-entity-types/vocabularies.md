@@ -891,21 +891,78 @@ The validator:
 1. Determines the subject's entity type (person, event, relationship, or place)
 2. Looks up the appropriate property vocabulary for that type
 3. Validates the `claim` against the vocabulary
-4. Emits warnings for unknown claims (allows flexibility for emerging properties)
+4. **Emits warnings for unknown claims** (allows flexibility for emerging properties)
 5. Validates the value according to the property's `value_type` or `reference_type`
+6. **Emits errors for broken references** when a property is defined with `reference_type` but the referenced entity doesn't exist
 
 ---
 
 ## Vocabulary Validation
 
-The `glx validate` command checks:
+The `glx validate` command performs comprehensive validation with different severity levels:
 
-1. **Type existence**: All types used in entities must be defined in vocabularies
-2. **Required fields**: Each vocabulary entry has required fields (e.g., `label`)
-3. **Format**: Vocabulary files follow proper YAML structure
-4. **References**: Custom types are marked with `custom: true`
+### Validation Errors (Hard Failures)
 
-Example validation:
+The following issues cause validation to fail:
+
+1. **Missing vocabulary types**: All types used in entities must be defined in vocabularies
+   - Event types (`event_types`)
+   - Relationship types (`relationship_types`)
+   - Place types (`place_types`)
+   - Source types (`source_types`)
+   - Repository types (`repository_types`)
+   - Media types (`media_types`)
+   - Participant roles (`participant_roles`)
+   - Quality ratings (`quality_ratings`)
+   - Confidence levels (`confidence_levels`)
+
+2. **Broken entity references**: All entity references must point to existing entities
+   - Person references
+   - Event references
+   - Place references
+   - Source references
+   - Citation references
+   - Repository references
+   - Media references
+   - Relationship references
+
+3. **Broken property references**: Properties defined with `reference_type` must reference existing entities
+   ```yaml
+   # Error: place-nonexistent doesn't exist
+   persons:
+     person-john:
+       properties:
+         born_at: place-nonexistent  # ERROR if born_at has reference_type: places
+   ```
+
+4. **Structural validation**: Files must follow proper YAML/JSON structure and schema
+
+### Validation Warnings (Soft Failures)
+
+The following issues generate warnings but don't fail validation:
+
+1. **Unknown property definitions**: Properties used but not defined in property vocabularies
+   ```yaml
+   # Warning: custom_field not in person_properties vocabulary
+   persons:
+     person-john:
+       properties:
+         custom_field: "some value"  # WARNING: unknown property
+   ```
+
+2. **Unknown assertion claims**: Claims used but not defined in property vocabularies
+   ```yaml
+   # Warning: custom_claim not in person_properties vocabulary
+   assertions:
+     assertion-custom:
+       subject: person-john
+       claim: custom_claim  # WARNING: unknown claim
+       value: "some value"
+   ```
+
+Warnings allow flexibility for emerging properties and rapid data entry while still notifying researchers of potential issues.
+
+### Example Validation Output
 
 ```bash
 $ glx validate
@@ -917,8 +974,12 @@ $ glx validate
 ✓ relationships/rel-marriage.glx
   - relationship type 'marriage' found in vocabulary
 
+⚠ persons/person-john.glx
+  - WARNING: property 'custom_field' not defined in person_properties vocabulary
+
 ❌ events/event-custom.glx
   - ERROR: event type 'unknown-type' not found in vocabularies/event-types.glx
+  - ERROR: place reference 'place-nonexistent' not found
 ```
 
 ---

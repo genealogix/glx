@@ -56,16 +56,27 @@ GENEALOGIX validation operates at two levels:
 ### 1. File-Level Validation
 
 Each `.glx` file must:
-- Be valid YAML
-- Have at least one entity type key
-- Contain properly structured entities
+- Be valid YAML with proper structure
+- Have at least one top-level entity type key (persons, events, relationships, etc.)
+- Pass JSON schema validation for structural correctness
+- Contain properly formatted entity IDs (alphanumeric with hyphens, 1-64 characters)
 
 ### 2. Repository-Level Validation
 
-Across all files in an archive:
+Across all files in an archive, the validator checks:
+
+**Errors (Hard Failures):**
 - Entity IDs must be unique (no duplicates)
-- All cross-references must point to existing entities
+- All entity cross-references must point to existing entities
+- All vocabulary type references must be defined (event_types, relationship_types, etc.)
+- All property `reference_type` values must point to existing entities
 - Entity ID patterns must match their type (e.g., `person-` prefix for persons)
+
+**Warnings (Soft Failures):**
+- Unknown properties (not defined in property vocabularies) generate warnings
+- Unknown assertion claims (not defined in property vocabularies) generate warnings
+
+See [Entity Types - Validation](4-entity-types/README.md#validation) and [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies.md#vocabulary-validation) for complete validation policy.
 
 ## Organization Strategies
 
@@ -377,16 +388,29 @@ Manual approach: Extract each entity into its own file with the appropriate enti
 
 ## Validation
 
-```bash
-# Validate individual file
-glx validate family.glx
+The `glx validate` command performs comprehensive validation:
 
-# Validate entire repository (checks cross-references)
+```bash
+# Validate entire repository (recommended - checks all cross-references)
 glx validate
+
+# Validate individual file (structural validation only, limited cross-reference checking)
+glx validate family.glx
 
 # Validate specific directory
 glx validate persons/
 ```
+
+**Validation Output:**
+- ✓ **Pass**: File/entity is valid
+- ⚠ **Warning**: Soft validation issue (unknown property, unknown claim)
+- ❌ **Error**: Hard validation failure (missing reference, invalid structure)
+
+**Exit Codes:**
+- `0`: All files valid (warnings allowed)
+- `1`: One or more validation errors
+
+See [Validation Levels](#validation-levels) above for details on what is validated.
 
 ## Best Practices
 

@@ -185,11 +185,26 @@ The ID suffix can be any format meeting requirements (1-64 alphanumeric and hyph
 
 ## Validation
 
-All entities must:
-- Have valid, unique IDs in the correct format
-- Have timestamps and creator information
-- Pass schema validation against JSON schemas in `specification/schema/v1/`
-- Maintain referential integrity (references to other entities must exist)
+The `glx validate` command performs comprehensive validation at multiple levels:
+
+### Structural Validation
+- **Entity IDs**: Must be unique, alphanumeric with hyphens, 1-64 characters
+- **File structure**: Must follow proper YAML/JSON format
+- **Schema compliance**: All entities validated against JSON schemas in `specification/schema/v1/`
+- **Required fields**: Timestamps (`created_at`, `modified_at`) and creator information
+
+### Referential Integrity (Errors)
+All references must point to existing entities:
+- Entity references (persons, events, places, sources, citations, repositories, media, relationships)
+- Vocabulary type references (event_types, relationship_types, place_types, etc.)
+- Property `reference_type` values (when properties are defined as referential)
+
+### Property Validation (Warnings)
+- Unknown properties (not defined in property vocabularies) generate warnings
+- Unknown assertion claims (not defined in property vocabularies) generate warnings
+- Warnings allow flexibility for rapid data entry and emerging properties
+
+See [Vocabularies - Vocabulary Validation](vocabularies.md#vocabulary-validation) for complete validation policy details.
 
 ## Extension Points
 

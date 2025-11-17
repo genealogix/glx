@@ -16,6 +16,40 @@ package lib
 
 import "fmt"
 
+// Entity type constants - plural form used as map keys in GLXFile
+const (
+	EntityTypePersons       = "persons"
+	EntityTypeRelationships = "relationships"
+	EntityTypeEvents        = "events"
+	EntityTypePlaces        = "places"
+	EntityTypeSources       = "sources"
+	EntityTypeCitations     = "citations"
+	EntityTypeRepositories  = "repositories"
+	EntityTypeAssertions    = "assertions"
+	EntityTypeMedia         = "media"
+)
+
+// Vocabulary type constants - used as map keys in GLXFile
+const (
+	VocabRelationshipTypes = "relationship_types"
+	VocabEventTypes        = "event_types"
+	VocabPlaceTypes        = "place_types"
+	VocabRepositoryTypes   = "repository_types"
+	VocabParticipantRoles  = "participant_roles"
+	VocabMediaTypes        = "media_types"
+	VocabConfidenceLevels  = "confidence_levels"
+	VocabQualityRatings    = "quality_ratings"
+	VocabSourceTypes       = "source_types"
+)
+
+// Property vocabulary constants - used as map keys in GLXFile
+const (
+	PropPersonProperties       = "person_properties"
+	PropEventProperties        = "event_properties"
+	PropRelationshipProperties = "relationship_properties"
+	PropPlaceProperties        = "place_properties"
+)
+
 // GLXFile represents the top-level structure of a .glx file, which can
 // contain maps of different entity types and vocabulary definitions.
 type GLXFile struct {
@@ -46,6 +80,50 @@ type GLXFile struct {
 	EventProperties        map[string]*PropertyDefinition `yaml:"event_properties,omitempty"`
 	RelationshipProperties map[string]*PropertyDefinition `yaml:"relationship_properties,omitempty"`
 	PlaceProperties        map[string]*PropertyDefinition `yaml:"place_properties,omitempty"`
+
+	// Validation state (built on demand, cached)
+	validation *ValidationResult
+}
+
+// ValidationResult holds the complete validation state of the archive.
+type ValidationResult struct {
+	// Entities contains maps of all existing entity IDs, keyed by entity type.
+	// Example: "persons" -> {"person-1": {}}
+	Entities map[string]map[string]struct{}
+
+	// Vocabularies contains maps of all existing vocabulary values, keyed by vocabulary type.
+	// Example: "event_types" -> {"birth": {}}
+	Vocabularies map[string]map[string]struct{}
+
+	// PropertyVocabs contains the definitions for custom properties, keyed by entity type.
+	// Example: "persons" -> {"born_at" -> PropertyDefinition{...}}
+	PropertyVocabs map[string]map[string]*PropertyDefinition
+
+	// Errors is a slice of hard validation failures.
+	Errors []ValidationError
+
+	// Warnings is a slice of soft validation issues.
+	Warnings []ValidationWarning
+
+	validated bool // Internal flag to check if validation has been run.
+}
+
+// ValidationError represents a hard validation failure that makes the archive invalid.
+type ValidationError struct {
+	SourceType  string `json:"source_type"`  // e.g., "events"
+	SourceID    string `json:"source_id"`    // e.g., "event-123"
+	SourceField string `json:"source_field"` // e.g., "place" or "participants[0].role"
+	TargetType  string `json:"target_type"`  // e.g., "places" or "participant_roles"
+	TargetID    string `json:"target_id"`    // e.g., "place-nonexistent"
+	Message     string `json:"message"`      // Human-readable error message
+}
+
+// ValidationWarning represents a soft validation issue that does not invalidate the archive.
+type ValidationWarning struct {
+	SourceType string `json:"source_type"` // e.g., "persons"
+	SourceID   string `json:"source_id"`   // e.g., "person-123"
+	Field      string `json:"field"`       // e.g., "properties.unknown_prop"
+	Message    string `json:"message"`     // Human-readable warning message
 }
 
 // ============================================================================
@@ -309,6 +387,7 @@ type PropertyDefinition struct {
 }
 
 // TemporalValue represents a single entry in the history of a temporal property.
+// It is used when a temporal property is represented as a list.
 type TemporalValue struct {
 	Value interface{} `yaml:"value"`
 	Date  string      `yaml:"date,omitempty"` // FamilySearch normalized date string
