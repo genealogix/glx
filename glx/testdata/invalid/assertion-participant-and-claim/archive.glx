@@ -4,7 +4,8 @@
 persons:
   person-john:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
 
 events:
   event-marriage:

@@ -4,17 +4,20 @@
 persons:
   person-john:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       gender: "male"
-  
+
   person-jane:
     properties:
-      primary_name: "Jane Doe"
+      given_name: "Jane"
+      family_name: "Doe"
       gender: "female"
-  
+
   person-thomas:
     properties:
-      primary_name: "Thomas Brown"
+      given_name: "Thomas"
+      family_name: "Brown"
       gender: "male"
 
 events:

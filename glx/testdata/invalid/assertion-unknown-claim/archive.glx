@@ -4,7 +4,8 @@
 persons:
   person-john:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
 
 sources:
   source-record:
@@ -27,11 +28,16 @@ assertions:
 
 # Define person_properties vocabulary for this archive
 person_properties:
-  primary_name:
-    label: "Primary Name"
-    description: "Person's name"
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
     value_type: string
-  
+
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+
   born_on:
     label: "Birth Date"
     description: "Date of birth"

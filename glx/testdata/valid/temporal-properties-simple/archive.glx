@@ -1,0 +1,58 @@
+# Valid: Simple temporal property values
+# Tests that temporal properties can accept simple string/date values
+
+places:
+  place-leeds:
+    name: "Leeds"
+    type: city
+
+  place-london:
+    name: "London"
+    type: city
+
+# Vocabularies
+place_types:
+  city:
+    label: "City"
+    description: "A city or town"
+
+person_properties:
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
+    value_type: string
+    temporal: true
+
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+    temporal: true
+
+  gender:
+    label: "Gender"
+    description: "Gender identity"
+    value_type: string
+    temporal: false  # Non-temporal property
+
+  occupation:
+    label: "Occupation"
+    description: "Profession or trade"
+    value_type: string
+    temporal: true
+
+  residence:
+    label: "Residence"
+    description: "Place of residence"
+    reference_type: places
+    temporal: true
+
+# Person using simple temporal values (not lists)
+persons:
+  person-john:
+    properties:
+      given_name: "John"           # Simple string for temporal property - VALID
+      family_name: "Smith"         # Simple string for temporal property - VALID
+      gender: "male"                # Simple value for non-temporal - VALID
+      occupation: "blacksmith"     # Simple string for temporal property - VALID
+      residence: "place-leeds"     # Simple reference for temporal property - VALID

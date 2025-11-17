@@ -12,11 +12,18 @@ places:
 
 # Property vocabularies
 person_properties:
-  primary_name:
-    label: "Primary Name"
-    description: "Person's primary or preferred name"
+  given_name:
+    label: "Given Name"
+    description: "Given name(s) of the person"
     value_type: string
-  
+    temporal: true
+
+  family_name:
+    label: "Family Name"
+    description: "Family or surname of the person"
+    value_type: string
+    temporal: true
+
   gender:
     label: "Gender"
     description: "Gender identity"
@@ -53,7 +60,8 @@ person_properties:
 persons:
   person-john:
     properties:
-      primary_name: "John Smith"
+      given_name: "John"
+      family_name: "Smith"
       gender: "male"
       born_on: "1850-01-15"
       born_at: "place-leeds"
@@ -75,7 +83,8 @@ persons:
 
   person-jane:
     properties:
-      primary_name: "Jane Doe"
+      given_name: "Jane"
+      family_name: "Doe"
       gender: "female"
       born_on: "1855-03-20"
       born_at: "place-london"

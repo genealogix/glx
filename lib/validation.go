@@ -293,6 +293,8 @@ func (glx *GLXFile) validateProperties(
 		}
 		if propDef.ReferenceType != "" {
 			glx.validatePropertyReference(entityType, entityID, propName, propValue, propDef.ReferenceType, result)
+		} else if propDef.ValueType != "" {
+			glx.validatePropertyValue(entityType, entityID, propName, propValue, propDef, result)
 		}
 	}
 }
@@ -335,6 +337,89 @@ func (glx *GLXFile) validatePropertyReference(
 					}
 				}
 			}
+		}
+	}
+}
+
+// validatePropertyValue validates a property value against its value_type definition.
+// For temporal properties, it accepts either a simple value OR a list of {value, date} objects.
+func (glx *GLXFile) validatePropertyValue(
+	entityType, entityID, propName string,
+	propValue interface{},
+	propDef *PropertyDefinition,
+	result *ValidationResult,
+) {
+	isTemporal := propDef.Temporal != nil && *propDef.Temporal
+
+	// Handle non-temporal properties: must be simple value
+	if !isTemporal {
+		// For non-temporal properties, value should NOT be a list
+		if _, isList := propValue.([]interface{}); isList {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      fmt.Sprintf("properties.%s", propName),
+				Message: fmt.Sprintf("%s[%s].properties.%s: non-temporal property has list value (expected simple value)",
+					entityType, entityID, propName),
+			})
+		}
+		return
+	}
+
+	// Handle temporal properties: accept simple value OR list of {value, date} objects
+	switch propValue.(type) {
+	case string, float64, int, bool:
+		// Simple value is fine for temporal properties
+		return
+	}
+
+	// Must be a list for temporal properties with complex values
+	valueList, isList := propValue.([]interface{})
+	if !isList {
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      fmt.Sprintf("properties.%s", propName),
+			Message: fmt.Sprintf("%s[%s].properties.%s: temporal property has invalid value type (expected simple value or list of {value, date} objects)",
+				entityType, entityID, propName),
+		})
+		return
+	}
+
+	// Validate each item in the temporal list has {value, date} structure
+	for i, item := range valueList {
+		itemMap, isMap := item.(map[string]interface{})
+		if !isMap {
+			result.Errors = append(result.Errors, ValidationError{
+				SourceType:  entityType,
+				SourceID:    entityID,
+				SourceField: fmt.Sprintf("properties.%s[%d]", propName, i),
+				Message: fmt.Sprintf("%s[%s].properties.%s[%d]: temporal list item must be an object with 'value' field",
+					entityType, entityID, propName, i),
+			})
+			continue
+		}
+
+		// Check for required 'value' field
+		if _, hasValue := itemMap["value"]; !hasValue {
+			result.Errors = append(result.Errors, ValidationError{
+				SourceType:  entityType,
+				SourceID:    entityID,
+				SourceField: fmt.Sprintf("properties.%s[%d].value", propName, i),
+				Message: fmt.Sprintf("%s[%s].properties.%s[%d]: temporal list item missing required 'value' field",
+					entityType, entityID, propName, i),
+			})
+		}
+
+		// Optional: validate 'date' field exists (temporal items should have dates)
+		if _, hasDate := itemMap["date"]; !hasDate {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      fmt.Sprintf("properties.%s[%d].date", propName, i),
+				Message: fmt.Sprintf("%s[%s].properties.%s[%d]: temporal list item missing 'date' field",
+					entityType, entityID, propName, i),
+			})
 		}
 	}
 }
