@@ -1,0 +1,10 @@
+{
+  "name": "genealogix-spec",
+  "version": "0.0.0-beta.1",
+  "private": true,
+  "scripts": {
+    "docs:dev": "cd website && npm install && npm run docs:dev",
+    "docs:build": "cd website && npm install && npm run docs:build",
+    "docs:preview": "cd website && npm run docs:preview"
+  }
+}

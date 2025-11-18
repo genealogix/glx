@@ -10,10 +10,10 @@ export default defineConfig({
   // Set source directory to parent (repository root)
   // This allows VitePress to access all markdown files in the repo
   srcDir: '..',
-  
+
   // Ignore dead links temporarily during setup
   ignoreDeadLinks: true,
-  
+
   // Vite configuration for file watching in Docker/WSL
   vite: {
     server: {
