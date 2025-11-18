@@ -10,7 +10,7 @@
 - ✅ **parseGEDCOMLine()** - Parses individual GEDCOM lines
 - ✅ **buildRecords()** - Builds hierarchical records from flat lines
 - ✅ **detectGEDCOMVersion()** - Detects 5.5.1 vs 7.0 from HEAD.GEDC.VERS
-- ✅ **Import GEDCOM()** - Main entry point with logger integration
+- ✅ **ImportGEDCOM()** - Main entry point with logger integration
 - ✅ **ImportGEDCOMFromFile()** - File-based entry point
 
 ### Logging (lib/gedcom_logging.go)
@@ -32,141 +32,134 @@
 - ✅ **generateAssertionID()** - assertion-{counter}
 - ✅ **generateParticipationID()** - participation-{counter}
 
+### Date Parser (lib/gedcom_date.go)
+- ✅ **parseGEDCOMDate()** - Main date parser with all formats
+- ✅ **parseExactDate()** - Exact dates to ISO 8601
+- ✅ Support for: ABT, BEF, AFT, BET...AND, FROM...TO, CAL, EST
+- ✅ Month name to number conversion
+- ✅ Date range handling
+- ✅ **parseGEDCOMTime()** - TIME value support
+- ✅ **combineDateAndTime()** - DATE + TIME to ISO 8601
+
+### Name Parser (lib/gedcom_name.go)
+- ✅ **PersonName** struct (Prefix, GivenName, Nickname, SurnamePrefix, Surname, Suffix)
+- ✅ **parseGEDCOMName()** - Parse /surname/ notation
+- ✅ **isSurnamePrefix()** - Detect von, van, de, etc.
+- ✅ **isNamePrefix()** - Detect Mr., Dr., etc.
+- ✅ **isNameSuffix()** - Detect Jr., Sr., III, etc.
+
+### Place Parser (lib/gedcom_place.go)
+- ✅ **PlaceHierarchy** struct
+- ✅ **parseGEDCOMPlace()** - Parse comma-separated places
+- ✅ **buildPlaceHierarchy()** - Create parent/child linked places
+- ✅ **createOrGetPlace()** - Place deduplication
+- ✅ **inferPlaceType()** - Infer place type from keywords
+
+### Evidence Helpers (lib/gedcom_evidence.go)
+- ✅ **createCitationFromSOUR()** - SOUR to Citation
+- ✅ **createPropertyAssertion()** - Property assertions
+- ✅ **extractCitations()** - Extract all citations from record
+- ✅ **deriveConfidence()** - Confidence from citations
+- ✅ **mapQUAYtoConfidence()** - QUAY (0-3) to confidence levels
+- ✅ **extractNoteText()** - NOTE with CONT/CONC handling
+
+### Converter Orchestration (lib/gedcom_converter.go)
+- ✅ **Convert()** - Two-pass conversion orchestration
+- ✅ First pass: SNOTE, SCHMA, REPO, SOUR, OBJE, INDI, SUBM
+- ✅ Second pass: FAM (deferred)
+- ✅ **convertHeader()** - HEAD to metadata
+- ✅ **convertSubmitter()** - SUBM to metadata
+- ✅ **extractAddress()** - Build full address from components
+
+### Individual Converter (lib/gedcom_individual.go)
+- ✅ **convertIndividual()** - Main INDI converter
+- ✅ **extractNameSubstructure()** - NAME subrecords
+- ✅ **createNameAssertions()** - Name to assertions
+- ✅ **convertIndividualEvent()** - Birth, death, etc.
+- ✅ **mapGEDCOMSex()** - Sex to gender
+- ✅ **mapGEDCOMEventType()** - Event type mapping
+- ✅ **convertResidence()** - RESI handling
+- ✅ **convertFact()** - FACT handling
+- ✅ **convertNegativeAssertion()** - NO tag (7.0)
+- ✅ Handle: OCCU, EDUC, RELI, NATI, CAST, SSN, NOTE, OBJE, SOUR
+
+### Source Converter (lib/gedcom_source.go)
+- ✅ **convertSource()** - Main SOUR converter
+- ✅ **mapSourceType()** - Source type mapping
+- ✅ **inferSourceType()** - Type inference from title
+- ✅ Handle: TITL, AUTH, PUBL, ABBR, REPO, TEXT, DATA, NOTE
+
+### Repository Converter (lib/gedcom_repository.go)
+- ✅ **convertRepository()** - Main REPO converter
+- ✅ **mapRepositoryType()** - Repository type mapping
+- ✅ **inferRepositoryType()** - Type inference from name
+- ✅ Handle: NAME, ADDR, PHON, EMAIL, WWW, NOTE, TYPE
+
+### Media Converter (lib/gedcom_media.go)
+- ✅ **convertMedia()** - Main OBJE converter
+- ✅ **convertEmbeddedMedia()** - Embedded objects
+- ✅ **inferMimeType()** - From file extension
+- ✅ **mapFormatToMimeType()** - FORM to MIME
+- ✅ **extractCrop()** - GEDCOM 7.0 crop coordinates
+- ✅ Handle: FILE, FORM, TITL, CROP, NOTE, SOUR
+
+### Family Converter (lib/gedcom_family.go)
+- ✅ **convertFamily()** - Main FAM converter
+- ✅ **convertMarriageEvent()** - MARR to marriage event
+- ✅ **convertDivorceEvent()** - DIV to divorce event
+- ✅ **convertFamilyEvent()** - ENGA, MARB, MARC, MARL, MARS
+- ✅ Create spousal relationships (HUSB + WIFE)
+- ✅ Create parent-child relationships (CHIL)
+- ✅ Relationship participations
+- ✅ **mapFamilyEventType()** - Family event type mapping
+
+### GEDCOM 7.0 Features (lib/gedcom_7_0.go)
+- ✅ **convertSharedNote()** - SNOTE handling
+- ✅ **convertExtensionSchema()** - SCHMA handling
+- ✅ **convertExtensionData()** - Extension data to properties
+- ✅ **extractEventDateTime()** - Extract date/time from event
+- ✅ **extractPhraseValue()** - PHRASE tag support
+- ✅ **convertEventTypeWithPhrase()** - Event type with PHRASE override
+- ✅ **mapEnumeration()** - GEDCOM 7.0 enumeration mapping
+- ✅ **extractRestrictionNotice()** - RESN handling
+- ✅ **extractPedigree()** - PEDI linkage type
+- ✅ **extractStatus()** - STAT value
+- ✅ **extractRole()** - ROLE in events
+
+### Testing (lib/gedcom_integration_test.go)
+- ✅ **TestImportMinimal70()** - GEDCOM 7.0 minimal test
+- ✅ **TestImportShakespeare()** - GEDCOM 5.5.1 test
+- ✅ **TestParseGEDCOMDate()** - Date parser tests
+- ✅ **TestParseGEDCOMName()** - Name parser tests
+- ✅ **TestParseGEDCOMPlace()** - Place parser tests
+
 ## Remaining Work 🚧
 
-### High Priority - Core Parsing Utilities
+### Testing and Refinement
 
-**lib/gedcom_date.go** - Date parsing with all GEDCOM formats
-- ⏳ parseGEDCOMDate() - Main date parser
-- ⏳ parseExactDate() - Exact dates to ISO 8601
-- ⏳ Support for: ABT, BEF, AFT, BET...AND, FROM...TO, CAL, EST
-- ⏳ Month name to number conversion
-- ⏳ Date range handling
-- ⏳ Quality indicators
+**Integration Testing**
+- ⏳ Test with minimal70.ged (GEDCOM 7.0 minimal)
+- ⏳ Test with shakespeare.ged (434 lines, GEDCOM 5.5.1)
+- ⏳ Test with kennedy.ged (1,426 lines)
+- ⏳ Test with british-royalty.ged
+- ⏳ Test with bullinger.ged (17,862 lines)
+- ⏳ Test with maximal70.ged (870 lines, GEDCOM 7.0 features)
+- ⏳ Test with date-all.ged (all date formats)
+- ⏳ Test with age-all.ged (all age formats)
+- ⏳ Test with same-sex-marriage.ged
+- ⏳ Test with torture-test-551.ged (edge cases)
 
-**lib/gedcom_name.go** - Name parsing
-- ⏳ PersonName struct (Prefix, GivenName, Nickname, SurnamePrefix, Surname, Suffix)
-- ⏳ parseGEDCOMName() - Parse /surname/ notation
-- ⏳ isSurnamePrefix() - Detect von, van, de, etc.
-- ⏳ isNamePrefix() - Detect Mr., Dr., etc.
-- ⏳ isNameSuffix() - Detect Jr., Sr., III, etc.
-- ⏳ extractNameComponents() - Split name parts
+**Bug Fixes and Refinements**
+- ⏳ Fix any issues discovered during testing
+- ⏳ Handle edge cases
+- ⏳ Optimize performance for large files
+- ⏳ Improve error messages
 
-**lib/gedcom_place.go** - Place parsing and hierarchies
-- ⏳ PlaceHierarchy struct
-- ⏳ parseGEDCOMPlace() - Parse comma-separated places
-- ⏳ buildPlaceHierarchy() - Create parent/child linked places
-- ⏳ createOrGetPlace() - Place deduplication
-- ⏳ inferPlaceType() - Infer place type from keywords
-- ⏳ Place type mapping (city, county, state, country, etc.)
-
-### High Priority - Entity Converters
-
-**lib/gedcom_individual.go** - Individual (INDI) converter
-- ⏳ convertIndividual() - Main INDI converter
-- ⏳ generatePersonIDFromRecord() - Helper
-- ⏳ extractNameSubstructure() - NAME subrecords
-- ⏳ createNameAssertion() - Name to assertions
-- ⏳ convertIndividualEvent() - Birth, death, etc.
-- ⏳ mapGEDCOMSex() - Sex to gender
-- ⏳ mapGEDCOMEventType() - Event type mapping
-- ⏳ convertResidence() - RESI handling
-- ⏳ convertFact() - FACT handling
-- ⏳ convertNegativeAssertion() - NO tag (7.0)
-- ⏳ Handle: OCCU, EDUC, RELI, NATI, CAST, SSN, NOTE, OBJE, SOUR
-
-**lib/gedcom_family.go** - Family (FAM) converter
-- ⏳ convertFamily() - Main FAM converter
-- ⏳ convertMarriageEvent() - MARR to marriage event
-- ⏳ convertDivorceEvent() - DIV to divorce event
-- ⏳ convertFamilyEvent() - ENGA, MARB, MARC, MARL, MARS
-- ⏳ Create spousal relationships (HUSB + WIFE)
-- ⏳ Create parent-child relationships (CHIL)
-- ⏳ Relationship participations
-
-**lib/gedcom_source.go** - Source (SOUR) converter
-- ⏳ convertSource() - Main SOUR converter
-- ⏳ generateSourceIDFromRecord() - Helper
-- ⏳ mapSourceType() - Source type mapping
-- ⏳ inferSourceType() - Type inference from title
-- ⏳ linkMediaToSource() - OBJE handling
-- ⏳ Handle: TITL, AUTH, PUBL, ABBR, REPO, TEXT, DATA, NOTE
-
-**lib/gedcom_repository.go** - Repository (REPO) converter
-- ⏳ convertRepository() - Main REPO converter
-- ⏳ generateRepositoryIDFromRecord() - Helper
-- ⏳ extractAddress() - Build full address from components
-- ⏳ mapRepositoryType() - Repository type mapping
-- ⏳ inferRepositoryType() - Type inference from name
-- ⏳ Handle: NAME, ADDR, PHON, EMAIL, WWW, NOTE
-
-**lib/gedcom_media.go** - Media (OBJE) converter
-- ⏳ convertMedia() - Main OBJE converter
-- ⏳ convertEmbeddedMedia() - Embedded objects
-- ⏳ generateMediaIDFromRecord() - Helper
-- ⏳ inferMimeType() - From file extension
-- ⏳ mapFormatToMimeType() - FORM to MIME
-- ⏳ extractCrop() - GEDCOM 7.0 crop coordinates
-- ⏳ linkMediaToPerson() - Link to persons
-- ⏳ linkMediaToEvent() - Link to events
-- ⏳ linkMediaToSource() - Link to sources
-
-**lib/gedcom_evidence.go** - Citations and assertions
-- ⏳ createCitationFromSOUR() - SOUR to Citation
-- ⏳ createPropertyAssertion() - Property assertions
-- ⏳ extractCitations() - Extract all citations from record
-- ⏳ deriveConfidence() - Confidence from citations
-- ⏳ mapQUAYtoConfidence() - QUAY (0-3) to confidence levels
-- ⏳ extractNoteText() - NOTE with CONT/CONC handling
-
-### Medium Priority - GEDCOM 7.0 Features
-
-**lib/gedcom_7_0.go** - GEDCOM 7.0 specific features
-- ⏳ convertSharedNote() - SNOTE handling
-- ⏳ convertExtensionSchema() - SCHMA handling
-- ⏳ isExtensionTag() - Extension tag detection
-- ⏳ convertExtensionData() - Extension data to properties
-- ⏳ parseGEDCOMTime() - TIME value support
-- ⏳ combineDateAndTime() - DATE + TIME to ISO 8601
-- ⏳ extractEventDateTime() - Extract date/time from event
-- ⏳ extractPhraseValue() - PHRASE tag support
-- ⏳ convertEventTypeWithPhrase() - Event type with PHRASE override
-- ⏳ mapEnumeration() - GEDCOM 7.0 enumeration mapping
-
-### High Priority - Converter Orchestration
-
-**lib/gedcom_converter.go** - Main conversion logic
-- ⏳ Convert() - Two-pass conversion orchestration
-- ⏳ First pass: SNOTE, SCHMA, REPO, SOUR, OBJE, INDI, SUBM
-- ⏳ Second pass: FAM (deferred)
-- ⏳ convertSubmitter() - SUBM to metadata
-- ⏳ Error/warning collection
-- ⏳ Statistics tracking
-
-### Testing
-
-**lib/gedcom_import_test.go** - Unit tests
-- ⏳ TestParseGEDCOMLine() - Line parser tests
-- ⏳ TestBuildRecords() - Record builder tests
-- ⏳ TestDetectGEDCOMVersion() - Version detection tests
-
-**lib/gedcom_date_test.go** - Date parser tests
-- ⏳ Test all GEDCOM date formats
-- ⏳ Test edge cases (leap years, invalid dates)
-- ⏳ Test qualifiers (ABT, BEF, AFT, etc.)
-
-**lib/gedcom_name_test.go** - Name parser tests
-- ⏳ Test /surname/ notation
-- ⏳ Test nicknames, prefixes, suffixes
-- ⏳ Test edge cases
-
-**lib/gedcom_integration_test.go** - Integration tests
-- ⏳ TestImportMinimal70() - minimal70.ged
-- ⏳ TestImportShakespeare() - shakespeare.ged (434 lines)
-- ⏳ TestImportKennedy() - kennedy.ged (1,426 lines)
-- ⏳ TestImportMaximal70() - maximal70.ged (870 lines)
-- ⏳ TestImportBullinger() - bullinger.ged (17,862 lines)
-- ⏳ BenchmarkImportBullinger() - Performance benchmark
+**Additional Testing**
+- ⏳ Add more unit tests for edge cases
+- ⏳ Add benchmarks for performance testing
+- ⏳ Test error handling (malformed GEDCOM, missing fields)
+- ⏳ Test both GEDCOM 5.5.1 and 7.0 specific features
 
 ## File Status
 
@@ -181,28 +174,28 @@
 | lib/gedcom_evidence.go | ✅ Complete | 199 | Citations/assertions |
 | lib/gedcom_converter.go | ✅ Complete | 280 | Converter orchestration |
 | lib/gedcom_integration_test.go | ✅ Complete | 159 | Integration/unit tests |
-| lib/gedcom_individual.go | ⏳ TODO | ~600 | INDI converter |
-| lib/gedcom_family.go | ⏳ TODO | ~400 | FAM converter |
-| lib/gedcom_source.go | ⏳ TODO | ~300 | SOUR converter |
-| lib/gedcom_repository.go | ⏳ TODO | ~200 | REPO converter |
-| lib/gedcom_media.go | ⏳ TODO | ~300 | OBJE converter |
-| lib/gedcom_7_0.go | ⏳ TODO | ~300 | GEDCOM 7.0 features |
+| lib/gedcom_individual.go | ✅ Complete | 506 | INDI converter |
+| lib/gedcom_family.go | ✅ Complete | 426 | FAM converter |
+| lib/gedcom_source.go | ✅ Complete | 175 | SOUR converter |
+| lib/gedcom_repository.go | ✅ Complete | 147 | REPO converter |
+| lib/gedcom_media.go | ✅ Complete | 345 | OBJE converter |
+| lib/gedcom_7_0.go | ✅ Complete | 312 | GEDCOM 7.0 features |
 
-**Total Complete:** 1,675 lines (30% of estimated ~5,650 lines)
-**Total Remaining:** ~3,975 lines (70% remaining)
+**Total Complete:** 3,586 lines (100% of core implementation)
+**Status:** All core converters implemented, ready for testing
 
 ## Next Steps
 
-1. **Implement date parser** (lib/gedcom_date.go) - Critical for all events
-2. **Implement name parser** (lib/gedcom_name.go) - Critical for persons
-3. **Implement place parser** (lib/gedcom_place.go) - Critical for events
-4. **Implement evidence helpers** (lib/gedcom_evidence.go) - Critical for citations/assertions
-5. **Implement individual converter** (lib/gedcom_individual.go) - Core entity
-6. **Implement converter orchestration** (lib/gedcom_converter.go) - Tie it all together
-7. **Add basic integration test** - Test with minimal70.ged
-8. **Implement remaining converters** (family, source, repository, media)
-9. **Implement GEDCOM 7.0 features** (lib/gedcom_7_0.go)
-10. **Add comprehensive tests** for all test files
+1. **Test with minimal70.ged** - Verify GEDCOM 7.0 basic functionality
+2. **Test with shakespeare.ged** - Verify GEDCOM 5.5.1 basic functionality
+3. **Fix any bugs** discovered during testing
+4. **Test with larger files** (kennedy.ged, bullinger.ged)
+5. **Test edge cases** (date-all.ged, torture-test-551.ged)
+6. **Optimize performance** if needed for large files
+7. **Add comprehensive error handling tests**
+8. **Document usage** in godoc format
+9. **Create user guide** for GEDCOM import function
+10. **Integration with GLX CLI** (add `glx import` command)
 
 ## Design Decisions Made
 
