@@ -334,6 +334,17 @@ ctx.AddError(fmt.Sprintf("Unknown event tag: %s", tag))
 2. **Warning Errors**: Continue conversion, report issue (e.g., unknown tag)
 3. **Info Messages**: Logged for debugging (e.g., skipped optional field)
 
+### Malformed Line Recovery
+
+The parser includes resilience for common real-world GEDCOM issues:
+
+**Malformed Continuation Lines** (MyHeritage HTML notes bug):
+- **Problem**: Some exports (esp. MyHeritage 8.0.0.8367) produce NOTE fields with HTML that's missing CONT/CONC prefixes
+- **Example**: Line starts with `<div>` instead of `2 CONT <div>`
+- **Recovery**: If a line fails to parse and doesn't start with a digit, it's treated as a continuation of the previous line
+- **Impact**: Allows importing otherwise-valid genealogy data with formatting issues
+- **Test Case**: `queen.ged` (4,683 persons, line 15903 missing CONT prefix)
+
 ---
 
 ## Future Enhancements

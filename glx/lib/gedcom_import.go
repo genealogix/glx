@@ -257,6 +257,7 @@ func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
 	scanner.Buffer(buf, 1024*1024)
 
 	lineNum := 0
+	var lastLine *GEDCOMLine
 
 	for scanner.Scan() {
 		lineNum++
@@ -276,10 +277,23 @@ func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
 
 		line, err := parseGEDCOMLine(text, lineNum)
 		if err != nil {
+			// Handle malformed continuation lines (common in MyHeritage exports with HTML notes)
+			// If parse fails and line doesn't start with a digit, treat as CONT for previous line
+			if lastLine != nil && len(text) > 0 && !isDigit(text[0]) {
+				// Treat as continuation of previous line
+				// Append to last line's value as if it were "2 CONT <text>"
+				if lastLine.Value == "" {
+					lastLine.Value = text
+				} else {
+					lastLine.Value += "\n" + text
+				}
+				continue // Skip adding this as a new line
+			}
 			return nil, fmt.Errorf("line %d: %w", lineNum, err)
 		}
 
 		lines = append(lines, line)
+		lastLine = line
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -287,6 +301,11 @@ func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
 	}
 
 	return lines, nil
+}
+
+// isDigit checks if a byte is a digit character
+func isDigit(b byte) bool {
+	return b >= '0' && b <= '9'
 }
 
 // parseGEDCOMLine parses a single GEDCOM line

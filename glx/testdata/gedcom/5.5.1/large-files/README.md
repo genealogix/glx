@@ -45,14 +45,16 @@ Collection of large GEDCOM 5.5.1 files for performance testing, stress testing, 
 - **Performance**: Tests parser with very large datasets
 
 ### queen.ged
-- **Family**: Queen family genealogy
+- **Family**: British royal genealogy
 - **Size**: 2.5 MB
 - **Encoding**: UTF-8 (with BOM)
-- **Software**: Family Tree Maker 20.0
-- **Description**: Large royal genealogy database
+- **Software**: MyHeritage 8.0.0.8367
+- **Export Date**: 17 June 2017
+- **Description**: Large royal genealogy database with HTML-formatted notes
 - **Individuals**: Extensive royal lineages
 - **Purpose**: Large file performance testing
-- **Performance**: Tests medium-large file handling
+- **Known Issues**: Contains malformed HTML in NOTE fields (line 15903 missing CONT prefix)
+- **Performance**: Tests medium-large file handling and error recovery
 
 ## Testing Coverage
 - **Large file parsing**: Multi-megabyte GEDCOM files
