@@ -9,7 +9,9 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 ## Features
 
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
+- 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files to GLX format
 - 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
+- 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - 70.5% code coverage with comprehensive test fixtures
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -42,12 +44,18 @@ go install github.com/genealogix/spec/glx@latest
 # Create a new family archive in the `my-family-archive` directory
 glx init my-family-archive
 
-# Create a single-file archive
-glx init my-family-archive --single-file
+# Import a GEDCOM file
+glx import family.ged -o family.glx
+
+# Split single-file archive to multi-file format
+glx split family.glx family-archive
 
 # Validate all files in the new directory
-cd my-family-archive
+cd family-archive
 glx validate
+
+# Join multi-file archive back to single file
+glx join family-archive combined.glx
 
 # Validate specific files or directories
 glx validate persons/
@@ -162,6 +170,149 @@ glx validate ../docs/examples/complete-family/
   - source_id or source is required
 
 Validated 3 file(s)
+```
+
+### `glx import`
+
+Import a GEDCOM file and convert it to GLX format.
+
+**Usage:**
+```bash
+glx import <gedcom-file> -o <output> [flags]
+```
+
+**Options:**
+- `-o, --output <path>` - Output file or directory (required)
+- `-f, --format <format>` - Output format: `single` or `multi` (default: `single`)
+- `--no-validate` - Skip validation before saving
+- `--no-vocabularies` - Don't include standard vocabularies
+- `-v, --verbose` - Verbose output
+
+**Supported Formats:**
+- ✓ GEDCOM 5.5.1
+- ✓ GEDCOM 7.0
+
+**Features:**
+- Converts all individuals to persons
+- Converts all events (births, deaths, marriages, etc.)
+- Converts all relationships (parent-child, spouse, etc.)
+- Builds place hierarchies from GEDCOM locations
+- Converts sources, citations, repositories, and media
+- Creates evidence-based assertions
+- Includes standard vocabularies by default
+
+**Examples:**
+
+```bash
+# Import to single file
+glx import family.ged -o family.glx
+
+# Import to multi-file directory
+glx import family.ged -o family-archive --format multi
+
+# Import without validation (faster, less safe)
+glx import family.ged -o family.glx --no-validate
+
+# Import without vocabularies (smaller file)
+glx import family.ged -o family.glx --no-vocabularies
+
+# Verbose output to see import progress
+glx import family.ged -o family.glx --verbose
+```
+
+**Output:**
+```
+✓ Successfully imported to family.glx
+
+Import statistics:
+  Persons:       31
+  Events:        77
+  Relationships: 49
+  Places:        5
+  Sources:       0
+  Citations:     0
+  Repositories:  0
+  Media:         0
+  Assertions:    150
+```
+
+### `glx split`
+
+Split a single-file GLX archive into a multi-file directory structure.
+
+**Usage:**
+```bash
+glx split <input-file> <output-directory> [flags]
+```
+
+**Options:**
+- `--no-validate` - Skip validation before splitting
+- `--no-vocabularies` - Don't include standard vocabularies
+- `-v, --verbose` - Verbose output
+
+**Creates:**
+```
+output-directory/
+├── persons/
+│   ├── person-{id}.glx
+│   └── ...
+├── events/
+│   ├── event-{id}.glx
+│   └── ...
+├── relationships/
+│   ├── relationship-{id}.glx
+│   └── ...
+├── places/
+│   ├── place-{id}.glx
+│   └── ...
+├── sources/
+├── citations/
+├── repositories/
+├── media/
+├── assertions/
+└── vocabularies/
+    ├── event-types.glx
+    ├── relationship-types.glx
+    └── ...
+```
+
+**Examples:**
+
+```bash
+# Split an archive
+glx split family.glx family-archive
+
+# Split without vocabularies
+glx split family.glx family-archive --no-vocabularies
+
+# Split without validation
+glx split family.glx family-archive --no-validate
+```
+
+### `glx join`
+
+Join a multi-file GLX archive into a single YAML file.
+
+**Usage:**
+```bash
+glx join <input-directory> <output-file> [flags]
+```
+
+**Options:**
+- `--no-validate` - Skip validation before joining
+- `-v, --verbose` - Verbose output
+
+**Examples:**
+
+```bash
+# Join an archive
+glx join family-archive family.glx
+
+# Join without validation (faster)
+glx join family-archive family.glx --no-validate
+
+# Verbose output
+glx join family-archive family.glx --verbose
 ```
 
 ### `glx check-schemas`
