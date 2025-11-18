@@ -328,6 +328,14 @@ func (s *DefaultSerializer) LoadMultiFile(inputDir string) (*GLXFile, error) {
 		Assertions:    make(map[string]*Assertion),
 	}
 
+	// Load vocabularies from directory if they exist
+	vocabDir := filepath.Join(inputDir, "vocabularies")
+	if _, err := os.Stat(vocabDir); err == nil {
+		if err := LoadVocabulariesFromDir(vocabDir, glx); err != nil {
+			return nil, fmt.Errorf("failed to load vocabularies: %w", err)
+		}
+	}
+
 	// Load each entity type
 	if err := loadEntitiesWithID(filepath.Join(inputDir, "persons"), glx.Persons); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to load persons: %w", err)

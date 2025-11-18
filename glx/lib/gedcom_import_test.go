@@ -15,53 +15,11 @@
 package lib
 
 import (
-	"path/filepath"
 	"testing"
 )
 
-// TestImportGEDCOM551 tests importing a GEDCOM 5.5.1 file
-func TestImportGEDCOM551(t *testing.T) {
-	// TODO: Add test GEDCOM 5.5.1 files to ../glx/testdata/gedcom/5.5.1/
-	gedcomPath := filepath.Join("..", "glx", "testdata", "gedcom", "5.5.1", "sample.ged")
-
-	t.Skip("Waiting for sample GEDCOM 5.5.1 files to be added")
-
-	logPath := filepath.Join(t.TempDir(), "import.log")
-	glx, _, err := ImportGEDCOMFromFile(gedcomPath, logPath)
-	if err != nil {
-		t.Fatalf("Failed to import GEDCOM 5.5.1: %v", err)
-	}
-
-	if glx == nil {
-		t.Fatal("Expected GLXFile, got nil")
-	}
-
-	// TODO: Add specific assertions based on sample file content
-	// Example:
-	// if len(glx.Persons) == 0 {
-	//     t.Error("Expected persons to be imported")
-	// }
-}
-
-// TestImportGEDCOM70 tests importing a GEDCOM 7.0 file
-func TestImportGEDCOM70(t *testing.T) {
-	// TODO: Add test GEDCOM 7.0 files to ../glx/testdata/gedcom/7.0/
-	gedcomPath := filepath.Join("..", "glx", "testdata", "gedcom", "7.0", "sample.ged")
-
-	t.Skip("Waiting for sample GEDCOM 7.0 files to be added")
-
-	logPath := filepath.Join(t.TempDir(), "import.log")
-	glx, _, err := ImportGEDCOMFromFile(gedcomPath, logPath)
-	if err != nil {
-		t.Fatalf("Failed to import GEDCOM 7.0: %v", err)
-	}
-
-	if glx == nil {
-		t.Fatal("Expected GLXFile, got nil")
-	}
-
-	// TODO: Add specific assertions based on sample file content
-}
+// NOTE: GEDCOM import tests are now in gedcom_comprehensive_test.go
+// which tests all 35 GEDCOM test files
 
 // TestParseGEDCOMLine tests the GEDCOM line parser
 func TestParseGEDCOMLine(t *testing.T) {

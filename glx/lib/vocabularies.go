@@ -225,3 +225,124 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 
 	return nil
 }
+
+// LoadVocabulariesFromDir loads vocabularies from a directory into a GLXFile.
+// This reads .glx files from the specified directory and populates the vocabulary maps.
+// Returns error if vocabulary parsing fails.
+func LoadVocabulariesFromDir(dir string, glx *GLXFile) error {
+	// Read all .glx files from the vocabularies directory
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("failed to read vocabularies directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".glx" {
+			continue
+		}
+
+		// Read the vocabulary file
+		vocabPath := filepath.Join(dir, entry.Name())
+		data, err := os.ReadFile(vocabPath)
+		if err != nil {
+			return fmt.Errorf("failed to read vocabulary %s: %w", entry.Name(), err)
+		}
+
+		// Parse based on filename
+		switch entry.Name() {
+		case "event-types.glx":
+			var doc struct {
+				EventTypes map[string]*EventType `yaml:"event_types"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.EventTypes = doc.EventTypes
+			}
+		case "relationship-types.glx":
+			var doc struct {
+				RelationshipTypes map[string]*RelationshipType `yaml:"relationship_types"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.RelationshipTypes = doc.RelationshipTypes
+			}
+		case "place-types.glx":
+			var doc struct {
+				PlaceTypes map[string]*PlaceType `yaml:"place_types"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.PlaceTypes = doc.PlaceTypes
+			}
+		case "source-types.glx":
+			var doc struct {
+				SourceTypes map[string]*SourceType `yaml:"source_types"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.SourceTypes = doc.SourceTypes
+			}
+		case "repository-types.glx":
+			var doc struct {
+				RepositoryTypes map[string]*RepositoryType `yaml:"repository_types"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.RepositoryTypes = doc.RepositoryTypes
+			}
+		case "participant-roles.glx":
+			var doc struct {
+				ParticipantRoles map[string]*ParticipantRole `yaml:"participant_roles"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.ParticipantRoles = doc.ParticipantRoles
+			}
+		case "media-types.glx":
+			var doc struct {
+				MediaTypes map[string]*MediaType `yaml:"media_types"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.MediaTypes = doc.MediaTypes
+			}
+		case "confidence-levels.glx":
+			var doc struct {
+				ConfidenceLevels map[string]*ConfidenceLevel `yaml:"confidence_levels"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.ConfidenceLevels = doc.ConfidenceLevels
+			}
+		case "quality-ratings.glx":
+			var doc struct {
+				QualityRatings map[string]*QualityRating `yaml:"quality_ratings"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.QualityRatings = doc.QualityRatings
+			}
+		case "person-properties.glx":
+			var doc struct {
+				PersonProperties map[string]*PropertyDefinition `yaml:"person_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.PersonProperties = doc.PersonProperties
+			}
+		case "event-properties.glx":
+			var doc struct {
+				EventProperties map[string]*PropertyDefinition `yaml:"event_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.EventProperties = doc.EventProperties
+			}
+		case "relationship-properties.glx":
+			var doc struct {
+				RelationshipProperties map[string]*PropertyDefinition `yaml:"relationship_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.RelationshipProperties = doc.RelationshipProperties
+			}
+		case "place-properties.glx":
+			var doc struct {
+				PlaceProperties map[string]*PropertyDefinition `yaml:"place_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.PlaceProperties = doc.PlaceProperties
+			}
+		}
+	}
+
+	return nil
+}

@@ -10,31 +10,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0-beta] - 2025-11-18
+## [0.0.0-beta.2] - 2025-11-18
 
 ### Added
 
 #### GEDCOM Import (lib)
 - **Full GEDCOM 5.5.1 support** - Import all standard GEDCOM 5.5.1 files
 - **Full GEDCOM 7.0 support** - Import GEDCOM 7.0 with new features
+- **Full GEDCOM 5.5.5 support** - Import GEDCOM 5.5.5 specification samples
 - **Two-pass conversion** - Entities first, then families for proper relationship handling
 - **Evidence chain mapping** - GEDCOM SOUR tags → GLX Citations → GLX Assertions
 - **Place hierarchy building** - Parse place strings into hierarchical Place entities
 - **Geographic coordinates** - Extract MAP/LATI/LONG coordinates from GEDCOM
 - **Shared notes** - Support for both GEDCOM 7.0 SNOTE and GEDCOM 5.5.1 NOTE records
 - **External IDs** - Import GEDCOM 7.0 EXID tags (wikitree, familysearch, etc.)
-- **Comprehensive testing** - Shakespeare family test (31 persons, 77 events, 49 relationships)
+- **Comprehensive test coverage** - 33 GEDCOM test files (5.5.1, 5.5.5, 7.0) successfully imported
+- **Large file support** - Tested with files containing thousands of persons and events
+- **Edge case handling** - Empty families, self-marriages, same-sex marriages, unknown genders
+- **Character encoding support** - ASCII, UTF-8, Windows CP1252 (CRLF and LF)
 
 #### GLX Serializer (lib)
 - **Single-file serialization** - Convert GLX archives to single YAML files
 - **Multi-file serialization** - Entity-per-file structure with random IDs
 - **Archive loading** - Load both single-file and multi-file GLX archives
 - **Vocabulary embedding** - Embed standard vocabularies using go:embed
+- **Vocabulary loading from directory** - Load vocabularies from multi-file archives
 - **ID generation** - Random 8-character hex IDs for entity filenames
 - **EntityWithID wrapper** - Preserve entity IDs in multi-file format using _id field
 - **Collision detection** - Retry logic for filename generation
 - **Configurable validation** - Optional validation before serialization
 - **13 standard vocabularies** embedded in binary
+- **Round-trip preservation** - Single→Multi→Single conversions preserve all data
 
 #### CLI Commands (glx)
 - **`glx import`** - Import GEDCOM files to GLX format
@@ -69,6 +75,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 - **Family event handling** - Added missing ANUL, DIVF, CENS, EVEN to case statement
 - **Source types vocabulary** - Added to embedded vocabularies (was missing)
+- **Multi-file vocabulary loading** - Fixed LoadMultiFile to properly load vocabularies from directory
+- **Vocabulary preservation** - Vocabularies now correctly preserved in round-trip conversions
 
 ### Changed
 - **Documentation structure** - Separated user docs (docs/) from planning docs (.claude/plans/)
@@ -91,8 +99,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 **Testing:**
 - All existing tests passing
 - 48 new test cases for serializer
-- Full round-trip serialization/deserialization
+- 33 GEDCOM files tested for import (100% coverage of test files)
+- Full round-trip serialization/deserialization tests
+- Vocabulary preservation tests for both single-file and multi-file formats
 - Comprehensive unit and integration tests
+- Large file stress tests (3000+ persons, 4000+ events)
 
 ## [0.0.0-beta.1] - 2025-11-18
 
