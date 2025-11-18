@@ -250,11 +250,24 @@ func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCO
 func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
 	var lines []*GEDCOMLine
 	scanner := bufio.NewScanner(reader)
+
+	// Increase buffer size for large GEDCOM files (torture test has long lines)
+	// Default is 64KB, increase to 1MB
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
 	lineNum := 0
 
 	for scanner.Scan() {
 		lineNum++
 		text := scanner.Text()
+
+		// Strip UTF-8 BOM from first line if present
+		if lineNum == 1 && len(text) >= 3 {
+			if text[0] == 0xEF && text[1] == 0xBB && text[2] == 0xBF {
+				text = text[3:]
+			}
+		}
 
 		// Skip empty lines
 		if strings.TrimSpace(text) == "" {
