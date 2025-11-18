@@ -10,7 +10,7 @@ This document provides context for Claude AI instances working on the GLX projec
 
 **Repository**: genealogix/spec
 **Primary Language**: Go
-**Current Version**: v0.2.0-beta
+**Current Version**: v0.0.0-beta.2 (in progress)
 **Status**: Active development
 
 ---
@@ -30,25 +30,25 @@ This document provides context for Claude AI instances working on the GLX projec
 ```
 spec/
 ├── .claude/
-│   └── plans/              # All planning and design documents (READ THIS FIRST!)
-├── cmd/
-│   └── glx/               # CLI application
-│       ├── main.go
-│       ├── import.go      # GEDCOM import command
-│       └── (more commands coming: split, join, validate)
-├── lib/
-│   ├── types.go           # Core GLX entity types (Person, Event, etc.)
-│   ├── gedcom_*.go        # GEDCOM import implementation
-│   ├── parser.go          # GEDCOM parser
-│   └── (serializer files coming soon)
-├── glx/
-│   └── standard-vocabularies/  # Vocabulary definitions (to be created)
+│   ├── plans/              # Active planning documents
+│   └── plans/old/          # Archived historical plans
+├── glx/                    # Main CLI application
+│   ├── cmd_*.go           # CLI command implementations (import, split, join, validate)
+│   ├── lib/               # Core library code
+│   │   ├── types.go       # Core GLX entity types
+│   │   ├── gedcom_*.go    # GEDCOM import implementation
+│   │   ├── serializer.go  # Single/multi-file serialization
+│   │   ├── id_generator.go # Entity ID generation
+│   │   └── vocabularies.go # Vocabulary embedding
+│   └── testdata/
+│       └── gedcom/        # GEDCOM test files (180+ files)
+├── specification/
+│   ├── 5-standard-vocabularies/ # Standard vocabulary definitions
+│   └── schema/v1/         # JSON schemas
 ├── docs/
 │   ├── quickstart.md      # User documentation
-│   ├── examples/          # Example GLX archives
-│   └── gedcom-spec/       # GEDCOM specification reference
-├── testdata/
-│   └── gedcom/            # Test GEDCOM files
+│   ├── examples/          # Example GLX archives with symlinked vocabularies
+│   └── gedcom-spec/       # GEDCOM specification PDFs
 └── website/               # GLX website content
 ```
 
@@ -258,6 +258,8 @@ go build -o glx ./cmd/glx
 - Include date, status, and purpose at top
 - Use markdown with clear sections
 - Update `.claude/plans/README.md` when adding new plans
+- **DO NOT include time estimates** - They waste tokens and are meaningless
+- Focus on task breakdown and dependencies, not hours/days estimates
 
 ### Code Comments
 
@@ -272,6 +274,13 @@ go build -o glx ./cmd/glx
   - `feat: Add GEDCOM 7.0 EXID support`
   - `fix: Handle family events ANUL, DIVF, CENS, EVEN`
   - `docs: Update serializer implementation plan`
+
+### What NOT to Do
+
+- **Don't produce time estimates** in plans or responses
+- **Don't estimate hours/days** for tasks - focus on what needs to be done
+- **Don't create speculative timelines** - they're meaningless and waste tokens
+- Let the user decide scheduling and priorities
 
 ---
 
