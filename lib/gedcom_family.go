@@ -85,7 +85,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		relationshipID := generateRelationshipID(ctx)
 
 		relationship := &Relationship{
-			Type:       "marriage",
+			Type:       RelationshipTypeMarriage,
 			Persons:    []string{husbandID, wifeID},
 			Properties: make(map[string]interface{}),
 		}
@@ -128,7 +128,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			relationshipID := generateRelationshipID(ctx)
 
 			relationship := &Relationship{
-				Type:       "parent-child",
+				Type:       RelationshipTypeParentChild,
 				Persons:    []string{parentID, childID},
 				Properties: make(map[string]interface{}),
 			}
@@ -146,7 +146,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	eventID := generateEventID(ctx)
 
 	event := &Event{
-		Type:       "marriage",
+		Type:       EventTypeMarriage,
 		Properties: make(map[string]interface{}),
 	}
 
@@ -221,13 +221,13 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	if husbandID != "" {
 		participants = append(participants, EventParticipant{
 			PersonID: husbandID,
-			Role:     "spouse",
+			Role:     ParticipantRoleSpouse,
 		})
 	}
 	if wifeID != "" {
 		participants = append(participants, EventParticipant{
 			PersonID: wifeID,
-			Role:     "spouse",
+			Role:     ParticipantRoleSpouse,
 		})
 	}
 	event.Participants = participants
@@ -252,7 +252,7 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	eventID := generateEventID(ctx)
 
 	event := &Event{
-		Type:       "divorce",
+		Type:       EventTypeDivorce,
 		Properties: make(map[string]interface{}),
 	}
 
@@ -299,13 +299,13 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	if husbandID != "" {
 		participants = append(participants, EventParticipant{
 			PersonID: husbandID,
-			Role:     "spouse",
+			Role:     ParticipantRoleSpouse,
 		})
 	}
 	if wifeID != "" {
 		participants = append(participants, EventParticipant{
 			PersonID: wifeID,
-			Role:     "spouse",
+			Role:     ParticipantRoleSpouse,
 		})
 	}
 	event.Participants = participants
@@ -379,13 +379,13 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 	if husbandID != "" {
 		participants = append(participants, EventParticipant{
 			PersonID: husbandID,
-			Role:     "spouse",
+			Role:     ParticipantRoleSpouse,
 		})
 	}
 	if wifeID != "" {
 		participants = append(participants, EventParticipant{
 			PersonID: wifeID,
-			Role:     "spouse",
+			Role:     ParticipantRoleSpouse,
 		})
 	}
 	event.Participants = participants
@@ -400,20 +400,20 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 // mapFamilyEventType maps GEDCOM family event tags to GLX event types
 func mapFamilyEventType(tag string) string {
 	mapping := map[string]string{
-		"ENGA": "engagement",
-		"MARB": "marriage_banns",
-		"MARC": "marriage_contract",
-		"MARL": "marriage_license",
-		"MARS": "marriage_settlement",
-		"ANUL": "annulment",
-		"DIVF": "divorce_filed",
-		"CENS": "census",
-		"EVEN": "event",
+		"ENGA": EventTypeEngagement,
+		"MARB": EventTypeMarriageBanns,
+		"MARC": EventTypeMarriageContract,
+		"MARL": EventTypeMarriageLicense,
+		"MARS": EventTypeMarriageSettlement,
+		"ANUL": EventTypeAnnulment,
+		"DIVF": EventTypeDivorceFiled,
+		"CENS": EventTypeCensus,
+		"EVEN": EventTypeGeneric,
 	}
 
 	if eventType, ok := mapping[tag]; ok {
 		return eventType
 	}
 
-	return "event"
+	return EventTypeGeneric
 }

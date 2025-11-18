@@ -136,7 +136,7 @@ type ExtensionSchema struct {
 type FamilyLink struct {
 	PersonID  string
 	FamilyRef string
-	LinkType  string // "child" or "spouse"
+	LinkType  string // ParticipantRoleChild or ParticipantRoleSpouse
 }
 
 // ImportGEDCOMFromFile imports a GEDCOM file from a file path

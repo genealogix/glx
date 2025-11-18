@@ -168,7 +168,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			ctx.DeferredFamilyLinks = append(ctx.DeferredFamilyLinks, &FamilyLink{
 				PersonID:  personID,
 				FamilyRef: sub.Value,
-				LinkType:  "child",
+				LinkType:  ParticipantRoleChild,
 			})
 
 		case "FAMS":
@@ -176,7 +176,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			ctx.DeferredFamilyLinks = append(ctx.DeferredFamilyLinks, &FamilyLink{
 				PersonID:  personID,
 				FamilyRef: sub.Value,
-				LinkType:  "spouse",
+				LinkType:  ParticipantRoleSpouse,
 			})
 
 		case "NO":
@@ -355,7 +355,7 @@ func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *Con
 	event.Participants = []EventParticipant{
 		{
 			PersonID: personID,
-			Role:     "principal",
+			Role:     ParticipantRolePrincipal,
 		},
 	}
 
@@ -398,29 +398,29 @@ func mapGEDCOMSex(sex string) string {
 // mapGEDCOMEventType maps GEDCOM event tags to GLX event types
 func mapGEDCOMEventType(tag string) string {
 	mapping := map[string]string{
-		"BIRT": "birth",
-		"CHR":  "christening",
-		"DEAT": "death",
-		"BURI": "burial",
-		"CREM": "cremation",
-		"ADOP": "adoption",
-		"BAPM": "baptism",
-		"BARM": "bar_mitzvah",
-		"BASM": "bas_mitzvah",
-		"BLES": "blessing",
-		"CHRA": "adult_christening",
-		"CONF": "confirmation",
-		"FCOM": "first_communion",
-		"ORDN": "ordination",
-		"NATU": "naturalization",
-		"EMIG": "emigration",
-		"IMMI": "immigration",
-		"CENS": "census",
-		"PROB": "probate",
-		"WILL": "will",
-		"GRAD": "graduation",
-		"RETI": "retirement",
-		"RESI": "residence",
+		"BIRT": EventTypeBirth,
+		"CHR":  EventTypeChristening,
+		"DEAT": EventTypeDeath,
+		"BURI": EventTypeBurial,
+		"CREM": EventTypeCremation,
+		"ADOP": EventTypeAdoption,
+		"BAPM": EventTypeBaptism,
+		"BARM": EventTypeBarMitzvah,
+		"BASM": EventTypeBasMitzvah,
+		"BLES": EventTypeBlessing,
+		"CHRA": EventTypeAdultChristening,
+		"CONF": EventTypeConfirmation,
+		"FCOM": EventTypeFirstCommunion,
+		"ORDN": EventTypeOrdination,
+		"NATU": EventTypeNaturalization,
+		"EMIG": EventTypeEmigration,
+		"IMMI": EventTypeImmigration,
+		"CENS": EventTypeCensus,
+		"PROB": EventTypeProbate,
+		"WILL": EventTypeWill,
+		"GRAD": EventTypeGraduation,
+		"RETI": EventTypeRetirement,
+		"RESI": EventTypeResidence,
 	}
 
 	if eventType, ok := mapping[tag]; ok {
