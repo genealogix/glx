@@ -1,0 +1,23 @@
+﻿0 HEAD
+1 SOUR TJ
+2 NAME Personal Ancestral File
+2 VERS 1.0
+2 CORP Modern Software Experience
+3 ADDR www.tamurajones.net
+1 DEST TJ
+1 DATE 14 Jan 2016
+1 FILE EMPTYFAM.GED
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG English
+1 SUBM @SUB1@
+0 @SUB1@ SUBM
+1 NAME Tamura Jones
+1 ADDR LEIDEN
+2 CONT  http://www.tamurajones.net
+2 CTRY Netherlands
+0 @F1@ FAM
+1 NOTE No HUSB, WIFE or CHIL.
+0 TRLR

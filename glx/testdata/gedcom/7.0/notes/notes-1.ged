@@ -1,0 +1,23 @@
+﻿0 HEAD
+1 SOUR conversion test
+1 SUBM @1@
+1 GEDC
+2 VERS 7.0
+1 NOTE The header note
+0 @1@ SUBM
+1 NAME Luther Tychonievich
+1 NOTE An inline submission note
+1 SNOTE @4@
+0 @2@ SOUR
+1 SNOTE @3@
+1 SNOTE @4@
+1 SNOTE @5@
+0 @3@ SNOTE A single-use note record
+1 CHAN
+2 DATE 25 MAY 2021
+0 @4@ SNOTE A dual-use note record
+1 CHAN
+2 DATE 25 MAY 2021
+0 @5@ SNOTE A cyclic note record
+1 SOUR @2@
+0 TRLR

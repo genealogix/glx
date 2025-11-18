@@ -1,0 +1,1680 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 SOUR ASSESSMENT
+2 VERS 1.05
+1 LANG English
+1 COPR Copyright (C) 2020 by John Cardinal. All rights reserved.
+1 NOTE Everyone is permitted to download and use this GEDCOM file,
+2 CONT assess.ged. There is no usage fee. You may edit assess.ged
+2 CONT for your own use. You may not distribute copies of assess.ged,
+2 CONT in any form, amended or not.
+1 SUBM @SUBM@
+0 @SUBM@ SUBM
+1 NAME John Cardinal
+0 @I1@ INDI
+1 NAME 01-Family Event Husband /Age/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME 01-Family Event Wife /Age/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 1901
+2 HUSB
+3 AGE 22y
+2 WIFE
+3 AGE 21y
+0 @I3@ INDI
+1 NAME 02-Individual Attribute (YYy) /Age/
+1 SEX M
+1 EDUC Medical School Graduate
+2 AGE 28y
+0 @I4@ INDI
+1 NAME 03-Individual Event (YYy MMm DDd) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1903
+2 AGE 88y 10m 17d
+0 @I5@ INDI
+1 NAME 04-Individual Event (YYy) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1904
+2 AGE 88y
+0 @I6@ INDI
+1 NAME 05-Individual Event (Mmm) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1905
+2 AGE 10m
+0 @I7@ INDI
+1 NAME 06-Individual Event (DDd) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1906
+2 AGE 17d
+0 @I8@ INDI
+1 NAME 07-Individual Event (YYy MMm) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1907
+2 AGE 88y 10m
+0 @I9@ INDI
+1 NAME 08-Individual Event (YYy DDd) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1908
+2 AGE 88y 21d
+0 @I10@ INDI
+1 NAME 09-Individual Event (Mmm DDd) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1909
+2 AGE 10m 17d
+0 @I11@ INDI
+1 NAME 10-Individual Event (LT YYy) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1910
+2 AGE <60y
+0 @I12@ INDI
+1 NAME 11-Individual Event (GT YYy) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1911
+2 AGE >59y
+0 @I13@ INDI
+1 NAME 12-Individual Event (CHILD) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1912
+2 AGE CHILD
+0 @I14@ INDI
+1 NAME 13-Individual Event (INFANT) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1913
+2 AGE INFANT
+0 @I15@ INDI
+1 NAME 14-Individual Event (STILLBORN) /Age/
+1 SEX M
+1 DEAT
+2 DATE 1914
+2 AGE STILLBORN
+0 @I16@ INDI
+1 NAME 01-CAST (Caste) /Attribute Dictionary/
+1 SEX M
+1 CAST Brahmin
+0 @I17@ INDI
+1 NAME 02-DSCR (Physical Description) /Attribute Dictionary/
+1 SEX M
+1 DSCR Medium height with brown eyes and a scar o
+2 CONC n his right cheek.
+2 CONT He went bald in his twenties.
+0 @I18@ INDI
+1 NAME 03-EDUC (Education) /Attribute Dictionary/
+1 SEX M
+1 EDUC PhD in Economics
+0 @I19@ INDI
+1 NAME 04-FACT (Skills) /Attribute Dictionary/
+1 SEX M
+1 FACT Woodworking
+2 TYPE Skills
+0 @I20@ INDI
+1 NAME 05-IDNO (ID Number) /Attribute Dictionary/
+1 SEX M
+1 IDNO 43-456-1899
+2 TYPE Canadian Health Registration
+0 @I21@ INDI
+1 NAME 06-NATI (National Origin) /Attribute Dictionary/
+1 SEX M
+1 NATI Irish
+0 @I22@ INDI
+1 NAME 07-NCHI (Number of Children) /Attribute Dictionary/
+1 SEX M
+1 NCHI 3
+0 @I23@ INDI
+1 NAME 08-NMR (Number of Marriages) /Attribute Dictionary/
+1 SEX M
+1 NMR 2
+0 @I24@ INDI
+1 NAME 09-OCCU (Occupation) /Attribute Dictionary/
+1 SEX M
+1 OCCU Farmer
+0 @I25@ INDI
+1 NAME 10-PROP (Possessions) /Attribute Dictionary/
+1 SEX M
+1 PROP Drafting tools handed down from his uncle
+0 @I26@ INDI
+1 NAME 11-RELI (Religion) /Attribute Dictionary/
+1 SEX M
+1 RELI Presbyterian
+0 @I27@ INDI
+1 NAME 12-RESI (Residence) /Attribute Dictionary/
+1 SEX M
+1 RESI
+2 PLAC 221B Baker St., London, UK
+0 @I28@ INDI
+1 NAME 13-SSN (Social Security Number) /Attribute Dictionary/
+1 SEX M
+1 SSN 123-12-1234
+0 @I29@ INDI
+1 NAME 14-TITL (Nobility Title) /Attribute Dictionary/
+1 SEX M
+1 TITL Ruler of the Jellies
+0 @I30@ INDI
+1 NAME 01-INDI Change Date /Change Date/
+1 SEX M
+1 CHAN
+2 DATE 1 JAN 2020
+0 @I31@ INDI
+1 NAME 02-INDI Change Date Note /Change Date/
+1 SEX M
+1 CHAN
+2 DATE 1 JAN 2020
+2 NOTE Note for INDI.CHAN record.
+0 @I32@ INDI
+1 NAME 03-INDI Change Date Time1 /Change Date/
+1 SEX M
+1 CHAN
+2 DATE 2 JAN 2020
+3 TIME 11:12
+0 @I33@ INDI
+1 NAME 04-INDI Change Date Time2 /Change Date/
+1 SEX M
+1 CHAN
+2 DATE 2 JAN 2020
+3 TIME 11:12:13
+0 @I34@ INDI
+1 NAME 05-INDI Change Date Time3 /Change Date/
+1 SEX M
+1 CHAN
+2 DATE 2 JAN 2020
+3 TIME 11:12:13.12
+0 @I35@ INDI
+1 NAME 01-CONC (Recommended) /Continuation/
+1 SEX M
+1 BIRT
+2 DATE 1801
+2 NOTE CONC tag in the middle of a wo
+3 CONC rd.
+0 @I36@ INDI
+1 NAME 02-CONC (Leading space) /Continuation/
+1 SEX M
+1 BIRT
+2 DATE 1801
+2 NOTE CONC after a word with a
+3 CONC  leading space in the CONC text.
+0 @I37@ INDI
+1 NAME 03-CONC (Trailing space) /Continuation/
+1 SEX M
+1 BIRT
+2 DATE 1801
+2 NOTE CONC after a trailing space 
+3 CONC before the next word.
+0 @I38@ INDI
+1 NAME 04-CONC (Gender) /Continuation/
+1 SEX
+2 CONC F
+0 @I39@ INDI
+1 NAME 05-CONT (Simple) /Continuation/
+1 SEX M
+1 BIRT
+2 DATE 1801
+2 NOTE Line 1
+3 CONT Line 2
+0 @I40@ INDI
+1 NAME 06-CONT (1st line empty) /Continuation/
+1 SEX M
+1 BIRT
+2 DATE 1801
+2 NOTE
+3 CONT Line 2
+0 @I41@ INDI
+1 NAME 07-CONT (2nd line empty) /Continuation/
+1 SEX M
+1 BIRT
+2 DATE 1801
+2 NOTE Line 1
+3 CONT
+3 CONT Line 3
+0 @I42@ INDI
+1 NAME 01-11 FEB 1721_22 /Date Dual Year/
+1 SEX M
+1 BIRT
+2 DATE 11 FEB 1721/22
+0 @I43@ INDI
+1 NAME 02-11 FEB 1721_2 /Date Dual Year/
+1 SEX M
+1 BIRT
+2 DATE 11 FEB 1721/2
+0 @I44@ INDI
+1 NAME 03-17 FEB 1719_20 /Date Dual Year/
+1 SEX M
+1 BIRT
+2 DATE 17 FEB 1719/20
+0 @I45@ INDI
+1 NAME 04-14 FEB 1699_00 /Date Dual Year/
+1 SEX M
+1 BIRT
+2 DATE 14 FEB 1699/00
+0 @I46@ INDI
+1 NAME 01-INT 1911 /Date Invalid/
+1 SEX M
+1 BIRT
+2 DATE INT 1911
+0 @I47@ INDI
+1 NAME 02-Invalid Phrase /Date Invalid/
+1 SEX M
+1 BIRT
+2 DATE Invalid Phrase
+0 @I48@ INDI
+1 NAME 03-MAR /Date Invalid/
+1 SEX M
+1 BIRT
+2 DATE MAR
+0 @I49@ INDI
+1 NAME 04-8 MAR /Date Invalid/
+1 SEX M
+1 BIRT
+2 DATE 8 MAR
+0 @I50@ INDI
+1 NAME 01-Feb 1801 /Date Questionable/
+1 SEX M
+1 BIRT
+2 DATE Feb 1801
+0 @I51@ INDI
+1 NAME 01-Anecdote before Biography /Date Sort/
+1 SEX M
+1 EVEN
+2 TYPE Biography
+2 DATE 1901
+1 EVEN
+2 TYPE Anecdote
+2 DATE 1902
+2 _SDATE 1900
+0 @I52@ INDI
+1 NAME 01-1801 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE 1801
+0 @I53@ INDI
+1 NAME 02-FEB 1802 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE FEB 1802
+0 @I54@ INDI
+1 NAME 03-3 MAR 1803 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE 3 MAR 1803
+0 @I55@ INDI
+1 NAME 04-BEF 1811 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE BEF 1811
+0 @I56@ INDI
+1 NAME 05-BEF FEB 1812 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE BEF FEB 1812
+0 @I57@ INDI
+1 NAME 06-BEF 3 MAR 1813 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE BEF 3 MAR 1813
+0 @I58@ INDI
+1 NAME 07-AFT 1821 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE AFT 1821
+0 @I59@ INDI
+1 NAME 08-AFT FEB 1822 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE AFT FEB 1822
+0 @I60@ INDI
+1 NAME 09-AFT 3 MAR 1833 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE AFT 3 MAR 1833
+0 @I61@ INDI
+1 NAME 10-BET 1831 AND 1841 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE BET 1831 AND 1841
+0 @I62@ INDI
+1 NAME 11-BET FEB 1832 AND FEB 1842 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE BET FEB 1832 AND FEB 1842
+0 @I63@ INDI
+1 NAME 12-BET 3 MAR 1833 AND 3 MAR 1843 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE BET 3 MAR 1833 AND 3 MAR 1843
+0 @I64@ INDI
+1 NAME 13-FROM 1851 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE FROM 1851
+0 @I65@ INDI
+1 NAME 14-FROM FEB 1852 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE FROM FEB 1852
+0 @I66@ INDI
+1 NAME 15-FROM 3 MAR 1853 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE FROM 3 MAR 1853
+0 @I67@ INDI
+1 NAME 16-FROM 1851 TO 1861 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE FROM 1851 TO 1861
+0 @I68@ INDI
+1 NAME 17-FROM FEB 1852 TO FEB 1862 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE FROM FEB 1852 TO FEB 1862
+0 @I69@ INDI
+1 NAME 18-FROM 3 MAR 1853 TO 3 MAR 1863 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE FROM 3 MAR 1853 TO 3 MAR 1863
+0 @I70@ INDI
+1 NAME 19-TO 1871 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE TO 1871
+0 @I71@ INDI
+1 NAME 20-TO FEB 1872 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE TO FEB 1872
+0 @I72@ INDI
+1 NAME 21-TO 3 MAR 1873 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE TO 3 MAR 1873
+0 @I73@ INDI
+1 NAME 22-ABT 1881 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE ABT 1881
+0 @I74@ INDI
+1 NAME 23-ABT FEB 1882 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE ABT FEB 1882
+0 @I75@ INDI
+1 NAME 24-ABT 3 MAR 1883 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE ABT 3 MAR 1883
+0 @I76@ INDI
+1 NAME 25-CAL 1891 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE CAL 1891
+0 @I77@ INDI
+1 NAME 26-CAL FEB 1892 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE CAL FEB 1892
+0 @I78@ INDI
+1 NAME 27-CAL 3 MAR 1893 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE CAL 3 MAR 1893
+0 @I79@ INDI
+1 NAME 28-EST 1901 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE EST 1901
+0 @I80@ INDI
+1 NAME 29-EST FEB 1902 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE EST FEB 1902
+0 @I81@ INDI
+1 NAME 30-EST 3 MAR 1903 /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE EST 3 MAR 1903
+0 @I82@ INDI
+1 NAME 31-INT 1912 (Phrase) /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE INT 1912 (Phrase)
+0 @I83@ INDI
+1 NAME 32-INT FEB 1913 (Phrase) /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE INT FEB 1913 (Phrase)
+0 @I84@ INDI
+1 NAME 33-INT 3 MAR 1914 (Phrase) /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE INT 3 MAR 1914 (Phrase)
+0 @I85@ INDI
+1 NAME 34-(Phrase) /Date Valid/
+1 SEX M
+1 BIRT
+2 DATE (Phrase)
+0 @I86@ INDI
+1 NAME 01-Character U+20AC /Encoding/
+1 SEX M
+1 OCCU € (U+20AC) EURO SIGN
+0 @I87@ INDI
+1 NAME 02-Character U+201A /Encoding/
+1 SEX M
+1 OCCU ‚ (U+201A) SINGLE LOW-9 QUOTATION MARK
+0 @I88@ INDI
+1 NAME 03-Character U+0192 /Encoding/
+1 SEX M
+1 OCCU ƒ (U+0192) LATIN SMALL LETTER F WITH HOOK
+0 @I89@ INDI
+1 NAME 04-Character U+201E /Encoding/
+1 SEX M
+1 OCCU „ (U+201E) DOUBLE LOW-9 QUOTATION MARK
+0 @I90@ INDI
+1 NAME 05-Character U+2026 /Encoding/
+1 SEX M
+1 OCCU … (U+2026) HORIZONTAL ELLIPSIS
+0 @I91@ INDI
+1 NAME 06-Character U+2020 /Encoding/
+1 SEX M
+1 OCCU † (U+2020) DAGGER
+0 @I92@ INDI
+1 NAME 07-Character U+2021 /Encoding/
+1 SEX M
+1 OCCU ‡ (U+2021) DOUBLE DAGGER
+0 @I93@ INDI
+1 NAME 08-Character U+02C6 /Encoding/
+1 SEX M
+1 OCCU ˆ (U+02C6) MODIFIER LETTER CIRCUMFLEX ACCENT
+0 @I94@ INDI
+1 NAME 09-Character U+2030 /Encoding/
+1 SEX M
+1 OCCU ‰ (U+2030) PER MILLE SIGN
+0 @I95@ INDI
+1 NAME 10-Character U+0160 /Encoding/
+1 SEX M
+1 OCCU Š (U+0160) LATIN CAPITAL LETTER S WITH CARON
+0 @I96@ INDI
+1 NAME 11-Character U+2039 /Encoding/
+1 SEX M
+1 OCCU ‹ (U+2039) SINGLE LEFT-POINTING ANGLE QUOTATION MARK
+0 @I97@ INDI
+1 NAME 12-Character U+0152 /Encoding/
+1 SEX M
+1 OCCU Œ (U+0152) LATIN CAPITAL LIGATURE OE
+0 @I98@ INDI
+1 NAME 13-Character U+017D /Encoding/
+1 SEX M
+1 OCCU Ž (U+017D) LATIN CAPITAL LETTER Z WITH CARON
+0 @I99@ INDI
+1 NAME 14-Character U+2018 /Encoding/
+1 SEX M
+1 OCCU ‘ (U+2018) LEFT SINGLE QUOTATION MARK
+0 @I100@ INDI
+1 NAME 15-Character U+2019 /Encoding/
+1 SEX M
+1 OCCU ’ (U+2019) RIGHT SINGLE QUOTATION MARK
+0 @I101@ INDI
+1 NAME 16-Character U+201C /Encoding/
+1 SEX M
+1 OCCU “ (U+201C) LEFT DOUBLE QUOTATION MARK
+0 @I102@ INDI
+1 NAME 17-Character U+201D /Encoding/
+1 SEX M
+1 OCCU ” (U+201D) RIGHT DOUBLE QUOTATION MARK
+0 @I103@ INDI
+1 NAME 18-Character U+2022 /Encoding/
+1 SEX M
+1 OCCU • (U+2022) BULLET
+0 @I104@ INDI
+1 NAME 19-Character U+2013 /Encoding/
+1 SEX M
+1 OCCU – (U+2013) EN DASH
+0 @I105@ INDI
+1 NAME 20-Character U+2014 /Encoding/
+1 SEX M
+1 OCCU — (U+2014) EM DASH
+0 @I106@ INDI
+1 NAME 21-Character U+02DC /Encoding/
+1 SEX M
+1 OCCU ˜ (U+02DC) SMALL TILDE
+0 @I107@ INDI
+1 NAME 22-Character U+2122 /Encoding/
+1 SEX M
+1 OCCU ™ (U+2122) TRADE MARK SIGN
+0 @I108@ INDI
+1 NAME 23-Character U+0161 /Encoding/
+1 SEX M
+1 OCCU š (U+0161) LATIN SMALL LETTER S WITH CARON
+0 @I109@ INDI
+1 NAME 24-Character U+203A /Encoding/
+1 SEX M
+1 OCCU › (U+203A) SINGLE RIGHT-POINTING ANGLE QUOTATION MARK
+0 @I110@ INDI
+1 NAME 25-Character U+0153 /Encoding/
+1 SEX M
+1 OCCU œ (U+0153) LATIN SMALL LIGATURE OE
+0 @I111@ INDI
+1 NAME 26-Character U+017E /Encoding/
+1 SEX M
+1 OCCU ž (U+017E) LATIN SMALL LETTER Z WITH CARON
+0 @I112@ INDI
+1 NAME 27-Character U+0178 /Encoding/
+1 SEX M
+1 OCCU Ÿ (U+0178) LATIN CAPITAL LETTER Y WITH DIAERESIS
+0 @I113@ INDI
+1 NAME 01-BIRT-Y /Event Description Y/
+1 SEX M
+1 BIRT Y
+0 @I114@ INDI
+1 NAME 02-CHR-Y /Event Description Y/
+1 SEX M
+1 CHR Y
+0 @I115@ INDI
+1 NAME 03-DEAT-Y /Event Description Y/
+1 SEX M
+1 DEAT Y
+0 @I116@ INDI
+1 NAME 01-ADOP (Adoption) /Event Dictionary/
+1 SEX M
+1 ADOP
+2 DATE 1800
+0 @I117@ INDI
+1 NAME 02-ANUL (Annulment) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F117@
+0 @I118@ INDI
+1 NAME 02-ANUL (Annulment) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F117@
+0 @F117@ FAM
+1 HUSB @I117@
+1 WIFE @I118@
+1 ANUL
+2 DATE 1901
+0 @I119@ INDI
+1 NAME 03-BAPM (Baptism) /Event Dictionary/
+1 SEX M
+1 BAPM
+2 DATE 1800
+0 @I120@ INDI
+1 NAME 04-BARM (Bar Mitzvah) /Event Dictionary/
+1 SEX M
+1 BARM
+2 DATE 1800
+0 @I121@ INDI
+1 NAME 05-BASM (Bat Mitzvah) /Event Dictionary/
+1 SEX F
+1 BASM
+2 DATE 1800
+0 @I122@ INDI
+1 NAME 06-BIRT (Birth) /Event Dictionary/
+1 SEX M
+1 BIRT
+2 DATE 1800
+0 @I123@ INDI
+1 NAME 07-BLES (Blessing) /Event Dictionary/
+1 SEX M
+1 BLES
+2 DATE 1800
+0 @I124@ INDI
+1 NAME 08-BURI (Burial) /Event Dictionary/
+1 SEX M
+1 BURI
+2 DATE 1800
+0 @I125@ INDI
+1 NAME 09-CENS (Census) /Event Dictionary/
+1 SEX M
+1 CENS
+2 DATE 1800
+0 @I126@ INDI
+1 NAME 10-CENS (Census) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F126@
+0 @I127@ INDI
+1 NAME 10-CENS (Census) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F126@
+0 @F126@ FAM
+1 HUSB @I126@
+1 WIFE @I127@
+1 CENS
+2 DATE 1901
+0 @I128@ INDI
+1 NAME 11-CHR (Christening) /Event Dictionary/
+1 SEX M
+1 CHR
+2 DATE 1800
+0 @I129@ INDI
+1 NAME 12-CHRA (Adult Christening) /Event Dictionary/
+1 SEX M
+1 CHRA
+2 DATE 1800
+0 @I130@ INDI
+1 NAME 13-CONF (Confirmation) /Event Dictionary/
+1 SEX M
+1 CONF
+2 DATE 1800
+0 @I131@ INDI
+1 NAME 14-CREM (Cremation) /Event Dictionary/
+1 SEX M
+1 CREM
+2 DATE 1800
+0 @I132@ INDI
+1 NAME 15-DEAT (Death) /Event Dictionary/
+1 SEX M
+1 DEAT
+2 DATE 1800
+0 @I133@ INDI
+1 NAME 16-DIV (Divorce) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F133@
+0 @I134@ INDI
+1 NAME 16-DIV (Divorce) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F133@
+0 @F133@ FAM
+1 HUSB @I133@
+1 WIFE @I134@
+1 DIV
+2 DATE 1901
+0 @I135@ INDI
+1 NAME 17-DIVF (Divorce Filing) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F135@
+0 @I136@ INDI
+1 NAME 17-DIVF (Divorce Filing) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F135@
+0 @F135@ FAM
+1 HUSB @I135@
+1 WIFE @I136@
+1 DIVF
+2 DATE 1901
+0 @I137@ INDI
+1 NAME 18-EMIG (Emigration) /Event Dictionary/
+1 SEX M
+1 EMIG
+2 DATE 1800
+0 @I138@ INDI
+1 NAME 19-ENGA (Engagement) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F138@
+0 @I139@ INDI
+1 NAME 19-ENGA (Engagement) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F138@
+0 @F138@ FAM
+1 HUSB @I138@
+1 WIFE @I139@
+1 ENGA
+2 DATE 1901
+0 @I140@ INDI
+1 NAME 20-EVEN (Illness) /Event Dictionary/
+1 SEX M
+1 EVEN
+2 TYPE Illness
+2 DATE 1800
+0 @I141@ INDI
+1 NAME 21-EVEN (Anniversary) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F141@
+0 @I142@ INDI
+1 NAME 21-EVEN (Anniversary) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F141@
+0 @F141@ FAM
+1 HUSB @I141@
+1 WIFE @I142@
+1 EVEN
+2 DATE 1901
+2 TYPE Anniversary
+0 @I143@ INDI
+1 NAME 22-FCOM (First Communion) /Event Dictionary/
+1 SEX M
+1 FCOM
+2 DATE 1800
+0 @I144@ INDI
+1 NAME 23-GRAD (Graduation) /Event Dictionary/
+1 SEX M
+1 GRAD
+2 DATE 1800
+0 @I145@ INDI
+1 NAME 24-IMMI (Immigration) /Event Dictionary/
+1 SEX M
+1 IMMI
+2 DATE 1800
+0 @I146@ INDI
+1 NAME 25-MARB (Marriage Bann) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F146@
+0 @I147@ INDI
+1 NAME 25-MARB (Marriage Bann) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F146@
+0 @F146@ FAM
+1 HUSB @I146@
+1 WIFE @I147@
+1 MARB
+2 DATE 1901
+0 @I148@ INDI
+1 NAME 26-MARC (Marriage Contract) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F148@
+0 @I149@ INDI
+1 NAME 26-MARC (Marriage Contract) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F148@
+0 @F148@ FAM
+1 HUSB @I148@
+1 WIFE @I149@
+1 MARC
+2 DATE 1901
+0 @I150@ INDI
+1 NAME 27-MARL (Marriage License) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F150@
+0 @I151@ INDI
+1 NAME 27-MARL (Marriage License) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F150@
+0 @F150@ FAM
+1 HUSB @I150@
+1 WIFE @I151@
+1 MARL
+2 DATE 1901
+0 @I152@ INDI
+1 NAME 28-MARR (Marriage) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F152@
+0 @I153@ INDI
+1 NAME 28-MARR (Marriage) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F152@
+0 @F152@ FAM
+1 HUSB @I152@
+1 WIFE @I153@
+1 MARR
+2 DATE 1901
+0 @I154@ INDI
+1 NAME 29-MARS (Marriage Settlement) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F154@
+0 @I155@ INDI
+1 NAME 29-MARS (Marriage Settlement) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F154@
+0 @F154@ FAM
+1 HUSB @I154@
+1 WIFE @I155@
+1 MARS
+2 DATE 1901
+0 @I156@ INDI
+1 NAME 30-NATU (Naturalization) /Event Dictionary/
+1 SEX M
+1 NATU
+2 DATE 1800
+0 @I157@ INDI
+1 NAME 31-ORDN (Ordination) /Event Dictionary/
+1 SEX M
+1 ORDN
+2 DATE 1800
+0 @I158@ INDI
+1 NAME 32-PROB (Probate) /Event Dictionary/
+1 SEX M
+1 PROB
+2 DATE 1800
+0 @I159@ INDI
+1 NAME 33-RESI (Residence) Husband /Event Dictionary/
+1 SEX M
+1 FAMS @F159@
+0 @I160@ INDI
+1 NAME 33-RESI (Residence) Wife /Event Dictionary/
+1 SEX F
+1 FAMS @F159@
+0 @F159@ FAM
+1 HUSB @I159@
+1 WIFE @I160@
+1 RESI
+2 DATE 1901
+2 PLAC 19 N Square, Boston, Massachusetts
+0 @I161@ INDI
+1 NAME 34-RETI (Retirement) /Event Dictionary/
+1 SEX M
+1 RETI
+2 DATE 1800
+0 @I162@ INDI
+1 NAME 35-WILL (Will) /Event Dictionary/
+1 SEX M
+1 WILL
+2 DATE 1800
+0 @I163@ INDI
+1 NAME 01-Birth-1804 /Event Primary/
+1 SEX M
+1 BIRT
+2 DATE 1805
+1 BIRT
+2 DATE 1804
+2 _PRIM Y
+0 @I164@ INDI
+1 NAME 02-Birth-1805 /Event Primary/
+1 SEX M
+1 BIRT
+2 DATE 1805
+1 BIRT
+2 DATE 1804
+0 @I165@ INDI
+1 NAME 01-Principal _SHAR ROLE /Event Shared/
+1 SEX M
+1 CENS
+2 DATE 1900
+2 _SHAR @I166@
+3 ROLE WitnessRole
+0 @I166@ INDI
+1 NAME 01-Witness _SHAR ROLE /Event Shared/
+1 SEX M
+0 @I167@ INDI
+1 NAME 02-Principal _WITN TYPE /Event Shared/
+1 SEX M
+1 CENS
+2 DATE 1900
+2 _WITN @I168@
+3 TYPE WitnessRole
+0 @I168@ INDI
+1 NAME 02-Witness _WITN TYPE /Event Shared/
+1 SEX M
+0 @I169@ INDI
+1 NAME 03-Principal _ASSO RELA /Event Shared/
+1 SEX M
+1 CENS
+2 DATE 1900
+2 _ASSO @I170@
+3 RELA WitnessRole
+0 @I170@ INDI
+1 NAME 03-Witness _ASSO RELA /Event Shared/
+1 SEX M
+0 @I171@ INDI
+1 NAME 01-Note Value Only /Event Text/
+1 SEX M
+1 EVEN
+2 TYPE Anecdote
+2 NOTE Note value for "01-Note Value Only Event Text"
+0 @I172@ INDI
+1 NAME 02-Text Value Only /Event Text/
+1 SEX M
+1 EVEN Text value for "02-Text Value Only Event Text"
+2 TYPE Anecdote
+0 @I173@ INDI
+1 NAME 03-Note and Text Values /Event Text/
+1 SEX M
+1 EVEN Text value for "03-Note and Text Values Event Text"
+2 TYPE Anecdote
+2 NOTE Note value for "03-Note and Text Values Event Text"
+0 @I174@ INDI
+1 NAME 04-Note Value with @@ /Event Text/
+1 SEX M
+1 EVEN
+2 TYPE Anecdote
+2 NOTE He used the email address "John@@example.com"
+0 @I175@ INDI
+1 NAME 05-Text Value with @@ /Event Text/
+1 SEX M
+1 OCCU He used the email address "John@@example.com"
+0 @I176@ INDI
+1 NAME 06-Linked Note /Event Text/
+1 SEX M
+1 WILL
+2 DATE 1801
+2 NOTE @N176@
+0 @N176@ NOTE Line 1
+1 CONT Line 2
+0 @I177@ INDI
+1 NAME 01-BIRT with TYPE /Event with TYPE/
+1 SEX M
+1 BIRT
+2 TYPE BirthAlternate
+2 DATE 1711
+0 @I178@ INDI
+1 NAME 02-DEAT with TYPE /Event with TYPE/
+1 SEX M
+1 DEAT
+2 TYPE DeathAlternate
+2 DATE 1801
+0 @I179@ INDI
+1 NAME 03-CENS with TYPE /Event with TYPE/
+1 SEX M
+1 CENS
+2 TYPE 1900 Census
+2 DATE 1900
+0 @I180@ INDI
+1 NAME 01-5.5.1 Linked (v1) /Exhibit Person/
+1 SEX M
+1 OBJE @OP180@
+2 _PRIM Y
+1 OBJE @ON180@
+0 @OP180@ OBJE
+1 FILE C:\GedcomAssessment\exhibit-person-01P.jpg
+2 FORM JPG
+2 TITL 01-5.5.1 Linked (v1) Primary Title
+1 NOTE 01-5.5.1 Linked (v1) Primary Note
+0 @ON180@ OBJE
+1 FILE C:\GedcomAssessment\exhibit-person-01N.jpg
+2 FORM JPG
+2 TITL 01-5.5.1 Linked (v1) Title
+1 NOTE 01-5.5.1 Linked (v1) Note
+0 @I181@ INDI
+1 NAME 02-5.5.1 Linked (v2) /Exhibit Person/
+1 SEX M
+1 OBJE @OP181@
+2 _PRIM Y
+1 OBJE @ON181@
+0 @OP181@ OBJE
+1 FILE C:\GedcomAssessment\exhibit-person-02P.jpg
+2 FORM JPG
+1 TITL 02-5.5.1 Linked (v2) Primary Title
+1 NOTE 02-5.5.1 Linked (v2) Primary Note
+0 @ON181@ OBJE
+1 FILE C:\GedcomAssessment\exhibit-person-02N.jpg
+2 FORM JPG
+1 TITL 02-5.5.1 Linked (v2) Title
+1 NOTE 02-5.5.1 Linked (v2) Note
+0 @I182@ INDI
+1 NAME 03-5.5.1 Direct (v1) /Exhibit Person/
+1 SEX M
+1 OBJE
+2 FILE C:\GedcomAssessment\exhibit-person-03P.jpg
+3 FORM JPG
+2 TITL 03-5.5.1 Direct (v1) Primary Title
+2 NOTE 03-5.5.1 Direct (v1) Primary Note
+2 _PRIM Y
+1 OBJE
+2 FILE C:\GedcomAssessment\exhibit-person-03N.jpg
+3 FORM JPG
+2 TITL 03-5.5.1 Direct (v1) Title
+2 NOTE 03-5.5.1 Direct (v1) Note
+0 @I183@ INDI
+1 NAME 04-5.5.1 Direct (v2) /Exhibit Person/
+1 SEX M
+1 OBJE
+2 FILE C:\GedcomAssessment\exhibit-person-04P.jpg
+3 FORM JPG
+3 TITL 04-5.5.1 Direct (v2) Primary Title
+2 NOTE 04-5.5.1 Direct (v2) Primary Note
+2 _PRIM Y
+1 OBJE
+2 FILE C:\GedcomAssessment\exhibit-person-04N.jpg
+3 FORM JPG
+3 TITL 04-5.5.1 Direct (v2) Title
+2 NOTE 04-5.5.1 Direct (v2) Note
+0 @I184@ INDI
+1 NAME 05-5.5 Direct /Exhibit Person/
+1 SEX M
+1 OBJE
+2 FILE C:\GedcomAssessment\exhibit-person-05P.jpg
+2 FORM JPG
+2 TITL 05-5.5 Direct Primary Title
+2 NOTE 05-5.5 Direct Primary Note
+2 _PRIM Y
+1 OBJE
+2 FILE C:\GedcomAssessment\exhibit-person-05N.jpg
+2 FORM JPG
+2 TITL 05-5.5 Direct Title
+2 NOTE 05-5.5 Direct Note
+0 @I185@ INDI
+1 NAME 06-5.5 Linked /Exhibit Person/
+1 SEX M
+1 OBJE @OP185@
+2 _PRIM Y
+1 OBJE @ON185@
+0 @OP185@ OBJE
+1 FILE C:\GedcomAssessment\exhibit-person-06P.jpg
+1 FORM JPG
+1 TITL 06-5.5 Linked Primary Title
+1 NOTE 06-5.5 Linked Primary Note
+0 @ON185@ OBJE
+1 FILE C:\GedcomAssessment\exhibit-person-06N.jpg
+1 FORM JPG
+1 TITL 06-5.5 Linked Title
+1 NOTE 06-5.5 Linked Note
+0 @I186@ INDI
+1 NAME 01-Export as Fact-Type /Flag/
+1 SEX M
+1 FACT Y
+2 TYPE CustomFactFlag
+0 @I187@ INDI
+1 NAME 02-Export as Fact-Type (VP) /Flag/
+1 SEX M
+1 FACT V:Y
+2 TYPE CustomFactFlag
+0 @I188@ INDI
+1 NAME 03-Export as Even-Type /Flag/
+1 SEX M
+1 EVEN Y
+2 TYPE CustomEventFlag
+0 @I189@ INDI
+1 NAME 04-Export as Even-Type (VP) /Flag/
+1 SEX M
+1 EVEN V:Y
+2 TYPE CustomEventFlag
+0 @I190@ INDI
+1 NAME 05-Export as Even-Type-Note /Flag/
+1 SEX M
+1 EVEN
+2 TYPE CustomEventFlag
+2 NOTE Y
+0 @I191@ INDI
+1 NAME 01-Alias Principal /Link/
+1 SEX M
+1 ALIA @I192@
+0 @I192@ INDI
+1 NAME 01-Alias Target /Link/
+1 SEX M
+0 @I193@ INDI
+1 NAME 02-Alias Name /Link/
+1 SEX M
+1 ALIA John D. Sample
+0 @I194@ INDI
+1 NAME 03-Alias Name with Delimiters /Link/
+1 SEX M
+1 ALIA John D. /Sample/
+0 @I195@ INDI
+1 NAME 04-Associate1 /Link/
+1 SEX M
+1 ASSO @I196@
+2 RELA friend
+2 NOTE They met in grade school.
+0 @I196@ INDI
+1 NAME 04-Associate2 /Link/
+1 SEX M
+0 @I197@ INDI
+1 NAME 01-Same-Sex Partner 1 /Marriage/
+1 SEX M
+1 FAMS @F197@
+0 @I198@ INDI
+1 NAME 01-Same-Sex Partner 2 /Marriage/
+1 SEX M
+1 FAMS @F197@
+0 @F197@ FAM
+1 HUSB @I197@
+1 WIFE @I198@
+0 @I199@ INDI
+1 NAME 01-Link by Place /Master Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 PLAC Boston, Massachusetts
+0 _PLAC Boston, Massachusetts
+1 MAP
+2 LATI N42.366401
+2 LONG W71.054714
+1 NOTE Note for Boston, Massachusetts
+1 OBJE @O199@
+0 @O199@ OBJE
+1 FILE C:\GedcomAssessment\master-place-01.jpg
+2 FORM JPG
+2 TITL 01-Link by Place Master Place Exhibit Title
+1 NOTE 01-Link by Place Master Place Exhibit Note
+0 @I200@ INDI
+1 NAME 02-Link by XREF (L2) /Master Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 PLAC New York, New York
+2 _PLAC @P200@
+0 @P200@ _PLAC New York, New York
+1 MAP
+2 LATI N40.74844
+2 LONG W73.98564
+1 NOTE Note for New York, New York
+1 OBJE @O200@
+0 @O200@ OBJE
+1 FILE C:\GedcomAssessment\master-place-02.jpg
+2 FORM JPG
+2 TITL 02-Link by XREF (L2) Master Place Exhibit Title
+1 NOTE 02-Link by XREF (L2) Master Place Exhibit Note
+0 @I201@ INDI
+1 NAME 03-Link by XREF (L3) /Master Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 PLAC Paris, France
+3 _PLAC @P201@
+0 @P201@ _PLAC Paris, France
+1 MAP
+2 LATI N48.85882
+2 LONG E2.294528
+1 NOTE Note for Paris, France
+1 OBJE @O201@
+0 @O201@ OBJE
+1 FILE C:\GedcomAssessment\master-place-03.jpg
+2 FORM JPG
+2 TITL 03-Link by XREF (L3) Master Place Exhibit Title
+1 NOTE 03-Link by XREF (L3) Master Place Exhibit Note
+0 @I202@ INDI
+1 SEX M
+1 NAME 01-Primary Name with Type /Name/
+2 TYPE NameBirth
+0 @I203@ INDI
+1 SEX M
+1 NAME 02-More than One Name /Name/
+1 NAME 02-Additional /Name/
+0 @I204@ INDI
+1 SEX M
+1 NAME 03-Secondary Name with Type /Name/
+1 NAME 03-Secondary /Name/
+2 TYPE NameMarried
+0 @I205@ INDI
+1 SEX M
+1 NAME 04-Name with Nickname "Jack" /Name/
+2 GIVN 04-Name with Nickname
+2 NICK Jack
+2 SURN Name
+0 @I206@ INDI
+1 SEX M
+1 NAME 05-Name with Suffix /Name/ Jr
+2 GIVN 05-Name with Suffix
+2 SURN Name
+2 NSFX Jr
+0 @I207@ INDI
+1 SEX M
+1 NAME 06-Name with Comma-Suffix (1) /Name/, Jr
+2 GIVN 06-Name with Comma-Suffix (1)
+2 SURN Name
+2 NSFX Jr
+0 @I208@ INDI
+1 SEX M
+1 NAME 07-Name with Comma-Suffix (2) /Name/, Jr
+2 GIVN 07-Name with Comma-Suffix (2)
+2 SURN Name
+2 NSFX , Jr
+0 @I209@ INDI
+1 SEX M
+1 NAME 08-Name with Double @@ /Name/
+0 @I210@ INDI
+1 SEX M
+1 NAME 09-Primary Name with Memo /Name/
+2 NOTE This is a note added to the primary name.
+0 @I211@ INDI
+1 SEX M
+1 NAME 10-Secondary Name with Memo /Name/
+1 NAME 10-Additional /Name/
+2 NOTE This is a note added to the secondary name.
+0 @I212@ INDI
+1 NAME 01-Latitude Longitude /Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 PLAC Washington, DC
+3 MAP
+4 LATI N38.88923
+4 LONG W77.05020
+0 @I213@ INDI
+1 NAME 02-Place Note /Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 PLAC Philadelphia, PA
+3 NOTE Note for Philadelphia, PA
+0 @I214@ INDI
+1 NAME 03-Place Exhibit /Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 PLAC Philadelphia, PA
+3 OBJE @O214@
+0 @O214@ OBJE
+1 FILE C:\GedcomAssessment\place-03.jpg
+2 FORM JPG
+2 TITL 03-Place Exhibit Title
+1 NOTE 03-Place Exhibit Note
+0 @I215@ INDI
+1 NAME 04-PLAC and ADDR /Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 PLAC Chicago, IL
+2 ADDR Wrigley Field
+3 CONT 1060 W Addison St
+0 @I216@ INDI
+1 NAME 05-ADDR Label /Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 ADDR Jane Smith
+3 CONT Assessor's Dept
+3 CONT 610 Main Street
+3 CONT Waltham, Massachusetts 02452
+0 @I217@ INDI
+1 NAME 06-ADDR Label and Fields /Place/
+1 SEX M
+1 BIRT
+2 DATE 1900
+2 ADDR John Doe
+3 CONT c/o City Hall
+3 CONT 1000 Commonwealth Avenue
+3 CONT Newton Centre, Massachusetts 02459 USA
+3 ADR1 John Doe
+3 ADR2 c/o City Hall
+3 ADR3 1000 Commonwealth Avenue
+3 CITY Newton Centre
+3 STAE Massachusetts
+3 POST 02459
+3 CTRY USA
+0 @I218@ INDI
+1 NAME 07-PHON /Place/
+1 SEX M
+1 OCCU Clerk
+2 DATE 1900
+2 ADDR Public Works Dept.
+3 CONT 610 Main Street
+3 CONT Waltham, Massachusetts 02452
+3 ADR1 Public Works Dept.
+3 ADR2 610 Main Street
+3 CITY Waltham
+3 STAE Massachusetts
+3 POST 02452
+2 PHON (617) 555-1234
+0 @I219@ INDI
+1 NAME 08-EMAIL /Place/
+1 SEX M
+1 OCCU Clerk
+2 DATE 1900
+2 ADDR Mayor's Office
+3 CONT 610 Main Street
+3 CONT Waltham, Massachusetts 02452
+3 ADR1 Mayor's Office
+3 ADR2 610 Main Street
+3 CITY Waltham
+3 STAE Massachusetts
+3 POST 02452
+2 EMAIL dpw@@example.com
+0 @I220@ INDI
+1 NAME 09-EMAI /Place/
+1 SEX M
+1 OCCU Clerk
+2 DATE 1900
+2 ADDR Zoning Dept.
+3 CONT 610 Main Street
+3 CONT Waltham, Massachusetts 02452
+3 ADR1 Zoning Dept.
+3 ADR2 610 Main Street
+3 CITY Waltham
+3 STAE Massachusetts
+3 POST 02452
+2 EMAI zoning@@example.com
+0 @I221@ INDI
+1 NAME 10-WWW /Place/
+1 SEX M
+1 OCCU Clerk
+2 DATE 1900
+2 ADDR City Hall
+3 CONT 610 Main Street
+3 CONT Waltham, Massachusetts 02452
+3 ADR1 City Hall
+3 ADR2 610 Main Street
+3 CITY Waltham
+3 STAE Massachusetts
+3 POST 02452
+2 WWW http://example.com
+0 @I222@ INDI
+1 NAME 01-PEDI Adoptive Father /Relationship/
+1 SEX M
+1 FAMS @F222@
+0 @I223@ INDI
+1 NAME 01-PEDI Adoptive Mother /Relationship/
+1 SEX F
+1 FAMS @F222@
+0 @I224@ INDI
+1 NAME 01-PEDI Adopted Child /Relationship/
+1 SEX M
+1 FAMC @F222@
+2 PEDI adopted
+0 @F222@ FAM
+1 HUSB @I222@
+1 WIFE @I223@
+1 CHIL @I224@
+0 @I225@ INDI
+1 NAME 02-PEDI Birth Father /Relationship/
+1 SEX M
+1 FAMS @F225@
+0 @I226@ INDI
+1 NAME 02-PEDI Birth Mother /Relationship/
+1 SEX F
+1 FAMS @F225@
+0 @I227@ INDI
+1 NAME 02-PEDI Adoptive Father /Relationship/
+1 SEX M
+1 FAMS @F227@
+0 @I228@ INDI
+1 NAME 02-PEDI Adoptive Mother /Relationship/
+1 SEX F
+1 FAMS @F227@
+0 @I229@ INDI
+1 NAME 02-PEDI Child /Relationship/
+1 SEX M
+1 FAMC @F227@
+2 PEDI adopted
+1 FAMC @F225@
+2 PEDI birth
+0 @F225@ FAM
+1 HUSB @I225@
+1 WIFE @I226@
+1 CHIL @I229@
+0 @F227@ FAM
+1 HUSB @I227@
+1 WIFE @I228@
+1 CHIL @I229@
+0 @I230@ INDI
+1 NAME 03-PEDI Foster Father /Relationship/
+1 SEX M
+1 FAMS @F230@
+0 @I231@ INDI
+1 NAME 03-PEDI Foster Mother /Relationship/
+1 SEX F
+1 FAMS @F230@
+0 @I232@ INDI
+1 NAME 03-PEDI Foster Child /Relationship/
+1 SEX M
+1 FAMC @F230@
+2 PEDI foster
+0 @F230@ FAM
+1 HUSB @I230@
+1 WIFE @I231@
+1 CHIL @I232@
+0 @I233@ INDI
+1 NAME 04-XREL Step Father /Relationship/
+1 SEX M
+1 FAMS @F233@
+0 @I234@ INDI
+1 NAME 04-XREL Birth Mother /Relationship/
+1 SEX F
+1 FAMS @F233@
+0 @I235@ INDI
+1 NAME 04-XREL Child /Relationship/
+1 SEX M
+1 FAMC @F233@
+0 @F233@ FAM
+1 HUSB @I233@
+1 WIFE @I234@
+1 CHIL @I235@
+2 _FREL step
+0 @I236@ INDI
+1 NAME 05-XREL Step Mother /Relationship/
+1 SEX F
+1 FAMS @F236@
+0 @I237@ INDI
+1 NAME 05-XREL Birth Father /Relationship/
+1 SEX M
+1 FAMS @F236@
+0 @I238@ INDI
+1 NAME 05-XREL Child /Relationship/
+1 SEX M
+1 FAMC @F236@
+0 @F236@ FAM
+1 WIFE @I236@
+1 HUSB @I237@
+1 CHIL @I238@
+2 _MREL step
+0 @I239@ INDI
+1 NAME 06-XREL Step Father /Relationship/
+1 SEX M
+1 FAMS @F239@
+0 @I240@ INDI
+1 NAME 06-XREL Step Mother /Relationship/
+1 SEX F
+1 FAMS @F239@
+0 @I241@ INDI
+1 NAME 06-XREL Child /Relationship/
+1 SEX M
+1 FAMC @F239@
+0 @F239@ FAM
+1 HUSB @I239@
+1 WIFE @I240@
+1 CHIL @I241@
+2 _FREL step
+2 _MREL step
+0 @I242@ INDI
+1 NAME 01-Basic /Repository/
+1 SEX M
+1 BIRT
+2 DATE 1911
+2 SOUR @242@
+0 @242@ SOUR
+1 TITL Birth Registers, 1911
+1 AUTH Boston (Mass.) City Registrar
+1 PUBL Salt Lake City, UT: Gen. Soc. of Utah, 1970
+1 REPO @R242@
+2 CALN US/CAN 740463
+0 @R242@ REPO
+1 NAME Family History Library (Basic)
+1 ADDR Salt Lake City, Utah
+0 @I243@ INDI
+1 NAME 02-Full /Repository/
+1 SEX M
+1 BIRT
+2 DATE 1912
+2 SOUR @243@
+0 @243@ SOUR
+1 TITL Birth Registers, 1912
+1 AUTH Boston (Mass.) City Registrar
+1 PUBL Salt Lake City, UT: Gen. Soc. of Utah, 1970
+1 REPO @R243@
+2 NOTE Note value for R243 reference
+2 CALN US/CAN 740463
+3 MEDI film
+0 @R243@ REPO
+1 NAME Family History Library (Full)
+1 ADDR 35 N West Temple
+2 CONT Salt Lake City, Utah 84150
+1 PHON (801) 240-6996
+1 EMAIL support@@familysearch.org
+1 WWW https://familysearch.org
+1 NOTE Note value for R243 record
+1 REFN R243
+2 TYPE folder name
+1 RIN d4ffb019-f08f-4f44-a875-ce39cd322217
+1 CHAN
+2 DATE 14 NOV 2019
+2 NOTE Note for R243 change date
+0 @I244@ INDI
+1 NAME 01-FAM Confidential1 /Restriction/
+1 SEX M
+1 FAMS @F244@
+0 @I245@ INDI
+1 NAME 01-FAM Confidential2 /Restriction/
+1 SEX F
+1 FAMS @F244@
+0 @F244@ FAM
+1 RESN confidential
+1 HUSB @I244@
+1 WIFE @I245@
+1 MARR
+2 DATE 01 JAN 2000
+0 @I246@ INDI
+1 NAME 02-FAM Locked1 /Restriction/
+1 SEX M
+1 FAMS @F246@
+0 @I247@ INDI
+1 NAME 02-FAM Locked2 /Restriction/
+1 SEX F
+1 FAMS @F246@
+0 @F246@ FAM
+1 RESN locked
+1 HUSB @I246@
+1 WIFE @I247@
+1 MARR
+2 DATE 02 JAN 2000
+0 @I248@ INDI
+1 NAME 03-FAM Private1 /Restriction/
+1 SEX M
+1 FAMS @F248@
+0 @I249@ INDI
+1 NAME 03-FAM Private2 /Restriction/
+1 SEX F
+1 FAMS @F248@
+0 @F248@ FAM
+1 RESN privacy
+1 HUSB @I248@
+1 WIFE @I249@
+1 MARR
+2 DATE 03 JAN 2000
+0 @I250@ INDI
+1 NAME 04-INDI Confidential /Restriction/
+1 SEX M
+1 RESN confidential
+1 BIRT
+2 DATE 04 JAN 2000
+0 @I251@ INDI
+1 NAME 05-INDI Locked /Restriction/
+1 SEX M
+1 RESN locked
+1 BIRT
+2 DATE 05 JAN 2000
+0 @I252@ INDI
+1 NAME 06-INDI Private /Restriction/
+1 SEX M
+1 RESN privacy
+1 BIRT
+2 DATE 06 JAN 2000
+0 @I253@ INDI
+1 NAME 07-BIRT Confidential /Restriction/
+1 SEX M
+1 BIRT
+2 DATE 07 JAN 2000
+2 RESN confidential
+0 @I254@ INDI
+1 NAME 08-BIRT Locked /Restriction/
+1 SEX M
+1 BIRT
+2 DATE 08 JAN 2000
+2 RESN locked
+0 @I255@ INDI
+1 NAME 09-BIRT Private /Restriction/
+1 SEX M
+1 BIRT
+2 DATE 09 JAN 2000
+2 RESN privacy
+0 @I256@ INDI
+1 NAME 10-NAME Confidential /Restriction/
+2 RESN confidential
+1 SEX M
+1 BIRT
+2 DATE 10 JAN 2000
+0 @I257@ INDI
+1 NAME 11-NAME Locked /Restriction/
+2 RESN locked
+1 SEX M
+1 BIRT
+2 DATE 11 JAN 2000
+0 @I258@ INDI
+1 NAME 12-NAME Private /Restriction/
+2 RESN privacy
+1 SEX M
+1 BIRT
+2 DATE 12 JAN 2000
+0 @I259@ INDI
+1 NAME 01-Linked (Basic) /Source/
+1 SEX M
+1 BIRT
+2 DATE 1901
+2 SOUR @259@
+3 PAGE Citation-specific PAGE information for 01-Linked (Basic)
+3 NOTE Citation-specific NOTE for 01-Linked (Basic)
+0 @259@ SOUR
+1 TITL The Smith Family of Narragansett Bay
+1 AUTH Archibald Smith, III
+1 PUBL Boston, MA: Genealogy Press, 1932
+0 @I260@ INDI
+1 NAME 02-Linked (Full) /Source/
+1 SEX M
+1 BIRT
+2 DATE 1901
+2 SOUR @S260@
+3 PAGE Citation-specific PAGE information for 02-Linked (Full)
+3 EVEN BIRT
+4 ROLE CHIL
+3 DATA
+4 DATE 6 JUN 1901
+4 TEXT Citation-specifi
+5 CONC c TEXT
+5 CONT for 02-Linked (Full)
+3 OBJE @OC260@
+3 NOTE Citation-specific NOTE for 02-Linked (Full)
+3 QUAY 1
+0 @OC260@ OBJE
+1 FILE C:\GedcomAssessment\citation-02.jpg
+2 FORM JPG
+2 TITL 02-Linked (Full) Citation Exhibit Title
+1 NOTE 02-Linked (Full) Citation Exhibit Note
+0 @S260@ SOUR
+1 DATA
+2 EVEN BIRT
+3 DATE FROM 1740 TO 1930
+3 PLAC New England
+2 AGNC Massachusetts County Vital Records Offices
+2 NOTE Data Note
+1 AUTH Massachusetts Count
+2 CONC y Clerks
+1 TITL Births in Massachusetts
+1 ABBR Mass Births
+1 PUBL Boston, MA: Genealogy Pr
+2 CONC ess, 1932
+1 TEXT A copy of original records kept in county cler
+2 CONC k offices
+2 CONT Originals 1740 to 1920, Corrections to 1930
+1 REFN S260
+2 TYPE Source ID
+1 CHAN
+2 DATE 1 JUN 1962
+2 NOTE Reprint
+1 NOTE Note for source S260
+1 OBJE @OS260@
+0 @OS260@ OBJE
+1 FILE C:\GedcomAssessment\source-02.jpg
+2 FORM JPG
+2 TITL 02-Linked (Full) Source Exhibit Title
+1 NOTE 02-Linked (Full) Source Exhibit Note
+0 @I261@ INDI
+1 NAME 03-Direct (Basic) /Source/
+1 SEX M
+1 BIRT
+2 DATE 1901
+2 SOUR Hell's Bells: The Quasimodo Family Chronicl
+3 CONC e and Family Diary
+3 CONT Angus Ainsley Pillsbury
+0 @I262@ INDI
+1 NAME 04-Direct (Full) /Source/
+1 SEX M
+1 BIRT
+2 DATE 1901
+2 SOUR Under the Armpit of Celebrit
+3 CONC y: Life on the Front Page
+3 CONT Brittney Danica Ambivilaqua
+3 TEXT I was born to rich and famous parents on th
+4 CONC e 1st of April, 1927.
+4 CONT That is my burden.
+3 NOTE A fascinating read, but not believable.
+3 QUAY 0
+3 OBJE @OS262@
+0 @OS262@ OBJE
+1 FILE C:\GedcomAssessment\source-04.jpg
+2 FORM JPG
+2 TITL 04-Direct (Full) Source Exhibit Title
+1 NOTE 04-Direct (Full) Source Exhibit Note
+0 TRLR

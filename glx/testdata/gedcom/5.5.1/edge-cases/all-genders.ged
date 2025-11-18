@@ -1,0 +1,37 @@
+﻿0 HEAD
+1 SOUR TJ
+2 NAME Tamura Jones
+2 VERS 1.0
+1 DATE 18 Apr 2017
+1 FILE UMF.GED
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG English
+1 SUBM @SUB1@
+0 @SUB1@ SUBM
+1 NAME Tamura Jones
+0 @I1@ INDI
+1 NAME Child /Unknown/
+2 SURN Unknown
+2 GIVN Child
+1 SEX U
+1 FAMC @F1@
+0 @I2@ INDI
+1 NAME Father /Male/
+2 SURN Male
+2 GIVN Father
+1 SEX M
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Mother /Female/
+2 SURN Female
+2 GIVN Mother
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I2@
+1 WIFE @I3@
+1 CHIL @I1@
+0 TRLR

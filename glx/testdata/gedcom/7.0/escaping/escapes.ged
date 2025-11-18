@@ -1,0 +1,18 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+1 NOTE This file is intended to provide coverage of parts of the specification and does not contain meaningful historical or genealogical data.
+0 @I1@ INDI
+1 NAME John /Doe/
+1 NOTE me@example.com is an example email address.
+2 CONT @@me and @I are example social media handles.
+2 CONT @@@@@ has four @ characters where only the first is escaped.
+0 @N01@ SNOTE @@ one leading
+0 @N02@ SNOTE @@one leading no space
+0 @N05@ SNOTE doubled @@ internal has two @ characters, not escaped
+0 @N06@ SNOTE doubled@@internal no space
+0 @N07@ SNOTE single @ internal
+0 @N08@ SNOTE single@internal no space
+0 @N19@ SNOTE @@ at at front and @ inside line and 
+1 CONT @@ at after CONT and @ inside CONT's line too.
+0 TRLR

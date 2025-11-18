@@ -1,0 +1,90 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _RECORD http://example.com/record-type
+2 TAG _STRUCT http://example.com/substructure-type
+2 TAG _ENUMVAL http://example.com/enumeration-value
+2 TAG _CALENDAR http://example.com/calendar
+2 TAG _MONTH http://example.com/month
+2 TAG _EPOCH http://example.com/epoch
+2 TAG _USER https://gedcom.io/terms/v7/record-SUBM
+2 TAG _CREATOR https://gedcom.io/terms/v7/SUBM
+2 TAG _CALENDRIER https://gedcom.io/terms/v7/cal-FRENCH_R
+2 TAG _JOUR https://gedcom.io/terms/v7/month-COMP
+2 TAG _CHILD https://gedcom.io/terms/v7/enum-CHIL
+2 TAG _PHRASE https://gedcom.io/terms/v7/PHRASE
+2 TAG _PARTY http://example.com/party-participation
+2 TAG _PARTY http://example.com/party
+1 NOTE This file is intended to provide coverage of parts of the specification and does not contain meaningful historical or genealogical data.
+2 CONT
+2 CONT This file contains the following extension-related content:
+2 CONT Standard record with an extTag           0 @U1@ _USER
+2 CONT Standard substructure                    1 NAME Aliased record
+2 CONT Standard structure with an extTag        1 _CREATOR @U1@
+2 CONT Standard structure with an extTag        1 _CREATOR @U2@
+2 CONT Relocated standard structure             2 _PHRASE A Family
+2 CONT Documented extension enumeration         2 PEDI _ENUMVAL
+2 CONT Undocumented extension enumeration       2 PEDI _ENUM2
+2 CONT Undocumented structure with a pointer    1 _EXT1 @R1@
+2 CONT Undocumented pointer to relocated record 1 _IN @B1@
+2 CONT Unambiguous extension-defined substruct. 2 ROLE CHIL
+2 CONT Undocumented record                      0 @R1@ _RECORD not empty
+2 CONT Pointer to record with an extTag         1 SUBM @U1@
+2 CONT Standard enumeration with an extTag      2 ROLE _CHILD
+2 CONT Standard month with an extTag            ... FRENCH_R 2 _JOUR 8
+2 CONT Standard calendar with an extTag         ... _CALENDRIER 4 COMP 8
+2 CONT Documented calendar, month, and epoch    ... _CALENDAR 8 _MONTH 190 _EPOCH
+2 CONT Undocumented calendar, month, and epoch  ... _CAL2 23 _MON2 88 _EP2
+2 CONT Undocumented pointer with shared tag     2 _LOC @L1@
+2 CONT Documented pointer with shared tag       1 _PARTY @P1@
+2 CONT Unambiguous extension-defined substruct. 2 ROLE NGHBR
+2 CONT Documented record with shared tag        0 @P1@ _PARTY
+2 CONT Ambiguous extension-defined substructure 1 NAME Spring Fling
+2 CONT Undocumented record with shared tag      0 @L1@ _LOC
+2 CONT Extension-defined substructure           1 SUBM @S2@
+2 CONT Ambiguous extension-defined substructure 1 DATE TO 1880
+2 CONT Unambiguous nested ext.-def. substructu. 2 PHRASE Dissolved in the 1870s
+2 CONT Standard and relocated enumerations      2 EVEN DEAT, _CHILD
+2 CONT Relocated standard structure             3 _CREATOR @U2@
+0 @U1@ _USER
+1 NAME Aliased record
+0 @U2@ SUBM
+1 NAME Non-aliased record
+0 @I1@ INDI
+1 _CREATOR @U1@
+1 _CREATOR @U2@
+1 FAMC @VOID@
+2 _PHRASE A Family
+2 PEDI _ENUMVAL
+1 FAMC @VOID@
+2 PEDI _ENUM2
+1 _EXT1 @R1@
+0 @R1@ _RECORD not empty
+1 _IN @B1@
+2 ROLE CHIL
+0 INDI
+1 SUBM @U1@
+1 SUBM @U2@
+1 ASSO @I1@
+2 ROLE _CHILD
+1 BIRT
+2 DATE BET FRENCH_R 2 _JOUR 8 AND _CALENDRIER 4 COMP 8
+1 DEAT
+2 DATE _CALENDAR 8 _MONTH 190 _EPOCH
+1 GRAD
+2 DATE _CAL2 23 _MON2 88 _EP2
+2 _LOC @L1@
+1 _PARTY @P1@
+2 ROLE NGHBR
+0 @P1@ _PARTY
+1 NAME Spring Fling
+0 @L1@ _LOC
+1 SUBM @U2@
+1 DATE TO 1880
+2 PHRASE Dissolved in the 1870s
+0 SOUR
+1 DATA
+2 EVEN DEAT, _CHILD
+3 _CREATOR @U2@
+0 TRLR

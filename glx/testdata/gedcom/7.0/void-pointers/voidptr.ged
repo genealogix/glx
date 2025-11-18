@@ -1,0 +1,18 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FAMS @VOID@
+2 NOTE This tests a case where we want to show that Jane Doe was the 2nd wife.
+1 FAMS @F1@
+1 FAMC @VOID@
+2 PEDI ADOPTED
+0 @I2@ INDI
+1 NAME Jane /Doe/
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @VOID@
+0 TRLR
