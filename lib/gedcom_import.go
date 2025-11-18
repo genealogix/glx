@@ -172,18 +172,15 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 
 	// Create GLX file
 	glx := &GLXFile{
-		Persons:                    make(map[string]*Person),
-		Events:                     make(map[string]*Event),
-		Relationships:              make(map[string]*Relationship),
-		Places:                     make(map[string]*Place),
-		Sources:                    make(map[string]*Source),
-		Repositories:               make(map[string]*Repository),
-		Media:                      make(map[string]*Media),
-		Citations:                  make(map[string]*Citation),
-		Assertions:                 make(map[string]*Assertion),
-		Participations:             make(map[string]*Participation),
-		RelationshipParticipations: make(map[string]*RelationshipParticipation),
-		Metadata:                   make(map[string]interface{}),
+		Persons:       make(map[string]*Person),
+		Events:        make(map[string]*Event),
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources:       make(map[string]*Source),
+		Repositories:  make(map[string]*Repository),
+		Media:         make(map[string]*Media),
+		Citations:     make(map[string]*Citation),
+		Assertions:    make(map[string]*Assertion),
 	}
 
 	// Create conversion context

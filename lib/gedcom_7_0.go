@@ -45,29 +45,23 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, ctx *ConversionContext) e
 		return fmt.Errorf("expected SCHMA record, got %s", schmaRecord.Tag)
 	}
 
-	schema := make(map[string]interface{})
+	schema := &ExtensionSchema{
+		Tag: schmaRecord.XRef,
+	}
 
 	for _, sub := range schmaRecord.SubRecords {
 		switch sub.Tag {
 		case "TAG":
-			// Extension tag definition
-			tagDef := make(map[string]interface{})
-			tagDef["name"] = sub.Value
-
-			for _, tagSub := range sub.SubRecords {
-				switch tagSub.Tag {
-				case "TYPE":
-					tagDef["type"] = tagSub.Value
-				case "LABL":
-					tagDef["label"] = tagSub.Value
-				}
+			// Main tag name
+			if schema.Tag == "" {
+				schema.Tag = sub.Value
 			}
-
-			if schema["tags"] == nil {
-				schema["tags"] = make(map[string]interface{})
-			}
-			tags := schema["tags"].(map[string]interface{})
-			tags[sub.Value] = tagDef
+		case "URI":
+			// Schema URI
+			schema.URI = sub.Value
+		case "NOTE":
+			// Description
+			schema.Description = extractNoteText(sub, ctx)
 		}
 	}
 

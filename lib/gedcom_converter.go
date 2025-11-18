@@ -153,8 +153,10 @@ func convertHeader(headRecord *GEDCOMRecord, ctx *ConversionContext) {
 		}
 	}
 
+	// TODO: Store metadata somewhere (maybe in properties or external file)
+	// For now, just log it
 	if len(metadata) > 0 {
-		ctx.GLX.Metadata = metadata
+		ctx.Logger.LogInfo(fmt.Sprintf("HEAD metadata: %+v", metadata))
 	}
 }
 
@@ -177,11 +179,10 @@ func convertSubmitter(submRecord *GEDCOMRecord, ctx *ConversionContext) {
 		}
 	}
 
+	// TODO: Store submitter metadata somewhere
+	// For now, just log it
 	if len(submitter) > 0 {
-		if ctx.GLX.Metadata == nil {
-			ctx.GLX.Metadata = make(map[string]interface{})
-		}
-		ctx.GLX.Metadata["submitter"] = submitter
+		ctx.Logger.LogInfo(fmt.Sprintf("SUBM submitter: %+v", submitter))
 	}
 }
 

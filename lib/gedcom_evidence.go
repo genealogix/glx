@@ -43,9 +43,10 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 	citationID := generateCitationID(ctx)
 
 	citation := &Citation{
-		Source:     sourceID,
-		Properties: make(map[string]interface{}),
+		SourceID: sourceID,
 	}
+
+	var quay int = -1
 
 	// Extract citation details from SOUR subrecords
 	for _, sub := range sourRecord.SubRecords {
@@ -59,7 +60,13 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 			for _, dataSub := range sub.SubRecords {
 				switch dataSub.Tag {
 				case "DATE":
-					citation.Properties["source_date"] = parseGEDCOMDate(dataSub.Value)
+					// Store source date in notes for now
+					dateStr := parseGEDCOMDate(dataSub.Value)
+					if citation.Notes != "" {
+						citation.Notes += "\nSource date: " + dateStr
+					} else {
+						citation.Notes = "Source date: " + dateStr
+					}
 				case "TEXT":
 					citation.TextFromSource = dataSub.Value
 				}
@@ -70,16 +77,20 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 			citation.TextFromSource = sub.Value
 
 		case "QUAY":
-			// Quality assessment (0-3)
-			if quay, err := strconv.Atoi(sub.Value); err == nil {
-				citation.Properties["quay"] = quay
+			// Quality assessment (0-3) - store for confidence derivation
+			if q, err := strconv.Atoi(sub.Value); err == nil {
+				quay = q
 			}
 
 		case "NOTE":
 			// Notes about the citation
 			noteText := extractNoteText(sub, ctx)
 			if noteText != "" {
-				citation.Properties["notes"] = noteText
+				if citation.Notes != "" {
+					citation.Notes += "\n" + noteText
+				} else {
+					citation.Notes = noteText
+				}
 			}
 
 		case "OBJE":
@@ -94,6 +105,12 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 				}
 			}
 		}
+	}
+
+	// Map QUAY to Quality if present
+	if quay >= 0 {
+		quality := quay
+		citation.Quality = &quality
 	}
 
 	// Store citation
@@ -118,11 +135,24 @@ func createPropertyAssertion(subjectID string, claim string, value interface{}, 
 	// Derive confidence
 	confidence := deriveConfidence(citationIDs, ctx)
 
+	// Convert value to string
+	var valueStr string
+	switch v := value.(type) {
+	case string:
+		valueStr = v
+	case int:
+		valueStr = fmt.Sprintf("%d", v)
+	case float64:
+		valueStr = fmt.Sprintf("%f", v)
+	default:
+		valueStr = fmt.Sprintf("%v", v)
+	}
+
 	// Create assertion
 	assertion := &Assertion{
 		Subject:    subjectID,
 		Claim:      claim,
-		Value:      value,
+		Value:      valueStr,
 		Confidence: confidence,
 		Citations:  citationIDs,
 	}
@@ -156,15 +186,13 @@ func deriveConfidence(citationIDs []string, ctx *ConversionContext) string {
 		return "medium" // Default when no citations
 	}
 
-	// Check QUAY values
+	// Check Quality values (formerly QUAY)
 	highestQuality := -1
 	for _, citationID := range citationIDs {
 		citation := ctx.GLX.Citations[citationID]
-		if citation != nil {
-			if quay, ok := citation.Properties["quay"].(int); ok {
-				if quay > highestQuality {
-					highestQuality = quay
-				}
+		if citation != nil && citation.Quality != nil {
+			if *citation.Quality > highestQuality {
+				highestQuality = *citation.Quality
 			}
 		}
 	}

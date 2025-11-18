@@ -141,40 +141,4 @@ func TestParseGEDCOMLine(t *testing.T) {
 	}
 }
 
-// TestParseGEDCOMName tests GEDCOM name parsing
-func TestParseGEDCOMName(t *testing.T) {
-	t.Skip("TODO: Implement parseGEDCOMName first")
-
-	tests := []struct {
-		name        string
-		gedcomName  string
-		wantGiven   string
-		wantSurname string
-	}{
-		{
-			name:        "simple name",
-			gedcomName:  "John /Smith/",
-			wantGiven:   "John",
-			wantSurname: "Smith",
-		},
-		{
-			name:        "name with middle",
-			gedcomName:  "John Q. /Public/",
-			wantGiven:   "John Q.",
-			wantSurname: "Public",
-		},
-		// TODO: Add more test cases
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			given, surname := parseGEDCOMName(tt.gedcomName)
-			if given != tt.wantGiven {
-				t.Errorf("Given = %q, want %q", given, tt.wantGiven)
-			}
-			if surname != tt.wantSurname {
-				t.Errorf("Surname = %q, want %q", surname, tt.wantSurname)
-			}
-		})
-	}
-}
+// TestParseGEDCOMName is now in gedcom_integration_test.go with correct implementation

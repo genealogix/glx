@@ -22,7 +22,7 @@ import (
 func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	// Panic recovery
 	defer func() {
-		if r := recover() {
+		if r := recover(); r != nil {
 			ctx.Logger.LogException(famRecord.Line, "FAM", famRecord.XRef, "convertFamily",
 				fmt.Errorf("panic: %v", r), map[string]interface{}{
 					"record": famRecord,
@@ -86,8 +86,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		relationship := &Relationship{
 			Type:       "spousal",
-			Person1:    husbandID,
-			Person2:    wifeID,
+			Persons:    []string{husbandID, wifeID},
 			Properties: make(map[string]interface{}),
 		}
 
@@ -130,8 +129,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 			relationship := &Relationship{
 				Type:       "parent_child",
-				Person1:    parentID,
-				Person2:    childID,
+				Persons:    []string{parentID, childID},
 				Properties: make(map[string]interface{}),
 			}
 
@@ -163,7 +161,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 			if hierarchy != nil {
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
-					event.Place = placeID
+					event.PlaceID = placeID
 				}
 			}
 
@@ -213,32 +211,25 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 		}
 	}
 
+	// Add participants for both spouses
+	var participants []EventParticipant
+	if husbandID != "" {
+		participants = append(participants, EventParticipant{
+			PersonID: husbandID,
+			Role:     "spouse",
+		})
+	}
+	if wifeID != "" {
+		participants = append(participants, EventParticipant{
+			PersonID: wifeID,
+			Role:     "spouse",
+		})
+	}
+	event.Participants = participants
+
 	// Store event
 	ctx.GLX.Events[eventID] = event
 	ctx.Stats.EventsCreated++
-
-	// Create participations for both spouses
-	if husbandID != "" {
-		participationID := generateParticipationID(ctx)
-		participation := &Participation{
-			Person: husbandID,
-			Role:   "spouse",
-			Event:  eventID,
-		}
-		ctx.GLX.Participations[participationID] = participation
-		ctx.Stats.ParticipationsCreated++
-	}
-
-	if wifeID != "" {
-		participationID := generateParticipationID(ctx)
-		participation := &Participation{
-			Person: wifeID,
-			Role:   "spouse",
-			Event:  eventID,
-		}
-		ctx.GLX.Participations[participationID] = participation
-		ctx.Stats.ParticipationsCreated++
-	}
 
 	// Link event to relationship
 	relationship := ctx.GLX.Relationships[relationshipID]
@@ -271,7 +262,7 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 			if hierarchy != nil {
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
-					event.Place = placeID
+					event.PlaceID = placeID
 				}
 			}
 
@@ -293,32 +284,25 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 		}
 	}
 
+	// Add participants for both spouses
+	var participants []EventParticipant
+	if husbandID != "" {
+		participants = append(participants, EventParticipant{
+			PersonID: husbandID,
+			Role:     "spouse",
+		})
+	}
+	if wifeID != "" {
+		participants = append(participants, EventParticipant{
+			PersonID: wifeID,
+			Role:     "spouse",
+		})
+	}
+	event.Participants = participants
+
 	// Store event
 	ctx.GLX.Events[eventID] = event
 	ctx.Stats.EventsCreated++
-
-	// Create participations for both spouses
-	if husbandID != "" {
-		participationID := generateParticipationID(ctx)
-		participation := &Participation{
-			Person: husbandID,
-			Role:   "spouse",
-			Event:  eventID,
-		}
-		ctx.GLX.Participations[participationID] = participation
-		ctx.Stats.ParticipationsCreated++
-	}
-
-	if wifeID != "" {
-		participationID := generateParticipationID(ctx)
-		participation := &Participation{
-			Person: wifeID,
-			Role:   "spouse",
-			Event:  eventID,
-		}
-		ctx.GLX.Participations[participationID] = participation
-		ctx.Stats.ParticipationsCreated++
-	}
 
 	// Link event to relationship
 	relationship := ctx.GLX.Relationships[relationshipID]
@@ -353,7 +337,7 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 			if hierarchy != nil {
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
-					event.Place = placeID
+					event.PlaceID = placeID
 				}
 			}
 
@@ -375,32 +359,25 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 		}
 	}
 
+	// Add participants for both spouses
+	var participants []EventParticipant
+	if husbandID != "" {
+		participants = append(participants, EventParticipant{
+			PersonID: husbandID,
+			Role:     "spouse",
+		})
+	}
+	if wifeID != "" {
+		participants = append(participants, EventParticipant{
+			PersonID: wifeID,
+			Role:     "spouse",
+		})
+	}
+	event.Participants = participants
+
 	// Store event
 	ctx.GLX.Events[eventID] = event
 	ctx.Stats.EventsCreated++
-
-	// Create participations for both spouses
-	if husbandID != "" {
-		participationID := generateParticipationID(ctx)
-		participation := &Participation{
-			Person: husbandID,
-			Role:   "spouse",
-			Event:  eventID,
-		}
-		ctx.GLX.Participations[participationID] = participation
-		ctx.Stats.ParticipationsCreated++
-	}
-
-	if wifeID != "" {
-		participationID := generateParticipationID(ctx)
-		participation := &Participation{
-			Person: wifeID,
-			Role:   "spouse",
-			Event:  eventID,
-		}
-		ctx.GLX.Participations[participationID] = participation
-		ctx.Stats.ParticipationsCreated++
-	}
 
 	return nil
 }

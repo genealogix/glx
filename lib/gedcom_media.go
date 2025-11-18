@@ -25,7 +25,7 @@ import (
 func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	// Panic recovery
 	defer func() {
-		if r := recover() {
+		if r := recover(); r != nil {
 			ctx.Logger.LogException(objeRecord.Line, "OBJE", objeRecord.XRef, "convertMedia",
 				fmt.Errorf("panic: %v", r), map[string]interface{}{
 					"record": objeRecord,
@@ -44,12 +44,11 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	ctx.Logger.LogInfo(fmt.Sprintf("Converting OBJE %s -> %s", objeRecord.XRef, mediaID))
 
 	// Create media entity
-	media := &Media{
-		Properties: make(map[string]interface{}),
-	}
+	media := &Media{}
 
 	var fileRef string
 	var formatType string
+	var notes []string
 
 	// Process subrecords
 	for _, sub := range objeRecord.SubRecords {
@@ -66,7 +65,7 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 					formatType = fileSub.Value
 				case "MIME":
 					// GEDCOM 7.0: MIME type
-					media.Type = fileSub.Value
+					media.MimeType = fileSub.Value
 				case "TITL":
 					// Title under FILE
 					media.Title = fileSub.Value
@@ -77,10 +76,10 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			// GEDCOM 5.5.1: Format at OBJE level
 			formatType = sub.Value
 
-			// Check for MEDI subrecord
+			// Check for MEDI subrecord (store in notes)
 			for _, formSub := range sub.SubRecords {
 				if formSub.Tag == "MEDI" {
-					media.Properties["medium"] = formSub.Value
+					notes = append(notes, "Medium: "+formSub.Value)
 				}
 			}
 
@@ -91,47 +90,48 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			}
 
 		case "CROP":
-			// GEDCOM 7.0: Crop coordinates
+			// GEDCOM 7.0: Crop coordinates (store in notes for now)
 			crop := extractCrop(sub)
 			if crop != nil {
-				media.Properties["crop"] = crop
+				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))
 			}
 
 		case "NOTE":
 			// Notes/description
 			noteText := extractNoteText(sub, ctx)
 			if noteText != "" {
-				media.Description = noteText
+				notes = append(notes, noteText)
 			}
 
 		case "SOUR":
-			// Source citations for the media
+			// Source citations for the media (store in notes for now)
 			citationID, err := createCitationFromSOUR(mediaID, sub, ctx)
 			if err == nil && citationID != "" {
-				citations, ok := media.Properties["citations"].([]string)
-				if !ok {
-					citations = []string{}
-				}
-				media.Properties["citations"] = append(citations, citationID)
+				notes = append(notes, "Citation: "+citationID)
 			}
 		}
 	}
 
-	// Set file reference
-	media.File = fileRef
+	// Set file reference as URI
+	media.URI = fileRef
 
 	// Infer MIME type if not set (GEDCOM 5.5.1)
-	if media.Type == "" {
+	if media.MimeType == "" {
 		if formatType != "" {
-			media.Type = mapFormatToMimeType(formatType)
+			media.MimeType = mapFormatToMimeType(formatType)
 		} else if fileRef != "" {
-			media.Type = inferMimeType(fileRef)
+			media.MimeType = inferMimeType(fileRef)
 		}
 	}
 
 	// Default type if still not set
-	if media.Type == "" {
-		media.Type = "application/octet-stream"
+	if media.MimeType == "" {
+		media.MimeType = "application/octet-stream"
+	}
+
+	// Combine notes
+	if len(notes) > 0 {
+		media.Notes = strings.Join(notes, "\n")
 	}
 
 	// Store media
@@ -149,12 +149,11 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) (str
 	ctx.Logger.LogInfo(fmt.Sprintf("Converting embedded OBJE -> %s", mediaID))
 
 	// Create media entity
-	media := &Media{
-		Properties: make(map[string]interface{}),
-	}
+	media := &Media{}
 
 	var fileRef string
 	var formatType string
+	var notes []string
 
 	// Process subrecords (same as top-level OBJE)
 	for _, sub := range objeRecord.SubRecords {
@@ -167,7 +166,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) (str
 				case "FORM":
 					formatType = fileSub.Value
 				case "MIME":
-					media.Type = fileSub.Value
+					media.MimeType = fileSub.Value
 				case "TITL":
 					media.Title = fileSub.Value
 				}
@@ -178,7 +177,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) (str
 
 			for _, formSub := range sub.SubRecords {
 				if formSub.Tag == "MEDI" {
-					media.Properties["medium"] = formSub.Value
+					notes = append(notes, "Medium: "+formSub.Value)
 				}
 			}
 
@@ -190,30 +189,35 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) (str
 		case "CROP":
 			crop := extractCrop(sub)
 			if crop != nil {
-				media.Properties["crop"] = crop
+				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))
 			}
 
 		case "NOTE":
 			noteText := extractNoteText(sub, ctx)
 			if noteText != "" {
-				media.Description = noteText
+				notes = append(notes, noteText)
 			}
 		}
 	}
 
-	media.File = fileRef
+	media.URI = fileRef
 
 	// Infer MIME type
-	if media.Type == "" {
+	if media.MimeType == "" {
 		if formatType != "" {
-			media.Type = mapFormatToMimeType(formatType)
+			media.MimeType = mapFormatToMimeType(formatType)
 		} else if fileRef != "" {
-			media.Type = inferMimeType(fileRef)
+			media.MimeType = inferMimeType(fileRef)
 		}
 	}
 
-	if media.Type == "" {
-		media.Type = "application/octet-stream"
+	if media.MimeType == "" {
+		media.MimeType = "application/octet-stream"
+	}
+
+	// Combine notes
+	if len(notes) > 0 {
+		media.Notes = strings.Join(notes, "\n")
 	}
 
 	// Store media

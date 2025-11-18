@@ -304,7 +304,7 @@ func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *Con
 			if hierarchy != nil {
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
-					event.Place = placeID
+					event.PlaceID = placeID
 					eventPlace = placeID
 				}
 			}
@@ -340,18 +340,17 @@ func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *Con
 		}
 	}
 
+	// Add participant to event
+	event.Participants = []EventParticipant{
+		{
+			PersonID: personID,
+			Role:     "principal",
+		},
+	}
+
 	// Store event
 	ctx.GLX.Events[eventID] = event
 	ctx.Stats.EventsCreated++
-
-	// Create participation
-	participationID := generateParticipationID(ctx)
-	ctx.GLX.Participations[participationID] = &Participation{
-		Person: personID,
-		Event:  eventID,
-		Role:   "principal",
-	}
-	ctx.Stats.ParticipationsCreated++
 
 	// Create property assertions for born_on, died_on, etc.
 	if eventType == "birth" && eventDate != "" {
@@ -496,7 +495,7 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, ctx *Conv
 	ctx.GLX.Assertions[assertionID] = &Assertion{
 		Subject:    personID,
 		Claim:      "no_" + eventType,
-		Value:      true,
+		Value:      "true", // Negative assertion (NO tag from GEDCOM 7.0)
 		Confidence: "high", // Negative assertions are typically certain
 		Citations:  citationIDs,
 	}
