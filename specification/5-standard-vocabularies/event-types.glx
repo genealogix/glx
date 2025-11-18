@@ -152,7 +152,7 @@ event_types:
 
   probate:
     label: "Probate"
-    description: "Probate of will"
+    description: "Probate of estate"
     category: "legal"
     gedcom: "PROB"
 

@@ -3,7 +3,7 @@
 // Provides JSON schemas, validation tools, and examples for genealogical data.
 module github.com/genealogix/spec
 
-go 1.24
+go 1.25
 
 require (
 	github.com/xeipuuv/gojsonschema v1.2.0

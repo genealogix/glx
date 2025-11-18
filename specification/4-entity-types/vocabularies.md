@@ -87,7 +87,7 @@ event_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `category` | No | Category (lifecycle, attribute, religious, custom) |
+| `category` | No | Category (lifecycle, attribute, religious, legal, migration, other) |
 | `gedcom` | No | GEDCOM tag mapping |
 | `custom` | No | Mark as custom (non-standard) type |
 
@@ -247,7 +247,7 @@ place_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `category` | No | Category (administrative, geographic, religious) |
+| `category` | No | Category (administrative, geographic, religious, institution, other) |
 | `custom` | No | Mark as custom (non-standard) type |
 
 ### Standard Place Types

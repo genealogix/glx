@@ -13,11 +13,6 @@ place_types:
     description: "State, province, or region"
     category: "administrative"
 
-  state_province:
-    label: "State/Province"
-    description: "State, province, or region (alias)"
-    category: "administrative"
-
   county:
     label: "County"
     description: "County or similar administrative division"

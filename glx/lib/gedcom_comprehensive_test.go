@@ -14,13 +14,6 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 		minEvents  int    // Minimum expected events (0 = any)
 		notes      string // Description of test file
 	}{
-		// GEDCOM 5.5.1 - Already tested in E2E
-		{"5.5.1/shakespeare-family/shakespeare.ged", 31, 77, "Comprehensive family tree"},
-		{"5.5.1/kennedy-family/kennedy.ged", 20, 0, "Political family"},
-		{"5.5.1/british-royalty/british-royalty.ged", 10, 0, "Royal lineage"},
-		{"5.5.1/bullinger-family/bullinger.ged", 948, 0, "Large performance test"},
-		{"5.5.1/torture-test-551/torture-test.ged", 0, 0, "Edge case stress test - large file with many edge cases"},
-
 		// GEDCOM 5.5.1 - Edge cases
 		{"5.5.1/edge-cases/empty-family.ged", 0, 0, "Empty family record"},
 		{"5.5.1/edge-cases/self-marriage.ged", 1, 0, "Person married to self"},
@@ -53,14 +46,7 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 		{"5.5.5/spec-samples/same-sex-marriage.ged", 2, 0, "Same-sex marriage"},
 		{"5.5.5/spec-samples/sample.ged", 1, 0, "Spec sample file"},
 
-		// GEDCOM 7.0 - Already tested in E2E
-		{"7.0/minimal-valid/minimal70.ged", 0, 0, "Minimal 7.0 - header only"},
-		{"7.0/comprehensive-spec/maximal70.ged", 1, 0, "Comprehensive 7.0"},
-		{"7.0/date-formats/date-all.ged", 1, 0, "All date formats"},
-		{"7.0/age-values/age-all.ged", 1, 0, "All age formats"},
-		{"7.0/same-sex-marriage/same-sex-marriage.ged", 2, 0, "Same-sex marriage"},
-
-		// GEDCOM 7.0 - New tests
+		// GEDCOM 7.0 - Additional test coverage
 		{"7.0/cross-references/xref.ged", 1, 0, "Cross-reference handling"},
 		{"7.0/escaping/escapes.ged", 1, 0, "String escaping"},
 		{"7.0/extensions/extensions.ged", 1, 0, "Extension tags"},

@@ -154,7 +154,7 @@ func inferPlaceType(name string, level int, totalLevels int) string {
 		return "county"
 	}
 	if strings.Contains(nameLower, "province") || strings.Contains(nameLower, "state") {
-		return "state_province"
+		return "state"
 	}
 
 	// Infer from position in hierarchy
@@ -168,7 +168,7 @@ func inferPlaceType(name string, level int, totalLevels int) string {
 		return "county"
 	case 2:
 		// Third level - likely state/province
-		return "state_province"
+		return "state"
 	case 3:
 		// Fourth level - likely country
 		return "country"

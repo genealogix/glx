@@ -6,9 +6,9 @@ layout: doc
 
 # Migration from GEDCOM Guide
 
-Guide for manually converting GEDCOM files to GENEALOGIX format.
+Guide for converting GEDCOM files to GENEALOGIX format using the automated import tool or manual conversion.
 
-**Note:** This guide describes the manual migration process. Automated import/export tools are not yet available but are planned for future releases.
+**Note:** Automated GEDCOM import is now available! Use `glx import` to convert GEDCOM 5.5.1 and GEDCOM 7.0 files automatically. See [CLI Documentation](../../glx/README.md) for usage details.
 
 ## Key Differences
 
@@ -21,20 +21,45 @@ Guide for manually converting GEDCOM files to GENEALOGIX format.
 
 ## Migration Process
 
-### 1. Initialize Archive
+### Automated Import (Recommended)
+
+Convert GEDCOM files automatically using the GLX CLI:
 
 ```bash
-mkdir my-family-archive
-cd my-family-archive
-glx init
+# Import GEDCOM file
+glx import family.ged -o family-archive.glx
+
+# The import command handles:
+# - Individual (INDI) → Person entities
+# - Family (FAM) → Relationship entities
+# - Events (BIRT, DEAT, MARR, etc.) → Event entities
+# - Sources (SOUR) → Source entities + Citations + Assertions
+# - Places (PLAC) → Hierarchical Place entities
+# - Notes (NOTE/SNOTE) → Entity notes
+
+# Initialize git tracking
 git init
-git add .
-git commit -m "Initial: GENEALOGIX archive structure"
+git add family-archive.glx
+git commit -m "Import from GEDCOM: family.ged"
 ```
 
-### 2. Convert Entities
+**Supported GEDCOM Versions:**
+- ✅ GEDCOM 5.5.1 (full support)
+- ✅ GEDCOM 7.0 (full support)
 
-**Manual conversion process:**
+**What Gets Imported:**
+- 31+ person attributes and events
+- All family relationships (marriage, parent-child)
+- Evidence chains (SOUR → Citation → Assertion)
+- Place hierarchies (flat → hierarchical)
+- Shared and inline notes
+- Source citations with quality ratings
+
+For implementation details, see [GEDCOM Import Developer Docs](../development/gedcom-import.md).
+
+### Manual Conversion Process
+
+If you prefer manual conversion or need to customize the import:
 
 1. Extract individuals → `persons/`
 2. Extract families → `relationships/`
@@ -226,8 +251,29 @@ Next steps:
 - Complete place hierarchy"
 ```
 
+## Testing Your Import
+
+After importing, validate the results:
+
+```bash
+# Validate the imported archive
+glx validate family-archive.glx
+
+# Check what was imported
+# - Count entities
+# - Verify relationships
+# - Review evidence chains
+```
+
+**Common Import Results:**
+- Large family trees: 100-1000+ persons
+- Comprehensive events: 2-3x person count
+- Relationships: 1-2x person count
+- Evidence chains automatically created from GEDCOM SOUR tags
+
 ## See Also
 
+- [GEDCOM Import Developer Documentation](../development/gedcom-import.md) - Implementation details
 - [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
 - [Best Practices](best-practices.md) - Workflow recommendations
 - [CLI Documentation](../../glx/README.md) - Command reference
