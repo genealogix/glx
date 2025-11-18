@@ -25,7 +25,7 @@ func TestE2E_GEDCOM551_Shakespeare(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "shakespeare-family", "shakespeare.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestE2E_GEDCOM551_Kennedy(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "kennedy-family", "kennedy.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestE2E_GEDCOM551_BritishRoyalty(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "british-royalty", "british-royalty.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestE2E_GEDCOM551_Bullinger(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "bullinger-family", "bullinger.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestE2E_GEDCOM551_TortureTest(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "torture-test-551", "torture-test.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestE2E_GEDCOM70_Minimal(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "7.0", "minimal-valid", "minimal70.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -290,7 +290,7 @@ func TestE2E_GEDCOM70_Maximal(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "7.0", "comprehensive-spec", "maximal70.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -329,7 +329,7 @@ func TestE2E_GEDCOM70_DateFormats(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "7.0", "date-formats", "date-all.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -368,7 +368,7 @@ func TestE2E_GEDCOM70_AgeValues(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "7.0", "age-values", "age-all.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestE2E_GEDCOM70_SameSexMarriage(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "7.0", "same-sex-marriage", "same-sex-marriage.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -477,7 +477,7 @@ func TestE2E_AllFilesHaveRequiredStructure(t *testing.T) {
 			gedcomPath := filepath.Join("..", "testdata", "gedcom", tc.path)
 			logPath := filepath.Join(t.TempDir(), "import.log")
 
-			glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+			glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 			if err != nil {
 				t.Fatalf("Import failed: %v", err)
 			}

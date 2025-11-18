@@ -60,7 +60,7 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 			fullPath := filepath.Join("..", "testdata", "gedcom", tc.path)
 			logPath := filepath.Join(t.TempDir(), "import.log")
 
-			glx, result, err := ImportGEDCOMFromFile(fullPath, logPath)
+			glx, result, err := importGEDCOMFromFile(fullPath, logPath)
 			if err != nil {
 				t.Fatalf("Import failed for %s: %v\nNotes: %s", tc.path, err, tc.notes)
 			}
@@ -110,7 +110,7 @@ func TestGEDCOM_ImportLargeFiles(t *testing.T) {
 			fullPath := filepath.Join("..", "testdata", "gedcom", tc.path)
 			logPath := filepath.Join(t.TempDir(), "import.log")
 
-			glx, result, err := ImportGEDCOMFromFile(fullPath, logPath)
+			glx, result, err := importGEDCOMFromFile(fullPath, logPath)
 			if err != nil {
 				t.Fatalf("Import failed for %s: %v\nNotes: %s", tc.path, err, tc.notes)
 			}

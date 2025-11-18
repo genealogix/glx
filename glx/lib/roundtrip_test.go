@@ -45,7 +45,7 @@ func TestGEDCOMToSingleFileRoundTrip(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Step 1: Import GEDCOM file
 			logPath := filepath.Join(t.TempDir(), "import.log")
-			glx1, result, err := ImportGEDCOMFromFile(tc.gedcomPath, logPath)
+			glx1, result, err := importGEDCOMFromFile(tc.gedcomPath, logPath)
 			require.NoError(t, err, "GEDCOM import failed")
 			require.NotNil(t, result, "Import result should not be nil")
 
@@ -107,7 +107,7 @@ func TestGEDCOMToMultiFileRoundTrip(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Step 1: Import GEDCOM file
 			logPath := filepath.Join(t.TempDir(), "import.log")
-			glx1, result, err := ImportGEDCOMFromFile(tc.gedcomPath, logPath)
+			glx1, result, err := importGEDCOMFromFile(tc.gedcomPath, logPath)
 			require.NoError(t, err, "GEDCOM import failed")
 			require.NotNil(t, result, "Import result should not be nil")
 
@@ -176,7 +176,7 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Step 1: Import GEDCOM to get initial GLX data
 			logPath := filepath.Join(t.TempDir(), "import.log")
-			glx1, result, err := ImportGEDCOMFromFile(tc.gedcomPath, logPath)
+			glx1, result, err := importGEDCOMFromFile(tc.gedcomPath, logPath)
 			require.NoError(t, err, "GEDCOM import failed")
 			require.NotNil(t, result, "Import result should not be nil")
 
@@ -240,7 +240,7 @@ func TestVocabularyPreservation(t *testing.T) {
 	// Import a GEDCOM file that will have vocabularies
 	gedcomPath := "../testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged"
 	logPath := filepath.Join(t.TempDir(), "import.log")
-	glx1, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx1, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	require.NoError(t, err, "GEDCOM import failed")
 	require.NotNil(t, result, "Import result should not be nil")
 

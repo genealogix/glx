@@ -97,7 +97,15 @@ func runImport(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Importing GEDCOM file: %s\n", gedcomPath)
 	}
 
-	glx, _, err := lib.ImportGEDCOMFromFile(gedcomPath, "")
+	// Open GEDCOM file
+	gedcomFile, err := os.Open(gedcomPath)
+	if err != nil {
+		return fmt.Errorf("failed to open GEDCOM file: %w", err)
+	}
+	defer gedcomFile.Close()
+
+	// Import GEDCOM from reader
+	glx, _, err := lib.ImportGEDCOM(gedcomFile, "")
 	if err != nil {
 		return fmt.Errorf("failed to import GEDCOM: %w", err)
 	}

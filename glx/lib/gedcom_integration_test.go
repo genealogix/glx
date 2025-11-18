@@ -24,7 +24,7 @@ func TestImportMinimal70(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "7.0", "minimal-valid", "minimal70.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestImportShakespeare(t *testing.T) {
 	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "shakespeare-family", "shakespeare.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
-	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
+	glx, result, err := importGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}

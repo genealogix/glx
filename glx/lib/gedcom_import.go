@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -137,17 +136,6 @@ type FamilyLink struct {
 	PersonID  string
 	FamilyRef string
 	LinkType  string // ParticipantRoleChild or ParticipantRoleSpouse
-}
-
-// ImportGEDCOMFromFile imports a GEDCOM file from a file path
-func ImportGEDCOMFromFile(filepath string, logPath string) (*GLXFile, *ImportResult, error) {
-	file, err := os.Open(filepath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	return ImportGEDCOM(file, logPath)
 }
 
 // ImportGEDCOM imports a GEDCOM file and returns a GLX archive
