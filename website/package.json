@@ -1,16 +1,21 @@
 {
   "name": "genealogix-docs",
-  "version": "0.0.0-beta.0",
+  "version": "0.0.0-beta.1",
   "description": "GENEALOGIX Specification Documentation Site",
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview"
   },
-  "keywords": ["genealogy", "genealogix", "specification", "documentation"],
+  "keywords": [
+    "genealogy",
+    "genealogix",
+    "specification",
+    "documentation"
+  ],
   "author": "Oracynth, Inc.",
   "license": "Apache-2.0",
   "devDependencies": {
-    "vitepress": "^2.0.0-alpha.12"
+    "vitepress": "^2.0.0-alpha.13"
   }
 }

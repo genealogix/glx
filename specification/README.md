@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-Version 0.0.0-beta.0 (Beta)
+Version 0.0.0-beta.1 (Beta)
 
 ## Table of Contents
 
@@ -61,9 +61,9 @@ requirement levels.
 
 This specification is under active development.
 
-- **Version**: 0.0.0-beta.0
+- **Version**: 0.0.0-beta.1
 - **Status**: Beta
-- **Stability**: Stable API (breaking changes unlikely but possible)
+- **Stability**: Unstable API (breaking changes possible)
 
 ## Key Features
 

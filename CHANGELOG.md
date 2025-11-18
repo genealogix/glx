@@ -10,6 +10,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.1] - 2025-11-18
+
+### Fixed
+- Fixed GitHub release workflow to build on beta tags (`v*.*.*-beta*` pattern)
+- Fixed VitePress build by adding `shiki` dependency to `website/package.json`
+
+### Changed
+- Removed roadmap section from README (no longer maintaining public roadmap)
+
+### Removed
+- Removed archive folder containing old planning documents
+
 ## [0.0.0-beta.0] - 2025-11-14
 
 ### Added
