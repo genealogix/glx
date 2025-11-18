@@ -11,6 +11,7 @@
   "author": "Oracynth, Inc.",
   "license": "Apache-2.0",
   "devDependencies": {
-    "vitepress": "^2.0.0-alpha.12"
+    "vitepress": "^2.0.0-alpha.12",
+    "shiki": "^1.0.0"
   }
 }
