@@ -6,6 +6,10 @@
 .DS_Store
 Thumbs.db
 
+# Go build artifacts
+glx-bin
+/glx/glx
+
 # Node.js
 node_modules/
 npm-debug.log*
