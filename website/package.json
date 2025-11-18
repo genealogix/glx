@@ -7,11 +7,15 @@
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview"
   },
-  "keywords": ["genealogy", "genealogix", "specification", "documentation"],
+  "keywords": [
+    "genealogy",
+    "genealogix",
+    "specification",
+    "documentation"
+  ],
   "author": "Oracynth, Inc.",
   "license": "Apache-2.0",
   "devDependencies": {
-    "vitepress": "^2.0.0-alpha.12",
-    "shiki": "^1.0.0"
+    "vitepress": "^2.0.0-alpha.13"
   }
 }

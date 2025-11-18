@@ -24,6 +24,11 @@ export default defineConfig({
     },
     ssr: {
       noExternal: ['vue']
+    },
+    build: {
+      rollupOptions: {
+        external: ['vue', 'vue/server-renderer']
+      }
     }
   },
   
