@@ -21,6 +21,9 @@ export default defineConfig({
         usePolling: true,
         interval: 100
       }
+    },
+    ssr: {
+      noExternal: ['vue']
     }
   },
   
