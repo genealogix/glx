@@ -175,24 +175,21 @@
 | lib/gedcom_import.go | ✅ Complete | 407 | Parser, entry points, context |
 | lib/gedcom_logging.go | ✅ Complete | 97 | Logging infrastructure |
 | lib/gedcom_utils.go | ✅ Complete | 84 | ID generation |
-| lib/gedcom_date.go | ⏳ TODO | ~300 | Date parsing |
-| lib/gedcom_name.go | ⏳ TODO | ~200 | Name parsing |
-| lib/gedcom_place.go | ⏳ TODO | ~250 | Place parsing |
+| lib/gedcom_date.go | ✅ Complete | 166 | Date parsing |
+| lib/gedcom_name.go | ✅ Complete | 140 | Name parsing |
+| lib/gedcom_place.go | ✅ Complete | 143 | Place parsing |
+| lib/gedcom_evidence.go | ✅ Complete | 199 | Citations/assertions |
+| lib/gedcom_converter.go | ✅ Complete | 280 | Converter orchestration |
+| lib/gedcom_integration_test.go | ✅ Complete | 159 | Integration/unit tests |
 | lib/gedcom_individual.go | ⏳ TODO | ~600 | INDI converter |
 | lib/gedcom_family.go | ⏳ TODO | ~400 | FAM converter |
 | lib/gedcom_source.go | ⏳ TODO | ~300 | SOUR converter |
 | lib/gedcom_repository.go | ⏳ TODO | ~200 | REPO converter |
 | lib/gedcom_media.go | ⏳ TODO | ~300 | OBJE converter |
-| lib/gedcom_evidence.go | ⏳ TODO | ~300 | Citations/assertions |
 | lib/gedcom_7_0.go | ⏳ TODO | ~300 | GEDCOM 7.0 features |
-| lib/gedcom_converter.go | ⏳ TODO | ~200 | Converter orchestration |
-| lib/gedcom_import_test.go | ⏳ TODO | ~100 | Unit tests |
-| lib/gedcom_date_test.go | ⏳ TODO | ~200 | Date tests |
-| lib/gedcom_name_test.go | ⏳ TODO | ~150 | Name tests |
-| lib/gedcom_integration_test.go | ⏳ TODO | ~250 | Integration tests |
 
-**Total Complete:** 588 lines (10% of estimated ~5,650 lines)
-**Total Remaining:** ~5,062 lines (90% remaining)
+**Total Complete:** 1,675 lines (30% of estimated ~5,650 lines)
+**Total Remaining:** ~3,975 lines (70% remaining)
 
 ## Next Steps
 
