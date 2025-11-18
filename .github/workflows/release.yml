@@ -6,6 +6,9 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-beta*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Build and Release
