@@ -644,6 +644,7 @@ import (
 - Cons: Requires vocabulary files at runtime
 
 **Recommendation**: Option A - embed for default, allow override from files
+**✅ DECISION**: Embed vocabularies in binary using go:embed, write with serializer
 
 ### 2. Entity File Naming
 
@@ -659,12 +660,13 @@ import (
 - Pros: Safe filenames
 - Cons: Might lose information
 
-**Option C**: Use sequential numbers
-- Example: `person-001.glx`, `person-002.glx`
-- Pros: Simple, safe
-- Cons: Not human-readable
+**Option C**: Use random IDs
+- Example: `person-123hgadf18.glx`
+- Pros: Simple, safe, no collisions
+- Cons: Not human-readable without opening file
 
 **Recommendation**: Option B - sanitize but keep readable
+**✅ DECISION**: Use random IDs (Option C) - simpler implementation, no naming conflicts
 
 ### 3. Concurrent Writes
 
@@ -674,6 +676,7 @@ import (
 **Cons**: More complex, potential for resource exhaustion
 
 **Recommendation**: Yes, with worker pool (limit concurrent goroutines)
+**✅ DECISION**: No - keep it simple with sequential writes for initial implementation
 
 ### 4. Validation Before Save
 
@@ -688,6 +691,7 @@ import (
 - Cons: Might save invalid archives
 
 **Recommendation**: Option B - optional, default to true
+**✅ DECISION**: Default to true with --no-validate flag to override
 
 ---
 
