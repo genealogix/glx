@@ -63,7 +63,7 @@ This specification is under active development.
 
 - **Version**: 0.0.0-beta.1
 - **Status**: Beta
-- **Stability**: Stable API (breaking changes unlikely but possible)
+- **Stability**: Unstable API (breaking changes possible)
 
 ## Key Features
 
