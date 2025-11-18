@@ -32,9 +32,11 @@ func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	ctx.Logger.LogInfo(fmt.Sprintf("Converting REPO %s -> %s", repoRecord.XRef, repositoryID))
 
 	// Create repository entity
-	repository := &Repository{
-		Properties: make(map[string]interface{}),
-	}
+	repository := &Repository{}
+
+	var phones []string
+	var emails []string
+	var notes []string
 
 	// Process subrecords
 	for _, sub := range repoRecord.SubRecords {
@@ -44,43 +46,66 @@ func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			repository.Name = sub.Value
 
 		case "ADDR":
-			// Address - build from components
-			address := extractAddress(sub)
-			if address != "" {
-				repository.Properties["address"] = address
+			// Address - extract components
+			for _, addrSub := range sub.SubRecords {
+				switch addrSub.Tag {
+				case "CITY":
+					repository.City = addrSub.Value
+				case "STAE":
+					repository.State = addrSub.Value
+				case "POST":
+					repository.PostalCode = addrSub.Value
+				case "CTRY":
+					repository.Country = addrSub.Value
+				}
+			}
+			// Main address value
+			if sub.Value != "" {
+				repository.Address = sub.Value
 			}
 
 		case "PHON":
-			// Phone
-			phones, ok := repository.Properties["phone"].([]string)
-			if !ok {
-				phones = []string{}
-			}
-			repository.Properties["phone"] = append(phones, sub.Value)
+			// Phone - collect all, use first as primary
+			phones = append(phones, sub.Value)
 
 		case "EMAIL":
-			// Email
-			emails, ok := repository.Properties["email"].([]string)
-			if !ok {
-				emails = []string{}
-			}
-			repository.Properties["email"] = append(emails, sub.Value)
+			// Email - collect all, use first as primary
+			emails = append(emails, sub.Value)
 
 		case "WWW":
 			// Website (GEDCOM 7.0)
-			repository.Properties["website"] = sub.Value
+			repository.Website = sub.Value
 
 		case "NOTE":
 			// Notes
 			noteText := extractNoteText(sub, ctx)
 			if noteText != "" {
-				repository.Properties["notes"] = noteText
+				notes = append(notes, noteText)
 			}
 
 		case "TYPE":
 			// Repository type (GEDCOM 7.0)
 			repository.Type = mapRepositoryType(sub.Value)
 		}
+	}
+
+	// Set first phone/email as primary
+	if len(phones) > 0 {
+		repository.Phone = phones[0]
+		if len(phones) > 1 {
+			notes = append(notes, "Additional phones: "+strings.Join(phones[1:], ", "))
+		}
+	}
+	if len(emails) > 0 {
+		repository.Email = emails[0]
+		if len(emails) > 1 {
+			notes = append(notes, "Additional emails: "+strings.Join(emails[1:], ", "))
+		}
+	}
+
+	// Combine notes
+	if len(notes) > 0 {
+		repository.Notes = strings.Join(notes, "\n")
 	}
 
 	// Default type if not set

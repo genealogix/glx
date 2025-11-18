@@ -21,7 +21,7 @@ import (
 
 func TestImportMinimal70(t *testing.T) {
 	// Test minimal GEDCOM 7.0 file
-	gedcomPath := filepath.Join("..", "glx", "testdata", "gedcom", "7.0", "minimal70.ged")
+	gedcomPath := filepath.Join("..", "glx", "testdata", "gedcom", "7.0", "minimal-valid", "minimal70.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
 	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)
@@ -57,7 +57,7 @@ func TestImportMinimal70(t *testing.T) {
 
 func TestImportShakespeare(t *testing.T) {
 	// Test GEDCOM 5.5.1 with Shakespeare family
-	gedcomPath := filepath.Join("..", "glx", "testdata", "gedcom", "5.5.1", "shakespeare.ged")
+	gedcomPath := filepath.Join("..", "glx", "testdata", "gedcom", "5.5.1", "shakespeare-family", "shakespeare.ged")
 	logPath := filepath.Join(t.TempDir(), "import.log")
 
 	glx, result, err := ImportGEDCOMFromFile(gedcomPath, logPath)

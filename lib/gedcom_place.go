@@ -104,7 +104,7 @@ func createOrGetPlace(name string, parentID string, level int, totalLevels int, 
 	}
 
 	if parentID != "" {
-		place.Parent = parentID
+		place.ParentID = parentID
 	}
 
 	ctx.GLX.Places[placeID] = place

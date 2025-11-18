@@ -26,7 +26,8 @@ func TestImportGEDCOM551(t *testing.T) {
 
 	t.Skip("Waiting for sample GEDCOM 5.5.1 files to be added")
 
-	glx, err := ImportGEDCOMFromFile(gedcomPath)
+	logPath := filepath.Join(t.TempDir(), "import.log")
+	glx, _, err := ImportGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Failed to import GEDCOM 5.5.1: %v", err)
 	}
@@ -49,7 +50,8 @@ func TestImportGEDCOM70(t *testing.T) {
 
 	t.Skip("Waiting for sample GEDCOM 7.0 files to be added")
 
-	glx, err := ImportGEDCOMFromFile(gedcomPath)
+	logPath := filepath.Join(t.TempDir(), "import.log")
+	glx, _, err := ImportGEDCOMFromFile(gedcomPath, logPath)
 	if err != nil {
 		t.Fatalf("Failed to import GEDCOM 7.0: %v", err)
 	}

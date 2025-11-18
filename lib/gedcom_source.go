@@ -32,9 +32,10 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	ctx.Logger.LogInfo(fmt.Sprintf("Converting SOUR %s -> %s", sourRecord.XRef, sourceID))
 
 	// Create source entity
-	source := &Source{
-		Properties: make(map[string]interface{}),
-	}
+	source := &Source{}
+
+	var notes []string
+	var description []string
 
 	// Process subrecords
 	for _, sub := range sourRecord.SubRecords {
@@ -45,57 +46,65 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "AUTH":
 			// Author
-			source.Properties["author"] = sub.Value
+			source.Authors = append(source.Authors, sub.Value)
 
 		case "PUBL":
 			// Publication facts
-			source.Properties["publication_info"] = sub.Value
+			source.PublicationInfo = sub.Value
 
 		case "ABBR":
-			// Abbreviation
-			source.Properties["abbreviation"] = sub.Value
+			// Abbreviation - store in notes
+			notes = append(notes, "Abbreviation: "+sub.Value)
 
 		case "REPO":
 			// Repository reference
 			repoID := ctx.RepositoryIDMap[sub.Value]
 			if repoID != "" {
-				source.Repository = repoID
+				source.RepositoryID = repoID
 
-				// Extract call number
+				// Extract call number - store in notes
 				for _, repoSub := range sub.SubRecords {
 					if repoSub.Tag == "CALN" {
-						source.Properties["call_number"] = repoSub.Value
+						notes = append(notes, "Call number: "+repoSub.Value)
 					}
 				}
 			}
 
 		case "TEXT":
-			// Full source text
-			source.Properties["source_text"] = sub.Value
+			// Full source text - add to description
+			description = append(description, sub.Value)
 
 		case "NOTE":
 			// Notes
 			noteText := extractNoteText(sub, ctx)
 			if noteText != "" {
-				source.Properties["notes"] = noteText
+				notes = append(notes, noteText)
 			}
 
 		case "DATA":
-			// Data information
+			// Data information - store in notes
 			for _, dataSub := range sub.SubRecords {
 				switch dataSub.Tag {
 				case "EVEN":
 					// Events recorded
-					source.Properties["events_recorded"] = dataSub.Value
+					notes = append(notes, "Events recorded: "+dataSub.Value)
 				case "AGNC":
 					// Agency
-					source.Properties["agency"] = dataSub.Value
+					notes = append(notes, "Agency: "+dataSub.Value)
+				case "DATE":
+					// Date of data
+					source.Date = parseGEDCOMDate(dataSub.Value)
 				}
 			}
 
 		case "OBJE":
-			// Media object - not yet implemented
-			ctx.addWarning(sourRecord.Line, "OBJE", "Media linking not yet implemented")
+			// Media object reference
+			if sub.Value != "" {
+				mediaID := ctx.MediaIDMap[sub.Value]
+				if mediaID != "" {
+					source.Media = append(source.Media, mediaID)
+				}
+			}
 
 		case "TYPE":
 			// Source type (GEDCOM 7.0)
@@ -103,9 +112,19 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		}
 	}
 
+	// Combine description
+	if len(description) > 0 {
+		source.Description = strings.Join(description, "\n")
+	}
+
+	// Combine notes
+	if len(notes) > 0 {
+		source.Notes = strings.Join(notes, "\n")
+	}
+
 	// Default type if not set
 	if source.Type == "" {
-		source.Type = inferSourceType(source.Title, source.Properties)
+		source.Type = inferSourceType(source.Title)
 	}
 
 	// Store source
@@ -143,8 +162,8 @@ func mapSourceType(gedcomType string) string {
 	return "other"
 }
 
-// inferSourceType infers source type from title and properties
-func inferSourceType(title string, properties map[string]interface{}) string {
+// inferSourceType infers source type from title
+func inferSourceType(title string) string {
 	titleLower := strings.ToLower(title)
 
 	// Check for keywords
