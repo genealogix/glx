@@ -85,7 +85,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		relationshipID := generateRelationshipID(ctx)
 
 		relationship := &Relationship{
-			Type:       "spousal",
+			Type:       "marriage",
 			Persons:    []string{husbandID, wifeID},
 			Properties: make(map[string]interface{}),
 		}
@@ -128,7 +128,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			relationshipID := generateRelationshipID(ctx)
 
 			relationship := &Relationship{
-				Type:       "parent_child",
+				Type:       "parent-child",
 				Persons:    []string{parentID, childID},
 				Properties: make(map[string]interface{}),
 			}

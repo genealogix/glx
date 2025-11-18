@@ -245,8 +245,12 @@ func TestSerializeMultiFile(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
 
-	// Serialize
-	s := NewSerializer(nil)
+	// Serialize (disable validation for unit test - we're testing serialization, not data validity)
+	s := NewSerializer(&SerializerOptions{
+		IncludeVocabularies: true,
+		Validate:            false, // Disable validation for unit test
+		Pretty:              true,
+	})
 	err := s.SerializeMultiFile(glx, tmpDir)
 	if err != nil {
 		t.Fatalf("Failed to serialize: %v", err)

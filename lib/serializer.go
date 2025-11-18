@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -402,15 +403,14 @@ func loadEntitiesWithID[T any](dir string, entities map[string]T) error {
 	return nil
 }
 
-// validateGLXFile performs basic validation on a GLX archive.
-// Returns error if validation fails.
+// validateGLXFile validates a GLX archive using the built-in validation system.
+// Returns error if validation fails with hard errors.
 func validateGLXFile(glx *GLXFile) error {
-	// Basic validation - just check that the file is not nil
 	if glx == nil {
 		return fmt.Errorf("GLX file is nil")
 	}
 
-	// Initialize maps if nil
+	// Initialize maps if nil (prevents validation from failing on nil maps)
 	if glx.Persons == nil {
 		glx.Persons = make(map[string]*Person)
 	}
@@ -439,12 +439,24 @@ func validateGLXFile(glx *GLXFile) error {
 		glx.Assertions = make(map[string]*Assertion)
 	}
 
-	// TODO: Add more comprehensive validation
-	// - Check for dangling references
-	// - Validate vocabulary types
-	// - Check required fields
-	// - Validate date formats
-	// etc.
+	// Run full validation
+	result := glx.Validate()
+
+	// Check for hard errors
+	if len(result.Errors) > 0 {
+		// Format error messages
+		var errMsgs []string
+		for i, err := range result.Errors {
+			if i < 10 { // Show first 10 errors
+				errMsgs = append(errMsgs, fmt.Sprintf("  - %s", err.Message))
+			}
+		}
+		if len(result.Errors) > 10 {
+			errMsgs = append(errMsgs, fmt.Sprintf("  ... and %d more errors", len(result.Errors)-10))
+		}
+
+		return fmt.Errorf("validation failed with %d error(s):\n%s", len(result.Errors), strings.Join(errMsgs, "\n"))
+	}
 
 	return nil
 }

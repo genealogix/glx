@@ -183,6 +183,12 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 		Assertions:    make(map[string]*Assertion),
 	}
 
+	// Load standard vocabularies into GLXFile so validation works
+	if err := LoadStandardVocabulariesIntoGLX(glx); err != nil {
+		logger.LogError(0, "VOCAB", "", err)
+		return nil, nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
+	}
+
 	// Create conversion context
 	ctx := &ConversionContext{
 		GLX:                 glx,
