@@ -72,7 +72,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		case "DIV":
 			divorceRecord = sub
 
-		case "ENGA", "MARB", "MARC", "MARL", "MARS":
+		case "ENGA", "MARB", "MARC", "MARL", "MARS", "ANUL", "DIVF", "CENS", "EVEN":
 			// Other family events
 			if err := convertFamilyEvent(husbandID, wifeID, sub, ctx); err != nil {
 				ctx.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
@@ -391,6 +391,7 @@ func mapFamilyEventType(tag string) string {
 		"MARL": "marriage_license",
 		"MARS": "marriage_settlement",
 		"ANUL": "annulment",
+		"DIVF": "divorce_filed",
 		"CENS": "census",
 		"EVEN": "event",
 	}
