@@ -6683,26 +6683,11 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
     return nil
 }
 
-// generatePersonIDFromRecord generates person ID from INDI record
+// generatePersonIDFromRecord generates person ID and maps GEDCOM XRef
 func generatePersonIDFromRecord(indiRecord *GEDCOMRecord, ctx *ConversionContext) string {
-    // Extract primary name
-    var name string
-    for _, sub := range indiRecord.SubRecords {
-        if sub.Tag == "NAME" {
-            nameSubstructure := extractNameSubstructure(sub)
-            parsedName := parseGEDCOMName(sub.Value, nameSubstructure)
-            if parsedName.GivenName != "" || parsedName.Surname != "" {
-                name = fmt.Sprintf("%s-%s", parsedName.GivenName, parsedName.Surname)
-                break
-            }
-        }
-    }
-
-    if name == "" {
-        name = "unknown"
-    }
-
-    return generatePersonID(name, indiRecord.XRef, ctx)
+    personID := generatePersonID(ctx)
+    ctx.PersonIDMap[indiRecord.XRef] = personID
+    return personID
 }
 
 // extractNameSubstructure extracts NAME substructure fields
@@ -7454,22 +7439,11 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
     return nil
 }
 
-// generateSourceIDFromRecord generates source ID from SOUR record
+// generateSourceIDFromRecord generates source ID and maps GEDCOM XRef
 func generateSourceIDFromRecord(sourRecord *GEDCOMRecord, ctx *ConversionContext) string {
-    // Extract title for ID
-    var title string
-    for _, sub := range sourRecord.SubRecords {
-        if sub.Tag == "TITL" {
-            title = sub.Value
-            break
-        }
-    }
-
-    if title == "" {
-        title = "source"
-    }
-
-    return generateSourceID(title, sourRecord.XRef, ctx)
+    sourceID := generateSourceID(ctx)
+    ctx.SourceIDMap[sourRecord.XRef] = sourceID
+    return sourceID
 }
 
 // mapSourceType maps GEDCOM source type to GLX
@@ -7643,22 +7617,11 @@ func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
     return nil
 }
 
-// generateRepositoryIDFromRecord generates repository ID from REPO record
+// generateRepositoryIDFromRecord generates repository ID and maps GEDCOM XRef
 func generateRepositoryIDFromRecord(repoRecord *GEDCOMRecord, ctx *ConversionContext) string {
-    // Extract name for ID
-    var name string
-    for _, sub := range repoRecord.SubRecords {
-        if sub.Tag == "NAME" {
-            name = sub.Value
-            break
-        }
-    }
-
-    if name == "" {
-        name = "repository"
-    }
-
-    return generateRepositoryID(name, repoRecord.XRef, ctx)
+    repositoryID := generateRepositoryID(ctx)
+    ctx.RepositoryIDMap[repoRecord.XRef] = repositoryID
+    return repositoryID
 }
 
 // extractAddress builds full address from ADDR and subrecords
@@ -7850,7 +7813,7 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 // convertEmbeddedMedia converts embedded media object
 func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) string {
-    mediaID := generateMediaID("embedded", ctx)
+    mediaID := generateMediaID(ctx)
 
     media := &Media{
         Properties: make(map[string]interface{}),
@@ -7876,24 +7839,11 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) stri
     return mediaID
 }
 
-// generateMediaIDFromRecord generates media ID from OBJE record
+// generateMediaIDFromRecord generates media ID and maps GEDCOM XRef
 func generateMediaIDFromRecord(objeRecord *GEDCOMRecord, ctx *ConversionContext) string {
-    // Extract file name for ID
-    var fileName string
-    for _, sub := range objeRecord.SubRecords {
-        if sub.Tag == "FILE" {
-            fileName = filepath.Base(sub.Value)
-            // Remove extension
-            fileName = strings.TrimSuffix(fileName, filepath.Ext(fileName))
-            break
-        }
-    }
-
-    if fileName == "" {
-        fileName = "media"
-    }
-
-    return generateMediaID(fileName, objeRecord.XRef, ctx)
+    mediaID := generateMediaID(ctx)
+    ctx.MediaIDMap[objeRecord.XRef] = mediaID
+    return mediaID
 }
 
 // inferMimeType infers MIME type from file extension
