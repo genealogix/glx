@@ -14,6 +14,9 @@ var PlaceTypes []byte
 //go:embed repository-types.glx
 var RepositoryTypes []byte
 
+//go:embed source-types.glx
+var SourceTypes []byte
+
 //go:embed participant-roles.glx
 var ParticipantRoles []byte
 
@@ -44,9 +47,10 @@ var Files = map[string][]byte{
 	"event-types.glx":             EventTypes,
 	"place-types.glx":             PlaceTypes,
 	"repository-types.glx":        RepositoryTypes,
+	"source-types.glx":            SourceTypes,
 	"participant-roles.glx":       ParticipantRoles,
 	"media-types.glx":             MediaTypes,
-	"confidence-levels.glx":        ConfidenceLevels,
+	"confidence-levels.glx":       ConfidenceLevels,
 	"quality-ratings.glx":         QualityRatings,
 	"person-properties.glx":       PersonProperties,
 	"event-properties.glx":        EventProperties,
