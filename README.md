@@ -205,11 +205,6 @@ GENEALOGIX is an open-source project that thrives on community participation:
 - 🔄 Community building and feedback
 - 📋 GitHub issues and discussions for major changes
 
-**Roadmap:**
-- v1.1: Enhanced validation and performance
-- v1.2: Advanced relationship types
-- v2.0: Breaking changes with migration tools
-
 ### 🙏 Acknowledgments
 
 GENEALOGIX builds on decades of genealogy research and the contributions of:
