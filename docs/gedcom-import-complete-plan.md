@@ -4828,3 +4828,3336 @@ This plan is ready for immediate implementation without need for phasing or incr
 **Last Updated**: 2025-11-18
 **Status**: Ready for Implementation
 
+
+---
+
+# Step-by-Step Implementation Guide
+
+This section provides a practical, ordered guide for implementing the GEDCOM import functionality. Follow these steps in order for the most efficient implementation.
+
+## Phase 0: Foundation Setup (Day 1)
+
+### Step 1: Create File Structure
+
+```bash
+# Create all the Go files
+touch lib/gedcom_import.go
+touch lib/gedcom_converter.go
+touch lib/gedcom_individual.go
+touch lib/gedcom_family.go
+touch lib/gedcom_source.go
+touch lib/gedcom_repository.go
+touch lib/gedcom_media.go
+touch lib/gedcom_place.go
+touch lib/gedcom_date.go
+touch lib/gedcom_name.go
+touch lib/gedcom_util.go
+touch lib/gedcom_evidence.go
+touch lib/gedcom_gedcom7.go
+
+# Create test files
+touch lib/gedcom_import_test.go
+touch lib/gedcom_date_test.go
+touch lib/gedcom_name_test.go
+touch lib/gedcom_integration_test.go
+```
+
+### Step 2: Define Core Data Structures
+
+**File: `lib/gedcom_import.go`**
+
+```go
+package lib
+
+import (
+    "bufio"
+    "fmt"
+    "io"
+    "os"
+    "strconv"
+    "strings"
+)
+
+// GEDCOMVersion represents the version of GEDCOM file being parsed
+type GEDCOMVersion string
+
+const (
+    GEDCOM551 GEDCOMVersion = "5.5.1"
+    GEDCOM70  GEDCOMVersion = "7.0"
+)
+
+// GEDCOMLine represents a single line in a GEDCOM file
+type GEDCOMLine struct {
+    Level int
+    XRef  string
+    Tag   string
+    Value string
+    Line  int
+}
+
+// GEDCOMRecord represents a top-level GEDCOM record with its subordinate lines
+type GEDCOMRecord struct {
+    XRef       string
+    Tag        string
+    Value      string
+    SubRecords []*GEDCOMRecord
+    Line       int
+}
+
+// ImportResult contains the result of a GEDCOM import
+type ImportResult struct {
+    GLX      *GLXFile
+    Errors   []ImportError
+    Warnings []ImportWarning
+    Stats    ImportStatistics
+}
+
+// ImportError represents an error during import
+type ImportError struct {
+    Line     int
+    Record   string
+    Field    string
+    Message  string
+    Severity string
+}
+
+// ImportWarning represents a warning during import
+type ImportWarning struct {
+    Line    int
+    Record  string
+    Field   string
+    Message string
+}
+
+// ImportStatistics tracks import statistics
+type ImportStatistics struct {
+    LinesProcessed       int
+    RecordsProcessed     int
+    PersonsImported      int
+    RelationshipsCreated int
+    EventsCreated        int
+    PlacesCreated        int
+    SourcesImported      int
+    CitationsCreated     int
+    RepositoriesImported int
+    MediaImported        int
+    AssertionsCreated    int
+    EventTypeCount       map[string]int
+    ErrorCount           int
+    WarningCount         int
+    SkippedRecords       int
+    SkippedTags          int
+    UnknownTags          []string
+}
+```
+
+### Step 3: Define Conversion Context
+
+**File: `lib/gedcom_converter.go`**
+
+```go
+package lib
+
+// ConversionContext holds state during GEDCOM conversion
+type ConversionContext struct {
+    GLX     *GLXFile
+    Version GEDCOMVersion
+
+    // ID mappings
+    PersonIDMap     map[string]string
+    FamilyIDMap     map[string]string
+    SourceIDMap     map[string]string
+    RepositoryIDMap map[string]string
+    MediaIDMap      map[string]string
+    PlaceIDMap      map[string]string
+    NoteIDMap       map[string]string
+
+    // GEDCOM 7.0 specific
+    SharedNotes     map[string]*SharedNote
+    ExtensionSchema map[string]string
+
+    // Counters
+    PersonCounter       int
+    EventCounter        int
+    RelationshipCounter int
+    PlaceCounter        int
+    CitationCounter     int
+    AssertionCounter    int
+
+    // Deferred processing
+    DeferredFamilies []*GEDCOMRecord
+    PlaceHierarchy   map[string]*PlaceNode
+
+    // Metadata
+    HeaderMetadata map[string]interface{}
+
+    // Tracking
+    Errors   []ImportError
+    Warnings []ImportWarning
+    Stats    ImportStatistics
+}
+
+// SharedNote represents a GEDCOM 7.0 shared note
+type SharedNote struct {
+    ID           string
+    Content      string
+    MimeType     string
+    Language     string
+    Translations map[string]string
+}
+
+// PlaceNode represents a node in the place hierarchy
+type PlaceNode struct {
+    Name     string
+    Type     string
+    Level    int
+    Parent   *PlaceNode
+    Children []*PlaceNode
+}
+
+// NewConversionContext creates a new conversion context
+func NewConversionContext(version GEDCOMVersion) *ConversionContext {
+    return &ConversionContext{
+        GLX: &GLXFile{
+            Persons:       make(map[string]*Person),
+            Relationships: make(map[string]*Relationship),
+            Events:        make(map[string]*Event),
+            Places:        make(map[string]*Place),
+            Sources:       make(map[string]*Source),
+            Citations:     make(map[string]*Citation),
+            Repositories:  make(map[string]*Repository),
+            Media:         make(map[string]*Media),
+            Assertions:    make(map[string]*Assertion),
+        },
+        Version:         version,
+        PersonIDMap:     make(map[string]string),
+        FamilyIDMap:     make(map[string]string),
+        SourceIDMap:     make(map[string]string),
+        RepositoryIDMap: make(map[string]string),
+        MediaIDMap:      make(map[string]string),
+        PlaceIDMap:      make(map[string]string),
+        NoteIDMap:       make(map[string]string),
+        SharedNotes:     make(map[string]*SharedNote),
+        ExtensionSchema: make(map[string]string),
+        PlaceHierarchy:  make(map[string]*PlaceNode),
+        HeaderMetadata:  make(map[string]interface{}),
+        Stats: ImportStatistics{
+            EventTypeCount: make(map[string]int),
+        },
+    }
+}
+
+// AddError adds an error to the context
+func (ctx *ConversionContext) AddError(line int, record, field, message string) {
+    ctx.Errors = append(ctx.Errors, ImportError{
+        Line:     line,
+        Record:   record,
+        Field:    field,
+        Message:  message,
+        Severity: "error",
+    })
+    ctx.Stats.ErrorCount++
+}
+
+// AddWarning adds a warning to the context
+func (ctx *ConversionContext) AddWarning(line int, record, field, message string) {
+    ctx.Warnings = append(ctx.Warnings, ImportWarning{
+        Line:    line,
+        Record:  record,
+        Field:   field,
+        Message: message,
+    })
+    ctx.Stats.WarningCount++
+}
+```
+
+## Phase 1: Parser Implementation (Days 2-3)
+
+### Step 4: Implement Line Parser
+
+**File: `lib/gedcom_import.go`** (add function)
+
+```go
+// parseGEDCOMLine parses a single GEDCOM line
+func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
+    // Trim trailing whitespace (CRLF, LF, etc.)
+    text = strings.TrimRight(text, "\r\n")
+
+    // Empty lines can be skipped
+    if text == "" {
+        return nil, nil
+    }
+
+    // Split into fields
+    parts := strings.Fields(text)
+    if len(parts) < 2 {
+        return nil, fmt.Errorf("invalid GEDCOM line: too few fields")
+    }
+
+    // Parse level
+    level, err := strconv.Atoi(parts[0])
+    if err != nil {
+        return nil, fmt.Errorf("invalid level number '%s': %w", parts[0], err)
+    }
+
+    line := &GEDCOMLine{
+        Level: level,
+        Line:  lineNum,
+    }
+
+    // Check if second field is an XRef (starts and ends with @)
+    if strings.HasPrefix(parts[1], "@") && strings.HasSuffix(parts[1], "@") {
+        line.XRef = parts[1]
+        if len(parts) >= 3 {
+            line.Tag = parts[2]
+        }
+        if len(parts) >= 4 {
+            // Join remaining parts as value
+            line.Value = strings.Join(parts[3:], " ")
+        }
+    } else {
+        // No XRef, second field is tag
+        line.Tag = parts[1]
+        if len(parts) >= 3 {
+            // Join remaining parts as value
+            line.Value = strings.Join(parts[2:], " ")
+        }
+    }
+
+    return line, nil
+}
+```
+
+### Step 5: Test Line Parser
+
+**File: `lib/gedcom_import_test.go`**
+
+```go
+package lib
+
+import (
+    "testing"
+)
+
+func TestParseGEDCOMLine(t *testing.T) {
+    tests := []struct {
+        name        string
+        line        string
+        wantLevel   int
+        wantXRef    string
+        wantTag     string
+        wantValue   string
+        expectError bool
+    }{
+        {
+            name:      "level 0 with xref",
+            line:      "0 @I1@ INDI",
+            wantLevel: 0,
+            wantXRef:  "@I1@",
+            wantTag:   "INDI",
+            wantValue: "",
+        },
+        {
+            name:      "level 1 with value",
+            line:      "1 NAME John /Smith/",
+            wantLevel: 1,
+            wantXRef:  "",
+            wantTag:   "NAME",
+            wantValue: "John /Smith/",
+        },
+        {
+            name:      "level 2 with value",
+            line:      "2 GIVN John",
+            wantLevel: 2,
+            wantXRef:  "",
+            wantTag:   "GIVN",
+            wantValue: "John",
+        },
+        {
+            name:      "level 0 header",
+            line:      "0 HEAD",
+            wantLevel: 0,
+            wantXRef:  "",
+            wantTag:   "HEAD",
+            wantValue: "",
+        },
+        {
+            name:      "multi-word value",
+            line:      "2 PLAC Brookline, Massachusetts, USA",
+            wantLevel: 2,
+            wantTag:   "PLAC",
+            wantValue: "Brookline, Massachusetts, USA",
+        },
+        {
+            name:        "invalid - no level",
+            line:        "INVALID",
+            expectError: true,
+        },
+        {
+            name:        "invalid - not enough fields",
+            line:        "0",
+            expectError: true,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := parseGEDCOMLine(tt.line, 1)
+
+            if tt.expectError {
+                if err == nil {
+                    t.Errorf("Expected error, got nil")
+                }
+                return
+            }
+
+            if err != nil {
+                t.Fatalf("Unexpected error: %v", err)
+            }
+
+            if got == nil {
+                t.Fatal("Got nil result")
+            }
+
+            if got.Level != tt.wantLevel {
+                t.Errorf("Level = %d, want %d", got.Level, tt.wantLevel)
+            }
+            if got.XRef != tt.wantXRef {
+                t.Errorf("XRef = %q, want %q", got.XRef, tt.wantXRef)
+            }
+            if got.Tag != tt.wantTag {
+                t.Errorf("Tag = %q, want %q", got.Tag, tt.wantTag)
+            }
+            if got.Value != tt.wantValue {
+                t.Errorf("Value = %q, want %q", got.Value, tt.wantValue)
+            }
+        })
+    }
+}
+```
+
+**Run the test:**
+```bash
+go test ./lib -run TestParseGEDCOMLine -v
+```
+
+### Step 6: Implement Record Builder
+
+**File: `lib/gedcom_import.go`** (add function)
+
+```go
+// buildRecords converts flat GEDCOM lines into hierarchical records
+func buildRecords(lines []*GEDCOMLine) ([]*GEDCOMRecord, error) {
+    var records []*GEDCOMRecord
+    var stack []*GEDCOMRecord
+
+    for _, line := range lines {
+        if line == nil {
+            continue
+        }
+
+        record := &GEDCOMRecord{
+            XRef:  line.XRef,
+            Tag:   line.Tag,
+            Value: line.Value,
+            Line:  line.Line,
+        }
+
+        if line.Level == 0 {
+            // Top-level record
+            records = append(records, record)
+            stack = []*GEDCOMRecord{record}
+        } else {
+            // Subordinate record
+            if line.Level > len(stack) {
+                return nil, fmt.Errorf("line %d: invalid level jump from %d to %d",
+                    line.Line, len(stack)-1, line.Level)
+            }
+
+            // Trim stack to parent level
+            stack = stack[:line.Level]
+            parent := stack[len(stack)-1]
+            parent.SubRecords = append(parent.SubRecords, record)
+            stack = append(stack, record)
+        }
+    }
+
+    return records, nil
+}
+```
+
+### Step 7: Implement Main Parser
+
+**File: `lib/gedcom_import.go`** (add function)
+
+```go
+// parseGEDCOM reads a GEDCOM file and parses it into structured records
+func parseGEDCOM(r io.Reader) ([]*GEDCOMRecord, GEDCOMVersion, error) {
+    scanner := bufio.NewScanner(r)
+    // Increase buffer size for long lines (some GEDCOM files have very long notes)
+    scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024) // 10MB max line
+
+    var lines []*GEDCOMLine
+    lineNum := 0
+    version := GEDCOM551 // Default
+
+    for scanner.Scan() {
+        lineNum++
+        text := scanner.Text()
+
+        line, err := parseGEDCOMLine(text, lineNum)
+        if err != nil {
+            return nil, "", fmt.Errorf("line %d: %w", lineNum, err)
+        }
+
+        if line != nil {
+            lines = append(lines, line)
+        }
+    }
+
+    if err := scanner.Err(); err != nil {
+        return nil, "", fmt.Errorf("error reading GEDCOM file: %w", err)
+    }
+
+    // Build hierarchical records
+    records, err := buildRecords(lines)
+    if err != nil {
+        return nil, "", err
+    }
+
+    // Detect version
+    version = detectGEDCOMVersion(records)
+
+    return records, version, nil
+}
+
+// detectGEDCOMVersion detects the GEDCOM version from the records
+func detectGEDCOMVersion(records []*GEDCOMRecord) GEDCOMVersion {
+    // Find HEAD record
+    for _, record := range records {
+        if record.Tag == "HEAD" {
+            // Look for GEDC.VERS
+            for _, sub1 := range record.SubRecords {
+                if sub1.Tag == "GEDC" {
+                    for _, sub2 := range sub1.SubRecords {
+                        if sub2.Tag == "VERS" {
+                            if strings.HasPrefix(sub2.Value, "7.") {
+                                return GEDCOM70
+                            }
+                            if strings.HasPrefix(sub2.Value, "5.5") {
+                                return GEDCOM551
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Default to 5.5.1
+    return GEDCOM551
+}
+```
+
+### Step 8: Implement Entry Points
+
+**File: `lib/gedcom_import.go`** (add functions)
+
+```go
+// ImportGEDCOMFromFile reads a GEDCOM file and converts it to a GLXFile
+func ImportGEDCOMFromFile(filepath string) (*ImportResult, error) {
+    file, err := os.Open(filepath)
+    if err != nil {
+        return nil, fmt.Errorf("failed to open GEDCOM file: %w", err)
+    }
+    defer file.Close()
+
+    return ImportGEDCOM(file)
+}
+
+// ImportGEDCOM reads a GEDCOM file from an io.Reader and converts it to a GLXFile
+func ImportGEDCOM(r io.Reader) (*ImportResult, error) {
+    // Parse GEDCOM into structured records
+    records, version, err := parseGEDCOM(r)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse GEDCOM: %w", err)
+    }
+
+    // Convert to GLX
+    result, err := convertToGLX(records, version)
+    if err != nil {
+        return nil, fmt.Errorf("failed to convert GEDCOM to GLX: %w", err)
+    }
+
+    return result, nil
+}
+```
+
+**Test the parser with minimal file:**
+
+```bash
+go test ./lib -run TestParseGEDCOMLine -v
+```
+
+---
+
+This is the first major section. I'll continue with the next sections one at a time. Would you like me to continue with the next section (Phase 2: Utility Functions)?
+
+
+## Phase 2: Utility Functions (Days 4-5)
+
+### Step 9: Implement ID Generation
+
+**File: `lib/gedcom_util.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "regexp"
+    "strings"
+)
+
+// sanitizeForID converts a string to a valid ID component
+func sanitizeForID(s string) string {
+    // Convert to lowercase
+    s = strings.ToLower(s)
+
+    // Replace spaces with hyphens
+    s = strings.ReplaceAll(s, " ", "-")
+
+    // Remove non-alphanumeric except hyphens
+    reg := regexp.MustCompile("[^a-z0-9-]+")
+    s = reg.ReplaceAllString(s, "")
+
+    // Remove leading/trailing hyphens
+    s = strings.Trim(s, "-")
+
+    // Collapse multiple hyphens
+    reg = regexp.MustCompile("-+")
+    s = reg.ReplaceAllString(s, "-")
+
+    // Limit length
+    if len(s) > 50 {
+        s = s[:50]
+    }
+
+    return s
+}
+
+// generatePersonID generates a person ID from name and GEDCOM XRef
+func generatePersonID(gedcomXRef string, name string, ctx *ConversionContext) string {
+    // Sanitize name
+    namePart := sanitizeForID(name)
+    if namePart == "" {
+        namePart = "unknown"
+    }
+
+    // Extract XRef ID (remove @ symbols)
+    xrefPart := strings.Trim(gedcomXRef, "@")
+    xrefPart = strings.ToLower(xrefPart)
+
+    // Combine
+    baseID := fmt.Sprintf("person-%s-%s", namePart, xrefPart)
+
+    // Check for collision
+    personID := baseID
+    counter := 2
+    for {
+        if _, exists := ctx.PersonIDMap[personID]; !exists {
+            break
+        }
+        personID = fmt.Sprintf("%s-%d", baseID, counter)
+        counter++
+    }
+
+    return personID
+}
+
+// generateEventID generates an event ID
+func generateEventID(eventType string, personID string, ctx *ConversionContext) string {
+    ctx.EventCounter++
+
+    // Extract person name from person ID
+    personPart := strings.TrimPrefix(personID, "person-")
+    // Remove xref suffix
+    parts := strings.Split(personPart, "-")
+    if len(parts) > 1 {
+        personPart = strings.Join(parts[:len(parts)-1], "-")
+    }
+
+    return fmt.Sprintf("event-%s-%s-%d", eventType, personPart, ctx.EventCounter)
+}
+
+// generateRelationshipID generates a relationship ID
+func generateRelationshipID(relType string, participants []string, gedcomXRef string, ctx *ConversionContext) string {
+    ctx.RelationshipCounter++
+
+    // Extract short names from participant IDs
+    var nameParts []string
+    for _, participantID := range participants {
+        if participantID == "" {
+            continue
+        }
+        // Extract name part from person ID
+        name := strings.TrimPrefix(participantID, "person-")
+        parts := strings.Split(name, "-")
+        if len(parts) > 0 {
+            // Take first word of name
+            nameParts = append(nameParts, parts[0])
+        }
+    }
+
+    nameStr := strings.Join(nameParts, "-")
+    if nameStr == "" {
+        nameStr = "unknown"
+    }
+
+    xrefPart := strings.ToLower(strings.Trim(gedcomXRef, "@"))
+
+    return fmt.Sprintf("relationship-%s-%s-%s", relType, nameStr, xrefPart)
+}
+
+// generatePlaceID generates a place ID from place name
+func generatePlaceID(placeName string, ctx *ConversionContext) string {
+    baseID := fmt.Sprintf("place-%s", sanitizeForID(placeName))
+
+    // Check for collision
+    placeID := baseID
+    counter := 2
+    for {
+        found := false
+        for _, id := range ctx.PlaceIDMap {
+            if id == placeID {
+                found = true
+                break
+            }
+        }
+        if !found {
+            break
+        }
+        placeID = fmt.Sprintf("%s-%d", baseID, counter)
+        counter++
+    }
+
+    return placeID
+}
+
+// generateSourceID generates a source ID
+func generateSourceID(gedcomXRef string, title string, ctx *ConversionContext) string {
+    xrefPart := strings.ToLower(strings.Trim(gedcomXRef, "@"))
+
+    if title != "" {
+        titlePart := sanitizeForID(title)
+        if len(titlePart) > 30 {
+            titlePart = titlePart[:30]
+        }
+        return fmt.Sprintf("source-%s-%s", titlePart, xrefPart)
+    }
+
+    return fmt.Sprintf("source-%s", xrefPart)
+}
+
+// generateCitationID generates a citation ID
+func generateCitationID(subjectID string, sourceID string, ctx *ConversionContext) string {
+    ctx.CitationCounter++
+
+    // Extract subject type and short ID
+    subjectType := "unknown"
+    if strings.HasPrefix(subjectID, "person-") {
+        subjectType = "person"
+    } else if strings.HasPrefix(subjectID, "event-") {
+        subjectType = "event"
+    } else if strings.HasPrefix(subjectID, "relationship-") {
+        subjectType = "relationship"
+    }
+
+    // Extract source short ID
+    sourcePart := strings.TrimPrefix(sourceID, "source-")
+    parts := strings.Split(sourcePart, "-")
+    if len(parts) > 0 {
+        sourcePart = parts[len(parts)-1] // Get XRef part
+    }
+
+    return fmt.Sprintf("citation-%s-%s-%d", subjectType, sourcePart, ctx.CitationCounter)
+}
+
+// generateAssertionID generates an assertion ID
+func generateAssertionID(subjectID string, claim string, ctx *ConversionContext) string {
+    ctx.AssertionCounter++
+
+    claimPart := sanitizeForID(claim)
+    if len(claimPart) > 20 {
+        claimPart = claimPart[:20]
+    }
+
+    return fmt.Sprintf("assertion-%s-%d", claimPart, ctx.AssertionCounter)
+}
+
+// combineNotes combines multiple note strings
+func combineNotes(notes []string) string {
+    var combined []string
+    for _, note := range notes {
+        note = strings.TrimSpace(note)
+        if note != "" {
+            combined = append(combined, note)
+        }
+    }
+    return strings.Join(combined, "\n\n")
+}
+```
+
+### Step 10: Implement Date Parser
+
+**File: `lib/gedcom_date.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "regexp"
+    "strings"
+)
+
+var monthMap = map[string]string{
+    "JAN": "01", "JANUARY": "01",
+    "FEB": "02", "FEBRUARY": "02",
+    "MAR": "03", "MARCH": "03",
+    "APR": "04", "APRIL": "04",
+    "MAY": "05",
+    "JUN": "06", "JUNE": "06",
+    "JUL": "07", "JULY": "07",
+    "AUG": "08", "AUGUST": "08",
+    "SEP": "09", "SEPTEMBER": "09",
+    "OCT": "10", "OCTOBER": "10",
+    "NOV": "11", "NOVEMBER": "11",
+    "DEC": "12", "DECEMBER": "12",
+}
+
+// parseGEDCOMDate parses a GEDCOM date string to GLX format
+func parseGEDCOMDate(gedcomDate string) (interface{}, map[string]interface{}, error) {
+    properties := make(map[string]interface{})
+    date := strings.TrimSpace(gedcomDate)
+
+    if date == "" {
+        return nil, properties, nil
+    }
+
+    // Handle ABT (about)
+    if strings.HasPrefix(date, "ABT ") {
+        properties["date_approximate"] = true
+        date = strings.TrimPrefix(date, "ABT ")
+        result, err := parseExactDate(date)
+        if err != nil {
+            return date, properties, nil // Return original if can't parse
+        }
+        return "~" + result, properties, nil
+    }
+
+    // Handle CAL (calculated)
+    if strings.HasPrefix(date, "CAL ") {
+        properties["date_calculated"] = true
+        date = strings.TrimPrefix(date, "CAL ")
+        result, err := parseExactDate(date)
+        return result, properties, err
+    }
+
+    // Handle EST (estimated)
+    if strings.HasPrefix(date, "EST ") {
+        properties["date_estimated"] = true
+        date = strings.TrimPrefix(date, "EST ")
+        result, err := parseExactDate(date)
+        return result, properties, err
+    }
+
+    // Handle BEF (before)
+    if strings.HasPrefix(date, "BEF ") {
+        date = strings.TrimPrefix(date, "BEF ")
+        result, err := parseExactDate(date)
+        if err != nil {
+            return date, properties, nil
+        }
+        return "<" + result, properties, nil
+    }
+
+    // Handle AFT (after)
+    if strings.HasPrefix(date, "AFT ") {
+        date = strings.TrimPrefix(date, "AFT ")
+        result, err := parseExactDate(date)
+        if err != nil {
+            return date, properties, nil
+        }
+        return ">" + result, properties, nil
+    }
+
+    // Handle BET ... AND ... (between)
+    if strings.Contains(date, " AND ") {
+        parts := strings.Split(date, " AND ")
+        if len(parts) == 2 {
+            start := strings.TrimPrefix(parts[0], "BET ")
+            start = strings.TrimSpace(start)
+            end := strings.TrimSpace(parts[1])
+
+            startDate, _ := parseExactDate(start)
+            endDate, _ := parseExactDate(end)
+
+            return fmt.Sprintf("%s/%s", startDate, endDate), properties, nil
+        }
+    }
+
+    // Handle FROM ... TO ... (range)
+    if strings.HasPrefix(date, "FROM ") && strings.Contains(date, " TO ") {
+        parts := strings.Split(date, " TO ")
+        if len(parts) == 2 {
+            start := strings.TrimPrefix(parts[0], "FROM ")
+            start = strings.TrimSpace(start)
+            end := strings.TrimSpace(parts[1])
+
+            startDate, _ := parseExactDate(start)
+            endDate, _ := parseExactDate(end)
+
+            return fmt.Sprintf("%s/%s", startDate, endDate), properties, nil
+        }
+    }
+
+    // Exact date
+    result, err := parseExactDate(date)
+    if err != nil {
+        // If we can't parse, store original and mark uncertain
+        properties["date_parse_failed"] = true
+        properties["date_original"] = gedcomDate
+        return gedcomDate, properties, nil
+    }
+
+    return result, properties, nil
+}
+
+// parseExactDate parses an exact GEDCOM date (no qualifiers)
+func parseExactDate(date string) (string, error) {
+    parts := strings.Fields(date)
+
+    if len(parts) == 0 {
+        return "", fmt.Errorf("empty date")
+    }
+
+    // Year only: "1850"
+    if len(parts) == 1 {
+        return parts[0], nil
+    }
+
+    // Month Year: "JAN 1850"
+    if len(parts) == 2 {
+        month, ok := monthMap[strings.ToUpper(parts[0])]
+        if !ok {
+            return "", fmt.Errorf("invalid month: %s", parts[0])
+        }
+        year := parts[1]
+        return fmt.Sprintf("%s-%s", year, month), nil
+    }
+
+    // Day Month Year: "25 JAN 1850"
+    if len(parts) == 3 {
+        day := parts[0]
+        if len(day) == 1 {
+            day = "0" + day
+        }
+        month, ok := monthMap[strings.ToUpper(parts[1])]
+        if !ok {
+            return "", fmt.Errorf("invalid month: %s", parts[1])
+        }
+        year := parts[2]
+        return fmt.Sprintf("%s-%s-%s", year, month, day), nil
+    }
+
+    return "", fmt.Errorf("invalid date format: %s", date)
+}
+
+// parseGEDCOM7Time parses a GEDCOM 7.0 time value
+func parseGEDCOM7Time(timeStr string) string {
+    // Time format: HH:MM:SS[.fraction][Z]
+    // Already close to ISO 8601, just return as-is
+    return timeStr
+}
+
+// combineDateAndTime combines a date and time into ISO 8601
+func combineDateAndTime(date string, time string) string {
+    if time == "" {
+        return date
+    }
+    return fmt.Sprintf("%sT%s", date, time)
+}
+```
+
+### Step 11: Test Date Parser
+
+**File: `lib/gedcom_date_test.go`**
+
+```go
+package lib
+
+import (
+    "testing"
+)
+
+func TestParseExactDate(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        want    string
+        wantErr bool
+    }{
+        {"year only", "1850", "1850", false},
+        {"month year", "JAN 1850", "1850-01", false},
+        {"month year lowercase", "jan 1850", "1850-01", false},
+        {"full month year", "JANUARY 1850", "1850-01", false},
+        {"day month year", "25 JAN 1850", "1850-01-25", false},
+        {"day single digit", "5 JAN 1850", "1850-01-05", false},
+        {"invalid month", "FOO 1850", "", true},
+        {"empty", "", "", true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := parseExactDate(tt.input)
+            if (err != nil) != tt.wantErr {
+                t.Errorf("parseExactDate() error = %v, wantErr %v", err, tt.wantErr)
+                return
+            }
+            if got != tt.want {
+                t.Errorf("parseExactDate() = %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
+
+func TestParseGEDCOMDate(t *testing.T) {
+    tests := []struct {
+        name       string
+        input      string
+        wantDate   string
+        wantProps  map[string]interface{}
+    }{
+        {
+            name:     "exact date",
+            input:    "25 JAN 1850",
+            wantDate: "1850-01-25",
+        },
+        {
+            name:     "about date",
+            input:    "ABT 1850",
+            wantDate: "~1850",
+            wantProps: map[string]interface{}{
+                "date_approximate": true,
+            },
+        },
+        {
+            name:     "before date",
+            input:    "BEF 1850",
+            wantDate: "<1850",
+        },
+        {
+            name:     "after date",
+            input:    "AFT 1850",
+            wantDate: ">1850",
+        },
+        {
+            name:     "between dates",
+            input:    "BET 1849 AND 1851",
+            wantDate: "1849/1851",
+        },
+        {
+            name:     "from to dates",
+            input:    "FROM 1849 TO 1851",
+            wantDate: "1849/1851",
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            gotDate, gotProps, err := parseGEDCOMDate(tt.input)
+            if err != nil {
+                t.Errorf("parseGEDCOMDate() error = %v", err)
+                return
+            }
+
+            if gotDate != tt.wantDate {
+                t.Errorf("parseGEDCOMDate() date = %v, want %v", gotDate, tt.wantDate)
+            }
+
+            if tt.wantProps != nil {
+                for key, wantVal := range tt.wantProps {
+                    if gotVal, ok := gotProps[key]; !ok || gotVal != wantVal {
+                        t.Errorf("parseGEDCOMDate() props[%s] = %v, want %v", key, gotVal, wantVal)
+                    }
+                }
+            }
+        })
+    }
+}
+```
+
+**Run tests:**
+```bash
+go test ./lib -run TestParse.*Date -v
+```
+
+---
+
+This completes Phase 2. Continue with Phase 3?
+
+
+## Phase 3: Name and Place Parsing (Day 6)
+
+### Step 12: Implement Name Parser
+
+**File: `lib/gedcom_name.go`**
+
+```go
+package lib
+
+import (
+    "regexp"
+    "strings"
+)
+
+// PersonName represents parsed name components
+type PersonName struct {
+    Prefix        string
+    GivenName     string
+    Nickname      string
+    SurnamePrefix string
+    Surname       string
+    Suffix        string
+}
+
+// NameSubstructure represents GEDCOM name substructure
+type NameSubstructure struct {
+    NPFX string // Name prefix
+    GIVN string // Given name
+    NICK string // Nickname
+    SPFX string // Surname prefix
+    SURN string // Surname
+    NSFX string // Name suffix
+}
+
+// parseGEDCOMName parses a GEDCOM name value and/or substructure
+func parseGEDCOMName(nameValue string, substructure *NameSubstructure) PersonName {
+    name := PersonName{}
+
+    // If substructure provided, use it (more accurate)
+    if substructure != nil && substructure.GIVN != "" {
+        name.Prefix = substructure.NPFX
+        name.GivenName = substructure.GIVN
+        name.Nickname = substructure.NICK
+        name.SurnamePrefix = substructure.SPFX
+        name.Surname = substructure.SURN
+        name.Suffix = substructure.NSFX
+        return name
+    }
+
+    // Parse from name value
+    if nameValue == "" {
+        return name
+    }
+
+    // Extract surname (between /.../)
+    surnameRegex := regexp.MustCompile(`/([^/]+)/`)
+    matches := surnameRegex.FindStringSubmatch(nameValue)
+
+    if len(matches) > 1 {
+        // Parse surname and surname prefix
+        surnamePart := matches[1]
+        surnameWords := strings.Fields(surnamePart)
+
+        if len(surnameWords) > 1 && isSurnamePrefix(surnameWords[0]) {
+            name.SurnamePrefix = surnameWords[0]
+            name.Surname = strings.Join(surnameWords[1:], " ")
+        } else {
+            name.Surname = surnamePart
+        }
+
+        // Remove surname from name value
+        nameValue = surnameRegex.ReplaceAllString(nameValue, "")
+    }
+
+    // Extract nickname (in quotes)
+    nicknameRegex := regexp.MustCompile(`"([^"]+)"`)
+    nicknameMatches := nicknameRegex.FindAllString(nameValue, -1)
+    if len(nicknameMatches) > 0 {
+        // Take first nickname
+        name.Nickname = strings.Trim(nicknameMatches[0], "\"")
+        // Remove all nicknames from value
+        nameValue = nicknameRegex.ReplaceAllString(nameValue, "")
+    }
+
+    // Split remaining parts
+    parts := strings.Fields(nameValue)
+    if len(parts) == 0 {
+        return name
+    }
+
+    // Extract prefix (Dr., Rev., etc.)
+    prefixParts := []string{}
+    for len(parts) > 0 && isNamePrefix(parts[0]) {
+        prefixParts = append(prefixParts, parts[0])
+        parts = parts[1:]
+    }
+    if len(prefixParts) > 0 {
+        name.Prefix = strings.Join(prefixParts, " ")
+    }
+
+    // Extract suffix (Jr., Sr., III, etc.) from end
+    suffixParts := []string{}
+    for len(parts) > 0 && isNameSuffix(parts[len(parts)-1]) {
+        suffixParts = append([]string{parts[len(parts)-1]}, suffixParts...)
+        parts = parts[:len(parts)-1]
+    }
+    if len(suffixParts) > 0 {
+        name.Suffix = strings.Join(suffixParts, " ")
+    }
+
+    // Remaining parts are given name
+    if len(parts) > 0 {
+        name.GivenName = strings.Join(parts, " ")
+    }
+
+    return name
+}
+
+// isSurnamePrefix checks if a word is a surname prefix
+func isSurnamePrefix(word string) bool {
+    prefixes := []string{
+        "de", "von", "van", "del", "la", "le", "di", "da",
+        "den", "der", "ten", "ter", "te", "sur", "af", "av",
+        "De", "Von", "Van", "Del", "La", "Le", "Di", "Da",
+    }
+    for _, prefix := range prefixes {
+        if word == prefix {
+            return true
+        }
+    }
+    return false
+}
+
+// isNamePrefix checks if a word is a name prefix
+func isNamePrefix(word string) bool {
+    prefixes := []string{
+        "Dr", "Dr.", "Rev", "Rev.", "Mr", "Mr.", "Mrs", "Mrs.",
+        "Ms", "Ms.", "Lt", "Lt.", "Col", "Col.", "Capt", "Capt.",
+        "Sgt", "Sgt.", "Prof", "Prof.", "Sir", "Dame", "Lord",
+        "Lady", "Cmndr", "Cmndr.", "Gen", "Gen.", "Maj", "Maj.",
+    }
+    for _, prefix := range prefixes {
+        if word == prefix {
+            return true
+        }
+    }
+    return false
+}
+
+// isNameSuffix checks if a word is a name suffix
+func isNameSuffix(word string) bool {
+    suffixes := []string{
+        "Jr", "Jr.", "Sr", "Sr.", "II", "III", "IV", "V",
+        "VI", "VII", "VIII", "IX", "X", "Esq", "Esq.",
+        "PhD", "MD", "DDS", "Phd", "Md", "Dds",
+    }
+    for _, suffix := range suffixes {
+        if word == suffix {
+            return true
+        }
+    }
+    return false
+}
+
+// formatFullName formats a PersonName into a complete name
+func formatFullName(name PersonName) string {
+    parts := []string{}
+
+    if name.Prefix != "" {
+        parts = append(parts, name.Prefix)
+    }
+    if name.GivenName != "" {
+        parts = append(parts, name.GivenName)
+    }
+    if name.Nickname != "" {
+        parts = append(parts, fmt.Sprintf("\"%s\"", name.Nickname))
+    }
+    if name.SurnamePrefix != "" {
+        parts = append(parts, name.SurnamePrefix)
+    }
+    if name.Surname != "" {
+        parts = append(parts, name.Surname)
+    }
+    if name.Suffix != "" {
+        parts = append(parts, name.Suffix)
+    }
+
+    return strings.Join(parts, " ")
+}
+```
+
+### Step 13: Test Name Parser
+
+**File: `lib/gedcom_name_test.go`**
+
+```go
+package lib
+
+import (
+    "testing"
+)
+
+func TestParseGEDCOMName(t *testing.T) {
+    tests := []struct {
+        name          string
+        nameValue     string
+        substructure  *NameSubstructure
+        wantGiven     string
+        wantSurname   string
+        wantPrefix    string
+        wantSurnPfx   string
+        wantSuffix    string
+        wantNickname  string
+    }{
+        {
+            name:        "simple name",
+            nameValue:   "John /Smith/",
+            wantGiven:   "John",
+            wantSurname: "Smith",
+        },
+        {
+            name:        "name with middle",
+            nameValue:   "John Q. /Public/",
+            wantGiven:   "John Q.",
+            wantSurname: "Public",
+        },
+        {
+            name:         "name with prefix",
+            nameValue:    "Dr. John /Smith/",
+            wantPrefix:   "Dr.",
+            wantGiven:    "John",
+            wantSurname:  "Smith",
+        },
+        {
+            name:        "name with suffix",
+            nameValue:   "John /Smith/ Jr.",
+            wantGiven:   "John",
+            wantSurname: "Smith",
+            wantSuffix:  "Jr.",
+        },
+        {
+            name:         "name with surname prefix",
+            nameValue:    "John /von Neumann/",
+            wantGiven:    "John",
+            wantSurnPfx:  "von",
+            wantSurname:  "Neumann",
+        },
+        {
+            name:         "name with nickname",
+            nameValue:    "John \"Jack\" /Kennedy/",
+            wantGiven:    "John",
+            wantNickname: "Jack",
+            wantSurname:  "Kennedy",
+        },
+        {
+            name:         "complex name",
+            nameValue:    "Lt. Cmndr. Joseph \"Jack\" /de La Cruz/ Jr.",
+            wantPrefix:   "Lt. Cmndr.",
+            wantGiven:    "Joseph",
+            wantNickname: "Jack",
+            wantSurnPfx:  "de",
+            wantSurname:  "La Cruz",
+            wantSuffix:   "Jr.",
+        },
+        {
+            name: "with substructure",
+            substructure: &NameSubstructure{
+                NPFX: "Dr.",
+                GIVN: "John",
+                SURN: "Smith",
+                NSFX: "Jr.",
+            },
+            wantPrefix:  "Dr.",
+            wantGiven:   "John",
+            wantSurname: "Smith",
+            wantSuffix:  "Jr.",
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := parseGEDCOMName(tt.nameValue, tt.substructure)
+
+            if got.GivenName != tt.wantGiven {
+                t.Errorf("GivenName = %q, want %q", got.GivenName, tt.wantGiven)
+            }
+            if got.Surname != tt.wantSurname {
+                t.Errorf("Surname = %q, want %q", got.Surname, tt.wantSurname)
+            }
+            if got.Prefix != tt.wantPrefix {
+                t.Errorf("Prefix = %q, want %q", got.Prefix, tt.wantPrefix)
+            }
+            if got.SurnamePrefix != tt.wantSurnPfx {
+                t.Errorf("SurnamePrefix = %q, want %q", got.SurnamePrefix, tt.wantSurnPfx)
+            }
+            if got.Suffix != tt.wantSuffix {
+                t.Errorf("Suffix = %q, want %q", got.Suffix, tt.wantSuffix)
+            }
+            if got.Nickname != tt.wantNickname {
+                t.Errorf("Nickname = %q, want %q", got.Nickname, tt.wantNickname)
+            }
+        })
+    }
+}
+```
+
+**Run tests:**
+```bash
+go test ./lib -run TestParseGEDCOMName -v
+```
+
+### Step 14: Implement Place Parser
+
+**File: `lib/gedcom_place.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "strings"
+)
+
+// PlaceHierarchy represents a parsed place hierarchy
+type PlaceHierarchy struct {
+    Parts      []string
+    Coordinates *Coordinates
+}
+
+// Coordinates represents geographic coordinates
+type Coordinates struct {
+    Latitude  float64
+    Longitude float64
+}
+
+// parseGEDCOMPlace parses a GEDCOM place string
+func parseGEDCOMPlace(placeStr string, placeFormat string) (*PlaceHierarchy, error) {
+    if placeStr == "" {
+        return nil, nil
+    }
+
+    // Split by comma
+    parts := strings.Split(placeStr, ",")
+    for i := range parts {
+        parts[i] = strings.TrimSpace(parts[i])
+    }
+
+    return &PlaceHierarchy{
+        Parts: parts,
+    }, nil
+}
+
+// buildPlaceHierarchy creates place entities from hierarchy
+func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (string, error) {
+    if hierarchy == nil || len(hierarchy.Parts) == 0 {
+        return "", nil
+    }
+
+    // Reverse parts to go from general to specific
+    // "Brookline, MA, USA" -> ["USA", "MA", "Brookline"]
+    reversed := make([]string, len(hierarchy.Parts))
+    for i := range hierarchy.Parts {
+        reversed[i] = hierarchy.Parts[len(hierarchy.Parts)-1-i]
+    }
+
+    var parentID string
+    var leafID string
+
+    // Create places from general to specific
+    for level, partName := range reversed {
+        if partName == "" {
+            continue
+        }
+
+        // Infer place type
+        placeType := inferPlaceType(partName, level, len(reversed))
+
+        // Create or get place
+        placeID := createOrGetPlace(partName, placeType, parentID, nil, ctx)
+
+        parentID = placeID
+        leafID = placeID
+    }
+
+    // Add coordinates to leaf place if present
+    if hierarchy.Coordinates != nil && leafID != "" {
+        place := ctx.GLX.Places[leafID]
+        if place != nil {
+            place.Latitude = &hierarchy.Coordinates.Latitude
+            place.Longitude = &hierarchy.Coordinates.Longitude
+        }
+    }
+
+    return leafID, nil
+}
+
+// createOrGetPlace creates a new place or returns existing one
+func createOrGetPlace(name string, placeType string, parentID string, coords *Coordinates, ctx *ConversionContext) string {
+    // Generate unique key
+    key := buildPlaceKey(name, parentID)
+
+    // Check if already exists
+    if placeID, exists := ctx.PlaceIDMap[key]; exists {
+        return placeID
+    }
+
+    // Create new place
+    placeID := generatePlaceID(name, ctx)
+
+    place := &Place{
+        Name:   name,
+        Type:   placeType,
+        Parent: parentID,
+    }
+
+    if coords != nil {
+        place.Latitude = &coords.Latitude
+        place.Longitude = &coords.Longitude
+    }
+
+    ctx.GLX.Places[placeID] = place
+    ctx.PlaceIDMap[key] = placeID
+    ctx.Stats.PlacesCreated++
+
+    return placeID
+}
+
+// buildPlaceKey builds a unique key for a place
+func buildPlaceKey(name string, parentID string) string {
+    return fmt.Sprintf("%s|%s", sanitizeForID(name), parentID)
+}
+
+// inferPlaceType infers the type of place from name and position
+func inferPlaceType(name string, level int, totalLevels int) string {
+    nameLower := strings.ToLower(name)
+
+    // Check for keywords in name
+    if strings.Contains(nameLower, "county") || strings.Contains(nameLower, "shire") {
+        return "county"
+    }
+    if strings.Contains(nameLower, "parish") {
+        return "parish"
+    }
+    if strings.Contains(nameLower, "district") {
+        return "district"
+    }
+    if strings.Contains(nameLower, "region") || strings.Contains(nameLower, "province") {
+        return "region"
+    }
+
+    // Infer by position in hierarchy
+    // level 0 = most general (usually country)
+    // last level = most specific (usually city)
+    switch totalLevels {
+    case 4:
+        // City, County, State, Country
+        switch level {
+        case 0:
+            return "country"
+        case 1:
+            return "state"
+        case 2:
+            return "county"
+        case 3:
+            return "city"
+        }
+    case 3:
+        // City, State, Country
+        switch level {
+        case 0:
+            return "country"
+        case 1:
+            return "state"
+        case 2:
+            return "city"
+        }
+    case 2:
+        // City, Country
+        switch level {
+        case 0:
+            return "country"
+        case 1:
+            return "city"
+        }
+    case 1:
+        // Just a place name
+        return "city"
+    }
+
+    // Default
+    if level == 0 {
+        return "country"
+    }
+    return "city"
+}
+```
+
+**Run all tests:**
+```bash
+go test ./lib -v
+```
+
+---
+
+This completes Phase 3.
+
+---
+
+## Phase 4: Entity Conversion (Days 7-10)
+
+### Step 15: Implement Individual (INDI) Converter
+
+**File: `lib/gedcom_individual.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "strings"
+)
+
+// convertIndividual converts a GEDCOM INDI record to a GLX Person
+func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if indiRecord.Tag != "INDI" {
+        return fmt.Errorf("expected INDI record, got %s", indiRecord.Tag)
+    }
+
+    // Generate person ID
+    personID := generatePersonIDFromRecord(indiRecord, ctx)
+    ctx.PersonIDMap[indiRecord.XRef] = personID
+
+    // Create person entity
+    person := &Person{
+        Properties: make(map[string]interface{}),
+    }
+
+    // Track names for ID generation
+    var primaryName PersonName
+    var nameSubstructure *NameSubstructure
+
+    // Process all subrecords
+    for _, sub := range indiRecord.SubRecords {
+        switch sub.Tag {
+        case "NAME":
+            // Parse name
+            nameSubstructure = extractNameSubstructure(sub)
+            parsedName := parseGEDCOMName(sub.Value, nameSubstructure)
+
+            if primaryName.GivenName == "" && primaryName.Surname == "" {
+                primaryName = parsedName
+            }
+
+            // Create name assertion with citation
+            if err := createNameAssertion(personID, parsedName, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, "NAME", err.Error())
+            }
+
+        case "SEX":
+            // Gender mapping
+            gender := mapGEDCOMSex(sub.Value)
+            person.Properties["gender"] = gender
+
+            // Create assertion
+            if err := createPropertyAssertion(personID, "gender", gender, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, "SEX", err.Error())
+            }
+
+        case "BIRT", "CHR", "DEAT", "BURI", "CREM", "ADOP", "BAPM", "BARM", "BASM",
+             "BLES", "CHRA", "CONF", "FCOM", "ORDN", "NATU", "EMIG", "IMMI", "CENS",
+             "PROB", "WILL", "GRAD", "RETI":
+            // Convert vital/individual event
+            if err := convertIndividualEvent(personID, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, sub.Tag, err.Error())
+            }
+
+        case "OCCU":
+            // Occupation
+            if sub.Value != "" {
+                person.Properties["occupation"] = sub.Value
+                createPropertyAssertion(personID, "occupation", sub.Value, sub, ctx)
+            }
+
+        case "RESI":
+            // Residence - convert to property or event
+            if err := convertResidence(personID, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, "RESI", err.Error())
+            }
+
+        case "RELI":
+            // Religion
+            if sub.Value != "" {
+                person.Properties["religion"] = sub.Value
+                createPropertyAssertion(personID, "religion", sub.Value, sub, ctx)
+            }
+
+        case "EDUC":
+            // Education
+            if sub.Value != "" {
+                person.Properties["education"] = sub.Value
+                createPropertyAssertion(personID, "education", sub.Value, sub, ctx)
+            }
+
+        case "NATI":
+            // Nationality
+            if sub.Value != "" {
+                person.Properties["nationality"] = sub.Value
+                createPropertyAssertion(personID, "nationality", sub.Value, sub, ctx)
+            }
+
+        case "CAST":
+            // Caste/tribe
+            if sub.Value != "" {
+                person.Properties["caste"] = sub.Value
+                createPropertyAssertion(personID, "caste", sub.Value, sub, ctx)
+            }
+
+        case "SSN":
+            // Social security number
+            if sub.Value != "" {
+                person.Properties["ssn"] = sub.Value
+                createPropertyAssertion(personID, "ssn", sub.Value, sub, ctx)
+            }
+
+        case "FACT":
+            // Generic fact - convert to property or event
+            if err := convertFact(personID, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, "FACT", err.Error())
+            }
+
+        case "NOTE":
+            // Notes
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                if notes, ok := person.Properties["notes"].(string); ok {
+                    person.Properties["notes"] = notes + "\n\n" + noteText
+                } else {
+                    person.Properties["notes"] = noteText
+                }
+            }
+
+        case "SOUR":
+            // Source citation - process later with specific claims
+            // Already handled in event/property conversions
+
+        case "OBJE":
+            // Media object
+            if err := linkMediaToPerson(personID, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, "OBJE", err.Error())
+            }
+
+        case "ALIA", "ANCI", "DESI", "RFN", "AFN", "REFN", "RIN", "CHAN", "RESN":
+            // Administrative/reference tags - store as properties if needed
+            if sub.Value != "" {
+                propKey := strings.ToLower(sub.Tag)
+                person.Properties[propKey] = sub.Value
+            }
+
+        case "FAMC":
+            // Family as child - handled separately in family processing
+            ctx.DeferredFamilyLinks = append(ctx.DeferredFamilyLinks, &FamilyLink{
+                PersonID:  personID,
+                FamilyRef: sub.Value,
+                LinkType:  "child",
+            })
+
+        case "FAMS":
+            // Family as spouse - handled separately in family processing
+            ctx.DeferredFamilyLinks = append(ctx.DeferredFamilyLinks, &FamilyLink{
+                PersonID:  personID,
+                FamilyRef: sub.Value,
+                LinkType:  "spouse",
+            })
+
+        // GEDCOM 7.0 specific tags
+        case "FACT":
+            // Individual fact (7.0)
+            if err := convertFact(personID, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, "FACT", err.Error())
+            }
+
+        case "NO":
+            // Negative assertion (7.0)
+            if err := convertNegativeAssertion(personID, sub, ctx); err != nil {
+                ctx.addWarning(indiRecord.Line, "NO", err.Error())
+            }
+        }
+    }
+
+    // Store person
+    ctx.GLX.Persons[personID] = person
+    ctx.Stats.PersonsCreated++
+
+    return nil
+}
+
+// generatePersonIDFromRecord generates person ID from INDI record
+func generatePersonIDFromRecord(indiRecord *GEDCOMRecord, ctx *ConversionContext) string {
+    // Extract primary name
+    var name string
+    for _, sub := range indiRecord.SubRecords {
+        if sub.Tag == "NAME" {
+            nameSubstructure := extractNameSubstructure(sub)
+            parsedName := parseGEDCOMName(sub.Value, nameSubstructure)
+            if parsedName.GivenName != "" || parsedName.Surname != "" {
+                name = fmt.Sprintf("%s-%s", parsedName.GivenName, parsedName.Surname)
+                break
+            }
+        }
+    }
+
+    if name == "" {
+        name = "unknown"
+    }
+
+    return generatePersonID(name, indiRecord.XRef, ctx)
+}
+
+// extractNameSubstructure extracts NAME substructure fields
+func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
+    ns := &NameSubstructure{}
+
+    for _, sub := range nameRecord.SubRecords {
+        switch sub.Tag {
+        case "NPFX":
+            ns.NPFX = sub.Value
+        case "GIVN":
+            ns.GIVN = sub.Value
+        case "NICK":
+            ns.NICK = sub.Value
+        case "SPFX":
+            ns.SPFX = sub.Value
+        case "SURN":
+            ns.SURN = sub.Value
+        case "NSFX":
+            ns.NSFX = sub.Value
+        }
+    }
+
+    return ns
+}
+
+// createNameAssertion creates assertions for name components
+func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    // Create citations from SOUR tags
+    citationIDs := extractCitations(personID, nameRecord, ctx)
+
+    // Create assertions for each name component
+    if name.GivenName != "" {
+        assertionID := generateAssertionID(personID, "given_name", ctx)
+        ctx.GLX.Assertions[assertionID] = &Assertion{
+            Subject:    personID,
+            Claim:      "given_name",
+            Value:      name.GivenName,
+            Confidence: deriveConfidence(citationIDs, ctx),
+            Citations:  citationIDs,
+        }
+        ctx.Stats.AssertionsCreated++
+    }
+
+    if name.Surname != "" {
+        assertionID := generateAssertionID(personID, "family_name", ctx)
+        ctx.GLX.Assertions[assertionID] = &Assertion{
+            Subject:    personID,
+            Claim:      "family_name",
+            Value:      name.Surname,
+            Confidence: deriveConfidence(citationIDs, ctx),
+            Citations:  citationIDs,
+        }
+        ctx.Stats.AssertionsCreated++
+    }
+
+    // Store other name components as properties
+    if name.Prefix != "" {
+        createPropertyAssertion(personID, "name_prefix", name.Prefix, nameRecord, ctx)
+    }
+    if name.Nickname != "" {
+        createPropertyAssertion(personID, "nickname", name.Nickname, nameRecord, ctx)
+    }
+    if name.SurnamePrefix != "" {
+        createPropertyAssertion(personID, "surname_prefix", name.SurnamePrefix, nameRecord, ctx)
+    }
+    if name.Suffix != "" {
+        createPropertyAssertion(personID, "name_suffix", name.Suffix, nameRecord, ctx)
+    }
+
+    return nil
+}
+
+// convertIndividualEvent converts individual event tags to GLX events
+func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    // Map GEDCOM event tag to GLX event type
+    eventType := mapGEDCOMEventType(eventRecord.Tag)
+    if eventType == "" {
+        return fmt.Errorf("unknown event type: %s", eventRecord.Tag)
+    }
+
+    // Generate event ID
+    eventID := generateEventID(eventType, personID, ctx)
+
+    // Create event
+    event := &Event{
+        Type:       eventType,
+        Properties: make(map[string]interface{}),
+    }
+
+    // Extract event details
+    var eventDate string
+    var eventPlace string
+    var citations []string
+
+    for _, sub := range eventRecord.SubRecords {
+        switch sub.Tag {
+        case "DATE":
+            eventDate = parseGEDCOMDate(sub.Value)
+            if eventDate != "" {
+                event.Properties["occurred_on"] = eventDate
+            }
+
+        case "PLAC":
+            // Parse place
+            hierarchy, _ := parseGEDCOMPlace(sub.Value, "")
+            if hierarchy != nil {
+                placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+                if err == nil && placeID != "" {
+                    event.Properties["occurred_at"] = placeID
+                    eventPlace = placeID
+                }
+            }
+
+        case "AGE":
+            // Age at event
+            event.Properties["age_at_event"] = sub.Value
+
+        case "CAUS":
+            // Cause
+            event.Properties["cause"] = sub.Value
+
+        case "TYPE":
+            // Event subtype
+            event.Properties["event_subtype"] = sub.Value
+
+        case "ADDR":
+            // Address
+            event.Properties["address"] = sub.Value
+
+        case "NOTE":
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                event.Properties["notes"] = noteText
+            }
+
+        case "SOUR":
+            // Create citation
+            citationID, err := createCitationFromSOUR(personID, sub, ctx)
+            if err == nil && citationID != "" {
+                citations = append(citations, citationID)
+            }
+
+        case "OBJE":
+            // Media
+            linkMediaToEvent(eventID, sub, ctx)
+        }
+    }
+
+    // Store event
+    ctx.GLX.Events[eventID] = event
+    ctx.Stats.EventsCreated++
+
+    // Create participation
+    participationID := fmt.Sprintf("participation-%s-%s-%d", personID, eventID, ctx.Stats.ParticipationsCreated)
+    ctx.GLX.Participations[participationID] = &Participation{
+        Person: personID,
+        Event:  eventID,
+        Role:   "principal",
+    }
+    ctx.Stats.ParticipationsCreated++
+
+    // Create property assertions (born_on, died_on, etc.)
+    if eventType == "birth" && eventDate != "" {
+        createPropertyAssertion(personID, "born_on", eventDate, eventRecord, ctx)
+        if eventPlace != "" {
+            createPropertyAssertion(personID, "born_at", eventPlace, eventRecord, ctx)
+        }
+    } else if eventType == "death" && eventDate != "" {
+        createPropertyAssertion(personID, "died_on", eventDate, eventRecord, ctx)
+        if eventPlace != "" {
+            createPropertyAssertion(personID, "died_at", eventPlace, eventRecord, ctx)
+        }
+    }
+
+    return nil
+}
+
+// mapGEDCOMSex maps GEDCOM sex values to GLX gender
+func mapGEDCOMSex(sex string) string {
+    switch strings.ToUpper(sex) {
+    case "M":
+        return "male"
+    case "F":
+        return "female"
+    case "U":
+        return "unknown"
+    case "X":
+        return "other"
+    default:
+        return "unknown"
+    }
+}
+
+// mapGEDCOMEventType maps GEDCOM event tags to GLX event types
+func mapGEDCOMEventType(tag string) string {
+    mapping := map[string]string{
+        "BIRT": "birth",
+        "CHR":  "christening",
+        "DEAT": "death",
+        "BURI": "burial",
+        "CREM": "cremation",
+        "ADOP": "adoption",
+        "BAPM": "baptism",
+        "BARM": "bar_mitzvah",
+        "BASM": "bas_mitzvah",
+        "BLES": "blessing",
+        "CHRA": "adult_christening",
+        "CONF": "confirmation",
+        "FCOM": "first_communion",
+        "ORDN": "ordination",
+        "NATU": "naturalization",
+        "EMIG": "emigration",
+        "IMMI": "immigration",
+        "CENS": "census",
+        "PROB": "probate",
+        "WILL": "will",
+        "GRAD": "graduation",
+        "RETI": "retirement",
+    }
+
+    if eventType, ok := mapping[tag]; ok {
+        return eventType
+    }
+
+    return strings.ToLower(tag)
+}
+
+// convertResidence converts RESI to residence property or event
+func convertResidence(personID string, resiRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    // Check if it has date - if so, create event
+    hasDate := false
+    for _, sub := range resiRecord.SubRecords {
+        if sub.Tag == "DATE" {
+            hasDate = true
+            break
+        }
+    }
+
+    if hasDate {
+        // Create residence event
+        return convertIndividualEvent(personID, resiRecord, ctx)
+    }
+
+    // Otherwise, create property
+    var placeID string
+    for _, sub := range resiRecord.SubRecords {
+        if sub.Tag == "PLAC" {
+            hierarchy, _ := parseGEDCOMPlace(sub.Value, "")
+            if hierarchy != nil {
+                placeID, _ = buildPlaceHierarchy(hierarchy, ctx)
+            }
+        }
+    }
+
+    if placeID != "" {
+        return createPropertyAssertion(personID, "residence", placeID, resiRecord, ctx)
+    }
+
+    return nil
+}
+
+// convertFact converts generic FACT tag
+func convertFact(personID string, factRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    // Extract TYPE to determine what kind of fact
+    factType := ""
+    for _, sub := range factRecord.SubRecords {
+        if sub.Tag == "TYPE" {
+            factType = sub.Value
+            break
+        }
+    }
+
+    // If it's a recognized property type, create property assertion
+    if factType != "" {
+        propKey := sanitizeForID(factType)
+        return createPropertyAssertion(personID, propKey, factRecord.Value, factRecord, ctx)
+    }
+
+    // Otherwise create a generic event
+    return convertIndividualEvent(personID, factRecord, ctx)
+}
+
+// convertNegativeAssertion converts GEDCOM 7.0 NO tag (negative assertion)
+func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    // NO tag indicates something did NOT happen
+    // Create assertion with confidence "refuted"
+    eventType := mapGEDCOMEventType(noRecord.Value)
+
+    citationIDs := extractCitations(personID, noRecord, ctx)
+
+    assertionID := generateAssertionID(personID, "no_"+eventType, ctx)
+    ctx.GLX.Assertions[assertionID] = &Assertion{
+        Subject:    personID,
+        Claim:      "no_" + eventType,
+        Value:      true,
+        Confidence: "high", // Negative assertions are typically certain
+        Citations:  citationIDs,
+    }
+    ctx.Stats.AssertionsCreated++
+
+    return nil
+}
+
+// FamilyLink represents a deferred family link
+type FamilyLink struct {
+    PersonID  string
+    FamilyRef string
+    LinkType  string // "child" or "spouse"
+}
+```
+
+### Step 16: Implement Family (FAM) Converter
+
+**File: `lib/gedcom_family.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+)
+
+// convertFamily converts a GEDCOM FAM record to GLX relationships and events
+func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if famRecord.Tag != "FAM" {
+        return fmt.Errorf("expected FAM record, got %s", famRecord.Tag)
+    }
+
+    var husbandRef, wifeRef string
+    var childRefs []string
+    var marriageEvent *GEDCOMRecord
+    var divorceEvent *GEDCOMRecord
+
+    // Extract family members and events
+    for _, sub := range famRecord.SubRecords {
+        switch sub.Tag {
+        case "HUSB":
+            husbandRef = sub.Value
+        case "WIFE":
+            wifeRef = sub.Value
+        case "CHIL":
+            childRefs = append(childRefs, sub.Value)
+        case "MARR":
+            marriageEvent = sub
+        case "DIV":
+            divorceEvent = sub
+        case "ENGA", "MARB", "MARC", "MARL", "MARS":
+            // Other marriage-related events
+            convertFamilyEvent(sub, husbandRef, wifeRef, ctx)
+        }
+    }
+
+    // Convert to GLX IDs
+    husbandID := ctx.PersonIDMap[husbandRef]
+    wifeID := ctx.PersonIDMap[wifeRef]
+
+    // Create spousal relationship if we have both spouses
+    if husbandID != "" && wifeID != "" {
+        relationshipID := generateRelationshipID("spousal", husbandID, wifeID, ctx)
+
+        relationship := &Relationship{
+            Type:       "spousal",
+            Properties: make(map[string]interface{}),
+        }
+
+        // Add marriage event
+        if marriageEvent != nil {
+            eventID, err := convertMarriageEvent(marriageEvent, husbandID, wifeID, ctx)
+            if err == nil {
+                relationship.Properties["marriage_event"] = eventID
+            }
+        }
+
+        // Add divorce event
+        if divorceEvent != nil {
+            eventID, err := convertDivorceEvent(divorceEvent, husbandID, wifeID, ctx)
+            if err == nil {
+                relationship.Properties["divorce_event"] = eventID
+            }
+        }
+
+        ctx.GLX.Relationships[relationshipID] = relationship
+        ctx.Stats.RelationshipsCreated++
+
+        // Create participations
+        participation1ID := fmt.Sprintf("participation-rel-%s-1", relationshipID)
+        ctx.GLX.RelationshipParticipations[participation1ID] = &RelationshipParticipation{
+            Person:       husbandID,
+            Relationship: relationshipID,
+            Role:         "spouse",
+        }
+
+        participation2ID := fmt.Sprintf("participation-rel-%s-2", relationshipID)
+        ctx.GLX.RelationshipParticipations[participation2ID] = &RelationshipParticipation{
+            Person:       wifeID,
+            Relationship: relationshipID,
+            Role:         "spouse",
+        }
+    }
+
+    // Create parent-child relationships
+    parents := []string{}
+    if husbandID != "" {
+        parents = append(parents, husbandID)
+    }
+    if wifeID != "" {
+        parents = append(parents, wifeID)
+    }
+
+    for _, childRef := range childRefs {
+        childID := ctx.PersonIDMap[childRef]
+        if childID == "" {
+            continue
+        }
+
+        // Create relationship with each parent
+        for _, parentID := range parents {
+            relationshipID := generateRelationshipID("parent_child", parentID, childID, ctx)
+
+            relationship := &Relationship{
+                Type:       "parent_child",
+                Properties: make(map[string]interface{}),
+            }
+
+            ctx.GLX.Relationships[relationshipID] = relationship
+            ctx.Stats.RelationshipsCreated++
+
+            // Create participations
+            parentParticipationID := fmt.Sprintf("participation-rel-%s-parent", relationshipID)
+            ctx.GLX.RelationshipParticipations[parentParticipationID] = &RelationshipParticipation{
+                Person:       parentID,
+                Relationship: relationshipID,
+                Role:         "parent",
+            }
+
+            childParticipationID := fmt.Sprintf("participation-rel-%s-child", relationshipID)
+            ctx.GLX.RelationshipParticipations[childParticipationID] = &RelationshipParticipation{
+                Person:       childID,
+                Relationship: relationshipID,
+                Role:         "child",
+            }
+        }
+    }
+
+    return nil
+}
+
+// convertMarriageEvent converts marriage event
+func convertMarriageEvent(marrRecord *GEDCOMRecord, spouse1ID, spouse2ID string, ctx *ConversionContext) (string, error) {
+    eventID := generateEventID("marriage", spouse1ID, ctx)
+
+    event := &Event{
+        Type:       "marriage",
+        Properties: make(map[string]interface{}),
+    }
+
+    // Extract event details
+    for _, sub := range marrRecord.SubRecords {
+        switch sub.Tag {
+        case "DATE":
+            eventDate := parseGEDCOMDate(sub.Value)
+            if eventDate != "" {
+                event.Properties["occurred_on"] = eventDate
+            }
+
+        case "PLAC":
+            hierarchy, _ := parseGEDCOMPlace(sub.Value, "")
+            if hierarchy != nil {
+                placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+                if err == nil && placeID != "" {
+                    event.Properties["occurred_at"] = placeID
+                }
+            }
+
+        case "TYPE":
+            event.Properties["marriage_type"] = sub.Value
+
+        case "NOTE":
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                event.Properties["notes"] = noteText
+            }
+
+        case "SOUR":
+            createCitationFromSOUR(eventID, sub, ctx)
+        }
+    }
+
+    ctx.GLX.Events[eventID] = event
+    ctx.Stats.EventsCreated++
+
+    // Create participations for both spouses
+    participation1ID := fmt.Sprintf("participation-%s-%s-1", spouse1ID, eventID)
+    ctx.GLX.Participations[participation1ID] = &Participation{
+        Person: spouse1ID,
+        Event:  eventID,
+        Role:   "spouse",
+    }
+
+    participation2ID := fmt.Sprintf("participation-%s-%s-2", spouse2ID, eventID)
+    ctx.GLX.Participations[participation2ID] = &Participation{
+        Person: spouse2ID,
+        Event:  eventID,
+        Role:   "spouse",
+    }
+
+    ctx.Stats.ParticipationsCreated += 2
+
+    return eventID, nil
+}
+
+// convertDivorceEvent converts divorce event
+func convertDivorceEvent(divRecord *GEDCOMRecord, spouse1ID, spouse2ID string, ctx *ConversionContext) (string, error) {
+    eventID := generateEventID("divorce", spouse1ID, ctx)
+
+    event := &Event{
+        Type:       "divorce",
+        Properties: make(map[string]interface{}),
+    }
+
+    // Extract event details (similar to marriage)
+    for _, sub := range divRecord.SubRecords {
+        switch sub.Tag {
+        case "DATE":
+            eventDate := parseGEDCOMDate(sub.Value)
+            if eventDate != "" {
+                event.Properties["occurred_on"] = eventDate
+            }
+
+        case "PLAC":
+            hierarchy, _ := parseGEDCOMPlace(sub.Value, "")
+            if hierarchy != nil {
+                placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+                if err == nil && placeID != "" {
+                    event.Properties["occurred_at"] = placeID
+                }
+            }
+
+        case "NOTE":
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                event.Properties["notes"] = noteText
+            }
+        }
+    }
+
+    ctx.GLX.Events[eventID] = event
+    ctx.Stats.EventsCreated++
+
+    // Create participations
+    participation1ID := fmt.Sprintf("participation-%s-%s-1", spouse1ID, eventID)
+    ctx.GLX.Participations[participation1ID] = &Participation{
+        Person: spouse1ID,
+        Event:  eventID,
+        Role:   "spouse",
+    }
+
+    participation2ID := fmt.Sprintf("participation-%s-%s-2", spouse2ID, eventID)
+    ctx.GLX.Participations[participation2ID] = &Participation{
+        Person: spouse2ID,
+        Event:  eventID,
+        Role:   "spouse",
+    }
+
+    ctx.Stats.ParticipationsCreated += 2
+
+    return eventID, nil
+}
+
+// convertFamilyEvent converts other family events
+func convertFamilyEvent(eventRecord *GEDCOMRecord, spouse1Ref, spouse2Ref string, ctx *ConversionContext) error {
+    spouse1ID := ctx.PersonIDMap[spouse1Ref]
+    spouse2ID := ctx.PersonIDMap[spouse2Ref]
+
+    if spouse1ID == "" && spouse2ID == "" {
+        return fmt.Errorf("no valid spouses for family event")
+    }
+
+    eventType := mapGEDCOMEventType(eventRecord.Tag)
+    primarySpouseID := spouse1ID
+    if primarySpouseID == "" {
+        primarySpouseID = spouse2ID
+    }
+
+    eventID := generateEventID(eventType, primarySpouseID, ctx)
+
+    event := &Event{
+        Type:       eventType,
+        Properties: make(map[string]interface{}),
+    }
+
+    // Extract details
+    for _, sub := range eventRecord.SubRecords {
+        switch sub.Tag {
+        case "DATE":
+            eventDate := parseGEDCOMDate(sub.Value)
+            if eventDate != "" {
+                event.Properties["occurred_on"] = eventDate
+            }
+        case "PLAC":
+            hierarchy, _ := parseGEDCOMPlace(sub.Value, "")
+            if hierarchy != nil {
+                placeID, _ := buildPlaceHierarchy(hierarchy, ctx)
+                if placeID != "" {
+                    event.Properties["occurred_at"] = placeID
+                }
+            }
+        }
+    }
+
+    ctx.GLX.Events[eventID] = event
+    ctx.Stats.EventsCreated++
+
+    // Create participations for both spouses
+    if spouse1ID != "" {
+        participationID := fmt.Sprintf("participation-%s-%s", spouse1ID, eventID)
+        ctx.GLX.Participations[participationID] = &Participation{
+            Person: spouse1ID,
+            Event:  eventID,
+            Role:   "spouse",
+        }
+        ctx.Stats.ParticipationsCreated++
+    }
+
+    if spouse2ID != "" {
+        participationID := fmt.Sprintf("participation-%s-%s", spouse2ID, eventID)
+        ctx.GLX.Participations[participationID] = &Participation{
+            Person: spouse2ID,
+            Event:  eventID,
+            Role:   "spouse",
+        }
+        ctx.Stats.ParticipationsCreated++
+    }
+
+    return nil
+}
+```
+
+### Step 17: Implement Source (SOUR) Converter
+
+**File: `lib/gedcom_source.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "strings"
+)
+
+// convertSource converts a GEDCOM SOUR record to a GLX Source
+func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if sourRecord.Tag != "SOUR" {
+        return fmt.Errorf("expected SOUR record, got %s", sourRecord.Tag)
+    }
+
+    // Generate source ID
+    sourceID := generateSourceIDFromRecord(sourRecord, ctx)
+    ctx.SourceIDMap[sourRecord.XRef] = sourceID
+
+    // Create source entity
+    source := &Source{
+        Properties: make(map[string]interface{}),
+    }
+
+    // Process subrecords
+    for _, sub := range sourRecord.SubRecords {
+        switch sub.Tag {
+        case "TITL":
+            // Title
+            source.Title = sub.Value
+            source.Properties["title"] = sub.Value
+
+        case "AUTH":
+            // Author
+            source.Properties["author"] = sub.Value
+
+        case "PUBL":
+            // Publication facts
+            source.Properties["publication_info"] = sub.Value
+
+        case "ABBR":
+            // Abbreviation
+            source.Properties["abbreviation"] = sub.Value
+
+        case "REPO":
+            // Repository reference
+            repoID := ctx.RepositoryIDMap[sub.Value]
+            if repoID != "" {
+                source.Repository = repoID
+
+                // Extract call number
+                for _, repoSub := range sub.SubRecords {
+                    if repoSub.Tag == "CALN" {
+                        source.Properties["call_number"] = repoSub.Value
+                    }
+                }
+            }
+
+        case "TEXT":
+            // Full source text
+            source.Properties["source_text"] = sub.Value
+
+        case "NOTE":
+            // Notes
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                source.Properties["notes"] = noteText
+            }
+
+        case "DATA":
+            // Data information
+            for _, dataSub := range sub.SubRecords {
+                switch dataSub.Tag {
+                case "EVEN":
+                    // Events recorded
+                    source.Properties["events_recorded"] = dataSub.Value
+                case "AGNC":
+                    // Agency
+                    source.Properties["agency"] = dataSub.Value
+                }
+            }
+
+        case "OBJE":
+            // Media object
+            linkMediaToSource(sourceID, sub, ctx)
+
+        // GEDCOM 7.0 specific
+        case "TYPE":
+            // Source type (7.0)
+            source.Type = mapSourceType(sub.Value)
+
+        case "EVEN":
+            // Events (7.0)
+            source.Properties["events"] = sub.Value
+        }
+    }
+
+    // Default type if not set
+    if source.Type == "" {
+        source.Type = inferSourceType(source.Title, source.Properties)
+    }
+
+    // Store source
+    ctx.GLX.Sources[sourceID] = source
+    ctx.Stats.SourcesCreated++
+
+    return nil
+}
+
+// generateSourceIDFromRecord generates source ID from SOUR record
+func generateSourceIDFromRecord(sourRecord *GEDCOMRecord, ctx *ConversionContext) string {
+    // Extract title for ID
+    var title string
+    for _, sub := range sourRecord.SubRecords {
+        if sub.Tag == "TITL" {
+            title = sub.Value
+            break
+        }
+    }
+
+    if title == "" {
+        title = "source"
+    }
+
+    return generateSourceID(title, sourRecord.XRef, ctx)
+}
+
+// mapSourceType maps GEDCOM source type to GLX
+func mapSourceType(gedcomType string) string {
+    // Common GEDCOM source type values
+    mapping := map[string]string{
+        "book":       "book",
+        "article":    "book",
+        "website":    "database",
+        "database":   "database",
+        "census":     "census",
+        "vital":      "vital_record",
+        "church":     "church_register",
+        "military":   "military",
+        "newspaper":  "newspaper",
+        "probate":    "probate",
+        "land":       "land",
+        "court":      "court",
+        "photo":      "photograph",
+        "photograph": "photograph",
+    }
+
+    typeLower := strings.ToLower(gedcomType)
+    if mapped, ok := mapping[typeLower]; ok {
+        return mapped
+    }
+
+    return "other"
+}
+
+// inferSourceType infers source type from title and properties
+func inferSourceType(title string, properties map[string]interface{}) string {
+    titleLower := strings.ToLower(title)
+
+    // Check for keywords
+    if strings.Contains(titleLower, "census") {
+        return "census"
+    }
+    if strings.Contains(titleLower, "birth certificate") || strings.Contains(titleLower, "death certificate") {
+        return "vital_record"
+    }
+    if strings.Contains(titleLower, "baptism") || strings.Contains(titleLower, "parish register") {
+        return "church_register"
+    }
+    if strings.Contains(titleLower, "military") {
+        return "military"
+    }
+    if strings.Contains(titleLower, "newspaper") {
+        return "newspaper"
+    }
+    if strings.Contains(titleLower, "will") || strings.Contains(titleLower, "probate") {
+        return "probate"
+    }
+    if strings.Contains(titleLower, "deed") || strings.Contains(titleLower, "land") {
+        return "land"
+    }
+
+    // Default
+    return "other"
+}
+
+// linkMediaToSource links media to source
+func linkMediaToSource(sourceID string, objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    var mediaID string
+
+    if objeRecord.Value != "" {
+        // Reference to existing media
+        mediaID = ctx.MediaIDMap[objeRecord.Value]
+    } else {
+        // Embedded media object
+        mediaID = convertEmbeddedMedia(objeRecord, ctx)
+    }
+
+    if mediaID != "" {
+        source := ctx.GLX.Sources[sourceID]
+        if source != nil {
+            if source.Media == nil {
+                source.Media = []string{}
+            }
+            source.Media = append(source.Media, mediaID)
+        }
+    }
+
+    return nil
+}
+```
+
+### Step 18: Implement Repository (REPO) Converter
+
+**File: `lib/gedcom_repository.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+)
+
+// convertRepository converts a GEDCOM REPO record to a GLX Repository
+func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if repoRecord.Tag != "REPO" {
+        return fmt.Errorf("expected REPO record, got %s", repoRecord.Tag)
+    }
+
+    // Generate repository ID
+    repositoryID := generateRepositoryIDFromRecord(repoRecord, ctx)
+    ctx.RepositoryIDMap[repoRecord.XRef] = repositoryID
+
+    // Create repository entity
+    repository := &Repository{
+        Properties: make(map[string]interface{}),
+    }
+
+    // Process subrecords
+    for _, sub := range repoRecord.SubRecords {
+        switch sub.Tag {
+        case "NAME":
+            // Repository name
+            repository.Name = sub.Value
+
+        case "ADDR":
+            // Address - build from components
+            address := extractAddress(sub)
+            if address != "" {
+                repository.Properties["address"] = address
+            }
+
+        case "PHON":
+            // Phone
+            if repository.Properties["phone"] == nil {
+                repository.Properties["phone"] = []string{}
+            }
+            phones := repository.Properties["phone"].([]string)
+            repository.Properties["phone"] = append(phones, sub.Value)
+
+        case "EMAIL":
+            // Email
+            if repository.Properties["email"] == nil {
+                repository.Properties["email"] = []string{}
+            }
+            emails := repository.Properties["email"].([]string)
+            repository.Properties["email"] = append(emails, sub.Value)
+
+        case "WWW":
+            // Website (GEDCOM 7.0)
+            repository.Properties["website"] = sub.Value
+
+        case "NOTE":
+            // Notes
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                repository.Properties["notes"] = noteText
+            }
+
+        // GEDCOM 7.0
+        case "TYPE":
+            // Repository type
+            repository.Type = mapRepositoryType(sub.Value)
+        }
+    }
+
+    // Default type if not set
+    if repository.Type == "" {
+        repository.Type = inferRepositoryType(repository.Name)
+    }
+
+    // Store repository
+    ctx.GLX.Repositories[repositoryID] = repository
+    ctx.Stats.RepositoriesCreated++
+
+    return nil
+}
+
+// generateRepositoryIDFromRecord generates repository ID from REPO record
+func generateRepositoryIDFromRecord(repoRecord *GEDCOMRecord, ctx *ConversionContext) string {
+    // Extract name for ID
+    var name string
+    for _, sub := range repoRecord.SubRecords {
+        if sub.Tag == "NAME" {
+            name = sub.Value
+            break
+        }
+    }
+
+    if name == "" {
+        name = "repository"
+    }
+
+    return generateRepositoryID(name, repoRecord.XRef, ctx)
+}
+
+// extractAddress builds full address from ADDR and subrecords
+func extractAddress(addrRecord *GEDCOMRecord) string {
+    parts := []string{}
+
+    if addrRecord.Value != "" {
+        parts = append(parts, addrRecord.Value)
+    }
+
+    for _, sub := range addrRecord.SubRecords {
+        switch sub.Tag {
+        case "ADR1", "ADR2", "ADR3":
+            if sub.Value != "" {
+                parts = append(parts, sub.Value)
+            }
+        case "CITY":
+            if sub.Value != "" {
+                parts = append(parts, sub.Value)
+            }
+        case "STAE":
+            if sub.Value != "" {
+                parts = append(parts, sub.Value)
+            }
+        case "POST":
+            if sub.Value != "" {
+                parts = append(parts, sub.Value)
+            }
+        case "CTRY":
+            if sub.Value != "" {
+                parts = append(parts, sub.Value)
+            }
+        }
+    }
+
+    return strings.Join(parts, ", ")
+}
+
+// mapRepositoryType maps GEDCOM repository type to GLX
+func mapRepositoryType(gedcomType string) string {
+    mapping := map[string]string{
+        "archive":    "archive",
+        "library":    "library",
+        "church":     "church",
+        "government": "government_agency",
+        "museum":     "museum",
+        "online":     "database",
+        "registry":   "registry",
+        "society":    "historical_society",
+        "university": "university",
+    }
+
+    typeLower := strings.ToLower(gedcomType)
+    if mapped, ok := mapping[typeLower]; ok {
+        return mapped
+    }
+
+    return "other"
+}
+
+// inferRepositoryType infers repository type from name
+func inferRepositoryType(name string) string {
+    nameLower := strings.ToLower(name)
+
+    if strings.Contains(nameLower, "archive") {
+        return "archive"
+    }
+    if strings.Contains(nameLower, "library") {
+        return "library"
+    }
+    if strings.Contains(nameLower, "church") {
+        return "church"
+    }
+    if strings.Contains(nameLower, "museum") {
+        return "museum"
+    }
+    if strings.Contains(nameLower, "university") || strings.Contains(nameLower, "college") {
+        return "university"
+    }
+    if strings.Contains(nameLower, "society") {
+        return "historical_society"
+    }
+    if strings.Contains(nameLower, "ancestr") || strings.Contains(nameLower, "familysearch") {
+        return "database"
+    }
+
+    return "other"
+}
+```
+
+### Step 19: Implement Media (OBJE) Converter
+
+**File: `lib/gedcom_media.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "path/filepath"
+    "strings"
+)
+
+// convertMedia converts a GEDCOM OBJE record to a GLX Media object
+func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if objeRecord.Tag != "OBJE" {
+        return fmt.Errorf("expected OBJE record, got %s", objeRecord.Tag)
+    }
+
+    // Generate media ID
+    mediaID := generateMediaIDFromRecord(objeRecord, ctx)
+    ctx.MediaIDMap[objeRecord.XRef] = mediaID
+
+    // Create media entity
+    media := &Media{
+        Properties: make(map[string]interface{}),
+    }
+
+    // Process subrecords
+    for _, sub := range objeRecord.SubRecords {
+        switch sub.Tag {
+        case "FILE":
+            // File reference
+            media.File = sub.Value
+
+            // Extract MIME type from file extension if not specified
+            if media.MimeType == "" {
+                media.MimeType = inferMimeType(sub.Value)
+            }
+
+            // Extract format/type from FILE subrecords
+            for _, fileSub := range sub.SubRecords {
+                switch fileSub.Tag {
+                case "FORM":
+                    // Format (5.5.1)
+                    if media.MimeType == "" {
+                        media.MimeType = mapFormatToMimeType(fileSub.Value)
+                    }
+                case "MEDI":
+                    // Media type (5.5.1)
+                    media.Properties["media_type"] = fileSub.Value
+                case "TITL":
+                    // Title (5.5.1)
+                    media.Properties["title"] = fileSub.Value
+                }
+            }
+
+        case "TITL":
+            // Title (7.0)
+            media.Properties["title"] = sub.Value
+
+        case "FORM":
+            // Format - map to MIME type
+            if media.MimeType == "" {
+                media.MimeType = mapFormatToMimeType(sub.Value)
+            }
+
+        case "TYPE":
+            // Media type
+            media.Properties["media_type"] = sub.Value
+
+        case "NOTE":
+            // Notes
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                media.Properties["notes"] = noteText
+            }
+
+        // GEDCOM 7.0
+        case "MIME":
+            // MIME type (7.0)
+            media.MimeType = sub.Value
+
+        case "CROP":
+            // Crop coordinates (7.0)
+            crop := extractCrop(sub)
+            if crop != nil {
+                media.Properties["crop"] = crop
+            }
+        }
+    }
+
+    // Store media
+    ctx.GLX.Media[mediaID] = media
+    ctx.Stats.MediaCreated++
+
+    return nil
+}
+
+// convertEmbeddedMedia converts embedded media object
+func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) string {
+    mediaID := generateMediaID("embedded", ctx)
+
+    media := &Media{
+        Properties: make(map[string]interface{}),
+    }
+
+    for _, sub := range objeRecord.SubRecords {
+        switch sub.Tag {
+        case "FILE":
+            media.File = sub.Value
+            media.MimeType = inferMimeType(sub.Value)
+        case "TITL":
+            media.Properties["title"] = sub.Value
+        case "FORM":
+            if media.MimeType == "" {
+                media.MimeType = mapFormatToMimeType(sub.Value)
+            }
+        }
+    }
+
+    ctx.GLX.Media[mediaID] = media
+    ctx.Stats.MediaCreated++
+
+    return mediaID
+}
+
+// generateMediaIDFromRecord generates media ID from OBJE record
+func generateMediaIDFromRecord(objeRecord *GEDCOMRecord, ctx *ConversionContext) string {
+    // Extract file name for ID
+    var fileName string
+    for _, sub := range objeRecord.SubRecords {
+        if sub.Tag == "FILE" {
+            fileName = filepath.Base(sub.Value)
+            // Remove extension
+            fileName = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+            break
+        }
+    }
+
+    if fileName == "" {
+        fileName = "media"
+    }
+
+    return generateMediaID(fileName, objeRecord.XRef, ctx)
+}
+
+// inferMimeType infers MIME type from file extension
+func inferMimeType(filePath string) string {
+    ext := strings.ToLower(filepath.Ext(filePath))
+
+    mimeTypes := map[string]string{
+        ".jpg":  "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png":  "image/png",
+        ".gif":  "image/gif",
+        ".bmp":  "image/bmp",
+        ".tif":  "image/tiff",
+        ".tiff": "image/tiff",
+        ".pdf":  "application/pdf",
+        ".mp4":  "video/mp4",
+        ".avi":  "video/x-msvideo",
+        ".mov":  "video/quicktime",
+        ".mp3":  "audio/mpeg",
+        ".wav":  "audio/wav",
+        ".txt":  "text/plain",
+        ".doc":  "application/msword",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+
+    if mimeType, ok := mimeTypes[ext]; ok {
+        return mimeType
+    }
+
+    return "application/octet-stream"
+}
+
+// mapFormatToMimeType maps GEDCOM FORM values to MIME types
+func mapFormatToMimeType(format string) string {
+    formatLower := strings.ToLower(format)
+
+    mapping := map[string]string{
+        "jpeg": "image/jpeg",
+        "jpg":  "image/jpeg",
+        "png":  "image/png",
+        "gif":  "image/gif",
+        "bmp":  "image/bmp",
+        "tiff": "image/tiff",
+        "pdf":  "application/pdf",
+        "mp4":  "video/mp4",
+        "avi":  "video/x-msvideo",
+        "wav":  "audio/wav",
+        "mp3":  "audio/mpeg",
+    }
+
+    if mimeType, ok := mapping[formatLower]; ok {
+        return mimeType
+    }
+
+    return "application/octet-stream"
+}
+
+// extractCrop extracts crop coordinates from CROP record
+func extractCrop(cropRecord *GEDCOMRecord) map[string]interface{} {
+    crop := make(map[string]interface{})
+
+    for _, sub := range cropRecord.SubRecords {
+        switch sub.Tag {
+        case "TOP":
+            crop["top"] = sub.Value
+        case "LEFT":
+            crop["left"] = sub.Value
+        case "HEIGHT":
+            crop["height"] = sub.Value
+        case "WIDTH":
+            crop["width"] = sub.Value
+        }
+    }
+
+    if len(crop) > 0 {
+        return crop
+    }
+
+    return nil
+}
+
+// linkMediaToPerson links media to person
+func linkMediaToPerson(personID string, objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    var mediaID string
+
+    if objeRecord.Value != "" {
+        // Reference to existing media
+        mediaID = ctx.MediaIDMap[objeRecord.Value]
+    } else {
+        // Embedded media object
+        mediaID = convertEmbeddedMedia(objeRecord, ctx)
+    }
+
+    if mediaID != "" {
+        person := ctx.GLX.Persons[personID]
+        if person != nil {
+            if person.Media == nil {
+                person.Media = []string{}
+            }
+            person.Media = append(person.Media, mediaID)
+        }
+    }
+
+    return nil
+}
+
+// linkMediaToEvent links media to event
+func linkMediaToEvent(eventID string, objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    var mediaID string
+
+    if objeRecord.Value != "" {
+        mediaID = ctx.MediaIDMap[objeRecord.Value]
+    } else {
+        mediaID = convertEmbeddedMedia(objeRecord, ctx)
+    }
+
+    if mediaID != "" {
+        event := ctx.GLX.Events[eventID]
+        if event != nil {
+            if event.Media == nil {
+                event.Media = []string{}
+            }
+            event.Media = append(event.Media, mediaID)
+        }
+    }
+
+    return nil
+}
+```
+
+### Step 20: Implement Citation and Assertion Helpers
+
+**File: `lib/gedcom_evidence.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "strconv"
+)
+
+// createCitationFromSOUR creates a citation from a SOUR subrecord
+func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *ConversionContext) (string, error) {
+    var sourceID string
+
+    // Check if it's a reference or embedded source
+    if sourRecord.Value != "" {
+        // Reference to existing source
+        sourceID = ctx.SourceIDMap[sourRecord.Value]
+        if sourceID == "" {
+            return "", fmt.Errorf("source not found: %s", sourRecord.Value)
+        }
+    } else {
+        // Embedded source citation (just citation details, not full source)
+        // For embedded, we might want to create a temporary source or handle differently
+        return "", nil
+    }
+
+    // Create citation
+    citation := &Citation{
+        Source:     sourceID,
+        Properties: make(map[string]interface{}),
+    }
+
+    // Extract citation details from SOUR subrecords
+    for _, sub := range sourRecord.SubRecords {
+        switch sub.Tag {
+        case "PAGE":
+            // Page/location within source
+            citation.Page = sub.Value
+
+        case "DATA":
+            // Data from source
+            for _, dataSub := range sub.SubRecords {
+                switch dataSub.Tag {
+                case "DATE":
+                    citation.Properties["source_date"] = parseGEDCOMDate(dataSub.Value)
+                case "TEXT":
+                    citation.TextFromSource = dataSub.Value
+                }
+            }
+
+        case "TEXT":
+            // Text from source (5.5.1)
+            citation.TextFromSource = sub.Value
+
+        case "QUAY":
+            // Quality assessment
+            if quay, err := strconv.Atoi(sub.Value); err == nil {
+                citation.Properties["quay"] = quay
+            }
+
+        case "NOTE":
+            // Notes about the citation
+            noteText := extractNoteText(sub, ctx)
+            if noteText != "" {
+                citation.Properties["notes"] = noteText
+            }
+
+        case "OBJE":
+            // Media linked to citation
+            mediaID := ctx.MediaIDMap[sub.Value]
+            if mediaID != "" {
+                if citation.Media == nil {
+                    citation.Media = []string{}
+                }
+                citation.Media = append(citation.Media, mediaID)
+            }
+        }
+    }
+
+    // Generate citation ID
+    citationID := generateCitationID(subjectID, sourceID, ctx)
+
+    // Store citation
+    ctx.GLX.Citations[citationID] = citation
+    ctx.Stats.CitationsCreated++
+
+    return citationID, nil
+}
+
+// createPropertyAssertion creates an assertion for a property
+func createPropertyAssertion(subjectID string, claim string, value interface{}, sourceRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if claim == "" || value == nil {
+        return nil
+    }
+
+    // Extract citations from SOUR subrecords
+    citationIDs := extractCitations(subjectID, sourceRecord, ctx)
+
+    // Generate assertion ID
+    assertionID := generateAssertionID(subjectID, claim, ctx)
+
+    // Derive confidence
+    confidence := deriveConfidence(citationIDs, ctx)
+
+    // Create assertion
+    assertion := &Assertion{
+        Subject:    subjectID,
+        Claim:      claim,
+        Value:      value,
+        Confidence: confidence,
+        Citations:  citationIDs,
+    }
+
+    // Store assertion
+    ctx.GLX.Assertions[assertionID] = assertion
+    ctx.Stats.AssertionsCreated++
+
+    return nil
+}
+
+// extractCitations extracts all citations from a record's SOUR subrecords
+func extractCitations(subjectID string, record *GEDCOMRecord, ctx *ConversionContext) []string {
+    citationIDs := []string{}
+
+    for _, sub := range record.SubRecords {
+        if sub.Tag == "SOUR" {
+            citationID, err := createCitationFromSOUR(subjectID, sub, ctx)
+            if err == nil && citationID != "" {
+                citationIDs = append(citationIDs, citationID)
+            }
+        }
+    }
+
+    return citationIDs
+}
+
+// deriveConfidence derives confidence level from citations
+func deriveConfidence(citationIDs []string, ctx *ConversionContext) string {
+    if len(citationIDs) == 0 {
+        return "medium" // Default when no citations
+    }
+
+    // Check QUAY values
+    highestQuality := 0
+    for _, citationID := range citationIDs {
+        citation := ctx.GLX.Citations[citationID]
+        if citation != nil {
+            if quay, ok := citation.Properties["quay"].(int); ok {
+                if quay > highestQuality {
+                    highestQuality = quay
+                }
+            }
+        }
+    }
+
+    // Map QUAY to confidence
+    return mapQUAYtoConfidence(&highestQuality)
+}
+
+// mapQUAYtoConfidence maps GEDCOM QUAY values to GLX confidence levels
+func mapQUAYtoConfidence(quay *int) string {
+    if quay == nil {
+        return "medium"
+    }
+
+    switch *quay {
+    case 0:
+        return "very_low"
+    case 1:
+        return "low"
+    case 2:
+        return "medium"
+    case 3:
+        return "high"
+    default:
+        return "medium"
+    }
+}
+
+// extractNoteText extracts note text from NOTE record
+func extractNoteText(noteRecord *GEDCOMRecord, ctx *ConversionContext) string {
+    if noteRecord.Value != "" {
+        // Inline note
+        return noteRecord.Value
+    }
+
+    // Check if it's a reference to shared note (7.0)
+    if ctx.Version == GEDCOM70 {
+        if sharedNote, exists := ctx.SharedNotes[noteRecord.Value]; exists {
+            return sharedNote
+        }
+    }
+
+    // Build from CONT/CONC subrecords
+    var text strings.Builder
+    for _, sub := range noteRecord.SubRecords {
+        switch sub.Tag {
+        case "CONT":
+            text.WriteString("\n")
+            text.WriteString(sub.Value)
+        case "CONC":
+            text.WriteString(sub.Value)
+        }
+    }
+
+    return text.String()
+}
+```
+
+This completes Phase 4 with comprehensive entity converters for all main GEDCOM record types.
+
+---
+
