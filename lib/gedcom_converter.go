@@ -229,17 +229,8 @@ func extractAddress(addrRecord *GEDCOMRecord) string {
 	return result
 }
 
-// Placeholder functions for converters (to be implemented)
-
-func convertSharedNote(record *GEDCOMRecord, ctx *ConversionContext) error {
-	// TODO: Implement GEDCOM 7.0 shared notes
-	return nil
-}
-
-func convertExtensionSchema(record *GEDCOMRecord, ctx *ConversionContext) error {
-	// TODO: Implement GEDCOM 7.0 extension schemas
-	return nil
-}
+// Converter functions implemented in separate files:
+// convertSharedNote and convertExtensionSchema are implemented in gedcom_7_0.go
 
 func isExtensionTag(tag string, ctx *ConversionContext) bool {
 	// Extension tags start with underscore
@@ -249,32 +240,8 @@ func isExtensionTag(tag string, ctx *ConversionContext) bool {
 	return false
 }
 
-func convertRepository(record *GEDCOMRecord, ctx *ConversionContext) error {
-	// TODO: Implement repository converter
-	ctx.addWarning(record.Line, "REPO", "Repository conversion not yet implemented")
-	return nil
-}
-
-func convertSource(record *GEDCOMRecord, ctx *ConversionContext) error {
-	// TODO: Implement source converter
-	ctx.addWarning(record.Line, "SOUR", "Source conversion not yet implemented")
-	return nil
-}
-
-func convertMedia(record *GEDCOMRecord, ctx *ConversionContext) error {
-	// TODO: Implement media converter
-	ctx.addWarning(record.Line, "OBJE", "Media conversion not yet implemented")
-	return nil
-}
-
-func convertIndividual(record *GEDCOMRecord, ctx *ConversionContext) error {
-	// TODO: Implement individual converter
-	ctx.addWarning(record.Line, "INDI", "Individual conversion not yet implemented")
-	return nil
-}
-
-func convertFamily(record *GEDCOMRecord, ctx *ConversionContext) error {
-	// TODO: Implement family converter
-	ctx.addWarning(record.Line, "FAM", "Family conversion not yet implemented")
-	return nil
-}
+// convertRepository is implemented in gedcom_repository.go
+// convertSource is implemented in gedcom_source.go
+// convertMedia is implemented in gedcom_media.go
+// convertIndividual is implemented in gedcom_individual.go
+// convertFamily is implemented in gedcom_family.go
