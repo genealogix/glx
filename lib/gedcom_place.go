@@ -15,12 +15,15 @@
 package lib
 
 import (
+	"strconv"
 	"strings"
 )
 
 // PlaceHierarchy represents a parsed place hierarchy
 type PlaceHierarchy struct {
 	Components []string // From specific to general
+	Latitude   *float64 // Latitude coordinate (if provided)
+	Longitude  *float64 // Longitude coordinate (if provided)
 }
 
 // parseGEDCOMPlace parses a GEDCOM place string
@@ -66,8 +69,15 @@ func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (str
 		name := hierarchy.Components[i]
 		level := totalLevels - i - 1
 
+		// Only the most specific place gets coordinates
+		var lat, lon *float64
+		if i == 0 {
+			lat = hierarchy.Latitude
+			lon = hierarchy.Longitude
+		}
+
 		// Check if place already exists
-		placeID := createOrGetPlace(name, parentID, level, totalLevels, ctx)
+		placeID := createOrGetPlace(name, parentID, level, totalLevels, lat, lon, ctx)
 
 		if i == 0 {
 			// This is the most specific place (leaf)
@@ -82,7 +92,7 @@ func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (str
 }
 
 // createOrGetPlace creates a place or returns existing place ID
-func createOrGetPlace(name string, parentID string, level int, totalLevels int, ctx *ConversionContext) string {
+func createOrGetPlace(name string, parentID string, level int, totalLevels int, latitude, longitude *float64, ctx *ConversionContext) string {
 	// Create a key for deduplication
 	key := name
 	if parentID != "" {
@@ -91,6 +101,16 @@ func createOrGetPlace(name string, parentID string, level int, totalLevels int, 
 
 	// Check if place already exists
 	if existingID, ok := ctx.PlaceIDMap[key]; ok {
+		// If we have new coordinates and the existing place doesn't, update it
+		if (latitude != nil || longitude != nil) && ctx.GLX.Places[existingID] != nil {
+			existingPlace := ctx.GLX.Places[existingID]
+			if existingPlace.Latitude == nil && latitude != nil {
+				existingPlace.Latitude = latitude
+			}
+			if existingPlace.Longitude == nil && longitude != nil {
+				existingPlace.Longitude = longitude
+			}
+		}
 		return existingID
 	}
 
@@ -100,6 +120,8 @@ func createOrGetPlace(name string, parentID string, level int, totalLevels int, 
 	place := &Place{
 		Name:       name,
 		Type:       inferPlaceType(name, level, totalLevels),
+		Latitude:   latitude,
+		Longitude:  longitude,
 		Properties: make(map[string]interface{}),
 	}
 
@@ -153,4 +175,58 @@ func inferPlaceType(name string, level int, totalLevels int) string {
 	default:
 		return "locality"
 	}
+}
+
+// extractPlaceCoordinates extracts latitude and longitude from PLAC subrecords
+// GEDCOM format:
+//   2 MAP
+//   3 LATI N12.345678  (or S12.345678)
+//   3 LONG W123.456789 (or E123.456789)
+func extractPlaceCoordinates(placeRecord *GEDCOMRecord) (latitude, longitude *float64) {
+	for _, sub := range placeRecord.SubRecords {
+		if sub.Tag == "MAP" {
+			// MAP contains LATI and LONG
+			for _, mapSub := range sub.SubRecords {
+				switch mapSub.Tag {
+				case "LATI":
+					if lat := parseCoordinate(mapSub.Value); lat != nil {
+						latitude = lat
+					}
+				case "LONG":
+					if lon := parseCoordinate(mapSub.Value); lon != nil {
+						longitude = lon
+					}
+				}
+			}
+		}
+	}
+	return latitude, longitude
+}
+
+// parseCoordinate parses GEDCOM coordinate format
+// Format: N12.345678 or S12.345678 (latitude)
+//         E123.456789 or W123.456789 (longitude)
+func parseCoordinate(value string) *float64 {
+	if value == "" {
+		return nil
+	}
+
+	// Get direction (first character)
+	direction := value[0]
+	numStr := value[1:]
+
+	// Parse the number
+	num, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return nil
+	}
+
+	// Apply sign based on direction
+	// N (north) and E (east) are positive
+	// S (south) and W (west) are negative
+	if direction == 'S' || direction == 'W' {
+		num = -num
+	}
+
+	return &num
 }

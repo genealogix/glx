@@ -19,6 +19,26 @@ import (
 	"strings"
 )
 
+// convertSharedNote551 converts a GEDCOM 5.5.1 NOTE record to shared note storage
+func convertSharedNote551(noteRecord *GEDCOMRecord, ctx *ConversionContext) error {
+	if noteRecord.Tag != "NOTE" {
+		return fmt.Errorf("expected NOTE record, got %s", noteRecord.Tag)
+	}
+
+	// Extract note text (GEDCOM 5.5.1 format)
+	noteText := extractNoteText(noteRecord, ctx)
+	if noteText == "" {
+		noteText = noteRecord.Value
+	}
+
+	// Store in shared notes map (same map as GEDCOM 7.0 SNOTE)
+	ctx.SharedNotes[noteRecord.XRef] = noteText
+
+	ctx.Logger.LogInfo(fmt.Sprintf("Stored shared note (5.5.1) %s (%d chars)", noteRecord.XRef, len(noteText)))
+
+	return nil
+}
+
 // convertSharedNote converts a GEDCOM 7.0 SNOTE record to shared note storage
 func convertSharedNote(snoteRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	if snoteRecord.Tag != "SNOTE" {
@@ -304,3 +324,30 @@ func extractRole(record *GEDCOMRecord) string {
 	}
 	return ""
 }
+
+// extractExternalIDs extracts EXID tags from a record and returns them as a slice
+// EXID format (GEDCOM 7.0):
+//   1 EXID <identifier>
+//   2 TYPE <type>  (optional, e.g., "wikitree", "familysearch", "findagrave")
+func extractExternalIDs(record *GEDCOMRecord) []map[string]string {
+	var exids []map[string]string
+
+	for _, sub := range record.SubRecords {
+		if sub.Tag == "EXID" {
+			exid := make(map[string]string)
+			exid["id"] = sub.Value
+
+			// Check for TYPE subrecord
+			for _, exidSub := range sub.SubRecords {
+				if exidSub.Tag == "TYPE" {
+					exid["type"] = exidSub.Value
+				}
+			}
+
+			exids = append(exids, exid)
+		}
+	}
+
+	return exids
+}
+

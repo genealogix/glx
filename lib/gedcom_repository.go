@@ -38,6 +38,19 @@ func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	var emails []string
 	var notes []string
 
+	// Extract external IDs (GEDCOM 7.0 EXID tags)
+	// Note: Repository doesn't have Properties field, so store in notes for now
+	exids := extractExternalIDs(repoRecord)
+	if len(exids) > 0 {
+		for _, exid := range exids {
+			exidType := exid["type"]
+			if exidType == "" {
+				exidType = "external"
+			}
+			notes = append(notes, fmt.Sprintf("External ID (%s): %s", exidType, exid["id"]))
+		}
+	}
+
 	// Process subrecords
 	for _, sub := range repoRecord.SubRecords {
 		switch sub.Tag {

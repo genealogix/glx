@@ -34,7 +34,14 @@ func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
 			// Trailer - end of file
 			continue
 
-		// GEDCOM 7.0: Process shared notes first
+		// GEDCOM 5.5.1: Process shared NOTE records
+		case "NOTE":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing NOTE %s", record.XRef))
+			if err := convertSharedNote551(record, ctx); err != nil {
+				ctx.addError(record.Line, "NOTE", err.Error())
+			}
+
+		// GEDCOM 7.0: Process shared notes (SNOTE)
 		case "SNOTE":
 			ctx.Logger.LogInfo(fmt.Sprintf("Processing SNOTE %s", record.XRef))
 			if err := convertSharedNote(record, ctx); err != nil {

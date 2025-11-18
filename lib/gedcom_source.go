@@ -37,6 +37,19 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	var notes []string
 	var description []string
 
+	// Extract external IDs (GEDCOM 7.0 EXID tags)
+	// Note: Source doesn't have Properties field, so store in notes for now
+	exids := extractExternalIDs(sourRecord)
+	if len(exids) > 0 {
+		for _, exid := range exids {
+			exidType := exid["type"]
+			if exidType == "" {
+				exidType = "external"
+			}
+			notes = append(notes, fmt.Sprintf("External ID (%s): %s", exidType, exid["id"]))
+		}
+	}
+
 	// Process subrecords
 	for _, sub := range sourRecord.SubRecords {
 		switch sub.Tag {

@@ -53,6 +53,12 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		Properties: make(map[string]interface{}),
 	}
 
+	// Extract external IDs (GEDCOM 7.0 EXID tags)
+	exids := extractExternalIDs(indiRecord)
+	if len(exids) > 0 {
+		person.Properties["external_ids"] = exids
+	}
+
 	// Process all subrecords
 	for _, sub := range indiRecord.SubRecords {
 		switch sub.Tag {
@@ -302,6 +308,11 @@ func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *Con
 			// Parse place
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
+				// Extract coordinates from MAP/LATI/LONG subrecords
+				lat, lon := extractPlaceCoordinates(sub)
+				hierarchy.Latitude = lat
+				hierarchy.Longitude = lon
+
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID

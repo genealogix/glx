@@ -159,6 +159,11 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 		case "PLAC":
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
+				// Extract coordinates from MAP/LATI/LONG subrecords
+				lat, lon := extractPlaceCoordinates(sub)
+				hierarchy.Latitude = lat
+				hierarchy.Longitude = lon
+
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID
@@ -260,6 +265,11 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 		case "PLAC":
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
+				// Extract coordinates from MAP/LATI/LONG subrecords
+				lat, lon := extractPlaceCoordinates(sub)
+				hierarchy.Latitude = lat
+				hierarchy.Longitude = lon
+
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID
@@ -335,6 +345,11 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 		case "PLAC":
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
+				// Extract coordinates from MAP/LATI/LONG subrecords
+				lat, lon := extractPlaceCoordinates(sub)
+				hierarchy.Latitude = lat
+				hierarchy.Longitude = lon
+
 				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID
