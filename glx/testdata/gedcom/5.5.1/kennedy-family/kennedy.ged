@@ -1,0 +1,1426 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 DEST MyFamilyTree
+1 SOUR MyFamilyTree
+2 VERS 14.0.0.0
+2 NAME My Family Tree
+2 CORP Chronoplex Software
+1 SUBM @U0@
+1 DATE 28 OCT 2023
+2 TIME 11:52:20.277
+1 LANG English
+1 FILE The Kennedy Family.ged
+1 COPR © 2010-2021 Chronoplex Software
+1 _TITL The Kennedy Family
+0 @U0@ SUBM
+1 _UID 9BAE88A3BE7E4AC58C1CCAF92A768780D111
+1 NAME Chronoplex Software
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @I0@ INDI
+1 NAME John Fitzgerald "Jack" /Kennedy/
+2 TYPE birth
+2 GIVN John Fitzgerald
+2 NICK Jack
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 29 MAY 1917
+2 PLAC Brookline, MA
+1 DEAT
+2 DATE 22 NOV 1963
+2 PLAC Dallas, TX
+1 BURI
+2 DATE 25 NOV 1963
+2 PLAC Arlington National, VA
+1 FAMC @F1@
+1 FAMS @F0@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I1@ INDI
+1 NAME Joseph Patrick /Kennedy/ Sr
+2 TYPE birth
+2 GIVN Joseph Patrick
+2 SURN Kennedy
+2 NSFX Sr
+1 SEX M
+1 BIRT
+2 DATE 6 SEP 1888
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 18 NOV 1969
+2 PLAC Hyannis Port, MA
+1 BURI
+2 PLAC Holyhood Cemetery, Brookline, MA
+1 FAMC @F9@
+1 FAMS @F1@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I2@ INDI
+1 NAME Rose Elizabeth /Fitzgerald/
+2 TYPE birth
+2 GIVN Rose Elizabeth
+2 SURN Fitzgerald
+1 SEX F
+1 BIRT
+2 DATE 22 JUL 1890
+2 PLAC North End, Boston, MA
+1 DEAT
+2 DATE 22 JAN 1995
+2 PLAC Hyannis Port, MA
+1 BURI
+2 DATE 25 JAN 1995
+2 PLAC Holyhood Cemetery, Brookline, MA
+1 FAMC @F13@
+1 FAMS @F1@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:25:09.549
+0 @I3@ INDI
+1 NAME Joseph Patrick /Kennedy/
+2 TYPE birth
+2 GIVN Joseph Patrick
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 1 JUL 1915
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 2 AUG 1944
+2 PLAC Suffolk, England
+1 FAMC @F1@
+1 NOTE Joseph Patrick was well liked, quick to smile, and had a tremendous dose of Irish charm.
+2 _NSTY Y
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 14:55:08.951
+0 @I4@ INDI
+1 NAME Rose Marie "Rosemary" /Kennedy/
+2 TYPE birth
+2 GIVN Rose Marie
+2 NICK Rosemary
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 13 SEP 1918
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 7 JAN 2005
+1 FAMC @F1@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:47:50.533
+0 @I5@ INDI
+1 NAME William John Robert /Cavendish/
+2 TYPE birth
+2 GIVN William John Robert
+2 SURN Cavendish
+1 SEX M
+1 BIRT
+2 DATE 10 DEC 1917
+1 DEAT
+2 DATE 10 SEP 1944
+2 PLAC Belgium
+1 FAMS @F2@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @I6@ INDI
+1 NAME Kathleen Angus "Kick" /Kennedy/
+2 TYPE birth
+2 GIVN Kathleen Angus
+2 NICK Kick
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 20 FEB 1920
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 13 MAY 1948
+2 PLAC France
+1 FAMC @F1@
+1 FAMS @F2@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @I7@ INDI
+1 NAME Robert Sargent /Shriver/ Jr
+2 TYPE birth
+2 GIVN Robert Sargent
+2 SURN Shriver
+2 NSFX Jr
+1 SEX M
+1 BIRT
+2 DATE 9 NOV 1915
+2 PLAC Westminster, MD
+1 DEAT
+2 DATE 18 JAN 2011
+2 PLAC Bethesda, MD
+1 FAMS @F3@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:06:50.626
+0 @I8@ INDI
+1 NAME Eunice Mary /Kennedy/
+2 TYPE birth
+2 GIVN Eunice Mary
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 10 JUL 1921
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 11 AUG 2009
+1 FAMC @F1@
+1 FAMS @F3@
+1 NOTE She helped in the many political campaigns of her brother, John Fitzgerald.
+2 _NSTY Y
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:47:50.533
+0 @I9@ INDI
+1 NAME Robert Sargent "Bobby" /Shriver/ III
+2 TYPE birth
+2 GIVN Robert Sargent
+2 NICK Bobby
+2 SURN Shriver
+2 NSFX III
+1 SEX M
+1 BIRT
+2 DATE 28 APR 1954
+2 PLAC Chicago, Illinois
+1 FAMC @F3@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:06:50.626
+0 @I10@ INDI
+1 NAME Arnold Alois /Schwarzenegger/
+2 TYPE birth
+2 GIVN Arnold Alois
+2 SURN Schwarzenegger
+1 SEX M
+1 BIRT
+2 DATE 30 JUL 1947
+2 PLAC Thal, Austria
+1 FAMS @F4@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:06:50.626
+0 @I11@ INDI
+1 NAME Maria Owings /Shriver/
+2 TYPE birth
+2 GIVN Maria Owings
+2 SURN Shriver
+1 SEX F
+1 BIRT
+2 DATE 6 NOV 1955
+2 PLAC Chicago, Illinois
+1 FAMC @F3@
+1 FAMS @F4@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:06:50.626
+0 @I12@ INDI
+1 NAME Timothy /Shriver/
+2 TYPE birth
+2 GIVN Timothy
+2 SURN Shriver
+1 SEX M
+1 BIRT
+2 DATE 29 AUG 1959
+2 PLAC Boston, MA
+1 FAMC @F3@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:06:50.626
+0 @I13@ INDI
+1 NAME Mark Kennedy /Shriver/
+2 TYPE birth
+2 GIVN Mark Kennedy
+2 SURN Shriver
+1 SEX M
+1 BIRT
+2 DATE 17 FEB 1964
+2 PLAC Washington, DC
+1 FAMC @F3@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:06:50.626
+0 @I14@ INDI
+1 NAME Anthony Paul Kennedy /Shriver/
+2 TYPE birth
+2 GIVN Anthony Paul Kennedy
+2 SURN Shriver
+1 SEX M
+1 BIRT
+2 DATE 20 JUL 1965
+2 PLAC Boston, MA
+1 FAMC @F3@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:06:50.626
+0 @I15@ INDI
+1 NAME Peter /Lawford/
+2 TYPE birth
+2 GIVN Peter
+2 SURN Lawford
+1 SEX M
+1 BIRT
+2 DATE 7 SEP 1923
+2 PLAC London, England
+1 DEAT
+2 DATE 24 DEC 1984
+2 PLAC Los Angeles, California
+1 FAMS @F5@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:00:41.242
+0 @I16@ INDI
+1 NAME Patricia Helen "Pat" /Kennedy/
+2 TYPE birth
+2 GIVN Patricia Helen
+2 NICK Pat
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 6 MAY 1924
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 17 SEP 2006
+2 PLAC Manhattan, New York, U.S.
+2 CAUS Pneumonia
+1 FAMC @F1@
+1 FAMS @F5@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @I17@ INDI
+1 NAME Christopher /Lawford/
+2 TYPE birth
+2 GIVN Christopher
+2 SURN Lawford
+1 SEX M
+1 BIRT
+2 DATE 29 MAR 1955
+2 PLAC Santa Monica, California
+1 DEAT
+2 DATE 4 SEP 2018
+2 PLAC Vancouver, British Columbia, Canada
+1 FAMC @F5@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:59:07.054
+0 @I18@ INDI
+1 NAME Victoria /Lawford/
+2 TYPE birth
+2 GIVN Victoria
+2 SURN Lawford
+1 SEX F
+1 BIRT
+2 DATE 4 NOV 1958
+2 PLAC Santa Monica, California
+1 FAMC @F5@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:59:07.054
+0 @I19@ INDI
+1 NAME Sydney Maleia Kennedy /Lawford/
+2 TYPE birth
+2 GIVN Sydney Maleia Kennedy
+2 SURN Lawford
+1 SEX F
+1 BIRT
+2 DATE 25 AUG 1956
+2 PLAC Santa Monica, California
+1 FAMC @F5@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:59:07.054
+0 @I20@ INDI
+1 NAME Robin Elizabeth /Lawford/
+2 TYPE birth
+2 GIVN Robin Elizabeth
+2 SURN Lawford
+1 SEX F
+1 BIRT
+2 DATE 2 JUL 1961
+1 FAMC @F5@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:59:07.054
+0 @I21@ INDI
+1 NAME Robert Francis "Bobby" /Kennedy/
+2 TYPE birth
+2 GIVN Robert Francis
+2 NICK Bobby
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 20 NOV 1925
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 6 JUN 1968
+2 PLAC Los Angeles, CA
+1 BURI
+2 DATE 8 JUN 1968
+2 PLAC Arlington National, VA
+1 FAMC @F1@
+1 FAMS @F6@
+1 NOTE Robert Francis was assassinated in California during his 1968 presidential campaign.
+2 _NSTY Y
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @I22@ INDI
+1 NAME Ethel /Skakel/
+2 TYPE birth
+2 GIVN Ethel
+2 SURN Skakel
+1 SEX F
+1 BIRT
+2 DATE 11 APR 1928
+2 PLAC Chicago, Illinois
+1 FAMS @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:43:26.220
+0 @I23@ INDI
+1 NAME Kathleen Hartington /Kennedy/
+2 TYPE birth
+2 GIVN Kathleen Hartington
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 4 JUL 1951
+2 PLAC Greenwich, Connecticut, U.S.
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 14:59:01.326
+0 @I24@ INDI
+1 NAME Joseph Patrick /Kennedy/ II
+2 TYPE birth
+2 GIVN Joseph Patrick
+2 SURN Kennedy
+2 NSFX II
+1 SEX M
+1 BIRT
+2 DATE 24 SEP 1952
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 14:55:08.951
+0 @I25@ INDI
+1 NAME Robert Francis /Kennedy/
+2 TYPE birth
+2 GIVN Robert Francis
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 17 JAN 1954
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 14:55:08.951
+0 @I26@ INDI
+1 NAME David Anthony /Kennedy/
+2 TYPE birth
+2 GIVN David Anthony
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 15 JUN 1955
+2 PLAC Washington, DC
+1 DEAT
+2 DATE 25 APR 1984
+2 PLAC Palm Beach, Florida
+2 CAUS Drug overdose
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:22:45.461
+0 @I27@ INDI
+1 NAME Mary Courtney /Kennedy/
+2 TYPE birth
+2 GIVN Mary Courtney
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 8 SEP 1956
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:07:51.296
+0 @I28@ INDI
+1 NAME Michael L. /Kennedy/
+2 TYPE birth
+2 GIVN Michael L.
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 27 FEB 1958
+2 PLAC Washington, DC
+1 DEAT
+2 DATE 31 DEC 1997
+2 PLAC Aspen, Colorado
+2 CAUS Skiing accident
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:22:45.461
+0 @I29@ INDI
+1 NAME Mary Kerry /Kennedy/
+2 TYPE birth
+2 GIVN Mary Kerry
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 8 SEP 1959
+2 PLAC Washington, DC
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:22:45.461
+0 @I30@ INDI
+1 NAME Christopher George /Kennedy/
+2 TYPE birth
+2 GIVN Christopher George
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 4 JUN 1963
+2 PLAC Boston, MA
+1 FAMC @F6@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @I31@ INDI
+1 NAME Matthew Maxwell Taylor "Max" /Kennedy/
+2 TYPE birth
+2 GIVN Matthew Maxwell Taylor
+2 NICK Max
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 11 JAN 1965
+2 PLAC Manhattan, New York, U.S.
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:03:24.550
+0 @I32@ INDI
+1 NAME Douglas Harriman /Kennedy/
+2 TYPE birth
+2 GIVN Douglas Harriman
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 24 MAR 1967
+2 PLAC Washington, DC
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:22:45.461
+0 @I33@ INDI
+1 NAME Rory Elizabeth Katherine /Kennedy/
+2 TYPE birth
+2 GIVN Rory Elizabeth Katherine
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 12 DEC 1968
+2 PLAC Washington, DC
+1 FAMC @F6@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:22:45.461
+0 @I34@ INDI
+1 NAME Stephen Edward /Smith/
+2 TYPE birth
+2 GIVN Stephen Edward
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 24 SEP 1927
+2 PLAC Bayport, New York
+1 DEAT
+2 DATE 19 AUG 1990
+2 PLAC Manhattan, New York
+1 FAMS @F7@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @I35@ INDI
+1 NAME Jean Ann /Kennedy/
+2 TYPE birth
+2 GIVN Jean Ann
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 20 FEB 1928
+2 PLAC Boston, MA
+1 FAMC @F1@
+1 FAMS @F7@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @I36@ INDI
+1 NAME Stephen /Smith/ Jr
+2 TYPE birth
+2 GIVN Stephen
+2 SURN Smith
+2 NSFX Jr
+1 SEX M
+1 FAMC @F7@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @I37@ INDI
+1 NAME William Kennedy /Smith/
+2 TYPE birth
+2 GIVN William Kennedy
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 4 SEP 1960
+2 PLAC Boston, MA
+1 FAMC @F7@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @I38@ INDI
+1 NAME Amanda /Smith/
+2 TYPE birth
+2 GIVN Amanda
+2 SURN Smith
+1 SEX F
+1 FAMC @F7@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @I39@ INDI
+1 NAME Edward Moore "Ted" /Kennedy/
+2 TYPE birth
+2 GIVN Edward Moore
+2 NICK Ted
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 22 FEB 1932
+2 PLAC Brookline, MA
+1 DEAT
+2 DATE 25 AUG 2009
+2 PLAC Hyannis Port, MA
+1 BURI
+2 DATE 29 AUG 2009
+2 PLAC Arlington Cemeterery
+1 FAMC @F1@
+1 FAMS @F8@
+1 NOTE Enlisted in the Navy during World War II.
+2 _NSTY Y
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I40@ INDI
+1 NAME Virginia Joan /Bennett/
+2 TYPE birth
+2 GIVN Virginia Joan
+2 SURN Bennett
+1 SEX F
+1 BIRT
+2 DATE 2 SEP 1936
+2 PLAC Crowley, Louisiana
+1 FAMS @F8@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I41@ INDI
+1 NAME Kara Ann /Kennedy/
+2 TYPE birth
+2 GIVN Kara Ann
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 27 FEB 1960
+2 PLAC Bronxville, New York
+1 DEAT
+2 DATE 16 SEP 2011
+2 PLAC Washington, DC
+1 FAMC @F8@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:54:06.419
+0 @I42@ INDI
+1 NAME Edward Moore /Kennedy/ Jr
+2 TYPE birth
+2 GIVN Edward Moore
+2 SURN Kennedy
+2 NSFX Jr
+1 SEX M
+1 BIRT
+2 DATE 26 SEP 1961
+1 FAMC @F8@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:54:06.419
+0 @I43@ INDI
+1 NAME Patrick Joseph /Kennedy/ II
+2 TYPE birth
+2 GIVN Patrick Joseph
+2 SURN Kennedy
+2 NSFX II
+1 SEX M
+1 BIRT
+2 DATE 14 JUL 1967
+1 FAMC @F8@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:54:06.419
+0 @I44@ INDI
+1 NAME Patrick Joseph /Kennedy/
+2 TYPE birth
+2 GIVN Patrick Joseph
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 14 JAN 1858
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 18 MAY 1929
+1 FAMC @F10@
+1 FAMS @F9@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I45@ INDI
+1 NAME Mary Augusta /Hickey/
+2 TYPE birth
+2 GIVN Mary Augusta
+2 SURN Hickey
+1 SEX F
+1 BIRT
+2 DATE 6 DEC 1857
+1 DEAT
+2 DATE 6 MAY 1923
+1 FAMS @F9@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I46@ INDI
+1 NAME Patrick /Kennedy/
+2 TYPE birth
+2 GIVN Patrick
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 16 FEB 1823
+2 PLAC Dunganstown, Ireland
+1 DEAT
+2 DATE 22 NOV 1858
+2 PLAC Boston, MA
+1 FAMS @F10@
+1 NOTE The potato famine of 1845-48, plagued the country of Ireland and pushed many Irishmen to flee to the land of promise, the USA. Patrick Kennedy was among those to leave his home in Wexford County, Ireland, in 1848, in hopes of finding a better li
+2 CONC fe in the US. Once he arrived in the US, he settled in East Boston, where he remained for the rest of his life.
+2 _NSTY Y
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I47@ INDI
+1 NAME Bridget /Murphy/
+2 TYPE birth
+2 GIVN Bridget
+2 SURN Murphy
+1 SEX F
+1 BIRT
+2 DATE 1821
+1 DEAT
+2 DATE 20 DEC 1888
+2 PLAC Boston, MA
+1 BURI
+2 PLAC Cathedral Of The Holy Cross, MA
+1 FAMS @F10@
+1 NOTE After her husband died, she opened up a "Notions Shop" to provide for her family.
+2 _NSTY Y
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I48@ INDI
+1 NAME John Vernou /Bouvier/ III
+2 TYPE birth
+2 GIVN John Vernou
+2 SURN Bouvier
+2 NSFX III
+1 SEX M
+1 BIRT
+2 DATE 19 MAY 1891
+2 PLAC East Hampton, New York
+1 DEAT
+2 DATE 3 AUG 1957
+2 PLAC New York City, New York
+1 BURI
+2 PLAC St. Philomena's Cemetery, NY
+1 FAMS @F11@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I49@ INDI
+1 NAME Janet Norton /Lee/
+2 TYPE birth
+2 GIVN Janet Norton
+2 SURN Lee
+1 SEX F
+1 BIRT
+2 DATE 3 DEC 1907
+2 PLAC Manhattan, New York
+1 DEAT
+2 DATE 22 JUL 1987
+2 PLAC Newport, Rhode Island
+1 FAMS @F11@
+1 FAMS @F12@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I50@ INDI
+1 NAME John Francis "Honey Fitz" /Fitzgerald/
+2 TYPE birth
+2 GIVN John Francis
+2 NICK Honey Fitz
+2 SURN Fitzgerald
+1 SEX M
+1 BIRT
+2 DATE 11 FEB 1863
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 2 OCT 1950
+2 PLAC Boston, MA
+1 FAMS @F13@
+1 NOTE He was known as "Honey Fitz".
+2 _NSTY Y
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I51@ INDI
+1 NAME Mary Josephine /Hannon/
+2 TYPE birth
+2 GIVN Mary Josephine
+2 SURN Hannon
+1 SEX F
+1 DEAT Y
+1 FAMS @F13@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I52@ INDI
+1 NAME Jacqueline Lee Kennedy /Bouvier/
+2 TYPE birth
+2 GIVN Jacqueline Lee Kennedy
+2 SURN Bouvier
+1 SEX F
+1 BIRT
+2 DATE 28 JUL 1929
+2 PLAC Southampton, Long Island, NY
+1 DEAT
+2 DATE 19 MAY 1994
+2 PLAC New York
+1 BURI
+2 DATE 23 MAY 1994
+2 PLAC Arlington National, VA
+1 FAMC @F11@
+1 FAMS @F0@
+1 FAMS @F14@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I53@ INDI
+1 NAME Caroline Bouvier /Kennedy/
+2 TYPE birth
+2 GIVN Caroline Bouvier
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 27 NOV 1957
+2 PLAC New York
+1 FAMC @F0@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @I54@ INDI
+1 NAME John Fitzgerald /Kennedy/
+2 TYPE birth
+2 GIVN John Fitzgerald
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 25 NOV 1960
+2 PLAC Washington, DC
+1 DEAT
+2 DATE 16 JUL 1999
+1 FAMC @F0@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 14:49:22.681
+0 @I55@ INDI
+1 NAME Patrick Bouvier /Kennedy/
+2 TYPE birth
+2 GIVN Patrick Bouvier
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 7 AUG 1963
+2 PLAC Otis Air Force B, Mass
+1 DEAT
+2 DATE 9 AUG 1963
+2 PLAC Boston, MA
+1 FAMC @F0@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @I56@ INDI
+1 NAME Margaret Louise /Kennedy/
+2 TYPE birth
+2 GIVN Margaret Louise
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 22 OCT 1898
+1 DEAT
+2 DATE 14 NOV 1974
+1 FAMC @F9@
+1 FAMS @F15@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:22:45.461
+0 @I57@ INDI
+1 NAME Charles Joseph /Burke/
+2 TYPE birth
+2 GIVN Charles Joseph
+2 SURN Burke
+1 SEX M
+1 BIRT
+2 DATE 23 AUG 1899
+1 DEAT
+2 DATE 5 APR 1967
+1 FAMS @F15@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I58@ INDI
+1 NAME Aristotle Socrates "Aristo Onassis" /Onassis/
+2 TYPE birth
+2 GIVN Aristotle Socrates
+2 NICK Aristo Onassis
+2 SURN Onassis
+1 SEX M
+1 BIRT
+2 DATE 20 JAN 1906
+2 PLAC Karataş, Smyrna, Ottoman Empire
+1 DEAT
+2 DATE 15 MAR 1975
+2 PLAC American Hospital of Paris, Neuilly-sur-Seine, France
+1 FAMS @F14@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I59@ INDI
+1 NAME Mary L /Kennedy/
+2 TYPE birth
+2 GIVN Mary L
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 9 AUG 1851
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 1926
+1 FAMC @F10@
+1 FAMS @F16@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I60@ INDI
+1 NAME Joanna L /Kennedy/
+2 TYPE birth
+2 GIVN Joanna L
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 4 DEC 1852
+1 DEAT
+2 DATE 1926
+1 FAMC @F10@
+1 FAMS @F17@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I61@ INDI
+1 NAME John /Kennedy/ III
+2 TYPE birth
+2 GIVN John
+2 SURN Kennedy
+2 NSFX III
+1 SEX M
+1 BIRT
+2 DATE 4 JAN 1854
+2 PLAC Boston, MA
+2 CAUS Cholera
+1 DEAT
+2 DATE 24 SEP 1855
+1 FAMC @F10@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I62@ INDI
+1 NAME Margaret /Kennedy/
+2 TYPE birth
+2 GIVN Margaret
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 18 JUL 1855
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 1929
+1 FAMC @F10@
+1 FAMS @F18@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I63@ INDI
+1 NAME Humphrey Charles /Mahoney/
+2 TYPE birth
+2 GIVN Humphrey Charles
+2 SURN Mahoney
+1 SEX M
+1 BIRT
+2 DATE 1854
+1 DEAT
+2 DATE 1923
+1 FAMS @F17@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I64@ INDI
+1 NAME John T. /Caulfield/
+2 TYPE birth
+2 GIVN John T.
+2 SURN Caulfield
+1 SEX M
+1 BIRT
+2 DATE 1856
+1 DEAT
+2 DATE 1928
+1 FAMS @F18@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I65@ INDI
+1 NAME Laurence M /Kane/
+2 TYPE birth
+2 GIVN Laurence M
+2 SURN Kane
+1 SEX M
+1 BIRT
+2 DATE 1853
+1 DEAT
+2 DATE 1924
+1 FAMS @F16@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:41:50.863
+0 @I66@ INDI
+1 NAME Mary Loretta /Kennedy/
+2 TYPE birth
+2 GIVN Mary Loretta
+2 SURN Kennedy
+1 SEX F
+1 BIRT
+2 DATE 6 AUG 1892
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 18 NOV 1972
+1 FAMC @F9@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:25:09.549
+0 @I67@ INDI
+1 NAME Hugh /Achincloss/ Jr
+2 TYPE birth
+2 GIVN Hugh
+2 SURN Achincloss
+2 NSFX Jr
+1 SEX M
+1 BIRT
+2 DATE 15 AUG 1897
+1 DEAT
+2 DATE 20 NOV 1976
+1 FAMS @F12@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 16:17:25.798
+0 @I68@ INDI
+1 NAME Francis Benedict /Kennedy/
+2 TYPE birth
+2 GIVN Francis Benedict
+2 SURN Kennedy
+1 SEX M
+1 BIRT
+2 DATE 11 MAR 1891
+1 DEAT
+2 DATE 14 JUN 1892
+1 FAMC @F9@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:25:09.549
+0 @I69@ INDI
+1 NAME Kym Maria /Smith/
+2 TYPE birth
+2 GIVN Kym Maria
+2 SURN Smith
+1 SEX F
+1 FAMC @F7@
+1 CHAN
+2 DATE 1 MAR 2020
+3 TIME 15:51:04.427
+0 @F0@ FAM
+1 HUSB @I0@
+1 WIFE @I52@
+1 MARR
+2 TYPE marriage
+2 DATE 12 SEP 1953
+1 _MSTAT deceased
+1 CHIL @I53@
+1 CHIL @I54@
+1 CHIL @I55@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 TYPE marriage
+2 DATE 7 OCT 1914
+1 _MSTAT current
+1 CHIL @I3@
+1 CHIL @I0@
+1 CHIL @I4@
+1 CHIL @I6@
+1 CHIL @I8@
+1 CHIL @I16@
+1 CHIL @I21@
+1 CHIL @I35@
+1 CHIL @I39@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F2@ FAM
+1 HUSB @I5@
+1 WIFE @I6@
+1 MARR
+2 TYPE marriage
+2 DATE 6 MAY 1944
+1 _MSTAT current
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F3@ FAM
+1 HUSB @I7@
+1 WIFE @I8@
+1 MARR
+2 TYPE marriage
+2 DATE 23 MAY 1953
+1 _MSTAT current
+1 CHIL @I9@
+1 CHIL @I11@
+1 CHIL @I12@
+1 CHIL @I13@
+1 CHIL @I14@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F4@ FAM
+1 HUSB @I10@
+1 WIFE @I11@
+1 MARR
+2 TYPE marriage
+2 DATE 1986
+1 DIV
+2 DATE 2011
+1 _MSTAT divorced
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F5@ FAM
+1 HUSB @I15@
+1 WIFE @I16@
+1 MARR
+2 TYPE marriage
+2 DATE 24 APR 1954
+2 PLAC Churhc of St. Thomas More, New York City
+1 DIV
+2 DATE 1966
+1 NCHI 4
+1 _MSTAT divorced
+1 CHIL @I17@
+1 CHIL @I19@
+1 CHIL @I18@
+1 CHIL @I20@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F6@ FAM
+1 HUSB @I21@
+1 WIFE @I22@
+1 MARR
+2 TYPE marriage
+2 DATE 17 JUN 1950
+1 _MSTAT current
+1 CHIL @I23@
+1 CHIL @I24@
+1 CHIL @I25@
+1 CHIL @I26@
+1 CHIL @I27@
+1 CHIL @I28@
+1 CHIL @I29@
+1 CHIL @I30@
+1 CHIL @I31@
+1 CHIL @I32@
+1 CHIL @I33@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F7@ FAM
+1 HUSB @I34@
+1 WIFE @I35@
+1 MARR
+2 TYPE marriage
+2 DATE 1 JAN 1956
+1 _MSTAT current
+1 CHIL @I37@
+1 CHIL @I36@
+1 CHIL @I38@
+1 CHIL @I69@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F8@ FAM
+1 HUSB @I39@
+1 WIFE @I40@
+1 MARR
+2 TYPE marriage
+2 DATE 29 NOV 1958
+1 DIV
+2 DATE 1983
+1 _MSTAT divorced
+1 CHIL @I41@
+1 CHIL @I42@
+1 CHIL @I43@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F9@ FAM
+1 HUSB @I44@
+1 WIFE @I45@
+1 MARR
+2 TYPE marriage
+2 DATE 23 NOV 1887
+1 _MSTAT current
+1 CHIL @I1@
+1 CHIL @I68@
+1 CHIL @I66@
+1 CHIL @I56@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F10@ FAM
+1 HUSB @I46@
+1 WIFE @I47@
+1 MARR
+2 TYPE marriage
+2 DATE 28 SEP 1849
+1 _MSTAT current
+1 CHIL @I59@
+1 CHIL @I60@
+1 CHIL @I61@
+1 CHIL @I62@
+1 CHIL @I44@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F11@ FAM
+1 HUSB @I48@
+1 WIFE @I49@
+1 MARR
+2 TYPE marriage
+2 DATE 7 JUL 1928
+2 PLAC St. Philomena's Church, East Hampton
+1 DIV
+2 DATE 1940
+1 _MSTAT divorced
+1 CHIL @I52@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F12@ FAM
+1 HUSB @I67@
+1 WIFE @I49@
+1 MARR
+2 TYPE marriage
+2 DATE 21 JUN 1942
+1 NCHI 2
+1 _MSTAT current
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F13@ FAM
+1 HUSB @I50@
+1 WIFE @I51@
+1 MARR
+2 TYPE marriage
+2 DATE 18 SEP 1889
+1 _MSTAT current
+1 CHIL @I2@
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F14@ FAM
+1 HUSB @I58@
+1 WIFE @I52@
+1 MARR
+2 TYPE marriage
+2 DATE 1968
+1 _MSTAT current
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F15@ FAM
+1 HUSB @I57@
+1 WIFE @I56@
+1 MARR
+2 TYPE marriage
+2 DATE 14 JUN 1924
+1 NCHI 3
+1 _MSTAT current
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F16@ FAM
+1 HUSB @I65@
+1 WIFE @I59@
+1 MARR
+2 TYPE marriage
+2 DATE 1 JAN 1883
+1 _MSTAT current
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F17@ FAM
+1 HUSB @I63@
+1 WIFE @I60@
+1 MARR
+2 TYPE marriage
+2 DATE 22 SEP 1872
+1 _MSTAT current
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @F18@ FAM
+1 HUSB @I64@
+1 WIFE @I62@
+1 MARR
+2 TYPE marriage
+2 DATE 1 JAN 1882
+1 _MSTAT current
+1 CHAN
+2 DATE 30 DEC 2015
+3 TIME 18:04:32.743
+0 @S0@ SOUR
+1 _UID 80D8EAAA9C9949708DB6085B2E768D9748E7
+1 TITL Joseph P. Kennedy, A Life and Times, by David E. Koskoff.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S1@ SOUR
+1 _UID 36CF7912C3334DF7A58BE7ED452DF2AFE13D
+1 TITL Rose, by Gail Cameron.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S2@ SOUR
+1 _UID 046A3AD191FF4DD3B0693F406E0A7FB87012
+1 TITL New York Times, March 4, 1946, pp. 1,3.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S3@ SOUR
+1 _UID BCE583F9AFE946FE96E4B528111C420ECDF7
+1 TITL New York Times, March 6, 1946.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S4@ SOUR
+1 _UID EA464907F0D24858A93C4F2814620B6120BC
+1 TITL New York World Telegram and Sun, Oct 11, 1957, pg. 1.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S5@ SOUR
+1 _UID 9F76043F40CD4EEF8A770F086D122EBF269F
+1 TITL The Kennedy's Dynasty and Disaster 1848-1983, by John H. Davis.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S6@ SOUR
+1 _UID 5A0D7662EBF542969E542440769692543F9C
+1 TITL Growing Up Kennedy, Harrison Raine and John Quinn.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S7@ SOUR
+1 _UID 050908C1657A418DB6AB79AD885742436F0D
+1 TITL New York Times, Nov. 22, 1963.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S8@ SOUR
+1 _UID 637C33D5CAD2434987E7F5540A84EA054334
+1 TITL Harrisburg Patriot News, 23 May 1994.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S9@ SOUR
+1 _UID 32E15186E860487CB91F61154A8AC150299F
+1 TITL CBS This Morning show.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @S10@ SOUR
+1 _UID 3C939DA64F44421FAAEB56B779E9E78677F3
+1 TITL Harrisburg Patriot News, January 25, 1995.
+1 REPO @R0@
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 @R0@ REPO
+1 _UID 5CF6AA9DB4254696B9E6D4873A05F5D955DF
+1 NAME Source repository
+1 CHAN
+2 DATE 29 MAY 2018
+3 TIME 07:21:10.114
+0 TRLR

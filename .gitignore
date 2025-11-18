@@ -34,3 +34,5 @@ Thumbs.db
 bin/
 coverage*.html
 coverage*.out
+corpus/
+/gedcom/
