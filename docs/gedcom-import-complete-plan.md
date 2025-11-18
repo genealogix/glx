@@ -2573,13 +2573,16 @@ func formatFullName(name PersonName) string
 ### lib/gedcom_util.go
 
 ```go
-func generatePersonID(gedcomXRef string, name string, ctx *ConversionContext) string
-func generateEventID(eventType string, personID string, ctx *ConversionContext) string
-func generateRelationshipID(relType string, participants []string, gedcomXRef string, ctx *ConversionContext) string
-func generatePlaceID(placeName string, ctx *ConversionContext) string
-func generateSourceID(gedcomXRef string, title string, ctx *ConversionContext) string
-func generateCitationID(subjectID string, sourceID string, ctx *ConversionContext) string
-func generateAssertionID(subjectID string, claim string, ctx *ConversionContext) string
+func generatePersonID(ctx *ConversionContext) string
+func generateEventID(ctx *ConversionContext) string
+func generateRelationshipID(ctx *ConversionContext) string
+func generatePlaceID(ctx *ConversionContext) string
+func generateSourceID(ctx *ConversionContext) string
+func generateRepositoryID(ctx *ConversionContext) string
+func generateMediaID(ctx *ConversionContext) string
+func generateCitationID(ctx *ConversionContext) string
+func generateAssertionID(ctx *ConversionContext) string
+func generateParticipationID(ctx *ConversionContext) string
 
 func sanitizeForID(s string) string
 func combineNotes(notes []string) string
@@ -5419,181 +5422,257 @@ import (
     "strings"
 )
 
-// sanitizeForID converts a string to a valid ID component
-func sanitizeForID(s string) string {
-    // Convert to lowercase
-    s = strings.ToLower(s)
-
-    // Replace spaces with hyphens
-    s = strings.ReplaceAll(s, " ", "-")
-
-    // Remove non-alphanumeric except hyphens
-    reg := regexp.MustCompile("[^a-z0-9-]+")
-    s = reg.ReplaceAllString(s, "")
-
-    // Remove leading/trailing hyphens
-    s = strings.Trim(s, "-")
-
-    // Collapse multiple hyphens
-    reg = regexp.MustCompile("-+")
-    s = reg.ReplaceAllString(s, "-")
-
-    // Limit length
-    if len(s) > 50 {
-        s = s[:50]
-    }
-
-    return s
+// generatePersonID generates an auto-incremented person ID
+func generatePersonID(ctx *ConversionContext) string {
+    ctx.PersonCounter++
+    return fmt.Sprintf("person-%d", ctx.PersonCounter)
 }
 
-// generatePersonID generates a person ID from name and GEDCOM XRef
-func generatePersonID(gedcomXRef string, name string, ctx *ConversionContext) string {
-    // Sanitize name
-    namePart := sanitizeForID(name)
-    if namePart == "" {
-        namePart = "unknown"
-    }
-
-    // Extract XRef ID (remove @ symbols)
-    xrefPart := strings.Trim(gedcomXRef, "@")
-    xrefPart = strings.ToLower(xrefPart)
-
-    // Combine
-    baseID := fmt.Sprintf("person-%s-%s", namePart, xrefPart)
-
-    // Check for collision
-    personID := baseID
-    counter := 2
-    for {
-        if _, exists := ctx.PersonIDMap[personID]; !exists {
-            break
-        }
-        personID = fmt.Sprintf("%s-%d", baseID, counter)
-        counter++
-    }
-
-    return personID
-}
-
-// generateEventID generates an event ID
-func generateEventID(eventType string, personID string, ctx *ConversionContext) string {
+// generateEventID generates an auto-incremented event ID
+func generateEventID(ctx *ConversionContext) string {
     ctx.EventCounter++
-
-    // Extract person name from person ID
-    personPart := strings.TrimPrefix(personID, "person-")
-    // Remove xref suffix
-    parts := strings.Split(personPart, "-")
-    if len(parts) > 1 {
-        personPart = strings.Join(parts[:len(parts)-1], "-")
-    }
-
-    return fmt.Sprintf("event-%s-%s-%d", eventType, personPart, ctx.EventCounter)
+    return fmt.Sprintf("event-%d", ctx.EventCounter)
 }
 
-// generateRelationshipID generates a relationship ID
-func generateRelationshipID(relType string, participants []string, gedcomXRef string, ctx *ConversionContext) string {
+// generateRelationshipID generates an auto-incremented relationship ID
+func generateRelationshipID(ctx *ConversionContext) string {
     ctx.RelationshipCounter++
-
-    // Extract short names from participant IDs
-    var nameParts []string
-    for _, participantID := range participants {
-        if participantID == "" {
-            continue
-        }
-        // Extract name part from person ID
-        name := strings.TrimPrefix(participantID, "person-")
-        parts := strings.Split(name, "-")
-        if len(parts) > 0 {
-            // Take first word of name
-            nameParts = append(nameParts, parts[0])
-        }
-    }
-
-    nameStr := strings.Join(nameParts, "-")
-    if nameStr == "" {
-        nameStr = "unknown"
-    }
-
-    xrefPart := strings.ToLower(strings.Trim(gedcomXRef, "@"))
-
-    return fmt.Sprintf("relationship-%s-%s-%s", relType, nameStr, xrefPart)
+    return fmt.Sprintf("relationship-%d", ctx.RelationshipCounter)
 }
 
-// generatePlaceID generates a place ID from place name
-func generatePlaceID(placeName string, ctx *ConversionContext) string {
-    baseID := fmt.Sprintf("place-%s", sanitizeForID(placeName))
-
-    // Check for collision
-    placeID := baseID
-    counter := 2
-    for {
-        found := false
-        for _, id := range ctx.PlaceIDMap {
-            if id == placeID {
-                found = true
-                break
-            }
-        }
-        if !found {
-            break
-        }
-        placeID = fmt.Sprintf("%s-%d", baseID, counter)
-        counter++
-    }
-
-    return placeID
+// generatePlaceID generates an auto-incremented place ID
+func generatePlaceID(ctx *ConversionContext) string {
+    ctx.PlaceCounter++
+    return fmt.Sprintf("place-%d", ctx.PlaceCounter)
 }
 
-// generateSourceID generates a source ID
-func generateSourceID(gedcomXRef string, title string, ctx *ConversionContext) string {
-    xrefPart := strings.ToLower(strings.Trim(gedcomXRef, "@"))
-
-    if title != "" {
-        titlePart := sanitizeForID(title)
-        if len(titlePart) > 30 {
-            titlePart = titlePart[:30]
-        }
-        return fmt.Sprintf("source-%s-%s", titlePart, xrefPart)
-    }
-
-    return fmt.Sprintf("source-%s", xrefPart)
+// generateSourceID generates an auto-incremented source ID
+func generateSourceID(ctx *ConversionContext) string {
+    ctx.SourceCounter++
+    return fmt.Sprintf("source-%d", ctx.SourceCounter)
 }
 
-// generateCitationID generates a citation ID
-func generateCitationID(subjectID string, sourceID string, ctx *ConversionContext) string {
+// generateRepositoryID generates an auto-incremented repository ID
+func generateRepositoryID(ctx *ConversionContext) string {
+    ctx.RepositoryCounter++
+    return fmt.Sprintf("repository-%d", ctx.RepositoryCounter)
+}
+
+// generateMediaID generates an auto-incremented media ID
+func generateMediaID(ctx *ConversionContext) string {
+    ctx.MediaCounter++
+    return fmt.Sprintf("media-%d", ctx.MediaCounter)
+}
+
+// generateCitationID generates an auto-incremented citation ID
+func generateCitationID(ctx *ConversionContext) string {
     ctx.CitationCounter++
-
-    // Extract subject type and short ID
-    subjectType := "unknown"
-    if strings.HasPrefix(subjectID, "person-") {
-        subjectType = "person"
-    } else if strings.HasPrefix(subjectID, "event-") {
-        subjectType = "event"
-    } else if strings.HasPrefix(subjectID, "relationship-") {
-        subjectType = "relationship"
-    }
-
-    // Extract source short ID
-    sourcePart := strings.TrimPrefix(sourceID, "source-")
-    parts := strings.Split(sourcePart, "-")
-    if len(parts) > 0 {
-        sourcePart = parts[len(parts)-1] // Get XRef part
-    }
-
-    return fmt.Sprintf("citation-%s-%s-%d", subjectType, sourcePart, ctx.CitationCounter)
+    return fmt.Sprintf("citation-%d", ctx.CitationCounter)
 }
 
-// generateAssertionID generates an assertion ID
-func generateAssertionID(subjectID string, claim string, ctx *ConversionContext) string {
+// generateAssertionID generates an auto-incremented assertion ID
+func generateAssertionID(ctx *ConversionContext) string {
     ctx.AssertionCounter++
+    return fmt.Sprintf("assertion-%d", ctx.AssertionCounter)
+}
 
-    claimPart := sanitizeForID(claim)
-    if len(claimPart) > 20 {
-        claimPart = claimPart[:20]
+// generateParticipationID generates an auto-incremented participation ID
+func generateParticipationID(ctx *ConversionContext) string {
+    ctx.ParticipationCounter++
+    return fmt.Sprintf("participation-%d", ctx.ParticipationCounter)
+}
+```
+
+**Note**: All ID generation uses simple auto-incrementing counters with entity prefixes (e.g., `person-1`, `event-23`, `source-5`). This provides consistent, collision-free IDs without requiring complex name sanitization or human-readable formatting.
+
+### Step 10: Add Exception Logging
+
+**File: `lib/gedcom_logging.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "log"
+    "os"
+)
+
+// ImportLogger handles logging during GEDCOM import
+type ImportLogger struct {
+    file   *os.File
+    logger *log.Logger
+}
+
+// NewImportLogger creates a new import logger
+func NewImportLogger(logPath string) (*ImportLogger, error) {
+    if logPath == "" {
+        // No logging if path not specified
+        return &ImportLogger{}, nil
     }
 
-    return fmt.Sprintf("assertion-%s-%d", claimPart, ctx.AssertionCounter)
+    file, err := os.Create(logPath)
+    if err != nil {
+        return nil, fmt.Errorf("failed to create log file: %w", err)
+    }
+
+    return &ImportLogger{
+        file:   file,
+        logger: log.New(file, "", log.LstdFlags),
+    }, nil
 }
+
+// Close closes the log file
+func (il *ImportLogger) Close() error {
+    if il.file != nil {
+        return il.file.Close()
+    }
+    return nil
+}
+
+// LogError logs an error during import
+func (il *ImportLogger) LogError(line int, tag string, gedcomXRef string, err error) {
+    if il.logger == nil {
+        return
+    }
+
+    il.logger.Printf("ERROR [Line %d] Tag: %s, XRef: %s - %v", line, tag, gedcomXRef, err)
+}
+
+// LogWarning logs a warning during import
+func (il *ImportLogger) LogWarning(line int, tag string, gedcomXRef string, message string) {
+    if il.logger == nil {
+        return
+    }
+
+    il.logger.Printf("WARNING [Line %d] Tag: %s, XRef: %s - %s", line, tag, gedcomXRef, message)
+}
+
+// LogInfo logs informational messages
+func (il *ImportLogger) LogInfo(message string) {
+    if il.logger == nil {
+        return
+    }
+
+    il.logger.Printf("INFO: %s", message)
+}
+
+// LogException logs an exception with full context
+func (il *ImportLogger) LogException(line int, tag string, gedcomXRef string, operation string, err error, context map[string]interface{}) {
+    if il.logger == nil {
+        return
+    }
+
+    il.logger.Printf("EXCEPTION [Line %d] Tag: %s, XRef: %s", line, tag, gedcomXRef)
+    il.logger.Printf("  Operation: %s", operation)
+    il.logger.Printf("  Error: %v", err)
+
+    if len(context) > 0 {
+        il.logger.Printf("  Context:")
+        for key, value := range context {
+            il.logger.Printf("    %s: %v", key, value)
+        }
+    }
+}
+```
+
+### Step 11: Update ConversionContext with Counters and Logger
+
+Update the ConversionContext structure:
+
+```go
+// ConversionContext holds state during GEDCOM conversion
+type ConversionContext struct {
+    GLX     *GLXFile
+    Version GEDCOMVersion
+    Logger  *ImportLogger
+
+    // ID mapping from GEDCOM XRef to GLX ID
+    PersonIDMap     map[string]string
+    FamilyIDMap     map[string]string
+    SourceIDMap     map[string]string
+    RepositoryIDMap map[string]string
+    MediaIDMap      map[string]string
+    PlaceIDMap      map[string]string
+
+    // Auto-increment counters for ID generation
+    PersonCounter        int
+    EventCounter         int
+    RelationshipCounter  int
+    PlaceCounter         int
+    SourceCounter        int
+    RepositoryCounter    int
+    MediaCounter         int
+    CitationCounter      int
+    AssertionCounter     int
+    ParticipationCounter int
+
+    // GEDCOM 7.0 specific
+    SharedNotes      map[string]string
+    ExtensionSchemas map[string]*ExtensionSchema
+
+    // Deferred processing
+    DeferredFamilies    []*GEDCOMRecord
+    DeferredFamilyLinks []*FamilyLink
+
+    // Statistics
+    Stats ImportStatistics
+}
+```
+
+### Step 12: Add Error Handling to Converters
+
+Add exception logging throughout converters. Example from individual converter:
+
+```go
+func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if indiRecord.Tag != "INDI" {
+        return fmt.Errorf("expected INDI record, got %s", indiRecord.Tag)
+    }
+
+    defer func() {
+        if r := recover(); r != nil {
+            ctx.Logger.LogException(
+                indiRecord.Line,
+                indiRecord.Tag,
+                indiRecord.XRef,
+                "convertIndividual",
+                fmt.Errorf("panic: %v", r),
+                map[string]interface{}{
+                    "record": indiRecord,
+                },
+            )
+            ctx.addError(indiRecord.Line, "INDI", fmt.Sprintf("Panic during conversion: %v", r))
+        }
+    }()
+
+    // Generate person ID
+    personID := generatePersonID(ctx)
+    ctx.PersonIDMap[indiRecord.XRef] = personID
+
+    ctx.Logger.LogInfo(fmt.Sprintf("Converting INDI %s -> %s", indiRecord.XRef, personID))
+
+    // Create person entity
+    person := &Person{
+        Properties: make(map[string]interface{}),
+    }
+
+    // Process all subrecords
+    for _, sub := range indiRecord.SubRecords {
+        if err := processINDISubrecord(personID, sub, person, ctx); err != nil {
+            ctx.Logger.LogError(sub.Line, sub.Tag, indiRecord.XRef, err)
+            ctx.addWarning(sub.Line, sub.Tag, err.Error())
+            // Continue processing other subrecords
+        }
+    }
+
+    // Store person
+    ctx.GLX.Persons[personID] = person
+    ctx.Stats.PersonsCreated++
+
+    return nil
+}
+```
 
 // combineNotes combines multiple note strings
 func combineNotes(notes []string) string {
