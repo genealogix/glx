@@ -1,0 +1,280 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package lib
+
+import (
+	"fmt"
+)
+
+// Convert performs the main GEDCOM to GLX conversion with two-pass processing
+func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
+	ctx.Logger.LogInfo("Starting conversion")
+
+	// First pass: Process all top-level records in dependency order
+	for _, record := range records {
+		switch record.Tag {
+		case "HEAD":
+			// Header - extract metadata
+			ctx.Logger.LogInfo("Processing HEAD")
+			convertHeader(record, ctx)
+
+		case "TRLR":
+			// Trailer - end of file
+			continue
+
+		// GEDCOM 7.0: Process shared notes first
+		case "SNOTE":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing SNOTE %s", record.XRef))
+			if err := convertSharedNote(record, ctx); err != nil {
+				ctx.addError(record.Line, "SNOTE", err.Error())
+			}
+
+		// GEDCOM 7.0: Process extension schemas
+		case "SCHMA":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing SCHMA %s", record.XRef))
+			if err := convertExtensionSchema(record, ctx); err != nil {
+				ctx.addError(record.Line, "SCHMA", err.Error())
+			}
+
+		// Process repositories before sources (for linking)
+		case "REPO":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing REPO %s", record.XRef))
+			if err := convertRepository(record, ctx); err != nil {
+				ctx.addError(record.Line, "REPO", err.Error())
+			}
+
+		// Process sources before individuals (for evidence)
+		case "SOUR":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing SOUR %s", record.XRef))
+			if err := convertSource(record, ctx); err != nil {
+				ctx.addError(record.Line, "SOUR", err.Error())
+			}
+
+		// Process media objects
+		case "OBJE":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing OBJE %s", record.XRef))
+			if err := convertMedia(record, ctx); err != nil {
+				ctx.addError(record.Line, "OBJE", err.Error())
+			}
+
+		// Process individuals
+		case "INDI":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing INDI %s", record.XRef))
+			if err := convertIndividual(record, ctx); err != nil {
+				ctx.addError(record.Line, "INDI", err.Error())
+			}
+
+		// Defer families until after individuals
+		case "FAM":
+			ctx.Logger.LogInfo(fmt.Sprintf("Deferring FAM %s", record.XRef))
+			ctx.DeferredFamilies = append(ctx.DeferredFamilies, record)
+
+		// Handle submitter (SUBM)
+		case "SUBM":
+			ctx.Logger.LogInfo(fmt.Sprintf("Processing SUBM %s", record.XRef))
+			convertSubmitter(record, ctx)
+
+		default:
+			// Unknown or extension tag
+			if isExtensionTag(record.Tag, ctx) {
+				ctx.addWarning(record.Line, record.Tag, "Extension tag not fully processed")
+			} else {
+				ctx.addWarning(record.Line, record.Tag, fmt.Sprintf("Unknown top-level tag: %s", record.Tag))
+			}
+		}
+	}
+
+	ctx.Logger.LogInfo(fmt.Sprintf("First pass complete: %d persons, %d sources, %d repositories, %d media",
+		ctx.Stats.PersonsCreated, ctx.Stats.SourcesCreated, ctx.Stats.RepositoriesCreated, ctx.Stats.MediaCreated))
+
+	// Second pass: Process families now that all individuals exist
+	ctx.Logger.LogInfo(fmt.Sprintf("Processing %d deferred families", len(ctx.DeferredFamilies)))
+	for _, famRecord := range ctx.DeferredFamilies {
+		if err := convertFamily(famRecord, ctx); err != nil {
+			ctx.addError(famRecord.Line, "FAM", err.Error())
+		}
+	}
+
+	ctx.Logger.LogInfo(fmt.Sprintf("Second pass complete: %d relationships created", ctx.Stats.RelationshipsCreated))
+
+	return nil
+}
+
+// convertHeader extracts metadata from HEAD record
+func convertHeader(headRecord *GEDCOMRecord, ctx *ConversionContext) {
+	metadata := make(map[string]interface{})
+
+	for _, sub := range headRecord.SubRecords {
+		switch sub.Tag {
+		case "DATE":
+			metadata["export_date"] = sub.Value
+		case "FILE":
+			metadata["source_file"] = sub.Value
+		case "COPR":
+			metadata["copyright"] = sub.Value
+		case "LANG":
+			metadata["language"] = sub.Value
+		case "SOUR":
+			// Source system
+			for _, sourSub := range sub.SubRecords {
+				switch sourSub.Tag {
+				case "NAME":
+					metadata["source_system"] = sourSub.Value
+				case "VERS":
+					metadata["source_version"] = sourSub.Value
+				case "CORP":
+					metadata["source_corporation"] = sourSub.Value
+				}
+			}
+		case "SUBM":
+			metadata["submitter_ref"] = sub.Value
+		case "GEDC":
+			for _, gedcSub := range sub.SubRecords {
+				if gedcSub.Tag == "VERS" {
+					metadata["gedcom_version"] = gedcSub.Value
+				}
+			}
+		case "CHAR":
+			metadata["character_set"] = sub.Value
+		case "NOTE":
+			metadata["notes"] = extractNoteText(sub, ctx)
+		}
+	}
+
+	if len(metadata) > 0 {
+		ctx.GLX.Metadata = metadata
+	}
+}
+
+// convertSubmitter converts SUBM record to metadata
+func convertSubmitter(submRecord *GEDCOMRecord, ctx *ConversionContext) {
+	submitter := make(map[string]interface{})
+
+	for _, sub := range submRecord.SubRecords {
+		switch sub.Tag {
+		case "NAME":
+			submitter["name"] = sub.Value
+		case "ADDR":
+			submitter["address"] = extractAddress(sub)
+		case "PHON":
+			submitter["phone"] = sub.Value
+		case "EMAIL":
+			submitter["email"] = sub.Value
+		case "WWW":
+			submitter["website"] = sub.Value
+		}
+	}
+
+	if len(submitter) > 0 {
+		if ctx.GLX.Metadata == nil {
+			ctx.GLX.Metadata = make(map[string]interface{})
+		}
+		ctx.GLX.Metadata["submitter"] = submitter
+	}
+}
+
+// extractAddress builds full address from ADDR record and subrecords
+func extractAddress(addrRecord *GEDCOMRecord) string {
+	var parts []string
+
+	if addrRecord.Value != "" {
+		parts = append(parts, addrRecord.Value)
+	}
+
+	for _, sub := range addrRecord.SubRecords {
+		switch sub.Tag {
+		case "ADR1", "ADR2", "ADR3":
+			if sub.Value != "" {
+				parts = append(parts, sub.Value)
+			}
+		case "CITY":
+			if sub.Value != "" {
+				parts = append(parts, sub.Value)
+			}
+		case "STAE":
+			if sub.Value != "" {
+				parts = append(parts, sub.Value)
+			}
+		case "POST":
+			if sub.Value != "" {
+				parts = append(parts, sub.Value)
+			}
+		case "CTRY":
+			if sub.Value != "" {
+				parts = append(parts, sub.Value)
+			}
+		}
+	}
+
+	result := ""
+	for i, part := range parts {
+		if i > 0 {
+			result += ", "
+		}
+		result += part
+	}
+
+	return result
+}
+
+// Placeholder functions for converters (to be implemented)
+
+func convertSharedNote(record *GEDCOMRecord, ctx *ConversionContext) error {
+	// TODO: Implement GEDCOM 7.0 shared notes
+	return nil
+}
+
+func convertExtensionSchema(record *GEDCOMRecord, ctx *ConversionContext) error {
+	// TODO: Implement GEDCOM 7.0 extension schemas
+	return nil
+}
+
+func isExtensionTag(tag string, ctx *ConversionContext) bool {
+	// Extension tags start with underscore
+	if len(tag) > 0 && tag[0] == '_' {
+		return true
+	}
+	return false
+}
+
+func convertRepository(record *GEDCOMRecord, ctx *ConversionContext) error {
+	// TODO: Implement repository converter
+	ctx.addWarning(record.Line, "REPO", "Repository conversion not yet implemented")
+	return nil
+}
+
+func convertSource(record *GEDCOMRecord, ctx *ConversionContext) error {
+	// TODO: Implement source converter
+	ctx.addWarning(record.Line, "SOUR", "Source conversion not yet implemented")
+	return nil
+}
+
+func convertMedia(record *GEDCOMRecord, ctx *ConversionContext) error {
+	// TODO: Implement media converter
+	ctx.addWarning(record.Line, "OBJE", "Media conversion not yet implemented")
+	return nil
+}
+
+func convertIndividual(record *GEDCOMRecord, ctx *ConversionContext) error {
+	// TODO: Implement individual converter
+	ctx.addWarning(record.Line, "INDI", "Individual conversion not yet implemented")
+	return nil
+}
+
+func convertFamily(record *GEDCOMRecord, ctx *ConversionContext) error {
+	// TODO: Implement family converter
+	ctx.addWarning(record.Line, "FAM", "Family conversion not yet implemented")
+	return nil
+}
