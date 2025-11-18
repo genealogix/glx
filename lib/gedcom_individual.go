@@ -67,7 +67,27 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			nameSubstructure := extractNameSubstructure(sub)
 			parsedName := parseGEDCOMName(sub.Value, nameSubstructure)
 
-			// Create name assertions
+			// Store name in person properties for quick access
+			if parsedName.GivenName != "" {
+				person.Properties["given_name"] = parsedName.GivenName
+			}
+			if parsedName.Surname != "" {
+				person.Properties["family_name"] = parsedName.Surname
+			}
+			if parsedName.Prefix != "" {
+				person.Properties["name_prefix"] = parsedName.Prefix
+			}
+			if parsedName.Nickname != "" {
+				person.Properties["nickname"] = parsedName.Nickname
+			}
+			if parsedName.SurnamePrefix != "" {
+				person.Properties["surname_prefix"] = parsedName.SurnamePrefix
+			}
+			if parsedName.Suffix != "" {
+				person.Properties["name_suffix"] = parsedName.Suffix
+			}
+
+			// Create name assertions (with evidence/citations)
 			if err := createNameAssertions(personID, parsedName, sub, ctx); err != nil {
 				ctx.addWarning(indiRecord.Line, "NAME", err.Error())
 			}
