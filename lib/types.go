@@ -214,30 +214,32 @@ type DateRange struct {
 
 // Source represents a source of information.
 type Source struct {
-	Title           string   `yaml:"title"`
-	Type            string   `yaml:"type,omitempty" refType:"source_types"`
-	Authors         []string `yaml:"authors,omitempty"`
-	Date            string   `yaml:"date,omitempty"`
-	Description     string   `yaml:"description,omitempty"`
-	RepositoryID    string   `yaml:"repository,omitempty" refType:"repositories"`
-	PublicationInfo string   `yaml:"publication_info,omitempty"`
-	Notes           string   `yaml:"notes,omitempty"`
-	Media           []string `yaml:"media,omitempty" refType:"media"`
-	Tags            []string `yaml:"tags,omitempty"`
+	Title           string                 `yaml:"title"`
+	Type            string                 `yaml:"type,omitempty" refType:"source_types"`
+	Authors         []string               `yaml:"authors,omitempty"`
+	Date            string                 `yaml:"date,omitempty"`
+	Description     string                 `yaml:"description,omitempty"`
+	RepositoryID    string                 `yaml:"repository,omitempty" refType:"repositories"`
+	PublicationInfo string                 `yaml:"publication_info,omitempty"`
+	Properties      map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes           string                 `yaml:"notes,omitempty"`
+	Media           []string               `yaml:"media,omitempty" refType:"media"`
+	Tags            []string               `yaml:"tags,omitempty"`
 }
 
 // Citation represents a citation of a source.
 type Citation struct {
-	SourceID       string      `yaml:"source,omitempty" refType:"sources"`
-	Page           string      `yaml:"page,omitempty"`
-	TextFromSource string      `yaml:"text_from_source,omitempty"`
-	Transcription  string      `yaml:"transcription,omitempty"`
-	Quality        *int        `yaml:"quality,omitempty" refType:"quality_ratings"`
-	Locator        interface{} `yaml:"locator,omitempty"` // Can be string or Locator struct
-	RepositoryID   string      `yaml:"repository,omitempty" refType:"repositories"`
-	Media          []string    `yaml:"media,omitempty" refType:"media"`
-	Notes          string      `yaml:"notes,omitempty"`
-	Tags           []string    `yaml:"tags,omitempty"`
+	SourceID       string                 `yaml:"source,omitempty" refType:"sources"`
+	Page           string                 `yaml:"page,omitempty"`
+	TextFromSource string                 `yaml:"text_from_source,omitempty"`
+	Transcription  string                 `yaml:"transcription,omitempty"`
+	Quality        *int                   `yaml:"quality,omitempty" refType:"quality_ratings"`
+	Locator        interface{}            `yaml:"locator,omitempty"` // Can be string or Locator struct
+	RepositoryID   string                 `yaml:"repository,omitempty" refType:"repositories"`
+	Properties     map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Media          []string               `yaml:"media,omitempty" refType:"media"`
+	Notes          string                 `yaml:"notes,omitempty"`
+	Tags           []string               `yaml:"tags,omitempty"`
 }
 
 // Locator provides structured information for finding a source.
@@ -252,31 +254,33 @@ type Locator struct {
 
 // Repository represents a repository where sources are held.
 type Repository struct {
-	Name       string   `yaml:"name"`
-	Type       string   `yaml:"type,omitempty" refType:"repository_types"`
-	Address    string   `yaml:"address,omitempty"`
-	City       string   `yaml:"city,omitempty"`
-	State      string   `yaml:"state_province,omitempty"`
-	PostalCode string   `yaml:"postal_code,omitempty"`
-	Country    string   `yaml:"country,omitempty"`
-	Phone      string   `yaml:"phone,omitempty"`
-	Email      string   `yaml:"email,omitempty"`
-	Website    string   `yaml:"website,omitempty"`
-	Notes      string   `yaml:"notes,omitempty"`
-	Tags       []string `yaml:"tags,omitempty"`
+	Name       string                 `yaml:"name"`
+	Type       string                 `yaml:"type,omitempty" refType:"repository_types"`
+	Address    string                 `yaml:"address,omitempty"`
+	City       string                 `yaml:"city,omitempty"`
+	State      string                 `yaml:"state_province,omitempty"`
+	PostalCode string                 `yaml:"postal_code,omitempty"`
+	Country    string                 `yaml:"country,omitempty"`
+	Phone      string                 `yaml:"phone,omitempty"`
+	Email      string                 `yaml:"email,omitempty"`
+	Website    string                 `yaml:"website,omitempty"`
+	Properties map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes      string                 `yaml:"notes,omitempty"`
+	Tags       []string               `yaml:"tags,omitempty"`
 }
 
 // Assertion represents a conclusion made by a researcher.
 type Assertion struct {
-	Subject     string                `yaml:"subject" refType:"persons,events,relationships,places"`
-	Claim       string                `yaml:"claim,omitempty"`       // Optional, not present if participant exists
-	Value       string                `yaml:"value,omitempty"`       // Not present if participant exists
-	Participant *AssertionParticipant `yaml:"participant,omitempty"` // Not present if value exists
-	Confidence  string                `yaml:"confidence,omitempty" refType:"confidence_levels"`
-	Sources     []string              `yaml:"sources,omitempty" refType:"sources"`
-	Citations   []string              `yaml:"citations,omitempty" refType:"citations"`
-	Notes       string                `yaml:"notes,omitempty"`
-	Tags        []string              `yaml:"tags,omitempty"`
+	Subject     string                 `yaml:"subject" refType:"persons,events,relationships,places"`
+	Claim       string                 `yaml:"claim,omitempty"`       // Optional, not present if participant exists
+	Value       string                 `yaml:"value,omitempty"`       // Not present if participant exists
+	Participant *AssertionParticipant  `yaml:"participant,omitempty"` // Not present if value exists
+	Confidence  string                 `yaml:"confidence,omitempty" refType:"confidence_levels"`
+	Sources     []string               `yaml:"sources,omitempty" refType:"sources"`
+	Citations   []string               `yaml:"citations,omitempty" refType:"citations"`
+	Properties  map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes       string                 `yaml:"notes,omitempty"`
+	Tags        []string               `yaml:"tags,omitempty"`
 }
 
 // AssertionParticipant represents a participant in an assertion (used for participant-based claims).
@@ -288,12 +292,13 @@ type AssertionParticipant struct {
 
 // Media represents a media object, like a photo or document.
 type Media struct {
-	URI      string   `yaml:"uri"`
-	MimeType string   `yaml:"mime_type,omitempty"`
-	Hash     string   `yaml:"hash,omitempty"`
-	Title    string   `yaml:"title,omitempty"`
-	Notes    string   `yaml:"notes,omitempty"`
-	Tags     []string `yaml:"tags,omitempty"`
+	URI        string                 `yaml:"uri"`
+	MimeType   string                 `yaml:"mime_type,omitempty"`
+	Hash       string                 `yaml:"hash,omitempty"`
+	Title      string                 `yaml:"title,omitempty"`
+	Properties map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes      string                 `yaml:"notes,omitempty"`
+	Tags       []string               `yaml:"tags,omitempty"`
 }
 
 // ============================================================================
