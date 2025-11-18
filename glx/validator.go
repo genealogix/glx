@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/genealogix/spec/lib"
+	"github.com/genealogix/spec/glx/lib"
 	schema "github.com/genealogix/spec/specification/schema/v1"
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"

@@ -20,7 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/genealogix/spec/lib"
+	"github.com/genealogix/spec/glx/lib"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

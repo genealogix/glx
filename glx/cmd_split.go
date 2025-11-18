@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/genealogix/spec/lib"
+	"github.com/genealogix/spec/glx/lib"
 	"github.com/spf13/cobra"
 )
 

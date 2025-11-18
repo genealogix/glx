@@ -1,0 +1,422 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package lib
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"strings"
+)
+
+// GEDCOMVersion represents the GEDCOM version
+type GEDCOMVersion int
+
+const (
+	GEDCOMUnknown GEDCOMVersion = iota
+	GEDCOM551
+	GEDCOM70
+)
+
+// GEDCOMLine represents a single parsed GEDCOM line
+type GEDCOMLine struct {
+	Level int
+	XRef  string
+	Tag   string
+	Value string
+	Line  int
+}
+
+// GEDCOMRecord represents a hierarchical GEDCOM record
+type GEDCOMRecord struct {
+	XRef       string
+	Tag        string
+	Value      string
+	SubRecords []*GEDCOMRecord
+	Line       int
+}
+
+// ImportResult contains statistics and information about the import
+type ImportResult struct {
+	Statistics ImportStatistics
+	Version    string
+}
+
+// ImportStatistics tracks import metrics
+type ImportStatistics struct {
+	LinesProcessed        int
+	PersonsCreated        int
+	EventsCreated         int
+	RelationshipsCreated  int
+	PlacesCreated         int
+	SourcesCreated        int
+	RepositoriesCreated   int
+	MediaCreated          int
+	CitationsCreated      int
+	AssertionsCreated     int
+	ParticipationsCreated int
+	Errors                []ImportError
+	Warnings              []ImportWarning
+}
+
+// ImportError represents an error during import
+type ImportError struct {
+	Line    int
+	Tag     string
+	Message string
+}
+
+// ImportWarning represents a warning during import
+type ImportWarning struct {
+	Line    int
+	Tag     string
+	Message string
+}
+
+// ConversionContext holds state during GEDCOM conversion
+type ConversionContext struct {
+	GLX     *GLXFile
+	Version GEDCOMVersion
+	Logger  *ImportLogger
+
+	// ID mapping from GEDCOM XRef to GLX ID
+	PersonIDMap     map[string]string
+	FamilyIDMap     map[string]string
+	SourceIDMap     map[string]string
+	RepositoryIDMap map[string]string
+	MediaIDMap      map[string]string
+	PlaceIDMap      map[string]string
+
+	// Auto-increment counters for ID generation
+	PersonCounter        int
+	EventCounter         int
+	RelationshipCounter  int
+	PlaceCounter         int
+	SourceCounter        int
+	RepositoryCounter    int
+	MediaCounter         int
+	CitationCounter      int
+	AssertionCounter     int
+	ParticipationCounter int
+
+	// GEDCOM 7.0 specific
+	SharedNotes      map[string]string
+	ExtensionSchemas map[string]*ExtensionSchema
+
+	// Deferred processing
+	DeferredFamilies    []*GEDCOMRecord
+	DeferredFamilyLinks []*FamilyLink
+
+	// Statistics
+	Stats ImportStatistics
+}
+
+// ExtensionSchema represents a GEDCOM 7.0 extension schema
+type ExtensionSchema struct {
+	Tag         string
+	URI         string
+	Description string
+}
+
+// FamilyLink represents a deferred family link
+type FamilyLink struct {
+	PersonID  string
+	FamilyRef string
+	LinkType  string // ParticipantRoleChild or ParticipantRoleSpouse
+}
+
+// ImportGEDCOMFromFile imports a GEDCOM file from a file path
+func ImportGEDCOMFromFile(filepath string, logPath string) (*GLXFile, *ImportResult, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	return ImportGEDCOM(file, logPath)
+}
+
+// ImportGEDCOM imports a GEDCOM file and returns a GLX archive
+func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, error) {
+	// Create logger
+	logger, err := NewImportLogger(logPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+	defer logger.Close()
+
+	logger.LogInfo("Starting GEDCOM import")
+
+	// Parse GEDCOM
+	records, version, err := parseGEDCOM(reader, logger)
+	if err != nil {
+		logger.LogError(0, "PARSE", "", err)
+		return nil, nil, fmt.Errorf("parse error: %w", err)
+	}
+
+	logger.LogInfo(fmt.Sprintf("Detected GEDCOM version: %s", versionToString(version)))
+
+	// Create GLX file
+	glx := &GLXFile{
+		Persons:       make(map[string]*Person),
+		Events:        make(map[string]*Event),
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources:       make(map[string]*Source),
+		Repositories:  make(map[string]*Repository),
+		Media:         make(map[string]*Media),
+		Citations:     make(map[string]*Citation),
+		Assertions:    make(map[string]*Assertion),
+	}
+
+	// Load standard vocabularies into GLXFile so validation works
+	if err := LoadStandardVocabulariesIntoGLX(glx); err != nil {
+		logger.LogError(0, "VOCAB", "", err)
+		return nil, nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
+	}
+
+	// Create conversion context
+	ctx := &ConversionContext{
+		GLX:                 glx,
+		Version:             version,
+		Logger:              logger,
+		PersonIDMap:         make(map[string]string),
+		FamilyIDMap:         make(map[string]string),
+		SourceIDMap:         make(map[string]string),
+		RepositoryIDMap:     make(map[string]string),
+		MediaIDMap:          make(map[string]string),
+		PlaceIDMap:          make(map[string]string),
+		SharedNotes:         make(map[string]string),
+		ExtensionSchemas:    make(map[string]*ExtensionSchema),
+		DeferredFamilies:    []*GEDCOMRecord{},
+		DeferredFamilyLinks: []*FamilyLink{},
+		Stats:               ImportStatistics{},
+	}
+
+	// Perform conversion
+	if err := ctx.Convert(records); err != nil {
+		logger.LogError(0, "CONVERT", "", err)
+		return nil, nil, fmt.Errorf("conversion error: %w", err)
+	}
+
+	logger.LogInfo(fmt.Sprintf("Import completed: %d persons, %d events, %d relationships, %d sources",
+		ctx.Stats.PersonsCreated, ctx.Stats.EventsCreated, ctx.Stats.RelationshipsCreated, ctx.Stats.SourcesCreated))
+
+	// Build result
+	result := &ImportResult{
+		Statistics: ctx.Stats,
+		Version:    versionToString(version),
+	}
+
+	return glx, result, nil
+}
+
+// parseGEDCOM parses a GEDCOM file into hierarchical records
+func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCOMVersion, error) {
+	// Parse lines
+	lines, err := parseGEDCOMLines(reader)
+	if err != nil {
+		return nil, GEDCOMUnknown, err
+	}
+
+	logger.LogInfo(fmt.Sprintf("Parsed %d lines", len(lines)))
+
+	// Build records
+	records := buildRecords(lines)
+
+	logger.LogInfo(fmt.Sprintf("Built %d top-level records", len(records)))
+
+	// Detect version
+	version := detectGEDCOMVersion(records)
+
+	return records, version, nil
+}
+
+// parseGEDCOMLines parses GEDCOM file line by line
+func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
+	var lines []*GEDCOMLine
+	scanner := bufio.NewScanner(reader)
+
+	// Increase buffer size for large GEDCOM files (torture test has long lines)
+	// Default is 64KB, increase to 1MB
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		text := scanner.Text()
+
+		// Strip UTF-8 BOM from first line if present
+		if lineNum == 1 && len(text) >= 3 {
+			if text[0] == 0xEF && text[1] == 0xBB && text[2] == 0xBF {
+				text = text[3:]
+			}
+		}
+
+		// Skip empty lines
+		if strings.TrimSpace(text) == "" {
+			continue
+		}
+
+		line, err := parseGEDCOMLine(text, lineNum)
+		if err != nil {
+			return nil, fmt.Errorf("line %d: %w", lineNum, err)
+		}
+
+		lines = append(lines, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error: %w", err)
+	}
+
+	return lines, nil
+}
+
+// parseGEDCOMLine parses a single GEDCOM line
+func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
+	// GEDCOM line format: LEVEL [XREF] TAG [VALUE]
+	parts := strings.Fields(text)
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid GEDCOM line: too few parts")
+	}
+
+	line := &GEDCOMLine{Line: lineNum}
+
+	// Parse level
+	level, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid level: %s", parts[0])
+	}
+	line.Level = level
+
+	// Check for XRef (starts with @)
+	idx := 1
+	if strings.HasPrefix(parts[1], "@") && strings.HasSuffix(parts[1], "@") {
+		line.XRef = parts[1]
+		idx = 2
+		if len(parts) < 3 {
+			return nil, fmt.Errorf("invalid GEDCOM line: missing tag after xref")
+		}
+	}
+
+	// Parse tag
+	line.Tag = parts[idx]
+	idx++
+
+	// Parse value (rest of line)
+	if idx < len(parts) {
+		// Rejoin the rest as value
+		valueStart := strings.Index(text, parts[idx])
+		line.Value = strings.TrimSpace(text[valueStart:])
+	}
+
+	return line, nil
+}
+
+// buildRecords builds hierarchical records from flat lines
+func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
+	var records []*GEDCOMRecord
+	var stack []*GEDCOMRecord
+
+	for _, line := range lines {
+		record := &GEDCOMRecord{
+			XRef:       line.XRef,
+			Tag:        line.Tag,
+			Value:      line.Value,
+			SubRecords: []*GEDCOMRecord{},
+			Line:       line.Line,
+		}
+
+		// Level 0 records are top-level
+		if line.Level == 0 {
+			records = append(records, record)
+			stack = []*GEDCOMRecord{record}
+			continue
+		}
+
+		// Find parent in stack
+		for len(stack) > line.Level {
+			stack = stack[:len(stack)-1]
+		}
+
+		if len(stack) > 0 {
+			parent := stack[len(stack)-1]
+			parent.SubRecords = append(parent.SubRecords, record)
+		}
+
+		stack = append(stack, record)
+	}
+
+	return records
+}
+
+// detectGEDCOMVersion detects GEDCOM version from header
+func detectGEDCOMVersion(records []*GEDCOMRecord) GEDCOMVersion {
+	for _, record := range records {
+		if record.Tag == "HEAD" {
+			for _, sub := range record.SubRecords {
+				if sub.Tag == "GEDC" {
+					for _, versSub := range sub.SubRecords {
+						if versSub.Tag == "VERS" {
+							version := strings.TrimSpace(versSub.Value)
+							if strings.HasPrefix(version, "7.") {
+								return GEDCOM70
+							}
+							if strings.HasPrefix(version, "5.5") {
+								return GEDCOM551
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return GEDCOM551 // Default to 5.5.1
+}
+
+// versionToString converts version enum to string
+func versionToString(version GEDCOMVersion) string {
+	switch version {
+	case GEDCOM551:
+		return "5.5.1"
+	case GEDCOM70:
+		return "7.0"
+	default:
+		return "unknown"
+	}
+}
+
+// addError adds an error to the conversion context
+func (ctx *ConversionContext) addError(line int, tag string, message string) {
+	ctx.Stats.Errors = append(ctx.Stats.Errors, ImportError{
+		Line:    line,
+		Tag:     tag,
+		Message: message,
+	})
+}
+
+// addWarning adds a warning to the conversion context
+func (ctx *ConversionContext) addWarning(line int, tag string, message string) {
+	ctx.Stats.Warnings = append(ctx.Stats.Warnings, ImportWarning{
+		Line:    line,
+		Tag:     tag,
+		Message: message,
+	})
+}
