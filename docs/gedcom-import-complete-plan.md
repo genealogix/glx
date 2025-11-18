@@ -8161,3 +8161,646 @@ This completes Phase 4 with comprehensive entity converters for all main GEDCOM 
 
 ---
 
+## Phase 5: GEDCOM 7.0 Features (Day 11)
+
+### Step 21: Implement GEDCOM 7.0 Shared Notes (SNOTE)
+
+**File: `lib/gedcom_7_0.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+    "strings"
+)
+
+// convertSharedNote converts a GEDCOM 7.0 SNOTE record
+func convertSharedNote(snoteRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if snoteRecord.Tag != "SNOTE" {
+        return fmt.Errorf("expected SNOTE record, got %s", snoteRecord.Tag)
+    }
+
+    // Extract note text
+    noteText := snoteRecord.Value
+
+    // Build from CONT/CONC subrecords
+    var textBuilder strings.Builder
+    textBuilder.WriteString(noteText)
+
+    for _, sub := range snoteRecord.SubRecords {
+        switch sub.Tag {
+        case "CONT":
+            textBuilder.WriteString("\n")
+            textBuilder.WriteString(sub.Value)
+        case "CONC":
+            textBuilder.WriteString(sub.Value)
+        }
+    }
+
+    // Store in context for later reference
+    ctx.SharedNotes[snoteRecord.XRef] = textBuilder.String()
+
+    return nil
+}
+```
+
+### Step 22: Implement Extension Schema (SCHMA) Support
+
+```go
+// ExtensionSchema represents a GEDCOM 7.0 extension schema
+type ExtensionSchema struct {
+    Tag         string
+    URI         string
+    Description string
+}
+
+// convertExtensionSchema converts a GEDCOM 7.0 SCHMA record
+func convertExtensionSchema(schmaRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    if schmaRecord.Tag != "SCHMA" {
+        return fmt.Errorf("expected SCHMA record, got %s", schmaRecord.Tag)
+    }
+
+    schema := &ExtensionSchema{
+        Tag: schmaRecord.Value,
+    }
+
+    for _, sub := range schmaRecord.SubRecords {
+        switch sub.Tag {
+        case "URI":
+            schema.URI = sub.Value
+        case "NOTE":
+            schema.Description = extractNoteText(sub, ctx)
+        }
+    }
+
+    // Store schema for reference
+    ctx.ExtensionSchemas[schema.Tag] = schema
+
+    return nil
+}
+
+// isExtensionTag checks if a tag is from an extension schema
+func isExtensionTag(tag string, ctx *ConversionContext) bool {
+    // Extension tags start with underscore
+    if len(tag) > 0 && tag[0] == '_' {
+        return true
+    }
+
+    // Check if it's a registered schema tag
+    _, exists := ctx.ExtensionSchemas[tag]
+    return exists
+}
+
+// convertExtensionData converts extension schema data to GLX properties
+func convertExtensionData(tag string, value string, ctx *ConversionContext) (string, interface{}) {
+    // Remove underscore prefix if present
+    propKey := tag
+    if len(tag) > 0 && tag[0] == '_' {
+        propKey = strings.ToLower(tag[1:])
+    } else {
+        propKey = strings.ToLower(tag)
+    }
+
+    // Return as custom property
+    return "ext_" + propKey, value
+}
+```
+
+### Step 23: Implement TIME Support
+
+```go
+// parseGEDCOMTime parses GEDCOM 7.0 TIME value
+func parseGEDCOMTime(timeStr string) string {
+    // TIME format: hh:mm:ss[.fraction][Z|+hh:mm|-hh:mm]
+    // Already in ISO 8601-compatible format, return as-is
+    return timeStr
+}
+
+// combineDateAndTime combines GEDCOM DATE and TIME into ISO 8601 datetime
+func combineDateAndTime(dateStr string, timeStr string) string {
+    // Parse date first
+    date := parseGEDCOMDate(dateStr)
+    if date == "" {
+        return ""
+    }
+
+    // If time provided, append it
+    if timeStr != "" {
+        time := parseGEDCOMTime(timeStr)
+        return date + "T" + time
+    }
+
+    return date
+}
+
+// extractEventDateTime extracts date and time from event record
+func extractEventDateTime(eventRecord *GEDCOMRecord) string {
+    var dateStr, timeStr string
+
+    for _, sub := range eventRecord.SubRecords {
+        switch sub.Tag {
+        case "DATE":
+            dateStr = sub.Value
+            // Check for TIME subrecord under DATE (7.0)
+            for _, dateSub := range sub.SubRecords {
+                if dateSub.Tag == "TIME" {
+                    timeStr = dateSub.Value
+                    break
+                }
+            }
+        case "TIME":
+            // TIME can also be direct child (less common)
+            timeStr = sub.Value
+        }
+    }
+
+    if dateStr != "" {
+        return combineDateAndTime(dateStr, timeStr)
+    }
+
+    return ""
+}
+```
+
+### Step 24: Implement PHRASE Tag Support
+
+```go
+// extractPhraseValue extracts value with PHRASE override
+func extractPhraseValue(record *GEDCOMRecord) string {
+    // Check for PHRASE subrecord (7.0)
+    for _, sub := range record.SubRecords {
+        if sub.Tag == "PHRASE" {
+            // PHRASE overrides the coded value
+            return sub.Value
+        }
+    }
+
+    // Return original value
+    return record.Value
+}
+
+// convertEventTypeWithPhrase converts event type, checking for PHRASE
+func convertEventTypeWithPhrase(eventRecord *GEDCOMRecord) string {
+    // Check for TYPE subrecord with PHRASE
+    for _, sub := range eventRecord.SubRecords {
+        if sub.Tag == "TYPE" {
+            phrase := extractPhraseValue(sub)
+            if phrase != "" {
+                return phrase
+            }
+            return sub.Value
+        }
+    }
+
+    // Use tag as default
+    return mapGEDCOMEventType(eventRecord.Tag)
+}
+```
+
+### Step 25: Implement GEDCOM 7.0 Enumeration Sets
+
+```go
+// GEDCOM 7.0 enumeration values
+var gedcom70Enumerations = map[string]map[string]string{
+    "RESN": {
+        "confidential": "confidential",
+        "locked":       "locked",
+        "privacy":      "privacy",
+    },
+    "MEDI": {
+        "audio":       "audio",
+        "book":        "book",
+        "card":        "card",
+        "electronic":  "electronic",
+        "fiche":       "fiche",
+        "film":        "film",
+        "magazine":    "magazine",
+        "manuscript":  "manuscript",
+        "map":         "map",
+        "newspaper":   "newspaper",
+        "photo":       "photo",
+        "tombstone":   "tombstone",
+        "video":       "video",
+    },
+    "PEDI": {
+        "adopted":  "adopted",
+        "birth":    "birth",
+        "foster":   "foster",
+        "sealing":  "sealing",
+    },
+    "ROLE": {
+        "CHIL": "child",
+        "HUSB": "husband",
+        "WIFE": "wife",
+        "MOTH": "mother",
+        "FATH": "father",
+        "SPOU": "spouse",
+    },
+}
+
+// mapEnumeration maps GEDCOM 7.0 enumeration to GLX value
+func mapEnumeration(tag string, value string, ctx *ConversionContext) string {
+    if ctx.Version != GEDCOM70 {
+        return value
+    }
+
+    if enumMap, ok := gedcom70Enumerations[tag]; ok {
+        valueLower := strings.ToLower(value)
+        if mapped, ok := enumMap[valueLower]; ok {
+            return mapped
+        }
+    }
+
+    return value
+}
+```
+
+### Step 26: Implement Main Converter Orchestration
+
+**File: `lib/gedcom_converter.go`**
+
+```go
+package lib
+
+import (
+    "fmt"
+)
+
+// Convert performs the main GEDCOM to GLX conversion
+func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
+    // First pass: Process all top-level records in order
+    for _, record := range records {
+        switch record.Tag {
+        case "HEAD":
+            // Header already processed during parsing
+            continue
+
+        case "TRLR":
+            // Trailer - end of file
+            continue
+
+        // GEDCOM 7.0: Process shared notes first
+        case "SNOTE":
+            if err := convertSharedNote(record, ctx); err != nil {
+                ctx.addError(record.Line, "SNOTE", err.Error())
+            }
+
+        // GEDCOM 7.0: Process extension schemas
+        case "SCHMA":
+            if err := convertExtensionSchema(record, ctx); err != nil {
+                ctx.addError(record.Line, "SCHMA", err.Error())
+            }
+
+        // Process repositories before sources (for linking)
+        case "REPO":
+            if err := convertRepository(record, ctx); err != nil {
+                ctx.addError(record.Line, "REPO", err.Error())
+            }
+
+        // Process sources before individuals (for evidence)
+        case "SOUR":
+            if err := convertSource(record, ctx); err != nil {
+                ctx.addError(record.Line, "SOUR", err.Error())
+            }
+
+        // Process media objects
+        case "OBJE":
+            if err := convertMedia(record, ctx); err != nil {
+                ctx.addError(record.Line, "OBJE", err.Error())
+            }
+
+        // Process individuals
+        case "INDI":
+            if err := convertIndividual(record, ctx); err != nil {
+                ctx.addError(record.Line, "INDI", err.Error())
+            }
+
+        // Defer families until after individuals
+        case "FAM":
+            ctx.DeferredFamilies = append(ctx.DeferredFamilies, record)
+
+        // Handle submitter (SUBM)
+        case "SUBM":
+            // Optional: Convert to repository or metadata
+            convertSubmitter(record, ctx)
+
+        default:
+            // Unknown or extension tag
+            if isExtensionTag(record.Tag, ctx) {
+                // Store extension data
+                ctx.addWarning(record.Line, record.Tag, "Extension tag not fully processed")
+            } else {
+                ctx.addWarning(record.Line, record.Tag, fmt.Sprintf("Unknown top-level tag: %s", record.Tag))
+            }
+        }
+    }
+
+    // Second pass: Process families now that all individuals exist
+    for _, famRecord := range ctx.DeferredFamilies {
+        if err := convertFamily(famRecord, ctx); err != nil {
+            ctx.addError(famRecord.Line, "FAM", err.Error())
+        }
+    }
+
+    return nil
+}
+
+// convertSubmitter converts SUBM record to metadata
+func convertSubmitter(submRecord *GEDCOMRecord, ctx *ConversionContext) error {
+    submitter := make(map[string]interface{})
+
+    for _, sub := range submRecord.SubRecords {
+        switch sub.Tag {
+        case "NAME":
+            submitter["name"] = sub.Value
+        case "ADDR":
+            submitter["address"] = extractAddress(sub)
+        case "PHON":
+            submitter["phone"] = sub.Value
+        case "EMAIL":
+            submitter["email"] = sub.Value
+        case "WWW":
+            submitter["website"] = sub.Value
+        }
+    }
+
+    // Store in metadata
+    if ctx.GLX.Metadata == nil {
+        ctx.GLX.Metadata = make(map[string]interface{})
+    }
+    ctx.GLX.Metadata["submitter"] = submitter
+
+    return nil
+}
+
+// addError adds an error to the conversion context
+func (ctx *ConversionContext) addError(line int, tag string, message string) {
+    ctx.Stats.Errors = append(ctx.Stats.Errors, ImportError{
+        Line:    line,
+        Tag:     tag,
+        Message: message,
+    })
+}
+
+// addWarning adds a warning to the conversion context
+func (ctx *ConversionContext) addWarning(line int, tag string, message string) {
+    ctx.Stats.Warnings = append(ctx.Stats.Warnings, ImportWarning{
+        Line:    line,
+        Tag:     tag,
+        Message: message,
+    })
+}
+```
+
+### Step 27: Update Main Import Function
+
+**Update file: `lib/gedcom_import.go`**
+
+Add complete conversion orchestration:
+
+```go
+// ImportGEDCOM imports a GEDCOM file and returns a GLX archive
+func ImportGEDCOM(reader io.Reader) (*GLXFile, *ImportResult, error) {
+    // Parse GEDCOM
+    records, version, err := parseGEDCOM(reader)
+    if err != nil {
+        return nil, nil, fmt.Errorf("parse error: %w", err)
+    }
+
+    // Create GLX file
+    glx := &GLXFile{
+        Persons:                    make(map[string]*Person),
+        Events:                     make(map[string]*Event),
+        Relationships:              make(map[string]*Relationship),
+        Places:                     make(map[string]*Place),
+        Sources:                    make(map[string]*Source),
+        Repositories:               make(map[string]*Repository),
+        Media:                      make(map[string]*Media),
+        Citations:                  make(map[string]*Citation),
+        Assertions:                 make(map[string]*Assertion),
+        Participations:             make(map[string]*Participation),
+        RelationshipParticipations: make(map[string]*RelationshipParticipation),
+        Metadata:                   make(map[string]interface{}),
+    }
+
+    // Create conversion context
+    ctx := &ConversionContext{
+        GLX:                 glx,
+        Version:             version,
+        PersonIDMap:         make(map[string]string),
+        FamilyIDMap:         make(map[string]string),
+        SourceIDMap:         make(map[string]string),
+        RepositoryIDMap:     make(map[string]string),
+        MediaIDMap:          make(map[string]string),
+        PlaceIDMap:          make(map[string]string),
+        SharedNotes:         make(map[string]string),
+        ExtensionSchemas:    make(map[string]*ExtensionSchema),
+        DeferredFamilies:    []*GEDCOMRecord{},
+        DeferredFamilyLinks: []*FamilyLink{},
+        Stats:               ImportStatistics{},
+    }
+
+    // Perform conversion
+    if err := ctx.Convert(records); err != nil {
+        return nil, nil, fmt.Errorf("conversion error: %w", err)
+    }
+
+    // Build result
+    result := &ImportResult{
+        Statistics: ctx.Stats,
+        Version:    versionToString(version),
+    }
+
+    return glx, result, nil
+}
+
+// versionToString converts version enum to string
+func versionToString(version GEDCOMVersion) string {
+    switch version {
+    case GEDCOM551:
+        return "5.5.1"
+    case GEDCOM70:
+        return "7.0"
+    default:
+        return "unknown"
+    }
+}
+```
+
+### Step 28: Add Integration Tests
+
+**File: `lib/gedcom_integration_test.go`**
+
+```go
+package lib
+
+import (
+    "os"
+    "path/filepath"
+    "testing"
+)
+
+func TestImportMinimal70(t *testing.T) {
+    // Test minimal GEDCOM 7.0 file
+    file, err := os.Open(filepath.Join("..", "glx", "testdata", "gedcom", "7.0", "minimal70.ged"))
+    if err != nil {
+        t.Fatalf("Failed to open test file: %v", err)
+    }
+    defer file.Close()
+
+    glx, result, err := ImportGEDCOM(file)
+    if err != nil {
+        t.Fatalf("Import failed: %v", err)
+    }
+
+    if result.Version != "7.0" {
+        t.Errorf("Expected version 7.0, got %s", result.Version)
+    }
+
+    if len(glx.Persons) == 0 {
+        t.Error("Expected at least one person")
+    }
+
+    t.Logf("Import statistics: %+v", result.Statistics)
+}
+
+func TestImportShakespeare(t *testing.T) {
+    // Test GEDCOM 5.5.1 with Shakespeare family
+    file, err := os.Open(filepath.Join("..", "glx", "testdata", "gedcom", "5.5.1", "shakespeare.ged"))
+    if err != nil {
+        t.Fatalf("Failed to open test file: %v", err)
+    }
+    defer file.Close()
+
+    glx, result, err := ImportGEDCOM(file)
+    if err != nil {
+        t.Fatalf("Import failed: %v", err)
+    }
+
+    if result.Version != "5.5.1" {
+        t.Errorf("Expected version 5.5.1, got %s", result.Version)
+    }
+
+    // Check that we have persons
+    if len(glx.Persons) == 0 {
+        t.Error("Expected multiple persons")
+    }
+
+    // Check that we have events
+    if len(glx.Events) == 0 {
+        t.Error("Expected multiple events")
+    }
+
+    // Check for relationships
+    if len(glx.Relationships) == 0 {
+        t.Error("Expected relationships")
+    }
+
+    t.Logf("Imported %d persons, %d events, %d relationships",
+        len(glx.Persons), len(glx.Events), len(glx.Relationships))
+}
+
+func TestImportKennedy(t *testing.T) {
+    // Test larger GEDCOM file with Kennedy family
+    file, err := os.Open(filepath.Join("..", "glx", "testdata", "gedcom", "5.5.1", "kennedy.ged"))
+    if err != nil {
+        t.Fatalf("Failed to open test file: %v", err)
+    }
+    defer file.Close()
+
+    glx, result, err := ImportGEDCOM(file)
+    if err != nil {
+        t.Fatalf("Import failed: %v", err)
+    }
+
+    // Verify statistics
+    if result.Statistics.PersonsCreated == 0 {
+        t.Error("Expected persons to be created")
+    }
+
+    // Check for sources
+    if len(glx.Sources) == 0 {
+        t.Log("Warning: No sources found (may be normal)")
+    }
+
+    // Check for places
+    if len(glx.Places) > 0 {
+        t.Logf("Created %d places", len(glx.Places))
+    }
+
+    t.Logf("Full statistics: %+v", result.Statistics)
+}
+
+func TestImportMaximal70(t *testing.T) {
+    // Test maximal GEDCOM 7.0 file with all features
+    file, err := os.Open(filepath.Join("..", "glx", "testdata", "gedcom", "7.0", "maximal70.ged"))
+    if err != nil {
+        t.Fatalf("Failed to open test file: %v", err)
+    }
+    defer file.Close()
+
+    glx, result, err := ImportGEDCOM(file)
+    if err != nil {
+        t.Fatalf("Import failed: %v", err)
+    }
+
+    // Check GEDCOM 7.0 features
+    if result.Version != "7.0" {
+        t.Errorf("Expected version 7.0, got %s", result.Version)
+    }
+
+    // Verify all entity types
+    entityCounts := map[string]int{
+        "persons":       len(glx.Persons),
+        "events":        len(glx.Events),
+        "relationships": len(glx.Relationships),
+        "places":        len(glx.Places),
+        "sources":       len(glx.Sources),
+        "media":         len(glx.Media),
+        "citations":     len(glx.Citations),
+        "assertions":    len(glx.Assertions),
+    }
+
+    for entity, count := range entityCounts {
+        t.Logf("%s: %d", entity, count)
+    }
+
+    // Check for errors and warnings
+    if len(result.Statistics.Errors) > 0 {
+        t.Errorf("Import had %d errors", len(result.Statistics.Errors))
+        for _, err := range result.Statistics.Errors {
+            t.Logf("  Error at line %d (%s): %s", err.Line, err.Tag, err.Message)
+        }
+    }
+
+    if len(result.Statistics.Warnings) > 0 {
+        t.Logf("Import had %d warnings", len(result.Statistics.Warnings))
+    }
+}
+
+func BenchmarkImportBullinger(b *testing.B) {
+    // Benchmark with large file (17K+ lines)
+    filePath := filepath.Join("..", "glx", "testdata", "gedcom", "5.5.1", "bullinger.ged")
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        file, err := os.Open(filePath)
+        if err != nil {
+            b.Fatalf("Failed to open test file: %v", err)
+        }
+
+        _, _, err = ImportGEDCOM(file)
+        if err != nil {
+            b.Fatalf("Import failed: %v", err)
+        }
+
+        file.Close()
+    }
+}
+```
+
+This completes Phase 5 with full GEDCOM 7.0 support and integration testing.
+
+---
+
