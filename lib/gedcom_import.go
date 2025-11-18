@@ -136,7 +136,7 @@ type ExtensionSchema struct {
 type FamilyLink struct {
 	PersonID  string
 	FamilyRef string
-	LinkType  string // "child" or "spouse"
+	LinkType  string // ParticipantRoleChild or ParticipantRoleSpouse
 }
 
 // ImportGEDCOMFromFile imports a GEDCOM file from a file path
@@ -181,6 +181,12 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 		Media:         make(map[string]*Media),
 		Citations:     make(map[string]*Citation),
 		Assertions:    make(map[string]*Assertion),
+	}
+
+	// Load standard vocabularies into GLXFile so validation works
+	if err := LoadStandardVocabulariesIntoGLX(glx); err != nil {
+		logger.LogError(0, "VOCAB", "", err)
+		return nil, nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
 	}
 
 	// Create conversion context
