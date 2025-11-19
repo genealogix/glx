@@ -61,7 +61,10 @@ jobs:
       
       - name: Run Go Tests
         run: |
-          go test ./glx/... -v
+          # Run all tests including slow/large file tests
+          # (TestGEDCOM_ImportLargeFiles tests habsburg.ged with 34,020 persons)
+          # Use -timeout to prevent hanging tests (default 10m)
+          go test ./glx/... -v -timeout 15m
       
       - name: Build glx CLI
         run: |

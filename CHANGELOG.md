@@ -72,11 +72,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Plans README** documenting all planning files and current status
 - Moved all planning docs from `docs/` to `.claude/plans/`
 
+#### Vocabularies & Standards
+- **Developer documentation** - Comprehensive [GEDCOM Import Developer Guide](docs/development/gedcom-import.md)
+  - Architecture and conversion flow
+  - Entity mapping details
+  - ID generation (current incremental + future random)
+  - GEDCOM 5.5.1 vs 7.0 differences
+  - Malformed line recovery strategies
+  - Testing and debugging guides
+- **User documentation** - Updated [Migration from GEDCOM Guide](docs/guides/migration-from-gedcom.md)
+  - Automated import instructions
+  - Testing and validation procedures
+  - Import result expectations
+
 ### Fixed
+
+#### GEDCOM Import
+- **Malformed line recovery** - Parser now handles MyHeritage export bug
+  - Recovers from NOTE fields with missing CONT/CONC prefixes
+  - Gracefully imports files with HTML-formatted notes
+  - Test case: queen.ged (4,683 persons, line 15903 missing CONT prefix)
 - **Family event handling** - Added missing ANUL, DIVF, CENS, EVEN to case statement
+- **Place type references** - Fixed gedcom_place.go to use "state" instead of "state_province"
+
+#### Vocabularies
+- **Event types vocabulary** - Fixed probate description ("Probate of estate" not "of will")
+- **Place types vocabulary** - Removed duplicate state_province alias (use "state" instead)
+- **Schema categories** - Updated allowed categories in vocabulary schemas
+  - Event types: Added "legal", "migration"; changed "custom" → "other"
+  - Place types: Added "institution"; changed "custom" → "other"
 - **Source types vocabulary** - Added to embedded vocabularies (was missing)
+
+#### Code Quality
+- **Clean architecture** - Removed file I/O from library layer
+  - Moved importGEDCOMFromFile to test helpers (gedcom_test_helpers.go)
+  - CLI handles file operations, lib works with io.Reader
+  - Better separation of concerns
+- **File organization** - Renamed gedcom_7_0.go → gedcom_shared.go (more accurate)
+
+#### Testing & CI
 - **Multi-file vocabulary loading** - Fixed LoadMultiFile to properly load vocabularies from directory
 - **Vocabulary preservation** - Vocabularies now correctly preserved in round-trip conversions
+- **CI test coverage** - Updated GitHub Actions to explicitly run all tests
+  - Large file tests (habsburg.ged: 34,020 persons)
+  - Added 15-minute timeout for comprehensive test runs
+  - No tests skipped in CI (no -short flag)
+- **Test documentation** - Fixed queen.ged README with correct software attribution
 
 ### Changed
 - **Documentation structure** - Separated user docs (docs/) from planning docs (.claude/plans/)
