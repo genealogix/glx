@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	vocabularies "github.com/genealogix/spec/specification/5-standard-vocabularies"
+	vocabularies "github.com/genealogix/glx/specification/5-standard-vocabularies"
 )
 
 func createStandardVocabularies() error {

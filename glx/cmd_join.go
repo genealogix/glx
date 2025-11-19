@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/genealogix/spec/glx/lib"
+	"github.com/genealogix/glx/glx/lib"
 	"github.com/spf13/cobra"
 )
 

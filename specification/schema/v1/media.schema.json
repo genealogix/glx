@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/media",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/media",
   "title": "Media",
   "description": "A media object referenced by sources or entities. ID comes from the map key in the parent structure.",
   "type": "object",

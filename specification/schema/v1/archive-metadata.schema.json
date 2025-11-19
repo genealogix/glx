@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/archive-metadata",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/archive-metadata",
   "title": "Archive Metadata",
   "description": "Metadata for a GENEALOGIX archive",
   "type": "object",

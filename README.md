@@ -6,11 +6,11 @@ layout: doc
 
 # GENEALOGIX Specification
 
-[![Version](https://img.shields.io/badge/version-0.0.0--beta.1-blue.svg)](https://github.com/genealogix/spec/releases)
+[![Version](https://img.shields.io/badge/version-0.0.0--beta.1-blue.svg)](https://github.com/genealogix/glx/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![CI](https://github.com/genealogix/spec/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/spec/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/spec)](https://goreportcard.com/report/github.com/genealogix/spec)
-[![Contributors](https://img.shields.io/github/contributors/genealogix/spec.svg)](https://github.com/genealogix/spec/graphs/contributors)
+[![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
+[![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
 
 The official specification for the **GENEALOGIX (GLX)** family archive format - a modern, evidence-first, Git-native genealogy data standard.
 
@@ -91,13 +91,13 @@ GENEALOGIX is an open standard for version-controlled family archives that provi
 
 ## Installation
 
-The recommended way to install the `glx` CLI is to download the latest pre-compiled binary for your operating system from the [GitHub Releases](https://github.com/genealogix/spec/releases) page.
+The recommended way to install the `glx` CLI is to download the latest pre-compiled binary for your operating system from the [GitHub Releases](https://github.com/genealogix/glx/releases) page.
 
 Alternatively, developers can install from source:
 
 ```bash
 # Install the glx CLI tool
-go install github.com/genealogix/spec/glx@latest
+go install github.com/genealogix/glx/glx@latest
 ```
 
 ## Quick Start
@@ -155,10 +155,10 @@ This specification follows [Semantic Versioning](https://semver.org/).
 GENEALOGIX is an open-source project that thrives on community participation:
 
 ### 🐛 Issues & Bug Reports
-- [GitHub Issues](https://github.com/genealogix/spec/issues) - Report bugs and request features
+- [GitHub Issues](https://github.com/genealogix/glx/issues) - Report bugs and request features
 
 ### 💬 Discussion & Q&A
-- [GitHub Discussions](https://github.com/genealogix/spec/discussions) - Community conversations
+- [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Community conversations
 - [Discord Community](https://discord.gg/genealogix) - Real-time chat and support
 - [Mailing List](https://groups.google.com/g/genealogix) - Email discussions
 
@@ -178,7 +178,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 **For Users:**
 1. Start with the [Quickstart Guide](docs/quickstart.md)
 2. Explore [Complete Examples](docs/examples/complete-family/)
-3. Ask questions in [GitHub Discussions](https://github.com/genealogix/spec/discussions)
+3. Ask questions in [GitHub Discussions](https://github.com/genealogix/glx/discussions)
 
 **For Developers:**
 1. Read the [Architecture Guide](docs/development/architecture.md)
@@ -188,7 +188,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 **For Contributors:**
 1. Review [Contributing Guidelines](CONTRIBUTING.md)
-2. Review [GitHub Issues](https://github.com/genealogix/spec/issues) and [Discussions](https://github.com/genealogix/spec/discussions) for proposed changes
+2. Review [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions) for proposed changes
 3. Check [Schema Development](docs/development/schema-development.md)
 4. Follow [Best Practices](docs/guides/best-practices.md)
 
@@ -216,7 +216,7 @@ GENEALOGIX builds on decades of genealogy research and the contributions of:
 
 **Made with ❤️ for genealogists, by genealogists**
 
-[⭐ Star us on GitHub](https://github.com/genealogix/spec) • [🐛 Report Issues](https://github.com/genealogix/spec/issues) • [💬 Join Discussions](https://github.com/genealogix/spec/discussions)
+[⭐ Star us on GitHub](https://github.com/genealogix/glx) • [🐛 Report Issues](https://github.com/genealogix/glx/issues) • [💬 Join Discussions](https://github.com/genealogix/glx/discussions)
 
 ## License
 
@@ -237,7 +237,7 @@ limitations under the License.
 ## Repository Structure
 
 ```
-genealogix/spec/
+genealogix/glx/
 ├── README.md
 ├── LICENSE
 ├── CONTRIBUTING.md

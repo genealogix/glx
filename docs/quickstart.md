@@ -28,7 +28,7 @@ Install the `glx` command-line tool:
 
 ```bash
 # Install the latest version
-go install github.com/genealogix/spec/glx@latest
+go install github.com/genealogix/glx/glx@latest
 
 # Verify installation
 glx --help
@@ -280,7 +280,7 @@ glx validate examples/complete-family/
 
 **"Command not found: glx"**
 - Ensure Go is installed: `go version`
-- Reinstall: `go install github.com/genealogix/spec/glx@latest`
+- Reinstall: `go install github.com/genealogix/glx/glx@latest`
 
 **Validation errors:**
 - Check YAML syntax (proper indentation, quotes)
@@ -288,7 +288,7 @@ glx validate examples/complete-family/
 - Verify required fields are present (id, version, type)
 
 **Schema validation fails:**
-- Use the latest CLI: `go install github.com/genealogix/spec/glx@latest`
+- Use the latest CLI: `go install github.com/genealogix/glx/glx@latest`
 - Check file extensions (.glx) and directory structure
 
 ## Next Steps
@@ -301,8 +301,8 @@ glx validate examples/complete-family/
 - [Best Practices](../../docs/guides/best-practices.md) - Recommended workflows
 
 **Get help:**
-- [GitHub Issues](https://github.com/genealogix/spec/issues) - Bug reports and feature requests
-- [GitHub Discussions](https://github.com/genealogix/spec/discussions) - Community Q&A
+- [GitHub Issues](https://github.com/genealogix/glx/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Community Q&A
 - [Contributing Guide](../../CONTRIBUTING.md) - Help improve GENEALOGIX
 
 ## Quick Reference

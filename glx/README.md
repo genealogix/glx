@@ -1,6 +1,6 @@
 # GLX - GENEALOGIX CLI Tool
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/spec/glx)](https://goreportcard.com/report/github.com/genealogix/spec/glx)
+[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx/glx)](https://goreportcard.com/report/github.com/genealogix/glx/glx)
 [![Coverage](https://img.shields.io/badge/coverage-70.5%25-yellow.svg)](coverage.out)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#running-tests)
 
@@ -22,7 +22,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 
 ```bash
 # Clone the repository
-git clone https://github.com/genealogix/spec.git
+git clone https://github.com/genealogix/glx.git
 cd spec/glx
 
 # Build the tool
@@ -35,7 +35,7 @@ go install
 ### Using Go Install
 
 ```bash
-go install github.com/genealogix/spec/glx@latest
+go install github.com/genealogix/glx/glx@latest
 ```
 
 ## Quick Start
@@ -552,6 +552,6 @@ Apache License 2.0 - See [LICENSE](../LICENSE) for details.
 
 - 📖 [Specification](../specification/)
 - 💡 [Examples](../docs/examples/)
-- 🐛 [Issue Tracker](https://github.com/genealogix/spec/issues)
-- 💬 [Discussions](https://github.com/genealogix/spec/discussions)
+- 🐛 [Issue Tracker](https://github.com/genealogix/glx/issues)
+- 💬 [Discussions](https://github.com/genealogix/glx/discussions)
 

@@ -37,7 +37,7 @@ go version
 
 ```bash
 # Clone repository
-git clone https://github.com/genealogix/spec.git
+git clone https://github.com/genealogix/glx.git
 cd spec
 
 # Download dependencies
@@ -281,7 +281,7 @@ cd glx
 
 ## Getting Help
 
-- [GitHub Issues](https://github.com/genealogix/spec/issues) - Bug reports and feature requests
-- [GitHub Discussions](https://github.com/genealogix/spec/discussions) - Questions and discussions
+- [GitHub Issues](https://github.com/genealogix/glx/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Questions and discussions
 - [Specification](../../specification/README.md) - Formal specification
 - [CLI README](../../glx/README.md) - CLI tool documentation

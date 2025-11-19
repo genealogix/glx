@@ -78,7 +78,7 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 
 ```bash
 # Install the glx CLI tool
-go install github.com/genealogix/spec/glx@latest
+go install github.com/genealogix/glx/glx@latest
 
 # Create a new genealogix repository
 glx init
@@ -89,14 +89,14 @@ glx validate
 
 ## Community
 
-- 🐛 [Report Issues](https://github.com/genealogix/spec/issues)
-- 💬 [Discussions](https://github.com/genealogix/spec/discussions)
-- 🤝 [Contributing Guide](https://github.com/genealogix/spec/blob/main/CONTRIBUTING.md)
+- 🐛 [Report Issues](https://github.com/genealogix/glx/issues)
+- 💬 [Discussions](https://github.com/genealogix/glx/discussions)
+- 🤝 [Contributing Guide](https://github.com/genealogix/glx/blob/main/CONTRIBUTING.md)
 - 📖 [Full Specification](/specification/)
 
 ---
 
 **Made with ❤️ for genealogists, by genealogists**
 
-Licensed under [Apache License 2.0](https://github.com/genealogix/spec/blob/main/LICENSE) • Copyright © 2025 Oracynth, Inc.
+Licensed under [Apache License 2.0](https://github.com/genealogix/glx/blob/main/LICENSE) • Copyright © 2025 Oracynth, Inc.
 

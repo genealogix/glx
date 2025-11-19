@@ -109,9 +109,9 @@ export default defineConfig({
       { 
         text: 'Links',
         items: [
-          { text: 'GitHub', link: 'https://github.com/genealogix/spec' },
-          { text: 'Discussions', link: 'https://github.com/genealogix/spec/discussions' },
-          { text: 'Issues', link: 'https://github.com/genealogix/spec/issues' }
+          { text: 'GitHub', link: 'https://github.com/genealogix/glx' },
+          { text: 'Discussions', link: 'https://github.com/genealogix/glx/discussions' },
+          { text: 'Issues', link: 'https://github.com/genealogix/glx/issues' }
         ]
       }
     ],
@@ -248,7 +248,7 @@ export default defineConfig({
 
     // Social links
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/genealogix/spec' }
+      { icon: 'github', link: 'https://github.com/genealogix/glx' }
     ],
 
     // Footer
@@ -259,7 +259,7 @@ export default defineConfig({
 
     // Edit link
     editLink: {
-      pattern: 'https://github.com/genealogix/spec/edit/main/:path',
+      pattern: 'https://github.com/genealogix/glx/edit/main/:path',
       text: 'Edit this page on GitHub'
     },
 

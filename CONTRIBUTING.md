@@ -40,7 +40,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - **Bug Reports**: Use our [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml)
 - **Feature Requests**: Use our [feature request template](.github/ISSUE_TEMPLATE/feature_request.yml)
 - **Documentation**: Fix typos, improve clarity, add examples
-- **Community Support**: Help others in [Discussions](https://github.com/genealogix/spec/discussions)
+- **Community Support**: Help others in [Discussions](https://github.com/genealogix/glx/discussions)
 
 ## Development Environment Setup
 
@@ -64,7 +64,7 @@ git clone https://github.com/YOUR_USERNAME/spec.git
 cd spec
 
 # 3. Add upstream remote
-git remote add upstream https://github.com/genealogix/spec.git
+git remote add upstream https://github.com/genealogix/glx.git
 
 # 4. Install CLI tool for testing
 go install ./glx
@@ -108,7 +108,7 @@ git push origin feature/my-contribution
 ### Repository Structure
 
 ```
-genealogix/spec/
+genealogix/glx/
 ├── specification/       # Specification documents (markdown)
 │   ├── 1-introduction.md
 │   ├── 2-core-concepts.md
@@ -279,7 +279,7 @@ Major changes to the specification are discussed through GitHub issues and discu
 5. **Implementation**: After acceptance, implement the change via pull request
 6. **Documentation**: Update relevant documentation as part of the implementation
 
-For questions or to start a discussion, use [GitHub Discussions](https://github.com/genealogix/spec/discussions).
+For questions or to start a discussion, use [GitHub Discussions](https://github.com/genealogix/glx/discussions).
 
 ## Submitting Changes
 
@@ -387,7 +387,7 @@ We are committed to providing a welcoming and inclusive environment. Please read
 
 ## Questions?
 
-- **Technical questions**: [GitHub Discussions](https://github.com/genealogix/spec/discussions)
+- **Technical questions**: [GitHub Discussions](https://github.com/genealogix/glx/discussions)
 - **Private concerns**: Contact maintainers at conduct@genealogix.io
 
 ---

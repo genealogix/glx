@@ -1,7 +1,7 @@
 // GENEALOGIX Specification
 // Official specification and tools for the GENEALOGIX family archive format.
 // Provides JSON schemas, validation tools, and examples for genealogical data.
-module github.com/genealogix/spec
+module github.com/genealogix/glx
 
 go 1.25
 
@@ -30,4 +30,4 @@ require (
 // Provides: glx init, glx validate, glx check-schemas
 // See: ./glx/main.go
 
-replace github.com/genealogix/spec => .
+replace github.com/genealogix/glx => .

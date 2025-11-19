@@ -51,7 +51,7 @@ formatters-settings:
     extra-rules: true
 
   goimports:
-    local-prefixes: github.com/genealogix/spec
+    local-prefixes: github.com/genealogix/glx
 
 linters-settings:
   gocyclo:

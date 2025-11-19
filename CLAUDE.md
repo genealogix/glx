@@ -8,7 +8,7 @@ This document provides context for Claude AI instances working on the GLX projec
 
 **GLX (Genealogical Ledger eXchange)** is a modern genealogical archive format designed to replace GEDCOM. It uses YAML for human readability and supports advanced features like evidence-based assertions, comprehensive source citations, and flexible vocabularies.
 
-**Repository**: genealogix/spec
+**Repository**: genealogix/glx
 **Primary Language**: Go
 **Current Version**: v0.0.0-beta.2 (in progress)
 **Status**: Active development
@@ -335,7 +335,7 @@ Also available:
 
 ## Contact and Collaboration
 
-**Repository**: genealogix/spec
+**Repository**: genealogix/glx
 **Branch Pattern**: `claude/feature-name-{sessionId}`
 **Workflow**: Feature branches → Push → (PR created manually by user)
 

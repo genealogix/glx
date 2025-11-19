@@ -46,5 +46,5 @@ Each file represents a specific entity (person, event, place, citation, etc.).
 
 ## Documentation
 
-See the [GENEALOGIX specification](https://github.com/genealogix/spec) for detailed format information.
+See the [GENEALOGIX specification](https://github.com/genealogix/glx) for detailed format information.
 

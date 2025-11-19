@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	vocabularies "github.com/genealogix/spec/specification/5-standard-vocabularies"
+	vocabularies "github.com/genealogix/glx/specification/5-standard-vocabularies"
 	"gopkg.in/yaml.v3"
 )
 

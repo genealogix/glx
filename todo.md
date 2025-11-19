@@ -5,4 +5,4 @@
 - Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete.
 - remove the custom flag from all vocabularies and property definitions
 - remove glx archive folder references from all examples and documentation
-- remove references to gedcom import and export since it's not implemented yet
+- explore making name property an object?

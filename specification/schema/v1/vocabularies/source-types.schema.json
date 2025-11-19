@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/genealogix/spec/main/specification/schema/v1/vocabularies/source-types",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/source-types",
   "title": "Source Types Vocabulary",
   "type": "object",
   "properties": {
