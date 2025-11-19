@@ -10,7 +10,7 @@ This document provides context for Claude AI instances working on the GLX projec
 
 **Repository**: genealogix/glx
 **Primary Language**: Go
-**Current Version**: v0.0.0-beta.2 (in progress)
+**Current Version**: v0.0.0-beta.2
 **Status**: Active development
 
 ---
@@ -84,69 +84,16 @@ GLX uses controlled vocabularies for:
 
 Vocabularies are defined in `.glx` files and will be embedded in the binary using `go:embed`.
 
----
-
-## Current Development Status
-
-### ✅ Completed Features (v0.2.0-beta)
-
-1. **GEDCOM Import** - PRODUCTION-READY
-   - Full GEDCOM 5.5.1 support
-   - Full GEDCOM 7.0 support
-   - Two-pass conversion (entities, then families)
-   - Evidence chain mapping (SOUR → Citations → Assertions)
-   - Place hierarchy building
-   - 31 test persons, 77 events, 49 relationships imported successfully
-   - Gap analysis complete: 100% critical, 94% high-priority coverage
-
-2. **Schema Enhancements**
-   - Added Properties fields to Source, Citation, Repository, Media, Assertion
-   - Place coordinate support (MAP/LATI/LONG)
-   - External ID support (GEDCOM 7.0 EXID)
-   - Shared NOTE support (GEDCOM 5.5.1 and 7.0)
-
-### 🚧 In Progress (v0.3.0-beta)
-
-**GLX Serializer** - Currently implementing
-- **Phase 1**: Core infrastructure (ID generator, vocabulary embedder, serializer interface)
-- **Phase 2**: Single-file and multi-file serialization
-- **Phase 3**: Archive loading
-- **Phase 4**: Testing
-- **Phase 5**: CLI integration (split, join commands)
-
-**See**: `.claude/plans/glx-serializer-implementation-steps.md` for detailed task list
-
-### 📋 Planned Features
-
-- Property vocabularies for GEDCOM-specific fields
-- Validation framework with vocabulary checking
-- Export to GEDCOM
-- Web viewer/editor
-- Advanced querying
-
----
 
 ## Important Files to Read
 
 ### Before Starting Work
 
-1. **`.claude/plans/README.md`** - Overview of all planning documents and current status
-2. **`.claude/plans/glx-serializer-implementation-steps.md`** - Current implementation guide
 3. **`lib/types.go`** - Core GLX entity type definitions
 
 ### For GEDCOM Work
 
-1. **`.claude/plans/gedcom-import-complete-plan.md`** - Complete GEDCOM import plan (9,065 lines)
-2. **`.claude/plans/gedcom-import-gap-analysis.md`** - What's implemented vs. what's planned
 3. **`lib/gedcom_converter.go`** - Main GEDCOM conversion orchestrator
-
-### For Serializer Work
-
-1. **`.claude/plans/glx-serializer-plan.md`** - Architecture and design
-2. **`.claude/plans/glx-vocabulary-embedding.md`** - Vocabulary embedding strategy
-3. **`.claude/plans/glx-id-generation.md`** - Entity ID generation strategy
-
----
 
 ## Development Workflow
 

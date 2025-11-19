@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-[![Version](https://img.shields.io/badge/version-0.0.0--beta.1-blue.svg)](https://github.com/genealogix/glx/releases)
+[![Version](https://img.shields.io/badge/version-0.0.0--beta.2-blue.svg)](https://github.com/genealogix/glx/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
