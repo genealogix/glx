@@ -37,36 +37,45 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 
 	date := strings.TrimSpace(gedcomDate)
 
-	// Handle date ranges - convert to GLX format
+	// Handle date ranges - convert to GLX keyword format
 	if strings.Contains(date, "BET ") && strings.Contains(date, " AND ") {
-		// BET date1 AND date2
+		// BET date1 AND date2 (e.g., "BET 1880 AND 1890")
 		parts := strings.Split(date, " AND ")
 		if len(parts) == 2 {
 			start := strings.TrimPrefix(parts[0], "BET ")
 			end := parts[1]
-			startISO := parseExactDate(strings.TrimSpace(start))
-			endISO := parseExactDate(strings.TrimSpace(end))
-			if startISO != "" && endISO != "" {
-				return DateString("BET " + startISO + " AND " + endISO)
+			startDate := parseExactDate(strings.TrimSpace(start))
+			endDate := parseExactDate(strings.TrimSpace(end))
+			if startDate != "" && endDate != "" {
+				return DateString("BET " + startDate + " AND " + endDate)
 			}
 		}
 	}
 
-	if strings.HasPrefix(date, "FROM ") && strings.Contains(date, " TO ") {
-		// FROM date1 TO date2
-		parts := strings.Split(date, " TO ")
-		if len(parts) == 2 {
-			start := strings.TrimPrefix(parts[0], "FROM ")
-			end := parts[1]
-			startISO := parseExactDate(strings.TrimSpace(start))
-			endISO := parseExactDate(strings.TrimSpace(end))
-			if startISO != "" && endISO != "" {
-				return DateString("FROM " + startISO + " TO " + endISO)
+	if strings.HasPrefix(date, "FROM ") {
+		if strings.Contains(date, " TO ") {
+			// FROM date1 TO date2 (e.g., "FROM 1900 TO 1950")
+			parts := strings.Split(date, " TO ")
+			if len(parts) == 2 {
+				start := strings.TrimPrefix(parts[0], "FROM ")
+				end := parts[1]
+				startDate := parseExactDate(strings.TrimSpace(start))
+				endDate := parseExactDate(strings.TrimSpace(end))
+				if startDate != "" && endDate != "" {
+					return DateString("FROM " + startDate + " TO " + endDate)
+				}
+			}
+		} else {
+			// FROM date (open-ended, e.g., "FROM 1900")
+			dateStr := strings.TrimPrefix(date, "FROM ")
+			startDate := parseExactDate(strings.TrimSpace(dateStr))
+			if startDate != "" {
+				return DateString("FROM " + startDate)
 			}
 		}
 	}
 
-	// Handle qualifiers - preserve them in GLX format
+	// Handle qualifiers - preserve them in GLX keyword format
 	// GLX uses same keywords as GEDCOM: ABT, BEF, AFT, CAL
 	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
 	for _, qual := range qualifiers {
@@ -74,18 +83,18 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 			dateStr := strings.TrimPrefix(date, qual)
 			exactDate := parseExactDate(strings.TrimSpace(dateStr))
 			if exactDate != "" {
-				// Return as "ABT 1850-03-15" format
+				// Return as "ABT 1850-03-15" format (keyword + YYYY-MM-DD)
 				return DateString(qual + exactDate)
 			}
 		}
 	}
 
-	// Try to parse as exact date - return ISO format string
+	// Try to parse as exact date - return YYYY-MM-DD format
 	return DateString(parseExactDate(date))
 }
 
-// parseExactDate parses an exact GEDCOM date to ISO 8601
-// Formats: "DD MMM YYYY", "MMM YYYY", "YYYY"
+// parseExactDate parses an exact GEDCOM date to YYYY-MM-DD format
+// Formats: "DD MMM YYYY" -> "YYYY-MM-DD", "MMM YYYY" -> "YYYY-MM", "YYYY" -> "YYYY"
 func parseExactDate(dateStr string) string {
 	if dateStr == "" {
 		return ""

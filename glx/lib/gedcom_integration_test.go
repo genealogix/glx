@@ -98,6 +98,7 @@ func TestParseGEDCOMDate(t *testing.T) {
 		{"calculated date", "CAL 1900", "CAL 1900"},
 		{"between range", "BET 1900 AND 1910", "BET 1900 AND 1910"},
 		{"from-to range", "FROM 1900 TO 1910", "FROM 1900 TO 1910"},
+		{"open-ended from", "FROM 1900", "FROM 1900"},
 		{"empty string", "", ""},
 	}
 
