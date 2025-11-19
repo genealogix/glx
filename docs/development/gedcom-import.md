@@ -496,11 +496,6 @@ Reverse conversion: GLX → GEDCOM
 - ✅ Gap analysis: 100% critical, 94% high-priority coverage
 - ✅ **6 issues resolved**: Date qualifiers, date quoting, TITL, date ranges, PEDI, ADDR subfields
 
-**v0.0.0-beta.1** (2025-11-17):
-- Initial GEDCOM import implementation
-- Basic person, family, source conversion
-- Test framework established
-
 ---
 
 Last Updated: 2025-11-19
