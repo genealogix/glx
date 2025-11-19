@@ -163,7 +163,7 @@ type Event struct {
 	Type         string             `yaml:"type" refType:"event_types"`
 	PlaceID      string             `yaml:"place,omitempty" refType:"places"`
 	Value        string             `yaml:"value,omitempty"`
-	Date         string             `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
+	Date         DateString         `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []EventParticipant `yaml:"participants,omitempty"`
 	Properties   map[string]any     `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Description  string             `yaml:"description,omitempty"`
@@ -210,7 +210,7 @@ type Source struct {
 	Title           string         `yaml:"title"`
 	Type            string         `yaml:"type,omitempty" refType:"source_types"`
 	Authors         []string       `yaml:"authors,omitempty"`
-	Date            string         `yaml:"date,omitempty"`
+	Date            DateString     `yaml:"date,omitempty"`
 	Description     string         `yaml:"description,omitempty"`
 	RepositoryID    string         `yaml:"repository,omitempty" refType:"repositories"`
 	PublicationInfo string         `yaml:"publication_info,omitempty"`

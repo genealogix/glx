@@ -321,7 +321,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	}
 
 	// Extract event details
-	var eventDate string
+	var eventDate DateString
 	var eventPlace string
 
 	for _, sub := range eventRecord.SubRecords {

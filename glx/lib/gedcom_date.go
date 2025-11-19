@@ -29,8 +29,8 @@ var monthMap = map[string]int{
 
 // parseGEDCOMDate parses a GEDCOM date string to GLX format
 // Handles: exact dates, ranges, qualifiers (ABT, BEF, AFT, etc.)
-// Returns: string in GLX format (e.g., "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890")
-func parseGEDCOMDate(gedcomDate string) string {
+// Returns: DateString in GLX format (e.g., "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890")
+func parseGEDCOMDate(gedcomDate string) DateString {
 	if gedcomDate == "" {
 		return ""
 	}
@@ -47,7 +47,7 @@ func parseGEDCOMDate(gedcomDate string) string {
 			startISO := parseExactDate(strings.TrimSpace(start))
 			endISO := parseExactDate(strings.TrimSpace(end))
 			if startISO != "" && endISO != "" {
-				return "BET " + startISO + " AND " + endISO
+				return DateString("BET " + startISO + " AND " + endISO)
 			}
 		}
 	}
@@ -61,7 +61,7 @@ func parseGEDCOMDate(gedcomDate string) string {
 			startISO := parseExactDate(strings.TrimSpace(start))
 			endISO := parseExactDate(strings.TrimSpace(end))
 			if startISO != "" && endISO != "" {
-				return "FROM " + startISO + " TO " + endISO
+				return DateString("FROM " + startISO + " TO " + endISO)
 			}
 		}
 	}
@@ -75,13 +75,13 @@ func parseGEDCOMDate(gedcomDate string) string {
 			exactDate := parseExactDate(strings.TrimSpace(dateStr))
 			if exactDate != "" {
 				// Return as "ABT 1850-03-15" format
-				return qual + exactDate
+				return DateString(qual + exactDate)
 			}
 		}
 	}
 
 	// Try to parse as exact date - return ISO format string
-	return parseExactDate(date)
+	return DateString(parseExactDate(date))
 }
 
 // parseExactDate parses an exact GEDCOM date to ISO 8601
