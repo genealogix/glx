@@ -205,14 +205,18 @@ places:
 2 DATE 15 JAN 1850
 2 DATE ABT 1850
 2 DATE BET 1849 AND 1851
+2 DATE FROM 1900 TO 1950
 ```
 
 **GENEALOGIX:**
 ```yaml
 date: "1850-01-15"
-date: "1850?"
-date: "1849/1851"
+date: "ABT 1850"
+date: "BET 1849 AND 1851"
+date: "FROM 1900 TO 1950"
 ```
+
+GLX uses YYYY-MM-DD format for exact dates and preserves GEDCOM keywords (ABT, BEF, AFT, CAL, BET, FROM, TO, AND) for qualified and range dates. See [Data Types](../../specification/6-data-types.md) for complete date format specification.
 
 ## Post-Migration
 

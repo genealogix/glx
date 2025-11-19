@@ -43,6 +43,10 @@ export default defineConfig({
     // Root-level docs to development section
     'CONTRIBUTING.md': 'development/contributing.md',
     'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
+
+    // GLX CLI documentation
+    'glx/README.md': 'cli.md',
+
     'docs/examples/basic-family/README.md': 'examples/basic-family/index.md',
     'docs/examples/complete-family/README.md': 'examples/complete-family/index.md',
     'docs/examples/minimal/README.md': 'examples/minimal/index.md',
@@ -70,7 +74,8 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Quickstart', link: '/quickstart' },
-      { 
+      { text: 'CLI', link: '/cli' },
+      {
         text: 'Specification', 
         items: [
           { text: 'Overview', link: '/specification/' },
@@ -81,11 +86,10 @@ export default defineConfig({
           { text: 'JSON Schemas', link: '/specification/schema/' }
         ]
       },
-      { 
-        text: 'Guides', 
+      {
+        text: 'Guides',
         items: [
           { text: 'Best Practices', link: '/guides/best-practices' },
-          { text: 'Common Pitfalls', link: '/guides/common-pitfalls' },
           { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' },
           { text: 'Glossary', link: '/guides/glossary' }
         ]
@@ -193,7 +197,6 @@ export default defineConfig({
           text: 'User Guides',
           items: [
             { text: 'Best Practices', link: '/guides/best-practices' },
-            { text: 'Common Pitfalls', link: '/guides/common-pitfalls' },
             { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' },
             { text: 'Glossary', link: '/guides/glossary' }
           ]

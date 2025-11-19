@@ -174,6 +174,5 @@ glx validate
 
 ## See Also
 
-- [Common Pitfalls](common-pitfalls.md) - Avoid common mistakes
 - [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
 - [CLI Documentation](../../glx/README.md) - Command reference

@@ -178,8 +178,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 **For Users:**
 1. Start with the [Quickstart Guide](docs/quickstart.md)
 2. Explore [Complete Examples](docs/examples/complete-family/)
-3. Check [Common Pitfalls](docs/guides/common-pitfalls.md)
-4. Ask questions in [GitHub Discussions](https://github.com/genealogix/spec/discussions)
+3. Ask questions in [GitHub Discussions](https://github.com/genealogix/spec/discussions)
 
 **For Developers:**
 1. Read the [Architecture Guide](docs/development/architecture.md)
@@ -264,7 +263,6 @@ genealogix/spec/
 │   ├── quickstart.md
 │   ├── guides/
 │   │   ├── best-practices.md
-│   │   ├── common-pitfalls.md
 │   │   ├── glossary.md
 │   │   └── migration-from-gedcom.md
 │   ├── development/
