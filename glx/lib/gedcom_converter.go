@@ -116,7 +116,58 @@ func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
 
 	ctx.Logger.LogInfo(fmt.Sprintf("Second pass complete: %d relationships created", ctx.Stats.RelationshipsCreated))
 
+	// Third pass: Create parent-child relationships with PEDI-based types
+	ctx.Logger.LogInfo(fmt.Sprintf("Processing %d deferred family links (FAMC)", len(ctx.DeferredFamilyLinks)))
+	for _, link := range ctx.DeferredFamilyLinks {
+		if link.LinkType == ParticipantRoleChild {
+			// Look up parents from family
+			parents := ctx.FamilyParentsMap[link.FamilyRef]
+			if len(parents) == 0 {
+				ctx.Logger.LogWarning(0, "FAMC", link.FamilyRef, "Family not found or has no parents")
+				continue
+			}
+
+			// Determine relationship type based on PEDI
+			relType := mapPedigreeToRelationshipType(link.PedigreeType)
+
+			// Create relationship for each parent
+			for _, parentID := range parents {
+				relationshipID := generateRelationshipID(ctx)
+
+				relationship := &Relationship{
+					Type:       relType,
+					Persons:    []string{parentID, link.PersonID},
+					Properties: make(map[string]any),
+				}
+
+				ctx.GLX.Relationships[relationshipID] = relationship
+				ctx.Stats.RelationshipsCreated++
+			}
+		}
+	}
+
+	ctx.Logger.LogInfo(fmt.Sprintf("Third pass complete: total %d relationships", ctx.Stats.RelationshipsCreated))
+
 	return nil
+}
+
+// mapPedigreeToRelationshipType maps GEDCOM PEDI values to GLX relationship types
+func mapPedigreeToRelationshipType(pediValue string) string {
+	switch pediValue {
+	case "birth":
+		return RelationshipTypeBiologicalParentChild
+	case "adopted":
+		return RelationshipTypeAdoptiveParentChild
+	case "foster":
+		return RelationshipTypeFosterParentChild
+	case "unknown", "":
+		// Unknown or missing PEDI -> use generic parent-child
+		return RelationshipTypeParentChild
+	default:
+		// For any other value (including "sealed" which we're not implementing)
+		// use generic parent-child
+		return RelationshipTypeParentChild
+	}
 }
 
 // convertHeader extracts metadata from HEAD record

@@ -114,7 +114,9 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		}
 	}
 
-	// Create parent-child relationships
+	// Store family mapping for parent-child relationship creation later
+	// We need to defer this because PEDI (pedigree type) information
+	// is on the FAMC tag in INDI records, not in the FAM record
 	parents := []string{}
 	if husbandID != "" {
 		parents = append(parents, husbandID)
@@ -123,20 +125,8 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		parents = append(parents, wifeID)
 	}
 
-	for _, childID := range children {
-		for _, parentID := range parents {
-			relationshipID := generateRelationshipID(ctx)
-
-			relationship := &Relationship{
-				Type:       RelationshipTypeParentChild,
-				Persons:    []string{parentID, childID},
-				Properties: make(map[string]any),
-			}
-
-			ctx.GLX.Relationships[relationshipID] = relationship
-			ctx.Stats.RelationshipsCreated++
-		}
-	}
+	// Store family parents for later lookup
+	ctx.FamilyParentsMap[famRecord.XRef] = parents
 
 	return nil
 }

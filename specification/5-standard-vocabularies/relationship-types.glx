@@ -10,9 +10,24 @@ relationship_types:
   
   parent-child:
     label: "Parent-Child"
-    description: "Biological, adoptive, or legal parent-child relationship"
+    description: "Parent-child relationship (unspecified type)"
     gedcom: "CHIL/FAMC"
-  
+
+  biological-parent-child:
+    label: "Biological Parent-Child"
+    description: "Biological parent-child relationship"
+    gedcom: "CHIL/FAMC with PEDI birth"
+
+  adoptive-parent-child:
+    label: "Adoptive Parent-Child"
+    description: "Adoptive parent-child relationship"
+    gedcom: "CHIL/FAMC with PEDI adopted"
+
+  foster-parent-child:
+    label: "Foster Parent-Child"
+    description: "Foster parent-child relationship"
+    gedcom: "CHIL/FAMC with PEDI foster"
+
   sibling:
     label: "Sibling"
     description: "Brother or sister relationship"

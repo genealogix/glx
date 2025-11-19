@@ -100,6 +100,9 @@ type ConversionContext struct {
 	MediaIDMap      map[string]string
 	PlaceIDMap      map[string]string
 
+	// Family structure mapping (FAM XRef -> parent IDs)
+	FamilyParentsMap map[string][]string
+
 	// Auto-increment counters for ID generation
 	PersonCounter        int
 	EventCounter         int
@@ -133,9 +136,10 @@ type ExtensionSchema struct {
 
 // FamilyLink represents a deferred family link
 type FamilyLink struct {
-	PersonID  string
-	FamilyRef string
-	LinkType  string // ParticipantRoleChild or ParticipantRoleSpouse
+	PersonID      string
+	FamilyRef     string
+	LinkType      string // ParticipantRoleChild or ParticipantRoleSpouse
+	PedigreeType  string // PEDI value: birth, adopted, foster, sealed, unknown (empty = unspecified)
 }
 
 // ImportGEDCOM imports a GEDCOM file and returns a GLX archive
@@ -188,6 +192,7 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 		RepositoryIDMap:     make(map[string]string),
 		MediaIDMap:          make(map[string]string),
 		PlaceIDMap:          make(map[string]string),
+		FamilyParentsMap:    make(map[string][]string),
 		SharedNotes:         make(map[string]string),
 		ExtensionSchemas:    make(map[string]*ExtensionSchema),
 		DeferredFamilies:    []*GEDCOMRecord{},

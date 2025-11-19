@@ -193,10 +193,19 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "FAMC":
 			// Family as child - defer for family processing
+			// Extract PEDI (pedigree linkage) if present
+			pedigreeType := ""
+			for _, pediSub := range sub.SubRecords {
+				if pediSub.Tag == "PEDI" {
+					pedigreeType = strings.ToLower(pediSub.Value)
+					break
+				}
+			}
 			ctx.DeferredFamilyLinks = append(ctx.DeferredFamilyLinks, &FamilyLink{
-				PersonID:  personID,
-				FamilyRef: sub.Value,
-				LinkType:  ParticipantRoleChild,
+				PersonID:     personID,
+				FamilyRef:    sub.Value,
+				LinkType:     ParticipantRoleChild,
+				PedigreeType: pedigreeType,
 			})
 
 		case "FAMS":
