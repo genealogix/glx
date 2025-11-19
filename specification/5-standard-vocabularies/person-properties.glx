@@ -77,9 +77,51 @@ person_properties:
     description: "National citizenship"
     value_type: string
     temporal: true
-  
+
+  caste:
+    label: "Caste"
+    description: "Caste, tribe, or social group"
+    value_type: string
+    temporal: true
+
+  ssn:
+    label: "Social Security Number"
+    description: "National identification number"
+    value_type: string
+
   notes:
     label: "Personal Notes"
     description: "Additional biographical notes"
     value_type: string
+
+  # Name-related properties
+  title:
+    label: "Title"
+    description: "Title of nobility, rank, or honor (e.g., 'Dr.', 'Sir', 'Baron')"
+    value_type: string
+    temporal: true
+
+  name_prefix:
+    label: "Name Prefix"
+    description: "Honorific prefix used in formatting the name (e.g., 'Dr.', 'Rev.', 'Hon.')"
+    value_type: string
+    temporal: true
+
+  nickname:
+    label: "Nickname"
+    description: "Familiar or descriptive name"
+    value_type: string
+    temporal: true
+
+  surname_prefix:
+    label: "Surname Prefix"
+    description: "Article or prefix used in family name (e.g., 'von', 'van', 'de')"
+    value_type: string
+    temporal: true
+
+  name_suffix:
+    label: "Name Suffix"
+    description: "Suffix following the name (e.g., 'Jr.', 'Sr.', 'III', 'Esq.')"
+    value_type: string
+    temporal: true
 

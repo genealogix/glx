@@ -314,8 +314,17 @@ go build -o glx ./cmd/glx
 
 ### GEDCOM Specification
 
-- GEDCOM 5.5.1: `docs/gedcom-spec/gedcom-5-5-1.pdf`
-- GEDCOM 7.0: https://gedcom.io/specifications/
+**IMPORTANT**: Do NOT read full PDF specifications - they're too large and will cause errors.
+
+**Use split PDFs instead**:
+- GEDCOM 5.5.1: `docs/gedcom-spec/GEDCOM_5.5.1_Specification/part_*.pdf` (6 parts, ~20 pages each)
+- GEDCOM 7.0: `docs/gedcom-spec/GEDCOM_7.0_Specification/part_*.pdf` (6 parts, ~20 pages each)
+
+Also available:
+- GEDCOM 3.0, 4.0, 5.0, 5.3, 5.4, 5.5, 5.5.5, 5.6 (all split)
+- GEDZIP 0.1, 0.2 (all split)
+
+**Usage**: Use the Read tool on specific part files based on page numbers you need
 
 ### Go Resources
 

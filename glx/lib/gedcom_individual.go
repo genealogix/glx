@@ -158,6 +158,14 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 				createPropertyAssertion(personID, "ssn", sub.Value, sub, ctx)
 			}
 
+		case "TITL":
+			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
+			// Note: This is different from NPFX (name prefix) which is part of name formatting
+			if sub.Value != "" {
+				person.Properties["title"] = sub.Value
+				createPropertyAssertion(personID, "title", sub.Value, sub, ctx)
+			}
+
 		case "FACT":
 			// Generic fact - convert to property or event
 			if err := convertFact(personID, person, sub, ctx); err != nil {
