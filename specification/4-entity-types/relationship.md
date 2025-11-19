@@ -184,9 +184,24 @@ Relationships map to GEDCOM family and individual structures:
 | GLX Type | GEDCOM Structure | Notes |
 |----------|------------------|-------|
 | `marriage` | FAM record | Family with MARR event |
-| `parent-child` | FAM.CHIL + INDI.FAMC | Child link to family |
+| `parent-child` | FAM.CHIL + INDI.FAMC | Child link to family (no PEDI or PEDI unknown) |
+| `biological-parent-child` | FAM.CHIL + INDI.FAMC with PEDI birth | Biological child relationship |
+| `adoptive-parent-child` | FAM.CHIL + INDI.FAMC with PEDI adopted | Legally adopted child |
+| `foster-parent-child` | FAM.CHIL + INDI.FAMC with PEDI foster | Foster care relationship |
 | `adoption` | FAM.CHIL + ADOP | Adoption event |
 | `sibling` | Shared FAM.CHIL | Siblings share parents |
+
+**PEDI (Pedigree Linkage)**:
+
+The PEDI tag in GEDCOM 5.5.1 specifies the type of parent-child relationship. During import, PEDI values are mapped to specific relationship types:
+
+- `PEDI birth` → `biological-parent-child`
+- `PEDI adopted` → `adoptive-parent-child`
+- `PEDI foster` → `foster-parent-child`
+- `PEDI unknown` or missing → `parent-child` (generic)
+- `PEDI sealed` (LDS) → `parent-child` (not specifically modeled)
+
+This allows GLX to preserve the distinction between biological, adoptive, and foster relationships that is critical for accurate genealogical research.
 
 ## See Also
 

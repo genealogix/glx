@@ -370,8 +370,23 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 			event.Properties["event_subtype"] = sub.Value
 
 		case "ADDR":
-			// Address
-			event.Properties["address"] = sub.Value
+			// Address - extract full address including subfields
+			addr := extractAddress(sub)
+			if addr != "" {
+				event.Properties["address"] = addr
+			}
+
+			// If no PLAC was provided, try to build place from ADDR subfields
+			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
+				hierarchy := buildPlaceHierarchyFromAddress(sub)
+				if hierarchy != nil {
+					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					if err == nil && placeID != "" {
+						event.PlaceID = placeID
+						eventPlace = placeID
+					}
+				}
+			}
 
 		case "NOTE":
 			noteText := extractNoteText(sub, ctx)
@@ -470,6 +485,52 @@ func mapGEDCOMEventType(tag string) string {
 	}
 
 	return strings.ToLower(tag)
+}
+
+// buildPlaceHierarchyFromAddress builds a place hierarchy from ADDR subfields
+// when no PLAC field is provided. Returns nil if insufficient data.
+func buildPlaceHierarchyFromAddress(addrRecord *GEDCOMRecord) *PlaceHierarchy {
+	var city, state, country string
+
+	for _, sub := range addrRecord.SubRecords {
+		switch sub.Tag {
+		case "ADR2":
+			// Often contains city/locality name
+			if city == "" && sub.Value != "" {
+				city = sub.Value
+			}
+		case "CITY":
+			// Explicit city field overrides ADR2
+			if sub.Value != "" {
+				city = sub.Value
+			}
+		case "STAE":
+			state = sub.Value
+		case "CTRY":
+			country = sub.Value
+		}
+	}
+
+	// Build hierarchy from specific to general
+	var components []string
+	if city != "" {
+		components = append(components, city)
+	}
+	if state != "" {
+		components = append(components, state)
+	}
+	if country != "" {
+		components = append(components, country)
+	}
+
+	// Need at least one component to create a place
+	if len(components) == 0 {
+		return nil
+	}
+
+	return &PlaceHierarchy{
+		Components: components,
+	}
 }
 
 // convertResidence converts RESI to residence event or property

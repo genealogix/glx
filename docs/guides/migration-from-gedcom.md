@@ -50,8 +50,10 @@ git commit -m "Import from GEDCOM: family.ged"
 **What Gets Imported:**
 - 31+ person attributes and events
 - All family relationships (marriage, parent-child)
+- **PEDI (pedigree) types**: Biological, adoptive, foster parent-child relationships
 - Evidence chains (SOUR → Citation → Assertion)
 - Place hierarchies (flat → hierarchical)
+- **ADDR subfields**: Full address preservation and place hierarchy fallback
 - Shared and inline notes
 - Source citations with quality ratings
 

@@ -46,8 +46,12 @@ Pass 1: Convert Individuals, Sources, Notes, Places
     ↓
 Pass 2: Convert Families (requires persons)
     ↓
+Pass 3: Create Parent-Child Relationships (with PEDI types)
+    ↓
 GLXFile (complete archive)
 ```
+
+**Note**: Pass 3 was added in v0.0.0-beta.2 to support PEDI (pedigree linkage) types, which distinguish biological, adoptive, and foster parent-child relationships.
 
 ---
 
@@ -146,7 +150,28 @@ For multi-file serialization, random IDs will be used:
 
 **Relationship Types**:
 - `marriage`: HUSB + WIFE in FAM record
-- `parent-child`: CHIL in FAM record → parent is HUSB/WIFE
+- `biological-parent-child`: CHIL with `PEDI birth` in INDI record
+- `adoptive-parent-child`: CHIL with `PEDI adopted` in INDI record
+- `foster-parent-child`: CHIL with `PEDI foster` in INDI record
+- `parent-child`: CHIL without PEDI or PEDI unknown/sealed
+
+**PEDI (Pedigree Linkage) Support**:
+
+The PEDI tag in GEDCOM 5.5.1 specifies the type of parent-child relationship:
+
+```go
+// GEDCOM Individual with PEDI
+0 @I3@ INDI
+1 FAMC @F1@
+2 PEDI birth    // or: adopted, foster, sealed, unknown
+
+// Maps to relationship type:
+PEDI birth   → biological-parent-child
+PEDI adopted → adoptive-parent-child
+PEDI foster  → foster-parent-child
+PEDI unknown → parent-child
+(no PEDI)    → parent-child
+```
 
 **Example**:
 ```go
@@ -158,10 +183,14 @@ For multi-file serialization, random IDs will be used:
 1 MARR
 2 DATE 1875
 
+0 @I3@ INDI
+1 FAMC @F1@
+2 PEDI birth
+
 // Converts to:
 - Relationship: rel-001 (type: marriage, participants: [person-001, person-002])
-- Relationship: rel-002 (type: parent-child, participants: [person-001, person-003])
-- Relationship: rel-003 (type: parent-child, participants: [person-002, person-003])
+- Relationship: rel-002 (type: biological-parent-child, participants: [person-001, person-003])
+- Relationship: rel-003 (type: biological-parent-child, participants: [person-002, person-003])
 - Event: event-042 (type: marriage, date: "1875", participants: [person-001, person-002])
 ```
 
@@ -196,6 +225,32 @@ places:
 ```
 
 **Implementation**: `buildPlaceHierarchy()` in `gedcom_place.go`
+
+**ADDR Subfield Support**:
+
+When the PLAC field is missing, GLX can build a place hierarchy from ADDR subfields:
+
+```go
+// GEDCOM event with ADDR but no PLAC
+1 BIRT
+2 DATE 24 FEB 1875
+2 ADDR
+3 ADR2 Olnhausen
+3 STAE Baden-Wuerrtemberg
+3 CTRY Germany
+
+// Converts to:
+- Place hierarchy: Germany > Baden-Wuerrtemberg > Olnhausen
+- Event property: address = "Olnhausen, Baden-Wuerrtemberg, Germany"
+```
+
+**Supported ADDR subfields**:
+- `CITY` or `ADR2` → City/locality (most specific)
+- `STAE` → State/province
+- `CTRY` → Country (most general)
+- `ADR1`, `ADR3`, `POST` → Included in concatenated address property
+
+**Implementation**: `buildPlaceHierarchyFromAddress()` in `gedcom_individual.go`
 
 ### Source and Citation Conversion
 
@@ -427,13 +482,19 @@ Reverse conversion: GLX → GEDCOM
 
 ## Changelog
 
-**v0.0.0-beta.2** (2025-11-18):
+**v0.0.0-beta.2** (2025-11-19):
 - ✅ Full GEDCOM 5.5.1 support
 - ✅ Full GEDCOM 7.0 support
 - ✅ Evidence chain mapping
 - ✅ Place hierarchy building
+- ✅ **PEDI (pedigree linkage) support**: Biological, adoptive, foster parent-child relationships
+- ✅ **ADDR subfield extraction**: Full address preservation and place hierarchy fallback
+- ✅ Three-pass conversion for accurate relationship typing
 - ✅ 31 persons, 77 events, 49 relationships imported (Shakespeare test)
+- ✅ 948 persons with PEDI tags tested (Bullinger family)
+- ✅ 514 addresses preserved (Bullinger family)
 - ✅ Gap analysis: 100% critical, 94% high-priority coverage
+- ✅ **6 issues resolved**: Date qualifiers, date quoting, TITL, date ranges, PEDI, ADDR subfields
 
 **v0.0.0-beta.1** (2025-11-17):
 - Initial GEDCOM import implementation
@@ -442,4 +503,4 @@ Reverse conversion: GLX → GEDCOM
 
 ---
 
-Last Updated: 2025-11-18
+Last Updated: 2025-11-19

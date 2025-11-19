@@ -203,6 +203,24 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 					event.Properties["media"] = append(media, mediaID)
 				}
 			}
+
+		case "ADDR":
+			// Address - extract full address including subfields
+			addr := extractAddress(sub)
+			if addr != "" {
+				event.Properties["address"] = addr
+			}
+
+			// If no PLAC was provided, try to build place from ADDR subfields
+			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
+				hierarchy := buildPlaceHierarchyFromAddress(sub)
+				if hierarchy != nil {
+					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					if err == nil && placeID != "" {
+						event.PlaceID = placeID
+					}
+				}
+			}
 		}
 	}
 
@@ -280,6 +298,24 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 					citations = []string{}
 				}
 				event.Properties["citations"] = append(citations, citationID)
+			}
+
+		case "ADDR":
+			// Address - extract full address including subfields
+			addr := extractAddress(sub)
+			if addr != "" {
+				event.Properties["address"] = addr
+			}
+
+			// If no PLAC was provided, try to build place from ADDR subfields
+			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
+				hierarchy := buildPlaceHierarchyFromAddress(sub)
+				if hierarchy != nil {
+					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					if err == nil && placeID != "" {
+						event.PlaceID = placeID
+					}
+				}
 			}
 		}
 	}
@@ -360,6 +396,24 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 					citations = []string{}
 				}
 				event.Properties["citations"] = append(citations, citationID)
+			}
+
+		case "ADDR":
+			// Address - extract full address including subfields
+			addr := extractAddress(sub)
+			if addr != "" {
+				event.Properties["address"] = addr
+			}
+
+			// If no PLAC was provided, try to build place from ADDR subfields
+			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
+				hierarchy := buildPlaceHierarchyFromAddress(sub)
+				if hierarchy != nil {
+					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					if err == nil && placeID != "" {
+						event.PlaceID = placeID
+					}
+				}
 			}
 		}
 	}
