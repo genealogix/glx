@@ -140,25 +140,3 @@ func parseExactDate(dateStr string) string {
 
 	return ""
 }
-
-// parseGEDCOMTime parses GEDCOM 7.0 TIME value
-func parseGEDCOMTime(timeStr string) string {
-	// TIME format: hh:mm:ss[.fraction][Z|+hh:mm|-hh:mm]
-	// Already in ISO 8601-compatible format, return as-is
-	return strings.TrimSpace(timeStr)
-}
-
-// combineDateAndTime combines GEDCOM DATE and TIME into ISO 8601 datetime
-func combineDateAndTime(dateStr string, timeStr string) string {
-	date := parseGEDCOMDate(dateStr)
-	if date == "" {
-		return ""
-	}
-
-	if timeStr != "" {
-		time := parseGEDCOMTime(timeStr)
-		return date + "T" + time
-	}
-
-	return date
-}

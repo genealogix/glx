@@ -34,7 +34,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 				indiRecord.XRef,
 				"convertIndividual",
 				fmt.Errorf("panic: %v", r),
-				map[string]interface{}{
+				map[string]any{
 					"record": indiRecord,
 				},
 			)
@@ -50,7 +50,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 	// Create person entity
 	person := &Person{
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	// Extract external IDs (GEDCOM 7.0 EXID tags)
@@ -309,7 +309,7 @@ func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *Con
 	// Create event
 	event := &Event{
 		Type:       eventType,
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	// Extract event details

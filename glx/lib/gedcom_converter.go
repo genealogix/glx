@@ -121,7 +121,7 @@ func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
 
 // convertHeader extracts metadata from HEAD record
 func convertHeader(headRecord *GEDCOMRecord, ctx *ConversionContext) {
-	metadata := make(map[string]interface{})
+	metadata := make(map[string]any)
 
 	for _, sub := range headRecord.SubRecords {
 		switch sub.Tag {
@@ -169,7 +169,7 @@ func convertHeader(headRecord *GEDCOMRecord, ctx *ConversionContext) {
 
 // convertSubmitter converts SUBM record to metadata
 func convertSubmitter(submRecord *GEDCOMRecord, ctx *ConversionContext) {
-	submitter := make(map[string]interface{})
+	submitter := make(map[string]any)
 
 	for _, sub := range submRecord.SubRecords {
 		switch sub.Tag {

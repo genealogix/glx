@@ -33,7 +33,7 @@ func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 	// Create repository entity
 	repository := &Repository{
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	var phones []string

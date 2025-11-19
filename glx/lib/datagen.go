@@ -56,7 +56,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		living := gofakeit.Bool()
 
 		glxFile.Persons[personID] = &Person{
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"primary_name": gofakeit.Name(),
 				"gender":       gofakeit.Gender(),
 				"living":       living,

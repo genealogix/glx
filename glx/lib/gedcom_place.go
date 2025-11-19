@@ -122,7 +122,7 @@ func createOrGetPlace(name string, parentID string, level int, totalLevels int, 
 		Type:       inferPlaceType(name, level, totalLevels),
 		Latitude:   latitude,
 		Longitude:  longitude,
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	if parentID != "" {
@@ -179,9 +179,10 @@ func inferPlaceType(name string, level int, totalLevels int) string {
 
 // extractPlaceCoordinates extracts latitude and longitude from PLAC subrecords
 // GEDCOM format:
-//   2 MAP
-//   3 LATI N12.345678  (or S12.345678)
-//   3 LONG W123.456789 (or E123.456789)
+//
+//	2 MAP
+//	3 LATI N12.345678  (or S12.345678)
+//	3 LONG W123.456789 (or E123.456789)
 func extractPlaceCoordinates(placeRecord *GEDCOMRecord) (latitude, longitude *float64) {
 	for _, sub := range placeRecord.SubRecords {
 		if sub.Tag == "MAP" {
@@ -205,7 +206,8 @@ func extractPlaceCoordinates(placeRecord *GEDCOMRecord) (latitude, longitude *fl
 
 // parseCoordinate parses GEDCOM coordinate format
 // Format: N12.345678 or S12.345678 (latitude)
-//         E123.456789 or W123.456789 (longitude)
+//
+//	E123.456789 or W123.456789 (longitude)
 func parseCoordinate(value string) *float64 {
 	if value == "" {
 		return nil

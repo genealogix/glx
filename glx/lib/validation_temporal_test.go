@@ -8,9 +8,9 @@ func TestValidatePropertyValue_NonTemporalWithList(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {
-				Properties: map[string]interface{}{
-					"gender": []interface{}{
-						map[string]interface{}{
+				Properties: map[string]any{
+					"gender": []any{
+						map[string]any{
 							"value": "male",
 							"date":  "1850",
 						},
@@ -43,9 +43,9 @@ func TestValidatePropertyValue_TemporalListMissingValue(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {
-				Properties: map[string]interface{}{
-					"given_name": []interface{}{
-						map[string]interface{}{
+				Properties: map[string]any{
+					"given_name": []any{
+						map[string]any{
 							"date": "1850",
 							// Missing "value" field
 						},
@@ -79,8 +79,8 @@ func TestValidatePropertyValue_TemporalListNotObject(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {
-				Properties: map[string]interface{}{
-					"family_name": []interface{}{
+				Properties: map[string]any{
+					"family_name": []any{
 						"Smith",
 						"Jones",
 					},
@@ -109,9 +109,9 @@ func TestValidatePropertyValue_TemporalListMissingDate(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {
-				Properties: map[string]interface{}{
-					"occupation": []interface{}{
-						map[string]interface{}{
+				Properties: map[string]any{
+					"occupation": []any{
+						map[string]any{
 							"value": "blacksmith",
 							// Missing "date" field
 						},
@@ -145,7 +145,7 @@ func TestValidatePropertyValue_TemporalSimpleValue(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"given_name": "John",
 				},
 			},
@@ -175,13 +175,13 @@ func TestValidatePropertyValue_TemporalValidList(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {
-				Properties: map[string]interface{}{
-					"occupation": []interface{}{
-						map[string]interface{}{
+				Properties: map[string]any{
+					"occupation": []any{
+						map[string]any{
 							"value": "blacksmith",
 							"date":  "1870",
 						},
-						map[string]interface{}{
+						map[string]any{
 							"value": "farmer",
 							"date":  "FROM 1880 TO 1920",
 						},

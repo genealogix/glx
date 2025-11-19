@@ -34,7 +34,7 @@ func TestRunCheckSchemas(t *testing.T) {
 			setup: func() string {
 				tmpDir := t.TempDir()
 				schemaDir := filepath.Join(tmpDir, "schema")
-				err := os.MkdirAll(schemaDir, 0755)
+				err := os.MkdirAll(schemaDir, 0o755)
 				require.NoError(t, err)
 
 				// Create a valid schema file
@@ -44,7 +44,7 @@ func TestRunCheckSchemas(t *testing.T) {
   "$id": "test-schema",
   "type": "object"
 }`
-				err = os.WriteFile(schemaFile, []byte(schemaContent), 0644)
+				err = os.WriteFile(schemaFile, []byte(schemaContent), 0o644)
 				require.NoError(t, err)
 
 				return tmpDir
@@ -56,7 +56,7 @@ func TestRunCheckSchemas(t *testing.T) {
 			setup: func() string {
 				tmpDir := t.TempDir()
 				schemaDir := filepath.Join(tmpDir, "schema")
-				err := os.MkdirAll(schemaDir, 0755)
+				err := os.MkdirAll(schemaDir, 0o755)
 				require.NoError(t, err)
 
 				// Create a schema file without $schema
@@ -65,7 +65,7 @@ func TestRunCheckSchemas(t *testing.T) {
   "$id": "test-schema",
   "type": "object"
 }`
-				err = os.WriteFile(schemaFile, []byte(schemaContent), 0644)
+				err = os.WriteFile(schemaFile, []byte(schemaContent), 0o644)
 				require.NoError(t, err)
 
 				return tmpDir
@@ -77,7 +77,7 @@ func TestRunCheckSchemas(t *testing.T) {
 			setup: func() string {
 				tmpDir := t.TempDir()
 				schemaDir := filepath.Join(tmpDir, "schema")
-				err := os.MkdirAll(schemaDir, 0755)
+				err := os.MkdirAll(schemaDir, 0o755)
 				require.NoError(t, err)
 
 				// Create a schema file without $id
@@ -86,7 +86,7 @@ func TestRunCheckSchemas(t *testing.T) {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object"
 }`
-				err = os.WriteFile(schemaFile, []byte(schemaContent), 0644)
+				err = os.WriteFile(schemaFile, []byte(schemaContent), 0o644)
 				require.NoError(t, err)
 
 				return tmpDir
@@ -98,12 +98,12 @@ func TestRunCheckSchemas(t *testing.T) {
 			setup: func() string {
 				tmpDir := t.TempDir()
 				schemaDir := filepath.Join(tmpDir, "schema")
-				err := os.MkdirAll(schemaDir, 0755)
+				err := os.MkdirAll(schemaDir, 0o755)
 				require.NoError(t, err)
 
 				// Create a non-json file
 				otherFile := filepath.Join(schemaDir, "test.txt")
-				err = os.WriteFile(otherFile, []byte("not a schema"), 0644)
+				err = os.WriteFile(otherFile, []byte("not a schema"), 0o644)
 				require.NoError(t, err)
 
 				return tmpDir

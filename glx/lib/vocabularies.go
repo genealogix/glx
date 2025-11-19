@@ -44,14 +44,14 @@ func WriteStandardVocabularies(outputDir string) error {
 	vocabDir := filepath.Join(outputDir, "vocabularies")
 
 	// Create vocabularies directory
-	if err := os.MkdirAll(vocabDir, 0755); err != nil {
+	if err := os.MkdirAll(vocabDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create vocabularies directory: %w", err)
 	}
 
 	// Write each vocabulary file
 	for filename, content := range vocabularies.Files {
 		outputPath := filepath.Join(vocabDir, filename)
-		if err := os.WriteFile(outputPath, content, 0644); err != nil {
+		if err := os.WriteFile(outputPath, content, 0o644); err != nil {
 			return fmt.Errorf("failed to write vocabulary %s: %w", filename, err)
 		}
 	}
@@ -82,7 +82,7 @@ func WriteVocabulariesToFile(outputPath string) error {
 	}
 
 	// Write to file
-	if err := os.WriteFile(outputPath, content, 0644); err != nil {
+	if err := os.WriteFile(outputPath, content, 0o644); err != nil {
 		return fmt.Errorf("failed to write vocabularies file: %w", err)
 	}
 

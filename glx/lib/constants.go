@@ -42,14 +42,14 @@ const (
 
 // Standard Relationship Types - from relationship-types.glx vocabulary
 const (
-	RelationshipTypeMarriage   = "marriage"
+	RelationshipTypeMarriage    = "marriage"
 	RelationshipTypeParentChild = "parent-child"
-	RelationshipTypeSibling    = "sibling"
-	RelationshipTypeAdoption   = "adoption"
-	RelationshipTypeStepParent = "step-parent"
-	RelationshipTypeGodparent  = "godparent"
-	RelationshipTypeGuardian   = "guardian"
-	RelationshipTypePartner    = "partner"
+	RelationshipTypeSibling     = "sibling"
+	RelationshipTypeAdoption    = "adoption"
+	RelationshipTypeStepParent  = "step-parent"
+	RelationshipTypeGodparent   = "godparent"
+	RelationshipTypeGuardian    = "guardian"
+	RelationshipTypePartner     = "partner"
 )
 
 // Standard Participant Roles - from participant-roles.glx vocabulary

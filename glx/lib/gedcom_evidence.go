@@ -46,7 +46,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 		SourceID: sourceID,
 	}
 
-	var quay int = -1
+	quay := -1
 
 	// Extract citation details from SOUR subrecords
 	for _, sub := range sourRecord.SubRecords {
@@ -121,7 +121,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 }
 
 // createPropertyAssertion creates an assertion for a property
-func createPropertyAssertion(subjectID string, claim string, value interface{}, sourceRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func createPropertyAssertion(subjectID string, claim string, value any, sourceRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	if claim == "" || value == nil {
 		return nil
 	}

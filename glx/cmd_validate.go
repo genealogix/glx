@@ -71,7 +71,10 @@ func runValidate(args []string) error {
 	// First pass: structural validation of all files
 	for _, path := range paths {
 		err := filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
 				return nil
 			}
 
@@ -101,7 +104,6 @@ func runValidate(args []string) error {
 			}
 			return nil
 		})
-
 		if err != nil {
 			// This would be an error from WalkDir itself, not a validation error
 			fmt.Fprintf(os.Stderr, "Error walking directory %s: %v\n", path, err)
@@ -165,26 +167,4 @@ func runValidate(args []string) error {
 
 	fmt.Println("✅ Archive is valid.")
 	return nil
-}
-
-func printValidationReport(reportLines []string, allWarnings, allErrors []string) {
-	if reportLines != nil {
-		for _, line := range reportLines {
-			fmt.Println(line)
-		}
-	}
-
-	if len(allErrors) > 0 {
-		fmt.Println("\nValidation Errors:")
-		for _, issue := range allErrors {
-			fmt.Printf("  ✗ %s\n", issue)
-		}
-	}
-
-	if len(allWarnings) > 0 {
-		fmt.Println("\nValidation Warnings:")
-		for _, warn := range allWarnings {
-			fmt.Printf("  - %s\n", warn)
-		}
-	}
 }

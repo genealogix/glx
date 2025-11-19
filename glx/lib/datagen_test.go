@@ -64,7 +64,7 @@ func TestGenerateTestData(t *testing.T) {
 				assert.Len(t, glxFile.Assertions, tt.numPeople, "should generate an assertion for each birth event")
 				assert.Len(t, glxFile.Citations, tt.numPeople, "should generate a citation for each birth event")
 				assert.Len(t, glxFile.Sources, tt.numPeople, "should generate a source for each birth event")
-				
+
 				// A single repository should be created
 				if tt.numPeople > 0 {
 					assert.Len(t, glxFile.Repositories, 1, "should generate a single repository")

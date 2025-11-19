@@ -55,7 +55,7 @@ func TestValidateDateFormat(t *testing.T) {
 func TestValidateValueType(t *testing.T) {
 	tests := []struct {
 		name          string
-		value         interface{}
+		value         any
 		valueType     string
 		expectWarning bool
 	}{
@@ -142,13 +142,13 @@ func TestPropertyValueFormatValidation(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {
-				Properties: map[string]interface{}{
-					"given_name": "John",          // string - valid
-					"born_on":    "1850-03-15",    // date - valid
-					"age":        30,              // integer - valid
-					"living":     true,            // boolean - valid
-					"bad_date":   "March 1850",    // date - invalid format
-					"bad_int":    "thirty",        // integer - invalid type
+				Properties: map[string]any{
+					"given_name": "John",       // string - valid
+					"born_on":    "1850-03-15", // date - valid
+					"age":        30,           // integer - valid
+					"living":     true,         // boolean - valid
+					"bad_date":   "March 1850", // date - invalid format
+					"bad_int":    "thirty",     // integer - invalid type
 				},
 			},
 		},

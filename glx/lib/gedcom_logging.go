@@ -80,7 +80,7 @@ func (il *ImportLogger) LogInfo(message string) {
 }
 
 // LogException logs an exception with full context
-func (il *ImportLogger) LogException(line int, tag string, gedcomXRef string, operation string, err error, context map[string]interface{}) {
+func (il *ImportLogger) LogException(line int, tag string, gedcomXRef string, operation string, err error, context map[string]any) {
 	if il.logger == nil {
 		return
 	}

@@ -71,9 +71,3 @@ func generateAssertionID(ctx *ConversionContext) string {
 	ctx.AssertionCounter++
 	return fmt.Sprintf("assertion-%d", ctx.AssertionCounter)
 }
-
-// generateParticipationID generates an auto-incremented participation ID
-func generateParticipationID(ctx *ConversionContext) string {
-	ctx.ParticipationCounter++
-	return fmt.Sprintf("participation-%d", ctx.ParticipationCounter)
-}

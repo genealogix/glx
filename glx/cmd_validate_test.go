@@ -75,7 +75,7 @@ func TestRunValidate_InvalidYAML(t *testing.T) {
 	// Create a temporary file with invalid YAML
 	tmpDir := t.TempDir()
 	invalidFile := filepath.Join(tmpDir, "invalid.glx")
-	err := os.WriteFile(invalidFile, []byte("persons:\n  person-1:\n    invalid: [unclosed"), 0644)
+	err := os.WriteFile(invalidFile, []byte("persons:\n  person-1:\n    invalid: [unclosed"), 0o644)
 	require.NoError(t, err)
 
 	err = runValidate([]string{tmpDir})
@@ -90,7 +90,7 @@ func TestRunValidate_StructuralErrors(t *testing.T) {
   "person with spaces":
     properties:
       primary_name: "Test"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	err = runValidate([]string{tmpDir})
@@ -106,7 +106,7 @@ func TestRunValidate_DuplicateIDs(t *testing.T) {
   person-duplicate:
     properties:
       primary_name: "Person One"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	file2 := filepath.Join(tmpDir, "file2.glx")
@@ -114,7 +114,7 @@ func TestRunValidate_DuplicateIDs(t *testing.T) {
   person-duplicate:
     properties:
       primary_name: "Person Two"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	err = runValidate([]string{tmpDir})
@@ -153,7 +153,7 @@ func TestRunValidate_MixedValidAndInvalidFiles(t *testing.T) {
   person-test:
     properties:
       primary_name: "Test Person"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	// Invalid file (bad entity ID with special characters)
@@ -162,7 +162,7 @@ func TestRunValidate_MixedValidAndInvalidFiles(t *testing.T) {
   "person@invalid!":
     properties:
       primary_name: "Invalid"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	err = runValidate([]string{tmpDir})
@@ -183,7 +183,7 @@ func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	txtFile := filepath.Join(tmpDir, "readme.txt")
-	err := os.WriteFile(txtFile, []byte("This is not a GLX file"), 0644)
+	err := os.WriteFile(txtFile, []byte("This is not a GLX file"), 0o644)
 	require.NoError(t, err)
 
 	err = runValidate([]string{tmpDir})
@@ -197,7 +197,7 @@ func TestRunValidate_NestedDirectories(t *testing.T) {
 
 	// Create nested structure
 	personsDir := filepath.Join(tmpDir, "persons")
-	err := os.MkdirAll(personsDir, 0755)
+	err := os.MkdirAll(personsDir, 0o755)
 	require.NoError(t, err)
 
 	personFile := filepath.Join(personsDir, "person.glx")
@@ -205,7 +205,7 @@ func TestRunValidate_NestedDirectories(t *testing.T) {
   person-nested:
     properties:
       primary_name: "Nested Person"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	err = runValidate([]string{tmpDir})
@@ -227,7 +227,7 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
   person-yaml:
     properties:
       primary_name: "YAML Person"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	ymlFile := filepath.Join(tmpDir, "test.yml")
@@ -235,7 +235,7 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
   person-yml:
     properties:
       primary_name: "YML Person"
-`), 0644)
+`), 0o644)
 	require.NoError(t, err)
 
 	err = runValidate([]string{tmpDir})

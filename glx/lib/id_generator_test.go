@@ -11,6 +11,7 @@ func TestGenerateRandomID(t *testing.T) {
 	// Generate many IDs to test uniqueness
 	ids := make(map[string]bool)
 	iterations := 10000
+	hexPattern := regexp.MustCompile("^[a-f0-9]{8}$")
 
 	for i := 0; i < iterations; i++ {
 		id, err := GenerateRandomID()
@@ -24,8 +25,7 @@ func TestGenerateRandomID(t *testing.T) {
 		}
 
 		// Check hex format
-		matched, _ := regexp.MatchString("^[a-f0-9]{8}$", id)
-		if !matched {
+		if !hexPattern.MatchString(id) {
 			t.Errorf("ID doesn't match hex pattern: %s", id)
 		}
 

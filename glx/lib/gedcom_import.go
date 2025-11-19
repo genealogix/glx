@@ -145,7 +145,7 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create logger: %w", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.LogInfo("Starting GEDCOM import")
 

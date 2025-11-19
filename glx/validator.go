@@ -40,38 +40,38 @@ const (
 )
 
 // ParseYAMLFile parses YAML content into a map
-func ParseYAMLFile(data []byte) (map[string]interface{}, error) {
-	var doc interface{}
+func ParseYAMLFile(data []byte) (map[string]any, error) {
+	var doc any
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, err
 	}
-	// Convert to map[string]interface{} and normalize keys
+	// Convert to map[string]any and normalize keys
 	normalized := normalizeYAMLMap(doc)
-	if result, ok := normalized.(map[string]interface{}); ok {
+	if result, ok := normalized.(map[string]any); ok {
 		return result, nil
 	}
 	return nil, fmt.Errorf("YAML document is not an object")
 }
 
-// normalizeYAMLMap recursively converts map[interface{}]interface{} to map[string]interface{}
+// normalizeYAMLMap recursively converts map[any]any to map[string]any
 // This handles YAML files with numeric keys like quality_ratings
-func normalizeYAMLMap(val interface{}) interface{} {
+func normalizeYAMLMap(val any) any {
 	switch v := val.(type) {
-	case map[interface{}]interface{}:
-		result := make(map[string]interface{})
+	case map[any]any:
+		result := make(map[string]any)
 		for key, value := range v {
 			keyStr := fmt.Sprintf("%v", key)
 			result[keyStr] = normalizeYAMLMap(value)
 		}
 		return result
-	case map[string]interface{}:
-		result := make(map[string]interface{})
+	case map[string]any:
+		result := make(map[string]any)
 		for key, value := range v {
 			result[key] = normalizeYAMLMap(value)
 		}
 		return result
-	case []interface{}:
-		result := make([]interface{}, len(v))
+	case []any:
+		result := make([]any, len(v))
 		for i, item := range v {
 			result[i] = normalizeYAMLMap(item)
 		}
@@ -82,14 +82,14 @@ func normalizeYAMLMap(val interface{}) interface{} {
 }
 
 // loadAndResolveSchema loads a schema and recursively resolves all $ref entries
-func loadAndResolveSchema(filename string) (map[string]interface{}, error) {
+func loadAndResolveSchema(filename string) (map[string]any, error) {
 	// Read the main schema file
 	data, err := schema.EntitySchemas.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read schema %s: %w", filename, err)
 	}
 
-	var schemaDoc map[string]interface{}
+	var schemaDoc map[string]any
 	if err := json.Unmarshal(data, &schemaDoc); err != nil {
 		return nil, fmt.Errorf("failed to parse schema %s: %w", filename, err)
 	}
@@ -104,13 +104,13 @@ func loadAndResolveSchema(filename string) (map[string]interface{}, error) {
 
 // resolveRefs recursively walks a schema and replaces $ref with the actual schema content
 // root is the top-level schema document for resolving JSON Pointer references (#/...)
-func resolveRefs(obj interface{}) error {
+func resolveRefs(obj any) error {
 	return resolveRefsWithRoot(obj, nil)
 }
 
-func resolveRefsWithRoot(obj interface{}, root map[string]interface{}) error {
+func resolveRefsWithRoot(obj any, root map[string]any) error {
 	switch v := obj.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		// Set root to this object if it's the top level
 		if root == nil {
 			root = v
@@ -139,7 +139,7 @@ func resolveRefsWithRoot(obj interface{}, root map[string]interface{}) error {
 					return fmt.Errorf("failed to read referenced schema %s: %w", refStr, err)
 				}
 
-				var refSchema map[string]interface{}
+				var refSchema map[string]any
 				if err := json.Unmarshal(refData, &refSchema); err != nil {
 					return fmt.Errorf("failed to parse referenced schema %s: %w", refStr, err)
 				}
@@ -152,16 +152,16 @@ func resolveRefsWithRoot(obj interface{}, root map[string]interface{}) error {
 				// For vocabulary schemas, extract the actual pattern/entry definition
 				// They have structure: {"properties": {"vocab_name": {"patternProperties" or "additionalProperties": {...}}}}
 				if strings.Contains(refStr, "vocabularies/") {
-					if props, ok := refSchema["properties"].(map[string]interface{}); ok {
+					if props, ok := refSchema["properties"].(map[string]any); ok {
 						// Get the first (and only) property key
 						for _, vocabDef := range props {
-							if vocabMap, ok := vocabDef.(map[string]interface{}); ok {
+							if vocabMap, ok := vocabDef.(map[string]any); ok {
 								// Try patternProperties first (event_types, etc.)
-								if pattern, ok := vocabMap["patternProperties"].(map[string]interface{}); ok {
+								if pattern, ok := vocabMap["patternProperties"].(map[string]any); ok {
 									// Extract the pattern definition (first pattern)
 									for _, patternDef := range pattern {
 										// This is the individual entry schema - use it directly
-										if entrySchema, ok := patternDef.(map[string]interface{}); ok {
+										if entrySchema, ok := patternDef.(map[string]any); ok {
 											delete(v, "$ref")
 											for key, value := range entrySchema {
 												v[key] = value
@@ -171,7 +171,7 @@ func resolveRefsWithRoot(obj interface{}, root map[string]interface{}) error {
 									}
 								}
 								// Try additionalProperties (person_properties, etc.)
-								if addlProps, ok := vocabMap["additionalProperties"].(map[string]interface{}); ok {
+								if addlProps, ok := vocabMap["additionalProperties"].(map[string]any); ok {
 									// This might be a $ref to #/definitions/PropertyDefinition
 									// The ref has already been resolved, so use it directly
 									delete(v, "$ref")
@@ -202,7 +202,7 @@ func resolveRefsWithRoot(obj interface{}, root map[string]interface{}) error {
 			}
 		}
 
-	case []interface{}:
+	case []any:
 		// Process array elements
 		for _, item := range v {
 			if err := resolveRefsWithRoot(item, root); err != nil {
@@ -215,19 +215,19 @@ func resolveRefsWithRoot(obj interface{}, root map[string]interface{}) error {
 }
 
 // resolveJSONPointer resolves a JSON Pointer reference like #/definitions/PropertyDefinition
-func resolveJSONPointer(root map[string]interface{}, pointer string) (map[string]interface{}, error) {
+func resolveJSONPointer(root map[string]any, pointer string) (map[string]any, error) {
 	// Remove the leading #/
 	path := strings.TrimPrefix(pointer, "#/")
 	parts := strings.Split(path, "/")
 
-	current := interface{}(root)
+	current := any(root)
 	for _, part := range parts {
 		// Unescape JSON Pointer tokens
 		part = strings.ReplaceAll(part, "~1", "/")
 		part = strings.ReplaceAll(part, "~0", "~")
 
 		switch v := current.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			var ok bool
 			current, ok = v[part]
 			if !ok {
@@ -238,7 +238,7 @@ func resolveJSONPointer(root map[string]interface{}, pointer string) (map[string
 		}
 	}
 
-	result, ok := current.(map[string]interface{})
+	result, ok := current.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("pointer does not reference an object: %s", pointer)
 	}
@@ -247,7 +247,7 @@ func resolveJSONPointer(root map[string]interface{}, pointer string) (map[string
 }
 
 // ValidateGLXFileStructure validates a single GLX file against the master schema
-func ValidateGLXFileStructure(doc map[string]interface{}) []string {
+func ValidateGLXFileStructure(doc map[string]any) []string {
 	var issues []string
 
 	// Load and resolve master schema
@@ -287,7 +287,7 @@ func ValidateGLXFileStructure(doc map[string]interface{}) []string {
 	}
 
 	for _, entityType := range entityTypes {
-		if entities, ok := doc[entityType].(map[string]interface{}); ok {
+		if entities, ok := doc[entityType].(map[string]any); ok {
 			for entityID := range entities {
 				if !isValidEntityID(entityID) {
 					issues = append(issues, fmt.Sprintf("%s[%s]: invalid entity ID (must be alphanumeric/hyphens, 1-64 chars)", entityType, entityID))
@@ -304,7 +304,7 @@ func isValidEntityID(id string) bool {
 		return false
 	}
 	for _, c := range id {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-') {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && c != '-' {
 			return false
 		}
 	}
@@ -343,7 +343,10 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 	var allDuplicates []string
 
 	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
 			return nil
 		}
 		ext := filepath.Ext(d.Name())
@@ -353,14 +356,14 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		// YAML parsing
 		doc, err := ParseYAMLFile(data)
 		if err != nil {
 			// This check happens before loading, so we can just return a generic error
-			return fmt.Errorf("failed to parse YAML file %s: %v", path, err)
+			return fmt.Errorf("failed to parse YAML file %s: %w", path, err)
 		}
 
 		// Structural validation against master schema
@@ -370,9 +373,7 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 			// The CLI will handle collecting errors from all files.
 			// For now, returning an error is sufficient to stop the process.
 			errorMessages := make([]string, len(issues))
-			for i, issue := range issues {
-				errorMessages[i] = issue
-			}
+			copy(errorMessages, issues)
 			return fmt.Errorf("validation of file %s failed:\n- %s", path, strings.Join(errorMessages, "\n- "))
 		}
 
@@ -380,7 +381,7 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 		err = yaml.Unmarshal(data, &glxFile)
 		if err != nil {
 			// This should not happen if parsing and structural validation passed
-			return nil
+			return err
 		}
 
 		duplicates := merged.Merge(&glxFile)

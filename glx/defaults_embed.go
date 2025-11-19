@@ -21,4 +21,3 @@ var defaultGitignore []byte
 
 //go:embed defaults/README.md
 var defaultReadme []byte
-

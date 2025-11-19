@@ -24,11 +24,11 @@ import (
 )
 
 var (
-	importOutput          string
-	importFormat          string
-	importNoValidate      bool
-	importNoVocabularies  bool
-	importVerbose         bool
+	importOutput         string
+	importFormat         string
+	importNoValidate     bool
+	importNoVocabularies bool
+	importVerbose        bool
 )
 
 var importCmd = &cobra.Command{
@@ -76,7 +76,7 @@ func init() {
 	importCmd.Flags().BoolVar(&importNoVocabularies, "no-vocabularies", false, "Don't include standard vocabularies")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 
-	importCmd.MarkFlagRequired("output")
+	_ = importCmd.MarkFlagRequired("output")
 }
 
 func runImport(cmd *cobra.Command, args []string) error {
@@ -102,7 +102,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open GEDCOM file: %w", err)
 	}
-	defer gedcomFile.Close()
+	defer func() { _ = gedcomFile.Close() }()
 
 	// Import GEDCOM from reader
 	glx, _, err := lib.ImportGEDCOM(gedcomFile, "")

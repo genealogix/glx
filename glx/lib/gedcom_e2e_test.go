@@ -517,16 +517,16 @@ func TestE2E_AllFilesHaveRequiredStructure(t *testing.T) {
 			}
 
 			// Vocabularies loaded
-			if glx.EventTypes == nil || len(glx.EventTypes) == 0 {
+			if len(glx.EventTypes) == 0 {
 				t.Error("Event types vocabulary not loaded")
 			}
-			if glx.RelationshipTypes == nil || len(glx.RelationshipTypes) == 0 {
+			if len(glx.RelationshipTypes) == 0 {
 				t.Error("Relationship types vocabulary not loaded")
 			}
-			if glx.ParticipantRoles == nil || len(glx.ParticipantRoles) == 0 {
+			if len(glx.ParticipantRoles) == 0 {
 				t.Error("Participant roles vocabulary not loaded")
 			}
-			if glx.ConfidenceLevels == nil || len(glx.ConfidenceLevels) == 0 {
+			if len(glx.ConfidenceLevels) == 0 {
 				t.Error("Confidence levels vocabulary not loaded")
 			}
 

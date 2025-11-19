@@ -94,7 +94,7 @@ func (s *DefaultSerializer) SerializeSingleFile(glx *GLXFile, outputPath string)
 	}
 
 	// Write to file
-	if err := os.WriteFile(outputPath, yamlBytes, 0644); err != nil {
+	if err := os.WriteFile(outputPath, yamlBytes, 0o644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -129,7 +129,7 @@ func (s *DefaultSerializer) SerializeMultiFile(glx *GLXFile, outputDir string) e
 	}
 
 	// Create output directory
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -176,7 +176,7 @@ func (s *DefaultSerializer) SerializeMultiFile(glx *GLXFile, outputDir string) e
 func (s *DefaultSerializer) writeEntities(entities any, outputDir, dirName, entityType string) error {
 	// Create entity directory
 	entityDir := filepath.Join(outputDir, dirName)
-	if err := os.MkdirAll(entityDir, 0755); err != nil {
+	if err := os.MkdirAll(entityDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create %s directory: %w", dirName, err)
 	}
 
@@ -276,7 +276,7 @@ func writeEntitiesWithID[T any](entities map[string]T, dir, entityType string) e
 
 		// Write file
 		filepath := filepath.Join(dir, filename)
-		if err := os.WriteFile(filepath, yamlBytes, 0644); err != nil {
+		if err := os.WriteFile(filepath, yamlBytes, 0o644); err != nil {
 			return fmt.Errorf("failed to write %s: %w", filepath, err)
 		}
 	}

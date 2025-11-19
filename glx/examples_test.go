@@ -68,8 +68,10 @@ func TestExamples(t *testing.T) {
 			require.NoError(t, err, "failed to parse YAML in %s", file)
 
 			// Validate entity structure - only check entity type keys
-			entityKeys := map[string]bool{"persons": true, "relationships": true, "events": true, "places": true,
-				"sources": true, "citations": true, "repositories": true, "assertions": true, "media": true}
+			entityKeys := map[string]bool{
+				"persons": true, "relationships": true, "events": true, "places": true,
+				"sources": true, "citations": true, "repositories": true, "assertions": true, "media": true,
+			}
 
 			for pluralKey, entities := range doc {
 				// Only validate entity keys (vocabularies are ignored)
@@ -77,9 +79,9 @@ func TestExamples(t *testing.T) {
 					continue
 				}
 
-				if entityMap, ok := entities.(map[string]interface{}); ok {
+				if entityMap, ok := entities.(map[string]any); ok {
 					for entityID, entityData := range entityMap {
-						if entity, ok := entityData.(map[string]interface{}); ok {
+						if entity, ok := entityData.(map[string]any); ok {
 							// Check no 'id' field
 							if _, hasID := entity["id"]; hasID {
 								t.Errorf("%s: %s[%s] must not have 'id' field - the map key is the ID", file, pluralKey, entityID)
@@ -226,21 +228,21 @@ func TestExamplesValidation(t *testing.T) {
 			archive, duplicates, err := LoadArchive(examplePath)
 			require.NoError(t, err)
 
-		// Check for duplicate IDs
-		assert.Empty(t, duplicates, "example %s should not have duplicate entity IDs", example)
+			// Check for duplicate IDs
+			assert.Empty(t, duplicates, "example %s should not have duplicate entity IDs", example)
 
-		// Validate the merged archive using new validation system
-		result := archive.Validate()
-		
-		// Collect all errors and warnings
-		var allRefIssues []string
-		for _, err := range result.Errors {
-			allRefIssues = append(allRefIssues, err.Message)
-		}
-		for _, warn := range result.Warnings {
-			allRefIssues = append(allRefIssues, warn.Message)
-		}
-		assert.Empty(t, allRefIssues, "example %s should not have validation issues: %v", example, allRefIssues)
+			// Validate the merged archive using new validation system
+			result := archive.Validate()
+
+			// Collect all errors and warnings
+			var allRefIssues []string
+			for _, err := range result.Errors {
+				allRefIssues = append(allRefIssues, err.Message)
+			}
+			for _, warn := range result.Warnings {
+				allRefIssues = append(allRefIssues, warn.Message)
+			}
+			assert.Empty(t, allRefIssues, "example %s should not have validation issues: %v", example, allRefIssues)
 		})
 	}
 }

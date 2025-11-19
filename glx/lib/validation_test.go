@@ -52,7 +52,7 @@ func TestValidatePropertyReferences(t *testing.T) {
 	t.Run("valid property reference", func(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{
-				"person-1": {Properties: map[string]interface{}{"birth_place": "place-1"}},
+				"person-1": {Properties: map[string]any{"birth_place": "place-1"}},
 			},
 			Places: map[string]*Place{"place-1": {Name: "Test Place"}},
 			PersonProperties: map[string]*PropertyDefinition{
@@ -66,7 +66,7 @@ func TestValidatePropertyReferences(t *testing.T) {
 	t.Run("invalid property reference", func(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{
-				"person-1": {Properties: map[string]interface{}{"birth_place": "place-nonexistent"}},
+				"person-1": {Properties: map[string]any{"birth_place": "place-nonexistent"}},
 			},
 			Places: map[string]*Place{},
 			PersonProperties: map[string]*PropertyDefinition{
@@ -88,7 +88,7 @@ func TestValidatePropertyWarnings(t *testing.T) {
 	t.Run("unknown property", func(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{
-				"person-1": {Properties: map[string]interface{}{"shoe_size": 42}},
+				"person-1": {Properties: map[string]any{"shoe_size": 42}},
 			},
 			PersonProperties: map[string]*PropertyDefinition{
 				"birth_place": {ReferenceType: "places"},
@@ -107,7 +107,7 @@ func TestValidatePropertyWarnings(t *testing.T) {
 	t.Run("missing property vocabulary", func(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{
-				"person-1": {Properties: map[string]interface{}{"shoe_size": 42}},
+				"person-1": {Properties: map[string]any{"shoe_size": 42}},
 			},
 		}
 		result := archive.Validate()
@@ -500,10 +500,10 @@ func TestValidateTemporalPropertyReferences(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{
 				"person-1": {
-					Properties: map[string]interface{}{
-						"residence": []interface{}{
-							map[string]interface{}{"value": "place-1", "date": "1900"},
-							map[string]interface{}{"value": "place-2", "date": "1910"},
+					Properties: map[string]any{
+						"residence": []any{
+							map[string]any{"value": "place-1", "date": "1900"},
+							map[string]any{"value": "place-2", "date": "1910"},
 						},
 					},
 				},
@@ -524,10 +524,10 @@ func TestValidateTemporalPropertyReferences(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{
 				"person-1": {
-					Properties: map[string]interface{}{
-						"residence": []interface{}{
-							map[string]interface{}{"value": "place-1", "date": "1900"},
-							map[string]interface{}{"value": "place-missing", "date": "1910"},
+					Properties: map[string]any{
+						"residence": []any{
+							map[string]any{"value": "place-1", "date": "1900"},
+							map[string]any{"value": "place-missing", "date": "1910"},
 						},
 					},
 				},
@@ -552,11 +552,11 @@ func TestValidateTemporalPropertyReferences(t *testing.T) {
 func TestValidateAllVocabularyTypes(t *testing.T) {
 	t.Run("all vocabulary types valid", func(t *testing.T) {
 		archive := &GLXFile{
-			Events: map[string]*Event{"event-1": {Type: "birth"}},
+			Events:        map[string]*Event{"event-1": {Type: "birth"}},
 			Relationships: map[string]*Relationship{"rel-1": {Type: "spouse"}},
-			Places: map[string]*Place{"place-1": {Name: "Test", Type: "city"}},
-			Sources: map[string]*Source{"source-1": {Title: "Test", Type: "book"}},
-			Repositories: map[string]*Repository{"repo-1": {Name: "Test", Type: "library"}},
+			Places:        map[string]*Place{"place-1": {Name: "Test", Type: "city"}},
+			Sources:       map[string]*Source{"source-1": {Title: "Test", Type: "book"}},
+			Repositories:  map[string]*Repository{"repo-1": {Name: "Test", Type: "library"}},
 			Assertions: map[string]*Assertion{
 				"assert-1": {Subject: "event-1", Confidence: "high"},
 			},

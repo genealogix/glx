@@ -33,7 +33,7 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 	// Create source entity
 	source := &Source{
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	var notes []string

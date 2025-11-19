@@ -6,7 +6,7 @@ import (
 
 // TestRunValidate_TemporalPropertiesValid tests valid temporal property usage
 func TestRunValidate_TemporalPropertiesValid(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name string
 		path string
 	}{

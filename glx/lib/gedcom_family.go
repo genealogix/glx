@@ -24,7 +24,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	defer func() {
 		if r := recover(); r != nil {
 			ctx.Logger.LogException(famRecord.Line, "FAM", famRecord.XRef, "convertFamily",
-				fmt.Errorf("panic: %v", r), map[string]interface{}{
+				fmt.Errorf("panic: %v", r), map[string]any{
 					"record": famRecord,
 				})
 		}
@@ -87,7 +87,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		relationship := &Relationship{
 			Type:       RelationshipTypeMarriage,
 			Persons:    []string{husbandID, wifeID},
-			Properties: make(map[string]interface{}),
+			Properties: make(map[string]any),
 		}
 
 		// Extract citations from FAM record itself
@@ -130,7 +130,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			relationship := &Relationship{
 				Type:       RelationshipTypeParentChild,
 				Persons:    []string{parentID, childID},
-				Properties: make(map[string]interface{}),
+				Properties: make(map[string]any),
 			}
 
 			ctx.GLX.Relationships[relationshipID] = relationship
@@ -147,7 +147,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 
 	event := &Event{
 		Type:       EventTypeMarriage,
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	// Extract event details
@@ -253,7 +253,7 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 
 	event := &Event{
 		Type:       EventTypeDivorce,
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	// Extract event details
@@ -333,7 +333,7 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 
 	event := &Event{
 		Type:       eventType,
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 
 	// Extract event details

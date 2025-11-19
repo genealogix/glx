@@ -2,7 +2,6 @@ package v1
 
 import (
 	"embed"
-	_ "embed"
 )
 
 // EntitySchemas contains all schema files including vocabularies

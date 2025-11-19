@@ -76,8 +76,8 @@ func (glx *GLXFile) buildPropertyVocabMaps(result *ValidationResult) {
 	result.PropertyVocabs[PropPlaceProperties] = glx.PlaceProperties
 }
 
-// buildIDSet is a helper function that creates a set of IDs from a map[string]interface{}.
-func buildIDSet(m interface{}) map[string]struct{} {
+// buildIDSet is a helper function that creates a set of IDs from a map[string]any.
+func buildIDSet(m any) map[string]struct{} {
 	set := make(map[string]struct{})
 	val := reflect.ValueOf(m)
 	if val.Kind() != reflect.Map {
@@ -105,7 +105,7 @@ func (glx *GLXFile) validateAllReferences(result *ValidationResult) {
 // validateEntityTypeReferences validates all entities of a given type.
 func (glx *GLXFile) validateEntityTypeReferences(
 	entityType string,
-	entities interface{},
+	entities any,
 	result *ValidationResult,
 ) {
 	entitiesVal := reflect.ValueOf(entities)
@@ -243,7 +243,7 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 // validateEntityProperties iterates over entities and validates their properties.
 func (glx *GLXFile) validateEntityProperties(
 	entityType string,
-	entities interface{},
+	entities any,
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
@@ -258,7 +258,7 @@ func (glx *GLXFile) validateEntityProperties(
 		if !propsField.IsValid() || propsField.IsNil() {
 			continue
 		}
-		if properties, ok := propsField.Interface().(map[string]interface{}); ok {
+		if properties, ok := propsField.Interface().(map[string]any); ok {
 			glx.validateProperties(entityType, entityID, properties, propVocab, result)
 		}
 	}
@@ -267,7 +267,7 @@ func (glx *GLXFile) validateEntityProperties(
 // validateProperties validates a single `properties` map against its vocabulary.
 func (glx *GLXFile) validateProperties(
 	entityType, entityID string,
-	properties map[string]interface{},
+	properties map[string]any,
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
@@ -302,7 +302,7 @@ func (glx *GLXFile) validateProperties(
 // validatePropertyReference validates a property value that is an entity reference.
 func (glx *GLXFile) validatePropertyReference(
 	entityType, entityID, propName string,
-	propValue interface{},
+	propValue any,
 	referenceType string,
 	result *ValidationResult,
 ) {
@@ -320,9 +320,9 @@ func (glx *GLXFile) validatePropertyReference(
 		}
 		return
 	}
-	if valueList, ok := propValue.([]interface{}); ok {
+	if valueList, ok := propValue.([]any); ok {
 		for i, item := range valueList {
-			if itemMap, ok := item.(map[string]interface{}); ok {
+			if itemMap, ok := item.(map[string]any); ok {
 				if refID, ok := itemMap["value"].(string); ok {
 					if _, exists := result.Entities[referenceType][refID]; !exists {
 						result.Errors = append(result.Errors, ValidationError{
@@ -345,7 +345,7 @@ func (glx *GLXFile) validatePropertyReference(
 // For temporal properties, it accepts either a simple value OR a list of {value, date} objects.
 func (glx *GLXFile) validatePropertyValue(
 	entityType, entityID, propName string,
-	propValue interface{},
+	propValue any,
 	propDef *PropertyDefinition,
 	result *ValidationResult,
 ) {
@@ -354,7 +354,7 @@ func (glx *GLXFile) validatePropertyValue(
 	// Handle non-temporal properties: must be simple value
 	if !isTemporal {
 		// For non-temporal properties, value should NOT be a list
-		if _, isList := propValue.([]interface{}); isList {
+		if _, isList := propValue.([]any); isList {
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,
 				SourceID:   entityID,
@@ -378,7 +378,7 @@ func (glx *GLXFile) validatePropertyValue(
 	}
 
 	// Must be a list for temporal properties with complex values
-	valueList, isList := propValue.([]interface{})
+	valueList, isList := propValue.([]any)
 	if !isList {
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			SourceType: entityType,
@@ -392,7 +392,7 @@ func (glx *GLXFile) validatePropertyValue(
 
 	// Validate each item in the temporal list has {value, date} structure
 	for i, item := range valueList {
-		itemMap, isMap := item.(map[string]interface{})
+		itemMap, isMap := item.(map[string]any)
 		if !isMap {
 			result.Errors = append(result.Errors, ValidationError{
 				SourceType:  entityType,
@@ -520,7 +520,7 @@ func isDigits(s string) bool {
 }
 
 // validateValueType validates a value against its declared value_type
-func (glx *GLXFile) validateValueType(entityType, entityID, field string, value interface{}, valueType string, result *ValidationResult) {
+func (glx *GLXFile) validateValueType(entityType, entityID, field string, value any, valueType string, result *ValidationResult) {
 	switch valueType {
 	case "string":
 		if _, ok := value.(string); !ok {

@@ -27,7 +27,7 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	defer func() {
 		if r := recover(); r != nil {
 			ctx.Logger.LogException(objeRecord.Line, "OBJE", objeRecord.XRef, "convertMedia",
-				fmt.Errorf("panic: %v", r), map[string]interface{}{
+				fmt.Errorf("panic: %v", r), map[string]any{
 					"record": objeRecord,
 				})
 		}
@@ -317,8 +317,8 @@ func mapFormatToMimeType(format string) string {
 }
 
 // extractCrop extracts GEDCOM 7.0 crop coordinates
-func extractCrop(cropRecord *GEDCOMRecord) map[string]interface{} {
-	crop := make(map[string]interface{})
+func extractCrop(cropRecord *GEDCOMRecord) map[string]any {
+	crop := make(map[string]any)
 
 	for _, sub := range cropRecord.SubRecords {
 		switch sub.Tag {

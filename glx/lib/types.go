@@ -134,9 +134,9 @@ type ValidationWarning struct {
 
 // Person represents an individual in the family archive.
 type Person struct {
-	Properties map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes      string                 `yaml:"notes,omitempty"`
-	Tags       []string               `yaml:"tags,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes      string         `yaml:"notes,omitempty"`
+	Tags       []string       `yaml:"tags,omitempty"`
 }
 
 // Relationship represents a relationship between two or more people.
@@ -146,7 +146,7 @@ type Relationship struct {
 	Participants []RelationshipParticipant `yaml:"participants,omitempty"`
 	StartEvent   string                    `yaml:"start_event,omitempty" refType:"events"`
 	EndEvent     string                    `yaml:"end_event,omitempty" refType:"events"`
-	Properties   map[string]interface{}    `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Properties   map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Description  string                    `yaml:"description,omitempty"`
 	Notes        string                    `yaml:"notes,omitempty"`
 	Tags         []string                  `yaml:"tags,omitempty"`
@@ -160,15 +160,15 @@ type RelationshipParticipant struct {
 
 // Event represents a genealogical event.
 type Event struct {
-	Type         string                 `yaml:"type" refType:"event_types"`
-	PlaceID      string                 `yaml:"place,omitempty" refType:"places"`
-	Value        string                 `yaml:"value,omitempty"`
-	Date         interface{}            `yaml:"date,omitempty"` // Can be string or EventDate struct
-	Participants []EventParticipant     `yaml:"participants,omitempty"`
-	Properties   map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Description  string                 `yaml:"description,omitempty"`
-	Notes        string                 `yaml:"notes,omitempty"`
-	Tags         []string               `yaml:"tags,omitempty"`
+	Type         string             `yaml:"type" refType:"event_types"`
+	PlaceID      string             `yaml:"place,omitempty" refType:"places"`
+	Value        string             `yaml:"value,omitempty"`
+	Date         any                `yaml:"date,omitempty"` // Can be string or EventDate struct
+	Participants []EventParticipant `yaml:"participants,omitempty"`
+	Properties   map[string]any     `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Description  string             `yaml:"description,omitempty"`
+	Notes        string             `yaml:"notes,omitempty"`
+	Tags         []string           `yaml:"tags,omitempty"`
 }
 
 // EventDate can be a simple string or a date range.
@@ -187,15 +187,15 @@ type EventParticipant struct {
 
 // Place represents a geographical location.
 type Place struct {
-	Name             string                 `yaml:"name"`
-	ParentID         string                 `yaml:"parent,omitempty" refType:"places"`
-	Type             string                 `yaml:"type,omitempty" refType:"place_types"`
-	AlternativeNames []AlternativeName      `yaml:"alternative_names,omitempty"`
-	Latitude         *float64               `yaml:"latitude,omitempty"`
-	Longitude        *float64               `yaml:"longitude,omitempty"`
-	Properties       map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes            string                 `yaml:"notes,omitempty"`
-	Tags             []string               `yaml:"tags,omitempty"`
+	Name             string            `yaml:"name"`
+	ParentID         string            `yaml:"parent,omitempty" refType:"places"`
+	Type             string            `yaml:"type,omitempty" refType:"place_types"`
+	AlternativeNames []AlternativeName `yaml:"alternative_names,omitempty"`
+	Latitude         *float64          `yaml:"latitude,omitempty"`
+	Longitude        *float64          `yaml:"longitude,omitempty"`
+	Properties       map[string]any    `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes            string            `yaml:"notes,omitempty"`
+	Tags             []string          `yaml:"tags,omitempty"`
 }
 
 // AlternativeName is a historical or alternative name for a place.
@@ -214,32 +214,32 @@ type DateRange struct {
 
 // Source represents a source of information.
 type Source struct {
-	Title           string                 `yaml:"title"`
-	Type            string                 `yaml:"type,omitempty" refType:"source_types"`
-	Authors         []string               `yaml:"authors,omitempty"`
-	Date            string                 `yaml:"date,omitempty"`
-	Description     string                 `yaml:"description,omitempty"`
-	RepositoryID    string                 `yaml:"repository,omitempty" refType:"repositories"`
-	PublicationInfo string                 `yaml:"publication_info,omitempty"`
-	Properties      map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes           string                 `yaml:"notes,omitempty"`
-	Media           []string               `yaml:"media,omitempty" refType:"media"`
-	Tags            []string               `yaml:"tags,omitempty"`
+	Title           string         `yaml:"title"`
+	Type            string         `yaml:"type,omitempty" refType:"source_types"`
+	Authors         []string       `yaml:"authors,omitempty"`
+	Date            string         `yaml:"date,omitempty"`
+	Description     string         `yaml:"description,omitempty"`
+	RepositoryID    string         `yaml:"repository,omitempty" refType:"repositories"`
+	PublicationInfo string         `yaml:"publication_info,omitempty"`
+	Properties      map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes           string         `yaml:"notes,omitempty"`
+	Media           []string       `yaml:"media,omitempty" refType:"media"`
+	Tags            []string       `yaml:"tags,omitempty"`
 }
 
 // Citation represents a citation of a source.
 type Citation struct {
-	SourceID       string                 `yaml:"source,omitempty" refType:"sources"`
-	Page           string                 `yaml:"page,omitempty"`
-	TextFromSource string                 `yaml:"text_from_source,omitempty"`
-	Transcription  string                 `yaml:"transcription,omitempty"`
-	Quality        *int                   `yaml:"quality,omitempty" refType:"quality_ratings"`
-	Locator        interface{}            `yaml:"locator,omitempty"` // Can be string or Locator struct
-	RepositoryID   string                 `yaml:"repository,omitempty" refType:"repositories"`
-	Properties     map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Media          []string               `yaml:"media,omitempty" refType:"media"`
-	Notes          string                 `yaml:"notes,omitempty"`
-	Tags           []string               `yaml:"tags,omitempty"`
+	SourceID       string         `yaml:"source,omitempty" refType:"sources"`
+	Page           string         `yaml:"page,omitempty"`
+	TextFromSource string         `yaml:"text_from_source,omitempty"`
+	Transcription  string         `yaml:"transcription,omitempty"`
+	Quality        *int           `yaml:"quality,omitempty" refType:"quality_ratings"`
+	Locator        any            `yaml:"locator,omitempty"` // Can be string or Locator struct
+	RepositoryID   string         `yaml:"repository,omitempty" refType:"repositories"`
+	Properties     map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Media          []string       `yaml:"media,omitempty" refType:"media"`
+	Notes          string         `yaml:"notes,omitempty"`
+	Tags           []string       `yaml:"tags,omitempty"`
 }
 
 // Locator provides structured information for finding a source.
@@ -254,33 +254,33 @@ type Locator struct {
 
 // Repository represents a repository where sources are held.
 type Repository struct {
-	Name       string                 `yaml:"name"`
-	Type       string                 `yaml:"type,omitempty" refType:"repository_types"`
-	Address    string                 `yaml:"address,omitempty"`
-	City       string                 `yaml:"city,omitempty"`
-	State      string                 `yaml:"state_province,omitempty"`
-	PostalCode string                 `yaml:"postal_code,omitempty"`
-	Country    string                 `yaml:"country,omitempty"`
-	Phone      string                 `yaml:"phone,omitempty"`
-	Email      string                 `yaml:"email,omitempty"`
-	Website    string                 `yaml:"website,omitempty"`
-	Properties map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes      string                 `yaml:"notes,omitempty"`
-	Tags       []string               `yaml:"tags,omitempty"`
+	Name       string         `yaml:"name"`
+	Type       string         `yaml:"type,omitempty" refType:"repository_types"`
+	Address    string         `yaml:"address,omitempty"`
+	City       string         `yaml:"city,omitempty"`
+	State      string         `yaml:"state_province,omitempty"`
+	PostalCode string         `yaml:"postal_code,omitempty"`
+	Country    string         `yaml:"country,omitempty"`
+	Phone      string         `yaml:"phone,omitempty"`
+	Email      string         `yaml:"email,omitempty"`
+	Website    string         `yaml:"website,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes      string         `yaml:"notes,omitempty"`
+	Tags       []string       `yaml:"tags,omitempty"`
 }
 
 // Assertion represents a conclusion made by a researcher.
 type Assertion struct {
-	Subject     string                 `yaml:"subject" refType:"persons,events,relationships,places"`
-	Claim       string                 `yaml:"claim,omitempty"`       // Optional, not present if participant exists
-	Value       string                 `yaml:"value,omitempty"`       // Not present if participant exists
-	Participant *AssertionParticipant  `yaml:"participant,omitempty"` // Not present if value exists
-	Confidence  string                 `yaml:"confidence,omitempty" refType:"confidence_levels"`
-	Sources     []string               `yaml:"sources,omitempty" refType:"sources"`
-	Citations   []string               `yaml:"citations,omitempty" refType:"citations"`
-	Properties  map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes       string                 `yaml:"notes,omitempty"`
-	Tags        []string               `yaml:"tags,omitempty"`
+	Subject     string                `yaml:"subject" refType:"persons,events,relationships,places"`
+	Claim       string                `yaml:"claim,omitempty"`       // Optional, not present if participant exists
+	Value       string                `yaml:"value,omitempty"`       // Not present if participant exists
+	Participant *AssertionParticipant `yaml:"participant,omitempty"` // Not present if value exists
+	Confidence  string                `yaml:"confidence,omitempty" refType:"confidence_levels"`
+	Sources     []string              `yaml:"sources,omitempty" refType:"sources"`
+	Citations   []string              `yaml:"citations,omitempty" refType:"citations"`
+	Properties  map[string]any        `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes       string                `yaml:"notes,omitempty"`
+	Tags        []string              `yaml:"tags,omitempty"`
 }
 
 // AssertionParticipant represents a participant in an assertion (used for participant-based claims).
@@ -292,13 +292,13 @@ type AssertionParticipant struct {
 
 // Media represents a media object, like a photo or document.
 type Media struct {
-	URI        string                 `yaml:"uri"`
-	MimeType   string                 `yaml:"mime_type,omitempty"`
-	Hash       string                 `yaml:"hash,omitempty"`
-	Title      string                 `yaml:"title,omitempty"`
-	Properties map[string]interface{} `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes      string                 `yaml:"notes,omitempty"`
-	Tags       []string               `yaml:"tags,omitempty"`
+	URI        string         `yaml:"uri"`
+	MimeType   string         `yaml:"mime_type,omitempty"`
+	Hash       string         `yaml:"hash,omitempty"`
+	Title      string         `yaml:"title,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes      string         `yaml:"notes,omitempty"`
+	Tags       []string       `yaml:"tags,omitempty"`
 }
 
 // ============================================================================
@@ -394,8 +394,8 @@ type PropertyDefinition struct {
 // TemporalValue represents a single entry in the history of a temporal property.
 // It is used when a temporal property is represented as a list.
 type TemporalValue struct {
-	Value interface{} `yaml:"value"`
-	Date  string      `yaml:"date,omitempty"` // FamilySearch normalized date string
+	Value any    `yaml:"value"`
+	Date  string `yaml:"date,omitempty"` // FamilySearch normalized date string
 }
 
 // Merge combines another GLXFile into this one, returning duplicate IDs as errors.

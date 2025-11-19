@@ -94,7 +94,7 @@ func TestRunInit_NonEmptyDirectory(t *testing.T) {
 
 	// Create a dummy file to make the directory non-empty
 	dummyFile := filepath.Join(tmpDir, "dummy.txt")
-	err := os.WriteFile(dummyFile, []byte("hello"), 0644)
+	err := os.WriteFile(dummyFile, []byte("hello"), 0o644)
 	require.NoError(t, err)
 
 	// Now, try to initialize in the non-empty directory
@@ -133,7 +133,7 @@ func TestCreateStandardVocabularies(t *testing.T) {
 	defer os.Chdir(originalDir)
 
 	// Create vocabularies directory first
-	err = os.MkdirAll("vocabularies", 0755)
+	err = os.MkdirAll("vocabularies", 0o755)
 	require.NoError(t, err)
 
 	err = createStandardVocabularies()

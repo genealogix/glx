@@ -118,7 +118,7 @@ func TestGEDCOMToMultiFileRoundTrip(t *testing.T) {
 
 			// Step 2: Serialize to multi-file GLX
 			tempDir := filepath.Join(t.TempDir(), "archive")
-			err = os.MkdirAll(tempDir, 0755)
+			err = os.MkdirAll(tempDir, 0o755)
 			require.NoError(t, err, "Failed to create temp directory")
 
 			// Create serializer with vocabularies included
@@ -192,7 +192,7 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 
 			// Step 3: Split to multi-file
 			multiDir := filepath.Join(t.TempDir(), "archive-multi")
-			err = os.MkdirAll(multiDir, 0755)
+			err = os.MkdirAll(multiDir, 0o755)
 			require.NoError(t, err, "Failed to create multi-file directory")
 
 			glx2, err := serializer.LoadSingleFile(singleFile1)
@@ -276,7 +276,7 @@ func TestVocabularyPreservation(t *testing.T) {
 
 	t.Run("Multi-file preservation", func(t *testing.T) {
 		tempDir := filepath.Join(t.TempDir(), "archive")
-		err := os.MkdirAll(tempDir, 0755)
+		err := os.MkdirAll(tempDir, 0o755)
 		require.NoError(t, err, "Failed to create temp directory")
 
 		// Create serializer with vocabularies included

@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	initSingleFile  bool
+	initSingleFile bool
 	createTestData int
 )
 
@@ -84,7 +84,7 @@ func runInit(targetDir string, singleFile bool, numTestData int) error {
 	}
 
 	// Create the directory if it doesn't exist
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
 	}
 
@@ -113,8 +113,8 @@ repositories: {}
 assertions: {}
 media: {}
 `
-		if err := os.WriteFile("archive.glx", []byte(template), 0644); err != nil {
-			return fmt.Errorf("failed to create archive.glx: %v", err)
+		if err := os.WriteFile("archive.glx", []byte(template), 0o644); err != nil {
+			return fmt.Errorf("failed to create archive.glx: %w", err)
 		}
 
 		fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
@@ -138,8 +138,8 @@ media: {}
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %v", dir, err)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
 
@@ -149,23 +149,23 @@ media: {}
 	}
 
 	// Create .gitignore file
-	if err := os.WriteFile(".gitignore", defaultGitignore, 0644); err != nil {
-		return fmt.Errorf("failed to create .gitignore: %v", err)
+	if err := os.WriteFile(".gitignore", defaultGitignore, 0o644); err != nil {
+		return fmt.Errorf("failed to create .gitignore: %w", err)
 	}
 
 	// Create README.md for the repository
-	if err := os.WriteFile("README.md", defaultReadme, 0644); err != nil {
-		return fmt.Errorf("failed to create README.md: %v", err)
+	if err := os.WriteFile("README.md", defaultReadme, 0o644); err != nil {
+		return fmt.Errorf("failed to create README.md: %w", err)
 	}
 
 	if numTestData > 0 {
 		fmt.Printf("Generating test data for %d persons...\n", numTestData)
 		testData, err := lib.GenerateTestData(numTestData)
 		if err != nil {
-			return fmt.Errorf("failed to generate test data: %v", err)
+			return fmt.Errorf("failed to generate test data: %w", err)
 		}
 		if err := writeTestData(testData); err != nil {
-			return fmt.Errorf("failed to write test data: %v", err)
+			return fmt.Errorf("failed to write test data: %w", err)
 		}
 		fmt.Println("Test data generated successfully.")
 	}
@@ -191,7 +191,7 @@ func isDirectoryEmpty(path string) error {
 	if err != nil {
 		return fmt.Errorf("could not check directory: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Read exactly one directory entry.
 	// Readdirnames will return an error if the directory is empty.
@@ -205,7 +205,7 @@ func isDirectoryEmpty(path string) error {
 }
 
 func writeTestData(data *lib.GLXFile) error {
-	entityTypes := map[string]map[string]interface{}{
+	entityTypes := map[string]map[string]any{
 		"persons":       mustMarshal(data.Persons),
 		"relationships": mustMarshal(data.Relationships),
 		"events":        mustMarshal(data.Events),
@@ -220,8 +220,8 @@ func writeTestData(data *lib.GLXFile) error {
 	for dir, entities := range entityTypes {
 		for id, entity := range entities {
 			fileName := filepath.Join(dir, fmt.Sprintf("%s.glx", id))
-			fileContent := map[string]interface{}{
-				dir: map[string]interface{}{
+			fileContent := map[string]any{
+				dir: map[string]any{
 					id: entity,
 				},
 			}
@@ -229,7 +229,7 @@ func writeTestData(data *lib.GLXFile) error {
 			if err != nil {
 				return fmt.Errorf("failed to marshal %s: %w", id, err)
 			}
-			if err := os.WriteFile(fileName, yamlData, 0644); err != nil {
+			if err := os.WriteFile(fileName, yamlData, 0o644); err != nil {
 				return fmt.Errorf("failed to write file %s: %w", fileName, err)
 			}
 		}
@@ -237,14 +237,14 @@ func writeTestData(data *lib.GLXFile) error {
 	return nil
 }
 
-func mustMarshal(v interface{}) map[string]interface{} {
-	// A bit of a hack to convert struct to map[string]interface{}
+func mustMarshal(v any) map[string]any {
+	// A bit of a hack to convert struct to map[string]any
 	// for easy file writing.
 	data, err := yaml.Marshal(v)
 	if err != nil {
 		panic(err)
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := yaml.Unmarshal(data, &m); err != nil {
 		panic(err)
 	}
