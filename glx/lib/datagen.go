@@ -83,11 +83,9 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		}
 
 		glxFile.Events[eventID] = &Event{
-			Type:    "birth",
-			PlaceID: placeID,
-			Date: &EventDate{
-				Value: birthDate.Format("2006-01-02"),
-			},
+			Type:         "birth",
+			PlaceID:      placeID,
+			Date:         birthDate.Format("2006-01-02"),
 			Participants: participants,
 		}
 

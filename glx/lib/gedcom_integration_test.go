@@ -85,25 +85,29 @@ func TestImportShakespeare(t *testing.T) {
 
 func TestParseGEDCOMDate(t *testing.T) {
 	tests := []struct {
+		name     string
 		input    string
 		expected string
 	}{
-		{"1 JAN 1900", "1900-01-01"},
-		{"JAN 1900", "1900-01"},
-		{"1900", "1900"},
-		{"ABT 1900", "1900"},
-		{"BEF 15 JAN 1900", "1900-01-15"},
-		{"AFT 1900", "1900"},
-		{"BET 1900 AND 1910", "1900/1910"},
-		{"FROM 1900 TO 1910", "1900/1910"},
-		{"", ""},
+		{"exact date with day", "1 JAN 1900", "1900-01-01"},
+		{"exact date month/year", "JAN 1900", "1900-01"},
+		{"exact date year only", "1900", "1900"},
+		{"about date", "ABT 1900", "ABT 1900"},
+		{"before date", "BEF 15 JAN 1900", "BEF 1900-01-15"},
+		{"after date", "AFT 1900", "AFT 1900"},
+		{"calculated date", "CAL 1900", "CAL 1900"},
+		{"between range", "BET 1900 AND 1910", "BET 1900 AND 1910"},
+		{"from-to range", "FROM 1900 TO 1910", "FROM 1900 TO 1910"},
+		{"empty string", "", ""},
 	}
 
 	for _, tt := range tests {
-		result := parseGEDCOMDate(tt.input)
-		if result != tt.expected {
-			t.Errorf("parseGEDCOMDate(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseGEDCOMDate(tt.input)
+			if result != tt.expected {
+				t.Errorf("parseGEDCOMDate(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
 	}
 }
 

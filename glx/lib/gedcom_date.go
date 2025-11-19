@@ -27,8 +27,9 @@ var monthMap = map[string]int{
 	"JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
 }
 
-// parseGEDCOMDate parses a GEDCOM date string to ISO 8601 format
+// parseGEDCOMDate parses a GEDCOM date string to GLX format
 // Handles: exact dates, ranges, qualifiers (ABT, BEF, AFT, etc.)
+// Returns: string in GLX format (e.g., "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890")
 func parseGEDCOMDate(gedcomDate string) string {
 	if gedcomDate == "" {
 		return ""
@@ -36,7 +37,7 @@ func parseGEDCOMDate(gedcomDate string) string {
 
 	date := strings.TrimSpace(gedcomDate)
 
-	// Handle date ranges
+	// Handle date ranges - convert to GLX format
 	if strings.Contains(date, "BET ") && strings.Contains(date, " AND ") {
 		// BET date1 AND date2
 		parts := strings.Split(date, " AND ")
@@ -46,7 +47,7 @@ func parseGEDCOMDate(gedcomDate string) string {
 			startISO := parseExactDate(strings.TrimSpace(start))
 			endISO := parseExactDate(strings.TrimSpace(end))
 			if startISO != "" && endISO != "" {
-				return startISO + "/" + endISO
+				return "BET " + startISO + " AND " + endISO
 			}
 		}
 	}
@@ -60,26 +61,26 @@ func parseGEDCOMDate(gedcomDate string) string {
 			startISO := parseExactDate(strings.TrimSpace(start))
 			endISO := parseExactDate(strings.TrimSpace(end))
 			if startISO != "" && endISO != "" {
-				return startISO + "/" + endISO
+				return "FROM " + startISO + " TO " + endISO
 			}
 		}
 	}
 
-	// Handle qualifiers
-	qualifiers := []string{"ABT ", "CAL ", "EST ", "BEF ", "AFT "}
+	// Handle qualifiers - preserve them in GLX format
+	// GLX uses same keywords as GEDCOM: ABT, BEF, AFT, CAL
+	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
 	for _, qual := range qualifiers {
 		if strings.HasPrefix(date, qual) {
 			dateStr := strings.TrimPrefix(date, qual)
 			exactDate := parseExactDate(strings.TrimSpace(dateStr))
 			if exactDate != "" {
-				// For now, just return the exact date
-				// In a more sophisticated implementation, could return structured data
-				return exactDate
+				// Return as "ABT 1850-03-15" format
+				return qual + exactDate
 			}
 		}
 	}
 
-	// Try to parse as exact date
+	// Try to parse as exact date - return ISO format string
 	return parseExactDate(date)
 }
 

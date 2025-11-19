@@ -62,10 +62,12 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 				case "DATE":
 					// Store source date in notes for now
 					dateStr := parseGEDCOMDate(dataSub.Value)
-					if citation.Notes != "" {
-						citation.Notes += "\nSource date: " + dateStr
-					} else {
-						citation.Notes = "Source date: " + dateStr
+					if dateStr != "" {
+						if citation.Notes != "" {
+							citation.Notes += "\nSource date: " + dateStr
+						} else {
+							citation.Notes = "Source date: " + dateStr
+						}
 					}
 				case "TEXT":
 					citation.TextFromSource = dataSub.Value

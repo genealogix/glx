@@ -163,19 +163,12 @@ type Event struct {
 	Type         string             `yaml:"type" refType:"event_types"`
 	PlaceID      string             `yaml:"place,omitempty" refType:"places"`
 	Value        string             `yaml:"value,omitempty"`
-	Date         any                `yaml:"date,omitempty"` // Can be string or EventDate struct
+	Date         string             `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []EventParticipant `yaml:"participants,omitempty"`
 	Properties   map[string]any     `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Description  string             `yaml:"description,omitempty"`
 	Notes        string             `yaml:"notes,omitempty"`
 	Tags         []string           `yaml:"tags,omitempty"`
-}
-
-// EventDate can be a simple string or a date range.
-type EventDate struct {
-	Value      string `yaml:"value,omitempty"`
-	RangeStart string `yaml:"range_start,omitempty"`
-	RangeEnd   string `yaml:"range_end,omitempty"`
 }
 
 // EventParticipant defines a person's role in an event.

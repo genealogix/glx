@@ -106,7 +106,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			"BLES", "CHRA", "CONF", "FCOM", "ORDN", "NATU", "EMIG", "IMMI", "CENS",
 			"PROB", "WILL", "GRAD", "RETI":
 			// Convert vital/individual event
-			if err := convertIndividualEvent(personID, sub, ctx); err != nil {
+			if err := convertIndividualEvent(personID, person, sub, ctx); err != nil {
 				ctx.addWarning(indiRecord.Line, sub.Tag, err.Error())
 			}
 
@@ -119,7 +119,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "RESI":
 			// Residence - convert to event or property
-			if err := convertResidence(personID, sub, ctx); err != nil {
+			if err := convertResidence(personID, person, sub, ctx); err != nil {
 				ctx.addWarning(indiRecord.Line, "RESI", err.Error())
 			}
 
@@ -160,7 +160,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "FACT":
 			// Generic fact - convert to property or event
-			if err := convertFact(personID, sub, ctx); err != nil {
+			if err := convertFact(personID, person, sub, ctx); err != nil {
 				ctx.addWarning(indiRecord.Line, "FACT", err.Error())
 			}
 
@@ -296,7 +296,7 @@ func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRe
 }
 
 // convertIndividualEvent converts individual event tags to GLX events
-func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	// Map GEDCOM event tag to GLX event type
 	eventType := mapGEDCOMEventType(eventRecord.Tag)
 	if eventType == "" {
@@ -384,14 +384,19 @@ func convertIndividualEvent(personID string, eventRecord *GEDCOMRecord, ctx *Con
 	ctx.Stats.EventsCreated++
 
 	// Create property assertions for born_on, died_on, etc.
+	// ALSO set person properties directly for quick access
 	if eventType == "birth" && eventDate != "" {
+		person.Properties["born_on"] = eventDate
 		createPropertyAssertion(personID, "born_on", eventDate, eventRecord, ctx)
 		if eventPlace != "" {
+			person.Properties["born_at"] = eventPlace
 			createPropertyAssertion(personID, "born_at", eventPlace, eventRecord, ctx)
 		}
 	} else if eventType == "death" && eventDate != "" {
+		person.Properties["died_on"] = eventDate
 		createPropertyAssertion(personID, "died_on", eventDate, eventRecord, ctx)
 		if eventPlace != "" {
+			person.Properties["died_at"] = eventPlace
 			createPropertyAssertion(personID, "died_at", eventPlace, eventRecord, ctx)
 		}
 	}
@@ -451,7 +456,7 @@ func mapGEDCOMEventType(tag string) string {
 }
 
 // convertResidence converts RESI to residence event or property
-func convertResidence(personID string, resiRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	// Check if it has date - if so, create event
 	hasDate := false
 	for _, sub := range resiRecord.SubRecords {
@@ -463,7 +468,7 @@ func convertResidence(personID string, resiRecord *GEDCOMRecord, ctx *Conversion
 
 	if hasDate {
 		// Create residence event
-		return convertIndividualEvent(personID, resiRecord, ctx)
+		return convertIndividualEvent(personID, person, resiRecord, ctx)
 	}
 
 	// Otherwise, extract place as property
@@ -483,7 +488,7 @@ func convertResidence(personID string, resiRecord *GEDCOMRecord, ctx *Conversion
 }
 
 // convertFact converts generic FACT tag
-func convertFact(personID string, factRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	// Extract TYPE to determine what kind of fact
 	factType := ""
 	for _, sub := range factRecord.SubRecords {
@@ -509,7 +514,7 @@ func convertFact(personID string, factRecord *GEDCOMRecord, ctx *ConversionConte
 	}
 
 	if hasDateOrPlace {
-		return convertIndividualEvent(personID, factRecord, ctx)
+		return convertIndividualEvent(personID, person, factRecord, ctx)
 	}
 
 	return nil
