@@ -31,7 +31,7 @@ func TestE2E_GEDCOM551_Shakespeare(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "5.5.1" {
+	if result.Version != GEDCOMVersion551 {
 		t.Errorf("Expected version 5.5.1, got %s", result.Version)
 	}
 
@@ -125,7 +125,7 @@ func TestE2E_GEDCOM551_Kennedy(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "5.5.1" {
+	if result.Version != GEDCOMVersion551 {
 		t.Errorf("Expected version 5.5.1, got %s", result.Version)
 	}
 
@@ -170,7 +170,7 @@ func TestE2E_GEDCOM551_BritishRoyalty(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "5.5.1" {
+	if result.Version != GEDCOMVersion551 {
 		t.Errorf("Expected version 5.5.1, got %s", result.Version)
 	}
 
@@ -209,7 +209,7 @@ func TestE2E_GEDCOM551_Bullinger(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "5.5.1" {
+	if result.Version != GEDCOMVersion551 {
 		t.Errorf("Expected version 5.5.1, got %s", result.Version)
 	}
 
@@ -248,7 +248,7 @@ func TestE2E_GEDCOM551_TortureTest(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "5.5.1" {
+	if result.Version != GEDCOMVersion551 {
 		t.Errorf("Expected version 5.5.1, got %s", result.Version)
 	}
 
@@ -287,7 +287,7 @@ func TestE2E_GEDCOM70_Minimal(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "7.0" {
+	if result.Version != GEDCOMVersion70 {
 		t.Errorf("Expected version 7.0, got %s", result.Version)
 	}
 
@@ -326,7 +326,7 @@ func TestE2E_GEDCOM70_Maximal(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "7.0" {
+	if result.Version != GEDCOMVersion70 {
 		t.Errorf("Expected version 7.0, got %s", result.Version)
 	}
 
@@ -365,7 +365,7 @@ func TestE2E_GEDCOM70_DateFormats(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "7.0" {
+	if result.Version != GEDCOMVersion70 {
 		t.Errorf("Expected version 7.0, got %s", result.Version)
 	}
 
@@ -404,7 +404,7 @@ func TestE2E_GEDCOM70_AgeValues(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "7.0" {
+	if result.Version != GEDCOMVersion70 {
 		t.Errorf("Expected version 7.0, got %s", result.Version)
 	}
 
@@ -443,7 +443,7 @@ func TestE2E_GEDCOM70_SameSexMarriage(t *testing.T) {
 	}
 
 	// Version check
-	if result.Version != "7.0" {
+	if result.Version != GEDCOMVersion70 {
 		t.Errorf("Expected version 7.0, got %s", result.Version)
 	}
 

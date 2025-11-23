@@ -17,7 +17,7 @@ func StandardVocabularies() map[string][]byte {
 
 // ListStandardVocabularies returns a list of all embedded vocabulary names (without .glx extension).
 func ListStandardVocabularies() []string {
-	var names []string
+	names := make([]string, 0, len(vocabularies.Files))
 	for filename := range vocabularies.Files {
 		// Remove .glx extension
 		name := filename[:len(filename)-4]

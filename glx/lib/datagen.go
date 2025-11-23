@@ -49,7 +49,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 	}
 
 	// Generate people
-	var personIDs []string
+	personIDs := make([]string, 0, numPeople)
 	for i := range numPeople {
 		personID := "person-" + gofakeit.UUID()
 		personIDs = append(personIDs, personID)

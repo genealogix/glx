@@ -439,15 +439,15 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 func mapGEDCOMSex(sex string) string {
 	switch strings.ToUpper(sex) {
 	case "M":
-		return "male"
+		return GenderMale
 	case "F":
-		return "female"
+		return GenderFemale
 	case "U":
-		return "unknown"
+		return GenderUnknown
 	case "X":
 		return "other"
 	default:
-		return "unknown"
+		return GenderUnknown
 	}
 }
 
@@ -615,7 +615,7 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 	conv.GLX.Assertions[assertionID] = &Assertion{
 		Subject:    personID,
 		Claim:      "no_" + eventType,
-		Value:      "true", // Negative assertion (NO tag from GEDCOM 7.0)
+		Value:      "true",              // Negative assertion (NO tag from GEDCOM 7.0)
 		Confidence: ConfidenceLevelHigh, // Negative assertions are typically certain
 		Citations:  citationIDs,
 	}

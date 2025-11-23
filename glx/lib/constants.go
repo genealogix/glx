@@ -111,16 +111,16 @@ const (
 
 // GEDCOM Tags - Top-Level Records
 const (
-	GedcomTagHead = "HEAD" // File header
-	GedcomTagTrlr = "TRLR" // Trailer (end of file)
-	GedcomTagIndi = "INDI" // Individual person record
-	GedcomTagFam  = "FAM"  // Family record
-	GedcomTagNote = "NOTE" // Shared note record (GEDCOM 5.5.1)
+	GedcomTagHead  = "HEAD"  // File header
+	GedcomTagTrlr  = "TRLR"  // Trailer (end of file)
+	GedcomTagIndi  = "INDI"  // Individual person record
+	GedcomTagFam   = "FAM"   // Family record
+	GedcomTagNote  = "NOTE"  // Shared note record (GEDCOM 5.5.1)
 	GedcomTagSnote = "SNOTE" // Shared note record (GEDCOM 7.0)
-	GedcomTagSour = "SOUR" // Source record
-	GedcomTagRepo = "REPO" // Repository record
-	GedcomTagObje = "OBJE" // Media object record
-	GedcomTagSubm = "SUBM" // Submitter record
+	GedcomTagSour  = "SOUR"  // Source record
+	GedcomTagRepo  = "REPO"  // Repository record
+	GedcomTagObje  = "OBJE"  // Media object record
+	GedcomTagSubm  = "SUBM"  // Submitter record
 	GedcomTagSchma = "SCHMA" // Extension schema record (GEDCOM 7.0)
 )
 
@@ -245,13 +245,13 @@ const (
 
 // GEDCOM Tags - Media/File Handling
 const (
-	GedcomTagFile = "FILE" // File reference
-	GedcomTagForm = "FORM" // Format
-	GedcomTagCrop = "CROP" // Crop coordinates (GEDCOM 7.0)
-	GedcomTagMime = "MIME" // MIME type (GEDCOM 7.0)
-	GedcomTagMedi = "MEDI" // Media type (GEDCOM 5.5.1)
-	GedcomTagTop  = "TOP"  // Top coordinate
-	GedcomTagLeft = "LEFT" // Left coordinate
+	GedcomTagFile   = "FILE"   // File reference
+	GedcomTagForm   = "FORM"   // Format
+	GedcomTagCrop   = "CROP"   // Crop coordinates (GEDCOM 7.0)
+	GedcomTagMime   = "MIME"   // MIME type (GEDCOM 7.0)
+	GedcomTagMedi   = "MEDI"   // Media type (GEDCOM 5.5.1)
+	GedcomTagTop    = "TOP"    // Top coordinate
+	GedcomTagLeft   = "LEFT"   // Left coordinate
 	GedcomTagHeight = "HEIGHT" // Height
 	GedcomTagWidth  = "WIDTH"  // Width
 )
@@ -281,7 +281,7 @@ const (
 	GedcomTagPedi = "PEDI" // Pedigree linkage type
 	GedcomTagCaln = "CALN" // Call number
 	GedcomTagTag  = "TAG"  // Extension tag name
-	GedcomTagUri  = "URI"  // Schema URI
+	GedcomTagURI  = "URI"  // Schema URI
 )
 
 // Standard Confidence Levels - from confidence-levels.glx vocabulary
@@ -372,34 +372,34 @@ const (
 
 // MIME Types - Common media types
 const (
-	MimeTypeJPEG       = "image/jpeg"
-	MimeTypePNG        = "image/png"
-	MimeTypeGIF        = "image/gif"
-	MimeTypeBMP        = "image/bmp"
-	MimeTypeTIFF       = "image/tiff"
-	MimeTypeWEBP       = "image/webp"
-	MimeTypePCX        = "image/x-pcx"
-	MimeTypeMP3        = "audio/mpeg"
-	MimeTypeWAV        = "audio/wav"
-	MimeTypeOGG        = "audio/ogg"
-	MimeTypeM4A        = "audio/mp4"
-	MimeTypeFLAC       = "audio/flac"
-	MimeTypeMP4        = "video/mp4"
-	MimeTypeAVI        = "video/x-msvideo"
-	MimeTypeMOV        = "video/quicktime"
-	MimeTypeWMV        = "video/x-ms-wmv"
-	MimeTypeFLV        = "video/x-flv"
-	MimeTypeWEBM       = "video/webm"
-	MimeTypePDF        = "application/pdf"
-	MimeTypeDOC        = "application/msword"
-	MimeTypeDOCX       = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-	MimeTypeTXT        = "text/plain"
-	MimeTypeRTF        = "application/rtf"
-	MimeTypeZIP        = "application/zip"
-	MimeTypeRAR        = "application/x-rar-compressed"
-	MimeType7Z         = "application/x-7z-compressed"
-	MimeTypeTAR        = "application/x-tar"
-	MimeTypeGZIP       = "application/gzip"
+	MimeTypeJPEG        = "image/jpeg"
+	MimeTypePNG         = "image/png"
+	MimeTypeGIF         = "image/gif"
+	MimeTypeBMP         = "image/bmp"
+	MimeTypeTIFF        = "image/tiff"
+	MimeTypeWEBP        = "image/webp"
+	MimeTypePCX         = "image/x-pcx"
+	MimeTypeMP3         = "audio/mpeg"
+	MimeTypeWAV         = "audio/wav"
+	MimeTypeOGG         = "audio/ogg"
+	MimeTypeM4A         = "audio/mp4"
+	MimeTypeFLAC        = "audio/flac"
+	MimeTypeMP4         = "video/mp4"
+	MimeTypeAVI         = "video/x-msvideo"
+	MimeTypeMOV         = "video/quicktime"
+	MimeTypeWMV         = "video/x-ms-wmv"
+	MimeTypeFLV         = "video/x-flv"
+	MimeTypeWEBM        = "video/webm"
+	MimeTypePDF         = "application/pdf"
+	MimeTypeDOC         = "application/msword"
+	MimeTypeDOCX        = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	MimeTypeTXT         = "text/plain"
+	MimeTypeRTF         = "application/rtf"
+	MimeTypeZIP         = "application/zip"
+	MimeTypeRAR         = "application/x-rar-compressed"
+	MimeType7Z          = "application/x-7z-compressed"
+	MimeTypeTAR         = "application/x-tar"
+	MimeTypeGZIP        = "application/gzip"
 	MimeTypeOctetStream = "application/octet-stream"
 )
 
@@ -409,4 +409,22 @@ const (
 	CropKeyLeft   = "left"
 	CropKeyHeight = "height"
 	CropKeyWidth  = "width"
+)
+
+// GEDCOM Version Strings
+const (
+	GEDCOMVersion551 = "5.5.1"
+	GEDCOMVersion70  = "7.0"
+)
+
+// Gender Values
+const (
+	GenderMale    = "male"
+	GenderFemale  = "female"
+	GenderUnknown = "unknown"
+)
+
+// File Extensions
+const (
+	FileExtGLX = ".glx"
 )

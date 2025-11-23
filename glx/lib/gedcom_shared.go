@@ -75,7 +75,7 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) 
 			if schema.Tag == "" {
 				schema.Tag = sub.Value
 			}
-		case GedcomTagUri:
+		case GedcomTagURI:
 			// Schema URI
 			schema.URI = sub.Value
 		case GedcomTagNote:

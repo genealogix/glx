@@ -412,7 +412,7 @@ func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 		}
 	}
 
-	return GEDCOM551, "5.5.1" // Default to 5.5.1
+	return GEDCOM551, GEDCOMVersion551 // Default to 5.5.1
 }
 
 // addError adds an error to the conversion context

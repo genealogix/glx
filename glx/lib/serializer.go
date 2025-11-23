@@ -392,7 +392,7 @@ func loadEntitiesWithID[T any](dir string, entities map[string]T) error {
 
 	// Load each file
 	for _, file := range files {
-		if filepath.Ext(file.Name()) != ".glx" {
+		if filepath.Ext(file.Name()) != FileExtGLX {
 			continue
 		}
 

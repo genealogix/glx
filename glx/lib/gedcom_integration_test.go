@@ -29,7 +29,7 @@ func TestImportMinimal70(t *testing.T) {
 		t.Fatalf("Import failed: %v", err)
 	}
 
-	if result.Version != "7.0" {
+	if result.Version != GEDCOMVersion70 {
 		t.Errorf("Expected version 7.0, got %s", result.Version)
 	}
 

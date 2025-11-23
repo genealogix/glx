@@ -189,7 +189,7 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 			foundRobert = true
 
 			// Verify gender persisted
-			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "male" {
+			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != GenderMale {
 				t.Error("Robert Eugene Williams should have gender 'male'")
 			}
 
