@@ -65,19 +65,19 @@ func TestGEDCOMToSingleFileRoundTrip(t *testing.T) {
 			require.NoError(t, err, "Failed to deserialize from single file")
 
 			// Step 4: Verify round-trip preserved all data
-			assert.Equal(t, len(glx1.Persons), len(glx2.Persons), "Person count changed after round-trip")
-			assert.Equal(t, len(glx1.Events), len(glx2.Events), "Event count changed after round-trip")
-			assert.Equal(t, len(glx1.Relationships), len(glx2.Relationships), "Relationship count changed after round-trip")
-			assert.Equal(t, len(glx1.Sources), len(glx2.Sources), "Source count changed after round-trip")
-			assert.Equal(t, len(glx1.Citations), len(glx2.Citations), "Citation count changed after round-trip")
-			assert.Equal(t, len(glx1.Places), len(glx2.Places), "Place count changed after round-trip")
-			assert.Equal(t, len(glx1.Media), len(glx2.Media), "Media count changed after round-trip")
-			assert.Equal(t, len(glx1.Repositories), len(glx2.Repositories), "Repository count changed after round-trip")
+			assert.Len(t, glx2.Persons, len(glx1.Persons), "Person count changed after round-trip")
+			assert.Len(t, glx2.Events, len(glx1.Events), "Event count changed after round-trip")
+			assert.Len(t, glx2.Relationships, len(glx1.Relationships), "Relationship count changed after round-trip")
+			assert.Len(t, glx2.Sources, len(glx1.Sources), "Source count changed after round-trip")
+			assert.Len(t, glx2.Citations, len(glx1.Citations), "Citation count changed after round-trip")
+			assert.Len(t, glx2.Places, len(glx1.Places), "Place count changed after round-trip")
+			assert.Len(t, glx2.Media, len(glx1.Media), "Media count changed after round-trip")
+			assert.Len(t, glx2.Repositories, len(glx1.Repositories), "Repository count changed after round-trip")
 
 			// Verify vocabularies preserved
-			assert.Equal(t, len(glx1.EventTypes), len(glx2.EventTypes), "EventTypes vocabulary count changed")
-			assert.Equal(t, len(glx1.RelationshipTypes), len(glx2.RelationshipTypes), "RelationshipTypes vocabulary count changed")
-			assert.Equal(t, len(glx1.PlaceTypes), len(glx2.PlaceTypes), "PlaceTypes vocabulary count changed")
+			assert.Len(t, glx2.EventTypes, len(glx1.EventTypes), "EventTypes vocabulary count changed")
+			assert.Len(t, glx2.RelationshipTypes, len(glx1.RelationshipTypes), "RelationshipTypes vocabulary count changed")
+			assert.Len(t, glx2.PlaceTypes, len(glx1.PlaceTypes), "PlaceTypes vocabulary count changed")
 
 			t.Logf("✓ Round-trip successful: %d persons, %d events, %d relationships preserved",
 				len(glx2.Persons), len(glx2.Events), len(glx2.Relationships))
@@ -136,19 +136,19 @@ func TestGEDCOMToMultiFileRoundTrip(t *testing.T) {
 			require.NoError(t, err, "Failed to deserialize from multi-file")
 
 			// Step 4: Verify round-trip preserved all data
-			assert.Equal(t, len(glx1.Persons), len(glx2.Persons), "Person count changed after round-trip")
-			assert.Equal(t, len(glx1.Events), len(glx2.Events), "Event count changed after round-trip")
-			assert.Equal(t, len(glx1.Relationships), len(glx2.Relationships), "Relationship count changed after round-trip")
-			assert.Equal(t, len(glx1.Sources), len(glx2.Sources), "Source count changed after round-trip")
-			assert.Equal(t, len(glx1.Citations), len(glx2.Citations), "Citation count changed after round-trip")
-			assert.Equal(t, len(glx1.Places), len(glx2.Places), "Place count changed after round-trip")
-			assert.Equal(t, len(glx1.Media), len(glx2.Media), "Media count changed after round-trip")
-			assert.Equal(t, len(glx1.Repositories), len(glx2.Repositories), "Repository count changed after round-trip")
+			assert.Len(t, glx2.Persons, len(glx1.Persons), "Person count changed after round-trip")
+			assert.Len(t, glx2.Events, len(glx1.Events), "Event count changed after round-trip")
+			assert.Len(t, glx2.Relationships, len(glx1.Relationships), "Relationship count changed after round-trip")
+			assert.Len(t, glx2.Sources, len(glx1.Sources), "Source count changed after round-trip")
+			assert.Len(t, glx2.Citations, len(glx1.Citations), "Citation count changed after round-trip")
+			assert.Len(t, glx2.Places, len(glx1.Places), "Place count changed after round-trip")
+			assert.Len(t, glx2.Media, len(glx1.Media), "Media count changed after round-trip")
+			assert.Len(t, glx2.Repositories, len(glx1.Repositories), "Repository count changed after round-trip")
 
 			// Verify vocabularies preserved
-			assert.Equal(t, len(glx1.EventTypes), len(glx2.EventTypes), "EventTypes vocabulary count changed")
-			assert.Equal(t, len(glx1.RelationshipTypes), len(glx2.RelationshipTypes), "RelationshipTypes vocabulary count changed")
-			assert.Equal(t, len(glx1.PlaceTypes), len(glx2.PlaceTypes), "PlaceTypes vocabulary count changed")
+			assert.Len(t, glx2.EventTypes, len(glx1.EventTypes), "EventTypes vocabulary count changed")
+			assert.Len(t, glx2.RelationshipTypes, len(glx1.RelationshipTypes), "RelationshipTypes vocabulary count changed")
+			assert.Len(t, glx2.PlaceTypes, len(glx1.PlaceTypes), "PlaceTypes vocabulary count changed")
 
 			t.Logf("✓ Round-trip successful: %d persons, %d events, %d relationships preserved",
 				len(glx2.Persons), len(glx2.Events), len(glx2.Relationships))
@@ -221,13 +221,13 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 			require.NoError(t, err, "Failed to read final single file")
 
 			// Verify all data preserved through multiple conversions
-			assert.Equal(t, initialPersonCount, len(glx4.Persons), "Person count changed")
-			assert.Equal(t, initialEventCount, len(glx4.Events), "Event count changed")
-			assert.Equal(t, initialRelationCount, len(glx4.Relationships), "Relationship count changed")
+			assert.Len(t, glx4.Persons, initialPersonCount, "Person count changed")
+			assert.Len(t, glx4.Events, initialEventCount, "Event count changed")
+			assert.Len(t, glx4.Relationships, initialRelationCount, "Relationship count changed")
 
 			// Verify vocabularies preserved
-			assert.Equal(t, len(glx1.EventTypes), len(glx4.EventTypes), "EventTypes vocabulary count changed")
-			assert.Equal(t, len(glx1.RelationshipTypes), len(glx4.RelationshipTypes), "RelationshipTypes vocabulary count changed")
+			assert.Len(t, glx4.EventTypes, len(glx1.EventTypes), "EventTypes vocabulary count changed")
+			assert.Len(t, glx4.RelationshipTypes, len(glx1.RelationshipTypes), "RelationshipTypes vocabulary count changed")
 
 			t.Logf("✓ Multi-step round-trip successful: single->multi->single preserved all %d persons, %d events, %d relationships",
 				len(glx4.Persons), len(glx4.Events), len(glx4.Relationships))
@@ -245,8 +245,8 @@ func TestVocabularyPreservation(t *testing.T) {
 	require.NotNil(t, result, "Import result should not be nil")
 
 	// Ensure vocabularies are loaded
-	require.Greater(t, len(glx1.EventTypes), 0, "Expected event types to be loaded")
-	require.Greater(t, len(glx1.RelationshipTypes), 0, "Expected relationship types to be loaded")
+	require.NotEmpty(t, glx1.EventTypes, "Expected event types to be loaded")
+	require.NotEmpty(t, glx1.RelationshipTypes, "Expected relationship types to be loaded")
 
 	t.Run("Single-file preservation", func(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "archive.glx")
@@ -260,10 +260,10 @@ func TestVocabularyPreservation(t *testing.T) {
 		require.NoError(t, err, "Failed to read from single file")
 
 		// Verify vocabularies preserved
-		assert.Equal(t, len(glx1.EventTypes), len(glx2.EventTypes), "EventTypes count mismatch")
-		assert.Equal(t, len(glx1.RelationshipTypes), len(glx2.RelationshipTypes), "RelationshipTypes count mismatch")
-		assert.Equal(t, len(glx1.PlaceTypes), len(glx2.PlaceTypes), "PlaceTypes count mismatch")
-		assert.Equal(t, len(glx1.RepositoryTypes), len(glx2.RepositoryTypes), "RepositoryTypes count mismatch")
+		assert.Len(t, glx2.EventTypes, len(glx1.EventTypes), "EventTypes count mismatch")
+		assert.Len(t, glx2.RelationshipTypes, len(glx1.RelationshipTypes), "RelationshipTypes count mismatch")
+		assert.Len(t, glx2.PlaceTypes, len(glx1.PlaceTypes), "PlaceTypes count mismatch")
+		assert.Len(t, glx2.RepositoryTypes, len(glx1.RepositoryTypes), "RepositoryTypes count mismatch")
 
 		// Verify specific vocabulary entries preserved
 		for id, vocab := range glx1.EventTypes {
@@ -296,9 +296,9 @@ func TestVocabularyPreservation(t *testing.T) {
 		require.NoError(t, err, "Failed to read from multi-file")
 
 		// Verify vocabularies preserved
-		assert.Equal(t, len(glx1.EventTypes), len(glx2.EventTypes), "EventTypes count mismatch")
-		assert.Equal(t, len(glx1.RelationshipTypes), len(glx2.RelationshipTypes), "RelationshipTypes count mismatch")
-		assert.Equal(t, len(glx1.PlaceTypes), len(glx2.PlaceTypes), "PlaceTypes count mismatch")
-		assert.Equal(t, len(glx1.RepositoryTypes), len(glx2.RepositoryTypes), "RepositoryTypes count mismatch")
+		assert.Len(t, glx2.EventTypes, len(glx1.EventTypes), "EventTypes count mismatch")
+		assert.Len(t, glx2.RelationshipTypes, len(glx1.RelationshipTypes), "RelationshipTypes count mismatch")
+		assert.Len(t, glx2.PlaceTypes, len(glx1.PlaceTypes), "PlaceTypes count mismatch")
+		assert.Len(t, glx2.RepositoryTypes, len(glx1.RepositoryTypes), "RepositoryTypes count mismatch")
 	})
 }

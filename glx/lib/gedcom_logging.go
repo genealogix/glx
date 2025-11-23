@@ -49,6 +49,7 @@ func (il *ImportLogger) Close() error {
 	if il.file != nil {
 		return il.file.Close()
 	}
+
 	return nil
 }
 

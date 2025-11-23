@@ -141,11 +141,11 @@ type Person struct {
 
 // Relationship represents a relationship between two or more people.
 type Relationship struct {
-	Type         string                    `yaml:"type" refType:"relationship_types"`
-	Persons      []string                  `yaml:"persons,omitempty" refType:"persons"`
+	Type         string                    `refType:"relationship_types"  yaml:"type"`
+	Persons      []string                  `refType:"persons"             yaml:"persons,omitempty"`
 	Participants []RelationshipParticipant `yaml:"participants,omitempty"`
-	StartEvent   string                    `yaml:"start_event,omitempty" refType:"events"`
-	EndEvent     string                    `yaml:"end_event,omitempty" refType:"events"`
+	StartEvent   string                    `refType:"events"              yaml:"start_event,omitempty"`
+	EndEvent     string                    `refType:"events"              yaml:"end_event,omitempty"`
 	Properties   map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Description  string                    `yaml:"description,omitempty"`
 	Notes        string                    `yaml:"notes,omitempty"`
@@ -154,14 +154,14 @@ type Relationship struct {
 
 // RelationshipParticipant defines a person's role in a relationship.
 type RelationshipParticipant struct {
-	Person string `yaml:"person" refType:"persons"`
-	Role   string `yaml:"role,omitempty" refType:"participant_roles"`
+	Person string `refType:"persons"           yaml:"person"`
+	Role   string `refType:"participant_roles" yaml:"role,omitempty"`
 }
 
 // Event represents a genealogical event.
 type Event struct {
-	Type         string             `yaml:"type" refType:"event_types"`
-	PlaceID      string             `yaml:"place,omitempty" refType:"places"`
+	Type         string             `refType:"event_types"         yaml:"type"`
+	PlaceID      string             `refType:"places"              yaml:"place,omitempty"`
 	Value        string             `yaml:"value,omitempty"`
 	Date         DateString         `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []EventParticipant `yaml:"participants,omitempty"`
@@ -173,16 +173,16 @@ type Event struct {
 
 // EventParticipant defines a person's role in an event.
 type EventParticipant struct {
-	PersonID string `yaml:"person,omitempty" refType:"persons"`
-	Role     string `yaml:"role,omitempty" refType:"participant_roles"`
+	PersonID string `refType:"persons"           yaml:"person,omitempty"`
+	Role     string `refType:"participant_roles" yaml:"role,omitempty"`
 	Notes    string `yaml:"notes,omitempty"`
 }
 
 // Place represents a geographical location.
 type Place struct {
 	Name             string            `yaml:"name"`
-	ParentID         string            `yaml:"parent,omitempty" refType:"places"`
-	Type             string            `yaml:"type,omitempty" refType:"place_types"`
+	ParentID         string            `refType:"places"                   yaml:"parent,omitempty"`
+	Type             string            `refType:"place_types"              yaml:"type,omitempty"`
 	AlternativeNames []AlternativeName `yaml:"alternative_names,omitempty"`
 	Latitude         *float64          `yaml:"latitude,omitempty"`
 	Longitude        *float64          `yaml:"longitude,omitempty"`
@@ -208,29 +208,29 @@ type DateRange struct {
 // Source represents a source of information.
 type Source struct {
 	Title           string         `yaml:"title"`
-	Type            string         `yaml:"type,omitempty" refType:"source_types"`
+	Type            string         `refType:"source_types"            yaml:"type,omitempty"`
 	Authors         []string       `yaml:"authors,omitempty"`
 	Date            DateString     `yaml:"date,omitempty"`
 	Description     string         `yaml:"description,omitempty"`
-	RepositoryID    string         `yaml:"repository,omitempty" refType:"repositories"`
+	RepositoryID    string         `refType:"repositories"            yaml:"repository,omitempty"`
 	PublicationInfo string         `yaml:"publication_info,omitempty"`
 	Properties      map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes           string         `yaml:"notes,omitempty"`
-	Media           []string       `yaml:"media,omitempty" refType:"media"`
+	Media           []string       `refType:"media"                   yaml:"media,omitempty"`
 	Tags            []string       `yaml:"tags,omitempty"`
 }
 
 // Citation represents a citation of a source.
 type Citation struct {
-	SourceID       string         `yaml:"source,omitempty" refType:"sources"`
+	SourceID       string         `refType:"sources"                 yaml:"source,omitempty"`
 	Page           string         `yaml:"page,omitempty"`
 	TextFromSource string         `yaml:"text_from_source,omitempty"`
 	Transcription  string         `yaml:"transcription,omitempty"`
-	Quality        *int           `yaml:"quality,omitempty" refType:"quality_ratings"`
+	Quality        *int           `refType:"quality_ratings"         yaml:"quality,omitempty"`
 	Locator        any            `yaml:"locator,omitempty"` // Can be string or Locator struct
-	RepositoryID   string         `yaml:"repository,omitempty" refType:"repositories"`
+	RepositoryID   string         `refType:"repositories"            yaml:"repository,omitempty"`
 	Properties     map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Media          []string       `yaml:"media,omitempty" refType:"media"`
+	Media          []string       `refType:"media"                   yaml:"media,omitempty"`
 	Notes          string         `yaml:"notes,omitempty"`
 	Tags           []string       `yaml:"tags,omitempty"`
 }
@@ -248,7 +248,7 @@ type Locator struct {
 // Repository represents a repository where sources are held.
 type Repository struct {
 	Name       string         `yaml:"name"`
-	Type       string         `yaml:"type,omitempty" refType:"repository_types"`
+	Type       string         `refType:"repository_types"      yaml:"type,omitempty"`
 	Address    string         `yaml:"address,omitempty"`
 	City       string         `yaml:"city,omitempty"`
 	State      string         `yaml:"state_province,omitempty"`
@@ -264,13 +264,13 @@ type Repository struct {
 
 // Assertion represents a conclusion made by a researcher.
 type Assertion struct {
-	Subject     string                `yaml:"subject" refType:"persons,events,relationships,places"`
+	Subject     string                `refType:"persons,events,relationships,places" yaml:"subject"`
 	Claim       string                `yaml:"claim,omitempty"`       // Optional, not present if participant exists
 	Value       string                `yaml:"value,omitempty"`       // Not present if participant exists
 	Participant *AssertionParticipant `yaml:"participant,omitempty"` // Not present if value exists
-	Confidence  string                `yaml:"confidence,omitempty" refType:"confidence_levels"`
-	Sources     []string              `yaml:"sources,omitempty" refType:"sources"`
-	Citations   []string              `yaml:"citations,omitempty" refType:"citations"`
+	Confidence  string                `refType:"confidence_levels"                   yaml:"confidence,omitempty"`
+	Sources     []string              `refType:"sources"                             yaml:"sources,omitempty"`
+	Citations   []string              `refType:"citations"                           yaml:"citations,omitempty"`
 	Properties  map[string]any        `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes       string                `yaml:"notes,omitempty"`
 	Tags        []string              `yaml:"tags,omitempty"`
@@ -278,8 +278,8 @@ type Assertion struct {
 
 // AssertionParticipant represents a participant in an assertion (used for participant-based claims).
 type AssertionParticipant struct {
-	Person string `yaml:"person" refType:"persons"`
-	Role   string `yaml:"role,omitempty" refType:"participant_roles"`
+	Person string `refType:"persons"           yaml:"person"`
+	Role   string `refType:"participant_roles" yaml:"role,omitempty"`
 	Notes  string `yaml:"notes,omitempty"`
 }
 
@@ -443,5 +443,6 @@ func mergeMap[T any](mapType string, dest, src map[string]*T) []string {
 			dest[k] = v
 		}
 	}
+
 	return duplicates
 }

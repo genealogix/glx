@@ -128,6 +128,7 @@ func isSurnamePrefix(word string) bool {
 		"del": true, "della": true, "di": true, "da": true, "le": true,
 		"la": true, "du": true, "des": true, "af": true, "av": true,
 	}
+
 	return prefixes[strings.ToLower(word)]
 }
 
@@ -138,6 +139,7 @@ func isNamePrefix(word string) bool {
 		"Prof.": true, "Rev.": true, "Hon.": true, "Sir": true, "Lady": true,
 		"Lord": true, "Count": true, "Duke": true, "Baron": true,
 	}
+
 	return prefixes[word]
 }
 
@@ -149,5 +151,6 @@ func isNameSuffix(word string) bool {
 		"2nd": true, "3rd": true, "4th": true,
 		"Esq.": true, "Esq": true, "PhD": true, "MD": true,
 	}
+
 	return suffixes[word]
 }

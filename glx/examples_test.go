@@ -31,6 +31,7 @@ func TestExamples(t *testing.T) {
 	// Check if examples directory exists
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found - skipping examples validation")
+
 		return
 	}
 
@@ -42,6 +43,7 @@ func TestExamples(t *testing.T) {
 		if !info.IsDir() && strings.HasSuffix(path, ".glx") {
 			validFiles = append(validFiles, path)
 		}
+
 		return nil
 	})
 	require.NoError(t, err, "failed to walk examples directory")
@@ -61,6 +63,7 @@ func TestExamples(t *testing.T) {
 			content := strings.TrimSpace(string(data))
 			if strings.HasPrefix(content, "../") || strings.HasPrefix(content, "../../../../") {
 				t.Skipf("skipping reference file %s", file)
+
 				return
 			}
 
@@ -105,6 +108,7 @@ func TestExamplesDirectories(t *testing.T) {
 
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found")
+
 		return
 	}
 
@@ -117,6 +121,7 @@ func TestExamplesDirectories(t *testing.T) {
 
 			if os.IsNotExist(err) {
 				t.Skipf("example %s not found", example)
+
 				return
 			}
 
@@ -137,6 +142,7 @@ func TestExamplesCompleteFamily(t *testing.T) {
 
 	if _, err := os.Stat(completeFamilyDir); os.IsNotExist(err) {
 		t.Skip("complete-family example not found")
+
 		return
 	}
 
@@ -153,6 +159,7 @@ func TestExamplesCompleteFamily(t *testing.T) {
 
 			if os.IsNotExist(err) {
 				t.Skipf("directory %s not found in complete-family", dir)
+
 				return
 			}
 
@@ -167,6 +174,7 @@ func TestExamplesCompleteFamily(t *testing.T) {
 			for _, file := range files {
 				if !file.IsDir() && strings.HasSuffix(file.Name(), ".glx") {
 					hasGlxFile = true
+
 					break
 				}
 			}
@@ -182,6 +190,7 @@ func TestExamplesSingleFile(t *testing.T) {
 
 	if _, err := os.Stat(singleFilePath); os.IsNotExist(err) {
 		t.Skip("single-file example not found")
+
 		return
 	}
 
@@ -210,6 +219,7 @@ func TestExamplesValidation(t *testing.T) {
 
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found")
+
 		return
 	}
 
@@ -221,6 +231,7 @@ func TestExamplesValidation(t *testing.T) {
 
 			if _, err := os.Stat(examplePath); os.IsNotExist(err) {
 				t.Skipf("example %s not found", example)
+
 				return
 			}
 

@@ -146,7 +146,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 	// Generate media ID for embedded object
 	mediaID := generateMediaID(conv)
 
-	conv.Logger.LogInfo(fmt.Sprintf("Converting embedded OBJE -> %s", mediaID))
+	conv.Logger.LogInfo("Converting embedded OBJE -> " + mediaID)
 
 	// Create media entity
 	media := &Media{}

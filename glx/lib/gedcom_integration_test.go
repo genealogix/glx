@@ -98,6 +98,7 @@ func TestImportShakespeare(t *testing.T) {
 			}
 
 			t.Logf("✓ Found William Shakespeare with correct name and gender")
+
 			break
 		}
 	}
@@ -200,6 +201,7 @@ func TestParseGEDCOMPlace(t *testing.T) {
 		result := parseGEDCOMPlace(tt.input)
 		if result == nil && tt.components > 0 {
 			t.Errorf("parseGEDCOMPlace(%q) returned nil, expected %d components", tt.input, tt.components)
+
 			continue
 		}
 		if result != nil && len(result.Components) != tt.components {

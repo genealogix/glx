@@ -87,7 +87,7 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) 
 	// Store schema
 	conv.ExtensionSchemas[schmaRecord.XRef] = schema
 
-	conv.Logger.LogInfo(fmt.Sprintf("Stored extension schema %s", schmaRecord.XRef))
+	conv.Logger.LogInfo("Stored extension schema " + schmaRecord.XRef)
 
 	return nil
 }

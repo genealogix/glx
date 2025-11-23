@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make build:*)",
+      "Bash(make test:*)",
+      "Bash(make test-verbose:*)",
+      "Bash(make lint:*)",
+      "Bash(make lint-fix:*)",
+      "Bash(./bin/glx:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

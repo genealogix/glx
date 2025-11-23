@@ -196,6 +196,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			for _, pediSub := range sub.SubRecords {
 				if pediSub.Tag == "PEDI" {
 					pedigreeType = strings.ToLower(pediSub.Value)
+
 					break
 				}
 			}
@@ -538,6 +539,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 	for _, sub := range resiRecord.SubRecords {
 		if sub.Tag == "DATE" {
 			hasDate = true
+
 			break
 		}
 	}
@@ -555,6 +557,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 				placeID, _ := buildPlaceHierarchy(hierarchy, conv)
 				if placeID != "" {
 					createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
+
 					return nil
 				}
 			}
@@ -571,6 +574,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 	for _, sub := range factRecord.SubRecords {
 		if sub.Tag == "TYPE" {
 			factType = sub.Value
+
 			break
 		}
 	}
@@ -579,6 +583,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 	if factType != "" && factRecord.Value != "" {
 		propKey := strings.ToLower(strings.ReplaceAll(factType, " ", "_"))
 		createPropertyAssertion(personID, propKey, factRecord.Value, factRecord, conv)
+
 		return nil
 	}
 
@@ -587,6 +592,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 	for _, sub := range factRecord.SubRecords {
 		if sub.Tag == "DATE" || sub.Tag == "PLAC" {
 			hasDateOrPlace = true
+
 			break
 		}
 	}

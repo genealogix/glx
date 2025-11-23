@@ -194,6 +194,7 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 			}
 
 			t.Logf("✓ Robert Eugene Williams: name and gender persisted correctly")
+
 			break
 		}
 	}
@@ -216,6 +217,7 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 			}
 
 			t.Logf("✓ Mary Ann Wilson: name and gender persisted correctly")
+
 			break
 		}
 	}
@@ -263,6 +265,7 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 			if source.Title == "Madison County Birth, Death, and Marriage Records" {
 				foundMadisonSource = true
 				t.Logf("✓ Source 'Madison County Birth, Death, and Marriage Records' persisted correctly")
+
 				break
 			}
 		}
@@ -280,6 +283,7 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 			if repo.Name == "Family History Library" {
 				foundFHL = true
 				t.Logf("✓ Repository 'Family History Library' persisted correctly")
+
 				break
 			}
 		}

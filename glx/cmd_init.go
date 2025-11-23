@@ -16,6 +16,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,6 +63,7 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 	} else {
 		targetDir = "."
 	}
+
 	return runInit(targetDir, initSingleFile, createTestData)
 }
 
@@ -122,6 +124,7 @@ media: {}
 		fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
 		fmt.Printf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
 		fmt.Printf("Entity IDs are map keys - don't include 'id' field in entities in %s\n", targetDir)
+
 		return nil
 	}
 
@@ -200,7 +203,7 @@ func isDirectoryEmpty(path string) error {
 	// We expect an io.EOF error, which means it's empty.
 	_, err = f.Readdirnames(1)
 	if err == nil { // if err is nil, directory is not empty
-		return fmt.Errorf("cannot run 'glx init' in a non-empty directory. Please create a new directory for your family archive")
+		return errors.New("cannot run 'glx init' in a non-empty directory. Please create a new directory for your family archive")
 	}
 
 	return nil // Directory is empty
@@ -221,7 +224,7 @@ func writeTestData(data *lib.GLXFile) error {
 
 	for dir, entities := range entityTypes {
 		for id, entity := range entities {
-			fileName := filepath.Join(dir, fmt.Sprintf("%s.glx", id))
+			fileName := filepath.Join(dir, id+".glx")
 			fileContent := map[string]any{
 				dir: map[string]any{
 					id: entity,
@@ -236,6 +239,7 @@ func writeTestData(data *lib.GLXFile) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -250,6 +254,7 @@ func mustMarshal(v any) map[string]any {
 	if err := yaml.Unmarshal(data, &m); err != nil {
 		panic(err)
 	}
+
 	return m
 }
 

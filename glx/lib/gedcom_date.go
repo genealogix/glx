@@ -52,7 +52,7 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 		}
 	}
 
-	if strings.HasPrefix(date, "FROM ") {
+	if after, ok := strings.CutPrefix(date, "FROM "); ok {
 		if strings.Contains(date, " TO ") {
 			// FROM date1 TO date2 (e.g., "FROM 1900 TO 1950")
 			parts := strings.Split(date, " TO ")
@@ -67,7 +67,7 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 			}
 		} else {
 			// FROM date (open-ended, e.g., "FROM 1900")
-			dateStr := strings.TrimPrefix(date, "FROM ")
+			dateStr := after
 			startDate := parseExactDate(strings.TrimSpace(dateStr))
 			if startDate != "" {
 				return DateString("FROM " + startDate)
@@ -79,8 +79,8 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 	// GLX uses same keywords as GEDCOM: ABT, BEF, AFT, CAL
 	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
 	for _, qual := range qualifiers {
-		if strings.HasPrefix(date, qual) {
-			dateStr := strings.TrimPrefix(date, qual)
+		if after, ok := strings.CutPrefix(date, qual); ok {
+			dateStr := after
 			exactDate := parseExactDate(strings.TrimSpace(dateStr))
 			if exactDate != "" {
 				// Return as "ABT 1850-03-15" format (keyword + YYYY-MM-DD)
@@ -124,6 +124,7 @@ func parseExactDate(dateStr string) string {
 		if err != nil || year <= 0 || year >= 3000 {
 			return ""
 		}
+
 		return fmt.Sprintf("%04d-%02d", year, month)
 
 	case 3:

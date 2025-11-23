@@ -6,7 +6,7 @@
       "version": "22"
     }
   },
-  "postCreateCommand": "npm install -g ajv-cli",
+  "postCreateCommand": "npm install -g ajv-cli && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin",
   "customizations": {
     "vscode": {
       "settings": {

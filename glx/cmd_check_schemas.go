@@ -69,11 +69,12 @@ func checkSchemaFiles() error {
 
 		text := string(content)
 		if !strings.Contains(text, "\"$schema\"") {
-			issues = append(issues, fmt.Sprintf("missing $schema in %s", path))
+			issues = append(issues, "missing $schema in "+path)
 		}
 		if !strings.Contains(text, "\"$id\"") {
-			issues = append(issues, fmt.Sprintf("missing $id in %s", path))
+			issues = append(issues, "missing $id in "+path)
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -85,5 +86,6 @@ func checkSchemaFiles() error {
 	}
 
 	fmt.Println("All schema files contain $schema and $id")
+
 	return nil
 }

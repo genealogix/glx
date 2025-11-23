@@ -23,6 +23,7 @@ func ListStandardVocabularies() []string {
 		name := filename[:len(filename)-4]
 		names = append(names, name)
 	}
+
 	return names
 }
 
@@ -34,6 +35,7 @@ func GetStandardVocabulary(name string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("vocabulary not found: %s", name)
 	}
+
 	return content, nil
 }
 

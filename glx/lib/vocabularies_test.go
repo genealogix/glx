@@ -35,6 +35,7 @@ func TestStandardVocabularies(t *testing.T) {
 		content, ok := vocabs[name]
 		if !ok {
 			t.Errorf("Missing vocabulary: %s", name)
+
 			continue
 		}
 		if len(content) == 0 {
@@ -83,11 +84,13 @@ func TestGetStandardVocabulary(t *testing.T) {
 				if err == nil {
 					t.Errorf("Expected error for %s, got nil", tt.name)
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
+
 				return
 			}
 
@@ -130,6 +133,7 @@ func TestWriteStandardVocabularies(t *testing.T) {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Errorf("Failed to read %s: %v", file.Name(), err)
+
 			continue
 		}
 		if len(data) == 0 {
@@ -190,5 +194,6 @@ func indexOf(s, substr string) int {
 			return i
 		}
 	}
+
 	return -1
 }

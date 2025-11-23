@@ -13,7 +13,7 @@ func TestGenerateRandomID(t *testing.T) {
 	iterations := 10000
 	hexPattern := regexp.MustCompile("^[a-f0-9]{8}$")
 
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		id, err := GenerateRandomID()
 		if err != nil {
 			t.Fatalf("Failed to generate ID: %v", err)
@@ -94,7 +94,7 @@ func TestGenerateUniqueFilename(t *testing.T) {
 	usedFilenames := make(map[string]bool)
 
 	// Generate 100 unique filenames
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		filename, err := GenerateUniqueFilename("person", usedFilenames, 10)
 		if err != nil {
 			t.Fatalf("Failed to generate unique filename: %v", err)
@@ -117,7 +117,7 @@ func TestGenerateUniqueFilenameCollisionRetry(t *testing.T) {
 
 	// Pre-fill with many filenames to increase collision probability
 	// (This is a synthetic test - real collisions are extremely rare)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		filename, _ := GenerateEntityFilename("test")
 		usedFilenames[filename] = true
 	}
@@ -163,7 +163,7 @@ func TestMustGenerateEntityFilename(t *testing.T) {
 }
 
 func BenchmarkGenerateRandomID(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := GenerateRandomID()
 		if err != nil {
 			b.Fatalf("Failed to generate ID: %v", err)
@@ -172,7 +172,7 @@ func BenchmarkGenerateRandomID(b *testing.B) {
 }
 
 func BenchmarkGenerateEntityFilename(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := GenerateEntityFilename("person")
 		if err != nil {
 			b.Fatalf("Failed to generate filename: %v", err)
@@ -182,9 +182,8 @@ func BenchmarkGenerateEntityFilename(b *testing.B) {
 
 func BenchmarkGenerateUniqueFilename(b *testing.B) {
 	usedFilenames := make(map[string]bool)
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := GenerateUniqueFilename("person", usedFilenames, 10)
 		if err != nil {
 			b.Fatalf("Failed to generate unique filename: %v", err)

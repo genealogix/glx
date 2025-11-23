@@ -137,7 +137,7 @@ func TestExtensionTagInGEDCOM(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Verify that the person was created (other records should still be processed)
-	assert.Equal(t, 1, len(glx.Persons), "Should create person despite extension tag")
+	assert.Len(t, glx.Persons, 1, "Should create person despite extension tag")
 
 	// Verify statistics show successful import
 	assert.Equal(t, 1, result.Statistics.PersonsCreated)
@@ -163,7 +163,7 @@ func TestExtensionTagWithSubrecords(t *testing.T) {
 
 	// Verify person was created
 	assert.Equal(t, 1, result.Statistics.PersonsCreated)
-	assert.Equal(t, 1, len(glx.Persons))
+	assert.Len(t, glx.Persons, 1)
 }
 
 // TestMultipleExtensionTags tests handling of multiple extension tags
@@ -188,7 +188,7 @@ func TestMultipleExtensionTags(t *testing.T) {
 
 	// Should process person successfully despite multiple extension tags
 	assert.Equal(t, 1, result.Statistics.PersonsCreated)
-	assert.Equal(t, 1, len(glx.Persons))
+	assert.Len(t, glx.Persons, 1)
 }
 
 // TestExtensionTagVsUnknownTag tests that extension tags are handled differently than unknown tags

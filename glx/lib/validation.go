@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -33,6 +34,7 @@ func (glx *GLXFile) Validate() *ValidationResult {
 
 	result.validated = true
 	glx.validation = result
+
 	return result
 }
 
@@ -86,6 +88,7 @@ func buildIDSet(m any) map[string]struct{} {
 	for _, key := range val.MapKeys() {
 		set[key.String()] = struct{}{}
 	}
+
 	return set
 }
 
@@ -135,6 +138,7 @@ func (glx *GLXFile) validateStructReferences(
 		refType := field.Tag.Get("refType")
 		if refType == "" {
 			glx.validateNestedStructs(entityType, entityID, fieldVal, result)
+
 			continue
 		}
 		glx.validateFieldReference(entityType, entityID, field.Name, fieldVal, refType, result)
@@ -183,7 +187,7 @@ func (glx *GLXFile) validateFieldReference(
 		}
 	case reflect.Ptr:
 		if !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Int {
-			refID := fmt.Sprintf("%d", fieldVal.Elem().Int())
+			refID := strconv.FormatInt(fieldVal.Elem().Int(), 10)
 			glx.checkReference(entityType, entityID, fieldName, refType, refID, result)
 		}
 	}
@@ -201,11 +205,13 @@ func (glx *GLXFile) checkReference(
 		if isVocabularyType(targetType) {
 			if _, exists := result.Vocabularies[targetType][refID]; exists {
 				found = true
+
 				break
 			}
 		} else {
 			if _, exists := result.Entities[targetType][refID]; exists {
 				found = true
+
 				break
 			}
 		}
@@ -278,6 +284,7 @@ func (glx *GLXFile) validateProperties(
 			Field:      "properties",
 			Message:    fmt.Sprintf("%s[%s]: has properties but no %s_properties vocabulary was found", entityType, entityID, entityType),
 		})
+
 		return
 	}
 	for propName, propValue := range properties {
@@ -286,9 +293,10 @@ func (glx *GLXFile) validateProperties(
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,
 				SourceID:   entityID,
-				Field:      fmt.Sprintf("properties.%s", propName),
+				Field:      "properties." + propName,
 				Message:    fmt.Sprintf("%s[%s]: unknown property '%s'", entityType, entityID, propName),
 			})
+
 			continue
 		}
 		if propDef.ReferenceType != "" {
@@ -311,13 +319,14 @@ func (glx *GLXFile) validatePropertyReference(
 			result.Errors = append(result.Errors, ValidationError{
 				SourceType:  entityType,
 				SourceID:    entityID,
-				SourceField: fmt.Sprintf("properties.%s", propName),
+				SourceField: "properties." + propName,
 				TargetType:  referenceType,
 				TargetID:    refID,
 				Message: fmt.Sprintf("%s[%s].properties.%s references non-existent %s: %s",
 					entityType, entityID, propName, referenceType, refID),
 			})
 		}
+
 		return
 	}
 	if valueList, ok := propValue.([]any); ok {
@@ -358,14 +367,15 @@ func (glx *GLXFile) validatePropertyValue(
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,
 				SourceID:   entityID,
-				Field:      fmt.Sprintf("properties.%s", propName),
+				Field:      "properties." + propName,
 				Message: fmt.Sprintf("%s[%s].properties.%s: non-temporal property has list value (expected simple value)",
 					entityType, entityID, propName),
 			})
 		} else {
 			// Validate the simple value against its value_type
-			glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s", propName), propValue, propDef.ValueType, result)
+			glx.validateValueType(entityType, entityID, "properties."+propName, propValue, propDef.ValueType, result)
 		}
+
 		return
 	}
 
@@ -373,7 +383,8 @@ func (glx *GLXFile) validatePropertyValue(
 	switch v := propValue.(type) {
 	case string, float64, int, bool:
 		// Simple value is fine for temporal properties - validate it
-		glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s", propName), v, propDef.ValueType, result)
+		glx.validateValueType(entityType, entityID, "properties."+propName, v, propDef.ValueType, result)
+
 		return
 	}
 
@@ -383,10 +394,11 @@ func (glx *GLXFile) validatePropertyValue(
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			SourceType: entityType,
 			SourceID:   entityID,
-			Field:      fmt.Sprintf("properties.%s", propName),
+			Field:      "properties." + propName,
 			Message: fmt.Sprintf("%s[%s].properties.%s: temporal property has invalid value type (expected simple value or list of {value, date} objects)",
 				entityType, entityID, propName),
 		})
+
 		return
 	}
 
@@ -401,6 +413,7 @@ func (glx *GLXFile) validatePropertyValue(
 				Message: fmt.Sprintf("%s[%s].properties.%s[%d]: temporal list item must be an object with 'value' field",
 					entityType, entityID, propName, i),
 			})
+
 			continue
 		}
 
@@ -493,6 +506,7 @@ func isValidSimpleDate(s string) bool {
 				return false
 			}
 		}
+
 		return true
 	}
 
@@ -516,6 +530,7 @@ func isDigits(s string) bool {
 			return false
 		}
 	}
+
 	return len(s) > 0
 }
 

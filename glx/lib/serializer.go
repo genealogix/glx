@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -66,6 +67,7 @@ func NewSerializer(options *SerializerOptions) *DefaultSerializer {
 	if options == nil {
 		options = DefaultSerializerOptions()
 	}
+
 	return &DefaultSerializer{
 		Options: options,
 	}
@@ -415,7 +417,7 @@ func loadEntitiesWithID[T any](dir string, entities map[string]T) error {
 // Returns error if validation fails with hard errors.
 func validateGLXFile(glx *GLXFile) error {
 	if glx == nil {
-		return fmt.Errorf("GLX file is nil")
+		return errors.New("GLX file is nil")
 	}
 
 	// Initialize maps if nil (prevents validation from failing on nil maps)
@@ -456,7 +458,7 @@ func validateGLXFile(glx *GLXFile) error {
 		var errMsgs []string
 		for i, err := range result.Errors {
 			if i < 10 { // Show first 10 errors
-				errMsgs = append(errMsgs, fmt.Sprintf("  - %s", err.Message))
+				errMsgs = append(errMsgs, "  - "+err.Message)
 			}
 		}
 		if len(result.Errors) > 10 {

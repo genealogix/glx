@@ -31,6 +31,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 		if sourceID == "" {
 			// Source doesn't exist yet, log warning but continue
 			conv.Logger.LogWarning(sourRecord.Line, "SOUR", sourRecord.Value, "Referenced source not found")
+
 			return "", fmt.Errorf("source not found: %s", sourRecord.Value)
 		}
 	} else {
@@ -143,7 +144,7 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 	case string:
 		valueStr = v
 	case int:
-		valueStr = fmt.Sprintf("%d", v)
+		valueStr = strconv.Itoa(v)
 	case float64:
 		valueStr = fmt.Sprintf("%f", v)
 	default:
@@ -221,21 +222,22 @@ func mapQUAYtoConfidence(quay int) string {
 func extractNoteText(noteRecord *GEDCOMRecord, conv *ConversionContext) string {
 	if noteRecord.Value != "" {
 		// Inline note
-		text := noteRecord.Value
+		var text strings.Builder
+		text.WriteString(noteRecord.Value)
 
 		// Check for CONT/CONC subrecords
 		for _, sub := range noteRecord.SubRecords {
 			switch sub.Tag {
 			case "CONT":
 				// Continuation on new line
-				text += "\n" + sub.Value
+				text.WriteString("\n" + sub.Value)
 			case "CONC":
 				// Concatenation (continues same line)
-				text += sub.Value
+				text.WriteString(sub.Value)
 			}
 		}
 
-		return text
+		return text.String()
 	}
 
 	// Check if it's a reference to shared note (GEDCOM 7.0)

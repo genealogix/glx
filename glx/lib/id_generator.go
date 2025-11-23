@@ -3,6 +3,7 @@ package lib
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 )
 
@@ -31,6 +32,7 @@ func GenerateEntityFilename(entityType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return fmt.Sprintf("%s-%s.glx", entityType, id), nil
 }
 
@@ -42,7 +44,7 @@ func GenerateUniqueFilename(entityType string, usedFilenames map[string]bool, ma
 		maxRetries = 10 // Default to 10 retries
 	}
 
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		filename, err := GenerateEntityFilename(entityType)
 		if err != nil {
 			return "", fmt.Errorf("failed to generate filename: %w", err)
@@ -51,6 +53,7 @@ func GenerateUniqueFilename(entityType string, usedFilenames map[string]bool, ma
 		// Check if already used
 		if !usedFilenames[filename] {
 			usedFilenames[filename] = true
+
 			return filename, nil
 		}
 
@@ -60,7 +63,7 @@ func GenerateUniqueFilename(entityType string, usedFilenames map[string]bool, ma
 		}
 	}
 
-	return "", fmt.Errorf("failed to generate unique filename")
+	return "", errors.New("failed to generate unique filename")
 }
 
 // MustGenerateRandomID is like GenerateRandomID but panics on error.
@@ -70,6 +73,7 @@ func MustGenerateRandomID() string {
 	if err != nil {
 		panic(err)
 	}
+
 	return id
 }
 
@@ -80,5 +84,6 @@ func MustGenerateEntityFilename(entityType string) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return filename
 }

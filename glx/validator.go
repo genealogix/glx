@@ -16,8 +16,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +52,8 @@ func ParseYAMLFile(data []byte) (map[string]any, error) {
 	if result, ok := normalized.(map[string]any); ok {
 		return result, nil
 	}
-	return nil, fmt.Errorf("YAML document is not an object")
+
+	return nil, errors.New("YAML document is not an object")
 }
 
 // normalizeYAMLMap recursively converts map[any]any to map[string]any
@@ -63,18 +66,21 @@ func normalizeYAMLMap(val any) any {
 			keyStr := fmt.Sprintf("%v", key)
 			result[keyStr] = normalizeYAMLMap(value)
 		}
+
 		return result
 	case map[string]any:
 		result := make(map[string]any)
 		for key, value := range v {
 			result[key] = normalizeYAMLMap(value)
 		}
+
 		return result
 	case []any:
 		result := make([]any, len(v))
 		for i, item := range v {
 			result[i] = normalizeYAMLMap(item)
 		}
+
 		return result
 	default:
 		return v
@@ -163,9 +169,8 @@ func resolveRefsWithRoot(obj any, root map[string]any) error {
 										// This is the individual entry schema - use it directly
 										if entrySchema, ok := patternDef.(map[string]any); ok {
 											delete(v, "$ref")
-											for key, value := range entrySchema {
-												v[key] = value
-											}
+											maps.Copy(v, entrySchema)
+
 											return nil
 										}
 									}
@@ -175,9 +180,8 @@ func resolveRefsWithRoot(obj any, root map[string]any) error {
 									// This might be a $ref to #/definitions/PropertyDefinition
 									// The ref has already been resolved, so use it directly
 									delete(v, "$ref")
-									for key, value := range addlProps {
-										v[key] = value
-									}
+									maps.Copy(v, addlProps)
+
 									return nil
 								}
 							}
@@ -267,6 +271,7 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 	entityJSON, err := json.Marshal(doc)
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("failed to marshal entity: %v", err))
+
 		return issues
 	}
 	documentLoader := gojsonschema.NewBytesLoader(entityJSON)
@@ -308,6 +313,7 @@ func isValidEntityID(id string) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -374,6 +380,7 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 			// For now, returning an error is sufficient to stop the process.
 			errorMessages := make([]string, len(issues))
 			copy(errorMessages, issues)
+
 			return fmt.Errorf("validation of file %s failed:\n- %s", path, strings.Join(errorMessages, "\n- "))
 		}
 

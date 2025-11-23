@@ -89,12 +89,14 @@ func validatePaths(args []string) error {
 			data, err := os.ReadFile(filePath)
 			if err != nil {
 				allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, err))
+
 				return nil // Continue to next file
 			}
 
 			doc, err := ParseYAMLFile(data)
 			if err != nil {
 				allErrors = append(allErrors, fmt.Sprintf("Error parsing YAML in %s: %v", filePath, err))
+
 				return nil // Continue
 			}
 
@@ -104,6 +106,7 @@ func validatePaths(args []string) error {
 					allErrors = append(allErrors, fmt.Sprintf("Error in %s: %s", filePath, issue))
 				}
 			}
+
 			return nil
 		})
 		if err != nil {
@@ -117,6 +120,7 @@ func validatePaths(args []string) error {
 		for _, err := range allErrors {
 			fmt.Fprintf(os.Stderr, "- %s\n", err)
 		}
+
 		return errors.New("structural validation failed")
 	}
 
@@ -135,6 +139,7 @@ func validatePaths(args []string) error {
 	if err != nil {
 		// This error comes from LoadArchive if a file fails validation during load
 		fmt.Fprintf(os.Stderr, "Error loading archive: %v\n", err)
+
 		return err
 	}
 
@@ -164,9 +169,11 @@ func validatePaths(args []string) error {
 		for _, err := range allErrors {
 			fmt.Fprintf(os.Stderr, "- ❌ %s\n", err)
 		}
+
 		return errors.New("validation failed")
 	}
 
 	fmt.Println("✅ Archive is valid.")
+
 	return nil
 }

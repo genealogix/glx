@@ -78,6 +78,7 @@ func TestParseGEDCOMLine(t *testing.T) {
 				if err == nil {
 					t.Errorf("Expected error, got nil")
 				}
+
 				return
 			}
 

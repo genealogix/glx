@@ -30,18 +30,20 @@ import "gopkg.in/yaml.v3"
 type DateString string
 
 // MarshalYAML implements yaml.Marshaler to ensure dates are always quoted.
-func (ds DateString) MarshalYAML() (interface{}, error) {
+func (ds DateString) MarshalYAML() (any, error) {
 	node := &yaml.Node{
 		Kind:  yaml.ScalarNode,
 		Style: yaml.DoubleQuotedStyle,
 		Value: string(ds),
 	}
+
 	return node, nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for DateString.
 func (ds *DateString) UnmarshalYAML(node *yaml.Node) error {
 	*ds = DateString(node.Value)
+
 	return nil
 }
 

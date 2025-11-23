@@ -456,6 +456,7 @@ func TestE2E_GEDCOM70_SameSexMarriage(t *testing.T) {
 	for _, rel := range glx.Relationships {
 		if rel.Type == RelationshipTypeMarriage {
 			foundMarriage = true
+
 			break
 		}
 	}

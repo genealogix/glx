@@ -16,6 +16,7 @@ package lib
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Convert performs the main GEDCOM to GLX conversion with two-pass processing
@@ -36,61 +37,61 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 
 		// GEDCOM 5.5.1: Process shared NOTE records
 		case "NOTE":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing NOTE %s", record.XRef))
+			conv.Logger.LogInfo("Processing NOTE " + record.XRef)
 			if err := convertSharedNote551(record, conv); err != nil {
 				conv.addError(record.Line, "NOTE", err.Error())
 			}
 
 		// GEDCOM 7.0: Process shared notes (SNOTE)
 		case "SNOTE":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing SNOTE %s", record.XRef))
+			conv.Logger.LogInfo("Processing SNOTE " + record.XRef)
 			if err := convertSharedNote(record, conv); err != nil {
 				conv.addError(record.Line, "SNOTE", err.Error())
 			}
 
 		// GEDCOM 7.0: Process extension schemas
 		case "SCHMA":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing SCHMA %s", record.XRef))
+			conv.Logger.LogInfo("Processing SCHMA " + record.XRef)
 			if err := convertExtensionSchema(record, conv); err != nil {
 				conv.addError(record.Line, "SCHMA", err.Error())
 			}
 
 		// Process repositories before sources (for linking)
 		case "REPO":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing REPO %s", record.XRef))
+			conv.Logger.LogInfo("Processing REPO " + record.XRef)
 			if err := convertRepository(record, conv); err != nil {
 				conv.addError(record.Line, "REPO", err.Error())
 			}
 
 		// Process sources before individuals (for evidence)
 		case "SOUR":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing SOUR %s", record.XRef))
+			conv.Logger.LogInfo("Processing SOUR " + record.XRef)
 			if err := convertSource(record, conv); err != nil {
 				conv.addError(record.Line, "SOUR", err.Error())
 			}
 
 		// Process media objects
 		case "OBJE":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing OBJE %s", record.XRef))
+			conv.Logger.LogInfo("Processing OBJE " + record.XRef)
 			if err := convertMedia(record, conv); err != nil {
 				conv.addError(record.Line, "OBJE", err.Error())
 			}
 
 		// Process individuals
 		case "INDI":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing INDI %s", record.XRef))
+			conv.Logger.LogInfo("Processing INDI " + record.XRef)
 			if err := convertIndividual(record, conv); err != nil {
 				conv.addError(record.Line, "INDI", err.Error())
 			}
 
 		// Defer families until after individuals
 		case "FAM":
-			conv.Logger.LogInfo(fmt.Sprintf("Deferring FAM %s", record.XRef))
+			conv.Logger.LogInfo("Deferring FAM " + record.XRef)
 			conv.DeferredFamilies = append(conv.DeferredFamilies, record)
 
 		// Handle submitter (SUBM)
 		case "SUBM":
-			conv.Logger.LogInfo(fmt.Sprintf("Processing SUBM %s", record.XRef))
+			conv.Logger.LogInfo("Processing SUBM " + record.XRef)
 			convertSubmitter(record, conv)
 
 		default:
@@ -103,7 +104,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 					conv.Logger.LogInfo(fmt.Sprintf("Processed extension tag %s: %+v", record.Tag, extData))
 				}
 			} else {
-				conv.addWarning(record.Line, record.Tag, fmt.Sprintf("Unknown top-level tag: %s", record.Tag))
+				conv.addWarning(record.Line, record.Tag, "Unknown top-level tag: "+record.Tag)
 			}
 		}
 	}
@@ -129,6 +130,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 			parents := conv.FamilyParentsMap[link.FamilyRef]
 			if len(parents) == 0 {
 				conv.Logger.LogWarning(0, "FAMC", link.FamilyRef, "Family not found or has no parents")
+
 				continue
 			}
 
@@ -285,12 +287,14 @@ func extractAddress(addrRecord *GEDCOMRecord) string {
 	}
 
 	result := ""
+	var resultSb288 strings.Builder
 	for i, part := range parts {
 		if i > 0 {
-			result += ", "
+			resultSb288.WriteString(", ")
 		}
-		result += part
+		resultSb288.WriteString(part)
 	}
+	result += resultSb288.String()
 
 	return result
 }
@@ -303,6 +307,7 @@ func isExtensionTag(tag string) bool {
 	if len(tag) > 0 && tag[0] == '_' {
 		return true
 	}
+
 	return false
 }
 

@@ -34,7 +34,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		return fmt.Errorf("expected FAM record, got %s", famRecord.Tag)
 	}
 
-	conv.Logger.LogInfo(fmt.Sprintf("Converting FAM %s", famRecord.XRef))
+	conv.Logger.LogInfo("Converting FAM " + famRecord.XRef)
 
 	// Extract spouse references
 	var husbandID, wifeID string

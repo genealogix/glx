@@ -16,6 +16,7 @@ package lib
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -161,10 +162,11 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	records, version, versionString, err := parseGEDCOM(reader, logger)
 	if err != nil {
 		logger.LogError(0, "PARSE", "", err)
+
 		return nil, nil, fmt.Errorf("parse error: %w", err)
 	}
 
-	logger.LogInfo(fmt.Sprintf("Detected GEDCOM version: %s", versionString))
+	logger.LogInfo("Detected GEDCOM version: " + versionString)
 
 	// Create GLX file
 	glx := &GLXFile{
@@ -182,6 +184,7 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	// Load standard vocabularies into GLXFile so validation works
 	if err := LoadStandardVocabulariesIntoGLX(glx); err != nil {
 		logger.LogError(0, "VOCAB", "", err)
+
 		return nil, nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
 	}
 
@@ -207,6 +210,7 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	// Perform conversion
 	if err := conv.Convert(records); err != nil {
 		logger.LogError(0, "CONVERT", "", err)
+
 		return nil, nil, fmt.Errorf("conversion error: %w", err)
 	}
 
@@ -284,8 +288,10 @@ func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
 				} else {
 					lastLine.Value += "\n" + text
 				}
+
 				continue // Skip adding this as a new line
 			}
+
 			return nil, fmt.Errorf("line %d: %w", lineNum, err)
 		}
 
@@ -310,7 +316,7 @@ func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
 	// GEDCOM line format: LEVEL [XREF] TAG [VALUE]
 	parts := strings.Fields(text)
 	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid GEDCOM line: too few parts")
+		return nil, errors.New("invalid GEDCOM line: too few parts")
 	}
 
 	line := &GEDCOMLine{Line: lineNum}
@@ -328,7 +334,7 @@ func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
 		line.XRef = parts[1]
 		idx = 2
 		if len(parts) < 3 {
-			return nil, fmt.Errorf("invalid GEDCOM line: missing tag after xref")
+			return nil, errors.New("invalid GEDCOM line: missing tag after xref")
 		}
 	}
 
@@ -364,6 +370,7 @@ func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
 		if line.Level == 0 {
 			records = append(records, record)
 			stack = []*GEDCOMRecord{record}
+
 			continue
 		}
 
@@ -404,6 +411,7 @@ func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 			}
 		}
 	}
+
 	return GEDCOM551, "5.5.1" // Default to 5.5.1
 }
 

@@ -111,6 +111,7 @@ func createOrGetPlace(name string, parentID string, level int, latitude, longitu
 				existingPlace.Longitude = longitude
 			}
 		}
+
 		return existingID
 	}
 
@@ -201,6 +202,7 @@ func extractPlaceCoordinates(placeRecord *GEDCOMRecord) (latitude, longitude *fl
 			}
 		}
 	}
+
 	return latitude, longitude
 }
 
