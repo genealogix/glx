@@ -16,6 +16,7 @@ func serializeSingleFileTest(s *DefaultSerializer, glx *GLXFile, path string) er
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(path, bytes, 0o644)
 }
 
@@ -24,6 +25,7 @@ func deserializeSingleFileTest(s *DefaultSerializer, path string) (*GLXFile, err
 	if err != nil {
 		return nil, err
 	}
+
 	return s.DeserializeSingleFileBytes(bytes)
 }
 
@@ -42,6 +44,7 @@ func serializeMultiFileTest(s *DefaultSerializer, glx *GLXFile, dir string) erro
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -63,11 +66,13 @@ func deserializeMultiFileTest(s *DefaultSerializer, dir string) (*GLXFile, error
 			return err
 		}
 		files[relPath] = data
+
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return s.DeserializeMultiFileFromMap(files)
 }
 

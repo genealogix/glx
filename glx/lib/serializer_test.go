@@ -373,6 +373,7 @@ func TestLoadMultiFile(t *testing.T) {
 		}
 		relPath, _ := filepath.Rel(tmpDir, path)
 		filesRead[relPath] = data
+
 		return nil
 	})
 	if err != nil {

@@ -113,6 +113,7 @@ func joinArchive(inputDir, outputPath string) error {
 		}
 
 		files[relPath] = data
+
 		return nil
 	})
 	if err != nil {
