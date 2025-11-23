@@ -83,8 +83,12 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		relationshipID := generateRelationshipID(conv)
 
 		relationship := &Relationship{
-			Type:       RelationshipTypeMarriage,
-			Persons:    []string{husbandID, wifeID},
+			Type:    RelationshipTypeMarriage,
+			Persons: []string{husbandID, wifeID},
+			Participants: []RelationshipParticipant{
+				{Person: husbandID, Role: ParticipantRoleSpouse},
+				{Person: wifeID, Role: ParticipantRoleSpouse},
+			},
 			Properties: make(map[string]any),
 		}
 

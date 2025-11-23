@@ -158,13 +158,13 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	logger.LogInfo("Starting GEDCOM import")
 
 	// Parse GEDCOM
-	records, version, err := parseGEDCOM(reader, logger)
+	records, version, versionString, err := parseGEDCOM(reader, logger)
 	if err != nil {
 		logger.LogError(0, "PARSE", "", err)
 		return nil, nil, fmt.Errorf("parse error: %w", err)
 	}
 
-	logger.LogInfo(fmt.Sprintf("Detected GEDCOM version: %s", versionToString(version)))
+	logger.LogInfo(fmt.Sprintf("Detected GEDCOM version: %s", versionString))
 
 	// Create GLX file
 	glx := &GLXFile{
@@ -216,18 +216,18 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	// Build result
 	result := &ImportResult{
 		Statistics: conv.Stats,
-		Version:    versionToString(version),
+		Version:    versionString,
 	}
 
 	return glx, result, nil
 }
 
 // parseGEDCOM parses a GEDCOM file into hierarchical records
-func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCOMVersion, error) {
+func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCOMVersion, string, error) {
 	// Parse lines
 	lines, err := parseGEDCOMLines(reader)
 	if err != nil {
-		return nil, GEDCOMUnknown, err
+		return nil, GEDCOMUnknown, "", err
 	}
 
 	logger.LogInfo(fmt.Sprintf("Parsed %d lines", len(lines)))
@@ -238,9 +238,9 @@ func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCO
 	logger.LogInfo(fmt.Sprintf("Built %d top-level records", len(records)))
 
 	// Detect version
-	version := detectGEDCOMVersion(records)
+	version, versionString := detectGEDCOMVersion(records)
 
-	return records, version, nil
+	return records, version, versionString, nil
 }
 
 // parseGEDCOMLines parses GEDCOM file line by line
@@ -384,7 +384,7 @@ func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
 }
 
 // detectGEDCOMVersion detects GEDCOM version from header
-func detectGEDCOMVersion(records []*GEDCOMRecord) GEDCOMVersion {
+func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 	for _, record := range records {
 		if record.Tag == "HEAD" {
 			for _, sub := range record.SubRecords {
@@ -393,10 +393,10 @@ func detectGEDCOMVersion(records []*GEDCOMRecord) GEDCOMVersion {
 						if versSub.Tag == "VERS" {
 							version := strings.TrimSpace(versSub.Value)
 							if strings.HasPrefix(version, "7.") {
-								return GEDCOM70
+								return GEDCOM70, version
 							}
 							if strings.HasPrefix(version, "5.5") {
-								return GEDCOM551
+								return GEDCOM551, version
 							}
 						}
 					}
@@ -404,7 +404,7 @@ func detectGEDCOMVersion(records []*GEDCOMRecord) GEDCOMVersion {
 			}
 		}
 	}
-	return GEDCOM551 // Default to 5.5.1
+	return GEDCOM551, "5.5.1" // Default to 5.5.1
 }
 
 // versionToString converts version enum to string

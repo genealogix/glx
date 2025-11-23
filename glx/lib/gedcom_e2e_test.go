@@ -78,7 +78,37 @@ func TestE2E_GEDCOM551_Shakespeare(t *testing.T) {
 		}
 	}
 	if !foundWilliam {
-		t.Error("Did not find William Shakespeare in persons")
+		t.Error("Did not find William Shakespeare in persons - person data not persisted")
+	}
+
+	// Verify birth events have dates
+	birthEventsWithDates := 0
+	for _, event := range glx.Events {
+		if event.Type == EventTypeBirth && event.Date != "" {
+			birthEventsWithDates++
+		}
+	}
+	if birthEventsWithDates == 0 {
+		t.Error("No birth events have dates - event date data not persisted")
+	} else {
+		t.Logf("✓ Found %d birth events with dates", birthEventsWithDates)
+	}
+
+	// Verify parent-child relationships exist
+	parentChildRels := 0
+	for _, rel := range glx.Relationships {
+		if rel.Type == RelationshipTypeParentChild {
+			parentChildRels++
+			// Verify participants are linked
+			if len(rel.Participants) < 2 {
+				t.Errorf("Parent-child relationship has %d participants, expected at least 2", len(rel.Participants))
+			}
+		}
+	}
+	if parentChildRels == 0 {
+		t.Error("No parent-child relationships found - relationship data not persisted")
+	} else {
+		t.Logf("✓ Found %d parent-child relationships with proper participant linkage", parentChildRels)
 	}
 
 	t.Logf("✓ Shakespeare: %d persons, %d events, %d relationships",

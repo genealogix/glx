@@ -140,8 +140,12 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 				relationshipID := generateRelationshipID(conv)
 
 				relationship := &Relationship{
-					Type:       relType,
-					Persons:    []string{parentID, link.PersonID},
+					Type:    relType,
+					Persons: []string{parentID, link.PersonID},
+					Participants: []RelationshipParticipant{
+						{Person: parentID, Role: ParticipantRoleParent},
+						{Person: link.PersonID, Role: ParticipantRoleChild},
+					},
 					Properties: make(map[string]any),
 				}
 

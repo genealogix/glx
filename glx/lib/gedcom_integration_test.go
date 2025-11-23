@@ -81,6 +81,51 @@ func TestImportShakespeare(t *testing.T) {
 			t.Logf("  Warning [Line %d] %s: %s", w.Line, w.Tag, w.Message)
 		}
 	}
+
+	// Verify actual data is persisted correctly
+	// Check for William Shakespeare
+	foundWilliam := false
+	for _, person := range glx.Persons {
+		givenName, hasGiven := person.Properties["given_name"].(string)
+		familyName, hasFamily := person.Properties["family_name"].(string)
+
+		if hasGiven && hasFamily && givenName == "William" && familyName == "Shakespeare" {
+			foundWilliam = true
+
+			// Verify gender
+			if gender, ok := person.Properties["gender"].(string); !ok || gender != "male" {
+				t.Error("William Shakespeare should have gender 'male'")
+			}
+
+			t.Logf("✓ Found William Shakespeare with correct name and gender")
+			break
+		}
+	}
+	if !foundWilliam {
+		t.Error("Failed to import William Shakespeare - person data not persisted")
+	}
+
+	// Verify events are properly linked to persons
+	eventCount := 0
+	for _, event := range glx.Events {
+		if len(event.Participants) > 0 {
+			eventCount++
+		}
+	}
+	if eventCount == 0 {
+		t.Error("No events have participants - event-person linkage not persisted")
+	}
+
+	// Verify relationships are properly linked
+	relationshipCount := 0
+	for _, rel := range glx.Relationships {
+		if len(rel.Participants) >= 2 {
+			relationshipCount++
+		}
+	}
+	if relationshipCount == 0 {
+		t.Error("No relationships have participants - relationship data not persisted")
+	}
 }
 
 func TestParseGEDCOMDate(t *testing.T) {

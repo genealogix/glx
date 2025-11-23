@@ -44,7 +44,7 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 		{"5.5.5/spec-samples/minimal.ged", 0, 0, "Minimal valid GEDCOM - header only"},
 		{"5.5.5/spec-samples/remarriage.ged", 2, 0, "Remarriage scenario"},
 		{"5.5.5/spec-samples/same-sex-marriage.ged", 2, 0, "Same-sex marriage"},
-		{"5.5.5/spec-samples/sample.ged", 1, 0, "Spec sample file"},
+		{"5.5.5/spec-samples/sample.ged", 3, 8, "Spec sample file"},
 
 		// GEDCOM 7.0 - Additional test coverage
 		{"7.0/cross-references/xref.ged", 1, 0, "Cross-reference handling"},
@@ -81,6 +81,32 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 			// Verify vocabularies loaded (all imports should have event types)
 			if len(glx.EventTypes) == 0 {
 				t.Error("Expected event type vocabularies to be loaded")
+			}
+
+			// Data persistence checks - verify person properties are populated
+			if len(glx.Persons) > 0 {
+				personWithProperties := 0
+				for _, person := range glx.Persons {
+					if len(person.Properties) > 0 {
+						personWithProperties++
+					}
+				}
+				if personWithProperties == 0 {
+					t.Error("No persons have properties - person data not persisted")
+				}
+			}
+
+			// Verify relationships have participants when present
+			if len(glx.Relationships) > 0 {
+				relsWithParticipants := 0
+				for _, rel := range glx.Relationships {
+					if len(rel.Participants) >= 2 {
+						relsWithParticipants++
+					}
+				}
+				if relsWithParticipants == 0 {
+					t.Error("No relationships have participants - relationship linkage not persisted")
+				}
 			}
 
 			t.Logf("✓ %s: %d persons, %d events, %d relationships",
@@ -131,4 +157,137 @@ func TestGEDCOM_ImportLargeFiles(t *testing.T) {
 				tc.notes, len(glx.Persons), len(glx.Events), len(glx.Relationships))
 		})
 	}
+}
+
+// TestGEDCOM555_Sample_DataPersistence validates that actual GEDCOM data is correctly imported
+// This test verifies specific values from the 5.5.5 sample.ged file
+func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
+	fullPath := filepath.Join("..", "testdata", "gedcom", "5.5.5", "spec-samples", "sample.ged")
+	logPath := filepath.Join(t.TempDir(), "import.log")
+
+	glx, result, err := importGEDCOMFromFile(fullPath, logPath)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if result.Version != "5.5.5" {
+		t.Errorf("Expected version 5.5.5, got %s", result.Version)
+	}
+
+	// Exact counts
+	if len(glx.Persons) != 3 {
+		t.Errorf("Expected exactly 3 persons, got %d", len(glx.Persons))
+	}
+
+	// Test Person Data Persistence: Robert Eugene Williams
+	foundRobert := false
+	for _, person := range glx.Persons {
+		givenName, hasGiven := person.Properties["given_name"].(string)
+		familyName, hasFamily := person.Properties["family_name"].(string)
+
+		if hasGiven && hasFamily && givenName == "Robert Eugene" && familyName == "Williams" {
+			foundRobert = true
+
+			// Verify gender persisted
+			if gender, ok := person.Properties["gender"].(string); !ok || gender != "male" {
+				t.Error("Robert Eugene Williams should have gender 'male'")
+			}
+
+			t.Logf("✓ Robert Eugene Williams: name and gender persisted correctly")
+			break
+		}
+	}
+	if !foundRobert {
+		t.Error("Failed to find Robert Eugene Williams - person name data not persisted")
+	}
+
+	// Test Person Data Persistence: Mary Ann Wilson
+	foundMary := false
+	for _, person := range glx.Persons {
+		givenName, hasGiven := person.Properties["given_name"].(string)
+		familyName, hasFamily := person.Properties["family_name"].(string)
+
+		if hasGiven && hasFamily && givenName == "Mary Ann" && familyName == "Wilson" {
+			foundMary = true
+
+			// Verify gender persisted
+			if gender, ok := person.Properties["gender"].(string); !ok || gender != "female" {
+				t.Error("Mary Ann Wilson should have gender 'female'")
+			}
+
+			t.Logf("✓ Mary Ann Wilson: name and gender persisted correctly")
+			break
+		}
+	}
+	if !foundMary {
+		t.Error("Failed to find Mary Ann Wilson - person name data not persisted")
+	}
+
+	// Test Event Data Persistence: Birth dates should be imported
+	birthEventsWithDates := 0
+	for _, event := range glx.Events {
+		if event.Type == EventTypeBirth && event.Date != "" {
+			birthEventsWithDates++
+		}
+	}
+	if birthEventsWithDates == 0 {
+		t.Error("No birth events have dates - event date data not persisted")
+	}
+
+	// Test Place Data Persistence
+	if len(glx.Places) == 0 {
+		t.Error("No places imported - place data not persisted")
+	}
+
+	// Test Relationship Data Persistence: Marriage relationships
+	marriageRelationships := 0
+	for _, rel := range glx.Relationships {
+		if rel.Type == RelationshipTypeMarriage {
+			marriageRelationships++
+			// Verify participants are linked
+			if len(rel.Participants) < 2 {
+				t.Errorf("Marriage relationship has %d participants, expected at least 2", len(rel.Participants))
+			}
+		}
+	}
+	if marriageRelationships == 0 {
+		t.Error("No marriage relationships found - relationship data not persisted")
+	}
+
+	// Test Source Data Persistence
+	if len(glx.Sources) == 0 {
+		t.Error("No sources imported - source data not persisted")
+	} else {
+		foundMadisonSource := false
+		for _, source := range glx.Sources {
+			if source.Title == "Madison County Birth, Death, and Marriage Records" {
+				foundMadisonSource = true
+				t.Logf("✓ Source 'Madison County Birth, Death, and Marriage Records' persisted correctly")
+				break
+			}
+		}
+		if !foundMadisonSource {
+			t.Error("Failed to find expected source - source title data not persisted")
+		}
+	}
+
+	// Test Repository Data Persistence
+	if len(glx.Repositories) == 0 {
+		t.Error("No repositories imported - repository data not persisted")
+	} else {
+		foundFHL := false
+		for _, repo := range glx.Repositories {
+			if repo.Name == "Family History Library" {
+				foundFHL = true
+				t.Logf("✓ Repository 'Family History Library' persisted correctly")
+				break
+			}
+		}
+		if !foundFHL {
+			t.Error("Failed to find expected repository - repository name data not persisted")
+		}
+	}
+
+	t.Logf("✓ Sample.ged data persistence validated: %d persons, %d events, %d relationships, %d sources, %d repositories",
+		len(glx.Persons), len(glx.Events), len(glx.Relationships), len(glx.Sources), len(glx.Repositories))
 }
