@@ -99,8 +99,8 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 				// Process extension data
 				extData := convertExtensionData(record.Tag, record.Value, record.SubRecords)
 				if len(extData) > 0 {
-					// Store extension data in metadata or a dedicated extensions map
-					// For now, log it
+					// TODO: Store extension data in a dedicated structure
+					// For now, just log it
 					conv.Logger.LogInfo(fmt.Sprintf("Processed extension tag %s: %+v", record.Tag, extData))
 				}
 			} else {

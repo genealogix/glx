@@ -6,3 +6,4 @@
 - remove the custom flag from all vocabularies and property definitions
 - remove glx archive folder references from all examples and documentation
 - explore making name property an object?
+- Store GEDCOM extension tag data (tags starting with `_`) in ImportResult or a dedicated structure so it can be accessed after import
