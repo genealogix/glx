@@ -70,15 +70,15 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) 
 
 	for _, sub := range schmaRecord.SubRecords {
 		switch sub.Tag {
-		case "TAG":
+		case GedcomTagTag:
 			// Main tag name
 			if schema.Tag == "" {
 				schema.Tag = sub.Value
 			}
-		case "URI":
+		case GedcomTagUri:
 			// Schema URI
 			schema.URI = sub.Value
-		case "NOTE":
+		case GedcomTagNote:
 			// Description
 			schema.Description = extractNoteText(sub, conv)
 		}

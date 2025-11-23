@@ -49,21 +49,21 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	// Process subrecords
 	for _, sub := range repoRecord.SubRecords {
 		switch sub.Tag {
-		case "NAME":
+		case GedcomTagName:
 			// Repository name
 			repository.Name = sub.Value
 
-		case "ADDR":
+		case GedcomTagAddr:
 			// Address - extract components
 			for _, addrSub := range sub.SubRecords {
 				switch addrSub.Tag {
-				case "CITY":
+				case GedcomTagCity:
 					repository.City = addrSub.Value
-				case "STAE":
+				case GedcomTagStae:
 					repository.State = addrSub.Value
-				case "POST":
+				case GedcomTagPost:
 					repository.PostalCode = addrSub.Value
-				case "CTRY":
+				case GedcomTagCtry:
 					repository.Country = addrSub.Value
 				}
 			}
@@ -72,26 +72,26 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 				repository.Address = sub.Value
 			}
 
-		case "PHON":
+		case GedcomTagPhon:
 			// Phone - collect all, use first as primary
 			phones = append(phones, sub.Value)
 
-		case "EMAIL":
+		case GedcomTagEmail:
 			// Email - collect all, use first as primary
 			emails = append(emails, sub.Value)
 
-		case "WWW":
+		case GedcomTagWww:
 			// Website (GEDCOM 7.0)
 			repository.Website = sub.Value
 
-		case "NOTE":
+		case GedcomTagNote:
 			// Notes
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
 
-		case "TYPE":
+		case GedcomTagType:
 			// Repository type (GEDCOM 7.0)
 			repository.Type = mapRepositoryType(sub.Value)
 		}

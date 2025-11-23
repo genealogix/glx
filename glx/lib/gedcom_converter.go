@@ -26,71 +26,71 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	// First pass: Process all top-level records in dependency order
 	for _, record := range records {
 		switch record.Tag {
-		case "HEAD":
+		case GedcomTagHead:
 			// Header - extract metadata
 			conv.Logger.LogInfo("Processing HEAD")
 			convertHeader(record, conv)
 
-		case "TRLR":
+		case GedcomTagTrlr:
 			// Trailer - end of file
 			continue
 
 		// GEDCOM 5.5.1: Process shared NOTE records
-		case "NOTE":
+		case GedcomTagNote:
 			conv.Logger.LogInfo("Processing NOTE " + record.XRef)
 			if err := convertSharedNote551(record, conv); err != nil {
-				conv.addError(record.Line, "NOTE", err.Error())
+				conv.addError(record.Line, GedcomTagNote, err.Error())
 			}
 
 		// GEDCOM 7.0: Process shared notes (SNOTE)
-		case "SNOTE":
+		case GedcomTagSnote:
 			conv.Logger.LogInfo("Processing SNOTE " + record.XRef)
 			if err := convertSharedNote(record, conv); err != nil {
-				conv.addError(record.Line, "SNOTE", err.Error())
+				conv.addError(record.Line, GedcomTagSnote, err.Error())
 			}
 
 		// GEDCOM 7.0: Process extension schemas
-		case "SCHMA":
+		case GedcomTagSchma:
 			conv.Logger.LogInfo("Processing SCHMA " + record.XRef)
 			if err := convertExtensionSchema(record, conv); err != nil {
-				conv.addError(record.Line, "SCHMA", err.Error())
+				conv.addError(record.Line, GedcomTagSchma, err.Error())
 			}
 
 		// Process repositories before sources (for linking)
-		case "REPO":
+		case GedcomTagRepo:
 			conv.Logger.LogInfo("Processing REPO " + record.XRef)
 			if err := convertRepository(record, conv); err != nil {
-				conv.addError(record.Line, "REPO", err.Error())
+				conv.addError(record.Line, GedcomTagRepo, err.Error())
 			}
 
 		// Process sources before individuals (for evidence)
-		case "SOUR":
+		case GedcomTagSour:
 			conv.Logger.LogInfo("Processing SOUR " + record.XRef)
 			if err := convertSource(record, conv); err != nil {
-				conv.addError(record.Line, "SOUR", err.Error())
+				conv.addError(record.Line, GedcomTagSour, err.Error())
 			}
 
 		// Process media objects
-		case "OBJE":
+		case GedcomTagObje:
 			conv.Logger.LogInfo("Processing OBJE " + record.XRef)
 			if err := convertMedia(record, conv); err != nil {
-				conv.addError(record.Line, "OBJE", err.Error())
+				conv.addError(record.Line, GedcomTagObje, err.Error())
 			}
 
 		// Process individuals
-		case "INDI":
+		case GedcomTagIndi:
 			conv.Logger.LogInfo("Processing INDI " + record.XRef)
 			if err := convertIndividual(record, conv); err != nil {
-				conv.addError(record.Line, "INDI", err.Error())
+				conv.addError(record.Line, GedcomTagIndi, err.Error())
 			}
 
 		// Defer families until after individuals
-		case "FAM":
+		case GedcomTagFam:
 			conv.Logger.LogInfo("Deferring FAM " + record.XRef)
 			conv.DeferredFamilies = append(conv.DeferredFamilies, record)
 
 		// Handle submitter (SUBM)
-		case "SUBM":
+		case GedcomTagSubm:
 			conv.Logger.LogInfo("Processing SUBM " + record.XRef)
 			convertSubmitter(record, conv)
 
@@ -187,37 +187,37 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 
 	for _, sub := range headRecord.SubRecords {
 		switch sub.Tag {
-		case "DATE":
+		case GedcomTagDate:
 			metadata["export_date"] = sub.Value
-		case "FILE":
+		case GedcomTagFile:
 			metadata["source_file"] = sub.Value
-		case "COPR":
+		case GedcomTagCopr:
 			metadata["copyright"] = sub.Value
-		case "LANG":
+		case GedcomTagLang:
 			metadata["language"] = sub.Value
-		case "SOUR":
+		case GedcomTagSour:
 			// Source system
 			for _, sourSub := range sub.SubRecords {
 				switch sourSub.Tag {
-				case "NAME":
+				case GedcomTagName:
 					metadata["source_system"] = sourSub.Value
-				case "VERS":
+				case GedcomTagVers:
 					metadata["source_version"] = sourSub.Value
-				case "CORP":
+				case GedcomTagCorp:
 					metadata["source_corporation"] = sourSub.Value
 				}
 			}
-		case "SUBM":
+		case GedcomTagSubm:
 			metadata["submitter_ref"] = sub.Value
-		case "GEDC":
+		case GedcomTagGedc:
 			for _, gedcSub := range sub.SubRecords {
-				if gedcSub.Tag == "VERS" {
+				if gedcSub.Tag == GedcomTagVers {
 					metadata["gedcom_version"] = gedcSub.Value
 				}
 			}
-		case "CHAR":
+		case GedcomTagChar:
 			metadata["character_set"] = sub.Value
-		case "NOTE":
+		case GedcomTagNote:
 			metadata["notes"] = extractNoteText(sub, conv)
 		}
 	}
@@ -234,15 +234,15 @@ func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
 
 	for _, sub := range submRecord.SubRecords {
 		switch sub.Tag {
-		case "NAME":
+		case GedcomTagName:
 			submitter["name"] = sub.Value
-		case "ADDR":
+		case GedcomTagAddr:
 			submitter["address"] = extractAddress(sub)
-		case "PHON":
+		case GedcomTagPhon:
 			submitter["phone"] = sub.Value
-		case "EMAIL":
+		case GedcomTagEmail:
 			submitter["email"] = sub.Value
-		case "WWW":
+		case GedcomTagWww:
 			submitter["website"] = sub.Value
 		}
 	}
@@ -263,23 +263,23 @@ func extractAddress(addrRecord *GEDCOMRecord) string {
 
 	for _, sub := range addrRecord.SubRecords {
 		switch sub.Tag {
-		case "ADR1", "ADR2", "ADR3":
+		case GedcomTagAdr1, GedcomTagAdr2, GedcomTagAdr3:
 			if sub.Value != "" {
 				parts = append(parts, sub.Value)
 			}
-		case "CITY":
+		case GedcomTagCity:
 			if sub.Value != "" {
 				parts = append(parts, sub.Value)
 			}
-		case "STAE":
+		case GedcomTagStae:
 			if sub.Value != "" {
 				parts = append(parts, sub.Value)
 			}
-		case "POST":
+		case GedcomTagPost:
 			if sub.Value != "" {
 				parts = append(parts, sub.Value)
 			}
-		case "CTRY":
+		case GedcomTagCtry:
 			if sub.Value != "" {
 				parts = append(parts, sub.Value)
 			}

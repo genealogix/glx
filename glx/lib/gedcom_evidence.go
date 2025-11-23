@@ -52,15 +52,15 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 	// Extract citation details from SOUR subrecords
 	for _, sub := range sourRecord.SubRecords {
 		switch sub.Tag {
-		case "PAGE":
+		case GedcomTagPage:
 			// Page/location within source
 			citation.Page = sub.Value
 
-		case "DATA":
+		case GedcomTagData:
 			// Data from source
 			for _, dataSub := range sub.SubRecords {
 				switch dataSub.Tag {
-				case "DATE":
+				case GedcomTagDate:
 					// Source date stored in notes (should be a field - see todo.md)
 					dateStr := parseGEDCOMDate(dataSub.Value)
 					if dateStr != "" {
@@ -70,22 +70,22 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 							citation.Notes = "Source date: " + string(dateStr)
 						}
 					}
-				case "TEXT":
+				case GedcomTagText:
 					citation.TextFromSource = dataSub.Value
 				}
 			}
 
-		case "TEXT":
+		case GedcomTagText:
 			// Text from source (GEDCOM 5.5.1)
 			citation.TextFromSource = sub.Value
 
-		case "QUAY":
+		case GedcomTagQuay:
 			// Quality assessment (0-3) - store for confidence derivation
 			if q, err := strconv.Atoi(sub.Value); err == nil {
 				quay = q
 			}
 
-		case "NOTE":
+		case GedcomTagNote:
 			// Notes about the citation
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
@@ -96,7 +96,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 				}
 			}
 
-		case "OBJE":
+		case GedcomTagObje:
 			// Media linked to citation (not commonly used, but supported)
 			if sub.Value != "" {
 				mediaID := conv.MediaIDMap[sub.Value]
@@ -184,7 +184,7 @@ func extractCitations(subjectID string, record *GEDCOMRecord, conv *ConversionCo
 // deriveConfidence derives confidence level from citations
 func deriveConfidence(citationIDs []string, conv *ConversionContext) string {
 	if len(citationIDs) == 0 {
-		return "medium" // Default when no citations
+		return ConfidenceLevelMedium // Default when no citations
 	}
 
 	// Check Quality values (formerly QUAY)
@@ -206,15 +206,15 @@ func deriveConfidence(citationIDs []string, conv *ConversionContext) string {
 func mapQUAYtoConfidence(quay int) string {
 	switch quay {
 	case 0:
-		return "very_low"
+		return ConfidenceLevelLow // Unreliable evidence
 	case 1:
-		return "low"
+		return ConfidenceLevelLow // Questionable reliability
 	case 2:
-		return "medium"
+		return ConfidenceLevelMedium // Secondary evidence
 	case 3:
-		return "high"
+		return ConfidenceLevelHigh // Direct and primary evidence
 	default:
-		return "medium" // Default
+		return ConfidenceLevelMedium // Default
 	}
 }
 
@@ -228,10 +228,10 @@ func extractNoteText(noteRecord *GEDCOMRecord, conv *ConversionContext) string {
 		// Check for CONT/CONC subrecords
 		for _, sub := range noteRecord.SubRecords {
 			switch sub.Tag {
-			case "CONT":
+			case GedcomTagCont:
 				// Continuation on new line
 				text.WriteString("\n" + sub.Value)
-			case "CONC":
+			case GedcomTagConc:
 				// Concatenation (continues same line)
 				text.WriteString(sub.Value)
 			}
@@ -251,12 +251,12 @@ func extractNoteText(noteRecord *GEDCOMRecord, conv *ConversionContext) string {
 	var textBuilder strings.Builder
 	for _, sub := range noteRecord.SubRecords {
 		switch sub.Tag {
-		case "CONT":
+		case GedcomTagCont:
 			if textBuilder.Len() > 0 {
 				textBuilder.WriteString("\n")
 			}
 			textBuilder.WriteString(sub.Value)
-		case "CONC":
+		case GedcomTagConc:
 			textBuilder.WriteString(sub.Value)
 		}
 	}

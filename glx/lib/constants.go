@@ -108,3 +108,186 @@ const (
 	PropertyCause         = "cause"
 	PropertyEventSubtype  = "event_subtype"
 )
+
+// GEDCOM Tags - Top-Level Records
+const (
+	GedcomTagHead = "HEAD" // File header
+	GedcomTagTrlr = "TRLR" // Trailer (end of file)
+	GedcomTagIndi = "INDI" // Individual person record
+	GedcomTagFam  = "FAM"  // Family record
+	GedcomTagNote = "NOTE" // Shared note record (GEDCOM 5.5.1)
+	GedcomTagSnote = "SNOTE" // Shared note record (GEDCOM 7.0)
+	GedcomTagSour = "SOUR" // Source record
+	GedcomTagRepo = "REPO" // Repository record
+	GedcomTagObje = "OBJE" // Media object record
+	GedcomTagSubm = "SUBM" // Submitter record
+	GedcomTagSchma = "SCHMA" // Extension schema record (GEDCOM 7.0)
+)
+
+// GEDCOM Tags - Individual Personal Information
+const (
+	GedcomTagName = "NAME" // Person's name
+	GedcomTagSex  = "SEX"  // Gender/sex
+	GedcomTagOccu = "OCCU" // Occupation
+	GedcomTagReli = "RELI" // Religion
+	GedcomTagEduc = "EDUC" // Education
+	GedcomTagNati = "NATI" // Nationality
+	GedcomTagCast = "CAST" // Caste/tribe
+	GedcomTagSsn  = "SSN"  // Social security number
+	GedcomTagTitl = "TITL" // Title (nobility, rank, honor)
+	GedcomTagFact = "FACT" // Generic fact
+	GedcomTagResi = "RESI" // Residence
+)
+
+// GEDCOM Tags - Life Events
+const (
+	GedcomTagBirt = "BIRT" // Birth
+	GedcomTagChr  = "CHR"  // Christening
+	GedcomTagDeat = "DEAT" // Death
+	GedcomTagBuri = "BURI" // Burial
+	GedcomTagCrem = "CREM" // Cremation
+	GedcomTagAdop = "ADOP" // Adoption
+	GedcomTagBapm = "BAPM" // Baptism
+	GedcomTagBarm = "BARM" // Bar Mitzvah
+	GedcomTagBasm = "BASM" // Bas Mitzvah
+	GedcomTagBles = "BLES" // Blessing
+	GedcomTagChra = "CHRA" // Adult Christening
+	GedcomTagConf = "CONF" // Confirmation
+	GedcomTagFcom = "FCOM" // First Communion
+	GedcomTagOrdn = "ORDN" // Ordination
+	GedcomTagNatu = "NATU" // Naturalization
+	GedcomTagEmig = "EMIG" // Emigration
+	GedcomTagImmi = "IMMI" // Immigration
+	GedcomTagCens = "CENS" // Census
+	GedcomTagProb = "PROB" // Probate
+	GedcomTagWill = "WILL" // Will
+	GedcomTagGrad = "GRAD" // Graduation
+	GedcomTagReti = "RETI" // Retirement
+)
+
+// GEDCOM Tags - Family Relationships
+const (
+	GedcomTagFamc = "FAMC" // Family as child
+	GedcomTagFams = "FAMS" // Family as spouse
+	GedcomTagHusb = "HUSB" // Husband reference
+	GedcomTagWife = "WIFE" // Wife reference
+	GedcomTagChil = "CHIL" // Child reference
+)
+
+// GEDCOM Tags - Family Events
+const (
+	GedcomTagMarr = "MARR" // Marriage event
+	GedcomTagDiv  = "DIV"  // Divorce event
+	GedcomTagEnga = "ENGA" // Engagement
+	GedcomTagMarb = "MARB" // Marriage banns
+	GedcomTagMarc = "MARC" // Marriage contract
+	GedcomTagMarl = "MARL" // Marriage license
+	GedcomTagMars = "MARS" // Marriage settlement
+	GedcomTagAnul = "ANUL" // Annulment
+	GedcomTagDivf = "DIVF" // Divorce filed
+	GedcomTagEven = "EVEN" // Generic event
+)
+
+// GEDCOM Tags - Name Substructure
+const (
+	GedcomTagNpfx = "NPFX" // Name prefix
+	GedcomTagGivn = "GIVN" // Given name
+	GedcomTagNick = "NICK" // Nickname
+	GedcomTagSpfx = "SPFX" // Surname prefix
+	GedcomTagSurn = "SURN" // Surname
+	GedcomTagNsfx = "NSFX" // Name suffix
+)
+
+// GEDCOM Tags - Event Substructure
+const (
+	GedcomTagDate = "DATE" // Date of event
+	GedcomTagPlac = "PLAC" // Place of event
+	GedcomTagAge  = "AGE"  // Age at event
+	GedcomTagCaus = "CAUS" // Cause (of death, etc.)
+	GedcomTagType = "TYPE" // Event type/subtype
+	GedcomTagAddr = "ADDR" // Address
+)
+
+// GEDCOM Tags - Address Substructure
+const (
+	GedcomTagAdr1 = "ADR1" // Address line 1
+	GedcomTagAdr2 = "ADR2" // Address line 2
+	GedcomTagAdr3 = "ADR3" // Address line 3
+	GedcomTagCity = "CITY" // City
+	GedcomTagStae = "STAE" // State
+	GedcomTagPost = "POST" // Postal code
+	GedcomTagCtry = "CTRY" // Country
+)
+
+// GEDCOM Tags - Place Substructure
+const (
+	GedcomTagMap  = "MAP"  // Map coordinates
+	GedcomTagLati = "LATI" // Latitude
+	GedcomTagLong = "LONG" // Longitude
+)
+
+// GEDCOM Tags - Source Information
+const (
+	GedcomTagAuth = "AUTH" // Author
+	GedcomTagPubl = "PUBL" // Publication information
+	GedcomTagAbbr = "ABBR" // Abbreviation
+	GedcomTagText = "TEXT" // Full source text
+	GedcomTagData = "DATA" // Source data
+	GedcomTagAgnc = "AGNC" // Agency
+)
+
+// GEDCOM Tags - Repository Information
+const (
+	GedcomTagPhon  = "PHON"  // Phone
+	GedcomTagEmail = "EMAIL" // Email
+	GedcomTagWww   = "WWW"   // Website
+)
+
+// GEDCOM Tags - Media/File Handling
+const (
+	GedcomTagFile = "FILE" // File reference
+	GedcomTagForm = "FORM" // Format
+	GedcomTagCrop = "CROP" // Crop coordinates (GEDCOM 7.0)
+	GedcomTagMime = "MIME" // MIME type (GEDCOM 7.0)
+	GedcomTagMedi = "MEDI" // Media type (GEDCOM 5.5.1)
+	GedcomTagTop  = "TOP"  // Top coordinate
+	GedcomTagLeft = "LEFT" // Left coordinate
+	GedcomTagHeight = "HEIGHT" // Height
+	GedcomTagWidth  = "WIDTH"  // Width
+)
+
+// GEDCOM Tags - Citation/Evidence
+const (
+	GedcomTagPage = "PAGE" // Page/location within source
+	GedcomTagQuay = "QUAY" // Quality assessment
+	GedcomTagCont = "CONT" // Continuation on new line
+	GedcomTagConc = "CONC" // Concatenation (same line)
+)
+
+// GEDCOM Tags - Header Metadata
+const (
+	GedcomTagCopr = "COPR" // Copyright
+	GedcomTagLang = "LANG" // Language
+	GedcomTagGedc = "GEDC" // GEDCOM version info
+	GedcomTagChar = "CHAR" // Character set
+	GedcomTagVers = "VERS" // Version
+	GedcomTagCorp = "CORP" // Corporation
+)
+
+// GEDCOM Tags - GEDCOM 7.0 Specific
+const (
+	GedcomTagNo   = "NO"   // Negative assertion
+	GedcomTagExid = "EXID" // External ID
+	GedcomTagPedi = "PEDI" // Pedigree linkage type
+	GedcomTagCaln = "CALN" // Call number
+	GedcomTagTag  = "TAG"  // Extension tag name
+	GedcomTagUri  = "URI"  // Schema URI
+)
+
+// Standard Confidence Levels - from confidence-levels.glx vocabulary
+const (
+	ConfidenceLevelHigh     = "high"     // Multiple high-quality sources agree, minimal uncertainty
+	ConfidenceLevelMedium   = "medium"   // Some evidence supports conclusion, but conflicts or gaps exist
+	ConfidenceLevelLow      = "low"      // Limited evidence, significant uncertainty
+	ConfidenceLevelDisputed = "disputed" // Multiple sources conflict, resolution unclear
+)

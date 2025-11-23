@@ -26,7 +26,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Panic recovery
 	defer func() {
 		if r := recover(); r != nil {
-			conv.Logger.LogException(objeRecord.Line, "OBJE", objeRecord.XRef, "convertMedia",
+			conv.Logger.LogException(objeRecord.Line, GedcomTagObje, objeRecord.XRef, "convertMedia",
 				fmt.Errorf("panic: %v", r), map[string]any{
 					"record": objeRecord,
 				})
@@ -53,26 +53,26 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Process subrecords
 	for _, sub := range objeRecord.SubRecords {
 		switch sub.Tag {
-		case "FILE":
+		case GedcomTagFile:
 			// File reference - primary in both 5.5.1 and 7.0
 			fileRef = sub.Value
 
 			// Check for GEDCOM 7.0 MIME type as subrecord
 			for _, fileSub := range sub.SubRecords {
 				switch fileSub.Tag {
-				case "FORM":
+				case GedcomTagForm:
 					// GEDCOM 5.5.1: FORM under FILE
 					formatType = fileSub.Value
-				case "MIME":
+				case GedcomTagMime:
 					// GEDCOM 7.0: MIME type
 					media.MimeType = fileSub.Value
-				case "TITL":
+				case GedcomTagTitl:
 					// Title under FILE
 					media.Title = fileSub.Value
 				}
 			}
 
-		case "FORM":
+		case GedcomTagForm:
 			// GEDCOM 5.5.1: Format at OBJE level
 			formatType = sub.Value
 
@@ -83,27 +83,27 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 				}
 			}
 
-		case "TITL":
+		case GedcomTagTitl:
 			// Title (can be at OBJE level or FILE level)
 			if media.Title == "" {
 				media.Title = sub.Value
 			}
 
-		case "CROP":
+		case GedcomTagCrop:
 			// GEDCOM 7.0: Crop coordinates stored in notes (should be a field - see todo.md)
 			crop := extractCrop(sub)
 			if crop != nil {
 				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))
 			}
 
-		case "NOTE":
+		case GedcomTagNote:
 			// Notes/description
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
 
-		case "SOUR":
+		case GedcomTagSour:
 			// Source citations stored in notes (should be a field - see todo.md)
 			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
 			if err == nil && citationID != "" {
@@ -158,21 +158,21 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 	// Process subrecords (same as top-level OBJE)
 	for _, sub := range objeRecord.SubRecords {
 		switch sub.Tag {
-		case "FILE":
+		case GedcomTagFile:
 			fileRef = sub.Value
 
 			for _, fileSub := range sub.SubRecords {
 				switch fileSub.Tag {
-				case "FORM":
+				case GedcomTagForm:
 					formatType = fileSub.Value
-				case "MIME":
+				case GedcomTagMime:
 					media.MimeType = fileSub.Value
-				case "TITL":
+				case GedcomTagTitl:
 					media.Title = fileSub.Value
 				}
 			}
 
-		case "FORM":
+		case GedcomTagForm:
 			formatType = sub.Value
 
 			for _, formSub := range sub.SubRecords {
@@ -181,19 +181,19 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 				}
 			}
 
-		case "TITL":
+		case GedcomTagTitl:
 			if media.Title == "" {
 				media.Title = sub.Value
 			}
 
-		case "CROP":
+		case GedcomTagCrop:
 			// Crop coordinates stored in notes (should be a field - see todo.md)
 			crop := extractCrop(sub)
 			if crop != nil {
 				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))
 			}
 
-		case "NOTE":
+		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
@@ -323,19 +323,19 @@ func extractCrop(cropRecord *GEDCOMRecord) map[string]any {
 
 	for _, sub := range cropRecord.SubRecords {
 		switch sub.Tag {
-		case "TOP":
+		case GedcomTagTop:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
 				crop["top"] = val
 			}
-		case "LEFT":
+		case GedcomTagLeft:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
 				crop["left"] = val
 			}
-		case "HEIGHT":
+		case GedcomTagHeight:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
 				crop["height"] = val
 			}
-		case "WIDTH":
+		case GedcomTagWidth:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
 				crop["width"] = val
 			}

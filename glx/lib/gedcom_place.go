@@ -186,15 +186,15 @@ func inferPlaceType(name string, level int) string {
 //	3 LONG W123.456789 (or E123.456789)
 func extractPlaceCoordinates(placeRecord *GEDCOMRecord) (latitude, longitude *float64) {
 	for _, sub := range placeRecord.SubRecords {
-		if sub.Tag == "MAP" {
+		if sub.Tag == GedcomTagMap {
 			// MAP contains LATI and LONG
 			for _, mapSub := range sub.SubRecords {
 				switch mapSub.Tag {
-				case "LATI":
+				case GedcomTagLati:
 					if lat := parseCoordinate(mapSub.Value); lat != nil {
 						latitude = lat
 					}
-				case "LONG":
+				case GedcomTagLong:
 					if lon := parseCoordinate(mapSub.Value); lon != nil {
 						longitude = lon
 					}

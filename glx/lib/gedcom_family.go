@@ -23,14 +23,14 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Panic recovery
 	defer func() {
 		if r := recover(); r != nil {
-			conv.Logger.LogException(famRecord.Line, "FAM", famRecord.XRef, "convertFamily",
+			conv.Logger.LogException(famRecord.Line, GedcomTagFam, famRecord.XRef, "convertFamily",
 				fmt.Errorf("panic: %v", r), map[string]any{
 					"record": famRecord,
 				})
 		}
 	}()
 
-	if famRecord.Tag != "FAM" {
+	if famRecord.Tag != GedcomTagFam {
 		return fmt.Errorf("expected FAM record, got %s", famRecord.Tag)
 	}
 
@@ -42,35 +42,35 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 	for _, sub := range famRecord.SubRecords {
 		switch sub.Tag {
-		case "HUSB":
+		case GedcomTagHusb:
 			// Husband reference
 			husbandID = conv.PersonIDMap[sub.Value]
 			if husbandID == "" {
-				conv.Logger.LogWarning(famRecord.Line, "HUSB", sub.Value, "Referenced person not found")
+				conv.Logger.LogWarning(famRecord.Line, GedcomTagHusb, sub.Value, "Referenced person not found")
 			}
 
-		case "WIFE":
+		case GedcomTagWife:
 			// Wife reference
 			wifeID = conv.PersonIDMap[sub.Value]
 			if wifeID == "" {
-				conv.Logger.LogWarning(famRecord.Line, "WIFE", sub.Value, "Referenced person not found")
+				conv.Logger.LogWarning(famRecord.Line, GedcomTagWife, sub.Value, "Referenced person not found")
 			}
 
-		case "CHIL":
+		case GedcomTagChil:
 			// Child reference - validation only, parent-child relationships are
 			// created when processing INDI records (which contain PEDI information)
 			childID := conv.PersonIDMap[sub.Value]
 			if childID == "" {
-				conv.Logger.LogWarning(famRecord.Line, "CHIL", sub.Value, "Referenced person not found")
+				conv.Logger.LogWarning(famRecord.Line, GedcomTagChil, sub.Value, "Referenced person not found")
 			}
 
-		case "MARR":
+		case GedcomTagMarr:
 			marriageRecord = sub
 
-		case "DIV":
+		case GedcomTagDiv:
 			divorceRecord = sub
 
-		case "ENGA", "MARB", "MARC", "MARL", "MARS", "ANUL", "DIVF", "CENS", "EVEN":
+		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagCens, GedcomTagEven:
 			// Other family events
 			if err := convertFamilyEvent(husbandID, wifeID, sub, conv); err != nil {
 				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
@@ -104,14 +104,14 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		// Process marriage event if exists
 		if marriageRecord != nil {
 			if err := convertMarriageEvent(husbandID, wifeID, relationshipID, marriageRecord, conv); err != nil {
-				conv.Logger.LogError(marriageRecord.Line, "MARR", famRecord.XRef, err)
+				conv.Logger.LogError(marriageRecord.Line, GedcomTagMarr, famRecord.XRef, err)
 			}
 		}
 
 		// Process divorce event if exists
 		if divorceRecord != nil {
 			if err := convertDivorceEvent(husbandID, wifeID, relationshipID, divorceRecord, conv); err != nil {
-				conv.Logger.LogError(divorceRecord.Line, "DIV", famRecord.XRef, err)
+				conv.Logger.LogError(divorceRecord.Line, GedcomTagDiv, famRecord.XRef, err)
 			}
 		}
 	}
@@ -145,10 +145,10 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	// Extract event details
 	for _, sub := range marrRecord.SubRecords {
 		switch sub.Tag {
-		case "DATE":
+		case GedcomTagDate:
 			event.Date = parseGEDCOMDate(sub.Value)
 
-		case "PLAC":
+		case GedcomTagPlac:
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				// Extract coordinates from MAP/LATI/LONG subrecords
@@ -162,17 +162,17 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 				}
 			}
 
-		case "TYPE":
+		case GedcomTagType:
 			// Marriage type (e.g., civil, religious)
 			event.Properties[PropertyMarriageType] = sub.Value
 
-		case "NOTE":
+		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties[PropertyNotes] = noteText
 			}
 
-		case "SOUR":
+		case GedcomTagSour:
 			// Citations on the event
 			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
@@ -183,7 +183,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 				event.Properties[PropertyCitations] = append(citations, citationID)
 			}
 
-		case "OBJE":
+		case GedcomTagObje:
 			// Media attached to event
 			if sub.Value != "" {
 				mediaID := conv.MediaIDMap[sub.Value]
@@ -206,7 +206,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 				}
 			}
 
-		case "ADDR":
+		case GedcomTagAddr:
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
@@ -269,10 +269,10 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	// Extract event details
 	for _, sub := range divRecord.SubRecords {
 		switch sub.Tag {
-		case "DATE":
+		case GedcomTagDate:
 			event.Date = parseGEDCOMDate(sub.Value)
 
-		case "PLAC":
+		case GedcomTagPlac:
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				// Extract coordinates from MAP/LATI/LONG subrecords
@@ -286,13 +286,13 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 				}
 			}
 
-		case "NOTE":
+		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties[PropertyNotes] = noteText
 			}
 
-		case "SOUR":
+		case GedcomTagSour:
 			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
 				citations, ok := event.Properties[PropertyCitations].([]string)
@@ -302,7 +302,7 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 				event.Properties[PropertyCitations] = append(citations, citationID)
 			}
 
-		case "ADDR":
+		case GedcomTagAddr:
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
@@ -367,10 +367,10 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Extract event details
 	for _, sub := range eventRecord.SubRecords {
 		switch sub.Tag {
-		case "DATE":
+		case GedcomTagDate:
 			event.Date = parseGEDCOMDate(sub.Value)
 
-		case "PLAC":
+		case GedcomTagPlac:
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				// Extract coordinates from MAP/LATI/LONG subrecords
@@ -384,13 +384,13 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 				}
 			}
 
-		case "NOTE":
+		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties[PropertyNotes] = noteText
 			}
 
-		case "SOUR":
+		case GedcomTagSour:
 			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
 				citations, ok := event.Properties[PropertyCitations].([]string)
@@ -400,7 +400,7 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 				event.Properties[PropertyCitations] = append(citations, citationID)
 			}
 
-		case "ADDR":
+		case GedcomTagAddr:
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
@@ -446,15 +446,15 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 // mapFamilyEventType maps GEDCOM family event tags to GLX event types
 func mapFamilyEventType(tag string) string {
 	mapping := map[string]string{
-		"ENGA": EventTypeEngagement,
-		"MARB": EventTypeMarriageBanns,
-		"MARC": EventTypeMarriageContract,
-		"MARL": EventTypeMarriageLicense,
-		"MARS": EventTypeMarriageSettlement,
-		"ANUL": EventTypeAnnulment,
-		"DIVF": EventTypeDivorceFiled,
-		"CENS": EventTypeCensus,
-		"EVEN": EventTypeGeneric,
+		GedcomTagEnga: EventTypeEngagement,
+		GedcomTagMarb: EventTypeMarriageBanns,
+		GedcomTagMarc: EventTypeMarriageContract,
+		GedcomTagMarl: EventTypeMarriageLicense,
+		GedcomTagMars: EventTypeMarriageSettlement,
+		GedcomTagAnul: EventTypeAnnulment,
+		GedcomTagDivf: EventTypeDivorceFiled,
+		GedcomTagCens: EventTypeCensus,
+		GedcomTagEven: EventTypeGeneric,
 	}
 
 	if eventType, ok := mapping[tag]; ok {

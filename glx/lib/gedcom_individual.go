@@ -21,7 +21,7 @@ import (
 
 // convertIndividual converts a GEDCOM INDI record to a GLX Person
 func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error {
-	if indiRecord.Tag != "INDI" {
+	if indiRecord.Tag != GedcomTagIndi {
 		return fmt.Errorf("expected INDI record, got %s", indiRecord.Tag)
 	}
 
@@ -38,7 +38,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 					"record": indiRecord,
 				},
 			)
-			conv.addError(indiRecord.Line, "INDI", fmt.Sprintf("Panic during conversion: %v", r))
+			conv.addError(indiRecord.Line, GedcomTagIndi, fmt.Sprintf("Panic during conversion: %v", r))
 		}
 	}()
 
@@ -62,7 +62,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 	// Process all subrecords
 	for _, sub := range indiRecord.SubRecords {
 		switch sub.Tag {
-		case "NAME":
+		case GedcomTagName:
 			// Parse name
 			nameSubstructure := extractNameSubstructure(sub)
 			parsedName := parseGEDCOMName(sub.Value, nameSubstructure)
@@ -89,10 +89,10 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 			// Create name assertions (with evidence/citations)
 			if err := createNameAssertions(personID, parsedName, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, "NAME", err.Error())
+				conv.addWarning(indiRecord.Line, GedcomTagName, err.Error())
 			}
 
-		case "SEX":
+		case GedcomTagSex:
 			// Gender mapping
 			gender := mapGEDCOMSex(sub.Value)
 			person.Properties[PersonPropertyGender] = gender
@@ -100,63 +100,63 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Create assertion
 			createPropertyAssertion(personID, PersonPropertyGender, gender, sub, conv)
 
-		case "BIRT", "CHR", "DEAT", "BURI", "CREM", "ADOP", "BAPM", "BARM", "BASM",
-			"BLES", "CHRA", "CONF", "FCOM", "ORDN", "NATU", "EMIG", "IMMI", "CENS",
-			"PROB", "WILL", "GRAD", "RETI":
+		case GedcomTagBirt, GedcomTagChr, GedcomTagDeat, GedcomTagBuri, GedcomTagCrem, GedcomTagAdop, GedcomTagBapm, GedcomTagBarm, GedcomTagBasm,
+			GedcomTagBles, GedcomTagChra, GedcomTagConf, GedcomTagFcom, GedcomTagOrdn, GedcomTagNatu, GedcomTagEmig, GedcomTagImmi, GedcomTagCens,
+			GedcomTagProb, GedcomTagWill, GedcomTagGrad, GedcomTagReti:
 			// Convert vital/individual event
 			if err := convertIndividualEvent(personID, person, sub, conv); err != nil {
 				conv.addWarning(indiRecord.Line, sub.Tag, err.Error())
 			}
 
-		case "OCCU":
+		case GedcomTagOccu:
 			// Occupation
 			if sub.Value != "" {
 				person.Properties[PersonPropertyOccupation] = sub.Value
 				createPropertyAssertion(personID, PersonPropertyOccupation, sub.Value, sub, conv)
 			}
 
-		case "RESI":
+		case GedcomTagResi:
 			// Residence - convert to event or property
 			if err := convertResidence(personID, person, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, "RESI", err.Error())
+				conv.addWarning(indiRecord.Line, GedcomTagResi, err.Error())
 			}
 
-		case "RELI":
+		case GedcomTagReli:
 			// Religion
 			if sub.Value != "" {
 				person.Properties[PersonPropertyReligion] = sub.Value
 				createPropertyAssertion(personID, PersonPropertyReligion, sub.Value, sub, conv)
 			}
 
-		case "EDUC":
+		case GedcomTagEduc:
 			// Education
 			if sub.Value != "" {
 				person.Properties[PersonPropertyEducation] = sub.Value
 				createPropertyAssertion(personID, PersonPropertyEducation, sub.Value, sub, conv)
 			}
 
-		case "NATI":
+		case GedcomTagNati:
 			// Nationality
 			if sub.Value != "" {
 				person.Properties[PersonPropertyNationality] = sub.Value
 				createPropertyAssertion(personID, PersonPropertyNationality, sub.Value, sub, conv)
 			}
 
-		case "CAST":
+		case GedcomTagCast:
 			// Caste/tribe
 			if sub.Value != "" {
 				person.Properties[PersonPropertyCaste] = sub.Value
 				createPropertyAssertion(personID, PersonPropertyCaste, sub.Value, sub, conv)
 			}
 
-		case "SSN":
+		case GedcomTagSsn:
 			// Social security number
 			if sub.Value != "" {
 				person.Properties[PersonPropertySSN] = sub.Value
 				createPropertyAssertion(personID, PersonPropertySSN, sub.Value, sub, conv)
 			}
 
-		case "TITL":
+		case GedcomTagTitl:
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
 			// Note: This is different from NPFX (name prefix) which is part of name formatting
 			if sub.Value != "" {
@@ -164,13 +164,13 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				createPropertyAssertion(personID, PersonPropertyTitle, sub.Value, sub, conv)
 			}
 
-		case "FACT":
+		case GedcomTagFact:
 			// Generic fact - convert to property or event
 			if err := convertFact(personID, person, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, "FACT", err.Error())
+				conv.addWarning(indiRecord.Line, GedcomTagFact, err.Error())
 			}
 
-		case "NOTE":
+		case GedcomTagNote:
 			// Notes
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
@@ -181,20 +181,20 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				}
 			}
 
-		case "SOUR":
+		case GedcomTagSour:
 			// Source citation - handled in property/event conversions
 			// Citations are extracted when creating assertions
 
-		case "OBJE":
+		case GedcomTagObje:
 			// Media object - will be implemented when media converter is done
-			conv.addWarning(indiRecord.Line, "OBJE", "Media linking not yet implemented")
+			conv.addWarning(indiRecord.Line, GedcomTagObje, "Media linking not yet implemented")
 
-		case "FAMC":
+		case GedcomTagFamc:
 			// Family as child - defer for family processing
 			// Extract PEDI (pedigree linkage) if present
 			pedigreeType := ""
 			for _, pediSub := range sub.SubRecords {
-				if pediSub.Tag == "PEDI" {
+				if pediSub.Tag == GedcomTagPedi {
 					pedigreeType = strings.ToLower(pediSub.Value)
 
 					break
@@ -207,7 +207,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				PedigreeType: pedigreeType,
 			})
 
-		case "FAMS":
+		case GedcomTagFams:
 			// Family as spouse - defer for family processing
 			conv.DeferredFamilyLinks = append(conv.DeferredFamilyLinks, &FamilyLink{
 				PersonID:  personID,
@@ -215,10 +215,10 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				LinkType:  ParticipantRoleSpouse,
 			})
 
-		case "NO":
+		case GedcomTagNo:
 			// Negative assertion (GEDCOM 7.0)
 			if err := convertNegativeAssertion(personID, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, "NO", err.Error())
+				conv.addWarning(indiRecord.Line, GedcomTagNo, err.Error())
 			}
 
 		default:
@@ -243,17 +243,17 @@ func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
 
 	for _, sub := range nameRecord.SubRecords {
 		switch sub.Tag {
-		case "NPFX":
+		case GedcomTagNpfx:
 			ns.NPFX = sub.Value
-		case "GIVN":
+		case GedcomTagGivn:
 			ns.GIVN = sub.Value
-		case "NICK":
+		case GedcomTagNick:
 			ns.NICK = sub.Value
-		case "SPFX":
+		case GedcomTagSpfx:
 			ns.SPFX = sub.Value
-		case "SURN":
+		case GedcomTagSurn:
 			ns.SURN = sub.Value
-		case "NSFX":
+		case GedcomTagNsfx:
 			ns.NSFX = sub.Value
 		}
 	}
@@ -334,13 +334,13 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 
 	for _, sub := range eventRecord.SubRecords {
 		switch sub.Tag {
-		case "DATE":
+		case GedcomTagDate:
 			eventDate = parseGEDCOMDate(sub.Value)
 			if eventDate != "" {
 				event.Date = eventDate
 			}
 
-		case "PLAC":
+		case GedcomTagPlac:
 			// Parse place
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
@@ -356,19 +356,19 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 				}
 			}
 
-		case "AGE":
+		case GedcomTagAge:
 			// Age at event
 			event.Properties[PropertyAgeAtEvent] = sub.Value
 
-		case "CAUS":
+		case GedcomTagCaus:
 			// Cause
 			event.Properties[PropertyCause] = sub.Value
 
-		case "TYPE":
+		case GedcomTagType:
 			// Event subtype
 			event.Properties[PropertyEventSubtype] = sub.Value
 
-		case "ADDR":
+		case GedcomTagAddr:
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
@@ -387,18 +387,18 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 				}
 			}
 
-		case "NOTE":
+		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties[PropertyNotes] = noteText
 			}
 
-		case "SOUR":
+		case GedcomTagSour:
 			// Citations handled when creating participations
 
-		case "OBJE":
+		case GedcomTagObje:
 			// Media - not yet implemented
-			conv.addWarning(eventRecord.Line, "OBJE", "Media linking not yet implemented")
+			conv.addWarning(eventRecord.Line, GedcomTagObje, "Media linking not yet implemented")
 		}
 	}
 
@@ -493,19 +493,19 @@ func buildPlaceHierarchyFromAddress(addrRecord *GEDCOMRecord) *PlaceHierarchy {
 
 	for _, sub := range addrRecord.SubRecords {
 		switch sub.Tag {
-		case "ADR2":
+		case GedcomTagAdr2:
 			// Often contains city/locality name
 			if city == "" && sub.Value != "" {
 				city = sub.Value
 			}
-		case "CITY":
+		case GedcomTagCity:
 			// Explicit city field overrides ADR2
 			if sub.Value != "" {
 				city = sub.Value
 			}
-		case "STAE":
+		case GedcomTagStae:
 			state = sub.Value
-		case "CTRY":
+		case GedcomTagCtry:
 			country = sub.Value
 		}
 	}
@@ -616,7 +616,7 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 		Subject:    personID,
 		Claim:      "no_" + eventType,
 		Value:      "true", // Negative assertion (NO tag from GEDCOM 7.0)
-		Confidence: "high", // Negative assertions are typically certain
+		Confidence: ConfidenceLevelHigh, // Negative assertions are typically certain
 		Citations:  citationIDs,
 	}
 	conv.Stats.AssertionsCreated++

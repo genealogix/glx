@@ -48,23 +48,23 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Process subrecords
 	for _, sub := range sourRecord.SubRecords {
 		switch sub.Tag {
-		case "TITL":
+		case GedcomTagTitl:
 			// Title
 			source.Title = sub.Value
 
-		case "AUTH":
+		case GedcomTagAuth:
 			// Author
 			source.Authors = append(source.Authors, sub.Value)
 
-		case "PUBL":
+		case GedcomTagPubl:
 			// Publication facts
 			source.PublicationInfo = sub.Value
 
-		case "ABBR":
+		case GedcomTagAbbr:
 			// Abbreviation - store in notes
 			notes = append(notes, "Abbreviation: "+sub.Value)
 
-		case "REPO":
+		case GedcomTagRepo:
 			// Repository reference
 			repoID := conv.RepositoryIDMap[sub.Value]
 			if repoID != "" {
@@ -78,34 +78,34 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 				}
 			}
 
-		case "TEXT":
+		case GedcomTagText:
 			// Full source text - add to description
 			description = append(description, sub.Value)
 
-		case "NOTE":
+		case GedcomTagNote:
 			// Notes
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
 
-		case "DATA":
+		case GedcomTagData:
 			// Data information - store in notes
 			for _, dataSub := range sub.SubRecords {
 				switch dataSub.Tag {
-				case "EVEN":
+				case GedcomTagEven:
 					// Events recorded
 					notes = append(notes, "Events recorded: "+dataSub.Value)
-				case "AGNC":
+				case GedcomTagAgnc:
 					// Agency
 					notes = append(notes, "Agency: "+dataSub.Value)
-				case "DATE":
+				case GedcomTagDate:
 					// Date of data
 					source.Date = parseGEDCOMDate(dataSub.Value)
 				}
 			}
 
-		case "OBJE":
+		case GedcomTagObje:
 			// Media object reference
 			if sub.Value != "" {
 				mediaID := conv.MediaIDMap[sub.Value]
@@ -114,7 +114,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 				}
 			}
 
-		case "TYPE":
+		case GedcomTagType:
 			// Source type (GEDCOM 7.0)
 			source.Type = mapSourceType(sub.Value)
 		}
