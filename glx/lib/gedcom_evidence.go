@@ -35,7 +35,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 		}
 	} else {
 		// Embedded citation (citation details without full source)
-		// For now, skip embedded citations
+		// Not yet implemented (see todo.md)
 		return "", nil
 	}
 
@@ -60,7 +60,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 			for _, dataSub := range sub.SubRecords {
 				switch dataSub.Tag {
 				case "DATE":
-					// Store source date in notes for now
+					// Source date stored in notes (should be a field - see todo.md)
 					dateStr := parseGEDCOMDate(dataSub.Value)
 					if dateStr != "" {
 						if citation.Notes != "" {

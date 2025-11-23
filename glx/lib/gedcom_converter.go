@@ -99,8 +99,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 				// Process extension data
 				extData := convertExtensionData(record.Tag, record.Value, record.SubRecords)
 				if len(extData) > 0 {
-					// TODO: Store extension data in a dedicated structure
-					// For now, just log it
+					// Extension data is processed but not yet stored (see todo.md)
 					conv.Logger.LogInfo(fmt.Sprintf("Processed extension tag %s: %+v", record.Tag, extData))
 				}
 			} else {
@@ -217,8 +216,7 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 		}
 	}
 
-	// TODO: Store metadata somewhere (maybe in properties or external file)
-	// For now, just log it
+	// HEAD metadata is processed but not yet stored (see todo.md)
 	if len(metadata) > 0 {
 		conv.Logger.LogInfo(fmt.Sprintf("HEAD metadata: %+v", metadata))
 	}
@@ -243,8 +241,7 @@ func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
 		}
 	}
 
-	// TODO: Store submitter metadata somewhere
-	// For now, just log it
+	// SUBM metadata is processed but not yet stored (see todo.md)
 	if len(submitter) > 0 {
 		conv.Logger.LogInfo(fmt.Sprintf("SUBM submitter: %+v", submitter))
 	}

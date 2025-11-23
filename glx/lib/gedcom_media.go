@@ -90,7 +90,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case "CROP":
-			// GEDCOM 7.0: Crop coordinates (store in notes for now)
+			// GEDCOM 7.0: Crop coordinates stored in notes (should be a field - see todo.md)
 			crop := extractCrop(sub)
 			if crop != nil {
 				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))
@@ -104,7 +104,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case "SOUR":
-			// Source citations for the media (store in notes for now)
+			// Source citations stored in notes (should be a field - see todo.md)
 			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
 			if err == nil && citationID != "" {
 				notes = append(notes, "Citation: "+citationID)
@@ -187,6 +187,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 			}
 
 		case "CROP":
+			// Crop coordinates stored in notes (should be a field - see todo.md)
 			crop := extractCrop(sub)
 			if crop != nil {
 				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))

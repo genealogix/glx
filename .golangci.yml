@@ -39,9 +39,7 @@ linters:
     # Common mistakes
     - misspell        # Spell checking
     - gocritic        # Provides diagnostics for bugs, performance and style issues
-
-  disable:
-    - godox           # Allow TODO/FIXME comments
+    - godox           # Detect TODO/FIXME/BUG comments (all TODOs should be in todo.md)
 
 formatters-settings:
   gofmt:

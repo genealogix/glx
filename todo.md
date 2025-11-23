@@ -16,9 +16,12 @@
 
 **Issue**: Data is being processed but not stored/exposed after import
 
-- **gedcom_converter.go:102-103**: Store GEDCOM extension tag data (tags starting with `_`) in ImportResult or a dedicated structure so it can be accessed after import
-- **gedcom_converter.go:220-221**: Store GEDCOM HEAD metadata (export_date, source_file, copyright, language, source_system, etc.) in ImportResult or GLXFile properties
-- **gedcom_converter.go:246-247**: Store GEDCOM SUBM (submitter) metadata in ImportResult or GLXFile properties
+- **gedcom_converter.go:102-103**: Store extension tag data (tags starting with `_`) - vendor-specific metadata like _MSTAT, _UID, _NSTY
+- **gedcom_converter.go:220-221**: Store HEAD metadata (export_date, source_file, copyright, language, source_system)
+- **gedcom_converter.go:246-247**: Store SUBM (submitter) metadata
+- **gedcom_family.go**: Store NCHI (number of children) - can differ from actual CHIL count
+- **gedcom_name.go**: Store NAME TYPE subfield (birth, married, aka)
+- **gedcom_place.go**: Validate PLAC fields - reject non-geographic text like "Died in childbirth", "Unmarried", "Unknown"
 
 ## GEDCOM Import: Notes Anti-Pattern Audit
 
