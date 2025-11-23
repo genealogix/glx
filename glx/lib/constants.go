@@ -66,3 +66,45 @@ const (
 	ParticipantRoleOfficiant = "officiant"
 	ParticipantRoleInformant = "informant"
 )
+
+// Standard Person Property Names - commonly used properties on Person entities
+const (
+	PersonPropertyGivenName     = "given_name"
+	PersonPropertyFamilyName    = "family_name"
+	PersonPropertyNickname      = "nickname"
+	PersonPropertyNamePrefix    = "name_prefix"
+	PersonPropertySurnamePrefix = "surname_prefix"
+	PersonPropertyNameSuffix    = "name_suffix"
+	PersonPropertyGender        = "gender"
+	PersonPropertyBirthPlace    = "birth_place"
+	PersonPropertyDeathPlace    = "death_place"
+	PersonPropertyBirthDate     = "birth_date"
+	PersonPropertyDeathDate     = "death_date"
+	PersonPropertyOccupation    = "occupation"
+	PersonPropertyReligion      = "religion"
+	PersonPropertyEducation     = "education"
+	PersonPropertyNationality   = "nationality"
+	PersonPropertyCaste         = "caste"
+	PersonPropertySSN           = "ssn"
+	PersonPropertyTitle         = "title"
+	PersonPropertyExternalIDs   = "external_ids"
+	PersonPropertyBornOn        = "born_on"
+	PersonPropertyBornAt        = "born_at"
+	PersonPropertyDiedOn        = "died_on"
+	PersonPropertyDiedAt        = "died_at"
+	PersonPropertyResidence     = "residence"
+)
+
+// Common Property Names - used across multiple entity types
+const (
+	PropertyCitations     = "citations"
+	PropertyMedia         = "media"
+	PropertyNotes         = "notes"
+	PropertyAddress       = "address"
+	PropertyMarriageEvent = "marriage_event"
+	PropertyDivorceEvent  = "divorce_event"
+	PropertyMarriageType  = "marriage_type"
+	PropertyAgeAtEvent    = "age_at_event"
+	PropertyCause         = "cause"
+	PropertyEventSubtype  = "event_subtype"
+)

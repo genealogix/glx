@@ -407,18 +407,6 @@ func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 	return GEDCOM551, "5.5.1" // Default to 5.5.1
 }
 
-// versionToString converts version enum to string
-func versionToString(version GEDCOMVersion) string {
-	switch version {
-	case GEDCOM551:
-		return "5.5.1"
-	case GEDCOM70:
-		return "7.0"
-	default:
-		return "unknown"
-	}
-}
-
 // addError adds an error to the conversion context
 func (conv *ConversionContext) addError(line int, tag string, message string) {
 	conv.Stats.Errors = append(conv.Stats.Errors, ImportError{

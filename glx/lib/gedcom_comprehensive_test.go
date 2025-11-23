@@ -182,14 +182,14 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 	// Test Person Data Persistence: Robert Eugene Williams
 	foundRobert := false
 	for _, person := range glx.Persons {
-		givenName, hasGiven := person.Properties["given_name"].(string)
-		familyName, hasFamily := person.Properties["family_name"].(string)
+		givenName, hasGiven := person.Properties[PersonPropertyGivenName].(string)
+		familyName, hasFamily := person.Properties[PersonPropertyFamilyName].(string)
 
 		if hasGiven && hasFamily && givenName == "Robert Eugene" && familyName == "Williams" {
 			foundRobert = true
 
 			// Verify gender persisted
-			if gender, ok := person.Properties["gender"].(string); !ok || gender != "male" {
+			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "male" {
 				t.Error("Robert Eugene Williams should have gender 'male'")
 			}
 
@@ -204,14 +204,14 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 	// Test Person Data Persistence: Mary Ann Wilson
 	foundMary := false
 	for _, person := range glx.Persons {
-		givenName, hasGiven := person.Properties["given_name"].(string)
-		familyName, hasFamily := person.Properties["family_name"].(string)
+		givenName, hasGiven := person.Properties[PersonPropertyGivenName].(string)
+		familyName, hasFamily := person.Properties[PersonPropertyFamilyName].(string)
 
 		if hasGiven && hasFamily && givenName == "Mary Ann" && familyName == "Wilson" {
 			foundMary = true
 
 			// Verify gender persisted
-			if gender, ok := person.Properties["gender"].(string); !ok || gender != "female" {
+			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "female" {
 				t.Error("Mary Ann Wilson should have gender 'female'")
 			}
 

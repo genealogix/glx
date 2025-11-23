@@ -41,6 +41,10 @@ linters:
     - gocritic        # Provides diagnostics for bugs, performance and style issues
     - godox           # Detect TODO/FIXME/BUG comments (all TODOs should be in todo.md)
 
+    # Magic numbers and strings
+    - goconst         # Find repeated strings that could be constants
+    - mnd             # Detect magic numbers
+
 formatters-settings:
   gofmt:
     simplify: true
@@ -75,6 +79,39 @@ linters-settings:
 
   misspell:
     locale: US
+
+  goconst:
+    min-len: 3                    # Minimum length of string constant
+    min-occurrences: 3            # Minimum number of occurrences to trigger
+    ignore-tests: true            # Don't check test files for repeated strings
+    match-constant: true          # Match constants in other packages
+    numbers: false                # Don't check for repeated numbers (mnd handles this)
+    ignore-strings: ""            # Strings to ignore (empty = none)
+
+  mnd:
+    # List of enabled checks, see https://github.com/tommy-muehle/go-mnd/#checks for description
+    checks:
+      - argument    # Check function arguments
+      - case        # Check case statements
+      - condition   # Check conditional statements
+      - operation   # Check operations
+      - return      # Check return statements
+      - assign      # Check assignments
+    ignored-numbers:
+      - "0"         # Common default/zero value
+      - "1"         # Common increment/single item
+      - "2"         # Common pair/dual
+      - "10"        # Common base-10 operations
+      - "100"       # Common percentage base
+      - "1024"      # Common KB size
+    ignored-functions:
+      - "make"      # make([]T, size) is fine
+      - "len"       # len comparisons are fine
+      - "cap"       # cap comparisons are fine
+      - "append"    # append operations are fine
+      - "time.*"    # time functions often use magic numbers
+      - "strings.SplitN"  # SplitN(s, sep, n) where n is often a small number
+      - "strings.Repeat"  # Repeat often uses small numbers
 
 issues:
   exclude-use-default: false

@@ -56,7 +56,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 	// Extract external IDs (GEDCOM 7.0 EXID tags)
 	exids := extractExternalIDs(indiRecord)
 	if len(exids) > 0 {
-		person.Properties["external_ids"] = exids
+		person.Properties[PersonPropertyExternalIDs] = exids
 	}
 
 	// Process all subrecords
@@ -69,22 +69,22 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 			// Store name in person properties for quick access
 			if parsedName.GivenName != "" {
-				person.Properties["given_name"] = parsedName.GivenName
+				person.Properties[PersonPropertyGivenName] = parsedName.GivenName
 			}
 			if parsedName.Surname != "" {
-				person.Properties["family_name"] = parsedName.Surname
+				person.Properties[PersonPropertyFamilyName] = parsedName.Surname
 			}
 			if parsedName.Prefix != "" {
-				person.Properties["name_prefix"] = parsedName.Prefix
+				person.Properties[PersonPropertyNamePrefix] = parsedName.Prefix
 			}
 			if parsedName.Nickname != "" {
-				person.Properties["nickname"] = parsedName.Nickname
+				person.Properties[PersonPropertyNickname] = parsedName.Nickname
 			}
 			if parsedName.SurnamePrefix != "" {
-				person.Properties["surname_prefix"] = parsedName.SurnamePrefix
+				person.Properties[PersonPropertySurnamePrefix] = parsedName.SurnamePrefix
 			}
 			if parsedName.Suffix != "" {
-				person.Properties["name_suffix"] = parsedName.Suffix
+				person.Properties[PersonPropertyNameSuffix] = parsedName.Suffix
 			}
 
 			// Create name assertions (with evidence/citations)
@@ -95,10 +95,10 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		case "SEX":
 			// Gender mapping
 			gender := mapGEDCOMSex(sub.Value)
-			person.Properties["gender"] = gender
+			person.Properties[PersonPropertyGender] = gender
 
 			// Create assertion
-			createPropertyAssertion(personID, "gender", gender, sub, conv)
+			createPropertyAssertion(personID, PersonPropertyGender, gender, sub, conv)
 
 		case "BIRT", "CHR", "DEAT", "BURI", "CREM", "ADOP", "BAPM", "BARM", "BASM",
 			"BLES", "CHRA", "CONF", "FCOM", "ORDN", "NATU", "EMIG", "IMMI", "CENS",
@@ -111,8 +111,8 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		case "OCCU":
 			// Occupation
 			if sub.Value != "" {
-				person.Properties["occupation"] = sub.Value
-				createPropertyAssertion(personID, "occupation", sub.Value, sub, conv)
+				person.Properties[PersonPropertyOccupation] = sub.Value
+				createPropertyAssertion(personID, PersonPropertyOccupation, sub.Value, sub, conv)
 			}
 
 		case "RESI":
@@ -124,44 +124,44 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		case "RELI":
 			// Religion
 			if sub.Value != "" {
-				person.Properties["religion"] = sub.Value
-				createPropertyAssertion(personID, "religion", sub.Value, sub, conv)
+				person.Properties[PersonPropertyReligion] = sub.Value
+				createPropertyAssertion(personID, PersonPropertyReligion, sub.Value, sub, conv)
 			}
 
 		case "EDUC":
 			// Education
 			if sub.Value != "" {
-				person.Properties["education"] = sub.Value
-				createPropertyAssertion(personID, "education", sub.Value, sub, conv)
+				person.Properties[PersonPropertyEducation] = sub.Value
+				createPropertyAssertion(personID, PersonPropertyEducation, sub.Value, sub, conv)
 			}
 
 		case "NATI":
 			// Nationality
 			if sub.Value != "" {
-				person.Properties["nationality"] = sub.Value
-				createPropertyAssertion(personID, "nationality", sub.Value, sub, conv)
+				person.Properties[PersonPropertyNationality] = sub.Value
+				createPropertyAssertion(personID, PersonPropertyNationality, sub.Value, sub, conv)
 			}
 
 		case "CAST":
 			// Caste/tribe
 			if sub.Value != "" {
-				person.Properties["caste"] = sub.Value
-				createPropertyAssertion(personID, "caste", sub.Value, sub, conv)
+				person.Properties[PersonPropertyCaste] = sub.Value
+				createPropertyAssertion(personID, PersonPropertyCaste, sub.Value, sub, conv)
 			}
 
 		case "SSN":
 			// Social security number
 			if sub.Value != "" {
-				person.Properties["ssn"] = sub.Value
-				createPropertyAssertion(personID, "ssn", sub.Value, sub, conv)
+				person.Properties[PersonPropertySSN] = sub.Value
+				createPropertyAssertion(personID, PersonPropertySSN, sub.Value, sub, conv)
 			}
 
 		case "TITL":
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
 			// Note: This is different from NPFX (name prefix) which is part of name formatting
 			if sub.Value != "" {
-				person.Properties["title"] = sub.Value
-				createPropertyAssertion(personID, "title", sub.Value, sub, conv)
+				person.Properties[PersonPropertyTitle] = sub.Value
+				createPropertyAssertion(personID, PersonPropertyTitle, sub.Value, sub, conv)
 			}
 
 		case "FACT":
@@ -174,10 +174,10 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Notes
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if notes, ok := person.Properties["notes"].(string); ok {
-					person.Properties["notes"] = notes + "\n\n" + noteText
+				if notes, ok := person.Properties[PropertyNotes].(string); ok {
+					person.Properties[PropertyNotes] = notes + "\n\n" + noteText
 				} else {
-					person.Properties["notes"] = noteText
+					person.Properties[PropertyNotes] = noteText
 				}
 			}
 
@@ -273,7 +273,7 @@ func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRe
 		assertionID := generateAssertionID(conv)
 		conv.GLX.Assertions[assertionID] = &Assertion{
 			Subject:    personID,
-			Claim:      "given_name",
+			Claim:      PersonPropertyGivenName,
 			Value:      name.GivenName,
 			Confidence: confidence,
 			Citations:  citationIDs,
@@ -285,7 +285,7 @@ func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRe
 		assertionID := generateAssertionID(conv)
 		conv.GLX.Assertions[assertionID] = &Assertion{
 			Subject:    personID,
-			Claim:      "family_name",
+			Claim:      PersonPropertyFamilyName,
 			Value:      name.Surname,
 			Confidence: confidence,
 			Citations:  citationIDs,
@@ -295,16 +295,16 @@ func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRe
 
 	// Store other name components as property assertions
 	if name.Prefix != "" {
-		createPropertyAssertion(personID, "name_prefix", name.Prefix, nameRecord, conv)
+		createPropertyAssertion(personID, PersonPropertyNamePrefix, name.Prefix, nameRecord, conv)
 	}
 	if name.Nickname != "" {
-		createPropertyAssertion(personID, "nickname", name.Nickname, nameRecord, conv)
+		createPropertyAssertion(personID, PersonPropertyNickname, name.Nickname, nameRecord, conv)
 	}
 	if name.SurnamePrefix != "" {
-		createPropertyAssertion(personID, "surname_prefix", name.SurnamePrefix, nameRecord, conv)
+		createPropertyAssertion(personID, PersonPropertySurnamePrefix, name.SurnamePrefix, nameRecord, conv)
 	}
 	if name.Suffix != "" {
-		createPropertyAssertion(personID, "name_suffix", name.Suffix, nameRecord, conv)
+		createPropertyAssertion(personID, PersonPropertyNameSuffix, name.Suffix, nameRecord, conv)
 	}
 
 	return nil
@@ -357,21 +357,21 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 
 		case "AGE":
 			// Age at event
-			event.Properties["age_at_event"] = sub.Value
+			event.Properties[PropertyAgeAtEvent] = sub.Value
 
 		case "CAUS":
 			// Cause
-			event.Properties["cause"] = sub.Value
+			event.Properties[PropertyCause] = sub.Value
 
 		case "TYPE":
 			// Event subtype
-			event.Properties["event_subtype"] = sub.Value
+			event.Properties[PropertyEventSubtype] = sub.Value
 
 		case "ADDR":
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
-				event.Properties["address"] = addr
+				event.Properties[PropertyAddress] = addr
 			}
 
 			// If no PLAC was provided, try to build place from ADDR subfields
@@ -389,7 +389,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		case "NOTE":
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				event.Properties["notes"] = noteText
+				event.Properties[PropertyNotes] = noteText
 			}
 
 		case "SOUR":
@@ -416,18 +416,18 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	// Create property assertions for born_on, died_on, etc.
 	// ALSO set person properties directly for quick access
 	if eventType == "birth" && eventDate != "" {
-		person.Properties["born_on"] = eventDate
-		createPropertyAssertion(personID, "born_on", eventDate, eventRecord, conv)
+		person.Properties[PersonPropertyBornOn] = eventDate
+		createPropertyAssertion(personID, PersonPropertyBornOn, eventDate, eventRecord, conv)
 		if eventPlace != "" {
-			person.Properties["born_at"] = eventPlace
-			createPropertyAssertion(personID, "born_at", eventPlace, eventRecord, conv)
+			person.Properties[PersonPropertyBornAt] = eventPlace
+			createPropertyAssertion(personID, PersonPropertyBornAt, eventPlace, eventRecord, conv)
 		}
 	} else if eventType == "death" && eventDate != "" {
-		person.Properties["died_on"] = eventDate
-		createPropertyAssertion(personID, "died_on", eventDate, eventRecord, conv)
+		person.Properties[PersonPropertyDiedOn] = eventDate
+		createPropertyAssertion(personID, PersonPropertyDiedOn, eventDate, eventRecord, conv)
 		if eventPlace != "" {
-			person.Properties["died_at"] = eventPlace
-			createPropertyAssertion(personID, "died_at", eventPlace, eventRecord, conv)
+			person.Properties[PersonPropertyDiedAt] = eventPlace
+			createPropertyAssertion(personID, PersonPropertyDiedAt, eventPlace, eventRecord, conv)
 		}
 	}
 
@@ -554,7 +554,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 			if hierarchy != nil {
 				placeID, _ := buildPlaceHierarchy(hierarchy, conv)
 				if placeID != "" {
-					createPropertyAssertion(personID, "residence", placeID, resiRecord, conv)
+					createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
 					return nil
 				}
 			}

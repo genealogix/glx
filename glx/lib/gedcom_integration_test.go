@@ -86,14 +86,14 @@ func TestImportShakespeare(t *testing.T) {
 	// Check for William Shakespeare
 	foundWilliam := false
 	for _, person := range glx.Persons {
-		givenName, hasGiven := person.Properties["given_name"].(string)
-		familyName, hasFamily := person.Properties["family_name"].(string)
+		givenName, hasGiven := person.Properties[PersonPropertyGivenName].(string)
+		familyName, hasFamily := person.Properties[PersonPropertyFamilyName].(string)
 
 		if hasGiven && hasFamily && givenName == "William" && familyName == "Shakespeare" {
 			foundWilliam = true
 
 			// Verify gender
-			if gender, ok := person.Properties["gender"].(string); !ok || gender != "male" {
+			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "male" {
 				t.Error("William Shakespeare should have gender 'male'")
 			}
 

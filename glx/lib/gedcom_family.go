@@ -95,7 +95,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		// Extract citations from FAM record itself
 		citationIDs := extractCitations(relationshipID, famRecord, conv)
 		if len(citationIDs) > 0 {
-			relationship.Properties["citations"] = citationIDs
+			relationship.Properties[PropertyCitations] = citationIDs
 		}
 
 		conv.GLX.Relationships[relationshipID] = relationship
@@ -164,23 +164,23 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 
 		case "TYPE":
 			// Marriage type (e.g., civil, religious)
-			event.Properties["marriage_type"] = sub.Value
+			event.Properties[PropertyMarriageType] = sub.Value
 
 		case "NOTE":
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				event.Properties["notes"] = noteText
+				event.Properties[PropertyNotes] = noteText
 			}
 
 		case "SOUR":
 			// Citations on the event
 			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
-				citations, ok := event.Properties["citations"].([]string)
+				citations, ok := event.Properties[PropertyCitations].([]string)
 				if !ok {
 					citations = []string{}
 				}
-				event.Properties["citations"] = append(citations, citationID)
+				event.Properties[PropertyCitations] = append(citations, citationID)
 			}
 
 		case "OBJE":
@@ -188,21 +188,21 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 			if sub.Value != "" {
 				mediaID := conv.MediaIDMap[sub.Value]
 				if mediaID != "" {
-					if event.Properties["media"] == nil {
-						event.Properties["media"] = []string{}
+					if event.Properties[PropertyMedia] == nil {
+						event.Properties[PropertyMedia] = []string{}
 					}
-					media := event.Properties["media"].([]string)
-					event.Properties["media"] = append(media, mediaID)
+					media := event.Properties[PropertyMedia].([]string)
+					event.Properties[PropertyMedia] = append(media, mediaID)
 				}
 			} else {
 				// Embedded media
 				mediaID, err := convertEmbeddedMedia(sub, conv)
 				if err == nil && mediaID != "" {
-					if event.Properties["media"] == nil {
-						event.Properties["media"] = []string{}
+					if event.Properties[PropertyMedia] == nil {
+						event.Properties[PropertyMedia] = []string{}
 					}
-					media := event.Properties["media"].([]string)
-					event.Properties["media"] = append(media, mediaID)
+					media := event.Properties[PropertyMedia].([]string)
+					event.Properties[PropertyMedia] = append(media, mediaID)
 				}
 			}
 
@@ -210,7 +210,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
-				event.Properties["address"] = addr
+				event.Properties[PropertyAddress] = addr
 			}
 
 			// If no PLAC was provided, try to build place from ADDR subfields
@@ -249,8 +249,8 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	// Link event to relationship
 	relationship := conv.GLX.Relationships[relationshipID]
 	if relationship != nil {
-		if relationship.Properties["marriage_event"] == nil {
-			relationship.Properties["marriage_event"] = eventID
+		if relationship.Properties[PropertyMarriageEvent] == nil {
+			relationship.Properties[PropertyMarriageEvent] = eventID
 		}
 	}
 
@@ -289,24 +289,24 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 		case "NOTE":
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				event.Properties["notes"] = noteText
+				event.Properties[PropertyNotes] = noteText
 			}
 
 		case "SOUR":
 			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
-				citations, ok := event.Properties["citations"].([]string)
+				citations, ok := event.Properties[PropertyCitations].([]string)
 				if !ok {
 					citations = []string{}
 				}
-				event.Properties["citations"] = append(citations, citationID)
+				event.Properties[PropertyCitations] = append(citations, citationID)
 			}
 
 		case "ADDR":
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
-				event.Properties["address"] = addr
+				event.Properties[PropertyAddress] = addr
 			}
 
 			// If no PLAC was provided, try to build place from ADDR subfields
@@ -345,8 +345,8 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	// Link event to relationship
 	relationship := conv.GLX.Relationships[relationshipID]
 	if relationship != nil {
-		if relationship.Properties["divorce_event"] == nil {
-			relationship.Properties["divorce_event"] = eventID
+		if relationship.Properties[PropertyDivorceEvent] == nil {
+			relationship.Properties[PropertyDivorceEvent] = eventID
 		}
 	}
 
@@ -387,24 +387,24 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 		case "NOTE":
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				event.Properties["notes"] = noteText
+				event.Properties[PropertyNotes] = noteText
 			}
 
 		case "SOUR":
 			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
-				citations, ok := event.Properties["citations"].([]string)
+				citations, ok := event.Properties[PropertyCitations].([]string)
 				if !ok {
 					citations = []string{}
 				}
-				event.Properties["citations"] = append(citations, citationID)
+				event.Properties[PropertyCitations] = append(citations, citationID)
 			}
 
 		case "ADDR":
 			// Address - extract full address including subfields
 			addr := extractAddress(sub)
 			if addr != "" {
-				event.Properties["address"] = addr
+				event.Properties[PropertyAddress] = addr
 			}
 
 			// If no PLAC was provided, try to build place from ADDR subfields
