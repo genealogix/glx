@@ -33,7 +33,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 	}()
 
-	if objeRecord.Tag != "OBJE" {
+	if objeRecord.Tag != GedcomTagObje {
 		return fmt.Errorf("expected OBJE record, got %s", objeRecord.Tag)
 	}
 
@@ -78,7 +78,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 			// Check for MEDI subrecord (store in notes)
 			for _, formSub := range sub.SubRecords {
-				if formSub.Tag == "MEDI" {
+				if formSub.Tag == GedcomTagMedi {
 					notes = append(notes, "Medium: "+formSub.Value)
 				}
 			}
@@ -176,7 +176,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 			formatType = sub.Value
 
 			for _, formSub := range sub.SubRecords {
-				if formSub.Tag == "MEDI" {
+				if formSub.Tag == GedcomTagMedi {
 					notes = append(notes, "Medium: "+formSub.Value)
 				}
 			}
@@ -234,51 +234,51 @@ func inferMimeType(filename string) string {
 
 	mimeTypes := map[string]string{
 		// Images
-		".jpg":  "image/jpeg",
-		".jpeg": "image/jpeg",
-		".png":  "image/png",
-		".gif":  "image/gif",
-		".bmp":  "image/bmp",
-		".tif":  "image/tiff",
-		".tiff": "image/tiff",
-		".webp": "image/webp",
+		".jpg":  MimeTypeJPEG,
+		".jpeg": MimeTypeJPEG,
+		".png":  MimeTypePNG,
+		".gif":  MimeTypeGIF,
+		".bmp":  MimeTypeBMP,
+		".tif":  MimeTypeTIFF,
+		".tiff": MimeTypeTIFF,
+		".webp": MimeTypeWEBP,
 		".svg":  "image/svg+xml",
 
 		// Audio
-		".mp3":  "audio/mpeg",
-		".wav":  "audio/wav",
-		".ogg":  "audio/ogg",
-		".m4a":  "audio/mp4",
-		".flac": "audio/flac",
+		".mp3":  MimeTypeMP3,
+		".wav":  MimeTypeWAV,
+		".ogg":  MimeTypeOGG,
+		".m4a":  MimeTypeM4A,
+		".flac": MimeTypeFLAC,
 
 		// Video
-		".mp4":  "video/mp4",
-		".avi":  "video/x-msvideo",
-		".mov":  "video/quicktime",
-		".wmv":  "video/x-ms-wmv",
-		".flv":  "video/x-flv",
-		".webm": "video/webm",
+		".mp4":  MimeTypeMP4,
+		".avi":  MimeTypeAVI,
+		".mov":  MimeTypeMOV,
+		".wmv":  MimeTypeWMV,
+		".flv":  MimeTypeFLV,
+		".webm": MimeTypeWEBM,
 
 		// Documents
-		".pdf":  "application/pdf",
-		".doc":  "application/msword",
-		".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-		".txt":  "text/plain",
-		".rtf":  "application/rtf",
+		".pdf":  MimeTypePDF,
+		".doc":  MimeTypeDOC,
+		".docx": MimeTypeDOCX,
+		".txt":  MimeTypeTXT,
+		".rtf":  MimeTypeRTF,
 
 		// Archives
-		".zip": "application/zip",
-		".rar": "application/x-rar-compressed",
-		".7z":  "application/x-7z-compressed",
-		".tar": "application/x-tar",
-		".gz":  "application/gzip",
+		".zip": MimeTypeZIP,
+		".rar": MimeTypeRAR,
+		".7z":  MimeType7Z,
+		".tar": MimeTypeTAR,
+		".gz":  MimeTypeGZIP,
 	}
 
 	if mime, ok := mimeTypes[ext]; ok {
 		return mime
 	}
 
-	return "application/octet-stream"
+	return MimeTypeOctetStream
 }
 
 // mapFormatToMimeType maps GEDCOM 5.5.1 FORM values to MIME types
@@ -287,34 +287,34 @@ func mapFormatToMimeType(format string) string {
 
 	mapping := map[string]string{
 		// Images
-		"jpg":  "image/jpeg",
-		"jpeg": "image/jpeg",
-		"png":  "image/png",
-		"gif":  "image/gif",
-		"bmp":  "image/bmp",
-		"tif":  "image/tiff",
-		"tiff": "image/tiff",
-		"pcx":  "image/x-pcx",
+		"jpg":  MimeTypeJPEG,
+		"jpeg": MimeTypeJPEG,
+		"png":  MimeTypePNG,
+		"gif":  MimeTypeGIF,
+		"bmp":  MimeTypeBMP,
+		"tif":  MimeTypeTIFF,
+		"tiff": MimeTypeTIFF,
+		"pcx":  MimeTypePCX,
 
 		// Audio
-		"wav": "audio/wav",
-		"mp3": "audio/mpeg",
+		"wav": MimeTypeWAV,
+		"mp3": MimeTypeMP3,
 
 		// Video
-		"avi": "video/x-msvideo",
+		"avi": MimeTypeAVI,
 		"mpg": "video/mpeg",
-		"mp4": "video/mp4",
+		"mp4": MimeTypeMP4,
 
 		// Documents
-		"pdf": "application/pdf",
-		"txt": "text/plain",
+		"pdf": MimeTypePDF,
+		"txt": MimeTypeTXT,
 	}
 
 	if mime, ok := mapping[formatLower]; ok {
 		return mime
 	}
 
-	return "application/octet-stream"
+	return MimeTypeOctetStream
 }
 
 // extractCrop extracts GEDCOM 7.0 crop coordinates
@@ -325,19 +325,19 @@ func extractCrop(cropRecord *GEDCOMRecord) map[string]any {
 		switch sub.Tag {
 		case GedcomTagTop:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
-				crop["top"] = val
+				crop[CropKeyTop] = val
 			}
 		case GedcomTagLeft:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
-				crop["left"] = val
+				crop[CropKeyLeft] = val
 			}
 		case GedcomTagHeight:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
-				crop["height"] = val
+				crop[CropKeyHeight] = val
 			}
 		case GedcomTagWidth:
 			if val, err := strconv.Atoi(sub.Value); err == nil {
-				crop["width"] = val
+				crop[CropKeyWidth] = val
 			}
 		}
 	}

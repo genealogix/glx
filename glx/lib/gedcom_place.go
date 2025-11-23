@@ -143,19 +143,19 @@ func inferPlaceType(name string, level int) string {
 
 	// Check for keywords
 	if strings.Contains(nameLower, "cemetery") || strings.Contains(nameLower, "graveyard") {
-		return "cemetery"
+		return PlaceTypeCemetery
 	}
 	if strings.Contains(nameLower, "church") || strings.Contains(nameLower, "cathedral") {
-		return "church"
+		return PlaceTypeChurch
 	}
 	if strings.Contains(nameLower, "hospital") {
-		return "hospital"
+		return PlaceTypeHospital
 	}
 	if strings.Contains(nameLower, "county") {
-		return "county"
+		return PlaceTypeCounty
 	}
 	if strings.Contains(nameLower, "province") || strings.Contains(nameLower, "state") {
-		return "state"
+		return PlaceTypeState
 	}
 
 	// Infer from position in hierarchy
@@ -163,18 +163,18 @@ func inferPlaceType(name string, level int) string {
 	switch level {
 	case 0:
 		// Most specific - likely city or town
-		return "city"
+		return PlaceTypeCity
 	case 1:
 		// Second level - likely county
-		return "county"
+		return PlaceTypeCounty
 	case 2:
 		// Third level - likely state/province
-		return "state"
+		return PlaceTypeState
 	case 3:
 		// Fourth level - likely country
-		return "country"
+		return PlaceTypeCountry
 	default:
-		return "locality"
+		return PlaceTypeLocality
 	}
 }
 

@@ -416,14 +416,14 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 
 	// Create property assertions for born_on, died_on, etc.
 	// ALSO set person properties directly for quick access
-	if eventType == "birth" && eventDate != "" {
+	if eventType == EventTypeBirth && eventDate != "" {
 		person.Properties[PersonPropertyBornOn] = eventDate
 		createPropertyAssertion(personID, PersonPropertyBornOn, eventDate, eventRecord, conv)
 		if eventPlace != "" {
 			person.Properties[PersonPropertyBornAt] = eventPlace
 			createPropertyAssertion(personID, PersonPropertyBornAt, eventPlace, eventRecord, conv)
 		}
-	} else if eventType == "death" && eventDate != "" {
+	} else if eventType == EventTypeDeath && eventDate != "" {
 		person.Properties[PersonPropertyDiedOn] = eventDate
 		createPropertyAssertion(personID, PersonPropertyDiedOn, eventDate, eventRecord, conv)
 		if eventPlace != "" {
@@ -454,29 +454,29 @@ func mapGEDCOMSex(sex string) string {
 // mapGEDCOMEventType maps GEDCOM event tags to GLX event types
 func mapGEDCOMEventType(tag string) string {
 	mapping := map[string]string{
-		"BIRT": EventTypeBirth,
-		"CHR":  EventTypeChristening,
-		"DEAT": EventTypeDeath,
-		"BURI": EventTypeBurial,
-		"CREM": EventTypeCremation,
-		"ADOP": EventTypeAdoption,
-		"BAPM": EventTypeBaptism,
-		"BARM": EventTypeBarMitzvah,
-		"BASM": EventTypeBasMitzvah,
-		"BLES": EventTypeBlessing,
-		"CHRA": EventTypeAdultChristening,
-		"CONF": EventTypeConfirmation,
-		"FCOM": EventTypeFirstCommunion,
-		"ORDN": EventTypeOrdination,
-		"NATU": EventTypeNaturalization,
-		"EMIG": EventTypeEmigration,
-		"IMMI": EventTypeImmigration,
-		"CENS": EventTypeCensus,
-		"PROB": EventTypeProbate,
-		"WILL": EventTypeWill,
-		"GRAD": EventTypeGraduation,
-		"RETI": EventTypeRetirement,
-		"RESI": EventTypeResidence,
+		GedcomTagBirt: EventTypeBirth,
+		GedcomTagChr:  EventTypeChristening,
+		GedcomTagDeat: EventTypeDeath,
+		GedcomTagBuri: EventTypeBurial,
+		GedcomTagCrem: EventTypeCremation,
+		GedcomTagAdop: EventTypeAdoption,
+		GedcomTagBapm: EventTypeBaptism,
+		GedcomTagBarm: EventTypeBarMitzvah,
+		GedcomTagBasm: EventTypeBasMitzvah,
+		GedcomTagBles: EventTypeBlessing,
+		GedcomTagChra: EventTypeAdultChristening,
+		GedcomTagConf: EventTypeConfirmation,
+		GedcomTagFcom: EventTypeFirstCommunion,
+		GedcomTagOrdn: EventTypeOrdination,
+		GedcomTagNatu: EventTypeNaturalization,
+		GedcomTagEmig: EventTypeEmigration,
+		GedcomTagImmi: EventTypeImmigration,
+		GedcomTagCens: EventTypeCensus,
+		GedcomTagProb: EventTypeProbate,
+		GedcomTagWill: EventTypeWill,
+		GedcomTagGrad: EventTypeGraduation,
+		GedcomTagReti: EventTypeRetirement,
+		GedcomTagResi: EventTypeResidence,
 	}
 
 	if eventType, ok := mapping[tag]; ok {
@@ -537,7 +537,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 	// Check if it has date - if so, create event
 	hasDate := false
 	for _, sub := range resiRecord.SubRecords {
-		if sub.Tag == "DATE" {
+		if sub.Tag == GedcomTagDate {
 			hasDate = true
 
 			break
@@ -551,7 +551,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 
 	// Otherwise, extract place as property
 	for _, sub := range resiRecord.SubRecords {
-		if sub.Tag == "PLAC" {
+		if sub.Tag == GedcomTagPlac {
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				placeID, _ := buildPlaceHierarchy(hierarchy, conv)
@@ -572,7 +572,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 	// Extract TYPE to determine what kind of fact
 	factType := ""
 	for _, sub := range factRecord.SubRecords {
-		if sub.Tag == "TYPE" {
+		if sub.Tag == GedcomTagType {
 			factType = sub.Value
 
 			break
@@ -590,7 +590,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 	// Otherwise treat as generic event if it has date/place
 	hasDateOrPlace := false
 	for _, sub := range factRecord.SubRecords {
-		if sub.Tag == "DATE" || sub.Tag == "PLAC" {
+		if sub.Tag == GedcomTagDate || sub.Tag == GedcomTagPlac {
 			hasDateOrPlace = true
 
 			break

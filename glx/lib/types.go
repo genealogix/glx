@@ -16,40 +16,6 @@ package lib
 
 import "fmt"
 
-// Entity type constants - plural form used as map keys in GLXFile
-const (
-	EntityTypePersons       = "persons"
-	EntityTypeRelationships = "relationships"
-	EntityTypeEvents        = "events"
-	EntityTypePlaces        = "places"
-	EntityTypeSources       = "sources"
-	EntityTypeCitations     = "citations"
-	EntityTypeRepositories  = "repositories"
-	EntityTypeAssertions    = "assertions"
-	EntityTypeMedia         = "media"
-)
-
-// Vocabulary type constants - used as map keys in GLXFile
-const (
-	VocabRelationshipTypes = "relationship_types"
-	VocabEventTypes        = "event_types"
-	VocabPlaceTypes        = "place_types"
-	VocabRepositoryTypes   = "repository_types"
-	VocabParticipantRoles  = "participant_roles"
-	VocabMediaTypes        = "media_types"
-	VocabConfidenceLevels  = "confidence_levels"
-	VocabQualityRatings    = "quality_ratings"
-	VocabSourceTypes       = "source_types"
-)
-
-// Property vocabulary constants - used as map keys in GLXFile
-const (
-	PropPersonProperties       = "person_properties"
-	PropEventProperties        = "event_properties"
-	PropRelationshipProperties = "relationship_properties"
-	PropPlaceProperties        = "place_properties"
-)
-
 // GLXFile represents the top-level structure of a .glx file, which can
 // contain maps of different entity types and vocabulary definitions.
 type GLXFile struct {

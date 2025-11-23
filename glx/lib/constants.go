@@ -311,3 +311,102 @@ const (
 	SourceTypePhotograph     = "photograph"      // Photograph collections
 	SourceTypeOther          = "other"           // Other source types
 )
+
+// Entity type constants - plural form used as map keys in GLXFile
+const (
+	EntityTypePersons       = "persons"
+	EntityTypeRelationships = "relationships"
+	EntityTypeEvents        = "events"
+	EntityTypePlaces        = "places"
+	EntityTypeSources       = "sources"
+	EntityTypeCitations     = "citations"
+	EntityTypeRepositories  = "repositories"
+	EntityTypeAssertions    = "assertions"
+	EntityTypeMedia         = "media"
+)
+
+// Vocabulary type constants - used as map keys in GLXFile
+const (
+	VocabRelationshipTypes = "relationship_types"
+	VocabEventTypes        = "event_types"
+	VocabPlaceTypes        = "place_types"
+	VocabRepositoryTypes   = "repository_types"
+	VocabParticipantRoles  = "participant_roles"
+	VocabMediaTypes        = "media_types"
+	VocabConfidenceLevels  = "confidence_levels"
+	VocabQualityRatings    = "quality_ratings"
+	VocabSourceTypes       = "source_types"
+)
+
+// Property vocabulary constants - used as map keys in GLXFile
+const (
+	PropPersonProperties       = "person_properties"
+	PropEventProperties        = "event_properties"
+	PropRelationshipProperties = "relationship_properties"
+	PropPlaceProperties        = "place_properties"
+)
+
+// Place Types - used by inferPlaceType function
+const (
+	PlaceTypeCemetery = "cemetery"
+	PlaceTypeChurch   = "church"
+	PlaceTypeHospital = "hospital"
+	PlaceTypeCounty   = "county"
+	PlaceTypeState    = "state"
+	PlaceTypeCity     = "city"
+	PlaceTypeCountry  = "country"
+	PlaceTypeLocality = "locality"
+)
+
+// Repository Types - used by inferRepositoryType function
+const (
+	RepositoryTypeArchive           = "archive"
+	RepositoryTypeLibrary           = "library"
+	RepositoryTypeChurch            = "church"
+	RepositoryTypeMuseum            = "museum"
+	RepositoryTypeUniversity        = "university"
+	RepositoryTypeHistoricalSociety = "historical_society"
+	RepositoryTypeDatabase          = "database"
+	RepositoryTypeOther             = "other"
+)
+
+// MIME Types - Common media types
+const (
+	MimeTypeJPEG       = "image/jpeg"
+	MimeTypePNG        = "image/png"
+	MimeTypeGIF        = "image/gif"
+	MimeTypeBMP        = "image/bmp"
+	MimeTypeTIFF       = "image/tiff"
+	MimeTypeWEBP       = "image/webp"
+	MimeTypePCX        = "image/x-pcx"
+	MimeTypeMP3        = "audio/mpeg"
+	MimeTypeWAV        = "audio/wav"
+	MimeTypeOGG        = "audio/ogg"
+	MimeTypeM4A        = "audio/mp4"
+	MimeTypeFLAC       = "audio/flac"
+	MimeTypeMP4        = "video/mp4"
+	MimeTypeAVI        = "video/x-msvideo"
+	MimeTypeMOV        = "video/quicktime"
+	MimeTypeWMV        = "video/x-ms-wmv"
+	MimeTypeFLV        = "video/x-flv"
+	MimeTypeWEBM       = "video/webm"
+	MimeTypePDF        = "application/pdf"
+	MimeTypeDOC        = "application/msword"
+	MimeTypeDOCX       = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	MimeTypeTXT        = "text/plain"
+	MimeTypeRTF        = "application/rtf"
+	MimeTypeZIP        = "application/zip"
+	MimeTypeRAR        = "application/x-rar-compressed"
+	MimeType7Z         = "application/x-7z-compressed"
+	MimeTypeTAR        = "application/x-tar"
+	MimeTypeGZIP       = "application/gzip"
+	MimeTypeOctetStream = "application/octet-stream"
+)
+
+// Crop Coordinate Keys - used for GEDCOM CROP tag
+const (
+	CropKeyTop    = "top"
+	CropKeyLeft   = "left"
+	CropKeyHeight = "height"
+	CropKeyWidth  = "width"
+)

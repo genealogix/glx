@@ -20,7 +20,7 @@ import (
 
 // convertSharedNote551 converts a GEDCOM 5.5.1 NOTE record to shared note storage
 func convertSharedNote551(noteRecord *GEDCOMRecord, conv *ConversionContext) error {
-	if noteRecord.Tag != "NOTE" {
+	if noteRecord.Tag != GedcomTagNote {
 		return fmt.Errorf("expected NOTE record, got %s", noteRecord.Tag)
 	}
 
@@ -40,7 +40,7 @@ func convertSharedNote551(noteRecord *GEDCOMRecord, conv *ConversionContext) err
 
 // convertSharedNote converts a GEDCOM 7.0 SNOTE record to shared note storage
 func convertSharedNote(snoteRecord *GEDCOMRecord, conv *ConversionContext) error {
-	if snoteRecord.Tag != "SNOTE" {
+	if snoteRecord.Tag != GedcomTagSnote {
 		return fmt.Errorf("expected SNOTE record, got %s", snoteRecord.Tag)
 	}
 
@@ -60,7 +60,7 @@ func convertSharedNote(snoteRecord *GEDCOMRecord, conv *ConversionContext) error
 
 // convertExtensionSchema converts a GEDCOM 7.0 SCHMA record
 func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) error {
-	if schmaRecord.Tag != "SCHMA" {
+	if schmaRecord.Tag != GedcomTagSchma {
 		return fmt.Errorf("expected SCHMA record, got %s", schmaRecord.Tag)
 	}
 
@@ -127,7 +127,7 @@ func extractExternalIDs(record *GEDCOMRecord) []map[string]string {
 	var exids []map[string]string
 
 	for _, sub := range record.SubRecords {
-		if sub.Tag == "EXID" {
+		if sub.Tag == GedcomTagExid {
 			exid := make(map[string]string)
 			exid["id"] = sub.Value
 

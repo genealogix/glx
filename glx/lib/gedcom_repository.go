@@ -155,26 +155,26 @@ func inferRepositoryType(name string) string {
 	nameLower := strings.ToLower(name)
 
 	if strings.Contains(nameLower, "archive") {
-		return "archive"
+		return RepositoryTypeArchive
 	}
 	if strings.Contains(nameLower, "library") {
-		return "library"
+		return RepositoryTypeLibrary
 	}
 	if strings.Contains(nameLower, "church") {
-		return "church"
+		return RepositoryTypeChurch
 	}
 	if strings.Contains(nameLower, "museum") {
-		return "museum"
+		return RepositoryTypeMuseum
 	}
 	if strings.Contains(nameLower, "university") || strings.Contains(nameLower, "college") {
-		return "university"
+		return RepositoryTypeUniversity
 	}
 	if strings.Contains(nameLower, "society") {
-		return "historical_society"
+		return RepositoryTypeHistoricalSociety
 	}
 	if strings.Contains(nameLower, "ancestr") || strings.Contains(nameLower, "familysearch") {
-		return "database"
+		return RepositoryTypeDatabase
 	}
 
-	return "other"
+	return RepositoryTypeOther
 }
