@@ -160,6 +160,8 @@ linters-settings:
       - "10" # Common base-10 operations
       - "100" # Common percentage base
       - "1024" # Common KB size
+      - "644" # Common file permission
+      - "755" # Common file permission
     ignored-functions:
       - "make" # make([]T, size) is fine
       - "len" # len comparisons are fine

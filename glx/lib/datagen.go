@@ -96,7 +96,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 	// Generate some relationships
 	if numPeople > 1 {
 		relationshipTypes := []string{"marriage", "sibling", "partner", "friend"}
-		for i := 0; i < numPeople/2; i++ {
+		for range numPeople / 2 {
 			p1 := personIDs[rand.Intn(len(personIDs))]
 			p2 := personIDs[rand.Intn(len(personIDs))]
 			if p1 == p2 {

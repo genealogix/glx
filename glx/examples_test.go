@@ -131,7 +131,7 @@ func TestExamplesDirectories(t *testing.T) {
 			// Check for README
 			readmePath := filepath.Join(examplePath, "README.md")
 			_, err = os.Stat(readmePath)
-			assert.NoError(t, err, "example %s should have README.md", example)
+			require.NoError(t, err, "example %s should have README.md", example)
 		})
 	}
 }
