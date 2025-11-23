@@ -108,11 +108,16 @@ func TestSerializeSingleFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "test.glx")
 
-	// Serialize
+	// Serialize to bytes
 	s := NewSerializer(nil)
-	err := s.SerializeSingleFile(glx, outputPath)
+	yamlBytes, err := s.SerializeSingleFileBytes(glx)
 	if err != nil {
 		t.Fatalf("Failed to serialize: %v", err)
+	}
+
+	// Write to file (test does I/O, not lib)
+	if err := os.WriteFile(outputPath, yamlBytes, 0o644); err != nil {
+		t.Fatalf("Failed to write file: %v", err)
 	}
 
 	// Check file exists
@@ -134,7 +139,7 @@ func TestSerializeSingleFile(t *testing.T) {
 	t.Logf("Wrote %d bytes to %s", len(data), outputPath)
 }
 
-func TestLoadSingleFileBytes(t *testing.T) {
+func TestDeserializeSingleFileBytes(t *testing.T) {
 	// Create YAML data
 	yamlData := `persons:
   person-001:
@@ -153,7 +158,7 @@ assertions: {}
 
 	// Load
 	s := NewSerializer(nil)
-	glx, err := s.LoadSingleFileBytes([]byte(yamlData))
+	glx, err := s.DeserializeSingleFileBytes([]byte(yamlData))
 	if err != nil {
 		t.Fatalf("Failed to load: %v", err)
 	}
@@ -198,9 +203,15 @@ assertions: {}
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
+	// Read file (test does I/O, not lib)
+	data, err := os.ReadFile(inputPath)
+	if err != nil {
+		t.Fatalf("Failed to read test file: %v", err)
+	}
+
 	// Load
 	s := NewSerializer(nil)
-	glx, err := s.LoadSingleFile(inputPath)
+	glx, err := s.DeserializeSingleFileBytes(data)
 	if err != nil {
 		t.Fatalf("Failed to load: %v", err)
 	}
@@ -251,9 +262,21 @@ func TestSerializeMultiFile(t *testing.T) {
 		Validate:            false, // Disable validation for unit test
 		Pretty:              true,
 	})
-	err := s.SerializeMultiFile(glx, tmpDir)
+	files, err := s.SerializeMultiFileToMap(glx)
 	if err != nil {
 		t.Fatalf("Failed to serialize: %v", err)
+	}
+
+	// Write files (test does I/O, not lib)
+	for relPath, content := range files {
+		absPath := filepath.Join(tmpDir, relPath)
+		parentDir := filepath.Dir(absPath)
+		if err := os.MkdirAll(parentDir, 0o755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", parentDir, err)
+		}
+		if err := os.WriteFile(absPath, content, 0o644); err != nil {
+			t.Fatalf("Failed to write file %s: %v", absPath, err)
+		}
 	}
 
 	// Check directories exist
@@ -320,12 +343,44 @@ func TestLoadMultiFile(t *testing.T) {
 		Validate:            false,
 	})
 
-	if err := s.SerializeMultiFile(glx, tmpDir); err != nil {
+	// Serialize to map
+	files, err := s.SerializeMultiFileToMap(glx)
+	if err != nil {
 		t.Fatalf("Failed to serialize: %v", err)
 	}
 
-	// Now load it back
-	loaded, err := s.LoadMultiFile(tmpDir)
+	// Write files (test does I/O, not lib)
+	for relPath, content := range files {
+		absPath := filepath.Join(tmpDir, relPath)
+		parentDir := filepath.Dir(absPath)
+		if err := os.MkdirAll(parentDir, 0o755); err != nil {
+			t.Fatalf("Failed to create directory: %v", err)
+		}
+		if err := os.WriteFile(absPath, content, 0o644); err != nil {
+			t.Fatalf("Failed to write file: %v", err)
+		}
+	}
+
+	// Read files back (test does I/O, not lib)
+	filesRead := make(map[string][]byte)
+	err = filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		relPath, _ := filepath.Rel(tmpDir, path)
+		filesRead[relPath] = data
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Failed to read files: %v", err)
+	}
+
+	// Load from map
+	loaded, err := s.DeserializeMultiFileFromMap(filesRead)
 	if err != nil {
 		t.Fatalf("Failed to load: %v", err)
 	}
@@ -376,7 +431,7 @@ func TestRoundTripSingleFile(t *testing.T) {
 	}
 
 	// Load back from bytes
-	loaded, err := s.LoadSingleFileBytes(yamlBytes)
+	loaded, err := s.DeserializeSingleFileBytes(yamlBytes)
 	if err != nil {
 		t.Fatalf("Failed to load: %v", err)
 	}

@@ -2,7 +2,6 @@ package lib
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -10,24 +9,20 @@ import (
 )
 
 // Serializer defines the interface for GLX archive serialization.
+// All methods work with bytes only - no filesystem I/O.
 type Serializer interface {
-	// SerializeSingleFile serializes a GLX archive to a single YAML file
-	SerializeSingleFile(glx *GLXFile, outputPath string) error
-
 	// SerializeSingleFileBytes serializes a GLX archive to YAML bytes (single-file format)
 	SerializeSingleFileBytes(glx *GLXFile) ([]byte, error)
 
-	// SerializeMultiFile serializes a GLX archive to a multi-file directory structure
-	SerializeMultiFile(glx *GLXFile, outputDir string) error
+	// DeserializeSingleFileBytes loads a GLX archive from YAML bytes (single-file format)
+	DeserializeSingleFileBytes(data []byte) (*GLXFile, error)
 
-	// LoadSingleFile loads a GLX archive from a single YAML file
-	LoadSingleFile(inputPath string) (*GLXFile, error)
+	// SerializeMultiFileToMap serializes a GLX archive to a map of relative paths to file contents
+	// Map keys are relative paths like "persons/person-abc123.glx", "vocabularies/event-types.glx"
+	SerializeMultiFileToMap(glx *GLXFile) (map[string][]byte, error)
 
-	// LoadSingleFileBytes loads a GLX archive from YAML bytes (single-file format)
-	LoadSingleFileBytes(data []byte) (*GLXFile, error)
-
-	// LoadMultiFile loads a GLX archive from a multi-file directory structure
-	LoadMultiFile(inputDir string) (*GLXFile, error)
+	// DeserializeMultiFileFromMap loads a GLX archive from a map of relative paths to file contents
+	DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, error)
 }
 
 // SerializerOptions configures the serializer behavior.
@@ -79,29 +74,6 @@ type EntityWithID[T any] struct {
 	Entity T      `yaml:",inline"`
 }
 
-// SerializeSingleFile serializes a GLX archive to a single YAML file.
-func (s *DefaultSerializer) SerializeSingleFile(glx *GLXFile, outputPath string) error {
-	// Validate if requested
-	if s.Options.Validate {
-		if err := validateGLXFile(glx); err != nil {
-			return fmt.Errorf("validation failed: %w", err)
-		}
-	}
-
-	// Serialize to bytes
-	yamlBytes, err := s.SerializeSingleFileBytes(glx)
-	if err != nil {
-		return err
-	}
-
-	// Write to file
-	if err := os.WriteFile(outputPath, yamlBytes, 0o644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
-	}
-
-	return nil
-}
-
 // SerializeSingleFileBytes serializes a GLX archive to YAML bytes (single-file format).
 func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, error) {
 	// Validate if requested
@@ -120,140 +92,88 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 	return yamlBytes, nil
 }
 
-// SerializeMultiFile serializes a GLX archive to a multi-file directory structure.
-func (s *DefaultSerializer) SerializeMultiFile(glx *GLXFile, outputDir string) error {
+// SerializeMultiFileToMap serializes a GLX archive to a map of relative paths to file contents.
+// Map keys are relative paths like "persons/person-abc123.glx", "vocabularies/event-types.glx".
+func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]byte, error) {
 	// Validate if requested
 	if s.Options.Validate {
 		if err := validateGLXFile(glx); err != nil {
-			return fmt.Errorf("validation failed: %w", err)
+			return nil, fmt.Errorf("validation failed: %w", err)
 		}
 	}
 
-	// Create output directory
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
-	}
+	files := make(map[string][]byte)
 
-	// Write vocabularies if requested
+	// Add vocabularies if requested
 	if s.Options.IncludeVocabularies {
-		if err := WriteStandardVocabularies(outputDir); err != nil {
-			return fmt.Errorf("failed to write vocabularies: %w", err)
+		for filename, content := range StandardVocabularies() {
+			vocabPath := filepath.Join("vocabularies", filename)
+			files[vocabPath] = content
 		}
 	}
 
-	// Write entities by type
-	if err := s.writeEntities(glx.Persons, outputDir, "persons", "person"); err != nil {
-		return err
+	// Serialize entities by type
+	if err := s.serializeEntitiesToMap(glx.Persons, "persons", "person", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Events, outputDir, "events", "event"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Events, "events", "event", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Relationships, outputDir, "relationships", "relationship"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Relationships, "relationships", "relationship", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Places, outputDir, "places", "place"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Places, "places", "place", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Sources, outputDir, "sources", "source"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Sources, "sources", "source", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Citations, outputDir, "citations", "citation"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Citations, "citations", "citation", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Repositories, outputDir, "repositories", "repository"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Repositories, "repositories", "repository", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Media, outputDir, "media", "media"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Media, "media", "media", files); err != nil {
+		return nil, err
 	}
-	if err := s.writeEntities(glx.Assertions, outputDir, "assertions", "assertion"); err != nil {
-		return err
+	if err := s.serializeEntitiesToMap(glx.Assertions, "assertions", "assertion", files); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return files, nil
 }
 
-// writeEntities writes a map of entities to individual files with random IDs.
-func (s *DefaultSerializer) writeEntities(entities any, outputDir, dirName, entityType string) error {
-	// Create entity directory
-	entityDir := filepath.Join(outputDir, dirName)
-	if err := os.MkdirAll(entityDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create %s directory: %w", dirName, err)
-	}
-
+// serializeEntitiesToMap serializes entities to the files map with random filenames.
+func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entityType string, files map[string][]byte) error {
 	// Type switch to handle different entity map types
 	switch typedEntities := entities.(type) {
 	case map[string]*Person:
-		return s.writePersonEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Event:
-		return s.writeEventEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Relationship:
-		return s.writeRelationshipEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Place:
-		return s.writePlaceEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Source:
-		return s.writeSourceEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Citation:
-		return s.writeCitationEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Repository:
-		return s.writeRepositoryEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Media:
-		return s.writeMediaEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	case map[string]*Assertion:
-		return s.writeAssertionEntities(typedEntities, entityDir, entityType)
+		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
 	default:
 		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
 	}
 }
 
-// writePersonEntities writes person entities to individual files.
-func (s *DefaultSerializer) writePersonEntities(entities map[string]*Person, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeEventEntities writes event entities to individual files.
-func (s *DefaultSerializer) writeEventEntities(entities map[string]*Event, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeRelationshipEntities writes relationship entities to individual files.
-func (s *DefaultSerializer) writeRelationshipEntities(entities map[string]*Relationship, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writePlaceEntities writes place entities to individual files.
-func (s *DefaultSerializer) writePlaceEntities(entities map[string]*Place, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeSourceEntities writes source entities to individual files.
-func (s *DefaultSerializer) writeSourceEntities(entities map[string]*Source, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeCitationEntities writes citation entities to individual files.
-func (s *DefaultSerializer) writeCitationEntities(entities map[string]*Citation, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeRepositoryEntities writes repository entities to individual files.
-func (s *DefaultSerializer) writeRepositoryEntities(entities map[string]*Repository, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeMediaEntities writes media entities to individual files.
-func (s *DefaultSerializer) writeMediaEntities(entities map[string]*Media, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeAssertionEntities writes assertion entities to individual files.
-func (s *DefaultSerializer) writeAssertionEntities(entities map[string]*Assertion, dir, entityType string) error {
-	return writeEntitiesWithID(entities, dir, entityType)
-}
-
-// writeEntitiesWithID writes entities with embedded ID field.
+// serializeEntitiesWithID serializes entities with embedded ID field to the files map.
 // Uses random filenames with collision detection.
-func writeEntitiesWithID[T any](entities map[string]T, dir, entityType string) error {
+func serializeEntitiesWithID[T any](entities map[string]T, dirName, entityType string, files map[string][]byte) error {
 	usedFilenames := make(map[string]bool)
 
 	for entityID, entity := range entities {
@@ -275,29 +195,16 @@ func writeEntitiesWithID[T any](entities map[string]T, dir, entityType string) e
 			return fmt.Errorf("failed to marshal %s %s: %w", entityType, entityID, err)
 		}
 
-		// Write file
-		filepath := filepath.Join(dir, filename)
-		if err := os.WriteFile(filepath, yamlBytes, 0o644); err != nil {
-			return fmt.Errorf("failed to write %s: %w", filepath, err)
-		}
+		// Add to files map
+		filePath := filepath.Join(dirName, filename)
+		files[filePath] = yamlBytes
 	}
 
 	return nil
 }
 
-// LoadSingleFile loads a GLX archive from a single YAML file.
-func (s *DefaultSerializer) LoadSingleFile(inputPath string) (*GLXFile, error) {
-	// Read file
-	data, err := os.ReadFile(inputPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	return s.LoadSingleFileBytes(data)
-}
-
-// LoadSingleFileBytes loads a GLX archive from YAML bytes (single-file format).
-func (s *DefaultSerializer) LoadSingleFileBytes(data []byte) (*GLXFile, error) {
+// DeserializeSingleFileBytes loads a GLX archive from YAML bytes (single-file format).
+func (s *DefaultSerializer) DeserializeSingleFileBytes(data []byte) (*GLXFile, error) {
 	var glx GLXFile
 
 	// Unmarshal YAML
@@ -315,8 +222,8 @@ func (s *DefaultSerializer) LoadSingleFileBytes(data []byte) (*GLXFile, error) {
 	return &glx, nil
 }
 
-// LoadMultiFile loads a GLX archive from a multi-file directory structure.
-func (s *DefaultSerializer) LoadMultiFile(inputDir string) (*GLXFile, error) {
+// DeserializeMultiFileFromMap loads a GLX archive from a map of relative paths to file contents.
+func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, error) {
 	glx := &GLXFile{
 		Persons:       make(map[string]*Person),
 		Events:        make(map[string]*Event),
@@ -329,40 +236,47 @@ func (s *DefaultSerializer) LoadMultiFile(inputDir string) (*GLXFile, error) {
 		Assertions:    make(map[string]*Assertion),
 	}
 
-	// Load vocabularies from directory if they exist
-	vocabDir := filepath.Join(inputDir, "vocabularies")
-	if _, err := os.Stat(vocabDir); err == nil {
-		if err := LoadVocabulariesFromDir(vocabDir, glx); err != nil {
+	// Load vocabularies from map
+	vocabFiles := make(map[string][]byte)
+	for path, content := range files {
+		if strings.HasPrefix(path, "vocabularies/") || strings.HasPrefix(path, "vocabularies\\") {
+			// Extract filename from path
+			filename := filepath.Base(path)
+			vocabFiles[filename] = content
+		}
+	}
+	if len(vocabFiles) > 0 {
+		if err := LoadVocabulariesFromMap(vocabFiles, glx); err != nil {
 			return nil, fmt.Errorf("failed to load vocabularies: %w", err)
 		}
 	}
 
-	// Load each entity type
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "persons"), glx.Persons); err != nil && !os.IsNotExist(err) {
+	// Load entities from map
+	if err := deserializeEntitiesFromMap(files, "persons", glx.Persons); err != nil {
 		return nil, fmt.Errorf("failed to load persons: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "events"), glx.Events); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "events", glx.Events); err != nil {
 		return nil, fmt.Errorf("failed to load events: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "relationships"), glx.Relationships); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "relationships", glx.Relationships); err != nil {
 		return nil, fmt.Errorf("failed to load relationships: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "places"), glx.Places); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "places", glx.Places); err != nil {
 		return nil, fmt.Errorf("failed to load places: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "sources"), glx.Sources); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "sources", glx.Sources); err != nil {
 		return nil, fmt.Errorf("failed to load sources: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "citations"), glx.Citations); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "citations", glx.Citations); err != nil {
 		return nil, fmt.Errorf("failed to load citations: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "repositories"), glx.Repositories); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "repositories", glx.Repositories); err != nil {
 		return nil, fmt.Errorf("failed to load repositories: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "media"), glx.Media); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "media", glx.Media); err != nil {
 		return nil, fmt.Errorf("failed to load media: %w", err)
 	}
-	if err := loadEntitiesWithID(filepath.Join(inputDir, "assertions"), glx.Assertions); err != nil && !os.IsNotExist(err) {
+	if err := deserializeEntitiesFromMap(files, "assertions", glx.Assertions); err != nil {
 		return nil, fmt.Errorf("failed to load assertions: %w", err)
 	}
 
@@ -376,31 +290,21 @@ func (s *DefaultSerializer) LoadMultiFile(inputDir string) (*GLXFile, error) {
 	return glx, nil
 }
 
-// loadEntitiesWithID loads entities with embedded _id field from a directory.
-func loadEntitiesWithID[T any](dir string, entities map[string]T) error {
-	// Check if directory exists
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return err // Return the error so caller can check os.IsNotExist
-	}
-
-	// Read directory
-	files, err := os.ReadDir(dir)
-	if err != nil {
-		return fmt.Errorf("failed to read directory: %w", err)
-	}
-
-	// Load each file
-	for _, file := range files {
-		if filepath.Ext(file.Name()) != FileExtGLX {
+// deserializeEntitiesFromMap loads entities with embedded _id field from the files map.
+func deserializeEntitiesFromMap[T any](files map[string][]byte, dirName string, entities map[string]T) error {
+	for path, data := range files {
+		// Check if this file belongs to the specified directory
+		dir := filepath.Dir(path)
+		if dir != dirName && dir != strings.ReplaceAll(dirName, "/", "\\") {
 			continue
 		}
 
-		path := filepath.Join(dir, file.Name())
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", path, err)
+		// Check file extension
+		if filepath.Ext(path) != FileExtGLX {
+			continue
 		}
 
+		// Unmarshal entity
 		var wrapper EntityWithID[T]
 		if err := yaml.Unmarshal(data, &wrapper); err != nil {
 			return fmt.Errorf("failed to unmarshal %s: %w", path, err)

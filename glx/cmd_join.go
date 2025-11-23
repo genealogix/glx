@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/genealogix/glx/glx/lib"
@@ -89,12 +90,41 @@ func joinArchive(inputDir, outputPath string) error {
 		fmt.Printf("Loading multi-file archive: %s\n", inputDir)
 	}
 
+	// Read all files from directory
+	files := make(map[string][]byte)
+	err := filepath.Walk(inputDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		// Read file content
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", path, err)
+		}
+
+		// Get relative path from inputDir
+		relPath, err := filepath.Rel(inputDir, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
+
+		files[relPath] = data
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to read directory: %w", err)
+	}
+
 	loadOpts := &lib.SerializerOptions{
 		Validate: !joinNoValidate,
 	}
 	serializer := lib.NewSerializer(loadOpts)
 
-	glx, err := serializer.LoadMultiFile(inputDir)
+	glx, err := serializer.DeserializeMultiFileFromMap(files)
 	if err != nil {
 		return fmt.Errorf("failed to load multi-file archive: %w", err)
 	}
@@ -123,7 +153,12 @@ func joinArchive(inputDir, outputPath string) error {
 	}
 	saveSerializer := lib.NewSerializer(saveOpts)
 
-	if err := saveSerializer.SerializeSingleFile(glx, outputPath); err != nil {
+	yamlBytes, err := saveSerializer.SerializeSingleFileBytes(glx)
+	if err != nil {
+		return fmt.Errorf("failed to serialize single-file archive: %w", err)
+	}
+
+	if err := os.WriteFile(outputPath, yamlBytes, 0o644); err != nil {
 		return fmt.Errorf("failed to write single-file archive: %w", err)
 	}
 

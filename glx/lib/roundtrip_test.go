@@ -9,6 +9,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test helpers that handle I/O (since lib no longer does)
+
+func serializeSingleFileTest(s *DefaultSerializer, glx *GLXFile, path string) error {
+	bytes, err := s.SerializeSingleFileBytes(glx)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, bytes, 0o644)
+}
+
+func deserializeSingleFileTest(s *DefaultSerializer, path string) (*GLXFile, error) {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return s.DeserializeSingleFileBytes(bytes)
+}
+
+func serializeMultiFileTest(s *DefaultSerializer, glx *GLXFile, dir string) error {
+	files, err := s.SerializeMultiFileToMap(glx)
+	if err != nil {
+		return err
+	}
+	for relPath, content := range files {
+		absPath := filepath.Join(dir, relPath)
+		parentDir := filepath.Dir(absPath)
+		if err := os.MkdirAll(parentDir, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(absPath, content, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deserializeMultiFileTest(s *DefaultSerializer, dir string) (*GLXFile, error) {
+	files := make(map[string][]byte)
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		files[relPath] = data
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.DeserializeMultiFileFromMap(files)
+}
+
 // TestGEDCOMToSingleFileRoundTrip tests GEDCOM -> Single-file GLX -> Deserialization
 func TestGEDCOMToSingleFileRoundTrip(t *testing.T) {
 	tests := []struct {
@@ -57,11 +119,11 @@ func TestGEDCOMToSingleFileRoundTrip(t *testing.T) {
 			// Step 2: Serialize to single-file GLX
 			tempFile := filepath.Join(t.TempDir(), "archive.glx")
 			serializer := NewSerializer(nil) // Use default options
-			err = serializer.SerializeSingleFile(glx1, tempFile)
+			err = serializeSingleFileTest(serializer, glx1, tempFile)
 			require.NoError(t, err, "Failed to serialize to single file")
 
 			// Step 3: Deserialize back from single file
-			glx2, err := serializer.LoadSingleFile(tempFile)
+			glx2, err := deserializeSingleFileTest(serializer, tempFile)
 			require.NoError(t, err, "Failed to deserialize from single file")
 
 			// Step 4: Verify round-trip preserved all data
@@ -128,11 +190,11 @@ func TestGEDCOMToMultiFileRoundTrip(t *testing.T) {
 				Pretty:              true,
 			}
 			serializer := NewSerializer(opts)
-			err = serializer.SerializeMultiFile(glx1, tempDir)
+			err = serializeMultiFileTest(serializer, glx1, tempDir)
 			require.NoError(t, err, "Failed to serialize to multi-file")
 
 			// Step 3: Deserialize back from multi-file
-			glx2, err := serializer.LoadMultiFile(tempDir)
+			glx2, err := deserializeMultiFileTest(serializer, tempDir)
 			require.NoError(t, err, "Failed to deserialize from multi-file")
 
 			// Step 4: Verify round-trip preserved all data
@@ -187,7 +249,7 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 			// Step 2: Write to single file
 			singleFile1 := filepath.Join(t.TempDir(), "archive1.glx")
 			serializer := NewSerializer(nil)
-			err = serializer.SerializeSingleFile(glx1, singleFile1)
+			err = serializeSingleFileTest(serializer, glx1, singleFile1)
 			require.NoError(t, err, "Failed to write to single file")
 
 			// Step 3: Split to multi-file
@@ -195,7 +257,7 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 			err = os.MkdirAll(multiDir, 0o755)
 			require.NoError(t, err, "Failed to create multi-file directory")
 
-			glx2, err := serializer.LoadSingleFile(singleFile1)
+			glx2, err := deserializeSingleFileTest(serializer, singleFile1)
 			require.NoError(t, err, "Failed to read from single file")
 
 			// Create serializer with vocabularies for multi-file
@@ -205,19 +267,19 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 				Pretty:              true,
 			}
 			serializerMulti := NewSerializer(optsMulti)
-			err = serializerMulti.SerializeMultiFile(glx2, multiDir)
+			err = serializeMultiFileTest(serializerMulti, glx2, multiDir)
 			require.NoError(t, err, "Failed to write to multi-file")
 
 			// Step 4: Join back to single file
-			glx3, err := serializerMulti.LoadMultiFile(multiDir)
+			glx3, err := deserializeMultiFileTest(serializerMulti, multiDir)
 			require.NoError(t, err, "Failed to read from multi-file")
 
 			singleFile2 := filepath.Join(t.TempDir(), "archive2.glx")
-			err = serializer.SerializeSingleFile(glx3, singleFile2)
+			err = serializeSingleFileTest(serializer, glx3, singleFile2)
 			require.NoError(t, err, "Failed to write back to single file")
 
 			// Step 5: Read final single file and verify
-			glx4, err := serializer.LoadSingleFile(singleFile2)
+			glx4, err := deserializeSingleFileTest(serializer, singleFile2)
 			require.NoError(t, err, "Failed to read final single file")
 
 			// Verify all data preserved through multiple conversions
@@ -253,10 +315,10 @@ func TestVocabularyPreservation(t *testing.T) {
 		serializer := NewSerializer(nil)
 
 		// Write and read back
-		err := serializer.SerializeSingleFile(glx1, tempFile)
+		err := serializeSingleFileTest(serializer, glx1, tempFile)
 		require.NoError(t, err, "Failed to write to single file")
 
-		glx2, err := serializer.LoadSingleFile(tempFile)
+		glx2, err := deserializeSingleFileTest(serializer, tempFile)
 		require.NoError(t, err, "Failed to read from single file")
 
 		// Verify vocabularies preserved
@@ -288,11 +350,11 @@ func TestVocabularyPreservation(t *testing.T) {
 		serializer := NewSerializer(opts)
 
 		// Write with vocabularies included
-		err = serializer.SerializeMultiFile(glx1, tempDir)
+		err = serializeMultiFileTest(serializer, glx1, tempDir)
 		require.NoError(t, err, "Failed to write to multi-file")
 
 		// Read back
-		glx2, err := serializer.LoadMultiFile(tempDir)
+		glx2, err := deserializeMultiFileTest(serializer, tempDir)
 		require.NoError(t, err, "Failed to read from multi-file")
 
 		// Verify vocabularies preserved

@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/genealogix/glx/glx/lib"
@@ -133,7 +134,14 @@ func importGEDCOM(gedcomPath string) error {
 			importOutput += ".glx"
 		}
 
-		if err := serializer.SerializeSingleFile(glx, importOutput); err != nil {
+		// Serialize to bytes
+		yamlBytes, err := serializer.SerializeSingleFileBytes(glx)
+		if err != nil {
+			return fmt.Errorf("failed to serialize GLX file: %w", err)
+		}
+
+		// Write to file
+		if err := os.WriteFile(importOutput, yamlBytes, 0o644); err != nil {
 			return fmt.Errorf("failed to write GLX file: %w", err)
 		}
 
@@ -145,8 +153,31 @@ func importGEDCOM(gedcomPath string) error {
 			fmt.Printf("Writing multi-file archive: %s\n", importOutput)
 		}
 
-		if err := serializer.SerializeMultiFile(glx, importOutput); err != nil {
-			return fmt.Errorf("failed to write GLX archive: %w", err)
+		// Serialize to map of files
+		files, err := serializer.SerializeMultiFileToMap(glx)
+		if err != nil {
+			return fmt.Errorf("failed to serialize GLX archive: %w", err)
+		}
+
+		// Create output directory
+		if err := os.MkdirAll(importOutput, 0o755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+
+		// Write all files
+		for relPath, content := range files {
+			absPath := filepath.Join(importOutput, relPath)
+
+			// Create parent directory
+			parentDir := filepath.Dir(absPath)
+			if err := os.MkdirAll(parentDir, 0o755); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", parentDir, err)
+			}
+
+			// Write file
+			if err := os.WriteFile(absPath, content, 0o644); err != nil {
+				return fmt.Errorf("failed to write file %s: %w", absPath, err)
+			}
 		}
 
 		fmt.Printf("✓ Successfully imported to %s/\n", importOutput)

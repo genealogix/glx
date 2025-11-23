@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/genealogix/glx/glx/lib"
 	"github.com/spf13/cobra"
@@ -86,12 +87,18 @@ func splitArchive(inputPath, outputDir string) error {
 		fmt.Printf("Loading archive: %s\n", inputPath)
 	}
 
+	// Read file
+	data, err := os.ReadFile(inputPath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
 	loadOpts := &lib.SerializerOptions{
 		Validate: !splitNoValidate,
 	}
 	serializer := lib.NewSerializer(loadOpts)
 
-	glx, err := serializer.LoadSingleFile(inputPath)
+	glx, err := serializer.DeserializeSingleFileBytes(data)
 	if err != nil {
 		return fmt.Errorf("failed to load archive: %w", err)
 	}
@@ -121,8 +128,30 @@ func splitArchive(inputPath, outputDir string) error {
 	}
 	saveSerializer := lib.NewSerializer(saveOpts)
 
-	if err := saveSerializer.SerializeMultiFile(glx, outputDir); err != nil {
-		return fmt.Errorf("failed to write multi-file archive: %w", err)
+	files, err := saveSerializer.SerializeMultiFileToMap(glx)
+	if err != nil {
+		return fmt.Errorf("failed to serialize multi-file archive: %w", err)
+	}
+
+	// Create output directory
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Write all files
+	for relPath, content := range files {
+		absPath := filepath.Join(outputDir, relPath)
+
+		// Create parent directory
+		parentDir := filepath.Dir(absPath)
+		if err := os.MkdirAll(parentDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", parentDir, err)
+		}
+
+		// Write file
+		if err := os.WriteFile(absPath, content, 0o644); err != nil {
+			return fmt.Errorf("failed to write file %s: %w", absPath, err)
+		}
 	}
 
 	fmt.Printf("✓ Successfully split archive to %s/\n", outputDir)

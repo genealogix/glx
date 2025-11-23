@@ -1,8 +1,6 @@
 package lib
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -101,88 +99,9 @@ func TestGetStandardVocabulary(t *testing.T) {
 	}
 }
 
-func TestWriteStandardVocabularies(t *testing.T) {
-	// Create temp directory
-	tmpDir := t.TempDir()
-
-	// Write vocabularies
-	err := WriteStandardVocabularies(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to write vocabularies: %v", err)
-	}
-
-	// Check vocabularies directory exists
-	vocabDir := filepath.Join(tmpDir, "vocabularies")
-	if _, err := os.Stat(vocabDir); os.IsNotExist(err) {
-		t.Fatal("Vocabularies directory not created")
-	}
-
-	// Check files exist
-	files, err := os.ReadDir(vocabDir)
-	if err != nil {
-		t.Fatalf("Failed to read vocabulary directory: %v", err)
-	}
-
-	if len(files) == 0 {
-		t.Fatal("No vocabulary files written")
-	}
-
-	// Check each file has content
-	for _, file := range files {
-		path := filepath.Join(vocabDir, file.Name())
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Errorf("Failed to read %s: %v", file.Name(), err)
-
-			continue
-		}
-		if len(data) == 0 {
-			t.Errorf("Empty vocabulary file: %s", file.Name())
-		}
-	}
-
-	t.Logf("Successfully wrote %d vocabulary files", len(files))
-}
-
-func TestWriteVocabulariesToFile(t *testing.T) {
-	// Create temp directory
-	tmpDir := t.TempDir()
-	outputPath := filepath.Join(tmpDir, "all-vocabularies.glx")
-
-	// Write vocabularies to single file
-	err := WriteVocabulariesToFile(outputPath)
-	if err != nil {
-		t.Fatalf("Failed to write vocabularies file: %v", err)
-	}
-
-	// Check file exists
-	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
-		t.Fatal("Vocabularies file not created")
-	}
-
-	// Check file has content
-	data, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("Failed to read vocabularies file: %v", err)
-	}
-
-	if len(data) == 0 {
-		t.Fatal("Empty vocabularies file")
-	}
-
-	// Check header is present
-	header := "# GLX Standard Vocabularies"
-	if !contains(string(data), header) {
-		t.Errorf("Vocabularies file missing header: %s", header)
-	}
-
-	// Check at least one vocabulary name is present
-	if !contains(string(data), "event-types.glx") {
-		t.Error("Vocabularies file missing event-types.glx")
-	}
-
-	t.Logf("Successfully wrote vocabularies file (%d bytes)", len(data))
-}
+// These tests were removed because WriteStandardVocabularies and WriteVocabulariesToFile
+// were removed from lib (they violated the no-I/O rule). Vocabulary writing is now
+// handled by the CLI commands, and vocabulary serialization is tested in roundtrip tests.
 
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && indexOf(s, substr) >= 0

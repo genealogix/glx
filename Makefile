@@ -6,6 +6,9 @@ build:
 	@mkdir -p bin
 	go build -o bin/glx ./glx
 
+fmt:
+	golangci-lint fmt
+
 # Lint target - runs golangci-lint
 lint:
 	golangci-lint run ./...

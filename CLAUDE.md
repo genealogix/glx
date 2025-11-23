@@ -146,6 +146,52 @@ make clean
 
 ## Key Design Decisions
 
+### Critical Architectural Rule: lib Package Must Never Do I/O
+
+**The `glx/lib` package is a pure library and must NEVER perform filesystem I/O.**
+
+This means:
+- ❌ NO `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
+- ❌ NO `os.MkdirAll`, `os.Stat`, `os.ReadDir`
+- ❌ NO `filepath.Join` with file operations
+- ✅ YES to `io.Reader`, `io.Writer`, `[]byte` parameters
+- ✅ YES to returning `[]byte` or accepting `[]byte`
+- ✅ The `glx` CLI package handles ALL filesystem operations
+
+**Correct Pattern:**
+
+```go
+// ❌ WRONG - lib doing I/O
+package lib
+
+func SerializeSingleFile(glx *GLXFile, outputPath string) error {
+    yamlBytes, _ := yaml.Marshal(glx)
+    return os.WriteFile(outputPath, yamlBytes, 0o644) // NO!
+}
+
+// ✅ CORRECT - lib returns bytes, CLI does I/O
+package lib
+
+func SerializeToBytes(glx *GLXFile) ([]byte, error) {
+    return yaml.Marshal(glx)
+}
+
+// glx package (CLI)
+func saveToFile(glx *lib.GLXFile, path string) error {
+    data, err := lib.SerializeToBytes(glx)
+    if err != nil {
+        return err
+    }
+    return os.WriteFile(path, data, 0o644) // CLI does I/O
+}
+```
+
+**Rationale:**
+1. Makes lib package testable without filesystem
+2. Enables lib to be used in contexts where I/O isn't appropriate (web servers, embedded systems)
+3. Separates concerns: lib handles data transformation, CLI handles I/O
+4. Prevents architectural violations that couple library code to filesystem
+
 ### Architectural Decisions (v0.3.0-beta Serializer)
 
 1. **Vocabulary Embedding**: Use `go:embed` to embed standard vocabularies in binary
