@@ -21,7 +21,7 @@ import (
 
 // convertSource converts a GEDCOM SOUR record to a GLX Source
 func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
-	if sourRecord.Tag != "SOUR" {
+	if sourRecord.Tag != GedcomTagSour {
 		return fmt.Errorf("expected SOUR record, got %s", sourRecord.Tag)
 	}
 
@@ -72,7 +72,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 				// Extract call number - store in notes
 				for _, repoSub := range sub.SubRecords {
-					if repoSub.Tag == "CALN" {
+					if repoSub.Tag == GedcomTagCaln {
 						notes = append(notes, "Call number: "+repoSub.Value)
 					}
 				}
@@ -146,20 +146,20 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 func mapSourceType(gedcomType string) string {
 	// Common GEDCOM source type values
 	mapping := map[string]string{
-		"book":       "book",
-		"article":    "book",
-		"website":    "database",
-		"database":   "database",
-		"census":     "census",
-		"vital":      "vital_record",
-		"church":     "church_register",
-		"military":   "military",
-		"newspaper":  "newspaper",
-		"probate":    "probate",
-		"land":       "land",
-		"court":      "court",
-		"photo":      "photograph",
-		"photograph": "photograph",
+		"book":       SourceTypeBook,
+		"article":    SourceTypeBook,
+		"website":    SourceTypeDatabase,
+		"database":   SourceTypeDatabase,
+		"census":     SourceTypeCensus,
+		"vital":      SourceTypeVitalRecord,
+		"church":     SourceTypeChurchRegister,
+		"military":   SourceTypeMilitary,
+		"newspaper":  SourceTypeNewspaper,
+		"probate":    SourceTypeProbate,
+		"land":       SourceTypeLand,
+		"court":      SourceTypeCourt,
+		"photo":      SourceTypePhotograph,
+		"photograph": SourceTypePhotograph,
 	}
 
 	typeLower := strings.ToLower(gedcomType)
@@ -167,7 +167,7 @@ func mapSourceType(gedcomType string) string {
 		return mapped
 	}
 
-	return "other"
+	return SourceTypeOther
 }
 
 // inferSourceType infers source type from title
@@ -176,27 +176,27 @@ func inferSourceType(title string) string {
 
 	// Check for keywords
 	if strings.Contains(titleLower, "census") {
-		return "census"
+		return SourceTypeCensus
 	}
 	if strings.Contains(titleLower, "birth certificate") || strings.Contains(titleLower, "death certificate") {
-		return "vital_record"
+		return SourceTypeVitalRecord
 	}
 	if strings.Contains(titleLower, "baptism") || strings.Contains(titleLower, "parish register") {
-		return "church_register"
+		return SourceTypeChurchRegister
 	}
 	if strings.Contains(titleLower, "military") {
-		return "military"
+		return SourceTypeMilitary
 	}
 	if strings.Contains(titleLower, "newspaper") {
-		return "newspaper"
+		return SourceTypeNewspaper
 	}
 	if strings.Contains(titleLower, "will") || strings.Contains(titleLower, "probate") {
-		return "probate"
+		return SourceTypeProbate
 	}
 	if strings.Contains(titleLower, "deed") || strings.Contains(titleLower, "land") {
-		return "land"
+		return SourceTypeLand
 	}
 
 	// Default
-	return "other"
+	return SourceTypeOther
 }

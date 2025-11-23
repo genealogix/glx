@@ -30,7 +30,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 		sourceID = conv.SourceIDMap[sourRecord.Value]
 		if sourceID == "" {
 			// Source doesn't exist yet, log warning but continue
-			conv.Logger.LogWarning(sourRecord.Line, "SOUR", sourRecord.Value, "Referenced source not found")
+			conv.Logger.LogWarning(sourRecord.Line, GedcomTagSour, sourRecord.Value, "Referenced source not found")
 
 			return "", fmt.Errorf("source not found: %s", sourRecord.Value)
 		}
@@ -170,7 +170,7 @@ func extractCitations(subjectID string, record *GEDCOMRecord, conv *ConversionCo
 	var citationIDs []string
 
 	for _, sub := range record.SubRecords {
-		if sub.Tag == "SOUR" {
+		if sub.Tag == GedcomTagSour {
 			citationID, err := createCitationFromSOUR(subjectID, sub, conv)
 			if err == nil && citationID != "" {
 				citationIDs = append(citationIDs, citationID)

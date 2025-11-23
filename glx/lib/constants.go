@@ -291,3 +291,23 @@ const (
 	ConfidenceLevelLow      = "low"      // Limited evidence, significant uncertainty
 	ConfidenceLevelDisputed = "disputed" // Multiple sources conflict, resolution unclear
 )
+
+// Standard Source Types - from source-types.glx vocabulary
+const (
+	SourceTypeVitalRecord    = "vital_record"    // Birth, marriage, death certificates
+	SourceTypeCensus         = "census"          // Census records and population enumerations
+	SourceTypeChurchRegister = "church_register" // Parish registers of baptisms, marriages, burials
+	SourceTypeMilitary       = "military"        // Military service records, pension files
+	SourceTypeNewspaper      = "newspaper"       // Newspapers, periodicals, gazettes
+	SourceTypeProbate        = "probate"         // Wills, probate records, estate files
+	SourceTypeLand           = "land"            // Deeds, land grants, property records
+	SourceTypeCourt          = "court"           // Court records, legal proceedings
+	SourceTypeImmigration    = "immigration"     // Passenger lists, naturalization records
+	SourceTypeDirectory      = "directory"       // City directories, telephone books
+	SourceTypeBook           = "book"            // Published genealogies, family histories
+	SourceTypeDatabase       = "database"        // Online databases, compiled records
+	SourceTypeOralHistory    = "oral_history"    // Interviews, recorded memories
+	SourceTypeCorrespondence = "correspondence"  // Letters, emails, personal papers
+	SourceTypePhotograph     = "photograph"      // Photograph collections
+	SourceTypeOther          = "other"           // Other source types
+)
