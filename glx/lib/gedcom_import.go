@@ -25,9 +25,13 @@ import (
 // GEDCOMVersion represents the GEDCOM version
 type GEDCOMVersion int
 
+// GEDCOM version constants
 const (
+	// GEDCOMUnknown represents an unknown or unsupported GEDCOM version.
 	GEDCOMUnknown GEDCOMVersion = iota
+	// GEDCOM551 represents GEDCOM 5.5.1 specification.
 	GEDCOM551
+	// GEDCOM70 represents GEDCOM 7.0 specification.
 	GEDCOM70
 )
 
@@ -136,10 +140,10 @@ type ExtensionSchema struct {
 
 // FamilyLink represents a deferred family link
 type FamilyLink struct {
-	PersonID      string
-	FamilyRef     string
-	LinkType      string // ParticipantRoleChild or ParticipantRoleSpouse
-	PedigreeType  string // PEDI value: birth, adopted, foster, sealed, unknown (empty = unspecified)
+	PersonID     string
+	FamilyRef    string
+	LinkType     string // ParticipantRoleChild or ParticipantRoleSpouse
+	PedigreeType string // PEDI value: birth, adopted, foster, sealed, unknown (empty = unspecified)
 }
 
 // ImportGEDCOM imports a GEDCOM file and returns a GLX archive

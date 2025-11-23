@@ -79,9 +79,11 @@ func init() {
 	_ = importCmd.MarkFlagRequired("output")
 }
 
-func runImport(cmd *cobra.Command, args []string) error {
-	gedcomPath := args[0]
+func runImport(_ *cobra.Command, args []string) error {
+	return importGEDCOM(args[0])
+}
 
+func importGEDCOM(gedcomPath string) error {
 	// Validate format flag
 	if importFormat != "single" && importFormat != "multi" {
 		return fmt.Errorf("invalid format: %s (must be 'single' or 'multi')", importFormat)

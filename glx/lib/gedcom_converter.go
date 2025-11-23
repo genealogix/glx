@@ -95,7 +95,7 @@ func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
 
 		default:
 			// Unknown or extension tag
-			if isExtensionTag(record.Tag, ctx) {
+			if isExtensionTag(record.Tag) {
 				ctx.addWarning(record.Line, record.Tag, "Extension tag not fully processed")
 			} else {
 				ctx.addWarning(record.Line, record.Tag, fmt.Sprintf("Unknown top-level tag: %s", record.Tag))
@@ -291,7 +291,7 @@ func extractAddress(addrRecord *GEDCOMRecord) string {
 // Converter functions implemented in separate files:
 // convertSharedNote and convertExtensionSchema are implemented in gedcom_7_0.go
 
-func isExtensionTag(tag string, ctx *ConversionContext) bool {
+func isExtensionTag(tag string) bool {
 	// Extension tags start with underscore
 	if len(tag) > 0 && tag[0] == '_' {
 		return true

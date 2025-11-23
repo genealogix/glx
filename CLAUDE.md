@@ -153,6 +153,63 @@ go build -o glx ./cmd/glx
 - Use `yaml:"field,omitempty"` for optional fields
 - Keep functions focused and testable
 
+### Cobra Command Handler Pattern
+
+**Functions with `_` parameters must be thin wrappers with no logic.**
+
+When implementing cobra.Command handlers that have unused parameters (like `cmd *cobra.Command`), follow this pattern:
+
+```go
+// ✅ CORRECT - Thin wrapper with no logic
+func runValidate(_ *cobra.Command, args []string) error {
+	return validatePaths(args)
+}
+
+func validatePaths(args []string) error {
+	// All logic goes here
+	paths := args
+	if len(paths) == 0 {
+		paths = []string{"."}
+	}
+	// ... rest of implementation
+}
+
+// ❌ INCORRECT - Logic in function with _ parameter
+func runValidate(_ *cobra.Command, args []string) error {
+	paths := args
+	if len(paths) == 0 {
+		paths = []string{"."}
+	}
+	// ... this violates the pattern
+}
+```
+
+**Rationale**: Functions with `_` parameters indicate unused parameters required by interfaces. Keeping them as thin wrappers makes it obvious that the parameter is truly unused and keeps all logic in testable, interface-free functions.
+
+### Unused Parameters - General Rule
+
+**AVOID `_` parameters in regular functions. Just remove the parameter from the signature.**
+
+The `_` pattern is ONLY acceptable when required by an interface (like cobra.Command handlers). For regular functions:
+
+```go
+// ❌ INCORRECT - Unnecessary _ parameter
+func validateNestedStructs(entityType, entityID, _ string, fieldVal reflect.Value, result *ValidationResult) {
+	// fieldName is not used
+}
+
+// ✅ CORRECT - Remove the unused parameter entirely
+func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, result *ValidationResult) {
+	// Much cleaner!
+}
+```
+
+**When to use `_`**:
+- ✅ Required by interface (e.g., `func runValidate(_ *cobra.Command, args []string)`)
+- ❌ Regular function with no interface constraint
+
+**Why**: If there's no interface forcing the signature, there's no reason to keep unused parameters. Just remove them and update the call sites. It's clearer and more maintainable.
+
 ---
 
 ## Common Tasks

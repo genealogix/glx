@@ -64,10 +64,11 @@ func init() {
 	joinCmd.Flags().BoolVarP(&joinVerbose, "verbose", "v", false, "Verbose output")
 }
 
-func runJoin(cmd *cobra.Command, args []string) error {
-	inputDir := args[0]
-	outputPath := args[1]
+func runJoin(_ *cobra.Command, args []string) error {
+	return joinArchive(args[0], args[1])
+}
 
+func joinArchive(inputDir, outputPath string) error {
 	// Check if input directory exists
 	if _, err := os.Stat(inputDir); os.IsNotExist(err) {
 		return fmt.Errorf("input directory not found: %s", inputDir)

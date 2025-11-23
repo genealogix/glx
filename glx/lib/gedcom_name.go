@@ -74,11 +74,12 @@ func parseGEDCOMName(nameValue string, substructure *NameSubstructure) PersonNam
 		var givenParts []string
 
 		for i, part := range parts {
-			if i == 0 && isNamePrefix(part) {
+			switch {
+			case i == 0 && isNamePrefix(part):
 				name.Prefix = part
-			} else if i == len(parts)-1 && isNameSuffix(part) {
+			case i == len(parts)-1 && isNameSuffix(part):
 				name.Suffix = part
-			} else {
+			default:
 				givenParts = append(givenParts, part)
 			}
 		}

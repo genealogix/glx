@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package main provides the GLX command-line tool for GENEALOGIX archives.
 package main
 
 import (
@@ -132,7 +133,7 @@ func TestRunCheckSchemas(t *testing.T) {
 			require.NoError(t, err)
 			defer os.Chdir(originalDir)
 
-			err = runCheckSchemas()
+			err = checkSchemaFiles()
 			if tt.wantError {
 				assert.Error(t, err)
 			} else {

@@ -52,15 +52,17 @@ Use --single-file to create a single archive.glx file instead.`,
   # Initialize with test data in a new directory
   glx init my-family-archive --create-test-data 10`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var targetDir string
-		if len(args) > 0 {
-			targetDir = args[0]
-		} else {
-			targetDir = "."
-		}
-		return runInit(targetDir, initSingleFile, createTestData)
-	},
+	RunE: runInitCmd,
+}
+
+func runInitCmd(_ *cobra.Command, args []string) error {
+	var targetDir string
+	if len(args) > 0 {
+		targetDir = args[0]
+	} else {
+		targetDir = "."
+	}
+	return runInit(targetDir, initSingleFile, createTestData)
 }
 
 func init() {

@@ -66,10 +66,11 @@ func init() {
 	splitCmd.Flags().BoolVarP(&splitVerbose, "verbose", "v", false, "Verbose output")
 }
 
-func runSplit(cmd *cobra.Command, args []string) error {
-	inputPath := args[0]
-	outputDir := args[1]
+func runSplit(_ *cobra.Command, args []string) error {
+	return splitArchive(args[0], args[1])
+}
 
+func splitArchive(inputPath, outputDir string) error {
 	// Check if input file exists
 	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
 		return fmt.Errorf("input file not found: %s", inputPath)

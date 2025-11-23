@@ -38,7 +38,6 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 	// Extract spouse references
 	var husbandID, wifeID string
-	var children []string
 	var marriageRecord, divorceRecord *GEDCOMRecord
 
 	for _, sub := range famRecord.SubRecords {
@@ -58,12 +57,11 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			}
 
 		case "CHIL":
-			// Child reference
+			// Child reference - validation only, parent-child relationships are
+			// created when processing INDI records (which contain PEDI information)
 			childID := ctx.PersonIDMap[sub.Value]
 			if childID == "" {
 				ctx.Logger.LogWarning(famRecord.Line, "CHIL", sub.Value, "Referenced person not found")
-			} else {
-				children = append(children, childID)
 			}
 
 		case "MARR":

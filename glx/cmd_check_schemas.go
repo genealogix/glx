@@ -41,16 +41,18 @@ to ensure all schema files are properly formatted.`,
   # Run from specification directory
   cd specification/
   glx check-schemas`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCheckSchemas()
-	},
+	RunE: runCheckSchemas,
 }
 
 func init() {
 	rootCmd.AddCommand(checkSchemasCmd)
 }
 
-func runCheckSchemas() error {
+func runCheckSchemas(_ *cobra.Command, _ []string) error {
+	return checkSchemaFiles()
+}
+
+func checkSchemaFiles() error {
 	var issues []string
 
 	err := filepath.Walk("schema", func(path string, info os.FileInfo, err error) error {

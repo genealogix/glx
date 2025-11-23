@@ -134,7 +134,7 @@ func (glx *GLXFile) validateStructReferences(
 		fieldVal := entityVal.Field(i)
 		refType := field.Tag.Get("refType")
 		if refType == "" {
-			glx.validateNestedStructs(entityType, entityID, field.Name, fieldVal, result)
+			glx.validateNestedStructs(entityType, entityID, fieldVal, result)
 			continue
 		}
 		glx.validateFieldReference(entityType, entityID, field.Name, fieldVal, refType, result)
@@ -142,7 +142,7 @@ func (glx *GLXFile) validateStructReferences(
 }
 
 // validateNestedStructs handles recursion into nested structs and slices of structs.
-func (glx *GLXFile) validateNestedStructs(entityType, entityID, fieldName string, fieldVal reflect.Value, result *ValidationResult) {
+func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, result *ValidationResult) {
 	switch fieldVal.Kind() {
 	case reflect.Ptr:
 		if !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Struct {

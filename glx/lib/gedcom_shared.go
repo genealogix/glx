@@ -93,7 +93,7 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, ctx *ConversionContext) e
 }
 
 // convertExtensionData converts extension tag data to properties
-func convertExtensionData(tag string, value string, subRecords []*GEDCOMRecord, ctx *ConversionContext) map[string]any {
+func convertExtensionData(tag string, value string, subRecords []*GEDCOMRecord) map[string]any {
 	properties := make(map[string]any)
 
 	// Extension tags start with underscore

@@ -50,16 +50,18 @@ and validates cross-references between entities.`,
 
   # Validate single file
   glx validate archive.glx`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return runValidate(args)
-	},
+	RunE: runValidate,
 }
 
 func init() {
 	rootCmd.AddCommand(validateCmd)
 }
 
-func runValidate(args []string) error {
+func runValidate(_ *cobra.Command, args []string) error {
+	return validatePaths(args)
+}
+
+func validatePaths(args []string) error {
 	paths := args
 	if len(paths) == 0 {
 		paths = []string{"."}

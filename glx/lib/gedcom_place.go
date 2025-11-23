@@ -77,7 +77,7 @@ func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (str
 		}
 
 		// Check if place already exists
-		placeID := createOrGetPlace(name, parentID, level, totalLevels, lat, lon, ctx)
+		placeID := createOrGetPlace(name, parentID, level, lat, lon, ctx)
 
 		if i == 0 {
 			// This is the most specific place (leaf)
@@ -92,7 +92,7 @@ func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (str
 }
 
 // createOrGetPlace creates a place or returns existing place ID
-func createOrGetPlace(name string, parentID string, level int, totalLevels int, latitude, longitude *float64, ctx *ConversionContext) string {
+func createOrGetPlace(name string, parentID string, level int, latitude, longitude *float64, ctx *ConversionContext) string {
 	// Create a key for deduplication
 	key := name
 	if parentID != "" {
@@ -119,7 +119,7 @@ func createOrGetPlace(name string, parentID string, level int, totalLevels int, 
 
 	place := &Place{
 		Name:       name,
-		Type:       inferPlaceType(name, level, totalLevels),
+		Type:       inferPlaceType(name, level),
 		Latitude:   latitude,
 		Longitude:  longitude,
 		Properties: make(map[string]any),
@@ -137,7 +137,7 @@ func createOrGetPlace(name string, parentID string, level int, totalLevels int, 
 }
 
 // inferPlaceType infers the place type from name and position in hierarchy
-func inferPlaceType(name string, level int, totalLevels int) string {
+func inferPlaceType(name string, level int) string {
 	nameLower := strings.ToLower(name)
 
 	// Check for keywords

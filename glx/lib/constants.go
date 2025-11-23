@@ -1,3 +1,4 @@
+// Package lib provides core GENEALOGIX data types and GEDCOM conversion functionality.
 package lib
 
 // Standard Event Types - from event-types.glx vocabulary
