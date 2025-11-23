@@ -32,7 +32,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 			// Source doesn't exist yet, log warning but continue
 			conv.Logger.LogWarning(sourRecord.Line, GedcomTagSour, sourRecord.Value, "Referenced source not found")
 
-			return "", fmt.Errorf("source not found: %s", sourRecord.Value)
+			return "", fmt.Errorf("%w: %s", ErrSourceNotFound, sourRecord.Value)
 		}
 	} else {
 		// Embedded citation (citation details without full source)

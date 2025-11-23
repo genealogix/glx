@@ -16,7 +16,6 @@ package lib
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -316,7 +315,7 @@ func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
 	// GEDCOM line format: LEVEL [XREF] TAG [VALUE]
 	parts := strings.Fields(text)
 	if len(parts) < 2 {
-		return nil, errors.New("invalid GEDCOM line: too few parts")
+		return nil, ErrInvalidGEDCOMLine
 	}
 
 	line := &GEDCOMLine{Line: lineNum}
@@ -324,7 +323,7 @@ func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
 	// Parse level
 	level, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return nil, fmt.Errorf("invalid level: %s", parts[0])
+		return nil, fmt.Errorf("%w: %s", ErrInvalidLevel, parts[0])
 	}
 	line.Level = level
 
@@ -334,7 +333,7 @@ func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
 		line.XRef = parts[1]
 		idx = 2
 		if len(parts) < 3 {
-			return nil, errors.New("invalid GEDCOM line: missing tag after xref")
+			return nil, ErrMissingTagAfterXRef
 		}
 	}
 

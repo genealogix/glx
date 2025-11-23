@@ -3,7 +3,6 @@ package lib
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 )
 
@@ -59,11 +58,11 @@ func GenerateUniqueFilename(entityType string, usedFilenames map[string]bool, ma
 
 		// Collision detected, retry
 		if i == maxRetries-1 {
-			return "", fmt.Errorf("failed to generate unique filename after %d retries", maxRetries)
+			return "", fmt.Errorf("%w after %d retries", ErrUniqueFilenameFailed, maxRetries)
 		}
 	}
 
-	return "", errors.New("failed to generate unique filename")
+	return "", ErrUniqueFilenameFailed
 }
 
 // MustGenerateRandomID is like GenerateRandomID but panics on error.

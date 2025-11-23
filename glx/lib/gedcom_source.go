@@ -22,7 +22,7 @@ import (
 // convertSource converts a GEDCOM SOUR record to a GLX Source
 func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if sourRecord.Tag != GedcomTagSour {
-		return fmt.Errorf("expected SOUR record, got %s", sourRecord.Tag)
+		return fmt.Errorf("%w: expected SOUR, got %s", ErrUnexpectedSourceRecord, sourRecord.Tag)
 	}
 
 	// Generate source ID

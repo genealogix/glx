@@ -15,7 +15,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,7 +81,7 @@ func checkSchemaFiles() error {
 	}
 
 	if len(issues) > 0 {
-		return errors.New(strings.Join(issues, "\n"))
+		return fmt.Errorf("%w:\n%s", ErrSchemaValidationFailed, strings.Join(issues, "\n"))
 	}
 
 	fmt.Println("All schema files contain $schema and $id")

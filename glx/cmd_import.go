@@ -86,12 +86,12 @@ func runImport(_ *cobra.Command, args []string) error {
 func importGEDCOM(gedcomPath string) error {
 	// Validate format flag
 	if importFormat != "single" && importFormat != "multi" {
-		return fmt.Errorf("invalid format: %s (must be 'single' or 'multi')", importFormat)
+		return fmt.Errorf("%w: %s", ErrInvalidFormat, importFormat)
 	}
 
 	// Check if GEDCOM file exists
 	if _, err := os.Stat(gedcomPath); os.IsNotExist(err) {
-		return fmt.Errorf("GEDCOM file not found: %s", gedcomPath)
+		return fmt.Errorf("%w: %s", ErrGEDCOMFileNotFound, gedcomPath)
 	}
 
 	// Import GEDCOM file

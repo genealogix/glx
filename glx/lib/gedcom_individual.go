@@ -22,7 +22,7 @@ import (
 // convertIndividual converts a GEDCOM INDI record to a GLX Person
 func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if indiRecord.Tag != GedcomTagIndi {
-		return fmt.Errorf("expected INDI record, got %s", indiRecord.Tag)
+		return fmt.Errorf("%w: expected INDI, got %s", ErrUnexpectedRecordType, indiRecord.Tag)
 	}
 
 	// Panic recovery
@@ -33,7 +33,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				indiRecord.Tag,
 				indiRecord.XRef,
 				"convertIndividual",
-				fmt.Errorf("panic: %v", r),
+				fmt.Errorf("%w: %v", ErrPanicRecovered, r),
 				map[string]any{
 					"record": indiRecord,
 				},
@@ -316,7 +316,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	// Map GEDCOM event tag to GLX event type
 	eventType := mapGEDCOMEventType(eventRecord.Tag)
 	if eventType == "" {
-		return fmt.Errorf("unknown event type: %s", eventRecord.Tag)
+		return fmt.Errorf("%w: %s", ErrUnknownEventType, eventRecord.Tag)
 	}
 
 	// Generate event ID

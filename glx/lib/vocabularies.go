@@ -33,7 +33,7 @@ func GetStandardVocabulary(name string) ([]byte, error) {
 	filename := name + ".glx"
 	content, ok := vocabularies.Files[filename]
 	if !ok {
-		return nil, fmt.Errorf("vocabulary not found: %s", name)
+		return nil, fmt.Errorf("%w: %s", ErrVocabularyNotFound, name)
 	}
 
 	return content, nil

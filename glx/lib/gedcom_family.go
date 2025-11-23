@@ -24,14 +24,14 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	defer func() {
 		if r := recover(); r != nil {
 			conv.Logger.LogException(famRecord.Line, GedcomTagFam, famRecord.XRef, "convertFamily",
-				fmt.Errorf("panic: %v", r), map[string]any{
+				fmt.Errorf("%w: %v", ErrPanicRecovered, r), map[string]any{
 					"record": famRecord,
 				})
 		}
 	}()
 
 	if famRecord.Tag != GedcomTagFam {
-		return fmt.Errorf("expected FAM record, got %s", famRecord.Tag)
+		return fmt.Errorf("%w: expected FAM, got %s", ErrUnexpectedRecordType, famRecord.Tag)
 	}
 
 	conv.Logger.LogInfo("Converting FAM " + famRecord.XRef)

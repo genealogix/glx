@@ -73,12 +73,12 @@ func runSplit(_ *cobra.Command, args []string) error {
 func splitArchive(inputPath, outputDir string) error {
 	// Check if input file exists
 	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
-		return fmt.Errorf("input file not found: %s", inputPath)
+		return fmt.Errorf("%w: %s", ErrInputFileNotFound, inputPath)
 	}
 
 	// Check if output directory exists
 	if _, err := os.Stat(outputDir); !os.IsNotExist(err) {
-		return fmt.Errorf("output directory already exists: %s (please remove it first)", outputDir)
+		return fmt.Errorf("%w: %s", ErrOutputDirectoryExists, outputDir)
 	}
 
 	// Load single-file archive

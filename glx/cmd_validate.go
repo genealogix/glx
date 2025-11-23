@@ -15,7 +15,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -121,7 +120,7 @@ func validatePaths(args []string) error {
 			fmt.Fprintf(os.Stderr, "- %s\n", err)
 		}
 
-		return errors.New("structural validation failed")
+		return ErrStructuralValidationFailed
 	}
 
 	// Second pass: load and cross-reference validation
@@ -170,7 +169,7 @@ func validatePaths(args []string) error {
 			fmt.Fprintf(os.Stderr, "- ❌ %s\n", err)
 		}
 
-		return errors.New("validation failed")
+		return ErrValidationFailed
 	}
 
 	fmt.Println("✅ Archive is valid.")

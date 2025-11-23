@@ -71,12 +71,12 @@ func runJoin(_ *cobra.Command, args []string) error {
 func joinArchive(inputDir, outputPath string) error {
 	// Check if input directory exists
 	if _, err := os.Stat(inputDir); os.IsNotExist(err) {
-		return fmt.Errorf("input directory not found: %s", inputDir)
+		return fmt.Errorf("%w: %s", ErrInputDirectoryNotFound, inputDir)
 	}
 
 	// Check if output file exists
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
-		return fmt.Errorf("output file already exists: %s (please remove it first)", outputPath)
+		return fmt.Errorf("%w: %s", ErrOutputFileExists, outputPath)
 	}
 
 	// Ensure .glx extension

@@ -16,7 +16,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -53,7 +52,7 @@ func ParseYAMLFile(data []byte) (map[string]any, error) {
 		return result, nil
 	}
 
-	return nil, errors.New("YAML document is not an object")
+	return nil, ErrYAMLNotObject
 }
 
 // normalizeYAMLMap recursively converts map[any]any to map[string]any
@@ -235,16 +234,16 @@ func resolveJSONPointer(root map[string]any, pointer string) (map[string]any, er
 			var ok bool
 			current, ok = v[part]
 			if !ok {
-				return nil, fmt.Errorf("path not found: %s (missing key: %s)", pointer, part)
+				return nil, fmt.Errorf("%w: %s (missing key: %s)", ErrPathNotFound, pointer, part)
 			}
 		default:
-			return nil, fmt.Errorf("invalid path: %s (not an object at: %s)", pointer, part)
+			return nil, fmt.Errorf("%w: %s (not an object at: %s)", ErrInvalidPath, pointer, part)
 		}
 	}
 
 	result, ok := current.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("pointer does not reference an object: %s", pointer)
+		return nil, fmt.Errorf("%w: %s", ErrPointerNotObject, pointer)
 	}
 
 	return result, nil
@@ -369,7 +368,7 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 		doc, err := ParseYAMLFile(data)
 		if err != nil {
 			// This check happens before loading, so we can just return a generic error
-			return fmt.Errorf("failed to parse YAML file %s: %w", path, err)
+			return fmt.Errorf("%w %s: %w", ErrYAMLParseFailed, path, err)
 		}
 
 		// Structural validation against master schema
@@ -381,7 +380,7 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 			errorMessages := make([]string, len(issues))
 			copy(errorMessages, issues)
 
-			return fmt.Errorf("validation of file %s failed:\n- %s", path, strings.Join(errorMessages, "\n- "))
+			return fmt.Errorf("%w %s:\n- %s", ErrFileValidationFailed, path, strings.Join(errorMessages, "\n- "))
 		}
 
 		var glxFile lib.GLXFile

@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -203,7 +202,7 @@ func (s *DefaultSerializer) writeEntities(entities any, outputDir, dirName, enti
 	case map[string]*Assertion:
 		return s.writeAssertionEntities(typedEntities, entityDir, entityType)
 	default:
-		return fmt.Errorf("unsupported entity type: %T", entities)
+		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
 	}
 }
 
@@ -417,7 +416,7 @@ func loadEntitiesWithID[T any](dir string, entities map[string]T) error {
 // Returns error if validation fails with hard errors.
 func validateGLXFile(glx *GLXFile) error {
 	if glx == nil {
-		return errors.New("GLX file is nil")
+		return ErrGLXFileNil
 	}
 
 	// Initialize maps if nil (prevents validation from failing on nil maps)
@@ -465,7 +464,7 @@ func validateGLXFile(glx *GLXFile) error {
 			errMsgs = append(errMsgs, fmt.Sprintf("  ... and %d more errors", len(result.Errors)-10))
 		}
 
-		return fmt.Errorf("validation failed with %d error(s):\n%s", len(result.Errors), strings.Join(errMsgs, "\n"))
+		return fmt.Errorf("%w (%d error(s)):\n%s", ErrValidationHasErrors, len(result.Errors), strings.Join(errMsgs, "\n"))
 	}
 
 	return nil

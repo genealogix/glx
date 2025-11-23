@@ -16,7 +16,6 @@ package main
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -78,7 +77,7 @@ func runInit(targetDir string, singleFile bool, numTestData int) error {
 	info, err := os.Stat(targetDir)
 	if err == nil { // Path exists
 		if !info.IsDir() {
-			return fmt.Errorf("target path '%s' exists and is not a directory", targetDir)
+			return fmt.Errorf("%w: %s", ErrTargetNotDirectory, targetDir)
 		}
 		if err := isDirectoryEmpty(targetDir); err != nil {
 			return err
@@ -203,7 +202,7 @@ func isDirectoryEmpty(path string) error {
 	// We expect an io.EOF error, which means it's empty.
 	_, err = f.Readdirnames(1)
 	if err == nil { // if err is nil, directory is not empty
-		return errors.New("cannot run 'glx init' in a non-empty directory. Please create a new directory for your family archive")
+		return ErrNonEmptyDirectory
 	}
 
 	return nil // Directory is empty
