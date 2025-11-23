@@ -98,7 +98,7 @@ func runInit(targetDir string, singleFile bool, numTestData int) error {
 	if err := os.Chdir(targetDir); err != nil {
 		return fmt.Errorf("failed to change into directory %s: %w", targetDir, err)
 	}
-	defer os.Chdir(originalDir)
+	defer func() { _ = os.Chdir(originalDir) }()
 
 	if singleFile {
 		// Create single-file archive template

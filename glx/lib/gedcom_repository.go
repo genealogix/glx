@@ -20,16 +20,16 @@ import (
 )
 
 // convertRepository converts a GEDCOM REPO record to a GLX Repository
-func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if repoRecord.Tag != "REPO" {
 		return fmt.Errorf("expected REPO record, got %s", repoRecord.Tag)
 	}
 
 	// Generate repository ID
-	repositoryID := generateRepositoryID(ctx)
-	ctx.RepositoryIDMap[repoRecord.XRef] = repositoryID
+	repositoryID := generateRepositoryID(conv)
+	conv.RepositoryIDMap[repoRecord.XRef] = repositoryID
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Converting REPO %s -> %s", repoRecord.XRef, repositoryID))
+	conv.Logger.LogInfo(fmt.Sprintf("Converting REPO %s -> %s", repoRecord.XRef, repositoryID))
 
 	// Create repository entity
 	repository := &Repository{
@@ -86,7 +86,7 @@ func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "NOTE":
 			// Notes
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
@@ -122,8 +122,8 @@ func convertRepository(repoRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	}
 
 	// Store repository
-	ctx.GLX.Repositories[repositoryID] = repository
-	ctx.Stats.RepositoriesCreated++
+	conv.GLX.Repositories[repositoryID] = repository
+	conv.Stats.RepositoriesCreated++
 
 	return nil
 }

@@ -19,11 +19,11 @@ import (
 )
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
-func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Panic recovery
 	defer func() {
 		if r := recover(); r != nil {
-			ctx.Logger.LogException(famRecord.Line, "FAM", famRecord.XRef, "convertFamily",
+			conv.Logger.LogException(famRecord.Line, "FAM", famRecord.XRef, "convertFamily",
 				fmt.Errorf("panic: %v", r), map[string]any{
 					"record": famRecord,
 				})
@@ -34,7 +34,7 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		return fmt.Errorf("expected FAM record, got %s", famRecord.Tag)
 	}
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Converting FAM %s", famRecord.XRef))
+	conv.Logger.LogInfo(fmt.Sprintf("Converting FAM %s", famRecord.XRef))
 
 	// Extract spouse references
 	var husbandID, wifeID string
@@ -44,24 +44,24 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		switch sub.Tag {
 		case "HUSB":
 			// Husband reference
-			husbandID = ctx.PersonIDMap[sub.Value]
+			husbandID = conv.PersonIDMap[sub.Value]
 			if husbandID == "" {
-				ctx.Logger.LogWarning(famRecord.Line, "HUSB", sub.Value, "Referenced person not found")
+				conv.Logger.LogWarning(famRecord.Line, "HUSB", sub.Value, "Referenced person not found")
 			}
 
 		case "WIFE":
 			// Wife reference
-			wifeID = ctx.PersonIDMap[sub.Value]
+			wifeID = conv.PersonIDMap[sub.Value]
 			if wifeID == "" {
-				ctx.Logger.LogWarning(famRecord.Line, "WIFE", sub.Value, "Referenced person not found")
+				conv.Logger.LogWarning(famRecord.Line, "WIFE", sub.Value, "Referenced person not found")
 			}
 
 		case "CHIL":
 			// Child reference - validation only, parent-child relationships are
 			// created when processing INDI records (which contain PEDI information)
-			childID := ctx.PersonIDMap[sub.Value]
+			childID := conv.PersonIDMap[sub.Value]
 			if childID == "" {
-				ctx.Logger.LogWarning(famRecord.Line, "CHIL", sub.Value, "Referenced person not found")
+				conv.Logger.LogWarning(famRecord.Line, "CHIL", sub.Value, "Referenced person not found")
 			}
 
 		case "MARR":
@@ -72,15 +72,15 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "ENGA", "MARB", "MARC", "MARL", "MARS", "ANUL", "DIVF", "CENS", "EVEN":
 			// Other family events
-			if err := convertFamilyEvent(husbandID, wifeID, sub, ctx); err != nil {
-				ctx.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
+			if err := convertFamilyEvent(husbandID, wifeID, sub, conv); err != nil {
+				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
 			}
 		}
 	}
 
 	// Create spousal relationship if both spouses exist
 	if husbandID != "" && wifeID != "" {
-		relationshipID := generateRelationshipID(ctx)
+		relationshipID := generateRelationshipID(conv)
 
 		relationship := &Relationship{
 			Type:       RelationshipTypeMarriage,
@@ -89,25 +89,25 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		}
 
 		// Extract citations from FAM record itself
-		citationIDs := extractCitations(relationshipID, famRecord, ctx)
+		citationIDs := extractCitations(relationshipID, famRecord, conv)
 		if len(citationIDs) > 0 {
 			relationship.Properties["citations"] = citationIDs
 		}
 
-		ctx.GLX.Relationships[relationshipID] = relationship
-		ctx.Stats.RelationshipsCreated++
+		conv.GLX.Relationships[relationshipID] = relationship
+		conv.Stats.RelationshipsCreated++
 
 		// Process marriage event if exists
 		if marriageRecord != nil {
-			if err := convertMarriageEvent(husbandID, wifeID, relationshipID, marriageRecord, ctx); err != nil {
-				ctx.Logger.LogError(marriageRecord.Line, "MARR", famRecord.XRef, err)
+			if err := convertMarriageEvent(husbandID, wifeID, relationshipID, marriageRecord, conv); err != nil {
+				conv.Logger.LogError(marriageRecord.Line, "MARR", famRecord.XRef, err)
 			}
 		}
 
 		// Process divorce event if exists
 		if divorceRecord != nil {
-			if err := convertDivorceEvent(husbandID, wifeID, relationshipID, divorceRecord, ctx); err != nil {
-				ctx.Logger.LogError(divorceRecord.Line, "DIV", famRecord.XRef, err)
+			if err := convertDivorceEvent(husbandID, wifeID, relationshipID, divorceRecord, conv); err != nil {
+				conv.Logger.LogError(divorceRecord.Line, "DIV", famRecord.XRef, err)
 			}
 		}
 	}
@@ -124,14 +124,14 @@ func convertFamily(famRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	}
 
 	// Store family parents for later lookup
-	ctx.FamilyParentsMap[famRecord.XRef] = parents
+	conv.FamilyParentsMap[famRecord.XRef] = parents
 
 	return nil
 }
 
 // convertMarriageEvent converts a MARR subrecord to a marriage event
-func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *GEDCOMRecord, ctx *ConversionContext) error {
-	eventID := generateEventID(ctx)
+func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *GEDCOMRecord, conv *ConversionContext) error {
+	eventID := generateEventID(conv)
 
 	event := &Event{
 		Type:       EventTypeMarriage,
@@ -152,7 +152,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 				hierarchy.Latitude = lat
 				hierarchy.Longitude = lon
 
-				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+				placeID, err := buildPlaceHierarchy(hierarchy, conv)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID
 				}
@@ -163,14 +163,14 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 			event.Properties["marriage_type"] = sub.Value
 
 		case "NOTE":
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties["notes"] = noteText
 			}
 
 		case "SOUR":
 			// Citations on the event
-			citationID, err := createCitationFromSOUR(eventID, sub, ctx)
+			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
 				citations, ok := event.Properties["citations"].([]string)
 				if !ok {
@@ -182,7 +182,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 		case "OBJE":
 			// Media attached to event
 			if sub.Value != "" {
-				mediaID := ctx.MediaIDMap[sub.Value]
+				mediaID := conv.MediaIDMap[sub.Value]
 				if mediaID != "" {
 					if event.Properties["media"] == nil {
 						event.Properties["media"] = []string{}
@@ -192,7 +192,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 				}
 			} else {
 				// Embedded media
-				mediaID, err := convertEmbeddedMedia(sub, ctx)
+				mediaID, err := convertEmbeddedMedia(sub, conv)
 				if err == nil && mediaID != "" {
 					if event.Properties["media"] == nil {
 						event.Properties["media"] = []string{}
@@ -213,7 +213,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
 				hierarchy := buildPlaceHierarchyFromAddress(sub)
 				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					placeID, err := buildPlaceHierarchy(hierarchy, conv)
 					if err == nil && placeID != "" {
 						event.PlaceID = placeID
 					}
@@ -239,11 +239,11 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	event.Participants = participants
 
 	// Store event
-	ctx.GLX.Events[eventID] = event
-	ctx.Stats.EventsCreated++
+	conv.GLX.Events[eventID] = event
+	conv.Stats.EventsCreated++
 
 	// Link event to relationship
-	relationship := ctx.GLX.Relationships[relationshipID]
+	relationship := conv.GLX.Relationships[relationshipID]
 	if relationship != nil {
 		if relationship.Properties["marriage_event"] == nil {
 			relationship.Properties["marriage_event"] = eventID
@@ -254,8 +254,8 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 }
 
 // convertDivorceEvent converts a DIV subrecord to a divorce event
-func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GEDCOMRecord, ctx *ConversionContext) error {
-	eventID := generateEventID(ctx)
+func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GEDCOMRecord, conv *ConversionContext) error {
+	eventID := generateEventID(conv)
 
 	event := &Event{
 		Type:       EventTypeDivorce,
@@ -276,20 +276,20 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 				hierarchy.Latitude = lat
 				hierarchy.Longitude = lon
 
-				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+				placeID, err := buildPlaceHierarchy(hierarchy, conv)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID
 				}
 			}
 
 		case "NOTE":
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties["notes"] = noteText
 			}
 
 		case "SOUR":
-			citationID, err := createCitationFromSOUR(eventID, sub, ctx)
+			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
 				citations, ok := event.Properties["citations"].([]string)
 				if !ok {
@@ -309,7 +309,7 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
 				hierarchy := buildPlaceHierarchyFromAddress(sub)
 				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					placeID, err := buildPlaceHierarchy(hierarchy, conv)
 					if err == nil && placeID != "" {
 						event.PlaceID = placeID
 					}
@@ -335,11 +335,11 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	event.Participants = participants
 
 	// Store event
-	ctx.GLX.Events[eventID] = event
-	ctx.Stats.EventsCreated++
+	conv.GLX.Events[eventID] = event
+	conv.Stats.EventsCreated++
 
 	// Link event to relationship
-	relationship := ctx.GLX.Relationships[relationshipID]
+	relationship := conv.GLX.Relationships[relationshipID]
 	if relationship != nil {
 		if relationship.Properties["divorce_event"] == nil {
 			relationship.Properties["divorce_event"] = eventID
@@ -350,8 +350,8 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 }
 
 // convertFamilyEvent converts other family events (ENGA, MARB, MARC, MARL, MARS)
-func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx *ConversionContext) error {
-	eventID := generateEventID(ctx)
+func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, conv *ConversionContext) error {
+	eventID := generateEventID(conv)
 
 	eventType := mapFamilyEventType(eventRecord.Tag)
 
@@ -374,20 +374,20 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 				hierarchy.Latitude = lat
 				hierarchy.Longitude = lon
 
-				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+				placeID, err := buildPlaceHierarchy(hierarchy, conv)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID
 				}
 			}
 
 		case "NOTE":
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties["notes"] = noteText
 			}
 
 		case "SOUR":
-			citationID, err := createCitationFromSOUR(eventID, sub, ctx)
+			citationID, err := createCitationFromSOUR(eventID, sub, conv)
 			if err == nil && citationID != "" {
 				citations, ok := event.Properties["citations"].([]string)
 				if !ok {
@@ -407,7 +407,7 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
 				hierarchy := buildPlaceHierarchyFromAddress(sub)
 				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					placeID, err := buildPlaceHierarchy(hierarchy, conv)
 					if err == nil && placeID != "" {
 						event.PlaceID = placeID
 					}
@@ -433,8 +433,8 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, ctx
 	event.Participants = participants
 
 	// Store event
-	ctx.GLX.Events[eventID] = event
-	ctx.Stats.EventsCreated++
+	conv.GLX.Events[eventID] = event
+	conv.Stats.EventsCreated++
 
 	return nil
 }

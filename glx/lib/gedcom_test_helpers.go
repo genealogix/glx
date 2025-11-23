@@ -13,7 +13,7 @@ func importGEDCOMFromFile(filepath string, logPath string) (*GLXFile, *ImportRes
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	return ImportGEDCOM(file, logPath)
 }

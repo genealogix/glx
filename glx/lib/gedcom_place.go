@@ -55,7 +55,7 @@ func parseGEDCOMPlace(placeValue string) *PlaceHierarchy {
 
 // buildPlaceHierarchy creates GLX Place entities for a place hierarchy
 // Returns the ID of the most specific place (leaf)
-func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (string, error) {
+func buildPlaceHierarchy(hierarchy *PlaceHierarchy, conv *ConversionContext) (string, error) {
 	if hierarchy == nil || len(hierarchy.Components) == 0 {
 		return "", nil
 	}
@@ -77,7 +77,7 @@ func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (str
 		}
 
 		// Check if place already exists
-		placeID := createOrGetPlace(name, parentID, level, lat, lon, ctx)
+		placeID := createOrGetPlace(name, parentID, level, lat, lon, conv)
 
 		if i == 0 {
 			// This is the most specific place (leaf)
@@ -92,7 +92,7 @@ func buildPlaceHierarchy(hierarchy *PlaceHierarchy, ctx *ConversionContext) (str
 }
 
 // createOrGetPlace creates a place or returns existing place ID
-func createOrGetPlace(name string, parentID string, level int, latitude, longitude *float64, ctx *ConversionContext) string {
+func createOrGetPlace(name string, parentID string, level int, latitude, longitude *float64, conv *ConversionContext) string {
 	// Create a key for deduplication
 	key := name
 	if parentID != "" {
@@ -100,10 +100,10 @@ func createOrGetPlace(name string, parentID string, level int, latitude, longitu
 	}
 
 	// Check if place already exists
-	if existingID, ok := ctx.PlaceIDMap[key]; ok {
+	if existingID, ok := conv.PlaceIDMap[key]; ok {
 		// If we have new coordinates and the existing place doesn't, update it
-		if (latitude != nil || longitude != nil) && ctx.GLX.Places[existingID] != nil {
-			existingPlace := ctx.GLX.Places[existingID]
+		if (latitude != nil || longitude != nil) && conv.GLX.Places[existingID] != nil {
+			existingPlace := conv.GLX.Places[existingID]
 			if existingPlace.Latitude == nil && latitude != nil {
 				existingPlace.Latitude = latitude
 			}
@@ -115,7 +115,7 @@ func createOrGetPlace(name string, parentID string, level int, latitude, longitu
 	}
 
 	// Create new place
-	placeID := generatePlaceID(ctx)
+	placeID := generatePlaceID(conv)
 
 	place := &Place{
 		Name:       name,
@@ -129,9 +129,9 @@ func createOrGetPlace(name string, parentID string, level int, latitude, longitu
 		place.ParentID = parentID
 	}
 
-	ctx.GLX.Places[placeID] = place
-	ctx.PlaceIDMap[key] = placeID
-	ctx.Stats.PlacesCreated++
+	conv.GLX.Places[placeID] = place
+	conv.PlaceIDMap[key] = placeID
+	conv.Stats.PlacesCreated++
 
 	return placeID
 }

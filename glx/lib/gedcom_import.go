@@ -186,7 +186,7 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	}
 
 	// Create conversion context
-	ctx := &ConversionContext{
+	conv := &ConversionContext{
 		GLX:                 glx,
 		Version:             version,
 		Logger:              logger,
@@ -205,17 +205,17 @@ func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, er
 	}
 
 	// Perform conversion
-	if err := ctx.Convert(records); err != nil {
+	if err := conv.Convert(records); err != nil {
 		logger.LogError(0, "CONVERT", "", err)
 		return nil, nil, fmt.Errorf("conversion error: %w", err)
 	}
 
 	logger.LogInfo(fmt.Sprintf("Import completed: %d persons, %d events, %d relationships, %d sources",
-		ctx.Stats.PersonsCreated, ctx.Stats.EventsCreated, ctx.Stats.RelationshipsCreated, ctx.Stats.SourcesCreated))
+		conv.Stats.PersonsCreated, conv.Stats.EventsCreated, conv.Stats.RelationshipsCreated, conv.Stats.SourcesCreated))
 
 	// Build result
 	result := &ImportResult{
-		Statistics: ctx.Stats,
+		Statistics: conv.Stats,
 		Version:    versionToString(version),
 	}
 
@@ -420,8 +420,8 @@ func versionToString(version GEDCOMVersion) string {
 }
 
 // addError adds an error to the conversion context
-func (ctx *ConversionContext) addError(line int, tag string, message string) {
-	ctx.Stats.Errors = append(ctx.Stats.Errors, ImportError{
+func (conv *ConversionContext) addError(line int, tag string, message string) {
+	conv.Stats.Errors = append(conv.Stats.Errors, ImportError{
 		Line:    line,
 		Tag:     tag,
 		Message: message,
@@ -429,8 +429,8 @@ func (ctx *ConversionContext) addError(line int, tag string, message string) {
 }
 
 // addWarning adds a warning to the conversion context
-func (ctx *ConversionContext) addWarning(line int, tag string, message string) {
-	ctx.Stats.Warnings = append(ctx.Stats.Warnings, ImportWarning{
+func (conv *ConversionContext) addWarning(line int, tag string, message string) {
+	conv.Stats.Warnings = append(conv.Stats.Warnings, ImportWarning{
 		Line:    line,
 		Tag:     tag,
 		Message: message,

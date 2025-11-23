@@ -19,16 +19,16 @@ import (
 )
 
 // Convert performs the main GEDCOM to GLX conversion with two-pass processing
-func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
-	ctx.Logger.LogInfo("Starting conversion")
+func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
+	conv.Logger.LogInfo("Starting conversion")
 
 	// First pass: Process all top-level records in dependency order
 	for _, record := range records {
 		switch record.Tag {
 		case "HEAD":
 			// Header - extract metadata
-			ctx.Logger.LogInfo("Processing HEAD")
-			convertHeader(record, ctx)
+			conv.Logger.LogInfo("Processing HEAD")
+			convertHeader(record, conv)
 
 		case "TRLR":
 			// Trailer - end of file
@@ -36,94 +36,94 @@ func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
 
 		// GEDCOM 5.5.1: Process shared NOTE records
 		case "NOTE":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing NOTE %s", record.XRef))
-			if err := convertSharedNote551(record, ctx); err != nil {
-				ctx.addError(record.Line, "NOTE", err.Error())
+			conv.Logger.LogInfo(fmt.Sprintf("Processing NOTE %s", record.XRef))
+			if err := convertSharedNote551(record, conv); err != nil {
+				conv.addError(record.Line, "NOTE", err.Error())
 			}
 
 		// GEDCOM 7.0: Process shared notes (SNOTE)
 		case "SNOTE":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing SNOTE %s", record.XRef))
-			if err := convertSharedNote(record, ctx); err != nil {
-				ctx.addError(record.Line, "SNOTE", err.Error())
+			conv.Logger.LogInfo(fmt.Sprintf("Processing SNOTE %s", record.XRef))
+			if err := convertSharedNote(record, conv); err != nil {
+				conv.addError(record.Line, "SNOTE", err.Error())
 			}
 
 		// GEDCOM 7.0: Process extension schemas
 		case "SCHMA":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing SCHMA %s", record.XRef))
-			if err := convertExtensionSchema(record, ctx); err != nil {
-				ctx.addError(record.Line, "SCHMA", err.Error())
+			conv.Logger.LogInfo(fmt.Sprintf("Processing SCHMA %s", record.XRef))
+			if err := convertExtensionSchema(record, conv); err != nil {
+				conv.addError(record.Line, "SCHMA", err.Error())
 			}
 
 		// Process repositories before sources (for linking)
 		case "REPO":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing REPO %s", record.XRef))
-			if err := convertRepository(record, ctx); err != nil {
-				ctx.addError(record.Line, "REPO", err.Error())
+			conv.Logger.LogInfo(fmt.Sprintf("Processing REPO %s", record.XRef))
+			if err := convertRepository(record, conv); err != nil {
+				conv.addError(record.Line, "REPO", err.Error())
 			}
 
 		// Process sources before individuals (for evidence)
 		case "SOUR":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing SOUR %s", record.XRef))
-			if err := convertSource(record, ctx); err != nil {
-				ctx.addError(record.Line, "SOUR", err.Error())
+			conv.Logger.LogInfo(fmt.Sprintf("Processing SOUR %s", record.XRef))
+			if err := convertSource(record, conv); err != nil {
+				conv.addError(record.Line, "SOUR", err.Error())
 			}
 
 		// Process media objects
 		case "OBJE":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing OBJE %s", record.XRef))
-			if err := convertMedia(record, ctx); err != nil {
-				ctx.addError(record.Line, "OBJE", err.Error())
+			conv.Logger.LogInfo(fmt.Sprintf("Processing OBJE %s", record.XRef))
+			if err := convertMedia(record, conv); err != nil {
+				conv.addError(record.Line, "OBJE", err.Error())
 			}
 
 		// Process individuals
 		case "INDI":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing INDI %s", record.XRef))
-			if err := convertIndividual(record, ctx); err != nil {
-				ctx.addError(record.Line, "INDI", err.Error())
+			conv.Logger.LogInfo(fmt.Sprintf("Processing INDI %s", record.XRef))
+			if err := convertIndividual(record, conv); err != nil {
+				conv.addError(record.Line, "INDI", err.Error())
 			}
 
 		// Defer families until after individuals
 		case "FAM":
-			ctx.Logger.LogInfo(fmt.Sprintf("Deferring FAM %s", record.XRef))
-			ctx.DeferredFamilies = append(ctx.DeferredFamilies, record)
+			conv.Logger.LogInfo(fmt.Sprintf("Deferring FAM %s", record.XRef))
+			conv.DeferredFamilies = append(conv.DeferredFamilies, record)
 
 		// Handle submitter (SUBM)
 		case "SUBM":
-			ctx.Logger.LogInfo(fmt.Sprintf("Processing SUBM %s", record.XRef))
-			convertSubmitter(record, ctx)
+			conv.Logger.LogInfo(fmt.Sprintf("Processing SUBM %s", record.XRef))
+			convertSubmitter(record, conv)
 
 		default:
 			// Unknown or extension tag
 			if isExtensionTag(record.Tag) {
-				ctx.addWarning(record.Line, record.Tag, "Extension tag not fully processed")
+				conv.addWarning(record.Line, record.Tag, "Extension tag not fully processed")
 			} else {
-				ctx.addWarning(record.Line, record.Tag, fmt.Sprintf("Unknown top-level tag: %s", record.Tag))
+				conv.addWarning(record.Line, record.Tag, fmt.Sprintf("Unknown top-level tag: %s", record.Tag))
 			}
 		}
 	}
 
-	ctx.Logger.LogInfo(fmt.Sprintf("First pass complete: %d persons, %d sources, %d repositories, %d media",
-		ctx.Stats.PersonsCreated, ctx.Stats.SourcesCreated, ctx.Stats.RepositoriesCreated, ctx.Stats.MediaCreated))
+	conv.Logger.LogInfo(fmt.Sprintf("First pass complete: %d persons, %d sources, %d repositories, %d media",
+		conv.Stats.PersonsCreated, conv.Stats.SourcesCreated, conv.Stats.RepositoriesCreated, conv.Stats.MediaCreated))
 
 	// Second pass: Process families now that all individuals exist
-	ctx.Logger.LogInfo(fmt.Sprintf("Processing %d deferred families", len(ctx.DeferredFamilies)))
-	for _, famRecord := range ctx.DeferredFamilies {
-		if err := convertFamily(famRecord, ctx); err != nil {
-			ctx.addError(famRecord.Line, "FAM", err.Error())
+	conv.Logger.LogInfo(fmt.Sprintf("Processing %d deferred families", len(conv.DeferredFamilies)))
+	for _, famRecord := range conv.DeferredFamilies {
+		if err := convertFamily(famRecord, conv); err != nil {
+			conv.addError(famRecord.Line, "FAM", err.Error())
 		}
 	}
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Second pass complete: %d relationships created", ctx.Stats.RelationshipsCreated))
+	conv.Logger.LogInfo(fmt.Sprintf("Second pass complete: %d relationships created", conv.Stats.RelationshipsCreated))
 
 	// Third pass: Create parent-child relationships with PEDI-based types
-	ctx.Logger.LogInfo(fmt.Sprintf("Processing %d deferred family links (FAMC)", len(ctx.DeferredFamilyLinks)))
-	for _, link := range ctx.DeferredFamilyLinks {
+	conv.Logger.LogInfo(fmt.Sprintf("Processing %d deferred family links (FAMC)", len(conv.DeferredFamilyLinks)))
+	for _, link := range conv.DeferredFamilyLinks {
 		if link.LinkType == ParticipantRoleChild {
 			// Look up parents from family
-			parents := ctx.FamilyParentsMap[link.FamilyRef]
+			parents := conv.FamilyParentsMap[link.FamilyRef]
 			if len(parents) == 0 {
-				ctx.Logger.LogWarning(0, "FAMC", link.FamilyRef, "Family not found or has no parents")
+				conv.Logger.LogWarning(0, "FAMC", link.FamilyRef, "Family not found or has no parents")
 				continue
 			}
 
@@ -132,7 +132,7 @@ func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
 
 			// Create relationship for each parent
 			for _, parentID := range parents {
-				relationshipID := generateRelationshipID(ctx)
+				relationshipID := generateRelationshipID(conv)
 
 				relationship := &Relationship{
 					Type:       relType,
@@ -140,13 +140,13 @@ func (ctx *ConversionContext) Convert(records []*GEDCOMRecord) error {
 					Properties: make(map[string]any),
 				}
 
-				ctx.GLX.Relationships[relationshipID] = relationship
-				ctx.Stats.RelationshipsCreated++
+				conv.GLX.Relationships[relationshipID] = relationship
+				conv.Stats.RelationshipsCreated++
 			}
 		}
 	}
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Third pass complete: total %d relationships", ctx.Stats.RelationshipsCreated))
+	conv.Logger.LogInfo(fmt.Sprintf("Third pass complete: total %d relationships", conv.Stats.RelationshipsCreated))
 
 	return nil
 }
@@ -171,7 +171,7 @@ func mapPedigreeToRelationshipType(pediValue string) string {
 }
 
 // convertHeader extracts metadata from HEAD record
-func convertHeader(headRecord *GEDCOMRecord, ctx *ConversionContext) {
+func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 	metadata := make(map[string]any)
 
 	for _, sub := range headRecord.SubRecords {
@@ -207,19 +207,19 @@ func convertHeader(headRecord *GEDCOMRecord, ctx *ConversionContext) {
 		case "CHAR":
 			metadata["character_set"] = sub.Value
 		case "NOTE":
-			metadata["notes"] = extractNoteText(sub, ctx)
+			metadata["notes"] = extractNoteText(sub, conv)
 		}
 	}
 
 	// TODO: Store metadata somewhere (maybe in properties or external file)
 	// For now, just log it
 	if len(metadata) > 0 {
-		ctx.Logger.LogInfo(fmt.Sprintf("HEAD metadata: %+v", metadata))
+		conv.Logger.LogInfo(fmt.Sprintf("HEAD metadata: %+v", metadata))
 	}
 }
 
 // convertSubmitter converts SUBM record to metadata
-func convertSubmitter(submRecord *GEDCOMRecord, ctx *ConversionContext) {
+func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
 	submitter := make(map[string]any)
 
 	for _, sub := range submRecord.SubRecords {
@@ -240,7 +240,7 @@ func convertSubmitter(submRecord *GEDCOMRecord, ctx *ConversionContext) {
 	// TODO: Store submitter metadata somewhere
 	// For now, just log it
 	if len(submitter) > 0 {
-		ctx.Logger.LogInfo(fmt.Sprintf("SUBM submitter: %+v", submitter))
+		conv.Logger.LogInfo(fmt.Sprintf("SUBM submitter: %+v", submitter))
 	}
 }
 

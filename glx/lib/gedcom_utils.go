@@ -19,55 +19,55 @@ import (
 )
 
 // generatePersonID generates an auto-incremented person ID
-func generatePersonID(ctx *ConversionContext) string {
-	ctx.PersonCounter++
-	return fmt.Sprintf("person-%d", ctx.PersonCounter)
+func generatePersonID(conv *ConversionContext) string {
+	conv.PersonCounter++
+	return fmt.Sprintf("person-%d", conv.PersonCounter)
 }
 
 // generateEventID generates an auto-incremented event ID
-func generateEventID(ctx *ConversionContext) string {
-	ctx.EventCounter++
-	return fmt.Sprintf("event-%d", ctx.EventCounter)
+func generateEventID(conv *ConversionContext) string {
+	conv.EventCounter++
+	return fmt.Sprintf("event-%d", conv.EventCounter)
 }
 
 // generateRelationshipID generates an auto-incremented relationship ID
-func generateRelationshipID(ctx *ConversionContext) string {
-	ctx.RelationshipCounter++
-	return fmt.Sprintf("relationship-%d", ctx.RelationshipCounter)
+func generateRelationshipID(conv *ConversionContext) string {
+	conv.RelationshipCounter++
+	return fmt.Sprintf("relationship-%d", conv.RelationshipCounter)
 }
 
 // generatePlaceID generates an auto-incremented place ID
-func generatePlaceID(ctx *ConversionContext) string {
-	ctx.PlaceCounter++
-	return fmt.Sprintf("place-%d", ctx.PlaceCounter)
+func generatePlaceID(conv *ConversionContext) string {
+	conv.PlaceCounter++
+	return fmt.Sprintf("place-%d", conv.PlaceCounter)
 }
 
 // generateSourceID generates an auto-incremented source ID
-func generateSourceID(ctx *ConversionContext) string {
-	ctx.SourceCounter++
-	return fmt.Sprintf("source-%d", ctx.SourceCounter)
+func generateSourceID(conv *ConversionContext) string {
+	conv.SourceCounter++
+	return fmt.Sprintf("source-%d", conv.SourceCounter)
 }
 
 // generateRepositoryID generates an auto-incremented repository ID
-func generateRepositoryID(ctx *ConversionContext) string {
-	ctx.RepositoryCounter++
-	return fmt.Sprintf("repository-%d", ctx.RepositoryCounter)
+func generateRepositoryID(conv *ConversionContext) string {
+	conv.RepositoryCounter++
+	return fmt.Sprintf("repository-%d", conv.RepositoryCounter)
 }
 
 // generateMediaID generates an auto-incremented media ID
-func generateMediaID(ctx *ConversionContext) string {
-	ctx.MediaCounter++
-	return fmt.Sprintf("media-%d", ctx.MediaCounter)
+func generateMediaID(conv *ConversionContext) string {
+	conv.MediaCounter++
+	return fmt.Sprintf("media-%d", conv.MediaCounter)
 }
 
 // generateCitationID generates an auto-incremented citation ID
-func generateCitationID(ctx *ConversionContext) string {
-	ctx.CitationCounter++
-	return fmt.Sprintf("citation-%d", ctx.CitationCounter)
+func generateCitationID(conv *ConversionContext) string {
+	conv.CitationCounter++
+	return fmt.Sprintf("citation-%d", conv.CitationCounter)
 }
 
 // generateAssertionID generates an auto-incremented assertion ID
-func generateAssertionID(ctx *ConversionContext) string {
-	ctx.AssertionCounter++
-	return fmt.Sprintf("assertion-%d", ctx.AssertionCounter)
+func generateAssertionID(conv *ConversionContext) string {
+	conv.AssertionCounter++
+	return fmt.Sprintf("assertion-%d", conv.AssertionCounter)
 }

@@ -22,11 +22,11 @@ import (
 )
 
 // convertMedia converts a GEDCOM OBJE record to a GLX Media entity
-func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Panic recovery
 	defer func() {
 		if r := recover(); r != nil {
-			ctx.Logger.LogException(objeRecord.Line, "OBJE", objeRecord.XRef, "convertMedia",
+			conv.Logger.LogException(objeRecord.Line, "OBJE", objeRecord.XRef, "convertMedia",
 				fmt.Errorf("panic: %v", r), map[string]any{
 					"record": objeRecord,
 				})
@@ -38,10 +38,10 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	}
 
 	// Generate media ID
-	mediaID := generateMediaID(ctx)
-	ctx.MediaIDMap[objeRecord.XRef] = mediaID
+	mediaID := generateMediaID(conv)
+	conv.MediaIDMap[objeRecord.XRef] = mediaID
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Converting OBJE %s -> %s", objeRecord.XRef, mediaID))
+	conv.Logger.LogInfo(fmt.Sprintf("Converting OBJE %s -> %s", objeRecord.XRef, mediaID))
 
 	// Create media entity
 	media := &Media{}
@@ -98,14 +98,14 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "NOTE":
 			// Notes/description
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
 
 		case "SOUR":
 			// Source citations for the media (store in notes for now)
-			citationID, err := createCitationFromSOUR(mediaID, sub, ctx)
+			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
 			if err == nil && citationID != "" {
 				notes = append(notes, "Citation: "+citationID)
 			}
@@ -135,18 +135,18 @@ func convertMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	}
 
 	// Store media
-	ctx.GLX.Media[mediaID] = media
-	ctx.Stats.MediaCreated++
+	conv.GLX.Media[mediaID] = media
+	conv.Stats.MediaCreated++
 
 	return nil
 }
 
 // convertEmbeddedMedia converts an embedded OBJE (without XRef) and returns the media ID
-func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) (string, error) {
+func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
 	// Generate media ID for embedded object
-	mediaID := generateMediaID(ctx)
+	mediaID := generateMediaID(conv)
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Converting embedded OBJE -> %s", mediaID))
+	conv.Logger.LogInfo(fmt.Sprintf("Converting embedded OBJE -> %s", mediaID))
 
 	// Create media entity
 	media := &Media{}
@@ -193,7 +193,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) (str
 			}
 
 		case "NOTE":
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
@@ -221,8 +221,8 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, ctx *ConversionContext) (str
 	}
 
 	// Store media
-	ctx.GLX.Media[mediaID] = media
-	ctx.Stats.MediaCreated++
+	conv.GLX.Media[mediaID] = media
+	conv.Stats.MediaCreated++
 
 	return mediaID, nil
 }

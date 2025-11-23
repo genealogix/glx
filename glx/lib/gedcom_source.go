@@ -20,16 +20,16 @@ import (
 )
 
 // convertSource converts a GEDCOM SOUR record to a GLX Source
-func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if sourRecord.Tag != "SOUR" {
 		return fmt.Errorf("expected SOUR record, got %s", sourRecord.Tag)
 	}
 
 	// Generate source ID
-	sourceID := generateSourceID(ctx)
-	ctx.SourceIDMap[sourRecord.XRef] = sourceID
+	sourceID := generateSourceID(conv)
+	conv.SourceIDMap[sourRecord.XRef] = sourceID
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Converting SOUR %s -> %s", sourRecord.XRef, sourceID))
+	conv.Logger.LogInfo(fmt.Sprintf("Converting SOUR %s -> %s", sourRecord.XRef, sourceID))
 
 	// Create source entity
 	source := &Source{
@@ -66,7 +66,7 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "REPO":
 			// Repository reference
-			repoID := ctx.RepositoryIDMap[sub.Value]
+			repoID := conv.RepositoryIDMap[sub.Value]
 			if repoID != "" {
 				source.RepositoryID = repoID
 
@@ -84,7 +84,7 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "NOTE":
 			// Notes
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
@@ -108,7 +108,7 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 		case "OBJE":
 			// Media object reference
 			if sub.Value != "" {
-				mediaID := ctx.MediaIDMap[sub.Value]
+				mediaID := conv.MediaIDMap[sub.Value]
 				if mediaID != "" {
 					source.Media = append(source.Media, mediaID)
 				}
@@ -136,8 +136,8 @@ func convertSource(sourRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	}
 
 	// Store source
-	ctx.GLX.Sources[sourceID] = source
-	ctx.Stats.SourcesCreated++
+	conv.GLX.Sources[sourceID] = source
+	conv.Stats.SourcesCreated++
 
 	return nil
 }

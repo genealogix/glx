@@ -130,7 +130,7 @@ func TestCreateStandardVocabularies(t *testing.T) {
 
 	err = os.Chdir(tmpDir)
 	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	defer func() { _ = os.Chdir(originalDir) }()
 
 	// Create vocabularies directory first
 	err = os.MkdirAll("vocabularies", 0o755)

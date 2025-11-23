@@ -20,7 +20,7 @@ import (
 )
 
 // convertIndividual converts a GEDCOM INDI record to a GLX Person
-func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if indiRecord.Tag != "INDI" {
 		return fmt.Errorf("expected INDI record, got %s", indiRecord.Tag)
 	}
@@ -28,7 +28,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	// Panic recovery
 	defer func() {
 		if r := recover(); r != nil {
-			ctx.Logger.LogException(
+			conv.Logger.LogException(
 				indiRecord.Line,
 				indiRecord.Tag,
 				indiRecord.XRef,
@@ -38,15 +38,15 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 					"record": indiRecord,
 				},
 			)
-			ctx.addError(indiRecord.Line, "INDI", fmt.Sprintf("Panic during conversion: %v", r))
+			conv.addError(indiRecord.Line, "INDI", fmt.Sprintf("Panic during conversion: %v", r))
 		}
 	}()
 
 	// Generate person ID
-	personID := generatePersonID(ctx)
-	ctx.PersonIDMap[indiRecord.XRef] = personID
+	personID := generatePersonID(conv)
+	conv.PersonIDMap[indiRecord.XRef] = personID
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Converting INDI %s -> %s", indiRecord.XRef, personID))
+	conv.Logger.LogInfo(fmt.Sprintf("Converting INDI %s -> %s", indiRecord.XRef, personID))
 
 	// Create person entity
 	person := &Person{
@@ -88,8 +88,8 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			}
 
 			// Create name assertions (with evidence/citations)
-			if err := createNameAssertions(personID, parsedName, sub, ctx); err != nil {
-				ctx.addWarning(indiRecord.Line, "NAME", err.Error())
+			if err := createNameAssertions(personID, parsedName, sub, conv); err != nil {
+				conv.addWarning(indiRecord.Line, "NAME", err.Error())
 			}
 
 		case "SEX":
@@ -98,64 +98,64 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			person.Properties["gender"] = gender
 
 			// Create assertion
-			if err := createPropertyAssertion(personID, "gender", gender, sub, ctx); err != nil {
-				ctx.addWarning(indiRecord.Line, "SEX", err.Error())
+			if err := createPropertyAssertion(personID, "gender", gender, sub, conv); err != nil {
+				conv.addWarning(indiRecord.Line, "SEX", err.Error())
 			}
 
 		case "BIRT", "CHR", "DEAT", "BURI", "CREM", "ADOP", "BAPM", "BARM", "BASM",
 			"BLES", "CHRA", "CONF", "FCOM", "ORDN", "NATU", "EMIG", "IMMI", "CENS",
 			"PROB", "WILL", "GRAD", "RETI":
 			// Convert vital/individual event
-			if err := convertIndividualEvent(personID, person, sub, ctx); err != nil {
-				ctx.addWarning(indiRecord.Line, sub.Tag, err.Error())
+			if err := convertIndividualEvent(personID, person, sub, conv); err != nil {
+				conv.addWarning(indiRecord.Line, sub.Tag, err.Error())
 			}
 
 		case "OCCU":
 			// Occupation
 			if sub.Value != "" {
 				person.Properties["occupation"] = sub.Value
-				createPropertyAssertion(personID, "occupation", sub.Value, sub, ctx)
+				_ = createPropertyAssertion(personID, "occupation", sub.Value, sub, conv)
 			}
 
 		case "RESI":
 			// Residence - convert to event or property
-			if err := convertResidence(personID, person, sub, ctx); err != nil {
-				ctx.addWarning(indiRecord.Line, "RESI", err.Error())
+			if err := convertResidence(personID, person, sub, conv); err != nil {
+				conv.addWarning(indiRecord.Line, "RESI", err.Error())
 			}
 
 		case "RELI":
 			// Religion
 			if sub.Value != "" {
 				person.Properties["religion"] = sub.Value
-				createPropertyAssertion(personID, "religion", sub.Value, sub, ctx)
+				_ = createPropertyAssertion(personID, "religion", sub.Value, sub, conv)
 			}
 
 		case "EDUC":
 			// Education
 			if sub.Value != "" {
 				person.Properties["education"] = sub.Value
-				createPropertyAssertion(personID, "education", sub.Value, sub, ctx)
+				_ = createPropertyAssertion(personID, "education", sub.Value, sub, conv)
 			}
 
 		case "NATI":
 			// Nationality
 			if sub.Value != "" {
 				person.Properties["nationality"] = sub.Value
-				createPropertyAssertion(personID, "nationality", sub.Value, sub, ctx)
+				_ = createPropertyAssertion(personID, "nationality", sub.Value, sub, conv)
 			}
 
 		case "CAST":
 			// Caste/tribe
 			if sub.Value != "" {
 				person.Properties["caste"] = sub.Value
-				createPropertyAssertion(personID, "caste", sub.Value, sub, ctx)
+				_ = createPropertyAssertion(personID, "caste", sub.Value, sub, conv)
 			}
 
 		case "SSN":
 			// Social security number
 			if sub.Value != "" {
 				person.Properties["ssn"] = sub.Value
-				createPropertyAssertion(personID, "ssn", sub.Value, sub, ctx)
+				_ = createPropertyAssertion(personID, "ssn", sub.Value, sub, conv)
 			}
 
 		case "TITL":
@@ -163,18 +163,18 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 			// Note: This is different from NPFX (name prefix) which is part of name formatting
 			if sub.Value != "" {
 				person.Properties["title"] = sub.Value
-				createPropertyAssertion(personID, "title", sub.Value, sub, ctx)
+				_ = createPropertyAssertion(personID, "title", sub.Value, sub, conv)
 			}
 
 		case "FACT":
 			// Generic fact - convert to property or event
-			if err := convertFact(personID, person, sub, ctx); err != nil {
-				ctx.addWarning(indiRecord.Line, "FACT", err.Error())
+			if err := convertFact(personID, person, sub, conv); err != nil {
+				conv.addWarning(indiRecord.Line, "FACT", err.Error())
 			}
 
 		case "NOTE":
 			// Notes
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				if notes, ok := person.Properties["notes"].(string); ok {
 					person.Properties["notes"] = notes + "\n\n" + noteText
@@ -189,7 +189,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "OBJE":
 			// Media object - will be implemented when media converter is done
-			ctx.addWarning(indiRecord.Line, "OBJE", "Media linking not yet implemented")
+			conv.addWarning(indiRecord.Line, "OBJE", "Media linking not yet implemented")
 
 		case "FAMC":
 			// Family as child - defer for family processing
@@ -201,7 +201,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 					break
 				}
 			}
-			ctx.DeferredFamilyLinks = append(ctx.DeferredFamilyLinks, &FamilyLink{
+			conv.DeferredFamilyLinks = append(conv.DeferredFamilyLinks, &FamilyLink{
 				PersonID:     personID,
 				FamilyRef:    sub.Value,
 				LinkType:     ParticipantRoleChild,
@@ -210,7 +210,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "FAMS":
 			// Family as spouse - defer for family processing
-			ctx.DeferredFamilyLinks = append(ctx.DeferredFamilyLinks, &FamilyLink{
+			conv.DeferredFamilyLinks = append(conv.DeferredFamilyLinks, &FamilyLink{
 				PersonID:  personID,
 				FamilyRef: sub.Value,
 				LinkType:  ParticipantRoleSpouse,
@@ -218,8 +218,8 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 
 		case "NO":
 			// Negative assertion (GEDCOM 7.0)
-			if err := convertNegativeAssertion(personID, sub, ctx); err != nil {
-				ctx.addWarning(indiRecord.Line, "NO", err.Error())
+			if err := convertNegativeAssertion(personID, sub, conv); err != nil {
+				conv.addWarning(indiRecord.Line, "NO", err.Error())
 			}
 
 		default:
@@ -232,8 +232,8 @@ func convertIndividual(indiRecord *GEDCOMRecord, ctx *ConversionContext) error {
 	}
 
 	// Store person
-	ctx.GLX.Persons[personID] = person
-	ctx.Stats.PersonsCreated++
+	conv.GLX.Persons[personID] = person
+	conv.Stats.PersonsCreated++
 
 	return nil
 }
@@ -263,57 +263,57 @@ func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
 }
 
 // createNameAssertions creates assertions for name components
-func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Create citations from SOUR tags
-	citationIDs := extractCitations(personID, nameRecord, ctx)
+	citationIDs := extractCitations(personID, nameRecord, conv)
 
 	// Derive confidence
-	confidence := deriveConfidence(citationIDs, ctx)
+	confidence := deriveConfidence(citationIDs, conv)
 
 	// Create assertions for each name component
 	if name.GivenName != "" {
-		assertionID := generateAssertionID(ctx)
-		ctx.GLX.Assertions[assertionID] = &Assertion{
+		assertionID := generateAssertionID(conv)
+		conv.GLX.Assertions[assertionID] = &Assertion{
 			Subject:    personID,
 			Claim:      "given_name",
 			Value:      name.GivenName,
 			Confidence: confidence,
 			Citations:  citationIDs,
 		}
-		ctx.Stats.AssertionsCreated++
+		conv.Stats.AssertionsCreated++
 	}
 
 	if name.Surname != "" {
-		assertionID := generateAssertionID(ctx)
-		ctx.GLX.Assertions[assertionID] = &Assertion{
+		assertionID := generateAssertionID(conv)
+		conv.GLX.Assertions[assertionID] = &Assertion{
 			Subject:    personID,
 			Claim:      "family_name",
 			Value:      name.Surname,
 			Confidence: confidence,
 			Citations:  citationIDs,
 		}
-		ctx.Stats.AssertionsCreated++
+		conv.Stats.AssertionsCreated++
 	}
 
 	// Store other name components as property assertions
 	if name.Prefix != "" {
-		createPropertyAssertion(personID, "name_prefix", name.Prefix, nameRecord, ctx)
+		_ = createPropertyAssertion(personID, "name_prefix", name.Prefix, nameRecord, conv)
 	}
 	if name.Nickname != "" {
-		createPropertyAssertion(personID, "nickname", name.Nickname, nameRecord, ctx)
+		_ = createPropertyAssertion(personID, "nickname", name.Nickname, nameRecord, conv)
 	}
 	if name.SurnamePrefix != "" {
-		createPropertyAssertion(personID, "surname_prefix", name.SurnamePrefix, nameRecord, ctx)
+		createPropertyAssertion(personID, "surname_prefix", name.SurnamePrefix, nameRecord, conv)
 	}
 	if name.Suffix != "" {
-		createPropertyAssertion(personID, "name_suffix", name.Suffix, nameRecord, ctx)
+		createPropertyAssertion(personID, "name_suffix", name.Suffix, nameRecord, conv)
 	}
 
 	return nil
 }
 
 // convertIndividualEvent converts individual event tags to GLX events
-func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Map GEDCOM event tag to GLX event type
 	eventType := mapGEDCOMEventType(eventRecord.Tag)
 	if eventType == "" {
@@ -321,7 +321,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	}
 
 	// Generate event ID
-	eventID := generateEventID(ctx)
+	eventID := generateEventID(conv)
 
 	// Create event
 	event := &Event{
@@ -350,7 +350,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 				hierarchy.Latitude = lat
 				hierarchy.Longitude = lon
 
-				placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+				placeID, err := buildPlaceHierarchy(hierarchy, conv)
 				if err == nil && placeID != "" {
 					event.PlaceID = placeID
 					eventPlace = placeID
@@ -380,7 +380,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
 				hierarchy := buildPlaceHierarchyFromAddress(sub)
 				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, ctx)
+					placeID, err := buildPlaceHierarchy(hierarchy, conv)
 					if err == nil && placeID != "" {
 						event.PlaceID = placeID
 						eventPlace = placeID
@@ -389,7 +389,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 			}
 
 		case "NOTE":
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				event.Properties["notes"] = noteText
 			}
@@ -399,7 +399,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 
 		case "OBJE":
 			// Media - not yet implemented
-			ctx.addWarning(eventRecord.Line, "OBJE", "Media linking not yet implemented")
+			conv.addWarning(eventRecord.Line, "OBJE", "Media linking not yet implemented")
 		}
 	}
 
@@ -412,24 +412,24 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	}
 
 	// Store event
-	ctx.GLX.Events[eventID] = event
-	ctx.Stats.EventsCreated++
+	conv.GLX.Events[eventID] = event
+	conv.Stats.EventsCreated++
 
 	// Create property assertions for born_on, died_on, etc.
 	// ALSO set person properties directly for quick access
 	if eventType == "birth" && eventDate != "" {
 		person.Properties["born_on"] = eventDate
-		createPropertyAssertion(personID, "born_on", eventDate, eventRecord, ctx)
+		createPropertyAssertion(personID, "born_on", eventDate, eventRecord, conv)
 		if eventPlace != "" {
 			person.Properties["born_at"] = eventPlace
-			createPropertyAssertion(personID, "born_at", eventPlace, eventRecord, ctx)
+			createPropertyAssertion(personID, "born_at", eventPlace, eventRecord, conv)
 		}
 	} else if eventType == "death" && eventDate != "" {
 		person.Properties["died_on"] = eventDate
-		createPropertyAssertion(personID, "died_on", eventDate, eventRecord, ctx)
+		createPropertyAssertion(personID, "died_on", eventDate, eventRecord, conv)
 		if eventPlace != "" {
 			person.Properties["died_at"] = eventPlace
-			createPropertyAssertion(personID, "died_at", eventPlace, eventRecord, ctx)
+			createPropertyAssertion(personID, "died_at", eventPlace, eventRecord, conv)
 		}
 	}
 
@@ -534,7 +534,7 @@ func buildPlaceHierarchyFromAddress(addrRecord *GEDCOMRecord) *PlaceHierarchy {
 }
 
 // convertResidence converts RESI to residence event or property
-func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Check if it has date - if so, create event
 	hasDate := false
 	for _, sub := range resiRecord.SubRecords {
@@ -546,7 +546,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 
 	if hasDate {
 		// Create residence event
-		return convertIndividualEvent(personID, person, resiRecord, ctx)
+		return convertIndividualEvent(personID, person, resiRecord, conv)
 	}
 
 	// Otherwise, extract place as property
@@ -554,9 +554,9 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		if sub.Tag == "PLAC" {
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
-				placeID, _ := buildPlaceHierarchy(hierarchy, ctx)
+				placeID, _ := buildPlaceHierarchy(hierarchy, conv)
 				if placeID != "" {
-					return createPropertyAssertion(personID, "residence", placeID, resiRecord, ctx)
+					return createPropertyAssertion(personID, "residence", placeID, resiRecord, conv)
 				}
 			}
 		}
@@ -566,7 +566,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 }
 
 // convertFact converts generic FACT tag
-func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Extract TYPE to determine what kind of fact
 	factType := ""
 	for _, sub := range factRecord.SubRecords {
@@ -579,7 +579,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, ctx 
 	// If it's a recognized property type, create property assertion
 	if factType != "" && factRecord.Value != "" {
 		propKey := strings.ToLower(strings.ReplaceAll(factType, " ", "_"))
-		return createPropertyAssertion(personID, propKey, factRecord.Value, factRecord, ctx)
+		return createPropertyAssertion(personID, propKey, factRecord.Value, factRecord, conv)
 	}
 
 	// Otherwise treat as generic event if it has date/place
@@ -592,28 +592,28 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, ctx 
 	}
 
 	if hasDateOrPlace {
-		return convertIndividualEvent(personID, person, factRecord, ctx)
+		return convertIndividualEvent(personID, person, factRecord, conv)
 	}
 
 	return nil
 }
 
 // convertNegativeAssertion converts GEDCOM 7.0 NO tag (negative assertion)
-func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// NO tag indicates something did NOT happen
 	eventType := mapGEDCOMEventType(noRecord.Value)
 
-	citationIDs := extractCitations(personID, noRecord, ctx)
+	citationIDs := extractCitations(personID, noRecord, conv)
 
-	assertionID := generateAssertionID(ctx)
-	ctx.GLX.Assertions[assertionID] = &Assertion{
+	assertionID := generateAssertionID(conv)
+	conv.GLX.Assertions[assertionID] = &Assertion{
 		Subject:    personID,
 		Claim:      "no_" + eventType,
 		Value:      "true", // Negative assertion (NO tag from GEDCOM 7.0)
 		Confidence: "high", // Negative assertions are typically certain
 		Citations:  citationIDs,
 	}
-	ctx.Stats.AssertionsCreated++
+	conv.Stats.AssertionsCreated++
 
 	return nil
 }

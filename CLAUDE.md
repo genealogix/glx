@@ -114,25 +114,32 @@ git push -u origin <branch-name>
 
 ### Testing
 
+**ALWAYS use the Makefile to run tests.**
+
 ```bash
-# Run all tests
-go test ./...
+# Run all tests (preferred)
+make test
 
-# Run specific test
-go test -v -run TestImportShakespeare ./lib
+# Run all tests with verbose output
+make test-verbose
 
-# Run with coverage
-go test -cover ./...
+# NEVER run tests directly with go test commands
+# ALWAYS use the Makefile
 ```
 
 ### Building
 
+**ALWAYS use the Makefile to build.**
+
 ```bash
-# Build CLI
-go build -o glx ./cmd/glx
+# Build CLI (preferred)
+make build
 
 # Run CLI
-./glx import shakespeare.ged -o output.glx
+./bin/glx import shakespeare.ged -o output.glx
+
+# Clean build artifacts
+make clean
 ```
 
 ---
@@ -152,6 +159,50 @@ go build -o glx ./cmd/glx
 - Use `any` instead of `interface{}` (Go 1.18+)
 - Use `yaml:"field,omitempty"` for optional fields
 - Keep functions focused and testable
+
+### Naming Conventions
+
+**NEVER use the variable name `ctx` for anything other than `context.Context`.**
+
+Using `ctx` for other types (like `*ConversionContext` in this codebase) creates extreme confusion since `ctx` is universally understood in Go to mean `context.Context`.
+
+```go
+// ❌ INCORRECT - ctx is not context.Context
+func convertPerson(personRecord *GEDCOMRecord, ctx *ConversionContext) error {
+	ctx.Logger.LogInfo("Converting person")
+	// ...
+}
+
+// ✅ CORRECT - Use a descriptive name
+func convertPerson(personRecord *GEDCOMRecord, convCtx *ConversionContext) error {
+	convCtx.Logger.LogInfo("Converting person")
+	// ...
+}
+
+// ✅ ALSO CORRECT - Even better, be explicit
+func convertPerson(personRecord *GEDCOMRecord, conversion *ConversionContext) error {
+	conversion.Logger.LogInfo("Converting person")
+	// ...
+}
+```
+
+**Rationale**: The Go community has strong conventions around `ctx` always meaning `context.Context`. Breaking this convention makes code harder to read and understand, especially when both `context.Context` and other context-like types appear in the same codebase.
+
+### Updating This Document
+
+**When given broad instructions like "Never do X" or "Always do Y", update CLAUDE.md to document the guideline.**
+
+This ensures:
+1. The guideline is preserved for future Claude instances
+2. Patterns stay consistent across the codebase
+3. New developers understand project conventions
+
+Examples of instructions that should be documented:
+- "Never use X pattern"
+- "Always do Y when Z"
+- "Prefer A over B"
+- "Don't use _ parameters except for interfaces"
+- "Never name variables ctx unless they're context.Context"
 
 ### Cobra Command Handler Pattern
 

@@ -19,47 +19,47 @@ import (
 )
 
 // convertSharedNote551 converts a GEDCOM 5.5.1 NOTE record to shared note storage
-func convertSharedNote551(noteRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertSharedNote551(noteRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if noteRecord.Tag != "NOTE" {
 		return fmt.Errorf("expected NOTE record, got %s", noteRecord.Tag)
 	}
 
 	// Extract note text (GEDCOM 5.5.1 format)
-	noteText := extractNoteText(noteRecord, ctx)
+	noteText := extractNoteText(noteRecord, conv)
 	if noteText == "" {
 		noteText = noteRecord.Value
 	}
 
 	// Store in shared notes map (same map as GEDCOM 7.0 SNOTE)
-	ctx.SharedNotes[noteRecord.XRef] = noteText
+	conv.SharedNotes[noteRecord.XRef] = noteText
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Stored shared note (5.5.1) %s (%d chars)", noteRecord.XRef, len(noteText)))
+	conv.Logger.LogInfo(fmt.Sprintf("Stored shared note (5.5.1) %s (%d chars)", noteRecord.XRef, len(noteText)))
 
 	return nil
 }
 
 // convertSharedNote converts a GEDCOM 7.0 SNOTE record to shared note storage
-func convertSharedNote(snoteRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertSharedNote(snoteRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if snoteRecord.Tag != "SNOTE" {
 		return fmt.Errorf("expected SNOTE record, got %s", snoteRecord.Tag)
 	}
 
 	// Extract note text
-	noteText := extractNoteText(snoteRecord, ctx)
+	noteText := extractNoteText(snoteRecord, conv)
 	if noteText == "" {
 		noteText = snoteRecord.Value
 	}
 
 	// Store in shared notes map
-	ctx.SharedNotes[snoteRecord.XRef] = noteText
+	conv.SharedNotes[snoteRecord.XRef] = noteText
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Stored shared note %s (%d chars)", snoteRecord.XRef, len(noteText)))
+	conv.Logger.LogInfo(fmt.Sprintf("Stored shared note %s (%d chars)", snoteRecord.XRef, len(noteText)))
 
 	return nil
 }
 
 // convertExtensionSchema converts a GEDCOM 7.0 SCHMA record
-func convertExtensionSchema(schmaRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if schmaRecord.Tag != "SCHMA" {
 		return fmt.Errorf("expected SCHMA record, got %s", schmaRecord.Tag)
 	}
@@ -80,14 +80,14 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, ctx *ConversionContext) e
 			schema.URI = sub.Value
 		case "NOTE":
 			// Description
-			schema.Description = extractNoteText(sub, ctx)
+			schema.Description = extractNoteText(sub, conv)
 		}
 	}
 
 	// Store schema
-	ctx.ExtensionSchemas[schmaRecord.XRef] = schema
+	conv.ExtensionSchemas[schmaRecord.XRef] = schema
 
-	ctx.Logger.LogInfo(fmt.Sprintf("Stored extension schema %s", schmaRecord.XRef))
+	conv.Logger.LogInfo(fmt.Sprintf("Stored extension schema %s", schmaRecord.XRef))
 
 	return nil
 }

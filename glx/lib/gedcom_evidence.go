@@ -21,16 +21,16 @@ import (
 )
 
 // createCitationFromSOUR creates a citation from a GEDCOM SOUR subrecord
-func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *ConversionContext) (string, error) {
+func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
 	var sourceID string
 
 	// Check if it's a reference or embedded source
 	if sourRecord.Value != "" {
 		// Reference to existing source
-		sourceID = ctx.SourceIDMap[sourRecord.Value]
+		sourceID = conv.SourceIDMap[sourRecord.Value]
 		if sourceID == "" {
 			// Source doesn't exist yet, log warning but continue
-			ctx.Logger.LogWarning(sourRecord.Line, "SOUR", sourRecord.Value, "Referenced source not found")
+			conv.Logger.LogWarning(sourRecord.Line, "SOUR", sourRecord.Value, "Referenced source not found")
 			return "", fmt.Errorf("source not found: %s", sourRecord.Value)
 		}
 	} else {
@@ -40,7 +40,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 	}
 
 	// Create citation
-	citationID := generateCitationID(ctx)
+	citationID := generateCitationID(conv)
 
 	citation := &Citation{
 		SourceID: sourceID,
@@ -86,7 +86,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 
 		case "NOTE":
 			// Notes about the citation
-			noteText := extractNoteText(sub, ctx)
+			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
 				if citation.Notes != "" {
 					citation.Notes += "\n" + noteText
@@ -98,7 +98,7 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 		case "OBJE":
 			// Media linked to citation (not commonly used, but supported)
 			if sub.Value != "" {
-				mediaID := ctx.MediaIDMap[sub.Value]
+				mediaID := conv.MediaIDMap[sub.Value]
 				if mediaID != "" {
 					if citation.Media == nil {
 						citation.Media = []string{}
@@ -116,26 +116,26 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, ctx *Con
 	}
 
 	// Store citation
-	ctx.GLX.Citations[citationID] = citation
-	ctx.Stats.CitationsCreated++
+	conv.GLX.Citations[citationID] = citation
+	conv.Stats.CitationsCreated++
 
 	return citationID, nil
 }
 
 // createPropertyAssertion creates an assertion for a property
-func createPropertyAssertion(subjectID string, claim string, value any, sourceRecord *GEDCOMRecord, ctx *ConversionContext) error {
+func createPropertyAssertion(subjectID string, claim string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if claim == "" || value == nil {
 		return nil
 	}
 
 	// Extract citations from SOUR subrecords
-	citationIDs := extractCitations(subjectID, sourceRecord, ctx)
+	citationIDs := extractCitations(subjectID, sourceRecord, conv)
 
 	// Generate assertion ID
-	assertionID := generateAssertionID(ctx)
+	assertionID := generateAssertionID(conv)
 
 	// Derive confidence
-	confidence := deriveConfidence(citationIDs, ctx)
+	confidence := deriveConfidence(citationIDs, conv)
 
 	// Convert value to string
 	var valueStr string
@@ -160,19 +160,19 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 	}
 
 	// Store assertion
-	ctx.GLX.Assertions[assertionID] = assertion
-	ctx.Stats.AssertionsCreated++
+	conv.GLX.Assertions[assertionID] = assertion
+	conv.Stats.AssertionsCreated++
 
 	return nil
 }
 
 // extractCitations extracts all citations from a record's SOUR subrecords
-func extractCitations(subjectID string, record *GEDCOMRecord, ctx *ConversionContext) []string {
+func extractCitations(subjectID string, record *GEDCOMRecord, conv *ConversionContext) []string {
 	var citationIDs []string
 
 	for _, sub := range record.SubRecords {
 		if sub.Tag == "SOUR" {
-			citationID, err := createCitationFromSOUR(subjectID, sub, ctx)
+			citationID, err := createCitationFromSOUR(subjectID, sub, conv)
 			if err == nil && citationID != "" {
 				citationIDs = append(citationIDs, citationID)
 			}
@@ -183,7 +183,7 @@ func extractCitations(subjectID string, record *GEDCOMRecord, ctx *ConversionCon
 }
 
 // deriveConfidence derives confidence level from citations
-func deriveConfidence(citationIDs []string, ctx *ConversionContext) string {
+func deriveConfidence(citationIDs []string, conv *ConversionContext) string {
 	if len(citationIDs) == 0 {
 		return "medium" // Default when no citations
 	}
@@ -191,7 +191,7 @@ func deriveConfidence(citationIDs []string, ctx *ConversionContext) string {
 	// Check Quality values (formerly QUAY)
 	highestQuality := -1
 	for _, citationID := range citationIDs {
-		citation := ctx.GLX.Citations[citationID]
+		citation := conv.GLX.Citations[citationID]
 		if citation != nil && citation.Quality != nil {
 			if *citation.Quality > highestQuality {
 				highestQuality = *citation.Quality
@@ -220,7 +220,7 @@ func mapQUAYtoConfidence(quay int) string {
 }
 
 // extractNoteText extracts note text from NOTE record
-func extractNoteText(noteRecord *GEDCOMRecord, ctx *ConversionContext) string {
+func extractNoteText(noteRecord *GEDCOMRecord, conv *ConversionContext) string {
 	if noteRecord.Value != "" {
 		// Inline note
 		text := noteRecord.Value
@@ -241,8 +241,8 @@ func extractNoteText(noteRecord *GEDCOMRecord, ctx *ConversionContext) string {
 	}
 
 	// Check if it's a reference to shared note (GEDCOM 7.0)
-	if ctx.Version == GEDCOM70 && noteRecord.Value != "" {
-		if sharedNote, exists := ctx.SharedNotes[noteRecord.Value]; exists {
+	if conv.Version == GEDCOM70 && noteRecord.Value != "" {
+		if sharedNote, exists := conv.SharedNotes[noteRecord.Value]; exists {
 			return sharedNote
 		}
 	}

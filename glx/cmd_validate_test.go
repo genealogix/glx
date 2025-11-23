@@ -28,7 +28,7 @@ func TestRunValidate_SingleValidFile(t *testing.T) {
 	// Need to change to the directory since single file validation loads archive from "."
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	defer func() { _ = os.Chdir(originalDir) }()
 
 	err = os.Chdir("../docs/examples/basic-family")
 	require.NoError(t, err)
@@ -48,7 +48,7 @@ func TestRunValidate_CurrentDirectory(t *testing.T) {
 	// Change to basic-family example
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	defer func() { _ = os.Chdir(originalDir) }()
 
 	err = os.Chdir("../docs/examples/basic-family")
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestRunValidate_MultiplePaths(t *testing.T) {
 	// Change to the archive directory to avoid loading invalid testdata
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	defer func() { _ = os.Chdir(originalDir) }()
 
 	err = os.Chdir("../docs/examples/basic-family")
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestRunValidate_NonExistentPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	defer func() { _ = os.Chdir(originalDir) }()
 
 	err = os.Chdir(tmpDir)
 	require.NoError(t, err)

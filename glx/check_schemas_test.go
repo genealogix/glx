@@ -131,7 +131,7 @@ func TestRunCheckSchemas(t *testing.T) {
 			testDir := tt.setup()
 			err = os.Chdir(testDir)
 			require.NoError(t, err)
-			defer os.Chdir(originalDir)
+			defer func() { _ = os.Chdir(originalDir) }()
 
 			err = checkSchemaFiles()
 			if tt.wantError {
