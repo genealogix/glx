@@ -98,9 +98,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			person.Properties["gender"] = gender
 
 			// Create assertion
-			if err := createPropertyAssertion(personID, "gender", gender, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, "SEX", err.Error())
-			}
+			createPropertyAssertion(personID, "gender", gender, sub, conv)
 
 		case "BIRT", "CHR", "DEAT", "BURI", "CREM", "ADOP", "BAPM", "BARM", "BASM",
 			"BLES", "CHRA", "CONF", "FCOM", "ORDN", "NATU", "EMIG", "IMMI", "CENS",
@@ -114,7 +112,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Occupation
 			if sub.Value != "" {
 				person.Properties["occupation"] = sub.Value
-				_ = createPropertyAssertion(personID, "occupation", sub.Value, sub, conv)
+				createPropertyAssertion(personID, "occupation", sub.Value, sub, conv)
 			}
 
 		case "RESI":
@@ -127,35 +125,35 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Religion
 			if sub.Value != "" {
 				person.Properties["religion"] = sub.Value
-				_ = createPropertyAssertion(personID, "religion", sub.Value, sub, conv)
+				createPropertyAssertion(personID, "religion", sub.Value, sub, conv)
 			}
 
 		case "EDUC":
 			// Education
 			if sub.Value != "" {
 				person.Properties["education"] = sub.Value
-				_ = createPropertyAssertion(personID, "education", sub.Value, sub, conv)
+				createPropertyAssertion(personID, "education", sub.Value, sub, conv)
 			}
 
 		case "NATI":
 			// Nationality
 			if sub.Value != "" {
 				person.Properties["nationality"] = sub.Value
-				_ = createPropertyAssertion(personID, "nationality", sub.Value, sub, conv)
+				createPropertyAssertion(personID, "nationality", sub.Value, sub, conv)
 			}
 
 		case "CAST":
 			// Caste/tribe
 			if sub.Value != "" {
 				person.Properties["caste"] = sub.Value
-				_ = createPropertyAssertion(personID, "caste", sub.Value, sub, conv)
+				createPropertyAssertion(personID, "caste", sub.Value, sub, conv)
 			}
 
 		case "SSN":
 			// Social security number
 			if sub.Value != "" {
 				person.Properties["ssn"] = sub.Value
-				_ = createPropertyAssertion(personID, "ssn", sub.Value, sub, conv)
+				createPropertyAssertion(personID, "ssn", sub.Value, sub, conv)
 			}
 
 		case "TITL":
@@ -163,7 +161,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Note: This is different from NPFX (name prefix) which is part of name formatting
 			if sub.Value != "" {
 				person.Properties["title"] = sub.Value
-				_ = createPropertyAssertion(personID, "title", sub.Value, sub, conv)
+				createPropertyAssertion(personID, "title", sub.Value, sub, conv)
 			}
 
 		case "FACT":
@@ -297,10 +295,10 @@ func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRe
 
 	// Store other name components as property assertions
 	if name.Prefix != "" {
-		_ = createPropertyAssertion(personID, "name_prefix", name.Prefix, nameRecord, conv)
+		createPropertyAssertion(personID, "name_prefix", name.Prefix, nameRecord, conv)
 	}
 	if name.Nickname != "" {
-		_ = createPropertyAssertion(personID, "nickname", name.Nickname, nameRecord, conv)
+		createPropertyAssertion(personID, "nickname", name.Nickname, nameRecord, conv)
 	}
 	if name.SurnamePrefix != "" {
 		createPropertyAssertion(personID, "surname_prefix", name.SurnamePrefix, nameRecord, conv)
@@ -556,7 +554,8 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 			if hierarchy != nil {
 				placeID, _ := buildPlaceHierarchy(hierarchy, conv)
 				if placeID != "" {
-					return createPropertyAssertion(personID, "residence", placeID, resiRecord, conv)
+					createPropertyAssertion(personID, "residence", placeID, resiRecord, conv)
+					return nil
 				}
 			}
 		}
@@ -579,7 +578,8 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 	// If it's a recognized property type, create property assertion
 	if factType != "" && factRecord.Value != "" {
 		propKey := strings.ToLower(strings.ReplaceAll(factType, " ", "_"))
-		return createPropertyAssertion(personID, propKey, factRecord.Value, factRecord, conv)
+		createPropertyAssertion(personID, propKey, factRecord.Value, factRecord, conv)
+		return nil
 	}
 
 	// Otherwise treat as generic event if it has date/place

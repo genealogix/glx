@@ -123,9 +123,9 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 }
 
 // createPropertyAssertion creates an assertion for a property
-func createPropertyAssertion(subjectID string, claim string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) error {
+func createPropertyAssertion(subjectID string, claim string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
 	if claim == "" || value == nil {
-		return nil
+		return
 	}
 
 	// Extract citations from SOUR subrecords
@@ -162,8 +162,6 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 	// Store assertion
 	conv.GLX.Assertions[assertionID] = assertion
 	conv.Stats.AssertionsCreated++
-
-	return nil
 }
 
 // extractCitations extracts all citations from a record's SOUR subrecords

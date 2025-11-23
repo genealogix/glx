@@ -92,22 +92,21 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) 
 	return nil
 }
 
-// convertExtensionData converts extension tag data to properties
+// convertExtensionData converts extension tag data into properties map
 func convertExtensionData(tag string, value string, subRecords []*GEDCOMRecord) map[string]any {
 	properties := make(map[string]any)
 
-	// Extension tags start with underscore
+	// Only process extension tags (those starting with underscore)
 	if len(tag) == 0 || tag[0] != '_' {
 		return properties
 	}
 
-	// Store the value
 	properties["extension_tag"] = tag
+
 	if value != "" {
 		properties["value"] = value
 	}
 
-	// Store subrecords if any
 	if len(subRecords) > 0 {
 		subData := make(map[string]any)
 		for _, sub := range subRecords {

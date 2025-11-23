@@ -96,7 +96,13 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 		default:
 			// Unknown or extension tag
 			if isExtensionTag(record.Tag) {
-				conv.addWarning(record.Line, record.Tag, "Extension tag not fully processed")
+				// Process extension data
+				extData := convertExtensionData(record.Tag, record.Value, record.SubRecords)
+				if len(extData) > 0 {
+					// Store extension data in metadata or a dedicated extensions map
+					// For now, log it
+					conv.Logger.LogInfo(fmt.Sprintf("Processed extension tag %s: %+v", record.Tag, extData))
+				}
 			} else {
 				conv.addWarning(record.Line, record.Tag, fmt.Sprintf("Unknown top-level tag: %s", record.Tag))
 			}
