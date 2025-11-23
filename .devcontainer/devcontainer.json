@@ -18,7 +18,8 @@
         "golang.Go",
         "esbenp.prettier-vscode",
         "ms-azuretools.vscode-docker",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "anthropic.claude-code"
       ]
     }
   },
