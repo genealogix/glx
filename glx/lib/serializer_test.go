@@ -17,23 +17,16 @@ func TestNewSerializer(t *testing.T) {
 	if s.Options == nil {
 		t.Fatal("Serializer options are nil")
 	}
-	if !s.Options.IncludeVocabularies {
-		t.Error("Default options should include vocabularies")
-	}
 	if !s.Options.Validate {
 		t.Error("Default options should validate")
 	}
 
 	// Test with custom options
 	opts := &SerializerOptions{
-		IncludeVocabularies: false,
-		Validate:            false,
-		Pretty:              false,
+		Validate: false,
+		Pretty:   false,
 	}
 	s = NewSerializer(opts)
-	if s.Options.IncludeVocabularies {
-		t.Error("Custom options not applied: IncludeVocabularies")
-	}
 	if s.Options.Validate {
 		t.Error("Custom options not applied: Validate")
 	}
@@ -258,7 +251,6 @@ func TestSerializeMultiFile(t *testing.T) {
 
 	// Serialize (disable validation for unit test - we're testing serialization, not data validity)
 	s := NewSerializer(&SerializerOptions{
-		IncludeVocabularies: true,
 		Validate:            false, // Disable validation for unit test
 		Pretty:              true,
 	})
@@ -339,7 +331,6 @@ func TestLoadMultiFile(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	s := NewSerializer(&SerializerOptions{
-		IncludeVocabularies: false, // Skip vocabularies for this test
 		Validate:            false,
 	})
 

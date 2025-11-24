@@ -110,10 +110,9 @@ func importGEDCOM(gedcomPath string) error {
 
 	// Create serializer
 	serializerOpts := &lib.SerializerOptions{
-		IncludeVocabularies: true,
-		Validate:            !importNoValidate,
-		Pretty:              true,
-		Indent:              "  ",
+		Validate: !importNoValidate,
+		Pretty:   true,
+		Indent:   "  ",
 	}
 	serializer := lib.NewSerializer(serializerOpts)
 

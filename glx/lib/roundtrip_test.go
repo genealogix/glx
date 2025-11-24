@@ -190,7 +190,6 @@ func TestGEDCOMToMultiFileRoundTrip(t *testing.T) {
 
 			// Create serializer with vocabularies included
 			opts := &SerializerOptions{
-				IncludeVocabularies: true,
 				Validate:            false,
 				Pretty:              true,
 			}
@@ -267,7 +266,6 @@ func TestSingleToMultiToSingleRoundTrip(t *testing.T) {
 
 			// Create serializer with vocabularies for multi-file
 			optsMulti := &SerializerOptions{
-				IncludeVocabularies: true,
 				Validate:            false,
 				Pretty:              true,
 			}
@@ -348,7 +346,6 @@ func TestVocabularyPreservation(t *testing.T) {
 
 		// Create serializer with vocabularies included
 		opts := &SerializerOptions{
-			IncludeVocabularies: true,
 			Validate:            false,
 			Pretty:              true,
 		}

@@ -247,7 +247,6 @@ glx import <gedcom-file> -o <output> [flags]
 - `-o, --output <path>` - Output file or directory (required)
 - `-f, --format <format>` - Output format: `single` or `multi` (default: `single`)
 - `--no-validate` - Skip validation before saving
-- `--no-vocabularies` - Don't include standard vocabularies
 - `-v, --verbose` - Verbose output
 
 **Supported Formats:**
@@ -261,7 +260,7 @@ glx import <gedcom-file> -o <output> [flags]
 - Builds place hierarchies from GEDCOM locations
 - Converts sources, citations, repositories, and media
 - Creates evidence-based assertions
-- Includes standard vocabularies by default
+- Includes standard vocabularies
 
 **Examples:**
 
@@ -274,9 +273,6 @@ glx import family.ged -o family-archive --format multi
 
 # Import without validation (faster, less safe)
 glx import family.ged -o family.glx --no-validate
-
-# Import without vocabularies (smaller file)
-glx import family.ged -o family.glx --no-vocabularies
 
 # Verbose output to see import progress
 glx import family.ged -o family.glx --verbose
@@ -309,7 +305,6 @@ glx split <input-file> <output-directory> [flags]
 
 **Options:**
 - `--no-validate` - Skip validation before splitting
-- `--no-vocabularies` - Don't include standard vocabularies
 - `-v, --verbose` - Verbose output
 
 **Creates:**
@@ -343,9 +338,6 @@ output-directory/
 ```bash
 # Split an archive
 glx split family.glx family-archive
-
-# Split without vocabularies
-glx split family.glx family-archive --no-vocabularies
 
 # Split without validation
 glx split family.glx family-archive --no-validate

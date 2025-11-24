@@ -25,7 +25,6 @@ import (
 
 var (
 	splitNoValidate      bool
-	splitNoVocabularies  bool
 	splitVerbose         bool
 	splitShowFirstErrors int
 )
@@ -51,9 +50,6 @@ Each entity file includes an _id field to preserve the entity ID.`,
 	Example: `  # Split an archive
   glx split family.glx family-archive
 
-  # Split without vocabularies
-  glx split family.glx family-archive --no-vocabularies
-
   # Split without validation
   glx split family.glx family-archive --no-validate`,
 	Args: cobra.ExactArgs(2),
@@ -64,7 +60,6 @@ func init() {
 	rootCmd.AddCommand(splitCmd)
 
 	splitCmd.Flags().BoolVar(&splitNoValidate, "no-validate", false, "Skip validation before splitting")
-	splitCmd.Flags().BoolVar(&splitNoVocabularies, "no-vocabularies", false, "Don't include standard vocabularies")
 	splitCmd.Flags().BoolVarP(&splitVerbose, "verbose", "v", false, "Verbose output")
 	splitCmd.Flags().IntVar(&splitShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 }
@@ -124,9 +119,8 @@ func splitArchive(inputPath, outputDir string) error {
 	}
 
 	saveOpts := &lib.SerializerOptions{
-		IncludeVocabularies: !splitNoVocabularies,
-		Validate:            false, // Already validated on load
-		Pretty:              true,
+		Validate: false, // Already validated on load
+		Pretty:   true,
 	}
 	saveSerializer := lib.NewSerializer(saveOpts)
 
@@ -157,10 +151,5 @@ func splitArchive(inputPath, outputDir string) error {
 	}
 
 	fmt.Printf("✓ Successfully split archive to %s/\n", outputDir)
-
-	if !splitNoVocabularies {
-		fmt.Println("  Standard vocabularies included")
-	}
-
 	return nil
 }

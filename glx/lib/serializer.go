@@ -27,9 +27,6 @@ type Serializer interface {
 
 // SerializerOptions configures the serializer behavior.
 type SerializerOptions struct {
-	// IncludeVocabularies determines whether to write standard vocabularies to the archive
-	IncludeVocabularies bool
-
 	// Validate determines whether to validate the archive before serialization
 	Validate bool
 
@@ -43,10 +40,9 @@ type SerializerOptions struct {
 // DefaultSerializerOptions returns the default serializer options.
 func DefaultSerializerOptions() *SerializerOptions {
 	return &SerializerOptions{
-		IncludeVocabularies: true,
-		Validate:            true,
-		Pretty:              true,
-		Indent:              "  ",
+		Validate: true,
+		Pretty:   true,
+		Indent:   "  ",
 	}
 }
 
@@ -104,12 +100,10 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 
 	files := make(map[string][]byte)
 
-	// Add vocabularies if requested
-	if s.Options.IncludeVocabularies {
-		for filename, content := range StandardVocabularies() {
-			vocabPath := filepath.Join("vocabularies", filename)
-			files[vocabPath] = content
-		}
+	// Add standard vocabularies
+	for filename, content := range StandardVocabularies() {
+		vocabPath := filepath.Join("vocabularies", filename)
+		files[vocabPath] = content
 	}
 
 	// Serialize entities by type
