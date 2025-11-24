@@ -18,24 +18,86 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 
 ## Installation
 
+### From GitHub Releases (Recommended)
+
+Download the latest pre-built binary for your platform from the [Releases page](https://github.com/genealogix/glx/releases):
+
+**macOS (Apple Silicon):**
+```bash
+# Download and extract (replace VERSION with the version number)
+curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Darwin_arm64.tar.gz | tar xz
+
+# Move to PATH
+sudo mv glx /usr/local/bin/
+
+# Verify installation
+glx --version
+```
+
+**macOS (Intel):**
+```bash
+# Download and extract (replace VERSION with the version number)
+curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Darwin_x86_64.tar.gz | tar xz
+
+# Move to PATH
+sudo mv glx /usr/local/bin/
+
+# Verify installation
+glx --version
+```
+
+**Linux (ARM64):**
+```bash
+# Download and extract (replace VERSION with the version number)
+curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Linux_arm64.tar.gz | tar xz
+
+# Move to PATH
+sudo mv glx /usr/local/bin/
+
+# Verify installation
+glx --version
+```
+
+**Linux (x86_64):**
+```bash
+# Download and extract (replace VERSION with the version number)
+curl -L https://github.com/genealogix/glx/releases/download/VERSION/glx_Linux_x86_64.tar.gz | tar xz
+
+# Move to PATH
+sudo mv glx /usr/local/bin/
+
+# Verify installation
+glx --version
+```
+
+**Windows (ARM64):**
+- Download `glx_Windows_arm64.zip` from the [Releases page](https://github.com/genealogix/glx/releases)
+- Extract the ZIP file
+- Add the directory to your PATH or move `glx.exe` to a directory in your PATH
+
+**Windows (x86_64):**
+- Download `glx_Windows_x86_64.zip` from the [Releases page](https://github.com/genealogix/glx/releases)
+- Extract the ZIP file
+- Add the directory to your PATH or move `glx.exe` to a directory in your PATH
+
+### Using Go Install
+
+```bash
+go install github.com/genealogix/glx/glx@latest
+```
+
 ### From Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/genealogix/glx.git
-cd spec/glx
+cd glx/glx
 
 # Build the tool
 go build -o glx .
 
 # Optional: Install to PATH
 go install
-```
-
-### Using Go Install
-
-```bash
-go install github.com/genealogix/glx/glx@latest
 ```
 
 ## Quick Start
