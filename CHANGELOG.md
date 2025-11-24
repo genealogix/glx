@@ -15,9 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### GEDCOM Import (lib)
-- **Full GEDCOM 5.5.1 support** - Import all standard GEDCOM 5.5.1 files
-- **Full GEDCOM 7.0 support** - Import GEDCOM 7.0 with new features
-- **Full GEDCOM 5.5.5 support** - Import GEDCOM 5.5.5 specification samples
+- **GEDCOM 5.5.1 support** - Import standard GEDCOM 5.5.1 files
+- **GEDCOM 7.0 support** - Import GEDCOM 7.0 with new features
+- **GEDCOM 5.5.5 support** - Import GEDCOM 5.5.5 specification samples
 - **Two-pass conversion** - Entities first, then families for proper relationship handling
 - **Evidence chain mapping** - GEDCOM SOUR tags → GLX Citations → GLX Assertions
 - **Place hierarchy building** - Parse place strings into hierarchical Place entities

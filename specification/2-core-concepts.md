@@ -444,12 +444,27 @@ Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **
 
 ### Why Archive-Level Vocabularies?
 
-1. **Autonomy**: No dependency on external registries or services
-2. **Flexibility**: Each archive can define types specific to its research context
-3. **Versioning**: Vocabulary changes are tracked with the archive in Git
-4. **Offline Work**: No internet connection required for validation
-5. **Collaboration**: Teams discuss and agree on types within their repository
-6. **Standards + Custom**: Provides standard types while allowing extensions
+This is one of GENEALOGIX's most powerful features: **each archive controls its own type system**.
+
+#### Freedom and Flexibility
+Unlike formats with centrally-defined types, GLX lets each archive define exactly what it needs:
+
+- **Genealogy**: Use standard relationship types (marriage, parent-child, adoption)
+- **Colonial History**: Add custom types (indenture, manumission, land_grant)
+- **Religious Studies**: Define custom events (ordination, investiture, pilgrimage)
+- **Biography**: Create domain-specific relationships (mentor-mentee, patron-artist)
+- **Local History**: Track community roles (town_selectman, guild_master)
+- **And more**: Any research domain with people, events, and relationships
+
+#### Autonomy Without Chaos
+You get both standardization AND flexibility:
+
+1. **Standard starter vocabularies**: New archives begin with common genealogy types
+2. **Extend as needed**: Add custom types specific to your research
+3. **Archive-owned**: No central committee, no approval process
+4. **Git-versioned**: Vocabulary changes tracked with your data
+5. **Validated**: The CLI ensures all used types are defined
+6. **Collaborative**: Teams discuss and agree on types within the repository
 
 ### Standard Vocabulary Files
 
@@ -467,25 +482,68 @@ vocabularies/
   quality-ratings.glx     # 0-3 evidence quality scale
 ```
 
-### Custom Type Example
+### Examples of Custom Vocabularies
 
-Archives can extend standard vocabularies with custom types:
+#### Maritime Genealogy
+```yaml
+# vocabularies/event-types.glx
+event_types:
+  ship_departure:
+    label: "Ship Departure"
+    description: "Departure on a sea voyage"
+    custom: true
 
+  shipwreck:
+    label: "Shipwreck"
+    description: "Vessel lost at sea"
+    custom: true
+```
+
+#### Academic Biography
 ```yaml
 # vocabularies/relationship-types.glx
 relationship_types:
-  # Standard types
-  marriage:
-    label: "Marriage"
-    description: "Legal or religious union"
-    gedcom: "MARR"
-  
-  # Custom types for this archive's research
-  blood-brother:
-    label: "Blood Brother"
-    description: "Non-biological brotherhood bond through ceremony"
+  doctoral_advisor:
+    label: "Doctoral Advisor"
+    description: "PhD thesis advisor relationship"
+    custom: true
+
+  academic_rivalry:
+    label: "Academic Rivalry"
+    description: "Documented professional competition"
     custom: true
 ```
+
+#### Enslaved Persons Research
+```yaml
+# vocabularies/event-types.glx
+event_types:
+  manumission:
+    label: "Manumission"
+    description: "Legal grant of freedom"
+    gedcom: "EVEN"
+    custom: true
+
+  sale:
+    label: "Sale"
+    description: "Record of person being sold"
+    gedcom: "EVEN"
+    custom: true
+```
+
+### No Limits, No Boundaries
+
+**Traditional genealogy formats say**: "You can only use these predefined types"
+
+**GENEALOGIX says**: "Define whatever types your research needs"
+
+This makes GLX suitable for:
+- Traditional family history
+- Local and community history
+- Biographical research
+- Prosopography (collective biography)
+- Historical demography
+- Any research involving people, events, and relationships
 
 ### Validation
 

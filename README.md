@@ -12,7 +12,7 @@ layout: doc
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
 [![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
 
-The official specification for the **GENEALOGIX (GLX)** family archive format - a modern, evidence-first, Git-native genealogy data standard.
+The official specification for **GENEALOGIX (GLX)** - a portable, extensible archive format for genealogical research and beyond. Built on Git, designed for collaboration, and customizable through archive-owned vocabularies. Your data, your way, forever.
 
 ## Quick Links
 
@@ -43,6 +43,9 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 | **Human Readability** | Don't even try | Clear YAML structure |
 | **Validation** | Syntax only | Schema-based validation |
 | **Extensibility** | Limited | JSON Schema based |
+| **Data Portability** | Vendor lock-in | Open format you own |
+| **Interoperability** | GEDCOM export only | Import/export + Git workflows |
+| **Custom Types** | Fixed schema | Archive-defined vocabularies |
 
 ### Visual Comparison
 
@@ -76,6 +79,28 @@ assertions:
 ```
 
 > **Learn More:** See [Core Concepts](specification/2-core-concepts.md) for the complete assertion model and evidence chain explanation.
+
+### Beyond Exchange: A True Research Foundation
+
+GENEALOGIX is more than an import/export format. It's a **permanent foundation** for your research:
+
+#### Data You Own and Control
+- **Human-readable YAML** - Edit in any text editor, no special software required
+- **Open format** - No proprietary database, no vendor lock-in
+- **Portable forever** - Your data outlasts any software application
+- **Git-native** - Industry-standard version control built in
+
+#### Flexible to Your Research Domain
+- **Custom vocabularies** - Define your own event types, relationship types, properties
+- **Beyond genealogy** - Biography projects, local history, prosopography, and more
+- **Extensible schema** - Add custom fields without breaking compatibility
+- **No central registry** - Each archive is autonomous and self-contained
+
+#### Built for Collaboration
+- **Git workflows** - Branch, merge, and collaborate like software developers
+- **Evidence-first** - Every claim backed by documented sources
+- **Conflict resolution** - Handle competing evidence systematically
+- **Pull request reviews** - Quality assurance through peer review
 
 ## What is GENEALOGIX?
 

@@ -92,6 +92,80 @@ git checkout -b research/1851-census
 git checkout -b evidence/vital-records
 ```
 
+## Vocabulary Design
+
+### When to Use Standard Vocabularies
+
+**Best Practice:** Start with standard vocabularies and extend only when necessary.
+
+```yaml
+# vocabularies/event-types.glx
+event_types:
+  # Standard types cover most genealogy needs
+  birth:
+    label: "Birth"
+    gedcom: "BIRT"
+
+  marriage:
+    label: "Marriage"
+    gedcom: "MARR"
+
+  # Add custom types sparingly
+  land_grant:
+    label: "Land Grant"
+    description: "Colonial land grant from government"
+    custom: true
+```
+
+### When to Create Custom Vocabularies
+
+**Best Practice:** Create custom types when:
+1. Standard types don't capture your research domain
+2. The event/relationship is common in your data
+3. You need to distinguish it for analysis
+
+**Good custom types:**
+- Domain-specific events (`ship_departure` for maritime history)
+- Specialized relationships (`patron-artist` for art history)
+- Cultural practices (`coming_of_age`, `pilgrimage`)
+
+**Avoid:**
+- Over-granularity (use properties/notes instead)
+- Temporary research needs (use tags/notes)
+- Personal preferences when standard types exist
+
+### Vocabulary Governance
+
+**Best Practice:** For collaborative archives, document vocabulary decisions:
+
+```yaml
+# vocabularies/README.md
+# Vocabulary Change Policy
+
+All vocabulary changes require:
+1. Discussion in GitHub issue
+2. Approval from 2+ collaborators
+3. Update to vocabulary documentation
+4. Backward compatibility check
+
+## Custom Types Rationale
+
+- `ship_departure`: Standard GEDCOM EMIG doesn't capture naval context
+- `port_arrival`: Needed for tracking maritime movements
+```
+
+### Cross-Archive Compatibility
+
+**Best Practice:** If sharing data between archives, align vocabularies:
+
+```bash
+# Copy vocabulary files between related archives
+cp archive-1/vocabularies/event-types.glx archive-2/vocabularies/
+
+# Or maintain shared vocabularies in a separate repo
+git submodule add https://github.com/org/shared-vocabularies vocabularies/
+```
+
 ## Conflicting Evidence
 
 Document resolution when sources conflict:

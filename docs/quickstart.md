@@ -12,6 +12,7 @@ Get started with GENEALOGIX in 5 minutes! This guide walks you through creating 
 
 - Installing the `glx` CLI tool
 - Creating a new genealogy repository
+- **Customizing vocabularies for your research domain**
 - Adding your first person, event, and relationship
 - Validating your archive
 - Using Git for version control
@@ -275,6 +276,87 @@ glx validate
 # See all validation examples
 glx validate examples/complete-family/
 ```
+
+## Step 10: Customize Vocabularies for Your Research
+
+GLX isn't limited to traditional genealogy! Customize the vocabularies to match your research domain.
+
+### Example: Maritime History Research
+
+**Edit `vocabularies/event-types.glx`:**
+```yaml
+# vocabularies/event-types.glx
+event_types:
+  # Standard types (already present)
+  birth:
+    label: "Birth"
+    description: "Birth of a person"
+    gedcom: "BIRT"
+
+  # ADD YOUR CUSTOM TYPES
+  ship_departure:
+    label: "Ship Departure"
+    description: "Departure on a sea voyage"
+    custom: true
+
+  port_arrival:
+    label: "Port Arrival"
+    description: "Arrival at a port"
+    custom: true
+```
+
+### Example: Academic Biography
+
+**Edit `vocabularies/relationship-types.glx`:**
+```yaml
+# vocabularies/relationship-types.glx
+relationship_types:
+  # Standard types
+  marriage:
+    label: "Marriage"
+    description: "Legal or religious union"
+    gedcom: "MARR"
+
+  # ADD ACADEMIC RELATIONSHIPS
+  doctoral_advisor:
+    label: "Doctoral Advisor"
+    description: "PhD thesis advisor"
+    custom: true
+
+  collaborator:
+    label: "Research Collaborator"
+    description: "Co-author or research partner"
+    custom: true
+```
+
+**Then use your custom types:**
+```yaml
+# events/event-voyage.glx
+events:
+  event-voyage-1850:
+    type: ship_departure  # Your custom type!
+    date: "1850-06-15"
+    place: place-liverpool
+    participants:
+      - person: person-john-smith
+        role: passenger
+```
+
+**Validate your custom vocabulary:**
+```bash
+glx validate
+# ✓ Confirms your custom types are properly defined
+```
+
+### The Power of Custom Vocabularies
+
+GLX adapts to YOUR research domain:
+- **Genealogy**: Use standard family history types
+- **Biography**: Add professional relationships and achievements
+- **Local History**: Track community roles and civic events
+- **Maritime History**: Document voyages and naval careers
+- **Religious Studies**: Record ordinations, pilgrimages, and church roles
+- **And more**: Any domain with people, events, and relationships
 
 ## Troubleshooting
 

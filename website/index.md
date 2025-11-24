@@ -6,7 +6,7 @@ description: A modern, evidence-first, Git-native genealogy data standard
 hero:
   name: GENEALOGIX
   text: Git-Native Genealogy
-  tagline: A modern, evidence-first family archive format built for collaboration
+  tagline: A portable, extensible family archive format that's yours to keep forever
   image:
     src: /logo.svg
     alt: GENEALOGIX
@@ -46,9 +46,17 @@ features:
     title: Complete Provenance
     details: Full audit trail from original source documents through citations to final genealogical conclusions.
 
+  - icon: 🔄
+    title: True Data Portability
+    details: Your data in human-readable YAML files you can read, edit, and migrate anywhere - no vendor lock-in, no proprietary formats.
+
+  - icon: ⚡
+    title: Infinitely Extensible
+    details: Define custom event types, relationship types, and properties for ANY domain - genealogy, biography, local history, and beyond.
+
   - icon: 🎯
-    title: Repository-Owned Vocabularies
-    details: Define custom relationship types, event types, and other controlled vocabularies within each archive.
+    title: Your Types, Your Rules
+    details: Each archive defines its own controlled vocabularies - from traditional genealogy to custom research domains. No central registry, no dependencies.
 
   - icon: 🚀
     title: Modern Tooling
@@ -61,7 +69,7 @@ features:
 
 ## Why GENEALOGIX?
 
-Traditional genealogy formats like GEDCOM have served researchers well, but they have limitations in the modern collaborative research environment. GENEALOGIX addresses these challenges with a fresh approach designed for Git workflows, evidence-based research, and community collaboration.
+Traditional genealogy software traps your research in proprietary databases and limited file formats. GENEALOGIX gives you **true data ownership** with human-readable files you can edit in any text editor, store anywhere, and collaborate on using Git. Whether you're documenting traditional family trees, researching local history, or building biographical databases, GLX adapts to **your research needs** - not the other way around. It's a **permanent foundation** for your work that will outlast any single software tool.
 
 ### Quick Comparison
 
@@ -73,6 +81,9 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 | **Human Readability** | Binary-like format   | Clear YAML structure     |
 | **Validation**        | Syntax only          | Schema-based validation  |
 | **Extensibility**     | Limited              | JSON Schema based        |
+| **Data Portability**  | Vendor lock-in       | Open format you own      |
+| **Interoperability**  | GEDCOM export only   | Import/export + Git workflows |
+| **Custom Types**      | Fixed schema         | Archive-defined vocabularies |
 
 ## Quick Start
 
