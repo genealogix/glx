@@ -6,7 +6,9 @@
       "Bash(make test-verbose:*)",
       "Bash(make lint:*)",
       "Bash(make lint-fix:*)",
-      "Bash(./bin/glx:*)"
+      "Bash(./bin/glx:*)",
+      "Bash(make test-coverage:*)",
+      "Bash(go tool cover:*)"
     ],
     "deny": [],
     "ask": []
