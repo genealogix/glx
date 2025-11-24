@@ -53,34 +53,28 @@ event_types:
   publication:
     label: "Publication"
     description: "Published work (book, article, etc.)"
-    custom: true
 
   award_received:
     label: "Award Received"
     description: "Academic or professional award"
-    custom: true
 
   appointment:
     label: "Appointment"
     description: "Professional appointment or position"
-    custom: true
 
 # vocabularies/relationship-types.glx
 relationship_types:
   doctoral_advisor:
     label: "Doctoral Advisor"
     description: "PhD thesis advisor"
-    custom: true
 
   collaborator:
     label: "Research Collaborator"
     description: "Co-author or research partner"
-    custom: true
 
   mentor:
     label: "Mentor"
     description: "Professional or academic mentor"
-    custom: true
 ```
 
 **Perfect For:**
@@ -110,34 +104,28 @@ event_types:
   town_meeting:
     label: "Town Meeting"
     description: "Participation in town meeting"
-    custom: true
 
   election:
     label: "Election"
     description: "Election to public office"
-    custom: true
 
   property_transaction:
     label: "Property Transaction"
     description: "Land purchase or sale"
-    custom: true
 
 # vocabularies/relationship-types.glx
 relationship_types:
   town_selectman:
     label: "Town Selectman"
     description: "Elected town official"
-    custom: true
 
   church_member:
     label: "Church Member"
     description: "Membership in religious congregation"
-    custom: true
 
   business_partner:
     label: "Business Partner"
     description: "Commercial partnership"
-    custom: true
 ```
 
 **Perfect For:**
@@ -168,35 +156,29 @@ event_types:
     label: "Ship Departure"
     description: "Departure on a sea voyage"
     gedcom: "EMIG"
-    custom: true
 
   port_arrival:
     label: "Port Arrival"
     description: "Arrival at a port"
     gedcom: "IMMI"
-    custom: true
 
   shipwreck:
     label: "Shipwreck"
     description: "Vessel lost at sea"
-    custom: true
 
   naval_commission:
     label: "Naval Commission"
     description: "Commission as naval officer"
-    custom: true
 
 # vocabularies/participant-roles.glx
 participant_roles:
   ship_captain:
     label: "Ship Captain"
     description: "Master of a vessel"
-    custom: true
 
   crew_member:
     label: "Crew Member"
     description: "Member of ship's crew"
-    custom: true
 ```
 
 **Perfect For:**
@@ -227,26 +209,22 @@ event_types:
     label: "Manumission"
     description: "Legal grant of freedom"
     gedcom: "EVEN"
-    custom: true
 
   sale:
     label: "Sale"
     description: "Record of person being sold"
     gedcom: "EVEN"
-    custom: true
 
   escaped:
     label: "Escaped"
     description: "Escape from enslavement"
     gedcom: "EVEN"
-    custom: true
 
 # vocabularies/relationship-types.glx
 relationship_types:
   enslaved_by:
     label: "Enslaved By"
     description: "Person held in slavery by another"
-    custom: true
 ```
 
 **Ethical Considerations:**
@@ -282,29 +260,24 @@ event_types:
   matriculation:
     label: "Matriculation"
     description: "University enrollment"
-    custom: true
 
   guild_admission:
     label: "Guild Admission"
     description: "Admission to professional guild"
-    custom: true
 
   elected_to_parliament:
     label: "Elected to Parliament"
     description: "Election to legislative body"
-    custom: true
 
 # vocabularies/relationship-types.glx
 relationship_types:
   guild_member:
     label: "Guild Member"
     description: "Member of professional guild"
-    custom: true
 
   fellow_student:
     label: "Fellow Student"
     description: "Studied at same institution"
-    custom: true
 ```
 
 **Perfect For:**
@@ -369,39 +342,32 @@ event_types:
   ordination:
     label: "Ordination"
     description: "Ordination as clergy"
-    custom: true
 
   investiture:
     label: "Investiture"
     description: "Formal installation in religious office"
-    custom: true
 
   pilgrimage:
     label: "Pilgrimage"
     description: "Religious journey to holy site"
-    custom: true
 
   taking_vows:
     label: "Taking Vows"
     description: "Monastic profession"
-    custom: true
 
 # vocabularies/relationship-types.glx
 relationship_types:
   clergy:
     label: "Clergy"
     description: "Ordained minister or priest"
-    custom: true
 
   parishioner:
     label: "Parishioner"
     description: "Member of parish"
-    custom: true
 
   monastery_member:
     label: "Monastery Member"
     description: "Member of monastic community"
-    custom: true
 ```
 
 **Perfect For:**
@@ -444,7 +410,6 @@ event_types:
   your_custom_event:
     label: "Your Custom Event"
     description: "Clear description for your team"
-    custom: true
 ```
 
 ### 4. Validate Regularly

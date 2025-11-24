@@ -2,7 +2,7 @@
 # This file defines the standard confidence levels for assertions.
 # These provide an alternative to citation quality ratings and reflect
 # overall confidence in conclusions based on all available evidence.
-# Archives can extend this with custom levels by adding entries with `custom: true`.
+# Archives can extend this with custom levels by adding additional entries.
 
 confidence_levels:
   high:

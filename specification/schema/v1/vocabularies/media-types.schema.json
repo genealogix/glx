@@ -13,8 +13,7 @@
           "properties": {
             "label": { "type": "string" },
             "description": { "type": "string" },
-            "mime_type": { "type": "string" },
-            "custom": { "type": "boolean" }
+            "mime_type": { "type": "string" }
           },
           "additionalProperties": true
         }

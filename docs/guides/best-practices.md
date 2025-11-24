@@ -114,7 +114,6 @@ event_types:
   land_grant:
     label: "Land Grant"
     description: "Colonial land grant from government"
-    custom: true
 ```
 
 ### When to Create Custom Vocabularies

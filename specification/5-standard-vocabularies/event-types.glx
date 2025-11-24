@@ -1,6 +1,6 @@
 # Standard Event Types
 # This file defines the standard event and fact types for GENEALOGIX archives.
-# Archives can extend this with custom types by adding entries with `custom: true`.
+# Archives can extend this with custom types by adding additional entries.
 
 event_types:
   # Lifecycle Events

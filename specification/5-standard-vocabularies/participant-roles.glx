@@ -1,6 +1,6 @@
 # Standard Participant Roles
 # This file defines the standard roles that people play in events and relationships.
-# Archives can extend this with custom roles by adding entries with `custom: true`.
+# Archives can extend this with custom roles by adding additional entries.
 
 participant_roles:
   # Event Roles

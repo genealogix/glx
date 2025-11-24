@@ -491,12 +491,10 @@ event_types:
   ship_departure:
     label: "Ship Departure"
     description: "Departure on a sea voyage"
-    custom: true
 
   shipwreck:
     label: "Shipwreck"
     description: "Vessel lost at sea"
-    custom: true
 ```
 
 #### Academic Biography
@@ -506,12 +504,10 @@ relationship_types:
   doctoral_advisor:
     label: "Doctoral Advisor"
     description: "PhD thesis advisor relationship"
-    custom: true
 
   academic_rivalry:
     label: "Academic Rivalry"
     description: "Documented professional competition"
-    custom: true
 ```
 
 #### Enslaved Persons Research
@@ -522,13 +518,11 @@ event_types:
     label: "Manumission"
     description: "Legal grant of freedom"
     gedcom: "EVEN"
-    custom: true
 
   sale:
     label: "Sale"
     description: "Record of person being sold"
     gedcom: "EVEN"
-    custom: true
 ```
 
 ### No Limits, No Boundaries

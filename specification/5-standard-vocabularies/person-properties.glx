@@ -1,7 +1,7 @@
 # Standard Person Properties
 # This file defines the standard properties for person entities.
 # These properties represent the concluded or accepted values for a person.
-# Archives can extend this with custom properties by adding entries with `custom: true`.
+# Archives can extend this with custom properties by adding additional entries.
 
 person_properties:
   given_name:

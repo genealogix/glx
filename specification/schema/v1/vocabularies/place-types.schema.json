@@ -13,8 +13,7 @@
           "properties": {
             "label": { "type": "string" },
             "description": { "type": "string" },
-            "category": { "type": "string", "enum": ["administrative", "geographic", "religious", "institution", "other"] },
-            "custom": { "type": "boolean" }
+            "category": { "type": "string", "enum": ["administrative", "geographic", "religious", "institution", "other"] }
           },
           "additionalProperties": true
         }

@@ -274,7 +274,6 @@ type EventType struct {
 	Description string `yaml:"description,omitempty"`
 	Category    string `yaml:"category,omitempty"`
 	GEDCOM      string `yaml:"gedcom,omitempty"`
-	Custom      *bool  `yaml:"custom,omitempty"`
 }
 
 // ParticipantRole represents a standard participant role vocabulary entry.
@@ -282,14 +281,12 @@ type ParticipantRole struct {
 	Label       string   `yaml:"label"`
 	Description string   `yaml:"description,omitempty"`
 	AppliesTo   []string `yaml:"applies_to,omitempty"`
-	Custom      *bool    `yaml:"custom,omitempty"`
 }
 
 // ConfidenceLevel represents a standard confidence level vocabulary entry.
 type ConfidenceLevel struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
-	Custom      *bool  `yaml:"custom,omitempty"`
 }
 
 // RelationshipType represents a standard relationship type vocabulary entry.
@@ -297,7 +294,6 @@ type RelationshipType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
 	GEDCOM      string `yaml:"gedcom,omitempty"`
-	Custom      *bool  `yaml:"custom,omitempty"`
 }
 
 // PlaceType represents a standard place type vocabulary entry.
@@ -305,21 +301,18 @@ type PlaceType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
 	Category    string `yaml:"category,omitempty"`
-	Custom      *bool  `yaml:"custom,omitempty"`
 }
 
 // SourceType represents a standard source type vocabulary entry.
 type SourceType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
-	Custom      *bool  `yaml:"custom,omitempty"`
 }
 
 // RepositoryType represents a standard repository type vocabulary entry.
 type RepositoryType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
-	Custom      *bool  `yaml:"custom,omitempty"`
 }
 
 // MediaType represents a standard media type vocabulary entry.
@@ -327,7 +320,6 @@ type MediaType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
 	MimeType    string `yaml:"mime_type,omitempty"`
-	Custom      *bool  `yaml:"custom,omitempty"`
 }
 
 // QualityRating represents a standard quality rating vocabulary entry.
@@ -336,7 +328,6 @@ type QualityRating struct {
 	Label       string   `yaml:"label"`
 	Description string   `yaml:"description,omitempty"`
 	Examples    []string `yaml:"examples,omitempty"`
-	Custom      *bool    `yaml:"custom,omitempty"`
 }
 
 // PropertyDefinition defines a property that can be used on entities.
@@ -347,7 +338,6 @@ type PropertyDefinition struct {
 	ValueType     string `yaml:"value_type,omitempty"`     // string, date, integer, boolean
 	ReferenceType string `yaml:"reference_type,omitempty"` // persons, places, events, relationships, etc.
 	Temporal      *bool  `yaml:"temporal,omitempty"`       // Can this property change over time?
-	Custom        *bool  `yaml:"custom,omitempty"`
 }
 
 // TemporalValue represents a single entry in the history of a temporal property.

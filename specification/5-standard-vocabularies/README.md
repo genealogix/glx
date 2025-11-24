@@ -226,13 +226,12 @@ Extend standard vocabularies by adding custom entries:
 # vocabularies/event-types.glx
 event_types:
   # ... standard types ...
-  
+
   # Custom types
   apprenticeship:
     label: "Apprenticeship"
     description: "Beginning of apprenticeship training"
     category: "occupation"
-    custom: true
 ```
 
 ### Using Custom Types
@@ -264,7 +263,6 @@ $ glx validate
 
 - **Use Standard Types First** - Standard types ensure GEDCOM compatibility and interoperability
 - **Document Custom Types** - Provide clear labels and descriptions for custom types
-- **Mark Custom Types** - Always include `custom: true` for non-standard types
 - **Map to GEDCOM** - Include GEDCOM mappings when possible (use `_TAG` format for custom tags)
 - **Keep Consistent** - Use consistent naming conventions (lowercase with hyphens)
 

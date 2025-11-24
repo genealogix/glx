@@ -297,12 +297,10 @@ event_types:
   ship_departure:
     label: "Ship Departure"
     description: "Departure on a sea voyage"
-    custom: true
 
   port_arrival:
     label: "Port Arrival"
     description: "Arrival at a port"
-    custom: true
 ```
 
 ### Example: Academic Biography
@@ -321,12 +319,10 @@ relationship_types:
   doctoral_advisor:
     label: "Doctoral Advisor"
     description: "PhD thesis advisor"
-    custom: true
 
   collaborator:
     label: "Research Collaborator"
     description: "Co-author or research partner"
-    custom: true
 ```
 
 **Then use your custom types:**

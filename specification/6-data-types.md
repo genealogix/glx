@@ -33,7 +33,6 @@ A true/false value.
 
 **Example:**
 ```yaml
-custom: true
 ```
 
 ### Date

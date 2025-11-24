@@ -1,6 +1,6 @@
 # Standard Source Types
 # This file defines the standard source types for GENEALOGIX archives.
-# Archives can extend this with custom types by adding entries with `custom: true`.
+# Archives can extend this with custom types by adding additional entries.
 
 source_types:
   vital_record:

@@ -16,7 +16,7 @@ GENEALOGIX includes a comprehensive set of standard vocabularies that define con
 When you run `glx init`, these standard vocabulary files are copied to your archive's `vocabularies/` directory. You can then customize them by:
 
 - Editing descriptions and labels
-- Adding custom types with `custom: true`
+- Adding additional types
 - Adjusting to match your research focus
   :::
 
@@ -216,7 +216,6 @@ event_types:
     label: 'Apprenticeship'
     description: 'Beginning of apprenticeship training'
     category: 'occupation'
-    custom: true
 ```
 
 ### Using Custom Types
@@ -249,7 +248,7 @@ $ glx validate
 
 1. **Use Standard Types First** - Standard types ensure GEDCOM compatibility and interoperability
 2. **Document Custom Types** - Provide clear labels and descriptions for custom types
-3. **Mark Custom Types** - Always include `custom: true` for non-standard types
+3. 
 4. **Map to GEDCOM** - Include GEDCOM mappings when possible (use `_TAG` format for custom tags)
 5. **Keep Consistent** - Use consistent naming conventions (lowercase with hyphens)
 

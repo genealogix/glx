@@ -73,12 +73,11 @@ event_types:
     category: "attribute"
     gedcom: "OCCU"
   
-  # Custom event types
+  # Additional event types
   apprenticeship:
     label: "Apprenticeship"
     description: "Beginning of apprenticeship training"
     category: "occupation"
-    custom: true
 ```
 
 ### Fields
@@ -89,7 +88,6 @@ event_types:
 | `description` | No | Detailed description |
 | `category` | No | Category (lifecycle, attribute, religious, legal, migration, other) |
 | `gedcom` | No | GEDCOM tag mapping |
-| `custom` | No | Mark as custom (non-standard) type |
 
 ### Standard Event Types
 
@@ -97,28 +95,26 @@ event_types:
 
 **Complete List**: See [Standard Vocabularies - Event Types](/specification/5-standard-vocabularies/#event-types) for the complete default vocabulary file with all standard types.
 
-### Adding Custom Event Types
+### Adding Additional Event Types
 
-Add custom event types for specialized research:
+Add additional event types for specialized research:
 
 ```yaml
 # vocabularies/event-types.glx
 event_types:
   # ... standard types ...
-  
-  # Custom types
+
+  # Additional types
   apprenticeship:
     label: "Apprenticeship"
     description: "Beginning of apprenticeship training"
     category: "occupation"
-    custom: true
-  
+
   land-grant:
     label: "Land Grant"
     description: "Receipt of land grant or patent"
     category: "property"
     gedcom: "_LAND"
-    custom: true
 ```
 
 ---
@@ -153,11 +149,10 @@ relationship_types:
     description: "Brother or sister relationship"
     gedcom: "SIBL"
   
-  # Custom relationship types
+  # Additional relationship types
   godparent:
     label: "Godparent"
     description: "Spiritual sponsor relationship"
-    custom: true
 ```
 
 ### Fields
@@ -167,7 +162,6 @@ relationship_types:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `gedcom` | No | GEDCOM tag mapping |
-| `custom` | No | Mark as custom (non-standard) type |
 
 ### Standard Relationship Types
 
@@ -175,25 +169,23 @@ relationship_types:
 
 **Complete List**: See [Standard Vocabularies - Relationship Types](/specification/5-standard-vocabularies/#relationship-types) for the complete default vocabulary file with all standard types.
 
-### Adding Custom Relationship Types
+### Adding Additional Relationship Types
 
-Add custom relationship types for specialized research:
+Add additional relationship types for specialized research:
 
 ```yaml
 # vocabularies/relationship-types.glx
 relationship_types:
   # ... standard types ...
-  
-  # Custom types
+
+  # Additional types
   blood-brother:
     label: "Blood Brother"
     description: "Non-biological brotherhood bond through ceremony"
-    custom: true
-  
+
   chosen-family:
     label: "Chosen Family"
     description: "Close familial bond without biological or legal tie"
-    custom: true
 ```
 
 ---
@@ -233,12 +225,11 @@ place_types:
     description: "Church parish or ecclesiastical division"
     category: "religious"
   
-  # Custom place types
+  # Additional place types
   plantation:
     label: "Plantation"
     description: "Agricultural estate or plantation"
     category: "geographic"
-    custom: true
 ```
 
 ### Fields
@@ -248,7 +239,6 @@ place_types:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `category` | No | Category (administrative, geographic, religious, institution, other) |
-| `custom` | No | Mark as custom (non-standard) type |
 
 ### Standard Place Types
 
@@ -256,27 +246,25 @@ place_types:
 
 **Complete List**: See [Standard Vocabularies - Place Types](/specification/5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
-### Adding Custom Place Types
+### Adding Additional Place Types
 
-Add custom place types for specialized research:
+Add additional place types for specialized research:
 
 ```yaml
 # vocabularies/place-types.glx
 place_types:
   # ... standard types ...
-  
-  # Custom types
+
+  # Additional types
   plantation:
     label: "Plantation"
     description: "Agricultural estate or plantation"
     category: "geographic"
-    custom: true
-  
+
   mission:
     label: "Mission"
     description: "Religious mission station"
     category: "religious"
-    custom: true
 ```
 
 ---
@@ -315,7 +303,6 @@ source_types:
   oral_history:
     label: "Oral History"
     description: "Interviews, recorded memories"
-    custom: true
 ```
 
 ### Fields
@@ -324,7 +311,6 @@ source_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `custom` | No | Mark as custom (non-standard) type |
 
 ### Standard Source Types
 
@@ -332,20 +318,19 @@ source_types:
 
 **Complete List**: See [Standard Vocabularies - Source Types](/specification/5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
-### Adding Custom Source Types
+### Adding Additional Source Types
 
-Add custom source types for specialized research:
+Add additional source types for specialized research:
 
 ```yaml
 # vocabularies/source-types.glx
 source_types:
   # ... standard types ...
-  
-  # Custom types
+
+  # Additional types
   oral_history:
     label: "Oral History"
     description: "Interviews, recorded memories"
-    custom: true
 ```
 
 ---
@@ -389,7 +374,6 @@ media_types:
     label: "Certificate"
     description: "Official certificate or license"
     mime_type: "image/tiff"
-    custom: true
 ```
 
 ### Fields
@@ -399,7 +383,6 @@ media_types:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `mime_type` | No | Default MIME type for this media type |
-| `custom` | No | Mark as custom (non-standard) type |
 
 ### Standard Media Types
 
@@ -407,27 +390,25 @@ media_types:
 
 **Complete List**: See [Standard Vocabularies - Media Types](/specification/5-standard-vocabularies/#media-types) for the complete default vocabulary file with all standard types.
 
-### Adding Custom Media Types
+### Adding Additional Media Types
 
-Add custom media types for specialized collections:
+Add additional media types for specialized collections:
 
 ```yaml
 # vocabularies/media-types.glx
 media_types:
   # ... standard types ...
-  
-  # Custom types
+
+  # Additional types
   certificate:
     label: "Certificate"
     description: "Official certificate or license"
     mime_type: "image/tiff"
-    custom: true
-  
+
   artifact:
     label: "Artifact"
     description: "3D scan or photo of physical artifact"
     mime_type: "model/gltf"
-    custom: true
 ```
 
 ---
@@ -528,11 +509,10 @@ confidence_levels:
     label: "Disputed"
     description: "Multiple sources conflict, resolution unclear"
   
-  # Custom confidence levels
+  # Additional confidence levels
   tentative:
     label: "Tentative"
     description: "Working hypothesis pending additional research"
-    custom: true
 ```
 
 ### Fields
@@ -541,7 +521,6 @@ confidence_levels:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `custom` | No | Mark as custom (non-standard) level |
 
 ### Important Notes
 
@@ -588,11 +567,10 @@ repository_types:
     label: "Museum"
     description: "Museum with genealogical collections"
   
-  # Custom repository types
+  # Additional repository types
   historical_society:
     label: "Historical Society"
     description: "Local historical society"
-    custom: true
 ```
 
 ### Fields
@@ -601,7 +579,6 @@ repository_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `custom` | No | Mark as custom (non-standard) type |
 
 ### Standard Repository Types
 
@@ -662,14 +639,13 @@ participant_roles:
     applies_to:
       - relationship
   
-  # Custom roles
+  # Additional roles
   godparent:
     label: "Godparent"
     description: "Spiritual sponsor at baptism"
     applies_to:
       - event
       - relationship
-    custom: true
 ```
 
 ### Fields
@@ -679,7 +655,6 @@ participant_roles:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of entity types (event, relationship) |
-| `custom` | No | Mark as custom (non-standard) role |
 
 ### Standard Participant Roles
 
@@ -812,14 +787,12 @@ person_properties:
     description: "Person's date of birth"
     value_type: date
     temporal: false
-    custom: false
-  
+
   residence:
     label: "Residence"
     description: "Place where person lived"
     reference_type: places
     temporal: true
-    custom: false
 ```
 
 | Field | Required | Description |
@@ -829,7 +802,6 @@ person_properties:
 | `value_type` | No* | Data type: `string`, `date`, `integer`, or `boolean` |
 | `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
 | `temporal` | No | Whether property can change over time (default: false) |
-| `custom` | No | Mark as custom property (non-standard) |
 
 *Exactly one of `value_type` or `reference_type` should be specified (neither defaults to `string`)
 
@@ -853,29 +825,27 @@ properties:
 
 See [Data Types - Temporal Values](../6-data-types.md#temporal-values) for complete documentation.
 
-### Adding Custom Properties
+### Adding Additional Properties
 
-Add custom properties for archive-specific needs:
+Add additional properties for archive-specific needs:
 
 ```yaml
 # vocabularies/person-properties.glx
 person_properties:
   # Standard properties...
-  
-  # Custom properties
+
+  # Additional properties
   militia_service:
     label: "Militia Service"
     description: "Service in local militia"
     value_type: string
     temporal: true
-    custom: true
-  
+
   land_holdings:
     label: "Land Holdings"
     description: "Land owned by person"
     reference_type: places
     temporal: true
-    custom: true
 ```
 
 ### Context-Aware Validation
@@ -989,7 +959,7 @@ $ glx validate
 
 ---
 
-## Creating Custom Types
+## Creating Additional Types
 
 ### Step 1: Add to Vocabulary File
 
@@ -997,14 +967,13 @@ $ glx validate
 # vocabularies/event-types.glx
 event_types:
   # ... standard types ...
-  
-  # Custom types
+
+  # Additional types
   land-grant:
     label: "Land Grant"
     description: "Receipt of land grant or patent"
     category: "property"
     gedcom: "_LAND"  # Non-standard GEDCOM tag
-    custom: true
 ```
 
 ### Step 2: Use in Entity
@@ -1024,7 +993,7 @@ events:
 ```bash
 $ glx validate events/event-land-grant.glx
 ✓ events/event-land-grant.glx
-  - event type 'land-grant' found in vocabulary (custom)
+  - event type 'land-grant' found in vocabulary
 ```
 
 ---
@@ -1038,12 +1007,11 @@ Before creating custom types, check if standard types meet your needs. Standard 
 - Work with most genealogy software
 - Are understood by other researchers
 
-### Document Custom Types
+### Document Additional Types
 
-When adding custom types:
+When adding additional types:
 - Provide clear `label` and `description`
-- Mark with `custom: true`
-- Document why the custom type is needed
+- Document why the additional type is needed
 - Include GEDCOM mapping if possible (use `_TAG` format for custom GEDCOM tags)
 
 ### Keep Vocabularies Consistent
@@ -1055,9 +1023,9 @@ When adding custom types:
 
 ### Share Vocabularies
 
-- Custom vocabularies can be shared between archives
-- Archives working on similar research can standardize custom types
-- Consider submitting useful custom types as proposals for standard types
+- Additional vocabularies can be shared between archives
+- Archives working on similar research can standardize additional types
+- Consider submitting useful types as proposals for standard types
 
 ---
 
@@ -1137,7 +1105,7 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 All vocabulary schemas are located in `specification/schema/v1/vocabularies/` and define:
 - Required top-level key (e.g., `event_types`, `relationship_types`)
 - Required fields for each entry (typically `label`)
-- Optional fields (e.g., `description`, `gedcom`, `custom`)
+- Optional fields (e.g., `description`, `gedcom`)
 - Pattern properties for vocabulary keys (alphanumeric with hyphens, 1-64 characters)
 
 Vocabulary files are validated by the `glx validate` command using these schemas.

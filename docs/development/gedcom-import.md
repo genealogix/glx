@@ -414,7 +414,6 @@ person_properties:
     label: "GEDCOM RIN"
     description: "GEDCOM record identifier number"
     value_type: string
-    custom: true
 ```
 
 ### Export to GEDCOM

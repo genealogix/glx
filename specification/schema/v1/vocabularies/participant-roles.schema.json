@@ -12,8 +12,7 @@
           "required": ["label"],
           "properties": {
             "label": { "type": "string" },
-            "description": { "type": "string" },
-            "custom": { "type": "boolean" }
+            "description": { "type": "string" }
           },
           "additionalProperties": true
         }

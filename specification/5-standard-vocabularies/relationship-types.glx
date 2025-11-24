@@ -1,6 +1,6 @@
 # Standard Relationship Types
 # This file defines the standard relationship types for GENEALOGIX archives.
-# Archives can extend this with custom types by adding entries with `custom: true`.
+# Archives can extend this with custom types by adding additional entries.
 
 relationship_types:
   marriage:

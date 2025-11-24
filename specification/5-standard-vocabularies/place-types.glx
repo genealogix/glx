@@ -1,6 +1,6 @@
 # Standard Place Types
 # This file defines the standard place types for GENEALOGIX archives.
-# Archives can extend this with custom types by adding entries with `custom: true`.
+# Archives can extend this with custom types by adding additional entries.
 
 place_types:
   country:

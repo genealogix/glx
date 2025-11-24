@@ -13,8 +13,7 @@
           "properties": {
             "label": { "type": "string" },
             "description": { "type": "string" },
-            "gedcom": { "type": "string" },
-            "custom": { "type": "boolean" }
+            "gedcom": { "type": "string" }
           },
           "additionalProperties": true
         }

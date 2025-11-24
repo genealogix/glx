@@ -1,6 +1,6 @@
 # Standard Repository Types
 # This file defines the standard repository types for GENEALOGIX archives.
-# Archives can extend this with custom types by adding entries with `custom: true`.
+# Archives can extend this with custom types by adding additional entries.
 
 repository_types:
   archive:

@@ -43,10 +43,6 @@
         "temporal": {
           "type": "boolean",
           "description": "Whether this property can vary over time"
-        },
-        "custom": {
-          "type": "boolean",
-          "description": "Whether this is a custom property defined by the archive"
         }
       },
       "not": {
