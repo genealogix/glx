@@ -3,10 +3,10 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'GENEALOGIX',
   description: 'A modern, evidence-first, Git-native genealogy data standard',
-  
+
   // Set the base URL for Cloudflare Pages deployment
   base: '/',
-  
+
   // Set source directory to parent (repository root)
   // This allows VitePress to access all markdown files in the repo
   srcDir: '..',
@@ -28,18 +28,18 @@ export default defineConfig({
       }
     }
   },
-  
+
   // Rewrite paths to map source directories to desired URL structure
   // Paths are now relative to srcDir (parent directory)
   // IMPORTANT: Specific rewrites must come BEFORE wildcards
   rewrites: {
     // Website homepage
     'website/index.md': 'index.md',
-    
+
     // Docs section - specific files first
     'docs/quickstart.md': 'quickstart.md',
     'docs/examples/README.md': 'examples/index.md',
-    
+
     // Root-level docs to development section
     'CONTRIBUTING.md': 'development/contributing.md',
     'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
@@ -56,12 +56,13 @@ export default defineConfig({
     'docs/guides/:page*': 'guides/:page*',
     'docs/development/:page*': 'development/:page*',
     'docs/examples/:page*': 'examples/:page*',
-    
+
     // Specification section - specific files first, then wildcards
     'specification/README.md': 'specification/index.md',
     'specification/schema/README.md': 'specification/schema/index.md',
     'specification/4-entity-types/README.md': 'specification/4-entity-types/index.md',
-    'specification/5-standard-vocabularies/README.md': 'specification/5-standard-vocabularies/index.md',
+    'specification/5-standard-vocabularies/README.md':
+      'specification/5-standard-vocabularies/index.md',
     'specification/:page*': 'specification/:page*'
   },
 
@@ -69,14 +70,14 @@ export default defineConfig({
     // Site logo and branding
     logo: '/logo.svg',
     siteTitle: 'GENEALOGIX',
-    
+
     // Navigation bar
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Quickstart', link: '/quickstart' },
       { text: 'CLI', link: '/cli' },
       {
-        text: 'Specification', 
+        text: 'Specification',
         items: [
           { text: 'Overview', link: '/specification/' },
           { text: 'Introduction', link: '/specification/1-introduction' },
@@ -95,18 +96,19 @@ export default defineConfig({
         ]
       },
       { text: 'Examples', link: '/examples/' },
-      { 
+      {
         text: 'Development',
         items: [
           { text: 'Architecture', link: '/development/architecture' },
           { text: 'Setup', link: '/development/setup' },
           { text: 'Testing Guide', link: '/development/testing-guide' },
           { text: 'Schema Development', link: '/development/schema-development' },
+          { text: 'GEDCOM Import', link: '/development/gedcom-import' },
           { text: 'Contributing Guide', link: '/development/contributing' },
           { text: 'Code of Conduct', link: '/development/code-of-conduct' }
         ]
       },
-      { 
+      {
         text: 'Links',
         items: [
           { text: 'GitHub', link: 'https://github.com/genealogix/glx' },
@@ -150,9 +152,7 @@ export default defineConfig({
         },
         {
           text: 'Schemas',
-          items: [
-            { text: 'JSON Schemas', link: '/specification/schema/' }
-          ]
+          items: [{ text: 'JSON Schemas', link: '/specification/schema/' }]
         }
       ],
       '/specification/5-standard-vocabularies/': [
@@ -187,9 +187,7 @@ export default defineConfig({
         },
         {
           text: 'Schemas',
-          items: [
-            { text: 'JSON Schemas', link: '/specification/schema/' }
-          ]
+          items: [{ text: 'JSON Schemas', link: '/specification/schema/' }]
         }
       ],
       '/guides/': [
@@ -209,7 +207,8 @@ export default defineConfig({
             { text: 'Architecture', link: '/development/architecture' },
             { text: 'Setup', link: '/development/setup' },
             { text: 'Testing Guide', link: '/development/testing-guide' },
-            { text: 'Schema Development', link: '/development/schema-development' }
+            { text: 'Schema Development', link: '/development/schema-development' },
+            { text: 'GEDCOM Import', link: '/development/gedcom-import' }
           ]
         },
         {
@@ -223,9 +222,7 @@ export default defineConfig({
       '/examples/': [
         {
           text: 'Examples',
-          items: [
-            { text: 'Overview', link: '/examples/' }
-          ]
+          items: [{ text: 'Overview', link: '/examples/' }]
         },
         {
           text: 'For Beginners',
@@ -247,9 +244,7 @@ export default defineConfig({
     },
 
     // Social links
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/genealogix/glx' }
-    ],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/genealogix/glx' }],
 
     // Footer
     footer: {
@@ -278,4 +273,3 @@ export default defineConfig({
     }
   }
 })
-

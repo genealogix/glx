@@ -36,9 +36,12 @@ onMounted(() => {
   highlightCode()
 })
 
-watch(() => props.content, () => {
-  highlightCode()
-})
+watch(
+  () => props.content,
+  () => {
+    highlightCode()
+  }
+)
 </script>
 
 <template>
@@ -48,9 +51,9 @@ watch(() => props.content, () => {
     </div>
     <div class="yaml-file-content">
       <div class="language-yaml vp-adaptive-theme">
-        <button title="Copy Code" class="copy"></button>
+        <button title="Copy Code" class="copy" />
         <span class="lang">yaml</span>
-        <div v-html="highlightedCode"></div>
+        <div v-html="highlightedCode" />
       </div>
     </div>
   </div>
@@ -128,7 +131,10 @@ watch(() => props.content, () => {
   background-position: 50%;
   background-size: 20px;
   background-repeat: no-repeat;
-  transition: border-color 0.25s, background-color 0.25s, opacity 0.25s;
+  transition:
+    border-color 0.25s,
+    background-color 0.25s,
+    opacity 0.25s;
 }
 
 .yaml-file-content:hover .copy {
@@ -146,4 +152,3 @@ watch(() => props.content, () => {
   background-image: var(--vp-icon-copied);
 }
 </style>
-

@@ -14,10 +14,11 @@ GENEALOGIX includes a comprehensive set of standard vocabularies that define con
 
 ::: tip Archive Initialization
 When you run `glx init`, these standard vocabulary files are copied to your archive's `vocabularies/` directory. You can then customize them by:
+
 - Editing descriptions and labels
 - Adding custom types with `custom: true`
 - Adjusting to match your research focus
-:::
+  :::
 
 ## Overview
 
@@ -43,6 +44,19 @@ Defines lifecycle events (birth, death, marriage), religious events (baptism, co
 
 ---
 
+### Event Properties
+
+Defines additional properties that can be associated with events (like certainty, privacy, historical context).
+
+<YamlFile
+  :content="vocabularies['event-properties']"
+  title="vocabularies/event-properties.glx"
+/>
+
+**See Also:** [Event Entity Documentation](/specification/4-entity-types/event) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#event-properties-vocabulary)
+
+---
+
 ### Relationship Types
 
 Defines relationships between people including marriage, parent-child, sibling, adoption, and other family connections.
@@ -56,6 +70,32 @@ Defines relationships between people including marriage, parent-child, sibling, 
 
 ---
 
+### Relationship Properties
+
+Defines additional properties that can be associated with relationships (like custody, legality, adoption type).
+
+<YamlFile
+  :content="vocabularies['relationship-properties']"
+  title="vocabularies/relationship-properties.glx"
+/>
+
+**See Also:** [Relationship Entity Documentation](/specification/4-entity-types/relationship) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#relationship-properties-vocabulary)
+
+---
+
+### Person Properties
+
+Defines properties that can be associated with people (such as gender, physical characteristics, titles).
+
+<YamlFile
+  :content="vocabularies['person-properties']"
+  title="vocabularies/person-properties.glx"
+/>
+
+**See Also:** [Person Entity Documentation](/specification/4-entity-types/person) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#person-properties-vocabulary)
+
+---
+
 ### Place Types
 
 Defines geographic and administrative place classifications from countries down to buildings.
@@ -66,6 +106,19 @@ Defines geographic and administrative place classifications from countries down 
 />
 
 **See Also:** [Place Entity Documentation](/specification/4-entity-types/place) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#place-types-vocabulary)
+
+---
+
+### Place Properties
+
+Defines additional properties that can be associated with places (such as historical names, coordinates, administrative divisions).
+
+<YamlFile
+  :content="vocabularies['place-properties']"
+  title="vocabularies/place-properties.glx"
+/>
+
+**See Also:** [Place Entity Documentation](/specification/4-entity-types/place) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#place-properties-vocabulary)
 
 ---
 
@@ -157,12 +210,12 @@ Extend standard vocabularies by adding custom entries:
 # vocabularies/event-types.glx
 event_types:
   # ... standard types ...
-  
+
   # Custom types
   apprenticeship:
-    label: "Apprenticeship"
-    description: "Beginning of apprenticeship training"
-    category: "occupation"
+    label: 'Apprenticeship'
+    description: 'Beginning of apprenticeship training'
+    category: 'occupation'
     custom: true
 ```
 
@@ -174,10 +227,10 @@ Once defined, use custom types in your entities:
 # events/event-apprenticeship.glx
 events:
   event-john-apprentice:
-    type: apprenticeship  # Custom type from vocabulary
-    date: "1845-03-10"
+    type: apprenticeship # Custom type from vocabulary
+    date: '1845-03-10'
     place: place-leeds
-    value: "Apprenticed to blacksmith"
+    value: 'Apprenticed to blacksmith'
 ```
 
 ### Validation
@@ -205,4 +258,3 @@ $ glx validate
 - [Vocabularies Documentation](/specification/4-entity-types/vocabularies) - Complete vocabulary reference
 - [Core Concepts - Repository-Owned Vocabularies](/specification/2-core-concepts#repository-owned-vocabularies)
 - [Archive Organization](/specification/3-archive-organization#vocabularies-directory)
-
