@@ -317,7 +317,7 @@ func deserializeEntitiesFromMap[T any](files map[string][]byte, dirName string, 
 }
 
 // validateGLXFile validates a GLX archive using the built-in validation system.
-// Returns error if validation fails with hard errors.
+// Returns StructuredValidationError if validation fails with hard errors.
 func validateGLXFile(glx *GLXFile) error {
 	if glx == nil {
 		return ErrGLXFileNil
@@ -357,18 +357,10 @@ func validateGLXFile(glx *GLXFile) error {
 
 	// Check for hard errors
 	if len(result.Errors) > 0 {
-		// Format error messages
-		var errMsgs []string
-		for i, err := range result.Errors {
-			if i < 10 { // Show first 10 errors
-				errMsgs = append(errMsgs, "  - "+err.Message)
-			}
+		// Return structured validation error with all errors
+		return &StructuredValidationError{
+			Errors: result.Errors,
 		}
-		if len(result.Errors) > 10 {
-			errMsgs = append(errMsgs, fmt.Sprintf("  ... and %d more errors", len(result.Errors)-10))
-		}
-
-		return fmt.Errorf("%w (%d error(s)):\n%s", ErrValidationHasErrors, len(result.Errors), strings.Join(errMsgs, "\n"))
 	}
 
 	return nil

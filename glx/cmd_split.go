@@ -24,9 +24,10 @@ import (
 )
 
 var (
-	splitNoValidate     bool
-	splitNoVocabularies bool
-	splitVerbose        bool
+	splitNoValidate      bool
+	splitNoVocabularies  bool
+	splitVerbose         bool
+	splitShowFirstErrors int
 )
 
 var splitCmd = &cobra.Command{
@@ -65,6 +66,7 @@ func init() {
 	splitCmd.Flags().BoolVar(&splitNoValidate, "no-validate", false, "Skip validation before splitting")
 	splitCmd.Flags().BoolVar(&splitNoVocabularies, "no-vocabularies", false, "Don't include standard vocabularies")
 	splitCmd.Flags().BoolVarP(&splitVerbose, "verbose", "v", false, "Verbose output")
+	splitCmd.Flags().IntVar(&splitShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 }
 
 func runSplit(_ *cobra.Command, args []string) error {
@@ -130,7 +132,7 @@ func splitArchive(inputPath, outputDir string) error {
 
 	files, err := saveSerializer.SerializeMultiFileToMap(glx)
 	if err != nil {
-		return fmt.Errorf("failed to serialize multi-file archive: %w", err)
+		return fmt.Errorf("failed to serialize multi-file archive: %w", formatValidationError(err, splitShowFirstErrors))
 	}
 
 	// Create output directory

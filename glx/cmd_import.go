@@ -30,6 +30,7 @@ var (
 	importNoValidate     bool
 	importNoVocabularies bool
 	importVerbose        bool
+	importShowFirstErrors int
 )
 
 var importCmd = &cobra.Command{
@@ -76,6 +77,7 @@ func init() {
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
 	importCmd.Flags().BoolVar(&importNoVocabularies, "no-vocabularies", false, "Don't include standard vocabularies")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
+	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 
 	_ = importCmd.MarkFlagRequired("output")
 }
@@ -137,7 +139,7 @@ func importGEDCOM(gedcomPath string) error {
 		// Serialize to bytes
 		yamlBytes, err := serializer.SerializeSingleFileBytes(glx)
 		if err != nil {
-			return fmt.Errorf("failed to serialize GLX file: %w", err)
+			return fmt.Errorf("failed to serialize GLX file: %w", formatValidationError(err, importShowFirstErrors))
 		}
 
 		// Write to file
@@ -156,7 +158,7 @@ func importGEDCOM(gedcomPath string) error {
 		// Serialize to map of files
 		files, err := serializer.SerializeMultiFileToMap(glx)
 		if err != nil {
-			return fmt.Errorf("failed to serialize GLX archive: %w", err)
+			return fmt.Errorf("failed to serialize GLX archive: %w", formatValidationError(err, importShowFirstErrors))
 		}
 
 		// Create output directory

@@ -49,3 +49,20 @@ var (
 	ErrGLXFileNil             = errors.New("GLX file is nil")
 	ErrValidationHasErrors    = errors.New("validation failed with errors")
 )
+
+// StructuredValidationError wraps a list of ValidationErrors for structured error handling.
+// This allows the CLI layer to format errors according to user preferences.
+type StructuredValidationError struct {
+	// Errors contains all validation errors from ValidationResult
+	Errors []ValidationError
+}
+
+// Error implements the error interface.
+func (e *StructuredValidationError) Error() string {
+	return ErrValidationHasErrors.Error()
+}
+
+// Unwrap allows errors.Is to work with StructuredValidationError.
+func (e *StructuredValidationError) Unwrap() error {
+	return ErrValidationHasErrors
+}

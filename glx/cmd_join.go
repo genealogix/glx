@@ -25,8 +25,9 @@ import (
 )
 
 var (
-	joinNoValidate bool
-	joinVerbose    bool
+	joinNoValidate      bool
+	joinVerbose         bool
+	joinShowFirstErrors int
 )
 
 var joinCmd = &cobra.Command{
@@ -63,6 +64,7 @@ func init() {
 
 	joinCmd.Flags().BoolVar(&joinNoValidate, "no-validate", false, "Skip validation before joining")
 	joinCmd.Flags().BoolVarP(&joinVerbose, "verbose", "v", false, "Verbose output")
+	joinCmd.Flags().IntVar(&joinShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 }
 
 func runJoin(_ *cobra.Command, args []string) error {
@@ -156,7 +158,7 @@ func joinArchive(inputDir, outputPath string) error {
 
 	yamlBytes, err := saveSerializer.SerializeSingleFileBytes(glx)
 	if err != nil {
-		return fmt.Errorf("failed to serialize single-file archive: %w", err)
+		return fmt.Errorf("failed to serialize single-file archive: %w", formatValidationError(err, joinShowFirstErrors))
 	}
 
 	if err := os.WriteFile(outputPath, yamlBytes, 0o644); err != nil {
