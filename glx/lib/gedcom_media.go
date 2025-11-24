@@ -23,16 +23,6 @@ import (
 
 // convertMedia converts a GEDCOM OBJE record to a GLX Media entity
 func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
-	// Panic recovery
-	defer func() {
-		if r := recover(); r != nil {
-			conv.Logger.LogException(objeRecord.Line, GedcomTagObje, objeRecord.XRef, "convertMedia",
-				fmt.Errorf("%w: %v", ErrPanicRecovered, r), map[string]any{
-					"record": objeRecord,
-				})
-		}
-	}()
-
 	if objeRecord.Tag != GedcomTagObje {
 		return fmt.Errorf("%w: expected OBJE, got %s", ErrUnexpectedMediaRecord, objeRecord.Tag)
 	}

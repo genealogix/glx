@@ -25,23 +25,6 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		return fmt.Errorf("%w: expected INDI, got %s", ErrUnexpectedRecordType, indiRecord.Tag)
 	}
 
-	// Panic recovery
-	defer func() {
-		if r := recover(); r != nil {
-			conv.Logger.LogException(
-				indiRecord.Line,
-				indiRecord.Tag,
-				indiRecord.XRef,
-				"convertIndividual",
-				fmt.Errorf("%w: %v", ErrPanicRecovered, r),
-				map[string]any{
-					"record": indiRecord,
-				},
-			)
-			conv.addError(indiRecord.Line, GedcomTagIndi, fmt.Sprintf("Panic during conversion: %v", r))
-		}
-	}()
-
 	// Generate person ID
 	personID := generatePersonID(conv)
 	conv.PersonIDMap[indiRecord.XRef] = personID

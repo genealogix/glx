@@ -64,25 +64,3 @@ func GenerateUniqueFilename(entityType string, usedFilenames map[string]bool, ma
 
 	return "", ErrUniqueFilenameFailed
 }
-
-// MustGenerateRandomID is like GenerateRandomID but panics on error.
-// Use only in tests or when random source is guaranteed available.
-func MustGenerateRandomID() string {
-	id, err := GenerateRandomID()
-	if err != nil {
-		panic(err)
-	}
-
-	return id
-}
-
-// MustGenerateEntityFilename is like GenerateEntityFilename but panics on error.
-// Use only in tests or when random source is guaranteed available.
-func MustGenerateEntityFilename(entityType string) string {
-	filename, err := GenerateEntityFilename(entityType)
-	if err != nil {
-		panic(err)
-	}
-
-	return filename
-}

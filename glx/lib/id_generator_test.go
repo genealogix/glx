@@ -133,35 +133,6 @@ func TestGenerateUniqueFilenameCollisionRetry(t *testing.T) {
 	}
 }
 
-func TestMustGenerateRandomID(t *testing.T) {
-	// Should not panic
-	id := MustGenerateRandomID()
-
-	// Check format
-	if len(id) != 8 {
-		t.Errorf("Expected 8 character ID, got %d: %s", len(id), id)
-	}
-
-	matched, _ := regexp.MatchString("^[a-f0-9]{8}$", id)
-	if !matched {
-		t.Errorf("ID doesn't match hex pattern: %s", id)
-	}
-}
-
-func TestMustGenerateEntityFilename(t *testing.T) {
-	// Should not panic
-	filename := MustGenerateEntityFilename("person")
-
-	// Check format
-	if !strings.HasPrefix(filename, "person-") {
-		t.Errorf("Expected person- prefix, got %s", filename)
-	}
-
-	if !strings.HasSuffix(filename, ".glx") {
-		t.Errorf("Expected .glx suffix, got %s", filename)
-	}
-}
-
 func BenchmarkGenerateRandomID(b *testing.B) {
 	for b.Loop() {
 		_, err := GenerateRandomID()

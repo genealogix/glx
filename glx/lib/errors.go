@@ -19,7 +19,6 @@ import "errors"
 // GEDCOM import errors
 var (
 	ErrSourceNotFound         = errors.New("source not found")
-	ErrPanicRecovered         = errors.New("panic recovered")
 	ErrUnexpectedRecordType   = errors.New("unexpected record type")
 	ErrUnknownEventType       = errors.New("unknown event type")
 	ErrInvalidGEDCOMLine      = errors.New("invalid GEDCOM line: too few parts")

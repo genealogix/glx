@@ -20,16 +20,6 @@ import (
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
 func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
-	// Panic recovery
-	defer func() {
-		if r := recover(); r != nil {
-			conv.Logger.LogException(famRecord.Line, GedcomTagFam, famRecord.XRef, "convertFamily",
-				fmt.Errorf("%w: %v", ErrPanicRecovered, r), map[string]any{
-					"record": famRecord,
-				})
-		}
-	}()
-
 	if famRecord.Tag != GedcomTagFam {
 		return fmt.Errorf("%w: expected FAM, got %s", ErrUnexpectedRecordType, famRecord.Tag)
 	}
