@@ -411,10 +411,11 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 	}
 
 	var allDuplicates []string
+	var allErrors []string
 
 	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			return err // I/O errors are fatal
 		}
 		if d.IsDir() {
 			return nil
@@ -426,33 +427,32 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return err
+			return err // I/O errors are fatal
 		}
 
 		// YAML parsing
 		doc, err := ParseYAMLFile(data)
 		if err != nil {
-			// This check happens before loading, so we can just return a generic error
-			return fmt.Errorf("%w %s: %w", ErrYAMLParseFailed, path, err)
+			allErrors = append(allErrors, fmt.Sprintf("%s: YAML parse error: %v", path, err))
+
+			return nil // Continue to next file
 		}
 
 		// Structural validation against master schema
 		issues := ValidateGLXFileStructure(doc)
 		if len(issues) > 0 {
-			// This is not ideal as it returns on first file with errors.
-			// The CLI will handle collecting errors from all files.
-			// For now, returning an error is sufficient to stop the process.
-			errorMessages := make([]string, len(issues))
-			copy(errorMessages, issues)
+			allErrors = append(allErrors, fmt.Sprintf("%s:\n  - %s", path, strings.Join(issues, "\n  - ")))
 
-			return fmt.Errorf("%w %s:\n- %s", ErrFileValidationFailed, path, strings.Join(errorMessages, "\n- "))
+			return nil // Continue to next file
 		}
 
 		var glxFile lib.GLXFile
 		err = yaml.Unmarshal(data, &glxFile)
 		if err != nil {
 			// This should not happen if parsing and structural validation passed
-			return err
+			allErrors = append(allErrors, fmt.Sprintf("%s: unmarshal error: %v", path, err))
+
+			return nil // Continue to next file
 		}
 
 		duplicates := merged.Merge(&glxFile)
@@ -461,5 +461,15 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 		return nil
 	})
 
-	return merged, allDuplicates, err
+	// If WalkDir itself failed (I/O error), return that
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// If any files had validation/parse errors, return them all
+	if len(allErrors) > 0 {
+		return nil, nil, fmt.Errorf("%w:\n\n%s", ErrMultipleFilesFailed, strings.Join(allErrors, "\n\n"))
+	}
+
+	return merged, allDuplicates, nil
 }

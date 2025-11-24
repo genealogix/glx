@@ -35,4 +35,5 @@ var (
 	ErrPointerNotObject           = errors.New("pointer does not reference an object")
 	ErrFileValidationFailed       = errors.New("validation of file failed")
 	ErrYAMLParseFailed            = errors.New("failed to parse YAML file")
+	ErrMultipleFilesFailed        = errors.New("multiple files failed validation")
 )
