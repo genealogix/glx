@@ -15,63 +15,15 @@
 package main
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/genealogix/glx/glx/lib"
-	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	initSingleFile bool
-	createTestData int
-)
-
-var initCmd = &cobra.Command{
-	Use:   "init [directory]",
-	Short: "Initialize a new GENEALOGIX archive in the specified directory",
-	Long: `Initialize a new GENEALOGIX archive with the proper directory structure.
-
-If a directory is provided, it will be created. If no directory is provided,
-the current directory will be used (but must be empty).
-
-By default, creates a multi-file archive with separate directories for each
-entity type (persons/, events/, places/, etc.) along with standard vocabulary
-files and supporting documentation.
-
-Use --single-file to create a single archive.glx file instead.`,
-	Example: `  # Initialize in a new directory
-  glx init my-family-archive
-
-  # Initialize a single-file archive in a new directory
-  glx init my-family-archive --single-file
-
-  # Initialize with test data in a new directory
-  glx init my-family-archive --create-test-data 10`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runInitCmd,
-}
-
-func runInitCmd(_ *cobra.Command, args []string) error {
-	var targetDir string
-	if len(args) > 0 {
-		targetDir = args[0]
-	} else {
-		targetDir = "."
-	}
-
-	return runInit(targetDir, initSingleFile, createTestData)
-}
-
-func init() {
-	rootCmd.AddCommand(initCmd)
-	initCmd.Flags().BoolVarP(&initSingleFile, "single-file", "s", false, "create a single-file archive instead of multi-file")
-	initCmd.Flags().IntVarP(&createTestData, "create-test-data", "t", 0, "number of persons to generate test data for")
-}
-
+// runInit initializes a new GLX archive in the specified directory
 func runInit(targetDir string, singleFile bool, numTestData int) error {
 	// If target is '.', check if it's empty. Otherwise, check if it exists and is not empty.
 	info, err := os.Stat(targetDir)
@@ -102,8 +54,15 @@ func runInit(targetDir string, singleFile bool, numTestData int) error {
 	defer func() { _ = os.Chdir(originalDir) }()
 
 	if singleFile {
-		// Create single-file archive template
-		template := `# GENEALOGIX Family Archive
+		return createSingleFileArchive(targetDir)
+	}
+
+	return createMultiFileArchive(targetDir, numTestData)
+}
+
+// createSingleFileArchive creates a single-file GLX archive template
+func createSingleFileArchive(targetDir string) error {
+	template := `# GENEALOGIX Family Archive
 # Single-file format
 
 persons: {}
@@ -116,17 +75,19 @@ repositories: {}
 assertions: {}
 media: {}
 `
-		if err := os.WriteFile("archive.glx", []byte(template), 0o644); err != nil {
-			return fmt.Errorf("failed to create archive.glx: %w", err)
-		}
-
-		fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
-		fmt.Printf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
-		fmt.Printf("Entity IDs are map keys - don't include 'id' field in entities in %s\n", targetDir)
-
-		return nil
+	if err := os.WriteFile("archive.glx", []byte(template), 0o644); err != nil {
+		return fmt.Errorf("failed to create archive.glx: %w", err)
 	}
 
+	fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
+	fmt.Printf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
+	fmt.Printf("Entity IDs are map keys - don't include 'id' field in entities in %s\n", targetDir)
+
+	return nil
+}
+
+// createMultiFileArchive creates a multi-file GLX archive directory structure
+func createMultiFileArchive(targetDir string, numTestData int) error {
 	// Create directory structure for a GENEALOGIX repository
 	dirs := []string{
 		"persons",
@@ -141,10 +102,8 @@ media: {}
 		"vocabularies",
 	}
 
-	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", dir, err)
-		}
+	if err := createDirectoryStructure(dirs); err != nil {
+		return err
 	}
 
 	// Create standard vocabulary files
@@ -190,24 +149,7 @@ media: {}
 	return nil
 }
 
-func isDirectoryEmpty(path string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("could not check directory: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	// Read exactly one directory entry.
-	// Readdirnames will return an error if the directory is empty.
-	// We expect an io.EOF error, which means it's empty.
-	_, err = f.Readdirnames(1)
-	if err == nil { // if err is nil, directory is not empty
-		return ErrNonEmptyDirectory
-	}
-
-	return nil // Directory is empty
-}
-
+// writeTestData writes test data to entity files
 func writeTestData(data *lib.GLXFile) error {
 	entityTypes := map[string]map[string]any{
 		"persons":       mustMarshal(data.Persons),
@@ -242,6 +184,7 @@ func writeTestData(data *lib.GLXFile) error {
 	return nil
 }
 
+// mustMarshal converts a struct to map[string]any
 func mustMarshal(v any) map[string]any {
 	// A bit of a hack to convert struct to map[string]any
 	// for easy file writing.
@@ -256,5 +199,3 @@ func mustMarshal(v any) map[string]any {
 
 	return m
 }
-
-// createStandardVocabularies is now in vocabularies_embed.go

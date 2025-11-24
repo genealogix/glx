@@ -55,8 +55,8 @@ func createTestSingleFileArchive(t *testing.T, tmpDir string) string {
 
 	// Serialize to single file
 	serializer := lib.NewSerializer(&lib.SerializerOptions{
-		Validate:            false,
-		Pretty:              true,
+		Validate: false,
+		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)
@@ -78,7 +78,7 @@ func TestSplitArchive_Success(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully split archive")
 
 	// Verify output directory was created
@@ -119,7 +119,7 @@ func TestSplitArchive_InputFileNotFound(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.Error(t, err, "should fail when input file doesn't exist")
 	require.ErrorIs(t, err, ErrInputFileNotFound)
 }
@@ -136,7 +136,7 @@ func TestSplitArchive_OutputDirectoryExists(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err = splitArchive(inputPath, outputDir)
+	err = splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.Error(t, err, "should fail when output directory already exists")
 	require.ErrorIs(t, err, ErrOutputDirectoryExists)
 }
@@ -154,7 +154,7 @@ func TestSplitArchive_InvalidYAML(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err = splitArchive(inputPath, outputDir)
+	err = splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.Error(t, err, "should fail with invalid YAML")
 	require.Contains(t, err.Error(), "failed to load archive")
 }
@@ -167,7 +167,7 @@ func TestSplitArchive_NoValidate(t *testing.T) {
 	splitNoValidate = true // Skip validation
 	splitVerbose = false
 
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully split with --no-validate")
 
 	// Verify output was created
@@ -185,7 +185,7 @@ func TestSplitArchive_VerboseMode(t *testing.T) {
 	splitVerbose = true // Enable verbose output
 
 	// Verbose mode prints to stdout, shouldn't affect functionality
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully split with --verbose")
 
 	info, err := os.Stat(outputDir)
@@ -201,7 +201,7 @@ func TestSplitArchive_CreatesNestedDirectories(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should create nested output directories")
 
 	// Verify nested directories were created
@@ -218,7 +218,7 @@ func TestSplitArchive_PreservesEntityData(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	// Read one of the person files and verify data
@@ -245,7 +245,7 @@ func TestSplitArchive_IncludesVocabularies(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	// Verify vocabularies directory exists and contains files
@@ -275,8 +275,8 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 	}
 
 	serializer := lib.NewSerializer(&lib.SerializerOptions{
-		Validate:            false,
-		Pretty:              true,
+		Validate: false,
+		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)
@@ -291,7 +291,7 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err = splitArchive(inputPath, outputDir)
+	err = splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	// Verify all entity directories were created
@@ -331,8 +331,8 @@ func TestSplitArchive_EmptyArchive(t *testing.T) {
 	glxFile := &lib.GLXFile{}
 
 	serializer := lib.NewSerializer(&lib.SerializerOptions{
-		Validate:            false,
-		Pretty:              true,
+		Validate: false,
+		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)
@@ -347,7 +347,7 @@ func TestSplitArchive_EmptyArchive(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err = splitArchive(inputPath, outputDir)
+	err = splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully split empty archive")
 
 	// Output directory should still be created
@@ -366,7 +366,7 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 	}
 
 	// Add 50 persons
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		id := fmt.Sprintf("person-%d", i)
 		glxFile.Persons[id] = &lib.Person{
 			Properties: map[string]any{
@@ -376,7 +376,7 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 	}
 
 	// Add 30 events with valid participants
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		id := fmt.Sprintf("event-%d", i)
 		personID := fmt.Sprintf("person-%d", i%50) // Reference one of the persons we created
 		glxFile.Events[id] = &lib.Event{
@@ -391,8 +391,8 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 	}
 
 	serializer := lib.NewSerializer(&lib.SerializerOptions{
-		Validate:            false,
-		Pretty:              true,
+		Validate: false,
+		Pretty:   true,
 	})
 
 	data, err := serializer.SerializeSingleFileBytes(glxFile)
@@ -407,7 +407,7 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 	splitNoValidate = true // Skip validation for this large dataset test
 	splitVerbose = false
 
-	err = splitArchive(inputPath, outputDir)
+	err = splitArchive(inputPath, outputDir, false, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	// Verify correct number of files
@@ -430,7 +430,7 @@ func TestSplitArchive_FilePermissions(t *testing.T) {
 	splitNoValidate = false
 	splitVerbose = false
 
-	err := splitArchive(inputPath, outputDir)
+	err := splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	// Check permissions on created directories (should be 0755)

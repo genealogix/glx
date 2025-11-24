@@ -19,47 +19,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-
-	"github.com/spf13/cobra"
 )
 
-var validateCmd = &cobra.Command{
-	Use:   "validate [paths...]",
-	Short: "Validate GLX files and cross-references",
-	Long: `Validate GENEALOGIX (.glx) files for correctness and integrity.
-
-Performs comprehensive validation including:
-- YAML syntax correctness
-- Required fields presence
-- Entity ID format validation
-- Cross-reference integrity
-- Duplicate ID detection
-- Vocabulary validation (if vocabularies/ exists)
-
-When validating directories, automatically checks all .glx, .yaml, and .yml files
-and validates cross-references between entities.`,
-	Example: `  # Validate current directory
-  glx validate
-
-  # Validate specific directory
-  glx validate persons/
-
-  # Validate multiple paths
-  glx validate persons/ events/ places/
-
-  # Validate single file
-  glx validate archive.glx`,
-	RunE: runValidate,
-}
-
-func init() {
-	rootCmd.AddCommand(validateCmd)
-}
-
-func runValidate(_ *cobra.Command, args []string) error {
-	return validatePaths(args)
-}
-
+// validatePaths performs comprehensive validation on the specified paths
 func validatePaths(args []string) error {
 	paths := args
 	if len(paths) == 0 {
@@ -79,8 +41,7 @@ func validatePaths(args []string) error {
 				return nil
 			}
 
-			ext := filepath.Ext(d.Name())
-			if ext != FileExtGLX && ext != FileExtYAML && ext != FileExtYML {
+			if !isGLXFile(d.Name()) {
 				return nil
 			}
 

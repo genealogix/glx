@@ -251,8 +251,8 @@ func TestSerializeMultiFile(t *testing.T) {
 
 	// Serialize (disable validation for unit test - we're testing serialization, not data validity)
 	s := NewSerializer(&SerializerOptions{
-		Validate:            false, // Disable validation for unit test
-		Pretty:              true,
+		Validate: false, // Disable validation for unit test
+		Pretty:   true,
 	})
 	files, err := s.SerializeMultiFileToMap(glx)
 	if err != nil {
@@ -331,7 +331,7 @@ func TestLoadMultiFile(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	s := NewSerializer(&SerializerOptions{
-		Validate:            false,
+		Validate: false,
 	})
 
 	// Serialize to map

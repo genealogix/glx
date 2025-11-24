@@ -15,6 +15,7 @@
 package lib
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -314,9 +315,11 @@ func TestGLXFile_Merge_MultipleDuplicates(t *testing.T) {
 
 	// Check that all duplicates are reported
 	duplicateStr := ""
+	var duplicateStrSb317 strings.Builder
 	for _, d := range duplicates {
-		duplicateStr += d + " "
+		duplicateStrSb317.WriteString(d + " ")
 	}
+	duplicateStr += duplicateStrSb317.String()
 	require.Contains(t, duplicateStr, "person-1")
 	require.Contains(t, duplicateStr, "event-1")
 	require.Contains(t, duplicateStr, "birth")
@@ -473,9 +476,11 @@ func TestGLXFile_Merge_DuplicateReporting(t *testing.T) {
 
 	// Verify messages include the entity type and ID
 	duplicateStr := ""
+	var duplicateStrSb476 strings.Builder
 	for _, d := range duplicates {
-		duplicateStr += d + "\n"
+		duplicateStrSb476.WriteString(d + "\n")
 	}
+	duplicateStr += duplicateStrSb476.String()
 
 	require.Contains(t, duplicateStr, "duplicate persons ID: person-1")
 	require.Contains(t, duplicateStr, "duplicate events ID: event-1")

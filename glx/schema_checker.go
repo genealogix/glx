@@ -19,38 +19,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
-var checkSchemasCmd = &cobra.Command{
-	Use:   "check-schemas",
-	Short: "Validate JSON schema files for required metadata",
-	Long: `Validate that JSON schema files contain required metadata fields.
-
-Checks all .json files in the schema/ directory to ensure they have:
-- $schema field (JSON Schema version)
-- $id field (unique identifier)
-
-This command is primarily used for GENEALOGIX specification development
-to ensure all schema files are properly formatted.`,
-	Example: `  # Check schemas in current directory
-  glx check-schemas
-
-  # Run from specification directory
-  cd specification/
-  glx check-schemas`,
-	RunE: runCheckSchemas,
-}
-
-func init() {
-	rootCmd.AddCommand(checkSchemasCmd)
-}
-
-func runCheckSchemas(_ *cobra.Command, _ []string) error {
-	return checkSchemaFiles()
-}
-
+// checkSchemaFiles validates that all JSON schema files contain required metadata
 func checkSchemaFiles() error {
 	var issues []string
 

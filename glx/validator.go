@@ -17,10 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"maps"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/genealogix/glx/glx/lib"
@@ -30,11 +27,6 @@ import (
 )
 
 const (
-	// File extensions
-	FileExtGLX  = ".glx"
-	FileExtYAML = ".yaml"
-	FileExtYML  = ".yml"
-
 	// ID validation constants
 	MinEntityIDLength = 1
 	MaxEntityIDLength = 64
@@ -379,97 +371,4 @@ func isValidEntityID(id string) bool {
 	}
 
 	return true
-}
-
-// LoadArchive loads and merges all GLX files from a directory into a single GLXFile struct
-func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
-	merged := &lib.GLXFile{
-		Persons:       make(map[string]*lib.Person),
-		Relationships: make(map[string]*lib.Relationship),
-		Events:        make(map[string]*lib.Event),
-		Places:        make(map[string]*lib.Place),
-		Sources:       make(map[string]*lib.Source),
-		Citations:     make(map[string]*lib.Citation),
-		Repositories:  make(map[string]*lib.Repository),
-		Assertions:    make(map[string]*lib.Assertion),
-		Media:         make(map[string]*lib.Media),
-
-		EventTypes:        make(map[string]*lib.EventType),
-		ParticipantRoles:  make(map[string]*lib.ParticipantRole),
-		ConfidenceLevels:  make(map[string]*lib.ConfidenceLevel),
-		RelationshipTypes: make(map[string]*lib.RelationshipType),
-		PlaceTypes:        make(map[string]*lib.PlaceType),
-		SourceTypes:       make(map[string]*lib.SourceType),
-		RepositoryTypes:   make(map[string]*lib.RepositoryType),
-		MediaTypes:        make(map[string]*lib.MediaType),
-		QualityRatings:    make(map[string]*lib.QualityRating),
-
-		PersonProperties:       make(map[string]*lib.PropertyDefinition),
-		EventProperties:        make(map[string]*lib.PropertyDefinition),
-		RelationshipProperties: make(map[string]*lib.PropertyDefinition),
-		PlaceProperties:        make(map[string]*lib.PropertyDefinition),
-	}
-
-	var allDuplicates []string
-	var allErrors []string
-
-	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err // I/O errors are fatal
-		}
-		if d.IsDir() {
-			return nil
-		}
-		ext := filepath.Ext(d.Name())
-		if ext != FileExtGLX && ext != FileExtYAML && ext != FileExtYML {
-			return nil
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err // I/O errors are fatal
-		}
-
-		// YAML parsing
-		doc, err := ParseYAMLFile(data)
-		if err != nil {
-			allErrors = append(allErrors, fmt.Sprintf("%s: YAML parse error: %v", path, err))
-
-			return nil // Continue to next file
-		}
-
-		// Structural validation against master schema
-		issues := ValidateGLXFileStructure(doc)
-		if len(issues) > 0 {
-			allErrors = append(allErrors, fmt.Sprintf("%s:\n  - %s", path, strings.Join(issues, "\n  - ")))
-
-			return nil // Continue to next file
-		}
-
-		var glxFile lib.GLXFile
-		err = yaml.Unmarshal(data, &glxFile)
-		if err != nil {
-			// This should not happen if parsing and structural validation passed
-			allErrors = append(allErrors, fmt.Sprintf("%s: unmarshal error: %v", path, err))
-
-			return nil // Continue to next file
-		}
-
-		duplicates := merged.Merge(&glxFile)
-		allDuplicates = append(allDuplicates, duplicates...)
-
-		return nil
-	})
-
-	// If WalkDir itself failed (I/O error), return that
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// If any files had validation/parse errors, return them all
-	if len(allErrors) > 0 {
-		return nil, nil, fmt.Errorf("%w:\n\n%s", ErrMultipleFilesFailed, strings.Join(allErrors, "\n\n"))
-	}
-
-	return merged, allDuplicates, nil
 }

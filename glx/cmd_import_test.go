@@ -29,13 +29,7 @@ func TestImportGEDCOM_SingleFileFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	// Set up flags
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully import GEDCOM to single file")
 
 	// Verify file was created
@@ -58,12 +52,7 @@ func TestImportGEDCOM_SingleFileFormat_AddsExtension(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output") // No .glx extension
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	// Verify .glx extension was added
@@ -76,12 +65,7 @@ func TestImportGEDCOM_MultiFileFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "archive")
 
-	importOutput = outputPath
-	importFormat = "multi"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "multi", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully import GEDCOM to multi-file archive")
 
 	// Verify directory was created
@@ -104,12 +88,7 @@ func TestImportGEDCOM_InvalidFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	importOutput = outputPath
-	importFormat = "invalid-format"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "invalid-format", true, false, defaultShowFirstErrors)
 	require.Error(t, err, "should fail with invalid format")
 	require.ErrorIs(t, err, ErrInvalidFormat)
 }
@@ -118,12 +97,7 @@ func TestImportGEDCOM_GEDCOMFileNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/does-not-exist.ged")
+	err := importGEDCOM("testdata/gedcom/does-not-exist.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.Error(t, err, "should fail when GEDCOM file doesn't exist")
 	require.ErrorIs(t, err, ErrGEDCOMFileNotFound)
 }
@@ -132,12 +106,7 @@ func TestImportGEDCOM_NoValidate(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = true // Skip validation
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "single", false, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully import with --no-validate")
 
 	// Verify file was created
@@ -149,13 +118,8 @@ func TestImportGEDCOM_VerboseMode(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = true // Enable verbose output
-
 	// Verbose mode just prints to stdout, shouldn't affect functionality
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "single", true, true, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully import with --verbose")
 
 	_, err = os.Stat(outputPath)
@@ -167,12 +131,7 @@ func TestImportGEDCOM_Shakespeare(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "shakespeare.glx")
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged")
+	err := importGEDCOM("testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully import shakespeare.ged")
 
 	// Read and verify
@@ -197,12 +156,8 @@ func TestImportGEDCOM_InvalidGEDCOMContent(t *testing.T) {
 	require.NoError(t, err)
 
 	outputPath := filepath.Join(tmpDir, "output.glx")
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
 
-	err = importGEDCOM(gedcomPath)
+	err = importGEDCOM(gedcomPath, outputPath, "single", true, false, defaultShowFirstErrors)
 	require.Error(t, err, "should fail with invalid GEDCOM content")
 	require.Contains(t, err.Error(), "failed to import GEDCOM", "error should indicate GEDCOM import failure")
 }
@@ -212,12 +167,7 @@ func TestImportGEDCOM_OutputDirectoryCreation(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "nested", "dir", "archive")
 
-	importOutput = outputPath
-	importFormat = "multi"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "multi", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should create nested output directories")
 
 	// Verify nested directories were created
@@ -234,12 +184,7 @@ func TestImportGEDCOM_OverwriteExistingFile(t *testing.T) {
 	err := os.WriteFile(outputPath, []byte("existing content"), 0o644)
 	require.NoError(t, err)
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
-	err = importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err = importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should overwrite existing file")
 
 	// Verify file was overwritten
@@ -274,13 +219,8 @@ func TestImportGEDCOM_GEDCOM551(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
 	// Shakespeare is GEDCOM 5.5.1
-	err := importGEDCOM("testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged")
+	err := importGEDCOM("testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully import GEDCOM 5.5.1")
 
 	data, err := os.ReadFile(outputPath)
@@ -297,12 +237,7 @@ func TestImportGEDCOM_GEDCOM70(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should successfully import GEDCOM 7.0")
 
 	data, err := os.ReadFile(outputPath)
@@ -321,12 +256,7 @@ func TestImportGEDCOM_StatisticsOutput(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.glx")
 
-	importOutput = outputPath
-	importFormat = "single"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged")
+	err := importGEDCOM("testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged", outputPath, "single", true, false, defaultShowFirstErrors)
 	require.NoError(t, err, "should complete import and print statistics without error")
 }
 
@@ -335,12 +265,7 @@ func TestImportGEDCOM_MultiFileEntityFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "archive")
 
-	importOutput = outputPath
-	importFormat = "multi"
-	importNoValidate = false
-	importVerbose = false
-
-	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged")
+	err := importGEDCOM("testdata/gedcom/7.0/comprehensive-spec/maximal70.ged", outputPath, "multi", true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	// Check that person files were created
@@ -354,6 +279,7 @@ func TestImportGEDCOM_MultiFileEntityFiles(t *testing.T) {
 	for _, file := range personFiles {
 		if strings.HasSuffix(file.Name(), ".glx") {
 			hasGlxFile = true
+
 			break
 		}
 	}

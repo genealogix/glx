@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/genealogix/glx/glx/lib"
 )
@@ -43,7 +44,7 @@ func formatValidationError(err error, showFirstErrors int) error {
 		if i >= maxErrors {
 			break
 		}
-		errorLines = append(errorLines, fmt.Sprintf("  - %s", validationErr.Message))
+		errorLines = append(errorLines, "  - "+validationErr.Message)
 	}
 
 	// Add truncation message if needed
@@ -54,9 +55,11 @@ func formatValidationError(err error, showFirstErrors int) error {
 	// Build final error message
 	header := fmt.Sprintf("validation failed with errors (%d error(s))", totalErrors)
 	fullMessage := header
+	var fullMessageSb57 strings.Builder
 	for _, line := range errorLines {
-		fullMessage += "\n" + line
+		fullMessageSb57.WriteString("\n" + line)
 	}
+	fullMessage += fullMessageSb57.String()
 
 	return errors.New(fullMessage)
 }
