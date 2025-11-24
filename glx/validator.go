@@ -122,88 +122,18 @@ func resolveRefsWithRoot(obj any, root map[string]any) error {
 		}
 
 		// Check if this object has a $ref
-		if refStr, ok := v["$ref"].(string); ok {
-			if strings.HasPrefix(refStr, "#/") {
-				// JSON Pointer reference (internal to schema)
-				resolved, err := resolveJSONPointer(root, refStr)
-				if err != nil {
-					return fmt.Errorf("failed to resolve JSON pointer %s: %w", refStr, err)
-				}
-
-				// Replace $ref with resolved content
-				delete(v, "$ref")
-				for key, value := range resolved {
-					if key != "$schema" && key != "$id" {
-						v[key] = value
-					}
-				}
-			} else {
-				// File reference - load from embedded FS
-				refData, err := schema.EntitySchemas.ReadFile(refStr)
-				if err != nil {
-					return fmt.Errorf("failed to read referenced schema %s: %w", refStr, err)
-				}
-
-				var refSchema map[string]any
-				if err := json.Unmarshal(refData, &refSchema); err != nil {
-					return fmt.Errorf("failed to parse referenced schema %s: %w", refStr, err)
-				}
-
-				// Resolve any nested refs in the referenced schema
-				if err := resolveRefsWithRoot(refSchema, refSchema); err != nil {
-					return err
-				}
-
-				// For vocabulary schemas, extract the actual pattern/entry definition
-				// They have structure: {"properties": {"vocab_name": {"patternProperties" or "additionalProperties": {...}}}}
-				if strings.Contains(refStr, "vocabularies/") {
-					if props, ok := refSchema["properties"].(map[string]any); ok {
-						// Get the first (and only) property key
-						for _, vocabDef := range props {
-							if vocabMap, ok := vocabDef.(map[string]any); ok {
-								// Try patternProperties first (event_types, etc.)
-								if pattern, ok := vocabMap["patternProperties"].(map[string]any); ok {
-									// Extract the pattern definition (first pattern)
-									for _, patternDef := range pattern {
-										// This is the individual entry schema - use it directly
-										if entrySchema, ok := patternDef.(map[string]any); ok {
-											delete(v, "$ref")
-											maps.Copy(v, entrySchema)
-
-											return nil
-										}
-									}
-								}
-								// Try additionalProperties (person_properties, etc.)
-								if addlProps, ok := vocabMap["additionalProperties"].(map[string]any); ok {
-									// This might be a $ref to #/definitions/PropertyDefinition
-									// The ref has already been resolved, so use it directly
-									delete(v, "$ref")
-									maps.Copy(v, addlProps)
-
-									return nil
-								}
-							}
-						}
-					}
-				}
-
-				// For non-vocabulary refs, use the whole schema
-				delete(v, "$ref")
-				for key, value := range refSchema {
-					if key != "$schema" && key != "$id" {
-						v[key] = value
-					}
-				}
-			}
-		} else {
-			// No $ref, but recursively process all values
-			for _, value := range v {
-				if err := resolveRefsWithRoot(value, root); err != nil {
-					return err
-				}
-			}
+		refStr, hasRef := v["$ref"].(string)
+		if !hasRef {
+			// No $ref, recursively process all values
+			return resolveMapValues(v, root)
 		}
+
+		// Has $ref - resolve it
+		if strings.HasPrefix(refStr, "#/") {
+			return resolveJSONPointerRef(v, root, refStr)
+		}
+
+		return resolveFileRef(v, refStr)
 
 	case []any:
 		// Process array elements
@@ -215,6 +145,141 @@ func resolveRefsWithRoot(obj any, root map[string]any) error {
 	}
 
 	return nil
+}
+
+// resolveMapValues recursively processes all values in a map
+func resolveMapValues(m map[string]any, root map[string]any) error {
+	for _, value := range m {
+		if err := resolveRefsWithRoot(value, root); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// resolveJSONPointerRef resolves a JSON Pointer reference like #/definitions/Something
+func resolveJSONPointerRef(target map[string]any, root map[string]any, refStr string) error {
+	resolved, err := resolveJSONPointer(root, refStr)
+	if err != nil {
+		return fmt.Errorf("failed to resolve JSON pointer %s: %w", refStr, err)
+	}
+
+	// Replace $ref with resolved content
+	delete(target, "$ref")
+	for key, value := range resolved {
+		if key != "$schema" && key != "$id" {
+			target[key] = value
+		}
+	}
+
+	return nil
+}
+
+// resolveFileRef resolves a file reference and merges it into the target map
+func resolveFileRef(target map[string]any, refStr string) error {
+	// Load from embedded FS
+	refData, err := schema.EntitySchemas.ReadFile(refStr)
+	if err != nil {
+		return fmt.Errorf("failed to read referenced schema %s: %w", refStr, err)
+	}
+
+	var refSchema map[string]any
+	if err := json.Unmarshal(refData, &refSchema); err != nil {
+		return fmt.Errorf("failed to parse referenced schema %s: %w", refStr, err)
+	}
+
+	// Resolve any nested refs in the referenced schema
+	if err := resolveRefsWithRoot(refSchema, refSchema); err != nil {
+		return err
+	}
+
+	// Handle vocabulary schemas specially
+	if strings.Contains(refStr, "vocabularies/") {
+		return resolveVocabularyRef(target, refSchema)
+	}
+
+	// For non-vocabulary refs, use the whole schema
+	mergeSchemaIntoTarget(target, refSchema)
+
+	return nil
+}
+
+// resolveVocabularyRef extracts the pattern/entry definition from vocabulary schemas
+func resolveVocabularyRef(target map[string]any, refSchema map[string]any) error {
+	props, ok := refSchema["properties"].(map[string]any)
+	if !ok {
+		// No properties, use whole schema
+		mergeSchemaIntoTarget(target, refSchema)
+
+		return nil
+	}
+
+	// Get the first (and only) property
+	for _, vocabDef := range props {
+		vocabMap, ok := vocabDef.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		// Try patternProperties first (event_types, etc.)
+		if extracted, ok := extractPatternProperties(vocabMap); ok {
+			delete(target, "$ref")
+			maps.Copy(target, extracted)
+
+			return nil
+		}
+
+		// Try additionalProperties (person_properties, etc.)
+		if extracted, ok := extractAdditionalProperties(vocabMap); ok {
+			delete(target, "$ref")
+			maps.Copy(target, extracted)
+
+			return nil
+		}
+	}
+
+	// Fallback to whole schema
+	mergeSchemaIntoTarget(target, refSchema)
+
+	return nil
+}
+
+// extractPatternProperties extracts the first pattern definition from patternProperties
+func extractPatternProperties(vocabMap map[string]any) (map[string]any, bool) {
+	pattern, ok := vocabMap["patternProperties"].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+
+	// Extract the first pattern definition
+	for _, patternDef := range pattern {
+		if entrySchema, ok := patternDef.(map[string]any); ok {
+			return entrySchema, true
+		}
+	}
+
+	return nil, false
+}
+
+// extractAdditionalProperties extracts the additionalProperties definition
+func extractAdditionalProperties(vocabMap map[string]any) (map[string]any, bool) {
+	addlProps, ok := vocabMap["additionalProperties"].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+
+	return addlProps, true
+}
+
+// mergeSchemaIntoTarget merges a schema into the target map, excluding $schema and $id
+func mergeSchemaIntoTarget(target, refSchema map[string]any) {
+	delete(target, "$ref")
+	for key, value := range refSchema {
+		if key != "$schema" && key != "$id" {
+			target[key] = value
+		}
+	}
 }
 
 // resolveJSONPointer resolves a JSON Pointer reference like #/definitions/PropertyDefinition
