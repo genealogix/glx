@@ -132,7 +132,7 @@ func (glx *GLXFile) validateStructReferences(
 		return
 	}
 	entityTypeVal := entityVal.Type()
-	for i := 0; i < entityVal.NumField(); i++ {
+	for i := range entityVal.NumField() {
 		field := entityTypeVal.Field(i)
 		fieldVal := entityVal.Field(i)
 		refType := field.Tag.Get("refType")
@@ -155,7 +155,7 @@ func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal 
 	case reflect.Struct:
 		glx.validateStructReferences(entityType, entityID, fieldVal, result)
 	case reflect.Slice:
-		for i := 0; i < fieldVal.Len(); i++ {
+		for i := range fieldVal.Len() {
 			itemVal := fieldVal.Index(i)
 			if itemVal.Kind() == reflect.Struct {
 				glx.validateStructReferences(entityType, entityID, itemVal, result)
@@ -178,7 +178,7 @@ func (glx *GLXFile) validateFieldReference(
 			glx.checkReference(entityType, entityID, fieldName, refType, refID, result)
 		}
 	case reflect.Slice:
-		for i := 0; i < fieldVal.Len(); i++ {
+		for i := range fieldVal.Len() {
 			if itemVal := fieldVal.Index(i); itemVal.Kind() == reflect.String {
 				refID := itemVal.String()
 				fieldPath := fmt.Sprintf("%s[%d]", fieldName, i)
