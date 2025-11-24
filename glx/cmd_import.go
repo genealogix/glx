@@ -25,11 +25,10 @@ import (
 )
 
 var (
-	importOutput         string
-	importFormat         string
-	importNoValidate     bool
-	importNoVocabularies bool
-	importVerbose        bool
+	importOutput          string
+	importFormat          string
+	importNoValidate      bool
+	importVerbose         bool
 	importShowFirstErrors int
 )
 
@@ -51,9 +50,7 @@ The imported archive will include:
 
 Output formats:
 - single: Single YAML file (default)
-- multi: Multi-file directory structure (one file per entity)
-
-By default, standard vocabularies are included in the output.`,
+- multi: Multi-file directory structure (one file per entity)`,
 	Example: `  # Import to single file
   glx import family.ged -o family.glx
 
@@ -61,10 +58,7 @@ By default, standard vocabularies are included in the output.`,
   glx import family.ged -o family-archive --format multi
 
   # Import without validation
-  glx import family.ged -o family.glx --no-validate
-
-  # Import without vocabularies
-  glx import family.ged -o family.glx --no-vocabularies`,
+  glx import family.ged -o family.glx --no-validate`,
 	Args: cobra.ExactArgs(1),
 	RunE: runImport,
 }
@@ -75,7 +69,6 @@ func init() {
 	importCmd.Flags().StringVarP(&importOutput, "output", "o", "", "Output file or directory (required)")
 	importCmd.Flags().StringVarP(&importFormat, "format", "f", "single", "Output format: single or multi")
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
-	importCmd.Flags().BoolVar(&importNoVocabularies, "no-vocabularies", false, "Don't include standard vocabularies")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
 
@@ -117,7 +110,7 @@ func importGEDCOM(gedcomPath string) error {
 
 	// Create serializer
 	serializerOpts := &lib.SerializerOptions{
-		IncludeVocabularies: !importNoVocabularies,
+		IncludeVocabularies: true,
 		Validate:            !importNoValidate,
 		Pretty:              true,
 		Indent:              "  ",
@@ -196,10 +189,6 @@ func importGEDCOM(gedcomPath string) error {
 	fmt.Printf("  Repositories:  %d\n", len(glx.Repositories))
 	fmt.Printf("  Media:         %d\n", len(glx.Media))
 	fmt.Printf("  Assertions:    %d\n", len(glx.Assertions))
-
-	if importFormat == "multi" && !importNoVocabularies {
-		fmt.Println("\n  Standard vocabularies included in archive")
-	}
 
 	return nil
 }
