@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: build build-cli build-website install-deps lint lint-fix test test-verbose clean fmt
+.PHONY: build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt
 
 # Install dependencies - Go modules and npm packages
 install-deps:
@@ -49,8 +49,20 @@ test:
 test-verbose:
 	go test -v ./...
 
+# Test-coverage target - runs tests with coverage report generation
+test-coverage:
+	@echo "Running tests with coverage..."
+	@mkdir -p coverage
+	go test -coverprofile=coverage/coverage.out ./...
+	@echo "Generating HTML coverage report..."
+	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+	@echo "Coverage report generated at coverage/coverage.html"
+	@echo "Opening coverage report in browser..."
+	@go tool cover -func=coverage/coverage.out | tail -n 1
+
 # Clean target - removes build artifacts
 clean:
 	rm -rf bin
+	rm -rf coverage
 	rm -rf website/.vitepress/dist
 	rm -rf website/.vitepress/cache

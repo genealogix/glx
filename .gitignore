@@ -10,6 +10,7 @@ bin/
 *.test
 
 # Go coverage reports
+coverage/
 coverage.out
 coverage*.html
 coverage*.out
