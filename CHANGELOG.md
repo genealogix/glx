@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.2] - 2025-11-18
+## [0.0.0-beta.2] - 2025-11-25
 
 ### Added
 
@@ -133,6 +133,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Removed auto-generated assertion confidence** - GEDCOM imports no longer auto-populate assertion confidence levels
   - Confidence levels should reflect researcher judgment, not be inferred from QUAY values
   - GEDCOM QUAY tags are now preserved in citation notes (e.g., `GEDCOM QUAY: 2`)
+
+#### Assertion Entity Fields
+- **Removed `evidence_type` field** - Evidence quality classification belongs on citations, not assertions
+- **Removed `type` field** - Redundant with `claim` field and `tags` for categorization
+- **Removed `research_notes` field** - Consolidated into single `notes` field
+
+#### Provenance Fields (All Entities)
+- **Removed `modified_at`, `modified_by`, `created_at`, `created_by` fields** - Redundant with git history; use `git log` and `git blame` instead
 
 ### Changed
 
