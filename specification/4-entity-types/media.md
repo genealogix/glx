@@ -205,19 +205,15 @@ Example:
 file_size: 2458624
 ```
 
-### Provenance Fields
+### Other Fields
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `modified_at` | datetime | When last modified |
-| `modified_by` | string | Who last modified |
 | `notes` | string | Research notes about the media |
 | `tags` | array | Tags for categorization |
 
 Example:
 ```yaml
-modified_at: "2024-03-20T14:15:00Z"
-modified_by: researcher-john
 tags:
   - original-document
   - high-quality-scan

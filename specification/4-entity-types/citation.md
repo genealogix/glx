@@ -127,7 +127,7 @@ assertions:
       - citation-parish-birth
       - citation-census-birth
     confidence: high
-    research_notes: "Primary source from parish register"
+    notes: "Primary source from parish register"
 ```
 
 ## Locator Object

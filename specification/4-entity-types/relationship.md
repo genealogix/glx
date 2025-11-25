@@ -50,8 +50,6 @@ relationships:
 | `end_event` | string | Event that ended this relationship |
 | `description` | string | Narrative description of the relationship |
 | `notes` | string | Research notes |
-| `modified_at` | datetime | Last modification timestamp |
-| `modified_by` | string | User who last modified this record |
 | `tags` | array | Tags for categorization |
 
 ## Relationship Types

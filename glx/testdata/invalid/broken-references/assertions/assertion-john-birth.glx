@@ -10,4 +10,4 @@ assertions:
     sources:
       - source-nonexistent
       - source-census-1851
-    research_notes: "Birth date confirmed by parish register (primary) and 1851 census (secondary)"
+    notes: "Birth date confirmed by parish register (primary) and 1851 census (secondary)"

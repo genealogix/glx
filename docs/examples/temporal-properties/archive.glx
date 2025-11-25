@@ -97,7 +97,7 @@ assertions:
     citations:
       - citation-1851-census
     confidence: high
-    research_notes: "Census lists father's occupation; John was age 1"
+    notes: "Census lists father's occupation; John was age 1"
 
   assertion-occupation-1881:
     subject: person-john-smith-1850
@@ -107,7 +107,7 @@ assertions:
       - citation-1881-census
       - citation-trade-directory
     confidence: high
-    research_notes: "Multiple sources confirm blacksmith trade in London"
+    notes: "Multiple sources confirm blacksmith trade in London"
 
   assertion-residence-london:
     subject: person-john-smith-1850
@@ -117,5 +117,5 @@ assertions:
       - citation-1881-census
       - citation-trade-directory
     confidence: high
-    research_notes: "Appears in London census and directory"
+    notes: "Appears in London census and directory"
 

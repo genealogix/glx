@@ -74,21 +74,9 @@
       "type": "string",
       "description": "Confidence level in this assertion"
     },
-    "evidence_type": {
-      "type": "string",
-      "description": "Quality classification of evidence"
-    },
-    "research_notes": {
-      "type": "string",
-      "description": "Detailed research notes explaining the conclusion"
-    },
     "notes": {
       "type": "string",
       "description": "General notes about the assertion"
-    },
-    "type": {
-      "type": "string",
-      "description": "Classification of assertion type"
     },
     "sources": {
       "type": "array",

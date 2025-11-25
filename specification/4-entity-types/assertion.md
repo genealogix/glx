@@ -161,68 +161,11 @@ Example:
 confidence: high
 ```
 
-### `research_notes`
-
-- Type: String
-- Required: No
-- Description: Detailed research notes explaining the conclusion
-
-Example:
-```yaml
-research_notes: |
-  Two conflicting sources:
-  - Birth certificate: January 15, 1850 (preferred, higher quality)
-  - Baptism record: January 20, 1850 (5-day delay common)
-  
-  Certificate takes precedence as primary direct evidence.
-```
-
-### `evidence_type`
-
-- Type: String
-- Required: No
-- Description: Quality classification of evidence
-
-Values:
-- `primary-direct` - Created at time of event by witness
-- `primary-indirect` - Created at time, but not direct witness
-- `secondary-direct` - Later account from witness
-- `secondary-indirect` - Later account from non-witness
-
-Example:
-```yaml
-evidence_type: primary-direct
-```
-
-### `type`
-
-- Type: String
-- Required: No
-- Description: Classification of assertion type
-
-Example:
-```yaml
-type: biographical
-```
-
 ### `notes`
 
 - Type: String
 - Required: No
 - Description: General notes about the assertion
-
-### Provenance Fields
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `modified_at` | datetime | When last modified |
-| `modified_by` | string | Who last modified |
-
-Example:
-```yaml
-modified_at: "2024-03-20T14:15:00Z"
-modified_by: researcher-john
-```
 
 ### `tags`
 
@@ -302,7 +245,7 @@ assertions:
     citations:
       - citation-family-letter
     confidence: low
-    research_notes: |
+    notes: |
       Conflicting evidence about paternity:
       - Birth certificate (primary source): John Smith
       - Family letter (secondary source): Thomas Brown
@@ -341,7 +284,6 @@ assertions:
       - citation-trade-directory
       - citation-parish-record
     confidence: high
-    evidence_type: secondary-direct
 ```
 
 ### Assertion with Conflicting Evidence
@@ -357,7 +299,7 @@ assertions:
       - citation-birth-cert       # Says March 10
       - citation-family-bible      # Says March 12
     confidence: medium
-    research_notes: |
+    notes: |
       Birth certificate (primary source) says March 10, 1852.
       Family Bible (secondary source) says March 12, 1852.
       
@@ -380,7 +322,6 @@ assertions:
       - citation-1851-census
       - citation-directory-1851
     confidence: high
-    evidence_type: primary-direct
     notes: "Residence at time of 1851 census"
     tags:
       - census-derived
@@ -399,7 +340,7 @@ assertions:
     citations:
       - citation-death-cert-age
     confidence: low
-    research_notes: |
+    notes: |
       No birth record found. Age at death (1900) reported as 75,
       suggesting birth around 1825. However, age reporting in 
       death certificates is often approximate.
@@ -414,16 +355,7 @@ assertions:
 
 ## Evidence Quality and Confidence
 
-Assertions connect evidence quality (from citations) to confidence in conclusions:
-
-### Citation Quality Scale (GEDCOM QUAY)
-
-| Quality | Description | Example |
-|---------|-------------|---------|
-| 0 | Unreliable | Unverified online tree |
-| 1 | Questionable | Secondary source with errors |
-| 2 | Secondary | Death certificate for birth info |
-| 3 | Primary | Birth certificate |
+Assertions connect evidence (from citations) to conclusions with a certain level of confidence:
 
 ### Assertion Confidence
 
@@ -441,7 +373,6 @@ Assertions connect evidence quality (from citations) to confidence in conclusion
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
 - `confidence` should be one of: `high`, `medium`, `low`, `disputed`
-- `evidence_type` should follow standard classifications if used
 
 ## File Organization
 

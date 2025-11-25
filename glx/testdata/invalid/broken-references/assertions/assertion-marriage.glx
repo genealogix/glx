@@ -8,4 +8,4 @@ assertions:
     confidence: high
     sources:
       - source-parish-leeds
-    research_notes: "Marriage date from parish register"
+    notes: "Marriage date from parish register"

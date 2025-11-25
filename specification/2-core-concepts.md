@@ -171,8 +171,6 @@ assertions:
       - citation-1851-census
       - citation-trade-directory
       - citation-parish-record
-    created_by: researcher-jane-smith
-    created_at: "2024-03-15T10:00:00Z"
 ```
 
 #### 2. Change Tracking with Git
@@ -198,7 +196,7 @@ assertions:
     claim: birth_date
     value: "1850-01-15"
     confidence: medium
-    research_notes: |
+    notes: |
       Two conflicting sources:
       - Birth certificate: January 15, 1850 (preferred, higher quality)
       - Baptism record: January 20, 1850 (5-day delay common)

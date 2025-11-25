@@ -177,11 +177,9 @@ The ID suffix can be any format meeting requirements (1-64 alphanumeric and hyph
 
 ### Creation
 - Each entity is created with a unique ID
-- `created_at` and `created_by` timestamps are recorded
 - Initial state is valid and complete
 
 ### Modification
-- Entities can be modified; only `modified_at` and `modified_by` change
 - All modifications are tracked in Git history
 
 ### Deletion
@@ -197,7 +195,7 @@ The `glx validate` command performs comprehensive validation at multiple levels:
 - **Entity IDs**: Must be unique, alphanumeric with hyphens, 1-64 characters
 - **File structure**: Must follow proper YAML/JSON format
 - **Schema compliance**: All entities validated against JSON schemas in `specification/schema/v1/`
-- **Required fields**: Timestamps (`created_at`, `modified_at`) and creator information
+- **Required fields**: Entity-specific required fields per schema
 
 ### Referential Integrity (Errors)
 All references must point to existing entities:

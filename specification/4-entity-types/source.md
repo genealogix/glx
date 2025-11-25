@@ -259,22 +259,16 @@ media:
   - media-register-scan-page-2
 ```
 
-### Provenance Fields
+### Other Fields
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `notes` | string | Research notes about the source |
-| `created_at` | datetime | When this record was created |
-| `created_by` | string | Who created this record |
-| `modified_at` | datetime | When last modified |
-| `modified_by` | string | Who last modified |
 | `tags` | array | Tags for categorization |
 
 Example:
 ```yaml
 notes: "Excellent condition, clearly legible"
-created_at: "2024-01-15T10:30:00Z"
-created_by: researcher-jane
 tags:
   - primary-source
   - church-records
