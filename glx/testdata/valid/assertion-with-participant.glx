@@ -4,20 +4,29 @@
 persons:
   person-john:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       gender: "male"
 
   person-jane:
     properties:
-      given_name: "Jane"
-      family_name: "Doe"
+      name:
+        value: "Jane Doe"
+        fields:
+          given: "Jane"
+          surname: "Doe"
       gender: "female"
 
   person-thomas:
     properties:
-      given_name: "Thomas"
-      family_name: "Brown"
+      name:
+        value: "Thomas Brown"
+        fields:
+          given: "Thomas"
+          surname: "Brown"
       gender: "male"
 
 events:

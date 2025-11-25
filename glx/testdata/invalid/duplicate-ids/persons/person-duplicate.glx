@@ -1,5 +1,8 @@
 persons:
   person-abc123:
     properties:
-      given_name: "Duplicate"
-      family_name: "Person"
+      name:
+        value: "Duplicate Person"
+        fields:
+          given: "Duplicate"
+          surname: "Person"

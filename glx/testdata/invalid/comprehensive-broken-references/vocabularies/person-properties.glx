@@ -1,18 +1,24 @@
 person_properties:
-  given_name:
-    label: "Given Name"
-    type: string
-  family_name:
-    label: "Family Name"
-    type: string
+  name:
+    label: "Name"
+    description: "Person's name as recorded"
+    value_type: string
+    temporal: true
+    fields:
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname:
+        label: "Surname"
+        description: "Family name"
   born_on:
     label: "Born On"
-    type: date
+    value_type: date
   died_on:
     label: "Died On"
-    type: date
+    value_type: date
   birth_place:
     label: "Birth Place"
-    type: reference
+    value_type: reference
     reference_type: places
 

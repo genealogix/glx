@@ -1,6 +1,15 @@
 person_properties:
-  given_name:
-    label: "Given Name"
+  name:
+    label: "Name"
+    description: "Person's name as recorded"
     value_type: string
+    temporal: true
+    fields:
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname:
+        label: "Surname"
+        description: "Family name"
 
 

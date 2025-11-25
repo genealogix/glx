@@ -111,7 +111,7 @@ assertions:
 | GEDCOM | GENEALOGIX | Notes |
 |--------|------------|-------|
 | `INDI` | Person | Core entity |
-| `NAME` | Person.properties.given_name, family_name | Structured format |
+| `NAME` | Person.properties.name | Unified name with optional fields |
 | `BIRT` | Event (birth) | Separate entity |
 | `DEAT` | Event (death) | Separate entity |
 | `OCCU` | Event (occupation) | Separate entity |
@@ -169,8 +169,11 @@ See [Confidence Levels](../../specification/5-standard-vocabularies/confidence-l
 **GENEALOGIX:**
 ```yaml
 properties:
-  given_name: "John"
-  family_name: "Smith"
+  name:
+    value: "John Smith"
+    fields:
+      given: "John"
+      surname: "Smith"
 ```
 
 ### Place Hierarchy

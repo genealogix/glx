@@ -21,14 +21,13 @@ persons:
       born_on: "1850-01-15"
       died_on: "1920-06-20"
 
-      # Temporal properties (single or list with dates)
-      given_name:
-        - value: "John"
+      # Unified name as temporal property (with optional fields)
+      name:
+        - value: "John Smith"
           date: "1850"
-
-      family_name:
-        - value: "Smith"
-          date: "1850"
+          fields:
+            given: "John"
+            surname: "Smith"
 
       # Gender as temporal property
       gender:

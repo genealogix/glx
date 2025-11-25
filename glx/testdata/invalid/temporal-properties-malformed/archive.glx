@@ -13,17 +13,18 @@ place_types:
     description: "A city or town"
 
 person_properties:
-  given_name:
-    label: "Given Name"
-    description: "Given name(s) of the person"
+  name:
+    label: "Name"
+    description: "Person's name as recorded, with optional structured breakdown"
     value_type: string
     temporal: true
-
-  family_name:
-    label: "Family Name"
-    description: "Family or surname of the person"
-    value_type: string
-    temporal: true
+    fields:
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname:
+        label: "Surname"
+        description: "Family name"
 
   gender:
     label: "Gender"
@@ -59,13 +60,8 @@ persons:
           date: "1850"
 
       # ERROR: Temporal list item missing 'value' field
-      given_name:
+      name:
         - date: "1850"
-
-      # ERROR: Temporal list item is not an object
-      family_name:
-        - "Smith"
-        - "Jones"
 
       # WARNING: Temporal list item missing 'date' field
       occupation:

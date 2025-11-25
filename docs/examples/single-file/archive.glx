@@ -72,18 +72,31 @@ confidence_levels:
 
 # Property Definitions
 person_properties:
-  given_name:
-    label: "Given Name"
-    description: "Given name(s) of the person"
+  name:
+    label: "Name"
+    description: "Person's name as recorded, with optional structured breakdown"
     value_type: string
     temporal: true
-  
-  family_name:
-    label: "Family Name"
-    description: "Family or surname of the person"
-    value_type: string
-    temporal: true
-  
+    fields:
+      prefix:
+        label: "Prefix"
+        description: "Honorific prefix (Dr., Rev., Hon.)"
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      nickname:
+        label: "Nickname"
+        description: "Familiar or descriptive name"
+      surname_prefix:
+        label: "Surname Prefix"
+        description: "Article or prefix (von, van, de)"
+      surname:
+        label: "Surname"
+        description: "Family name"
+      suffix:
+        label: "Suffix"
+        description: "Generational suffix (Jr., Sr., III)"
+
   born_on:
     label: "Birth Date"
     description: "Date of birth"
@@ -102,16 +115,22 @@ person_properties:
 persons:
   person-a1b2c3d4:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       born_on: "1850-01-15"
       died_on: "1920-06-20"
       gender: "male"
-  
+
   person-b2c3d4e5:
     properties:
-      given_name: "Mary"
-      family_name: "Brown"
+      name:
+        value: "Mary Brown"
+        fields:
+          given: "Mary"
+          surname: "Brown"
       born_on: "1852-03-20"
       gender: "female"
 

@@ -182,10 +182,9 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 	// Test Person Data Persistence: Robert Eugene Williams
 	foundRobert := false
 	for _, person := range glx.Persons {
-		givenName, hasGiven := person.Properties[PersonPropertyGivenName].(string)
-		familyName, hasFamily := person.Properties[PersonPropertyFamilyName].(string)
+		givenName, familyName := ExtractNameFields(person.Properties[PersonPropertyName])
 
-		if hasGiven && hasFamily && givenName == "Robert Eugene" && familyName == "Williams" {
+		if givenName == "Robert Eugene" && familyName == "Williams" {
 			foundRobert = true
 
 			// Verify gender persisted
@@ -205,10 +204,9 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 	// Test Person Data Persistence: Mary Ann Wilson
 	foundMary := false
 	for _, person := range glx.Persons {
-		givenName, hasGiven := person.Properties[PersonPropertyGivenName].(string)
-		familyName, hasFamily := person.Properties[PersonPropertyFamilyName].(string)
+		givenName, familyName := ExtractNameFields(person.Properties[PersonPropertyName])
 
-		if hasGiven && hasFamily && givenName == "Mary Ann" && familyName == "Wilson" {
+		if givenName == "Mary Ann" && familyName == "Wilson" {
 			foundMary = true
 
 			// Verify gender persisted

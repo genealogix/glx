@@ -1,6 +1,9 @@
 persons:
   person-bob:
     properties:
-      given_name: "Robert"
-      family_name: "Thompson"
+      name:
+        value: "Robert Thompson"
+        fields:
+          given: "Robert"
+          surname: "Thompson"
       gender: male

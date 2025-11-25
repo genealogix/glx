@@ -38,8 +38,13 @@ func TestSerializeSingleFileBytes(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-001": {
 				Properties: map[string]any{
-					"given_name": "John",
-					"surname":    "Doe",
+					"name": map[string]any{
+						"value": "John Doe",
+						"fields": map[string]any{
+							"given":   "John",
+							"surname": "Doe",
+						},
+					},
 				},
 			},
 		},
@@ -70,7 +75,7 @@ func TestSerializeSingleFileBytes(t *testing.T) {
 		t.Error("YAML doesn't contain person-001")
 	}
 	if !contains(yamlStr, "John") {
-		t.Error("YAML doesn't contain given_name: John")
+		t.Error("YAML doesn't contain John")
 	}
 
 	t.Logf("Serialized %d bytes", len(yamlBytes))
@@ -82,8 +87,13 @@ func TestSerializeSingleFile(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-001": {
 				Properties: map[string]any{
-					"given_name": "John",
-					"surname":    "Doe",
+					"name": map[string]any{
+						"value": "John Doe",
+						"fields": map[string]any{
+							"given":   "John",
+							"surname": "Doe",
+						},
+					},
 				},
 			},
 		},
@@ -137,8 +147,11 @@ func TestDeserializeSingleFileBytes(t *testing.T) {
 	yamlData := `persons:
   person-001:
     properties:
-      given_name: John
-      surname: Doe
+      name:
+        value: John Doe
+        fields:
+          given: John
+          surname: Doe
 events: {}
 relationships: {}
 places: {}
@@ -166,9 +179,9 @@ assertions: {}
 		t.Fatal("Person person-001 not found")
 	}
 
-	givenName, _ := person.Properties["given_name"].(string)
-	if givenName != "John" {
-		t.Errorf("Expected given_name=John, got %s", givenName)
+	given, _ := ExtractNameFields(person.Properties["name"])
+	if given != "John" {
+		t.Errorf("Expected name.fields.given=John, got %s", given)
 	}
 }
 
@@ -181,8 +194,11 @@ func TestLoadSingleFile(t *testing.T) {
 	yamlData := `persons:
   person-001:
     properties:
-      given_name: John
-      surname: Doe
+      name:
+        value: John Doe
+        fields:
+          given: John
+          surname: Doe
 events: {}
 relationships: {}
 places: {}
@@ -221,14 +237,24 @@ func TestSerializeMultiFile(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-001": {
 				Properties: map[string]any{
-					"given_name": "John",
-					"surname":    "Doe",
+					"name": map[string]any{
+						"value": "John Doe",
+						"fields": map[string]any{
+							"given":   "John",
+							"surname": "Doe",
+						},
+					},
 				},
 			},
 			"person-002": {
 				Properties: map[string]any{
-					"given_name": "Jane",
-					"surname":    "Smith",
+					"name": map[string]any{
+						"value": "Jane Smith",
+						"fields": map[string]any{
+							"given":   "Jane",
+							"surname": "Smith",
+						},
+					},
 				},
 			},
 		},
@@ -314,8 +340,13 @@ func TestLoadMultiFile(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-001": {
 				Properties: map[string]any{
-					"given_name": "John",
-					"surname":    "Doe",
+					"name": map[string]any{
+						"value": "John Doe",
+						"fields": map[string]any{
+							"given":   "John",
+							"surname": "Doe",
+						},
+					},
 				},
 			},
 		},
@@ -387,9 +418,9 @@ func TestLoadMultiFile(t *testing.T) {
 		t.Fatal("Person person-001 not found")
 	}
 
-	givenName, _ := person.Properties["given_name"].(string)
-	if givenName != "John" {
-		t.Errorf("Expected given_name=John, got %s", givenName)
+	given, _ := ExtractNameFields(person.Properties["name"])
+	if given != "John" {
+		t.Errorf("Expected name.fields.given=John, got %s", given)
 	}
 }
 
@@ -399,8 +430,13 @@ func TestRoundTripSingleFile(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-001": {
 				Properties: map[string]any{
-					"given_name": "John",
-					"surname":    "Doe",
+					"name": map[string]any{
+						"value": "John Doe",
+						"fields": map[string]any{
+							"given":   "John",
+							"surname": "Doe",
+						},
+					},
 				},
 			},
 		},
@@ -436,16 +472,23 @@ func TestRoundTripSingleFile(t *testing.T) {
 	loadedPerson := loaded.Persons["person-001"]
 	originalPerson := original.Persons["person-001"]
 
-	if loadedPerson.Properties["given_name"] != originalPerson.Properties["given_name"] {
-		t.Error("given_name mismatch after round-trip")
+	loadedGiven, _ := ExtractNameFields(loadedPerson.Properties["name"])
+	originalGiven, _ := ExtractNameFields(originalPerson.Properties["name"])
+	if loadedGiven != originalGiven {
+		t.Error("name.fields.given mismatch after round-trip")
 	}
 }
 
 func TestEntityWithID(t *testing.T) {
 	person := Person{
 		Properties: map[string]any{
-			"given_name": "John",
-			"surname":    "Doe",
+			"name": map[string]any{
+				"value": "John Doe",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Doe",
+				},
+			},
 		},
 	}
 
@@ -478,7 +521,8 @@ func TestEntityWithID(t *testing.T) {
 	}
 
 	// Check entity restored
-	if restored.Entity.Properties["given_name"] != "John" {
+	given, _ := ExtractNameFields(restored.Entity.Properties["name"])
+	if given != "John" {
 		t.Error("Entity properties not restored correctly")
 	}
 }

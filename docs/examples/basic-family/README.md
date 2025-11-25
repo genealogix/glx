@@ -45,8 +45,11 @@ basic-family/
 persons:
   person-mother:
     properties:
-      given_name: "Mary"
-      family_name: "Thompson"
+      name:
+        value: "Mary Thompson"
+        fields:
+          given: "Mary"
+          surname: "Thompson"
       gender: female
 ```
 
@@ -55,8 +58,11 @@ persons:
 persons:
   person-father:
     properties:
-      given_name: "Robert"
-      family_name: "Thompson"
+      name:
+        value: "Robert Thompson"
+        fields:
+          given: "Robert"
+          surname: "Thompson"
       gender: male
 ```
 
@@ -65,8 +71,11 @@ persons:
 persons:
   person-child-alice:
     properties:
-      given_name: "Alice"
-      family_name: "Thompson"
+      name:
+        value: "Alice Thompson"
+        fields:
+          given: "Alice"
+          surname: "Thompson"
       gender: female
 ```
 
@@ -75,8 +84,11 @@ persons:
 persons:
   person-child-bob:
     properties:
-      given_name: "Robert"
-      family_name: "Thompson"
+      name:
+        value: "Robert Thompson"
+        fields:
+          given: "Robert"
+          surname: "Thompson"
       gender: male
 ```
 

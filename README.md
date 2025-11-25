@@ -65,8 +65,11 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 persons:
   person-john-smith:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       born_on: "1850-01-15"
 
 assertions:
@@ -151,8 +154,11 @@ All GENEALOGIX files use the same structure:
 persons:
   person-a1b2c3d4:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       born_on: "1850-01-15"
 
 sources:

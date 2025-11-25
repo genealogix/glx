@@ -50,28 +50,23 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			nameSubstructure := extractNameSubstructure(sub)
 			parsedName := parseGEDCOMName(sub.Value, nameSubstructure)
 
-			// Store name in person properties for quick access
-			if parsedName.GivenName != "" {
-				person.Properties[PersonPropertyGivenName] = parsedName.GivenName
-			}
-			if parsedName.Surname != "" {
-				person.Properties[PersonPropertyFamilyName] = parsedName.Surname
-			}
-			if parsedName.Prefix != "" {
-				person.Properties[PersonPropertyNamePrefix] = parsedName.Prefix
-			}
-			if parsedName.Nickname != "" {
-				person.Properties[PersonPropertyNickname] = parsedName.Nickname
-			}
-			if parsedName.SurnamePrefix != "" {
-				person.Properties[PersonPropertySurnamePrefix] = parsedName.SurnamePrefix
-			}
-			if parsedName.Suffix != "" {
-				person.Properties[PersonPropertyNameSuffix] = parsedName.Suffix
+			// Store unified name property with optional fields
+			fullName := parsedName.FormatFullName()
+			if fullName != "" {
+				nameValue := map[string]any{
+					"value": fullName,
+				}
+				// Only add fields if explicitly present in GEDCOM substructure
+				// We don't infer fields from parsing the name string
+				fields := nameSubstructure.ToFields()
+				if fields != nil {
+					nameValue["fields"] = fields
+				}
+				person.Properties[PersonPropertyName] = nameValue
 			}
 
-			// Create name assertions (with evidence/citations)
-			if err := createNameAssertions(personID, parsedName, sub, conv); err != nil {
+			// Create name assertion (with evidence/citations)
+			if err := createNameAssertion(personID, parsedName, sub, conv); err != nil {
 				conv.addWarning(indiRecord.Line, GedcomTagName, err.Error())
 			}
 
@@ -141,7 +136,6 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		case GedcomTagTitl:
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
-			// Note: This is different from NPFX (name prefix) which is part of name formatting
 			if sub.Value != "" {
 				person.Properties[PersonPropertyTitle] = sub.Value
 				createPropertyAssertion(personID, PersonPropertyTitle, sub.Value, sub, conv)
@@ -244,52 +238,29 @@ func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
 	return ns
 }
 
-// createNameAssertions creates assertions for name components
-func createNameAssertions(personID string, name PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) error {
+// createNameAssertion creates a single assertion for the unified name property
+func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) error {
+	fullName := name.FormatFullName()
+	if fullName == "" {
+		return nil
+	}
+
 	// Create citations from SOUR tags
 	citationIDs := extractCitations(personID, nameRecord, conv)
 
 	// Derive confidence
 	confidence := deriveConfidence(citationIDs, conv)
 
-	// Create assertions for each name component
-	if name.GivenName != "" {
-		assertionID := generateAssertionID(conv)
-		conv.GLX.Assertions[assertionID] = &Assertion{
-			Subject:    personID,
-			Claim:      PersonPropertyGivenName,
-			Value:      name.GivenName,
-			Confidence: confidence,
-			Citations:  citationIDs,
-		}
-		conv.Stats.AssertionsCreated++
+	// Create single assertion for the name
+	assertionID := generateAssertionID(conv)
+	conv.GLX.Assertions[assertionID] = &Assertion{
+		Subject:    personID,
+		Claim:      PersonPropertyName,
+		Value:      fullName,
+		Confidence: confidence,
+		Citations:  citationIDs,
 	}
-
-	if name.Surname != "" {
-		assertionID := generateAssertionID(conv)
-		conv.GLX.Assertions[assertionID] = &Assertion{
-			Subject:    personID,
-			Claim:      PersonPropertyFamilyName,
-			Value:      name.Surname,
-			Confidence: confidence,
-			Citations:  citationIDs,
-		}
-		conv.Stats.AssertionsCreated++
-	}
-
-	// Store other name components as property assertions
-	if name.Prefix != "" {
-		createPropertyAssertion(personID, PersonPropertyNamePrefix, name.Prefix, nameRecord, conv)
-	}
-	if name.Nickname != "" {
-		createPropertyAssertion(personID, PersonPropertyNickname, name.Nickname, nameRecord, conv)
-	}
-	if name.SurnamePrefix != "" {
-		createPropertyAssertion(personID, PersonPropertySurnamePrefix, name.SurnamePrefix, nameRecord, conv)
-	}
-	if name.Suffix != "" {
-		createPropertyAssertion(personID, PersonPropertyNameSuffix, name.Suffix, nameRecord, conv)
-	}
+	conv.Stats.AssertionsCreated++
 
 	return nil
 }

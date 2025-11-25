@@ -154,3 +154,116 @@ func isNameSuffix(word string) bool {
 
 	return suffixes[word]
 }
+
+// FormatFullName constructs a display string from the PersonName components.
+// The format follows: Prefix Given "Nickname" SurnamePrefix Surname Suffix
+func (n PersonName) FormatFullName() string {
+	var parts []string
+
+	if n.Prefix != "" {
+		parts = append(parts, n.Prefix)
+	}
+	if n.GivenName != "" {
+		parts = append(parts, n.GivenName)
+	}
+	if n.Nickname != "" {
+		parts = append(parts, "\""+n.Nickname+"\"")
+	}
+	if n.SurnamePrefix != "" {
+		parts = append(parts, n.SurnamePrefix)
+	}
+	if n.Surname != "" {
+		parts = append(parts, n.Surname)
+	}
+	if n.Suffix != "" {
+		parts = append(parts, n.Suffix)
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// ToFields converts a NameSubstructure to a map suitable for the name property's fields.
+// Only includes fields that were explicitly present in GEDCOM substructure tags.
+// We do NOT infer fields from parsing the name string - only explicit GEDCOM tags are used.
+func (ns *NameSubstructure) ToFields() map[string]string {
+	if ns == nil {
+		return nil
+	}
+
+	fields := make(map[string]string)
+
+	if ns.NPFX != "" {
+		fields[NameFieldPrefix] = ns.NPFX
+	}
+	if ns.GIVN != "" {
+		fields[NameFieldGiven] = ns.GIVN
+	}
+	if ns.NICK != "" {
+		fields[NameFieldNickname] = ns.NICK
+	}
+	if ns.SPFX != "" {
+		fields[NameFieldSurnamePrefix] = ns.SPFX
+	}
+	if ns.SURN != "" {
+		fields[NameFieldSurname] = ns.SURN
+	}
+	if ns.NSFX != "" {
+		fields[NameFieldSuffix] = ns.NSFX
+	}
+
+	if len(fields) == 0 {
+		return nil
+	}
+
+	return fields
+}
+
+// ExtractNameFields extracts the given and surname from a person's name property.
+// Returns empty strings if the fields are not found.
+func ExtractNameFields(nameProperty any) (given, surname string) {
+	if nameProperty == nil {
+		return "", ""
+	}
+
+	// Handle map[string]any (the typical structure from YAML parsing or code)
+	if nameMap, ok := nameProperty.(map[string]any); ok {
+		// Check for fields sub-map
+		if fieldsVal, hasFields := nameMap["fields"]; hasFields {
+			if fields, ok := fieldsVal.(map[string]any); ok {
+				if g, ok := fields[NameFieldGiven].(string); ok {
+					given = g
+				}
+				if s, ok := fields[NameFieldSurname].(string); ok {
+					surname = s
+				}
+			} else if fields, ok := fieldsVal.(map[string]string); ok {
+				given = fields[NameFieldGiven]
+				surname = fields[NameFieldSurname]
+			}
+		}
+	}
+
+	return given, surname
+}
+
+// GetFullName extracts the full name value from a person's name property.
+// Returns empty string if not found.
+func GetFullName(nameProperty any) string {
+	if nameProperty == nil {
+		return ""
+	}
+
+	// Handle simple string
+	if s, ok := nameProperty.(string); ok {
+		return s
+	}
+
+	// Handle map[string]any
+	if nameMap, ok := nameProperty.(map[string]any); ok {
+		if value, ok := nameMap["value"].(string); ok {
+			return value
+		}
+	}
+
+	return ""
+}

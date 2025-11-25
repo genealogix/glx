@@ -24,11 +24,14 @@ minimal/
 ### persons/person-abc123.glx
 
 ```yaml
-id: person-abc123
-
-properties:
-  given_name: "John"
-  family_name: "Smith"
+persons:
+  person-abc123:
+    properties:
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 ```
 
 ## Validation

@@ -715,8 +715,7 @@ GENEALOGIX provides standard person properties:
 
 | Property | Type | Temporal | Description |
 |----------|------|----------|-------------|
-| `given_name` | string | Yes | Given name(s) |
-| `family_name` | string | Yes | Family or surname |
+| `name` | string (with fields) | Yes | Person's name as recorded, with optional structured fields (given, surname, prefix, suffix, etc.) |
 | `gender` | string | Yes | Gender identity |
 | `born_on` | date | No | Date of birth |
 | `born_at` | places | No | Place of birth |
@@ -802,8 +801,147 @@ person_properties:
 | `value_type` | No* | Data type: `string`, `date`, `integer`, or `boolean` |
 | `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
 | `temporal` | No | Whether property can change over time (default: false) |
+| `fields` | No | Sub-schema for structured property components (see below) |
 
 *Exactly one of `value_type` or `reference_type` should be specified (neither defaults to `string`)
+
+### Structured Properties with Fields
+
+Some properties benefit from having structured sub-components. For example, a person's name can be stored as a simple string but may also include parsed components like given name, surname, prefix, etc. The `fields` attribute allows you to define this structured breakdown in the vocabulary.
+
+#### Defining Fields
+
+```yaml
+person_properties:
+  name:
+    label: "Name"
+    description: "Person's name as recorded, with optional structured breakdown"
+    value_type: string
+    temporal: true
+    fields:
+      prefix:
+        label: "Prefix"
+        description: "Honorific prefix (Dr., Rev., Hon.)"
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      nickname:
+        label: "Nickname"
+        description: "Familiar or descriptive name"
+      surname_prefix:
+        label: "Surname Prefix"
+        description: "Article or prefix (von, van, de)"
+      surname:
+        label: "Surname"
+        description: "Family name"
+      suffix:
+        label: "Suffix"
+        description: "Generational suffix (Jr., Sr., III)"
+```
+
+#### Field Definition Structure
+
+Each field in the `fields` map is defined with:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label for the field |
+| `description` | No | Detailed description of the field |
+
+#### Using Structured Properties in Data
+
+When a property has `fields` defined, the property value can be either:
+
+1. **Simple value** - Just a string (backward compatible):
+   ```yaml
+   properties:
+     name: "John Smith"
+   ```
+
+2. **Structured value** - Object with `value` and optional `fields`:
+   ```yaml
+   properties:
+     name:
+       value: "John Smith"
+       fields:
+         given: "John"
+         surname: "Smith"
+   ```
+
+3. **Temporal list** - For properties with `temporal: true`:
+   ```yaml
+   properties:
+     name:
+       - value: "Mary Johnson"
+         date: "1850"
+         fields:
+           given: "Mary"
+           surname: "Johnson"
+       - value: "Mary Smith"
+         date: "FROM 1875"
+         fields:
+           given: "Mary"
+           surname: "Smith"
+   ```
+
+#### When to Use Fields
+
+Use `fields` when:
+
+- A property has well-known components (name → given, surname, etc.)
+- You want to preserve both the original recorded value and parsed components
+- Different sources may record different components
+- You need to support searching or sorting by component
+
+The `value` field should always contain the complete value as recorded, while `fields` provides the optional parsed breakdown. This design:
+
+- Preserves the original source data
+- Allows flexible parsing (not all sources have all components)
+- Supports temporal changes (name changes over time)
+- Enables rich querying and display
+
+#### Custom Structured Properties
+
+You can define `fields` for any custom property:
+
+```yaml
+person_properties:
+  # Custom structured property for address
+  mailing_address:
+    label: "Mailing Address"
+    description: "Postal address with structured components"
+    value_type: string
+    temporal: true
+    fields:
+      street:
+        label: "Street Address"
+        description: "House number and street name"
+      city:
+        label: "City"
+        description: "City or town"
+      state:
+        label: "State/Province"
+        description: "State, province, or region"
+      postal_code:
+        label: "Postal Code"
+        description: "ZIP or postal code"
+      country:
+        label: "Country"
+        description: "Country name"
+```
+
+Usage:
+```yaml
+properties:
+  mailing_address:
+    value: "123 Main St, Springfield, IL 62701, USA"
+    fields:
+      street: "123 Main St"
+      city: "Springfield"
+      state: "IL"
+      postal_code: "62701"
+      country: "USA"
+```
 
 ### Temporal Properties
 

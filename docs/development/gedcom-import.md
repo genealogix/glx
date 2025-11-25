@@ -106,7 +106,7 @@ For multi-file serialization, random IDs will be used:
 
 **GEDCOM Tags Mapped**:
 - `INDI` → `Person` entity
-- `NAME` → `properties.given_name`, `properties.family_name`
+- `NAME` → `properties.name` (unified name with optional `fields`)
 - `SEX` → `properties.gender`
 - `BIRT`, `DEAT`, `CHR`, etc. → `Event` entities
 - `NOTE` → `notes` array
@@ -114,16 +114,37 @@ For multi-file serialization, random IDs will be used:
 
 **Property Mapping**:
 ```go
-// GEDCOM NAME structure
+// GEDCOM NAME with explicit substructure tags
 0 @I1@ INDI
 1 NAME John /Smith/
-  → properties.given_name: "John"
-  → properties.family_name: "Smith"
+2 GIVN John
+2 SURN Smith
+  → properties.name.value: "John Smith"
+  → properties.name.fields.given: "John"    // from GIVN tag
+  → properties.name.fields.surname: "Smith" // from SURN tag
+
+// GEDCOM NAME without substructure tags (fields NOT populated)
+0 @I2@ INDI
+1 NAME Mary /Johnson/
+  → properties.name.value: "Mary Johnson"
+  → (no fields - not inferred from name string)
 
 // GEDCOM SEX
 1 SEX M
   → properties.gender: "male"
 ```
+
+**Important**: The `name.fields` are ONLY populated from explicit GEDCOM substructure tags (GIVN, SURN, NPFX, NICK, SPFX, NSFX). We do NOT infer fields by parsing the name string. This preserves data fidelity - if the original GEDCOM didn't have structured name components, we don't guess at them.
+
+**Supported NAME substructure tags**:
+| GEDCOM Tag | GLX Field | Description |
+|------------|-----------|-------------|
+| `NPFX` | `fields.prefix` | Name prefix (Dr., Rev.) |
+| `GIVN` | `fields.given` | Given/first name(s) |
+| `NICK` | `fields.nickname` | Nickname |
+| `SPFX` | `fields.surname_prefix` | Surname prefix (von, van, de) |
+| `SURN` | `fields.surname` | Surname/family name |
+| `NSFX` | `fields.suffix` | Name suffix (Jr., Sr., III) |
 
 **Evidence Chain Construction**:
 ```go
@@ -493,8 +514,11 @@ Reverse conversion: GLX → GEDCOM
 - ✅ 948 persons with PEDI tags tested (Bullinger family)
 - ✅ 514 addresses preserved (Bullinger family)
 - ✅ Gap analysis: 100% critical, 94% high-priority coverage
-- ✅ **6 issues resolved**: Date qualifiers, date quoting, TITL, date ranges, PEDI, ADDR subfields
+- ✅ **Unified name property**: Single `name` property with `value` and optional `fields`
+- ✅ **Name fields from explicit tags only**: `name.fields` populated only from GEDCOM substructure tags (GIVN, SURN, etc.), not inferred from parsing
+- ✅ **Title property**: Added `title` person property for GEDCOM TITL tag
+- ✅ **7 issues resolved**: Date qualifiers, date quoting, TITL, date ranges, PEDI, ADDR subfields, unified name
 
 ---
 
-Last Updated: 2025-11-19
+Last Updated: 2025-11-25

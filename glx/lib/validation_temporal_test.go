@@ -44,7 +44,7 @@ func TestValidatePropertyValue_TemporalListMissingValue(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"given_name": []any{
+					"name": []any{
 						map[string]any{
 							"date": "1850",
 							// Missing "value" field
@@ -56,14 +56,14 @@ func TestValidatePropertyValue_TemporalListMissingValue(t *testing.T) {
 	}
 
 	propDef := &PropertyDefinition{
-		Label:       "Given Name",
-		Description: "Given name",
+		Label:       "Name",
+		Description: "Person's name",
 		ValueType:   "string",
 		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
-	glx.validatePropertyValue("persons", "person-1", "given_name", glx.Persons["person-1"].Properties["given_name"], propDef, result)
+	glx.validatePropertyValue("persons", "person-1", "name", glx.Persons["person-1"].Properties["name"], propDef, result)
 
 	// Should have 1 error: temporal list item missing 'value' field
 	// Should have 0 warnings (date is present)
@@ -80,7 +80,7 @@ func TestValidatePropertyValue_TemporalListNotObject(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"family_name": []any{
+					"name": []any{
 						"Smith",
 						"Jones",
 					},
@@ -90,14 +90,14 @@ func TestValidatePropertyValue_TemporalListNotObject(t *testing.T) {
 	}
 
 	propDef := &PropertyDefinition{
-		Label:       "Family Name",
-		Description: "Family name",
+		Label:       "Name",
+		Description: "Person's name",
 		ValueType:   "string",
 		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
-	glx.validatePropertyValue("persons", "person-1", "family_name", glx.Persons["person-1"].Properties["family_name"], propDef, result)
+	glx.validatePropertyValue("persons", "person-1", "name", glx.Persons["person-1"].Properties["name"], propDef, result)
 
 	// Should have 2 errors: both items are not objects
 	if len(result.Errors) != 2 {
@@ -146,21 +146,21 @@ func TestValidatePropertyValue_TemporalSimpleValue(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"given_name": "John",
+					"name": "John Smith",
 				},
 			},
 		},
 	}
 
 	propDef := &PropertyDefinition{
-		Label:       "Given Name",
-		Description: "Given name",
+		Label:       "Name",
+		Description: "Person's name",
 		ValueType:   "string",
 		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
-	glx.validatePropertyValue("persons", "person-1", "given_name", glx.Persons["person-1"].Properties["given_name"], propDef, result)
+	glx.validatePropertyValue("persons", "person-1", "name", glx.Persons["person-1"].Properties["name"], propDef, result)
 
 	// Should have no errors or warnings - simple values are valid for temporal properties
 	if len(result.Errors) != 0 {

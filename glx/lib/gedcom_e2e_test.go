@@ -68,12 +68,11 @@ func TestE2E_GEDCOM551_Shakespeare(t *testing.T) {
 	// Spot check: William Shakespeare
 	foundWilliam := false
 	for _, person := range glx.Persons {
-		if given, ok := person.Properties[PersonPropertyGivenName].(string); ok && given == "William" {
-			if family, ok := person.Properties[PersonPropertyFamilyName].(string); ok && family == "Shakespeare" {
-				foundWilliam = true
-				if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "male" {
-					t.Error("William Shakespeare should be male")
-				}
+		given, family := ExtractNameFields(person.Properties[PersonPropertyName])
+		if given == "William" && family == "Shakespeare" {
+			foundWilliam = true
+			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "male" {
+				t.Error("William Shakespeare should be male")
 			}
 		}
 	}

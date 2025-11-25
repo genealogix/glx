@@ -1,8 +1,11 @@
 persons:
   person-jane-smith-1876:
     properties:
-      given_name: "Jane"
-      family_name: "Smith"
+      name:
+        value: "Jane Smith"
+        fields:
+          given: "Jane"
+          surname: "Smith"
       born_on: "1876-09-05"
       died_on: "1955-12-10"
       gender: "female"

@@ -49,19 +49,17 @@ func TestRunValidate_TemporalPropertiesMalformed(t *testing.T) {
 
 	// Expected errors:
 	// 1. Non-temporal property (birth_year) with list value -> WARNING
-	// 2. Temporal list item missing 'value' field (given_name) -> ERROR
-	// 3-4. Temporal list items not objects (family_name has 2 items) -> 2 ERRORS
-	// Total: 3 errors, 1 warning minimum
+	// 2. Temporal list item missing 'value' field (name) -> ERROR
+	// Total: 1 error, 2 warnings minimum
 
 	// Actually checking:
 	// - birth_year with list -> 1 warning (non-temporal with list)
-	// - given_name missing value -> 1 error
-	// - family_name not objects -> 2 errors
+	// - name missing value -> 1 error
 	// - occupation missing date -> 1 warning
-	// Total expected: 3 errors, 2 warnings
+	// Total expected: 1 error, 2 warnings
 
-	if len(result.Errors) < 3 {
-		t.Errorf("Expected at least 3 errors, got %d", len(result.Errors))
+	if len(result.Errors) < 1 {
+		t.Errorf("Expected at least 1 error, got %d", len(result.Errors))
 		for i, e := range result.Errors {
 			t.Logf("Error %d: %s", i+1, e.Message)
 		}

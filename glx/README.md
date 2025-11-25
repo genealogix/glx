@@ -399,8 +399,11 @@ GENEALOGIX uses YAML files with `.glx` extension. Entities are stored as maps wh
 persons:
   person-john-smith:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 
 relationships:
   rel-marriage:
@@ -425,8 +428,11 @@ Each file contains one entity type:
 persons:
   person-john-smith:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 ```
 
 ```yaml

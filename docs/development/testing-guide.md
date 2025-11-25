@@ -83,8 +83,11 @@ Test files are standard GLX files:
 persons:
   person-abc12345:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 ```
 
 **Guidelines**:

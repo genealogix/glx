@@ -1,6 +1,9 @@
 persons:
   person-alice:
     properties:
-      given_name: "Alice"
-      family_name: "Thompson"
+      name:
+        value: "Alice Thompson"
+        fields:
+          given: "Alice"
+          surname: "Thompson"
       gender: female

@@ -1,8 +1,11 @@
 persons:
   person-john-smith-1850:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       born_on: "1850-01-15"
       died_on: "1920-06-20"
       gender: "male"

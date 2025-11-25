@@ -62,8 +62,11 @@ In addition to assertions (which provide evidence), GENEALOGIX entities can have
 persons:
   person-john:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       born_on: "1850-01-15"
       occupation: "blacksmith"
     notes: "Initial data entry"
@@ -416,13 +419,19 @@ places:
 persons:
   person-john-smith:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 
   person-mary-brown:
     properties:
-      given_name: "Mary"
-      family_name: "Brown"
+      name:
+        value: "Mary Brown"
+        fields:
+          given: "Mary"
+          surname: "Brown"
 
 events:
   event-wedding:

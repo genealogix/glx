@@ -17,17 +17,18 @@ place_types:
     description: "A city or town"
 
 person_properties:
-  given_name:
-    label: "Given Name"
-    description: "Given name(s) of the person"
+  name:
+    label: "Name"
+    description: "Person's name as recorded, with optional structured breakdown"
     value_type: string
     temporal: true
-
-  family_name:
-    label: "Family Name"
-    description: "Family or surname of the person"
-    value_type: string
-    temporal: true
+    fields:
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname:
+        label: "Surname"
+        description: "Family name"
 
   gender:
     label: "Gender"
@@ -51,8 +52,11 @@ person_properties:
 persons:
   person-john:
     properties:
-      given_name: "John"           # Simple string for temporal property - VALID
-      family_name: "Smith"         # Simple string for temporal property - VALID
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       gender: "male"                # Simple value for non-temporal - VALID
       occupation: "blacksmith"     # Simple string for temporal property - VALID
       residence: "place-leeds"     # Simple reference for temporal property - VALID

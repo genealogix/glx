@@ -1,6 +1,9 @@
 persons:
   person-mother:
     properties:
-      given_name: "Mary"
-      family_name: "Thompson"
+      name:
+        value: "Mary Thompson"
+        fields:
+          given: "Mary"
+          surname: "Thompson"
       gender: female

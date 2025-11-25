@@ -175,13 +175,20 @@ go test ./glx/...
 
 ```yaml
 # glx/tests/valid/person-with-multiple-names.glx
-id: person-12345678
-properties:
-  given_name: "John"
-  family_name: "Smith"
-  alternative_names:
-    - "Jonathan Smith"
-    - "Juan Hernandez"  # Testing multilingual names
+persons:
+  person-12345678:
+    properties:
+      name:
+        - value: "John Smith"
+          date: "1850"
+          fields:
+            given: "John"
+            surname: "Smith"
+        - value: "Juan Hernandez"  # Testing multilingual names
+          date: "1880"
+          fields:
+            given: "Juan"
+            surname: "Hernandez"
 ```
 
 **Invalid Test Cases** (`glx/tests/invalid/`):
@@ -192,10 +199,11 @@ properties:
 ```yaml
 # glx/tests/invalid/person-invalid-id-format.glx
 # Expected error: ID must match pattern person-[a-f0-9]{8}
-id: invalid-id
-properties:
-  given_name: "Test"
-  family_name: "Person"
+persons:
+  invalid-id:
+    properties:
+      name:
+        value: "Test Person"
 ```
 
 ### Test Coverage Requirements

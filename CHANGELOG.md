@@ -118,8 +118,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - Added 15-minute timeout for comprehensive test runs
   - No tests skipped in CI (no -short flag)
 - **Test documentation** - Fixed queen.ged README with correct software attribution
+- **GEDCOM TITL handling** - Now uses proper `PersonPropertyTitle` constant instead of hardcoded string
+- **GEDCOM name fields** - Only populate `name.fields` from explicit GEDCOM substructure tags (GIVN, SURN, etc.), not inferred from parsing the name string
+- **Test data consistency** - All testdata files updated to use unified name format
 
 ### Changed
+
+#### Person Properties Schema
+- **Unified `name` property** - Replaced fragmented name properties with single unified property
+  - Old: Separate `given_name`, `family_name` properties
+  - New: Single `name` property with `value` and optional `fields` breakdown
+  - Format: `name: { value: "John Smith", fields: { given: "John", surname: "Smith" } }`
+  - Supports temporal lists for name changes over time
+  - Fields include: `prefix`, `given`, `nickname`, `surname_prefix`, `surname`, `suffix`
+- **Added `title` property** - Nobility or honorific titles (temporal, like occupation)
+  - Properly handles GEDCOM TITL tag imports
+  - Added `PersonPropertyTitle` constant
+
+#### Vocabulary Updates
+- **person_properties vocabulary** - Updated to reflect unified name structure
+  - `name` property now includes `fields` sub-schema for structured breakdown
+  - Added `title` property definition
+
+#### Other
 - **Documentation structure** - Separated user docs (docs/) from planning docs (.claude/plans/)
 
 ### Technical Details

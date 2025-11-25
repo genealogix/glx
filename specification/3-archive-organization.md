@@ -29,14 +29,20 @@ Every GENEALOGIX file uses the same universal structure:
 persons:
   person-abc12345:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
       birth_date: "1850-01-15"
 
   person-def67890:
     properties:
-      given_name: "Mary"
-      family_name: "Brown"
+      name:
+        value: "Mary Brown"
+        fields:
+          given: "Mary"
+          surname: "Brown"
 
 sources:
   source-xyz11111:
@@ -54,8 +60,11 @@ relationships: {}
 persons:
   person-abc12345:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 ```
 
 ## Validation Levels
@@ -118,8 +127,11 @@ family-archive/
 persons:
   person-abc12345:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 ```
 
 **Benefits:**
@@ -148,12 +160,18 @@ family-archive/
 persons:
   person-abc12345:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
   person-def67890:
     properties:
-      given_name: "Mary"
-      family_name: "Brown"
+      name:
+        value: "Mary Brown"
+        fields:
+          given: "Mary"
+          surname: "Brown"
 
 relationships:
   rel-marriage-001:

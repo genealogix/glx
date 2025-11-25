@@ -9,8 +9,6 @@
 ## Type System & Schema
 
 - Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete
-- Remove the custom flag from all vocabularies and property definitions
-- Explore making name property an object?
 
 ## GEDCOM Import: Missing Data Storage
 

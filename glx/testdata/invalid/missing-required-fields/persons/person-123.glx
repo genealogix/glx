@@ -1,6 +1,7 @@
 persons:
   person-123:
     properties:
-      given_name: "John"
+      name:
+        value: "John"
 
 

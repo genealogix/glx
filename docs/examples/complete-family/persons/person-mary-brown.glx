@@ -1,8 +1,11 @@
 persons:
   person-mary-brown-1852:
     properties:
-      given_name: "Mary"
-      family_name: "Smith"
+      name:
+        value: "Mary Smith"
+        fields:
+          given: "Mary"
+          surname: "Smith"
       born_on: "1852-03-20"
       died_on: "1930-08-15"
       gender: "female"

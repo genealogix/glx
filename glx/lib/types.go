@@ -333,11 +333,18 @@ type QualityRating struct {
 // PropertyDefinition defines a property that can be used on entities.
 // value_type and reference_type are mutually exclusive.
 type PropertyDefinition struct {
-	Label         string `yaml:"label"`
-	Description   string `yaml:"description,omitempty"`
-	ValueType     string `yaml:"value_type,omitempty"`     // string, date, integer, boolean
-	ReferenceType string `yaml:"reference_type,omitempty"` // persons, places, events, relationships, etc.
-	Temporal      *bool  `yaml:"temporal,omitempty"`       // Can this property change over time?
+	Label         string                      `yaml:"label"`
+	Description   string                      `yaml:"description,omitempty"`
+	ValueType     string                      `yaml:"value_type,omitempty"`     // string, date, integer, boolean
+	ReferenceType string                      `yaml:"reference_type,omitempty"` // persons, places, events, relationships, etc.
+	Temporal      *bool                       `yaml:"temporal,omitempty"`       // Can this property change over time?
+	Fields        map[string]*FieldDefinition `yaml:"fields,omitempty"`         // Optional structured breakdown of the value
+}
+
+// FieldDefinition defines a field within a structured property value.
+type FieldDefinition struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
 }
 
 // TemporalValue represents a single entry in the history of a temporal property.

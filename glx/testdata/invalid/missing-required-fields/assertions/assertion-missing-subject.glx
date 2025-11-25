@@ -1,6 +1,6 @@
 assertions:
   assertion-missing-subject:
-    claim: given_name
+    claim: name
     value: "John"
     citations:
       - citation-123

@@ -66,7 +66,10 @@ Example:
 persons:
   person-john-smith:
     properties:
-      given_name: "John"
-      family_name: "Smith"
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 ```
 

@@ -379,11 +379,17 @@ func (glx *GLXFile) validatePropertyValue(
 		return
 	}
 
-	// Handle temporal properties: accept simple value OR list of {value, date} objects
+	// Handle temporal properties: accept simple value, single {value, date, fields} object, OR list
 	switch v := propValue.(type) {
 	case string, float64, int, bool:
 		// Simple value is fine for temporal properties - validate it
 		glx.validateValueType(entityType, entityID, "properties."+propName, v, propDef.ValueType, result)
+
+		return
+
+	case map[string]any:
+		// Single object with value (and optional date/fields) - validate it
+		glx.validateTemporalItem(entityType, entityID, propName, -1, v, propDef, result)
 
 		return
 	}
@@ -395,7 +401,7 @@ func (glx *GLXFile) validatePropertyValue(
 			SourceType: entityType,
 			SourceID:   entityID,
 			Field:      "properties." + propName,
-			Message: fmt.Sprintf("%s[%s].properties.%s: temporal property has invalid value type (expected simple value or list of {value, date} objects)",
+			Message: fmt.Sprintf("%s[%s].properties.%s: temporal property has invalid value type (expected simple value, {value, date} object, or list of such objects)",
 				entityType, entityID, propName),
 		})
 
@@ -417,36 +423,92 @@ func (glx *GLXFile) validatePropertyValue(
 			continue
 		}
 
-		// Check for required 'value' field
-		if _, hasValue := itemMap["value"]; !hasValue {
-			result.Errors = append(result.Errors, ValidationError{
-				SourceType:  entityType,
-				SourceID:    entityID,
-				SourceField: fmt.Sprintf("properties.%s[%d].value", propName, i),
-				Message: fmt.Sprintf("%s[%s].properties.%s[%d]: temporal list item missing required 'value' field",
-					entityType, entityID, propName, i),
-			})
-		}
+		glx.validateTemporalItem(entityType, entityID, propName, i, itemMap, propDef, result)
+	}
+}
 
-		// Optional: validate 'date' field exists (temporal items should have dates)
-		if dateVal, hasDate := itemMap["date"]; hasDate {
-			// Validate date format
-			if dateStr, ok := dateVal.(string); ok {
-				glx.validateDateFormat(entityType, entityID, fmt.Sprintf("properties.%s[%d].date", propName, i), dateStr, result)
-			}
-		} else {
+// validateTemporalItem validates a single temporal item (object with value, optional date and fields).
+// index is -1 for a single object, or >= 0 for list items.
+func (glx *GLXFile) validateTemporalItem(
+	entityType, entityID, propName string,
+	index int,
+	itemMap map[string]any,
+	propDef *PropertyDefinition,
+	result *ValidationResult,
+) {
+	// Build field path based on whether this is a list item or single object
+	fieldPath := "properties." + propName
+	msgPath := fmt.Sprintf("%s[%s].properties.%s", entityType, entityID, propName)
+	if index >= 0 {
+		fieldPath = fmt.Sprintf("properties.%s[%d]", propName, index)
+		msgPath = fmt.Sprintf("%s[%s].properties.%s[%d]", entityType, entityID, propName, index)
+	}
+
+	// Check for required 'value' field
+	if _, hasValue := itemMap["value"]; !hasValue {
+		result.Errors = append(result.Errors, ValidationError{
+			SourceType:  entityType,
+			SourceID:    entityID,
+			SourceField: fieldPath + ".value",
+			Message:     msgPath + ": temporal item missing required 'value' field",
+		})
+	}
+
+	// Optional: validate 'date' field exists (temporal items should have dates, but single objects may omit it)
+	if dateVal, hasDate := itemMap["date"]; hasDate {
+		// Validate date format
+		if dateStr, ok := dateVal.(string); ok {
+			glx.validateDateFormat(entityType, entityID, fieldPath+".date", dateStr, result)
+		}
+	} else if index >= 0 {
+		// Only warn about missing date for list items, not single objects
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      fieldPath + ".date",
+			Message:    msgPath + ": temporal list item missing 'date' field",
+		})
+	}
+
+	// Validate the value field against the property's value_type
+	if value, hasValue := itemMap["value"]; hasValue && propDef.ValueType != "" {
+		glx.validateValueType(entityType, entityID, fieldPath+".value", value, propDef.ValueType, result)
+	}
+
+	// Validate fields if present and property definition has fields schema
+	if fields, hasFields := itemMap["fields"]; hasFields && propDef.Fields != nil {
+		glx.validateTemporalFields(entityType, entityID, fieldPath, fields, propDef.Fields, result)
+	}
+}
+
+// validateTemporalFields validates the fields of a structured temporal property.
+func (glx *GLXFile) validateTemporalFields(
+	entityType, entityID, fieldPath string,
+	fields any,
+	fieldDefs map[string]*FieldDefinition,
+	result *ValidationResult,
+) {
+	fieldsMap, ok := fields.(map[string]any)
+	if !ok {
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      fieldPath + ".fields",
+			Message:    fmt.Sprintf("%s[%s].%s.fields: expected object, got %T", entityType, entityID, fieldPath, fields),
+		})
+
+		return
+	}
+
+	// Warn about unknown fields
+	for fieldName := range fieldsMap {
+		if _, known := fieldDefs[fieldName]; !known {
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,
 				SourceID:   entityID,
-				Field:      fmt.Sprintf("properties.%s[%d].date", propName, i),
-				Message: fmt.Sprintf("%s[%s].properties.%s[%d]: temporal list item missing 'date' field",
-					entityType, entityID, propName, i),
+				Field:      fieldPath + ".fields." + fieldName,
+				Message:    fmt.Sprintf("%s[%s].%s.fields.%s: unknown field", entityType, entityID, fieldPath, fieldName),
 			})
-		}
-
-		// Validate the value field against the property's value_type
-		if value, hasValue := itemMap["value"]; hasValue && propDef.ValueType != "" {
-			glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s[%d].value", propName, i), value, propDef.ValueType, result)
 		}
 	}
 }

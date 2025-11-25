@@ -21,17 +21,18 @@ place_types:
     description: "A city or town"
 
 person_properties:
-  given_name:
-    label: "Given Name"
-    description: "Given name(s) of the person"
+  name:
+    label: "Name"
+    description: "Person's name as recorded, with optional structured breakdown"
     value_type: string
     temporal: true
-
-  family_name:
-    label: "Family Name"
-    description: "Family or surname of the person"
-    value_type: string
-    temporal: true
+    fields:
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname:
+        label: "Surname"
+        description: "Family name"
 
   occupation:
     label: "Occupation"
@@ -49,19 +50,18 @@ person_properties:
 persons:
   person-jane:
     properties:
-      # Temporal value_type property with dated list
-      given_name:
-        - value: "Jane"
-          date: "FROM 1850"
-        - value: "Jane Elizabeth"
-          date: "FROM 1870"
-
-      # Another temporal value_type with dated list
-      family_name:
-        - value: "Doe"
+      # Temporal name property with dated list
+      name:
+        - value: "Jane Doe"
           date: "FROM 1850 TO 1875"
-        - value: "Smith"
-          date: "FROM 1875"  # Married name
+          fields:
+            given: "Jane"
+            surname: "Doe"
+        - value: "Jane Elizabeth Smith"
+          date: "FROM 1875"
+          fields:
+            given: "Jane Elizabeth"
+            surname: "Smith"
 
       # Temporal value_type with occupation changes
       occupation:

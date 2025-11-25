@@ -306,8 +306,11 @@ relationship_types:
 persons:
   person-john-doe:
     properties:
-      given_name: "John"
-      family_name: "Doe"
+      name:
+        value: "John Doe"
+        fields:
+          given: "John"
+          surname: "Doe"
 
       # Census-specific properties
       census_occupation: "Agricultural Labourer"

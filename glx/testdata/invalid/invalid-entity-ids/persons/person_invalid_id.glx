@@ -1,5 +1,8 @@
 persons:
   person_invalid_id:
     properties:
-      given_name: "Test"
-      family_name: "Person"
+      name:
+        value: "Test Person"
+        fields:
+          given: "Test"
+          surname: "Person"

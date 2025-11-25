@@ -1,7 +1,7 @@
 assertions:
   assertion-missing-sources:
     subject: person-123
-    claim: given_name
+    claim: name
     value: "John"
 
 

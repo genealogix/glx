@@ -143,24 +143,24 @@ func TestPropertyValueFormatValidation(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"given_name": "John",       // string - valid
-					"born_on":    "1850-03-15", // date - valid
-					"age":        30,           // integer - valid
-					"living":     true,         // boolean - valid
-					"bad_date":   "March 1850", // date - invalid format
-					"bad_int":    "thirty",     // integer - invalid type
+					"string_prop": "John",       // string - valid
+					"born_on":     "1850-03-15", // date - valid
+					"age":         30,           // integer - valid
+					"living":      true,         // boolean - valid
+					"bad_date":    "March 1850", // date - invalid format
+					"bad_int":     "thirty",     // integer - invalid type
 				},
 			},
 		},
 	}
 
 	propVocab := map[string]*PropertyDefinition{
-		"given_name": {ValueType: "string"},
-		"born_on":    {ValueType: "date"},
-		"age":        {ValueType: "integer"},
-		"living":     {ValueType: "boolean"},
-		"bad_date":   {ValueType: "date"},
-		"bad_int":    {ValueType: "integer"},
+		"string_prop": {ValueType: "string"},
+		"born_on":     {ValueType: "date"},
+		"age":         {ValueType: "integer"},
+		"living":      {ValueType: "boolean"},
+		"bad_date":    {ValueType: "date"},
+		"bad_int":     {ValueType: "integer"},
 	}
 
 	result := &ValidationResult{
