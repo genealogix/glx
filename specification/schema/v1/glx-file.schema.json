@@ -134,14 +134,6 @@
       },
       "additionalProperties": false
     },
-    "quality_ratings": {
-      "type": "object",
-      "description": "Quality rating vocabulary",
-      "patternProperties": {
-        "^[0-9]+$": { "$ref": "vocabularies/quality-ratings.schema.json" }
-      },
-      "additionalProperties": false
-    },
     "source_types": {
       "type": "object",
       "description": "Source type vocabulary",

@@ -264,7 +264,7 @@ const (
 // GEDCOM Tags - Citation/Evidence
 const (
 	GedcomTagPage = "PAGE" // Page/location within source
-	GedcomTagQuay = "QUAY" // Quality assessment
+	GedcomTagQuay = "QUAY" // Quality assessment (preserved in citation notes)
 	GedcomTagCont = "CONT" // Continuation on new line
 	GedcomTagConc = "CONC" // Concatenation (same line)
 )
@@ -337,10 +337,9 @@ const (
 	VocabPlaceTypes        = "place_types"
 	VocabRepositoryTypes   = "repository_types"
 	VocabParticipantRoles  = "participant_roles"
-	VocabMediaTypes        = "media_types"
-	VocabConfidenceLevels  = "confidence_levels"
-	VocabQualityRatings    = "quality_ratings"
-	VocabSourceTypes       = "source_types"
+	VocabMediaTypes       = "media_types"
+	VocabConfidenceLevels = "confidence_levels"
+	VocabSourceTypes      = "source_types"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile

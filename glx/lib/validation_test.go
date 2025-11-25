@@ -418,40 +418,6 @@ func TestValidateMultiTypeReferences(t *testing.T) {
 	})
 }
 
-func TestValidatePointerReferences(t *testing.T) {
-	t.Run("citation quality valid", func(t *testing.T) {
-		quality := 2
-		archive := &GLXFile{
-			Citations: map[string]*Citation{
-				"citation-1": {Quality: &quality},
-			},
-			QualityRatings: map[string]*QualityRating{
-				"2": {Label: "Secondary"},
-			},
-		}
-		result := archive.Validate()
-		assert.Empty(t, result.Errors)
-	})
-
-	t.Run("citation quality invalid", func(t *testing.T) {
-		quality := 5
-		archive := &GLXFile{
-			Citations: map[string]*Citation{
-				"citation-1": {Quality: &quality},
-			},
-			QualityRatings: map[string]*QualityRating{
-				"0": {Label: "Unreliable"},
-				"1": {Label: "Questionable"},
-				"2": {Label: "Secondary"},
-				"3": {Label: "Primary"},
-			},
-		}
-		result := archive.Validate()
-		require.Len(t, result.Errors, 1)
-		assert.Contains(t, result.Errors[0].Message, "5")
-	})
-}
-
 func TestValidateRelationshipEventReferences(t *testing.T) {
 	t.Run("relationship start and end events valid", func(t *testing.T) {
 		archive := &GLXFile{

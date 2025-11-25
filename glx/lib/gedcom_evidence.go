@@ -47,8 +47,6 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 		SourceID: sourceID,
 	}
 
-	quay := -1
-
 	// Extract citation details from SOUR subrecords
 	for _, sub := range sourRecord.SubRecords {
 		switch sub.Tag {
@@ -80,9 +78,11 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 			citation.TextFromSource = sub.Value
 
 		case GedcomTagQuay:
-			// Quality assessment (0-3) - store for confidence derivation
-			if q, err := strconv.Atoi(sub.Value); err == nil {
-				quay = q
+			// GEDCOM quality assessment (0-3) - preserve in notes
+			if citation.Notes != "" {
+				citation.Notes += "\nGEDCOM QUAY: " + sub.Value
+			} else {
+				citation.Notes = "GEDCOM QUAY: " + sub.Value
 			}
 
 		case GedcomTagNote:
@@ -110,12 +110,6 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 		}
 	}
 
-	// Map QUAY to Quality if present
-	if quay >= 0 {
-		quality := quay
-		citation.Quality = &quality
-	}
-
 	// Store citation
 	conv.GLX.Citations[citationID] = citation
 	conv.Stats.CitationsCreated++
@@ -135,9 +129,6 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 	// Generate assertion ID
 	assertionID := generateAssertionID(conv)
 
-	// Derive confidence
-	confidence := deriveConfidence(citationIDs, conv)
-
 	// Convert value to string
 	var valueStr string
 	switch v := value.(type) {
@@ -153,11 +144,10 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 
 	// Create assertion
 	assertion := &Assertion{
-		Subject:    subjectID,
-		Claim:      claim,
-		Value:      valueStr,
-		Confidence: confidence,
-		Citations:  citationIDs,
+		Subject:   subjectID,
+		Claim:     claim,
+		Value:     valueStr,
+		Citations: citationIDs,
 	}
 
 	// Store assertion
@@ -179,43 +169,6 @@ func extractCitations(subjectID string, record *GEDCOMRecord, conv *ConversionCo
 	}
 
 	return citationIDs
-}
-
-// deriveConfidence derives confidence level from citations
-func deriveConfidence(citationIDs []string, conv *ConversionContext) string {
-	if len(citationIDs) == 0 {
-		return ConfidenceLevelMedium // Default when no citations
-	}
-
-	// Check Quality values (formerly QUAY)
-	highestQuality := -1
-	for _, citationID := range citationIDs {
-		citation := conv.GLX.Citations[citationID]
-		if citation != nil && citation.Quality != nil {
-			if *citation.Quality > highestQuality {
-				highestQuality = *citation.Quality
-			}
-		}
-	}
-
-	// Map QUAY to confidence
-	return mapQUAYtoConfidence(highestQuality)
-}
-
-// mapQUAYtoConfidence maps GEDCOM QUAY values (0-3) to GLX confidence levels
-func mapQUAYtoConfidence(quay int) string {
-	switch quay {
-	case 0:
-		return ConfidenceLevelLow // Unreliable evidence
-	case 1:
-		return ConfidenceLevelLow // Questionable reliability
-	case 2:
-		return ConfidenceLevelMedium // Secondary evidence
-	case 3:
-		return ConfidenceLevelHigh // Direct and primary evidence
-	default:
-		return ConfidenceLevelMedium // Default
-	}
 }
 
 // extractNoteText extracts note text from NOTE record

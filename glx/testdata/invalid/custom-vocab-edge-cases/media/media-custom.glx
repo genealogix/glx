@@ -1,7 +1,0 @@
-media:
-  media-custom:
-    uri: "media/photos/photo.jpg"
-    mime_type: "image/jpeg"
-    media_type: unknown-media-type
-
-

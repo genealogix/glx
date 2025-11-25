@@ -39,7 +39,6 @@ type GLXFile struct {
 	SourceTypes       map[string]*SourceType       `yaml:"source_types,omitempty"`
 	RepositoryTypes   map[string]*RepositoryType   `yaml:"repository_types,omitempty"`
 	MediaTypes        map[string]*MediaType        `yaml:"media_types,omitempty"`
-	QualityRatings    map[string]*QualityRating    `yaml:"quality_ratings,omitempty"`
 
 	// Property vocabularies
 	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
@@ -192,7 +191,6 @@ type Citation struct {
 	Page           string         `yaml:"page,omitempty"`
 	TextFromSource string         `yaml:"text_from_source,omitempty"`
 	Transcription  string         `yaml:"transcription,omitempty"`
-	Quality        *int           `refType:"quality_ratings"         yaml:"quality,omitempty"`
 	Locator        any            `yaml:"locator,omitempty"` // Can be string or Locator struct
 	RepositoryID   string         `refType:"repositories"            yaml:"repository,omitempty"`
 	Properties     map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
@@ -322,14 +320,6 @@ type MediaType struct {
 	MimeType    string `yaml:"mime_type,omitempty"`
 }
 
-// QualityRating represents a standard quality rating vocabulary entry.
-// Note: The key in the map is a string representation of the integer rating (0-3).
-type QualityRating struct {
-	Label       string   `yaml:"label"`
-	Description string   `yaml:"description,omitempty"`
-	Examples    []string `yaml:"examples,omitempty"`
-}
-
 // PropertyDefinition defines a property that can be used on entities.
 // value_type and reference_type are mutually exclusive.
 type PropertyDefinition struct {
@@ -379,7 +369,6 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates = append(duplicates, mergeMap("media_types", g.MediaTypes, other.MediaTypes)...)
 	duplicates = append(duplicates, mergeMap("participant_roles", g.ParticipantRoles, other.ParticipantRoles)...)
 	duplicates = append(duplicates, mergeMap("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels)...)
-	duplicates = append(duplicates, mergeMap("quality_ratings", g.QualityRatings, other.QualityRatings)...)
 
 	// Merge property vocabularies
 	duplicates = append(duplicates, mergeMap("person_properties", g.PersonProperties, other.PersonProperties)...)

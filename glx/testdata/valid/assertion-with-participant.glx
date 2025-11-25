@@ -43,7 +43,6 @@ sources:
 citations:
   citation-marriage-cert:
     source: source-marriage-cert
-    quality: 3
     transcription: "John Smith married Jane Doe on June 15, 1880"
 
 # Participant assertions showing people involved in the marriage

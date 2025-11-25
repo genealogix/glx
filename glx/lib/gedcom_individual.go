@@ -248,17 +248,13 @@ func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRec
 	// Create citations from SOUR tags
 	citationIDs := extractCitations(personID, nameRecord, conv)
 
-	// Derive confidence
-	confidence := deriveConfidence(citationIDs, conv)
-
 	// Create single assertion for the name
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{
-		Subject:    personID,
-		Claim:      PersonPropertyName,
-		Value:      fullName,
-		Confidence: confidence,
-		Citations:  citationIDs,
+		Subject:   personID,
+		Claim:     PersonPropertyName,
+		Value:     fullName,
+		Citations: citationIDs,
 	}
 	conv.Stats.AssertionsCreated++
 
@@ -567,11 +563,10 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{
-		Subject:    personID,
-		Claim:      "no_" + eventType,
-		Value:      "true",              // Negative assertion (NO tag from GEDCOM 7.0)
-		Confidence: ConfidenceLevelHigh, // Negative assertions are typically certain
-		Citations:  citationIDs,
+		Subject:   personID,
+		Claim:     "no_" + eventType,
+		Value:     "true", // Negative assertion (NO tag from GEDCOM 7.0)
+		Citations: citationIDs,
 	}
 	conv.Stats.AssertionsCreated++
 

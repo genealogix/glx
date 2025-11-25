@@ -1,6 +1,0 @@
-event_properties:
-  custom_event_prop:
-    label: "Custom Event Property"
-    value_type: string
-
-

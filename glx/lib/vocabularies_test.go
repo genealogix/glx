@@ -22,7 +22,6 @@ func TestStandardVocabularies(t *testing.T) {
 		"media-types.glx",
 		"participant-roles.glx",
 		"confidence-levels.glx",
-		"quality-ratings.glx",
 		"person-properties.glx",
 		"event-properties.glx",
 		"relationship-properties.glx",

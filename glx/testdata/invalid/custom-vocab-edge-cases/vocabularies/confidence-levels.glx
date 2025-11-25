@@ -1,9 +1,0 @@
-confidence_levels:
-  high:
-    label: "High"
-  medium:
-    label: "Medium"
-  low:
-    label: "Low"
-
-

@@ -69,7 +69,6 @@ func TestRunInit_MultiFile(t *testing.T) {
 		"vocabularies/participant-roles.glx",
 		"vocabularies/media-types.glx",
 		"vocabularies/confidence-levels.glx",
-		"vocabularies/quality-ratings.glx",
 	}
 
 	for _, file := range vocabFiles {
@@ -148,7 +147,6 @@ func TestCreateStandardVocabularies(t *testing.T) {
 		"vocabularies/participant-roles.glx",
 		"vocabularies/media-types.glx",
 		"vocabularies/confidence-levels.glx",
-		"vocabularies/quality-ratings.glx",
 	}
 
 	for _, file := range vocabFiles {

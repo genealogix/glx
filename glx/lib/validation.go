@@ -66,7 +66,6 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabParticipantRoles] = buildIDSet(glx.ParticipantRoles)
 	result.Vocabularies[VocabMediaTypes] = buildIDSet(glx.MediaTypes)
 	result.Vocabularies[VocabConfidenceLevels] = buildIDSet(glx.ConfidenceLevels)
-	result.Vocabularies[VocabQualityRatings] = buildIDSet(glx.QualityRatings)
 	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
 }
 

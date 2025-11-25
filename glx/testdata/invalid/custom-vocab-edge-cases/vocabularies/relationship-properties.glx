@@ -1,6 +1,0 @@
-relationship_properties:
-  custom_rel_prop:
-    label: "Custom Relationship Property"
-    value_type: string
-
-

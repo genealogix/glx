@@ -71,7 +71,7 @@ This specification is under active development.
 - **Multi-Tenant**: Supports family-level isolation within organizations
 - **Git-Native**: Built from the ground up for version control
 - **Hierarchical Places**: Supports complex place hierarchies with historical variations
-- **Evidence Quality**: Supports GEDCOM QUAY standard (0-3 scale) for source reliability assessment; however, assertion confidence levels are the preferred GENEALOGIX approach and quality scales are customizable per archive
+- **Evidence Confidence**: Assertion confidence levels (high/medium/low/disputed) capture researcher certainty in conclusions
 - **Extensible**: Custom entity types and properties supported via repository-owned vocabularies
 
 ## Quick Example

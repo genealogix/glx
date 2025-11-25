@@ -43,11 +43,6 @@ var MediaTypes []byte
 //go:embed confidence-levels.glx
 var ConfidenceLevels []byte
 
-// QualityRatings contains the embedded quality-ratings.glx vocabulary file.
-//
-//go:embed quality-ratings.glx
-var QualityRatings []byte
-
 // PersonProperties contains the embedded person-properties.glx vocabulary file.
 //
 //go:embed person-properties.glx
@@ -78,7 +73,6 @@ var Files = map[string][]byte{
 	"participant-roles.glx":       ParticipantRoles,
 	"media-types.glx":             MediaTypes,
 	"confidence-levels.glx":       ConfidenceLevels,
-	"quality-ratings.glx":         QualityRatings,
 	"person-properties.glx":       PersonProperties,
 	"event-properties.glx":        EventProperties,
 	"relationship-properties.glx": RelationshipProperties,

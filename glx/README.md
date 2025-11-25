@@ -168,8 +168,7 @@ my-family-archive/
 │   ├── repository-types.glx
 │   ├── participant-roles.glx
 │   ├── media-types.glx
-│   ├── confidence-levels.glx
-│   └── quality-ratings.glx
+│   └── confidence-levels.glx
 ├── .gitignore
 └── README.md
 ```

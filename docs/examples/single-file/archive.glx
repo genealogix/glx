@@ -60,11 +60,6 @@ participant_roles:
     applies_to:
       - relationship
 
-quality_ratings:
-  "3":
-    label: "Primary source"
-    description: "Original document created at time of event"
-
 confidence_levels:
   high:
     label: "High Confidence"
@@ -187,7 +182,6 @@ sources:
 citations:
   citation-abcdef12:
     source: source-12345678
-    quality: 3
     locator: "Entry 145, Page 23"
     text_from_source: "John Smith, born January 15, 1850"
 

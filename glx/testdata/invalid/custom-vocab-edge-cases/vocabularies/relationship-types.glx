@@ -1,6 +1,0 @@
-relationship_types:
-  marriage:
-    label: "Marriage"
-    gedcom: "MARR"
-
-

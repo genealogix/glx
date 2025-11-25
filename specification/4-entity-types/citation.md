@@ -1,6 +1,6 @@
 ---
 title: Citation Entity
-description: Specific references to evidence with quality assessment and source linkage
+description: Specific references to evidence with source linkage
 layout: doc
 ---
 
@@ -10,7 +10,7 @@ layout: doc
 
 ## Overview
 
-A Citation entity represents a specific reference to evidence that supports genealogical conclusions. Citations link to Source entities and provide detailed information about where evidence was found, including page numbers, data dates, and quality assessments.
+A Citation entity represents a specific reference to evidence that supports genealogical conclusions. Citations link to Source entities and provide detailed information about where evidence was found, including page numbers and data dates.
 
 ## Core Concepts
 
@@ -20,34 +20,6 @@ A Citation entity represents a specific reference to evidence that supports gene
 - **Citation**: A specific reference to information within a source
 
 One source can have many citations referencing different pages or sections.
-
-### Evidence Quality
-
-GENEALOGIX uses a 0-3 quality scale that maintains 1:1 compatibility with GEDCOM QUAY for interoperability.
-
-**Quality Scale (GEDCOM QUAY Compatible):**
-- **3**: Direct and primary evidence used, or by dominance of evidence
-  - Examples: Original birth certificate, contemporary baptism record, firsthand diary entry
-- **2**: Secondary evidence, data officially recorded sometime after event
-  - Examples: Census record, compiled index, published vital records
-- **1**: Questionable reliability of evidence
-  - Examples: Undocumented oral history, conflicting sources, estimated data
-- **0**: Unreliable evidence or estimated data
-  - Examples: Unverified family tradition, unsourced online trees
-
-**See [Vocabularies - Quality Ratings](vocabularies.md#quality-ratings-vocabulary) for:**
-- Customizing quality rating definitions for your archive
-- Alternative approaches using confidence levels
-- Vocabulary file structure and validation
-
-**GEDCOM Interoperability:**
-This scale maps directly to GEDCOM 5.5.1 QUAY values (0→0, 1→1, 2→2, 3→3), ensuring lossless conversion between formats.
-
-**Advanced Evidence Evaluation:**
-For more sophisticated analysis beyond the 0-3 scale, use:
-- `assertion.confidence` field (high/medium/low/disputed) for conclusion certainty
-- `citation.research_notes` for detailed source analysis (primary vs. secondary, direct vs. indirect)
-- Multiple citations per assertion to show corroboration
 
 ## Properties
 
@@ -65,7 +37,6 @@ For more sophisticated analysis beyond the 0-3 scale, use:
 || `page` | string | Page number or locator within source |
 || `data_date` | string | Date the data was recorded (for documentary sources) |
 || `text_from_source` | string | Transcription or excerpt from the source |
-|| `quality` | integer | Evidence quality (0-3, QUAY value) |
 || `locator` | object | Structured locator information |
 || `locator.film_number` | string | FamilySearch film number |
 || `locator.item_number` | string | Item number or accession number |
@@ -86,7 +57,6 @@ citations:
   citation-marriage-record:
     source: source-parish-register
     page: "125"
-    quality: 3
     text_from_source: "John Smith married to Mary Jones, 15 May 1850"
 ```
 
@@ -101,7 +71,6 @@ citations:
     source: source-ancestry-census
     data_date: "1851"
     page: "Schedule 7, piece 1123"
-    quality: 2
     locator:
       url: "https://www.ancestry.com/..."
       image_number: "87342534"
@@ -121,7 +90,6 @@ citations:
     source: source-probate-wills
     repository: repository-probate
     page: "23"
-    quality: 3
     locator:
       item_number: "1876/X/150"
       film_number: "100234"
@@ -212,14 +180,12 @@ Or more commonly, citations are referenced by ID from assertions.
 || `page` | SOUR.PAGE | Page within source |
 || `data_date` | SOUR.DATA.DATE | Date data was recorded |
 || `text_from_source` | SOUR.TEXT | Transcribed text |
-|| `quality` | SOUR.QUAY | Evidence quality (0-3) |
 || `locator.url` | SOUR.OBJE.FILE | File/URL path |
 || `locator.film_number` | SOUR.REPO.CALN.VALUE | Media number |
 
 ## Validation Rules
 
 - Source ID must reference an existing Source entity
-- Quality, if present, must be 0-3
 - Page information should be concise and meaningful
 - Locator URLs must be properly formed
 - Text transcriptions should accurately represent source material
@@ -234,15 +200,6 @@ Archive/Collection (Source)
   └─ Specific Record/Document (Citation)
       └─ Specific Field/Statement (Assertion)
 ```
-
-## Quality Assessment
-
-When entering citations, consider:
-
-- **Original vs. Derivative**: Is this from the original record or a copy?
-- **Reliability of Source**: Who created/maintains the source?
-- **Completeness**: Does the source provide all relevant information?
-- **Corroboration**: Is the information supported by other sources?
 
 ## See Also
 

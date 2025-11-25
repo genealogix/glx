@@ -1,9 +1,0 @@
-quality_ratings:
-  "1":
-    label: "Questionable"
-  "2":
-    label: "Unreliable"
-  "3":
-    label: "Reliable"
-
-

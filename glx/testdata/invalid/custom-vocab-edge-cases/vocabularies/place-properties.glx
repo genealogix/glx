@@ -1,6 +1,0 @@
-place_properties:
-  custom_place_prop:
-    label: "Custom Place Property"
-    value_type: string
-
-

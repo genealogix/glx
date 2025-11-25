@@ -124,16 +124,6 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 		}
 	}
 
-	// Load quality ratings
-	if data, ok := vocabs["quality-ratings.glx"]; ok {
-		var doc struct {
-			QualityRatings map[string]*QualityRating `yaml:"quality_ratings"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err == nil {
-			glx.QualityRatings = doc.QualityRatings
-		}
-	}
-
 	// Load property vocabularies
 	if data, ok := vocabs["person-properties.glx"]; ok {
 		var doc struct {
@@ -236,13 +226,6 @@ func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 			}
 			if err := yaml.Unmarshal(data, &doc); err == nil {
 				glx.ConfidenceLevels = doc.ConfidenceLevels
-			}
-		case "quality-ratings.glx":
-			var doc struct {
-				QualityRatings map[string]*QualityRating `yaml:"quality_ratings"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err == nil {
-				glx.QualityRatings = doc.QualityRatings
 			}
 		case "person-properties.glx":
 			var doc struct {

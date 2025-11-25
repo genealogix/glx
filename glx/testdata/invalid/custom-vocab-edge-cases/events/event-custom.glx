@@ -1,8 +1,0 @@
-events:
-  event-custom:
-    type: unknown-event-type
-    date: "1850-01-15"
-    properties:
-      custom_event_prop: "value"
-
-

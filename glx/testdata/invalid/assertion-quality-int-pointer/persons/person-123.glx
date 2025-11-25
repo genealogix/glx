@@ -1,7 +1,0 @@
-persons:
-  person-123:
-    properties:
-      name:
-        value: "John"
-
-

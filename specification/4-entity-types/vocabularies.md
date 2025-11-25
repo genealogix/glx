@@ -30,7 +30,6 @@ vocabularies/
 ├── place-types.glx
 ├── source-types.glx
 ├── media-types.glx
-├── quality-ratings.glx
 ├── confidence-levels.glx
 ├── participant-roles.glx
 └── repository-types.glx
@@ -413,78 +412,13 @@ media_types:
 
 ---
 
-## Quality Ratings Vocabulary
-
-**File**: `vocabularies/quality-ratings.glx`
-
-**Used By**: [Citation Entity](citation.md#evidence-quality), [Assertion Entity](assertion.md)
-
-**Purpose**: Defines the meaning of citation quality ratings (0-3 scale, GEDCOM QUAY compatible)
-
-**Standard Templates**: See [Standard Vocabularies - Quality Ratings](/specification/5-standard-vocabularies/#quality-ratings) for the complete default vocabulary with all standard ratings.
-
-### Structure
-
-```yaml
-# vocabularies/quality-ratings.glx
-quality_ratings:
-  3:
-    label: "Primary source"
-    description: "Original document created at time of event"
-    examples:
-      - "Birth certificate"
-      - "Original parish register"
-      - "Contemporary diary entry"
-  
-  2:
-    label: "Secondary source"
-    description: "Record created after event"
-    examples:
-      - "Census record"
-      - "Death certificate for birth information"
-      - "Published vital records index"
-  
-  1:
-    label: "Questionable"
-    description: "Conflicting or unreliable evidence"
-    examples:
-      - "Undocumented oral history"
-      - "Conflicting sources"
-  
-  0:
-    label: "Estimated"
-    description: "No direct evidence, estimated from other data"
-    examples:
-      - "Unverified family tradition"
-      - "Calculated from age at death"
-```
-
-### Fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `label` | Yes | Short label for this quality level |
-| `description` | No | Detailed description |
-| `examples` | No | Array of example scenarios |
-
-### Important Notes
-
-- **Archive-defined**: Each archive determines what these ratings mean
-- **GEDCOM compatibility**: 0-3 scale maps 1:1 to GEDCOM 5.5.1 QUAY values
-- **Optional**: Archives can omit quality ratings entirely
-- **Alternative**: Use assertion `confidence` levels instead
-
-See [Core Concepts - Evidence Hierarchy](../2-core-concepts.md#evidence-hierarchy) for details on quality assessment.
-
----
-
 ## Confidence Levels Vocabulary
 
 **File**: `vocabularies/confidence-levels.glx`
 
 **Used By**: [Assertion Entity](assertion.md#confidence)
 
-**Purpose**: Defines confidence levels for assertions (alternative to citation quality ratings)
+**Purpose**: Defines confidence levels for assertions
 
 **Standard Templates**: See [Standard Vocabularies - Confidence Levels](/specification/5-standard-vocabularies/#confidence-levels) for the complete default vocabulary with all standard confidence levels.
 
@@ -524,8 +458,7 @@ confidence_levels:
 
 ### Important Notes
 
-- **Alternative to quality ratings**: Use confidence levels on assertions instead of quality ratings on citations
-- **Researcher's judgment**: Reflects overall confidence in conclusion, not just source quality
+- **Researcher's judgment**: Reflects overall confidence in conclusion
 - **Archive-defined**: Each archive can customize the meaning of confidence levels
 
 See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
@@ -1026,7 +959,6 @@ The following issues cause validation to fail:
    - Repository types (`repository_types`)
    - Media types (`media_types`)
    - Participant roles (`participant_roles`)
-   - Quality ratings (`quality_ratings`)
    - Confidence levels (`confidence_levels`)
 
 2. **Broken entity references**: All entity references must point to existing entities
@@ -1235,7 +1167,6 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Place Types | [place-types.schema.json](../schema/v1/vocabularies/place-types.schema.json) |
 | Source Types | (included in source.schema.json) |
 | Media Types | [media-types.schema.json](../schema/v1/vocabularies/media-types.schema.json) |
-| Quality Ratings | [quality-ratings.schema.json](../schema/v1/vocabularies/quality-ratings.schema.json) |
 | Participant Roles | [participant-roles.schema.json](../schema/v1/vocabularies/participant-roles.schema.json) |
 | Repository Types | [repository-types.schema.json](../schema/v1/vocabularies/repository-types.schema.json) |
 | Confidence Levels | [confidence-levels.schema.json](../schema/v1/vocabularies/confidence-levels.schema.json) |
@@ -1258,7 +1189,7 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 - [Place Entity](place.md) - Place types vocabulary
 - [Source Entity](source.md) - Source types vocabulary
 - [Media Entity](media.md) - Media types vocabulary
-- [Citation Entity](citation.md) - Quality ratings usage
+- [Citation Entity](citation.md) - Citation documentation
 
 ---
 

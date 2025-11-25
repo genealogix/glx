@@ -47,7 +47,6 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 		SourceTypes:       make(map[string]*lib.SourceType),
 		RepositoryTypes:   make(map[string]*lib.RepositoryType),
 		MediaTypes:        make(map[string]*lib.MediaType),
-		QualityRatings:    make(map[string]*lib.QualityRating),
 
 		PersonProperties:       make(map[string]*lib.PropertyDefinition),
 		EventProperties:        make(map[string]*lib.PropertyDefinition),

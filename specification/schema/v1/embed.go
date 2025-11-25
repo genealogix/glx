@@ -46,11 +46,6 @@ var MediaTypesSchema []byte
 //go:embed vocabularies/confidence-levels.schema.json
 var ConfidenceLevelsSchema []byte
 
-// QualityRatingsSchema contains the embedded quality-ratings vocabulary schema.
-//
-//go:embed vocabularies/quality-ratings.schema.json
-var QualityRatingsSchema []byte
-
 // PersonPropertiesSchema contains the embedded person-properties vocabulary schema.
 //
 //go:embed vocabularies/person-properties.schema.json

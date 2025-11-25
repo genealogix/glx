@@ -27,12 +27,6 @@
       "type": "string",
       "description": "Alternative field name for text_from_source"
     },
-    "quality": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 3,
-      "description": "Evidence quality rating (GEDCOM QUAY compatible: 0=unreliable, 1=questionable, 2=secondary, 3=primary/direct)"
-    },
     "locator": {
       "oneOf": [
         {

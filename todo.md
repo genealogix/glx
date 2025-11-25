@@ -9,6 +9,8 @@
 ## Type System & Schema
 
 - Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete
+- we shouldn't create assertions from imports without citations
+- decide what to do with QUAY ratings... (removed in beta.2)
 
 ## GEDCOM Import: Missing Data Storage
 

@@ -39,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **EntityWithID wrapper** - Preserve entity IDs in multi-file format using _id field
 - **Collision detection** - Retry logic for filename generation
 - **Configurable validation** - Optional validation before serialization
-- **13 standard vocabularies** embedded in binary
+- **12 standard vocabularies** embedded in binary
 - **Round-trip preservation** - Single→Multi→Single conversions preserve all data
 
 #### CLI Commands (glx)
@@ -122,6 +122,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **GEDCOM name fields** - Only populate `name.fields` from explicit GEDCOM substructure tags (GIVN, SURN, etc.), not inferred from parsing the name string
 - **Test data consistency** - All testdata files updated to use unified name format
 
+### Removed
+
+#### Quality Ratings Support
+- **Removed `quality_ratings` vocabulary** - The GEDCOM 0-3 Quality Assessment scale was removed from the GLX specification
+  - Deleted `quality-ratings.glx` vocabulary file
+  - Deleted `quality-ratings.schema.json` schema file
+  - Removed `quality` field from Citation entity
+  - Removed `QualityRating` type from Go code
+- **Removed auto-generated assertion confidence** - GEDCOM imports no longer auto-populate assertion confidence levels
+  - Confidence levels should reflect researcher judgment, not be inferred from QUAY values
+  - GEDCOM QUAY tags are now preserved in citation notes (e.g., `GEDCOM QUAY: 2`)
+
 ### Changed
 
 #### Person Properties Schema
@@ -156,7 +168,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - 32 bits of randomness per ID (4.3 billion possible values)
 - Collision probability: ~1 in 400,000 with 10,000 entities
 - EntityWithID wrapper pattern for multi-file format
-- All 13 standard vocabularies embedded with go:embed
+- All 12 standard vocabularies embedded with go:embed
 
 **Testing:**
 - All existing tests passing

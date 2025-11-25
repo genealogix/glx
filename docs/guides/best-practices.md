@@ -28,7 +28,7 @@ assertions:
 
 ### Confidence Assessment
 
-**Best Practice:** Assess confidence based on evidence quality, not personal opinion:
+**Best Practice:** Assess confidence based on available evidence, not personal opinion:
 
 ```yaml
 assertions:
@@ -40,7 +40,7 @@ assertions:
     citations: [citation-birth-cert, citation-baptism]
 ```
 
-The optional `quality` field on citations exists for GEDCOM compatibility. For new research, use assertion confidence levels instead. See [Assertion Entity](../../specification/4-entity-types/assertion.md) and [Confidence Levels Vocabulary](../../specification/5-standard-vocabularies/confidence-levels.glx).
+Use assertion confidence levels to express certainty about conclusions. See [Assertion Entity](../../specification/4-entity-types/assertion.md) and [Confidence Levels Vocabulary](../../specification/5-standard-vocabularies/confidence-levels.glx).
 
 ### Transcribe Key Evidence
 
@@ -79,8 +79,7 @@ git commit -m "Add 1851 Census evidence for Smith family
 
 - John Smith: occupation (blacksmith), residence
 - Mary Smith: age, birthplace
-- Source: HO107, Piece 2319, Yorkshire
-- Quality: 2 (secondary source)"
+- Source: HO107, Piece 2319, Yorkshire"
 ```
 
 ### Branch for Research
@@ -177,9 +176,9 @@ assertions:
     value: "1850-01-15"
     confidence: medium
     notes: |
-      Birth certificate: Jan 15 (quality 3) - preferred
-      Baptism record: Jan 20 (quality 3) - 5 day delay typical
-      Census age: supports 1850 (quality 2)
+      Birth certificate: Jan 15 - primary source, preferred
+      Baptism record: Jan 20 - 5 day delay typical
+      Census age: supports 1850
     citations:
       - citation-birth-cert
       - citation-baptism

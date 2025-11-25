@@ -1,8 +1,0 @@
-places:
-  place-leeds:
-    name: "Leeds"
-    type: unknown-place-type
-    properties:
-      custom_place_prop: "value"
-
-

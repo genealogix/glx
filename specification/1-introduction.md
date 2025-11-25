@@ -123,13 +123,6 @@ While GENEALOGIX provides excellent **interoperability** (importing from GEDCOM,
 - **Citation**: Specific reference (page number, entry number, URL)
 - **Assertion**: Claim supported by citations (person born on specific date)
 
-### Quality Assessment
-- **Quality Rating**: 0-3 scale indicating evidence reliability
-  - 3 = Primary, direct evidence (birth certificate)
-  - 2 = Secondary, direct evidence (census record)
-  - 1 = Primary, indirect evidence (family Bible notation)
-  - 0 = Secondary, indirect evidence (published biography)
-
 ## Use Cases
 
 ### Individual Research
