@@ -19,7 +19,6 @@ export default {
       'person-properties': readFileSync(resolve(vocabDir, 'person-properties.glx'), 'utf-8'),
       'place-properties': readFileSync(resolve(vocabDir, 'place-properties.glx'), 'utf-8'),
       'place-types': readFileSync(resolve(vocabDir, 'place-types.glx'), 'utf-8'),
-      'quality-ratings': readFileSync(resolve(vocabDir, 'quality-ratings.glx'), 'utf-8'),
       'relationship-properties': readFileSync(
         resolve(vocabDir, 'relationship-properties.glx'),
         'utf-8'

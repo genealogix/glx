@@ -42,16 +42,14 @@ citations:
   citation-birth-certificate:
     source: source-gro-register
     locator: "Certificate 1850-LEEDS-00145"
-    quality: 3
     transcription: "John Smith, born January 15, 1850"
 ```
 
 ### Benefits of This Approach
 1. **Multiple Evidence**: One assertion can reference multiple citations
-2. **Quality Assessment**: Each citation includes evidence quality (0-3 scale)
-3. **Conflicting Evidence**: Multiple assertions can exist for the same fact
-4. **Research Transparency**: Clear audit trail from source to conclusion
-5. **Confidence Levels**: Assertions can express certainty based on evidence
+2. **Conflicting Evidence**: Multiple assertions can exist for the same fact
+3. **Research Transparency**: Clear audit trail from source to conclusion
+4. **Confidence Levels**: Assertions can express certainty based on evidence
 
 ### Entity Properties vs. Assertions
 
@@ -137,7 +135,6 @@ citations:
   citation-john-birth:
     source: source-birth-register
     locator: "Volume 23, Page 145, Entry 23"
-    quality: 3
 
 # assertions/assertion-john-born.glx
 assertions:
@@ -438,7 +435,6 @@ vocabularies/
   participant-roles.glx   # Principal, witness, godparent, etc.
   media-types.glx         # Photo, document, audio, etc.
   confidence-levels.glx   # High, medium, low, disputed
-  quality-ratings.glx     # 0-3 evidence quality scale
 ```
 
 ### Examples of Custom Vocabularies

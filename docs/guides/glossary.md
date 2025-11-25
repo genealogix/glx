@@ -29,7 +29,7 @@ The documented path that evidence has taken from creation to current location, e
 A specific property or attribute being asserted about a subject in an assertion (e.g., "born_on", "occupation", "died_in").
 
 ### Citation
-A specific reference to a location within a source document, including quality assessment and optional transcription. Citations link evidence to assertions.
+A specific reference to a location within a source document, including locator information and optional transcription. Citations link evidence to assertions.
 
 > **See Also:** For complete specification, see [Citation Entity](../../specification/4-entity-types/citation.md)
 
@@ -190,14 +190,7 @@ The complete history of how information came to be known, including source attri
 ## Q
 
 ### QUAY
-GEDCOM quality indicator (0-3 scale), replaced by structured quality ratings in GENEALOGIX.
-
-### Quality Rating
-A 0-3 scale indicating the reliability of evidence:
-- **3**: Primary, direct evidence (birth certificates, contemporary records)
-- **2**: Secondary, direct evidence (census records, indexes)
-- **1**: Primary, indirect evidence (family Bibles, letters)
-- **0**: Secondary, indirect evidence (published genealogies, oral history)
+GEDCOM quality indicator (0-3 scale). When importing GEDCOM files, QUAY values are preserved in citation notes for reference.
 
 ## R
 

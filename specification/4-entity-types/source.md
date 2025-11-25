@@ -628,9 +628,9 @@ Use consistent citation styles within your archive:
 - Follow established citation standards (Evidence Explained, Chicago Manual of Style, etc.)
 - Document your chosen citation style in archive documentation
 
-### Source Quality Assessment
+### Source Characteristics
 
-While citation quality ratings are optional, documenting source characteristics helps:
+Documenting source characteristics in notes helps researchers evaluate evidence:
 - Primary vs. secondary nature
 - Original vs. derivative
 - Completeness and condition

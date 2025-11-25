@@ -295,7 +295,6 @@ citations:
   citation-001:
     source: source-001
     page: "Page 42"
-    quality: 2
 
 assertions:
   assertion-001:

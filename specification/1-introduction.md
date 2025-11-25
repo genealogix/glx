@@ -44,7 +44,7 @@ The specification covers:
 
 ### Evidence-First Architecture
 - **Source-backed assertions** - every claim must reference evidence
-- **Quality assessment** - structured evaluation of evidence reliability
+- **Confidence levels** - researcher assessment of conclusion certainty
 - **Citation specificity** - exact references to source locations
 - **Multiple evidence support** - corroboration from multiple sources
 

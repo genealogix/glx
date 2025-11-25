@@ -16,7 +16,6 @@ Guide for converting GEDCOM files to GENEALOGIX format using the automated impor
 |--------|--------|------------|
 | **Format** | Tag-based | YAML |
 | **Evidence** | Basic sources | Complete chains |
-| **Quality** | QUAY (0-3) | Quality (0-3) |
 | **Version Control** | File-based | Git-native |
 
 ## Migration Process
@@ -55,7 +54,7 @@ git commit -m "Import from GEDCOM: family.ged"
 - Place hierarchies (flat → hierarchical)
 - **ADDR subfields**: Full address preservation and place hierarchy fallback
 - Shared and inline notes
-- Source citations with quality ratings
+- Source citations with locators and transcriptions
 
 For implementation details, see [GEDCOM Import Developer Docs](../development/gedcom-import.md).
 
@@ -79,7 +78,6 @@ GEDCOM sources need to be expanded into complete evidence chains.
 1 BIRT
 2 DATE 15 JAN 1850
 2 SOUR @S1@
-3 QUAY 2
 3 PAGE Page 23
 ```
 
@@ -93,7 +91,6 @@ sources:
 citations:
   citation-birth:
     source: source-birth-cert
-    quality: 2
     page: "Page 23"
 
 assertions:
@@ -132,30 +129,7 @@ assertions:
 | `TITL` | Source.title | Title |
 | `REPO` | Source.repository | Repository reference |
 | `PAGE` | Citation.page | Moved to citation |
-| `QUAY` | Citation.quality | 1:1 mapping |
-
-## Quality Translation
-
-GEDCOM QUAY maps 1:1 to GENEALOGIX citation quality field (maintained for compatibility). However, the idiomatic GLX approach is to use assertion confidence levels instead:
-
-```yaml
-# GEDCOM QUAY preserved in citation (optional)
-citations:
-  citation-from-gedcom:
-    source: source-census
-    quality: 2  # From GEDCOM QUAY
-
-# Idiomatic GLX: Use assertion confidence
-assertions:
-  assertion-birth:
-    subject: person-john
-    claim: birth_date
-    value: "1850-01-15"
-    confidence: high  # Preferred approach
-    citations: [citation-from-gedcom]
-```
-
-See [Confidence Levels](../../specification/5-standard-vocabularies/confidence-levels.glx) for the vocabulary.
+| `QUAY` | Citation.notes | Preserved in notes |
 
 ## Common Challenges
 
@@ -238,9 +212,9 @@ glx validate
 
 After migration, enhance evidence quality:
 - Add transcriptions
-- Verify quality ratings
 - Complete evidence chains
 - Add research notes
+- Set assertion confidence levels
 
 ### Git Tracking
 

@@ -55,8 +55,8 @@ features:
     details: Every genealogical claim is backed by documented sources, creating a complete audit trail from repository to conclusion.
 
   - icon: 🔍
-    title: Quality Assessment
-    details: Structured evaluation of evidence reliability with a 0-3 quality scale and confidence levels for all assertions.
+    title: Confidence Levels
+    details: Express researcher certainty in conclusions with structured confidence levels for all assertions.
 
   - icon: ✅
     title: Schema Validation

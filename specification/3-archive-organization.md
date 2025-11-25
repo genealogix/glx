@@ -318,8 +318,7 @@ vocabularies/
 ├── repository-types.glx      # Archive, library, church, etc.
 ├── participant-roles.glx     # Principal, witness, officiant, etc.
 ├── media-types.glx           # Photo, document, audio, etc.
-├── confidence-levels.glx     # High, medium, low, disputed
-└── quality-ratings.glx       # 0-3 (unreliable to primary evidence)
+└── confidence-levels.glx     # High, medium, low, disputed
 ```
 
 ### Vocabulary Files

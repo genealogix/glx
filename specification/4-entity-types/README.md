@@ -61,7 +61,7 @@ Represents a bibliographic resource or information source. Can be books, documen
 ### [Citation](citation.md)
 Represents a specific reference to evidence within a source. Links sources to specific pages, records, or items.
 
-- **Key Properties**: Source reference, page, data date, quality, locator
+- **Key Properties**: Source reference, page, data date, locator
 - **File Format**: `.glx`
 - **ID Format**: `citation-{id}` (see below)
 - **GEDCOM Equivalent**: SOUR.PAGE, SOUR.QUAY

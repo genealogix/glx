@@ -197,6 +197,5 @@ In addition to data type definitions, properties can reference controlled vocabu
 - **source_types** - Standard source types
 - **repository_types** - Standard repository types
 - **media_types** - Standard media types
-- **quality_ratings** - Quality ratings for citations
 
 

@@ -48,7 +48,7 @@ func ParseYAMLFile(data []byte) (map[string]any, error) {
 }
 
 // normalizeYAMLMap recursively converts map[any]any to map[string]any
-// This handles YAML files with numeric keys like quality_ratings
+// This handles YAML files with various key types
 func normalizeYAMLMap(val any) any {
 	switch v := val.(type) {
 	case map[any]any:

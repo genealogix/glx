@@ -88,22 +88,9 @@ Defines categories of media objects including photographs, documents, audio reco
 
 ---
 
-### Quality Ratings
-
-Defines the 0-3 quality rating scale for citation evidence quality, compatible with GEDCOM 5.5.1 QUAY values.
-
-<YamlFile 
-  :content="vocabularies['quality-ratings']"
-  title="vocabularies/quality-ratings.glx"
-/>
-
-**See Also:** [Citation Entity Documentation](../4-entity-types/citation) | [Vocabularies Specification](../4-entity-types/vocabularies#quality-ratings-vocabulary)
-
----
-
 ### Confidence Levels
 
-Defines confidence levels for assertions, providing an alternative to citation quality ratings.
+Defines confidence levels for assertions, representing researcher certainty in conclusions.
 
 <YamlFile 
   :content="vocabularies['confidence-levels']"
