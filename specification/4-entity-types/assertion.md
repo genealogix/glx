@@ -182,9 +182,9 @@ value: blacksmith
 - Description: Confidence level based on evidence quality
 
 Confidence levels and their criteria are defined in each archive's `vocabularies/confidence-levels.glx` file. The standard vocabulary provides these defaults:
-- `high` - Multiple primary sources agree
-- `medium` - Some conflicting evidence, but preponderance supports
-- `low` - Limited evidence, requires more research
+- `high` - Multiple high-quality sources agree, minimal uncertainty
+- `medium` - Some evidence supports conclusion, but conflicts or gaps exist
+- `low` - Limited evidence, significant uncertainty
 - `disputed` - Multiple sources conflict, resolution unclear
 
 Archives can customize these descriptions or add additional levels to match their research methodology.
@@ -401,10 +401,10 @@ The standard vocabulary defines these default confidence levels (archives may cu
 
 | Confidence | Criteria | Example |
 |------------|----------|---------|
-| `high` | Multiple primary sources agree | 3 birth certificates with same date |
-| `medium` | Preponderance of evidence, some conflict | 2 sources agree, 1 disagrees |
-| `low` | Limited evidence, needs research | Only one low-quality source |
-| `disputed` | Conflicting evidence, no clear resolution | Multiple primary sources disagree |
+| `high` | Multiple high-quality sources agree, minimal uncertainty | 3 birth certificates with same date |
+| `medium` | Some evidence supports, but conflicts or gaps exist | 2 sources agree, 1 disagrees |
+| `low` | Limited evidence, significant uncertainty | Only one low-quality source |
+| `disputed` | Multiple sources conflict, resolution unclear | Multiple primary sources disagree |
 
 ## Validation Rules
 

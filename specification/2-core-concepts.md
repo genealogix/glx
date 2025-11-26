@@ -42,7 +42,7 @@ citations:
   citation-birth-certificate:
     source: source-gro-register
     locator: "Certificate 1850-LEEDS-00145"
-    transcription: "John Smith, born January 15, 1850"
+    text_from_source: "John Smith, born January 15, 1850"
 ```
 
 ### Benefits of This Approach
@@ -212,9 +212,9 @@ assertions:
 Assertions include confidence levels based on evidence quality:
 ```yaml
 confidence_levels:
-  high:    "Multiple primary sources agree"
-  medium:  "Some conflicting evidence, but preponderance supports"
-  low:     "Limited evidence, requires more research"
+  high:    "Multiple high-quality sources agree, minimal uncertainty"
+  medium:  "Some evidence supports conclusion, but conflicts or gaps exist"
+  low:     "Limited evidence, significant uncertainty"
   disputed: "Multiple sources conflict, resolution unclear"
 ```
 

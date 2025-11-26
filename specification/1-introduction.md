@@ -157,7 +157,7 @@ Converting from existing formats:
 
 | Feature | GENEALOGIX | GEDCOM | Gramps XML |
 |---------|------------|--------|------------|
-| **Format** | YAML (human-readable) | Custom binary | XML |
+| **Format** | YAML (human-readable) | Custom text (tag-based) | XML |
 | **Version Control** | Git-native | Difficult | Manual |
 | **Evidence Model** | Built-in citations | Basic sources | Complex |
 | **Collaboration** | Git workflows | File sharing | Database |

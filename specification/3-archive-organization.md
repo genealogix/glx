@@ -33,7 +33,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      birth_date: "1850-01-15"
+      born_on: "1850-01-15"
 
   person-def67890:
     properties:

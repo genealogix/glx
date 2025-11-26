@@ -232,7 +232,7 @@ events:
     type: apprenticeship  # Custom type from vocabulary
     date: "1845-03-10"
     place: place-leeds
-    value: "Apprenticed to blacksmith"
+    description: "Apprenticed to blacksmith"
 ```
 
 ### Validation

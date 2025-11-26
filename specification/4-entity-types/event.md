@@ -109,6 +109,18 @@ participants:
     role: "witness"
 ```
 
+### Properties
+
+Event properties are defined in the archive's `vocabularies/event-properties.glx` file. Standard properties include:
+
+- `occurred_on` - When the event occurred
+- `occurred_at` - Where the event occurred (reference to Place)
+- `description` - Event description
+
+**See [Vocabularies - Event Properties](vocabularies.md#event-properties-vocabulary) for:**
+- Complete list of standard event properties
+- How to add custom event properties
+
 ## Event Types
 
 Event types are defined in the archive's `vocabularies/event-types.glx` file. Each archive includes standard types and can define custom types as needed.

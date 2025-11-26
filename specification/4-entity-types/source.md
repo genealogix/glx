@@ -37,7 +37,7 @@ sources:
     type: church_register
     creator: "Church of England"
     repository: repository-leeds-library
-    date: "1840/1860"
+    date: "FROM 1840 TO 1860"
 ```
 
 **Key Points:**
@@ -156,12 +156,12 @@ creator: "General Register Office"
 
 Formats:
 - Single date: `"1851"`
-- Date range: `"1840/1860"`
+- Date range: `"FROM 1840 TO 1860"`
 - Publication date: `"2015-06-20"`
 
 Example:
 ```yaml
-date: "1850/1855"
+date: "FROM 1850 TO 1855"
 ```
 
 ### `repository`
@@ -361,7 +361,7 @@ sources:
     title: "St. Paul's Cathedral Parish Register, 1840-1860"
     type: church_register
     creator: "Church of England"
-    date: "1840/1860"
+    date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
     call_number: "RDP73/1"
     description: |
@@ -431,7 +431,7 @@ sources:
     title: "UK Census Collection, 1841-1911"
     type: database
     creator: "Ancestry.com"
-    date: "1841/1911"
+    date: "FROM 1841 TO 1911"
     repository: repository-ancestry
     description: |
       Digitized and indexed UK census records from 1841-1911.
@@ -625,7 +625,7 @@ sources:
   source-st-pauls:
     title: "St. Paul's Parish Register"
     creator: "Church of England"
-    date: "1840/1860"
+    date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
     call_number: "RDP73/1"
     description: "Parish registers for baptisms, marriages, and burials"

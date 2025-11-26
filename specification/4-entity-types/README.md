@@ -139,10 +139,10 @@ Media
 | Entity | Required Fields | Unique ID | Versioned | Hierarchical |
 |--------|-----------------|-----------|-----------|--------------|
 | Person | id | ✓ | ✓ | - |
-| Relationship | id, type, people | ✓ | ✓ | - |
+| Relationship | id, type, participants | ✓ | ✓ | - |
 | Event | id, type | ✓ | ✓ | - |
 | Place | id, name | ✓ | ✓ | ✓ (parent) |
-| Assertion | id, subject, property | ✓ | ✓ | - |
+| Assertion | id, subject, claim | ✓ | ✓ | - |
 | Source | id, title | ✓ | ✓ | - |
 | Citation | id, source | ✓ | ✓ | - |
 | Repository | id, name | ✓ | ✓ | - |
