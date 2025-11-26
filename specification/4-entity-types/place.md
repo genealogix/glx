@@ -170,6 +170,30 @@ places:
     notes: "Historical registration district for civil registration purposes"
 ```
 
+### Place with Temporal Properties
+
+```yaml
+# places/place-new-york.glx
+places:
+  place-new-york-city:
+    name: "New York City"
+    type: city
+    parent: place-new-york-state
+    latitude: 40.7128
+    longitude: -74.0060
+    properties:
+      population:
+        - value: 60515
+          date: "1800"
+        - value: 202589
+          date: "1830"
+        - value: 3437202
+          date: "1900"
+        - value: 8336817
+          date: "2020"
+      existed_from: "1624"
+```
+
 ## File Organization
 
 **Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.

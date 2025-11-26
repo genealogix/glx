@@ -4,16 +4,6 @@
 # data is structural (type, date, place, participants).
 
 event_properties:
-  occurred_on:
-    label: "Event Date"
-    description: "When the event occurred"
-    value_type: date
-  
-  occurred_at:
-    label: "Event Location"
-    description: "Where the event occurred"
-    reference_type: places
-  
   description:
     label: "Event Description"
     description: "Detailed description of the event"

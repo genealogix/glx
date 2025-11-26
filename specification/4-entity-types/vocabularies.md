@@ -736,7 +736,7 @@ person_properties:
 | `temporal` | No | Whether property can change over time (default: false) |
 | `fields` | No | Sub-schema for structured property components (see below) |
 
-*Exactly one of `value_type` or `reference_type` should be specified (neither defaults to `string`)
+*Exactly one of `value_type` or `reference_type` should be specified
 
 ### Structured Properties with Fields
 
@@ -1165,11 +1165,15 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Event Types | [event-types.schema.json](../schema/v1/vocabularies/event-types.schema.json) |
 | Relationship Types | [relationship-types.schema.json](../schema/v1/vocabularies/relationship-types.schema.json) |
 | Place Types | [place-types.schema.json](../schema/v1/vocabularies/place-types.schema.json) |
-| Source Types | (included in source.schema.json) |
+| Source Types | [source-types.schema.json](../schema/v1/vocabularies/source-types.schema.json) |
 | Media Types | [media-types.schema.json](../schema/v1/vocabularies/media-types.schema.json) |
 | Participant Roles | [participant-roles.schema.json](../schema/v1/vocabularies/participant-roles.schema.json) |
 | Repository Types | [repository-types.schema.json](../schema/v1/vocabularies/repository-types.schema.json) |
 | Confidence Levels | [confidence-levels.schema.json](../schema/v1/vocabularies/confidence-levels.schema.json) |
+| Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
+| Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
+| Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |
+| Place Properties | [place-properties.schema.json](../schema/v1/vocabularies/place-properties.schema.json) |
 
 All vocabulary schemas are located in `specification/schema/v1/vocabularies/` and define:
 - Required top-level key (e.g., `event_types`, `relationship_types`)

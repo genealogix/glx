@@ -7,9 +7,13 @@
 ## Documentation
 
 - Remove glx archive folder references from all examples and documentation
+- Add comprehensive example showing assertion-to-entity property workflow (setting properties directly vs creating assertions with evidence)
+- Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time)
 
 ## Type System & Schema
 
+- Clarify adoption semantics: `adoption` event type vs `adoption` relationship type vs `adoptive-parent-child` relationship type. Consider consolidating or documenting distinct use cases.
+- Consider consolidating `bat_mitzvah` (BATM) and `bas_mitzvah` (BASM) into a single event type - they represent the same ceremony with alternate spellings
 - Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete
 - we shouldn't create assertions from imports without citations
 - decide what to do with QUAY ratings... (removed in beta.2)

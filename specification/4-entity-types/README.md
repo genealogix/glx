@@ -140,7 +140,7 @@ Media
 |--------|-----------------|-----------|-----------|--------------|
 | Person | id | ✓ | ✓ | - |
 | Relationship | id, type, participants | ✓ | ✓ | - |
-| Event | id, type | ✓ | ✓ | - |
+| Event | id, type, participants | ✓ | ✓ | - |
 | Place | id, name | ✓ | ✓ | ✓ (parent) |
 | Assertion | id, subject, claim | ✓ | ✓ | - |
 | Source | id, title | ✓ | ✓ | - |

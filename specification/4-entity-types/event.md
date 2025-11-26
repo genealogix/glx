@@ -68,14 +68,6 @@ Domain-specific events can be added via vocabularies:
 | `notes` | string | Free-form notes |
 | `tags` | array | Tags for categorization |
 
-### Date Object Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `value` | string | Main date expression |
-| `range_start` | string | Fuzzy date range start |
-| `range_end` | string | Fuzzy date range end |
-
 ### Participant Object Fields
 
 | Field | Type | Description |
@@ -83,17 +75,6 @@ Domain-specific events can be added via vocabularies:
 | `person` | string | Reference to Person entity |
 | `role` | string | Role of participant |
 | `notes` | string | Notes about participant's involvement |
-
-### Date Structure
-
-Events support fuzzy dates using multiple formats:
-
-```yaml
-date:
-  value: "about 1850"
-  range_start: "1845"
-  range_end: "1855"
-```
 
 ### Participant Structure
 

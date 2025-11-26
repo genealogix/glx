@@ -109,7 +109,7 @@ event_types:
     description: "Jewish coming of age ceremony (female, alternative spelling)"
     category: "religious"
     gedcom: "BASM"
-  
+
   christening:
     label: "Christening"
     description: "Infant christening"
