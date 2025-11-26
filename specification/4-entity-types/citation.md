@@ -148,7 +148,7 @@ Or more commonly, citations are referenced by ID from assertions.
 
 | GLX Field | GEDCOM Element | Notes |
 |-----------|----------------|-------|
-| Entity ID | (synthetic) | Not in GEDCOM |
+| Entity ID (map key) | (synthetic) | Not in GEDCOM |
 | `source` | SOUR | Source reference |
 | `page` | SOUR.PAGE | Page within source |
 | `data_date` | SOUR.DATA.DATE | Date data was recorded |
@@ -164,13 +164,7 @@ Or more commonly, citations are referenced by ID from assertions.
 
 ## Evidence Hierarchy
 
-Citations are the lowest level in the evidence hierarchy:
-
-```
-Archive/Collection (Source)
-  └─ Specific Record/Document (Citation)
-      └─ Specific Field/Statement (Assertion)
-```
+Citations are part of the GENEALOGIX evidence hierarchy. See [Core Concepts - Evidence Hierarchy](../2-core-concepts#evidence-hierarchy) for the complete evidence chain from Repository → Source → Citation → Assertion.
 
 ## See Also
 

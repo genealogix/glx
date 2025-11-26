@@ -102,9 +102,9 @@ properties:
   occupation: "blacksmith"
   residence:
     - value: "place-leeds"
-      date: "1850-1900"
+      date: "FROM 1850 TO 1900"
     - value: "place-london"
-      date: "1900-1920"
+      date: "FROM 1900 TO 1920"
 ```
 
 **Key Points:**
@@ -148,4 +148,4 @@ complete JSON Schema definition.
 - [Assertion Entity](assertion.md)
 - [Relationship Entity](relationship.md)
 - [Data Types](../6-data-types.md)
-- [Provenance Tracking](../2-core-concepts.md#provenance-and-confidence)
+- [Provenance Tracking](../2-core-concepts#provenance-tracking)

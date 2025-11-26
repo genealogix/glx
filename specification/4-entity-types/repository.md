@@ -62,7 +62,6 @@ GENEALOGIX supports various repository types:
 | `tags` | array | Tags for categorization |
 | `access_restrictions` | string | Any restrictions on access |
 | `holding_types` | array | Types of materials held (microfilm, digital, books, etc.) |
-| `notes` | string | Free-form notes about repository |
 
 ## Usage Patterns
 
@@ -188,7 +187,7 @@ repositories/
 
 | GLX Property | GEDCOM Element | Notes |
 |--------------|----------------|-------|
-| `id` | (synthetic) | Not in GEDCOM |
+| Entity ID (map key) | (synthetic) | Not in GEDCOM |
 | `name` | REPO.NAME | Repository name |
 | `address` | REPO.ADDR | Repository address |
 | `phone` | REPO.PHON | Phone number (non-standard) |

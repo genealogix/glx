@@ -120,14 +120,14 @@ Places can be components of addresses within person records or residence events:
 ```yaml
 residence:
   place: "place-leeds123"
-  date: "1850-1900"
+  date: "FROM 1850 TO 1900"
 ```
 
 ## GEDCOM Mapping
 
 | GLX Property | GEDCOM Element | Notes |
 |--------------|----------------|-------|
-| `id` | (synthetic) | Not in GEDCOM; generated from place data |
+| Entity ID (map key) | (synthetic) | Not in GEDCOM; generated from place data |
 | `name` | PLAC | Text value of PLAC tag |
 | `parent` | (implicit) | Represented in hierarchical PLAC structure |
 | `type` | PLAC.TYPE | Non-standard; used in extended GEDCOM |
@@ -197,7 +197,6 @@ places/
 - Place hierarchy must be acyclic (no circular parent references)
 - Coordinates, if present, must be valid WGS84 values
 - Parent place must exist before referencing it
-- At least one name (primary or alternative) must exist
 - Type should follow standardized taxonomy
 
 ## See Also

@@ -36,6 +36,8 @@ A true/false value.
 
 **Example:**
 ```yaml
+living: true
+verified: false
 ```
 
 ### Date

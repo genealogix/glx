@@ -1,9 +1,11 @@
 # GLX TODO
 
+## Infrastructure
+
+- Deploy JSON schemas to `https://schema.genealogix.io/v1/*` URLs referenced in specification/schema/README.md
+
 ## Documentation
 
-- Clean up `specification/4-entity-types/source.md`
-- Ensure all entity type files have a table with their normal fields, standard properties and their types
 - Remove glx archive folder references from all examples and documentation
 
 ## Type System & Schema
@@ -11,6 +13,7 @@
 - Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete
 - we shouldn't create assertions from imports without citations
 - decide what to do with QUAY ratings... (removed in beta.2)
+- Consider adding `media` as a third evidence option for assertions (alongside `citations` and `sources`) - useful for direct visual evidence like gravestone photos
 
 ## GEDCOM Import: Census Tag Handling
 

@@ -80,6 +80,15 @@ relationships:
     description: "Marriage at St Paul's Cathedral"
 ```
 
+**Note: Marriage Event vs Marriage Relationship**
+
+Marriage appears in both event types and relationship types by design:
+
+- **Event type `marriage`** ([Event Entity](event.md)): The wedding ceremony - records the date, place, officiant, witnesses, and other ceremony details
+- **Relationship type `marriage`** (this entity): The ongoing marital state - connects two spouses, tracks duration, and can reference when/how it ended
+
+Link them using `start_event` to reference the ceremony. Use both when you have ceremony details; use just the relationship if you only know they were married without specifics about the wedding.
+
 ### Parent-Child Relationship
 
 ```yaml

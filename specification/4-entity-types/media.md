@@ -50,6 +50,7 @@ media:
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `type` | string | Media type from `vocabularies/media-types.glx` |
 | `mime_type` | string | MIME type of the media |
 | `hash` | string | Content hash for verification |
 | `title` | string | Title of the media |

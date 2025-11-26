@@ -18,9 +18,8 @@ Every GENEALOGIX file uses the same universal structure:
 2. **Each key contains a map** where:
    - Keys are entity IDs (e.g., `person-abc12345`)
    - Values are entity objects
-3. **Entity ID is ONLY the map key** - it must NOT appear as a field in the entity object
-4. **Files may contain any combination** of entity types
-5. **Empty sections** can be omitted or left as `{}`
+3. **Files may contain any combination** of entity types
+4. **Empty sections** can be omitted or left as `{}`
 
 ### Basic Example
 
@@ -351,7 +350,6 @@ See [Core Concepts](2-core-concepts.md#repository-owned-vocabularies) for detail
 - **Parser must scan ALL** `.glx` and `.yaml` files in the repository
 - **Duplicate entity IDs** across files is an error
 - **Entity type keys are required** at the top level of every file
-- **Entity IDs as map keys** - never as `id` field in the entity object
 - **Cross-references are validated** at repository level
 - **Vocabularies define valid types** - entities must reference types from vocabulary files
 

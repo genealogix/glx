@@ -88,11 +88,11 @@ Example:
 subject: person-john-smith
 ```
 
-### `claim`
+### `claim` (or `participant`)
 
-- Type: String
-- Required: Yes
-- Description: The property or fact being claimed
+- Type: String (for `claim`) or Object (for `participant`)
+- Required: One of `claim` or `participant` must be present (mutually exclusive)
+- Description: Either a property/fact being claimed, or a participant object for event/relationship participation
 
 Common claim types:
 - `born_on` - Birth date
@@ -112,6 +112,15 @@ claim: occupation
 At least ONE of the following is required:
 - `citations` - Array of citation IDs
 - `sources` - Array of source IDs (direct source references)
+
+**When to use each:**
+
+- **`citations`** (preferred): When you have specific details about where in a source the evidence is found - page 23, entry 145, specific URL. This is rigorous and allows others to find the exact evidence.
+
+- **`sources`** (direct): When the source doesn't need sub-location details:
+  - Single-page documents (birth certificate) where a citation adds no value
+  - Photographs or brief documents without meaningful subdivisions
+  - Preliminary research where you'll add specific citations later
 
 Example:
 ```yaml
@@ -138,7 +147,6 @@ participant:
 
 **Key Points:**
 - When `participant` is present, `claim` and `value` must NOT be present
-- When `participant` is present, the implicit claim is "participant"
 - Useful for representing conflicting evidence about who participated in an event or relationship
 
 Example:
