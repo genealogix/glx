@@ -79,12 +79,17 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			createPropertyAssertion(personID, PersonPropertyGender, gender, sub, conv)
 
 		case GedcomTagBirt, GedcomTagChr, GedcomTagDeat, GedcomTagBuri, GedcomTagCrem, GedcomTagAdop, GedcomTagBapm, GedcomTagBarm, GedcomTagBasm,
-			GedcomTagBles, GedcomTagChra, GedcomTagConf, GedcomTagFcom, GedcomTagOrdn, GedcomTagNatu, GedcomTagEmig, GedcomTagImmi, GedcomTagCens,
+			GedcomTagBles, GedcomTagChra, GedcomTagConf, GedcomTagFcom, GedcomTagOrdn, GedcomTagNatu, GedcomTagEmig, GedcomTagImmi,
 			GedcomTagProb, GedcomTagWill, GedcomTagGrad, GedcomTagReti:
 			// Convert vital/individual event
 			if err := convertIndividualEvent(personID, person, sub, conv); err != nil {
 				conv.addWarning(indiRecord.Line, sub.Tag, err.Error())
 			}
+
+		case GedcomTagCens:
+			// TODO: Census is a source/citation, not an event. See todo.md
+			// For now, skip census records - they should be converted to citations
+			// that support assertions about person attributes.
 
 		case GedcomTagOccu:
 			// Occupation
@@ -421,12 +426,10 @@ func mapGEDCOMEventType(tag string) string {
 		GedcomTagNatu: EventTypeNaturalization,
 		GedcomTagEmig: EventTypeEmigration,
 		GedcomTagImmi: EventTypeImmigration,
-		GedcomTagCens: EventTypeCensus,
 		GedcomTagProb: EventTypeProbate,
 		GedcomTagWill: EventTypeWill,
 		GedcomTagGrad: EventTypeGraduation,
 		GedcomTagReti: EventTypeRetirement,
-		GedcomTagResi: EventTypeResidence,
 	}
 
 	if eventType, ok := mapping[tag]; ok {
@@ -482,36 +485,51 @@ func buildPlaceHierarchyFromAddress(addrRecord *GEDCOMRecord) *PlaceHierarchy {
 	}
 }
 
-// convertResidence converts RESI to residence event or property
+// convertResidence converts RESI to residence temporal property on person
 func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, conv *ConversionContext) error {
-	// Check if it has date - if so, create event
-	hasDate := false
+	// Extract place and date from RESI record
+	var placeID string
+	var dateStr string
+
 	for _, sub := range resiRecord.SubRecords {
-		if sub.Tag == GedcomTagDate {
-			hasDate = true
-
-			break
-		}
-	}
-
-	if hasDate {
-		// Create residence event
-		return convertIndividualEvent(personID, person, resiRecord, conv)
-	}
-
-	// Otherwise, extract place as property
-	for _, sub := range resiRecord.SubRecords {
-		if sub.Tag == GedcomTagPlac {
+		switch sub.Tag {
+		case GedcomTagPlac:
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
-				placeID, _ := buildPlaceHierarchy(hierarchy, conv)
-				if placeID != "" {
-					createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
-
-					return nil
-				}
+				placeID, _ = buildPlaceHierarchy(hierarchy, conv)
 			}
+		case GedcomTagDate:
+			dateStr = string(parseGEDCOMDate(sub.Value))
 		}
+	}
+
+	// If we have a place, create temporal property
+	if placeID != "" {
+		// Build temporal value with date if present
+		if dateStr != "" {
+			// Add as temporal property with date
+			temporalValue := map[string]any{
+				"value": placeID,
+				"date":  dateStr,
+			}
+			// Append to existing residence history or create new
+			if existing, ok := person.Properties[PersonPropertyResidence]; ok {
+				if existingList, ok := existing.([]any); ok {
+					person.Properties[PersonPropertyResidence] = append(existingList, temporalValue)
+				} else {
+					// Convert single value to list
+					person.Properties[PersonPropertyResidence] = []any{existing, temporalValue}
+				}
+			} else {
+				person.Properties[PersonPropertyResidence] = []any{temporalValue}
+			}
+		} else {
+			// No date - just set the place
+			person.Properties[PersonPropertyResidence] = placeID
+		}
+
+		// Create assertion for the residence
+		createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
 	}
 
 	return nil

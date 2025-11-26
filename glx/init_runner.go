@@ -81,7 +81,6 @@ media: {}
 
 	fmt.Printf("Initialized single-file GENEALOGIX archive: archive.glx in %s\n", targetDir)
 	fmt.Printf("Add entities under the appropriate type keys (persons, sources, etc.) in %s\n", targetDir)
-	fmt.Printf("Entity IDs are map keys - don't include 'id' field in entities in %s\n", targetDir)
 
 	return nil
 }
@@ -144,7 +143,6 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 	fmt.Println("Created .gitignore and README.md")
 	fmt.Println("")
 	fmt.Println("Each .glx file should have entity type keys at the top level.")
-	fmt.Println("Entity IDs are map keys - don't include 'id' field in entities.")
 
 	return nil
 }

@@ -47,7 +47,7 @@ sources:
 citations:
   citation-marriage-cert:
     source: source-marriage-certificate
-    transcription: |
+    text_from_source: |
       Marriage Certificate
       Registered 15 June 1880
       John Smith (age 30) married Jane Doe (age 25)

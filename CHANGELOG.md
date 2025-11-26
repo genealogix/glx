@@ -92,7 +92,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - Recovers from NOTE fields with missing CONT/CONC prefixes
   - Gracefully imports files with HTML-formatted notes
   - Test case: queen.ged (4,683 persons, line 15903 missing CONT prefix)
-- **Family event handling** - Added missing ANUL, DIVF, CENS, EVEN to case statement
+- **Family event handling** - Added missing ANUL, DIVF, EVEN to case statement
 - **Place type references** - Fixed gedcom_place.go to use "state" instead of "state_province"
 
 #### Vocabularies
@@ -123,6 +123,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Test data consistency** - All testdata files updated to use unified name format
 
 ### Removed
+
+#### Attribute Event Types
+- **Removed attribute-type events from schema** - Events are now strictly discrete occurrences with participants
+  - Removed from event.schema.json enum: `residence`, `occupation`, `title`, `nationality`, `religion`, `education`
+  - Removed `census` from event-types.glx vocabulary
+  - These attributes are now represented as temporal properties on Person entities
+- **Removed CENS (Census) event handling** - Census records are skipped during GEDCOM import (TODO: re-implement as citations supporting property assertions)
+- **Converted RESI (Residence) to temporal property** - GEDCOM RESI tags now create temporal `residence` properties on Person entities instead of events
 
 #### Quality Ratings Support
 - **Removed `quality_ratings` vocabulary** - The GEDCOM 0-3 Quality Assessment scale was removed from the GLX specification

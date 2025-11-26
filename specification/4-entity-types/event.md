@@ -1,16 +1,18 @@
 ---
-title: Event/Fact Entity
-description: Occurrences in time and place - lifecycle events, facts, and attributes
+title: Event Entity
+description: Occurrences in time and place - lifecycle events and significant happenings
 layout: doc
 ---
 
-# Event/Fact Entity
+# Event Entity
 
 [← Back to Entity Types](README.md)
 
 ## Overview
 
-An Event (also called a Fact) entity represents a single occurrence in time, place, and context that is relevant to the family archive. Events can be lifecycle events (birth, marriage, death), attribute facts (occupation, residence), or custom events.
+An Event entity represents a single occurrence in time, place, and context that is relevant to the family archive. Events are discrete happenings like birth, marriage, death, baptism, etc.
+
+**Note:** Facts and attributes (occupation, residence, nationality, religion, etc.) are represented as temporal properties on Person entities, not as events. See [Person Entity](person.md) for details on temporal properties.
 
 ## File Format
 
@@ -38,17 +40,11 @@ events:
 
 Standard events that occur in a person's life:
 - **Birth**, **Death**, **Marriage**, **Divorce**, **Engagement**, **Adoption**
-- **Baptism**, **Burial**, **Cremation**, **Christening**
-
-### Attributes
-
-Characteristic facts about a person:
-- **Occupation**, **Residence**, **Education**, **Religion**, **Title**
-- **Nationality**, **Ethnicity**
+- **Baptism**, **Confirmation**, **Bar/Bat Mitzvah**, **Burial**, **Cremation**
 
 ### Custom Events
 
-Domain-specific events:
+Domain-specific events can be added via vocabularies:
 - Military service, Migration/Immigration, Land transactions, Legal proceedings
 
 ## Fields
@@ -86,13 +82,7 @@ Domain-specific events:
 |-------|------|-------------|
 | `person` | string | Reference to Person entity |
 | `role` | string | Role of participant |
-| `participant.notes` | string | Notes about participant |
-| `value` | string | Value for attribute facts (e.g., "blacksmith" for occupation) |
-| `properties` | object | Vocabulary-defined properties for the event |
-| `age_text` | string | Age at time of event |
-| `cause_text` | string | Cause for event |
-| `description` | string | Narrative description |
-| `notes` | string | Free-form notes |
+| `notes` | string | Notes about participant's involvement |
 
 ### Date Structure
 
@@ -174,25 +164,16 @@ events:
 
 **Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
 
-Event files are typically stored in a `events/` directory organized by type:
+Event files are typically stored in an `events/` directory:
 
 ```
 events/
-├── lifecycle/
-│   ├── event-birth-001.glx
-│   ├── event-marriage-001.glx
-│   ├── event-death-001.glx
-│   └── event-adoption-001.glx
-├── attributes/
-│   ├── event-occupation-001.glx
-│   ├── event-residence-001.glx
-│   └── event-religion-001.glx
-└── custom/
-    ├── event-military-001.glx
-    └── event-migration-001.glx
+├── event-birth-001.glx
+├── event-marriage-001.glx
+├── event-death-001.glx
+├── event-baptism-001.glx
+└── event-adoption-001.glx
 ```
-
-Or embedded directly in person records as nested structures.
 
 ## GEDCOM Mapping
 
@@ -204,8 +185,10 @@ Most events map directly to GEDCOM tags:
 | `death` | INDI.DEAT | Individual death |
 | `marriage` | FAM.MARR | Family marriage |
 | `divorce` | FAM.DIV | Family divorce |
-| `residence` | INDI.RESI | Residence attribute |
-| `occupation` | INDI.OCCU | Occupation attribute |
+| `baptism` | INDI.BAPM/CHR | Baptism or christening |
+| `burial` | INDI.BURI | Burial |
+
+**Note:** GEDCOM attributes like RESI (residence), OCCU (occupation), RELI (religion) are imported as temporal properties on Person entities, not events.
 
 ### Multi-Participant Events
 
@@ -235,7 +218,7 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 ## Validation Rules
 
 - Event type must be defined in `vocabularies/event-types.glx`
-- At least one participant must be present (except for attribute-type events)
+- At least one participant should be present
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
 - Date formats must follow genealogical date conventions

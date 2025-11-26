@@ -1,6 +1,9 @@
 # Standard Event Types
-# This file defines the standard event and fact types for GENEALOGIX archives.
+# This file defines the standard event types for GENEALOGIX archives.
 # Archives can extend this with custom types by adding additional entries.
+#
+# Note: Attributes like occupation, residence, religion, etc. are represented
+# as temporal properties on Person entities, not as events.
 
 event_types:
   # Lifecycle Events
@@ -162,60 +165,18 @@ event_types:
     category: "legal"
     gedcom: "WILL"
 
-  # Attribute Facts
-  residence:
-    label: "Residence"
-    description: "Place of residence"
-    category: "attribute"
-    gedcom: "RESI"
-  
-  occupation:
-    label: "Occupation"
-    description: "Employment or profession"
-    category: "attribute"
-    gedcom: "OCCU"
-  
-  title:
-    label: "Title"
-    description: "Nobility or honorific title"
-    category: "attribute"
-    gedcom: "TITL"
-  
-  nationality:
-    label: "Nationality"
-    description: "National citizenship"
-    category: "attribute"
-    gedcom: "NATI"
-  
-  religion:
-    label: "Religion"
-    description: "Religious affiliation"
-    category: "attribute"
-    gedcom: "RELI"
-  
-  education:
-    label: "Education"
-    description: "Educational achievement"
-    category: "attribute"
-    gedcom: "EDUC"
-
+  # Lifecycle Events (continued)
   graduation:
     label: "Graduation"
     description: "Graduation from school or university"
-    category: "attribute"
+    category: "lifecycle"
     gedcom: "GRAD"
 
   retirement:
     label: "Retirement"
     description: "Retirement from occupation"
-    category: "attribute"
+    category: "lifecycle"
     gedcom: "RETI"
-
-  census:
-    label: "Census"
-    description: "Census enumeration"
-    category: "attribute"
-    gedcom: "CENS"
 
   # Migration Events
   naturalization:

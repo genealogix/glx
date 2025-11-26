@@ -12,6 +12,10 @@
 - we shouldn't create assertions from imports without citations
 - decide what to do with QUAY ratings... (removed in beta.2)
 
+## GEDCOM Import: Census Tag Handling
+
+- **CENS (Census)**: Currently creates census events. Census is not an event - it's a source/citation that supports assertions about a person's attributes (residence, occupation, etc.). Should create citations from census records that can be attached to property assertions.
+
 ## GEDCOM Import: Missing Data Storage
 
 **Issue**: Data is being processed but not stored/exposed after import
@@ -45,8 +49,3 @@
 ### Citation (gedcom_evidence.go)
 - **Line 63**: Source date dumped in notes → Add `SourceDate` field to Citation struct
 - **Line 38**: Embedded citations skipped entirely → Implement embedded citation support (no source reference)
-
-### Priority
-1. **High**: Repository phones/emails, Source abbreviation/agency, Media citations
-2. **Medium**: Source events_recorded, Media medium/media_type, Citation source_date, embedded citations
-3. **Low**: Media crop coordinates (needs new type), Source call_number (architectural decision)

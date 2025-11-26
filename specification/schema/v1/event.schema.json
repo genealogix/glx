@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://schema.genealogix.io/v1/event",
-  "title": "Event/Fact",
+  "title": "Event",
   "description": "A genealogical event. ID comes from the map key in the parent structure.",
   "type": "object",
   "required": ["type"],
@@ -21,15 +21,9 @@
         "bat_mitzvah",
         "burial",
         "cremation",
-        "residence",
-        "occupation",
-        "title",
-        "nationality",
-        "religion",
-        "education",
         "other"
       ],
-      "description": "Type of event or attribute"
+      "description": "Type of event"
     },
     "properties": {
       "type": "object",

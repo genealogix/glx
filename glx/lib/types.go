@@ -127,7 +127,6 @@ type RelationshipParticipant struct {
 type Event struct {
 	Type         string             `refType:"event_types"         yaml:"type"`
 	PlaceID      string             `refType:"places"              yaml:"place,omitempty"`
-	Value        string             `yaml:"value,omitempty"`
 	Date         DateString         `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []EventParticipant `yaml:"participants,omitempty"`
 	Properties   map[string]any     `yaml:"properties,omitempty"` // Vocabulary-defined properties
@@ -190,23 +189,12 @@ type Citation struct {
 	SourceID       string         `refType:"sources"                 yaml:"source,omitempty"`
 	Page           string         `yaml:"page,omitempty"`
 	TextFromSource string         `yaml:"text_from_source,omitempty"`
-	Transcription  string         `yaml:"transcription,omitempty"`
-	Locator        any            `yaml:"locator,omitempty"` // Can be string or Locator struct
+	Locator        string         `yaml:"locator,omitempty"`
 	RepositoryID   string         `refType:"repositories"            yaml:"repository,omitempty"`
 	Properties     map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Media          []string       `refType:"media"                   yaml:"media,omitempty"`
 	Notes          string         `yaml:"notes,omitempty"`
 	Tags           []string       `yaml:"tags,omitempty"`
-}
-
-// Locator provides structured information for finding a source.
-type Locator struct {
-	FilmNumber         string `yaml:"film_number,omitempty"`
-	ItemNumber         string `yaml:"item_number,omitempty"`
-	ImageNumber        string `yaml:"image_number,omitempty"`
-	URL                string `yaml:"url,omitempty"`
-	RecordID           string `yaml:"record_id,omitempty"`
-	DatabaseCollection string `yaml:"database_collection,omitempty"`
 }
 
 // Repository represents a repository where sources are held.

@@ -44,7 +44,7 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 		{"5.5.5/spec-samples/minimal.ged", 0, 0, "Minimal valid GEDCOM - header only"},
 		{"5.5.5/spec-samples/remarriage.ged", 2, 0, "Remarriage scenario"},
 		{"5.5.5/spec-samples/same-sex-marriage.ged", 2, 0, "Same-sex marriage"},
-		{"5.5.5/spec-samples/sample.ged", 3, 8, "Spec sample file"},
+		{"5.5.5/spec-samples/sample.ged", 3, 7, "Spec sample file"},
 
 		// GEDCOM 7.0 - Additional test coverage
 		{"7.0/cross-references/xref.ged", 1, 0, "Cross-reference handling"},

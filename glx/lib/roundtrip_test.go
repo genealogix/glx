@@ -103,7 +103,7 @@ func TestGEDCOMToSingleFileRoundTrip(t *testing.T) {
 			name:         "GEDCOM 7.0 comprehensive",
 			gedcomPath:   "../testdata/gedcom/7.0/comprehensive-spec/maximal70.ged",
 			minPersons:   1,
-			minEvents:    36,
+			minEvents:    34,
 			minRelations: 3,
 		},
 	}

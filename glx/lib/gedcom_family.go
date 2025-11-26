@@ -60,7 +60,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		case GedcomTagDiv:
 			divorceRecord = sub
 
-		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagCens, GedcomTagEven:
+		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagEven:
 			// Other family events
 			if err := convertFamilyEvent(husbandID, wifeID, sub, conv); err != nil {
 				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
@@ -443,7 +443,6 @@ func mapFamilyEventType(tag string) string {
 		GedcomTagMars: EventTypeMarriageSettlement,
 		GedcomTagAnul: EventTypeAnnulment,
 		GedcomTagDivf: EventTypeDivorceFiled,
-		GedcomTagCens: EventTypeCensus,
 		GedcomTagEven: EventTypeGeneric,
 	}
 
