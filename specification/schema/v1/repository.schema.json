@@ -11,6 +11,11 @@
       "minLength": 1,
       "description": "Name of the repository"
     },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties of the repository",
+      "additionalProperties": true
+    },
     "type": {
       "type": "string",
       "enum": [

@@ -37,20 +37,11 @@ One source can have many citations referencing different pages or sections.
 | `page` | string | Page number or locator within source |
 | `data_date` | string | Date the data was recorded (for documentary sources) |
 | `text_from_source` | string | Transcription or excerpt from the source |
-| `locator` | object | Structured locator information (see below) |
+| `locator` | string | Location within source (e.g., 'Page 45, Entry 123', 'Film 1234567, Image 87') |
 | `repository` | string | Reference to Repository entity |
 | `media` | array | References to Media entities |
 | `notes` | string | Free-form notes about the citation |
 | `tags` | array | User-defined tags for organization |
-
-### Locator Object Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `film_number` | string | FamilySearch film number |
-| `item_number` | string | Item number or accession number |
-| `image_number` | string | Image or page identifier |
-| `url` | string | URL to online source |
 
 ## Usage Patterns
 
@@ -76,9 +67,7 @@ citations:
     source: source-ancestry-census
     data_date: "1851"
     page: "Schedule 7, piece 1123"
-    locator:
-      url: "https://www.ancestry.com/..."
-      image_number: "87342534"
+    locator: "https://www.ancestry.com/..., Image 87342534"
     text_from_source: |
       Name: John Smith
       Age: 35
@@ -95,9 +84,7 @@ citations:
     source: source-probate-wills
     repository: repository-probate
     page: "23"
-    locator:
-      item_number: "1876/X/150"
-      film_number: "100234"
+    locator: "Item 1876/X/150, Film 100234"
     data_date: "1876"
     text_from_source: |
       I, John Smith, being of sound mind, do hereby
@@ -135,25 +122,6 @@ assertions:
     notes: "Primary source from parish register"
 ```
 
-## Locator Object
-
-The locator object stores structured information about how to find the evidence:
-
-```yaml
-locator:
-  # For online resources
-  url: "https://www.familysearch.org/..."
-  image_number: "4253453"
-  
-  # For archive materials
-  film_number: "1234567"
-  item_number: "P/152/1"
-  
-  # For databases
-  record_id: "REC12345678"
-  database_collection: "UK Census 1851"
-```
-
 ## File Organization
 
 **Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
@@ -178,21 +146,19 @@ Or more commonly, citations are referenced by ID from assertions.
 
 ## GEDCOM Mapping
 
-|| GLX Property | GEDCOM Element | Notes |
-||--------------|----------------|-------|
-|| `id` | (synthetic) | Not in GEDCOM |
-|| `source` | SOUR | Source reference |
-|| `page` | SOUR.PAGE | Page within source |
-|| `data_date` | SOUR.DATA.DATE | Date data was recorded |
-|| `text_from_source` | SOUR.TEXT | Transcribed text |
-|| `locator.url` | SOUR.OBJE.FILE | File/URL path |
-|| `locator.film_number` | SOUR.REPO.CALN.VALUE | Media number |
+| GLX Field | GEDCOM Element | Notes |
+|-----------|----------------|-------|
+| Entity ID | (synthetic) | Not in GEDCOM |
+| `source` | SOUR | Source reference |
+| `page` | SOUR.PAGE | Page within source |
+| `data_date` | SOUR.DATA.DATE | Date data was recorded |
+| `text_from_source` | SOUR.TEXT | Transcribed text |
+| `locator` | SOUR.OBJE.FILE, SOUR.REPO.CALN | Combined from multiple GEDCOM elements |
 
 ## Validation Rules
 
 - Source ID must reference an existing Source entity
 - Page information should be concise and meaningful
-- Locator URLs must be properly formed
 - Text transcriptions should accurately represent source material
 - Repository, if specified, must exist
 

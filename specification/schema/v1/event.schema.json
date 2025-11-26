@@ -41,10 +41,6 @@
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to Place where event occurred"
     },
-    "value": {
-      "type": "string",
-      "description": "Value for attribute facts (occupation, title, etc.)"
-    },
     "date": {
       "oneOf": [
         { "type": "string" },
@@ -82,29 +78,9 @@
         "additionalProperties": true
       }
     },
-    "attribute_value": {
-      "type": "string",
-      "description": "For attribute facts: the value (e.g., 'blacksmith' for occupation)"
-    },
-    "age_text": {
-      "type": "string",
-      "description": "Age at time of event (e.g., 'about 25', 'infant')"
-    },
-    "cause_text": {
-      "type": "string",
-      "description": "Cause for event (e.g., 'pneumonia' for death)"
-    },
     "description": {
       "type": "string",
       "description": "Narrative description of the event"
-    },
-    "restrictions": {
-      "type": "array",
-      "description": "Restriction codes for event visibility",
-      "items": {
-        "type": "string",
-        "enum": ["confidential", "locked", "privacy", "other"]
-      }
     },
     "notes": {
       "type": "string",

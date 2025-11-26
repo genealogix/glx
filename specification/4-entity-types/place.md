@@ -63,6 +63,7 @@ Each name can be classified and dated.
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `properties` | object | Vocabulary-defined properties of the place |
 | `parent` | string | Reference to parent place in hierarchy |
 | `type` | string | Place type from `vocabularies/place-types.glx` |
 | `alternative_names` | array | Historical/alternative names for this place |

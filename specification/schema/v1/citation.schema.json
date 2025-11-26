@@ -23,49 +23,9 @@
       "type": "string",
       "description": "Transcription or excerpt from the source"
     },
-    "transcription": {
-      "type": "string",
-      "description": "Alternative field name for text_from_source"
-    },
     "locator": {
-      "oneOf": [
-        {
-          "type": "string",
-          "description": "Simple string locator (e.g., 'Page 45, Entry 123')"
-        },
-        {
-          "type": "object",
-          "description": "Structured locator information for finding the source",
-          "properties": {
-            "film_number": {
-              "type": "string",
-              "description": "FamilySearch film number or microfilm reference"
-            },
-            "item_number": {
-              "type": "string",
-              "description": "Item number or accession number"
-            },
-            "image_number": {
-              "type": "string",
-              "description": "Image number or page identifier"
-            },
-            "url": {
-              "type": "string",
-              "format": "uri",
-              "description": "URL to online source"
-            },
-            "record_id": {
-              "type": "string",
-              "description": "Database record ID"
-            },
-            "database_collection": {
-              "type": "string",
-              "description": "Name of database collection"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
+      "type": "string",
+      "description": "Location within source (e.g., 'Page 45, Entry 123', 'Film 1234567, Image 87')"
     },
     "repository": {
       "type": "string",
