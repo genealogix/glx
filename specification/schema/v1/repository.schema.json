@@ -67,21 +67,7 @@
       "type": "array",
       "description": "Types of materials held",
       "items": {
-        "type": "string",
-        "enum": [
-          "documents",
-          "microfilm",
-          "microfiche",
-          "digital",
-          "books",
-          "manuscripts",
-          "maps",
-          "newspapers",
-          "photographs",
-          "audio",
-          "video",
-          "other"
-        ]
+        "type": "string"
       },
       "uniqueItems": true
     },

@@ -20,7 +20,8 @@
       "description": "User-defined tags for organization",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
     }
   },
   "additionalProperties": false

@@ -153,7 +153,6 @@ sources:
   source-tna-wills:
     title: "Wills and Probate Records"
     repository: repository-tna
-    call_number: "PROB 11"
     description: "Wills proved in the Prerogative Court of Canterbury"
 ```
 

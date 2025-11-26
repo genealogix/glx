@@ -175,17 +175,6 @@ Example:
 repository: repository-national-archives
 ```
 
-### `call_number`
-
-- Type: String
-- Required: No
-- Description: Call number, catalog ID, or reference number at the repository
-
-Example:
-```yaml
-call_number: "HO 107/2319"
-```
-
 ### `citation`
 
 - Type: String
@@ -315,7 +304,6 @@ sources:
     creator: "General Register Office"
     date: "1850-01-15"
     repository: repository-gro
-    call_number: "GRO 1850/Q1/LEEDS/145"
     description: "Original birth certificate for John Smith, born Leeds"
     language: "English"
     media:
@@ -337,7 +325,6 @@ sources:
     creator: "UK Census Office"
     date: "1851-03-30"
     repository: repository-national-archives
-    call_number: "HO 107/2319"
     citation: "1851 England Census, Yorkshire, Leeds, ED 5"
     description: |
       Census enumeration for Leeds, Yorkshire, England.
@@ -363,7 +350,6 @@ sources:
     creator: "Church of England"
     date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
-    call_number: "RDP73/1"
     description: |
       Parish registers for St. Paul's Cathedral, Leeds.
       Includes baptisms, marriages, and burials.
@@ -461,7 +447,6 @@ sources:
     creator: "Leeds Mercury Publishing Company"
     date: "1890-06-15"
     repository: repository-british-library
-    call_number: "NP 123.456"
     description: "Daily newspaper published in Leeds, Yorkshire"
     citation: "Leeds Mercury, 15 June 1890, page 3"
     coverage:
@@ -604,7 +589,6 @@ Source entities map to GEDCOM source records:
 | `date` | `SOUR.DATE` | Publication date |
 | `creator` | `SOUR.AGNC` | Responsible agency |
 | `repository` | `SOUR.REPO` | Repository reference |
-| `call_number` | `SOUR.REPO.CALN` | Call number |
 | `publication_info.publisher` | `SOUR.PUBL` | Publication info |
 | `description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
 
@@ -615,7 +599,6 @@ GEDCOM Example:
 1 AUTH Church of England
 1 DATE 1840/1860
 1 REPO @R1@
-2 CALN RDP73/1
 1 NOTE Parish registers for baptisms, marriages, and burials
 ```
 
@@ -627,7 +610,6 @@ sources:
     creator: "Church of England"
     date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
-    call_number: "RDP73/1"
     description: "Parish registers for baptisms, marriages, and burials"
 ```
 

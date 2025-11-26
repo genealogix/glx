@@ -19,6 +19,12 @@ Specification (*.md) → Schema (*.schema.json) → Go Code (types.go)
 - Any drift detected means the **Go code needs to be updated** to match the schema
 - When reporting drift, frame it as "Go code X needs to be updated because schema says Y"
 
+**IMPORTANT - Bidirectional Validation Checking**:
+Validation logic and constraints must be synchronized between specification and code:
+- **Code has validation NOT in spec** → Specification needs to document this validation
+- **Spec has validation NOT in code** → Code needs to implement this validation
+- This is BIDIRECTIONAL - check both directions!
+
 ## Task
 
 Analyze the Go type definitions in **glx/lib/types.go** and compare them with:
@@ -38,6 +44,12 @@ Core entities:
 - Repository
 - Media
 - Assertion (including AssertionParticipant)
+
+## Code Files to Check
+
+In addition to **glx/lib/types.go**, also check:
+- **glx/lib/validator.go** - Contains validation logic and constraint checking
+- Any other lib files with validation functions
 
 ## What to Check
 
@@ -92,7 +104,66 @@ Compare Go types with JSON schema types:
 - Verify yaml tags match schema (e.g., `persons`, `events`, etc.)
 - Check vocabulary definition fields
 
-### 8. Common Issues to Look For
+### 8. Validation Logic and Constraints (BIDIRECTIONAL CHECK)
+
+This is where validation logic often lives ONLY in the code. Check both directions:
+
+#### Code → Specification (Documentation Gaps)
+Look for validation logic in **glx/lib/validator.go** and other validation code that is NOT documented in the specification:
+
+- **Field format validation** (e.g., regex patterns, length constraints)
+  - Example: Email format validation, ID format validation
+  - If code validates format, specification should document the format
+
+- **Cross-field constraints** (e.g., mutually exclusive fields, conditional requirements)
+  - Example: "If field A is present, field B is required"
+  - If code enforces constraint, specification should document it
+
+- **Business rules** (e.g., date ranges, logical constraints)
+  - Example: "Birth date must be before death date"
+  - If code validates rule, specification should document it
+
+- **Reference validation** (e.g., checking that referenced entities exist)
+  - Example: "person_id must reference a valid Person entity"
+  - If code validates references, specification should document the requirement
+
+- **Enumeration constraints** (e.g., allowed values for fields)
+  - Example: "type field must be one of: [value1, value2, value3]"
+  - If code validates enums, specification should document allowed values
+
+#### Specification → Code (Implementation Gaps)
+Look for validation rules documented in **specification/4-entity-types/*.md** that are NOT implemented in the code:
+
+- **Required fields** specified in prose but not validated in code
+- **Format requirements** described in specification but not checked in validator
+- **Constraints** documented in specification but not enforced in code
+- **Business rules** written in specification but missing from validation logic
+- **Edge cases** described in specification but not handled in code
+
+#### What to Report
+For each validation rule or constraint:
+
+**Code has validation NOT in specification**:
+```
+⚠️ Validation Gap in Specification
+
+Location: lib/validator.go:123
+Validation: Email field must match regex pattern `^[a-z]+@[a-z]+\.[a-z]+$`
+Issue: This validation exists in code but is NOT documented in specification/4-entity-types/person.md
+Action: Add format requirement to specification
+```
+
+**Specification has validation NOT in code**:
+```
+⚠️ Validation Missing in Code
+
+Location: specification/4-entity-types/event.md (line 45)
+Requirement: "The end_date, if present, must be after the date field"
+Issue: This constraint is documented in specification but NOT enforced in lib/validator.go
+Action: Implement validation in code
+```
+
+### 9. Common Issues to Look For
 
 - Missing `omitempty` on optional fields
 - Wrong yaml tag names (e.g., `state_province` vs `state`)
@@ -101,6 +172,8 @@ Compare Go types with JSON schema types:
 - Extra fields in Go that aren't in schema
 - Reference types that should have `refType` tags but don't
 - Required fields that have `omitempty` (wrong!)
+- Validation logic in code not documented in specification
+- Validation requirements in specification not implemented in code
 
 ## Output Format
 
@@ -109,11 +182,11 @@ For each entity type, report:
 ```
 ## [Entity Type]
 
-✅ No drift detected - Go code matches schema
+✅ No drift detected - Go code matches schema and specification
 
 OR
 
-⚠️ Drift detected - Go code needs updates:
+⚠️ Drift detected:
 
 ### Field Presence
 - Go struct missing field for schema property `property_name`
@@ -135,12 +208,22 @@ OR
 - Go field `FieldName` references entities but missing `refType:"entity_type"` tag
 - Fix: Add appropriate refType tag
 
+### Validation Drift (Code → Specification)
+- Validation logic in lib/validator.go:123 not documented in specification
+- Fix: Document validation requirement in specification/4-entity-types/[entity].md
+
+### Validation Drift (Specification → Code)
+- Validation requirement in specification/4-entity-types/[entity].md:45 not implemented
+- Fix: Implement validation in lib/validator.go
+
 ### Documentation
 - Go field `FieldName` comment doesn't match schema description
 - Fix: Update comment to match schema
 ```
 
-**Remember**: Frame all drift as "what the Go code needs to change" to match the schema.
+**Remember**:
+- Frame struct/field drift as "what the Go code needs to change" to match the schema
+- Frame validation drift BIDIRECTIONALLY - both code and specification may need updates
 
 ## Special Focus Areas
 
@@ -156,17 +239,28 @@ OR
 
 At the end, provide:
 - Total entity types checked
-- Count of entity types with drift
+- Count of entity types with structural drift (field/type/yaml tag issues)
+- Count of entity types with validation drift
 - List of Go types that need updates to match schema
+- List of validation gaps found:
+  - Validation in code but not in specification (needs documentation)
+  - Validation in specification but not in code (needs implementation)
 - Severity assessment (critical/major/minor)
-- Recommended actions: "Update lib/types.go [specific types] to match schema"
+- Recommended actions:
+  - "Update lib/types.go [specific types] to match schema"
+  - "Document validation logic in specification/4-entity-types/[files]"
+  - "Implement missing validation in lib/validator.go"
 
 ## Notes
 
 - **Schema is the source of truth** - Go code should be updated to match it
+- **Validation drift is BIDIRECTIONAL** - both code and specification may need updates
 - Internal fields (like `validation *ValidationResult` in GLXFile) are expected to not be in schemas
 - Comment differences are informational only unless significantly misleading
 - Focus on structural issues that could cause marshaling/unmarshaling problems
 - Check both directions: schema → Go (missing in Go) AND Go → schema (not in schema, may need removal)
+- Check both directions for validation: code → spec (missing documentation) AND spec → code (missing implementation)
 - Pay special attention to required fields - these are critical for validation
 - Required field with `omitempty` is a **CRITICAL** error
+- Validation logic that exists in code but not in specification is a **MAJOR** documentation issue
+- Validation requirements in specification but not in code is a **CRITICAL** implementation issue
