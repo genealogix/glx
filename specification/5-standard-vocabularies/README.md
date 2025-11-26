@@ -25,7 +25,7 @@ Standard vocabularies provide:
 
 ### Event Types
 
-Defines lifecycle events (birth, death, marriage), religious events (baptism, confirmation), and attribute facts (occupation, residence, education).
+Defines lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will), and migration events (immigration, emigration, naturalization).
 
 <YamlFile 
   :content="vocabularies['event-types']"
@@ -159,9 +159,10 @@ Defines standard and custom properties for event entities.
 **File:** `vocabularies/event-properties.glx`
 
 **Standard Properties Include:**
-- `occurred_on` - When the event occurred
-- `occurred_at` - Where the event occurred (reference)
 - `description` - Event description
+- `notes` - Additional notes
+
+**Note:** Event timing and location are handled by the `date` and `place` fields directly on events, not as properties.
 
 **See Also:** [Event Entity Documentation](../4-entity-types/event#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#event-properties-vocabulary)
 

@@ -32,7 +32,7 @@ Represents occurrences in time and place: births, marriages, occupations, reside
 - **Key Properties**: Type, date, place, participants, description
 - **File Format**: `.glx`
 - **ID Format**: `event-{id}` (see below)
-- **GEDCOM Equivalent**: BIRT, DEAT, MARR, OCCU, etc.
+- **GEDCOM Equivalent**: BIRT, DEAT, MARR, BAPM, etc.
 
 ### [Place](place.md)
 Represents geographic locations forming a hierarchical structure. Supports multiple names and historical variations.

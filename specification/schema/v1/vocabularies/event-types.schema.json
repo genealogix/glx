@@ -14,7 +14,7 @@
             "label": { "type": "string" },
             "description": { "type": "string" },
             "gedcom": { "type": "string" },
-            "category": { "type": "string", "enum": ["lifecycle", "attribute", "religious", "legal", "migration", "other"] }
+            "category": { "type": "string", "enum": ["lifecycle", "religious", "legal", "migration", "other"] }
           },
           "additionalProperties": true
         }

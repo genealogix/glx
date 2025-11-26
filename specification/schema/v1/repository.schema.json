@@ -18,19 +18,8 @@
     },
     "type": {
       "type": "string",
-      "enum": [
-        "archive",
-        "library",
-        "museum",
-        "registry",
-        "database",
-        "church",
-        "historical_society",
-        "university",
-        "government_agency",
-        "other"
-      ],
-      "description": "Type of repository"
+      "minLength": 1,
+      "description": "Type of repository (validated against repository_types vocabulary)"
     },
     "address": {
       "type": "string",

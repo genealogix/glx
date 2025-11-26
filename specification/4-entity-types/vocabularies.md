@@ -65,19 +65,15 @@ event_types:
     description: "Marriage ceremony"
     category: "lifecycle"
     gedcom: "MARR"
-  
-  occupation:
-    label: "Occupation"
-    description: "Employment or profession"
-    category: "attribute"
-    gedcom: "OCCU"
-  
+
   # Additional event types
   apprenticeship:
     label: "Apprenticeship"
     description: "Beginning of apprenticeship training"
-    category: "occupation"
+    category: "lifecycle"
 ```
+
+**Note:** Attributes like occupation, residence, religion, and nationality are represented as temporal properties on Person entities, not as events. See [Person Entity](person.md) for details.
 
 ### Fields
 
@@ -85,12 +81,12 @@ event_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `category` | No | Category (lifecycle, attribute, religious, legal, migration, other) |
+| `category` | No | Category (lifecycle, religious, legal, migration, other) |
 | `gedcom` | No | GEDCOM tag mapping |
 
 ### Standard Event Types
 
-**Standard Event Types**: GENEALOGIX provides 19 standardized event type codes including lifecycle events (birth, death, marriage), religious events (baptism, confirmation, bar/bat mitzvah), and attribute facts (occupation, residence, education, title, nationality, religion).
+**Standard Event Types**: GENEALOGIX provides standardized event type codes including lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will), and migration events (immigration, emigration, naturalization).
 
 **Complete List**: See [Standard Vocabularies - Event Types](/specification/5-standard-vocabularies/#event-types) for the complete default vocabulary file with all standard types.
 
@@ -671,10 +667,10 @@ GENEALOGIX provides standard person properties:
 
 Event properties are generally less common than person properties, since most event data is structural (type, date, place, participants). Standard properties include:
 
-- `occurred_on` - When the event occurred
-- `occurred_at` - Where the event occurred
 - `description` - Event description
 - `notes` - Additional notes
+
+**Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties.
 
 ### Relationship Properties Vocabulary
 
@@ -1127,17 +1123,17 @@ Create type hierarchies:
 
 ```yaml
 event_types:
-  occupation:
-    label: "Occupation"
-    category: "attribute"
-    
-  occupation.agricultural:
-    label: "Agricultural Occupation"
-    parent: "occupation"
-    
-  occupation.agricultural.farmer:
-    label: "Farmer"
-    parent: "occupation.agricultural"
+  military:
+    label: "Military Service"
+    category: "lifecycle"
+
+  military.enlistment:
+    label: "Military Enlistment"
+    parent: "military"
+
+  military.discharge:
+    label: "Military Discharge"
+    parent: "military"
 ```
 
 ### Localization

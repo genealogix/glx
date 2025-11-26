@@ -23,29 +23,8 @@
     },
     "type": {
       "type": "string",
-      "enum": [
-        "country",
-        "continent",
-        "state",
-        "province",
-        "county",
-        "district",
-        "region",
-        "city",
-        "town",
-        "parish",
-        "village",
-        "township",
-        "borough",
-        "ward",
-        "subdivision",
-        "registration_district",
-        "address",
-        "building",
-        "street",
-        "other"
-      ],
-      "description": "Type of geographic location"
+      "minLength": 1,
+      "description": "Type of geographic location (validated against place_types vocabulary)"
     },
     "alternative_names": {
       "type": "array",

@@ -37,6 +37,13 @@ events:
     type: marriage
     date: "1880-06-15"
     description: "Marriage of John Smith and Jane Doe"
+    participants:
+      - person: person-john-smith
+        role: groom
+      - person: person-jane-doe
+        role: bride
+      - person: person-thomas-brown
+        role: witness
 
 sources:
   source-marriage-certificate:

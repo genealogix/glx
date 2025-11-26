@@ -589,7 +589,7 @@ citation: "Newspaper Title, Date, Page Number, Column."
 - `title` must be present and non-empty
 - If `repository` is specified, it must reference an existing Repository entity
 - If `media` array is present, all IDs must reference existing Media entities
-- `date` should follow standard date formats (YYYY, YYYY-MM-DD, or YYYY/YYYY for ranges)
+- `date` should follow standard date formats (YYYY, YYYY-MM-DD, or `FROM YYYY TO YYYY` for ranges)
 - `type` should be one of the defined source types if vocabularies are used
 
 ## GEDCOM Mapping

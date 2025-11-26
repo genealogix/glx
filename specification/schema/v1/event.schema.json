@@ -4,26 +4,12 @@
   "title": "Event",
   "description": "A genealogical event. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["type"],
+  "required": ["type", "participants"],
   "properties": {
     "type": {
       "type": "string",
-      "enum": [
-        "birth",
-        "death",
-        "marriage",
-        "divorce",
-        "engagement",
-        "adoption",
-        "baptism",
-        "confirmation",
-        "bar_mitzvah",
-        "bat_mitzvah",
-        "burial",
-        "cremation",
-        "other"
-      ],
-      "description": "Type of event"
+      "minLength": 1,
+      "description": "Type of event (validated against event_types vocabulary)"
     },
     "properties": {
       "type": "object",
@@ -51,6 +37,7 @@
     "participants": {
       "type": "array",
       "description": "People involved in this event",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": ["person"],

@@ -26,7 +26,7 @@ Version 0.0.0-beta.2 (Beta)
    - Naming Conventions
    - File Organization Patterns
 
-4. [Entity Types](4-entity-types/) (9 core types)
+4. [Entity Types](4-entity-types/)
    - [Person](4-entity-types/person) - Individual records
    - [Relationship](4-entity-types/relationship) - Connections between people
    - [Event/Fact](4-entity-types/event) - Occurrences in time and place

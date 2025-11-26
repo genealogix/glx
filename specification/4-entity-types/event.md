@@ -54,7 +54,8 @@ Domain-specific events can be added via vocabularies:
 | Field | Type | Description |
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
-| `type` | string | Event type (birth, death, marriage, occupation, etc.) |
+| `type` | string | Event type (birth, death, marriage, etc.) |
+| `participants` | array | People involved in the event (at least one required) |
 
 ### Optional Fields
 
@@ -62,7 +63,6 @@ Domain-specific events can be added via vocabularies:
 |-------|------|-------------|
 | `date` | string/object | Date as string or object with fuzzy support |
 | `place` | string | Reference to Place entity |
-| `participants` | array | People involved in the event |
 | `properties` | object | Vocabulary-defined properties |
 | `description` | string | Narrative description |
 | `notes` | string | Free-form notes |
@@ -94,9 +94,10 @@ participants:
 
 Event properties are defined in the archive's `vocabularies/event-properties.glx` file. Standard properties include:
 
-- `occurred_on` - When the event occurred
-- `occurred_at` - Where the event occurred (reference to Place)
 - `description` - Event description
+- `notes` - Additional notes about the event
+
+**Note:** Event timing and location are handled by the `date` and `place` fields, not properties.
 
 **See [Vocabularies - Event Properties](vocabularies.md#event-properties-vocabulary) for:**
 - Complete list of standard event properties

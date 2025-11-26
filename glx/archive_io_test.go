@@ -186,7 +186,7 @@ persons:
 						"person-2": {Properties: make(map[string]any)},
 					},
 					Events: map[string]*lib.Event{
-						"event-1": {Type: "birth"},
+						"event-1": {Type: "birth", Participants: []lib.EventParticipant{{PersonID: "person-1", Role: "principal"}}},
 					},
 					Relationships: map[string]*lib.Relationship{
 						"rel-1": {

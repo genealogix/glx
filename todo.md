@@ -19,6 +19,9 @@
 - decide what to do with QUAY ratings... (removed in beta.2)
 - Consider adding `media` as a third evidence option for assertions (alongside `citations` and `sources`) - useful for direct visual evidence like gravestone photos
 - Consider relaxing event participant requirement - the spec says "At least one participant is required (events without participants are not meaningful)" but historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants
+- JSON schemas don't validate entity `properties` structure (e.g., person name with fields). Properties are vocabulary-controlled and dynamic, so schema validation uses `additionalProperties: true`. Consider documenting this as intentional or adding runtime property validation in the CLI.
+- `godparent` exists as both a relationship type and participant role (applies_to: event, relationship). Consider documenting the distinction: relationship type represents ongoing godparent-godchild bond, participant role represents specific event participation (e.g., baptism ceremony).
+- Media schema is missing several fields documented in media.md (`type`, `date`, `subjects`, `source`, `citation`, `width`, `height`, `duration`, `file_size`). Many of these should move to vocabulary-controlled `properties` rather than top-level fields. Update schema and documentation together when refactoring media entity structure.
 
 ## GEDCOM Import: Census Tag Handling
 
