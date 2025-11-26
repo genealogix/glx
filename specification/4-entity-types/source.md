@@ -44,7 +44,34 @@ sources:
 - Entity ID is the map key (`source-parish-register`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
-## Required Fields
+## Fields
+
+### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
+| `title` | string | Full title of the source |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Source type from vocabulary |
+| `authors` | array | List of authors/creators |
+| `date` | string | Date or date range of the source |
+| `citation` | string | Formatted citation for the source |
+| `description` | string | Description of the source |
+| `repository` | string | Reference to Repository entity |
+| `creator` | string | Creating organization or individual |
+| `publication_info` | object | Publication details |
+| `language` | string | Language of the source |
+| `coverage` | object | Geographic/temporal coverage |
+| `media` | array | References to Media entities |
+| `notes` | string | Free-form notes |
+| `tags` | array | Tags for categorization |
+
+## Required Fields (Detailed)
 
 ### Entity ID (map key)
 
@@ -261,8 +288,8 @@ media:
 
 ### Other Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Field | Type | Description |
+|-------|------|-------------|
 | `notes` | string | Research notes about the source |
 | `tags` | array | Tags for categorization |
 

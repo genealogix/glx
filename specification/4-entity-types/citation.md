@@ -21,31 +21,36 @@ A Citation entity represents a specific reference to evidence that supports gene
 
 One source can have many citations referencing different pages or sections.
 
-## Properties
+## Fields
 
-### Required Properties
+### Required Fields
 
-|| Property | Type | Description |
-||----------|------|-------------|
-|| `id` | string | Unique identifier (format: `citation-{id}`, map key) |
-|| `source` | string | Reference to Source entity |
+| Field | Type | Description |
+|-------|------|-------------|
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
+| `source` | string | Reference to Source entity |
 
-### Optional Properties
+### Optional Fields
 
-|| Property | Type | Description |
-||----------|------|-------------|
-|| `page` | string | Page number or locator within source |
-|| `data_date` | string | Date the data was recorded (for documentary sources) |
-|| `text_from_source` | string | Transcription or excerpt from the source |
-|| `locator` | object | Structured locator information |
-|| `locator.film_number` | string | FamilySearch film number |
-|| `locator.item_number` | string | Item number or accession number |
-|| `locator.image_number` | string | Image or page identifier |
-|| `locator.url` | string | URL to online source |
-|| `repository` | string | Reference to Repository entity |
-|| `media` | array | References to Media entities (scans, photos, documents) related to this citation |
-|| `notes` | string | Free-form notes about the citation |
-|| `tags` | array | User-defined tags for organization |
+| Field | Type | Description |
+|-------|------|-------------|
+| `page` | string | Page number or locator within source |
+| `data_date` | string | Date the data was recorded (for documentary sources) |
+| `text_from_source` | string | Transcription or excerpt from the source |
+| `locator` | object | Structured locator information (see below) |
+| `repository` | string | Reference to Repository entity |
+| `media` | array | References to Media entities |
+| `notes` | string | Free-form notes about the citation |
+| `tags` | array | User-defined tags for organization |
+
+### Locator Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `film_number` | string | FamilySearch film number |
+| `item_number` | string | Item number or accession number |
+| `image_number` | string | Image or page identifier |
+| `url` | string | URL to online source |
 
 ## Usage Patterns
 

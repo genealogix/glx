@@ -37,7 +37,27 @@ media:
 - Entity ID is the map key (`media-birth-cert-scan`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
-## Required Fields
+## Fields
+
+### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
+| `uri` | string | Location of the media file |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mime_type` | string | MIME type of the media |
+| `hash` | string | Content hash for verification |
+| `title` | string | Title of the media |
+| `description` | string | Description of the media |
+| `notes` | string | Free-form notes |
+| `tags` | array | Tags for categorization |
+
+## Required Fields (Detailed)
 
 ### Entity ID (map key)
 
@@ -207,8 +227,8 @@ file_size: 2458624
 
 ### Other Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Field | Type | Description |
+|-------|------|-------------|
 | `notes` | string | Research notes about the media |
 | `tags` | array | Tags for categorization |
 

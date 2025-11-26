@@ -51,27 +51,41 @@ Characteristic facts about a person:
 Domain-specific events:
 - Military service, Migration/Immigration, Land transactions, Legal proceedings
 
-## Properties
+## Fields
 
-### Required Properties
+### Required Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Field | Type | Description |
+|-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `type` | string | Event type (birth, death, marriage, occupation, etc.) |
 
-### Optional Properties
+### Optional Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `date` | string or object | Date as string or object with fuzzy support |
-| `date.value` | string | Main date expression (if object) |
-| `date.range_start` | string | Fuzzy date range start (if object) |
-| `date.range_end` | string | Fuzzy date range end (if object) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `date` | string/object | Date as string or object with fuzzy support |
 | `place` | string | Reference to Place entity |
 | `participants` | array | People involved in the event |
-| `participant.person` | string | Reference to Person entity |
-| `participant.role` | string | Role of participant |
+| `properties` | object | Vocabulary-defined properties |
+| `description` | string | Narrative description |
+| `notes` | string | Free-form notes |
+| `tags` | array | Tags for categorization |
+
+### Date Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `value` | string | Main date expression |
+| `range_start` | string | Fuzzy date range start |
+| `range_end` | string | Fuzzy date range end |
+
+### Participant Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `person` | string | Reference to Person entity |
+| `role` | string | Role of participant |
 | `participant.notes` | string | Notes about participant |
 | `value` | string | Value for attribute facts (e.g., "blacksmith" for occupation) |
 | `properties` | object | Vocabulary-defined properties for the event |

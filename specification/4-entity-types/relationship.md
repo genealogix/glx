@@ -31,20 +31,20 @@ relationships:
 - Entity ID is the map key (`rel-marriage-john-mary`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
-## Properties
+## Fields
 
-### Required Properties
+### Required Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Field | Type | Description |
+|-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `type` | string | Relationship type from `vocabularies/relationship-types.glx` |
 | `participants` | array | Array of participant objects defining who is in the relationship |
 
-### Optional Properties
+### Optional Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Field | Type | Description |
+|-------|------|-------------|
 | `properties` | object | Vocabulary-defined properties for the relationship |
 | `start_event` | string | Event that started this relationship |
 | `end_event` | string | Event that ended this relationship |

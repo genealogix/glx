@@ -38,6 +38,34 @@ assertions:
 - Entity ID is the map key (`assertion-john-birth-date`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
+## Fields
+
+### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
+| `subject` | string | The entity this assertion is about |
+| `claim` OR `participant` | string/object | Either a claim string or participant object (mutually exclusive) |
+| `citations` OR `sources` | array | At least one required for evidence |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `value` | string | The concluded value of the claim (not used with participant) |
+| `confidence` | string | Confidence level (defined in archive vocabulary) |
+| `notes` | string | General notes about the assertion |
+| `tags` | array | Tags for categorization |
+
+### Participant Object Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `person` | string | Yes | Reference to the person entity |
+| `role` | string | No | Role of the participant |
+| `notes` | string | No | Notes about this participant |
+
 ## Required Fields
 
 ### Entity ID (map key)

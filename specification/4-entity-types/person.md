@@ -32,6 +32,22 @@ persons:
 - Entity ID is the map key (`person-john-smith-1850`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
+## Fields
+
+### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `properties` | object | Vocabulary-defined properties (name, gender, dates, etc.) |
+| `notes` | string | Free-form notes about the person |
+| `tags` | array | Tags for categorization |
+
 ## Required Fields
 
 ### Entity ID (map key)

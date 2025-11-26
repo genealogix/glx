@@ -50,19 +50,19 @@ Places support multiple names to represent:
 
 Each name can be classified and dated.
 
-## Properties
+## Fields
 
-### Required Properties
+### Required Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Field | Type | Description |
+|-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `name` | string | Current/primary place name |
 
-### Optional Properties
+### Optional Fields
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Field | Type | Description |
+|-------|------|-------------|
 | `parent` | string | Reference to parent place in hierarchy |
 | `type` | string | Place type from `vocabularies/place-types.glx` |
 | `alternative_names` | array | Historical/alternative names for this place |
@@ -71,6 +71,7 @@ Each name can be classified and dated.
 | `jurisdiction` | string | Formal jurisdiction identifier or code |
 | `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
 | `notes` | string | Free-form notes about the place |
+| `tags` | array | Tags for categorization |
 
 ## Place Types
 
