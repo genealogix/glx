@@ -586,7 +586,13 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 						"e2": {Type: "death"},
 					},
 					Relationships: map[string]*lib.Relationship{
-						"r1": {Type: "parent-child", Persons: []string{"p1", "p2"}},
+						"r1": {
+							Type: "parent-child",
+							Participants: []lib.RelationshipParticipant{
+								{Person: "p1"},
+								{Person: "p2"},
+							},
+						},
 					},
 					Places: map[string]*lib.Place{
 						"pl1": {Name: "Boston"},

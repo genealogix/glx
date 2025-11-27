@@ -271,8 +271,11 @@ func TestJoinArchive(t *testing.T) {
 				rel := &lib.GLXFile{
 					Relationships: map[string]*lib.Relationship{
 						"rel-1": {
-							Type:    "parent-child",
-							Persons: []string{"person-1", "person-2"},
+							Type: "parent-child",
+							Participants: []lib.RelationshipParticipant{
+								{Person: "person-1"},
+								{Person: "person-2"},
+							},
 						},
 					},
 				}
@@ -508,8 +511,11 @@ func TestJoinArchiveRoundTrip(t *testing.T) {
 		},
 		Relationships: map[string]*lib.Relationship{
 			"rel-1": {
-				Type:    "spouse",
-				Persons: []string{"person-1", "person-2"},
+				Type: "spouse",
+				Participants: []lib.RelationshipParticipant{
+					{Person: "person-1"},
+					{Person: "person-2"},
+				},
 			},
 		},
 		Places: map[string]*lib.Place{

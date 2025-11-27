@@ -32,17 +32,19 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	conv.Logger.LogInfo(fmt.Sprintf("Converting SOUR %s -> %s", sourRecord.XRef, sourceID))
 
 	// Create source entity
-	source := &Source{
-		Properties: make(map[string]any),
-	}
+	source := &Source{}
 
 	var notes []string
 	var description []string
 
-	// Extract external IDs (GEDCOM 7.0 EXID tags)
+	// Extract external IDs (GEDCOM 7.0 EXID tags) and add to notes
 	exids := extractExternalIDs(sourRecord)
-	if len(exids) > 0 {
-		source.Properties["external_ids"] = exids
+	for _, exid := range exids {
+		if idType, ok := exid["type"]; ok {
+			notes = append(notes, fmt.Sprintf("External ID (%s): %s", idType, exid["id"]))
+		} else {
+			notes = append(notes, fmt.Sprintf("External ID: %s", exid["id"]))
+		}
 	}
 
 	// Process subrecords

@@ -10,7 +10,6 @@
     "type": { "type": "string" },
     "authors": { "type": "array", "items": { "type": "string" } },
     "date": { "type": "string" },
-    "citation": { "type": "string" },
     "description": { "type": "string" },
     "repository": {
       "type": "string",
@@ -20,7 +19,6 @@
     "creator": { "type": "string" },
     "publication_info": { "type": "object" },
     "language": { "type": "string" },
-    "coverage": { "type": "object" },
     "notes": { "type": "string" },
     "media": {
       "type": "array",

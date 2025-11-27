@@ -15,10 +15,6 @@
       "type": "string",
       "description": "Page number, record number, or location within source"
     },
-    "data_date": {
-      "type": "string",
-      "description": "Date the data was recorded (for documentary sources)"
-    },
     "text_from_source": {
       "type": "string",
       "description": "Transcription or excerpt from the source"

@@ -35,7 +35,6 @@ One source can have many citations referencing different pages or sections.
 | Field | Type | Description |
 |-------|------|-------------|
 | `page` | string | Page number or locator within source |
-| `data_date` | string | Date the data was recorded (for documentary sources) |
 | `text_from_source` | string | Transcription or excerpt from the source |
 | `locator` | string | Location within source (e.g., 'Page 45, Entry 123', 'Film 1234567, Image 87') |
 | `repository` | string | Reference to Repository entity |
@@ -65,7 +64,6 @@ Note: The `id` is the map key (`citation-marriage-record`), not a separate field
 citations:
   citation-census-online:
     source: source-ancestry-census
-    data_date: "1851"
     page: "Schedule 7, piece 1123"
     locator: "https://www.ancestry.com/..., Image 87342534"
     text_from_source: |
@@ -85,7 +83,6 @@ citations:
     repository: repository-probate
     page: "23"
     locator: "Item 1876/X/150, Film 100234"
-    data_date: "1876"
     text_from_source: |
       I, John Smith, being of sound mind, do hereby
       bequeath all my goods and chattels...
@@ -151,7 +148,6 @@ Or more commonly, citations are referenced by ID from assertions.
 | Entity ID (map key) | (synthetic) | Not in GEDCOM |
 | `source` | SOUR | Source reference |
 | `page` | SOUR.PAGE | Page within source |
-| `data_date` | SOUR.DATA.DATE | Date data was recorded |
 | `text_from_source` | SOUR.TEXT | Transcribed text |
 | `locator` | SOUR.OBJE.FILE, SOUR.REPO.CALN | Combined from multiple GEDCOM elements |
 

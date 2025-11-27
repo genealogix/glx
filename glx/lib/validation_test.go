@@ -253,7 +253,10 @@ func TestValidateSliceReferences(t *testing.T) {
 			},
 			Relationships: map[string]*Relationship{
 				"rel-1": {
-					Persons: []string{"person-1", "person-2"},
+					Participants: []RelationshipParticipant{
+						{Person: "person-1"},
+						{Person: "person-2"},
+					},
 				},
 			},
 		}
@@ -268,7 +271,10 @@ func TestValidateSliceReferences(t *testing.T) {
 			},
 			Relationships: map[string]*Relationship{
 				"rel-1": {
-					Persons: []string{"person-1", "person-missing"},
+					Participants: []RelationshipParticipant{
+						{Person: "person-1"},
+						{Person: "person-missing"},
+					},
 				},
 			},
 		}

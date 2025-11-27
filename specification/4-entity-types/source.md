@@ -60,13 +60,11 @@ sources:
 | `type` | string | Source type from vocabulary |
 | `authors` | array | List of authors/creators |
 | `date` | string | Date or date range of the source |
-| `citation` | string | Formatted citation for the source |
 | `description` | string | Description of the source |
 | `repository` | string | Reference to Repository entity |
 | `creator` | string | Creating organization or individual |
 | `publication_info` | object | Publication details |
 | `language` | string | Language of the source |
-| `coverage` | object | Geographic/temporal coverage |
 | `media` | array | References to Media entities |
 | `notes` | string | Free-form notes |
 | `tags` | array | Tags for categorization |

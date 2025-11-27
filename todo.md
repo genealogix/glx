@@ -12,6 +12,10 @@
 
 ## Type System & Schema
 
+- Source properties?
+- Citation properties?
+- Repository properties -- so many fields... [access_hours,access_restrictions,holding_types,etc] can be properties
+- Media schema is missing several fields documented in media.md (`type`, `date`, `subjects`, `source`, `citation`, `width`, `height`, `duration`, `file_size`). Many of these should move to vocabulary-controlled `properties` rather than top-level fields. Update schema and documentation together when refactoring media entity structure.
 - Clarify adoption semantics: `adoption` event type vs `adoption` relationship type vs `adoptive-parent-child` relationship type. Consider consolidating or documenting distinct use cases.
 - Consider consolidating `bat_mitzvah` (BATM) and `bas_mitzvah` (BASM) into a single event type - they represent the same ceremony with alternate spellings
 - Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete
@@ -21,7 +25,6 @@
 - Consider relaxing event participant requirement - the spec says "At least one participant is required (events without participants are not meaningful)" but historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants
 - JSON schemas don't validate entity `properties` structure (e.g., person name with fields). Properties are vocabulary-controlled and dynamic, so schema validation uses `additionalProperties: true`. Consider documenting this as intentional or adding runtime property validation in the CLI.
 - `godparent` exists as both a relationship type and participant role (applies_to: event, relationship). Consider documenting the distinction: relationship type represents ongoing godparent-godchild bond, participant role represents specific event participation (e.g., baptism ceremony).
-- Media schema is missing several fields documented in media.md (`type`, `date`, `subjects`, `source`, `citation`, `width`, `height`, `duration`, `file_size`). Many of these should move to vocabulary-controlled `properties` rather than top-level fields. Update schema and documentation together when refactoring media entity structure.
 
 ## GEDCOM Import: Census Tag Handling
 
@@ -30,6 +33,8 @@
 ## GEDCOM Import: Missing Data Storage
 
 **Issue**: Data is being processed but not stored/exposed after import
+
+- Verify that the gedcom import correctly assigns parent/child roles to relationship participants.
 
 - **gedcom_converter.go:102-103**: Store extension tag data (tags starting with `_`) - vendor-specific metadata like _MSTAT, _UID, _NSTY
 - **gedcom_converter.go:220-221**: Store HEAD metadata (export_date, source_file, copyright, language, source_system)
@@ -60,3 +65,12 @@
 ### Citation (gedcom_evidence.go)
 - **Line 63**: Source date dumped in notes → Add `SourceDate` field to Citation struct
 - **Line 38**: Embedded citations skipped entirely → Implement embedded citation support (no source reference)
+
+## GLX Validation
+
+- Require participant roles in events,relationships,assertions? 
+- Add validator tags to GLX structs
+
+## Other GEDCOM import
+
+- Move some place fields to properties?

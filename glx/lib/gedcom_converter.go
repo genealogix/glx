@@ -143,7 +143,6 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 
 				relationship := &Relationship{
 					Type:    relType,
-					Persons: []string{parentID, link.PersonID},
 					Participants: []RelationshipParticipant{
 						{Person: parentID, Role: ParticipantRoleParent},
 						{Person: link.PersonID, Role: ParticipantRoleChild},
