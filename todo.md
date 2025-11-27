@@ -3,6 +3,8 @@
 ## Infrastructure
 
 - Deploy JSON schemas to `https://schema.genealogix.io/v1/*` URLs referenced in specification/schema/README.md
+- Make command for goreleaser?
+- test `glx completion`
 
 ## Documentation
 
@@ -74,3 +76,13 @@
 ## Other GEDCOM import
 
 - Move some place fields to properties?
+- Fix places[place-31].Type references non-existent place_types: locality
+- prevent duplicate repository creation
+
+## Code organization
+
+- move Loggers to their own package?
+
+## CLI
+
+- default to multi-file on import not single!
