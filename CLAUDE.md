@@ -6,11 +6,10 @@ This document provides context for Claude AI instances working on the GLX projec
 
 ## Project Overview
 
-**GLX (Genealogical Ledger eXchange)** is a modern genealogical archive format designed to replace GEDCOM. It uses YAML for human readability and supports advanced features like evidence-based assertions, comprehensive source citations, and flexible vocabularies.
+**GLX (Genealogix)** is a modern genealogical archive format. It uses YAML for human readability and supports advanced features like evidence-based assertions, comprehensive source citations, and flexible vocabularies.
 
 **Repository**: genealogix/glx
 **Primary Language**: Go
-**Current Version**: v0.0.0-beta.3
 **Status**: Active development
 
 ---
@@ -439,22 +438,6 @@ Also available:
 **Repository**: genealogix/glx
 **Branch Pattern**: `claude/feature-name-{sessionId}`
 **Workflow**: Feature branches → Push → (PR created manually by user)
-
----
-
-## Quick Reference: Current Sprint
-
-**Goal**: Implement GLX serializer (v0.3.0-beta)
-
-**Current Task**: Task 1.1 - Create ID generator (lib/id_generator.go)
-
-**Next Tasks**:
-1. Create vocabulary embedder (lib/vocabularies.go)
-2. Create serializer interface and types
-3. Implement single-file YAML serializer
-4. Implement multi-file serializer
-
-**See**: `.claude/plans/glx-serializer-implementation-steps.md` for full task breakdown
 
 ---
 

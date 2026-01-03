@@ -10,6 +10,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.3] - 2026-01-03
+
+### Changed
+
+#### Entity Type Documentation Structure
+- **Standardized entity file structure** - All entity type documentation now follows consistent section order:
+  1. Overview → File Format → Core Concepts → Fields → Usage Patterns → File Organization → GEDCOM Mapping → Validation Rules → See Also
+- **Added File Format sections** to person.md, place.md, citation.md, repository.md
+- **Added missing standard sections** to person.md (File Organization, GEDCOM Mapping, Validation Rules, expanded See Also)
+- **Reorganized place.md** - Moved GEDCOM Mapping after File Organization, merged Examples into Usage Patterns
+- **Cleaned up YAML code blocks** - Removed 59 file path comments (e.g., `# places/place-england.glx`) from examples
+
+#### Vocabulary References
+- **Standardized validation rules** - All entity types now reference vocabularies with links instead of hardcoded values or file paths:
+  - place.md: "Type should follow standardized taxonomy" → vocabulary link
+  - source.md: "type should be one of the defined source types if vocabularies are used" → vocabulary link
+  - assertion.md: Hardcoded confidence values → vocabulary link
+  - event.md, relationship.md: File path references → vocabulary links
+- **Added missing type validation rules** to media.md and repository.md
+
+### Removed
+
+#### Citation Entity
+- **Removed `data_date` field** - Date the data was recorded is now captured in source or assertion context
+
+#### Source Entity
+- **Removed `citation` field** - Formatted citations belong in citation entities, not sources
+- **Removed `coverage` field** - Geographic/temporal coverage can be captured in description or properties
+
 ## [0.0.0-beta.2] - 2025-11-25
 
 ### Added
