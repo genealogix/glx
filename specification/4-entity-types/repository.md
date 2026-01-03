@@ -182,6 +182,13 @@ repositories/
     └── repository-custom.glx
 ```
 
+## Validation Rules
+
+- `name` must be present and non-empty
+- Type must be from the [repository types vocabulary](vocabularies.md#repository-types-vocabulary)
+- If `website` is specified, it should be a valid URL
+- If `email` is specified, it should be a valid email address
+
 ## GEDCOM Mapping
 
 | GLX Property | GEDCOM Element | Notes |

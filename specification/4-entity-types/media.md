@@ -480,6 +480,7 @@ uri: "ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco"
 ## Validation Rules
 
 - `uri` must be a valid URI or path
+- Type must be from the [media types vocabulary](vocabularies.md#media-types-vocabulary)
 - If `mime_type` is specified, it should follow standard MIME type format
 - If `hash` is specified, it should follow `algorithm:hexstring` format
 - All entity references in `subjects`, `source`, `citation` must point to existing entities

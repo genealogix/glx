@@ -412,7 +412,7 @@ The standard vocabulary defines these default confidence levels (archives may cu
 - At least one of `citations` or `sources` must be present
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
-- `confidence` should be one of: `high`, `medium`, `low`, `disputed`
+- Confidence must be from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary)
 
 ## File Organization
 

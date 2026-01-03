@@ -221,7 +221,7 @@ places/
 - Place hierarchy must be acyclic (no circular parent references)
 - Coordinates, if present, must be valid WGS84 values
 - Parent place must exist before referencing it
-- Type should follow standardized taxonomy
+- Type must be from the [place types vocabulary](vocabularies.md#place-types-vocabulary)
 
 ## See Also
 

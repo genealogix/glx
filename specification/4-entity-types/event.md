@@ -211,12 +211,12 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 
 ## Validation Rules
 
-- Event type must be defined in `vocabularies/event-types.glx`
+- Event type must be from the [event types vocabulary](vocabularies.md#event-types-vocabulary)
 - At least one participant is required (events without participants are not meaningful)
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
 - Date formats must follow genealogical date conventions
-- Participant roles must be defined in `vocabularies/participant-roles.glx`
+- Participant roles must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary)
 
 ## Confidence and Provenance
 

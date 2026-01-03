@@ -162,7 +162,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 
 ## Validation Rules
 
-- Relationship type must be defined in `vocabularies/relationship-types.glx`
+- Relationship type must be from the [relationship types vocabulary](vocabularies.md#relationship-types-vocabulary)
 - `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
