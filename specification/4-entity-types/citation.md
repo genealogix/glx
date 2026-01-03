@@ -64,7 +64,6 @@ One source can have many citations referencing different pages or sections.
 ### Simple Citation to Book
 
 ```yaml
-# citations/citation-book.glx
 citations:
   citation-marriage-record:
     source: source-parish-register
@@ -77,7 +76,6 @@ Note: The `id` is the map key (`citation-marriage-record`), not a separate field
 ### Citation with Online Source
 
 ```yaml
-# citations/citation-online.glx
 citations:
   citation-census-online:
     source: source-ancestry-census
@@ -93,7 +91,6 @@ citations:
 ### Citation to Archive Document
 
 ```yaml
-# citations/citation-will.glx
 citations:
   citation-will-john:
     source: source-probate-wills
@@ -108,7 +105,6 @@ citations:
 ### Citation with Media References
 
 ```yaml
-# citations/citation-photo.glx
 citations:
   citation-photo:
     source: source-photo-collection
@@ -123,7 +119,6 @@ citations:
 Citations are primarily used within Assertions to provide evidence:
 
 ```yaml
-# assertions/assertion-birth.glx
 assertions:
   assertion-birth-john:
     subject: person-john-smith

@@ -226,7 +226,6 @@ Participant assertions represent evidence about who participated in an event or 
 ### Participant Assertion Example
 
 ```yaml
-# assertions/assertion-marriage-participants.glx
 assertions:
   assertion-john-married:
     subject: event-marriage-1880
@@ -260,7 +259,6 @@ assertions:
 ### Conflicting Participant Evidence
 
 ```yaml
-# assertions/assertion-conflicting-parents.glx
 assertions:
   # One source claims person-john is the father
   assertion-john-father-cert:
@@ -297,7 +295,6 @@ assertions:
 ### Basic Biographical Assertion
 
 ```yaml
-# assertions/assertion-john-birth.glx
 assertions:
   assertion-john-birth-date:
     subject: person-john-smith
@@ -311,7 +308,6 @@ assertions:
 ### Assertion with Multiple Evidence Sources
 
 ```yaml
-# assertions/assertion-john-occupation.glx
 assertions:
   assertion-john-occupation:
     subject: person-john-smith
@@ -327,7 +323,6 @@ assertions:
 ### Assertion with Conflicting Evidence
 
 ```yaml
-# assertions/assertion-mary-birth.glx
 assertions:
   assertion-mary-birth-disputed:
     subject: person-mary-jones
@@ -350,7 +345,6 @@ assertions:
 ### Complex Residence Assertion
 
 ```yaml
-# assertions/assertion-residence.glx
 assertions:
   assertion-john-residence-1851:
     subject: person-john-smith
@@ -369,7 +363,6 @@ assertions:
 ### Low Confidence Assertion
 
 ```yaml
-# assertions/assertion-estimated-birth.glx
 assertions:
   assertion-thomas-birth-estimated:
     subject: person-thomas-brown

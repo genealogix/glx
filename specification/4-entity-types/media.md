@@ -246,7 +246,6 @@ tags:
 ### Scanned Document
 
 ```yaml
-# media/media-birth-certificate.glx
 media:
   media-birth-cert-john:
     uri: "media/documents/birth-certificate-john-smith-1850.pdf"
@@ -268,7 +267,6 @@ media:
 ### Family Photograph
 
 ```yaml
-# media/media-family-portrait.glx
 media:
   media-smith-family-1890:
     uri: "media/photos/smith-family-portrait-1890.jpg"
@@ -301,7 +299,6 @@ media:
 ### Audio Recording
 
 ```yaml
-# media/media-interview.glx
 media:
   media-interview-mary-2020:
     uri: "media/audio/interview-mary-smith-2020-03-15.mp3"
@@ -325,7 +322,6 @@ media:
 ### Online Resource
 
 ```yaml
-# media/media-census-image.glx
 media:
   media-census-1851-page:
     uri: "https://ancestry.com/imageviewer/1851-census-yorkshire-page-234"
@@ -348,7 +344,6 @@ media:
 ### Historical Document
 
 ```yaml
-# media/media-marriage-register.glx
 media:
   media-marriage-register-page:
     uri: "media/documents/st-pauls-marriage-register-1875-page-45.tiff"

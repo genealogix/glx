@@ -294,7 +294,6 @@ tags:
 ### Vital Record
 
 ```yaml
-# sources/source-birth-certificate.glx
 sources:
   source-birth-cert-john-smith:
     title: "Birth Certificate - John Smith, 1850"
@@ -315,7 +314,6 @@ sources:
 ### Census Record
 
 ```yaml
-# sources/source-1851-census.glx
 sources:
   source-census-1851-yorkshire:
     title: "1851 Census of England and Wales"
@@ -340,7 +338,6 @@ sources:
 ### Church Register
 
 ```yaml
-# sources/source-parish-register.glx
 sources:
   source-st-pauls-register:
     title: "St. Paul's Cathedral Parish Register, 1840-1860"
@@ -376,7 +373,6 @@ sources:
 ### Published Book
 
 ```yaml
-# sources/source-family-history.glx
 sources:
   source-smith-family-book:
     title: "The Smith Family of Yorkshire: A Genealogy"
@@ -409,7 +405,6 @@ sources:
 ### Online Database
 
 ```yaml
-# sources/source-ancestry-database.glx
 sources:
   source-ancestry-uk-census:
     title: "UK Census Collection, 1841-1911"
@@ -437,7 +432,6 @@ sources:
 ### Newspaper
 
 ```yaml
-# sources/source-newspaper.glx
 sources:
   source-leeds-mercury:
     title: "Leeds Mercury"
@@ -456,7 +450,6 @@ sources:
 ### Oral History
 
 ```yaml
-# sources/source-interview.glx
 sources:
   source-mary-smith-interview:
     title: "Interview with Mary Smith"

@@ -52,7 +52,6 @@ When initializing a new archive with `glx init`, these files are automatically c
 ### Structure
 
 ```yaml
-# vocabularies/event-types.glx
 event_types:
   birth:
     label: "Birth"
@@ -95,7 +94,6 @@ event_types:
 Add additional event types for specialized research:
 
 ```yaml
-# vocabularies/event-types.glx
 event_types:
   # ... standard types ...
 
@@ -127,7 +125,6 @@ event_types:
 ### Structure
 
 ```yaml
-# vocabularies/relationship-types.glx
 relationship_types:
   marriage:
     label: "Marriage"
@@ -169,7 +166,6 @@ relationship_types:
 Add additional relationship types for specialized research:
 
 ```yaml
-# vocabularies/relationship-types.glx
 relationship_types:
   # ... standard types ...
 
@@ -198,7 +194,6 @@ relationship_types:
 ### Structure
 
 ```yaml
-# vocabularies/place-types.glx
 place_types:
   country:
     label: "Country"
@@ -246,7 +241,6 @@ place_types:
 Add additional place types for specialized research:
 
 ```yaml
-# vocabularies/place-types.glx
 place_types:
   # ... standard types ...
 
@@ -277,7 +271,6 @@ place_types:
 ### Structure
 
 ```yaml
-# vocabularies/source-types.glx
 source_types:
   vital_record:
     label: "Vital Record"
@@ -318,7 +311,6 @@ source_types:
 Add additional source types for specialized research:
 
 ```yaml
-# vocabularies/source-types.glx
 source_types:
   # ... standard types ...
 
@@ -343,7 +335,6 @@ source_types:
 ### Structure
 
 ```yaml
-# vocabularies/media-types.glx
 media_types:
   photograph:
     label: "Photograph"
@@ -390,7 +381,6 @@ media_types:
 Add additional media types for specialized collections:
 
 ```yaml
-# vocabularies/media-types.glx
 media_types:
   # ... standard types ...
 
@@ -421,7 +411,6 @@ media_types:
 ### Structure
 
 ```yaml
-# vocabularies/confidence-levels.glx
 confidence_levels:
   high:
     label: "High Confidence"
@@ -474,7 +463,6 @@ See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
 ### Structure
 
 ```yaml
-# vocabularies/repository-types.glx
 repository_types:
   archive:
     label: "Archive"
@@ -528,7 +516,6 @@ See [Repository Entity](repository.md#repository-types) for the complete list of
 ### Structure
 
 ```yaml
-# vocabularies/participant-roles.glx
 participant_roles:
   # Event roles
   principal:
@@ -897,7 +884,6 @@ See [Data Types - Temporal Values](../6-data-types.md#temporal-values) for compl
 Add additional properties for archive-specific needs:
 
 ```yaml
-# vocabularies/person-properties.glx
 person_properties:
   # Standard properties...
 
@@ -1030,7 +1016,6 @@ $ glx validate
 ### Step 1: Add to Vocabulary File
 
 ```yaml
-# vocabularies/event-types.glx
 event_types:
   # ... standard types ...
 
@@ -1045,7 +1030,6 @@ event_types:
 ### Step 2: Use in Entity
 
 ```yaml
-# events/event-land-grant.glx
 events:
   event-john-land-grant:
     type: land-grant  # Custom type from vocabulary

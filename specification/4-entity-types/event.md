@@ -118,7 +118,6 @@ Event types are defined in the archive's `vocabularies/event-types.glx` file. Ea
 ### Birth Event Example
 
 ```yaml
-# events/event-birth.glx
 events:
   event-birth-john:
     type: birth
@@ -132,7 +131,6 @@ events:
 ### Complex Event with Multiple Participants
 
 ```yaml
-# events/event-marriage.glx
 events:
   event-marriage-john-mary:
     type: marriage

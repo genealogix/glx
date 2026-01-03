@@ -67,7 +67,6 @@ Relationship types are defined in the archive's `vocabularies/relationship-types
 ### Marriage Relationship
 
 ```yaml
-# relationships/rel-marriage.glx
 relationships:
   rel-marriage-john-mary:
     type: marriage
@@ -92,7 +91,6 @@ Link them using `start_event` to reference the ceremony. Use both when you have 
 ### Parent-Child Relationship
 
 ```yaml
-# relationships/rel-parent-child.glx
 relationships:
   rel-parents-alice:
     type: parent-child
@@ -108,7 +106,6 @@ relationships:
 ### Adoption Relationship
 
 ```yaml
-# relationships/rel-adoption.glx
 relationships:
   rel-adoption-sarah:
     type: adoption
@@ -125,7 +122,6 @@ relationships:
 ### Custom Relationship
 
 ```yaml
-# relationships/rel-blood-brothers.glx
 relationships:
   rel-john-james-blood:
     type: blood-brother  # Custom type from vocabulary

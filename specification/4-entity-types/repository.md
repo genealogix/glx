@@ -85,7 +85,6 @@ GENEALOGIX supports various repository types:
 ### Simple Local Repository
 
 ```yaml
-# repositories/repository-leeds.glx
 repositories:
   repository-leeds-library:
     name: "Leeds Library - Local Studies"
@@ -101,7 +100,6 @@ repositories:
 ### National Archive
 
 ```yaml
-# repositories/repository-tna.glx
 repositories:
   repository-tna:
     name: "The National Archives"
@@ -123,7 +121,6 @@ repositories:
 ### Online Database
 
 ```yaml
-# repositories/repository-ancestry.glx
 repositories:
   repository-ancestry:
     name: "Ancestry.com"
@@ -142,7 +139,6 @@ repositories:
 ### Church Archive
 
 ```yaml
-# repositories/repository-church.glx
 repositories:
   repository-stpauls:
     name: "St Paul's Cathedral Archive"
@@ -165,7 +161,6 @@ repositories:
 Repositories are referenced from Source entities:
 
 ```yaml
-# sources/source-wills.glx
 sources:
   source-tna-wills:
     title: "Wills and Probate Records"

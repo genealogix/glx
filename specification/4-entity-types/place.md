@@ -36,20 +36,17 @@ places:
 Places form a tree structure where each place can have a parent place, enabling representation of administrative hierarchies and geographic containment relationships.
 
 ```yaml
-# places/place-england.glx
 places:
   place-england:
     name: "England"
     type: country
 
-# places/place-yorkshire.glx
 places:
   place-yorkshire:
     name: "Yorkshire"
     type: county
     parent: place-england
 
-# places/place-leeds.glx
 places:
   place-leeds:
     name: "Leeds"
@@ -124,7 +121,6 @@ alternative_names:
 ### Simple Location
 
 ```yaml
-# places/place-paris.glx
 places:
   place-paris:
     name: "Paris"
@@ -137,7 +133,6 @@ places:
 ### Complex Hierarchical Location
 
 ```yaml
-# places/place-leeds-district.glx
 places:
   place-leeds-registration:
     name: "Leeds Registration District"
@@ -158,7 +153,6 @@ places:
 ### Place with Temporal Properties
 
 ```yaml
-# places/place-new-york.glx
 places:
   place-new-york-city:
     name: "New York City"
