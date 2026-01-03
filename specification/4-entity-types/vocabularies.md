@@ -781,7 +781,7 @@ Each field in the `fields` map is defined with:
 
 When a property has `fields` defined, the property value can be either:
 
-1. **Simple value** - Just a string (backward compatible):
+1. **Simple value** - Just a string:
    ```yaml
    properties:
      name: "John Smith"
