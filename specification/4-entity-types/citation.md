@@ -12,6 +12,23 @@ layout: doc
 
 A Citation entity represents a specific reference to evidence that supports genealogical conclusions. Citations link to Source entities and provide detailed information about where evidence was found, including page numbers and data dates.
 
+## File Format
+
+All GENEALOGIX files use entity type keys at the top level:
+
+```yaml
+# Any .glx file (commonly in citations/ directory)
+citations:
+  citation-birth-record:
+    source: source-parish-register
+    page: "45"
+    text_from_source: "John Smith, born 15 January 1850"
+```
+
+**Key Points:**
+- Entity ID is the map key (`citation-birth-record`)
+- IDs can be descriptive or random, 1-64 alphanumeric/hyphens
+
 ## Core Concepts
 
 ### Citation vs. Source

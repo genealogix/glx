@@ -12,6 +12,23 @@ layout: doc
 
 A Place entity represents a geographic location relevant to the family archive. Places form a hierarchical structure that supports genealogical research across varying levels of granularity (country, region, county, town, street, etc.).
 
+## File Format
+
+All GENEALOGIX files use entity type keys at the top level:
+
+```yaml
+# Any .glx file (commonly in places/ directory)
+places:
+  place-leeds:
+    name: "Leeds"
+    type: city
+    parent: place-yorkshire
+```
+
+**Key Points:**
+- Entity ID is the map key (`place-leeds`)
+- IDs can be descriptive or random, 1-64 alphanumeric/hyphens
+
 ## Core Concepts
 
 ### Place Hierarchy
@@ -104,38 +121,6 @@ alternative_names:
 
 ## Usage Patterns
 
-### In Events/Facts
-
-Places are referenced in events to indicate where the event occurred:
-
-```yaml
-type: "birth"
-place: "place-leeds123"
-```
-
-### In Addresses
-
-Places can be components of addresses within person records or residence events:
-
-```yaml
-residence:
-  place: "place-leeds123"
-  date: "FROM 1850 TO 1900"
-```
-
-## GEDCOM Mapping
-
-| GLX Property | GEDCOM Element | Notes |
-|--------------|----------------|-------|
-| Entity ID (map key) | (synthetic) | Not in GEDCOM; generated from place data |
-| `name` | PLAC | Text value of PLAC tag |
-| `parent` | (implicit) | Represented in hierarchical PLAC structure |
-| `type` | PLAC.TYPE | Non-standard; used in extended GEDCOM |
-| `latitude` | PLAC.MAP.LATI | WGS84 latitude |
-| `longitude` | PLAC.MAP.LONG | WGS84 longitude |
-
-## Examples
-
 ### Simple Location
 
 ```yaml
@@ -194,6 +179,26 @@ places:
       existed_from: "1624"
 ```
 
+### Referencing Places
+
+Places are referenced in events and person properties:
+
+```yaml
+# In events
+events:
+  event-birth-john:
+    type: birth
+    place: place-leeds
+
+# In person properties
+persons:
+  person-john:
+    properties:
+      residence:
+        - value: place-leeds
+          date: "FROM 1850 TO 1900"
+```
+
 ## File Organization
 
 **Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
@@ -216,6 +221,17 @@ places/
     └── place-boston.glx
 ```
 
+## GEDCOM Mapping
+
+| GLX Property | GEDCOM Element | Notes |
+|--------------|----------------|-------|
+| Entity ID (map key) | (synthetic) | Not in GEDCOM; generated from place data |
+| `name` | PLAC | Text value of PLAC tag |
+| `parent` | (implicit) | Represented in hierarchical PLAC structure |
+| `type` | PLAC.TYPE | Non-standard; used in extended GEDCOM |
+| `latitude` | PLAC.MAP.LATI | WGS84 latitude |
+| `longitude` | PLAC.MAP.LONG | WGS84 longitude |
+
 ## Validation Rules
 
 - Place hierarchy must be acyclic (no circular parent references)
@@ -225,7 +241,8 @@ places/
 
 ## See Also
 
-- [Event Entity](event.md)
-- [Vocabularies](vocabularies.md#place-types-vocabulary)
-- [Data Types](../6-data-types.md)
+- [Event Entity](event.md) - Events that occur at places
+- [Person Entity](person.md) - Residence and birth/death places
+- [Vocabularies](vocabularies.md#place-types-vocabulary) - Place types vocabulary
+- [Data Types](../6-data-types.md) - Coordinate and date formats
 

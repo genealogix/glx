@@ -12,6 +12,23 @@ layout: doc
 
 A Repository entity represents an institution, archive, library, or organization that holds genealogical sources. Repositories provide the physical or virtual location where evidence is housed and can be accessed.
 
+## File Format
+
+All GENEALOGIX files use entity type keys at the top level:
+
+```yaml
+# Any .glx file (commonly in repositories/ directory)
+repositories:
+  repository-national-archives:
+    name: "The National Archives"
+    type: archive
+    website: "https://www.nationalarchives.gov.uk"
+```
+
+**Key Points:**
+- Entity ID is the map key (`repository-national-archives`)
+- IDs can be descriptive or random, 1-64 alphanumeric/hyphens
+
 ## Core Concepts
 
 ### Repository Types

@@ -48,8 +48,6 @@ persons:
 | `notes` | string | Free-form notes about the person |
 | `tags` | array | Tags for categorization |
 
-## Required Fields
-
 ### Entity ID (map key)
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
@@ -58,8 +56,6 @@ persons:
   - Descriptive: `person-john-smith-1850`, `person-mary-jones`
   - Random hex: `person-a1b2c3d4` (for collaboration)
   - Sequential: `person-001`, `person-002`
-
-## Optional Fields
 
 ### `properties`
 
@@ -114,7 +110,24 @@ properties:
 - Custom properties can be added by extending the vocabulary
 - Living status is implied by the presence/absence of `died_on`
 
-## Complete Example
+## Usage Patterns
+
+### Basic Person
+
+```yaml
+# persons/person-john.glx
+persons:
+  person-john-smith:
+    properties:
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
+      gender: "male"
+```
+
+### Person with Full Details
 
 ```yaml
 # persons/person-margaret-smith.glx
@@ -138,6 +151,45 @@ persons:
       - ohio-branch
 ```
 
+## File Organization
+
+**Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
+
+Person files are typically stored in a `persons/` directory:
+
+```
+persons/
+├── person-john-smith.glx
+├── person-mary-jones.glx
+├── person-margaret-smith.glx
+└── person-thomas-brown.glx
+```
+
+## GEDCOM Mapping
+
+| GLX Property | GEDCOM Element | Notes |
+|--------------|----------------|-------|
+| Entity ID (map key) | `@INDI@` | Individual record ID |
+| `properties.name` | `INDI.NAME` | Person's name |
+| `properties.name.fields.given` | `INDI.NAME.GIVN` | Given name |
+| `properties.name.fields.surname` | `INDI.NAME.SURN` | Surname |
+| `properties.gender` | `INDI.SEX` | M/F mapped to male/female |
+| `properties.born_on` | `INDI.BIRT.DATE` | Birth date |
+| `properties.born_at` | `INDI.BIRT.PLAC` | Birth place (reference) |
+| `properties.died_on` | `INDI.DEAT.DATE` | Death date |
+| `properties.died_at` | `INDI.DEAT.PLAC` | Death place (reference) |
+| `properties.occupation` | `INDI.OCCU` | Occupation |
+| `properties.residence` | `INDI.RESI` | Residence |
+| `notes` | `INDI.NOTE` | Notes |
+
+**Note:** GEDCOM stores birth/death as events with dates and places. GLX imports these as person properties for convenience, while the full event details are preserved in Event entities.
+
+## Validation Rules
+
+- Properties must be from the [person properties vocabulary](vocabularies.md#person-properties-vocabulary)
+- All place references must point to existing Place entities
+- Date formats must follow genealogical date conventions
+
 ## Schema Reference
 
 See [person.schema.json](../schema/v1/person.schema.json) for the
@@ -145,7 +197,8 @@ complete JSON Schema definition.
 
 ## See Also
 
-- [Assertion Entity](assertion.md)
-- [Relationship Entity](relationship.md)
-- [Data Types](../6-data-types.md)
-- [Provenance Tracking](../2-core-concepts#provenance-tracking)
+- [Event Entity](event.md) - Life events for this person
+- [Relationship Entity](relationship.md) - Connections to other people
+- [Assertion Entity](assertion.md) - Evidence for person properties
+- [Data Types](../6-data-types.md) - Date and property formats
+- [Vocabularies](vocabularies.md#person-properties-vocabulary) - Person properties vocabulary
