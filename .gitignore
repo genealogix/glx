@@ -1,6 +1,6 @@
 # GENEALOGIX Repository
 # Ignore temporary files and build artifacts
-
+test-import/
 *.tmp
 *.bak
 

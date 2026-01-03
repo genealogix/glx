@@ -27,6 +27,8 @@
 - Consider relaxing event participant requirement - the spec says "At least one participant is required (events without participants are not meaningful)" but historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants
 - JSON schemas don't validate entity `properties` structure (e.g., person name with fields). Properties are vocabulary-controlled and dynamic, so schema validation uses `additionalProperties: true`. Consider documenting this as intentional or adding runtime property validation in the CLI.
 - `godparent` exists as both a relationship type and participant role (applies_to: event, relationship). Consider documenting the distinction: relationship type represents ongoing godparent-godchild bond, participant role represents specific event participation (e.g., baptism ceremony).
+- Gender/sex controlled vocabularies?
+- Should sex be a temporal property instead of field?
 
 ## GEDCOM Import: Census Tag Handling
 
@@ -86,3 +88,8 @@
 ## CLI
 
 - default to multi-file on import not single!
+
+## misc
+
+- remove `backward compatible` language
+- should property fields have data types?
