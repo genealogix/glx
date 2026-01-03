@@ -10,7 +10,7 @@ This document provides context for Claude AI instances working on the GLX projec
 
 **Repository**: genealogix/glx
 **Primary Language**: Go
-**Current Version**: v0.0.0-beta.2
+**Current Version**: v0.0.0-beta.3
 **Status**: Active development
 
 ---
