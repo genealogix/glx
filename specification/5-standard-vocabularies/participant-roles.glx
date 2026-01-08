@@ -83,3 +83,10 @@ participant_roles:
     applies_to:
       - relationship
 
+  godparent:
+    label: "Godparent"
+    description: "Spiritual sponsor at baptism or christening"
+    applies_to:
+      - event
+      - relationship
+

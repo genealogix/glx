@@ -173,17 +173,6 @@ Example:
 repository: repository-national-archives
 ```
 
-### `citation`
-
-- Type: String
-- Required: No
-- Description: Standard citation format for the source
-
-Example:
-```yaml
-citation: "1851 England Census, Yorkshire, Leeds, ED 5, folio 23"
-```
-
 ### `description`
 
 - Type: String
@@ -321,7 +310,6 @@ sources:
     creator: "UK Census Office"
     date: "1851-03-30"
     repository: repository-national-archives
-    citation: "1851 England Census, Yorkshire, Leeds, ED 5"
     description: |
       Census enumeration for Leeds, Yorkshire, England.
       Enumeration District 5, covering Wellington Street area.
@@ -417,7 +405,6 @@ sources:
       Images and transcriptions available online.
       
       Subscription required for access.
-    citation: "Ancestry.com. UK Census Collection [database online]"
     coverage:
       spatial: "United Kingdom"
       temporal: "1841-1911"
@@ -440,7 +427,6 @@ sources:
     date: "1890-06-15"
     repository: repository-british-library
     description: "Daily newspaper published in Leeds, Yorkshire"
-    citation: "Leeds Mercury, 15 June 1890, page 3"
     coverage:
       spatial: "Leeds, Yorkshire, England"
       temporal: "1890-06-15"
@@ -529,35 +515,6 @@ Citation
 
 Media
     └── documents → Source (media can be scans/photos of sources)
-```
-
-## Standard Citation Formats
-
-Sources should include proper bibliographic citations. Common formats:
-
-### Published Book
-```yaml
-citation: "Author Name, Book Title (Place: Publisher, Year), page number."
-```
-
-### Vital Record
-```yaml
-citation: "Certificate type, Person Name, Date; Place; Repository, Call Number."
-```
-
-### Census
-```yaml
-citation: "Year Census, Country, State/County, Enumeration District, Page; Repository."
-```
-
-### Church Register
-```yaml
-citation: "Church Name, Register Type, Date; Place; Repository."
-```
-
-### Newspaper
-```yaml
-citation: "Newspaper Title, Date, Page Number, Column."
 ```
 
 ## Validation Rules

@@ -78,7 +78,7 @@ Each `.glx` file must:
 - Pass JSON schema validation for structural correctness
 - Contain properly formatted entity IDs (alphanumeric with hyphens, 1-64 characters)
 
-### 2. Repository-Level Validation
+### 2. Archive-Level Validation
 
 Across all files in an archive, the validator checks:
 
@@ -262,7 +262,7 @@ Entity IDs can be any unique identifier you choose, with the following constrain
 **Requirements:**
 - 1-64 characters in length
 - Alphanumeric characters (a-z, A-Z, 0-9) and hyphens only
-- Must be unique across the entire repository
+- Must be unique across the entire archive
 
 **Recommended Format** (for collaboration):
 - Prefix with entity type for clarity: `person-`, `event-`, `place-`, etc.
@@ -342,15 +342,15 @@ relationship_types:
 
 When you run `glx init`, the CLI automatically creates the `vocabularies/` directory by copying the standard vocabulary templates from [Standard Vocabularies](5-standard-vocabularies/). You can then customize these files to add archive-specific types.
 
-See [Core Concepts](2-core-concepts.md#repository-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
+See [Core Concepts](2-core-concepts.md#archive-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
 
 ## Important Notes
 
 - **Folder names are conventions**, not requirements
-- **Parser must scan ALL** `.glx` and `.yaml` files in the repository
+- **Parser must scan ALL** `.glx` and `.yaml` files in the archive
 - **Duplicate entity IDs** across files is an error
 - **Entity type keys are required** at the top level of every file
-- **Cross-references are validated** at repository level
+- **Cross-references are validated** at archive level
 - **Vocabularies define valid types** - entities must reference types from vocabulary files
 
 ## Git Workflow Integration
@@ -358,7 +358,7 @@ See [Core Concepts](2-core-concepts.md#repository-owned-vocabularies) for detail
 ### .gitignore Recommendations
 
 ```gitignore
-# GENEALOGIX Repository
+# GENEALOGIX Archive
 *.tmp
 *.bak
 .DS_Store
@@ -418,7 +418,7 @@ Manual approach: Extract each entity into its own file with the appropriate enti
 The `glx validate` command performs comprehensive validation:
 
 ```bash
-# Validate entire repository (recommended - checks all cross-references)
+# Validate entire archive (recommended - checks all cross-references)
 glx validate
 
 # Validate individual file (structural validation only, limited cross-reference checking)
@@ -446,7 +446,7 @@ See [Validation Levels](#validation-levels) above for details on what is validat
 3. **Group related entities** when using multi-file format
 4. **Commit frequently** with descriptive messages
 5. **Validate often** to catch errors early
-6. **Document your organization** in the repository README
+6. **Document your organization** in the archive README
 
 ## Examples
 

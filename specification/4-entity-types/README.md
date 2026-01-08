@@ -136,17 +136,17 @@ Media
 
 ## Entity Properties Summary
 
-| Entity | Required Fields | Unique ID | Versioned | Hierarchical |
-|--------|-----------------|-----------|-----------|--------------|
-| Person | id | ✓ | ✓ | - |
-| Relationship | id, type, participants | ✓ | ✓ | - |
-| Event | id, type, participants | ✓ | ✓ | - |
-| Place | id, name | ✓ | ✓ | ✓ (parent) |
-| Assertion | id, subject, claim | ✓ | ✓ | - |
-| Source | id, title | ✓ | ✓ | - |
-| Citation | id, source | ✓ | ✓ | - |
-| Repository | id, name | ✓ | ✓ | - |
-| Media | id | ✓ | ✓ | - |
+| Entity | Required Fields | Unique ID | Hierarchical |
+|--------|-----------------|-----------|--------------|
+| Person | id | ✓ | - |
+| Relationship | id, type, participants | ✓ | - |
+| Event | id, type, participants | ✓ | - |
+| Place | id, name | ✓ | ✓ (parent) |
+| Assertion | id, subject, claim | ✓ | - |
+| Source | id, title | ✓ | - |
+| Citation | id, source | ✓ | - |
+| Repository | id, name | ✓ | - |
+| Media | id, uri | ✓ | - |
 
 ### ID Format Conventions
 
@@ -218,7 +218,7 @@ The GENEALOGIX specification allows extension through:
 - Custom relationship types
 - Custom tags and notes
 
-See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for vocabulary and extension guidelines.
+See [Core Concepts](../2-core-concepts.md#archive-owned-vocabularies) for vocabulary and extension guidelines.
 
 ## See Also
 
@@ -229,11 +229,10 @@ See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for voc
 
 ## Common Fields
 
-All entities share a common set of fields for traceability and organization.
-
 | Field       | Type   | Description                               |
 |-------------|--------|-------------------------------------------|
 | `tags`      | array  | User-defined tags for organization        |
+| `notes`     | string | Free-form notes about the entity          |
 
 - **IDs are map keys**: The unique ID for each entity is the key in the map (`person-a1b2c3d4`).
 - **Git Tracks Provenance**: Change history is handled by Git.

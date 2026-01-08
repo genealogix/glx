@@ -19,7 +19,7 @@ GENEALOGIX addresses the limitations of existing genealogy formats by providing:
 - **Complete provenance tracking** from repository to conclusion
 - **Flexible organization** - archives can be a single file, many files, or any combination
 - **True data ownership** - Human-readable files you can edit anywhere
-- **Archive autonomy** - Each repository defines its own controlled vocabularies
+- **Archive autonomy** - Each archive defines its own controlled vocabularies
 - **Domain flexibility** - Genealogy, biography, local history, prosopography, and more
 - **Permanent foundation** - Data format that will outlast any software application
 - **Interoperability by design** - Import from GEDCOM, integrate with Git workflows
@@ -32,7 +32,7 @@ The specification covers:
 - Extensible schema system for future enhancements
 - Validation tools and conformance testing
 
-**File Format**: All GENEALOGIX files use the same structure with top-level entity type keys (persons, sources, etc.) containing maps of entities. Parsers collate all entities of each type across all .glx files in the repository.
+**File Format**: All GENEALOGIX files use the same structure with top-level entity type keys (persons, sources, etc.) containing maps of entities. Parsers collate all entities of each type across all .glx files in the archive.
 
 ## Design Principles
 
@@ -101,7 +101,7 @@ While GENEALOGIX provides excellent **interoperability** (importing from GEDCOM,
 ## Terminology
 
 ### Core Concepts
-- **Archive**: A complete GENEALOGIX repository containing all family history data
+- **Archive**: A complete GENEALOGIX data collection containing all family history data (typically stored in a Git repository)
 - **Entity**: A typed record representing a person, event, place, or other genealogical concept
 - **Assertion**: A discrete, evidence-backed claim about a person, event, or relationship
 - **Evidence Chain**: The complete path from physical repository through source and citation to conclusion
@@ -185,7 +185,7 @@ GENEALOGIX is an open-source project welcoming contributions:
 
 This specification follows semantic versioning:
 
-- **Version 0.0.0-beta.2**: Beta release
+- **Version 0.0.0-beta.x**: Beta release
 - **Version 1.0**: Initial stable release (future)
 - **Version 1.1+**: Backwards-compatible enhancements (future)
 - **Version 2.0**: May include breaking changes with migration path (future)

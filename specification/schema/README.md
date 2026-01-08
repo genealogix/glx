@@ -80,6 +80,6 @@ These URIs serve the actual schema files via HTTP.
 
 ## Custom Extensions
 
-Archives can extend the base format using repository-owned vocabularies. See [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) for details.
+Archives can extend the base format using archive-owned vocabularies. See [Core Concepts](../2-core-concepts.md#archive-owned-vocabularies) for details.
 
 

@@ -24,9 +24,4 @@ place_properties:
     label: "Place Description"
     description: "Detailed description of the place"
     value_type: string
-  
-  notes:
-    label: "Place Notes"
-    description: "Additional notes about the place"
-    value_type: string
 

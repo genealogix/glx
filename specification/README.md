@@ -72,7 +72,7 @@ This specification is under active development.
 - **Git-Native**: Built from the ground up for version control
 - **Hierarchical Places**: Supports complex place hierarchies with historical variations
 - **Evidence Confidence**: Assertion confidence levels (high/medium/low/disputed) capture researcher certainty in conclusions
-- **Extensible**: Custom entity types and properties supported via repository-owned vocabularies
+- **Extensible**: Custom entity types and properties supported via archive-owned vocabularies
 
 ## Quick Example
 
@@ -141,5 +141,3 @@ Major changes are discussed via GitHub issues and discussions. See [CONTRIBUTING
 ## License
 
 This specification is licensed under the Apache License 2.0
-
-

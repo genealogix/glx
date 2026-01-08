@@ -390,11 +390,11 @@ events:
 # glx validate will catch these errors
 ```
 
-## Repository-Owned Vocabularies
+## Archive-Owned Vocabularies
 
 ### Archive-Level Type Definitions
 
-Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **repository-owned controlled vocabularies**. Each archive defines its own valid types in the `vocabularies/` directory, combining standardization with flexibility.
+Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **archive-owned controlled vocabularies**. Each archive defines its own valid types in the `vocabularies/` directory, combining standardization with flexibility.
 
 ### Why Archive-Level Vocabularies?
 
@@ -418,7 +418,7 @@ You get both standardization AND flexibility:
 3. **Archive-owned**: No central committee, no approval process
 4. **Git-versioned**: Vocabulary changes tracked with your data
 5. **Validated**: The CLI ensures all used types are defined
-6. **Collaborative**: Teams discuss and agree on types within the repository
+6. **Collaborative**: Teams discuss and agree on types within the archive
 
 ### Standard Vocabulary Files
 

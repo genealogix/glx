@@ -160,9 +160,8 @@ Defines standard and custom properties for event entities.
 
 **Standard Properties Include:**
 - `description` - Event description
-- `notes` - Additional notes
 
-**Note:** Event timing and location are handled by the `date` and `place` fields directly on events, not as properties.
+**Note:** Event timing and location are handled by the `date` and `place` fields directly on events, not as properties. The `notes` field is a common entity field, not a property.
 
 **See Also:** [Event Entity Documentation](../4-entity-types/event#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#event-properties-vocabulary)
 
@@ -257,5 +256,5 @@ $ glx validate
 ## See Also
 
 - [Vocabularies Documentation](../4-entity-types/vocabularies) - Complete vocabulary reference
-- [Core Concepts - Repository-Owned Vocabularies](../2-core-concepts#repository-owned-vocabularies)
+- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts#archive-owned-vocabularies)
 - [Archive Organization](../3-archive-organization#vocabularies-directory)

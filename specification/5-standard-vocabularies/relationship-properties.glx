@@ -23,9 +23,4 @@ relationship_properties:
     label: "Relationship Description"
     description: "Detailed description of the relationship"
     value_type: string
-  
-  notes:
-    label: "Relationship Notes"
-    description: "Additional notes about the relationship"
-    value_type: string
 

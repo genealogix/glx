@@ -8,9 +8,4 @@ event_properties:
     label: "Event Description"
     description: "Detailed description of the event"
     value_type: string
-  
-  notes:
-    label: "Event Notes"
-    description: "Additional notes about the event"
-    value_type: string
 

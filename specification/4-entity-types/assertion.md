@@ -47,7 +47,7 @@ assertions:
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `subject` | string | The entity this assertion is about |
 | `claim` OR `participant` | string/object | Either a claim string or participant object (mutually exclusive) |
-| `citations` OR `sources` | array | At least one required for evidence |
+| `citations` OR `sources` | array | **At least one required** (validated) |
 
 ### Optional Fields
 
@@ -93,6 +93,8 @@ subject: person-john-smith
 - Type: String (for `claim`) or Object (for `participant`)
 - Required: One of `claim` or `participant` must be present (mutually exclusive)
 - Description: Either a property/fact being claimed, or a participant object for event/relationship participation
+
+> **Note:** The `claim` field corresponds to property names defined in [property vocabularies](vocabularies.md#property-vocabularies). For example, `claim: born_on` references the `born_on` property from the person properties vocabulary. Unknown claims generate validation warnings.
 
 Common claim types:
 - `born_on` - Birth date
@@ -402,9 +404,10 @@ The standard vocabulary defines these default confidence levels (archives may cu
 ## Validation Rules
 
 - `subject` must reference an existing entity ID
-- At least one of `citations` or `sources` must be present
+- **At least one of `citations` or `sources` must be present** (this is validated as an error if missing)
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
+- `claim` values should match properties defined in the appropriate [property vocabulary](vocabularies.md#property-vocabularies) (unknown claims generate warnings)
 - Confidence must be from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary)
 
 ## File Organization

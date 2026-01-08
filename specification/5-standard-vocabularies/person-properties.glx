@@ -108,9 +108,4 @@ person_properties:
     description: "National identification number"
     value_type: string
 
-  notes:
-    label: "Personal Notes"
-    description: "Additional biographical notes"
-    value_type: string
-
 

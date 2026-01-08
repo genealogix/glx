@@ -18,6 +18,15 @@
 - 🟡 Add comprehensive example showing assertion-to-entity property workflow (setting properties directly vs creating assertions with evidence)
 - 🟡 Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time)
 
+### Specification TODOs
+
+- 🔴 **Media entity refactor**: Create `media-properties.glx` vocabulary and extensively refactor [media.md](specification/4-entity-types/media.md). Needs to clarify how working with files, URIs, and local paths works. The current `title` marked as "No (but recommended)" pattern is inconsistent with other entities.
+- 🔴 **Place alternative_names refactor**: The `alternative_names` structure in [place.md](specification/4-entity-types/place.md) uses a `date_range` sub-object that should be handled via properties instead for consistency with the temporal property system.
+- 🟡 **Rename `claim` to `property`**: Assertion entities use `claim` to reference properties. For clarity, consider renaming `claim` field to `property` in a future version. Currently documented in [assertion.md](specification/4-entity-types/assertion.md) with clarification note.
+- 🟡 **Review standard vocabularies**: Audit all standard vocabulary files (.glx) in [5-standard-vocabularies/](specification/5-standard-vocabularies/) to ensure consistency and completeness.
+- 🟡 **Rewrite introduction terminology**: The [introduction](specification/1-introduction.md) needs a clearer glossary/terminology section defining key concepts like archive, entity, assertion, evidence chain, claim, property.
+- 🟢 **Add validation rule sections**: Each entity type documentation should include a consolidated "Validation Rules" section summarizing all validation requirements for that entity.
+
 ---
 
 ## 🏗️ Type System & Data Model

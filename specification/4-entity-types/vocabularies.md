@@ -1,6 +1,6 @@
 ---
 title: Vocabularies
-description: Repository-owned controlled lists for types, roles, and classifications
+description: Archive-owned controlled lists for types, roles, and classifications
 layout: doc
 ---
 
@@ -10,7 +10,7 @@ layout: doc
 
 ## Overview
 
-GENEALOGIX uses **repository-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabularies are stored as YAML files in the `vocabularies/` directory and allow each archive to customize its terminology while maintaining consistency and validation.
+GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabularies are stored as YAML files in the `vocabularies/` directory and allow each archive to customize its terminology while maintaining consistency and validation.
 
 ## Benefits of Vocabularies
 
@@ -655,9 +655,8 @@ GENEALOGIX provides standard person properties:
 Event properties are generally less common than person properties, since most event data is structural (type, date, place, participants). Standard properties include:
 
 - `description` - Event description
-- `notes` - Additional notes
 
-**Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties.
+**Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a common entity field (see [Common Fields](README.md#common-fields)), not a property.
 
 ### Relationship Properties Vocabulary
 
@@ -673,7 +672,6 @@ Standard properties include:
 - `ended_on` - When the relationship ended
 - `location` - Location of the relationship
 - `description` - Relationship description
-- `notes` - Additional notes
 
 ### Place Properties Vocabulary
 
@@ -689,7 +687,6 @@ Standard properties include:
 - `existed_to` - When the place ceased to exist
 - `population` - Population count (temporal)
 - `description` - Place description
-- `notes` - Additional notes
 
 ### Property Definition Structure
 
@@ -714,12 +711,12 @@ person_properties:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label for the property |
 | `description` | No | Detailed description of the property |
-| `value_type` | No* | Data type: `string`, `date`, `integer`, or `boolean` |
-| `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
+| `value_type` | Yes* | Data type: `string`, `date`, `integer`, or `boolean` |
+| `reference_type` | Yes* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
 | `temporal` | No | Whether property can change over time (default: false) |
 | `fields` | No | Sub-schema for structured property components (see below) |
 
-*Exactly one of `value_type` or `reference_type` should be specified
+***Exactly one of `value_type` or `reference_type` must be specified** - there is no implicit default
 
 ### Structured Properties with Fields
 
@@ -1166,7 +1163,7 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 ## See Also
 
 - **[Standard Vocabularies](/specification/5-standard-vocabularies/)** - Complete default vocabulary files with all standard types
-- [Core Concepts - Repository-Owned Vocabularies](../2-core-concepts.md#repository-owned-vocabularies)
+- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts.md#archive-owned-vocabularies)
 - [Archive Organization](../3-archive-organization.md) - Where vocabulary files are stored
 - [Event Entity](event.md) - Event types vocabulary
 - [Relationship Entity](relationship.md) - Relationship types vocabulary
