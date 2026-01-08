@@ -20,7 +20,7 @@
 
 ### Specification TODOs
 
-- 🔴 **Media entity refactor**: Create `media-properties.glx` vocabulary and extensively refactor [media.md](specification/4-entity-types/media.md). Needs to clarify how working with files, URIs, and local paths works. The current `title` marked as "No (but recommended)" pattern is inconsistent with other entities.
+- 🔴 **Media entity refactor**: Create `media-properties.glx` vocabulary and add these fields as properties: `subjects`, `citation`, `width`, `height`, `duration`, `file_size`. Also clarify how working with files, URIs, and local paths works.
 - 🔴 **Place alternative_names refactor**: The `alternative_names` structure in [place.md](specification/4-entity-types/place.md) uses a `date_range` sub-object that should be handled via properties instead for consistency with the temporal property system.
 - 🟡 **Rename `claim` to `property`**: Assertion entities use `claim` to reference properties. For clarity, consider renaming `claim` field to `property` in a future version. Currently documented in [assertion.md](specification/4-entity-types/assertion.md) with clarification note.
 - 🟡 **Review standard vocabularies**: Audit all standard vocabulary files (.glx) in [5-standard-vocabularies/](specification/5-standard-vocabularies/) to ensure consistency and completeness.
@@ -33,13 +33,12 @@
 
 ### Schema Improvements
 
-- 🟡 **Media schema gaps**: Missing several fields documented in [media.md](docs/entity-types/media.md) (`type`, `date`, `subjects`, `source`, `citation`, `width`, `height`, `duration`, `file_size`). Many should move to vocabulary-controlled `properties` rather than top-level fields. Update schema and documentation together when refactoring media entity structure.
 - 🟡 JSON schemas don't validate entity `properties` structure (e.g., person name with fields). Properties are vocabulary-controlled and dynamic, so schema validation uses `additionalProperties: true`. Consider documenting this as intentional or adding runtime property validation in the CLI.
 - 🟢 Should property fields have data types?
 
 ### Entity Properties
 
-- 🟡 Source properties - should some fields be vocabulary-controlled properties?
+- 🟡 **Source properties**: Create `source-properties.glx` vocabulary. Consider which fields should move to properties (e.g., `coverage` was removed as a direct field).
 - 🟡 Citation properties - should some fields be vocabulary-controlled properties?
 - 🟡 Repository properties - many fields [access_hours, access_restrictions, holding_types, etc] could be properties
 

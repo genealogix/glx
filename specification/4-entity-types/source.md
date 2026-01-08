@@ -224,31 +224,6 @@ Example:
 language: "English"
 ```
 
-### `coverage`
-
-- Type: Object
-- Required: No
-- Description: Geographic and temporal coverage of the source
-
-Structure:
-```yaml
-coverage:
-  spatial: String or Array
-  temporal: String
-  subjects: Array
-```
-
-Example:
-```yaml
-coverage:
-  spatial: "Leeds, Yorkshire, England"
-  temporal: "1840-1860"
-  subjects:
-    - baptisms
-    - marriages
-    - burials
-```
-
 ### `media`
 
 - Type: Array of Strings
@@ -313,9 +288,6 @@ sources:
     description: |
       Census enumeration for Leeds, Yorkshire, England.
       Enumeration District 5, covering Wellington Street area.
-    coverage:
-      spatial: "Leeds, Yorkshire, England"
-      temporal: "1851-03-30"
     language: "English"
     tags:
       - census
@@ -336,18 +308,11 @@ sources:
     description: |
       Parish registers for St. Paul's Cathedral, Leeds.
       Includes baptisms, marriages, and burials.
-      
+
       Coverage:
       - Baptisms: 1840-1860
       - Marriages: 1840-1860
       - Burials: 1845-1860
-    coverage:
-      spatial: "Leeds, Yorkshire, England"
-      temporal: "1840-1860"
-      subjects:
-        - baptisms
-        - marriages
-        - burials
     language: "English"
     media:
       - media-register-volume-1
@@ -378,11 +343,6 @@ sources:
       Comprehensive genealogy of the Smith family of Leeds
       and surrounding areas, 1750-1950. Includes source
       citations and family group sheets.
-    coverage:
-      spatial:
-        - Leeds, Yorkshire
-        - Bradford, Yorkshire
-      temporal: "1750-1950"
     language: "English"
     tags:
       - published-genealogy
@@ -403,11 +363,8 @@ sources:
     description: |
       Digitized and indexed UK census records from 1841-1911.
       Images and transcriptions available online.
-      
+
       Subscription required for access.
-    coverage:
-      spatial: "United Kingdom"
-      temporal: "1841-1911"
     language: "English"
     notes: "Digital images of original records"
     tags:
@@ -427,9 +384,6 @@ sources:
     date: "1890-06-15"
     repository: repository-british-library
     description: "Daily newspaper published in Leeds, Yorkshire"
-    coverage:
-      spatial: "Leeds, Yorkshire, England"
-      temporal: "1890-06-15"
     language: "English"
 ```
 
@@ -504,8 +458,7 @@ sources/
 Source
     ├── held in → Repository (via repository field)
     ├── referenced by → Citations (citations point to sources)
-    ├── documented by → Media (via media array)
-    └── may have → coverage information (geographic/temporal)
+    └── documented by → Media (via media array)
 
 Repository
     └── holds → Sources (sources reference repository)

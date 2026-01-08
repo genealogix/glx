@@ -6,13 +6,20 @@
   "type": "object",
   "required": ["uri"],
   "properties": {
-    "uri": { "type": "string", "minLength": 1 },
-    "mime_type": { "type": "string" },
-    "hash": { "type": "string" },
-    "title": { "type": "string" },
-    "description": { "type": "string" },
-    "notes": { "type": "string" },
-    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+    "uri": { "type": "string", "minLength": 1, "description": "Location of the media file" },
+    "type": { "type": "string", "description": "Media type (validated against media_types vocabulary)" },
+    "mime_type": { "type": "string", "description": "MIME type of the media" },
+    "hash": { "type": "string", "description": "Content hash for verification" },
+    "title": { "type": "string", "description": "Title of the media" },
+    "description": { "type": "string", "description": "Description of the media" },
+    "date": { "type": "string", "description": "Date the media was created" },
+    "source": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,64}$",
+      "description": "Reference to Source entity this media documents"
+    },
+    "notes": { "type": "string", "description": "Free-form notes" },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "description": "Tags for categorization" }
   },
   "additionalProperties": false
 }

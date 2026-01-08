@@ -55,6 +55,8 @@ media:
 | `hash` | string | Content hash for verification |
 | `title` | string | Title of the media |
 | `description` | string | Description of the media |
+| `date` | string | Date the media was created |
+| `source` | string | Reference to Source entity this media documents |
 | `notes` | string | Free-form notes |
 | `tags` | array | Tags for categorization |
 
@@ -156,74 +158,15 @@ Example:
 date: "1890-06-15"
 ```
 
-### `subjects`
-
-- Type: Array of Strings
-- Required: No
-- Description: Entity IDs of people, places, or events depicted in the media
-
-Example:
-```yaml
-subjects:
-  - person-john-smith
-  - person-mary-smith
-  - place-leeds
-```
-
 ### `source`
 
 - Type: String
 - Required: No
-- Description: Source entity that this media documents
+- Description: Reference to Source entity that this media documents
 
 Example:
 ```yaml
-source: source-birth-register
-```
-
-### `citation`
-
-- Type: String
-- Required: No
-- Description: Citation entity that this media supports
-
-Example:
-```yaml
-citation: citation-birth-entry
-```
-
-### `width` and `height`
-
-- Type: Integer
-- Required: No
-- Description: Dimensions in pixels (for images and video)
-
-Example:
-```yaml
-width: 3000
-height: 2400
-```
-
-### `duration`
-
-- Type: Integer
-- Required: No
-- Description: Duration in seconds (for audio and video)
-
-Example:
-```yaml
-duration: 3600
-```
-
-### `file_size`
-
-- Type: Integer
-- Required: No
-- Description: File size in bytes
-
-Example:
-```yaml
-file_size: 2458624
+source: source-parish-register
 ```
 
 ### Other Fields
@@ -251,14 +194,8 @@ media:
     uri: "media/documents/birth-certificate-john-smith-1850.pdf"
     mime_type: "application/pdf"
     title: "Birth Certificate - John Smith"
-    description: "Original birth certificate from General Register Office"
-    date: "2024-01-15"  # Date scanned
+    description: "Original birth certificate from General Register Office, scanned 2024-01-15"
     hash: "sha256:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"
-    source: source-gro-register
-    citation: citation-birth-entry
-    subjects:
-      - person-john-smith
-    file_size: 2458624
     tags:
       - original-document
       - vital-record
@@ -275,21 +212,12 @@ media:
     description: |
       Studio portrait of John and Mary Smith with their children.
       Taken at Leeds Portrait Studio, June 1890.
-      
+
       People in photo (left to right):
       - Alice Smith (daughter)
       - John Smith (father)
       - Mary Smith (mother)
       - Thomas Smith (son)
-    date: "1890-06-15"
-    subjects:
-      - person-john-smith
-      - person-mary-smith
-      - person-alice-smith
-      - person-thomas-smith
-    width: 3000
-    height: 2400
-    file_size: 4567890
     tags:
       - family-photo
       - studio-portrait
@@ -308,11 +236,7 @@ media:
       Interview with Mary Smith about her memories of growing up
       in Leeds in the 1940s and 1950s. Discusses family traditions,
       local history, and genealogical information.
-    date: "2020-03-15"
-    duration: 3600
-    subjects:
-      - person-mary-smith
-    file_size: 86400000
+      Recorded 2020-03-15, duration 60 minutes.
     tags:
       - oral-history
       - interview
@@ -327,14 +251,7 @@ media:
     uri: "https://ancestry.com/imageviewer/1851-census-yorkshire-page-234"
     mime_type: "image/jpeg"
     title: "1851 Census - Yorkshire, Page 234"
-    description: "Census page showing Smith family at Wellington Street, Leeds"
-    date: "1851-04-06"
-    source: source-1851-census
-    citation: citation-census-smith-entry
-    subjects:
-      - person-john-smith
-      - person-mary-smith
-      - place-leeds
+    description: "Census page showing Smith family at Wellington Street, Leeds (1851-04-06)"
     tags:
       - census-image
       - online-resource
@@ -354,14 +271,6 @@ media:
       on May 10, 1875 at St Paul's Cathedral, Leeds.
     date: "2024-02-10"  # Date photographed
     hash: "sha256:9f3d4c2e7a8b1f6d5c4e3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e"
-    source: source-st-pauls-register
-    citation: citation-marriage-entry
-    subjects:
-      - person-john-smith
-      - person-mary-brown
-    width: 4000
-    height: 3000
-    file_size: 12000000
     notes: "High-resolution scan for archival preservation"
     tags:
       - parish-register
@@ -413,18 +322,14 @@ media/
 
 ```
 Media
-    ├── subjects → array of Person/Place/Event IDs (what's in the media)
     ├── source → Source ID (what source this documents)
-    └── citation → Citation ID (what citation this supports)
-
-Person/Event/Relationship
-    └── referenced by → Media (via subjects array)
+    └── referenced by → Citations (citations can include media array)
 
 Source
     └── documented by → Media (via source field)
 
 Citation
-    └── supported by → Media (via citation field)
+    └── media → array of Media IDs (scans, photos supporting the citation)
 ```
 
 ## File Storage Best Practices
@@ -475,12 +380,11 @@ uri: "ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco"
 ## Validation Rules
 
 - `uri` must be a valid URI or path
-- Type must be from the [media types vocabulary](vocabularies.md#media-types-vocabulary)
+- `type` must be from the [media types vocabulary](vocabularies.md#media-types-vocabulary)
 - If `mime_type` is specified, it should follow standard MIME type format
 - If `hash` is specified, it should follow `algorithm:hexstring` format
-- All entity references in `subjects`, `source`, `citation` must point to existing entities
-- Dimensions (`width`, `height`) must be positive integers
-- `duration` and `file_size` must be positive integers
+- If `date` is specified, it should follow standard date formats
+- If `source` is specified, it must reference an existing Source entity
 
 ## GEDCOM Mapping
 
@@ -516,37 +420,16 @@ media:
 
 ## Media Linking
 
-Media can be linked to entities in multiple ways:
+Media is typically linked via Citation entities:
 
-### 1. Via Subjects Array (in Media)
 ```yaml
-media:
-  media-photo:
-    subjects:
-      - person-john-smith
-```
-
-### 2. Via Source Reference
-```yaml
-media:
-  media-document:
-    source: source-birth-register
-```
-
-### 3. Via Citation Reference
-```yaml
-media:
-  media-scan:
-    citation: citation-birth-entry
-```
-
-### 4. Direct Reference from Entity (if schema supports)
-```yaml
-persons:
-  person-john-smith:
+citations:
+  citation-birth-record:
+    source: source-parish-register
+    page: "45"
     media:
-      - media-portrait
-      - media-birth-cert
+      - media-birth-cert-scan
+      - media-birth-cert-photo
 ```
 
 ## Schema Reference
