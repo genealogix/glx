@@ -25,8 +25,11 @@ Guide for converting GEDCOM files to GENEALOGIX format using the automated impor
 Convert GEDCOM files automatically using the GLX CLI:
 
 ```bash
-# Import GEDCOM file
-glx import family.ged -o family-archive.glx
+# Import GEDCOM file (creates multi-file archive by default)
+glx import family.ged -o family-archive
+
+# Or import to single file
+glx import family.ged -o family.glx --format single
 
 # The import command handles:
 # - Individual (INDI) → Person entities
@@ -38,7 +41,7 @@ glx import family.ged -o family-archive.glx
 
 # Initialize git tracking
 git init
-git add family-archive.glx
+git add .
 git commit -m "Import from GEDCOM: family.ged"
 ```
 
@@ -240,7 +243,7 @@ After importing, validate the results:
 
 ```bash
 # Validate the imported archive
-glx validate family-archive.glx
+glx validate family-archive/
 
 # Check what was imported
 # - Count entities
