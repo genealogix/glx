@@ -26,46 +26,6 @@
       "minLength": 1,
       "description": "Type of geographic location (validated against place_types vocabulary)"
     },
-    "alternative_names": {
-      "type": "array",
-      "description": "Historical and alternative names for this place",
-      "items": {
-        "type": "object",
-        "required": ["name"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Alternative name text"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["historical", "spelling_variant", "native", "colloquial", "formal", "other"],
-            "description": "Classification of alternative name"
-          },
-          "language": {
-            "type": "string",
-            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
-            "description": "Language code (BCP-47 format)"
-          },
-          "date_range": {
-            "type": "object",
-            "properties": {
-              "start": {
-                "type": "string",
-                "description": "Start date/year (fuzzy format supported)"
-              },
-              "end": {
-                "type": "string",
-                "description": "End date/year or 'present'"
-              }
-            }
-          }
-        },
-        "additionalProperties": true
-      },
-      "uniqueItems": true
-    },
     "latitude": {
       "type": ["number", "null"],
       "minimum": -90,

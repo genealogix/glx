@@ -38,7 +38,7 @@ Core entities:
 - Person
 - Event
 - Relationship (including RelationshipParticipant)
-- Place (including AlternativeName)
+- Place
 - Source
 - Citation
 - Repository
@@ -84,7 +84,7 @@ Compare Go types with JSON schema types:
 - Verify reference arrays have correct `refType` tags
 
 ### 6. Nested Types
-- Check nested structs (EventParticipant, RelationshipParticipant, AssertionParticipant, AlternativeName, DateRange)
+- Check nested structs (EventParticipant, RelationshipParticipant, AssertionParticipant)
 - Verify these match the schema's object definitions
 - Check required fields in nested types
 

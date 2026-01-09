@@ -91,6 +91,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Removed `citation` field** - Formatted citations belong in citation entities, not sources
 - **Removed `coverage` field** - Geographic/temporal coverage can be captured in description or properties
 
+#### Place Entity
+- **Removed `alternative_names` field** - Historical/alternative place names feature removed for simplicity in initial release
+- **Removed `AlternativeName` struct** - No longer needed
+- **Removed `DateRange` struct** - No longer needed (was only used by alternative_names)
+
 ## [0.0.0-beta.2] - 2025-11-25
 
 ### Added

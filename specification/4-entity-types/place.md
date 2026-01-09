@@ -54,16 +54,6 @@ places:
     parent: place-yorkshire
 ```
 
-### Place Names
-
-Places support multiple names to represent:
-- Historical name changes
-- Alternative spellings and transliterations
-- Native language vs. colonial names
-- Informal/colloquial names
-
-Each name can be classified and dated.
-
 ## Fields
 
 ### Required Fields
@@ -80,7 +70,6 @@ Each name can be classified and dated.
 | `properties` | object | Vocabulary-defined properties of the place |
 | `parent` | string | Reference to parent place in hierarchy |
 | `type` | string | Place type from `vocabularies/place-types.glx` |
-| `alternative_names` | array | Historical/alternative names for this place |
 | `latitude` | number | WGS84 latitude coordinate |
 | `longitude` | number | WGS84 longitude coordinate |
 | `jurisdiction` | string | Formal jurisdiction identifier or code |
@@ -97,24 +86,6 @@ Place types are defined in `vocabularies/place-types.glx` within each archive.
 - How to add custom place types
 - Vocabulary file structure and examples
 - Validation requirements
-
-### Alternative Names Structure
-
-```yaml
-alternative_names:
-  - name: "York"
-    type: "historical"
-    language: "en"
-    date_range:
-      start: "1066"
-      end: "present"
-  - name: "Jorvik"
-    type: "historical"
-    language: "en"
-    date_range:
-      start: "867"
-      end: "1066"
-```
 
 ## Usage Patterns
 
@@ -138,11 +109,6 @@ places:
     name: "Leeds Registration District"
     type: registration_district
     parent: place-yorkshire
-    alternative_names:
-      - name: "Leeds"
-        type: "informal"
-      - name: "West Riding of Yorkshire"
-        type: "historical"
     latitude: 53.8008
     longitude: -1.5491
     jurisdiction: "england.yorkshire.leeds"

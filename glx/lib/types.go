@@ -146,31 +146,16 @@ type EventParticipant struct {
 
 // Place represents a geographical location.
 type Place struct {
-	Name             string            `yaml:"name"`
-	ParentID         string            `refType:"places"      yaml:"parent,omitempty"`
-	Type             string            `refType:"place_types" yaml:"type,omitempty"`
-	AlternativeNames []AlternativeName `yaml:"alternative_names,omitempty"`
-	Latitude         *float64          `yaml:"latitude,omitempty"`
-	Longitude        *float64          `yaml:"longitude,omitempty"`
-	Jurisdiction     string            `yaml:"jurisdiction,omitempty"`
-	PlaceFormat      string            `yaml:"place_format,omitempty"`
-	Properties       map[string]any    `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes            string            `yaml:"notes,omitempty"`
-	Tags             []string          `yaml:"tags,omitempty"`
-}
-
-// AlternativeName is a historical or alternative name for a place.
-type AlternativeName struct {
-	Name      string     `yaml:"name"`
-	Type      string     `yaml:"type,omitempty"`
-	Language  string     `yaml:"language,omitempty"`
-	DateRange *DateRange `yaml:"date_range,omitempty"`
-}
-
-// DateRange represents a period of time.
-type DateRange struct {
-	Start string `yaml:"start,omitempty"`
-	End   string `yaml:"end,omitempty"`
+	Name         string         `yaml:"name"`
+	ParentID     string         `refType:"places"      yaml:"parent,omitempty"`
+	Type         string         `refType:"place_types" yaml:"type,omitempty"`
+	Latitude     *float64       `yaml:"latitude,omitempty"`
+	Longitude    *float64       `yaml:"longitude,omitempty"`
+	Jurisdiction string         `yaml:"jurisdiction,omitempty"`
+	PlaceFormat  string         `yaml:"place_format,omitempty"`
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes        string         `yaml:"notes,omitempty"`
+	Tags         []string       `yaml:"tags,omitempty"`
 }
 
 // Source represents a source of information.

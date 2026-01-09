@@ -19,7 +19,6 @@
 
 ### Specification TODOs
 
-- 🔴 **Place alternative_names refactor**: The `alternative_names` structure in [place.md](specification/4-entity-types/place.md) uses a `date_range` sub-object that should be handled via properties instead for consistency with the temporal property system.
 - 🟡 **Rename `claim` to `property`**: Assertion entities use `claim` to reference properties. For clarity, consider renaming `claim` field to `property` in a future version. Currently documented in [assertion.md](specification/4-entity-types/assertion.md) with clarification note.
 - 🟡 **Review standard vocabularies**: Audit all standard vocabulary files (.glx) in [5-standard-vocabularies/](specification/5-standard-vocabularies/) to ensure consistency and completeness.
 - 🟡 **Rewrite introduction terminology**: The [introduction](specification/1-introduction.md) needs a clearer glossary/terminology section defining key concepts like archive, entity, assertion, evidence chain, claim, property.

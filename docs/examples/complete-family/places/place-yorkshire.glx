@@ -5,7 +5,4 @@ places:
     parent: place-england
     latitude: 53.9582
     longitude: -1.5701
-    alternative_names:
-      - name: "West Riding"
-        type: "historical"
     notes: "Historic county in Northern England"

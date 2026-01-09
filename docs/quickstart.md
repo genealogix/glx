@@ -98,9 +98,6 @@ places:
     parent: place-yorkshire
     latitude: 53.7960
     longitude: -1.5479
-    alternative_names:
-      - name: "West Riding"
-        type: historical
     notes: |
       Major industrial city in Yorkshire, England.
       Known for textile manufacturing and ironworks in the 19th century.
