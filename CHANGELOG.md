@@ -10,13 +10,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.3] - 2026-01-03
+## [0.0.0-beta.3] - 2026-01-09
 
 ### Added
 
 #### Media Properties Vocabulary
 - **New `media-properties.glx` vocabulary** - Standard properties for media entities:
-  - `subjects` - People depicted or referenced in the media
+  - `subjects` - People depicted or referenced in the media (multi-value)
   - `width`, `height` - Dimensions in pixels for images/video
   - `duration` - Duration in seconds for audio/video
   - `file_size` - File size in bytes
@@ -27,6 +27,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `location` - Place where the media was created
 - **Added `Properties` field to Media struct** - Vocabulary-controlled properties on media entities
 - **Added `MediaProperties` to GLXFile** - Property vocabulary support for media validation
+
+#### Repository Properties Vocabulary
+- **New `repository-properties.glx` vocabulary** - Standard properties for repository entities:
+  - `phones` - Phone numbers for the repository (multi-value)
+  - `emails` - Email addresses for the repository (multi-value)
+  - `fax` - Fax number
+  - `access_hours` - Hours of operation or access availability
+  - `access_restrictions` - Any restrictions on access (appointment required, subscription, etc.)
+  - `holding_types` - Types of materials held (microfilm, digital, books, etc.) (multi-value)
+  - `external_ids` - External identifiers from other systems like FamilySearch, WikiTree (multi-value)
+- **Added `RepositoryProperties` to GLXFile** - Property vocabulary support for repository validation
+- **Moved contact fields to properties** - Repository contact information (phone, email) now stored in `properties` instead of direct entity fields
+
+#### Multi-Value Property Support
+- **Added `multi_value` field to PropertyDefinition** - Properties can now be marked as supporting multiple values
+- **Validation support for multi-value properties** - Validator correctly handles array values for multi-value properties
 
 ### Changed
 

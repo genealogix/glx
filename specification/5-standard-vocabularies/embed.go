@@ -63,6 +63,16 @@ var RelationshipProperties []byte
 //go:embed place-properties.glx
 var PlaceProperties []byte
 
+// MediaProperties contains the embedded media-properties.glx vocabulary file.
+//
+//go:embed media-properties.glx
+var MediaProperties []byte
+
+// RepositoryProperties contains the embedded repository-properties.glx vocabulary file.
+//
+//go:embed repository-properties.glx
+var RepositoryProperties []byte
+
 // Files maps output filenames to embedded content
 var Files = map[string][]byte{
 	"relationship-types.glx":      RelationshipTypes,
@@ -77,4 +87,6 @@ var Files = map[string][]byte{
 	"event-properties.glx":        EventProperties,
 	"relationship-properties.glx": RelationshipProperties,
 	"place-properties.glx":        PlaceProperties,
+	"media-properties.glx":        MediaProperties,
+	"repository-properties.glx":   RepositoryProperties,
 }

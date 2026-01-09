@@ -161,6 +161,24 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 		}
 	}
 
+	if data, ok := vocabs["media-properties.glx"]; ok {
+		var doc struct {
+			MediaProperties map[string]*PropertyDefinition `yaml:"media_properties"`
+		}
+		if err := yaml.Unmarshal(data, &doc); err == nil {
+			glx.MediaProperties = doc.MediaProperties
+		}
+	}
+
+	if data, ok := vocabs["repository-properties.glx"]; ok {
+		var doc struct {
+			RepositoryProperties map[string]*PropertyDefinition `yaml:"repository_properties"`
+		}
+		if err := yaml.Unmarshal(data, &doc); err == nil {
+			glx.RepositoryProperties = doc.RepositoryProperties
+		}
+	}
+
 	return nil
 }
 
@@ -254,6 +272,20 @@ func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 			}
 			if err := yaml.Unmarshal(data, &doc); err == nil {
 				glx.PlaceProperties = doc.PlaceProperties
+			}
+		case "media-properties.glx":
+			var doc struct {
+				MediaProperties map[string]*PropertyDefinition `yaml:"media_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.MediaProperties = doc.MediaProperties
+			}
+		case "repository-properties.glx":
+			var doc struct {
+				RepositoryProperties map[string]*PropertyDefinition `yaml:"repository_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.RepositoryProperties = doc.RepositoryProperties
 			}
 		}
 	}

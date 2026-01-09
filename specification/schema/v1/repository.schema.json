@@ -11,11 +11,6 @@
       "minLength": 1,
       "description": "Name of the repository"
     },
-    "properties": {
-      "type": "object",
-      "description": "Vocabulary-defined properties of the repository",
-      "additionalProperties": true
-    },
     "type": {
       "type": "string",
       "minLength": 1,
@@ -41,35 +36,15 @@
       "type": "string",
       "description": "Country"
     },
-    "phone": {
-      "type": "string",
-      "description": "Telephone number"
-    },
-    "email": {
-      "type": "string",
-      "format": "email",
-      "description": "Email address"
-    },
     "website": {
       "type": "string",
       "format": "uri",
       "description": "URL to repository website"
     },
-    "access_hours": {
-      "type": "string",
-      "description": "Hours of operation or access"
-    },
-    "access_restrictions": {
-      "type": "string",
-      "description": "Any restrictions on access (e.g., by appointment only, membership required)"
-    },
-    "holding_types": {
-      "type": "array",
-      "description": "Types of materials held",
-      "items": {
-        "type": "string"
-      },
-      "uniqueItems": true
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties (phones, emails, fax, access_hours, access_restrictions, holding_types, external_ids)",
+      "additionalProperties": true
     },
     "notes": {
       "type": "string",

@@ -4,6 +4,9 @@ repositories:
     type: archive
     address: "Kew, Richmond, Surrey, TW9 4DU, United Kingdom"
     website: "https://www.nationalarchives.gov.uk"
-    email: "research@nationalarchives.gov.uk"
-    phone: "+44 20 8876 3444"
+    properties:
+      emails:
+        - "research@nationalarchives.gov.uk"
+      phones:
+        - "+44 20 8876 3444"
     notes: "National archives of England and Wales"

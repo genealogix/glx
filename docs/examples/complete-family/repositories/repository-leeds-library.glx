@@ -4,6 +4,9 @@ repositories:
     type: library
     address: "Commercial Street, Leeds, LS1 6AL"
     website: "https://www.leeds.gov.uk/libraries"
-    email: "localstudies@leeds.gov.uk"
-    phone: "+44 113 247 6000"
+    properties:
+      emails:
+        - "localstudies@leeds.gov.uk"
+      phones:
+        - "+44 113 247 6000"
     notes: "Main repository for Leeds and Yorkshire genealogy research"

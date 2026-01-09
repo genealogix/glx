@@ -32,7 +32,13 @@ vocabularies/
 ├── media-types.glx
 ├── confidence-levels.glx
 ├── participant-roles.glx
-└── repository-types.glx
+├── repository-types.glx
+├── person-properties.glx
+├── event-properties.glx
+├── relationship-properties.glx
+├── place-properties.glx
+├── media-properties.glx
+└── repository-properties.glx
 ```
 
 When initializing a new archive with `glx init`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates.
@@ -688,6 +694,45 @@ Standard properties include:
 - `population` - Population count (temporal)
 - `description` - Place description
 
+### Media Properties Vocabulary
+
+**File**: `vocabularies/media-properties.glx`
+
+**Used By**: [Media Entity](media.md#properties)
+
+**Purpose**: Defines properties that can be set on media entities
+
+Standard properties include:
+
+- `subjects` - People or entities depicted/recorded
+- `width` - Width in pixels (for images/video)
+- `height` - Height in pixels (for images/video)
+- `duration` - Duration in seconds (for audio/video)
+- `file_size` - File size in bytes
+- `crop` - Crop coordinates for images
+- `medium` - Physical medium type
+- `original_filename` - Original filename when imported
+- `photographer` - Person who captured the media
+- `location` - Location where media was captured
+
+### Repository Properties Vocabulary
+
+**File**: `vocabularies/repository-properties.glx`
+
+**Used By**: [Repository Entity](repository.md#properties)
+
+**Purpose**: Defines properties that can be set on repository entities for contact information, access details, and holdings
+
+Standard properties include:
+
+- `phones` - Phone number(s) for the repository
+- `emails` - Email address(es) for the repository
+- `fax` - Fax number
+- `access_hours` - Hours of operation/access
+- `access_restrictions` - Any restrictions on access (appointment required, subscription, etc.)
+- `holding_types` - Types of materials held (microfilm, digital, books, etc.)
+- `external_ids` - External identifiers from other systems (FamilySearch, WikiTree, etc.)
+
 ### Property Definition Structure
 
 Each property in a property vocabulary is defined with the following fields:
@@ -714,6 +759,7 @@ person_properties:
 | `value_type` | Yes* | Data type: `string`, `date`, `integer`, or `boolean` |
 | `reference_type` | Yes* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
 | `temporal` | No | Whether property can change over time (default: false) |
+| `multi_value` | No | Whether property can have multiple values as an array (default: false) |
 | `fields` | No | Sub-schema for structured property components (see below) |
 
 ***Exactly one of `value_type` or `reference_type` must be specified** - there is no implicit default
@@ -1151,6 +1197,8 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |
 | Place Properties | [place-properties.schema.json](../schema/v1/vocabularies/place-properties.schema.json) |
+| Media Properties | [media-properties.schema.json](../schema/v1/vocabularies/media-properties.schema.json) |
+| Repository Properties | [repository-properties.schema.json](../schema/v1/vocabularies/repository-properties.schema.json) |
 
 All vocabulary schemas are located in `specification/schema/v1/vocabularies/` and define:
 - Required top-level key (e.g., `event_types`, `relationship_types`)

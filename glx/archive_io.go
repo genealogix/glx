@@ -52,6 +52,8 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 		EventProperties:        make(map[string]*lib.PropertyDefinition),
 		RelationshipProperties: make(map[string]*lib.PropertyDefinition),
 		PlaceProperties:        make(map[string]*lib.PropertyDefinition),
+		MediaProperties:        make(map[string]*lib.PropertyDefinition),
+		RepositoryProperties:   make(map[string]*lib.PropertyDefinition),
 	}
 
 	var allDuplicates []string

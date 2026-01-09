@@ -173,6 +173,22 @@
         "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-properties.schema.json" }
       },
       "additionalProperties": false
+    },
+    "media_properties": {
+      "type": "object",
+      "description": "Media property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-properties.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "repository_properties": {
+      "type": "object",
+      "description": "Repository property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-properties.schema.json" }
+      },
+      "additionalProperties": false
     }
   }
 }

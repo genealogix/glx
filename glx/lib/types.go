@@ -46,6 +46,7 @@ type GLXFile struct {
 	RelationshipProperties map[string]*PropertyDefinition `yaml:"relationship_properties,omitempty"`
 	PlaceProperties        map[string]*PropertyDefinition `yaml:"place_properties,omitempty"`
 	MediaProperties        map[string]*PropertyDefinition `yaml:"media_properties,omitempty"`
+	RepositoryProperties   map[string]*PropertyDefinition `yaml:"repository_properties,omitempty"`
 
 	// Validation state (built on demand, cached)
 	validation *ValidationResult
@@ -201,22 +202,17 @@ type Citation struct {
 
 // Repository represents a repository where sources are held.
 type Repository struct {
-	Name               string         `yaml:"name"`
-	Type               string         `refType:"repository_types" yaml:"type,omitempty"`
-	Address            string         `yaml:"address,omitempty"`
-	City               string         `yaml:"city,omitempty"`
-	State              string         `yaml:"state_province,omitempty"`
-	PostalCode         string         `yaml:"postal_code,omitempty"`
-	Country            string         `yaml:"country,omitempty"`
-	Phone              string         `yaml:"phone,omitempty"`
-	Email              string         `yaml:"email,omitempty"`
-	Website            string         `yaml:"website,omitempty"`
-	AccessHours        string         `yaml:"access_hours,omitempty"`
-	AccessRestrictions string         `yaml:"access_restrictions,omitempty"`
-	HoldingTypes       []string       `yaml:"holding_types,omitempty"`
-	Properties         map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes              string         `yaml:"notes,omitempty"`
-	Tags               []string       `yaml:"tags,omitempty"`
+	Name       string         `yaml:"name"`
+	Type       string         `refType:"repository_types" yaml:"type,omitempty"`
+	Address    string         `yaml:"address,omitempty"`
+	City       string         `yaml:"city,omitempty"`
+	State      string         `yaml:"state_province,omitempty"`
+	PostalCode string         `yaml:"postal_code,omitempty"`
+	Country    string         `yaml:"country,omitempty"`
+	Website    string         `yaml:"website,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (phones, emails, fax, access_hours, access_restrictions, holding_types, external_ids)
+	Notes      string         `yaml:"notes,omitempty"`
+	Tags       []string       `yaml:"tags,omitempty"`
 }
 
 // Assertion represents a conclusion made by a researcher.
@@ -321,6 +317,7 @@ type PropertyDefinition struct {
 	ValueType     string                      `yaml:"value_type,omitempty"`     // string, date, integer, boolean
 	ReferenceType string                      `yaml:"reference_type,omitempty"` // persons, places, events, relationships, etc.
 	Temporal      *bool                       `yaml:"temporal,omitempty"`       // Can this property change over time?
+	MultiValue    *bool                       `yaml:"multi_value,omitempty"`    // Can this property have multiple values (stored as array)?
 	Fields        map[string]*FieldDefinition `yaml:"fields,omitempty"`         // Optional structured breakdown of the value
 }
 
@@ -369,6 +366,7 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates = append(duplicates, mergeMap("relationship_properties", g.RelationshipProperties, other.RelationshipProperties)...)
 	duplicates = append(duplicates, mergeMap("place_properties", g.PlaceProperties, other.PlaceProperties)...)
 	duplicates = append(duplicates, mergeMap("media_properties", g.MediaProperties, other.MediaProperties)...)
+	duplicates = append(duplicates, mergeMap("repository_properties", g.RepositoryProperties, other.RepositoryProperties)...)
 
 	return duplicates
 }

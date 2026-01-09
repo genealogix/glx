@@ -199,6 +199,46 @@ Defines standard and custom properties for place entities.
 
 ---
 
+### Media Properties
+
+Defines standard and custom properties for media entities.
+
+**File:** `vocabularies/media-properties.glx`
+
+**Standard Properties Include:**
+- `subjects` - People or entities depicted/recorded (multi-value, reference)
+- `width`, `height` - Dimensions in pixels (for images/video)
+- `duration` - Duration in seconds (for audio/video)
+- `file_size` - File size in bytes
+- `crop` - Crop coordinates for images
+- `medium` - Physical medium type
+- `original_filename` - Original filename when imported
+- `photographer` - Person who captured the media (reference)
+- `location` - Location where media was captured (reference)
+
+**See Also:** [Media Entity Documentation](../4-entity-types/media#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#media-properties-vocabulary)
+
+---
+
+### Repository Properties
+
+Defines standard and custom properties for repository entities including contact information, access details, and holdings.
+
+**File:** `vocabularies/repository-properties.glx`
+
+**Standard Properties Include:**
+- `phones` - Phone numbers for the repository (multi-value)
+- `emails` - Email addresses for the repository (multi-value)
+- `fax` - Fax number
+- `access_hours` - Hours of operation or access availability
+- `access_restrictions` - Any restrictions on access (appointment required, subscription, etc.)
+- `holding_types` - Types of materials held (microfilm, digital, books, etc.) (multi-value)
+- `external_ids` - External identifiers from other systems like FamilySearch, WikiTree (multi-value)
+
+**See Also:** [Repository Entity Documentation](../4-entity-types/repository#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-properties-vocabulary)
+
+---
+
 ## Customizing Vocabularies
 
 ::: tip Complete Syntax Reference

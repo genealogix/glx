@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/media-properties.schema.json",
+  "title": "Media Properties Vocabulary",
+  "description": "Defines the standard and custom properties available for media entities",
+  "type": "object",
+  "required": ["media_properties"],
+  "properties": {
+    "media_properties": {
+      "type": "object",
+      "description": "Map of property definitions for media",
+      "additionalProperties": {
+        "$ref": "#/definitions/PropertyDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "PropertyDefinition": {
+      "type": "object",
+      "description": "Definition of a single property",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the property"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the property"
+        },
+        "value_type": {
+          "type": "string",
+          "enum": ["string", "date", "integer", "boolean"],
+          "description": "Data type for non-reference properties"
+        },
+        "reference_type": {
+          "type": "string",
+          "enum": ["persons", "places", "events", "relationships", "sources", "citations", "repositories", "media"],
+          "description": "Entity type for reference properties"
+        },
+        "temporal": {
+          "type": "boolean",
+          "description": "Whether this property can vary over time"
+        },
+        "fields": {
+          "type": "object",
+          "description": "Sub-schema for structured property components",
+          "additionalProperties": {
+            "$ref": "#/definitions/FieldDefinition"
+          }
+        }
+      },
+      "not": {
+        "required": ["value_type", "reference_type"]
+      }
+    },
+    "FieldDefinition": {
+      "type": "object",
+      "description": "Definition of a field within a structured property",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the field"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the field"
+        }
+      }
+    }
+  }
+}

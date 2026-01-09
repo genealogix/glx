@@ -70,15 +70,26 @@ GENEALOGIX supports various repository types:
 | `state_province` | string | State or province |
 | `postal_code` | string | Postal/zip code |
 | `country` | string | Country |
-| `phone` | string | Telephone number |
-| `email` | string | Email address |
 | `website` | string | URL to repository website |
-| `access_hours` | string | Hours of operation/access |
-| `properties` | object | Vocabulary-defined properties |
+| `properties` | object | Vocabulary-defined properties (see below) |
 | `notes` | string | Free-form notes |
 | `tags` | array | Tags for categorization |
+
+### Properties
+
+Contact information and access details are stored in the `properties` field using the repository properties vocabulary:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `phones` | string | Phone number(s) for the repository |
+| `emails` | string | Email address(es) for the repository |
+| `fax` | string | Fax number |
+| `access_hours` | string | Hours of operation/access |
 | `access_restrictions` | string | Any restrictions on access |
-| `holding_types` | array | Types of materials held (microfilm, digital, books, etc.) |
+| `holding_types` | string | Types of materials held |
+| `external_ids` | string | External identifiers (FamilySearch, WikiTree, etc.) |
+
+**See [Vocabularies - Repository Properties](vocabularies.md#repository-properties) for the full vocabulary definition.**
 
 ## Usage Patterns
 
@@ -93,8 +104,9 @@ repositories:
     city: "Leeds"
     state_province: "Yorkshire"
     country: "England"
-    phone: "+44 113 247 6000"
     website: "https://www.leeds.gov.uk/libraries"
+    properties:
+      phones: "+44 113 247 6000"
 ```
 
 ### National Archive
@@ -107,15 +119,13 @@ repositories:
     address: "Kew, Richmond"
     city: "London"
     country: "England"
-    phone: "+44 20 8876 3444"
-    email: "enquiry@nationalarchives.gov.uk"
     website: "https://www.nationalarchives.gov.uk"
-    access_hours: "Monday-Friday 9am-5pm"
-    holding_types:
-      - "government records"
-      - "microfilm"
-      - "digital images"
-    access_restrictions: "Some records require appointment"
+    properties:
+      phones: "+44 20 8876 3444"
+      emails: "enquiry@nationalarchives.gov.uk"
+      access_hours: "Monday-Friday 9am-5pm"
+      holding_types: "government records; microfilm; digital images"
+      access_restrictions: "Some records require appointment"
 ```
 
 ### Online Database
@@ -126,14 +136,10 @@ repositories:
     name: "Ancestry.com"
     type: database
     website: "https://www.ancestry.com"
-    access_hours: "24/7"
-    holding_types:
-      - "census records"
-      - "vital records"
-      - "military records"
-      - "church records"
-      - "newspapers"
-    access_restrictions: "Subscription required"
+    properties:
+      access_hours: "24/7"
+      holding_types: "census records; vital records; military records; church records; newspapers"
+      access_restrictions: "Subscription required"
 ```
 
 ### Church Archive
@@ -146,14 +152,11 @@ repositories:
     address: "St Paul's Churchyard"
     city: "London"
     country: "England"
-    phone: "+44 20 7246 8348"
-    email: "archive@stpauls.co.uk"
-    holding_types:
-      - "parish registers"
-      - "marriage records"
-      - "baptismal records"
-      - "manuscripts"
-    access_restrictions: "By appointment only"
+    properties:
+      phones: "+44 20 7246 8348"
+      emails: "archive@stpauls.co.uk"
+      holding_types: "parish registers; marriage records; baptismal records; manuscripts"
+      access_restrictions: "By appointment only"
 ```
 
 ## Repository in Sources
@@ -197,9 +200,9 @@ repositories/
 ## Validation Rules
 
 - `name` must be present and non-empty
-- Type must be from the [repository types vocabulary](vocabularies.md#repository-types-vocabulary)
+- `type` must be from the [repository types vocabulary](vocabularies.md#repository-types-vocabulary)
 - If `website` is specified, it should be a valid URL
-- If `email` is specified, it should be a valid email address
+- Properties must be defined in the repository properties vocabulary
 
 ## GEDCOM Mapping
 
@@ -208,19 +211,20 @@ repositories/
 | Entity ID (map key) | (synthetic) | Not in GEDCOM |
 | `name` | REPO.NAME | Repository name |
 | `address` | REPO.ADDR | Repository address |
-| `phone` | REPO.PHON | Phone number (non-standard) |
-| `email` | REPO.EMAIL | Email (non-standard) |
 | `website` | REPO.WWW | Website (non-standard) |
+| `properties.phones` | REPO.PHON | Phone number(s) |
+| `properties.emails` | REPO.EMAIL | Email address(es) |
+| `properties.external_ids` | REPO.EXID | External identifiers (GEDCOM 7.0) |
 
 ## Access Information
 
 Best practices for recording repository access:
 
 - Include both physical address and website URL if applicable
-- Note any access restrictions or requirements (appointment, membership, subscription)
-- Record hours of operation for physical repositories
-- Include phone/email for inquiries
-- Document required identification or credentials
+- Note any access restrictions in `properties.access_restrictions`
+- Record hours of operation in `properties.access_hours`
+- Include contact details in `properties.phones` and `properties.emails`
+- Document types of materials held in `properties.holding_types`
 
 ## Related Entities
 

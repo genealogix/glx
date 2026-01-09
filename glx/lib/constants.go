@@ -349,6 +349,18 @@ const (
 	PropRelationshipProperties = "relationship_properties"
 	PropPlaceProperties        = "place_properties"
 	PropMediaProperties        = "media_properties"
+	PropRepositoryProperties   = "repository_properties"
+)
+
+// Standard Repository Property Names - commonly used properties on Repository entities
+const (
+	RepositoryPropertyPhones             = "phones"
+	RepositoryPropertyEmails             = "emails"
+	RepositoryPropertyFax                = "fax"
+	RepositoryPropertyAccessHours        = "access_hours"
+	RepositoryPropertyAccessRestrictions = "access_restrictions"
+	RepositoryPropertyHoldingTypes       = "holding_types"
+	RepositoryPropertyExternalIDs        = "external_ids"
 )
 
 // Standard Media Property Names - commonly used properties on Media entities

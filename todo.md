@@ -38,7 +38,6 @@
 
 - 🟡 **Source properties**: Create `source-properties.glx` vocabulary. Consider which fields should move to properties (e.g., `coverage` was removed as a direct field).
 - 🟡 Citation properties - should some fields be vocabulary-controlled properties?
-- 🟡 Repository properties - many fields [access_hours, access_restrictions, holding_types, etc] could be properties
 
 ### Participant Unification
 
@@ -81,10 +80,6 @@
 ### Notes Anti-Pattern Audit
 
 **Anti-pattern**: Dumping structured data into Notes fields instead of proper typed fields/properties
-
-#### Repository ([gedcom_repository.go](glx/lib/gedcom_repository.go))
-- 🟡 **Line 104**: Additional phones concatenated into notes → Change `Phone string` to `Phones []string`
-- 🟡 **Line 110**: Additional emails concatenated into notes → Change `Email string` to `Emails []string`
 
 #### Source ([gedcom_source.go](glx/lib/gedcom_source.go))
 - 🟡 **Line 65**: ABBR (abbreviation) dumped in notes → Add `Abbreviation` field to Source struct

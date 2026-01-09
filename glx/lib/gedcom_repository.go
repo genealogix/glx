@@ -43,7 +43,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	// Extract external IDs (GEDCOM 7.0 EXID tags)
 	exids := extractExternalIDs(repoRecord)
 	if len(exids) > 0 {
-		repository.Properties["external_ids"] = exids
+		repository.Properties[RepositoryPropertyExternalIDs] = exids
 	}
 
 	// Process subrecords
@@ -73,11 +73,11 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 			}
 
 		case GedcomTagPhon:
-			// Phone - collect all, use first as primary
+			// Phone - collect all into properties
 			phones = append(phones, sub.Value)
 
 		case GedcomTagEmail:
-			// Email - collect all, use first as primary
+			// Email - collect all into properties
 			emails = append(emails, sub.Value)
 
 		case GedcomTagWww:
@@ -97,18 +97,14 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 		}
 	}
 
-	// Set first phone/email as primary
+	// Store phones in properties (multi-value)
 	if len(phones) > 0 {
-		repository.Phone = phones[0]
-		if len(phones) > 1 {
-			notes = append(notes, "Additional phones: "+strings.Join(phones[1:], ", "))
-		}
+		repository.Properties[RepositoryPropertyPhones] = phones
 	}
+
+	// Store emails in properties (multi-value)
 	if len(emails) > 0 {
-		repository.Email = emails[0]
-		if len(emails) > 1 {
-			notes = append(notes, "Additional emails: "+strings.Join(emails[1:], ", "))
-		}
+		repository.Properties[RepositoryPropertyEmails] = emails
 	}
 
 	// Combine notes

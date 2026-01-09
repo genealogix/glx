@@ -76,6 +76,7 @@ func (glx *GLXFile) buildPropertyVocabMaps(result *ValidationResult) {
 	result.PropertyVocabs[PropRelationshipProperties] = glx.RelationshipProperties
 	result.PropertyVocabs[PropPlaceProperties] = glx.PlaceProperties
 	result.PropertyVocabs[PropMediaProperties] = glx.MediaProperties
+	result.PropertyVocabs[PropRepositoryProperties] = glx.RepositoryProperties
 }
 
 // buildIDSet is a helper function that creates a set of IDs from a map[string]any.
@@ -245,6 +246,7 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 	glx.validateEntityProperties(EntityTypeRelationships, glx.Relationships, result.PropertyVocabs[PropRelationshipProperties], result)
 	glx.validateEntityProperties(EntityTypePlaces, glx.Places, result.PropertyVocabs[PropPlaceProperties], result)
 	glx.validateEntityProperties(EntityTypeMedia, glx.Media, result.PropertyVocabs[PropMediaProperties], result)
+	glx.validateEntityProperties(EntityTypeRepositories, glx.Repositories, result.PropertyVocabs[PropRepositoryProperties], result)
 }
 
 // validateEntityProperties iterates over entities and validates their properties.
@@ -360,8 +362,24 @@ func (glx *GLXFile) validatePropertyValue(
 	result *ValidationResult,
 ) {
 	isTemporal := propDef.Temporal != nil && *propDef.Temporal
+	isMultiValue := propDef.MultiValue != nil && *propDef.MultiValue
 
-	// Handle non-temporal properties: must be simple value
+	// Handle multi-value properties: can be array of simple values
+	if isMultiValue {
+		if listVal, isList := propValue.([]any); isList {
+			// Validate each item in the array
+			for i, item := range listVal {
+				glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s[%d]", propName, i), item, propDef.ValueType, result)
+			}
+		} else {
+			// Single value is also allowed for multi-value properties
+			glx.validateValueType(entityType, entityID, "properties."+propName, propValue, propDef.ValueType, result)
+		}
+
+		return
+	}
+
+	// Handle non-temporal, non-multi-value properties: must be simple value
 	if !isTemporal {
 		// For non-temporal properties, value should NOT be a list
 		if _, isList := propValue.([]any); isList {
@@ -369,7 +387,7 @@ func (glx *GLXFile) validatePropertyValue(
 				SourceType: entityType,
 				SourceID:   entityID,
 				Field:      "properties." + propName,
-				Message: fmt.Sprintf("%s[%s].properties.%s: non-temporal property has list value (expected simple value)",
+				Message: fmt.Sprintf("%s[%s].properties.%s: non-temporal property has list value (expected simple value or use multi_value: true)",
 					entityType, entityID, propName),
 			})
 		} else {

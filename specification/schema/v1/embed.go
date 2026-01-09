@@ -65,3 +65,13 @@ var RelationshipPropertiesSchema []byte
 //
 //go:embed vocabularies/place-properties.schema.json
 var PlacePropertiesSchema []byte
+
+// MediaPropertiesSchema contains the embedded media-properties vocabulary schema.
+//
+//go:embed vocabularies/media-properties.schema.json
+var MediaPropertiesSchema []byte
+
+// RepositoryPropertiesSchema contains the embedded repository-properties vocabulary schema.
+//
+//go:embed vocabularies/repository-properties.schema.json
+var RepositoryPropertiesSchema []byte

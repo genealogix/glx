@@ -1,0 +1,44 @@
+# Standard Repository Properties
+# This file defines the standard properties for repository entities.
+# These properties describe contact information, access details, and holdings.
+# Archives can extend this with custom properties by adding additional entries.
+
+repository_properties:
+  phones:
+    label: "Phone Numbers"
+    description: "Telephone numbers for the repository"
+    value_type: string
+    multi_value: true
+
+  emails:
+    label: "Email Addresses"
+    description: "Email addresses for the repository"
+    value_type: string
+    multi_value: true
+
+  fax:
+    label: "Fax Number"
+    description: "Fax number for the repository"
+    value_type: string
+
+  access_hours:
+    label: "Access Hours"
+    description: "Hours of operation or access availability"
+    value_type: string
+
+  access_restrictions:
+    label: "Access Restrictions"
+    description: "Any restrictions on access (e.g., by appointment only, membership required)"
+    value_type: string
+
+  holding_types:
+    label: "Holding Types"
+    description: "Types of materials held by the repository (e.g., microfilm, digital, books)"
+    value_type: string
+    multi_value: true
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems (e.g., FamilySearch, WikiTree)"
+    value_type: string
+    multi_value: true
