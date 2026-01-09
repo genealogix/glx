@@ -350,6 +350,7 @@ const (
 	PropPlaceProperties        = "place_properties"
 	PropMediaProperties        = "media_properties"
 	PropRepositoryProperties   = "repository_properties"
+	PropCitationProperties     = "citation_properties"
 )
 
 // Standard Repository Property Names - commonly used properties on Repository entities
@@ -375,6 +376,12 @@ const (
 	MediaPropertyOriginalFilename = "original_filename"
 	MediaPropertyPhotographer     = "photographer"
 	MediaPropertyLocation         = "location"
+)
+
+// Standard Citation Property Names - commonly used properties on Citation entities
+const (
+	CitationPropertyLocator        = "locator"
+	CitationPropertyTextFromSource = "text_from_source"
 )
 
 // Place Types - used by inferPlaceType function

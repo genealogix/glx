@@ -78,15 +78,18 @@ sources:
 citations:
   citation-1851-census:
     source: source-1851-census
-    text_from_source: "John Smith, age 1, born Leeds, father: James Smith"
+    properties:
+      text_from_source: "John Smith, age 1, born Leeds, father: James Smith"
 
   citation-1881-census:
     source: source-1881-census
-    text_from_source: "John Smith, age 31, occupation: blacksmith, residence: London"
+    properties:
+      text_from_source: "John Smith, age 31, occupation: blacksmith, residence: London"
 
   citation-trade-directory:
     source: source-trade-directory
-    text_from_source: "J. Smith - Blacksmith, 42 Oxford Street, London"
+    properties:
+      text_from_source: "J. Smith - Blacksmith, 42 Oxford Street, London"
 
 # Assertions providing evidence for the properties
 assertions:

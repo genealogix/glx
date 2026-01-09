@@ -10,7 +10,7 @@ layout: doc
 
 ## Overview
 
-A Citation entity represents a specific reference to evidence that supports genealogical conclusions. Citations link to Source entities and provide detailed information about where evidence was found, including page numbers and data dates.
+A Citation entity represents a specific reference to evidence that supports genealogical conclusions. Citations link to Source entities and provide detailed information about where evidence was found within the source.
 
 ## File Format
 
@@ -21,8 +21,9 @@ All GENEALOGIX files use entity type keys at the top level:
 citations:
   citation-birth-record:
     source: source-parish-register
-    page: "45"
-    text_from_source: "John Smith, born 15 January 1850"
+    properties:
+      locator: "Page 45"
+      text_from_source: "John Smith, born 15 January 1850"
 ```
 
 **Key Points:**
@@ -51,13 +52,22 @@ One source can have many citations referencing different pages or sections.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `page` | string | Page number or locator within source |
-| `text_from_source` | string | Transcription or excerpt from the source |
-| `locator` | string | Location within source (e.g., 'Page 45, Entry 123', 'Film 1234567, Image 87') |
 | `repository` | string | Reference to Repository entity |
 | `media` | array | References to Media entities |
+| `properties` | object | Vocabulary-defined properties (see [Citation Properties](#properties)) |
 | `notes` | string | Free-form notes about the citation |
 | `tags` | array | User-defined tags for organization |
+
+### Properties
+
+Citation properties are defined in the `citation_properties` vocabulary. Standard properties include:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `locator` | string | Location within source (e.g., 'Page 45', 'Film 1234567, Image 87', 'Entry 123') |
+| `text_from_source` | string | Transcription or excerpt from the source |
+
+**See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README.md#citation-properties)
 
 ## Usage Patterns
 
@@ -67,8 +77,9 @@ One source can have many citations referencing different pages or sections.
 citations:
   citation-marriage-record:
     source: source-parish-register
-    page: "125"
-    text_from_source: "John Smith married to Mary Jones, 15 May 1850"
+    properties:
+      locator: "Page 125"
+      text_from_source: "John Smith married to Mary Jones, 15 May 1850"
 ```
 
 Note: The `id` is the map key (`citation-marriage-record`), not a separate field.
@@ -79,13 +90,13 @@ Note: The `id` is the map key (`citation-marriage-record`), not a separate field
 citations:
   citation-census-online:
     source: source-ancestry-census
-    page: "Schedule 7, piece 1123"
-    locator: "https://www.ancestry.com/..., Image 87342534"
-    text_from_source: |
-      Name: John Smith
-      Age: 35
-      Occupation: Blacksmith
-      Place of Birth: Leeds, Yorkshire, England
+    properties:
+      locator: "Schedule 7, piece 1123, Image 87342534"
+      text_from_source: |
+        Name: John Smith
+        Age: 35
+        Occupation: Blacksmith
+        Place of Birth: Leeds, Yorkshire, England
 ```
 
 ### Citation to Archive Document
@@ -95,11 +106,11 @@ citations:
   citation-will-john:
     source: source-probate-wills
     repository: repository-probate
-    page: "23"
-    locator: "Item 1876/X/150, Film 100234"
-    text_from_source: |
-      I, John Smith, being of sound mind, do hereby
-      bequeath all my goods and chattels...
+    properties:
+      locator: "Page 23, Item 1876/X/150, Film 100234"
+      text_from_source: |
+        I, John Smith, being of sound mind, do hereby
+        bequeath all my goods and chattels...
 ```
 
 ### Citation with Media References
@@ -108,9 +119,10 @@ citations:
 citations:
   citation-photo:
     source: source-photo-collection
-    locator: "Album 1, page 5"
     media:
       - media-john-photo
+    properties:
+      locator: "Album 1, page 5"
     notes: "Photo provides visual evidence of person's appearance"
 ```
 
@@ -159,14 +171,13 @@ Or more commonly, citations are referenced by ID from assertions.
 |-----------|----------------|-------|
 | Entity ID (map key) | (synthetic) | Not in GEDCOM |
 | `source` | SOUR | Source reference |
-| `page` | SOUR.PAGE | Page within source |
-| `text_from_source` | SOUR.TEXT | Transcribed text |
-| `locator` | SOUR.OBJE.FILE, SOUR.REPO.CALN | Combined from multiple GEDCOM elements |
+| `properties.locator` | SOUR.PAGE | Location within source (GEDCOM PAGE is free-form text, not just page numbers) |
+| `properties.text_from_source` | SOUR.TEXT, SOUR.DATA.TEXT | Transcribed text |
 
 ## Validation Rules
 
 - Source ID must reference an existing Source entity
-- Page information should be concise and meaningful
+- Properties should follow the [citation_properties vocabulary](../5-standard-vocabularies/README.md#citation-properties)
 - Text transcriptions should accurately represent source material
 - Repository, if specified, must exist
 

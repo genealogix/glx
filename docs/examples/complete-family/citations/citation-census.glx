@@ -1,6 +1,7 @@
 citations:
   citation-census-john:
     source: source-census-1851
-    locator: "District: Leeds, Piece: 2319, Folio: 234, Page: 23"
-    text_from_source: "John Smith, age 1, born Leeds. Father: William Smith, blacksmith"
+    properties:
+      locator: "District: Leeds, Piece: 2319, Folio: 234, Page: 23"
+      text_from_source: "John Smith, age 1, born Leeds. Father: William Smith, blacksmith"
     notes: "Secondary source - census enumeration"

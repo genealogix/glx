@@ -239,6 +239,20 @@ Defines standard and custom properties for repository entities including contact
 
 ---
 
+### Citation Properties
+
+Defines standard and custom properties for citation entities including location and transcribed text.
+
+**File:** `vocabularies/citation-properties.glx`
+
+**Standard Properties Include:**
+- `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.)
+- `text_from_source` - Transcription or excerpt of relevant text from the source
+
+**See Also:** [Citation Entity Documentation](../4-entity-types/citation#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#citation-properties-vocabulary)
+
+---
+
 ## Customizing Vocabularies
 
 ::: tip Complete Syntax Reference

@@ -1,0 +1,15 @@
+# Standard Citation Properties
+# This file defines the standard properties for citation entities.
+# These properties describe the specific location and content of cited material.
+# Archives can extend this with custom properties by adding additional entries.
+
+citation_properties:
+  locator:
+    label: "Locator"
+    description: "Location within source where cited material can be found (e.g., 'Page 45', 'Film 1234567, Image 87', 'Entry 123')"
+    value_type: string
+
+  text_from_source:
+    label: "Text from Source"
+    description: "Transcription or excerpt of relevant text from the source"
+    value_type: string

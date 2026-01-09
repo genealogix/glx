@@ -40,6 +40,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `RepositoryProperties` to GLXFile** - Property vocabulary support for repository validation
 - **Moved contact fields to properties** - Repository contact information (phone, email) now stored in `properties` instead of direct entity fields
 
+#### Citation Properties Vocabulary
+- **New `citation-properties.glx` vocabulary** - Standard properties for citation entities:
+  - `locator` - Location within source where cited material can be found (page, film, image, entry reference)
+  - `text_from_source` - Transcription or excerpt of relevant text from the source
+- **Added `CitationProperties` to GLXFile** - Property vocabulary support for citation validation
+- **Added `Properties` field to Citation struct** - Vocabulary-controlled properties on citation entities
+- **Consolidated `page` and `locator` into single `locator` property** - GEDCOM PAGE is free-form text, not just page numbers
+- **Moved `text_from_source` to properties** - Now stored in `properties.text_from_source`
+
 #### Multi-Value Property Support
 - **Added `multi_value` field to PropertyDefinition** - Properties can now be marked as supporting multiple values
 - **Validation support for multi-value properties** - Validator correctly handles array values for multi-value properties
@@ -74,6 +83,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Citation Entity
 - **Removed `data_date` field** - Date the data was recorded is now captured in source or assertion context
+- **Removed `page` field** - Consolidated into `properties.locator`
+- **Removed `locator` field** - Consolidated into `properties.locator`
+- **Removed `text_from_source` field** - Moved to `properties.text_from_source`
 
 #### Source Entity
 - **Removed `citation` field** - Formatted citations belong in citation entities, not sources

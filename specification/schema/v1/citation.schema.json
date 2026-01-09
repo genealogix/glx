@@ -11,18 +11,6 @@
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to Source entity"
     },
-    "page": {
-      "type": "string",
-      "description": "Page number, record number, or location within source"
-    },
-    "text_from_source": {
-      "type": "string",
-      "description": "Transcription or excerpt from the source"
-    },
-    "locator": {
-      "type": "string",
-      "description": "Location within source (e.g., 'Page 45, Entry 123', 'Film 1234567, Image 87')"
-    },
     "repository": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
@@ -32,10 +20,15 @@
       "type": "array",
       "description": "References to Media entities (scans, photos, documents) related to this citation",
       "items": {
-      "type": "string",
+        "type": "string",
         "pattern": "^[a-zA-Z0-9-]{1,64}$"
-    },
+      },
       "uniqueItems": true
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties (locator, text_from_source)",
+      "additionalProperties": true
     },
     "notes": {
       "type": "string",

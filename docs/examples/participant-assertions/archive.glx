@@ -54,11 +54,12 @@ sources:
 citations:
   citation-marriage-cert:
     source: source-marriage-certificate
-    text_from_source: |
-      Marriage Certificate
-      Registered 15 June 1880
-      John Smith (age 30) married Jane Doe (age 25)
-      Witnesses: Thomas Brown, Mary Wilson
+    properties:
+      text_from_source: |
+        Marriage Certificate
+        Registered 15 June 1880
+        John Smith (age 30) married Jane Doe (age 25)
+        Witnesses: Thomas Brown, Mary Wilson
 
 # Participant assertions - showing who participated in the marriage event
 assertions:

@@ -179,6 +179,15 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 		}
 	}
 
+	if data, ok := vocabs["citation-properties.glx"]; ok {
+		var doc struct {
+			CitationProperties map[string]*PropertyDefinition `yaml:"citation_properties"`
+		}
+		if err := yaml.Unmarshal(data, &doc); err == nil {
+			glx.CitationProperties = doc.CitationProperties
+		}
+	}
+
 	return nil
 }
 
@@ -286,6 +295,13 @@ func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 			}
 			if err := yaml.Unmarshal(data, &doc); err == nil {
 				glx.RepositoryProperties = doc.RepositoryProperties
+			}
+		case "citation-properties.glx":
+			var doc struct {
+				CitationProperties map[string]*PropertyDefinition `yaml:"citation_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.CitationProperties = doc.CitationProperties
 			}
 		}
 	}

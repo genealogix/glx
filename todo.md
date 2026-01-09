@@ -37,7 +37,6 @@
 ### Entity Properties
 
 - 🟡 **Source properties**: Create `source-properties.glx` vocabulary. Consider which fields should move to properties (e.g., `coverage` was removed as a direct field).
-- 🟡 Citation properties - should some fields be vocabulary-controlled properties?
 
 ### Participant Unification
 

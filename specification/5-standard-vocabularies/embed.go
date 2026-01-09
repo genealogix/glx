@@ -73,6 +73,11 @@ var MediaProperties []byte
 //go:embed repository-properties.glx
 var RepositoryProperties []byte
 
+// CitationProperties contains the embedded citation-properties.glx vocabulary file.
+//
+//go:embed citation-properties.glx
+var CitationProperties []byte
+
 // Files maps output filenames to embedded content
 var Files = map[string][]byte{
 	"relationship-types.glx":      RelationshipTypes,
@@ -89,4 +94,5 @@ var Files = map[string][]byte{
 	"place-properties.glx":        PlaceProperties,
 	"media-properties.glx":        MediaProperties,
 	"repository-properties.glx":   RepositoryProperties,
+	"citation-properties.glx":     CitationProperties,
 }

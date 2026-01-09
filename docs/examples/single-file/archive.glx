@@ -182,8 +182,9 @@ sources:
 citations:
   citation-abcdef12:
     source: source-12345678
-    locator: "Entry 145, Page 23"
-    text_from_source: "John Smith, born January 15, 1850"
+    properties:
+      locator: "Entry 145, Page 23"
+      text_from_source: "John Smith, born January 15, 1850"
 
 repositories:
   repository-a1b2c3d4:

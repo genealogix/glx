@@ -52,7 +52,10 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 		switch sub.Tag {
 		case GedcomTagPage:
 			// Page/location within source
-			citation.Page = sub.Value
+			if citation.Properties == nil {
+				citation.Properties = make(map[string]any)
+			}
+			citation.Properties[CitationPropertyLocator] = sub.Value
 
 		case GedcomTagData:
 			// Data from source
@@ -69,13 +72,19 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 						}
 					}
 				case GedcomTagText:
-					citation.TextFromSource = dataSub.Value
+					if citation.Properties == nil {
+						citation.Properties = make(map[string]any)
+					}
+					citation.Properties[CitationPropertyTextFromSource] = dataSub.Value
 				}
 			}
 
 		case GedcomTagText:
 			// Text from source (GEDCOM 5.5.1)
-			citation.TextFromSource = sub.Value
+			if citation.Properties == nil {
+				citation.Properties = make(map[string]any)
+			}
+			citation.Properties[CitationPropertyTextFromSource] = sub.Value
 
 		case GedcomTagQuay:
 			// GEDCOM quality assessment (0-3) - preserve in notes

@@ -47,6 +47,7 @@ type GLXFile struct {
 	PlaceProperties        map[string]*PropertyDefinition `yaml:"place_properties,omitempty"`
 	MediaProperties        map[string]*PropertyDefinition `yaml:"media_properties,omitempty"`
 	RepositoryProperties   map[string]*PropertyDefinition `yaml:"repository_properties,omitempty"`
+	CitationProperties     map[string]*PropertyDefinition `yaml:"citation_properties,omitempty"`
 
 	// Validation state (built on demand, cached)
 	validation *ValidationResult
@@ -190,14 +191,12 @@ type Source struct {
 
 // Citation represents a citation of a source.
 type Citation struct {
-	SourceID       string   `refType:"sources"      yaml:"source"`
-	Page           string   `yaml:"page,omitempty"`
-	TextFromSource string   `yaml:"text_from_source,omitempty"`
-	Locator        string   `yaml:"locator,omitempty"`
-	RepositoryID   string   `refType:"repositories" yaml:"repository,omitempty"`
-	Media          []string `refType:"media"        yaml:"media,omitempty"`
-	Notes          string   `yaml:"notes,omitempty"`
-	Tags           []string `yaml:"tags,omitempty"`
+	SourceID     string         `refType:"sources"      yaml:"source"`
+	RepositoryID string         `refType:"repositories" yaml:"repository,omitempty"`
+	Media        []string       `refType:"media"        yaml:"media,omitempty"`
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source)
+	Notes        string         `yaml:"notes,omitempty"`
+	Tags         []string       `yaml:"tags,omitempty"`
 }
 
 // Repository represents a repository where sources are held.
