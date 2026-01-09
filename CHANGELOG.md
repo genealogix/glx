@@ -12,7 +12,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.3] - 2026-01-03
 
+### Added
+
+#### Media Properties Vocabulary
+- **New `media-properties.glx` vocabulary** - Standard properties for media entities:
+  - `subjects` - People depicted or referenced in the media
+  - `width`, `height` - Dimensions in pixels for images/video
+  - `duration` - Duration in seconds for audio/video
+  - `file_size` - File size in bytes
+  - `crop` - Crop coordinates (top, left, width, height)
+  - `medium` - Physical medium type (photograph, document, film)
+  - `original_filename` - Original filename before import
+  - `photographer` - Person who created the media
+  - `location` - Place where the media was created
+- **Added `Properties` field to Media struct** - Vocabulary-controlled properties on media entities
+- **Added `MediaProperties` to GLXFile** - Property vocabulary support for media validation
+
 ### Changed
+
+#### CLI
+- **Changed `glx import` default format** - Now defaults to multi-file (`-f multi`) instead of single-file
+
+#### GEDCOM Import
+- **MEDI tag handling** - Medium type now stored in `properties.medium` instead of notes
+- **CROP tag handling** - Crop coordinates now stored in `properties.crop` instead of notes
+- **Citation linkage on media** - SOUR on OBJE now properly links via `citation.Media` instead of dumping to notes
 
 #### Entity Type Documentation Structure
 - **Standardized entity file structure** - All entity type documentation now follows consistent section order:
