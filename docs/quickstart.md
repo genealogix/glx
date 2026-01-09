@@ -71,22 +71,15 @@ Create your first person file. All files use the `.glx` extension and are writte
 
 **Create `persons/person-john-smith.glx`:**
 ```yaml
-# persons/person-john-smith.glx
 persons:
   person-john-smith:
-    
-    # Basic information
-    name:
-      given: John
-      surname: Smith
-      display: John Smith
-    
-    # Optional: Add birth information
-    birth:
-      date: "1850-01-15"
-      place: place-leeds
-    
-    # Optional: Add biographical notes
+    properties:
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
+      gender: "male"
     notes: |
       John was a blacksmith in Leeds during the Industrial Revolution.
       He worked at the ironworks on Wellington Street.
@@ -98,28 +91,19 @@ Create the place referenced in the birth information:
 
 **Create `places/place-leeds.glx`:**
 ```yaml
-# places/place-leeds.glx
 places:
   place-leeds:
-    
-    name: Leeds
+    name: "Leeds"
     type: city
-    
-    # Hierarchical location (optional)
     parent: place-yorkshire
-    
-    # Geographic coordinates (optional)
-    coordinates:
-      latitude: 53.7960
-      longitude: -1.5479
-    
-    # Alternative names (optional)
+    latitude: 53.7960
+    longitude: -1.5479
     alternative_names:
-  - West Riding
-
-notes: |
-  Major industrial city in Yorkshire, England.
-  Known for textile manufacturing and ironworks in the 19th century.
+      - name: "West Riding"
+        type: historical
+    notes: |
+      Major industrial city in Yorkshire, England.
+      Known for textile manufacturing and ironworks in the 19th century.
 ```
 
 ## Step 5: Add a Birth Event
@@ -128,24 +112,17 @@ Create a structured birth event with evidence:
 
 **Create `events/event-john-birth.glx`:**
 ```yaml
-# events/event-john-birth.glx
-id: event-john-birth
-type: event
-
-# Event type and date
-event_type: birth
-date: "1850-01-15"
-place: place-leeds
-
-# Participants in the event
-participants:
-  - person: person-john-smith
-    role: subject
-
-# Optional: Add context
-description: |
-  Birth of John Smith, first child of Thomas and Mary Smith.
-  Born at 23 Wellington Street, Leeds.
+events:
+  event-john-birth:
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
+    participants:
+      - person: person-john-smith
+        role: principal
+    description: |
+      Birth of John Smith, first child of Thomas and Mary Smith.
+      Born at 23 Wellington Street, Leeds.
 ```
 
 ## Step 6: Validate Your Archive
@@ -175,57 +152,37 @@ Make your research more credible by adding source citations:
 
 **Create `sources/source-parish-register.glx`:**
 ```yaml
-# sources/source-parish-register.glx
-id: source-parish-register
-type: source
-
-title: St. Paul's Parish Register
-type: church_register
-creator: Church of England, St. Paul's Parish
-date: "1849-1855"
-
-# Where to find this source
-repository: repository-leeds-library
-
-# Publication details
-publication_info:
-  publisher: St. Paul's Church
-  publication_date: "1850"
+sources:
+  source-parish-register:
+    title: "St. Paul's Parish Register"
+    type: church_register
+    creator: "Church of England, St. Paul's Parish"
+    date: "1849-1855"
+    repository: repository-leeds-library
+    publication_info: "St. Paul's Church, Leeds, Yorkshire"
 ```
 
 **Create `citations/citation-birth-entry.glx`:**
 ```yaml
-# citations/citation-birth-entry.glx
-id: citation-birth-entry
-type: citation
-
-source: source-parish-register
-
-# Specific location within the source
-locator: "Entry 145, page 23"
-
-# Optional: Transcription
-transcription: |
-  "January 15th, 1850. John, son of Thomas Smith, blacksmith,
-  and Mary Smith, of 23 Wellington Street. Baptized January 20th."
+citations:
+  citation-birth-entry:
+    source: source-parish-register
+    locator: "Entry 145, page 23"
+    text_from_source: |
+      "January 15th, 1850. John, son of Thomas Smith, blacksmith,
+      and Mary Smith, of 23 Wellington Street. Baptized January 20th."
 ```
 
-**Update the person file to reference the citation:**
+**Create an assertion to link the citation to the person's birth:**
 ```yaml
-# persons/person-john-smith.glx
-id: person-john-smith
-type: person
-
-name:
-  given: John
-  surname: Smith
-  display: John Smith
-
-birth:
-  date: "1850-01-15"
-  place: place-leeds
-  citations:
-    - citation-birth-entry  # Reference to citation
+assertions:
+  assertion-john-birth:
+    subject: person-john-smith
+    claim: born_on
+    value: "1850-01-15"
+    citations:
+      - citation-birth-entry
+    confidence: high
 ```
 
 ## Step 8: Version Control with Git

@@ -118,15 +118,16 @@ UK Census series identifier (1841-1911 census returns).
 ## I
 
 ### ID (Identifier)
-A unique identifier for each entity in the format `{type}-{8hex}` where type is the entity type (person, event, etc.) and 8hex is 8 lowercase hexadecimal characters.
+A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens, typically prefixed with entity type.
 
 **Examples:**
-- `person-a1b2c3d4`
-- `event-b2c3d4e5`
-- `place-c3d4e5f6`
+- `person-a1b2c3d4` - random hex format (recommended for collaboration)
+- `person-john-smith` - descriptive format
+- `event-birth-1850`
+- `place-leeds`
 
 ### ID Pattern
-The regular expression pattern `{type}-{8hex}` used for all entity identifiers.
+Entity IDs are alphanumeric with hyphens, 1-64 characters. Commonly prefixed with entity type for clarity.
 
 ### Indirect Evidence
 Evidence that requires interpretation or additional information to support a conclusion.
@@ -211,7 +212,7 @@ A physical or digital archive, library, church, or institution that holds geneal
 > **See Also:** For complete specification, see [Repository Entity](../../specification/4-entity-types/repository.md)
 
 ### Required Fields
-Fields that must be present in every entity file: `id`, `version`, and `type`.
+Varies by entity type. Common required fields include `title` (sources), `name` (places, repositories), and entity-specific fields. See individual entity specifications for details.
 
 ### Research Branch
 A Git branch dedicated to investigating a specific research question or time period.

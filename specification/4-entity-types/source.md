@@ -63,7 +63,7 @@ sources:
 | `description` | string | Description of the source |
 | `repository` | string | Reference to Repository entity |
 | `creator` | string | Creating organization or individual |
-| `publication_info` | object | Publication details |
+| `publication_info` | string | Publication information (from GEDCOM PUBL tag) |
 | `language` | string | Language of the source |
 | `media` | array | References to Media entities |
 | `notes` | string | Free-form notes |
@@ -333,11 +333,7 @@ sources:
     authors:
       - "Elizabeth Brown"
     date: "1985"
-    publication_info:
-      publisher: "Yorkshire Genealogical Society"
-      place: "Leeds, Yorkshire"
-      edition: "1st Edition"
-      pages: "324"
+    publication_info: "Yorkshire Genealogical Society, Leeds, Yorkshire. 1st Edition, 324 pages."
     repository: repository-family-history-library
     description: |
       Comprehensive genealogy of the Smith family of Leeds
