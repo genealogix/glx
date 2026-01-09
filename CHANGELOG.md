@@ -79,6 +79,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - event.md, relationship.md: File path references → vocabulary links
 - **Added missing type validation rules** to media.md and repository.md
 
+#### JSON Schema URLs
+- **Standardized schema `$id` URLs** - All JSON schemas now use consistent GitHub raw content URLs
+  - Format: `https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/{name}.schema.json`
+  - Removed references to `schema.genealogix.io` and `genealogix.org` domains
+  - All schema files now include `.schema.json` extension in their `$id`
+
 ### Removed
 
 #### Citation Entity

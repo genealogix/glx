@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://genealogix.org/schema/v1/glx-file.schema.json",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/glx-file.schema.json",
   "title": "GENEALOGIX File",
   "description": "A GENEALOGIX file can contain any combination of entities, vocabularies, and property definitions.",
   "type": "object",

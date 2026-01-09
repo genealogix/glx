@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schema.genealogix.io/v1/place",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/place.schema.json",
   "title": "Place",
   "description": "A geographical location. ID comes from the map key in the parent structure.",
   "type": "object",

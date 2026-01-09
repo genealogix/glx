@@ -6,7 +6,6 @@
 
 ## 🚀 Infrastructure & Deployment
 
-- 🔴 Deploy JSON schemas to `https://schema.genealogix.io/v1/*` URLs referenced in [specification/schema/README.md](specification/schema/README.md)
 - 🟢 Add make command for goreleaser
 
 ---
