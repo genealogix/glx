@@ -79,23 +79,23 @@ The imported archive will include:
 - Evidence-based assertions
 
 Output formats:
-- single: Single YAML file (default)
-- multi: Multi-file directory structure (one file per entity)`,
-	Example: `  # Import to single file
-  glx import family.ged -o family.glx
+- multi: Multi-file directory structure (default, one file per entity)
+- single: Single YAML file`,
+	Example: `  # Import to multi-file directory (default)
+  glx import family.ged -o family-archive
 
-  # Import to multi-file directory
-  glx import family.ged -o family-archive --format multi
+  # Import to single file
+  glx import family.ged -o family.glx --format single
 
   # Import without validation
-  glx import family.ged -o family.glx --no-validate`,
+  glx import family.ged -o family-archive --no-validate`,
 	Args: cobra.ExactArgs(1),
 	RunE: runImport,
 }
 
 func init() {
 	importCmd.Flags().StringVarP(&importOutput, "output", "o", "", "Output file or directory (required)")
-	importCmd.Flags().StringVarP(&importFormat, "format", "f", "single", "Output format: single or multi")
+	importCmd.Flags().StringVarP(&importFormat, "format", "f", "multi", "Output format: multi or single")
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")
