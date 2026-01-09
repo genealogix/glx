@@ -34,7 +34,9 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	conv.Logger.LogInfo(fmt.Sprintf("Converting OBJE %s -> %s", objeRecord.XRef, mediaID))
 
 	// Create media entity
-	media := &Media{}
+	media := &Media{
+		Properties: make(map[string]any),
+	}
 
 	var fileRef string
 	var formatType string
@@ -66,10 +68,10 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 			// GEDCOM 5.5.1: Format at OBJE level
 			formatType = sub.Value
 
-			// Check for MEDI subrecord (store in notes)
+			// Check for MEDI subrecord - store as property
 			for _, formSub := range sub.SubRecords {
 				if formSub.Tag == GedcomTagMedi {
-					notes = append(notes, "Medium: "+formSub.Value)
+					media.Properties[MediaPropertyMedium] = formSub.Value
 				}
 			}
 
@@ -80,10 +82,10 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case GedcomTagCrop:
-			// GEDCOM 7.0: Crop coordinates stored in notes (should be a field - see todo.md)
+			// GEDCOM 7.0: Crop coordinates - store as structured property
 			crop := extractCrop(sub)
 			if crop != nil {
-				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))
+				media.Properties[MediaPropertyCrop] = crop
 			}
 
 		case GedcomTagNote:
@@ -94,10 +96,12 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case GedcomTagSour:
-			// Source citations stored in notes (should be a field - see todo.md)
+			// Source citations - link the citation to this media
 			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
 			if err == nil && citationID != "" {
-				notes = append(notes, "Citation: "+citationID)
+				if citation, ok := conv.GLX.Citations[citationID]; ok {
+					citation.Media = append(citation.Media, mediaID)
+				}
 			}
 		}
 	}
@@ -124,6 +128,11 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 		media.Notes = strings.Join(notes, "\n")
 	}
 
+	// Clean up empty Properties map so it doesn't appear in YAML
+	if len(media.Properties) == 0 {
+		media.Properties = nil
+	}
+
 	// Store media
 	conv.GLX.Media[mediaID] = media
 	conv.Stats.MediaCreated++
@@ -139,7 +148,9 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 	conv.Logger.LogInfo("Converting embedded OBJE -> " + mediaID)
 
 	// Create media entity
-	media := &Media{}
+	media := &Media{
+		Properties: make(map[string]any),
+	}
 
 	var fileRef string
 	var formatType string
@@ -165,9 +176,10 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 		case GedcomTagForm:
 			formatType = sub.Value
 
+			// Check for MEDI subrecord - store as property
 			for _, formSub := range sub.SubRecords {
 				if formSub.Tag == GedcomTagMedi {
-					notes = append(notes, "Medium: "+formSub.Value)
+					media.Properties[MediaPropertyMedium] = formSub.Value
 				}
 			}
 
@@ -177,10 +189,10 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 			}
 
 		case GedcomTagCrop:
-			// Crop coordinates stored in notes (should be a field - see todo.md)
+			// GEDCOM 7.0: Crop coordinates - store as structured property
 			crop := extractCrop(sub)
 			if crop != nil {
-				notes = append(notes, fmt.Sprintf("Crop: %+v", crop))
+				media.Properties[MediaPropertyCrop] = crop
 			}
 
 		case GedcomTagNote:
@@ -209,6 +221,11 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 	// Combine notes
 	if len(notes) > 0 {
 		media.Notes = strings.Join(notes, "\n")
+	}
+
+	// Clean up empty Properties map so it doesn't appear in YAML
+	if len(media.Properties) == 0 {
+		media.Properties = nil
 	}
 
 	// Store media

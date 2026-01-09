@@ -45,6 +45,7 @@ type GLXFile struct {
 	EventProperties        map[string]*PropertyDefinition `yaml:"event_properties,omitempty"`
 	RelationshipProperties map[string]*PropertyDefinition `yaml:"relationship_properties,omitempty"`
 	PlaceProperties        map[string]*PropertyDefinition `yaml:"place_properties,omitempty"`
+	MediaProperties        map[string]*PropertyDefinition `yaml:"media_properties,omitempty"`
 
 	// Validation state (built on demand, cached)
 	validation *ValidationResult
@@ -240,13 +241,14 @@ type AssertionParticipant struct {
 
 // Media represents a media object, like a photo or document.
 type Media struct {
-	URI         string   `yaml:"uri"`
-	MimeType    string   `yaml:"mime_type,omitempty"`
-	Hash        string   `yaml:"hash,omitempty"`
-	Title       string   `yaml:"title,omitempty"`
-	Description string   `yaml:"description,omitempty"`
-	Notes       string   `yaml:"notes,omitempty"`
-	Tags        []string `yaml:"tags,omitempty"`
+	URI         string         `yaml:"uri"`
+	MimeType    string         `yaml:"mime_type,omitempty"`
+	Hash        string         `yaml:"hash,omitempty"`
+	Title       string         `yaml:"title,omitempty"`
+	Description string         `yaml:"description,omitempty"`
+	Properties  map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes       string         `yaml:"notes,omitempty"`
+	Tags        []string       `yaml:"tags,omitempty"`
 }
 
 // ============================================================================
@@ -366,6 +368,7 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates = append(duplicates, mergeMap("event_properties", g.EventProperties, other.EventProperties)...)
 	duplicates = append(duplicates, mergeMap("relationship_properties", g.RelationshipProperties, other.RelationshipProperties)...)
 	duplicates = append(duplicates, mergeMap("place_properties", g.PlaceProperties, other.PlaceProperties)...)
+	duplicates = append(duplicates, mergeMap("media_properties", g.MediaProperties, other.MediaProperties)...)
 
 	return duplicates
 }

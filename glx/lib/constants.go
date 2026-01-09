@@ -348,6 +348,21 @@ const (
 	PropEventProperties        = "event_properties"
 	PropRelationshipProperties = "relationship_properties"
 	PropPlaceProperties        = "place_properties"
+	PropMediaProperties        = "media_properties"
+)
+
+// Standard Media Property Names - commonly used properties on Media entities
+const (
+	MediaPropertySubjects         = "subjects"
+	MediaPropertyWidth            = "width"
+	MediaPropertyHeight           = "height"
+	MediaPropertyDuration         = "duration"
+	MediaPropertyFileSize         = "file_size"
+	MediaPropertyCrop             = "crop"
+	MediaPropertyMedium           = "medium"
+	MediaPropertyOriginalFilename = "original_filename"
+	MediaPropertyPhotographer     = "photographer"
+	MediaPropertyLocation         = "location"
 )
 
 // Place Types - used by inferPlaceType function

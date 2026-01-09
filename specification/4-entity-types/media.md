@@ -57,6 +57,7 @@ media:
 | `description` | string | Description of the media |
 | `date` | string | Date the media was created |
 | `source` | string | Reference to Source entity this media documents |
+| `properties` | object | Vocabulary-defined properties (see Properties section) |
 | `notes` | string | Free-form notes |
 | `tags` | array | Tags for categorization |
 
@@ -182,6 +183,59 @@ tags:
   - original-document
   - high-quality-scan
   - verified
+```
+
+## Properties
+
+Media entities support vocabulary-defined properties through the `properties` field. Standard media properties are defined in `vocabularies/media-properties.glx`.
+
+### Standard Media Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `subjects` | reference (persons) | People depicted or referenced in the media |
+| `width` | integer | Width in pixels (for images and video) |
+| `height` | integer | Height in pixels (for images and video) |
+| `duration` | integer | Duration in seconds (for audio and video) |
+| `file_size` | integer | File size in bytes |
+| `crop` | structured | Crop coordinates (top, left, width, height) |
+| `medium` | string | Physical medium type (e.g., photograph, film, document) |
+| `photographer` | reference (persons) | Person who created the media |
+| `location` | reference (places) | Place where the media was created |
+
+### Example with Properties
+
+```yaml
+media:
+  media-family-portrait:
+    uri: "media/photos/smith-family-1890.jpg"
+    mime_type: "image/jpeg"
+    title: "Smith Family Portrait, 1890"
+    properties:
+      subjects:
+        - person-john-smith
+        - person-mary-smith
+        - person-alice-smith
+      width: 3200
+      height: 2400
+      medium: "photograph"
+      location: place-leeds-studio
+```
+
+### Cropped Region Example
+
+```yaml
+media:
+  media-census-detail:
+    uri: "media/documents/census-1851-page-234.jpg"
+    mime_type: "image/jpeg"
+    title: "1851 Census - Smith Family Entry"
+    properties:
+      crop:
+        top: 450
+        left: 100
+        width: 800
+        height: 200
 ```
 
 ## Usage Patterns

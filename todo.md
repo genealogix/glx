@@ -8,7 +8,6 @@
 
 - 🔴 Deploy JSON schemas to `https://schema.genealogix.io/v1/*` URLs referenced in [specification/schema/README.md](specification/schema/README.md)
 - 🟢 Add make command for goreleaser
-- 🟢 Test `glx completion` command
 
 ---
 
@@ -20,7 +19,6 @@
 
 ### Specification TODOs
 
-- 🔴 **Media entity refactor**: Create `media-properties.glx` vocabulary and add these fields as properties: `subjects`, `citation`, `width`, `height`, `duration`, `file_size`. Also clarify how working with files, URIs, and local paths works.
 - 🔴 **Place alternative_names refactor**: The `alternative_names` structure in [place.md](specification/4-entity-types/place.md) uses a `date_range` sub-object that should be handled via properties instead for consistency with the temporal property system.
 - 🟡 **Rename `claim` to `property`**: Assertion entities use `claim` to reference properties. For clarity, consider renaming `claim` field to `property` in a future version. Currently documented in [assertion.md](specification/4-entity-types/assertion.md) with clarification note.
 - 🟡 **Review standard vocabularies**: Audit all standard vocabulary files (.glx) in [5-standard-vocabularies/](specification/5-standard-vocabularies/) to ensure consistency and completeness.
@@ -94,11 +92,6 @@
 - 🟡 **Line 98**: EVEN (events recorded) dumped in notes → Add `EventsRecorded []string` field to Source
 - 🟡 **Line 101**: AGNC (agency) dumped in notes → Add `Agency` field to Source struct
 
-#### Media ([gedcom_media.go](glx/lib/gedcom_media.go))
-- 🟡 **Line 82, 180**: MEDI (medium type) dumped in notes → Add `Medium` or `MediaType` field to Media struct
-- 🟡 **Line 96, 192**: CROP coordinates dumped in notes → Add structured `Crop *CropCoordinates` field
-- 🟡 **Line 110**: Citation IDs dumped as strings in notes → Add `Citations []string` field to Media struct
-
 #### Citation ([gedcom_evidence.go](glx/lib/gedcom_evidence.go))
 - 🟡 **Line 63**: Source date dumped in notes → Add `SourceDate` field to Citation struct
 
@@ -121,7 +114,7 @@
 
 ## 💻 CLI & User Experience
 
-- 🔴 Default to multi-file format on import (not single file)
+(No current items)
 
 ---
 

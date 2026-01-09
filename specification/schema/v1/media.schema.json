@@ -18,10 +18,13 @@
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to Source entity this media documents"
     },
+    "properties": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Vocabulary-defined properties (validated against media_properties vocabulary)"
+    },
     "notes": { "type": "string", "description": "Free-form notes" },
     "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "description": "Tags for categorization" }
   },
   "additionalProperties": false
 }
-
-

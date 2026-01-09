@@ -1,0 +1,68 @@
+# Standard Media Properties
+# This file defines the standard properties for media entities.
+# These properties describe characteristics of media objects (photos, documents, audio, video).
+# Archives can extend this with custom properties by adding additional entries.
+
+media_properties:
+  subjects:
+    label: "Subjects"
+    description: "People depicted or referenced in the media"
+    reference_type: persons
+
+  width:
+    label: "Width"
+    description: "Width in pixels (for images and video)"
+    value_type: integer
+
+  height:
+    label: "Height"
+    description: "Height in pixels (for images and video)"
+    value_type: integer
+
+  duration:
+    label: "Duration"
+    description: "Duration in seconds (for audio and video)"
+    value_type: integer
+
+  file_size:
+    label: "File Size"
+    description: "File size in bytes"
+    value_type: integer
+
+  crop:
+    label: "Crop"
+    description: "Crop coordinates for displaying a region of the media"
+    value_type: string
+    fields:
+      top:
+        label: "Top"
+        description: "Top edge position in pixels"
+      left:
+        label: "Left"
+        description: "Left edge position in pixels"
+      width:
+        label: "Width"
+        description: "Crop region width in pixels"
+      height:
+        label: "Height"
+        description: "Crop region height in pixels"
+
+  medium:
+    label: "Medium"
+    description: "Physical medium type (e.g., photograph, document, film)"
+    value_type: string
+
+  original_filename:
+    label: "Original Filename"
+    description: "Original filename before import or renaming"
+    value_type: string
+
+  photographer:
+    label: "Photographer"
+    description: "Person who created the media (photographer, videographer, etc.)"
+    reference_type: persons
+
+  location:
+    label: "Location"
+    description: "Place where the media was created"
+    reference_type: places
