@@ -17,7 +17,7 @@
       "description": "Reference to Repository where source is held"
     },
     "creator": { "type": "string" },
-    "publication_info": { "type": "string", "description": "Publication information (from GEDCOM PUBL tag)" },
+    "publication_info": { "type": "string", "description": "Publication information about this source (e.g., publisher, place, date; may include data imported from a GEDCOM PUBL tag)" },
     "language": { "type": "string" },
     "notes": { "type": "string" },
     "media": {
