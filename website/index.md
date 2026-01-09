@@ -44,27 +44,15 @@ features:
 
   - icon: 🌳
     title: Git-Native Architecture
-    details: Full version control and collaboration support using Git workflows that genealogists already know and trust.
+    details: Full version control and collaboration support using Git workflows.
 
   - icon: 📋
     title: Human-Readable Format
-    details: Clear YAML files instead of binary formats make your genealogy data easy to read, edit, and review.
-
-  - icon: 📚
-    title: Evidence-First Model
-    details: Every genealogical claim is backed by documented sources, creating a complete audit trail from repository to conclusion.
-
-  - icon: 🔍
-    title: Confidence Levels
-    details: Express researcher certainty in conclusions with structured confidence levels for all assertions.
+    details: Clear YAML files make your genealogy data easy to read, edit, and review.
 
   - icon: ✅
     title: Schema Validation
     details: JSON Schema-based validation ensures data integrity and catches errors before they propagate.
-
-  - icon: 🔗
-    title: Complete Provenance
-    details: Full audit trail from original source documents through citations to final genealogical conclusions.
 ---
 
 ## Why GENEALOGIX?
