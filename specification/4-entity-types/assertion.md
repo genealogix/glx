@@ -47,7 +47,7 @@ assertions:
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `subject` | string | The entity this assertion is about |
 | `claim` OR `participant` | string/object | Either a claim string or participant object (mutually exclusive) |
-| `citations` OR `sources` | array | **At least one required** (validated) |
+| `citations` OR `sources` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
 
 ### Optional Fields
 
