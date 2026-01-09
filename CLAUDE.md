@@ -369,11 +369,14 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 
 ### Commit Messages
 
+- Keep messages brief - prefer single-line messages when possible
+- Do NOT include "Generated with Claude Code" or Co-Authored-By footers
 - Use conventional commits format
 - Examples:
   - `feat: Add GEDCOM 7.0 EXID support`
   - `fix: Handle family events ANUL, DIVF, CENS, EVEN`
   - `docs: Update serializer implementation plan`
+  - `Remove alternative_names from Place entity`
 
 ### What NOT to Do
 
