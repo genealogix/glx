@@ -378,6 +378,13 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
   - `docs: Update serializer implementation plan`
   - `Remove alternative_names from Place entity`
 
+### Changelog
+
+- Always update `CHANGELOG.md` when making user-facing changes
+- Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.3]`)
+- Use appropriate subsections: Added, Changed, Fixed, Removed
+- Group related changes under descriptive headers (e.g., `#### Citation Entity`)
+
 ### What NOT to Do
 
 - **Don't produce time estimates** in plans or responses
