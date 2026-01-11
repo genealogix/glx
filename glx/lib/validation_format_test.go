@@ -170,7 +170,7 @@ func TestPropertyValueFormatValidation(t *testing.T) {
 	}
 
 	// Validate all properties
-	glx.validateEntityProperties("persons", glx.Persons, propVocab, result)
+	glx.validateEntityProperties("persons", "person_properties", glx.Persons, propVocab, result)
 
 	// Should have warnings for bad_date and bad_int
 	if len(result.Warnings) < 2 {

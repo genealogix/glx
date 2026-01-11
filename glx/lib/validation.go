@@ -77,6 +77,7 @@ func (glx *GLXFile) buildPropertyVocabMaps(result *ValidationResult) {
 	result.PropertyVocabs[PropPlaceProperties] = glx.PlaceProperties
 	result.PropertyVocabs[PropMediaProperties] = glx.MediaProperties
 	result.PropertyVocabs[PropRepositoryProperties] = glx.RepositoryProperties
+	result.PropertyVocabs[PropCitationProperties] = glx.CitationProperties
 }
 
 // buildIDSet is a helper function that creates a set of IDs from a map[string]any.
@@ -241,17 +242,19 @@ func isVocabularyType(typeName string) bool {
 
 // validateAllProperties validates the `properties` field on all relevant entities.
 func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
-	glx.validateEntityProperties(EntityTypePersons, glx.Persons, result.PropertyVocabs[PropPersonProperties], result)
-	glx.validateEntityProperties(EntityTypeEvents, glx.Events, result.PropertyVocabs[PropEventProperties], result)
-	glx.validateEntityProperties(EntityTypeRelationships, glx.Relationships, result.PropertyVocabs[PropRelationshipProperties], result)
-	glx.validateEntityProperties(EntityTypePlaces, glx.Places, result.PropertyVocabs[PropPlaceProperties], result)
-	glx.validateEntityProperties(EntityTypeMedia, glx.Media, result.PropertyVocabs[PropMediaProperties], result)
-	glx.validateEntityProperties(EntityTypeRepositories, glx.Repositories, result.PropertyVocabs[PropRepositoryProperties], result)
+	glx.validateEntityProperties(EntityTypePersons, PropPersonProperties, glx.Persons, result.PropertyVocabs[PropPersonProperties], result)
+	glx.validateEntityProperties(EntityTypeEvents, PropEventProperties, glx.Events, result.PropertyVocabs[PropEventProperties], result)
+	glx.validateEntityProperties(EntityTypeRelationships, PropRelationshipProperties, glx.Relationships, result.PropertyVocabs[PropRelationshipProperties], result)
+	glx.validateEntityProperties(EntityTypePlaces, PropPlaceProperties, glx.Places, result.PropertyVocabs[PropPlaceProperties], result)
+	glx.validateEntityProperties(EntityTypeMedia, PropMediaProperties, glx.Media, result.PropertyVocabs[PropMediaProperties], result)
+	glx.validateEntityProperties(EntityTypeRepositories, PropRepositoryProperties, glx.Repositories, result.PropertyVocabs[PropRepositoryProperties], result)
+	glx.validateEntityProperties(EntityTypeCitations, PropCitationProperties, glx.Citations, result.PropertyVocabs[PropCitationProperties], result)
 }
 
 // validateEntityProperties iterates over entities and validates their properties.
 func (glx *GLXFile) validateEntityProperties(
 	entityType string,
+	propVocabKey string,
 	entities any,
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
@@ -268,14 +271,14 @@ func (glx *GLXFile) validateEntityProperties(
 			continue
 		}
 		if properties, ok := propsField.Interface().(map[string]any); ok {
-			glx.validateProperties(entityType, entityID, properties, propVocab, result)
+			glx.validateProperties(entityType, entityID, propVocabKey, properties, propVocab, result)
 		}
 	}
 }
 
 // validateProperties validates a single `properties` map against its vocabulary.
 func (glx *GLXFile) validateProperties(
-	entityType, entityID string,
+	entityType, entityID, propVocabKey string,
 	properties map[string]any,
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
@@ -285,7 +288,7 @@ func (glx *GLXFile) validateProperties(
 			SourceType: entityType,
 			SourceID:   entityID,
 			Field:      "properties",
-			Message:    fmt.Sprintf("%s[%s]: has properties but no %s_properties vocabulary was found", entityType, entityID, entityType),
+			Message:    fmt.Sprintf("%s[%s]: has properties but no %s vocabulary was found", entityType, entityID, propVocabKey),
 		})
 
 		return

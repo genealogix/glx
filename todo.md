@@ -29,7 +29,6 @@
 
 ### Schema Improvements
 
-- 🟡 JSON schemas don't validate entity `properties` structure (e.g., person name with fields). Properties are vocabulary-controlled and dynamic, so schema validation uses `additionalProperties: true`. Consider documenting this as intentional or adding runtime property validation in the CLI.
 - 🟢 Should property fields have data types?
 
 ### Entity Properties

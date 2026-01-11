@@ -189,6 +189,14 @@
         "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-properties.schema.json" }
       },
       "additionalProperties": false
+    },
+    "citation_properties": {
+      "type": "object",
+      "description": "Citation property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/citation-properties.schema.json" }
+      },
+      "additionalProperties": false
     }
   }
 }

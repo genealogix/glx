@@ -107,6 +107,16 @@ person_properties:
     description: "Gender identity"
     value_type: string
 
+citation_properties:
+  locator:
+    label: "Locator"
+    description: "Location within source where cited material can be found"
+    value_type: string
+  text_from_source:
+    label: "Text from Source"
+    description: "Transcription or excerpt of relevant text from the source"
+    value_type: string
+
 persons:
   person-a1b2c3d4:
     properties:

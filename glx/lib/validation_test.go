@@ -117,7 +117,7 @@ func TestValidatePropertyWarnings(t *testing.T) {
 		assert.Equal(t, "persons", warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties", warn.Field)
-		assert.Contains(t, warn.Message, "no persons_properties vocabulary was found")
+		assert.Contains(t, warn.Message, "no person_properties vocabulary was found")
 	})
 }
 
@@ -652,6 +652,71 @@ func TestValidateRepositoryReferences(t *testing.T) {
 		}
 		result := archive.Validate()
 		assert.Empty(t, result.Errors)
+	})
+}
+
+func TestValidateCitationProperties(t *testing.T) {
+	t.Run("valid citation properties", func(t *testing.T) {
+		archive := &GLXFile{
+			Sources: map[string]*Source{"source-1": {Title: "Test Source"}},
+			Citations: map[string]*Citation{
+				"citation-1": {
+					SourceID: "source-1",
+					Properties: map[string]any{
+						"locator":          "page 42",
+						"text_from_source": "The text from the source",
+					},
+				},
+			},
+			CitationProperties: map[string]*PropertyDefinition{
+				"locator":          {Label: "Locator", ValueType: "string"},
+				"text_from_source": {Label: "Text From Source", ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("unknown citation property", func(t *testing.T) {
+		archive := &GLXFile{
+			Sources: map[string]*Source{"source-1": {Title: "Test Source"}},
+			Citations: map[string]*Citation{
+				"citation-1": {
+					SourceID: "source-1",
+					Properties: map[string]any{
+						"unknown_prop": "some value",
+					},
+				},
+			},
+			CitationProperties: map[string]*PropertyDefinition{
+				"locator": {Label: "Locator", ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		assert.Equal(t, "citations", result.Warnings[0].SourceType)
+		assert.Equal(t, "citation-1", result.Warnings[0].SourceID)
+		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
+	})
+
+	t.Run("missing citation properties vocabulary", func(t *testing.T) {
+		archive := &GLXFile{
+			Sources: map[string]*Source{"source-1": {Title: "Test Source"}},
+			Citations: map[string]*Citation{
+				"citation-1": {
+					SourceID: "source-1",
+					Properties: map[string]any{
+						"locator": "page 42",
+					},
+				},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "no citation_properties vocabulary was found")
 	})
 }
 

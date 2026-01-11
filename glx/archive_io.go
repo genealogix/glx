@@ -54,6 +54,7 @@ func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
 		PlaceProperties:        make(map[string]*lib.PropertyDefinition),
 		MediaProperties:        make(map[string]*lib.PropertyDefinition),
 		RepositoryProperties:   make(map[string]*lib.PropertyDefinition),
+		CitationProperties:     make(map[string]*lib.PropertyDefinition),
 	}
 
 	var allDuplicates []string

@@ -351,6 +351,7 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates = append(duplicates, mergeMap("place_properties", g.PlaceProperties, other.PlaceProperties)...)
 	duplicates = append(duplicates, mergeMap("media_properties", g.MediaProperties, other.MediaProperties)...)
 	duplicates = append(duplicates, mergeMap("repository_properties", g.RepositoryProperties, other.RepositoryProperties)...)
+	duplicates = append(duplicates, mergeMap("citation_properties", g.CitationProperties, other.CitationProperties)...)
 
 	return duplicates
 }
