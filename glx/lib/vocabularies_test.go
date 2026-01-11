@@ -1,7 +1,10 @@
 package lib
 
 import (
+	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestStandardVocabularies(t *testing.T) {
@@ -38,9 +41,18 @@ func TestStandardVocabularies(t *testing.T) {
 		if len(content) == 0 {
 			t.Errorf("Empty vocabulary: %s", name)
 		}
-	}
 
-	t.Logf("Found %d vocabularies", len(vocabs))
+		// Verify content is valid YAML
+		var parsed map[string]any
+		if err := yaml.Unmarshal(content, &parsed); err != nil {
+			t.Errorf("Vocabulary %s is not valid YAML: %v", name, err)
+		}
+
+		// Verify vocabulary has expected structure (should contain vocabulary type data)
+		if len(parsed) == 0 {
+			t.Errorf("Vocabulary %s has no keys after parsing", name)
+		}
+	}
 }
 
 func TestListStandardVocabularies(t *testing.T) {
@@ -58,19 +70,48 @@ func TestListStandardVocabularies(t *testing.T) {
 		}
 	}
 
-	t.Logf("Found vocabulary names: %v", names)
+	// Verify expected vocabulary names are present
+	expectedNames := []string{
+		"event-types",
+		"relationship-types",
+		"place-types",
+		"source-types",
+	}
+
+	for _, expected := range expectedNames {
+		found := false
+		for _, name := range names {
+			if name == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected vocabulary %q not found in list", expected)
+		}
+	}
+
+	// Verify each name can be retrieved with GetStandardVocabulary
+	for _, name := range names {
+		_, err := GetStandardVocabulary(name)
+		if err != nil {
+			t.Errorf("Listed vocabulary %q cannot be retrieved: %v", name, err)
+		}
+	}
 }
 
 func TestGetStandardVocabulary(t *testing.T) {
 	tests := []struct {
-		name    string
-		wantErr bool
+		name        string
+		wantErr     bool
+		expectKey   string // A key we expect to find in the vocabulary
+		errContains string // Expected error message substring
 	}{
-		{"event-types", false},
-		{"relationship-types", false},
-		{"place-types", false},
-		{"source-types", false},
-		{"nonexistent-vocab", true},
+		{"event-types", false, "event_types", ""},
+		{"relationship-types", false, "relationship_types", ""},
+		{"place-types", false, "place_types", ""},
+		{"source-types", false, "source_types", ""},
+		{"nonexistent-vocab", true, "", "not found"},
 	}
 
 	for _, tt := range tests {
@@ -80,6 +121,8 @@ func TestGetStandardVocabulary(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error for %s, got nil", tt.name)
+				} else if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("Expected error containing %q, got %q", tt.errContains, err.Error())
 				}
 
 				return
@@ -94,24 +137,33 @@ func TestGetStandardVocabulary(t *testing.T) {
 			if len(content) == 0 {
 				t.Errorf("Empty content for %s", tt.name)
 			}
+
+			// Verify content is valid YAML
+			var parsed map[string]any
+			if err := yaml.Unmarshal(content, &parsed); err != nil {
+				t.Errorf("Vocabulary %s content is not valid YAML: %v", tt.name, err)
+				return
+			}
+
+			// Verify expected key is present
+			if tt.expectKey != "" {
+				if _, ok := parsed[tt.expectKey]; !ok {
+					t.Errorf("Vocabulary %s missing expected key %q, found keys: %v", tt.name, tt.expectKey, keysOf(parsed))
+				}
+			}
 		})
 	}
+}
+
+// keysOf returns the keys of a map for error messages
+func keysOf(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // These tests were removed because WriteStandardVocabularies and WriteVocabulariesToFile
 // were removed from lib (they violated the no-I/O rule). Vocabulary writing is now
 // handled by the CLI commands, and vocabulary serialization is tested in roundtrip tests.
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && indexOf(s, substr) >= 0
-}
-
-func indexOf(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-
-	return -1
-}

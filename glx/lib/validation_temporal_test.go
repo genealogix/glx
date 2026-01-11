@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -33,6 +34,18 @@ func TestValidatePropertyValue_NonTemporalWithList(t *testing.T) {
 	// Should have 1 warning: non-temporal property with list value
 	if len(result.Warnings) != 1 {
 		t.Errorf("Expected 1 warning, got %d", len(result.Warnings))
+	} else {
+		// Verify warning mentions the property and entity
+		warning := result.Warnings[0]
+		if !strings.Contains(warning.Message, "gender") && !strings.Contains(warning.Field, "gender") {
+			t.Errorf("Warning should reference 'gender' property, got: %+v", warning)
+		}
+		if warning.SourceType != "persons" {
+			t.Errorf("Warning should have source type 'persons', got: %s", warning.SourceType)
+		}
+		if warning.SourceID != "person-1" {
+			t.Errorf("Warning should have source ID 'person-1', got: %s", warning.SourceID)
+		}
 	}
 	if len(result.Errors) != 0 {
 		t.Errorf("Expected 0 errors, got %d", len(result.Errors))
@@ -69,6 +82,18 @@ func TestValidatePropertyValue_TemporalListMissingValue(t *testing.T) {
 	// Should have 0 warnings (date is present)
 	if len(result.Errors) != 1 {
 		t.Errorf("Expected 1 error, got %d: %v", len(result.Errors), result.Errors)
+	} else {
+		// Verify error details
+		err := result.Errors[0]
+		if err.SourceType != "persons" {
+			t.Errorf("Error should have source type 'persons', got: %s", err.SourceType)
+		}
+		if err.SourceID != "person-1" {
+			t.Errorf("Error should have source ID 'person-1', got: %s", err.SourceID)
+		}
+		if !strings.Contains(err.Message, "value") {
+			t.Errorf("Error message should mention missing 'value', got: %s", err.Message)
+		}
 	}
 	if len(result.Warnings) != 0 {
 		t.Errorf("Expected 0 warnings, got %d: %v", len(result.Warnings), result.Warnings)
@@ -102,6 +127,19 @@ func TestValidatePropertyValue_TemporalListNotObject(t *testing.T) {
 	// Should have 2 errors: both items are not objects
 	if len(result.Errors) != 2 {
 		t.Errorf("Expected 2 errors, got %d: %v", len(result.Errors), result.Errors)
+	} else {
+		// Verify both errors have correct source info
+		for i, err := range result.Errors {
+			if err.SourceType != "persons" {
+				t.Errorf("Error %d should have source type 'persons', got: %s", i, err.SourceType)
+			}
+			if err.SourceID != "person-1" {
+				t.Errorf("Error %d should have source ID 'person-1', got: %s", i, err.SourceID)
+			}
+			if !strings.Contains(err.Message, "object") {
+				t.Errorf("Error %d message should mention 'object', got: %s", i, err.Message)
+			}
+		}
 	}
 }
 
@@ -138,6 +176,18 @@ func TestValidatePropertyValue_TemporalListMissingDate(t *testing.T) {
 	}
 	if len(result.Warnings) != 1 {
 		t.Errorf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	} else {
+		// Verify warning details
+		warning := result.Warnings[0]
+		if warning.SourceType != "persons" {
+			t.Errorf("Warning should have source type 'persons', got: %s", warning.SourceType)
+		}
+		if warning.SourceID != "person-1" {
+			t.Errorf("Warning should have source ID 'person-1', got: %s", warning.SourceID)
+		}
+		if !strings.Contains(warning.Message, "date") {
+			t.Errorf("Warning message should mention missing 'date', got: %s", warning.Message)
+		}
 	}
 }
 

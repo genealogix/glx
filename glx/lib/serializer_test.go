@@ -69,16 +69,30 @@ func TestSerializeSingleFileBytes(t *testing.T) {
 		t.Error("Serialized bytes are empty")
 	}
 
-	// Check that YAML contains expected content
-	yamlStr := string(yamlBytes)
-	if !contains(yamlStr, "person-001") {
-		t.Error("YAML doesn't contain person-001")
-	}
-	if !contains(yamlStr, "John") {
-		t.Error("YAML doesn't contain John")
+	// Verify output is valid YAML by parsing it back
+	var parsed GLXFile
+	if err := yaml.Unmarshal(yamlBytes, &parsed); err != nil {
+		t.Fatalf("Serialized output is not valid YAML: %v", err)
 	}
 
-	t.Logf("Serialized %d bytes", len(yamlBytes))
+	// Verify the parsed structure matches the original
+	if len(parsed.Persons) != 1 {
+		t.Errorf("Expected 1 person, got %d", len(parsed.Persons))
+	}
+
+	person, ok := parsed.Persons["person-001"]
+	if !ok {
+		t.Fatal("Person person-001 not found in parsed output")
+	}
+
+	// Verify the name property was preserved
+	given, surname := ExtractNameFields(person.Properties["name"])
+	if given != "John" {
+		t.Errorf("Expected given name 'John', got %q", given)
+	}
+	if surname != "Doe" {
+		t.Errorf("Expected surname 'Doe', got %q", surname)
+	}
 }
 
 func TestSerializeSingleFile(t *testing.T) {
@@ -128,18 +142,32 @@ func TestSerializeSingleFile(t *testing.T) {
 		t.Fatal("Output file not created")
 	}
 
-	// Read and check content
+	// Read and parse the output file
 	data, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatalf("Failed to read output file: %v", err)
 	}
 
-	yamlStr := string(data)
-	if !contains(yamlStr, "person-001") {
-		t.Error("YAML doesn't contain person-001")
+	// Verify output is valid YAML by parsing it
+	var parsed GLXFile
+	if err := yaml.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("Output file is not valid YAML: %v", err)
 	}
 
-	t.Logf("Wrote %d bytes to %s", len(data), outputPath)
+	// Verify the structure
+	if len(parsed.Persons) != 1 {
+		t.Errorf("Expected 1 person in file, got %d", len(parsed.Persons))
+	}
+
+	person, ok := parsed.Persons["person-001"]
+	if !ok {
+		t.Fatal("Person person-001 not found in file")
+	}
+
+	given, _ := ExtractNameFields(person.Properties["name"])
+	if given != "John" {
+		t.Errorf("Expected given name 'John', got %q", given)
+	}
 }
 
 func TestDeserializeSingleFileBytes(t *testing.T) {
@@ -179,9 +207,23 @@ assertions: {}
 		t.Fatal("Person person-001 not found")
 	}
 
-	given, _ := ExtractNameFields(person.Properties["name"])
+	given, surname := ExtractNameFields(person.Properties["name"])
 	if given != "John" {
 		t.Errorf("Expected name.fields.given=John, got %s", given)
+	}
+	if surname != "Doe" {
+		t.Errorf("Expected name.fields.surname=Doe, got %s", surname)
+	}
+
+	// Verify all entity maps are initialized (not nil)
+	if glx.Events == nil {
+		t.Error("Events map should not be nil")
+	}
+	if glx.Relationships == nil {
+		t.Error("Relationships map should not be nil")
+	}
+	if glx.Places == nil {
+		t.Error("Places map should not be nil")
 	}
 }
 
@@ -331,7 +373,51 @@ func TestSerializeMultiFile(t *testing.T) {
 		t.Errorf("Expected 1 event file, got %d", len(eventFiles))
 	}
 
-	t.Logf("Created multi-file archive in %s", tmpDir)
+	// Verify content of a person file
+	if len(personFiles) > 0 {
+		firstPersonPath := filepath.Join(personsDir, personFiles[0].Name())
+		personData, err := os.ReadFile(firstPersonPath)
+		if err != nil {
+			t.Fatalf("Failed to read person file: %v", err)
+		}
+
+		// Parse and verify structure
+		var personWrapper EntityWithID[Person]
+		if err := yaml.Unmarshal(personData, &personWrapper); err != nil {
+			t.Fatalf("Person file is not valid YAML: %v", err)
+		}
+
+		// Verify _id field is present
+		if personWrapper.ID == "" {
+			t.Error("Person file missing _id field")
+		}
+
+		// Verify properties contain name
+		if personWrapper.Entity.Properties == nil {
+			t.Error("Person properties should not be nil")
+		}
+	}
+
+	// Verify event file content
+	if len(eventFiles) > 0 {
+		firstEventPath := filepath.Join(eventsDir, eventFiles[0].Name())
+		eventData, err := os.ReadFile(firstEventPath)
+		if err != nil {
+			t.Fatalf("Failed to read event file: %v", err)
+		}
+
+		var eventWrapper EntityWithID[Event]
+		if err := yaml.Unmarshal(eventData, &eventWrapper); err != nil {
+			t.Fatalf("Event file is not valid YAML: %v", err)
+		}
+
+		if eventWrapper.ID == "" {
+			t.Error("Event file missing _id field")
+		}
+		if eventWrapper.Entity.Type != "birth" {
+			t.Errorf("Expected event type 'birth', got %q", eventWrapper.Entity.Type)
+		}
+	}
 }
 
 func TestLoadMultiFile(t *testing.T) {
@@ -418,9 +504,20 @@ func TestLoadMultiFile(t *testing.T) {
 		t.Fatal("Person person-001 not found")
 	}
 
-	given, _ := ExtractNameFields(person.Properties["name"])
+	given, surname := ExtractNameFields(person.Properties["name"])
 	if given != "John" {
 		t.Errorf("Expected name.fields.given=John, got %s", given)
+	}
+	if surname != "Doe" {
+		t.Errorf("Expected name.fields.surname=Doe, got %s", surname)
+	}
+
+	// Verify entity maps are initialized
+	if loaded.Events == nil {
+		t.Error("Events map should not be nil after loading")
+	}
+	if loaded.Relationships == nil {
+		t.Error("Relationships map should not be nil after loading")
 	}
 }
 
@@ -464,18 +561,33 @@ func TestRoundTripSingleFile(t *testing.T) {
 		t.Fatalf("Failed to load: %v", err)
 	}
 
-	// Compare
+	// Compare person counts
 	if len(loaded.Persons) != len(original.Persons) {
 		t.Errorf("Person count mismatch: expected %d, got %d", len(original.Persons), len(loaded.Persons))
 	}
 
 	loadedPerson := loaded.Persons["person-001"]
+	if loadedPerson == nil {
+		t.Fatal("person-001 not found after round-trip")
+	}
+
 	originalPerson := original.Persons["person-001"]
 
-	loadedGiven, _ := ExtractNameFields(loadedPerson.Properties["name"])
-	originalGiven, _ := ExtractNameFields(originalPerson.Properties["name"])
+	loadedGiven, loadedSurname := ExtractNameFields(loadedPerson.Properties["name"])
+	originalGiven, originalSurname := ExtractNameFields(originalPerson.Properties["name"])
 	if loadedGiven != originalGiven {
-		t.Error("name.fields.given mismatch after round-trip")
+		t.Errorf("name.fields.given mismatch: expected %q, got %q", originalGiven, loadedGiven)
+	}
+	if loadedSurname != originalSurname {
+		t.Errorf("name.fields.surname mismatch: expected %q, got %q", originalSurname, loadedSurname)
+	}
+
+	// Verify all entity maps are preserved (even if empty)
+	if len(loaded.Events) != len(original.Events) {
+		t.Errorf("Events count mismatch: expected %d, got %d", len(original.Events), len(loaded.Events))
+	}
+	if len(loaded.Relationships) != len(original.Relationships) {
+		t.Errorf("Relationships count mismatch: expected %d, got %d", len(original.Relationships), len(loaded.Relationships))
 	}
 }
 
@@ -503,26 +615,27 @@ func TestEntityWithID(t *testing.T) {
 		t.Fatalf("Failed to marshal: %v", err)
 	}
 
-	// Check YAML contains _id
-	yamlStr := string(yamlBytes)
-	if !contains(yamlStr, "_id: person-001") {
-		t.Error("YAML doesn't contain _id field")
+	if len(yamlBytes) == 0 {
+		t.Fatal("Marshalled YAML is empty")
 	}
 
-	// Unmarshal
+	// Unmarshal and verify round-trip
 	var restored EntityWithID[Person]
 	if err := yaml.Unmarshal(yamlBytes, &restored); err != nil {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
 
-	// Check ID restored
+	// Check ID restored correctly
 	if restored.ID != wrapper.ID {
-		t.Errorf("Expected ID %s, got %s", wrapper.ID, restored.ID)
+		t.Errorf("Expected ID %q, got %q", wrapper.ID, restored.ID)
 	}
 
-	// Check entity restored
-	given, _ := ExtractNameFields(restored.Entity.Properties["name"])
+	// Check entity properties restored correctly
+	given, surname := ExtractNameFields(restored.Entity.Properties["name"])
 	if given != "John" {
-		t.Error("Entity properties not restored correctly")
+		t.Errorf("Expected given name 'John', got %q", given)
+	}
+	if surname != "Doe" {
+		t.Errorf("Expected surname 'Doe', got %q", surname)
 	}
 }

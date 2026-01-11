@@ -19,8 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/genealogix/glx/glx/lib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRunInit_SingleFile(t *testing.T) {
@@ -34,11 +36,21 @@ func TestRunInit_SingleFile(t *testing.T) {
 	_, err = os.Stat(archivePath)
 	require.NoError(t, err, "archive.glx should be created")
 
-	// Check content
+	// Read and parse the content
 	content, err := os.ReadFile(archivePath)
 	require.NoError(t, err)
-	assert.Contains(t, string(content), "persons:")
-	assert.Contains(t, string(content), "relationships:")
+
+	// Verify it's valid YAML by parsing into GLXFile structure
+	var glxFile lib.GLXFile
+	err = yaml.Unmarshal(content, &glxFile)
+	require.NoError(t, err, "archive.glx should contain valid YAML")
+
+	// Verify the structure has all expected entity maps initialized
+	// (They should be empty maps, not nil, for a new archive)
+	assert.NotNil(t, glxFile.Persons, "persons map should be initialized")
+	assert.NotNil(t, glxFile.Relationships, "relationships map should be initialized")
+	assert.NotNil(t, glxFile.Events, "events map should be initialized")
+	assert.NotNil(t, glxFile.Places, "places map should be initialized")
 }
 
 func TestRunInit_MultiFile(t *testing.T) {
@@ -112,14 +124,57 @@ func TestRunInit_WithTestData(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that the person files were created
-	personFiles, err := os.ReadDir(filepath.Join(tmpDir, "persons"))
+	personsDir := filepath.Join(tmpDir, "persons")
+	personFiles, err := os.ReadDir(personsDir)
 	require.NoError(t, err)
 	assert.Len(t, personFiles, numPeople, "should create the correct number of person files")
 
+	// Verify content of at least one person file
+	// The init command writes files in single-file format: persons: { person-id: { ... } }
+	if len(personFiles) > 0 {
+		firstPersonPath := filepath.Join(personsDir, personFiles[0].Name())
+		content, err := os.ReadFile(firstPersonPath)
+		require.NoError(t, err)
+
+		// Parse as a mini GLX file with persons map
+		var miniGlx struct {
+			Persons map[string]*lib.Person `yaml:"persons"`
+		}
+		err = yaml.Unmarshal(content, &miniGlx)
+		require.NoError(t, err, "person file should contain valid YAML")
+		assert.Len(t, miniGlx.Persons, 1, "person file should contain exactly one person")
+
+		// Get the first (only) person
+		for _, person := range miniGlx.Persons {
+			assert.NotNil(t, person.Properties, "person should have properties")
+		}
+	}
+
 	// Check that event files were created (one birth per person)
-	eventFiles, err := os.ReadDir(filepath.Join(tmpDir, "events"))
+	eventsDir := filepath.Join(tmpDir, "events")
+	eventFiles, err := os.ReadDir(eventsDir)
 	require.NoError(t, err)
 	assert.Len(t, eventFiles, numPeople, "should create the correct number of event files")
+
+	// Verify content of at least one event file
+	if len(eventFiles) > 0 {
+		firstEventPath := filepath.Join(eventsDir, eventFiles[0].Name())
+		content, err := os.ReadFile(firstEventPath)
+		require.NoError(t, err)
+
+		// Parse as a mini GLX file with events map
+		var miniGlx struct {
+			Events map[string]*lib.Event `yaml:"events"`
+		}
+		err = yaml.Unmarshal(content, &miniGlx)
+		require.NoError(t, err, "event file should contain valid YAML")
+		assert.Len(t, miniGlx.Events, 1, "event file should contain exactly one event")
+
+		// Get the first (only) event
+		for _, event := range miniGlx.Events {
+			assert.Equal(t, "birth", event.Type, "generated events should be birth events")
+		}
+	}
 }
 
 func TestCreateStandardVocabularies(t *testing.T) {
@@ -138,22 +193,28 @@ func TestCreateStandardVocabularies(t *testing.T) {
 	err = createStandardVocabularies()
 	require.NoError(t, err)
 
-	// Check that vocabulary files were created
-	vocabFiles := []string{
-		"vocabularies/relationship-types.glx",
-		"vocabularies/event-types.glx",
-		"vocabularies/place-types.glx",
-		"vocabularies/repository-types.glx",
-		"vocabularies/participant-roles.glx",
-		"vocabularies/media-types.glx",
-		"vocabularies/confidence-levels.glx",
+	// Check that vocabulary files were created with valid structure
+	vocabFiles := map[string]string{
+		"vocabularies/relationship-types.glx": "relationship_types",
+		"vocabularies/event-types.glx":        "event_types",
+		"vocabularies/place-types.glx":        "place_types",
+		"vocabularies/repository-types.glx":   "repository_types",
+		"vocabularies/participant-roles.glx":  "participant_roles",
+		"vocabularies/media-types.glx":        "media_types",
+		"vocabularies/confidence-levels.glx":  "confidence_levels",
 	}
 
-	for _, file := range vocabFiles {
+	for file, expectedKey := range vocabFiles {
 		filePath := filepath.Join(tmpDir, file)
 		content, err := os.ReadFile(filePath)
 		require.NoError(t, err, "vocabulary file %s should be created", file)
 		assert.NotEmpty(t, content, "vocabulary file %s should not be empty", file)
+
+		// Verify content is valid YAML with expected structure
+		var parsed map[string]any
+		err = yaml.Unmarshal(content, &parsed)
+		require.NoError(t, err, "vocabulary file %s should contain valid YAML", file)
+		assert.Contains(t, parsed, expectedKey, "vocabulary file %s should contain key %q", file, expectedKey)
 	}
 }
 
