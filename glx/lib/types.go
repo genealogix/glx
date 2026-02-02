@@ -124,6 +124,7 @@ type Relationship struct {
 type RelationshipParticipant struct {
 	Person string `refType:"persons"           yaml:"person"`
 	Role   string `refType:"participant_roles" yaml:"role,omitempty"`
+	Notes  string `yaml:"notes,omitempty"`
 }
 
 // Event represents a genealogical event.
@@ -223,10 +224,13 @@ type AssertionParticipant struct {
 // Media represents a media object, like a photo or document.
 type Media struct {
 	URI         string         `yaml:"uri"`
+	Type        string         `refType:"media_types" yaml:"type,omitempty"`
 	MimeType    string         `yaml:"mime_type,omitempty"`
 	Hash        string         `yaml:"hash,omitempty"`
 	Title       string         `yaml:"title,omitempty"`
 	Description string         `yaml:"description,omitempty"`
+	Date        DateString     `yaml:"date,omitempty"`
+	Source      string         `refType:"sources"     yaml:"source,omitempty"`
 	Properties  map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes       string         `yaml:"notes,omitempty"`
 	Tags        []string       `yaml:"tags,omitempty"`

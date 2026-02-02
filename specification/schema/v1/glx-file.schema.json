@@ -197,6 +197,14 @@
         "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/citation-properties.schema.json" }
       },
       "additionalProperties": false
+    },
+    "source_properties": {
+      "type": "object",
+      "description": "Source property vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-properties.schema.json" }
+      },
+      "additionalProperties": false
     }
   }
 }
