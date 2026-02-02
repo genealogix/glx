@@ -90,6 +90,47 @@ type ImportWarning struct {
 	Message string
 }
 
+// scanLinesAllEndings is a split function for bufio.Scanner that handles
+// all line ending formats: LF (\n), CRLF (\r\n), and CR (\r).
+// Based on bufio.ScanLines but extended for CR-only files (old Mac Classic).
+func scanLinesAllEndings(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	// Look for CR or LF
+	for i := 0; i < len(data); i++ {
+		if data[i] == '\n' {
+			// LF - return line without the LF
+			return i + 1, data[0:i], nil
+		}
+		if data[i] == '\r' {
+			// CR - check if followed by LF (CRLF)
+			if i+1 < len(data) {
+				if data[i+1] == '\n' {
+					// CRLF
+					return i + 2, data[0:i], nil
+				}
+				// CR only
+				return i + 1, data[0:i], nil
+			}
+			// CR at end of buffer - need more data to check for CRLF
+			if !atEOF {
+				return 0, nil, nil
+			}
+			// CR at EOF - return line without CR
+			return i + 1, data[0:i], nil
+		}
+	}
+
+	// No line ending found
+	if atEOF {
+		return len(data), data, nil
+	}
+	// Request more data
+	return 0, nil, nil
+}
+
 // ConversionContext holds state during GEDCOM conversion
 type ConversionContext struct {
 	GLX     *GLXFile
@@ -249,7 +290,10 @@ func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCO
 // parseGEDCOMLines parses GEDCOM file line by line
 func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
 	var lines []*GEDCOMLine
+
 	scanner := bufio.NewScanner(reader)
+	// Handle all line ending formats: LF, CRLF, and CR (old Mac Classic)
+	scanner.Split(scanLinesAllEndings)
 
 	// Increase buffer size for large GEDCOM files (torture test has long lines)
 	// Default is 64KB, increase to 1MB

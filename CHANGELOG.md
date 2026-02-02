@@ -97,6 +97,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - Removed references to `schema.genealogix.io` and `genealogix.org` domains
   - All schema files now include `.schema.json` extension in their `$id`
 
+### Fixed
+
+#### GEDCOM Import
+- **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly. Previously caused failed imports.
+
 ### Removed
 
 #### Citation Entity

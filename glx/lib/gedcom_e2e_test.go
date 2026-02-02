@@ -246,9 +246,9 @@ func TestE2E_GEDCOM551_TortureTest(t *testing.T) {
 		t.Fatalf("Import failed: %v", err)
 	}
 
-	// Version check
-	if result.Version != GEDCOMVersion551 {
-		t.Errorf("Expected version 5.5.1, got %s", result.Version)
+	// Version check - file is GEDCOM 5.5, not 5.5.1 (despite directory name)
+	if result.Version != "5.5" {
+		t.Errorf("Expected version 5.5, got %s", result.Version)
 	}
 
 	// Basic structure
@@ -494,7 +494,7 @@ func TestE2E_AllFilesHaveRequiredStructure(t *testing.T) {
 		{"Kennedy 5.5.1", "5.5.1/kennedy-family/kennedy.ged", "5.5.1"},
 		{"British Royalty 5.5.1", "5.5.1/british-royalty/british-royalty.ged", "5.5.1"},
 		{"Bullinger 5.5.1", "5.5.1/bullinger-family/bullinger.ged", "5.5.1"},
-		{"Torture Test 5.5.1", "5.5.1/torture-test-551/torture-test.ged", "5.5.1"},
+		{"Torture Test 5.5", "5.5.1/torture-test-551/torture-test.ged", "5.5"}, // File is 5.5, not 5.5.1
 		{"Minimal 7.0", "7.0/minimal-valid/minimal70.ged", "7.0"},
 		{"Maximal 7.0", "7.0/comprehensive-spec/maximal70.ged", "7.0"},
 		{"Date Formats 7.0", "7.0/date-formats/date-all.ged", "7.0"},
