@@ -8,7 +8,8 @@
   "properties": {
     "type": {
       "type": "string",
-      "description": "Relationship type key"
+      "minLength": 1,
+      "description": "Relationship type (validated against relationship_types vocabulary)"
     },
     "properties": {
       "type": "object",
@@ -31,8 +32,13 @@
           "role": {
             "type": "string",
             "description": "Role of the participant in this relationship"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes about participant's involvement"
           }
-        }
+        },
+        "additionalProperties": true
       }
     },
     "start_event": {

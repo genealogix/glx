@@ -21,7 +21,11 @@
     "notes": { "type": "string" },
     "media": {
       "type": "array",
-      "items": { "type": "string" },
+      "description": "References to Media entities",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
       "uniqueItems": true
     },
     "properties": {
