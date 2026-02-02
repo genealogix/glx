@@ -116,10 +116,6 @@
 
 ## 🧹 Code Organization & Quality
 
-### Architectural Issues
-
-- 🔴 **lib I/O violation** ([gedcom_logging.go:36](glx/lib/gedcom_logging.go#L36)): `NewImportLogger` does direct file I/O with `os.Create`, violating CLAUDE.md rule that lib package must never do I/O. Should accept `io.Writer` instead of path.
-
 ### Bugs
 
 - 🔴 **Unreachable code path** ([gedcom_evidence.go:206](glx/lib/gedcom_evidence.go#L206)): The shared note lookup for GEDCOM 7.0 is unreachable because the function already returns if `noteRecord.Value != ""`. Dead code should be removed or logic fixed.

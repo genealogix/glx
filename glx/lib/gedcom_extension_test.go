@@ -132,7 +132,7 @@ func TestExtensionTagInGEDCOM(t *testing.T) {
 
 	// Import GEDCOM
 	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, "")
+	glx, result, err := ImportGEDCOM(reader, nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -157,7 +157,7 @@ func TestExtensionTagWithSubrecords(t *testing.T) {
 0 TRLR`
 
 	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, "")
+	glx, result, err := ImportGEDCOM(reader, nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -182,7 +182,7 @@ func TestMultipleExtensionTags(t *testing.T) {
 0 TRLR`
 
 	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, "")
+	glx, result, err := ImportGEDCOM(reader, nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -203,7 +203,7 @@ func TestExtensionTagVsUnknownTag(t *testing.T) {
 0 TRLR`
 
 	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, "")
+	glx, result, err := ImportGEDCOM(reader, nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 

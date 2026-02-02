@@ -15,42 +15,26 @@
 package lib
 
 import (
-	"fmt"
+	"io"
 	"log"
-	"os"
 )
 
 // ImportLogger handles logging during GEDCOM import
 type ImportLogger struct {
-	file   *os.File
 	logger *log.Logger
 }
 
-// NewImportLogger creates a new import logger
-func NewImportLogger(logPath string) (*ImportLogger, error) {
-	if logPath == "" {
-		// No logging if path not specified
-		return &ImportLogger{}, nil
-	}
-
-	file, err := os.Create(logPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create log file: %w", err)
+// NewImportLogger creates a new import logger.
+// If w is nil, logging is disabled.
+// The caller is responsible for closing the writer if needed.
+func NewImportLogger(w io.Writer) *ImportLogger {
+	if w == nil {
+		return &ImportLogger{}
 	}
 
 	return &ImportLogger{
-		file:   file,
-		logger: log.New(file, "", log.LstdFlags),
-	}, nil
-}
-
-// Close closes the log file
-func (il *ImportLogger) Close() error {
-	if il.file != nil {
-		return il.file.Close()
+		logger: log.New(w, "", log.LstdFlags),
 	}
-
-	return nil
 }
 
 // LogError logs an error during import

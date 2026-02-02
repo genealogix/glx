@@ -46,7 +46,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 	defer func() { _ = gedcomFile.Close() }()
 
 	// Import GEDCOM from reader
-	glx, _, err := lib.ImportGEDCOM(gedcomFile, "")
+	glx, _, err := lib.ImportGEDCOM(gedcomFile, nil)
 	if err != nil {
 		return fmt.Errorf("failed to import GEDCOM: %w", err)
 	}

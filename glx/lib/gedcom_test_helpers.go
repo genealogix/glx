@@ -2,6 +2,7 @@ package lib
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -15,5 +16,16 @@ func importGEDCOMFromFile(filepath string, logPath string) (*GLXFile, *ImportRes
 	}
 	defer func() { _ = file.Close() }()
 
-	return ImportGEDCOM(file, logPath)
+	// Create log writer if logPath is specified
+	var logWriter io.Writer
+	if logPath != "" {
+		logFile, err := os.Create(logPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create log file: %w", err)
+		}
+		defer func() { _ = logFile.Close() }()
+		logWriter = logFile
+	}
+
+	return ImportGEDCOM(file, logWriter)
 }

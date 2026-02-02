@@ -187,14 +187,12 @@ type FamilyLink struct {
 	PedigreeType string // PEDI value: birth, adopted, foster, sealed, unknown (empty = unspecified)
 }
 
-// ImportGEDCOM imports a GEDCOM file and returns a GLX archive
-func ImportGEDCOM(reader io.Reader, logPath string) (*GLXFile, *ImportResult, error) {
+// ImportGEDCOM imports a GEDCOM file and returns a GLX archive.
+// If logWriter is non-nil, import progress and diagnostics are written to it.
+// The caller is responsible for closing the writer if needed.
+func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResult, error) {
 	// Create logger
-	logger, err := NewImportLogger(logPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create logger: %w", err)
-	}
-	defer func() { _ = logger.Close() }()
+	logger := NewImportLogger(logWriter)
 
 	logger.LogInfo("Starting GEDCOM import")
 
