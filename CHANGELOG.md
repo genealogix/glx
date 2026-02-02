@@ -49,6 +49,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Consolidated `page` and `locator` into single `locator` property** - GEDCOM PAGE is free-form text, not just page numbers
 - **Moved `text_from_source` to properties** - Now stored in `properties.text_from_source`
 
+#### Source Properties Vocabulary
+- **New `source-properties.glx` vocabulary** - Standard properties for source entities:
+  - `abbreviation` - Short reference name (from GEDCOM ABBR)
+  - `call_number` - Repository catalog number (from GEDCOM CALN)
+  - `events_recorded` - Types of events documented by this source (multi-value, from GEDCOM EVEN)
+  - `agency` - Responsible agency (from GEDCOM AGNC)
+  - `coverage` - Geographic/temporal scope of source content
+  - `external_ids` - External system identifiers (multi-value)
+- **Added `SourceProperties` to GLXFile** - Property vocabulary support for source validation
+- **Added `Properties` field to Source struct** - Vocabulary-controlled properties on source entities
+- **GEDCOM import improvement** - ABBR, CALN, EVEN, AGNC, and EXID tags now stored in properties instead of notes
+
 #### Multi-Value Property Support
 - **Added `multi_value` field to PropertyDefinition** - Properties can now be marked as supporting multiple values
 - **Validation support for multi-value properties** - Validator correctly handles array values for multi-value properties

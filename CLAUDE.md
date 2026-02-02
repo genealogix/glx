@@ -249,6 +249,16 @@ Examples of instructions that should be documented:
 - "Don't use _ parameters except for interfaces"
 - "Never name variables ctx unless they're context.Context"
 
+### Documenting Pre-Existing Issues
+
+**When a pre-existing bug or issue is discovered during implementation, ALWAYS document it.**
+
+If you discover a bug or architectural issue that exists in the codebase but is outside the scope of your current task:
+1. **Add it to `todo.md`** under the appropriate category with priority marker
+2. **Mention it in your summary** to the user so they're aware
+
+This ensures issues don't get lost and can be prioritized appropriately.
+
 ### Cobra Command Handler Pattern
 
 **Functions with `_` parameters must be thin wrappers with no logic.**

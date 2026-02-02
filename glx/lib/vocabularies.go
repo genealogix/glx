@@ -188,6 +188,15 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 		}
 	}
 
+	if data, ok := vocabs["source-properties.glx"]; ok {
+		var doc struct {
+			SourceProperties map[string]*PropertyDefinition `yaml:"source_properties"`
+		}
+		if err := yaml.Unmarshal(data, &doc); err == nil {
+			glx.SourceProperties = doc.SourceProperties
+		}
+	}
+
 	return nil
 }
 
@@ -302,6 +311,13 @@ func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 			}
 			if err := yaml.Unmarshal(data, &doc); err == nil {
 				glx.CitationProperties = doc.CitationProperties
+			}
+		case "source-properties.glx":
+			var doc struct {
+				SourceProperties map[string]*PropertyDefinition `yaml:"source_properties"`
+			}
+			if err := yaml.Unmarshal(data, &doc); err == nil {
+				glx.SourceProperties = doc.SourceProperties
 			}
 		}
 	}

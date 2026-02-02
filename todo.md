@@ -33,7 +33,7 @@
 
 ### Entity Properties
 
-- 🟡 **Source properties**: Create `source-properties.glx` vocabulary. Consider which fields should move to properties (e.g., `coverage` was removed as a direct field).
+- ✅ ~~**Source properties**: Create `source-properties.glx` vocabulary~~ (completed - added `abbreviation`, `call_number`, `events_recorded`, `agency`, `coverage`, `external_ids` properties)
 
 ### Participant Unification
 
@@ -61,6 +61,7 @@
 ### Critical Import Issues
 
 - 🔴 **CENS (Census) Tag Handling**: Currently creates census events. Census is not an event - it's a source/citation that supports assertions about a person's attributes (residence, occupation, etc.). Should create citations from census records that can be attached to property assertions.
+- 🟡 **GEDCOM Record Ordering**: Records are processed in file order, but sources may reference repositories that appear later in the file. When a source references a repository that hasn't been converted yet, the repository link and call_number are lost. Fix: process repositories in a first pass before sources, or use a two-pass conversion.
 - 🟡 **Embedded Citations** ([gedcom_evidence.go:38](glx/lib/gedcom_evidence.go#L38)): Implement support for embedded citations (citation details without full source reference)
 
 ### Missing Data Storage
@@ -78,16 +79,14 @@
 **Anti-pattern**: Dumping structured data into Notes fields instead of proper typed fields/properties
 
 #### Source ([gedcom_source.go](glx/lib/gedcom_source.go))
-- 🟡 **Line 65**: ABBR (abbreviation) dumped in notes → Add `Abbreviation` field to Source struct
-- 🟡 **Line 76**: CALN (call number) dumped in notes → Add to Citation or create RepositoryHolding struct
-- 🟡 **Line 98**: EVEN (events recorded) dumped in notes → Add `EventsRecorded []string` field to Source
-- 🟡 **Line 101**: AGNC (agency) dumped in notes → Add `Agency` field to Source struct
+- ✅ ~~ABBR, CALN, EVEN, AGNC now stored in `properties` (abbreviation, call_number, events_recorded, agency)~~
 
 #### Citation ([gedcom_evidence.go](glx/lib/gedcom_evidence.go))
 - 🟡 **Line 63**: Source date dumped in notes → Add `SourceDate` field to Citation struct
 
 ### Data Quality & Validation
 
+- 🟢 **LANG Tag Normalization**: Normalize language tags on import. GEDCOM 7.0 uses ISO format (e.g., `en-US`), but GEDCOM 5.5.x uses free-form text (e.g., `English`, `French`). Should convert 5.5.x values to ISO codes for consistency.
 - 🟢 **PLAC Validation** ([gedcom_place.go](glx/lib/gedcom_place.go)): Validate PLAC fields - reject non-geographic text like "Died in childbirth", "Unmarried", "Unknown"
 - 🟢 **Relationship Roles**: Verify that the gedcom import correctly assigns parent/child roles to relationship participants
 - 🟢 **Place Properties**: Move some place fields to properties?

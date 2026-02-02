@@ -1,0 +1,38 @@
+# Standard Source Properties
+# This file defines the standard properties for source entities.
+# These properties capture metadata from GEDCOM imports and provide
+# structured fields for source-specific information.
+# Archives can extend this with custom properties by adding additional entries.
+
+source_properties:
+  abbreviation:
+    label: "Abbreviation"
+    description: "Short reference name or title for the source (from GEDCOM ABBR tag)"
+    value_type: string
+
+  call_number:
+    label: "Call Number"
+    description: "Repository catalog or call number where this source is held (from GEDCOM CALN tag)"
+    value_type: string
+
+  events_recorded:
+    label: "Events Recorded"
+    description: "Types of events this source documents (e.g., births, marriages, deaths) (from GEDCOM EVEN tag)"
+    value_type: string
+    multi_value: true
+
+  agency:
+    label: "Responsible Agency"
+    description: "Agency or organization responsible for creating or maintaining this source (from GEDCOM AGNC tag)"
+    value_type: string
+
+  coverage:
+    label: "Coverage"
+    description: "Geographic or temporal scope of source content"
+    value_type: string
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems (e.g., FamilySearch, Ancestry)"
+    value_type: string
+    multi_value: true

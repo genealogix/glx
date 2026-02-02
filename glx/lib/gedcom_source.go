@@ -31,20 +31,27 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 	conv.Logger.LogInfo(fmt.Sprintf("Converting SOUR %s -> %s", sourRecord.XRef, sourceID))
 
-	// Create source entity
-	source := &Source{}
+	// Create source entity with properties map
+	source := &Source{
+		Properties: make(map[string]any),
+	}
 
 	var notes []string
 	var description []string
+	var eventsRecorded []string
 
-	// Extract external IDs (GEDCOM 7.0 EXID tags) and add to notes
+	// Extract external IDs (GEDCOM 7.0 EXID tags) and store in properties
 	exids := extractExternalIDs(sourRecord)
-	for _, exid := range exids {
-		if idType, ok := exid["type"]; ok {
-			notes = append(notes, fmt.Sprintf("External ID (%s): %s", idType, exid["id"]))
-		} else {
-			notes = append(notes, fmt.Sprintf("External ID: %s", exid["id"]))
+	if len(exids) > 0 {
+		var externalIDs []string
+		for _, exid := range exids {
+			if idType, ok := exid["type"]; ok {
+				externalIDs = append(externalIDs, fmt.Sprintf("%s:%s", idType, exid["id"]))
+			} else {
+				externalIDs = append(externalIDs, exid["id"])
+			}
 		}
+		source.Properties[SourcePropertyExternalIDs] = externalIDs
 	}
 
 	// Process subrecords
@@ -63,8 +70,8 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 			source.PublicationInfo = sub.Value
 
 		case GedcomTagAbbr:
-			// Abbreviation - store in notes
-			notes = append(notes, "Abbreviation: "+sub.Value)
+			// Abbreviation - store in properties
+			source.Properties[SourcePropertyAbbreviation] = sub.Value
 
 		case GedcomTagRepo:
 			// Repository reference
@@ -72,10 +79,10 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 			if repoID != "" {
 				source.RepositoryID = repoID
 
-				// Extract call number - store in notes
+				// Extract call number - store in properties
 				for _, repoSub := range sub.SubRecords {
 					if repoSub.Tag == GedcomTagCaln {
-						notes = append(notes, "Call number: "+repoSub.Value)
+						source.Properties[SourcePropertyCallNumber] = repoSub.Value
 					}
 				}
 			}
@@ -92,15 +99,15 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case GedcomTagData:
-			// Data information - store in notes
+			// Data information - store in properties
 			for _, dataSub := range sub.SubRecords {
 				switch dataSub.Tag {
 				case GedcomTagEven:
-					// Events recorded
-					notes = append(notes, "Events recorded: "+dataSub.Value)
+					// Events recorded - accumulate for multi-value property
+					eventsRecorded = append(eventsRecorded, dataSub.Value)
 				case GedcomTagAgnc:
-					// Agency
-					notes = append(notes, "Agency: "+dataSub.Value)
+					// Agency - store in properties
+					source.Properties[SourcePropertyAgency] = dataSub.Value
 				case GedcomTagDate:
 					// Date of data
 					source.Date = parseGEDCOMDate(dataSub.Value)
@@ -125,6 +132,16 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Combine description
 	if len(description) > 0 {
 		source.Description = strings.Join(description, "\n")
+	}
+
+	// Store events recorded if any (multi-value property)
+	if len(eventsRecorded) > 0 {
+		source.Properties[SourcePropertyEventsRecorded] = eventsRecorded
+	}
+
+	// Clear empty properties map
+	if len(source.Properties) == 0 {
+		source.Properties = nil
 	}
 
 	// Combine notes

@@ -25,6 +25,11 @@
       "items": { "type": "string" },
       "uniqueItems": true
     },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties (abbreviation, call_number, events_recorded, agency, coverage, external_ids)",
+      "additionalProperties": true
+    },
     "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
   },
   "additionalProperties": false

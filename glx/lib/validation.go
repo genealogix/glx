@@ -78,6 +78,7 @@ func (glx *GLXFile) buildPropertyVocabMaps(result *ValidationResult) {
 	result.PropertyVocabs[PropMediaProperties] = glx.MediaProperties
 	result.PropertyVocabs[PropRepositoryProperties] = glx.RepositoryProperties
 	result.PropertyVocabs[PropCitationProperties] = glx.CitationProperties
+	result.PropertyVocabs[PropSourceProperties] = glx.SourceProperties
 }
 
 // buildIDSet is a helper function that creates a set of IDs from a map[string]any.
@@ -249,6 +250,7 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 	glx.validateEntityProperties(EntityTypeMedia, PropMediaProperties, glx.Media, result.PropertyVocabs[PropMediaProperties], result)
 	glx.validateEntityProperties(EntityTypeRepositories, PropRepositoryProperties, glx.Repositories, result.PropertyVocabs[PropRepositoryProperties], result)
 	glx.validateEntityProperties(EntityTypeCitations, PropCitationProperties, glx.Citations, result.PropertyVocabs[PropCitationProperties], result)
+	glx.validateEntityProperties(EntityTypeSources, PropSourceProperties, glx.Sources, result.PropertyVocabs[PropSourceProperties], result)
 }
 
 // validateEntityProperties iterates over entities and validates their properties.

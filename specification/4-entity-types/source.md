@@ -237,6 +237,40 @@ media:
   - media-register-scan-page-2
 ```
 
+### `properties`
+
+- Type: Object
+- Required: No
+- Description: Vocabulary-defined properties for additional source metadata
+
+Standard source properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `abbreviation` | string | Short reference name (from GEDCOM ABBR) |
+| `call_number` | string | Repository catalog number (from GEDCOM CALN) |
+| `events_recorded` | string[] | Types of events documented (from GEDCOM EVEN) |
+| `agency` | string | Responsible agency (from GEDCOM AGNC) |
+| `coverage` | string | Geographic/temporal scope |
+| `external_ids` | string[] | External system identifiers |
+
+Example:
+```yaml
+sources:
+  source-parish-register:
+    title: "St. Paul's Parish Register"
+    type: church_register
+    repository: repository-leeds-archives
+    properties:
+      abbreviation: "StP-Reg"
+      call_number: "PR/LEE/123"
+      events_recorded:
+        - "Baptisms"
+        - "Marriages"
+        - "Burials"
+      coverage: "Leeds, Yorkshire, 1840-1860"
+```
+
 ### Other Fields
 
 | Field | Type | Description |
@@ -484,10 +518,14 @@ Source entities map to GEDCOM source records:
 | `title` | `SOUR.TITL` | Source title |
 | `authors[0]` | `SOUR.AUTH` | Author (first only in GEDCOM) |
 | `date` | `SOUR.DATE` | Publication date |
-| `creator` | `SOUR.AGNC` | Responsible agency |
 | `repository` | `SOUR.REPO` | Repository reference |
-| `publication_info.publisher` | `SOUR.PUBL` | Publication info |
+| `publication_info` | `SOUR.PUBL` | Publication info |
 | `description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
+| `properties.abbreviation` | `SOUR.ABBR` | Short title |
+| `properties.call_number` | `SOUR.REPO.CALN` | Call number at repository |
+| `properties.events_recorded` | `SOUR.DATA.EVEN` | Events in source |
+| `properties.agency` | `SOUR.DATA.AGNC` | Responsible agency |
+| `properties.external_ids` | `SOUR.EXID` | External identifiers (GEDCOM 7.0) |
 
 GEDCOM Example:
 ```
