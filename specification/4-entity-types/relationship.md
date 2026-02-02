@@ -210,4 +210,4 @@ This allows GLX to preserve the distinction between biological, adoptive, and fo
 
 - [Person Entity](person.md) - Entities connected by relationships
 - [Event Entity](event.md) - Events that start/end relationships
-- [Core Concepts](../2-core-concepts.md#repository-owned-vocabularies) - Overview of vocabulary system
+- [Core Concepts](../2-core-concepts.md#archive-owned-vocabularies) - Overview of vocabulary system

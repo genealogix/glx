@@ -36,3 +36,8 @@ source_properties:
     description: "Identifiers from external systems (e.g., FamilySearch, Ancestry)"
     value_type: string
     multi_value: true
+
+  publication_info:
+    label: "Publication Information"
+    description: "Publication details including publisher, place, date, and edition (from GEDCOM PUBL tag)"
+    value_type: string

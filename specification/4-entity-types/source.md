@@ -63,9 +63,9 @@ sources:
 | `description` | string | Description of the source |
 | `repository` | string | Reference to Repository entity |
 | `creator` | string | Creating organization or individual |
-| `publication_info` | string | Publication information (from GEDCOM PUBL tag) |
 | `language` | string | Language of the source |
 | `media` | array | References to Media entities |
+| `properties` | object | Vocabulary-defined properties (see [Properties](#properties)) |
 | `notes` | string | Free-form notes |
 | `tags` | array | Tags for categorization |
 
@@ -187,32 +187,6 @@ description: |
   families in the Wellington Street area.
 ```
 
-### `publication_info`
-
-- Type: Object
-- Required: No
-- Description: Publication details for published sources
-
-Structure:
-```yaml
-publication_info:
-  publisher: String
-  place: String
-  edition: String
-  isbn: String
-  pages: String
-```
-
-Example:
-```yaml
-publication_info:
-  publisher: "Genealogical Publishing Company"
-  place: "Baltimore, Maryland"
-  edition: "2nd Edition"
-  isbn: "978-0-8063-1234-5"
-  pages: "456"
-```
-
 ### `language`
 
 - Type: String
@@ -253,6 +227,7 @@ Standard source properties:
 | `agency` | string | Responsible agency (from GEDCOM AGNC) |
 | `coverage` | string | Geographic/temporal scope |
 | `external_ids` | string[] | External system identifiers |
+| `publication_info` | string | Publication details: publisher, place, edition (from GEDCOM PUBL) |
 
 Example:
 ```yaml
@@ -367,13 +342,14 @@ sources:
     authors:
       - "Elizabeth Brown"
     date: "1985"
-    publication_info: "Yorkshire Genealogical Society, Leeds, Yorkshire. 1st Edition, 324 pages."
     repository: repository-family-history-library
     description: |
       Comprehensive genealogy of the Smith family of Leeds
       and surrounding areas, 1750-1950. Includes source
       citations and family group sheets.
     language: "English"
+    properties:
+      publication_info: "Yorkshire Genealogical Society, Leeds, Yorkshire. 1st Edition, 324 pages."
     tags:
       - published-genealogy
       - secondary-source
@@ -519,9 +495,9 @@ Source entities map to GEDCOM source records:
 | `authors[0]` | `SOUR.AUTH` | Author (first only in GEDCOM) |
 | `date` | `SOUR.DATE` | Publication date |
 | `repository` | `SOUR.REPO` | Repository reference |
-| `publication_info` | `SOUR.PUBL` | Publication info |
 | `description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
 | `properties.abbreviation` | `SOUR.ABBR` | Short title |
+| `properties.publication_info` | `SOUR.PUBL` | Publication info |
 | `properties.call_number` | `SOUR.REPO.CALN` | Call number at repository |
 | `properties.events_recorded` | `SOUR.DATA.EVEN` | Events in source |
 | `properties.agency` | `SOUR.DATA.AGNC` | Responsible agency |

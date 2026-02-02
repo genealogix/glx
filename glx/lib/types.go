@@ -161,19 +161,18 @@ type Place struct {
 
 // Source represents a source of information.
 type Source struct {
-	Title           string         `yaml:"title"`
-	Type            string         `refType:"source_types" yaml:"type,omitempty"`
-	Authors         []string       `yaml:"authors,omitempty"`
-	Date            DateString     `yaml:"date,omitempty"`
-	Description     string         `yaml:"description,omitempty"`
-	RepositoryID    string         `refType:"repositories" yaml:"repository,omitempty"`
-	Creator         string         `yaml:"creator,omitempty"`
-	PublicationInfo string         `yaml:"publication_info,omitempty"`
-	Language        string         `yaml:"language,omitempty"`
-	Media           []string       `refType:"media"        yaml:"media,omitempty"`
-	Properties      map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes           string         `yaml:"notes,omitempty"`
-	Tags            []string       `yaml:"tags,omitempty"`
+	Title        string         `yaml:"title"`
+	Type         string         `refType:"source_types" yaml:"type,omitempty"`
+	Authors      []string       `yaml:"authors,omitempty"`
+	Date         DateString     `yaml:"date,omitempty"`
+	Description  string         `yaml:"description,omitempty"`
+	RepositoryID string         `refType:"repositories" yaml:"repository,omitempty"`
+	Creator      string         `yaml:"creator,omitempty"`
+	Language     string         `yaml:"language,omitempty"`
+	Media        []string       `refType:"media"        yaml:"media,omitempty"`
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes        string         `yaml:"notes,omitempty"`
+	Tags         []string       `yaml:"tags,omitempty"`
 }
 
 // Citation represents a citation of a source.

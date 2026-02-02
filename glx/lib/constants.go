@@ -387,12 +387,13 @@ const (
 
 // Standard Source Property Names - commonly used properties on Source entities
 const (
-	SourcePropertyAbbreviation   = "abbreviation"
-	SourcePropertyCallNumber     = "call_number"
-	SourcePropertyEventsRecorded = "events_recorded"
-	SourcePropertyAgency         = "agency"
-	SourcePropertyCoverage       = "coverage"
-	SourcePropertyExternalIDs    = "external_ids"
+	SourcePropertyAbbreviation    = "abbreviation"
+	SourcePropertyCallNumber      = "call_number"
+	SourcePropertyEventsRecorded  = "events_recorded"
+	SourcePropertyAgency          = "agency"
+	SourcePropertyCoverage        = "coverage"
+	SourcePropertyExternalIDs     = "external_ids"
+	SourcePropertyPublicationInfo = "publication_info"
 )
 
 // Place Types - used by inferPlaceType function

@@ -56,7 +56,7 @@ cd my-family-archive
 # Initialize with multi-file structure (recommended for collaboration)
 glx init
 
-# OR initialize as a single file (recommended for personal use)
+# OR initialize as a single file
 glx init --single-file
 ```
 
@@ -307,21 +307,6 @@ GLX adapts to YOUR research domain:
 - **Maritime History**: Document voyages and naval careers
 - **Religious Studies**: Record ordinations, pilgrimages, and church roles
 - **And more**: Any domain with people, events, and relationships
-
-## Troubleshooting
-
-**"Command not found: glx"**
-- Ensure Go is installed: `go version`
-- Reinstall: `go install github.com/genealogix/glx/glx@latest`
-
-**Validation errors:**
-- Check YAML syntax (proper indentation, quotes)
-- Ensure all referenced IDs exist (person, place, citation IDs)
-- Verify required fields are present (id, version, type)
-
-**Schema validation fails:**
-- Use the latest CLI: `go install github.com/genealogix/glx/glx@latest`
-- Check file extensions (.glx) and directory structure
 
 ## Next Steps
 

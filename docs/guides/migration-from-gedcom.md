@@ -94,12 +94,13 @@ sources:
 citations:
   citation-birth:
     source: source-birth-cert
-    page: "Page 23"
+    properties:
+      locator: "Page 23"
 
 assertions:
   assertion-birth-date:
     subject: person-john-smith
-    claim: birth_date
+    claim: born_on
     value: "1850-01-15"
     citations: [citation-birth]
 ```
@@ -131,7 +132,8 @@ assertions:
 | `SOUR` | Source | Original material |
 | `TITL` | Source.title | Title |
 | `REPO` | Source.repository | Repository reference |
-| `PAGE` | Citation.page | Moved to citation |
+| `PUBL` | Source.properties.publication_info | Publication details |
+| `PAGE` | Citation.properties.locator | Moved to citation properties |
 | `QUAY` | Citation.notes | Preserved in notes |
 
 ## Common Challenges

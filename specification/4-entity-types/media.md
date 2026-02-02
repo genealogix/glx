@@ -480,7 +480,8 @@ Media is typically linked via Citation entities:
 citations:
   citation-birth-record:
     source: source-parish-register
-    page: "45"
+    properties:
+      locator: "Page 45"
     media:
       - media-birth-cert-scan
       - media-birth-cert-photo
@@ -495,4 +496,4 @@ See [media.schema.json](../schema/v1/media.schema.json) for the complete JSON Sc
 - [Source Entity](source.md) - Sources that media documents
 - [Citation Entity](citation.md) - Citations that media supports
 - [Person Entity](person.md) - People depicted in media
-- [Archive Organization](../3-archive-organization.md#file-organization-patterns) - Organizing media files
+- [Archive Organization](../3-archive-organization.md#organization-strategies) - Organizing media files

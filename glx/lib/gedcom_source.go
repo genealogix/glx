@@ -66,8 +66,8 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 			source.Authors = append(source.Authors, sub.Value)
 
 		case GedcomTagPubl:
-			// Publication facts
-			source.PublicationInfo = sub.Value
+			// Publication facts - store in properties
+			source.Properties[SourcePropertyPublicationInfo] = sub.Value
 
 		case GedcomTagAbbr:
 			// Abbreviation - store in properties

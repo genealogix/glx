@@ -156,7 +156,7 @@ For multi-file serialization, random IDs will be used:
 
 // Converts to:
 - Event: event-001 (type: birth, date: "1850")
-- Citation: citation-001 (source: source-001, page: "Page 42")
+- Citation: citation-001 (source: source-001, properties.locator: "Page 42")
 - Assertion: assertion-001 (subject: person-001, claim: "born_on", value: "1850")
 ```
 
@@ -288,13 +288,15 @@ When the PLAC field is missing, GLX can build a place hierarchy from ADDR subfie
 sources:
   source-001:
     title: "1850 US Census"
-    publication_info: "National Archives"
     repository: repository-001
+    properties:
+      publication_info: "National Archives"
 
 citations:
   citation-001:
     source: source-001
-    page: "Page 42"
+    properties:
+      locator: "Page 42"
 
 assertions:
   assertion-001:

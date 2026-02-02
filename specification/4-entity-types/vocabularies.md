@@ -240,7 +240,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides 11 standardized place type codes including administrative divisions (country, state, county, district), geographic features (city, town, region, neighborhood, street, building), and religious divisions (parish).
+**Standard Place Types**: GENEALOGIX provides 14 standardized place type codes including administrative divisions (country, state, county, district), geographic features (city, town, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
 
 **Complete List**: See [Standard Vocabularies - Place Types](/specification/5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -622,7 +622,11 @@ vocabularies/
 ├── person-properties.glx
 ├── event-properties.glx
 ├── relationship-properties.glx
-└── place-properties.glx
+├── place-properties.glx
+├── media-properties.glx
+├── repository-properties.glx
+├── source-properties.glx
+└── citation-properties.glx
 ```
 
 ### Person Properties Vocabulary
@@ -734,6 +738,24 @@ Standard properties include:
 - `access_restrictions` - Any restrictions on access (appointment required, subscription, etc.)
 - `holding_types` - Types of materials held (microfilm, digital, books, etc.)
 - `external_ids` - External identifiers from other systems (FamilySearch, WikiTree, etc.)
+
+### Source Properties Vocabulary
+
+**File**: `vocabularies/source-properties.glx`
+
+**Used By**: [Source Entity](source.md#properties)
+
+**Purpose**: Defines properties that can be set on source entities for bibliographic metadata
+
+Standard properties include:
+
+- `abbreviation` - Short reference name or title for the source (from GEDCOM ABBR)
+- `call_number` - Repository catalog or call number (from GEDCOM CALN)
+- `events_recorded` - Types of events this source documents (from GEDCOM EVEN)
+- `agency` - Agency responsible for creating/maintaining this source (from GEDCOM AGNC)
+- `coverage` - Geographic or temporal scope of source content
+- `external_ids` - External identifiers from other systems
+- `publication_info` - Publication details: publisher, place, edition (from GEDCOM PUBL)
 
 ### Property Definition Structure
 

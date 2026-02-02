@@ -17,7 +17,6 @@
       "description": "Reference to Repository where source is held"
     },
     "creator": { "type": "string" },
-    "publication_info": { "type": "string", "description": "Publication information about this source (e.g., publisher, place, date; may include data imported from a GEDCOM PUBL tag)" },
     "language": { "type": "string" },
     "notes": { "type": "string" },
     "media": {
@@ -27,7 +26,7 @@
     },
     "properties": {
       "type": "object",
-      "description": "Vocabulary-defined properties (abbreviation, call_number, events_recorded, agency, coverage, external_ids)",
+      "description": "Vocabulary-defined properties (abbreviation, call_number, events_recorded, agency, coverage, external_ids, publication_info)",
       "additionalProperties": true
     },
     "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }

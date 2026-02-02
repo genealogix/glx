@@ -239,6 +239,25 @@ Defines standard and custom properties for repository entities including contact
 
 ---
 
+### Source Properties
+
+Defines standard and custom properties for source entities including bibliographic metadata from GEDCOM imports.
+
+**File:** `vocabularies/source-properties.glx`
+
+**Standard Properties Include:**
+- `abbreviation` - Short reference name or title (from GEDCOM ABBR)
+- `call_number` - Repository catalog or call number (from GEDCOM CALN)
+- `events_recorded` - Types of events documented (multi-value, from GEDCOM EVEN)
+- `agency` - Responsible agency (from GEDCOM AGNC)
+- `coverage` - Geographic or temporal scope
+- `external_ids` - External identifiers (multi-value)
+- `publication_info` - Publication details: publisher, place, edition (from GEDCOM PUBL)
+
+**See Also:** [Source Entity Documentation](../4-entity-types/source#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#source-properties-vocabulary)
+
+---
+
 ### Citation Properties
 
 Defines standard and custom properties for citation entities including location and transcribed text.
