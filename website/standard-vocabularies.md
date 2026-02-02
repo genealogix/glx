@@ -235,7 +235,7 @@ $ glx validate
 
 1. **Use Standard Types First** - Standard types ensure GEDCOM compatibility and interoperability
 2. **Document Custom Types** - Provide clear labels and descriptions for custom types
-3. 
+3.
 4. **Map to GEDCOM** - Include GEDCOM mappings when possible (use `_TAG` format for custom tags)
 5. **Keep Consistent** - Use consistent naming conventions (lowercase with hyphens)
 

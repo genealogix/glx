@@ -99,7 +99,7 @@ func scanLinesAllEndings(data []byte, atEOF bool) (advance int, token []byte, er
 	}
 
 	// Look for CR or LF
-	for i := 0; i < len(data); i++ {
+	for i := range data {
 		if data[i] == '\n' {
 			// LF - return line without the LF
 			return i + 1, data[0:i], nil

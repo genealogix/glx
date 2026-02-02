@@ -337,9 +337,9 @@ const (
 	VocabPlaceTypes        = "place_types"
 	VocabRepositoryTypes   = "repository_types"
 	VocabParticipantRoles  = "participant_roles"
-	VocabMediaTypes       = "media_types"
-	VocabConfidenceLevels = "confidence_levels"
-	VocabSourceTypes      = "source_types"
+	VocabMediaTypes        = "media_types"
+	VocabConfidenceLevels  = "confidence_levels"
+	VocabSourceTypes       = "source_types"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile

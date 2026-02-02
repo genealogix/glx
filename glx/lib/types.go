@@ -110,14 +110,14 @@ type Person struct {
 
 // Relationship represents a relationship between two or more people.
 type Relationship struct {
-	Type        string                    `refType:"relationship_types"  yaml:"type"`
+	Type         string                    `refType:"relationship_types" yaml:"type"`
 	Participants []RelationshipParticipant `yaml:"participants"`
-	StartEvent  string                    `refType:"events"              yaml:"start_event,omitempty"`
-	EndEvent    string                    `refType:"events"              yaml:"end_event,omitempty"`
-	Properties  map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Description string                    `yaml:"description,omitempty"`
-	Notes       string                    `yaml:"notes,omitempty"`
-	Tags        []string                  `yaml:"tags,omitempty"`
+	StartEvent   string                    `refType:"events"             yaml:"start_event,omitempty"`
+	EndEvent     string                    `refType:"events"             yaml:"end_event,omitempty"`
+	Properties   map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Description  string                    `yaml:"description,omitempty"`
+	Notes        string                    `yaml:"notes,omitempty"`
+	Tags         []string                  `yaml:"tags,omitempty"`
 }
 
 // RelationshipParticipant defines a person's role in a relationship.
@@ -129,8 +129,8 @@ type RelationshipParticipant struct {
 
 // Event represents a genealogical event.
 type Event struct {
-	Type         string             `refType:"event_types"         yaml:"type"`
-	PlaceID      string             `refType:"places"              yaml:"place,omitempty"`
+	Type         string             `refType:"event_types"        yaml:"type"`
+	PlaceID      string             `refType:"places"             yaml:"place,omitempty"`
 	Date         DateString         `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []EventParticipant `yaml:"participants"`
 	Properties   map[string]any     `yaml:"properties,omitempty"` // Vocabulary-defined properties
@@ -149,8 +149,8 @@ type EventParticipant struct {
 // Place represents a geographical location.
 type Place struct {
 	Name         string         `yaml:"name"`
-	ParentID     string         `refType:"places"      yaml:"parent,omitempty"`
-	Type         string         `refType:"place_types" yaml:"type,omitempty"`
+	ParentID     string         `refType:"places"              yaml:"parent,omitempty"`
+	Type         string         `refType:"place_types"         yaml:"type,omitempty"`
 	Latitude     *float64       `yaml:"latitude,omitempty"`
 	Longitude    *float64       `yaml:"longitude,omitempty"`
 	Jurisdiction string         `yaml:"jurisdiction,omitempty"`
@@ -163,14 +163,14 @@ type Place struct {
 // Source represents a source of information.
 type Source struct {
 	Title        string         `yaml:"title"`
-	Type         string         `refType:"source_types" yaml:"type,omitempty"`
+	Type         string         `refType:"source_types"       yaml:"type,omitempty"`
 	Authors      []string       `yaml:"authors,omitempty"`
 	Date         DateString     `yaml:"date,omitempty"`
 	Description  string         `yaml:"description,omitempty"`
-	RepositoryID string         `refType:"repositories" yaml:"repository,omitempty"`
+	RepositoryID string         `refType:"repositories"       yaml:"repository,omitempty"`
 	Creator      string         `yaml:"creator,omitempty"`
 	Language     string         `yaml:"language,omitempty"`
-	Media        []string       `refType:"media"        yaml:"media,omitempty"`
+	Media        []string       `refType:"media"              yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes        string         `yaml:"notes,omitempty"`
 	Tags         []string       `yaml:"tags,omitempty"`
@@ -178,9 +178,9 @@ type Source struct {
 
 // Citation represents a citation of a source.
 type Citation struct {
-	SourceID     string         `refType:"sources"      yaml:"source"`
-	RepositoryID string         `refType:"repositories" yaml:"repository,omitempty"`
-	Media        []string       `refType:"media"        yaml:"media,omitempty"`
+	SourceID     string         `refType:"sources"           yaml:"source"`
+	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
+	Media        []string       `refType:"media"             yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source)
 	Notes        string         `yaml:"notes,omitempty"`
 	Tags         []string       `yaml:"tags,omitempty"`
@@ -189,7 +189,7 @@ type Citation struct {
 // Repository represents a repository where sources are held.
 type Repository struct {
 	Name       string         `yaml:"name"`
-	Type       string         `refType:"repository_types" yaml:"type,omitempty"`
+	Type       string         `refType:"repository_types"      yaml:"type,omitempty"`
 	Address    string         `yaml:"address,omitempty"`
 	City       string         `yaml:"city,omitempty"`
 	State      string         `yaml:"state_province,omitempty"`
@@ -207,9 +207,9 @@ type Assertion struct {
 	Claim       string                `yaml:"claim,omitempty"`       // Optional, not present if participant exists
 	Value       string                `yaml:"value,omitempty"`       // Not present if participant exists
 	Participant *AssertionParticipant `yaml:"participant,omitempty"` // Not present if value exists
-	Confidence  string                `refType:"confidence_levels"   yaml:"confidence,omitempty"`
-	Sources     []string              `refType:"sources"             yaml:"sources,omitempty"`
-	Citations   []string              `refType:"citations"           yaml:"citations,omitempty"`
+	Confidence  string                `refType:"confidence_levels"                   yaml:"confidence,omitempty"`
+	Sources     []string              `refType:"sources"                             yaml:"sources,omitempty"`
+	Citations   []string              `refType:"citations"                           yaml:"citations,omitempty"`
 	Notes       string                `yaml:"notes,omitempty"`
 	Tags        []string              `yaml:"tags,omitempty"`
 }
@@ -224,13 +224,13 @@ type AssertionParticipant struct {
 // Media represents a media object, like a photo or document.
 type Media struct {
 	URI         string         `yaml:"uri"`
-	Type        string         `refType:"media_types" yaml:"type,omitempty"`
+	Type        string         `refType:"media_types"        yaml:"type,omitempty"`
 	MimeType    string         `yaml:"mime_type,omitempty"`
 	Hash        string         `yaml:"hash,omitempty"`
 	Title       string         `yaml:"title,omitempty"`
 	Description string         `yaml:"description,omitempty"`
 	Date        DateString     `yaml:"date,omitempty"`
-	Source      string         `refType:"sources"     yaml:"source,omitempty"`
+	Source      string         `refType:"sources"            yaml:"source,omitempty"`
 	Properties  map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes       string         `yaml:"notes,omitempty"`
 	Tags        []string       `yaml:"tags,omitempty"`

@@ -15,9 +15,7 @@ export default defineConfig({
   ignoreDeadLinks: true,
 
   // Head configuration
-  head: [
-    ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }]
-  ],
+  head: [['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }]],
 
   // Vite configuration for file watching in Docker/WSL
   vite: {

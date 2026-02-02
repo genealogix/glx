@@ -61,17 +61,17 @@ Traditional genealogy software traps your research in proprietary databases and 
 
 ### Quick Comparison
 
-| Feature               | GEDCOM                       | GENEALOGIX               |
-| --------------------- | ---------------------------- | ------------------------ |
-| **Collaboration**     | File sharing only            | Git-native workflows     |
-| **Evidence Tracking** | Basic source records         | Complete evidence chains |
-| **Version Control**   | Manual or difficult          | Built-in Git integration |
-| **Human Readability** | Binary-like format           | Clear YAML structure     |
-| **Validation**        | Inconsistent implementations | Schema-based validation  |
-| **Extensibility**     | Limited                      | JSON Schema based        |
-| **Data Portability**  | Vendor lock-in               | Open format you own      |
+| Feature               | GEDCOM                       | GENEALOGIX                    |
+| --------------------- | ---------------------------- | ----------------------------- |
+| **Collaboration**     | File sharing only            | Git-native workflows          |
+| **Evidence Tracking** | Basic source records         | Complete evidence chains      |
+| **Version Control**   | Manual or difficult          | Built-in Git integration      |
+| **Human Readability** | Binary-like format           | Clear YAML structure          |
+| **Validation**        | Inconsistent implementations | Schema-based validation       |
+| **Extensibility**     | Limited                      | JSON Schema based             |
+| **Data Portability**  | Vendor lock-in               | Open format you own           |
 | **Interoperability**  | GEDCOM export only           | Import/export + Git workflows |
-| **Custom Types**      | Fixed schema                 | Archive-defined vocabularies |
+| **Custom Types**      | Fixed schema                 | Archive-defined vocabularies  |
 
 ## Quick Start
 

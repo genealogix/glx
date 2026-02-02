@@ -61,10 +61,10 @@ func TestLoadArchive(t *testing.T) {
 
 				// Write files
 				data1, _ := yaml.Marshal(person1)
-				os.WriteFile(filepath.Join(tmpDir, "person1.glx"), data1, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "person1.glx"), data1, 0o644)
 
 				data2, _ := yaml.Marshal(person2)
-				os.WriteFile(filepath.Join(tmpDir, "person2.glx"), data2, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "person2.glx"), data2, 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -78,6 +78,7 @@ func TestLoadArchive(t *testing.T) {
 				if len(duplicates) != 0 {
 					return &testError{"expected no duplicates, got %d", []any{len(duplicates)}}
 				}
+
 				return nil
 			},
 		},
@@ -107,10 +108,10 @@ func TestLoadArchive(t *testing.T) {
 				}
 
 				data1, _ := yaml.Marshal(person1)
-				os.WriteFile(filepath.Join(tmpDir, "person1.glx"), data1, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "person1.glx"), data1, 0o644)
 
 				data2, _ := yaml.Marshal(person2)
-				os.WriteFile(filepath.Join(tmpDir, "person2.glx"), data2, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "person2.glx"), data2, 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -127,6 +128,7 @@ func TestLoadArchive(t *testing.T) {
 				if duplicates[0] != "duplicate persons ID: person-1" {
 					return &testError{"expected duplicate to be 'duplicate persons ID: person-1', got %s", []any{duplicates[0]}}
 				}
+
 				return nil
 			},
 		},
@@ -136,7 +138,7 @@ func TestLoadArchive(t *testing.T) {
 				tmpDir := t.TempDir()
 
 				// Create invalid YAML file
-				os.WriteFile(filepath.Join(tmpDir, "invalid.yaml"), []byte("invalid: yaml: content:"), 0644)
+				os.WriteFile(filepath.Join(tmpDir, "invalid.yaml"), []byte("invalid: yaml: content:"), 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -157,7 +159,7 @@ persons:
   person-1:
     invalid_field: test
 `)
-				os.WriteFile(filepath.Join(tmpDir, "invalid.glx"), invalidData, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "invalid.glx"), invalidData, 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -229,7 +231,7 @@ persons:
 				}
 
 				data, _ := yaml.Marshal(glx)
-				os.WriteFile(filepath.Join(tmpDir, "complete.glx"), data, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "complete.glx"), data, 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -270,6 +272,7 @@ persons:
 				if len(glx.PlaceTypes) != 1 {
 					return &testError{"expected 1 place type", nil}
 				}
+
 				return nil
 			},
 		},
@@ -285,13 +288,13 @@ persons:
 					},
 				}
 				data, _ := yaml.Marshal(glxFile)
-				os.WriteFile(filepath.Join(tmpDir, "valid.glx"), data, 0644)
-				os.WriteFile(filepath.Join(tmpDir, "valid.yaml"), data, 0644)
-				os.WriteFile(filepath.Join(tmpDir, "valid.yml"), data, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "valid.glx"), data, 0o644)
+				os.WriteFile(filepath.Join(tmpDir, "valid.yaml"), data, 0o644)
+				os.WriteFile(filepath.Join(tmpDir, "valid.yml"), data, 0o644)
 
 				// These should be ignored
-				os.WriteFile(filepath.Join(tmpDir, "readme.txt"), []byte("text"), 0644)
-				os.WriteFile(filepath.Join(tmpDir, "data.json"), []byte("{}"), 0644)
+				os.WriteFile(filepath.Join(tmpDir, "readme.txt"), []byte("text"), 0o644)
+				os.WriteFile(filepath.Join(tmpDir, "data.json"), []byte("{}"), 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -306,6 +309,7 @@ persons:
 				if len(duplicates) != 2 { // 2 duplicates since 3 files have same person ID
 					return &testError{"expected 2 duplicates, got %d", []any{len(duplicates)}}
 				}
+
 				return nil
 			},
 		},
@@ -316,7 +320,7 @@ persons:
 
 				// Create nested structure
 				subDir := filepath.Join(tmpDir, "subdir")
-				os.MkdirAll(subDir, 0755)
+				os.MkdirAll(subDir, 0o755)
 
 				glxFile1 := &lib.GLXFile{
 					Persons: map[string]*lib.Person{
@@ -330,10 +334,10 @@ persons:
 				}
 
 				data1, _ := yaml.Marshal(glxFile1)
-				os.WriteFile(filepath.Join(tmpDir, "root.glx"), data1, 0644)
+				os.WriteFile(filepath.Join(tmpDir, "root.glx"), data1, 0o644)
 
 				data2, _ := yaml.Marshal(glxFile2)
-				os.WriteFile(filepath.Join(subDir, "nested.glx"), data2, 0644)
+				os.WriteFile(filepath.Join(subDir, "nested.glx"), data2, 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -344,6 +348,7 @@ persons:
 				if len(glx.Persons) != 2 {
 					return &testError{"expected 2 persons from nested dirs, got %d", []any{len(glx.Persons)}}
 				}
+
 				return nil
 			},
 		},
@@ -358,6 +363,7 @@ persons:
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadArchive() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 
@@ -427,6 +433,7 @@ func TestReadWriteSingleFileArchive(t *testing.T) {
 						"person-1": {Properties: make(map[string]any)},
 					},
 				}
+
 				return "/nonexistent/dir/file.glx", glx, func() {}
 			},
 			validate:      false,
@@ -523,7 +530,7 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 			setupFunc: func() (string, *lib.GLXFile, func()) {
 				tmpDir := t.TempDir()
 				archiveDir := filepath.Join(tmpDir, "archive")
-				os.MkdirAll(archiveDir, 0755)
+				os.MkdirAll(archiveDir, 0o755)
 
 				glx := &lib.GLXFile{
 					Persons: map[string]*lib.Person{
@@ -563,6 +570,7 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 						"person-1": {Properties: make(map[string]any)},
 					},
 				}
+
 				return "/root/invalid/dir", glx, func() {}
 			},
 			validate:     false,
@@ -573,7 +581,7 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 			setupFunc: func() (string, *lib.GLXFile, func()) {
 				tmpDir := t.TempDir()
 				archiveDir := filepath.Join(tmpDir, "complex")
-				os.MkdirAll(archiveDir, 0755)
+				os.MkdirAll(archiveDir, 0o755)
 
 				glx := &lib.GLXFile{
 					Persons: map[string]*lib.Person{
@@ -657,10 +665,10 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 // TestCreateSerializer tests the createSerializer function
 func TestCreateSerializer(t *testing.T) {
 	tests := []struct {
-		name     string
-		validate bool
-		pretty   bool
-		indent   string
+		name      string
+		validate  bool
+		pretty    bool
+		indent    string
 		checkOpts func(s *lib.DefaultSerializer) bool
 	}{
 		{
@@ -711,5 +719,6 @@ func (e *testError) Error() string {
 	if len(e.args) > 0 {
 		return fmt.Sprintf(e.msg, e.args...)
 	}
+
 	return e.msg
 }

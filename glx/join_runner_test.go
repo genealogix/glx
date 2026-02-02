@@ -43,7 +43,7 @@ func TestJoinArchive(t *testing.T) {
 
 				// Create input directory with multi-file archive
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				// Create test entities
 				person := &lib.GLXFile{
@@ -67,10 +67,10 @@ func TestJoinArchive(t *testing.T) {
 
 				// Write entity files
 				personData, _ := yaml.Marshal(person)
-				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), personData, 0644)
+				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), personData, 0o644)
 
 				eventData, _ := yaml.Marshal(event)
-				os.WriteFile(filepath.Join(inputDir, "event-1.glx"), eventData, 0644)
+				os.WriteFile(filepath.Join(inputDir, "event-1.glx"), eventData, 0o644)
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -88,7 +88,7 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				// Create minimal valid archive
 				glx := &lib.GLXFile{
@@ -100,7 +100,7 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				data, _ := yaml.Marshal(glx)
-				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), data, 0o644)
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -137,7 +137,7 @@ func TestJoinArchive(t *testing.T) {
 
 				// Create input directory with valid archive
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				glx := &lib.GLXFile{
 					Persons: map[string]*lib.Person{
@@ -148,11 +148,11 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				data, _ := yaml.Marshal(glx)
-				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), data, 0o644)
 
 				// Create existing output file
 				outputPath := filepath.Join(tmpDir, "output.glx")
-				os.WriteFile(outputPath, []byte("existing file"), 0644)
+				os.WriteFile(outputPath, []byte("existing file"), 0o644)
 
 				return inputDir, outputPath, func() {
 					os.RemoveAll(tmpDir)
@@ -169,7 +169,7 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				glx := &lib.GLXFile{
 					Persons: map[string]*lib.Person{
@@ -180,7 +180,7 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				data, _ := yaml.Marshal(glx)
-				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), data, 0o644)
 
 				// Output path without .glx extension
 				outputPath := filepath.Join(tmpDir, "output")
@@ -203,20 +203,20 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				// Create GLX file with invalid reference
 				glx := &lib.GLXFile{
 					Events: map[string]*lib.Event{
 						"event-1": {
-							Type: "birth",
+							Type:    "birth",
 							PlaceID: "nonexistent-place", // Invalid reference
 						},
 					},
 				}
 
 				data, _ := yaml.Marshal(glx)
-				os.WriteFile(filepath.Join(inputDir, "events.glx"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "events.glx"), data, 0o644)
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -235,7 +235,7 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				// Create person file
 				person := &lib.GLXFile{
@@ -292,16 +292,16 @@ func TestJoinArchive(t *testing.T) {
 
 				// Write all files
 				personData, _ := yaml.Marshal(person)
-				os.WriteFile(filepath.Join(inputDir, "persons.glx"), personData, 0644)
+				os.WriteFile(filepath.Join(inputDir, "persons.glx"), personData, 0o644)
 
 				eventData, _ := yaml.Marshal(event)
-				os.WriteFile(filepath.Join(inputDir, "events.glx"), eventData, 0644)
+				os.WriteFile(filepath.Join(inputDir, "events.glx"), eventData, 0o644)
 
 				relData, _ := yaml.Marshal(rel)
-				os.WriteFile(filepath.Join(inputDir, "relationships.glx"), relData, 0644)
+				os.WriteFile(filepath.Join(inputDir, "relationships.glx"), relData, 0o644)
 
 				placeData, _ := yaml.Marshal(place)
-				os.WriteFile(filepath.Join(inputDir, "places.glx"), placeData, 0644)
+				os.WriteFile(filepath.Join(inputDir, "places.glx"), placeData, 0o644)
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -319,7 +319,7 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				// Create GLX file with vocabularies
 				glx := &lib.GLXFile{
@@ -342,7 +342,7 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				data, _ := yaml.Marshal(glx)
-				os.WriteFile(filepath.Join(inputDir, "archive.glx"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "archive.glx"), data, 0o644)
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -360,7 +360,7 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755) // Empty directory
+				os.MkdirAll(inputDir, 0o755) // Empty directory
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -378,11 +378,11 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				// Create non-GLX files that should be ignored
-				os.WriteFile(filepath.Join(inputDir, "readme.txt"), []byte("readme"), 0644)
-				os.WriteFile(filepath.Join(inputDir, "data.json"), []byte("{}"), 0644)
+				os.WriteFile(filepath.Join(inputDir, "readme.txt"), []byte("readme"), 0o644)
+				os.WriteFile(filepath.Join(inputDir, "data.json"), []byte("{}"), 0o644)
 
 				// Create one valid GLX file
 				glx := &lib.GLXFile{
@@ -394,7 +394,7 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				data, _ := yaml.Marshal(glx)
-				os.WriteFile(filepath.Join(inputDir, "person.glx"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "person.glx"), data, 0o644)
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -412,7 +412,7 @@ func TestJoinArchive(t *testing.T) {
 			setupFunc: func() (string, string, func()) {
 				tmpDir := t.TempDir()
 				inputDir := filepath.Join(tmpDir, "input")
-				os.MkdirAll(inputDir, 0755)
+				os.MkdirAll(inputDir, 0o755)
 
 				glx := &lib.GLXFile{
 					Persons: map[string]*lib.Person{
@@ -424,10 +424,10 @@ func TestJoinArchive(t *testing.T) {
 
 				data, _ := yaml.Marshal(glx)
 				// Test with .yaml extension
-				os.WriteFile(filepath.Join(inputDir, "person.yaml"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "person.yaml"), data, 0o644)
 
 				// Test with .yml extension
-				os.WriteFile(filepath.Join(inputDir, "person2.yml"), data, 0644)
+				os.WriteFile(filepath.Join(inputDir, "person2.yml"), data, 0o644)
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
 
@@ -451,6 +451,7 @@ func TestJoinArchive(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("joinArchive() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 
@@ -542,7 +543,7 @@ func TestJoinArchiveRoundTrip(t *testing.T) {
 
 	// Step 2: Split to multi-file
 	splitDir := filepath.Join(tmpDir, "split")
-	if err := os.MkdirAll(splitDir, 0755); err != nil {
+	if err := os.MkdirAll(splitDir, 0o755); err != nil {
 		t.Fatalf("Failed to create split directory: %v", err)
 	}
 

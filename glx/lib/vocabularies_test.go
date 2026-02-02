@@ -83,6 +83,7 @@ func TestListStandardVocabularies(t *testing.T) {
 		for _, name := range names {
 			if name == expected {
 				found = true
+
 				break
 			}
 		}
@@ -142,6 +143,7 @@ func TestGetStandardVocabulary(t *testing.T) {
 			var parsed map[string]any
 			if err := yaml.Unmarshal(content, &parsed); err != nil {
 				t.Errorf("Vocabulary %s content is not valid YAML: %v", tt.name, err)
+
 				return
 			}
 
@@ -161,6 +163,7 @@ func keysOf(m map[string]any) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
+
 	return keys
 }
 
