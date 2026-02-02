@@ -24,7 +24,7 @@ import (
 // importGEDCOM imports a GEDCOM file and converts it to GLX format
 func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool, showFirstErrors int) error {
 	// Validate format flag
-	if format != "single" && format != "multi" {
+	if format != FormatSingle && format != FormatMulti {
 		return fmt.Errorf("%w: %s", ErrInvalidFormat, format)
 	}
 
@@ -52,7 +52,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 	}
 
 	// Serialize based on format
-	if format == "single" {
+	if format == FormatSingle {
 		return importToSingleFile(glx, outputPath, validate, verbose, showFirstErrors)
 	}
 

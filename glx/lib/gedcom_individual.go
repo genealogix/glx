@@ -22,7 +22,7 @@ import (
 // convertIndividual converts a GEDCOM INDI record to a GLX Person
 func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if indiRecord.Tag != GedcomTagIndi {
-		return fmt.Errorf("%w: expected INDI, got %s", ErrUnexpectedRecordType, indiRecord.Tag)
+		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRecordType, GedcomTagIndi, indiRecord.Tag)
 	}
 
 	// Generate person ID

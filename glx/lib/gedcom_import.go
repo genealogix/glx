@@ -434,11 +434,11 @@ func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
 // detectGEDCOMVersion detects GEDCOM version from header
 func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 	for _, record := range records {
-		if record.Tag == "HEAD" {
+		if record.Tag == GedcomTagHead {
 			for _, sub := range record.SubRecords {
-				if sub.Tag == "GEDC" {
+				if sub.Tag == GedcomTagGedc {
 					for _, versSub := range sub.SubRecords {
-						if versSub.Tag == "VERS" {
+						if versSub.Tag == GedcomTagVers {
 							version := strings.TrimSpace(versSub.Value)
 							if strings.HasPrefix(version, "7.") {
 								return GEDCOM70, version

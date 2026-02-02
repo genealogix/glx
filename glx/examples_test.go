@@ -24,10 +24,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const examplesDir = "../docs/examples"
+
 // TestExamples validates all example GLX files from docs/examples
 func TestExamples(t *testing.T) {
-	examplesDir := "../docs/examples"
-
 	// Check if examples directory exists
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found - skipping examples validation")
@@ -104,8 +104,6 @@ func TestExamples(t *testing.T) {
 
 // TestExamplesDirectories validates that each example directory is structured correctly
 func TestExamplesDirectories(t *testing.T) {
-	examplesDir := "../docs/examples"
-
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found")
 
@@ -215,8 +213,6 @@ func TestExamplesSingleFile(t *testing.T) {
 
 // TestExamplesValidation runs full validation on each example directory
 func TestExamplesValidation(t *testing.T) {
-	examplesDir := "../docs/examples"
-
 	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
 		t.Skip("examples directory not found")
 

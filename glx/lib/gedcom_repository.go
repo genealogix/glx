@@ -21,8 +21,8 @@ import (
 
 // convertRepository converts a GEDCOM REPO record to a GLX Repository
 func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error {
-	if repoRecord.Tag != "REPO" {
-		return fmt.Errorf("%w: expected REPO, got %s", ErrUnexpectedRepoRecord, repoRecord.Tag)
+	if repoRecord.Tag != GedcomTagRepo {
+		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRepoRecord, GedcomTagRepo, repoRecord.Tag)
 	}
 
 	// Generate repository ID

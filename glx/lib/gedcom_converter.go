@@ -116,7 +116,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	conv.Logger.LogInfo(fmt.Sprintf("Processing %d deferred families", len(conv.DeferredFamilies)))
 	for _, famRecord := range conv.DeferredFamilies {
 		if err := convertFamily(famRecord, conv); err != nil {
-			conv.addError(famRecord.Line, "FAM", err.Error())
+			conv.addError(famRecord.Line, GedcomTagFam, err.Error())
 		}
 	}
 

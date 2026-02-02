@@ -54,6 +54,12 @@ func init() {
 // Import Command
 // ============================================================================
 
+// Format constants for import output format flag
+const (
+	FormatSingle = "single"
+	FormatMulti  = "multi"
+)
+
 var (
 	importOutput          string
 	importFormat          string
@@ -95,7 +101,7 @@ Output formats:
 
 func init() {
 	importCmd.Flags().StringVarP(&importOutput, "output", "o", "", "Output file or directory (required)")
-	importCmd.Flags().StringVarP(&importFormat, "format", "f", "multi", "Output format: multi or single")
+	importCmd.Flags().StringVarP(&importFormat, "format", "f", FormatMulti, "Output format: multi or single")
 	importCmd.Flags().BoolVar(&importNoValidate, "no-validate", false, "Skip validation before saving")
 	importCmd.Flags().BoolVarP(&importVerbose, "verbose", "v", false, "Verbose output")
 	importCmd.Flags().IntVar(&importShowFirstErrors, "show-first-errors", defaultShowFirstErrors, "Number of validation errors to show (0 for all)")

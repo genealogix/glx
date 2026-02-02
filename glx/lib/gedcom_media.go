@@ -24,7 +24,7 @@ import (
 // convertMedia converts a GEDCOM OBJE record to a GLX Media entity
 func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if objeRecord.Tag != GedcomTagObje {
-		return fmt.Errorf("%w: expected OBJE, got %s", ErrUnexpectedMediaRecord, objeRecord.Tag)
+		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedMediaRecord, GedcomTagObje, objeRecord.Tag)
 	}
 
 	// Generate media ID

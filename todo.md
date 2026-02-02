@@ -134,7 +134,6 @@
 ### Code Style
 
 - 🟢 **ConversionContext too large** ([gedcom_import.go:134-173](glx/lib/gedcom_import.go#L134-L173)): Has 20+ fields. Consider breaking into focused sub-structs (IDMappings, IDCounters, GEDCOM70State).
-- 🟢 **Magic string "REPO"** ([gedcom_repository.go:24](glx/lib/gedcom_repository.go#L24)): Uses literal `"REPO"` instead of `GedcomTagRepo` constant.
 - 🟢 **Inconsistent error wrapping**: Some errors use `fmt.Errorf` with `%w` for wrapping, others use different patterns. Should standardize error wrapping approach.
 - 🟢 **String building inefficiency** ([gedcom_converter.go:288-298](glx/lib/gedcom_converter.go#L288-L298)): Uses unnecessary intermediate `result` variable with `strings.Builder`. Should simplify.
 - 🟢 **Silent error swallowing** ([gedcom_family.go:85](glx/lib/gedcom_family.go#L85)): `extractCitations` errors are silently ignored. Should log warnings for failed citation extractions.

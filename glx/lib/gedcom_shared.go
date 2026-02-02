@@ -21,7 +21,7 @@ import (
 // convertSharedNote551 converts a GEDCOM 5.5.1 NOTE record to shared note storage
 func convertSharedNote551(noteRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if noteRecord.Tag != GedcomTagNote {
-		return fmt.Errorf("%w: expected NOTE, got %s", ErrUnexpectedNoteRecord, noteRecord.Tag)
+		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedNoteRecord, GedcomTagNote, noteRecord.Tag)
 	}
 
 	// Extract note text (GEDCOM 5.5.1 format)
@@ -41,7 +41,7 @@ func convertSharedNote551(noteRecord *GEDCOMRecord, conv *ConversionContext) err
 // convertSharedNote converts a GEDCOM 7.0 SNOTE record to shared note storage
 func convertSharedNote(snoteRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if snoteRecord.Tag != GedcomTagSnote {
-		return fmt.Errorf("%w: expected SNOTE, got %s", ErrUnexpectedSharedRecord, snoteRecord.Tag)
+		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedSharedRecord, GedcomTagSnote, snoteRecord.Tag)
 	}
 
 	// Extract note text
