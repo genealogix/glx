@@ -38,7 +38,9 @@ vocabularies/
 ├── relationship-properties.glx
 ├── place-properties.glx
 ├── media-properties.glx
-└── repository-properties.glx
+├── repository-properties.glx
+├── source-properties.glx
+└── citation-properties.glx
 ```
 
 When initializing a new archive with `glx init`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates.
@@ -1199,6 +1201,8 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Place Properties | [place-properties.schema.json](../schema/v1/vocabularies/place-properties.schema.json) |
 | Media Properties | [media-properties.schema.json](../schema/v1/vocabularies/media-properties.schema.json) |
 | Repository Properties | [repository-properties.schema.json](../schema/v1/vocabularies/repository-properties.schema.json) |
+| Source Properties | [source-properties.schema.json](../schema/v1/vocabularies/source-properties.schema.json) |
+| Citation Properties | [citation-properties.schema.json](../schema/v1/vocabularies/citation-properties.schema.json) |
 
 All vocabulary schemas are located in `specification/schema/v1/vocabularies/` and define:
 - Required top-level key (e.g., `event_types`, `relationship_types`)

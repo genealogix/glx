@@ -15,6 +15,7 @@
 - 🟡 Remove glx archive folder references from all examples and documentation
 - 🟡 Add comprehensive example showing assertion-to-entity property workflow (setting properties directly vs creating assertions with evidence)
 - 🟡 Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time)
+- 🟡 Add `multi_value` property examples to vocabularies.md - show how multi-value properties are used in entity data (array values) and validated
 
 ### Specification TODOs
 
@@ -29,6 +30,7 @@
 
 ### Schema Improvements
 
+- 🟡 **Add `multi_value` to all property schemas**: The `multi_value` field is documented in the spec and used in `source-properties.glx` and `repository-properties.glx`, but missing from all property JSON schemas except `source-properties.schema.json`. Need to add `multi_value` field to: person-properties, event-properties, place-properties, relationship-properties, media-properties, repository-properties, citation-properties schemas.
 - 🟢 Should property fields have data types?
 
 ### Entity Properties
@@ -112,6 +114,32 @@
 
 ## 🧹 Code Organization & Quality
 
+### Architectural Issues
+
+- 🔴 **lib I/O violation** ([gedcom_logging.go:36](glx/lib/gedcom_logging.go#L36)): `NewImportLogger` does direct file I/O with `os.Create`, violating CLAUDE.md rule that lib package must never do I/O. Should accept `io.Writer` instead of path.
+
+### Bugs
+
+- 🔴 **Unreachable code path** ([gedcom_evidence.go:206](glx/lib/gedcom_evidence.go#L206)): The shared note lookup for GEDCOM 7.0 is unreachable because the function already returns if `noteRecord.Value != ""`. Dead code should be removed or logic fixed.
+- 🔴 **Missing bounds check** ([gedcom_place.go:219-220](glx/lib/gedcom_place.go#L219-L220)): `parseCoordinate` can panic if coordinate value has length < 2 (e.g., just "N" without a number). Should add length validation.
+
+### Performance
+
+- 🟡 **Regex compilation in hot path** ([gedcom_name.go:52-53](glx/lib/gedcom_name.go#L52-L53)): `surnameRegex` and `nicknameRegex` are compiled on every call to `parseGEDCOMName`. Should be package-level compiled regexes.
+- 🟡 **Map allocation in hot paths**: Type mapping functions allocate maps on every call instead of using package-level maps: `mapGEDCOMEventType` ([gedcom_individual.go:411](glx/lib/gedcom_individual.go#L411)), `mapFamilyEventType` ([gedcom_family.go:437](glx/lib/gedcom_family.go#L437)), `mapSourceType` ([gedcom_source.go:167](glx/lib/gedcom_source.go#L167)), `mapRepositoryType` ([gedcom_repository.go:129](glx/lib/gedcom_repository.go#L129)), `inferMimeType` ([gedcom_media.go:242](glx/lib/gedcom_media.go#L242)), `mapFormatToMimeType` ([gedcom_media.go:295](glx/lib/gedcom_media.go#L295)).
+
+### DRY Violations
+
+- 🟡 **Duplicated event extraction logic**: Same date/place/note/citation extraction pattern duplicated across `convertIndividualEvent` ([gedcom_individual.go:290](glx/lib/gedcom_individual.go#L290)), `convertMarriageEvent` ([gedcom_family.go:135](glx/lib/gedcom_family.go#L135)), `convertDivorceEvent` ([gedcom_family.go:259](glx/lib/gedcom_family.go#L259)), `convertFamilyEvent` ([gedcom_family.go:357](glx/lib/gedcom_family.go#L357)). Should extract common `extractEventDetails` helper.
+- 🟡 **Duplicated media conversion logic** ([gedcom_media.go](glx/lib/gedcom_media.go)): `convertMedia` and `convertEmbeddedMedia` share ~90% identical code. Should refactor to common `convertMediaCommon` function.
+
+### Code Style
+
+- 🟢 **ConversionContext too large** ([gedcom_import.go:134-173](glx/lib/gedcom_import.go#L134-L173)): Has 20+ fields. Consider breaking into focused sub-structs (IDMappings, IDCounters, GEDCOM70State).
+- 🟢 **Magic string "REPO"** ([gedcom_repository.go:24](glx/lib/gedcom_repository.go#L24)): Uses literal `"REPO"` instead of `GedcomTagRepo` constant.
+- 🟢 **Inconsistent error wrapping**: Some errors use `fmt.Errorf` with `%w` for wrapping, others use different patterns. Should standardize error wrapping approach.
+- 🟢 **String building inefficiency** ([gedcom_converter.go:288-298](glx/lib/gedcom_converter.go#L288-L298)): Uses unnecessary intermediate `result` variable with `strings.Builder`. Should simplify.
+- 🟢 **Silent error swallowing** ([gedcom_family.go:85](glx/lib/gedcom_family.go#L85)): `extractCitations` errors are silently ignored. Should log warnings for failed citation extractions.
 - 🟢 Move Loggers to their own package?
 
 ---

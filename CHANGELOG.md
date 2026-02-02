@@ -102,6 +102,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### GEDCOM Import
 - **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly. Previously caused failed imports.
 
+#### JSON Schemas
+- **Added missing `source-properties.schema.json`** - Source properties vocabulary now has corresponding JSON schema for validation
+- **Updated vocabularies documentation** - Added source-properties and citation-properties to vocabulary file list and schema reference table
+
 ### Removed
 
 #### Citation Entity

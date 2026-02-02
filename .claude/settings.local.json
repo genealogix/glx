@@ -8,7 +8,8 @@
       "Bash(make lint-fix:*)",
       "Bash(./bin/glx:*)",
       "Bash(make test-coverage:*)",
-      "Bash(go tool cover:*)"
+      "Bash(go tool cover:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
