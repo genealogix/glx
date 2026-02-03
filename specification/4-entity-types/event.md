@@ -12,7 +12,7 @@ layout: doc
 
 An Event entity represents a single occurrence in time, place, and context that is relevant to the family archive. Events are discrete happenings like birth, marriage, death, baptism, etc.
 
-**Note:** Facts and attributes (occupation, residence, nationality, religion, etc.) are represented as temporal properties on Person entities, not as events. See [Person Entity](person.md) for details on temporal properties.
+**Note:** Facts and attributes (occupation, residence, nationality, religion, etc.) are represented as temporal properties on Person entities, not as events. See [Person Entity](person) for details on temporal properties.
 
 ## File Format
 
@@ -214,18 +214,18 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
 - Date formats must follow genealogical date conventions
-- Participant roles must be from the [participant roles vocabulary](vocabularies.md#participant-roles-vocabulary)
+- Participant roles must be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary)
 
 ## Confidence and Provenance
 
-All supporting evidence for an event is stored in [Assertion Entities](assertion.md) that reference the event in their `subject` field. This keeps the event record clean while allowing for a rich, explicit evidence trail.
+All supporting evidence for an event is stored in [Assertion Entities](assertion) that reference the event in their `subject` field. This keeps the event record clean while allowing for a rich, explicit evidence trail.
 
 ## See Also
 
-- [Person Entity](person.md) - Contains event references
-- [Assertion Entity](assertion.md) - Provides evidence for events
-- [Place Entity](place.md) - Geographic context for events
-- [Relationship Entity](relationship.md) - Multi-person events
+- [Person Entity](person) - Contains event references
+- [Assertion Entity](assertion) - Provides evidence for events
+- [Place Entity](place) - Geographic context for events
+- [Relationship Entity](relationship) - Multi-person events
 
 
 

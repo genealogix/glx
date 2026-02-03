@@ -197,8 +197,8 @@ complete JSON Schema definition.
 
 ## See Also
 
-- [Event Entity](event.md) - Life events for this person
-- [Relationship Entity](relationship.md) - Connections to other people
-- [Assertion Entity](assertion.md) - Evidence for person properties
-- [Data Types](../6-data-types.md) - Date and property formats
-- [Vocabularies](vocabularies.md#person-properties-vocabulary) - Person properties vocabulary
+- [Event Entity](event) - Life events for this person
+- [Relationship Entity](relationship) - Connections to other people
+- [Assertion Entity](assertion) - Evidence for person properties
+- [Data Types](../6-data-types) - Date and property formats
+- [Vocabularies](vocabularies#person-properties-vocabulary) - Person properties vocabulary

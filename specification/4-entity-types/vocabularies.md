@@ -55,7 +55,7 @@ When initializing a new archive with `glx init`, these files are automatically c
 
 **Purpose**: Defines all event and fact types used in the archive (birth, marriage, death, occupation, etc.)
 
-**Standard Templates**: See [Standard Vocabularies - Event Types](/specification/5-standard-vocabularies/#event-types) for the complete default vocabulary with all standard event types.
+**Standard Templates**: See [Standard Vocabularies - Event Types](../5-standard-vocabularies/#event-types) for the complete default vocabulary with all standard event types.
 
 ### Structure
 
@@ -80,7 +80,7 @@ event_types:
     category: "lifecycle"
 ```
 
-**Note:** Attributes like occupation, residence, religion, and nationality are represented as temporal properties on Person entities, not as events. See [Person Entity](person.md) for details.
+**Note:** Attributes like occupation, residence, religion, and nationality are represented as temporal properties on Person entities, not as events. See [Person Entity](person) for details.
 
 ### Fields
 
@@ -95,7 +95,7 @@ event_types:
 
 **Standard Event Types**: GENEALOGIX provides standardized event type codes including lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will), and migration events (immigration, emigration, naturalization).
 
-**Complete List**: See [Standard Vocabularies - Event Types](/specification/5-standard-vocabularies/#event-types) for the complete default vocabulary file with all standard types.
+**Complete List**: See [Standard Vocabularies - Event Types](../5-standard-vocabularies/#event-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Additional Event Types
 
@@ -128,7 +128,7 @@ event_types:
 
 **Purpose**: Defines all relationship types between persons (marriage, parent-child, sibling, etc.)
 
-**Standard Templates**: See [Standard Vocabularies - Relationship Types](/specification/5-standard-vocabularies/#relationship-types) for the complete default vocabulary with all standard relationship types.
+**Standard Templates**: See [Standard Vocabularies - Relationship Types](../5-standard-vocabularies/#relationship-types) for the complete default vocabulary with all standard relationship types.
 
 ### Structure
 
@@ -167,7 +167,7 @@ relationship_types:
 
 **Standard Relationship Types**: GENEALOGIX provides 11 standardized relationship type codes including marriage, parent-child (plus biological, adoptive, and foster variants), sibling, adoption, step-parent, godparent, guardian, and partner relationships.
 
-**Complete List**: See [Standard Vocabularies - Relationship Types](/specification/5-standard-vocabularies/#relationship-types) for the complete default vocabulary file with all standard types.
+**Complete List**: See [Standard Vocabularies - Relationship Types](../5-standard-vocabularies/#relationship-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Additional Relationship Types
 
@@ -197,7 +197,7 @@ relationship_types:
 
 **Purpose**: Defines geographic and administrative place classifications (country, state, city, parish, etc.)
 
-**Standard Templates**: See [Standard Vocabularies - Place Types](/specification/5-standard-vocabularies/#place-types) for the complete default vocabulary with all standard place types.
+**Standard Templates**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary with all standard place types.
 
 ### Structure
 
@@ -242,7 +242,7 @@ place_types:
 
 **Standard Place Types**: GENEALOGIX provides 14 standardized place type codes including administrative divisions (country, state, county, district), geographic features (city, town, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
 
-**Complete List**: See [Standard Vocabularies - Place Types](/specification/5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
+**Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Additional Place Types
 
@@ -274,7 +274,7 @@ place_types:
 
 **Purpose**: Defines categories of sources (vital records, census, church registers, newspapers, etc.)
 
-**Standard Templates**: See [Standard Vocabularies - Source Types](/specification/5-standard-vocabularies/#source-types) for the complete default vocabulary with all standard source types.
+**Standard Templates**: See [Standard Vocabularies - Source Types](../5-standard-vocabularies/#source-types) for the complete default vocabulary with all standard source types.
 
 ### Structure
 
@@ -312,7 +312,7 @@ source_types:
 
 **Standard Source Types**: GENEALOGIX provides 16 standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, and other.
 
-**Complete List**: See [Standard Vocabularies - Source Types](/specification/5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
+**Complete List**: See [Standard Vocabularies - Source Types](../5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Additional Source Types
 
@@ -338,7 +338,7 @@ source_types:
 
 **Purpose**: Defines categories of media objects (photographs, documents, audio, video, etc.)
 
-**Standard Templates**: See [Standard Vocabularies - Media Types](/specification/5-standard-vocabularies/#media-types) for the complete default vocabulary with all standard media types.
+**Standard Templates**: See [Standard Vocabularies - Media Types](../5-standard-vocabularies/#media-types) for the complete default vocabulary with all standard media types.
 
 ### Structure
 
@@ -382,7 +382,7 @@ media_types:
 
 **Standard Media Types**: GENEALOGIX provides 7 standardized media type codes including photograph, document, audio, video, scan, image, and certificate, each with default MIME types.
 
-**Complete List**: See [Standard Vocabularies - Media Types](/specification/5-standard-vocabularies/#media-types) for the complete default vocabulary file with all standard types.
+**Complete List**: See [Standard Vocabularies - Media Types](../5-standard-vocabularies/#media-types) for the complete default vocabulary file with all standard types.
 
 ### Adding Additional Media Types
 
@@ -414,7 +414,7 @@ media_types:
 
 **Purpose**: Defines confidence levels for assertions
 
-**Standard Templates**: See [Standard Vocabularies - Confidence Levels](/specification/5-standard-vocabularies/#confidence-levels) for the complete default vocabulary with all standard confidence levels.
+**Standard Templates**: See [Standard Vocabularies - Confidence Levels](../5-standard-vocabularies/#confidence-levels) for the complete default vocabulary with all standard confidence levels.
 
 ### Structure
 
@@ -466,7 +466,7 @@ See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
 
 **Purpose**: Defines categories of repositories (archives, libraries, churches, online databases, etc.)
 
-**Standard Templates**: See [Standard Vocabularies - Repository Types](/specification/5-standard-vocabularies/#repository-types) for the complete default vocabulary with all standard repository types.
+**Standard Templates**: See [Standard Vocabularies - Repository Types](../5-standard-vocabularies/#repository-types) for the complete default vocabulary with all standard repository types.
 
 ### Structure
 
@@ -519,7 +519,7 @@ See [Repository Entity](repository.md#repository-types) for the complete list of
 
 **Purpose**: Defines roles that people play in events and relationships (principal, witness, officiant, etc.)
 
-**Standard Templates**: See [Standard Vocabularies - Participant Roles](/specification/5-standard-vocabularies/#participant-roles) for the complete default vocabulary with all standard participant roles.
+**Standard Templates**: See [Standard Vocabularies - Participant Roles](../5-standard-vocabularies/#participant-roles) for the complete default vocabulary with all standard participant roles.
 
 ### Structure
 
@@ -1236,15 +1236,15 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 
 ## See Also
 
-- **[Standard Vocabularies](/specification/5-standard-vocabularies/)** - Complete default vocabulary files with all standard types
-- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts.md#archive-owned-vocabularies)
-- [Archive Organization](../3-archive-organization.md) - Where vocabulary files are stored
-- [Event Entity](event.md) - Event types vocabulary
-- [Relationship Entity](relationship.md) - Relationship types vocabulary
-- [Place Entity](place.md) - Place types vocabulary
-- [Source Entity](source.md) - Source types vocabulary
-- [Media Entity](media.md) - Media types vocabulary
-- [Citation Entity](citation.md) - Citation documentation
+- **[Standard Vocabularies](../5-standard-vocabularies/)** - Complete default vocabulary files with all standard types
+- [Core Concepts - Archive-Owned Vocabularies](../2-core-concepts#archive-owned-vocabularies)
+- [Archive Organization](../3-archive-organization) - Where vocabulary files are stored
+- [Event Entity](event) - Event types vocabulary
+- [Relationship Entity](relationship) - Relationship types vocabulary
+- [Place Entity](place) - Place types vocabulary
+- [Source Entity](source) - Source types vocabulary
+- [Media Entity](media) - Media types vocabulary
+- [Citation Entity](citation) - Citation documentation
 
 ---
 

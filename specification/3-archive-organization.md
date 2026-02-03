@@ -451,6 +451,9 @@ See [Validation Levels](#validation-levels) above for details on what is validat
 ## Examples
 
 See the `docs/examples/` directory for complete working examples:
-- `docs/examples/complete-family/` - Multi-file organization
+- `docs/examples/complete-family/` - Multi-file organization with all entity types
 - `docs/examples/single-file/` - Single-file archive
-- `docs/examples/mixed-format/` - Hybrid approach
+- `docs/examples/basic-family/` - Basic family structure
+- `docs/examples/minimal/` - Minimal archive example
+- `docs/examples/temporal-properties/` - Temporal property examples
+- `docs/examples/participant-assertions/` - Participant assertion examples

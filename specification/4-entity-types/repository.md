@@ -234,8 +234,8 @@ Best practices for recording repository access:
 
 ## See Also
 
-- [Source Entity](source.md) - Collections held in repositories
-- [Citation Entity](citation.md) - References to specific materials in repositories
+- [Source Entity](source) - Collections held in repositories
+- [Citation Entity](citation) - References to specific materials in repositories
 
 
 

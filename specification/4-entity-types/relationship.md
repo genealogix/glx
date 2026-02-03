@@ -83,7 +83,7 @@ relationships:
 
 Marriage appears in both event types and relationship types by design:
 
-- **Event type `marriage`** ([Event Entity](event.md)): The wedding ceremony - records the date, place, officiant, witnesses, and other ceremony details
+- **Event type `marriage`** ([Event Entity](event)): The wedding ceremony - records the date, place, officiant, witnesses, and other ceremony details
 - **Relationship type `marriage`** (this entity): The ongoing marital state - connects two spouses, tracks duration, and can reference when/how it ended
 
 Link them using `start_event` to reference the ceremony. Use both when you have ceremony details; use just the relationship if you only know they were married without specifics about the wedding.
@@ -208,6 +208,6 @@ This allows GLX to preserve the distinction between biological, adoptive, and fo
 
 ## See Also
 
-- [Person Entity](person.md) - Entities connected by relationships
-- [Event Entity](event.md) - Events that start/end relationships
-- [Core Concepts](../2-core-concepts.md#archive-owned-vocabularies) - Overview of vocabulary system
+- [Person Entity](person) - Entities connected by relationships
+- [Event Entity](event) - Events that start/end relationships
+- [Core Concepts](../2-core-concepts#archive-owned-vocabularies) - Overview of vocabulary system

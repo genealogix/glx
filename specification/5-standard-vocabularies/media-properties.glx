@@ -6,8 +6,9 @@
 media_properties:
   subjects:
     label: "Subjects"
-    description: "People depicted or referenced in the media"
+    description: "People depicted in the media"
     reference_type: persons
+    multi_value: true
 
   width:
     label: "Width"

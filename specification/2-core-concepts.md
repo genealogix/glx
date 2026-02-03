@@ -10,7 +10,7 @@ This section explains the fundamental principles and architecture that make GENE
 
 ## Assertion-Aware Data Model
 
-> **See Also:** For complete assertion entity specification, see [Assertion Entity](4-entity-types/assertion.md)
+> **See Also:** For complete assertion entity specification, see [Assertion Entity](4-entity-types/assertion)
 
 ### The Problem with Traditional Models
 Traditional genealogy software stores conclusions directly:
@@ -113,7 +113,7 @@ Location   Material  Reference  Evidence  Conclusion
 - Media entities (photographs, scans, audio) can document sources
 - Not required but highly recommended for preservation
 - Links between citation and assertion or directly to sources
-- See [Media Entity](4-entity-types/media.md) for details
+- See [Media Entity](4-entity-types/media) for details
 
 ### Evidence Chain Example
 

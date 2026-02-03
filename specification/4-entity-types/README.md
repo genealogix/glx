@@ -10,7 +10,7 @@ This section defines the core entity types in GENEALOGIX. Each entity represents
 
 ## Core Entities
 
-### [Person](person.md)
+### [Person](person)
 Represents an individual in the family archive. Contains personal identity information, names, events, and relationships.
 
 - **Key Properties**: Names, gender, living status, events, relationships
@@ -18,7 +18,7 @@ Represents an individual in the family archive. Contains personal identity infor
 - **ID Format**: `person-{id}` (see below)
 - **GEDCOM Equivalent**: INDI (Individual Record)
 
-### [Relationship](relationship.md)
+### [Relationship](relationship)
 Represents connections between people such as spouse, parent-child, and other family relationships.
 
 - **Key Properties**: Relationship type, participants, start/end events
@@ -26,7 +26,7 @@ Represents connections between people such as spouse, parent-child, and other fa
 - **ID Format**: `rel-{id}` (see below)
 - **GEDCOM Equivalent**: FAM (Family Record)
 
-### [Event/Fact](event.md)
+### [Event/Fact](event)
 Represents occurrences in time and place: births, marriages, occupations, residences, etc.
 
 - **Key Properties**: Type, date, place, participants, description
@@ -34,7 +34,7 @@ Represents occurrences in time and place: births, marriages, occupations, reside
 - **ID Format**: `event-{id}` (see below)
 - **GEDCOM Equivalent**: BIRT, DEAT, MARR, BAPM, etc.
 
-### [Place](place.md)
+### [Place](place)
 Represents geographic locations forming a hierarchical structure. Supports multiple names and historical variations.
 
 - **Key Properties**: Name, type, hierarchy, coordinates, alternative names
@@ -42,7 +42,7 @@ Represents geographic locations forming a hierarchical structure. Supports multi
 - **ID Format**: `place-{id}` (see below)
 - **GEDCOM Equivalent**: PLAC (Place structures)
 
-### [Assertion](assertion.md)
+### [Assertion](assertion)
 Represents an evidence-based conclusion about a specific genealogical fact. Forms the core of the GENEALOGIX assertion model.
 
 - **Key Properties**: Subject, property, value, citations, confidence
@@ -50,7 +50,7 @@ Represents an evidence-based conclusion about a specific genealogical fact. Form
 - **ID Format**: `assertion-{id}` (see below)
 - **GEDCOM Equivalent**: Implicit (derived from GEDCOM structure and SOUR references)
 
-### [Source](source.md)
+### [Source](source)
 Represents a bibliographic resource or information source. Can be books, documents, databases, websites, etc.
 
 - **Key Properties**: Title, author, publication info, repository
@@ -58,7 +58,7 @@ Represents a bibliographic resource or information source. Can be books, documen
 - **ID Format**: `source-{id}` (see below)
 - **GEDCOM Equivalent**: SOUR (Source Record)
 
-### [Citation](citation.md)
+### [Citation](citation)
 Represents a specific reference to evidence within a source. Links sources to specific pages, records, or items.
 
 - **Key Properties**: Source reference, page, data date, locator
@@ -66,7 +66,7 @@ Represents a specific reference to evidence within a source. Links sources to sp
 - **ID Format**: `citation-{id}` (see below)
 - **GEDCOM Equivalent**: SOUR.PAGE, SOUR.QUAY
 
-### [Repository](repository.md)
+### [Repository](repository)
 Represents an institution or organization that holds genealogical sources (archives, libraries, databases, etc.).
 
 - **Key Properties**: Name, type, address, contact info, access restrictions
@@ -74,7 +74,7 @@ Represents an institution or organization that holds genealogical sources (archi
 - **ID Format**: `repository-{id}` (see below)
 - **GEDCOM Equivalent**: REPO (Repository Record)
 
-### [Media](media.md)
+### [Media](media)
 Represents digital or physical media objects associated with genealogical entities (photographs, documents, audio, etc.).
 
 - **Key Properties**: Title, file path, MIME type, description
@@ -208,7 +208,7 @@ All references must point to existing entities:
 - Unknown assertion claims (not defined in property vocabularies) generate warnings
 - Warnings allow flexibility for rapid data entry and emerging properties
 
-See [Vocabularies - Vocabulary Validation](vocabularies.md#vocabulary-validation) for complete validation policy details.
+See [Vocabularies - Vocabulary Validation](vocabularies#vocabulary-validation) for complete validation policy details.
 
 ## Extension Points
 
@@ -218,13 +218,13 @@ The GENEALOGIX specification allows extension through:
 - Custom relationship types
 - Custom tags and notes
 
-See [Core Concepts](../2-core-concepts.md#archive-owned-vocabularies) for vocabulary and extension guidelines.
+See [Core Concepts](../2-core-concepts#archive-owned-vocabularies) for vocabulary and extension guidelines.
 
 ## See Also
 
-- [Archive Organization](../3-archive-organization.md) - How entities are organized in files
-- [Core Concepts](../2-core-concepts.md#evidence-hierarchy) - How entities relate to evidence and provenance
-- [Vocabularies](vocabularies.md) - Complete reference for all vocabulary types
+- [Archive Organization](../3-archive-organization) - How entities are organized in files
+- [Core Concepts](../2-core-concepts#evidence-hierarchy) - How entities relate to evidence and provenance
+- [Vocabularies](vocabularies) - Complete reference for all vocabulary types
 - Entity type documentation includes GEDCOM mapping information
 
 ## Common Fields

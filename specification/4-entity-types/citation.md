@@ -189,6 +189,6 @@ Citations are part of the GENEALOGIX evidence hierarchy. See [Core Concepts - Ev
 
 ## See Also
 
-- [Source Entity](source.md) - Bibliographic resource
-- [Assertion Entity](assertion.md) - Evidence conclusions
-- [Repository Entity](repository.md) - Where sources are held
+- [Source Entity](source) - Bibliographic resource
+- [Assertion Entity](assertion) - Evidence conclusions
+- [Repository Entity](repository) - Where sources are held

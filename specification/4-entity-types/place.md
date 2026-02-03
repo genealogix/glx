@@ -197,12 +197,12 @@ places/
 - Place hierarchy must be acyclic (no circular parent references)
 - Coordinates, if present, must be valid WGS84 values
 - Parent place must exist before referencing it
-- Type must be from the [place types vocabulary](vocabularies.md#place-types-vocabulary)
+- Type must be from the [place types vocabulary](vocabularies#place-types-vocabulary)
 
 ## See Also
 
-- [Event Entity](event.md) - Events that occur at places
-- [Person Entity](person.md) - Residence and birth/death places
-- [Vocabularies](vocabularies.md#place-types-vocabulary) - Place types vocabulary
-- [Data Types](../6-data-types.md) - Coordinate and date formats
+- [Event Entity](event) - Events that occur at places
+- [Person Entity](person) - Residence and birth/death places
+- [Vocabularies](vocabularies#place-types-vocabulary) - Place types vocabulary
+- [Data Types](../6-data-types) - Coordinate and date formats
 

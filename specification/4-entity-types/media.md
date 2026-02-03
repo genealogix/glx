@@ -493,7 +493,7 @@ See [media.schema.json](../schema/v1/media.schema.json) for the complete JSON Sc
 
 ## See Also
 
-- [Source Entity](source.md) - Sources that media documents
-- [Citation Entity](citation.md) - Citations that media supports
-- [Person Entity](person.md) - People depicted in media
-- [Archive Organization](../3-archive-organization.md#organization-strategies) - Organizing media files
+- [Source Entity](source) - Sources that media documents
+- [Citation Entity](citation) - Citations that media supports
+- [Person Entity](person) - People depicted in media
+- [Archive Organization](../3-archive-organization#organization-strategies) - Organizing media files
