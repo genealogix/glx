@@ -41,6 +41,45 @@ const (
 	EventTypeGeneric            = "event"
 )
 
+// gedcomEventTypeMapping maps GEDCOM individual event tags to GLX event types.
+// Package-level to avoid allocation on every call.
+var gedcomEventTypeMapping = map[string]string{
+	GedcomTagBirt: EventTypeBirth,
+	GedcomTagChr:  EventTypeChristening,
+	GedcomTagDeat: EventTypeDeath,
+	GedcomTagBuri: EventTypeBurial,
+	GedcomTagCrem: EventTypeCremation,
+	GedcomTagAdop: EventTypeAdoption,
+	GedcomTagBapm: EventTypeBaptism,
+	GedcomTagBarm: EventTypeBarMitzvah,
+	GedcomTagBasm: EventTypeBasMitzvah,
+	GedcomTagBles: EventTypeBlessing,
+	GedcomTagChra: EventTypeAdultChristening,
+	GedcomTagConf: EventTypeConfirmation,
+	GedcomTagFcom: EventTypeFirstCommunion,
+	GedcomTagOrdn: EventTypeOrdination,
+	GedcomTagNatu: EventTypeNaturalization,
+	GedcomTagEmig: EventTypeEmigration,
+	GedcomTagImmi: EventTypeImmigration,
+	GedcomTagProb: EventTypeProbate,
+	GedcomTagWill: EventTypeWill,
+	GedcomTagGrad: EventTypeGraduation,
+	GedcomTagReti: EventTypeRetirement,
+}
+
+// gedcomFamilyEventTypeMapping maps GEDCOM family event tags to GLX event types.
+// Package-level to avoid allocation on every call.
+var gedcomFamilyEventTypeMapping = map[string]string{
+	GedcomTagEnga: EventTypeEngagement,
+	GedcomTagMarb: EventTypeMarriageBanns,
+	GedcomTagMarc: EventTypeMarriageContract,
+	GedcomTagMarl: EventTypeMarriageLicense,
+	GedcomTagMars: EventTypeMarriageSettlement,
+	GedcomTagAnul: EventTypeAnnulment,
+	GedcomTagDivf: EventTypeDivorceFiled,
+	GedcomTagEven: EventTypeGeneric,
+}
+
 // Standard Relationship Types - from relationship-types.glx vocabulary
 const (
 	RelationshipTypeMarriage              = "marriage"
@@ -317,6 +356,25 @@ const (
 	SourceTypeOther          = "other"           // Other source types
 )
 
+// gedcomSourceTypeMapping maps GEDCOM source type values to GLX source types.
+// Package-level to avoid allocation on every call.
+var gedcomSourceTypeMapping = map[string]string{
+	"book":       SourceTypeBook,
+	"article":    SourceTypeBook,
+	"website":    SourceTypeDatabase,
+	"database":   SourceTypeDatabase,
+	"census":     SourceTypeCensus,
+	"vital":      SourceTypeVitalRecord,
+	"church":     SourceTypeChurchRegister,
+	"military":   SourceTypeMilitary,
+	"newspaper":  SourceTypeNewspaper,
+	"probate":    SourceTypeProbate,
+	"land":       SourceTypeLand,
+	"court":      SourceTypeCourt,
+	"photo":      SourceTypePhotograph,
+	"photograph": SourceTypePhotograph,
+}
+
 // Entity type constants - plural form used as map keys in GLXFile
 const (
 	EntityTypePersons       = "persons"
@@ -420,6 +478,20 @@ const (
 	RepositoryTypeOther             = "other"
 )
 
+// gedcomRepositoryTypeMapping maps GEDCOM repository type values to GLX repository types.
+// Package-level to avoid allocation on every call.
+var gedcomRepositoryTypeMapping = map[string]string{
+	"archive":    "archive",
+	"library":    "library",
+	"church":     "church",
+	"government": "government_agency",
+	"museum":     "museum",
+	"online":     "database",
+	"registry":   "registry",
+	"society":    "historical_society",
+	"university": "university",
+}
+
 // MIME Types - Common media types
 const (
 	MimeTypeJPEG        = "image/jpeg"
@@ -453,6 +525,70 @@ const (
 	MimeTypeOctetStream = "application/octet-stream"
 )
 
+// mimeTypeByExtension maps file extensions (with dot) to MIME types.
+// Package-level to avoid allocation on every call.
+var mimeTypeByExtension = map[string]string{
+	// Images
+	".jpg":  MimeTypeJPEG,
+	".jpeg": MimeTypeJPEG,
+	".png":  MimeTypePNG,
+	".gif":  MimeTypeGIF,
+	".bmp":  MimeTypeBMP,
+	".tif":  MimeTypeTIFF,
+	".tiff": MimeTypeTIFF,
+	".webp": MimeTypeWEBP,
+	".svg":  "image/svg+xml",
+	// Audio
+	".mp3":  MimeTypeMP3,
+	".wav":  MimeTypeWAV,
+	".ogg":  MimeTypeOGG,
+	".m4a":  MimeTypeM4A,
+	".flac": MimeTypeFLAC,
+	// Video
+	".mp4":  MimeTypeMP4,
+	".avi":  MimeTypeAVI,
+	".mov":  MimeTypeMOV,
+	".wmv":  MimeTypeWMV,
+	".flv":  MimeTypeFLV,
+	".webm": MimeTypeWEBM,
+	// Documents
+	".pdf":  MimeTypePDF,
+	".doc":  MimeTypeDOC,
+	".docx": MimeTypeDOCX,
+	".txt":  MimeTypeTXT,
+	".rtf":  MimeTypeRTF,
+	// Archives
+	".zip": MimeTypeZIP,
+	".rar": MimeTypeRAR,
+	".7z":  MimeType7Z,
+	".tar": MimeTypeTAR,
+	".gz":  MimeTypeGZIP,
+}
+
+// mimeTypeByFormat maps GEDCOM 5.5.1 FORM values (without dot) to MIME types.
+// Package-level to avoid allocation on every call.
+var mimeTypeByFormat = map[string]string{
+	// Images
+	"jpg":  MimeTypeJPEG,
+	"jpeg": MimeTypeJPEG,
+	"png":  MimeTypePNG,
+	"gif":  MimeTypeGIF,
+	"bmp":  MimeTypeBMP,
+	"tif":  MimeTypeTIFF,
+	"tiff": MimeTypeTIFF,
+	"pcx":  MimeTypePCX,
+	// Audio
+	"wav": MimeTypeWAV,
+	"mp3": MimeTypeMP3,
+	// Video
+	"avi": MimeTypeAVI,
+	"mpg": "video/mpeg",
+	"mp4": MimeTypeMP4,
+	// Documents
+	"pdf": MimeTypePDF,
+	"txt": MimeTypeTXT,
+}
+
 // Crop Coordinate Keys - used for GEDCOM CROP tag
 const (
 	CropKeyTop    = "top"
@@ -467,11 +603,14 @@ const (
 	GEDCOMVersion70  = "7.0"
 )
 
-// Gender Values
+// Gender values for GEDCOM import mapping.
+// GEDCOM SEX tag: M→male, F→female, U→unknown, X→other.
+// GLX does not enforce these - gender is a free-form string property.
 const (
 	GenderMale    = "male"
 	GenderFemale  = "female"
 	GenderUnknown = "unknown"
+	GenderOther   = "other"
 )
 
 // File Extensions

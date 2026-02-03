@@ -168,92 +168,23 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Medi
 	return media
 }
 
-// inferMimeType infers MIME type from file extension
+// inferMimeType infers MIME type from file extension.
+// Uses mimeTypeByExtension from constants.go.
 func inferMimeType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
-
-	mimeTypes := map[string]string{
-		// Images
-		".jpg":  MimeTypeJPEG,
-		".jpeg": MimeTypeJPEG,
-		".png":  MimeTypePNG,
-		".gif":  MimeTypeGIF,
-		".bmp":  MimeTypeBMP,
-		".tif":  MimeTypeTIFF,
-		".tiff": MimeTypeTIFF,
-		".webp": MimeTypeWEBP,
-		".svg":  "image/svg+xml",
-
-		// Audio
-		".mp3":  MimeTypeMP3,
-		".wav":  MimeTypeWAV,
-		".ogg":  MimeTypeOGG,
-		".m4a":  MimeTypeM4A,
-		".flac": MimeTypeFLAC,
-
-		// Video
-		".mp4":  MimeTypeMP4,
-		".avi":  MimeTypeAVI,
-		".mov":  MimeTypeMOV,
-		".wmv":  MimeTypeWMV,
-		".flv":  MimeTypeFLV,
-		".webm": MimeTypeWEBM,
-
-		// Documents
-		".pdf":  MimeTypePDF,
-		".doc":  MimeTypeDOC,
-		".docx": MimeTypeDOCX,
-		".txt":  MimeTypeTXT,
-		".rtf":  MimeTypeRTF,
-
-		// Archives
-		".zip": MimeTypeZIP,
-		".rar": MimeTypeRAR,
-		".7z":  MimeType7Z,
-		".tar": MimeTypeTAR,
-		".gz":  MimeTypeGZIP,
-	}
-
-	if mime, ok := mimeTypes[ext]; ok {
+	if mime, ok := mimeTypeByExtension[ext]; ok {
 		return mime
 	}
-
 	return MimeTypeOctetStream
 }
 
-// mapFormatToMimeType maps GEDCOM 5.5.1 FORM values to MIME types
+// mapFormatToMimeType maps GEDCOM 5.5.1 FORM values to MIME types.
+// Uses mimeTypeByFormat from constants.go.
 func mapFormatToMimeType(format string) string {
 	formatLower := strings.ToLower(format)
-
-	mapping := map[string]string{
-		// Images
-		"jpg":  MimeTypeJPEG,
-		"jpeg": MimeTypeJPEG,
-		"png":  MimeTypePNG,
-		"gif":  MimeTypeGIF,
-		"bmp":  MimeTypeBMP,
-		"tif":  MimeTypeTIFF,
-		"tiff": MimeTypeTIFF,
-		"pcx":  MimeTypePCX,
-
-		// Audio
-		"wav": MimeTypeWAV,
-		"mp3": MimeTypeMP3,
-
-		// Video
-		"avi": MimeTypeAVI,
-		"mpg": "video/mpeg",
-		"mp4": MimeTypeMP4,
-
-		// Documents
-		"pdf": MimeTypePDF,
-		"txt": MimeTypeTXT,
-	}
-
-	if mime, ok := mapping[formatLower]; ok {
+	if mime, ok := mimeTypeByFormat[formatLower]; ok {
 		return mime
 	}
-
 	return MimeTypeOctetStream
 }
 

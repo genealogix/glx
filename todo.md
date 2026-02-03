@@ -108,7 +108,6 @@
 ### Performance
 
 - 🟡 **Regex compilation in hot path** ([gedcom_name.go:52-53](glx/lib/gedcom_name.go#L52-L53)): `surnameRegex` and `nicknameRegex` are compiled on every call to `parseGEDCOMName`. Should be package-level compiled regexes.
-- 🟡 **Map allocation in hot paths**: Type mapping functions allocate maps on every call instead of using package-level maps: `mapGEDCOMEventType` ([gedcom_individual.go:411](glx/lib/gedcom_individual.go#L411)), `mapFamilyEventType` ([gedcom_family.go:437](glx/lib/gedcom_family.go#L437)), `mapSourceType` ([gedcom_source.go:167](glx/lib/gedcom_source.go#L167)), `mapRepositoryType` ([gedcom_repository.go:129](glx/lib/gedcom_repository.go#L129)), `inferMimeType` ([gedcom_media.go:242](glx/lib/gedcom_media.go#L242)), `mapFormatToMimeType` ([gedcom_media.go:295](glx/lib/gedcom_media.go#L295)).
 
 ### Code Style
 

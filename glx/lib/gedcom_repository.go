@@ -124,25 +124,13 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	return nil
 }
 
-// mapRepositoryType maps GEDCOM repository type to GLX
+// mapRepositoryType maps GEDCOM repository type to GLX.
+// Uses gedcomRepositoryTypeMapping from constants.go.
 func mapRepositoryType(gedcomType string) string {
-	mapping := map[string]string{
-		"archive":    "archive",
-		"library":    "library",
-		"church":     "church",
-		"government": "government_agency",
-		"museum":     "museum",
-		"online":     "database",
-		"registry":   "registry",
-		"society":    "historical_society",
-		"university": "university",
-	}
-
 	typeLower := strings.ToLower(gedcomType)
-	if mapped, ok := mapping[typeLower]; ok {
+	if mapped, ok := gedcomRepositoryTypeMapping[typeLower]; ok {
 		return mapped
 	}
-
 	return "other"
 }
 

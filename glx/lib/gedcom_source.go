@@ -161,31 +161,13 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	return nil
 }
 
-// mapSourceType maps GEDCOM source type to GLX
+// mapSourceType maps GEDCOM source type to GLX.
+// Uses gedcomSourceTypeMapping from constants.go.
 func mapSourceType(gedcomType string) string {
-	// Common GEDCOM source type values
-	mapping := map[string]string{
-		"book":       SourceTypeBook,
-		"article":    SourceTypeBook,
-		"website":    SourceTypeDatabase,
-		"database":   SourceTypeDatabase,
-		"census":     SourceTypeCensus,
-		"vital":      SourceTypeVitalRecord,
-		"church":     SourceTypeChurchRegister,
-		"military":   SourceTypeMilitary,
-		"newspaper":  SourceTypeNewspaper,
-		"probate":    SourceTypeProbate,
-		"land":       SourceTypeLand,
-		"court":      SourceTypeCourt,
-		"photo":      SourceTypePhotograph,
-		"photograph": SourceTypePhotograph,
-	}
-
 	typeLower := strings.ToLower(gedcomType)
-	if mapped, ok := mapping[typeLower]; ok {
+	if mapped, ok := gedcomSourceTypeMapping[typeLower]; ok {
 		return mapped
 	}
-
 	return SourceTypeOther
 }
 

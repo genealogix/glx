@@ -277,22 +277,11 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	return nil
 }
 
-// mapFamilyEventType maps GEDCOM family event tags to GLX event types
+// mapFamilyEventType maps GEDCOM family event tags to GLX event types.
+// Uses gedcomFamilyEventTypeMapping from constants.go.
 func mapFamilyEventType(tag string) string {
-	mapping := map[string]string{
-		GedcomTagEnga: EventTypeEngagement,
-		GedcomTagMarb: EventTypeMarriageBanns,
-		GedcomTagMarc: EventTypeMarriageContract,
-		GedcomTagMarl: EventTypeMarriageLicense,
-		GedcomTagMars: EventTypeMarriageSettlement,
-		GedcomTagAnul: EventTypeAnnulment,
-		GedcomTagDivf: EventTypeDivorceFiled,
-		GedcomTagEven: EventTypeGeneric,
-	}
-
-	if eventType, ok := mapping[tag]; ok {
+	if eventType, ok := gedcomFamilyEventTypeMapping[tag]; ok {
 		return eventType
 	}
-
 	return EventTypeGeneric
 }

@@ -352,42 +352,18 @@ func mapGEDCOMSex(sex string) string {
 	case "U":
 		return GenderUnknown
 	case "X":
-		return "other"
+		return GenderOther
 	default:
 		return GenderUnknown
 	}
 }
 
-// mapGEDCOMEventType maps GEDCOM event tags to GLX event types
+// mapGEDCOMEventType maps GEDCOM event tags to GLX event types.
+// Uses gedcomEventTypeMapping from constants.go.
 func mapGEDCOMEventType(tag string) string {
-	mapping := map[string]string{
-		GedcomTagBirt: EventTypeBirth,
-		GedcomTagChr:  EventTypeChristening,
-		GedcomTagDeat: EventTypeDeath,
-		GedcomTagBuri: EventTypeBurial,
-		GedcomTagCrem: EventTypeCremation,
-		GedcomTagAdop: EventTypeAdoption,
-		GedcomTagBapm: EventTypeBaptism,
-		GedcomTagBarm: EventTypeBarMitzvah,
-		GedcomTagBasm: EventTypeBasMitzvah,
-		GedcomTagBles: EventTypeBlessing,
-		GedcomTagChra: EventTypeAdultChristening,
-		GedcomTagConf: EventTypeConfirmation,
-		GedcomTagFcom: EventTypeFirstCommunion,
-		GedcomTagOrdn: EventTypeOrdination,
-		GedcomTagNatu: EventTypeNaturalization,
-		GedcomTagEmig: EventTypeEmigration,
-		GedcomTagImmi: EventTypeImmigration,
-		GedcomTagProb: EventTypeProbate,
-		GedcomTagWill: EventTypeWill,
-		GedcomTagGrad: EventTypeGraduation,
-		GedcomTagReti: EventTypeRetirement,
-	}
-
-	if eventType, ok := mapping[tag]; ok {
+	if eventType, ok := gedcomEventTypeMapping[tag]; ok {
 		return eventType
 	}
-
 	return strings.ToLower(tag)
 }
 
