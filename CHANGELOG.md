@@ -44,10 +44,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **New `citation-properties.glx` vocabulary** - Standard properties for citation entities:
   - `locator` - Location within source where cited material can be found (page, film, image, entry reference)
   - `text_from_source` - Transcription or excerpt of relevant text from the source
+  - `source_date` - Date when the source recorded the information (from GEDCOM DATA.DATE)
 - **Added `CitationProperties` to GLXFile** - Property vocabulary support for citation validation
 - **Added `Properties` field to Citation struct** - Vocabulary-controlled properties on citation entities
 - **Consolidated `page` and `locator` into single `locator` property** - GEDCOM PAGE is free-form text, not just page numbers
 - **Moved `text_from_source` to properties** - Now stored in `properties.text_from_source`
+- **Moved `source_date` to properties** - GEDCOM DATA.DATE now stored in `properties.source_date` instead of notes
 
 #### Source Properties Vocabulary
 - **New `source-properties.glx` vocabulary** - Standard properties for source entities:

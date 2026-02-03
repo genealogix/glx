@@ -66,6 +66,7 @@ Citation properties are defined in the `citation_properties` vocabulary. Standar
 |----------|------|-------------|
 | `locator` | string | Location within source (e.g., 'Page 45', 'Film 1234567, Image 87', 'Entry 123') |
 | `text_from_source` | string | Transcription or excerpt from the source |
+| `source_date` | date | Date when the source recorded the information |
 
 **See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README.md#citation-properties)
 
@@ -173,6 +174,7 @@ Or more commonly, citations are referenced by ID from assertions.
 | `source` | SOUR | Source reference |
 | `properties.locator` | SOUR.PAGE | Location within source (GEDCOM PAGE is free-form text, not just page numbers) |
 | `properties.text_from_source` | SOUR.TEXT, SOUR.DATA.TEXT | Transcribed text |
+| `properties.source_date` | SOUR.DATA.DATE | Date when source recorded the information |
 
 ## Validation Rules
 

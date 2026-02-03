@@ -73,13 +73,6 @@
 - 🟢 **NCHI Tag** ([gedcom_family.go](glx/lib/gedcom_family.go)): Store NCHI (number of children) - can differ from actual CHIL count
 - 🟢 **NAME TYPE** ([gedcom_name.go](glx/lib/gedcom_name.go)): Store NAME TYPE subfield (birth, married, aka)
 
-### Notes Anti-Pattern Audit
-
-**Anti-pattern**: Dumping structured data into Notes fields instead of proper typed fields/properties
-
-#### Citation ([gedcom_evidence.go](glx/lib/gedcom_evidence.go))
-- 🟡 **Line 63**: Source date dumped in notes → Add `SourceDate` field to Citation struct
-
 ### Data Quality & Validation
 
 - 🟢 **LANG Tag Normalization**: Normalize language tags on import. GEDCOM 7.0 uses ISO format (e.g., `en-US`), but GEDCOM 5.5.x uses free-form text (e.g., `English`, `French`). Should convert 5.5.x values to ISO codes for consistency.

@@ -267,6 +267,7 @@ Defines standard and custom properties for citation entities including location 
 **Standard Properties Include:**
 - `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.)
 - `text_from_source` - Transcription or excerpt of relevant text from the source
+- `source_date` - Date when the source recorded the information
 
 **See Also:** [Citation Entity Documentation](../4-entity-types/citation#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#citation-properties-vocabulary)
 

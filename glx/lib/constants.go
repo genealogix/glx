@@ -441,6 +441,7 @@ const (
 const (
 	CitationPropertyLocator        = "locator"
 	CitationPropertyTextFromSource = "text_from_source"
+	CitationPropertySourceDate     = "source_date"
 )
 
 // Standard Source Property Names - commonly used properties on Source entities

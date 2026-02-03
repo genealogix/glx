@@ -13,3 +13,8 @@ citation_properties:
     label: "Text from Source"
     description: "Transcription or excerpt of relevant text from the source"
     value_type: string
+
+  source_date:
+    label: "Source Date"
+    description: "Date when the source recorded the information (from GEDCOM DATA.DATE)"
+    value_type: date

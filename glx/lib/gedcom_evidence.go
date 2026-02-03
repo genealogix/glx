@@ -62,14 +62,13 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 			for _, dataSub := range sub.SubRecords {
 				switch dataSub.Tag {
 				case GedcomTagDate:
-					// Source date stored in notes (should be a field - see todo.md)
+					// Source date - when the source recorded the information
 					dateStr := parseGEDCOMDate(dataSub.Value)
 					if dateStr != "" {
-						if citation.Notes != "" {
-							citation.Notes += "\nSource date: " + string(dateStr)
-						} else {
-							citation.Notes = "Source date: " + string(dateStr)
+						if citation.Properties == nil {
+							citation.Properties = make(map[string]any)
 						}
+						citation.Properties[CitationPropertySourceDate] = string(dateStr)
 					}
 				case GedcomTagText:
 					// Text from source - may have CONT/CONC for long text

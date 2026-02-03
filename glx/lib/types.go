@@ -181,7 +181,7 @@ type Citation struct {
 	SourceID     string         `refType:"sources"           yaml:"source"`
 	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source)
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date)
 	Notes        string         `yaml:"notes,omitempty"`
 	Tags         []string       `yaml:"tags,omitempty"`
 }
