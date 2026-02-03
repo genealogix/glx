@@ -126,10 +126,6 @@
 - 🟡 **Regex compilation in hot path** ([gedcom_name.go:52-53](glx/lib/gedcom_name.go#L52-L53)): `surnameRegex` and `nicknameRegex` are compiled on every call to `parseGEDCOMName`. Should be package-level compiled regexes.
 - 🟡 **Map allocation in hot paths**: Type mapping functions allocate maps on every call instead of using package-level maps: `mapGEDCOMEventType` ([gedcom_individual.go:411](glx/lib/gedcom_individual.go#L411)), `mapFamilyEventType` ([gedcom_family.go:437](glx/lib/gedcom_family.go#L437)), `mapSourceType` ([gedcom_source.go:167](glx/lib/gedcom_source.go#L167)), `mapRepositoryType` ([gedcom_repository.go:129](glx/lib/gedcom_repository.go#L129)), `inferMimeType` ([gedcom_media.go:242](glx/lib/gedcom_media.go#L242)), `mapFormatToMimeType` ([gedcom_media.go:295](glx/lib/gedcom_media.go#L295)).
 
-### DRY Violations
-
-- 🟡 **Duplicated event extraction logic**: Same date/place/note/citation extraction pattern duplicated across `convertIndividualEvent` ([gedcom_individual.go:290](glx/lib/gedcom_individual.go#L290)), `convertMarriageEvent` ([gedcom_family.go:135](glx/lib/gedcom_family.go#L135)), `convertDivorceEvent` ([gedcom_family.go:259](glx/lib/gedcom_family.go#L259)), `convertFamilyEvent` ([gedcom_family.go:357](glx/lib/gedcom_family.go#L357)). Should extract common `extractEventDetails` helper.
-
 ### Code Style
 
 - 🟢 **ConversionContext too large** ([gedcom_import.go:134-173](glx/lib/gedcom_import.go#L134-L173)): Has 20+ fields. Consider breaking into focused sub-structs (IDMappings, IDCounters, GEDCOM70State).

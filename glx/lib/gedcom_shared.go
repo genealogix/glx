@@ -118,6 +118,76 @@ func convertExtensionData(tag string, value string, subRecords []*GEDCOMRecord) 
 	return properties
 }
 
+// extractEventDetails extracts common event details (DATE, PLAC, NOTE, ADDR, and optionally SOUR)
+// from GEDCOM subrecords and populates the event.
+// If eventID is non-empty and includeCitations is true, SOUR records will be processed
+// and added to event.Properties[PropertyCitations].
+// Returns the place ID if one was extracted (for callers that need it for additional processing).
+func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event, conv *ConversionContext, includeCitations bool) string {
+	var placeID string
+
+	for _, sub := range eventRecord.SubRecords {
+		switch sub.Tag {
+		case GedcomTagDate:
+			event.Date = parseGEDCOMDate(sub.Value)
+
+		case GedcomTagPlac:
+			hierarchy := parseGEDCOMPlace(sub.Value)
+			if hierarchy != nil {
+				// Extract coordinates from MAP/LATI/LONG subrecords
+				lat, lon := extractPlaceCoordinates(sub)
+				hierarchy.Latitude = lat
+				hierarchy.Longitude = lon
+
+				pid, err := buildPlaceHierarchy(hierarchy, conv)
+				if err == nil && pid != "" {
+					event.PlaceID = pid
+					placeID = pid
+				}
+			}
+
+		case GedcomTagNote:
+			noteText := extractNoteText(sub, conv)
+			if noteText != "" {
+				event.Properties[PropertyNotes] = noteText
+			}
+
+		case GedcomTagAddr:
+			// Address - extract full address including subfields
+			addr := extractAddress(sub)
+			if addr != "" {
+				event.Properties[PropertyAddress] = addr
+			}
+
+			// If no PLAC was provided, try to build place from ADDR subfields
+			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
+				hierarchy := buildPlaceHierarchyFromAddress(sub)
+				if hierarchy != nil {
+					pid, err := buildPlaceHierarchy(hierarchy, conv)
+					if err == nil && pid != "" {
+						event.PlaceID = pid
+						placeID = pid
+					}
+				}
+			}
+
+		case GedcomTagSour:
+			if includeCitations && eventID != "" {
+				citationID, err := createCitationFromSOUR(eventID, sub, conv)
+				if err == nil && citationID != "" {
+					citations, ok := event.Properties[PropertyCitations].([]string)
+					if !ok {
+						citations = []string{}
+					}
+					event.Properties[PropertyCitations] = append(citations, citationID)
+				}
+			}
+		}
+	}
+
+	return placeID
+}
+
 // extractExternalIDs extracts EXID tags from a record and returns them as a slice
 // EXID format (GEDCOM 7.0):
 //

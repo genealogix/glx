@@ -131,46 +131,15 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 		Properties: make(map[string]any),
 	}
 
-	// Extract event details
+	// Extract common event details (DATE, PLAC, NOTE, ADDR, SOUR)
+	extractEventDetails(eventID, marrRecord, event, conv, true)
+
+	// Process marriage-specific tags
 	for _, sub := range marrRecord.SubRecords {
 		switch sub.Tag {
-		case GedcomTagDate:
-			event.Date = parseGEDCOMDate(sub.Value)
-
-		case GedcomTagPlac:
-			hierarchy := parseGEDCOMPlace(sub.Value)
-			if hierarchy != nil {
-				// Extract coordinates from MAP/LATI/LONG subrecords
-				lat, lon := extractPlaceCoordinates(sub)
-				hierarchy.Latitude = lat
-				hierarchy.Longitude = lon
-
-				placeID, err := buildPlaceHierarchy(hierarchy, conv)
-				if err == nil && placeID != "" {
-					event.PlaceID = placeID
-				}
-			}
-
 		case GedcomTagType:
 			// Marriage type (e.g., civil, religious)
 			event.Properties[PropertyMarriageType] = sub.Value
-
-		case GedcomTagNote:
-			noteText := extractNoteText(sub, conv)
-			if noteText != "" {
-				event.Properties[PropertyNotes] = noteText
-			}
-
-		case GedcomTagSour:
-			// Citations on the event
-			citationID, err := createCitationFromSOUR(eventID, sub, conv)
-			if err == nil && citationID != "" {
-				citations, ok := event.Properties[PropertyCitations].([]string)
-				if !ok {
-					citations = []string{}
-				}
-				event.Properties[PropertyCitations] = append(citations, citationID)
-			}
 
 		case GedcomTagObje:
 			// Media attached to event
@@ -192,24 +161,6 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 					}
 					media := event.Properties[PropertyMedia].([]string)
 					event.Properties[PropertyMedia] = append(media, mediaID)
-				}
-			}
-
-		case GedcomTagAddr:
-			// Address - extract full address including subfields
-			addr := extractAddress(sub)
-			if addr != "" {
-				event.Properties[PropertyAddress] = addr
-			}
-
-			// If no PLAC was provided, try to build place from ADDR subfields
-			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
-				hierarchy := buildPlaceHierarchyFromAddress(sub)
-				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, conv)
-					if err == nil && placeID != "" {
-						event.PlaceID = placeID
-					}
 				}
 			}
 		}
@@ -255,61 +206,8 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 		Properties: make(map[string]any),
 	}
 
-	// Extract event details
-	for _, sub := range divRecord.SubRecords {
-		switch sub.Tag {
-		case GedcomTagDate:
-			event.Date = parseGEDCOMDate(sub.Value)
-
-		case GedcomTagPlac:
-			hierarchy := parseGEDCOMPlace(sub.Value)
-			if hierarchy != nil {
-				// Extract coordinates from MAP/LATI/LONG subrecords
-				lat, lon := extractPlaceCoordinates(sub)
-				hierarchy.Latitude = lat
-				hierarchy.Longitude = lon
-
-				placeID, err := buildPlaceHierarchy(hierarchy, conv)
-				if err == nil && placeID != "" {
-					event.PlaceID = placeID
-				}
-			}
-
-		case GedcomTagNote:
-			noteText := extractNoteText(sub, conv)
-			if noteText != "" {
-				event.Properties[PropertyNotes] = noteText
-			}
-
-		case GedcomTagSour:
-			citationID, err := createCitationFromSOUR(eventID, sub, conv)
-			if err == nil && citationID != "" {
-				citations, ok := event.Properties[PropertyCitations].([]string)
-				if !ok {
-					citations = []string{}
-				}
-				event.Properties[PropertyCitations] = append(citations, citationID)
-			}
-
-		case GedcomTagAddr:
-			// Address - extract full address including subfields
-			addr := extractAddress(sub)
-			if addr != "" {
-				event.Properties[PropertyAddress] = addr
-			}
-
-			// If no PLAC was provided, try to build place from ADDR subfields
-			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
-				hierarchy := buildPlaceHierarchyFromAddress(sub)
-				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, conv)
-					if err == nil && placeID != "" {
-						event.PlaceID = placeID
-					}
-				}
-			}
-		}
-	}
+	// Extract common event details (DATE, PLAC, NOTE, ADDR, SOUR)
+	extractEventDetails(eventID, divRecord, event, conv, true)
 
 	// Add participants for both spouses
 	var participants []EventParticipant
@@ -353,61 +251,8 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 		Properties: make(map[string]any),
 	}
 
-	// Extract event details
-	for _, sub := range eventRecord.SubRecords {
-		switch sub.Tag {
-		case GedcomTagDate:
-			event.Date = parseGEDCOMDate(sub.Value)
-
-		case GedcomTagPlac:
-			hierarchy := parseGEDCOMPlace(sub.Value)
-			if hierarchy != nil {
-				// Extract coordinates from MAP/LATI/LONG subrecords
-				lat, lon := extractPlaceCoordinates(sub)
-				hierarchy.Latitude = lat
-				hierarchy.Longitude = lon
-
-				placeID, err := buildPlaceHierarchy(hierarchy, conv)
-				if err == nil && placeID != "" {
-					event.PlaceID = placeID
-				}
-			}
-
-		case GedcomTagNote:
-			noteText := extractNoteText(sub, conv)
-			if noteText != "" {
-				event.Properties[PropertyNotes] = noteText
-			}
-
-		case GedcomTagSour:
-			citationID, err := createCitationFromSOUR(eventID, sub, conv)
-			if err == nil && citationID != "" {
-				citations, ok := event.Properties[PropertyCitations].([]string)
-				if !ok {
-					citations = []string{}
-				}
-				event.Properties[PropertyCitations] = append(citations, citationID)
-			}
-
-		case GedcomTagAddr:
-			// Address - extract full address including subfields
-			addr := extractAddress(sub)
-			if addr != "" {
-				event.Properties[PropertyAddress] = addr
-			}
-
-			// If no PLAC was provided, try to build place from ADDR subfields
-			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
-				hierarchy := buildPlaceHierarchyFromAddress(sub)
-				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, conv)
-					if err == nil && placeID != "" {
-						event.PlaceID = placeID
-					}
-				}
-			}
-		}
-	}
+	// Extract common event details (DATE, PLAC, NOTE, ADDR, SOUR)
+	extractEventDetails(eventID, eventRecord, event, conv, true)
 
 	// Add participants for both spouses
 	var participants []EventParticipant

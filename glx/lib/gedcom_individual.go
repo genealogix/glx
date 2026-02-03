@@ -283,34 +283,14 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		Properties: make(map[string]any),
 	}
 
-	// Extract event details
-	var eventDate DateString
-	var eventPlace string
+	// Extract common event details (DATE, PLAC, NOTE, ADDR)
+	// SOUR is handled when creating participations, so includeCitations=false
+	eventPlace := extractEventDetails(eventID, eventRecord, event, conv, false)
+	eventDate := event.Date
 
+	// Process individual-specific tags
 	for _, sub := range eventRecord.SubRecords {
 		switch sub.Tag {
-		case GedcomTagDate:
-			eventDate = parseGEDCOMDate(sub.Value)
-			if eventDate != "" {
-				event.Date = eventDate
-			}
-
-		case GedcomTagPlac:
-			// Parse place
-			hierarchy := parseGEDCOMPlace(sub.Value)
-			if hierarchy != nil {
-				// Extract coordinates from MAP/LATI/LONG subrecords
-				lat, lon := extractPlaceCoordinates(sub)
-				hierarchy.Latitude = lat
-				hierarchy.Longitude = lon
-
-				placeID, err := buildPlaceHierarchy(hierarchy, conv)
-				if err == nil && placeID != "" {
-					event.PlaceID = placeID
-					eventPlace = placeID
-				}
-			}
-
 		case GedcomTagAge:
 			// Age at event
 			event.Properties[PropertyAgeAtEvent] = sub.Value
@@ -322,34 +302,6 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		case GedcomTagType:
 			// Event subtype
 			event.Properties[PropertyEventSubtype] = sub.Value
-
-		case GedcomTagAddr:
-			// Address - extract full address including subfields
-			addr := extractAddress(sub)
-			if addr != "" {
-				event.Properties[PropertyAddress] = addr
-			}
-
-			// If no PLAC was provided, try to build place from ADDR subfields
-			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
-				hierarchy := buildPlaceHierarchyFromAddress(sub)
-				if hierarchy != nil {
-					placeID, err := buildPlaceHierarchy(hierarchy, conv)
-					if err == nil && placeID != "" {
-						event.PlaceID = placeID
-						eventPlace = placeID
-					}
-				}
-			}
-
-		case GedcomTagNote:
-			noteText := extractNoteText(sub, conv)
-			if noteText != "" {
-				event.Properties[PropertyNotes] = noteText
-			}
-
-		case GedcomTagSour:
-			// Citations handled when creating participations
 
 		case GedcomTagObje:
 			// Media - not yet implemented
