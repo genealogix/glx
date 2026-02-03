@@ -100,6 +100,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 #### GEDCOM Import
+- **NOTE reference resolution** - Shared NOTE records (e.g., `NOTE @N123@`) are now resolved to their actual text content during import. Previously, GEDCOM files with NOTE records appearing after INDI records would store the literal reference string instead of the note text.
 - **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly. Previously caused failed imports.
 
 #### JSON Schemas

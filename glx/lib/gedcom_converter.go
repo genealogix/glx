@@ -19,9 +19,28 @@ import (
 	"strings"
 )
 
-// Convert performs the main GEDCOM to GLX conversion with two-pass processing
+// Convert performs the main GEDCOM to GLX conversion with multi-pass processing
 func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	conv.Logger.LogInfo("Starting conversion")
+
+	// Pre-pass: Process all shared NOTE records first
+	// This is necessary because GEDCOM files often have NOTE records at the end,
+	// but references to them (NOTE @N123@) appear earlier in INDI/FAM records.
+	for _, record := range records {
+		switch record.Tag {
+		case GedcomTagNote:
+			conv.Logger.LogInfo("Processing NOTE " + record.XRef)
+			if err := convertSharedNote551(record, conv); err != nil {
+				conv.addError(record.Line, GedcomTagNote, err.Error())
+			}
+		case GedcomTagSnote:
+			conv.Logger.LogInfo("Processing SNOTE " + record.XRef)
+			if err := convertSharedNote(record, conv); err != nil {
+				conv.addError(record.Line, GedcomTagSnote, err.Error())
+			}
+		}
+	}
+	conv.Logger.LogInfo(fmt.Sprintf("Pre-pass complete: %d shared notes", len(conv.SharedNotes)))
 
 	// First pass: Process all top-level records in dependency order
 	for _, record := range records {
@@ -35,19 +54,9 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 			// Trailer - end of file
 			continue
 
-		// GEDCOM 5.5.1: Process shared NOTE records
-		case GedcomTagNote:
-			conv.Logger.LogInfo("Processing NOTE " + record.XRef)
-			if err := convertSharedNote551(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagNote, err.Error())
-			}
-
-		// GEDCOM 7.0: Process shared notes (SNOTE)
-		case GedcomTagSnote:
-			conv.Logger.LogInfo("Processing SNOTE " + record.XRef)
-			if err := convertSharedNote(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagSnote, err.Error())
-			}
+		// NOTE and SNOTE already processed in pre-pass
+		case GedcomTagNote, GedcomTagSnote:
+			continue
 
 		// GEDCOM 7.0: Process extension schemas
 		case GedcomTagSchma:

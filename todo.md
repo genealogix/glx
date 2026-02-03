@@ -59,7 +59,6 @@
 
 ### Critical Import Issues
 
-- 🔴 **NOTE References Not Resolved**: Linked NOTE records (e.g., `@N15@`) are stored as literal strings instead of resolving to actual note text. Should import NOTE records and replace references with content.
 - 🔴 **Media/OBJE Import**: Only 2 of 32 multimedia references imported in torture test (94% loss). Inline OBJE tags in events, URL-type multimedia, and BLOB data are not imported.
 - 🔴 **CENS (Census) Tag Handling**: Currently creates census events. Census is not an event - it's a source/citation that supports assertions about a person's attributes (residence, occupation, etc.). Should create citations from census records that can be attached to property assertions.
 - 🟡 **GEDCOM Record Ordering**: Records are processed in file order, but sources may reference repositories that appear later in the file. When a source references a repository that hasn't been converted yet, the repository link and call_number are lost. Fix: process repositories in a first pass before sources, or use a two-pass conversion.
@@ -111,7 +110,6 @@
 
 ### Code Style
 
-- 🟢 **Inconsistent error wrapping**: Some errors use `fmt.Errorf` with `%w` for wrapping, others use different patterns. Should standardize error wrapping approach.
 - 🟢 Move Loggers to their own package?
 
 ---

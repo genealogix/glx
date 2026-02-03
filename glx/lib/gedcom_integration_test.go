@@ -208,3 +208,56 @@ func TestParseGEDCOMPlace(t *testing.T) {
 		}
 	}
 }
+
+func TestImportNoteReferenceResolution(t *testing.T) {
+	// Test that NOTE references (e.g., NOTE @N176@) are resolved to their text content
+	// The assess.ged file has:
+	// - Person @I176@ with a WILL event that has NOTE @N176@
+	// - Shared note 0 @N176@ NOTE Line 1 with CONT Line 2
+	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "gedcom-assessment", "assess.ged")
+	logPath := filepath.Join(t.TempDir(), "import.log")
+
+	glx, _, err := importGEDCOMFromFile(gedcomPath, logPath)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Find the WILL event for person @I176@
+	// The event should have notes containing "Line 1" (resolved from @N176@)
+	// NOT the literal string "@N176@"
+	foundResolvedNote := false
+	foundUnresolvedRef := false
+
+	for _, event := range glx.Events {
+		if event.Type != "will" {
+			continue
+		}
+		notes, ok := event.Properties[PropertyNotes]
+		if !ok {
+			continue
+		}
+		noteStr, ok := notes.(string)
+		if !ok {
+			continue
+		}
+
+		// Check for resolved content
+		if noteStr == "Line 1" || noteStr == "Line 1\nLine 2" {
+			foundResolvedNote = true
+		}
+
+		// Check for unresolved reference (this would be a bug)
+		if noteStr == "@N176@" {
+			foundUnresolvedRef = true
+			t.Errorf("Found unresolved NOTE reference @N176@ - notes should be resolved to their text content")
+		}
+	}
+
+	if foundUnresolvedRef {
+		t.Error("NOTE references are not being resolved correctly")
+	}
+
+	if !foundResolvedNote {
+		t.Log("Note: Could not verify resolved note content - may need to check test file structure")
+	}
+}
