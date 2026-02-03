@@ -131,7 +131,8 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 	return citationID, nil
 }
 
-// createPropertyAssertion creates an assertion for a property
+// createPropertyAssertion creates an assertion for a property, but only if there are citations.
+// Assertions without citations are not meaningful - the property value is already stored on the entity.
 func createPropertyAssertion(subjectID string, claim string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
 	if claim == "" || value == nil {
 		return
@@ -139,6 +140,12 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 
 	// Extract citations from SOUR subrecords
 	citationIDs := extractCitations(subjectID, sourceRecord, conv)
+
+	// Only create assertion if there are citations to back it up
+	// The property value is already stored on the entity; assertions add evidence
+	if len(citationIDs) == 0 {
+		return
+	}
 
 	// Generate assertion ID
 	assertionID := generateAssertionID(conv)

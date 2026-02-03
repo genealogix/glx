@@ -245,7 +245,8 @@ func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
 	return ns
 }
 
-// createNameAssertion creates a single assertion for the unified name property
+// createNameAssertion creates an assertion for the name property, but only if there are citations.
+// Assertions without citations are not meaningful - the name is already stored on the person entity.
 func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) error {
 	fullName := name.FormatFullName()
 	if fullName == "" {
@@ -254,6 +255,11 @@ func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRec
 
 	// Create citations from SOUR tags
 	citationIDs := extractCitations(personID, nameRecord, conv)
+
+	// Only create assertion if there are citations to back it up
+	if len(citationIDs) == 0 {
+		return nil
+	}
 
 	// Create single assertion for the name
 	assertionID := generateAssertionID(conv)
@@ -502,12 +508,18 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 	return nil
 }
 
-// convertNegativeAssertion converts GEDCOM 7.0 NO tag (negative assertion)
+// convertNegativeAssertion converts GEDCOM 7.0 NO tag (negative assertion).
+// Only creates an assertion if there are citations to back up the claim.
 func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// NO tag indicates something did NOT happen
 	eventType := mapGEDCOMEventType(noRecord.Value)
 
 	citationIDs := extractCitations(personID, noRecord, conv)
+
+	// Only create assertion if there are citations to back it up
+	if len(citationIDs) == 0 {
+		return nil
+	}
 
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{

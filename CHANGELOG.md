@@ -73,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Changed `glx import` default format** - Now defaults to multi-file (`-f multi`) instead of single-file
 
 #### GEDCOM Import
+- **Assertions require citations** - Assertions are now only created during GEDCOM import when SOUR tags are present. Property values are still stored directly on entities; assertions exist to document evidence. This affects `createPropertyAssertion`, `createNameAssertion`, and `convertNegativeAssertion`.
 - **Embedded citation support** - SOURCE_CITATION without pointer (`SOUR description text`) now creates synthetic Source entity per GEDCOM spec recommendation
 - **MEDI tag handling** - Medium type now stored in `properties.medium` instead of notes
 - **CROP tag handling** - Crop coordinates now stored in `properties.crop` instead of notes

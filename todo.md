@@ -47,7 +47,6 @@
 
 ### Evidence & Assertions
 
-- 🟡 We shouldn't create assertions from imports without citations
 - 🟡 Decide what to do with QUAY ratings (removed in beta.2)
 - 🟢 Consider adding `media` as a third evidence option for assertions (alongside `citations` and `sources`) - useful for direct visual evidence like gravestone photos
 - 🟢 Consider relaxing event participant requirement - the spec says "At least one participant is required (events without participants are not meaningful)" but historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants
