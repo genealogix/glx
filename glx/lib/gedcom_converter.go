@@ -19,107 +19,105 @@ import (
 	"strings"
 )
 
-// Convert performs the main GEDCOM to GLX conversion with multi-pass processing
+// Convert performs the main GEDCOM to GLX conversion with dependency-ordered processing
 func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	conv.Logger.LogInfo("Starting conversion")
 
-	// Pre-pass: Process all shared NOTE records first
-	// This is necessary because GEDCOM files often have NOTE records at the end,
-	// but references to them (NOTE @N123@) appear earlier in INDI/FAM records.
-	for _, record := range records {
-		switch record.Tag {
-		case GedcomTagNote:
-			conv.Logger.LogInfo("Processing NOTE " + record.XRef)
-			if err := convertSharedNote551(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagNote, err.Error())
-			}
-		case GedcomTagSnote:
-			conv.Logger.LogInfo("Processing SNOTE " + record.XRef)
-			if err := convertSharedNote(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagSnote, err.Error())
-			}
+	// Group records by type for dependency-ordered processing
+	// This ensures records are processed in the correct order regardless of file order:
+	//   1. Notes, Repositories, Schemas (no dependencies)
+	//   2. Sources, Media (depend on repositories)
+	//   3. Individuals (depend on sources, media, notes)
+	//   4. Families (depend on individuals)
+	grouped := groupRecordsByType(records)
+
+	// Pass 1: Process records with no dependencies
+	// Notes (may be referenced by any record)
+	for _, record := range grouped[GedcomTagNote] {
+		conv.Logger.LogInfo("Processing NOTE " + record.XRef)
+		if err := convertSharedNote551(record, conv); err != nil {
+			conv.addError(record.Line, GedcomTagNote, err.Error())
 		}
 	}
-	conv.Logger.LogInfo(fmt.Sprintf("Pre-pass complete: %d shared notes", len(conv.SharedNotes)))
-
-	// First pass: Process all top-level records in dependency order
-	for _, record := range records {
-		switch record.Tag {
-		case GedcomTagHead:
-			// Header - extract metadata
-			conv.Logger.LogInfo("Processing HEAD")
-			convertHeader(record, conv)
-
-		case GedcomTagTrlr:
-			// Trailer - end of file
-			continue
-
-		// NOTE and SNOTE already processed in pre-pass
-		case GedcomTagNote, GedcomTagSnote:
-			continue
-
-		// GEDCOM 7.0: Process extension schemas
-		case GedcomTagSchma:
-			conv.Logger.LogInfo("Processing SCHMA " + record.XRef)
-			if err := convertExtensionSchema(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagSchma, err.Error())
-			}
-
-		// Process repositories before sources (for linking)
-		case GedcomTagRepo:
-			conv.Logger.LogInfo("Processing REPO " + record.XRef)
-			if err := convertRepository(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagRepo, err.Error())
-			}
-
-		// Process sources before individuals (for evidence)
-		case GedcomTagSour:
-			conv.Logger.LogInfo("Processing SOUR " + record.XRef)
-			if err := convertSource(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagSour, err.Error())
-			}
-
-		// Process media objects
-		case GedcomTagObje:
-			conv.Logger.LogInfo("Processing OBJE " + record.XRef)
-			if err := convertMedia(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagObje, err.Error())
-			}
-
-		// Process individuals
-		case GedcomTagIndi:
-			conv.Logger.LogInfo("Processing INDI " + record.XRef)
-			if err := convertIndividual(record, conv); err != nil {
-				conv.addError(record.Line, GedcomTagIndi, err.Error())
-			}
-
-		// Defer families until after individuals
-		case GedcomTagFam:
-			conv.Logger.LogInfo("Deferring FAM " + record.XRef)
-			conv.DeferredFamilies = append(conv.DeferredFamilies, record)
-
-		// Handle submitter (SUBM)
-		case GedcomTagSubm:
-			conv.Logger.LogInfo("Processing SUBM " + record.XRef)
-			convertSubmitter(record, conv)
-
-		default:
-			// Unknown or extension tag
-			if isExtensionTag(record.Tag) {
-				// Process extension data
-				extData := convertExtensionData(record.Tag, record.Value, record.SubRecords)
-				if len(extData) > 0 {
-					// Extension data is processed but not yet stored (see todo.md)
-					conv.Logger.LogInfo(fmt.Sprintf("Processed extension tag %s: %+v", record.Tag, extData))
-				}
-			} else {
-				conv.addWarning(record.Line, record.Tag, "Unknown top-level tag: "+record.Tag)
-			}
+	for _, record := range grouped[GedcomTagSnote] {
+		conv.Logger.LogInfo("Processing SNOTE " + record.XRef)
+		if err := convertSharedNote(record, conv); err != nil {
+			conv.addError(record.Line, GedcomTagSnote, err.Error())
 		}
 	}
 
-	conv.Logger.LogInfo(fmt.Sprintf("First pass complete: %d persons, %d sources, %d repositories, %d media",
-		conv.Stats.PersonsCreated, conv.Stats.SourcesCreated, conv.Stats.RepositoriesCreated, conv.Stats.MediaCreated))
+	// Repositories (referenced by sources)
+	for _, record := range grouped[GedcomTagRepo] {
+		conv.Logger.LogInfo("Processing REPO " + record.XRef)
+		if err := convertRepository(record, conv); err != nil {
+			conv.addError(record.Line, GedcomTagRepo, err.Error())
+		}
+	}
+
+	// Schemas (GEDCOM 7.0 extension definitions)
+	for _, record := range grouped[GedcomTagSchma] {
+		conv.Logger.LogInfo("Processing SCHMA " + record.XRef)
+		if err := convertExtensionSchema(record, conv); err != nil {
+			conv.addError(record.Line, GedcomTagSchma, err.Error())
+		}
+	}
+
+	conv.Logger.LogInfo(fmt.Sprintf("Pass 1 complete: %d notes, %d repositories", len(conv.SharedNotes), len(conv.RepositoryIDMap)))
+
+	// Pass 2: Process records that depend on pass 1
+	// Sources (depend on repositories)
+	for _, record := range grouped[GedcomTagSour] {
+		conv.Logger.LogInfo("Processing SOUR " + record.XRef)
+		if err := convertSource(record, conv); err != nil {
+			conv.addError(record.Line, GedcomTagSour, err.Error())
+		}
+	}
+
+	// Media objects (may reference repositories in some GEDCOM variants)
+	for _, record := range grouped[GedcomTagObje] {
+		conv.Logger.LogInfo("Processing OBJE " + record.XRef)
+		if err := convertMedia(record, conv); err != nil {
+			conv.addError(record.Line, GedcomTagObje, err.Error())
+		}
+	}
+
+	conv.Logger.LogInfo(fmt.Sprintf("Pass 2 complete: %d sources, %d media", conv.Stats.SourcesCreated, conv.Stats.MediaCreated))
+
+	// Pass 3: Process individuals (depend on sources, media, notes for citations)
+	for _, record := range grouped[GedcomTagIndi] {
+		conv.Logger.LogInfo("Processing INDI " + record.XRef)
+		if err := convertIndividual(record, conv); err != nil {
+			conv.addError(record.Line, GedcomTagIndi, err.Error())
+		}
+	}
+
+	// Process header and submitter (no strict dependency, but process after main entities)
+	for _, record := range grouped[GedcomTagHead] {
+		conv.Logger.LogInfo("Processing HEAD")
+		convertHeader(record, conv)
+	}
+	for _, record := range grouped[GedcomTagSubm] {
+		conv.Logger.LogInfo("Processing SUBM " + record.XRef)
+		convertSubmitter(record, conv)
+	}
+
+	// Process extension tags
+	for _, record := range grouped["_EXT"] {
+		extData := convertExtensionData(record.Tag, record.Value, record.SubRecords)
+		if len(extData) > 0 {
+			conv.Logger.LogInfo(fmt.Sprintf("Processed extension tag %s: %+v", record.Tag, extData))
+		}
+	}
+
+	// Log unknown tags
+	for _, record := range grouped["_UNKNOWN"] {
+		conv.addWarning(record.Line, record.Tag, "Unknown top-level tag: "+record.Tag)
+	}
+
+	// Store families for pass 4
+	conv.DeferredFamilies = grouped[GedcomTagFam]
+
+	conv.Logger.LogInfo(fmt.Sprintf("Pass 3 complete: %d persons", conv.Stats.PersonsCreated))
 
 	// Second pass: Process families now that all individuals exist
 	conv.Logger.LogInfo(fmt.Sprintf("Processing %d deferred families", len(conv.DeferredFamilies)))
@@ -299,6 +297,28 @@ func extractAddress(addrRecord *GEDCOMRecord) string {
 
 // Converter functions implemented in separate files:
 // convertSharedNote and convertExtensionSchema are implemented in gedcom_7_0.go
+
+// groupRecordsByType groups GEDCOM records by their tag type for dependency-ordered processing
+func groupRecordsByType(records []*GEDCOMRecord) map[string][]*GEDCOMRecord {
+	grouped := make(map[string][]*GEDCOMRecord)
+
+	for _, record := range records {
+		switch record.Tag {
+		case GedcomTagHead, GedcomTagTrlr, GedcomTagNote, GedcomTagSnote,
+			GedcomTagRepo, GedcomTagSour, GedcomTagObje, GedcomTagIndi,
+			GedcomTagFam, GedcomTagSubm, GedcomTagSchma:
+			grouped[record.Tag] = append(grouped[record.Tag], record)
+		default:
+			if isExtensionTag(record.Tag) {
+				grouped["_EXT"] = append(grouped["_EXT"], record)
+			} else if record.Tag != GedcomTagTrlr {
+				grouped["_UNKNOWN"] = append(grouped["_UNKNOWN"], record)
+			}
+		}
+	}
+
+	return grouped
+}
 
 func isExtensionTag(tag string) bool {
 	// Extension tags start with underscore

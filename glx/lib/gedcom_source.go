@@ -58,20 +58,20 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	for _, sub := range sourRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagTitl:
-			// Title
-			source.Title = sub.Value
+			// Title - may have CONT/CONC for long titles
+			source.Title = extractTextWithContinuation(sub)
 
 		case GedcomTagAuth:
-			// Author
-			source.Authors = append(source.Authors, sub.Value)
+			// Author - may have CONT/CONC
+			source.Authors = append(source.Authors, extractTextWithContinuation(sub))
 
 		case GedcomTagPubl:
-			// Publication facts - store in properties
-			source.Properties[SourcePropertyPublicationInfo] = sub.Value
+			// Publication facts - may have CONT/CONC for long publication info
+			source.Properties[SourcePropertyPublicationInfo] = extractTextWithContinuation(sub)
 
 		case GedcomTagAbbr:
-			// Abbreviation - store in properties
-			source.Properties[SourcePropertyAbbreviation] = sub.Value
+			// Abbreviation - unlikely to have CONT/CONC but handle it anyway
+			source.Properties[SourcePropertyAbbreviation] = extractTextWithContinuation(sub)
 
 		case GedcomTagRepo:
 			// Repository reference
@@ -82,14 +82,14 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 				// Extract call number - store in properties
 				for _, repoSub := range sub.SubRecords {
 					if repoSub.Tag == GedcomTagCaln {
-						source.Properties[SourcePropertyCallNumber] = repoSub.Value
+						source.Properties[SourcePropertyCallNumber] = extractTextWithContinuation(repoSub)
 					}
 				}
 			}
 
 		case GedcomTagText:
-			// Full source text - add to description
-			description = append(description, sub.Value)
+			// Full source text - may have CONT/CONC for long text
+			description = append(description, extractTextWithContinuation(sub))
 
 		case GedcomTagNote:
 			// Notes

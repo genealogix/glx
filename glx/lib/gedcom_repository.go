@@ -50,8 +50,8 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	for _, sub := range repoRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagName:
-			// Repository name
-			repository.Name = sub.Value
+			// Repository name - may have CONT/CONC for long names
+			repository.Name = extractTextWithContinuation(sub)
 
 		case GedcomTagAddr:
 			// Address - extract components
@@ -67,9 +67,10 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 					repository.Country = addrSub.Value
 				}
 			}
-			// Main address value
-			if sub.Value != "" {
-				repository.Address = sub.Value
+			// Main address value - may have CONT/CONC for long addresses
+			addrText := extractTextWithContinuation(sub)
+			if addrText != "" {
+				repository.Address = addrText
 			}
 
 		case GedcomTagPhon:

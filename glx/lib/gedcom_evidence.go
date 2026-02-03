@@ -51,11 +51,11 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 	for _, sub := range sourRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagPage:
-			// Page/location within source
+			// Page/location within source - may have CONT/CONC for long locators
 			if citation.Properties == nil {
 				citation.Properties = make(map[string]any)
 			}
-			citation.Properties[CitationPropertyLocator] = sub.Value
+			citation.Properties[CitationPropertyLocator] = extractTextWithContinuation(sub)
 
 		case GedcomTagData:
 			// Data from source
@@ -72,19 +72,20 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 						}
 					}
 				case GedcomTagText:
+					// Text from source - may have CONT/CONC for long text
 					if citation.Properties == nil {
 						citation.Properties = make(map[string]any)
 					}
-					citation.Properties[CitationPropertyTextFromSource] = dataSub.Value
+					citation.Properties[CitationPropertyTextFromSource] = extractTextWithContinuation(dataSub)
 				}
 			}
 
 		case GedcomTagText:
-			// Text from source (GEDCOM 5.5.1)
+			// Text from source (GEDCOM 5.5.1) - may have CONT/CONC for long text
 			if citation.Properties == nil {
 				citation.Properties = make(map[string]any)
 			}
-			citation.Properties[CitationPropertyTextFromSource] = sub.Value
+			citation.Properties[CitationPropertyTextFromSource] = extractTextWithContinuation(sub)
 
 		case GedcomTagQuay:
 			// GEDCOM quality assessment (0-3) - preserve in notes
@@ -228,4 +229,29 @@ func extractNoteText(noteRecord *GEDCOMRecord, conv *ConversionContext) string {
 	}
 
 	return textBuilder.String()
+}
+
+// extractTextWithContinuation extracts text from a GEDCOM record that may have
+// CONT (continuation on new line) and CONC (concatenation on same line) subrecords.
+// This should be used for any text field that might be split across multiple lines.
+func extractTextWithContinuation(record *GEDCOMRecord) string {
+	if record.Value == "" && len(record.SubRecords) == 0 {
+		return ""
+	}
+
+	var text strings.Builder
+	text.WriteString(record.Value)
+
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagCont:
+			// Continuation on new line
+			text.WriteString("\n" + sub.Value)
+		case GedcomTagConc:
+			// Concatenation (continues same line, no space added)
+			text.WriteString(sub.Value)
+		}
+	}
+
+	return text.String()
 }

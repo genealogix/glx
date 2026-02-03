@@ -261,3 +261,123 @@ func TestImportNoteReferenceResolution(t *testing.T) {
 		t.Log("Note: Could not verify resolved note content - may need to check test file structure")
 	}
 }
+
+func TestImportRepositoryOrdering(t *testing.T) {
+	// Test that REPO records are processed before SOUR records regardless of file order
+	// The bullinger.ged file has:
+	// - SOUR records starting at line 17622
+	// - REPO record at line 17842 (after sources)
+	// Without proper ordering, sources would not link to their repository
+	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "bullinger-family", "bullinger.ged")
+	logPath := filepath.Join(t.TempDir(), "import.log")
+
+	glx, _, err := importGEDCOMFromFile(gedcomPath, logPath)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Verify we have at least one repository
+	if len(glx.Repositories) == 0 {
+		t.Fatal("No repositories imported")
+	}
+
+	// Verify sources are linked to their repository
+	sourcesWithRepo := 0
+	for _, source := range glx.Sources {
+		if source.RepositoryID != "" {
+			sourcesWithRepo++
+		}
+	}
+
+	// At least some sources should have repository links
+	// (not all sources may reference a repository)
+	if sourcesWithRepo == 0 {
+		t.Error("No sources have repository links - REPO records may not be processed before SOUR records")
+	}
+
+	t.Logf("Sources with repository links: %d/%d", sourcesWithRepo, len(glx.Sources))
+
+	// Verify the repository ID exists in the repositories map
+	for sourceID, source := range glx.Sources {
+		if source.RepositoryID != "" {
+			if _, exists := glx.Repositories[source.RepositoryID]; !exists {
+				t.Errorf("Source %s references non-existent repository %s", sourceID, source.RepositoryID)
+			}
+		}
+	}
+}
+
+func TestExtractTextWithContinuation(t *testing.T) {
+	tests := []struct {
+		name     string
+		record   *GEDCOMRecord
+		expected string
+	}{
+		{
+			name: "simple value no continuation",
+			record: &GEDCOMRecord{
+				Value: "Simple text",
+			},
+			expected: "Simple text",
+		},
+		{
+			name: "value with CONC",
+			record: &GEDCOMRecord{
+				Value: "First part ",
+				SubRecords: []*GEDCOMRecord{
+					{Tag: "CONC", Value: "second part"},
+				},
+			},
+			expected: "First part second part",
+		},
+		{
+			name: "value with CONT",
+			record: &GEDCOMRecord{
+				Value: "Line one",
+				SubRecords: []*GEDCOMRecord{
+					{Tag: "CONT", Value: "Line two"},
+				},
+			},
+			expected: "Line one\nLine two",
+		},
+		{
+			name: "value with mixed CONT and CONC",
+			record: &GEDCOMRecord{
+				Value: "Start of text ",
+				SubRecords: []*GEDCOMRecord{
+					{Tag: "CONC", Value: "continued"},
+					{Tag: "CONT", Value: "new line"},
+					{Tag: "CONC", Value: " more text"},
+				},
+			},
+			expected: "Start of text continued\nnew line more text",
+		},
+		{
+			name: "empty CONT (paragraph break)",
+			record: &GEDCOMRecord{
+				Value: "Paragraph one",
+				SubRecords: []*GEDCOMRecord{
+					{Tag: "CONT", Value: ""},
+					{Tag: "CONT", Value: "Paragraph two"},
+				},
+			},
+			expected: "Paragraph one\n\nParagraph two",
+		},
+		{
+			name: "empty record",
+			record: &GEDCOMRecord{
+				Value: "",
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractTextWithContinuation(tt.record)
+			if result != tt.expected {
+				t.Errorf("extractTextWithContinuation() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}

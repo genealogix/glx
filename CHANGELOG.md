@@ -100,7 +100,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 #### GEDCOM Import
+- **Dependency-ordered record processing** - Restructured GEDCOM import to process records in dependency order regardless of file order. Records are now grouped by type and processed as: (1) Notes, Repositories, Schemas → (2) Sources, Media → (3) Individuals → (4) Families. This fixes issues where references to records appearing later in the file would fail to resolve.
+- **Repository-to-source linking** - Sources now correctly link to their repository even when REPO records appear after SOUR records in the file. Previously, repository links and call numbers were lost.
 - **NOTE reference resolution** - Shared NOTE records (e.g., `NOTE @N123@`) are now resolved to their actual text content during import. Previously, GEDCOM files with NOTE records appearing after INDI records would store the literal reference string instead of the note text.
+- **CONT/CONC text continuation** - Long text fields (titles, publication info, source text, etc.) that span multiple lines using GEDCOM CONT (new line) and CONC (concatenation) tags are now properly combined. Previously only the first line was captured.
 - **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly. Previously caused failed imports.
 
 #### JSON Schemas

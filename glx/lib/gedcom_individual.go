@@ -141,9 +141,11 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		case GedcomTagTitl:
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
-			if sub.Value != "" {
-				person.Properties[PersonPropertyTitle] = sub.Value
-				createPropertyAssertion(personID, PersonPropertyTitle, sub.Value, sub, conv)
+			// May have CONT/CONC for long titles
+			titleText := extractTextWithContinuation(sub)
+			if titleText != "" {
+				person.Properties[PersonPropertyTitle] = titleText
+				createPropertyAssertion(personID, PersonPropertyTitle, titleText, sub, conv)
 			}
 
 		case GedcomTagFact:
