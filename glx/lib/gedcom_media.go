@@ -33,7 +33,48 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 	conv.Logger.LogInfo(fmt.Sprintf("Converting OBJE %s -> %s", objeRecord.XRef, mediaID))
 
-	// Create media entity
+	// Convert using common logic
+	media := convertMediaCommon(objeRecord, conv)
+
+	// Handle SOUR subrecords (only for top-level OBJE records)
+	for _, sub := range objeRecord.SubRecords {
+		if sub.Tag == GedcomTagSour {
+			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
+			if err == nil && citationID != "" {
+				if citation, ok := conv.GLX.Citations[citationID]; ok {
+					citation.Media = append(citation.Media, mediaID)
+				}
+			}
+		}
+	}
+
+	// Store media
+	conv.GLX.Media[mediaID] = media
+	conv.Stats.MediaCreated++
+
+	return nil
+}
+
+// convertEmbeddedMedia converts an embedded OBJE (without XRef) and returns the media ID
+func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
+	// Generate media ID for embedded object
+	mediaID := generateMediaID(conv)
+
+	conv.Logger.LogInfo("Converting embedded OBJE -> " + mediaID)
+
+	// Convert using common logic
+	media := convertMediaCommon(objeRecord, conv)
+
+	// Store media
+	conv.GLX.Media[mediaID] = media
+	conv.Stats.MediaCreated++
+
+	return mediaID, nil
+}
+
+// convertMediaCommon contains the shared logic for converting GEDCOM OBJE records to GLX Media entities.
+// It processes FILE, FORM, TITL, CROP, and NOTE subrecords.
+func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Media {
 	media := &Media{
 		Properties: make(map[string]any),
 	}
@@ -94,15 +135,6 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
-
-		case GedcomTagSour:
-			// Source citations - link the citation to this media
-			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
-			if err == nil && citationID != "" {
-				if citation, ok := conv.GLX.Citations[citationID]; ok {
-					citation.Media = append(citation.Media, mediaID)
-				}
-			}
 		}
 	}
 
@@ -133,106 +165,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 		media.Properties = nil
 	}
 
-	// Store media
-	conv.GLX.Media[mediaID] = media
-	conv.Stats.MediaCreated++
-
-	return nil
-}
-
-// convertEmbeddedMedia converts an embedded OBJE (without XRef) and returns the media ID
-func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
-	// Generate media ID for embedded object
-	mediaID := generateMediaID(conv)
-
-	conv.Logger.LogInfo("Converting embedded OBJE -> " + mediaID)
-
-	// Create media entity
-	media := &Media{
-		Properties: make(map[string]any),
-	}
-
-	var fileRef string
-	var formatType string
-	var notes []string
-
-	// Process subrecords (same as top-level OBJE)
-	for _, sub := range objeRecord.SubRecords {
-		switch sub.Tag {
-		case GedcomTagFile:
-			fileRef = sub.Value
-
-			for _, fileSub := range sub.SubRecords {
-				switch fileSub.Tag {
-				case GedcomTagForm:
-					formatType = fileSub.Value
-				case GedcomTagMime:
-					media.MimeType = fileSub.Value
-				case GedcomTagTitl:
-					media.Title = fileSub.Value
-				}
-			}
-
-		case GedcomTagForm:
-			formatType = sub.Value
-
-			// Check for MEDI subrecord - store as property
-			for _, formSub := range sub.SubRecords {
-				if formSub.Tag == GedcomTagMedi {
-					media.Properties[MediaPropertyMedium] = formSub.Value
-				}
-			}
-
-		case GedcomTagTitl:
-			if media.Title == "" {
-				media.Title = sub.Value
-			}
-
-		case GedcomTagCrop:
-			// GEDCOM 7.0: Crop coordinates - store as structured property
-			crop := extractCrop(sub)
-			if crop != nil {
-				media.Properties[MediaPropertyCrop] = crop
-			}
-
-		case GedcomTagNote:
-			noteText := extractNoteText(sub, conv)
-			if noteText != "" {
-				notes = append(notes, noteText)
-			}
-		}
-	}
-
-	media.URI = fileRef
-
-	// Infer MIME type
-	if media.MimeType == "" {
-		if formatType != "" {
-			media.MimeType = mapFormatToMimeType(formatType)
-		} else if fileRef != "" {
-			media.MimeType = inferMimeType(fileRef)
-		}
-	}
-
-	if media.MimeType == "" {
-		media.MimeType = "application/octet-stream"
-	}
-
-	// Combine notes
-	if len(notes) > 0 {
-		media.Notes = strings.Join(notes, "\n")
-	}
-
-	// Clean up empty Properties map so it doesn't appear in YAML
-	if len(media.Properties) == 0 {
-		media.Properties = nil
-	}
-
-	// Store media
-	conv.GLX.Media[mediaID] = media
-	conv.Stats.MediaCreated++
-
-	return mediaID, nil
+	return media
 }
 
 // inferMimeType infers MIME type from file extension

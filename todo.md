@@ -129,7 +129,6 @@
 ### DRY Violations
 
 - 🟡 **Duplicated event extraction logic**: Same date/place/note/citation extraction pattern duplicated across `convertIndividualEvent` ([gedcom_individual.go:290](glx/lib/gedcom_individual.go#L290)), `convertMarriageEvent` ([gedcom_family.go:135](glx/lib/gedcom_family.go#L135)), `convertDivorceEvent` ([gedcom_family.go:259](glx/lib/gedcom_family.go#L259)), `convertFamilyEvent` ([gedcom_family.go:357](glx/lib/gedcom_family.go#L357)). Should extract common `extractEventDetails` helper.
-- 🟡 **Duplicated media conversion logic** ([gedcom_media.go](glx/lib/gedcom_media.go)): `convertMedia` and `convertEmbeddedMedia` share ~90% identical code. Should refactor to common `convertMediaCommon` function.
 
 ### Code Style
 
