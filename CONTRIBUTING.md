@@ -249,6 +249,14 @@ Tables for structured comparisons
 Links with descriptive text: [see the guide](link)
 ```
 
+**Internal Links (Specification Documents):**
+
+Internal links in specification documents omit the `.md` file extension for VitePress compatibility:
+- ✓ Good: `[Person Entity](4-entity-types/person)`
+- ✗ Bad: `[Person Entity](4-entity-types/person.md)`
+
+This works correctly in both VitePress-generated site and raw markdown viewers.
+
 ### Genealogical Standards
 
 When documenting genealogical concepts:

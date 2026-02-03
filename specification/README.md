@@ -1,12 +1,12 @@
 ---
 title: GENEALOGIX Specification
-description: Complete technical specification for the GENEALOGIX family archive format.
+description: Complete technical specification for the GENEALOGIX archive format.
 layout: doc
 ---
 
 # GENEALOGIX Specification
 
-Version 0.0.0-beta.3 (Beta)
+Version 0.0.0-beta.3
 
 ## Table of Contents
 
@@ -51,12 +51,6 @@ Version 0.0.0-beta.3 (Beta)
 This specification uses RFC 2119 keywords (MUST, SHOULD, MAY) for
 requirement levels.
 
-## Reading Guide
-
-- **Implementers**: Start with Core Concepts and Entity Types
-- **Users**: Start with Introduction and File Structure
-- **Contributors**: Read the entire spec plus CONTRIBUTING.md
-
 ## Specification Status
 
 This specification is under active development.
@@ -67,11 +61,9 @@ This specification is under active development.
 
 ## Key Features
 
-- **Assertion-Based Model**: Every genealogical fact is supported by explicitly tracked evidence
-- **Multi-Tenant**: Supports family-level isolation within organizations
+- **Assertion-Based Model**: Every genealogical fact can be supported by explicitly tracked evidence
 - **Git-Native**: Built from the ground up for version control
 - **Hierarchical Places**: Supports complex place hierarchies with historical variations
-- **Evidence Confidence**: Assertion confidence levels (high/medium/low/disputed) capture researcher certainty in conclusions
 - **Extensible**: Custom entity types and properties supported via archive-owned vocabularies
 
 ## Quick Example
@@ -110,22 +102,6 @@ relationships:
       - person: person-mary-brown-1852
         role: spouse
 ```
-
-## Documentation Conventions
-
-### Internal Links
-Internal links omit the .md file extension for VitePress compatibility:
-- ✓ Good: [Person Entity](4-entity-types/person)
-- ✗ Bad: [Person Entity](4-entity-types/person.md)
-
-This works correctly in both VitePress-generated site and raw markdown viewers.
-
-### File Organization
-Examples may show entities in single files or multiple files. Both are valid:
-- Single file: Simpler for small examples and personal archives
-- Multiple files: Better for collaboration (cleaner git diffs)
-
-See [Archive Organization](3-archive-organization) for details.
 
 ## Getting Started
 

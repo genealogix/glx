@@ -49,6 +49,7 @@
 
 - 🟡 Decide what to do with QUAY ratings (removed in beta.2)
 - 🟢 Consider adding `media` as a third evidence option for assertions (alongside `citations` and `sources`) - useful for direct visual evidence like gravestone photos
+    - In general -- we need to solidify the purpose of media entities as more than just window dressing or additional non-critical data.
 - 🟢 Consider relaxing event participant requirement - the spec says "At least one participant is required (events without participants are not meaningful)" but historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants
 
 ---

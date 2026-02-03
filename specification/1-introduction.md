@@ -8,63 +8,29 @@ layout: doc
 
 ## Purpose and Scope
 
-GENEALOGIX defines a **portable, extensible archive format** for genealogical research and related domains. Unlike traditional formats that lock data in proprietary structures, GLX provides a **permanent, human-readable foundation** you can own, modify, and preserve indefinitely. It's designed as a **source of truth** for collaborative research, not just an exchange format.
+GENEALOGIX is a **portable, extensible archive format** for genealogical research and related domains. Unlike traditional formats, GLX provides a **permanent, human-readable foundation** you can own, modify, and preserve indefinitely. It's designed as a **source of truth** for collaborative research, not just an exchange format.
 
 GENEALOGIX addresses the limitations of existing genealogy formats by providing:
 
-- **Git-native architecture** for reliable collaboration and version control
-- **Evidence-first model** where all claims are backed by documented sources
-- **Human-readable YAML files** instead of binary or proprietary formats
-- **Structured data validation** with JSON Schema compliance
-- **Complete provenance tracking** from repository to conclusion
+- **Human-readable YAML files** instead of the GEDCOM wall of text or xml-tagged data
+- **Archive autonomy** - Each archive can define its own custom events and relationships - or stick with the defaults
+- **Assertion model** where all claims made by sources/citations can be explicitly defined
 - **Flexible organization** - archives can be a single file, many files, or any combination
-- **True data ownership** - Human-readable files you can edit anywhere
-- **Archive autonomy** - Each archive defines its own controlled vocabularies
 - **Domain flexibility** - Genealogy, biography, local history, prosopography, and more
-- **Permanent foundation** - Data format that will outlast any software application
-- **Interoperability by design** - Import from GEDCOM, integrate with Git workflows
+- **Permanent foundation** - Open source data format that will outlast any software application
+- **Interoperability by design** - Import from GEDCOM, collaborate with Git workflows
 
 The specification covers:
-- 9 core entity types for comprehensive family history documentation
+- Core entity types
 - Universal file format with entity type keys
-- Evidence hierarchy from physical repositories to specific claims
-- Git workflow integration for collaborative research
-- Extensible schema system for future enhancements
 - Validation tools and conformance testing
-
-**File Format**: All GENEALOGIX files use the same structure with top-level entity type keys (persons, sources, etc.) containing maps of entities. Parsers collate all entities of each type across all .glx files in the archive.
-
-## Design Principles
-
-### Clarity and Simplicity
-- **YAML-based files** that are readable and editable in any text editor
-- **Consistent naming conventions** with structured ID formats
-- **Hierarchical organization** following standard archival practices
-- **Minimal required fields** with rich optional metadata
-
-### Evidence-First Architecture
-- **Source-backed assertions** - every claim must reference evidence
-- **Confidence levels** - researcher assessment of conclusion certainty
-- **Citation specificity** - exact references to source locations
-- **Multiple evidence support** - corroboration from multiple sources
-
-### Provenance and Traceability
-- **Complete audit trails** from repository to genealogical conclusion
-- **Author attribution** for all changes and contributions
-- **Timestamp tracking** for research chronology
-- **Change documentation** through Git commit history
-
-### Git-Native Collaboration
-- **Branch-based research** - isolate investigations in feature branches
-- **Merge conflict resolution** for conflicting evidence
-- **Pull request reviews** for quality assurance
-- **Tag-based releases** for milestone preservation
+- Archive-owned "Vocabularies" to define ontologies
 
 ## GLX as a Foundation, Not Just an Exchange Format
 
 ### More Than Interoperability
 
-While GENEALOGIX provides excellent **interoperability** (importing from GEDCOM, exporting to various formats), its primary purpose is to be a **permanent research foundation**:
+While GENEALOGIX provides excellent **interoperability**, its primary purpose is to be a **permanent research foundation**:
 
 #### Your Research System
 - **Long-term storage**: Human-readable files you can read in 50 years
@@ -74,7 +40,7 @@ While GENEALOGIX provides excellent **interoperability** (importing from GEDCOM,
 
 #### Customizable Research Framework
 - **Domain-specific vocabularies**: Define types that match your research
-- **Extensible properties**: Add custom fields without schema changes
+- **Extensible properties**: Add custom fields without major changes
 - **Flexible organization**: Single file, multi-file, or hybrid approaches
 - **Research-driven**: The format adapts to your methodology
 
@@ -87,16 +53,11 @@ While GENEALOGIX provides excellent **interoperability** (importing from GEDCOM,
 ### When to Use GLX
 
 **GLX is ideal when you need:**
-- A permanent home for research data (not just temporary export files)
+- Research that extends beyond traditional genealogy
+- A permanent, versionable home for research data (not just export files)
 - Collaboration with other researchers using Git workflows
 - Custom types and vocabularies for specialized research
 - Complete provenance and evidence documentation
-- Research that extends beyond traditional genealogy
-
-**GLX may not be necessary if you:**
-- Only need to transfer data between two applications (GEDCOM suffices)
-- Have simple trees with no collaborative needs
-- Don't require evidence documentation or provenance tracking
 
 ## Terminology
 
@@ -111,17 +72,13 @@ While GENEALOGIX provides excellent **interoperability** (importing from GEDCOM,
 - **Relationship**: Connection between people (parent-child, marriage, etc.)
 - **Event**: Life events and facts (birth, marriage, occupation, residence, death)
 - **Place**: Geographic locations with hierarchical organization
-- **Source**: Original materials (books, records, certificates, websites)
-- **Citation**: Specific reference within a source with quality assessment
-- **Repository**: Physical or digital archive holding sources
-- **Assertion**: Evidence-based conclusion or claim
-- **Media**: Supporting photos, documents, and multimedia files
+- **Media**: Photos, documents, and multimedia files
 
 ### Evidence Hierarchy
 - **Repository**: Physical location (archive, library, church, government office)
 - **Source**: Document or record (parish register, census, certificate)
 - **Citation**: Specific reference (page number, entry number, URL)
-- **Assertion**: Claim supported by citations (person born on specific date)
+- **Assertion**: Evidence-based conclusion or claim supported by citations (ie. person born on specific date)
 
 ## Use Cases
 
@@ -146,23 +103,16 @@ Libraries and archives preserving:
 - Government genealogy databases
 - Academic research projects
 
-### Migration and Integration
-Converting from existing formats:
-- GEDCOM format compatibility guidance (manual conversion)
-- Legacy database migration patterns
-- Paper record digitization guidance
-- Integration with existing genealogy software workflows
-
 ## Comparison with Existing Formats
 
-| Feature | GENEALOGIX | GEDCOM | Gramps XML |
-|---------|------------|--------|------------|
-| **Format** | YAML (human-readable) | Custom text (tag-based) | XML |
-| **Version Control** | Git-native | Difficult | Manual |
-| **Evidence Model** | Built-in citations | Basic sources | Complex |
-| **Collaboration** | Git workflows | File sharing | Database |
-| **Validation** | JSON Schema | Syntax only | Partial |
-| **Extensibility** | Schema-based | Limited | Plugin-based |
+| Feature             | GENEALOGIX             | GEDCOM                  | Gramps XML   |
+|---------------------|------------------------|-------------------------|--------------|
+| **Format**          | YAML (human-readable)  | Custom text (tag-based) | XML          |
+| **Version Control** | Git-native             | Difficult               | Manual       |
+| **Evidence Model**  | Built-in citations     | Basic sources           | Complex      |
+| **Collaboration**   | Git workflows          | File sharing            | Database     |
+| **Validation**      | JSON Schema            | Syntax only             | Partial      |
+| **Extensibility**   | Schema-based           | Limited                 | Plugin-based |
 
 ## Getting Started
 
@@ -183,12 +133,7 @@ GENEALOGIX is an open-source project welcoming contributions:
 
 ## Version History
 
-This specification follows semantic versioning:
-
-- **Version 0.0.0-beta.x**: Beta release
-- **Version 1.0**: Initial stable release (future)
-- **Version 1.1+**: Backwards-compatible enhancements (future)
-- **Version 2.0**: May include breaking changes with migration path (future)
+This specification follows semantic versioning
 
 See [CHANGELOG.md](../../CHANGELOG.md) for detailed version history.
 

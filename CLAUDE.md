@@ -377,6 +377,12 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 - Explain complex algorithms inline
 - Reference GEDCOM spec for GEDCOM-specific code
 
+### Specification Documents
+
+**Internal Links**: Omit `.md` file extension for VitePress compatibility
+- ✓ Good: `[Person Entity](4-entity-types/person)`
+- ✗ Bad: `[Person Entity](4-entity-types/person.md)`
+
 ### Commit Messages
 
 - Keep messages brief - prefer single-line messages when possible
