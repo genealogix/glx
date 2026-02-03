@@ -57,7 +57,6 @@ export default defineConfig({
     'docs/examples/temporal-properties/README.md': 'examples/temporal-properties/index.md',
     'docs/examples/participant-assertions/README.md': 'examples/participant-assertions/index.md',
     'docs/guides/:page*': 'guides/:page*',
-    'docs/development/:page*': 'development/:page*',
     'docs/examples/:page*': 'examples/:page*',
 
     // Specification section - specific files first, then wildcards

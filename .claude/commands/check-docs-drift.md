@@ -10,10 +10,10 @@ You are tasked with identifying any drift between the GLX documentation and the 
 
 ```
 Specification (*.md) → Schema (*.schema.json) → Go Code (types.go)
-         ↓                      ↓                      ↓
-    User Docs              Examples              Dev Docs
-  (quickstart,           (docs/examples/      (architecture,
-   guides/)               *.glx files)      schema-development)
+         ↓                      ↓
+    User Docs              Examples
+  (quickstart,           (docs/examples/
+   guides/)               *.glx files)
 ```
 
 **This means:**
@@ -65,21 +65,6 @@ Compare with **specification/schema/v1/*.schema.json**:
 - `docs/examples/temporal-properties/`
 - `docs/examples/participant-assertions/`
 
-### 3. Development Documentation (docs/development/)
-
-Compare with **glx/lib/types.go** and **specification/schema/v1/**:
-
-- **Go type references** - Are Go struct names and fields accurate?
-- **Schema references** - Are schema descriptions accurate?
-- **Architecture** - Does it match actual code structure?
-- **Implementation details** - Are technical details correct?
-
-**Files to check:**
-- `docs/development/architecture.md`
-- `docs/development/schema-development.md`
-- `docs/development/testing-guide.md`
-- `docs/development/gedcom-import.md`
-
 ## What to Check
 
 ### For User Documentation:
@@ -118,21 +103,6 @@ Compare with **glx/lib/types.go** and **specification/schema/v1/**:
    - Examples should demonstrate documented features
    - README files should accurately describe what's in the example
 
-### For Development Documentation:
-
-1. **Code Accuracy**
-   - Go struct field names and types match lib/types.go
-   - File paths and module names are correct
-   - Function signatures match actual code
-
-2. **Schema Accuracy**
-   - Schema field names and types match schema files
-   - Validation rules described match schema constraints
-
-3. **Architecture Accuracy**
-   - Package structure matches actual codebase
-   - Described patterns exist in the code
-
 ## Output Format
 
 ```
@@ -166,18 +136,6 @@ OR
 
 ### docs/examples/single-file/archive.glx
 ✅ No drift detected - Valid according to schema
-
-## Development Documentation
-
-### docs/development/architecture.md
-⚠️ Drift detected - Documentation needs updates:
-
-- Line 25: References struct `GLXArchive` but code uses `GLXFile`
-- Line 45: Shows field `Relationships map[string]Relationship` but code uses `*Relationship`
-- Line 78: Describes package `glx/validator` but code uses `glx/lib` with validation methods
-
-### docs/development/schema-development.md
-✅ No drift detected - Matches schemas
 ```
 
 ## Summary
@@ -205,13 +163,6 @@ At the end, provide:
 - Invalid vocabulary values
 - Malformed dates
 
-### In Development Documentation:
-- Outdated Go struct names or fields
-- Wrong file paths or module names
-- Incorrect schema field names
-- Mismatched types (e.g., `string` vs `[]string`)
-- References to removed code
-
 ## Validation Commands
 
 You can use these commands to help:
@@ -233,6 +184,5 @@ glx import --help
 - User documentation errors are **high severity** - users rely on these
 - Minor wording differences are acceptable if meaning is preserved
 - Focus on technical accuracy, not writing style
-- Development docs can reference internal implementation details
 - CLI examples should be copy-paste ready
 - **Required field missing in example is CRITICAL** - breaks user trust

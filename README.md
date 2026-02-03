@@ -202,7 +202,6 @@ GENEALOGIX is an open-source project that thrives on community participation:
 ### 🤝 Contributing
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
 - [Code of Conduct](CODE_OF_CONDUCT.md) - Community standards
-- [Development Setup](docs/development/setup.md) - Set up development environment
 
 ### 🎯 Getting Help
 
@@ -212,15 +211,9 @@ GENEALOGIX is an open-source project that thrives on community participation:
 3. Ask questions in [GitHub Discussions](https://github.com/genealogix/glx/discussions)
 
 **For Developers:**
-1. Read the [Architecture Guide](docs/development/architecture.md)
-2. Set up [Development Environment](docs/development/setup.md)
-3. Review [Testing Framework](docs/development/testing-guide.md)
-4. Join the [Discord Community](https://discord.gg/genealogix)
-
-**For Contributors:**
-1. Review [Contributing Guidelines](CONTRIBUTING.md)
-2. Review [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions) for proposed changes
-3. Check [Schema Development](docs/development/schema-development.md)
+1. Read [CLAUDE.md](CLAUDE.md) for project context
+2. Review the [Contributing Guide](CONTRIBUTING.md)
+3. Check [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions)
 4. Follow [Best Practices](docs/guides/best-practices.md)
 
 ### 📊 Project Status

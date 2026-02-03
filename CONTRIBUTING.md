@@ -152,18 +152,17 @@ genealogix/glx/
 ### Running Tests
 
 ```bash
-# Validate specification examples
-glx validate docs/examples/
+# Run all tests (preferred - use Makefile)
+make test
 
-# Validate test suite
-cd glx/tests
-./run-tests.sh
+# Run Go tests directly
+go test ./...
 
-# Check JSON schemas
-glx check-schemas
+# Run benchmarks
+go test -bench=. -benchmem ./glx/...
 
-# Run Go tests (CLI tool)
-go test ./glx/...
+# Validate examples
+cd glx && ./glx validate ../docs/examples/
 ```
 
 ### Writing New Tests
@@ -392,6 +391,38 @@ We are committed to providing a welcoming and inclusive environment. Please read
 - Trolling or insulting comments
 - Publishing others' private information
 - Any conduct inappropriate in a professional setting
+
+## Building for Release
+
+Releases use GoReleaser (automated in CI):
+
+```bash
+# Install GoReleaser
+go install github.com/goreleaser/goreleaser@latest
+
+# Test release build locally
+goreleaser build --snapshot --clean
+```
+
+Releases are automated via GitHub Actions on tag push.
+
+## Troubleshooting
+
+### Go Module Issues
+
+```bash
+go clean -modcache    # Clear cache
+go mod download       # Re-download dependencies
+go mod verify         # Verify module
+```
+
+### Build Issues
+
+```bash
+go clean              # Clean build artifacts
+go build -v           # Rebuild with verbose output
+go mod tidy           # Check for missing dependencies
+```
 
 ## Questions?
 

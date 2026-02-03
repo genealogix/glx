@@ -193,13 +193,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Moved all planning docs from `docs/` to `.claude/plans/`
 
 #### Vocabularies & Standards
-- **Developer documentation** - Comprehensive [GEDCOM Import Developer Guide](docs/development/gedcom-import.md)
-  - Architecture and conversion flow
-  - Entity mapping details
-  - ID generation (current incremental + future random)
-  - GEDCOM 5.5.1 vs 7.0 differences
-  - Malformed line recovery strategies
-  - Testing and debugging guides
+- **Developer documentation** - GEDCOM import docs in `glx/lib/doc.go`
 - **User documentation** - Updated [Migration from GEDCOM Guide](docs/guides/migration-from-gedcom.md)
   - Automated import instructions
   - Testing and validation procedures
