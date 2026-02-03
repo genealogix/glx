@@ -16,6 +16,7 @@ package lib
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -377,6 +378,141 @@ func TestExtractTextWithContinuation(t *testing.T) {
 			result := extractTextWithContinuation(tt.record)
 			if result != tt.expected {
 				t.Errorf("extractTextWithContinuation() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEmbeddedCitations(t *testing.T) {
+	// Test that embedded citations (SOUR without pointer) create synthetic sources
+	// GEDCOM has two SOURCE_CITATION forms:
+	// 1. Pointer to source record: "SOUR @S1@"
+	// 2. Embedded source description: "SOUR description text"
+	// The second form should create a synthetic Source entity
+
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 1 JAN 1850
+2 SOUR Family Bible of the Smith Family
+3 PAGE Page 12
+3 TEXT Born to James and Mary Smith
+1 DEAT
+2 DATE 31 DEC 1920
+2 SOUR
+3 TEXT Death certificate from county records
+0 TRLR
+`
+
+	glx, result, err := ImportGEDCOM(strings.NewReader(gedcomData), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Log any errors for debugging
+	for _, e := range result.Statistics.Errors {
+		t.Logf("Error [Line %d] %s: %s", e.Line, e.Tag, e.Message)
+	}
+
+	// Verify synthetic sources were created
+	if len(glx.Sources) == 0 {
+		t.Fatal("No sources created - embedded citations should create synthetic sources")
+	}
+
+	// Check for the embedded source with description
+	foundFamilyBible := false
+	foundDeathCert := false
+
+	for _, source := range glx.Sources {
+		if strings.Contains(source.Title, "Family Bible of the Smith Family") {
+			foundFamilyBible = true
+			// Verify it has the note about being synthetic
+			if !strings.Contains(source.Notes, "embedded GEDCOM citation") {
+				t.Error("Synthetic source should have note about being from embedded citation")
+			}
+		}
+		if strings.Contains(source.Title, "Death certificate") || strings.Contains(source.Title, "Embedded Citation") {
+			foundDeathCert = true
+		}
+	}
+
+	if !foundFamilyBible {
+		t.Error("Failed to create synthetic source from embedded citation 'Family Bible of the Smith Family'")
+		t.Logf("Sources found: %d", len(glx.Sources))
+		for id, src := range glx.Sources {
+			t.Logf("  Source %s: %q", id, src.Title)
+		}
+	}
+
+	if !foundDeathCert {
+		t.Error("Failed to create synthetic source from embedded citation with TEXT only")
+	}
+
+	// Verify citations were created and link to sources
+	if len(glx.Citations) == 0 {
+		t.Fatal("No citations created")
+	}
+
+	// Verify citation properties (PAGE, TEXT)
+	foundCitationWithLocator := false
+	foundCitationWithText := false
+
+	for _, citation := range glx.Citations {
+		if citation.Properties != nil {
+			if locator, ok := citation.Properties["locator"]; ok {
+				if locator == "Page 12" {
+					foundCitationWithLocator = true
+				}
+			}
+			if text, ok := citation.Properties["text_from_source"]; ok {
+				textStr, _ := text.(string)
+				if strings.Contains(textStr, "Born to James and Mary") || strings.Contains(textStr, "Death certificate") {
+					foundCitationWithText = true
+				}
+			}
+		}
+	}
+
+	if !foundCitationWithLocator {
+		t.Error("Citation should have locator property from PAGE tag")
+	}
+
+	if !foundCitationWithText {
+		t.Error("Citation should have text_from_source property from TEXT tag")
+	}
+
+	t.Logf("Created %d sources and %d citations from embedded citations",
+		len(glx.Sources), len(glx.Citations))
+}
+
+func TestIsGEDCOMPointer(t *testing.T) {
+	tests := []struct {
+		value    string
+		expected bool
+	}{
+		{"@I1@", true},
+		{"@S123@", true},
+		{"@REPO1@", true},
+		{"@N1@", true},
+		{"Family Bible", false},
+		{"@incomplete", false},
+		{"incomplete@", false},
+		{"", false},
+		{"@", false},
+		{"@@", false},
+		{"plain text @I1@ in middle", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			result := isGEDCOMPointer(tt.value)
+			if result != tt.expected {
+				t.Errorf("isGEDCOMPointer(%q) = %v, want %v", tt.value, result, tt.expected)
 			}
 		})
 	}

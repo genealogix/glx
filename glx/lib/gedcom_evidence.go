@@ -25,8 +25,11 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 	var sourceID string
 
 	// Check if it's a reference or embedded source
-	if sourRecord.Value != "" {
-		// Reference to existing source
+	// GEDCOM has two SOURCE_CITATION forms:
+	// 1. Pointer to source record: "SOUR @XREF@" - value starts and ends with @
+	// 2. Embedded source description: "SOUR description text" - value is plain text
+	if sourRecord.Value != "" && isGEDCOMPointer(sourRecord.Value) {
+		// Reference to existing source (form 1)
 		sourceID = conv.SourceIDMap[sourRecord.Value]
 		if sourceID == "" {
 			// Source doesn't exist yet, log warning but continue
@@ -35,9 +38,11 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 			return "", fmt.Errorf("%w: %s", ErrSourceNotFound, sourRecord.Value)
 		}
 	} else {
-		// Embedded citation (citation details without full source)
-		// Not yet implemented (see todo.md)
-		return "", nil
+		// Embedded citation (form 2) - create a synthetic source
+		// Per GEDCOM spec: "systems need to create a SOURCE_RECORD format and store
+		// the source description information found in the non-structured source citation
+		// in the title area for the new source record."
+		sourceID = createSyntheticSourceFromEmbeddedCitation(sourRecord, conv)
 	}
 
 	// Create citation
@@ -253,4 +258,77 @@ func extractTextWithContinuation(record *GEDCOMRecord) string {
 	}
 
 	return text.String()
+}
+
+// isGEDCOMPointer checks if a value is a GEDCOM cross-reference pointer (e.g., "@I1@", "@S23@")
+func isGEDCOMPointer(value string) bool {
+	return len(value) >= 3 && value[0] == '@' && value[len(value)-1] == '@'
+}
+
+// createSyntheticSourceFromEmbeddedCitation creates a Source entity from an embedded citation
+// This follows the GEDCOM spec recommendation: when encountering embedded citations,
+// create a SOURCE_RECORD with the description as the title.
+func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *ConversionContext) string {
+	sourceID := generateSourceID(conv)
+
+	// Determine the source title
+	var title string
+	if sourRecord.Value != "" {
+		// Use the embedded source description as the title (may have CONT/CONC)
+		title = extractTextWithContinuation(sourRecord)
+	} else {
+		// No description provided - try to extract from TEXT subrecord
+		for _, sub := range sourRecord.SubRecords {
+			if sub.Tag == GedcomTagText {
+				title = extractTextWithContinuation(sub)
+				break
+			}
+		}
+		// Fallback to generic title
+		if title == "" {
+			title = "Embedded Citation (No Source Description)"
+		}
+	}
+
+	// Create the synthetic source
+	source := &Source{
+		Title: title,
+	}
+
+	// Check for TEXT at the SOUR level (may contain additional source text)
+	for _, sub := range sourRecord.SubRecords {
+		switch sub.Tag {
+		case GedcomTagText:
+			// TEXT directly under SOUR provides source text
+			if source.Description == "" {
+				source.Description = extractTextWithContinuation(sub)
+			}
+		case GedcomTagNote:
+			// Notes about the source
+			noteText := extractNoteText(sub, conv)
+			if noteText != "" {
+				if source.Notes != "" {
+					source.Notes += "\n" + noteText
+				} else {
+					source.Notes = noteText
+				}
+			}
+		}
+	}
+
+	// Add note indicating this is a synthetic source from embedded citation
+	syntheticNote := "Source created from embedded GEDCOM citation"
+	if source.Notes != "" {
+		source.Notes = syntheticNote + "\n" + source.Notes
+	} else {
+		source.Notes = syntheticNote
+	}
+
+	// Store the source
+	conv.GLX.Sources[sourceID] = source
+	conv.Stats.SourcesCreated++
+
+	conv.Logger.LogInfo(fmt.Sprintf("Line %d: Created synthetic source from embedded citation: %s", sourRecord.Line, title))
+
+	return sourceID
 }

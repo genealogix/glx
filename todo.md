@@ -61,7 +61,6 @@
 
 - 🔴 **Media/OBJE Import**: Only 2 of 32 multimedia references imported in torture test (94% loss). Inline OBJE tags in events, URL-type multimedia, and BLOB data are not imported.
 - 🔴 **CENS (Census) Tag Handling**: Currently creates census events. Census is not an event - it's a source/citation that supports assertions about a person's attributes (residence, occupation, etc.). Should create citations from census records that can be attached to property assertions.
-- 🟡 **Embedded Citations** ([gedcom_evidence.go:38](glx/lib/gedcom_evidence.go#L38)): Implement support for embedded citations (citation details without full source reference)
 
 ### Missing Data Storage
 

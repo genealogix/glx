@@ -73,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Changed `glx import` default format** - Now defaults to multi-file (`-f multi`) instead of single-file
 
 #### GEDCOM Import
+- **Embedded citation support** - SOURCE_CITATION without pointer (`SOUR description text`) now creates synthetic Source entity per GEDCOM spec recommendation
 - **MEDI tag handling** - Medium type now stored in `properties.medium` instead of notes
 - **CROP tag handling** - Crop coordinates now stored in `properties.crop` instead of notes
 - **Citation linkage on media** - SOUR on OBJE now properly links via `citation.Media` instead of dumping to notes
