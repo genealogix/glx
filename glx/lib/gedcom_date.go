@@ -113,6 +113,7 @@ func parseExactDate(dateStr string) string {
 		if err != nil || year <= 0 || year >= 3000 {
 			return ""
 		}
+
 		return fmt.Sprintf("%04d", year)
 
 	case 2:

@@ -372,6 +372,7 @@ func mapGEDCOMEventType(tag string) string {
 	if eventType, ok := gedcomEventTypeMapping[tag]; ok {
 		return eventType
 	}
+
 	return strings.ToLower(tag)
 }
 

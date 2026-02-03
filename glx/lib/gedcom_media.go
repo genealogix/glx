@@ -179,6 +179,7 @@ func inferMimeType(filename string) string {
 	if mime, ok := mimeTypeByExtension[ext]; ok {
 		return mime
 	}
+
 	return MimeTypeOctetStream
 }
 
@@ -189,6 +190,7 @@ func mapFormatToMimeType(format string) string {
 	if mime, ok := mimeTypeByFormat[formatLower]; ok {
 		return mime
 	}
+
 	return MimeTypeOctetStream
 }
 

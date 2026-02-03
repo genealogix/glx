@@ -157,6 +157,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 				mediaID, err := convertEmbeddedMedia(sub, conv)
 				if err != nil {
 					conv.Logger.LogWarning(sub.Line, GedcomTagObje, "", "Failed to convert embedded media: "+err.Error())
+
 					continue
 				}
 				if mediaID != "" {
@@ -287,5 +288,6 @@ func mapFamilyEventType(tag string) string {
 	if eventType, ok := gedcomFamilyEventTypeMapping[tag]; ok {
 		return eventType
 	}
+
 	return EventTypeGeneric
 }

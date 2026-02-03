@@ -168,6 +168,7 @@ func mapSourceType(gedcomType string) string {
 	if mapped, ok := gedcomSourceTypeMapping[typeLower]; ok {
 		return mapped
 	}
+
 	return SourceTypeOther
 }
 

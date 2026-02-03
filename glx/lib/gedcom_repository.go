@@ -132,6 +132,7 @@ func mapRepositoryType(gedcomType string) string {
 	if mapped, ok := gedcomRepositoryTypeMapping[typeLower]; ok {
 		return mapped
 	}
+
 	return "other"
 }
 

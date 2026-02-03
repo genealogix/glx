@@ -288,6 +288,7 @@ func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *C
 		for _, sub := range sourRecord.SubRecords {
 			if sub.Tag == GedcomTagText {
 				title = extractTextWithContinuation(sub)
+
 				break
 			}
 		}

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -79,14 +80,7 @@ func TestListStandardVocabularies(t *testing.T) {
 	}
 
 	for _, expected := range expectedNames {
-		found := false
-		for _, name := range names {
-			if name == expected {
-				found = true
-
-				break
-			}
-		}
+		found := slices.Contains(names, expected)
 		if !found {
 			t.Errorf("Expected vocabulary %q not found in list", expected)
 		}
