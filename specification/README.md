@@ -104,9 +104,11 @@ events:
 relationships:
   rel-marriage-john-mary:
     type: marriage
-    persons:
-      - person-john-smith-1850
-      - person-mary-brown-1852
+    participants:
+      - person: person-john-smith-1850
+        role: spouse
+      - person: person-mary-brown-1852
+        role: spouse
 ```
 
 ## Documentation Conventions
