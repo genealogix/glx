@@ -33,10 +33,6 @@
 - 🟡 **Add `multi_value` to all property schemas**: The `multi_value` field is documented in the spec and used in `source-properties.glx` and `repository-properties.glx`, but missing from all property JSON schemas except `source-properties.schema.json`. Need to add `multi_value` field to: person-properties, event-properties, place-properties, relationship-properties, media-properties, repository-properties, citation-properties schemas.
 - 🟢 Should property fields have data types?
 
-### Entity Properties
-
-- ✅ ~~**Source properties**: Create `source-properties.glx` vocabulary~~ (completed - added `abbreviation`, `call_number`, `events_recorded`, `agency`, `coverage`, `external_ids` properties)
-
 ### Participant Unification
 
 - 🟢 Unify `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into a single `Participant` struct after the current refactor is complete
@@ -83,9 +79,6 @@
 
 **Anti-pattern**: Dumping structured data into Notes fields instead of proper typed fields/properties
 
-#### Source ([gedcom_source.go](glx/lib/gedcom_source.go))
-- ✅ ~~ABBR, CALN, EVEN, AGNC now stored in `properties` (abbreviation, call_number, events_recorded, agency)~~
-
 #### Citation ([gedcom_evidence.go](glx/lib/gedcom_evidence.go))
 - 🟡 **Line 63**: Source date dumped in notes → Add `SourceDate` field to Citation struct
 
@@ -106,19 +99,10 @@
 - 🟡 Require participant roles in events, relationships, assertions?
 - 🟡 Add validator tags to GLX structs
 
----
-
-## 💻 CLI & User Experience
-
-(No current items)
-
----
-
 ## 🧹 Code Organization & Quality
 
 ### Bugs
 
-- 🔴 **Unreachable code path** ([gedcom_evidence.go:206](glx/lib/gedcom_evidence.go#L206)): The shared note lookup for GEDCOM 7.0 is unreachable because the function already returns if `noteRecord.Value != ""`. Dead code should be removed or logic fixed.
 - 🔴 **Missing bounds check** ([gedcom_place.go:219-220](glx/lib/gedcom_place.go#L219-L220)): `parseCoordinate` can panic if coordinate value has length < 2 (e.g., just "N" without a number). Should add length validation.
 
 ### Performance

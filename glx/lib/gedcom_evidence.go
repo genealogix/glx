@@ -182,6 +182,13 @@ func extractCitations(subjectID string, record *GEDCOMRecord, conv *ConversionCo
 
 // extractNoteText extracts note text from NOTE record
 func extractNoteText(noteRecord *GEDCOMRecord, conv *ConversionContext) string {
+	// Check if it's a reference to a shared note (works for both GEDCOM 5.5.1 and 7.0)
+	if noteRecord.Value != "" {
+		if sharedNote, exists := conv.SharedNotes[noteRecord.Value]; exists {
+			return sharedNote
+		}
+	}
+
 	if noteRecord.Value != "" {
 		// Inline note
 		var text strings.Builder
@@ -200,13 +207,6 @@ func extractNoteText(noteRecord *GEDCOMRecord, conv *ConversionContext) string {
 		}
 
 		return text.String()
-	}
-
-	// Check if it's a reference to shared note (GEDCOM 7.0)
-	if conv.Version == GEDCOM70 && noteRecord.Value != "" {
-		if sharedNote, exists := conv.SharedNotes[noteRecord.Value]; exists {
-			return sharedNote
-		}
 	}
 
 	// Build from CONT/CONC subrecords only
