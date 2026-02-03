@@ -68,14 +68,15 @@ func isDirectoryEmpty(path string) error {
 	defer func() { _ = f.Close() }()
 
 	// Read exactly one directory entry.
-	// Readdirnames will return an error if the directory is empty.
-	// We expect an io.EOF error, which means it's empty.
+	// Readdirnames returns io.EOF if the directory is empty.
 	_, err = f.Readdirnames(1)
-	if err == nil { // if err is nil, directory is not empty
-		return ErrNonEmptyDirectory
+	if err != nil {
+		// io.EOF means directory is empty (success case)
+		return nil
 	}
 
-	return nil // Directory is empty
+	// Successfully read an entry, so directory is not empty
+	return ErrNonEmptyDirectory
 }
 
 // walkGLXFiles walks a directory and calls the visitor function for each GLX file

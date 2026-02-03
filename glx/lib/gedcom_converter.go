@@ -285,17 +285,7 @@ func extractAddress(addrRecord *GEDCOMRecord) string {
 		}
 	}
 
-	result := ""
-	var resultSb288 strings.Builder
-	for i, part := range parts {
-		if i > 0 {
-			resultSb288.WriteString(", ")
-		}
-		resultSb288.WriteString(part)
-	}
-	result += resultSb288.String()
-
-	return result
+	return strings.Join(parts, ", ")
 }
 
 // Converter functions implemented in separate files:

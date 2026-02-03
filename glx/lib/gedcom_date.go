@@ -110,9 +110,10 @@ func parseExactDate(dateStr string) string {
 	case 1:
 		// Just year: "1900"
 		year, err := strconv.Atoi(parts[0])
-		if err == nil && year > 0 && year < 3000 {
-			return fmt.Sprintf("%04d", year)
+		if err != nil || year <= 0 || year >= 3000 {
+			return ""
 		}
+		return fmt.Sprintf("%04d", year)
 
 	case 2:
 		// Month and year: "JAN 1900"

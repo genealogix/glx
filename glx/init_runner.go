@@ -27,15 +27,19 @@ import (
 func runInit(targetDir string, singleFile bool, numTestData int) error {
 	// If target is '.', check if it's empty. Otherwise, check if it exists and is not empty.
 	info, err := os.Stat(targetDir)
-	if err == nil { // Path exists
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("could not stat target directory '%s': %w", targetDir, err)
+		}
+		// Path doesn't exist, will be created below
+	} else {
+		// Path exists
 		if !info.IsDir() {
 			return fmt.Errorf("%w: %s", ErrTargetNotDirectory, targetDir)
 		}
 		if err := isDirectoryEmpty(targetDir); err != nil {
 			return err
 		}
-	} else if !os.IsNotExist(err) { // Some other error
-		return fmt.Errorf("could not stat target directory '%s': %w", targetDir, err)
 	}
 
 	// Create the directory if it doesn't exist

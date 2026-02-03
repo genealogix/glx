@@ -140,7 +140,9 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 				hierarchy.Longitude = lon
 
 				pid, err := buildPlaceHierarchy(hierarchy, conv)
-				if err == nil && pid != "" {
+				if err != nil {
+					conv.Logger.LogWarning(sub.Line, GedcomTagPlac, sub.Value, "Failed to build place hierarchy: "+err.Error())
+				} else if pid != "" {
 					event.PlaceID = pid
 					placeID = pid
 				}
@@ -164,7 +166,9 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 				hierarchy := buildPlaceHierarchyFromAddress(sub)
 				if hierarchy != nil {
 					pid, err := buildPlaceHierarchy(hierarchy, conv)
-					if err == nil && pid != "" {
+					if err != nil {
+						conv.Logger.LogWarning(sub.Line, GedcomTagAddr, "", "Failed to build place hierarchy from address: "+err.Error())
+					} else if pid != "" {
 						event.PlaceID = pid
 						placeID = pid
 					}
@@ -174,7 +178,11 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 		case GedcomTagSour:
 			if includeCitations && eventID != "" {
 				citationID, err := createCitationFromSOUR(eventID, sub, conv)
-				if err == nil && citationID != "" {
+				if err != nil {
+					// Error already logged in createCitationFromSOUR, skip this citation
+					continue
+				}
+				if citationID != "" {
 					citations, ok := event.Properties[PropertyCitations].([]string)
 					if !ok {
 						citations = []string{}

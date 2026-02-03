@@ -40,7 +40,11 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	for _, sub := range objeRecord.SubRecords {
 		if sub.Tag == GedcomTagSour {
 			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
-			if err == nil && citationID != "" {
+			if err != nil {
+				// Error already logged in createCitationFromSOUR, skip this citation
+				continue
+			}
+			if citationID != "" {
 				if citation, ok := conv.GLX.Citations[citationID]; ok {
 					citation.Media = append(citation.Media, mediaID)
 				}

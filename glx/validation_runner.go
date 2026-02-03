@@ -89,8 +89,9 @@ func validatePaths(args []string) error {
 	// might handle multiple disconnected roots.
 	archiveRoot := "."
 	if len(paths) == 1 {
-		info, err := os.Stat(paths[0])
-		if err == nil && info.IsDir() {
+		if info, err := os.Stat(paths[0]); err != nil {
+			// Stat failed, keep default archiveRoot
+		} else if info.IsDir() {
 			archiveRoot = paths[0]
 		}
 	}

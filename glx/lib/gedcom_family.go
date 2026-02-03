@@ -155,7 +155,11 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 			} else {
 				// Embedded media
 				mediaID, err := convertEmbeddedMedia(sub, conv)
-				if err == nil && mediaID != "" {
+				if err != nil {
+					conv.Logger.LogWarning(sub.Line, GedcomTagObje, "", "Failed to convert embedded media: "+err.Error())
+					continue
+				}
+				if mediaID != "" {
 					if event.Properties[PropertyMedia] == nil {
 						event.Properties[PropertyMedia] = []string{}
 					}

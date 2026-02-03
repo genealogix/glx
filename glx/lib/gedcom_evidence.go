@@ -171,7 +171,11 @@ func extractCitations(subjectID string, record *GEDCOMRecord, conv *ConversionCo
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagSour {
 			citationID, err := createCitationFromSOUR(subjectID, sub, conv)
-			if err == nil && citationID != "" {
+			if err != nil {
+				// Error already logged in createCitationFromSOUR, skip this citation
+				continue
+			}
+			if citationID != "" {
 				citationIDs = append(citationIDs, citationID)
 			}
 		}
