@@ -44,6 +44,10 @@
           "type": "boolean",
           "description": "Whether this property can vary over time"
         },
+        "multi_value": {
+          "type": "boolean",
+          "description": "Whether this property can have multiple values as an array"
+        },
         "fields": {
           "type": "object",
           "description": "Sub-schema for structured property components",

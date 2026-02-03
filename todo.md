@@ -30,7 +30,6 @@
 
 ### Schema Improvements
 
-- 🟡 **Add `multi_value` to all property schemas**: The `multi_value` field is documented in the spec and used in `source-properties.glx` and `repository-properties.glx`, but missing from all property JSON schemas except `source-properties.schema.json`. Need to add `multi_value` field to: person-properties, event-properties, place-properties, relationship-properties, media-properties, repository-properties, citation-properties schemas.
 - 🟢 Should property fields have data types?
 
 ### Participant Unification
