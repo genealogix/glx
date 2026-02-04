@@ -59,27 +59,6 @@ While GENEALOGIX provides excellent **interoperability**, its primary purpose is
 - Custom types and vocabularies for specialized research
 - Complete provenance and evidence documentation
 
-## Terminology
-
-### Core Concepts
-- **Archive**: A complete GENEALOGIX data collection containing all family history data (typically stored in a Git repository)
-- **Entity**: A typed record representing a person, event, place, or other genealogical concept
-- **Assertion**: A discrete, evidence-backed claim about a person, event, or relationship
-- **Evidence Chain**: The complete path from physical repository through source and citation to conclusion
-
-### Entity Types
-- **Person**: Individual human being with biographical information
-- **Relationship**: Connection between people (parent-child, marriage, etc.)
-- **Event**: Life events and facts (birth, marriage, occupation, residence, death)
-- **Place**: Geographic locations with hierarchical organization
-- **Media**: Photos, documents, and multimedia files
-
-### Evidence Hierarchy
-- **Repository**: Physical location (archive, library, church, government office)
-- **Source**: Document or record (parish register, census, certificate)
-- **Citation**: Specific reference (page number, entry number, URL)
-- **Assertion**: Evidence-based conclusion or claim supported by citations (ie. person born on specific date)
-
 ## Use Cases
 
 ### Individual Research
