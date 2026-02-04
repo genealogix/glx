@@ -86,6 +86,7 @@ export default defineConfig({
           { text: 'Core Concepts', link: '/specification/2-core-concepts' },
           { text: 'Entity Types', link: '/specification/4-entity-types/' },
           { text: 'Standard Vocabularies', link: '/specification/5-standard-vocabularies/' },
+          { text: 'Glossary', link: '/specification/6-glossary' },
           { text: 'JSON Schemas', link: '/specification/schema/' }
         ]
       },
@@ -93,8 +94,7 @@ export default defineConfig({
         text: 'Guides',
         items: [
           { text: 'Best Practices', link: '/guides/best-practices' },
-          { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' },
-          { text: 'Glossary', link: '/guides/glossary' }
+          { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
         ]
       },
       { text: 'Examples', link: '/examples/' },
@@ -165,6 +165,10 @@ export default defineConfig({
           link: '/specification/5-standard-vocabularies/'
         },
         {
+          text: 'Glossary',
+          link: '/specification/6-glossary'
+        },
+        {
           text: 'Schemas',
           items: [{ text: 'JSON Schemas', link: '/specification/schema/' }]
         }
@@ -212,6 +216,10 @@ export default defineConfig({
           link: '/specification/5-standard-vocabularies/'
         },
         {
+          text: 'Glossary',
+          link: '/specification/6-glossary'
+        },
+        {
           text: 'Schemas',
           items: [{ text: 'JSON Schemas', link: '/specification/schema/' }]
         }
@@ -221,8 +229,7 @@ export default defineConfig({
           text: 'User Guides',
           items: [
             { text: 'Best Practices', link: '/guides/best-practices' },
-            { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' },
-            { text: 'Glossary', link: '/guides/glossary' }
+            { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
           ]
         }
       ],

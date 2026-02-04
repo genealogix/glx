@@ -42,9 +42,9 @@ Compare with **specification/4-entity-types/*.md**:
 **Files to check:**
 - `docs/quickstart.md`
 - `docs/guides/best-practices.md`
-- `docs/guides/glossary.md`
 - `docs/guides/migration-from-gedcom.md`
 - `docs/use-cases.md`
+- `specification/6-glossary.md` (glossary is part of specification)
 
 ### 2. Example Archives (docs/examples/*.glx)
 

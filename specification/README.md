@@ -43,6 +43,9 @@ Version 0.0.0-beta.3
 5. [Standard Vocabularies](5-standard-vocabularies/)
    - Standard vocabulary templates for archive initialization
 
+6. [Glossary](6-glossary)
+   - Key terms and definitions
+
 ## Normative References
 
 This specification uses RFC 2119 keywords (MUST, SHOULD, MAY) for
@@ -103,11 +106,12 @@ relationships:
 ## Getting Started
 
 1. Read [Introduction](1-introduction) for overview
-2. Review [Entity Types](4-entity-types/) to understand data structure
-3. Check [Archive Organization](3-archive-organization) for organization patterns
-4. Review [Standard Vocabularies](5-standard-vocabularies/) for controlled type definitions
-5. See [examples/](../docs/examples/) for working examples
-6. Use [glx CLI](../../glx/) for validation
+2. Review [Glossary](6-glossary) for key terms and definitions
+3. Review [Entity Types](4-entity-types/) to understand data structure
+4. Check [Archive Organization](3-archive-organization) for organization patterns
+5. Review [Standard Vocabularies](5-standard-vocabularies/) for controlled type definitions
+6. See [examples/](../docs/examples/) for working examples
+7. Use [glx CLI](../../glx/) for validation
 
 ## Contributing
 

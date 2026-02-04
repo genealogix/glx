@@ -197,7 +197,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 - [Quickstart Guide](docs/quickstart.md) - 5-minute getting started
 - [Best Practices](docs/guides/best-practices.md) - Recommended workflows
 - [Migration Guide](docs/guides/migration-from-gedcom.md) - Manual conversion guidance from GEDCOM
-- [Glossary](docs/guides/glossary.md) - Key terms and concepts
+- [Glossary](specification/6-glossary.md) - Key terms and concepts
 
 ### 🤝 Contributing
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
