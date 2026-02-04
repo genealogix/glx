@@ -204,5 +204,5 @@ places/
 - [Event Entity](event) - Events that occur at places
 - [Person Entity](person) - Residence and birth/death places
 - [Vocabularies](vocabularies#place-types-vocabulary) - Place types vocabulary
-- [Data Types](../6-data-types) - Coordinate and date formats
+- [Core Concepts - Data Types](../2-core-concepts#data-types) - Coordinate and date formats
 

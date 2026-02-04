@@ -516,4 +516,4 @@ See [assertion.schema.json](../schema/v1/assertion.schema.json) for the complete
 - [Citation Entity](citation) - Evidence references that support assertions
 - [Source Entity](source) - Original sources cited by assertions
 - [Person Entity](person) - Common subject of assertions
-- [Data Types](../6-data-types)
+- [Core Concepts - Data Types](../2-core-concepts#data-types)

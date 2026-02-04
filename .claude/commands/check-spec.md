@@ -12,7 +12,6 @@ Analyze all specification files in the `specification/` directory:
 - `1-introduction.md` - Project overview and purpose
 - `2-core-concepts.md` - Core GLX concepts
 - `3-archive-organization.md` - How GLX archives are structured
-- `6-data-types.md` - Common data types used throughout
 - `README.md` - Specification index
 
 ### Entity Type Specifications

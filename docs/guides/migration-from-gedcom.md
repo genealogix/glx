@@ -198,7 +198,7 @@ date: "BET 1849 AND 1851"
 date: "FROM 1900 TO 1950"
 ```
 
-GLX uses YYYY-MM-DD format for exact dates and preserves GEDCOM keywords (ABT, BEF, AFT, CAL, BET, FROM, TO, AND) for qualified and range dates. See [Data Types](../../specification/6-data-types.md) for complete date format specification.
+GLX uses YYYY-MM-DD format for exact dates and preserves GEDCOM keywords (ABT, BEF, AFT, CAL, BET, FROM, TO, AND) for qualified and range dates. See [Core Concepts - Data Types](../../specification/2-core-concepts.md#data-types) for complete date format specification.
 
 ## Post-Migration
 

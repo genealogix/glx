@@ -106,7 +106,7 @@ properties:
 **Key Points:**
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
-- Properties can be temporal (change over time) - see [Data Types](../6-data-types.md#temporal-values)
+- Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts#temporal-values)
 - Custom properties can be added by extending the vocabulary
 - Living status is implied by the presence/absence of `died_on`
 
@@ -200,5 +200,5 @@ complete JSON Schema definition.
 - [Event Entity](event) - Life events for this person
 - [Relationship Entity](relationship) - Connections to other people
 - [Assertion Entity](assertion) - Evidence for person properties
-- [Data Types](../6-data-types) - Date and property formats
+- [Core Concepts - Data Types](../2-core-concepts#data-types) - Date and property formats
 - [Vocabularies](vocabularies#person-properties-vocabulary) - Person properties vocabulary

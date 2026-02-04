@@ -16,10 +16,12 @@ Version 0.0.0-beta.3
    - Terminology
 
 2. [Core Concepts](2-core-concepts)
-   - Assertion-Aware Data Model
-   - Evidence Hierarchy
-   - Provenance Tracking
-   - Version Control Integration
+   - Archive-Owned Vocabularies
+   - Entity Relationships
+   - Data Types (Primitive, Temporal, Reference)
+   - Properties and Assertions
+   - Evidence Chain
+   - Collaboration with Git
 
 3. [Archive Organization](3-archive-organization)
    - Repository Layout
@@ -40,11 +42,6 @@ Version 0.0.0-beta.3
 
 5. [Standard Vocabularies](5-standard-vocabularies/)
    - Standard vocabulary templates for archive initialization
-
-6. [Data Types](6-data-types)
-   - Primitive Types (string, date, integer, boolean)
-   - Temporal Values
-   - Reference Types
 
 ## Normative References
 

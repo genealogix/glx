@@ -16,6 +16,7 @@
 - 🟡 Add comprehensive example showing assertion-to-entity property workflow (setting properties directly vs creating assertions with evidence)
 - 🟡 Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time)
 - 🟡 Add `multi_value` property examples to vocabularies.md - show how multi-value properties are used in entity data (array values) and validated
+- 🟢 **Git Workflow Guide**: Create separate documentation covering Git workflows, branching strategies, collaboration patterns, merge conflict resolution, and branch-based research methodologies for GLX archives
 
 ### Specification TODOs
 
