@@ -736,7 +736,7 @@ Structured fields document research decisions:
 assertions:
   assertion-disputed-birth:
     subject: person-john-smith
-    claim: birth_date
+    claim: born_on
     value: "1850-01-15"
     confidence: medium
     notes: |

@@ -763,9 +763,9 @@ Each property in a property vocabulary is defined with the following fields:
 
 ```yaml
 person_properties:
-  birth_date:
-    label: "Date of Birth"
-    description: "Person's date of birth"
+  born_on:
+    label: "Birth Date"
+    description: "Date of birth"
     value_type: date
     temporal: false
 

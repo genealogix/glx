@@ -94,6 +94,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - [assertion.md](specification/4-entity-types/assertion.md) (1 link)
   - [vocabularies.md](specification/4-entity-types/vocabularies.md) (1 link)
   - [migration-from-gedcom.md](docs/guides/migration-from-gedcom.md) (1 link)
+- **Added Glossary to specification** - Moved glossary from `docs/guides/glossary.md` to [specification/6-glossary.md](specification/6-glossary.md)
+  - Added "Property" and "Temporal Property" term definitions
+  - Updated all internal links for VitePress compatibility (removed `.md` extensions)
+  - Added to specification README table of contents and Getting Started
+  - Added to website navigation under Specification menu
+- **Fixed broken `#evidence-hierarchy` anchor links** - Updated 4 files to use correct `#evidence-chain` anchor:
+  - [assertion.md](specification/4-entity-types/assertion.md)
+  - [citation.md](specification/4-entity-types/citation.md)
+  - [source.md](specification/4-entity-types/source.md)
+  - [README.md](specification/4-entity-types/README.md)
+- **Fixed incorrect property name in examples** - Changed `birth_date` to `born_on` in:
+  - [2-core-concepts.md](specification/2-core-concepts.md) assertion example
+  - [vocabularies.md](specification/4-entity-types/vocabularies.md) property definition example
 
 ##### Website Navigation
 - **Enhanced VitePress sidebar** - [.vitepress/config.js](website/.vitepress/config.js) now features expanded Core Concepts section
