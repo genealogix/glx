@@ -518,8 +518,9 @@ GENEALOGIX separates evidence from conclusions using **assertions**. An assertio
 # assertions/assertion-john-birth.glx
 assertions:
   assertion-john-birth:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations:
       - citation-birth-certificate
@@ -530,19 +531,20 @@ assertions:
 ### How Assertions Work
 
 **Core fields:**
-- `subject`: The entity this assertion is about (person, event, relationship, place)
-- `claim`: The property being claimed (references property vocabulary)
-- `value`: The concluded value of the claim
-- `citations` or `sources`: Evidence supporting this claim (at least one required)
+- `subject`: Typed reference to the entity this assertion is about (person, event, relationship, place)
+- `property`: The property being asserted (references property vocabulary)
+- `value`: The concluded value of the property
+- `citations` or `sources`: Evidence supporting this assertion (at least one required)
 - `confidence`: How certain we are based on evidence quality
 
-**The `claim` field references property vocabularies:**
+**The `property` field references property vocabularies:**
 
 ```yaml
-# The claim "born_on" must be defined in person-properties.glx
+# The property "born_on" must be defined in person-properties.glx
 assertion-john-birth:
-  subject: person-john-smith
-  claim: born_on  # Validated against person_properties vocabulary
+  subject:
+    person: person-john-smith
+  property: born_on  # Validated against person_properties vocabulary
   value: "1850-01-15"
   citations: [citation-birth-cert]
 ```
@@ -573,8 +575,9 @@ Multiple assertions can exist for the same fact, representing conflicting eviden
 assertions:
   # Assertion based on birth certificate
   assertion-mary-birth-cert:
-    subject: person-mary-jones
-    claim: born_on
+    subject:
+      person: person-mary-jones
+    property: born_on
     value: "1852-03-10"
     citations: [citation-birth-cert]
     confidence: high
@@ -582,8 +585,9 @@ assertions:
 
   # Assertion based on family Bible
   assertion-mary-birth-bible:
-    subject: person-mary-jones
-    claim: born_on
+    subject:
+      person: person-mary-jones
+    property: born_on
     value: "1852-03-12"
     citations: [citation-family-bible]
     confidence: medium
@@ -629,15 +633,17 @@ persons:
 # 2. Later: Add assertions documenting the evidence
 assertions:
   assertion-john-birth:
-    subject: person-john
-    claim: born_on
+    subject:
+      person: person-john
+    property: born_on
     value: "1850-01-15"
     citations: [citation-birth-cert]
     confidence: high
 
   assertion-john-occupation:
-    subject: person-john
-    claim: occupation
+    subject:
+      person: person-john
+    property: occupation
     value: "blacksmith"
     citations:
       - citation-1851-census
@@ -693,8 +699,9 @@ citations:
 ```yaml
 assertions:
   assertion-john-born:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations: [citation-john-birth]
     confidence: high
@@ -715,8 +722,9 @@ Every assertion must reference specific citations or sources, creating complete 
 ```yaml
 assertions:
   assertion-smith-occupation:
-    subject: person-john-smith
-    claim: occupation
+    subject:
+      person: person-john-smith
+    property: occupation
     value: "blacksmith"
     citations:
       - citation-1851-census
@@ -734,8 +742,9 @@ Structured fields document research decisions:
 ```yaml
 assertions:
   assertion-disputed-birth:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     confidence: medium
     notes: |

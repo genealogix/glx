@@ -264,8 +264,8 @@ func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRec
 	// Create single assertion for the name
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{
-		Subject:   personID,
-		Claim:     PersonPropertyName,
+		Subject:   EntityRef{Person: personID},
+		Property:  PersonPropertyName,
 		Value:     fullName,
 		Citations: citationIDs,
 	}
@@ -524,8 +524,8 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{
-		Subject:   personID,
-		Claim:     "no_" + eventType,
+		Subject:   EntityRef{Person: personID},
+		Property:  "no_" + eventType,
 		Value:     "true", // Negative assertion (NO tag from GEDCOM 7.0)
 		Citations: citationIDs,
 	}

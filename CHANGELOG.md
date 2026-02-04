@@ -69,6 +69,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+#### Assertion Entity Improvements
+
+##### Renamed `claim` to `property`
+- **Renamed `claim` field to `property`** - The field name now matches the vocabulary terminology (property vocabularies)
+- **Updated JSON schema** - Changed field name from `claim` to `property`
+- **Updated Go types** - `Assertion.Claim` is now `Assertion.Property`
+- **Updated all specification examples** - assertion.md, 2-core-concepts.md, citation.md, vocabularies.md
+- **Updated example archives** - All files in docs/examples/ updated to use new field name
+
+##### Typed Subject Reference
+- **Changed `subject` from string to typed reference object** - Prevents entity ID collisions in large archives
+- **Subject now uses oneOf pattern** - Must specify exactly one of: `person`, `event`, `relationship`, or `place`
+- **Before**: `subject: person-john-smith`
+- **After**: `subject: { person: person-john-smith }` or `subject: { event: marriage-1880 }`
+- **Added `EntityRef` Go type** - New type with `Type()` and `ID()` helper methods
+- **Updated validation** - EntityRef validation ensures exactly one field is set and referenced entity exists
+
 #### Vocabulary Consolidation
 
 ##### Adoption Modeling

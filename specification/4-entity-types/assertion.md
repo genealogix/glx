@@ -26,8 +26,9 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in assertions/ directory)
 assertions:
   assertion-john-birth-date:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations:
       - citation-birth-certificate
@@ -45,18 +46,29 @@ assertions:
 | Field | Type | Description |
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
-| `subject` | string | The entity this assertion is about |
-| `claim` OR `participant` | string/object | Either a claim string or participant object (mutually exclusive) |
+| `subject` | object | Typed reference to the entity this assertion is about |
+| `property` OR `participant` | string/object | Either a property string or participant object (mutually exclusive) |
 | `citations` OR `sources` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `value` | string | The concluded value of the claim (not used with participant) |
+| `value` | string | The concluded value of the property (not used with participant) |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string | General notes about the assertion |
 | `tags` | array | Tags for categorization |
+
+### Subject Object
+
+The `subject` field uses a typed reference to avoid entity ID collisions. Exactly one key must be present:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `person` | string | Reference to a Person entity |
+| `event` | string | Reference to an Event entity |
+| `relationship` | string | Reference to a Relationship entity |
+| `place` | string | Reference to a Place entity |
 
 ### Participant Object Fields
 
@@ -79,24 +91,40 @@ assertions:
 
 ### `subject`
 
-- Type: String
+- Type: Object with exactly one typed reference field
 - Required: Yes
-- Description: The entity this assertion is about (person, event, relationship, etc.)
+- Description: The entity this assertion is about (person, event, relationship, or place)
 
-Example:
+The typed reference structure prevents entity ID collisions in large archives where different entity types might have the same ID.
+
+Examples:
 ```yaml
-subject: person-john-smith
+# Asserting about a person
+subject:
+  person: john-smith
+
+# Asserting about an event
+subject:
+  event: marriage-1880
+
+# Asserting about a relationship
+subject:
+  relationship: parent-child-001
+
+# Asserting about a place
+subject:
+  place: leeds-yorkshire
 ```
 
-### `claim` (or `participant`)
+### `property` (or `participant`)
 
-- Type: String (for `claim`) or Object (for `participant`)
-- Required: One of `claim` or `participant` must be present (mutually exclusive)
-- Description: Either a property/fact being claimed, or a participant object for event/relationship participation
+- Type: String (for `property`) or Object (for `participant`)
+- Required: One of `property` or `participant` must be present (mutually exclusive)
+- Description: Either a property name being asserted, or a participant object for event/relationship participation
 
-> **Note:** The `claim` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `claim: born_on` references the `born_on` property from the person properties vocabulary. Unknown claims generate validation warnings.
+> **Note:** The `property` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `property: born_on` references the `born_on` property from the person properties vocabulary. Unknown properties generate validation warnings.
 
-Common claim types:
+Common property types:
 - `born_on` - Birth date
 - `died_on` - Death date
 - `born_at` - Birth place
@@ -106,7 +134,7 @@ Common claim types:
 
 Example:
 ```yaml
-claim: occupation
+property: occupation
 ```
 
 ### Evidence Requirement
@@ -136,8 +164,8 @@ citations:
 ### `participant`
 
 - Type: Object
-- Required: No (mutually exclusive with `claim` and `value`)
-- Description: Used for assertions about a person's participation in an event or relationship (instead of claiming a property value)
+- Required: No (mutually exclusive with `property` and `value`)
+- Description: Used for assertions about a person's participation in an event or relationship (instead of asserting a property value)
 
 Structure:
 ```yaml
@@ -148,14 +176,15 @@ participant:
 ```
 
 **Key Points:**
-- When `participant` is present, `claim` and `value` must NOT be present
+- When `participant` is present, `property` and `value` must NOT be present
 - Useful for representing conflicting evidence about who participated in an event or relationship
 
 Example:
 ```yaml
 assertions:
   assertion-witness-john:
-    subject: event-marriage-1880
+    subject:
+      event: event-marriage-1880
     participant:
       person: person-john-smith
       role: witness
@@ -168,12 +197,12 @@ assertions:
 ### `value`
 
 - Type: String
-- Required: No for participant assertions; recommended for claim assertions
-- Description: The concluded value of the claim (not used with `participant`)
+- Required: No for participant assertions; recommended for property assertions
+- Description: The concluded value of the property (not used with `participant`)
 
 Example:
 ```yaml
-claim: occupation
+property: occupation
 value: blacksmith
 ```
 
@@ -230,25 +259,28 @@ Participant assertions represent evidence about who participated in an event or 
 ```yaml
 assertions:
   assertion-john-married:
-    subject: event-marriage-1880
+    subject:
+      event: event-marriage-1880
     participant:
       person: person-john-smith
       role: groom
     citations:
       - citation-marriage-cert
     confidence: high
-  
+
   assertion-jane-married:
-    subject: event-marriage-1880
+    subject:
+      event: event-marriage-1880
     participant:
       person: person-jane-doe
       role: bride
     citations:
       - citation-marriage-cert
     confidence: high
-  
+
   assertion-witness-thomas:
-    subject: event-marriage-1880
+    subject:
+      event: event-marriage-1880
     participant:
       person: person-thomas-brown
       role: witness
@@ -264,7 +296,8 @@ assertions:
 assertions:
   # One source claims person-john is the father
   assertion-john-father-cert:
-    subject: event-birth-1850
+    subject:
+      event: event-birth-1850
     participant:
       person: person-john-smith
       role: parent
@@ -272,10 +305,11 @@ assertions:
     citations:
       - citation-birth-cert
     confidence: high
-  
+
   # Another source claims person-thomas is the father
   assertion-thomas-father-letter:
-    subject: event-birth-1850
+    subject:
+      event: event-birth-1850
     participant:
       person: person-thomas-brown
       role: parent
@@ -287,7 +321,7 @@ assertions:
       Conflicting evidence about paternity:
       - Birth certificate (primary source): John Smith
       - Family letter (secondary source): Thomas Brown
-      
+
       Certificate is more reliable, but letter provides alternative possibility.
       Needs further research.
 ```
@@ -299,8 +333,9 @@ assertions:
 ```yaml
 assertions:
   assertion-john-birth-date:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations:
       - citation-birth-certificate
@@ -312,8 +347,9 @@ assertions:
 ```yaml
 assertions:
   assertion-john-occupation:
-    subject: person-john-smith
-    claim: occupation
+    subject:
+      person: person-john-smith
+    property: occupation
     value: blacksmith
     citations:
       - citation-1851-census
@@ -327,8 +363,9 @@ assertions:
 ```yaml
 assertions:
   assertion-mary-birth-disputed:
-    subject: person-mary-jones
-    claim: born_on
+    subject:
+      person: person-mary-jones
+    property: born_on
     value: "1852-03-10"
     citations:
       - citation-birth-cert       # Says March 10
@@ -337,10 +374,10 @@ assertions:
     notes: |
       Birth certificate (primary source) says March 10, 1852.
       Family Bible (secondary source) says March 12, 1852.
-      
+
       Certificate is more reliable as primary direct evidence.
       Bible entry may have been written from memory later.
-      
+
       Conclusion: March 10, 1852 (with some uncertainty)
 ```
 
@@ -349,8 +386,9 @@ assertions:
 ```yaml
 assertions:
   assertion-john-residence-1851:
-    subject: person-john-smith
-    claim: residence
+    subject:
+      person: person-john-smith
+    property: residence
     value: "Wellington Street, Leeds, Yorkshire"
     citations:
       - citation-1851-census
@@ -367,17 +405,18 @@ assertions:
 ```yaml
 assertions:
   assertion-thomas-birth-estimated:
-    subject: person-thomas-brown
-    claim: born_on
+    subject:
+      person: person-thomas-brown
+    property: born_on
     value: "circa 1825"
     citations:
       - citation-death-cert-age
     confidence: low
     notes: |
       No birth record found. Age at death (1900) reported as 75,
-      suggesting birth around 1825. However, age reporting in 
+      suggesting birth around 1825. However, age reporting in
       death certificates is often approximate.
-      
+
       Need to search:
       - Parish registers 1820-1830
       - Census records for age progression
@@ -403,11 +442,12 @@ The standard vocabulary defines these default confidence levels (archives may cu
 
 ## Validation Rules
 
-- `subject` must reference an existing entity ID
+- `subject` must be an object with exactly one typed reference field (person, event, relationship, or place)
+- The referenced entity must exist in the archive
 - **At least one of `citations` or `sources` must be present** (this is validated as an error if missing)
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
-- `claim` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown claims generate warnings)
+- `property` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown properties generate warnings)
 - Confidence must be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary)
 
 ## File Organization
@@ -450,14 +490,14 @@ assertions/
 
 ```
 Assertion
-    ├── subject → references Person, Event, Relationship, or other entity
+    ├── subject → references Person, Event, Relationship, or Place (typed reference)
     ├── citations → array of Citation IDs (evidence)
     └── sources → array of Source IDs (direct reference)
 
 Citation
     └── supports → Assertion (via assertion's citations array)
 
-Person/Event/Relationship
+Person/Event/Relationship/Place
     └── documented by → Assertion (subject reference)
 ```
 
@@ -465,14 +505,14 @@ Person/Event/Relationship
 
 GENEALOGIX assertions are implicit in GEDCOM:
 
-| GENEALOGIX | GEDCOM Equivalent |
-|------------|-------------------|
-| Assertion | Implicit in INDI/FAM + SOUR structure |
-| `subject` | INDI or FAM record |
-| `claim` | Property tag (BIRT, DEAT, OCCU, etc.) |
-| `value` | Property value |
-| `citations` | SOUR tags on property |
-| `confidence` | Derived from QUAY values |
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
+| Assertion | Implicit in INDI/FAM + SOUR structure | |
+| `subject` | INDI or FAM record | GLX uses typed reference |
+| `property` | Property tag (BIRT, DEAT, OCCU, etc.) | |
+| `value` | Property value | |
+| `citations` | SOUR tags on property | |
+| `confidence` | Derived from QUAY values | |
 
 GEDCOM Example:
 ```
@@ -497,8 +537,9 @@ persons:
 
 assertions:
   assertion-john-birth:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations:
       - citation-birth-cert

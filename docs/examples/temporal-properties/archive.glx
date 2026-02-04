@@ -94,8 +94,9 @@ citations:
 # Assertions providing evidence for the properties
 assertions:
   assertion-occupation-1851:
-    subject: person-john-smith-1850
-    claim: occupation
+    subject:
+      person: person-john-smith-1850
+    property: occupation
     value: "farm laborer"
     citations:
       - citation-1851-census
@@ -103,8 +104,9 @@ assertions:
     notes: "Census lists father's occupation; John was age 1"
 
   assertion-occupation-1881:
-    subject: person-john-smith-1850
-    claim: occupation
+    subject:
+      person: person-john-smith-1850
+    property: occupation
     value: "blacksmith"
     citations:
       - citation-1881-census
@@ -113,8 +115,9 @@ assertions:
     notes: "Multiple sources confirm blacksmith trade in London"
 
   assertion-residence-london:
-    subject: person-john-smith-1850
-    claim: residence
+    subject:
+      person: person-john-smith-1850
+    property: residence
     value: "place-london"
     citations:
       - citation-1881-census

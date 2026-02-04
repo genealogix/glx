@@ -164,8 +164,8 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, claimType, repoID string
 	// Assertion
 	assertionID := "assertion-" + gofakeit.UUID()
 	glxFile.Assertions[assertionID] = &Assertion{
-		Subject:   subjectID,
-		Claim:     claimType,
+		Subject:   EntityRef{Event: subjectID},
+		Property:  claimType,
 		Citations: []string{citationID},
 	}
 }

@@ -64,7 +64,8 @@ citations:
 # Participant assertions - showing who participated in the marriage event
 assertions:
   assertion-john-groom:
-    subject: event-marriage-1880
+    subject:
+      event: event-marriage-1880
     participant:
       person: person-john-smith
       role: groom
@@ -74,7 +75,8 @@ assertions:
     confidence: high
 
   assertion-jane-bride:
-    subject: event-marriage-1880
+    subject:
+      event: event-marriage-1880
     participant:
       person: person-jane-doe
       role: bride
@@ -84,7 +86,8 @@ assertions:
     confidence: high
 
   assertion-thomas-witness:
-    subject: event-marriage-1880
+    subject:
+      event: event-marriage-1880
     participant:
       person: person-thomas-brown
       role: witness

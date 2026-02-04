@@ -209,7 +209,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Persons: map[string]*Person{"person-1": {}},
 			Assertions: map[string]*Assertion{
 				"assert-1": {
-					Subject: "event-1",
+					Subject: EntityRef{Event: "event-1"},
 					Participant: &AssertionParticipant{
 						Person: "person-1",
 						Role:   "witness",
@@ -230,7 +230,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Persons: map[string]*Person{},
 			Assertions: map[string]*Assertion{
 				"assert-1": {
-					Subject: "event-1",
+					Subject: EntityRef{Event: "event-1"},
 					Participant: &AssertionParticipant{
 						Person: "person-nonexistent",
 					},
@@ -335,7 +335,7 @@ func TestValidateSliceReferences(t *testing.T) {
 			},
 			Assertions: map[string]*Assertion{
 				"assert-1": {
-					Subject:   "person-1",
+					Subject:   EntityRef{Person: "person-1"},
 					Citations: []string{"citation-1", "citation-2"},
 				},
 			},
@@ -352,7 +352,7 @@ func TestValidateSliceReferences(t *testing.T) {
 			},
 			Assertions: map[string]*Assertion{
 				"assert-1": {
-					Subject: "person-1",
+					Subject: EntityRef{Person: "person-1"},
 					Sources: []string{"source-1"},
 				},
 			},
@@ -368,7 +368,7 @@ func TestValidateMultiTypeReferences(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{"person-1": {}},
 			Assertions: map[string]*Assertion{
-				"assert-1": {Subject: "person-1"},
+				"assert-1": {Subject: EntityRef{Person: "person-1"}},
 			},
 		}
 		result := archive.Validate()
@@ -379,7 +379,7 @@ func TestValidateMultiTypeReferences(t *testing.T) {
 		archive := &GLXFile{
 			Events: map[string]*Event{"event-1": {}},
 			Assertions: map[string]*Assertion{
-				"assert-1": {Subject: "event-1"},
+				"assert-1": {Subject: EntityRef{Event: "event-1"}},
 			},
 		}
 		result := archive.Validate()
@@ -390,7 +390,7 @@ func TestValidateMultiTypeReferences(t *testing.T) {
 		archive := &GLXFile{
 			Relationships: map[string]*Relationship{"rel-1": {}},
 			Assertions: map[string]*Assertion{
-				"assert-1": {Subject: "rel-1"},
+				"assert-1": {Subject: EntityRef{Relationship: "rel-1"}},
 			},
 		}
 		result := archive.Validate()
@@ -401,21 +401,30 @@ func TestValidateMultiTypeReferences(t *testing.T) {
 		archive := &GLXFile{
 			Places: map[string]*Place{"place-1": {Name: "Test"}},
 			Assertions: map[string]*Assertion{
-				"assert-1": {Subject: "place-1"},
+				"assert-1": {Subject: EntityRef{Place: "place-1"}},
 			},
 		}
 		result := archive.Validate()
 		assert.Empty(t, result.Errors)
 	})
 
-	t.Run("assertion subject invalid", func(t *testing.T) {
+	t.Run("assertion subject invalid person", func(t *testing.T) {
 		archive := &GLXFile{
-			Persons:       map[string]*Person{},
-			Events:        map[string]*Event{},
-			Relationships: map[string]*Relationship{},
-			Places:        map[string]*Place{},
+			Persons: map[string]*Person{},
 			Assertions: map[string]*Assertion{
-				"assert-1": {Subject: "nonexistent"},
+				"assert-1": {Subject: EntityRef{Person: "nonexistent"}},
+			},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		assert.Contains(t, result.Errors[0].Message, "nonexistent")
+	})
+
+	t.Run("assertion subject invalid event", func(t *testing.T) {
+		archive := &GLXFile{
+			Events: map[string]*Event{},
+			Assertions: map[string]*Assertion{
+				"assert-1": {Subject: EntityRef{Event: "nonexistent"}},
 			},
 		}
 		result := archive.Validate()
@@ -530,7 +539,7 @@ func TestValidateAllVocabularyTypes(t *testing.T) {
 			Sources:       map[string]*Source{"source-1": {Title: "Test", Type: "book"}},
 			Repositories:  map[string]*Repository{"repo-1": {Name: "Test", Type: "library"}},
 			Assertions: map[string]*Assertion{
-				"assert-1": {Subject: "event-1", Confidence: "high"},
+				"assert-1": {Subject: EntityRef{Event: "event-1"}, Confidence: "high"},
 			},
 
 			EventTypes:        map[string]*EventType{"birth": {Label: "Birth"}},

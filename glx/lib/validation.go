@@ -156,6 +156,12 @@ func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal 
 			glx.validateStructReferences(entityType, entityID, fieldVal.Elem(), result)
 		}
 	case reflect.Struct:
+		// Special handling for EntityRef
+		if entityRef, ok := fieldVal.Interface().(EntityRef); ok {
+			glx.validateEntityRef(entityType, entityID, "Subject", entityRef, result)
+
+			return
+		}
 		glx.validateStructReferences(entityType, entityID, fieldVal, result)
 	case reflect.Slice:
 		for i := range fieldVal.Len() {
@@ -164,6 +170,38 @@ func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal 
 				glx.validateStructReferences(entityType, entityID, itemVal, result)
 			}
 		}
+	}
+}
+
+// validateEntityRef validates an EntityRef, checking that exactly one field is set
+// and that the referenced entity exists.
+func (glx *GLXFile) validateEntityRef(entityType, entityID, fieldName string, ref EntityRef, result *ValidationResult) {
+	refType := ref.Type()
+	refID := ref.ID()
+
+	if refType == "" || refID == "" {
+		result.Errors = append(result.Errors, ValidationError{
+			SourceType:  entityType,
+			SourceID:    entityID,
+			SourceField: fieldName,
+			Message: fmt.Sprintf("%s[%s].%s: EntityRef must have exactly one field set",
+				entityType, entityID, fieldName),
+		})
+
+		return
+	}
+
+	// Check that the referenced entity exists
+	if _, exists := result.Entities[refType][refID]; !exists {
+		result.Errors = append(result.Errors, ValidationError{
+			SourceType:  entityType,
+			SourceID:    entityID,
+			SourceField: fieldName,
+			TargetType:  refType,
+			TargetID:    refID,
+			Message: fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
+				entityType, entityID, fieldName, refType, refID),
+		})
 	}
 }
 

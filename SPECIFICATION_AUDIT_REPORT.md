@@ -14,24 +14,18 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 **Issues Remaining:**
 - Critical: 0 (3 resolved)
-- Major: 8 (4 resolved)
+- Major: 7 (5 resolved)
 - Minor: 4 (4 resolved)
 
 ---
 
 ## Major Issues
 
-### 3. `claim` vs `property` Terminology Confusion
+### ~~3. `claim` vs `property` Terminology Confusion~~ ✅
 
-**Priority:** High
+**Status:** RESOLVED
 
-**Location:** `specification/4-entity-types/assertion.md`
-
-**Problem:** The `claim` field references property names, but terminology is confusing. Users must understand claims are *assertions about* properties.
-
-**Tracked:** `todo.md` line 23
-
-**Fix:** Add clarifying note. Consider renaming `claim` to `property` in future version.
+**Resolution:** Renamed `claim` field to `property` in schema, Go types, and all documentation. Also changed `subject` from string to typed reference object to prevent entity ID collisions. See CHANGELOG.md for details.
 
 ---
 
@@ -177,45 +171,36 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ## Recommendations
 
-### Immediate Actions
+### Quick Wins (Low Effort)
 
-1. **Add Terminology Clarification** (#3)
-   - Add note explaining `claim` references property names
+These can each be completed in a single focused session:
 
-### Short-Term
+1. **Clarify `claim` terminology** (#3) - Add note to assertion.md explaining that `claim` references property names
+2. **Clarify event `description` fields** (#5) - Add note explaining top-level `description` vs `properties.description`
+3. **Document Bat/Bas Mitzvah distinction** (Minor #1) - Add note explaining these are alternate spellings of the same ceremony
+4. **Add `multi_value` usage examples** (Minor #3) - Add examples subsection to vocabularies.md
+5. **Clarify ID prefix requirement** (#8) - Add RFC 2119 language (SHOULD) to one authoritative location
 
-3. **Consolidate ID Documentation** (#8, #9)
-   - Single authoritative source
-   - Clear cross-references
-   - RFC 2119 language (MUST/SHOULD/MAY)
+### Medium Effort
 
-4. **Clarify Event Description Fields** (#5)
-   - Document when to use top-level vs property
+These require more coordination but are well-defined:
 
-5. **Document or Remove Schema Files** (#6)
-   - Review config/ schemas for current relevance
+6. **Consolidate ID documentation** (#9) - Move scattered ID format info to single source with cross-references
+7. **Add property tables to entity docs** (Minor #2) - Add inline tables to Place, Repository, Relationship pages
+8. **Add common fields note** (Minor #4) - Document that `notes` is available on all entities
+9. **Document field validation behavior** (#10) - Add subsection explaining optional fields and partial sets
 
-### Medium-Term
+### Deferred (Architectural Decisions Needed)
 
-6. **Improve Entity Documentation Consistency** (Minor #2, #4)
-   - Add property tables to Place, Repository, Relationship
-   - Add common fields note to each entity page
+These require broader discussion or significant refactoring:
 
-7. **Address VitePress Dependency** (#4)
-   - Make Standard Vocabularies README portable
-
-8. **Document Validation Behavior** (#10)
-   - Field validation subsection
-
-9. **Address Terminology Consistency** (#7)
-   - Audit "archive" usage throughout spec
-   - Use specific terms: "GLX archive", "repository/institution"
+10. **VitePress portability** (#4) - Decide: generate static README from vocab files, or accept website-only rendering
+11. **Review undocumented schemas** (#6) - Determine if config/ schemas are current; document or remove
+12. **Standardize "archive" terminology** (#7) - Spec-wide audit; decide on "GLX archive" vs "GLX project" vs other terms
 
 ### Process Improvements
 
-10. **Add Link Validation to CI**
-    - Check internal links exist
-    - Validate anchors match headers
+13. **Add link validation to CI** - Automated checking of internal links and anchors
 
 ---
 
@@ -277,6 +262,9 @@ Removed redundant `adoption` relationship type from vocabulary. The `adoption` e
 ### MAJ-2. Godparent Defined in Both Roles and Relationship Types ✅
 Documented the intentional distinction: participant role `godparent` is for event participation (e.g., baptism sponsor), while relationship type `godparent` represents the ongoing godparent-godchild bond. Added `godchild` participant role. Updated relationship.md with comprehensive example showing both usages.
 
+### MAJ-3. `claim` vs `property` Terminology Confusion ✅
+Renamed assertion `claim` field to `property` in JSON schema, Go types, and all documentation examples. Also changed `subject` from string to typed reference object (oneOf person/event/relationship/place) to prevent entity ID collisions in large archives. Updated assertion.md, 2-core-concepts.md, citation.md, vocabularies.md, and all example files.
+
 ---
 
 ## Summary Statistics
@@ -287,9 +275,9 @@ Documented the intentional distinction: participant role `godparent` is for even
 | Vocabulary files reviewed | 16 |
 | Schema files checked | 31 |
 | Critical issues resolved | 3 |
-| Major issues resolved | 4 |
+| Major issues resolved | 5 |
 | Minor issues resolved | 4 |
-| **Major issues remaining** | **8** |
+| **Major issues remaining** | **7** |
 | **Minor issues remaining** | **4** |
 
 ---

@@ -165,8 +165,8 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 
 	// Create assertion
 	assertion := &Assertion{
-		Subject:   subjectID,
-		Claim:     claim,
+		Subject:   EntityRef{Person: subjectID},
+		Property:  claim,
 		Value:     valueStr,
 		Citations: citationIDs,
 	}

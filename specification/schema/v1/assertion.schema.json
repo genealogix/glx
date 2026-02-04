@@ -14,9 +14,9 @@
       ]
     },
     {
-      "description": "Cannot have both claim and participant",
+      "description": "Cannot have both property and participant",
       "not": {
-        "required": ["claim", "participant"]
+        "required": ["property", "participant"]
       }
     },
     {
@@ -26,31 +26,79 @@
       }
     },
     {
-      "description": "Must have either claim or participant (but not both)",
+      "description": "Must have either property or participant (but not both)",
       "anyOf": [
-        { "required": ["claim"] },
+        { "required": ["property"] },
         { "required": ["participant"] }
       ]
     }
   ],
   "properties": {
     "subject": {
-      "type": "string",
-      "pattern": "^[a-zA-Z0-9-]{1,64}$",
-      "description": "The entity this assertion is about"
+      "description": "The entity this assertion is about (typed reference)",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "person": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to a Person entity"
+            }
+          },
+          "required": ["person"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to an Event entity"
+            }
+          },
+          "required": ["event"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "relationship": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to a Relationship entity"
+            }
+          },
+          "required": ["relationship"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "place": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to a Place entity"
+            }
+          },
+          "required": ["place"],
+          "additionalProperties": false
+        }
+      ]
     },
-    "claim": {
+    "property": {
       "type": "string",
       "minLength": 1,
-      "description": "The property or fact being claimed (required if not using participant)"
+      "description": "The property being asserted (required if not using participant)"
     },
     "value": {
       "type": "string",
-      "description": "The concluded value of the claim (cannot be used with participant)"
+      "description": "The concluded value of the property (cannot be used with participant)"
     },
     "participant": {
       "type": "object",
-      "description": "Participant in an event or relationship (mutually exclusive with claim/value)",
+      "description": "Participant in an event or relationship (mutually exclusive with property/value)",
       "required": ["person"],
       "properties": {
         "person": {

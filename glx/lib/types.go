@@ -201,15 +201,58 @@ type Repository struct {
 	Tags       []string       `yaml:"tags,omitempty"`
 }
 
+// EntityRef is a typed reference to an entity. Exactly one field must be set.
+// This allows assertions to reference different entity types unambiguously.
+type EntityRef struct {
+	Person       string `yaml:"person,omitempty"`
+	Event        string `yaml:"event,omitempty"`
+	Relationship string `yaml:"relationship,omitempty"`
+	Place        string `yaml:"place,omitempty"`
+}
+
+// Type returns the entity type being referenced (using EntityType* constants).
+// Returns empty string if no field is set.
+func (e *EntityRef) Type() string {
+	switch {
+	case e.Person != "":
+		return EntityTypePersons
+	case e.Event != "":
+		return EntityTypeEvents
+	case e.Relationship != "":
+		return EntityTypeRelationships
+	case e.Place != "":
+		return EntityTypePlaces
+	default:
+		return ""
+	}
+}
+
+// ID returns the entity ID being referenced.
+// Returns empty string if no field is set.
+func (e *EntityRef) ID() string {
+	switch {
+	case e.Person != "":
+		return e.Person
+	case e.Event != "":
+		return e.Event
+	case e.Relationship != "":
+		return e.Relationship
+	case e.Place != "":
+		return e.Place
+	default:
+		return ""
+	}
+}
+
 // Assertion represents a conclusion made by a researcher.
 type Assertion struct {
-	Subject     string                `refType:"persons,events,relationships,places" yaml:"subject"`
-	Claim       string                `yaml:"claim,omitempty"`       // Optional, not present if participant exists
+	Subject     EntityRef             `yaml:"subject"`
+	Property    string                `yaml:"property,omitempty"`    // Optional, not present if participant exists
 	Value       string                `yaml:"value,omitempty"`       // Not present if participant exists
-	Participant *AssertionParticipant `yaml:"participant,omitempty"` // Not present if value exists
-	Confidence  string                `refType:"confidence_levels"                   yaml:"confidence,omitempty"`
-	Sources     []string              `refType:"sources"                             yaml:"sources,omitempty"`
-	Citations   []string              `refType:"citations"                           yaml:"citations,omitempty"`
+	Participant *AssertionParticipant `yaml:"participant,omitempty"` // Not present if property/value exists
+	Confidence  string                `refType:"confidence_levels"   yaml:"confidence,omitempty"`
+	Sources     []string              `refType:"sources"             yaml:"sources,omitempty"`
+	Citations   []string              `refType:"citations"           yaml:"citations,omitempty"`
 	Notes       string                `yaml:"notes,omitempty"`
 	Tags        []string              `yaml:"tags,omitempty"`
 }

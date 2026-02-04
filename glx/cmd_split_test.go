@@ -270,8 +270,11 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 		Sources:       map[string]*lib.Source{"source-1": {}},
 		Citations:     map[string]*lib.Citation{"citation-1": {}},
 		Repositories:  map[string]*lib.Repository{"repo-1": {}},
-		Assertions:    map[string]*lib.Assertion{"assertion-1": {}},
-		Media:         map[string]*lib.Media{"media-1": {}},
+		Assertions: map[string]*lib.Assertion{"assertion-1": {
+			Subject: lib.EntityRef{Person: "person-1"},
+			Sources: []string{"source-1"},
+		}},
+		Media: map[string]*lib.Media{"media-1": {}},
 	}
 
 	serializer := lib.NewSerializer(&lib.SerializerOptions{

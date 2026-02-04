@@ -970,23 +970,24 @@ person_properties:
 
 ### Context-Aware Validation
 
-Assertions use property vocabularies for context-aware claim validation:
+Assertions use property vocabularies for context-aware property validation:
 
 ```yaml
 assertions:
   assertion-john-birth:
-    subject: person-john
-    claim: born_on  # Validated against person_properties
+    subject:
+      person: person-john
+    property: born_on  # Validated against person_properties
     value: "1850-01-15"
     citations: [citation-birth]
     confidence: high
 ```
 
 The validator:
-1. Determines the subject's entity type (person, event, relationship, or place)
+1. Determines the subject's entity type from the typed reference (person, event, relationship, or place)
 2. Looks up the appropriate property vocabulary for that type
-3. Validates the `claim` against the vocabulary
-4. **Emits warnings for unknown claims** (allows flexibility for emerging properties)
+3. Validates the `property` against the vocabulary
+4. **Emits warnings for unknown properties** (allows flexibility for emerging properties)
 5. Validates the value according to the property's `value_type` or `reference_type`
 6. **Emits errors for broken references** when a property is defined with `reference_type` but the referenced entity doesn't exist
 
@@ -1044,13 +1045,14 @@ The following issues generate warnings but don't fail validation:
          custom_field: "some value"  # WARNING: unknown property
    ```
 
-2. **Unknown assertion claims**: Claims used but not defined in property vocabularies
+2. **Unknown assertion properties**: Properties used but not defined in property vocabularies
    ```yaml
-   # Warning: custom_claim not in person_properties vocabulary
+   # Warning: custom_property not in person_properties vocabulary
    assertions:
      assertion-custom:
-       subject: person-john
-       claim: custom_claim  # WARNING: unknown claim
+       subject:
+         person: person-john
+       property: custom_property  # WARNING: unknown property
        value: "some value"
    ```
 

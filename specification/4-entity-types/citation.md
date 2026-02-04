@@ -134,8 +134,9 @@ Citations are primarily used within Assertions to provide evidence:
 ```yaml
 assertions:
   assertion-birth-john:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations:
       - citation-parish-birth

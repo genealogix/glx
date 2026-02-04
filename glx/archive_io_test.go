@@ -213,9 +213,9 @@ persons:
 					},
 					Assertions: map[string]*lib.Assertion{
 						"assert-1": {
-							Subject: "person-1",
-							Sources: []string{"source-1"},
-							Claim:   "Test claim",
+							Subject:  lib.EntityRef{Person: "person-1"},
+							Sources:  []string{"source-1"},
+							Property: "born_on",
 						},
 					},
 					Media: map[string]*lib.Media{
