@@ -38,7 +38,7 @@ Defines lifecycle events (birth, death, marriage, adoption), religious events (b
 
 ### Relationship Types
 
-Defines relationships between people including marriage, parent-child, sibling, adoption, and other family connections.
+Defines relationships between people including marriage, parent-child (biological, adoptive, foster), sibling, and other family connections.
 
 <YamlFile 
   :content="vocabularies['relationship-types']"

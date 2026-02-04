@@ -103,21 +103,82 @@ relationships:
         role: child
 ```
 
-### Adoption Relationship
+### Adoptive Parent-Child Relationship
 
 ```yaml
-relationships:
-  rel-adoption-sarah:
+# The adoption event records the legal proceeding
+events:
+  event-adoption-1890:
     type: adoption
+    date: "1890-03-15"
+    place: place-county-court
     participants:
-      - person: person-adoptive-father
+      - person: person-sarah-jones
+        role: principal
+    description: "Legal adoption finalized"
+
+# The relationship connects parent(s) and child
+relationships:
+  rel-adoptive-family-sarah:
+    type: adoptive-parent-child
+    participants:
+      - person: person-james-smith
         role: adoptive-parent
-      - person: person-adoptive-mother
+      - person: person-elizabeth-smith
         role: adoptive-parent
-      - person: person-adopted-child
+      - person: person-sarah-jones
         role: adopted-child
     start_event: event-adoption-1890
+    description: "Sarah legally adopted by James and Elizabeth Smith"
 ```
+
+**Note: Adoption Event vs Adoptive Parent-Child Relationship**
+
+Similar to how marriage works in GLX:
+
+- **Event type `adoption`** ([Event Entity](event)): The legal adoption proceeding - records the date, place, court, and other details of when the adoption was finalized
+- **Relationship type `adoptive-parent-child`** (this entity): The ongoing parent-child relationship - connects adoptive parent(s) to the adopted child
+
+Link them using `start_event` to reference the adoption event. Use both when you have details about when the adoption occurred; use just the relationship if you only know the relationship exists without specifics.
+
+### Godparent Relationship
+
+```yaml
+# The baptism event records the ceremony where godparents were named
+events:
+  event-baptism-1885:
+    type: baptism
+    date: "1885-06-12"
+    place: place-st-marys-church
+    participants:
+      - person: person-baby-william
+        role: principal
+      - person: person-uncle-james
+        role: godparent
+      - person: person-aunt-sarah
+        role: godparent
+    description: "Baptism at St Mary's Church"
+
+# The relationship represents the ongoing godparent-godchild bond
+relationships:
+  rel-godparent-james-william:
+    type: godparent
+    participants:
+      - person: person-uncle-james
+        role: godparent
+      - person: person-baby-william
+        role: godchild
+    start_event: event-baptism-1885
+```
+
+**Note: Godparent Event Role vs Godparent Relationship**
+
+Godparent appears in both participant roles and relationship types by design:
+
+- **Participant role `godparent`** ([Event Entity](event)): A person's role at a baptism or christening ceremony - records who served as spiritual sponsor
+- **Relationship type `godparent`** (this entity): The ongoing godparent-godchild bond that may continue throughout their lives
+
+Use the participant role when recording event details; use the relationship type to model the ongoing connection. Link them with `start_event` when you have both.
 
 ### Custom Relationship
 
@@ -189,9 +250,8 @@ Relationships map to GEDCOM family and individual structures:
 | `marriage` | FAM record | Family with MARR event |
 | `parent-child` | FAM.CHIL + INDI.FAMC | Child link to family (no PEDI or PEDI unknown) |
 | `biological-parent-child` | FAM.CHIL + INDI.FAMC with PEDI birth | Biological child relationship |
-| `adoptive-parent-child` | FAM.CHIL + INDI.FAMC with PEDI adopted | Legally adopted child |
+| `adoptive-parent-child` | FAM.CHIL + INDI.FAMC with PEDI adopted | Legally adopted child (use `adoption` event for ADOP tag) |
 | `foster-parent-child` | FAM.CHIL + INDI.FAMC with PEDI foster | Foster care relationship |
-| `adoption` | FAM.CHIL + ADOP | Adoption event |
 | `sibling` | Shared FAM.CHIL | Siblings share parents |
 
 **PEDI (Pedigree Linkage)**:

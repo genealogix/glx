@@ -88,7 +88,6 @@ const (
 	RelationshipTypeAdoptiveParentChild   = "adoptive-parent-child"
 	RelationshipTypeFosterParentChild     = "foster-parent-child"
 	RelationshipTypeSibling               = "sibling"
-	RelationshipTypeAdoption              = "adoption"
 	RelationshipTypeStepParent            = "step-parent"
 	RelationshipTypeGodparent             = "godparent"
 	RelationshipTypeGuardian              = "guardian"

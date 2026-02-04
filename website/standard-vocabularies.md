@@ -59,7 +59,7 @@ Defines additional properties that can be associated with events (like certainty
 
 ### Relationship Types
 
-Defines relationships between people including marriage, parent-child, sibling, adoption, and other family connections.
+Defines relationships between people including marriage, parent-child (biological, adoptive, foster), sibling, and other family connections.
 
 <YamlFile 
   :content="vocabularies['relationship-types']"

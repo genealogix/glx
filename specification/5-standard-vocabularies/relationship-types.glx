@@ -32,19 +32,14 @@ relationship_types:
     label: "Sibling"
     description: "Brother or sister relationship"
     gedcom: "SIBL"
-  
-  adoption:
-    label: "Adoption"
-    description: "Legal adoption relationship"
-    gedcom: "ADOP"
-  
+
   step-parent:
     label: "Step-Parent"
     description: "Step-parent through marriage"
   
   godparent:
     label: "Godparent"
-    description: "Spiritual sponsor relationship"
+    description: "Ongoing godparent-godchild bond (use baptism/christening event for the ceremony)"
   
   guardian:
     label: "Guardian"

@@ -69,6 +69,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+#### Vocabulary Consolidation
+
+##### Adoption Modeling
+- **Removed redundant `adoption` relationship type** - Use `adoptive-parent-child` relationship type instead
+- **Clarified adoption semantics** - `adoption` event type records the legal proceeding; `adoptive-parent-child` relationship type models the ongoing parent-child bond
+- **Updated relationship.md** - Added comprehensive example showing adoption event linked to adoptive-parent-child relationship via `start_event`
+- **Removed `RelationshipTypeAdoption` constant** - Code now uses only `RelationshipTypeAdoptiveParentChild`
+
+##### Godparent Modeling
+- **Clarified godparent dual usage** - Participant role `godparent` is for event participation (baptism sponsor); relationship type `godparent` is for the ongoing bond
+- **Added `godchild` participant role** - For use in godparent relationships
+- **Updated relationship.md** - Added comprehensive example showing baptism event with godparent role linked to godparent relationship
+
 #### Documentation
 
 ##### Specification Structure
