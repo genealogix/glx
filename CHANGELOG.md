@@ -69,6 +69,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+#### Documentation
+
+##### Specification Structure
+- **Streamlined Introduction** - Simplified [1-introduction.md](specification/1-introduction.md) from 120 to 63 lines
+  - Removed wordy "GLX as a Foundation" section with 3 subsections
+  - Removed redundant feature bullets
+  - New concise structure: What is GENEALOGIX? → Why GENEALOGIX? → Who is it for? → Comparison Table → Getting Started → Community
+- **Restructured Core Concepts** - Reorganized [2-core-concepts.md](specification/2-core-concepts.md) to emphasize flexibility as primary differentiator
+  - **New section order**: Archive-Owned Vocabularies → Entity Relationships → Data Types → Properties → Assertions → Evidence Chain → Collaboration
+  - Previously led with Assertion-Aware Data Model; now leads with Archive-Owned Vocabularies (GENEALOGIX's most powerful feature)
+  - Removed ~115 lines of Git implementation details (bisect, stash, rebase, conflict resolution examples)
+  - Added "Next Steps" section linking to Archive Organization
+- **Merged Data Types into Core Concepts** - Integrated [6-data-types.md](specification/6-data-types.md) as section 3 of Core Concepts
+  - Data Types now part of Core Concepts instead of standalone document
+  - Includes: Primitive Types, Date Format Standard, Reference Types, Temporal Values
+  - Deleted standalone 6-data-types.md file
+- **Updated specification table of contents** - [specification/README.md](specification/README.md) now accurately reflects 5-section structure
+  - Section 2 subsections updated to match restructured Core Concepts
+  - Removed incorrect duplicate "Entity Types" section 6
+- **Fixed broken links** - Updated 7 links across 6 files after merging data types:
+  - [person.md](specification/4-entity-types/person.md) (2 links)
+  - [place.md](specification/4-entity-types/place.md) (1 link)
+  - [assertion.md](specification/4-entity-types/assertion.md) (1 link)
+  - [vocabularies.md](specification/4-entity-types/vocabularies.md) (1 link)
+  - [migration-from-gedcom.md](docs/guides/migration-from-gedcom.md) (1 link)
+
+##### Website Navigation
+- **Enhanced VitePress sidebar** - [.vitepress/config.js](website/.vitepress/config.js) now features expanded Core Concepts section
+  - Core Concepts promoted to its own collapsible sidebar section (like Entity Types)
+  - Added 8 direct anchor links to Core Concepts subsections:
+    - Archive-Owned Vocabularies
+    - Entity Relationships
+    - Data Types
+    - Properties
+    - Assertions
+    - Evidence Chain
+    - Collaboration
+  - Improved navigation and discoverability of core architectural concepts
+
 #### CLI
 - **Changed `glx import` default format** - Now defaults to multi-file (`-f multi`) instead of single-file
 
