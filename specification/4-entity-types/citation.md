@@ -185,7 +185,7 @@ Or more commonly, citations are referenced by ID from assertions.
 
 ## Evidence Hierarchy
 
-Citations are part of the GENEALOGIX evidence hierarchy. See [Core Concepts - Evidence Hierarchy](../2-core-concepts#evidence-hierarchy) for the complete evidence chain from Repository → Source → Citation → Assertion.
+Citations are part of the GENEALOGIX evidence chain. See [Core Concepts - Evidence Chain](../2-core-concepts#evidence-chain) for the complete evidence chain from Repository → Source → Citation → Assertion.
 
 ## See Also
 

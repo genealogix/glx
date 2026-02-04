@@ -512,7 +512,7 @@ See [assertion.schema.json](../schema/v1/assertion.schema.json) for the complete
 ## See Also
 
 - [Core Concepts - Assertion-Aware Data Model](../2-core-concepts#assertion-aware-data-model) - Overview of assertion philosophy
-- [Core Concepts - Evidence Hierarchy](../2-core-concepts#evidence-hierarchy) - Understanding evidence quality
+- [Core Concepts - Evidence Chain](../2-core-concepts#evidence-chain) - Understanding evidence quality
 - [Citation Entity](citation) - Evidence references that support assertions
 - [Source Entity](source) - Original sources cited by assertions
 - [Person Entity](person) - Common subject of assertions

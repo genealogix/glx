@@ -223,7 +223,7 @@ See [Core Concepts](../2-core-concepts#archive-owned-vocabularies) for vocabular
 ## See Also
 
 - [Archive Organization](../3-archive-organization) - How entities are organized in files
-- [Core Concepts](../2-core-concepts#evidence-hierarchy) - How entities relate to evidence and provenance
+- [Core Concepts](../2-core-concepts#evidence-chain) - How entities relate to evidence and provenance
 - [Vocabularies](vocabularies) - Complete reference for all vocabulary types
 - Entity type documentation includes GEDCOM mapping information
 

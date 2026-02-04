@@ -563,7 +563,7 @@ See [source.schema.json](../schema/v1/source.schema.json) for the complete JSON 
 
 ## See Also
 
-- [Core Concepts - Evidence Hierarchy](../2-core-concepts#evidence-hierarchy) - Understanding the evidence chain
+- [Core Concepts - Evidence Chain](../2-core-concepts#evidence-chain) - Understanding the evidence chain
 - [Repository Entity](repository) - Where sources are held
 - [Citation Entity](citation) - Specific references within sources
 - [Media Entity](media) - Digital preservation of sources
