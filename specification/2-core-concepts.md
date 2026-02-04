@@ -1,50 +1,12 @@
 ---
 title: Core Concepts
-description: Fundamental principles and architecture of GENEALOGIX - entities, vocabularies, properties, assertions, and evidence chains
+description: Fundamental principles and architecture of GENEALOGIX - flexibility, entities, properties, assertions, and evidence chains
 layout: doc
 ---
 
 # Core Concepts
 
-This section explains the fundamental principles and architecture that make GENEALOGIX different from traditional genealogy formats.
-
-## Entity Relationships
-
-GENEALOGIX uses 9 core entity types that form an interconnected web representing genealogical research:
-
-### Core Entities
-
-```
-Person ←→ Relationship ←→ Person
-Person ←→ Event ←→ Place
-Source ←→ Citation → Assertion → Person/Event/Place
-Repository → Source
-Media → (any entity)
-```
-
-**The 9 Entity Types:**
-
-1. **Person** - Individuals in the family archive
-2. **Relationship** - Connections between people (marriage, parent-child, etc.)
-3. **Event** - Occurrences in time and place (birth, death, marriage, occupation)
-4. **Place** - Geographic locations with hierarchical structure
-5. **Source** - Information sources (books, records, websites, databases)
-6. **Citation** - Specific references within sources
-7. **Repository** - Institutions holding sources (archives, libraries, churches)
-8. **Media** - Digital objects (photos, documents, audio, video)
-9. **Assertion** - Evidence-based conclusions about facts
-
-### Validation Dependencies
-
-These relationships create validation requirements that ensure archive integrity:
-
-- Citations must reference existing sources
-- Assertions must reference existing citations or sources
-- Events must reference existing places (if place specified)
-- Participants must reference existing persons
-- Relationships must reference existing persons
-
-GENEALOGIX enforces referential integrity through the `glx validate` command, preventing broken references and maintaining data consistency.
+This section explains how GENEALOGIX works: the flexible vocabularies, entities, and evidence model that make GLX different from traditional genealogy formats.
 
 ## Archive-Owned Vocabularies
 
@@ -52,7 +14,7 @@ GENEALOGIX enforces referential integrity through the `glx validate` command, pr
 
 Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **archive-owned controlled vocabularies**. Each archive defines its own valid types in the `vocabularies/` directory, combining standardization with flexibility.
 
-**This is one of GENEALOGIX's most powerful features: each archive controls its own type system.**
+**This is GENEALOGIX's most powerful feature: each archive controls its own type system.**
 
 #### Freedom and Flexibility
 
@@ -212,6 +174,44 @@ This makes GLX suitable for:
 - Prosopography (collective biography)
 - Historical demography
 - Any research involving people, events, and relationships
+
+## Entity Relationships
+
+GENEALOGIX uses 9 core entity types that form an interconnected web representing genealogical research:
+
+### Core Entities
+
+```
+Person ←→ Relationship ←→ Person
+Person ←→ Event ←→ Place
+Source ←→ Citation → Assertion → Person/Event/Place
+Repository → Source
+Media → (any entity)
+```
+
+**The 9 Entity Types:**
+
+1. **Person** - Individuals in the family archive
+2. **Relationship** - Connections between people (marriage, parent-child, etc.)
+3. **Event** - Occurrences in time and place (birth, death, marriage, occupation)
+4. **Place** - Geographic locations with hierarchical structure
+5. **Source** - Information sources (books, records, websites, databases)
+6. **Citation** - Specific references within sources
+7. **Repository** - Institutions holding sources (archives, libraries, churches)
+8. **Media** - Digital objects (photos, documents, audio, video)
+9. **Assertion** - Evidence-based conclusions about facts
+
+### Validation Dependencies
+
+These relationships create validation requirements that ensure archive integrity:
+
+- Citations must reference existing sources
+- Assertions must reference existing citations or sources
+- Events must reference existing places (if place specified)
+- Participants must reference existing persons
+- Relationships must reference existing persons
+
+GENEALOGIX enforces referential integrity through the `glx validate` command, preventing broken references and maintaining data consistency.
 
 ## Properties: Recording Conclusions
 
