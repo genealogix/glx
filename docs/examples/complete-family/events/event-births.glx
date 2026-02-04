@@ -6,8 +6,9 @@ events:
     participants:
       - person: person-john-smith-1850
         role: subject
-    description: "Birth of John Smith in Leeds"
-  
+    properties:
+      description: "Birth of John Smith in Leeds"
+
   event-birth-mary:
     type: birth
     date: "1852-03-20"
@@ -15,8 +16,9 @@ events:
     participants:
       - person: person-mary-brown-1852
         role: subject
-    description: "Birth of Mary Brown in Leeds"
-  
+    properties:
+      description: "Birth of Mary Brown in Leeds"
+
   event-birth-jane:
     type: birth
     date: "1876-09-05"
@@ -24,4 +26,5 @@ events:
     participants:
       - person: person-jane-smith-1876
         role: subject
-    description: "Birth of Jane Smith in Leeds"
+    properties:
+      description: "Birth of Jane Smith in Leeds"

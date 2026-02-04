@@ -59,21 +59,9 @@
         "additionalProperties": true
       }
     },
-    "description": {
-      "type": "string",
-      "description": "Narrative description of the event"
-    },
     "notes": {
       "type": "string",
       "description": "Free-form notes about the event"
-    },
-    "tags": {
-      "type": "array",
-      "description": "User-defined tags for organization",
-      "items": {
-        "type": "string"
-      },
-      "uniqueItems": true
     }
   },
   "additionalProperties": false

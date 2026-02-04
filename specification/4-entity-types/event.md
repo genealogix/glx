@@ -64,9 +64,7 @@ Domain-specific events can be added via vocabularies:
 | `date` | string/object | Date as string or object with fuzzy support |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
-| `description` | string | Narrative description |
 | `notes` | string | Free-form notes |
-| `tags` | array | Tags for categorization |
 
 ### Participant Object Fields
 
@@ -94,8 +92,7 @@ participants:
 
 Event properties are defined in the archive's `vocabularies/event-properties.glx` file. Standard properties include:
 
-- `description` - Event description
-- `notes` - Additional notes about the event
+- `description` - Narrative description of the event
 
 **Note:** Event timing and location are handled by the `date` and `place` fields, not properties.
 
@@ -149,7 +146,8 @@ events:
         notes: "Second witness"
       - person: person-reverend-black
         role: officiant
-    description: "Marriage celebrated at St Paul's Cathedral"
+    properties:
+      description: "Marriage celebrated at St Paul's Cathedral"
 ```
 
 ## File Organization

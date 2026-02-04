@@ -134,9 +134,7 @@ type Event struct {
 	Date         DateString         `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []EventParticipant `yaml:"participants"`
 	Properties   map[string]any     `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Description  string             `yaml:"description,omitempty"`
 	Notes        string             `yaml:"notes,omitempty"`
-	Tags         []string           `yaml:"tags,omitempty"`
 }
 
 // EventParticipant defines a person's role in an event.

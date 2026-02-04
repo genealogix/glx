@@ -14,7 +14,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 **Issues Remaining:**
 - Critical: 0
-- Major: 7
+- Major: 6
 - Minor: 4
 
 ---
@@ -33,21 +33,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 2. Redundant `description` Field in Events
-
-**Priority:** Medium
-
-**Locations:**
-- `specification/4-entity-types/event.md:67-68` (top-level field)
-- `specification/5-standard-vocabularies/event-properties.glx` (vocabulary property)
-
-**Problem:** Events have both a top-level `description` and a `properties.description` with no guidance on when to use which.
-
-**Fix:** Clarify distinction or consolidate.
-
----
-
-### 3. Undocumented Schema Files
+### 2. Undocumented Schema Files
 
 **Priority:** Medium
 
@@ -55,7 +41,6 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 - `specification/schema/v1/config/assertion-types.schema.json`
 - `specification/schema/v1/config/confidence-scales.schema.json`
 - `specification/schema/v1/config/relationship-types.schema.json`
-- `specification/schema/v1/archive-metadata.schema.json`
 
 **Problem:** These schema files exist but are not documented.
 
@@ -63,7 +48,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 4. Ambiguous Terminology: "Archive" Used with Three Meanings
+### 3. Ambiguous Terminology: "Archive" Used with Three Meanings
 
 **Priority:** Medium
 
@@ -75,7 +60,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 5. Ambiguous ID Prefix Requirement
+### 4. Ambiguous ID Prefix Requirement
 
 **Priority:** Medium
 
@@ -90,7 +75,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 6. ID Format Documentation Scattered
+### 5. ID Format Documentation Scattered
 
 **Priority:** Low
 
@@ -105,7 +90,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 7. Ambiguous Property Fields Validation
+### 6. Ambiguous Property Fields Validation
 
 **Priority:** Low
 
@@ -167,31 +152,30 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 These can each be completed in a single focused session:
 
-1. **Clarify event `description` fields** (#2) - Add note explaining top-level `description` vs `properties.description`
-2. **Document Bat/Bas Mitzvah distinction** (Minor #1) - Add note explaining these are alternate spellings of the same ceremony
-3. **Add `multi_value` usage examples** (Minor #3) - Add examples subsection to vocabularies.md
-4. **Clarify ID prefix requirement** (#5) - Add RFC 2119 language (SHOULD) to one authoritative location
+1. **Document Bat/Bas Mitzvah distinction** (Minor #1) - Add note explaining these are alternate spellings of the same ceremony
+2. **Add `multi_value` usage examples** (Minor #3) - Add examples subsection to vocabularies.md
+3. **Clarify ID prefix requirement** (#4) - Add RFC 2119 language (SHOULD) to one authoritative location
 
 ### Medium Effort
 
 These require more coordination but are well-defined:
 
-5. **Consolidate ID documentation** (#6) - Move scattered ID format info to single source with cross-references
-6. **Add property tables to entity docs** (Minor #2) - Add inline tables to Place, Repository, Relationship pages
-7. **Add common fields note** (Minor #4) - Document that `notes` is available on all entities
-8. **Document field validation behavior** (#7) - Add subsection explaining optional fields and partial sets
+4. **Consolidate ID documentation** (#5) - Move scattered ID format info to single source with cross-references
+5. **Add property tables to entity docs** (Minor #2) - Add inline tables to Place, Repository, Relationship pages
+6. **Add common fields note** (Minor #4) - Document that `notes` is available on all entities
+7. **Document field validation behavior** (#6) - Add subsection explaining optional fields and partial sets
 
 ### Deferred (Architectural Decisions Needed)
 
 These require broader discussion or significant refactoring:
 
-9. **VitePress portability** (#1) - Decide: generate static README from vocab files, or accept website-only rendering
-10. **Review undocumented schemas** (#3) - Determine if config/ schemas are current; document or remove
-11. **Standardize "archive" terminology** (#4) - Spec-wide audit; decide on "GLX archive" vs "GLX project" vs other terms
+8. **VitePress portability** (#1) - Decide: generate static README from vocab files, or accept website-only rendering
+9. **Review undocumented schemas** (#2) - Determine if config/ schemas are current; document or remove
+10. **Standardize "archive" terminology** (#3) - Spec-wide audit; decide on "GLX archive" vs "GLX project" vs other terms
 
 ### Process Improvements
 
-12. **Add link validation to CI** - Automated checking of internal links and anchors
+11. **Add link validation to CI** - Automated checking of internal links and anchors
 
 ---
 
@@ -222,7 +206,7 @@ These require broader discussion or significant refactoring:
 | Specification files reviewed | 17 |
 | Vocabulary files reviewed | 16 |
 | Schema files checked | 31 |
-| **Major issues remaining** | **7** |
+| **Major issues remaining** | **6** |
 | **Minor issues remaining** | **4** |
 
 ---

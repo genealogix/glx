@@ -221,6 +221,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Removed `AlternativeName` struct** - No longer needed
 - **Removed `DateRange` struct** - No longer needed (was only used by alternative_names)
 
+#### Event Entity
+- **Removed `description` field** - Use `properties.description` instead (eliminates redundancy with event-properties vocabulary)
+- **Removed `tags` field** - Tags feature removed for simplicity in initial release
+
 ## [0.0.0-beta.2] - 2025-11-25
 
 ### Added
