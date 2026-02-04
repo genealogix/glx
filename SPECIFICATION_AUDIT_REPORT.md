@@ -13,23 +13,15 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 **Overall Rating:** Good
 
 **Issues Remaining:**
-- Critical: 0 (3 resolved)
-- Major: 7 (5 resolved)
-- Minor: 4 (4 resolved)
+- Critical: 0
+- Major: 7
+- Minor: 4
 
 ---
 
 ## Major Issues
 
-### ~~3. `claim` vs `property` Terminology Confusion~~ ✅
-
-**Status:** RESOLVED
-
-**Resolution:** Renamed `claim` field to `property` in schema, Go types, and all documentation. Also changed `subject` from string to typed reference object to prevent entity ID collisions. See CHANGELOG.md for details.
-
----
-
-### 4. VitePress Components Make Standard Vocabularies README Non-Portable
+### 1. VitePress Components Make Standard Vocabularies README Non-Portable
 
 **Priority:** Medium
 
@@ -41,7 +33,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 5. Redundant `description` Field in Events
+### 2. Redundant `description` Field in Events
 
 **Priority:** Medium
 
@@ -55,7 +47,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 6. Undocumented Schema Files
+### 3. Undocumented Schema Files
 
 **Priority:** Medium
 
@@ -71,7 +63,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 7. Ambiguous Terminology: "Archive" Used with Three Meanings
+### 4. Ambiguous Terminology: "Archive" Used with Three Meanings
 
 **Priority:** Medium
 
@@ -83,7 +75,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 8. Ambiguous ID Prefix Requirement
+### 5. Ambiguous ID Prefix Requirement
 
 **Priority:** Medium
 
@@ -98,7 +90,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 9. ID Format Documentation Scattered
+### 6. ID Format Documentation Scattered
 
 **Priority:** Low
 
@@ -113,7 +105,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 10. Ambiguous Property Fields Validation
+### 7. Ambiguous Property Fields Validation
 
 **Priority:** Low
 
@@ -133,7 +125,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 **Problem:** Both spellings defined as separate types.
 
-**Tracked:** `todo.md` line 44
+**Tracked:** `todo.md` line 42
 
 **Fix:** Consolidate or document distinction.
 
@@ -175,32 +167,31 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 These can each be completed in a single focused session:
 
-1. **Clarify `claim` terminology** (#3) - Add note to assertion.md explaining that `claim` references property names
-2. **Clarify event `description` fields** (#5) - Add note explaining top-level `description` vs `properties.description`
-3. **Document Bat/Bas Mitzvah distinction** (Minor #1) - Add note explaining these are alternate spellings of the same ceremony
-4. **Add `multi_value` usage examples** (Minor #3) - Add examples subsection to vocabularies.md
-5. **Clarify ID prefix requirement** (#8) - Add RFC 2119 language (SHOULD) to one authoritative location
+1. **Clarify event `description` fields** (#2) - Add note explaining top-level `description` vs `properties.description`
+2. **Document Bat/Bas Mitzvah distinction** (Minor #1) - Add note explaining these are alternate spellings of the same ceremony
+3. **Add `multi_value` usage examples** (Minor #3) - Add examples subsection to vocabularies.md
+4. **Clarify ID prefix requirement** (#5) - Add RFC 2119 language (SHOULD) to one authoritative location
 
 ### Medium Effort
 
 These require more coordination but are well-defined:
 
-6. **Consolidate ID documentation** (#9) - Move scattered ID format info to single source with cross-references
-7. **Add property tables to entity docs** (Minor #2) - Add inline tables to Place, Repository, Relationship pages
-8. **Add common fields note** (Minor #4) - Document that `notes` is available on all entities
-9. **Document field validation behavior** (#10) - Add subsection explaining optional fields and partial sets
+5. **Consolidate ID documentation** (#6) - Move scattered ID format info to single source with cross-references
+6. **Add property tables to entity docs** (Minor #2) - Add inline tables to Place, Repository, Relationship pages
+7. **Add common fields note** (Minor #4) - Document that `notes` is available on all entities
+8. **Document field validation behavior** (#7) - Add subsection explaining optional fields and partial sets
 
 ### Deferred (Architectural Decisions Needed)
 
 These require broader discussion or significant refactoring:
 
-10. **VitePress portability** (#4) - Decide: generate static README from vocab files, or accept website-only rendering
-11. **Review undocumented schemas** (#6) - Determine if config/ schemas are current; document or remove
-12. **Standardize "archive" terminology** (#7) - Spec-wide audit; decide on "GLX archive" vs "GLX project" vs other terms
+9. **VitePress portability** (#1) - Decide: generate static README from vocab files, or accept website-only rendering
+10. **Review undocumented schemas** (#3) - Determine if config/ schemas are current; document or remove
+11. **Standardize "archive" terminology** (#4) - Spec-wide audit; decide on "GLX archive" vs "GLX project" vs other terms
 
 ### Process Improvements
 
-13. **Add link validation to CI** - Automated checking of internal links and anchors
+12. **Add link validation to CI** - Automated checking of internal links and anchors
 
 ---
 
@@ -208,8 +199,7 @@ These require broader discussion or significant refactoring:
 
 | Line | Item | Audit Issue |
 |------|------|-------------|
-| 23 | Rename `claim` to `property` | #3 |
-| 43 | Bar/Bat Mitzvah consolidation | Minor #1 |
+| 42 | Bar/Bat Mitzvah consolidation | Minor #1 |
 | 18 | Add multi_value examples | Minor #3 |
 
 ---
@@ -225,48 +215,6 @@ These require broader discussion or significant refactoring:
 
 ---
 
-## Completed Issues
-
-The following issues were resolved during this audit:
-
-### CRIT-1. Broken `#evidence-hierarchy` Links ✅
-Updated 4 files to use correct `#evidence-chain` anchor.
-
-### CRIT-2. Wrong Property Name `birth_date` ✅
-Changed to `born_on` in 2-core-concepts.md and vocabularies.md.
-
-### CRIT-3. Glossary Not Part of Specification ✅
-Moved to `specification/6-glossary.md` with full integration.
-
-### MAJ-5. Inconsistent `.md` Extension in Internal Links ✅
-Removed `.md` from ~40 internal links across 12 specification files.
-
-### MAJ-10. Misleading Vocabulary Directory Structure Example ✅
-Removed `property vocabularies/` subdirectory from 2-core-concepts.md tree example.
-
-### MIN-3. Inconsistent GEDCOM Mapping Table Headers ✅
-Standardized all 8 entity type files to use "GLX Field | GEDCOM Tag | Notes".
-
-### MIN-4. Person `name` Should Be Documented as Recommended ✅
-Added note that `name` is recommended for most records.
-
-### MIN-6. Schema README Lists Only 3 Example URLs ✅
-Added clarifying text indicating these are examples and more schemas exist.
-
-### MIN-7. Terminology: "Event/Fact" vs "Event" ✅
-Changed to just "Event" in entity types README for consistency.
-
-### MAJ-1. Adoption Semantics: Three Overlapping Definitions ✅
-Removed redundant `adoption` relationship type from vocabulary. The `adoption` event type (for the legal proceeding) and `adoptive-parent-child` relationship type (for the ongoing parent-child connection) now have clear, distinct purposes. Updated relationship.md with a comprehensive example showing how to use the adoption event as the `start_event` for an adoptive-parent-child relationship.
-
-### MAJ-2. Godparent Defined in Both Roles and Relationship Types ✅
-Documented the intentional distinction: participant role `godparent` is for event participation (e.g., baptism sponsor), while relationship type `godparent` represents the ongoing godparent-godchild bond. Added `godchild` participant role. Updated relationship.md with comprehensive example showing both usages.
-
-### MAJ-3. `claim` vs `property` Terminology Confusion ✅
-Renamed assertion `claim` field to `property` in JSON schema, Go types, and all documentation examples. Also changed `subject` from string to typed reference object (oneOf person/event/relationship/place) to prevent entity ID collisions in large archives. Updated assertion.md, 2-core-concepts.md, citation.md, vocabularies.md, and all example files.
-
----
-
 ## Summary Statistics
 
 | Metric | Count |
@@ -274,9 +222,6 @@ Renamed assertion `claim` field to `property` in JSON schema, Go types, and all 
 | Specification files reviewed | 17 |
 | Vocabulary files reviewed | 16 |
 | Schema files checked | 31 |
-| Critical issues resolved | 3 |
-| Major issues resolved | 5 |
-| Minor issues resolved | 4 |
 | **Major issues remaining** | **7** |
 | **Minor issues remaining** | **4** |
 
