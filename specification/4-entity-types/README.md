@@ -26,8 +26,8 @@ Represents connections between people such as spouse, parent-child, and other fa
 - **ID Format**: `rel-{id}` (see below)
 - **GEDCOM Equivalent**: FAM (Family Record)
 
-### [Event/Fact](event)
-Represents occurrences in time and place: births, marriages, occupations, residences, etc.
+### [Event](event)
+Represents occurrences in time and place: births, marriages, deaths, baptisms, etc.
 
 - **Key Properties**: Type, date, place, participants, description
 - **File Format**: `.glx`

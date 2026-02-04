@@ -6,7 +6,7 @@ layout: doc
 
 # Person Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -47,6 +47,8 @@ persons:
 | `properties` | object | Vocabulary-defined properties (name, gender, dates, etc.) |
 | `notes` | string | Free-form notes about the person |
 | `tags` | array | Tags for categorization |
+
+> **Note:** While no properties are technically required, the `name` property is recommended for most person records as it enables meaningful identification and display.
 
 ### Entity ID (map key)
 
@@ -167,8 +169,8 @@ persons/
 
 ## GEDCOM Mapping
 
-| GLX Property | GEDCOM Element | Notes |
-|--------------|----------------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | Entity ID (map key) | `@INDI@` | Individual record ID |
 | `properties.name` | `INDI.NAME` | Person's name |
 | `properties.name.fields.given` | `INDI.NAME.GIVN` | Given name |
@@ -186,7 +188,7 @@ persons/
 
 ## Validation Rules
 
-- Properties must be from the [person properties vocabulary](vocabularies.md#person-properties-vocabulary)
+- Properties must be from the [person properties vocabulary](vocabularies#person-properties-vocabulary)
 - All place references must point to existing Place entities
 - Date formats must follow genealogical date conventions
 

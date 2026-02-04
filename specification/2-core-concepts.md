@@ -53,15 +53,14 @@ vocabularies/
 ├── media-types.glx           # Photo, document, audio, etc.
 ├── participant-roles.glx     # Principal, witness, godparent, etc.
 ├── confidence-levels.glx     # High, medium, low, disputed
-└── property vocabularies/
-    ├── person-properties.glx
-    ├── event-properties.glx
-    ├── relationship-properties.glx
-    ├── place-properties.glx
-    ├── media-properties.glx
-    ├── repository-properties.glx
-    ├── source-properties.glx
-    └── citation-properties.glx
+├── person-properties.glx     # Person properties (name, occupation, etc.)
+├── event-properties.glx      # Event properties
+├── relationship-properties.glx
+├── place-properties.glx
+├── media-properties.glx
+├── repository-properties.glx
+├── source-properties.glx
+└── citation-properties.glx
 ```
 
 ### Property Vocabularies

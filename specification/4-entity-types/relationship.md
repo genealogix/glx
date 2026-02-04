@@ -6,7 +6,7 @@ layout: doc
 
 # Relationship Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -56,7 +56,7 @@ relationships:
 
 Relationship types are defined in the archive's `vocabularies/relationship-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
-**See [Vocabularies - Relationship Types](vocabularies.md#relationship-types-vocabulary) for:**
+**See [Vocabularies - Relationship Types](vocabularies#relationship-types-vocabulary) for:**
 - Complete list of standard relationship types
 - How to add custom relationship types
 - Vocabulary file structure and examples
@@ -150,7 +150,7 @@ participants:
 
 Participant roles (spouse, parent, child, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
 
-**See [Vocabularies - Participant Roles](vocabularies.md#participant-roles-vocabulary) for:**
+**See [Vocabularies - Participant Roles](vocabularies#participant-roles-vocabulary) for:**
 - Complete list of standard participant roles
 - How to add custom roles
 - Vocabulary file structure and examples
@@ -158,7 +158,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 
 ## Validation Rules
 
-- Relationship type must be from the [relationship types vocabulary](vocabularies.md#relationship-types-vocabulary)
+- Relationship type must be from the [relationship types vocabulary](vocabularies#relationship-types-vocabulary)
 - `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
@@ -184,8 +184,8 @@ relationships/
 
 Relationships map to GEDCOM family and individual structures:
 
-| GLX Type | GEDCOM Structure | Notes |
-|----------|------------------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | `marriage` | FAM record | Family with MARR event |
 | `parent-child` | FAM.CHIL + INDI.FAMC | Child link to family (no PEDI or PEDI unknown) |
 | `biological-parent-child` | FAM.CHIL + INDI.FAMC with PEDI birth | Biological child relationship |

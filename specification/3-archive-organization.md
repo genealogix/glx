@@ -93,7 +93,7 @@ Across all files in an archive, the validator checks:
 - Unknown properties (not defined in property vocabularies) generate warnings
 - Unknown assertion claims (not defined in property vocabularies) generate warnings
 
-See [Entity Types - Validation](4-entity-types/README.md#validation) and [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies.md#vocabulary-validation) for complete validation policy.
+See [Entity Types - Validation](4-entity-types/README#validation) and [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies#vocabulary-validation) for complete validation policy.
 
 ## Organization Strategies
 
@@ -342,7 +342,7 @@ relationship_types:
 
 When you run `glx init`, the CLI automatically creates the `vocabularies/` directory by copying the standard vocabulary templates from [Standard Vocabularies](5-standard-vocabularies/). You can then customize these files to add archive-specific types.
 
-See [Core Concepts](2-core-concepts.md#archive-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
+See [Core Concepts](2-core-concepts#archive-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
 
 ## Important Notes
 

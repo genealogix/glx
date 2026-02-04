@@ -6,7 +6,7 @@ layout: doc
 
 # Repository Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -46,7 +46,7 @@ GENEALOGIX supports various repository types:
 - **Government Agency**: Government record-keeping agency
 - **Other**: Other institution type
 
-**See [Vocabularies - Repository Types](vocabularies.md#repository-types-vocabulary) for:**
+**See [Vocabularies - Repository Types](vocabularies#repository-types-vocabulary) for:**
 - Complete list of standard repository types
 - How to add custom repository types
 - Vocabulary file structure and examples
@@ -89,7 +89,7 @@ Contact information and access details are stored in the `properties` field usin
 | `holding_types` | string | Types of materials held |
 | `external_ids` | string | External identifiers (FamilySearch, WikiTree, etc.) |
 
-**See [Vocabularies - Repository Properties](vocabularies.md#repository-properties) for the full vocabulary definition.**
+**See [Vocabularies - Repository Properties](vocabularies#repository-properties) for the full vocabulary definition.**
 
 ## Usage Patterns
 
@@ -200,14 +200,14 @@ repositories/
 ## Validation Rules
 
 - `name` must be present and non-empty
-- `type` must be from the [repository types vocabulary](vocabularies.md#repository-types-vocabulary)
+- `type` must be from the [repository types vocabulary](vocabularies#repository-types-vocabulary)
 - If `website` is specified, it should be a valid URL
 - Properties must be defined in the repository properties vocabulary
 
 ## GEDCOM Mapping
 
-| GLX Property | GEDCOM Element | Notes |
-|--------------|----------------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | Entity ID (map key) | (synthetic) | Not in GEDCOM |
 | `name` | REPO.NAME | Repository name |
 | `address` | REPO.ADDR | Repository address |

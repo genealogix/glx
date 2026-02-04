@@ -6,7 +6,7 @@ layout: doc
 
 # Assertion Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -94,7 +94,7 @@ subject: person-john-smith
 - Required: One of `claim` or `participant` must be present (mutually exclusive)
 - Description: Either a property/fact being claimed, or a participant object for event/relationship participation
 
-> **Note:** The `claim` field corresponds to property names defined in [property vocabularies](vocabularies.md#property-vocabularies). For example, `claim: born_on` references the `born_on` property from the person properties vocabulary. Unknown claims generate validation warnings.
+> **Note:** The `claim` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `claim: born_on` references the `born_on` property from the person properties vocabulary. Unknown claims generate validation warnings.
 
 Common claim types:
 - `born_on` - Birth date
@@ -191,7 +191,7 @@ Confidence levels and their criteria are defined in each archive's `vocabularies
 
 Archives can customize these descriptions or add additional levels to match their research methodology.
 
-**See [Vocabularies - Confidence Levels](vocabularies.md#confidence-levels-vocabulary) for:**
+**See [Vocabularies - Confidence Levels](vocabularies#confidence-levels-vocabulary) for:**
 - Customizing confidence level definitions for your archive
 - Adding custom confidence levels
 - Vocabulary file structure and validation
@@ -407,8 +407,8 @@ The standard vocabulary defines these default confidence levels (archives may cu
 - **At least one of `citations` or `sources` must be present** (this is validated as an error if missing)
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
-- `claim` values should match properties defined in the appropriate [property vocabulary](vocabularies.md#property-vocabularies) (unknown claims generate warnings)
-- Confidence must be from the [confidence levels vocabulary](vocabularies.md#confidence-levels-vocabulary)
+- `claim` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown claims generate warnings)
+- Confidence must be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary)
 
 ## File Organization
 

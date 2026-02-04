@@ -6,7 +6,7 @@ layout: doc
 
 # Place Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -81,7 +81,7 @@ places:
 
 Place types are defined in `vocabularies/place-types.glx` within each archive.
 
-**See [Vocabularies - Place Types](vocabularies.md#place-types-vocabulary) for:**
+**See [Vocabularies - Place Types](vocabularies#place-types-vocabulary) for:**
 - Complete list of standard place types
 - How to add custom place types
 - Vocabulary file structure and examples
@@ -183,8 +183,8 @@ places/
 
 ## GEDCOM Mapping
 
-| GLX Property | GEDCOM Element | Notes |
-|--------------|----------------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | Entity ID (map key) | (synthetic) | Not in GEDCOM; generated from place data |
 | `name` | PLAC | Text value of PLAC tag |
 | `parent` | (implicit) | Represented in hierarchical PLAC structure |

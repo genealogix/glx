@@ -6,7 +6,7 @@ layout: doc
 
 # Event Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -99,7 +99,7 @@ Event properties are defined in the archive's `vocabularies/event-properties.glx
 
 **Note:** Event timing and location are handled by the `date` and `place` fields, not properties.
 
-**See [Vocabularies - Event Properties](vocabularies.md#event-properties-vocabulary) for:**
+**See [Vocabularies - Event Properties](vocabularies#event-properties-vocabulary) for:**
 - Complete list of standard event properties
 - How to add custom event properties
 
@@ -107,7 +107,7 @@ Event properties are defined in the archive's `vocabularies/event-properties.glx
 
 Event types are defined in the archive's `vocabularies/event-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
-**See [Vocabularies - Event Types](vocabularies.md#event-types-vocabulary) for:**
+**See [Vocabularies - Event Types](vocabularies#event-types-vocabulary) for:**
 - Complete list of standard event types
 - How to add custom event types
 - Vocabulary file structure and examples
@@ -171,8 +171,8 @@ events/
 
 Most events map directly to GEDCOM tags:
 
-| GLX Type | GEDCOM Tag | Notes |
-|----------|-----------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | `birth` | INDI.BIRT | Individual birth |
 | `death` | INDI.DEAT | Individual death |
 | `marriage` | FAM.MARR | Family marriage |
@@ -201,7 +201,7 @@ For events with multiple participants, GLX uses the ASSO (Associate) tag pattern
 
 Participant roles (principal, witness, officiant, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
 
-**See [Vocabularies - Participant Roles](vocabularies.md#participant-roles-vocabulary) for:**
+**See [Vocabularies - Participant Roles](vocabularies#participant-roles-vocabulary) for:**
 - Complete list of standard participant roles
 - How to add custom roles
 - Vocabulary file structure and examples
@@ -209,7 +209,7 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 
 ## Validation Rules
 
-- Event type must be from the [event types vocabulary](vocabularies.md#event-types-vocabulary)
+- Event type must be from the [event types vocabulary](vocabularies#event-types-vocabulary)
 - At least one participant is required (events without participants are not meaningful)
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities

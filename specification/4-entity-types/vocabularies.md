@@ -6,7 +6,7 @@ layout: doc
 
 # Vocabularies
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -51,7 +51,7 @@ When initializing a new archive with `glx init`, these files are automatically c
 
 **File**: `vocabularies/event-types.glx`
 
-**Used By**: [Event Entity](event.md#event-types)
+**Used By**: [Event Entity](event#event-types)
 
 **Purpose**: Defines all event and fact types used in the archive (birth, marriage, death, occupation, etc.)
 
@@ -124,7 +124,7 @@ event_types:
 
 **File**: `vocabularies/relationship-types.glx`
 
-**Used By**: [Relationship Entity](relationship.md#relationship-types)
+**Used By**: [Relationship Entity](relationship#relationship-types)
 
 **Purpose**: Defines all relationship types between persons (marriage, parent-child, sibling, etc.)
 
@@ -193,7 +193,7 @@ relationship_types:
 
 **File**: `vocabularies/place-types.glx`
 
-**Used By**: [Place Entity](place.md#place-types)
+**Used By**: [Place Entity](place#place-types)
 
 **Purpose**: Defines geographic and administrative place classifications (country, state, city, parish, etc.)
 
@@ -270,7 +270,7 @@ place_types:
 
 **File**: `vocabularies/source-types.glx`
 
-**Used By**: [Source Entity](source.md#source-types)
+**Used By**: [Source Entity](source#source-types)
 
 **Purpose**: Defines categories of sources (vital records, census, church registers, newspapers, etc.)
 
@@ -334,7 +334,7 @@ source_types:
 
 **File**: `vocabularies/media-types.glx`
 
-**Used By**: [Media Entity](media.md#media-types)
+**Used By**: [Media Entity](media#media-types)
 
 **Purpose**: Defines categories of media objects (photographs, documents, audio, video, etc.)
 
@@ -410,7 +410,7 @@ media_types:
 
 **File**: `vocabularies/confidence-levels.glx`
 
-**Used By**: [Assertion Entity](assertion.md#confidence)
+**Used By**: [Assertion Entity](assertion#confidence)
 
 **Purpose**: Defines confidence levels for assertions
 
@@ -454,7 +454,7 @@ confidence_levels:
 - **Researcher's judgment**: Reflects overall confidence in conclusion
 - **Archive-defined**: Each archive can customize the meaning of confidence levels
 
-See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
+See [Assertion Entity - Confidence](assertion#confidence) for usage details.
 
 ---
 
@@ -462,7 +462,7 @@ See [Assertion Entity - Confidence](assertion.md#confidence) for usage details.
 
 **File**: `vocabularies/repository-types.glx`
 
-**Used By**: [Repository Entity](repository.md#repository-types)
+**Used By**: [Repository Entity](repository#repository-types)
 
 **Purpose**: Defines categories of repositories (archives, libraries, churches, online databases, etc.)
 
@@ -507,7 +507,7 @@ repository_types:
 
 ### Standard Repository Types
 
-See [Repository Entity](repository.md#repository-types) for the complete list of standard repository types.
+See [Repository Entity](repository#repository-types) for the complete list of standard repository types.
 
 ---
 
@@ -515,7 +515,7 @@ See [Repository Entity](repository.md#repository-types) for the complete list of
 
 **File**: `vocabularies/participant-roles.glx`
 
-**Used By**: [Event Entity](event.md#participant-roles), [Relationship Entity](relationship.md#participant-roles)
+**Used By**: [Event Entity](event#participant-roles), [Relationship Entity](relationship#participant-roles)
 
 **Purpose**: Defines roles that people play in events and relationships (principal, witness, officiant, etc.)
 
@@ -633,7 +633,7 @@ vocabularies/
 
 **File**: `vocabularies/person-properties.glx`
 
-**Used By**: [Person Entity](person.md#properties)
+**Used By**: [Person Entity](person#properties)
 
 **Purpose**: Defines properties that can be set on person entities (birth date, occupation, residence, etc.)
 
@@ -660,7 +660,7 @@ GENEALOGIX provides standard person properties:
 
 **File**: `vocabularies/event-properties.glx`
 
-**Used By**: [Event Entity](event.md#properties)
+**Used By**: [Event Entity](event#properties)
 
 **Purpose**: Defines properties that can be set on event entities
 
@@ -668,13 +668,13 @@ Event properties are generally less common than person properties, since most ev
 
 - `description` - Event description
 
-**Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a common entity field (see [Common Fields](README.md#common-fields)), not a property.
+**Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a common entity field (see [Common Fields](README#common-fields)), not a property.
 
 ### Relationship Properties Vocabulary
 
 **File**: `vocabularies/relationship-properties.glx`
 
-**Used By**: [Relationship Entity](relationship.md#properties)
+**Used By**: [Relationship Entity](relationship#properties)
 
 **Purpose**: Defines properties that can be set on relationship entities
 
@@ -689,7 +689,7 @@ Standard properties include:
 
 **File**: `vocabularies/place-properties.glx`
 
-**Used By**: [Place Entity](place.md#properties)
+**Used By**: [Place Entity](place#properties)
 
 **Purpose**: Defines properties that can be set on place entities
 
@@ -704,7 +704,7 @@ Standard properties include:
 
 **File**: `vocabularies/media-properties.glx`
 
-**Used By**: [Media Entity](media.md#properties)
+**Used By**: [Media Entity](media#properties)
 
 **Purpose**: Defines properties that can be set on media entities
 
@@ -725,7 +725,7 @@ Standard properties include:
 
 **File**: `vocabularies/repository-properties.glx`
 
-**Used By**: [Repository Entity](repository.md#properties)
+**Used By**: [Repository Entity](repository#properties)
 
 **Purpose**: Defines properties that can be set on repository entities for contact information, access details, and holdings
 
@@ -743,7 +743,7 @@ Standard properties include:
 
 **File**: `vocabularies/source-properties.glx`
 
-**Used By**: [Source Entity](source.md#properties)
+**Used By**: [Source Entity](source#properties)
 
 **Purpose**: Defines properties that can be set on source entities for bibliographic metadata
 

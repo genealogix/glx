@@ -6,7 +6,7 @@ layout: doc
 
 # Source Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -426,7 +426,7 @@ sources:
 
 Source types are defined in the archive's `vocabularies/source-types.glx` file.
 
-**See [Vocabularies - Source Types](vocabularies.md#source-types-vocabulary) for:**
+**See [Vocabularies - Source Types](vocabularies#source-types-vocabulary) for:**
 - Complete list of standard source types
 - How to add custom source types
 - Vocabulary file structure and examples
@@ -482,14 +482,14 @@ Media
 - If `repository` is specified, it must reference an existing Repository entity
 - If `media` array is present, all IDs must reference existing Media entities
 - `date` should follow standard date formats (YYYY, YYYY-MM-DD, or `FROM YYYY TO YYYY` for ranges)
-- Type must be from the [source types vocabulary](vocabularies.md#source-types-vocabulary)
+- Type must be from the [source types vocabulary](vocabularies#source-types-vocabulary)
 
 ## GEDCOM Mapping
 
 Source entities map to GEDCOM source records:
 
-| GLX Property | GEDCOM Element | Notes |
-|--------------|----------------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | Entity ID | `@SOUR@` | Source record ID |
 | `title` | `SOUR.TITL` | Source title |
 | `authors[0]` | `SOUR.AUTH` | Author (first only in GEDCOM) |

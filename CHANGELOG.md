@@ -108,6 +108,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - [2-core-concepts.md](specification/2-core-concepts.md) assertion example
   - [vocabularies.md](specification/4-entity-types/vocabularies.md) property definition example
 
+##### Specification Audit Quick Wins
+- **Removed `.md` extensions from internal links** - Updated ~40 internal links across 12 specification files for VitePress compatibility
+- **Fixed vocabulary directory structure example** - Removed misleading `property vocabularies/` subdirectory from [2-core-concepts.md](specification/2-core-concepts.md); all property vocabulary files are at root level
+- **Standardized GEDCOM mapping table headers** - All 8 entity type files now use consistent "GLX Field | GEDCOM Tag | Notes" header format
+- **Added recommended note for Person name property** - [person.md](specification/4-entity-types/person.md) now notes that `name` is recommended for most records
+- **Clarified schema README examples** - [schema/README.md](specification/schema/README.md) now indicates the URIs are examples and more schemas exist
+- **Fixed Event/Fact terminology** - Changed "Event/Fact" to just "Event" in [entity types README](specification/4-entity-types/README.md) for consistency
+
 ##### Website Navigation
 - **Enhanced VitePress sidebar** - [.vitepress/config.js](website/.vitepress/config.js) now features expanded Core Concepts section
   - Core Concepts promoted to its own collapsible sidebar section (like Entity Types)

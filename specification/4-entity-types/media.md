@@ -6,7 +6,7 @@ layout: doc
 
 # Media Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -336,7 +336,7 @@ media:
 
 Media types are defined in the archive's `vocabularies/media-types.glx` file.
 
-**See [Vocabularies - Media Types](vocabularies.md#media-types-vocabulary) for:**
+**See [Vocabularies - Media Types](vocabularies#media-types-vocabulary) for:**
 - Complete list of standard media types
 - How to add custom media types
 - Vocabulary file structure and examples
@@ -434,7 +434,7 @@ uri: "ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco"
 ## Validation Rules
 
 - `uri` must be a valid URI or path
-- `type` must be from the [media types vocabulary](vocabularies.md#media-types-vocabulary)
+- `type` must be from the [media types vocabulary](vocabularies#media-types-vocabulary)
 - If `mime_type` is specified, it should follow standard MIME type format
 - If `hash` is specified, it should follow `algorithm:hexstring` format
 - If `date` is specified, it should follow standard date formats
@@ -444,8 +444,8 @@ uri: "ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco"
 
 Media entities map to GEDCOM multimedia objects:
 
-| GLX Property | GEDCOM Element | Notes |
-|--------------|----------------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | Entity ID | `@OBJE@` | Media record ID |
 | `uri` | `OBJE.FILE` | File path or URL |
 | `mime_type` | `OBJE.FORM` | File format |

@@ -6,7 +6,7 @@ layout: doc
 
 # Citation Entity
 
-[← Back to Entity Types](README.md)
+[← Back to Entity Types](README)
 
 ## Overview
 
@@ -68,7 +68,7 @@ Citation properties are defined in the `citation_properties` vocabulary. Standar
 | `text_from_source` | string | Transcription or excerpt from the source |
 | `source_date` | date | Date when the source recorded the information |
 
-**See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README.md#citation-properties)
+**See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README#citation-properties)
 
 ## Usage Patterns
 
@@ -168,8 +168,8 @@ Or more commonly, citations are referenced by ID from assertions.
 
 ## GEDCOM Mapping
 
-| GLX Field | GEDCOM Element | Notes |
-|-----------|----------------|-------|
+| GLX Field | GEDCOM Tag | Notes |
+|-----------|------------|-------|
 | Entity ID (map key) | (synthetic) | Not in GEDCOM |
 | `source` | SOUR | Source reference |
 | `properties.locator` | SOUR.PAGE | Location within source (GEDCOM PAGE is free-form text, not just page numbers) |
@@ -179,7 +179,7 @@ Or more commonly, citations are referenced by ID from assertions.
 ## Validation Rules
 
 - Source ID must reference an existing Source entity
-- Properties should follow the [citation_properties vocabulary](../5-standard-vocabularies/README.md#citation-properties)
+- Properties should follow the [citation_properties vocabulary](../5-standard-vocabularies/README#citation-properties)
 - Text transcriptions should accurately represent source material
 - Repository, if specified, must exist
 
