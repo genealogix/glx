@@ -33,21 +33,6 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 2. Undocumented Schema Files
-
-**Priority:** Medium
-
-**Locations:**
-- `specification/schema/v1/config/assertion-types.schema.json`
-- `specification/schema/v1/config/confidence-scales.schema.json`
-- `specification/schema/v1/config/relationship-types.schema.json`
-
-**Problem:** These schema files exist but are not documented.
-
-**Fix:** Document these schemas or remove if deprecated.
-
----
-
 ### 3. Ambiguous Terminology: "Archive" Used with Three Meanings
 
 **Priority:** Medium
@@ -170,7 +155,6 @@ These require more coordination but are well-defined:
 These require broader discussion or significant refactoring:
 
 8. **VitePress portability** (#1) - Decide: generate static README from vocab files, or accept website-only rendering
-9. **Review undocumented schemas** (#2) - Determine if config/ schemas are current; document or remove
 10. **Standardize "archive" terminology** (#3) - Spec-wide audit; decide on "GLX archive" vs "GLX project" vs other terms
 
 ### Process Improvements
