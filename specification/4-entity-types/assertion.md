@@ -84,10 +84,11 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
 - Must be unique within the archive
-- Recommended formats:
-  - Descriptive: `assertion-john-birth-date`, `assertion-mary-occupation`
-  - Random hex: `assertion-a1b2c3d4` (for collaboration)
-  - Sequential: `assertion-001`, `assertion-002`
+- Example formats:
+  - Descriptive: `john-birth-date`, `mary-occupation`
+  - Random hex: `a1b2c3d4`
+  - Prefixed: `assertion-a1b2c3d4`
+  - Sequential: `001`, `002`
 
 ### `subject`
 

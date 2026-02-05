@@ -67,10 +67,11 @@ media:
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
 - Must be unique within the archive
-- Recommended formats:
-  - Descriptive: `media-birth-cert`, `media-john-portrait`
-  - Random hex: `media-a1b2c3d4` (for collaboration)
-  - Sequential: `media-001`, `media-002`
+- Example formats:
+  - Descriptive: `birth-cert`, `john-portrait`
+  - Random hex: `a1b2c3d4`
+  - Prefixed: `media-a1b2c3d4`
+  - Sequential: `001`, `002`
 
 ### `uri`
 

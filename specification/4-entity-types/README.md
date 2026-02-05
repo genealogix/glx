@@ -150,16 +150,13 @@ Media
 
 ### ID Format Conventions
 
-Entity IDs use `{id}` as placeholder above. IDs can be any unique alphanumeric identifier with hyphens (1-64 chars). Common patterns:
-- **Random hex** (recommended for collaboration): person-a1b2c3d4, event-12345678
-- **Descriptive**: person-john-smith-1850, place-leeds-yorkshire
-- **Sequential**: person-001, event-001
+Entity IDs use `{id}` as placeholder above. IDs can be any unique alphanumeric identifier with hyphens (1-64 chars).
 
 See [Archive Organization - ID Format Standards](../3-archive-organization#id-format-standards) for complete details and examples.
 
 ## ID Scheme
 
-Each entity type has a distinct ID prefix enabling quick entity type identification:
+Documentation examples use prefixes for readability:
 
 - `person-XXXXXXXX`: Person entities
 - `rel-XXXXXXXX`: Relationship entities
@@ -171,7 +168,7 @@ Each entity type has a distinct ID prefix enabling quick entity type identificat
 - `repository-XXXXXXXX`: Repository entities
 - `media-XXXXXXXX`: Media entities
 
-The ID suffix can be any format meeting requirements (1-64 alphanumeric and hyphens). An 8-character hex string is commonly used in examples and recommended for collaboration to minimize collision risk.
+> **Note:** Prefixes are not required. Any unique identifier meeting format requirements (1-64 alphanumeric characters and hyphens) is valid.
 
 ## Entity Lifecycle
 

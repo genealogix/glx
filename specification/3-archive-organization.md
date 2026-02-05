@@ -87,7 +87,6 @@ Across all files in an archive, the validator checks:
 - All entity cross-references must point to existing entities
 - All vocabulary type references must be defined (event_types, relationship_types, etc.)
 - All property `reference_type` values must point to existing entities
-- Entity ID patterns must match their type (e.g., `person-` prefix for persons)
 
 **Warnings (Soft Failures):**
 - Unknown properties (not defined in property vocabularies) generate warnings
@@ -264,46 +263,44 @@ Entity IDs can be any unique identifier you choose, with the following constrain
 - Alphanumeric characters (a-z, A-Z, 0-9) and hyphens only
 - Must be unique across the entire archive
 
-**Recommended Format** (for collaboration):
-- Prefix with entity type for clarity: `person-`, `event-`, `place-`, etc.
-- Use random hex for uniqueness: `person-a1b2c3d4`, `event-12345678`
-- Keeps IDs short and collision-resistant
+> **Note:** Examples in this documentation use prefixes (e.g., `person-abc123`) for readability. Prefixes are not required—any format meeting the requirements above is valid.
 
-**Alternative Formats** (also valid):
-- Descriptive: `person-john-smith-1850`, `place-leeds-yorkshire`
-- Sequential: `person-001`, `person-002`, `event-001`
-- UUID-style: `person-550e8400-e29b-41d4-a716`
-- Custom: Any format meeting the requirements above
+**Example Formats:**
+- Random hex: `a1b2c3d4`, `12345678`
+- Prefixed: `person-a1b2c3d4`, `event-12345678`
+- Descriptive: `john-smith-1850`, `leeds-yorkshire`
+- Sequential: `001`, `002`, `person-001`
+- UUID-style: `550e8400-e29b-41d4-a716`
 
 ### ID Generation Examples
 
-**Random hex (recommended for collaboration):**
+**Random hex:**
 ```bash
 # Bash
-echo "person-$(openssl rand -hex 4)"
+echo "$(openssl rand -hex 4)"
 
 # Python
 import secrets
-f"person-{secrets.token_hex(4)}"
+secrets.token_hex(4)
 
 # JavaScript
 const crypto = require('crypto');
-`person-${crypto.randomBytes(4).toString('hex')}`
+crypto.randomBytes(4).toString('hex')
 
 # Go
 import "crypto/rand"
 b := make([]byte, 4)
 rand.Read(b)
-fmt.Sprintf("person-%x", b)
+fmt.Sprintf("%x", b)
 ```
 
-**Descriptive (easier for humans):**
-- `person-john-smith`
-- `event-birth-john-1850`
-- `place-leeds-uk`
-- `source-parish-register-leeds`
+**Descriptive:**
+- `john-smith`
+- `birth-john-1850`
+- `leeds-uk`
+- `parish-register-leeds`
 
-**Note:** Descriptive IDs are fine for personal use but may cause conflicts when merging archives. Use random IDs for collaborative projects.
+**Note:** Descriptive IDs are fine for personal use but may cause conflicts when merging archives. Random IDs reduce collision risk in collaborative projects.
 
 ## Vocabularies Directory
 

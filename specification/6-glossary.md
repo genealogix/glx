@@ -58,8 +58,6 @@ Common organizational pattern for GENEALOGIX files (not required). Files can be 
 - Single file - All entities in one `.glx` file (good for small archives)
 - Hybrid - Mix of directories and multi-entity files based on logical groupings
 
-What matters: entity type ID prefixes must be correct (`person-`, `event-`, etc.)
-
 ## E
 
 ### Entity
@@ -118,18 +116,21 @@ UK Census series identifier (1841-1911 census returns).
 ## I
 
 ### ID (Identifier)
-A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens, typically prefixed with entity type.
+A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens.
 
 **Examples:**
-- `person-a1b2c3d4` - random hex format (recommended for collaboration)
+- `person-a1b2c3d4` - random hex format
 - `person-john-smith` - descriptive format
 - `event-birth-1850`
 - `place-leeds`
+- `abc12345` - simple format (no prefix)
+
+> **Note:** Examples use prefixes (e.g., `person-`) for readability. Prefixes are not required.
 
 > **See Also:** [ID Format Standards](3-archive-organization#id-format-standards)
 
 ### ID Pattern
-Entity IDs are alphanumeric with hyphens, 1-64 characters. Commonly prefixed with entity type for clarity.
+Entity IDs are alphanumeric with hyphens, 1-64 characters.
 
 ### Indirect Evidence
 Evidence that requires interpretation or additional information to support a conclusion.

@@ -75,10 +75,11 @@ sources:
 
 - Format: Any alphanumeric string with hyphens, 1-64 characters
 - Must be unique within the archive
-- Recommended formats:
-  - Descriptive: `source-birth-register`, `source-1851-census`
-  - Random hex: `source-a1b2c3d4` (for collaboration)
-  - Sequential: `source-001`, `source-002`
+- Example formats:
+  - Descriptive: `birth-register`, `1851-census`
+  - Random hex: `a1b2c3d4`
+  - Prefixed: `source-a1b2c3d4`
+  - Sequential: `001`, `002`
 
 ### `title`
 

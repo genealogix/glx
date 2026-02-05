@@ -14,7 +14,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 **Issues Remaining:**
 - Critical: 0
-- Major: 6
+- Major: 3
 - Minor: 4
 
 ---
@@ -33,49 +33,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 3. Ambiguous Terminology: "Archive" Used with Three Meanings
-
-**Priority:** Medium
-
-**Locations:** Throughout specification
-
-**Problem:** "Archive" means: GLX data structure, physical repositories/institutions, and Git repository structure.
-
-**Fix:** Use specific terminology: "GLX archive", "repository/institution", "Git repository".
-
----
-
-### 4. Ambiguous ID Prefix Requirement
-
-**Priority:** Medium
-
-**Locations:**
-- `specification/3-archive-organization.md:90`
-- `specification/4-entity-types/README.md:153-156`
-- `specification/4-entity-types/person.md:56-58`
-
-**Problem:** Inconsistent about whether entity ID prefixes are required or recommended.
-
-**Fix:** Clarify with RFC 2119 language (MUST/SHOULD/MAY).
-
----
-
-### 5. ID Format Documentation Scattered
-
-**Priority:** Low
-
-**Locations:**
-- `specification/3-archive-organization.md:258`
-- `specification/4-entity-types/README.md:151`
-- `specification/4-entity-types/README.md:160`
-
-**Problem:** ID format information scattered across three sections with overlapping content.
-
-**Fix:** Consolidate to single authoritative source with cross-references.
-
----
-
-### 6. Ambiguous Property Fields Validation
+### 2. Ambiguous Property Fields Validation
 
 **Priority:** Low
 
@@ -139,23 +97,20 @@ These can each be completed in a single focused session:
 
 1. **Document Bat/Bas Mitzvah distinction** (Minor #1) - Add note explaining these are alternate spellings of the same ceremony
 2. **Add `multi_value` usage examples** (Minor #3) - Add examples subsection to vocabularies.md
-3. **Clarify ID prefix requirement** (#4) - Add RFC 2119 language (SHOULD) to one authoritative location
 
 ### Medium Effort
 
 These require more coordination but are well-defined:
 
-4. **Consolidate ID documentation** (#5) - Move scattered ID format info to single source with cross-references
-5. **Add property tables to entity docs** (Minor #2) - Add inline tables to Place, Repository, Relationship pages
-6. **Add common fields note** (Minor #4) - Document that `notes` is available on all entities
-7. **Document field validation behavior** (#6) - Add subsection explaining optional fields and partial sets
+3. **Add property tables to entity docs** (Minor #2) - Add inline tables to Place, Repository, Relationship pages
+4. **Add common fields note** (Minor #4) - Document that `notes` is available on all entities
+5. **Document field validation behavior** (#2) - Add subsection explaining optional fields and partial sets
 
 ### Deferred (Architectural Decisions Needed)
 
 These require broader discussion or significant refactoring:
 
 8. **VitePress portability** (#1) - Decide: generate static README from vocab files, or accept website-only rendering
-10. **Standardize "archive" terminology** (#3) - Spec-wide audit; decide on "GLX archive" vs "GLX project" vs other terms
 
 ### Process Improvements
 
@@ -190,7 +145,7 @@ These require broader discussion or significant refactoring:
 | Specification files reviewed | 17 |
 | Vocabulary files reviewed | 16 |
 | Schema files checked | 31 |
-| **Major issues remaining** | **6** |
+| **Major issues remaining** | **3** |
 | **Minor issues remaining** | **4** |
 
 ---
