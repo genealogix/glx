@@ -10,6 +10,3 @@ persons:
       died_on: "1920-06-20"
       gender: "male"
     notes: "Blacksmith in Leeds, Yorkshire. Married Mary Brown in 1875."
-    tags:
-      - "ancestor"
-      - "smith-family"

@@ -79,7 +79,7 @@
 
 ## ✅ GLX Validation
 
-- 🟡 **Place hierarchy cycle detection**: Validate that place parent references don't form cycles (circular parent references). Specification requires acyclic hierarchy but validation is not implemented in [lib/validation.go](glx/lib/validation.go).
+- 🟡 **Place hierarchy cycle detection**: Validate that place parent references don't form cycles (circular parent references). Specification requires acyclic hierarchy but validation is not implemented in [lib/validation.go](glx/lib/validation.go). Note: This cannot be expressed in JSON schema and requires code-level validation.
 - 🟡 Require participant roles in events, relationships, assertions?
 - 🟡 Add validator tags to GLX structs
 

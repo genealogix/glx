@@ -105,7 +105,6 @@ type ValidationWarning struct {
 type Person struct {
 	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes      string         `yaml:"notes,omitempty"`
-	Tags       []string       `yaml:"tags,omitempty"`
 }
 
 // Relationship represents a relationship between two or more people.
@@ -117,7 +116,6 @@ type Relationship struct {
 	Properties   map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Description  string                    `yaml:"description,omitempty"`
 	Notes        string                    `yaml:"notes,omitempty"`
-	Tags         []string                  `yaml:"tags,omitempty"`
 }
 
 // RelationshipParticipant defines a person's role in a relationship.
@@ -155,7 +153,6 @@ type Place struct {
 	PlaceFormat  string         `yaml:"place_format,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes        string         `yaml:"notes,omitempty"`
-	Tags         []string       `yaml:"tags,omitempty"`
 }
 
 // Source represents a source of information.
@@ -171,7 +168,6 @@ type Source struct {
 	Media        []string       `refType:"media"              yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes        string         `yaml:"notes,omitempty"`
-	Tags         []string       `yaml:"tags,omitempty"`
 }
 
 // Citation represents a citation of a source.
@@ -181,7 +177,6 @@ type Citation struct {
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date)
 	Notes        string         `yaml:"notes,omitempty"`
-	Tags         []string       `yaml:"tags,omitempty"`
 }
 
 // Repository represents a repository where sources are held.
@@ -196,7 +191,6 @@ type Repository struct {
 	Website    string         `yaml:"website,omitempty"`
 	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (phones, emails, fax, access_hours, access_restrictions, holding_types, external_ids)
 	Notes      string         `yaml:"notes,omitempty"`
-	Tags       []string       `yaml:"tags,omitempty"`
 }
 
 // EntityRef is a typed reference to an entity. Exactly one field must be set.
@@ -252,7 +246,6 @@ type Assertion struct {
 	Sources     []string              `refType:"sources"             yaml:"sources,omitempty"`
 	Citations   []string              `refType:"citations"           yaml:"citations,omitempty"`
 	Notes       string                `yaml:"notes,omitempty"`
-	Tags        []string              `yaml:"tags,omitempty"`
 }
 
 // AssertionParticipant represents a participant in an assertion (used for participant-based claims).
@@ -274,7 +267,6 @@ type Media struct {
 	Source      string         `refType:"sources"            yaml:"source,omitempty"`
 	Properties  map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes       string         `yaml:"notes,omitempty"`
-	Tags        []string       `yaml:"tags,omitempty"`
 }
 
 // ============================================================================
