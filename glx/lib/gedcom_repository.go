@@ -25,13 +25,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRepoRecord, GedcomTagRepo, repoRecord.Tag)
 	}
 
-	// Generate repository ID
-	repositoryID := generateRepositoryID(conv)
-	conv.RepositoryIDMap[repoRecord.XRef] = repositoryID
-
-	conv.Logger.LogInfo(fmt.Sprintf("Converting REPO %s -> %s", repoRecord.XRef, repositoryID))
-
-	// Create repository entity
+	// Create repository entity (we parse first to get the name for deduplication)
 	repository := &Repository{
 		Properties: make(map[string]any),
 	}
@@ -118,11 +112,45 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 		repository.Type = inferRepositoryType(repository.Name)
 	}
 
+	// Check for duplicate repository by name
+	dedupeKey := buildRepositoryDedupeKey(repository)
+	if existingID, ok := conv.RepositoryNameMap[dedupeKey]; ok {
+		// Reuse existing repository - just map the XRef to the existing ID
+		conv.RepositoryIDMap[repoRecord.XRef] = existingID
+		conv.Logger.LogInfo(fmt.Sprintf("Reusing existing repository %s for REPO %s (name: %s)", existingID, repoRecord.XRef, repository.Name))
+		conv.Stats.RepositoriesDeduplicated++
+
+		return nil
+	}
+
+	// Generate new repository ID
+	repositoryID := generateRepositoryID(conv)
+	conv.RepositoryIDMap[repoRecord.XRef] = repositoryID
+	conv.RepositoryNameMap[dedupeKey] = repositoryID
+
+	conv.Logger.LogInfo(fmt.Sprintf("Converting REPO %s -> %s", repoRecord.XRef, repositoryID))
+
 	// Store repository
 	conv.GLX.Repositories[repositoryID] = repository
 	conv.Stats.RepositoriesCreated++
 
 	return nil
+}
+
+// buildRepositoryDedupeKey creates a deduplication key for a repository.
+// Uses name and city/country when available for more precise matching.
+func buildRepositoryDedupeKey(repo *Repository) string {
+	key := strings.ToLower(strings.TrimSpace(repo.Name))
+
+	// Add location qualifiers if available to distinguish same-named repositories
+	if repo.City != "" {
+		key += "|" + strings.ToLower(strings.TrimSpace(repo.City))
+	}
+	if repo.Country != "" {
+		key += "|" + strings.ToLower(strings.TrimSpace(repo.Country))
+	}
+
+	return key
 }
 
 // mapRepositoryType maps GEDCOM repository type to GLX.

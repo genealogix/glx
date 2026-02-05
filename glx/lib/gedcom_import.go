@@ -61,19 +61,20 @@ type ImportResult struct {
 
 // ImportStatistics tracks import metrics
 type ImportStatistics struct {
-	LinesProcessed        int
-	PersonsCreated        int
-	EventsCreated         int
-	RelationshipsCreated  int
-	PlacesCreated         int
-	SourcesCreated        int
-	RepositoriesCreated   int
-	MediaCreated          int
-	CitationsCreated      int
-	AssertionsCreated     int
-	ParticipationsCreated int
-	Errors                []ImportError
-	Warnings              []ImportWarning
+	LinesProcessed           int
+	PersonsCreated           int
+	EventsCreated            int
+	RelationshipsCreated     int
+	PlacesCreated            int
+	SourcesCreated           int
+	RepositoriesCreated      int
+	RepositoriesDeduplicated int
+	MediaCreated             int
+	CitationsCreated         int
+	AssertionsCreated        int
+	ParticipationsCreated    int
+	Errors                   []ImportError
+	Warnings                 []ImportWarning
 }
 
 // ImportError represents an error during import
@@ -144,6 +145,9 @@ type ConversionContext struct {
 	RepositoryIDMap map[string]string
 	MediaIDMap      map[string]string
 	PlaceIDMap      map[string]string
+
+	// Content-based deduplication maps (name/content -> GLX ID)
+	RepositoryNameMap map[string]string // repository name -> GLX ID
 
 	// Family structure mapping (FAM XRef -> parent IDs)
 	FamilyParentsMap map[string][]string
@@ -237,6 +241,7 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 		RepositoryIDMap:     make(map[string]string),
 		MediaIDMap:          make(map[string]string),
 		PlaceIDMap:          make(map[string]string),
+		RepositoryNameMap:   make(map[string]string),
 		FamilyParentsMap:    make(map[string][]string),
 		SharedNotes:         make(map[string]string),
 		ExtensionSchemas:    make(map[string]*ExtensionSchema),

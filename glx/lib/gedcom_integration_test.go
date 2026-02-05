@@ -308,6 +308,141 @@ func TestImportRepositoryOrdering(t *testing.T) {
 	}
 }
 
+func TestRepositoryDeduplication(t *testing.T) {
+	// Test that duplicate repositories (same name) are deduplicated
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @REPO1@ REPO
+1 NAME National Archives
+1 ADDR 8601 Adelphi Road
+2 CITY College Park
+2 STAE Maryland
+2 CTRY USA
+0 @REPO2@ REPO
+1 NAME National Archives
+1 ADDR 8601 Adelphi Road
+2 CITY College Park
+2 STAE Maryland
+2 CTRY USA
+0 @REPO3@ REPO
+1 NAME Local Library
+1 ADDR 123 Main Street
+2 CITY Springfield
+2 CTRY USA
+0 @SOUR1@ SOUR
+1 TITL Census Record 1900
+1 REPO @REPO1@
+0 @SOUR2@ SOUR
+1 TITL Census Record 1910
+1 REPO @REPO2@
+0 @SOUR3@ SOUR
+1 TITL Local History Book
+1 REPO @REPO3@
+0 TRLR
+`
+	reader := strings.NewReader(gedcom)
+	glx, result, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Should have 2 unique repositories (National Archives deduplicated, Local Library unique)
+	if len(glx.Repositories) != 2 {
+		t.Errorf("Expected 2 repositories, got %d", len(glx.Repositories))
+		for id, repo := range glx.Repositories {
+			t.Logf("  Repository %s: %s", id, repo.Name)
+		}
+	}
+
+	// Should have 1 deduplicated repository
+	if result.Statistics.RepositoriesDeduplicated != 1 {
+		t.Errorf("Expected 1 deduplicated repository, got %d", result.Statistics.RepositoriesDeduplicated)
+	}
+
+	// Should have 2 created repositories
+	if result.Statistics.RepositoriesCreated != 2 {
+		t.Errorf("Expected 2 created repositories, got %d", result.Statistics.RepositoriesCreated)
+	}
+
+	// All 3 sources should have valid repository references
+	if len(glx.Sources) != 3 {
+		t.Errorf("Expected 3 sources, got %d", len(glx.Sources))
+	}
+
+	for sourceID, source := range glx.Sources {
+		if source.RepositoryID == "" {
+			t.Errorf("Source %s has no repository ID", sourceID)
+			continue
+		}
+		if _, exists := glx.Repositories[source.RepositoryID]; !exists {
+			t.Errorf("Source %s references non-existent repository %s", sourceID, source.RepositoryID)
+		}
+	}
+
+	// Sources 1 and 2 should point to the same repository (deduplicated National Archives)
+	var source1RepoID, source2RepoID, source3RepoID string
+	for _, source := range glx.Sources {
+		switch source.Title {
+		case "Census Record 1900":
+			source1RepoID = source.RepositoryID
+		case "Census Record 1910":
+			source2RepoID = source.RepositoryID
+		case "Local History Book":
+			source3RepoID = source.RepositoryID
+		}
+	}
+
+	if source1RepoID != source2RepoID {
+		t.Errorf("Sources referencing same repository have different IDs: %s vs %s", source1RepoID, source2RepoID)
+	}
+
+	if source1RepoID == source3RepoID {
+		t.Errorf("Sources referencing different repositories have same ID: %s", source1RepoID)
+	}
+}
+
+func TestRepositoryDeduplicationDifferentLocations(t *testing.T) {
+	// Test that repositories with same name but different locations are NOT deduplicated
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @REPO1@ REPO
+1 NAME Public Library
+1 ADDR 123 Main St
+2 CITY Springfield
+2 CTRY USA
+0 @REPO2@ REPO
+1 NAME Public Library
+1 ADDR 456 Oak Ave
+2 CITY Shelbyville
+2 CTRY USA
+0 TRLR
+`
+	reader := strings.NewReader(gedcom)
+	glx, result, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Should have 2 unique repositories (different cities)
+	if len(glx.Repositories) != 2 {
+		t.Errorf("Expected 2 repositories (different locations), got %d", len(glx.Repositories))
+		for id, repo := range glx.Repositories {
+			t.Logf("  Repository %s: %s, %s", id, repo.Name, repo.City)
+		}
+	}
+
+	// Should have 0 deduplicated repositories
+	if result.Statistics.RepositoriesDeduplicated != 0 {
+		t.Errorf("Expected 0 deduplicated repositories, got %d", result.Statistics.RepositoriesDeduplicated)
+	}
+}
+
 func TestExtractTextWithContinuation(t *testing.T) {
 	tests := []struct {
 		name     string

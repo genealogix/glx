@@ -70,7 +70,6 @@
 - 🟢 **LANG Tag Normalization**: Normalize language tags on import. GEDCOM 7.0 uses ISO format (e.g., `en-US`), but GEDCOM 5.5.x uses free-form text (e.g., `English`, `French`). Should convert 5.5.x values to ISO codes for consistency.
 - 🟢 **PLAC Validation** ([gedcom_place.go](glx/lib/gedcom_place.go)): Validate PLAC fields - reject non-geographic text like "Died in childbirth", "Unmarried", "Unknown"
 - 🟢 **Place Type Vocab**: Fix places[place-31].Type references non-existent place_types: locality
-- 🟢 **Duplicate Prevention**: Prevent duplicate repository creation
 
 ---
 

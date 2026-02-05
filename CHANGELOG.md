@@ -209,6 +209,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Fixed best-practices.md Citation example** - Changed `transcription` to `properties.text_from_source` per schema
 
 #### GEDCOM Import
+- **Repository deduplication** - Repositories with the same name and location are now deduplicated during import. Previously, multiple GEDCOM REPO records with the same name would create duplicate repository entities. Deduplication uses name plus city/country for matching, so same-named repositories in different locations remain separate.
 - **Dependency-ordered record processing** - Restructured GEDCOM import to process records in dependency order regardless of file order. Records are now grouped by type and processed as: (1) Notes, Repositories, Schemas → (2) Sources, Media → (3) Individuals → (4) Families. This fixes issues where references to records appearing later in the file would fail to resolve.
 - **Repository-to-source linking** - Sources now correctly link to their repository even when REPO records appear after SOUR records in the file. Previously, repository links and call numbers were lost.
 - **NOTE reference resolution** - Shared NOTE records (e.g., `NOTE @N123@`) are now resolved to their actual text content during import. Previously, GEDCOM files with NOTE records appearing after INDI records would store the literal reference string instead of the note text.
