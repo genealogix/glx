@@ -19,6 +19,12 @@ import (
 	"strings"
 )
 
+// Package-level compiled regexes for name parsing (compiled once, not on every call)
+var (
+	surnameRegex  = regexp.MustCompile(`/([^/]+)/`)
+	nicknameRegex = regexp.MustCompile(`"([^"]+)"`)
+)
+
 // PersonName represents parsed name components
 type PersonName struct {
 	Prefix        string // Mr., Dr., etc.
@@ -49,7 +55,6 @@ func parseGEDCOMName(nameValue string, substructure *NameSubstructure) PersonNam
 	}
 
 	// Extract surname from /surname/ notation
-	surnameRegex := regexp.MustCompile(`/([^/]+)/`)
 	matches := surnameRegex.FindStringSubmatch(nameValue)
 	if len(matches) > 1 {
 		name.Surname = strings.TrimSpace(matches[1])
@@ -60,7 +65,6 @@ func parseGEDCOMName(nameValue string, substructure *NameSubstructure) PersonNam
 	nameWithoutSurname = strings.TrimSpace(nameWithoutSurname)
 
 	// Extract nickname from "nickname" notation
-	nicknameRegex := regexp.MustCompile(`"([^"]+)"`)
 	nickMatches := nicknameRegex.FindStringSubmatch(nameWithoutSurname)
 	if len(nickMatches) > 1 {
 		name.Nickname = strings.TrimSpace(nickMatches[1])

@@ -81,10 +81,6 @@
 
 ## 🧹 Code Organization & Quality
 
-### Performance
-
-- 🟡 **Regex compilation in hot path** ([gedcom_name.go:52-53](glx/lib/gedcom_name.go#L52-L53)): `surnameRegex` and `nicknameRegex` are compiled on every call to `parseGEDCOMName`. Should be package-level compiled regexes.
-
 ### Code Style
 
 - 🟢 Move Loggers to their own package?
