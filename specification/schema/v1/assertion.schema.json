@@ -145,14 +145,6 @@
         "pattern": "^[a-zA-Z0-9-]{1,64}$"
       },
       "uniqueItems": true
-    },
-    "tags": {
-      "type": "array",
-      "description": "Tags for categorization",
-      "items": {
-        "type": "string"
-      },
-      "uniqueItems": true
     }
   },
   "additionalProperties": false

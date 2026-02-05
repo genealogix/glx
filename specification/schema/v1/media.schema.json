@@ -23,8 +23,7 @@
       "additionalProperties": true,
       "description": "Vocabulary-defined properties (validated against media_properties vocabulary)"
     },
-    "notes": { "type": "string", "description": "Free-form notes" },
-    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "description": "Tags for categorization" }
+    "notes": { "type": "string", "description": "Free-form notes" }
   },
   "additionalProperties": false
 }

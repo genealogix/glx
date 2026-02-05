@@ -58,8 +58,7 @@
     "notes": {
       "type": "string",
       "description": "Research notes"
-    },
-    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+    }
   },
   "additionalProperties": false
 }
