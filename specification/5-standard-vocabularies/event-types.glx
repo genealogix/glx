@@ -100,15 +100,9 @@ event_types:
   
   bat_mitzvah:
     label: "Bat Mitzvah"
-    description: "Jewish coming of age ceremony (female)"
+    description: "Jewish coming of age ceremony (female). Also known as Bas Mitzvah."
     category: "religious"
     gedcom: "BATM"
-
-  bas_mitzvah:
-    label: "Bas Mitzvah"
-    description: "Jewish coming of age ceremony (female, alternative spelling)"
-    category: "religious"
-    gedcom: "BASM"
 
   christening:
     label: "Christening"

@@ -10,6 +10,10 @@ import { data as vocabularies } from '../../website/.vitepress/data/vocabularies
 
 # Standard Vocabularies
 
+::: warning Viewing Outside the Website
+This page uses VitePress components to render vocabulary content inline. If you're viewing the raw markdown on GitHub or another platform, the vocabulary content won't display. Use the **View Source** links below each vocabulary to see the raw `.glx` files directly.
+:::
+
 GENEALOGIX includes a comprehensive set of standard vocabularies that define controlled types for events, relationships, places, sources, media, and more. These vocabularies are automatically copied to new archives during initialization with `glx init`.
 
 ## Overview
@@ -27,12 +31,12 @@ Standard vocabularies provide:
 
 Defines lifecycle events (birth, death, marriage, adoption), religious events (baptism, confirmation, bar/bat mitzvah), legal events (annulment, probate, will), and migration events (immigration, emigration, naturalization).
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['event-types']"
   title="vocabularies/event-types.glx"
 />
 
-**See Also:** [Event Entity Documentation](../4-entity-types/event) | [Vocabularies Specification](../4-entity-types/vocabularies#event-types-vocabulary)
+**View Source:** [event-types.glx](event-types.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Vocabularies Specification](../4-entity-types/vocabularies#event-types-vocabulary)
 
 ---
 
@@ -40,12 +44,12 @@ Defines lifecycle events (birth, death, marriage, adoption), religious events (b
 
 Defines relationships between people including marriage, parent-child (biological, adoptive, foster), sibling, and other family connections.
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['relationship-types']"
   title="vocabularies/relationship-types.glx"
 />
 
-**See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-types-vocabulary)
+**View Source:** [relationship-types.glx](relationship-types.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-types-vocabulary)
 
 ---
 
@@ -53,12 +57,12 @@ Defines relationships between people including marriage, parent-child (biologica
 
 Defines geographic and administrative place classifications from countries down to buildings.
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['place-types']"
   title="vocabularies/place-types.glx"
 />
 
-**See Also:** [Place Entity Documentation](../4-entity-types/place) | [Vocabularies Specification](../4-entity-types/vocabularies#place-types-vocabulary)
+**View Source:** [place-types.glx](place-types.glx) | **See Also:** [Place Entity Documentation](../4-entity-types/place) | [Vocabularies Specification](../4-entity-types/vocabularies#place-types-vocabulary)
 
 ---
 
@@ -66,12 +70,12 @@ Defines geographic and administrative place classifications from countries down 
 
 Defines categories of genealogical sources including vital records, census, church registers, military records, newspapers, and more.
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['source-types']"
   title="vocabularies/source-types.glx"
 />
 
-**See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-types-vocabulary)
+**View Source:** [source-types.glx](source-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-types-vocabulary)
 
 ---
 
@@ -79,12 +83,12 @@ Defines categories of genealogical sources including vital records, census, chur
 
 Defines categories of media objects including photographs, documents, audio recordings, and video.
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['media-types']"
   title="vocabularies/media-types.glx"
 />
 
-**See Also:** [Media Entity Documentation](../4-entity-types/media) | [Vocabularies Specification](../4-entity-types/vocabularies#media-types-vocabulary)
+**View Source:** [media-types.glx](media-types.glx) | **See Also:** [Media Entity Documentation](../4-entity-types/media) | [Vocabularies Specification](../4-entity-types/vocabularies#media-types-vocabulary)
 
 ---
 
@@ -92,12 +96,12 @@ Defines categories of media objects including photographs, documents, audio reco
 
 Defines confidence levels for assertions, representing researcher certainty in conclusions.
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['confidence-levels']"
   title="vocabularies/confidence-levels.glx"
 />
 
-**See Also:** [Assertion Entity Documentation](../4-entity-types/assertion) | [Vocabularies Specification](../4-entity-types/vocabularies#confidence-levels-vocabulary)
+**View Source:** [confidence-levels.glx](confidence-levels.glx) | **See Also:** [Assertion Entity Documentation](../4-entity-types/assertion) | [Vocabularies Specification](../4-entity-types/vocabularies#confidence-levels-vocabulary)
 
 ---
 
@@ -105,12 +109,12 @@ Defines confidence levels for assertions, representing researcher certainty in c
 
 Defines roles that people play in events and relationships (principal, witness, officiant, spouse, parent, child).
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['participant-roles']"
   title="vocabularies/participant-roles.glx"
 />
 
-**See Also:** [Event Entity Documentation](../4-entity-types/event) | [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#participant-roles-vocabulary)
+**View Source:** [participant-roles.glx](participant-roles.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#participant-roles-vocabulary)
 
 ---
 
@@ -118,12 +122,12 @@ Defines roles that people play in events and relationships (principal, witness, 
 
 Defines categories of institutions that hold genealogical sources (archives, libraries, churches, online databases).
 
-<YamlFile 
+<YamlFile
   :content="vocabularies['repository-types']"
   title="vocabularies/repository-types.glx"
 />
 
-**See Also:** [Repository Entity Documentation](../4-entity-types/repository) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-types-vocabulary)
+**View Source:** [repository-types.glx](repository-types.glx) | **See Also:** [Repository Entity Documentation](../4-entity-types/repository) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-types-vocabulary)
 
 ---
 
@@ -135,7 +139,7 @@ Property vocabularies define the custom properties available for each entity typ
 
 Defines standard and custom properties for person entities (birth date, occupation, residence, etc.). Supports temporal properties that change over time.
 
-**File:** `vocabularies/person-properties.glx`
+**View Source:** [person-properties.glx](person-properties.glx)
 
 **Standard Properties Include:**
 - `name` - Unified name property with optional structured fields (given, surname, prefix, suffix, etc.) (temporal)
@@ -156,7 +160,7 @@ Defines standard and custom properties for person entities (birth date, occupati
 
 Defines standard and custom properties for event entities.
 
-**File:** `vocabularies/event-properties.glx`
+**View Source:** [event-properties.glx](event-properties.glx)
 
 **Standard Properties Include:**
 - `description` - Event description
@@ -171,7 +175,7 @@ Defines standard and custom properties for event entities.
 
 Defines standard and custom properties for relationship entities.
 
-**File:** `vocabularies/relationship-properties.glx`
+**View Source:** [relationship-properties.glx](relationship-properties.glx)
 
 **Standard Properties Include:**
 - `started_on` - When the relationship began
@@ -187,7 +191,7 @@ Defines standard and custom properties for relationship entities.
 
 Defines standard and custom properties for place entities.
 
-**File:** `vocabularies/place-properties.glx`
+**View Source:** [place-properties.glx](place-properties.glx)
 
 **Standard Properties Include:**
 - `existed_from` - When the place came into existence
@@ -203,7 +207,7 @@ Defines standard and custom properties for place entities.
 
 Defines standard and custom properties for media entities.
 
-**File:** `vocabularies/media-properties.glx`
+**View Source:** [media-properties.glx](media-properties.glx)
 
 **Standard Properties Include:**
 - `subjects` - People or entities depicted/recorded (multi-value, reference)
@@ -224,7 +228,7 @@ Defines standard and custom properties for media entities.
 
 Defines standard and custom properties for repository entities including contact information, access details, and holdings.
 
-**File:** `vocabularies/repository-properties.glx`
+**View Source:** [repository-properties.glx](repository-properties.glx)
 
 **Standard Properties Include:**
 - `phones` - Phone numbers for the repository (multi-value)
@@ -243,7 +247,7 @@ Defines standard and custom properties for repository entities including contact
 
 Defines standard and custom properties for source entities including bibliographic metadata from GEDCOM imports.
 
-**File:** `vocabularies/source-properties.glx`
+**View Source:** [source-properties.glx](source-properties.glx)
 
 **Standard Properties Include:**
 - `abbreviation` - Short reference name or title (from GEDCOM ABBR)
@@ -262,7 +266,7 @@ Defines standard and custom properties for source entities including bibliograph
 
 Defines standard and custom properties for citation entities including location and transcribed text.
 
-**File:** `vocabularies/citation-properties.glx`
+**View Source:** [citation-properties.glx](citation-properties.glx)
 
 **Standard Properties Include:**
 - `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.)

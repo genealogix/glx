@@ -31,7 +31,7 @@ const (
 	EventTypeAdultChristening   = "adult_christening"
 	EventTypeAdoption           = "adoption"
 	EventTypeBarMitzvah         = "bar_mitzvah"
-	EventTypeBasMitzvah         = "bas_mitzvah"
+	EventTypeBatMitzvah         = "bat_mitzvah"
 	EventTypeBlessing           = "blessing"
 	EventTypeConfirmation       = "confirmation"
 	EventTypeFirstCommunion     = "first_communion"
@@ -52,7 +52,8 @@ var gedcomEventTypeMapping = map[string]string{
 	GedcomTagAdop: EventTypeAdoption,
 	GedcomTagBapm: EventTypeBaptism,
 	GedcomTagBarm: EventTypeBarMitzvah,
-	GedcomTagBasm: EventTypeBasMitzvah,
+	GedcomTagBatm: EventTypeBatMitzvah,
+	GedcomTagBasm: EventTypeBatMitzvah,
 	GedcomTagBles: EventTypeBlessing,
 	GedcomTagChra: EventTypeAdultChristening,
 	GedcomTagConf: EventTypeConfirmation,
@@ -192,7 +193,8 @@ const (
 	GedcomTagAdop = "ADOP" // Adoption
 	GedcomTagBapm = "BAPM" // Baptism
 	GedcomTagBarm = "BARM" // Bar Mitzvah
-	GedcomTagBasm = "BASM" // Bas Mitzvah
+	GedcomTagBatm = "BATM" // Bat Mitzvah
+	GedcomTagBasm = "BASM" // Bas Mitzvah (alternate spelling, maps to bat_mitzvah)
 	GedcomTagBles = "BLES" // Blessing
 	GedcomTagChra = "CHRA" // Adult Christening
 	GedcomTagConf = "CONF" // Confirmation

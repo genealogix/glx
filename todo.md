@@ -37,7 +37,6 @@
 ### Vocabulary & Type Clarifications
 
 - 🟡 **GEDCOM tag mapping in vocabularies**: Add GEDCOM tag mappings to vocabulary definitions to replace hardcoded switch statements in importer. Should cover: event types (`BIRT`→`birth`, `MARR`→`marriage`), relationship types, place types, source types, repository types, citation properties (`PAGE`→`page`), and all other tags currently mapped via switch statements in `gedcom_*.go` files. This would enable data-driven conversion and round-tripping between GEDCOM and GLX formats.
-- 🟢 **Bar/Bat Mitzvah**: Consider consolidating `bat_mitzvah` (BATM) and `bas_mitzvah` (BASM) into a single event type - they represent the same ceremony with alternate spellings
 - 🟢 Gender/sex controlled vocabularies?
 - 🟢 Should sex be a temporal property instead of a top-level field?
 

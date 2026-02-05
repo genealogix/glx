@@ -78,7 +78,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Create assertion
 			createPropertyAssertion(personID, PersonPropertyGender, gender, sub, conv)
 
-		case GedcomTagBirt, GedcomTagChr, GedcomTagDeat, GedcomTagBuri, GedcomTagCrem, GedcomTagAdop, GedcomTagBapm, GedcomTagBarm, GedcomTagBasm,
+		case GedcomTagBirt, GedcomTagChr, GedcomTagDeat, GedcomTagBuri, GedcomTagCrem, GedcomTagAdop, GedcomTagBapm, GedcomTagBarm, GedcomTagBatm, GedcomTagBasm,
 			GedcomTagBles, GedcomTagChra, GedcomTagConf, GedcomTagFcom, GedcomTagOrdn, GedcomTagNatu, GedcomTagEmig, GedcomTagImmi,
 			GedcomTagProb, GedcomTagWill, GedcomTagGrad, GedcomTagReti:
 			// Convert vital/individual event
