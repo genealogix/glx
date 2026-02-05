@@ -14,7 +14,7 @@
 ## 📖 Documentation
 
 - 🟡 Add comprehensive example showing assertion-to-entity property workflow (setting properties directly vs creating assertions with evidence)
-- 🟡 Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time)
+- 🟡 Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time). Note: [temporal-properties/](docs/examples/temporal-properties/) example exists but entity docs need more examples.
 - 🟢 **Git Workflow Guide**: Create separate documentation covering Git workflows, branching strategies, collaboration patterns, merge conflict resolution, and branch-based research methodologies for GLX archives
 
 ### Specification TODOs
@@ -38,11 +38,10 @@
 
 - 🟡 **GEDCOM tag mapping in vocabularies**: Add GEDCOM tag mappings to vocabulary definitions to replace hardcoded switch statements in importer. Should cover: event types (`BIRT`→`birth`, `MARR`→`marriage`), relationship types, place types, source types, repository types, citation properties (`PAGE`→`page`), and all other tags currently mapped via switch statements in `gedcom_*.go` files. This would enable data-driven conversion and round-tripping between GEDCOM and GLX formats.
 - 🟢 Gender/sex controlled vocabularies?
-- 🟢 Should sex be a temporal property instead of a top-level field?
 
 ### Evidence & Assertions
 
-- 🟡 Decide what to do with QUAY ratings (removed in beta.2)
+- 🟡 **QUAY ratings**: Currently preserved in citation notes as "GEDCOM QUAY: X". Consider mapping to GLX confidence levels or storing as structured property instead.
 - 🟢 Consider adding `media` as a third evidence option for assertions (alongside `citations` and `sources`) - useful for direct visual evidence like gravestone photos
     - In general -- we need to solidify the purpose of media entities as more than just window dressing or additional non-critical data.
 - 🟢 Consider relaxing event participant requirement - the spec says "At least one participant is required (events without participants are not meaningful)" but historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants
@@ -54,7 +53,7 @@
 ### Critical Import Issues
 
 - 🔴 **Media/OBJE Import**: Only 2 of 32 multimedia references imported in torture test (94% loss). Inline OBJE tags in events, URL-type multimedia, and BLOB data are not imported.
-- 🔴 **CENS (Census) Tag Handling**: Currently creates census events. Census is not an event - it's a source/citation that supports assertions about a person's attributes (residence, occupation, etc.). Should create citations from census records that can be attached to property assertions.
+- 🔴 **CENS (Census) Tag Handling**: Currently skips census records entirely. Census is not an event - it's a source/citation that supports assertions about a person's attributes (residence, occupation, etc.). Should create citations from census records that can be attached to property assertions.
 
 ### Missing Data Storage
 
@@ -70,8 +69,6 @@
 
 - 🟢 **LANG Tag Normalization**: Normalize language tags on import. GEDCOM 7.0 uses ISO format (e.g., `en-US`), but GEDCOM 5.5.x uses free-form text (e.g., `English`, `French`). Should convert 5.5.x values to ISO codes for consistency.
 - 🟢 **PLAC Validation** ([gedcom_place.go](glx/lib/gedcom_place.go)): Validate PLAC fields - reject non-geographic text like "Died in childbirth", "Unmarried", "Unknown"
-- 🟢 **Relationship Roles**: Verify that the gedcom import correctly assigns parent/child roles to relationship participants
-- 🟢 **Place Properties**: Move some place fields to properties?
 - 🟢 **Place Type Vocab**: Fix places[place-31].Type references non-existent place_types: locality
 - 🟢 **Duplicate Prevention**: Prevent duplicate repository creation
 
@@ -84,10 +81,6 @@
 - 🟡 Add validator tags to GLX structs
 
 ## 🧹 Code Organization & Quality
-
-### Bugs
-
-- 🔴 **Missing bounds check** ([gedcom_place.go:219-220](glx/lib/gedcom_place.go#L219-L220)): `parseCoordinate` can panic if coordinate value has length < 2 (e.g., just "N" without a number). Should add length validation.
 
 ### Performance
 

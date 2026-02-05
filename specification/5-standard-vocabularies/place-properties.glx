@@ -25,3 +25,13 @@ place_properties:
     description: "Detailed description of the place"
     value_type: string
 
+  jurisdiction:
+    label: "Jurisdiction"
+    description: "Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code)"
+    value_type: string
+
+  place_format:
+    label: "Place Format"
+    description: "Standard format string for place hierarchy (GEDCOM PLAC.FORM style, e.g., 'City, County, Country')"
+    value_type: string
+

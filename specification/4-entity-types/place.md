@@ -72,8 +72,6 @@ places:
 | `type` | string | Place type from `vocabularies/place-types.glx` |
 | `latitude` | number | WGS84 latitude coordinate |
 | `longitude` | number | WGS84 longitude coordinate |
-| `jurisdiction` | string | Formal jurisdiction identifier or code |
-| `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
 | `notes` | string | Free-form notes about the place |
 
 ### Properties
@@ -86,6 +84,8 @@ Place properties allow capturing historical information that doesn't fit into th
 | `existed_to` | date | When the place ceased to exist |
 | `population` | integer | Population count (supports temporal values) |
 | `description` | string | Detailed description of the place |
+| `jurisdiction` | string | Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code) |
+| `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
 
 Example:
 ```yaml
@@ -140,8 +140,9 @@ places:
     parent: place-yorkshire
     latitude: 53.8008
     longitude: -1.5491
-    jurisdiction: "england.yorkshire.leeds"
-    place_format: "City, County, Country"
+    properties:
+      jurisdiction: "england.yorkshire.leeds"
+      place_format: "City, County, Country"
     notes: "Historical registration district for civil registration purposes"
 ```
 
@@ -220,6 +221,7 @@ places/
 | `type` | PLAC.TYPE | Non-standard; used in extended GEDCOM |
 | `latitude` | PLAC.MAP.LATI | WGS84 latitude |
 | `longitude` | PLAC.MAP.LONG | WGS84 longitude |
+| `properties.place_format` | PLAC.FORM | Place hierarchy format string |
 
 ## Validation Rules
 

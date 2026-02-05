@@ -38,14 +38,6 @@
       "maximum": 180,
       "description": "WGS84 longitude coordinate"
     },
-    "jurisdiction": {
-      "type": "string",
-      "description": "Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code)"
-    },
-    "place_format": {
-      "type": "string",
-      "description": "Standard format string for this place hierarchy (GEDCOM PLAC.FORM style, e.g., 'City, County, Country')"
-    },
     "notes": {
       "type": "string",
       "description": "Free-form notes about the place"

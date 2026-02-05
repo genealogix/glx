@@ -192,6 +192,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - Removed references to `schema.genealogix.io` and `genealogix.org` domains
   - All schema files now include `.schema.json` extension in their `$id`
 
+#### Place Entity
+- **Moved `jurisdiction` and `place_format` to properties** - These rarely-used fields are now stored in `properties` instead of dedicated entity fields
+  - `properties.jurisdiction` - Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code)
+  - `properties.place_format` - Standard format string for place hierarchy (GEDCOM PLAC.FORM style)
+- **Updated place-properties vocabulary** - Added `jurisdiction` and `place_format` property definitions
+
 ### Fixed
 
 #### User Documentation

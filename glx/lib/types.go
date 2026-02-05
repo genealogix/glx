@@ -144,15 +144,13 @@ type EventParticipant struct {
 
 // Place represents a geographical location.
 type Place struct {
-	Name         string         `yaml:"name"`
-	ParentID     string         `refType:"places"              yaml:"parent,omitempty"`
-	Type         string         `refType:"place_types"         yaml:"type,omitempty"`
-	Latitude     *float64       `yaml:"latitude,omitempty"`
-	Longitude    *float64       `yaml:"longitude,omitempty"`
-	Jurisdiction string         `yaml:"jurisdiction,omitempty"`
-	PlaceFormat  string         `yaml:"place_format,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes        string         `yaml:"notes,omitempty"`
+	Name       string         `yaml:"name"`
+	ParentID   string         `refType:"places"              yaml:"parent,omitempty"`
+	Type       string         `refType:"place_types"         yaml:"type,omitempty"`
+	Latitude   *float64       `yaml:"latitude,omitempty"`
+	Longitude  *float64       `yaml:"longitude,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (jurisdiction, place_format, etc.)
+	Notes      string         `yaml:"notes,omitempty"`
 }
 
 // Source represents a source of information.
