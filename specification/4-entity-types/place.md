@@ -77,6 +77,36 @@ places:
 | `notes` | string | Free-form notes about the place |
 | `tags` | array | Tags for categorization |
 
+### Properties
+
+Place properties allow capturing historical information that doesn't fit into the standard structural fields. Properties are defined in the `place_properties` vocabulary.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `existed_from` | date | When the place came into existence |
+| `existed_to` | date | When the place ceased to exist |
+| `population` | integer | Population count (supports temporal values) |
+| `description` | string | Detailed description of the place |
+
+Example:
+```yaml
+places:
+  place-new-amsterdam:
+    name: "New Amsterdam"
+    type: city
+    properties:
+      existed_from: "1626"
+      existed_to: "1664"
+      population:
+        - value: 270
+          date: "1630"
+        - value: 1500
+          date: "1664"
+      description: "Dutch colonial settlement on Manhattan Island"
+```
+
+**See [Vocabularies - Place Properties](vocabularies#place-properties-vocabulary) for the full vocabulary definition.**
+
 ## Place Types
 
 Place types are defined in `vocabularies/place-types.glx` within each archive.

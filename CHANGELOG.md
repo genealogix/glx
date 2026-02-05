@@ -145,6 +145,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added recommended note for Person name property** - [person.md](specification/4-entity-types/person.md) now notes that `name` is recommended for most records
 - **Clarified schema README examples** - [schema/README.md](specification/schema/README.md) now indicates the URIs are examples and more schemas exist
 - **Fixed Event/Fact terminology** - Changed "Event/Fact" to just "Event" in [entity types README](specification/4-entity-types/README.md) for consistency
+- **Added Properties sections to entity docs** - Added inline property tables to [place.md](specification/4-entity-types/place.md) and [relationship.md](specification/4-entity-types/relationship.md) documenting vocabulary-defined properties (existed_from, population, started_on, etc.)
 
 ##### Website Navigation
 - **Enhanced VitePress sidebar** - [.vitepress/config.js](website/.vitepress/config.js) now features expanded Core Concepts section

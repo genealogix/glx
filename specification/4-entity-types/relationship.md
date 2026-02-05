@@ -52,6 +52,34 @@ relationships:
 | `notes` | string | Research notes |
 | `tags` | array | Tags for categorization |
 
+### Properties
+
+Relationship properties capture additional details that don't fit into the standard structural fields. Properties are defined in the `relationship_properties` vocabulary.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `started_on` | date | When the relationship began |
+| `ended_on` | date | When the relationship ended |
+| `location` | reference | Location where the relationship occurred (reference to Place) |
+| `description` | string | Detailed description of the relationship |
+
+Example:
+```yaml
+relationships:
+  rel-business-partnership:
+    type: business-partner
+    participants:
+      - person: person-john-smith
+      - person: person-james-brown
+    properties:
+      started_on: "1875-03-15"
+      ended_on: "1890-06-01"
+      location: place-leeds
+      description: "Co-owners of Smith & Brown Ironworks"
+```
+
+**See [Vocabularies - Relationship Properties](vocabularies#relationship-properties-vocabulary) for the full vocabulary definition.**
+
 ## Relationship Types
 
 Relationship types are defined in the archive's `vocabularies/relationship-types.glx` file. Each archive includes standard types and can define custom types as needed.
