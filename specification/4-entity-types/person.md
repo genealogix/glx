@@ -46,7 +46,6 @@ persons:
 |-------|------|-------------|
 | `properties` | object | Vocabulary-defined properties (name, gender, dates, etc.) |
 | `notes` | string | Free-form notes about the person |
-| `tags` | array | Tags for categorization |
 
 > **Note:** While no properties are technically required, the `name` property is recommended for most person records as it enables meaningful identification and display.
 
@@ -148,10 +147,6 @@ persons:
     notes: |
       Family tradition says she was named after her grandmother.
       Need to verify with census records.
-    tags:
-      - maternal-line
-      - smith-family
-      - ohio-branch
 ```
 
 ## File Organization

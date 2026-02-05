@@ -15,7 +15,7 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 **Issues Remaining:**
 - Critical: 0
 - Major: 3
-- Minor: 3
+- Minor: 2
 
 ---
 
@@ -71,16 +71,6 @@ This audit reviewed the GLX specification for internal contradictions, terminolo
 
 ---
 
-### 3. Missing `notes` Field Context on Entity Pages
-
-**Location:** `specification/4-entity-types/README.md:230-236`
-
-**Problem:** Entity specs use `notes` without explaining it's available on all entities.
-
-**Fix:** Add common fields note to each entity page.
-
----
-
 ## Recommendations
 
 ### Quick Wins (Low Effort)
@@ -94,8 +84,7 @@ These can each be completed in a single focused session:
 
 These require more coordination but are well-defined:
 
-3. **Add common fields note** (Minor #3) - Document that `notes` is available on all entities
-4. **Document field validation behavior** (Major #2) - Add subsection explaining optional fields and partial sets
+3. **Document field validation behavior** (Major #2) - Add subsection explaining optional fields and partial sets
 
 ### Deferred (Architectural Decisions Needed)
 
@@ -137,7 +126,7 @@ These require broader discussion or significant refactoring:
 | Vocabulary files reviewed | 16 |
 | Schema files checked | 31 |
 | **Major issues remaining** | **3** |
-| **Minor issues remaining** | **3** |
+| **Minor issues remaining** | **2** |
 
 ---
 

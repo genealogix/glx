@@ -59,7 +59,6 @@ media:
 | `source` | string | Reference to Source entity this media documents |
 | `properties` | object | Vocabulary-defined properties (see Properties section) |
 | `notes` | string | Free-form notes |
-| `tags` | array | Tags for categorization |
 
 ## Required Fields (Detailed)
 
@@ -171,21 +170,6 @@ Example:
 source: source-parish-register
 ```
 
-### Other Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `notes` | string | Research notes about the media |
-| `tags` | array | Tags for categorization |
-
-Example:
-```yaml
-tags:
-  - original-document
-  - high-quality-scan
-  - verified
-```
-
 ## Properties
 
 Media entities support vocabulary-defined properties through the `properties` field. Standard media properties are defined in `vocabularies/media-properties.glx`.
@@ -251,9 +235,6 @@ media:
     title: "Birth Certificate - John Smith"
     description: "Original birth certificate from General Register Office, scanned 2024-01-15"
     hash: "sha256:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"
-    tags:
-      - original-document
-      - vital-record
 ```
 
 ### Family Photograph
@@ -273,10 +254,6 @@ media:
       - John Smith (father)
       - Mary Smith (mother)
       - Thomas Smith (son)
-    tags:
-      - family-photo
-      - studio-portrait
-      - victorian-era
 ```
 
 ### Audio Recording
@@ -292,10 +269,6 @@ media:
       in Leeds in the 1940s and 1950s. Discusses family traditions,
       local history, and genealogical information.
       Recorded 2020-03-15, duration 60 minutes.
-    tags:
-      - oral-history
-      - interview
-      - audio-recording
 ```
 
 ### Online Resource
@@ -307,10 +280,6 @@ media:
     mime_type: "image/jpeg"
     title: "1851 Census - Yorkshire, Page 234"
     description: "Census page showing Smith family at Wellington Street, Leeds (1851-04-06)"
-    tags:
-      - census-image
-      - online-resource
-      - subscription-required
 ```
 
 ### Historical Document
@@ -327,10 +296,6 @@ media:
     date: "2024-02-10"  # Date photographed
     hash: "sha256:9f3d4c2e7a8b1f6d5c4e3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e"
     notes: "High-resolution scan for archival preservation"
-    tags:
-      - parish-register
-      - marriage-record
-      - original-document
 ```
 
 ## Media Types

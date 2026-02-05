@@ -56,7 +56,6 @@ One source can have many citations referencing different pages or sections.
 | `media` | array | References to Media entities |
 | `properties` | object | Vocabulary-defined properties (see [Citation Properties](#properties)) |
 | `notes` | string | Free-form notes about the citation |
-| `tags` | array | User-defined tags for organization |
 
 ### Properties
 

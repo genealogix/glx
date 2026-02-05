@@ -57,7 +57,6 @@ assertions:
 | `value` | string | The concluded value of the property (not used with participant) |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string | General notes about the assertion |
-| `tags` | array | Tags for categorization |
 
 ### Subject Object
 
@@ -237,20 +236,6 @@ confidence: high
 - Required: No
 - Description: General notes about the assertion
 
-### `tags`
-
-- Type: Array of Strings
-- Required: No
-- Description: Tags for categorization
-
-Example:
-```yaml
-tags:
-  - needs-review
-  - conflicting-evidence
-  - high-priority
-```
-
 ## Participant Assertions
 
 Participant assertions represent evidence about who participated in an event or relationship, including conflicting evidence about participation and roles.
@@ -396,9 +381,6 @@ assertions:
       - citation-directory-1851
     confidence: high
     notes: "Residence at time of 1851 census"
-    tags:
-      - census-derived
-      - verified
 ```
 
 ### Low Confidence Assertion
@@ -421,9 +403,6 @@ assertions:
       Need to search:
       - Parish registers 1820-1830
       - Census records for age progression
-    tags:
-      - estimated
-      - needs-research
 ```
 
 ## Evidence Quality and Confidence

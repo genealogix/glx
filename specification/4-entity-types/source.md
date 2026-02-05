@@ -67,7 +67,6 @@ sources:
 | `media` | array | References to Media entities |
 | `properties` | object | Vocabulary-defined properties (see [Properties](#properties)) |
 | `notes` | string | Free-form notes |
-| `tags` | array | Tags for categorization |
 
 ## Required Fields (Detailed)
 
@@ -247,22 +246,6 @@ sources:
       coverage: "Leeds, Yorkshire, 1840-1860"
 ```
 
-### Other Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `notes` | string | Research notes about the source |
-| `tags` | array | Tags for categorization |
-
-Example:
-```yaml
-notes: "Excellent condition, clearly legible"
-tags:
-  - primary-source
-  - church-records
-  - verified
-```
-
 ## Usage Patterns
 
 ### Vital Record
@@ -279,10 +262,6 @@ sources:
     language: "English"
     media:
       - media-birth-cert-scan
-    tags:
-      - vital-record
-      - birth
-      - primary-source
 ```
 
 ### Census Record
@@ -299,10 +278,6 @@ sources:
       Census enumeration for Leeds, Yorkshire, England.
       Enumeration District 5, covering Wellington Street area.
     language: "English"
-    tags:
-      - census
-      - 1851
-      - yorkshire
 ```
 
 ### Church Register
@@ -327,10 +302,6 @@ sources:
     media:
       - media-register-volume-1
     notes: "Well preserved, some water damage to pages 45-50"
-    tags:
-      - parish-register
-      - church-of-england
-      - primary-source
 ```
 
 ### Published Book
@@ -351,10 +322,6 @@ sources:
     language: "English"
     properties:
       publication_info: "Yorkshire Genealogical Society, Leeds, Yorkshire. 1st Edition, 324 pages."
-    tags:
-      - published-genealogy
-      - secondary-source
-      - smith-family
 ```
 
 ### Online Database
@@ -374,10 +341,6 @@ sources:
       Subscription required for access.
     language: "English"
     notes: "Digital images of original records"
-    tags:
-      - online-database
-      - census
-      - subscription-required
 ```
 
 ### Newspaper
@@ -417,10 +380,6 @@ sources:
       - media-interview-transcript
     language: "English"
     notes: "Recorded with permission, transcript available"
-    tags:
-      - oral-history
-      - interview
-      - 20th-century
 ```
 
 ## Source Types

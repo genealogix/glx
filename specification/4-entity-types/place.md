@@ -75,7 +75,6 @@ places:
 | `jurisdiction` | string | Formal jurisdiction identifier or code |
 | `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
 | `notes` | string | Free-form notes about the place |
-| `tags` | array | Tags for categorization |
 
 ### Properties
 

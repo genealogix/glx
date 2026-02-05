@@ -50,7 +50,6 @@ relationships:
 | `end_event` | string | Event that ended this relationship |
 | `description` | string | Narrative description of the relationship |
 | `notes` | string | Research notes |
-| `tags` | array | Tags for categorization |
 
 ### Properties
 

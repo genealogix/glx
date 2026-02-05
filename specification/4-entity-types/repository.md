@@ -73,7 +73,6 @@ GENEALOGIX supports various repository types:
 | `website` | string | URL to repository website |
 | `properties` | object | Vocabulary-defined properties (see below) |
 | `notes` | string | Free-form notes |
-| `tags` | array | Tags for categorization |
 
 ### Properties
 
