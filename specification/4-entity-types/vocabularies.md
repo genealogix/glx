@@ -668,7 +668,7 @@ Event properties are generally less common than person properties, since most ev
 
 - `description` - Event description
 
-**Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a common entity field (see [Common Fields](README#common-fields)), not a property.
+**Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.
 
 ### Relationship Properties Vocabulary
 
@@ -788,6 +788,102 @@ person_properties:
 
 ***Exactly one of `value_type` or `reference_type` must be specified** - there is no implicit default
 
+### Multi-Value Properties
+
+Some properties naturally have multiple values. For example, a repository may have several phone numbers, or a media item may depict multiple people. The `multi_value` attribute indicates that a property accepts an array of values.
+
+#### Defining Multi-Value Properties
+
+```yaml
+repository_properties:
+  phones:
+    label: "Phone Numbers"
+    description: "Telephone numbers for the repository"
+    value_type: string
+    multi_value: true
+
+  emails:
+    label: "Email Addresses"
+    description: "Email addresses for the repository"
+    value_type: string
+    multi_value: true
+
+media_properties:
+  subjects:
+    label: "Subjects"
+    description: "People depicted in the media"
+    reference_type: persons
+    multi_value: true
+```
+
+#### Using Multi-Value Properties in Data
+
+When a property has `multi_value: true`, provide values as a YAML array:
+
+```yaml
+repositories:
+  repository-family-history-library:
+    name: "Family History Library"
+    properties:
+      phones:
+        - "+1 801-240-2584"
+        - "+1 801-240-2331"
+      emails:
+        - "fhl@familysearch.org"
+        - "research@familysearch.org"
+      holding_types:
+        - "microfilm"
+        - "digital"
+        - "books"
+```
+
+For reference properties with `multi_value: true`:
+
+```yaml
+media:
+  media-family-photo:
+    file: "family-reunion-1985.jpg"
+    properties:
+      subjects:
+        - person-john
+        - person-mary
+        - person-sarah
+```
+
+#### Multi-Value with Temporal Properties
+
+A property can be both `multi_value: true` and `temporal: true`. In this case, each temporal entry contains an array:
+
+```yaml
+person_properties:
+  nicknames:
+    label: "Nicknames"
+    description: "Informal names used for the person"
+    value_type: string
+    multi_value: true
+    temporal: true
+```
+
+```yaml
+persons:
+  person-john:
+    properties:
+      nicknames:
+        - value:
+            - "Johnny"
+            - "Jack"
+          date: "FROM 1950 TO 1970"
+        - value:
+            - "Big John"
+            - "J.D."
+          date: "FROM 1970"
+```
+
+#### Validation Behavior
+
+- **Single value for multi_value property**: Validators should accept a single value (not in array) and treat it as a one-element array
+- **Array for non-multi_value property**: Validators should issue an error if an array is provided for a property without `multi_value: true`
+
 ### Structured Properties with Fields
 
 Some properties benefit from having structured sub-components. For example, a person's name can be stored as a simple string but may also include parsed components like given name, surname, prefix, etc. The `fields` attribute allows you to define this structured breakdown in the vocabulary.
@@ -882,6 +978,61 @@ The `value` field should always contain the complete value as recorded, while `f
 - Allows flexible parsing (not all sources have all components)
 - Supports temporal changes (name changes over time)
 - Enables rich querying and display
+
+#### Field Validation
+
+When validating structured properties with `fields`, the following rules apply:
+
+**All Fields Are Optional**
+
+Fields defined in a vocabulary are never required. You can provide any subset of the defined fields:
+
+```yaml
+properties:
+  name:
+    value: "Dr. John Smith Jr."
+    fields:
+      given: "John"
+      surname: "Smith"
+      # prefix and suffix omitted - this is valid
+```
+
+**Unknown Fields Generate Warnings**
+
+If a property value includes fields not defined in the vocabulary, validators should issue a warning (not an error). This allows archives to capture additional data while encouraging consistency:
+
+```yaml
+properties:
+  name:
+    value: "John Smith"
+    fields:
+      given: "John"
+      surname: "Smith"
+      clan: "MacLeod"  # WARNING: unknown field if not defined in vocabulary
+```
+
+**The `value` Field Should Always Be Present**
+
+When using structured format, the `value` field should contain the complete recorded value. Omitting `value` while providing only `fields` is permitted but discouraged:
+
+```yaml
+# Recommended: include both value and fields
+properties:
+  name:
+    value: "John Smith"
+    fields:
+      given: "John"
+      surname: "Smith"
+
+# Permitted but discouraged: fields without value
+properties:
+  name:
+    fields:
+      given: "John"
+      surname: "Smith"
+```
+
+Validators may issue a warning when `fields` is present without a `value`, as this loses the original recorded form.
 
 #### Custom Structured Properties
 
