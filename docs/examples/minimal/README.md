@@ -12,10 +12,11 @@ The smallest valid GENEALOGIX archive with one person.
 
 ```
 minimal/
-├── .glx-archive/
-│   └── schema-version.glx
 ├── persons/
 │   └── person-abc123.glx
+├── media/
+│   └── media-photo.glx
+├── vocabularies/           # Symlinks to standard vocabularies
 └── README.md
 ```
 
@@ -28,10 +29,10 @@ persons:
   person-abc123:
     properties:
       name:
-        value: "John Smith"
+        value: "Test Person"
         fields:
-          given: "John"
-          surname: "Smith"
+          given: "Test"
+          surname: "Person"
 ```
 
 ## Validation
@@ -45,7 +46,6 @@ glx validate .
 
 - Minimum required file structure
 - Simplest valid person entity
-- Schema version configuration
 
 ## Next Steps
 

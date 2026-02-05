@@ -49,10 +49,9 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 - `relationships/rel-marriage.glx` - Marriage relationship
 - `relationships/rel-parent-child.glx` - Parent-child relationships (2 relationships in one file)
 
-### Events (3 files)
+### Events (2 files)
 - `events/event-births.glx` - 3 birth events (all in one file)
 - `events/event-marriage.glx` - 1 marriage event
-- `events/event-occupations.glx` - 2 occupation events
 
 ### Places (3 files)
 - `places/place-england.glx` - England (country)

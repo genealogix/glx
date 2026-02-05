@@ -194,6 +194,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+#### User Documentation
+- **Fixed quickstart.md Event example** - Changed `description` to `properties.description` per schema
+- **Fixed quickstart.md Source example** - Changed `publication_info` to `properties.publication_info` per schema
+- **Fixed quickstart.md Citation example** - Changed `locator` and `text_from_source` to `properties` per schema
+- **Fixed quickstart.md Assertion example** - Changed `subject: person-id` to `subject: { person: person-id }` and `claim` to `property` per schema
+- **Fixed best-practices.md Assertion examples** - All three assertion examples updated to use typed `subject` reference and `property` field
+- **Fixed best-practices.md Citation example** - Changed `transcription` to `properties.text_from_source` per schema
+
 #### GEDCOM Import
 - **Dependency-ordered record processing** - Restructured GEDCOM import to process records in dependency order regardless of file order. Records are now grouped by type and processed as: (1) Notes, Repositories, Schemas → (2) Sources, Media → (3) Individuals → (4) Families. This fixes issues where references to records appearing later in the file would fail to resolve.
 - **Repository-to-source linking** - Sources now correctly link to their repository even when REPO records appear after SOUR records in the file. Previously, repository links and call numbers were lost.

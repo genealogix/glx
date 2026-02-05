@@ -6,13 +6,13 @@
 
 ## 🚀 Infrastructure & Deployment
 
+- 🟡 **Markdown link validation in CI**: Add CI check to validate all internal markdown links in specification and documentation files. Catch broken links before merge.
 - 🟢 Add make command for goreleaser
 
 ---
 
 ## 📖 Documentation
 
-- 🟡 Remove glx archive folder references from all examples and documentation
 - 🟡 Add comprehensive example showing assertion-to-entity property workflow (setting properties directly vs creating assertions with evidence)
 - 🟡 Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time)
 - 🟢 **Git Workflow Guide**: Create separate documentation covering Git workflows, branching strategies, collaboration patterns, merge conflict resolution, and branch-based research methodologies for GLX archives

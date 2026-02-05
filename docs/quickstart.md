@@ -117,9 +117,10 @@ events:
     participants:
       - person: person-john-smith
         role: principal
-    description: |
-      Birth of John Smith, first child of Thomas and Mary Smith.
-      Born at 23 Wellington Street, Leeds.
+    properties:
+      description: |
+        Birth of John Smith, first child of Thomas and Mary Smith.
+        Born at 23 Wellington Street, Leeds.
 ```
 
 ## Step 6: Validate Your Archive
@@ -156,7 +157,8 @@ sources:
     creator: "Church of England, St. Paul's Parish"
     date: "1849-1855"
     repository: repository-leeds-library
-    publication_info: "St. Paul's Church, Leeds, Yorkshire"
+    properties:
+      publication_info: "St. Paul's Church, Leeds, Yorkshire"
 ```
 
 **Create `citations/citation-birth-entry.glx`:**
@@ -164,18 +166,20 @@ sources:
 citations:
   citation-birth-entry:
     source: source-parish-register
-    locator: "Entry 145, page 23"
-    text_from_source: |
-      "January 15th, 1850. John, son of Thomas Smith, blacksmith,
-      and Mary Smith, of 23 Wellington Street. Baptized January 20th."
+    properties:
+      locator: "Entry 145, page 23"
+      text_from_source: |
+        "January 15th, 1850. John, son of Thomas Smith, blacksmith,
+        and Mary Smith, of 23 Wellington Street. Baptized January 20th."
 ```
 
 **Create an assertion to link the citation to the person's birth:**
 ```yaml
 assertions:
   assertion-john-birth:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations:
       - citation-birth-entry

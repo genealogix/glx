@@ -19,8 +19,9 @@ Practical recommendations for maintaining GENEALOGIX archives.
 ```yaml
 assertions:
   assertion-john-birth:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations: [citation-birth-cert]  # ✓ Always include citations
     confidence: high
@@ -33,8 +34,9 @@ assertions:
 ```yaml
 assertions:
   assertion-birth-date:
-    subject: person-john-smith
-    claim: birth_date
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     confidence: high  # high, medium, low, or disputed
     citations: [citation-birth-cert, citation-baptism]
@@ -50,9 +52,10 @@ Include transcriptions for important sources:
 citations:
   citation-parish:
     source: source-parish-register
-    transcription: |
-      "January 20th, 1850. John, son of Thomas Smith, blacksmith,
-      and Mary Smith, of 23 Wellington Street. Born January 15th."
+    properties:
+      text_from_source: |
+        "January 20th, 1850. John, son of Thomas Smith, blacksmith,
+        and Mary Smith, of 23 Wellington Street. Born January 15th."
 ```
 
 ## Git Workflow
@@ -171,8 +174,9 @@ Document resolution when sources conflict:
 ```yaml
 assertions:
   assertion-birth-date:
-    subject: person-john-smith
-    claim: birth_date
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     confidence: medium
     notes: |
