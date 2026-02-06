@@ -32,6 +32,9 @@ func (glx *GLXFile) Validate() *ValidationResult {
 	// Phase 3: Validate entity properties
 	glx.validateAllProperties(result)
 
+	// Phase 4: Validate structural constraints
+	glx.validatePlaceHierarchyCycles(result)
+
 	result.validated = true
 	glx.validation = result
 
@@ -571,6 +574,58 @@ func (glx *GLXFile) validateTemporalFields(
 				Field:      fieldPath + ".fields." + fieldName,
 				Message:    fmt.Sprintf("%s[%s].%s.fields.%s: unknown field", entityType, entityID, fieldPath, fieldName),
 			})
+		}
+	}
+}
+
+// validatePlaceHierarchyCycles detects cycles in place parent references.
+// For each place, it walks the parent chain and reports an error if the chain
+// loops back to a previously visited place. Each cycle is reported exactly once.
+func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
+	if len(glx.Places) == 0 {
+		return
+	}
+
+	verified := make(map[string]struct{})
+	for placeID := range glx.Places {
+		if _, done := verified[placeID]; done {
+			continue
+		}
+
+		var path []string
+		visited := make(map[string]int) // placeID -> index in path
+		current := placeID
+		for {
+			if _, done := verified[current]; done {
+				break
+			}
+			if idx, inPath := visited[current]; inPath {
+				cycleMembers := path[idx:]
+				result.Errors = append(result.Errors, ValidationError{
+					SourceType:  EntityTypePlaces,
+					SourceID:    cycleMembers[0],
+					SourceField: "parent",
+					TargetType:  EntityTypePlaces,
+					TargetID:    current,
+					Message: fmt.Sprintf("places: place hierarchy cycle detected: %s -> %s",
+						strings.Join(cycleMembers, " -> "), current),
+				})
+				break
+			}
+
+			place, exists := glx.Places[current]
+			if !exists || place.ParentID == "" {
+				break
+			}
+
+			visited[current] = len(path)
+			path = append(path, current)
+			current = place.ParentID
+		}
+
+		// Mark all path nodes as verified to avoid duplicate reports.
+		for _, id := range path {
+			verified[id] = struct{}{}
 		}
 	}
 }

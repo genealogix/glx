@@ -621,6 +621,97 @@ func TestValidatePlaceHierarchy(t *testing.T) {
 		require.Len(t, result.Errors, 1)
 		assert.Contains(t, result.Errors[0].Message, "state-missing")
 	})
+
+	t.Run("place self-referencing cycle", func(t *testing.T) {
+		archive := &GLXFile{
+			Places: map[string]*Place{
+				"place-1": {Name: "Paradox", ParentID: "place-1"},
+			},
+		}
+		result := archive.Validate()
+		var cycleErrors []ValidationError
+		for _, e := range result.Errors {
+			if e.SourceField == "parent" {
+				cycleErrors = append(cycleErrors, e)
+			}
+		}
+		require.Len(t, cycleErrors, 1)
+		assert.Equal(t, "places", cycleErrors[0].SourceType)
+		assert.Equal(t, "place-1", cycleErrors[0].SourceID)
+		assert.Contains(t, cycleErrors[0].Message, "cycle detected")
+	})
+
+	t.Run("place two-node cycle", func(t *testing.T) {
+		archive := &GLXFile{
+			Places: map[string]*Place{
+				"a": {Name: "A", ParentID: "b"},
+				"b": {Name: "B", ParentID: "a"},
+			},
+		}
+		result := archive.Validate()
+		var cycleErrors []ValidationError
+		for _, e := range result.Errors {
+			if e.SourceField == "parent" {
+				cycleErrors = append(cycleErrors, e)
+			}
+		}
+		require.Len(t, cycleErrors, 1)
+		assert.Contains(t, cycleErrors[0].Message, "cycle detected")
+	})
+
+	t.Run("place three-node cycle", func(t *testing.T) {
+		archive := &GLXFile{
+			Places: map[string]*Place{
+				"a": {Name: "A", ParentID: "b"},
+				"b": {Name: "B", ParentID: "c"},
+				"c": {Name: "C", ParentID: "a"},
+			},
+		}
+		result := archive.Validate()
+		var cycleErrors []ValidationError
+		for _, e := range result.Errors {
+			if e.SourceField == "parent" {
+				cycleErrors = append(cycleErrors, e)
+			}
+		}
+		require.Len(t, cycleErrors, 1)
+		assert.Contains(t, cycleErrors[0].Message, "cycle detected")
+	})
+
+	t.Run("chain leading into cycle reports one error", func(t *testing.T) {
+		// d -> a -> b -> c -> a (d is not in the cycle, but a-b-c form one)
+		archive := &GLXFile{
+			Places: map[string]*Place{
+				"a": {Name: "A", ParentID: "b"},
+				"b": {Name: "B", ParentID: "c"},
+				"c": {Name: "C", ParentID: "a"},
+				"d": {Name: "D", ParentID: "a"},
+			},
+		}
+		result := archive.Validate()
+		var cycleErrors []ValidationError
+		for _, e := range result.Errors {
+			if e.SourceField == "parent" {
+				cycleErrors = append(cycleErrors, e)
+			}
+		}
+		require.Len(t, cycleErrors, 1)
+		assert.Contains(t, cycleErrors[0].Message, "cycle detected")
+	})
+
+	t.Run("valid deep hierarchy no cycle", func(t *testing.T) {
+		archive := &GLXFile{
+			Places: map[string]*Place{
+				"country":  {Name: "USA"},
+				"state":    {Name: "California", ParentID: "country"},
+				"county":   {Name: "San Francisco County", ParentID: "state"},
+				"city":     {Name: "San Francisco", ParentID: "county"},
+				"district": {Name: "Mission District", ParentID: "city"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+	})
 }
 
 func TestValidateRepositoryReferences(t *testing.T) {

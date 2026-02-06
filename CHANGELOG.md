@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Validation
+- **Place hierarchy cycle detection** - Validates that place parent references don't form cycles (e.g., A -> B -> C -> A). Reports exactly one error per cycle with the full cycle path in the error message.
+
 #### Media Properties Vocabulary
 - **New `media-properties.glx` vocabulary** - Standard properties for media entities:
   - `subjects` - People depicted or referenced in the media (multi-value)
