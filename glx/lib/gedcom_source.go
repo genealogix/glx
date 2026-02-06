@@ -51,7 +51,9 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 				externalIDs = append(externalIDs, exid["id"])
 			}
 		}
-		source.Properties[SourcePropertyExternalIDs] = externalIDs
+		if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[GedcomTagExid]; ok {
+			source.Properties[propertyKey] = externalIDs
+		}
 	}
 
 	// Process subrecords
@@ -67,11 +69,15 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 		case GedcomTagPubl:
 			// Publication facts - may have CONT/CONC for long publication info
-			source.Properties[SourcePropertyPublicationInfo] = extractTextWithContinuation(sub)
+			if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[sub.Tag]; ok {
+				source.Properties[propertyKey] = extractTextWithContinuation(sub)
+			}
 
 		case GedcomTagAbbr:
 			// Abbreviation - unlikely to have CONT/CONC but handle it anyway
-			source.Properties[SourcePropertyAbbreviation] = extractTextWithContinuation(sub)
+			if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[sub.Tag]; ok {
+				source.Properties[propertyKey] = extractTextWithContinuation(sub)
+			}
 
 		case GedcomTagRepo:
 			// Repository reference
@@ -82,7 +88,9 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 				// Extract call number - store in properties
 				for _, repoSub := range sub.SubRecords {
 					if repoSub.Tag == GedcomTagCaln {
-						source.Properties[SourcePropertyCallNumber] = extractTextWithContinuation(repoSub)
+						if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[repoSub.Tag]; ok {
+							source.Properties[propertyKey] = extractTextWithContinuation(repoSub)
+						}
 					}
 				}
 			}
@@ -107,7 +115,9 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 					eventsRecorded = append(eventsRecorded, dataSub.Value)
 				case GedcomTagAgnc:
 					// Agency - store in properties
-					source.Properties[SourcePropertyAgency] = dataSub.Value
+					if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[dataSub.Tag]; ok {
+						source.Properties[propertyKey] = dataSub.Value
+					}
 				case GedcomTagDate:
 					// Date of data
 					source.Date = parseGEDCOMDate(dataSub.Value)
@@ -136,7 +146,9 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 	// Store events recorded if any (multi-value property)
 	if len(eventsRecorded) > 0 {
-		source.Properties[SourcePropertyEventsRecorded] = eventsRecorded
+		if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[GedcomTagEven]; ok {
+			source.Properties[propertyKey] = eventsRecorded
+		}
 	}
 
 	// Clear empty properties map

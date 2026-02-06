@@ -39,7 +39,9 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 	// Extract external IDs (GEDCOM 7.0 EXID tags)
 	exids := extractExternalIDs(indiRecord)
 	if len(exids) > 0 {
-		person.Properties[PersonPropertyExternalIDs] = exids
+		if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[GedcomTagExid]; ok {
+			person.Properties[propertyKey] = exids
+		}
 	}
 
 	// Process all subrecords
@@ -91,12 +93,9 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// For now, skip census records - they should be converted to citations
 			// that support assertions about person attributes.
 
-		case GedcomTagOccu:
-			// Occupation
-			if sub.Value != "" {
-				person.Properties[PersonPropertyOccupation] = sub.Value
-				createPropertyAssertion(personID, PersonPropertyOccupation, sub.Value, sub, conv)
-			}
+		case GedcomTagOccu, GedcomTagReli, GedcomTagEduc, GedcomTagNati, GedcomTagCast, GedcomTagSsn:
+			// Simple person properties - resolved via vocabulary index
+			handlePersonPropertyTag(personID, person, sub.Tag, sub, conv)
 
 		case GedcomTagResi:
 			// Residence - convert to event or property
@@ -104,48 +103,15 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				conv.addWarning(indiRecord.Line, GedcomTagResi, err.Error())
 			}
 
-		case GedcomTagReli:
-			// Religion
-			if sub.Value != "" {
-				person.Properties[PersonPropertyReligion] = sub.Value
-				createPropertyAssertion(personID, PersonPropertyReligion, sub.Value, sub, conv)
-			}
-
-		case GedcomTagEduc:
-			// Education
-			if sub.Value != "" {
-				person.Properties[PersonPropertyEducation] = sub.Value
-				createPropertyAssertion(personID, PersonPropertyEducation, sub.Value, sub, conv)
-			}
-
-		case GedcomTagNati:
-			// Nationality
-			if sub.Value != "" {
-				person.Properties[PersonPropertyNationality] = sub.Value
-				createPropertyAssertion(personID, PersonPropertyNationality, sub.Value, sub, conv)
-			}
-
-		case GedcomTagCast:
-			// Caste/tribe
-			if sub.Value != "" {
-				person.Properties[PersonPropertyCaste] = sub.Value
-				createPropertyAssertion(personID, PersonPropertyCaste, sub.Value, sub, conv)
-			}
-
-		case GedcomTagSsn:
-			// Social security number
-			if sub.Value != "" {
-				person.Properties[PersonPropertySSN] = sub.Value
-				createPropertyAssertion(personID, PersonPropertySSN, sub.Value, sub, conv)
-			}
-
 		case GedcomTagTitl:
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
-			// May have CONT/CONC for long titles
+			// May have CONT/CONC for long titles - needs extractTextWithContinuation
 			titleText := extractTextWithContinuation(sub)
 			if titleText != "" {
-				person.Properties[PersonPropertyTitle] = titleText
-				createPropertyAssertion(personID, PersonPropertyTitle, titleText, sub, conv)
+				if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[sub.Tag]; ok {
+					person.Properties[propertyKey] = titleText
+					createPropertyAssertion(personID, propertyKey, titleText, sub, conv)
+				}
 			}
 
 		case GedcomTagFact:
@@ -277,7 +243,7 @@ func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRec
 // convertIndividualEvent converts individual event tags to GLX events
 func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Map GEDCOM event tag to GLX event type
-	eventType := mapGEDCOMEventType(eventRecord.Tag)
+	eventType := mapGEDCOMEventType(eventRecord.Tag, conv.GEDCOMIndex)
 	if eventType == "" {
 		return fmt.Errorf("%w: %s", ErrUnknownEventType, eventRecord.Tag)
 	}
@@ -301,15 +267,21 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		switch sub.Tag {
 		case GedcomTagAge:
 			// Age at event
-			event.Properties[PropertyAgeAtEvent] = sub.Value
+			if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+				event.Properties[propertyKey] = sub.Value
+			}
 
 		case GedcomTagCaus:
 			// Cause
-			event.Properties[PropertyCause] = sub.Value
+			if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+				event.Properties[propertyKey] = sub.Value
+			}
 
 		case GedcomTagType:
 			// Event subtype
-			event.Properties[PropertyEventSubtype] = sub.Value
+			if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+				event.Properties[propertyKey] = sub.Value
+			}
 
 		case GedcomTagObje:
 			// Media - not yet implemented
@@ -366,10 +338,27 @@ func mapGEDCOMSex(sex string) string {
 	}
 }
 
-// mapGEDCOMEventType maps GEDCOM event tags to GLX event types.
-// Uses gedcomEventTypeMapping from constants.go.
-func mapGEDCOMEventType(tag string) string {
-	if eventType, ok := gedcomEventTypeMapping[tag]; ok {
+// handlePersonPropertyTag processes a GEDCOM tag that maps to a simple person property
+// via the vocabulary index. Returns true if the tag was handled.
+func handlePersonPropertyTag(personID string, person *Person, tag string, record *GEDCOMRecord, conv *ConversionContext) bool {
+	propertyKey, ok := conv.GEDCOMIndex.PersonProperties[tag]
+	if !ok {
+		return false
+	}
+
+	if record.Value == "" {
+		return true
+	}
+
+	person.Properties[propertyKey] = record.Value
+	createPropertyAssertion(personID, propertyKey, record.Value, record, conv)
+
+	return true
+}
+
+// mapGEDCOMEventType maps GEDCOM event tags to GLX event types using the vocabulary index.
+func mapGEDCOMEventType(tag string, gedcomIndex *GEDCOMIndex) string {
+	if eventType, ok := gedcomIndex.EventTypes[tag]; ok {
 		return eventType
 	}
 
@@ -513,7 +502,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 // Only creates an assertion if there are citations to back up the claim.
 func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// NO tag indicates something did NOT happen
-	eventType := mapGEDCOMEventType(noRecord.Value)
+	eventType := mapGEDCOMEventType(noRecord.Value, conv.GEDCOMIndex)
 
 	citationIDs := extractCitations(personID, noRecord, conv)
 

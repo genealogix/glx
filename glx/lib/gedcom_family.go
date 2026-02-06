@@ -249,7 +249,7 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, conv *ConversionContext) error {
 	eventID := generateEventID(conv)
 
-	eventType := mapFamilyEventType(eventRecord.Tag)
+	eventType := mapFamilyEventType(eventRecord.Tag, conv.GEDCOMIndex)
 
 	event := &Event{
 		Type:       eventType,
@@ -282,10 +282,9 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	return nil
 }
 
-// mapFamilyEventType maps GEDCOM family event tags to GLX event types.
-// Uses gedcomFamilyEventTypeMapping from constants.go.
-func mapFamilyEventType(tag string) string {
-	if eventType, ok := gedcomFamilyEventTypeMapping[tag]; ok {
+// mapFamilyEventType maps GEDCOM family event tags to GLX event types using the vocabulary index.
+func mapFamilyEventType(tag string, gedcomIndex *GEDCOMIndex) string {
+	if eventType, ok := gedcomIndex.EventTypes[tag]; ok {
 		return eventType
 	}
 

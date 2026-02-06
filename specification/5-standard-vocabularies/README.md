@@ -148,9 +148,16 @@ Defines standard and custom properties for person entities (birth date, occupati
 - `born_at` - Place of birth (reference)
 - `died_on` - Date of death
 - `died_at` - Place of death (reference)
-- `occupation` - Profession (temporal, reference or string)
+- `occupation` - Profession (temporal, GEDCOM: OCCU)
+- `title` - Nobility or honorific title (temporal, GEDCOM: TITL)
 - `residence` - Place of residence (temporal, reference)
-- `religion`, `education`, `ethnicity`, `nationality` - Additional biographical attributes
+- `religion` - Religious affiliation (temporal, GEDCOM: RELI)
+- `education` - Educational attainment (temporal, GEDCOM: EDUC)
+- `ethnicity` - Ethnic background (temporal)
+- `nationality` - National citizenship (temporal, GEDCOM: NATI)
+- `caste` - Caste, tribe, or social group (temporal, GEDCOM: CAST)
+- `ssn` - Social Security Number (GEDCOM: SSN)
+- `external_ids` - External identifiers from other systems (multi-value, GEDCOM: EXID)
 
 **See Also:** [Person Entity Documentation](../4-entity-types/person#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#person-properties-vocabulary)
 
@@ -163,6 +170,9 @@ Defines standard and custom properties for event entities.
 **View Source:** [event-properties.glx](event-properties.glx)
 
 **Standard Properties Include:**
+- `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
+- `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
+- `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on events, not as properties. The `notes` field is a common entity field, not a property.

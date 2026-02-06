@@ -641,20 +641,24 @@ vocabularies/
 
 GENEALOGIX provides standard person properties:
 
-| Property | Type | Temporal | Description |
-|----------|------|----------|-------------|
-| `name` | string (with fields) | Yes | Person's name as recorded, with optional structured fields (given, surname, prefix, suffix, etc.) |
-| `gender` | string | Yes | Gender identity |
-| `born_on` | date | No | Date of birth |
-| `born_at` | places | No | Place of birth |
-| `died_on` | date | No | Date of death |
-| `died_at` | places | No | Place of death |
-| `occupation` | string | Yes | Profession or trade |
-| `residence` | places | Yes | Place of residence |
-| `religion` | string | Yes | Religious affiliation |
-| `education` | string | Yes | Educational attainment |
-| `ethnicity` | string | Yes | Ethnic background |
-| `nationality` | string | Yes | National citizenship |
+| Property | Type | Temporal | GEDCOM | Description |
+|----------|------|----------|--------|-------------|
+| `name` | string (with fields) | Yes | | Person's name as recorded, with optional structured fields (given, surname, prefix, suffix, etc.) |
+| `gender` | string | Yes | | Gender identity |
+| `born_on` | date | No | | Date of birth |
+| `born_at` | places | No | | Place of birth |
+| `died_on` | date | No | | Date of death |
+| `died_at` | places | No | | Place of death |
+| `occupation` | string | Yes | OCCU | Profession or trade |
+| `title` | string | Yes | TITL | Nobility or honorific title |
+| `residence` | places | Yes | | Place of residence |
+| `religion` | string | Yes | RELI | Religious affiliation |
+| `education` | string | Yes | EDUC | Educational attainment |
+| `ethnicity` | string | Yes | | Ethnic background |
+| `nationality` | string | Yes | NATI | National citizenship |
+| `caste` | string | Yes | CAST | Caste, tribe, or social group |
+| `ssn` | string | No | SSN | Social Security Number |
+| `external_ids` | string (multi) | No | EXID | External identifiers from other systems |
 
 ### Event Properties Vocabulary
 
@@ -666,6 +670,9 @@ GENEALOGIX provides standard person properties:
 
 Event properties are generally less common than person properties, since most event data is structural (type, date, place, participants). Standard properties include:
 
+- `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
+- `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
+- `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
 - `description` - Event description
 
 **Note:** Event timing and location are handled by the `date` and `place` fields directly on the event, not as properties. The `notes` field is a standard entity field available on all entity types, not a property.
@@ -769,6 +776,13 @@ person_properties:
     value_type: date
     temporal: false
 
+  occupation:
+    label: "Occupation"
+    description: "Profession or trade"
+    value_type: string
+    temporal: true
+    gedcom: "OCCU"
+
   residence:
     label: "Residence"
     description: "Place where person lived"
@@ -784,6 +798,7 @@ person_properties:
 | `reference_type` | Yes* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
 | `temporal` | No | Whether property can change over time (default: false) |
 | `multi_value` | No | Whether property can have multiple values as an array (default: false) |
+| `gedcom` | No | Corresponding GEDCOM tag for import/export mapping (e.g., `OCCU`, `PAGE`) |
 | `fields` | No | Sub-schema for structured property components (see below) |
 
 ***Exactly one of `value_type` or `reference_type` must be specified** - there is no implicit default

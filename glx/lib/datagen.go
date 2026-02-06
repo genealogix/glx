@@ -157,7 +157,7 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, claimType, repoID string
 	glxFile.Citations[citationID] = &Citation{
 		SourceID: sourceID,
 		Properties: map[string]any{
-			CitationPropertyLocator: "Record ID: " + gofakeit.UUID(),
+			"locator": "Record ID: " + gofakeit.UUID(),
 		},
 	}
 

@@ -132,11 +132,101 @@ func scanLinesAllEndings(data []byte, atEOF bool) (advance int, token []byte, er
 	return 0, nil, nil
 }
 
+// GEDCOMIndex provides reverse lookups from GEDCOM tags to GLX vocabulary keys.
+// Built once at import initialization from loaded vocabulary definitions.
+type GEDCOMIndex struct {
+	// EventTypes maps GEDCOM event tags to GLX event type keys (e.g., "BIRT" → "birth")
+	EventTypes map[string]string
+
+	// PersonProperties maps GEDCOM person attribute tags to GLX property keys (e.g., "OCCU" → "occupation")
+	PersonProperties map[string]string
+
+	// EventProperties maps GEDCOM event detail tags to GLX property keys (e.g., "AGE" → "age_at_event")
+	EventProperties map[string]string
+
+	// CitationProperties maps GEDCOM citation tags to GLX property keys (e.g., "PAGE" → "locator")
+	CitationProperties map[string]string
+
+	// SourceProperties maps GEDCOM source tags to GLX property keys (e.g., "ABBR" → "abbreviation")
+	SourceProperties map[string]string
+
+	// RepositoryProperties maps GEDCOM repository tags to GLX property keys (e.g., "PHON" → "phones")
+	RepositoryProperties map[string]string
+
+	// MediaProperties maps GEDCOM media tags to GLX property keys (e.g., "MEDI" → "medium")
+	MediaProperties map[string]string
+}
+
+// buildGEDCOMIndex constructs reverse lookup indices from vocabularies in the GLXFile.
+func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
+	index := &GEDCOMIndex{
+		EventTypes:           make(map[string]string),
+		PersonProperties:     make(map[string]string),
+		EventProperties:      make(map[string]string),
+		CitationProperties:   make(map[string]string),
+		SourceProperties:     make(map[string]string),
+		RepositoryProperties: make(map[string]string),
+		MediaProperties:      make(map[string]string),
+	}
+
+	// Build event type index from vocabulary
+	for key, eventType := range glx.EventTypes {
+		if eventType.GEDCOM != "" {
+			index.EventTypes[eventType.GEDCOM] = key
+		}
+	}
+
+	// BASM is a non-standard alias for BATM (bat_mitzvah) used by some exporters
+	if key, ok := index.EventTypes[GedcomTagBatm]; ok {
+		index.EventTypes[GedcomTagBasm] = key
+	}
+
+	// Build property indices from vocabularies
+	for key, propDef := range glx.PersonProperties {
+		if propDef.GEDCOM != "" {
+			index.PersonProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	for key, propDef := range glx.EventProperties {
+		if propDef.GEDCOM != "" {
+			index.EventProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	for key, propDef := range glx.CitationProperties {
+		if propDef.GEDCOM != "" {
+			index.CitationProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	for key, propDef := range glx.SourceProperties {
+		if propDef.GEDCOM != "" {
+			index.SourceProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	for key, propDef := range glx.RepositoryProperties {
+		if propDef.GEDCOM != "" {
+			index.RepositoryProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	for key, propDef := range glx.MediaProperties {
+		if propDef.GEDCOM != "" {
+			index.MediaProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	return index
+}
+
 // ConversionContext holds state during GEDCOM conversion
 type ConversionContext struct {
-	GLX     *GLXFile
-	Version GEDCOMVersion
-	Logger  *ImportLogger
+	GLX         *GLXFile
+	Version     GEDCOMVersion
+	Logger      *ImportLogger
+	GEDCOMIndex *GEDCOMIndex
 
 	// ID mapping from GEDCOM XRef to GLX ID
 	PersonIDMap     map[string]string
@@ -230,11 +320,15 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 		return nil, nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
 	}
 
+	// Build GEDCOM reverse lookup index from loaded vocabularies
+	gedcomIndex := buildGEDCOMIndex(glx)
+
 	// Create conversion context
 	conv := &ConversionContext{
 		GLX:                 glx,
 		Version:             version,
 		Logger:              logger,
+		GEDCOMIndex:         gedcomIndex,
 		PersonIDMap:         make(map[string]string),
 		FamilyIDMap:         make(map[string]string),
 		SourceIDMap:         make(map[string]string),

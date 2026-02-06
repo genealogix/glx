@@ -34,6 +34,7 @@ media_properties:
     label: "Crop"
     description: "Crop coordinates for displaying a region of the media"
     value_type: string
+    gedcom: "CROP"
     fields:
       top:
         label: "Top"
@@ -52,6 +53,7 @@ media_properties:
     label: "Medium"
     description: "Physical medium type (e.g., photograph, document, film)"
     value_type: string
+    gedcom: "MEDI"
 
   original_filename:
     label: "Original Filename"

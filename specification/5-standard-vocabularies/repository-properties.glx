@@ -9,12 +9,14 @@ repository_properties:
     description: "Telephone numbers for the repository"
     value_type: string
     multi_value: true
+    gedcom: "PHON"
 
   emails:
     label: "Email Addresses"
     description: "Email addresses for the repository"
     value_type: string
     multi_value: true
+    gedcom: "EMAIL"
 
   fax:
     label: "Fax Number"
@@ -42,3 +44,4 @@ repository_properties:
     description: "Identifiers from external systems (e.g., FamilySearch, WikiTree)"
     value_type: string
     multi_value: true
+    gedcom: "EXID"

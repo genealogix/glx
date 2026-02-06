@@ -14,6 +14,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### GEDCOM Tag Mapping in Vocabularies
+- **Added `gedcom` field to `PropertyDefinition` struct** - Property vocabulary entries can now declare their corresponding GEDCOM tag
+- **Added GEDCOM tag mappings to property vocabularies**:
+  - `person-properties.glx`: occupation (OCCU), title (TITL), religion (RELI), education (EDUC), nationality (NATI), caste (CAST), ssn (SSN), external_ids (EXID)
+  - `event-properties.glx`: age_at_event (AGE), cause (CAUS), event_subtype (TYPE)
+  - `citation-properties.glx`: locator (PAGE), text_from_source (TEXT), source_date (DATE)
+  - `source-properties.glx`: abbreviation (ABBR), publication_info (PUBL), call_number (CALN), events_recorded (EVEN), agency (AGNC), external_ids (EXID)
+  - `repository-properties.glx`: phones (PHON), emails (EMAIL), external_ids (EXID)
+  - `media-properties.glx`: medium (MEDI), crop (CROP)
+- **Added `external_ids` property to person-properties.glx** - For GEDCOM 7.0 EXID tags on person records
+- **Added event detail properties to event-properties.glx** - `age_at_event`, `cause`, `event_subtype` properties now defined in vocabulary
+- **Added `GEDCOMIndex` reverse lookup infrastructure** - Builds `map[GEDCOMTag]GLXKey` indices from loaded vocabularies at import initialization, covering event types, person/event/citation/source/repository/media properties
+- **Added `gedcom` field to all property vocabulary JSON schemas** - All 8 property vocabulary schemas now include the optional `gedcom` field in their PropertyDefinition
+- **Added `fields`/`FieldDefinition` to all property vocabulary JSON schemas** - All 8 property vocabulary schemas now support structured property components with sub-fields (previously only media-properties had this)
+- **Updated vocabulary specification documentation** - Property Definition Structure table and examples now document the `gedcom` field; person properties table includes GEDCOM column; event properties listing updated with new standard properties
+
+### Changed
+
+#### GEDCOM Import
+- **Replaced hardcoded event type mappings with vocabulary-driven lookups** - `gedcomEventTypeMapping` and `gedcomFamilyEventTypeMapping` maps removed from constants.go; event type resolution now uses the `gedcom` field from event-types.glx via `GEDCOMIndex`
+- **Collapsed person property switch cases into generic vocabulary-driven handler** - OCCU, RELI, EDUC, NATI, CAST, SSN cases replaced with single `handlePersonPropertyTag()` that resolves property keys from the vocabulary index
+- **All property mappings now use vocabulary index** - Event properties (AGE, CAUS, TYPE), citation properties (PAGE, TEXT, DATE), source properties (ABBR, PUBL, CALN, EVEN, AGNC, EXID), repository properties (PHON, EMAIL, EXID), and media properties (MEDI, CROP) all resolve keys via `GEDCOMIndex`
+
 #### Validation
 - **Place hierarchy cycle detection** - Validates that place parent references don't form cycles (e.g., A -> B -> C -> A). Reports exactly one error per cycle with the full cycle path in the error message.
 

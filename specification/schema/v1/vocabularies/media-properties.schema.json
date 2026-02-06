@@ -48,6 +48,10 @@
           "type": "boolean",
           "description": "Whether this property can have multiple values as an array"
         },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM tag for import/export mapping (e.g., MEDI, CROP)"
+        },
         "fields": {
           "type": "object",
           "description": "Sub-schema for structured property components",

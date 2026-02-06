@@ -57,10 +57,12 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 		switch sub.Tag {
 		case GedcomTagPage:
 			// Page/location within source - may have CONT/CONC for long locators
-			if citation.Properties == nil {
-				citation.Properties = make(map[string]any)
+			if propertyKey, ok := conv.GEDCOMIndex.CitationProperties[sub.Tag]; ok {
+				if citation.Properties == nil {
+					citation.Properties = make(map[string]any)
+				}
+				citation.Properties[propertyKey] = extractTextWithContinuation(sub)
 			}
-			citation.Properties[CitationPropertyLocator] = extractTextWithContinuation(sub)
 
 		case GedcomTagData:
 			// Data from source
@@ -68,28 +70,34 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 				switch dataSub.Tag {
 				case GedcomTagDate:
 					// Source date - when the source recorded the information
-					dateStr := parseGEDCOMDate(dataSub.Value)
-					if dateStr != "" {
-						if citation.Properties == nil {
-							citation.Properties = make(map[string]any)
+					if propertyKey, ok := conv.GEDCOMIndex.CitationProperties[dataSub.Tag]; ok {
+						dateStr := parseGEDCOMDate(dataSub.Value)
+						if dateStr != "" {
+							if citation.Properties == nil {
+								citation.Properties = make(map[string]any)
+							}
+							citation.Properties[propertyKey] = string(dateStr)
 						}
-						citation.Properties[CitationPropertySourceDate] = string(dateStr)
 					}
 				case GedcomTagText:
 					// Text from source - may have CONT/CONC for long text
-					if citation.Properties == nil {
-						citation.Properties = make(map[string]any)
+					if propertyKey, ok := conv.GEDCOMIndex.CitationProperties[dataSub.Tag]; ok {
+						if citation.Properties == nil {
+							citation.Properties = make(map[string]any)
+						}
+						citation.Properties[propertyKey] = extractTextWithContinuation(dataSub)
 					}
-					citation.Properties[CitationPropertyTextFromSource] = extractTextWithContinuation(dataSub)
 				}
 			}
 
 		case GedcomTagText:
 			// Text from source (GEDCOM 5.5.1) - may have CONT/CONC for long text
-			if citation.Properties == nil {
-				citation.Properties = make(map[string]any)
+			if propertyKey, ok := conv.GEDCOMIndex.CitationProperties[sub.Tag]; ok {
+				if citation.Properties == nil {
+					citation.Properties = make(map[string]any)
+				}
+				citation.Properties[propertyKey] = extractTextWithContinuation(sub)
 			}
-			citation.Properties[CitationPropertyTextFromSource] = extractTextWithContinuation(sub)
 
 		case GedcomTagQuay:
 			// GEDCOM quality assessment (0-3) - preserve in notes

@@ -4,6 +4,24 @@
 # data is structural (type, date, place, participants).
 
 event_properties:
+  age_at_event:
+    label: "Age at Event"
+    description: "Age of the person at the time of the event"
+    value_type: string
+    gedcom: "AGE"
+
+  cause:
+    label: "Cause"
+    description: "Cause of the event (e.g., cause of death)"
+    value_type: string
+    gedcom: "CAUS"
+
+  event_subtype:
+    label: "Event Subtype"
+    description: "Further classification of the event type"
+    value_type: string
+    gedcom: "TYPE"
+
   description:
     label: "Event Description"
     description: "Detailed description of the event"

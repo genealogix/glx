@@ -47,10 +47,37 @@
         "multi_value": {
           "type": "boolean",
           "description": "Whether this property can have multiple values as an array"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM tag for import/export mapping (e.g., PHON, EMAIL)"
+        },
+        "fields": {
+          "type": "object",
+          "description": "Sub-schema for structured property components",
+          "additionalProperties": {
+            "$ref": "#/definitions/FieldDefinition"
+          }
         }
       },
       "not": {
         "required": ["value_type", "reference_type"]
+      }
+    },
+    "FieldDefinition": {
+      "type": "object",
+      "description": "Definition of a field within a structured property",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the field"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the field"
+        }
       }
     }
   }

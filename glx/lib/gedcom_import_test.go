@@ -102,4 +102,123 @@ func TestParseGEDCOMLine(t *testing.T) {
 	}
 }
 
+// TestBuildGEDCOMIndex verifies that the reverse GEDCOM tag lookup index
+// is correctly built from loaded standard vocabularies.
+func TestBuildGEDCOMIndex(t *testing.T) {
+	glx := &GLXFile{}
+	if err := LoadStandardVocabulariesIntoGLX(glx); err != nil {
+		t.Fatalf("Failed to load vocabularies: %v", err)
+	}
+
+	index := buildGEDCOMIndex(glx)
+
+	// Event type mappings
+	eventTests := map[string]string{
+		"BIRT": "birth",
+		"DEAT": "death",
+		"MARR": "marriage",
+		"DIV":  "divorce",
+		"BURI": "burial",
+		"CREM": "cremation",
+		"BAPM": "baptism",
+		"BATM": "bat_mitzvah",
+		"BASM": "bat_mitzvah", // alias
+		"BARM": "bar_mitzvah",
+		"CHR":  "christening",
+		"GRAD": "graduation",
+		"RETI": "retirement",
+		"EMIG": "emigration",
+		"IMMI": "immigration",
+		"NATU": "naturalization",
+		"PROB": "probate",
+		"WILL": "will",
+		"ENGA": "engagement",
+		"ANUL": "annulment",
+	}
+	for tag, want := range eventTests {
+		if got := index.EventTypes[tag]; got != want {
+			t.Errorf("EventTypes[%q] = %q, want %q", tag, got, want)
+		}
+	}
+
+	// Person property mappings
+	personPropTests := map[string]string{
+		"OCCU": "occupation",
+		"RELI": "religion",
+		"EDUC": "education",
+		"NATI": "nationality",
+		"CAST": "caste",
+		"SSN":  "ssn",
+		"TITL": "title",
+		"EXID": "external_ids",
+	}
+	for tag, want := range personPropTests {
+		if got := index.PersonProperties[tag]; got != want {
+			t.Errorf("PersonProperties[%q] = %q, want %q", tag, got, want)
+		}
+	}
+
+	// Event property mappings
+	eventPropTests := map[string]string{
+		"AGE":  "age_at_event",
+		"CAUS": "cause",
+		"TYPE": "event_subtype",
+	}
+	for tag, want := range eventPropTests {
+		if got := index.EventProperties[tag]; got != want {
+			t.Errorf("EventProperties[%q] = %q, want %q", tag, got, want)
+		}
+	}
+
+	// Citation property mappings
+	citationPropTests := map[string]string{
+		"PAGE": "locator",
+		"TEXT": "text_from_source",
+		"DATE": "source_date",
+	}
+	for tag, want := range citationPropTests {
+		if got := index.CitationProperties[tag]; got != want {
+			t.Errorf("CitationProperties[%q] = %q, want %q", tag, got, want)
+		}
+	}
+
+	// Source property mappings
+	sourcePropTests := map[string]string{
+		"ABBR": "abbreviation",
+		"PUBL": "publication_info",
+		"CALN": "call_number",
+		"EVEN": "events_recorded",
+		"AGNC": "agency",
+		"EXID": "external_ids",
+	}
+	for tag, want := range sourcePropTests {
+		if got := index.SourceProperties[tag]; got != want {
+			t.Errorf("SourceProperties[%q] = %q, want %q", tag, got, want)
+		}
+	}
+
+	// Repository property mappings
+	repoPropTests := map[string]string{
+		"PHON":  "phones",
+		"EMAIL": "emails",
+		"EXID":  "external_ids",
+	}
+	for tag, want := range repoPropTests {
+		if got := index.RepositoryProperties[tag]; got != want {
+			t.Errorf("RepositoryProperties[%q] = %q, want %q", tag, got, want)
+		}
+	}
+
+	// Media property mappings
+	mediaPropTests := map[string]string{
+		"MEDI": "medium",
+		"CROP": "crop",
+	}
+	for tag, want := range mediaPropTests {
+		if got := index.MediaProperties[tag]; got != want {
+			t.Errorf("MediaProperties[%q] = %q, want %q", tag, got, want)
+		}
+	}
+}
+
 // TestParseGEDCOMName is now in gedcom_integration_test.go with correct implementation

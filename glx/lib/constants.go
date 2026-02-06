@@ -41,46 +41,6 @@ const (
 	EventTypeGeneric            = "event"
 )
 
-// gedcomEventTypeMapping maps GEDCOM individual event tags to GLX event types.
-// Package-level to avoid allocation on every call.
-var gedcomEventTypeMapping = map[string]string{
-	GedcomTagBirt: EventTypeBirth,
-	GedcomTagChr:  EventTypeChristening,
-	GedcomTagDeat: EventTypeDeath,
-	GedcomTagBuri: EventTypeBurial,
-	GedcomTagCrem: EventTypeCremation,
-	GedcomTagAdop: EventTypeAdoption,
-	GedcomTagBapm: EventTypeBaptism,
-	GedcomTagBarm: EventTypeBarMitzvah,
-	GedcomTagBatm: EventTypeBatMitzvah,
-	GedcomTagBasm: EventTypeBatMitzvah,
-	GedcomTagBles: EventTypeBlessing,
-	GedcomTagChra: EventTypeAdultChristening,
-	GedcomTagConf: EventTypeConfirmation,
-	GedcomTagFcom: EventTypeFirstCommunion,
-	GedcomTagOrdn: EventTypeOrdination,
-	GedcomTagNatu: EventTypeNaturalization,
-	GedcomTagEmig: EventTypeEmigration,
-	GedcomTagImmi: EventTypeImmigration,
-	GedcomTagProb: EventTypeProbate,
-	GedcomTagWill: EventTypeWill,
-	GedcomTagGrad: EventTypeGraduation,
-	GedcomTagReti: EventTypeRetirement,
-}
-
-// gedcomFamilyEventTypeMapping maps GEDCOM family event tags to GLX event types.
-// Package-level to avoid allocation on every call.
-var gedcomFamilyEventTypeMapping = map[string]string{
-	GedcomTagEnga: EventTypeEngagement,
-	GedcomTagMarb: EventTypeMarriageBanns,
-	GedcomTagMarc: EventTypeMarriageContract,
-	GedcomTagMarl: EventTypeMarriageLicense,
-	GedcomTagMars: EventTypeMarriageSettlement,
-	GedcomTagAnul: EventTypeAnnulment,
-	GedcomTagDivf: EventTypeDivorceFiled,
-	GedcomTagEven: EventTypeGeneric,
-}
-
 // Standard Relationship Types - from relationship-types.glx vocabulary
 const (
 	RelationshipTypeMarriage              = "marriage"
@@ -110,18 +70,6 @@ const (
 const (
 	PersonPropertyName        = "name"
 	PersonPropertyGender      = "gender"
-	PersonPropertyBirthPlace  = "birth_place"
-	PersonPropertyDeathPlace  = "death_place"
-	PersonPropertyBirthDate   = "birth_date"
-	PersonPropertyDeathDate   = "death_date"
-	PersonPropertyOccupation  = "occupation"
-	PersonPropertyTitle       = "title"
-	PersonPropertyReligion    = "religion"
-	PersonPropertyEducation   = "education"
-	PersonPropertyNationality = "nationality"
-	PersonPropertyCaste       = "caste"
-	PersonPropertySSN         = "ssn"
-	PersonPropertyExternalIDs = "external_ids"
 	PersonPropertyBornOn      = "born_on"
 	PersonPropertyBornAt      = "born_at"
 	PersonPropertyDiedOn      = "died_on"
@@ -148,9 +96,6 @@ const (
 	PropertyMarriageEvent = "marriage_event"
 	PropertyDivorceEvent  = "divorce_event"
 	PropertyMarriageType  = "marriage_type"
-	PropertyAgeAtEvent    = "age_at_event"
-	PropertyCause         = "cause"
-	PropertyEventSubtype  = "event_subtype"
 )
 
 // GEDCOM Tags - Top-Level Records
@@ -411,49 +356,6 @@ const (
 	PropRepositoryProperties   = "repository_properties"
 	PropCitationProperties     = "citation_properties"
 	PropSourceProperties       = "source_properties"
-)
-
-// Standard Repository Property Names - commonly used properties on Repository entities
-const (
-	RepositoryPropertyPhones             = "phones"
-	RepositoryPropertyEmails             = "emails"
-	RepositoryPropertyFax                = "fax"
-	RepositoryPropertyAccessHours        = "access_hours"
-	RepositoryPropertyAccessRestrictions = "access_restrictions"
-	RepositoryPropertyHoldingTypes       = "holding_types"
-	RepositoryPropertyExternalIDs        = "external_ids"
-)
-
-// Standard Media Property Names - commonly used properties on Media entities
-const (
-	MediaPropertySubjects         = "subjects"
-	MediaPropertyWidth            = "width"
-	MediaPropertyHeight           = "height"
-	MediaPropertyDuration         = "duration"
-	MediaPropertyFileSize         = "file_size"
-	MediaPropertyCrop             = "crop"
-	MediaPropertyMedium           = "medium"
-	MediaPropertyOriginalFilename = "original_filename"
-	MediaPropertyPhotographer     = "photographer"
-	MediaPropertyLocation         = "location"
-)
-
-// Standard Citation Property Names - commonly used properties on Citation entities
-const (
-	CitationPropertyLocator        = "locator"
-	CitationPropertyTextFromSource = "text_from_source"
-	CitationPropertySourceDate     = "source_date"
-)
-
-// Standard Source Property Names - commonly used properties on Source entities
-const (
-	SourcePropertyAbbreviation    = "abbreviation"
-	SourcePropertyCallNumber      = "call_number"
-	SourcePropertyEventsRecorded  = "events_recorded"
-	SourcePropertyAgency          = "agency"
-	SourcePropertyCoverage        = "coverage"
-	SourcePropertyExternalIDs     = "external_ids"
-	SourcePropertyPublicationInfo = "publication_info"
 )
 
 // Place Types - used by inferPlaceType function

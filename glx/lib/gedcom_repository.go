@@ -37,7 +37,9 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	// Extract external IDs (GEDCOM 7.0 EXID tags)
 	exids := extractExternalIDs(repoRecord)
 	if len(exids) > 0 {
-		repository.Properties[RepositoryPropertyExternalIDs] = exids
+		if propertyKey, ok := conv.GEDCOMIndex.RepositoryProperties[GedcomTagExid]; ok {
+			repository.Properties[propertyKey] = exids
+		}
 	}
 
 	// Process subrecords
@@ -94,12 +96,16 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 	// Store phones in properties (multi-value)
 	if len(phones) > 0 {
-		repository.Properties[RepositoryPropertyPhones] = phones
+		if propertyKey, ok := conv.GEDCOMIndex.RepositoryProperties[GedcomTagPhon]; ok {
+			repository.Properties[propertyKey] = phones
+		}
 	}
 
 	// Store emails in properties (multi-value)
 	if len(emails) > 0 {
-		repository.Properties[RepositoryPropertyEmails] = emails
+		if propertyKey, ok := conv.GEDCOMIndex.RepositoryProperties[GedcomTagEmail]; ok {
+			repository.Properties[propertyKey] = emails
+		}
 	}
 
 	// Combine notes

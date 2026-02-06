@@ -116,7 +116,9 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Medi
 			// Check for MEDI subrecord - store as property
 			for _, formSub := range sub.SubRecords {
 				if formSub.Tag == GedcomTagMedi {
-					media.Properties[MediaPropertyMedium] = formSub.Value
+					if propertyKey, ok := conv.GEDCOMIndex.MediaProperties[formSub.Tag]; ok {
+						media.Properties[propertyKey] = formSub.Value
+					}
 				}
 			}
 
@@ -130,7 +132,9 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Medi
 			// GEDCOM 7.0: Crop coordinates - store as structured property
 			crop := extractCrop(sub)
 			if crop != nil {
-				media.Properties[MediaPropertyCrop] = crop
+				if propertyKey, ok := conv.GEDCOMIndex.MediaProperties[sub.Tag]; ok {
+					media.Properties[propertyKey] = crop
+				}
 			}
 
 		case GedcomTagNote:

@@ -8,13 +8,16 @@ citation_properties:
     label: "Locator"
     description: "Location within source where cited material can be found (e.g., 'Page 45', 'Film 1234567, Image 87', 'Entry 123')"
     value_type: string
+    gedcom: "PAGE"
 
   text_from_source:
     label: "Text from Source"
     description: "Transcription or excerpt of relevant text from the source"
     value_type: string
+    gedcom: "TEXT"
 
   source_date:
     label: "Source Date"
     description: "Date when the source recorded the information (from GEDCOM DATA.DATE)"
     value_type: date
+    gedcom: "DATE"

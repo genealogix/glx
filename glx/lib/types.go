@@ -320,6 +320,7 @@ type MediaType struct {
 type PropertyDefinition struct {
 	Label         string                      `yaml:"label"`
 	Description   string                      `yaml:"description,omitempty"`
+	GEDCOM        string                      `yaml:"gedcom,omitempty"`
 	ValueType     string                      `yaml:"value_type,omitempty"`     // string, date, integer, boolean
 	ReferenceType string                      `yaml:"reference_type,omitempty"` // persons, places, events, relationships, etc.
 	Temporal      *bool                       `yaml:"temporal,omitempty"`       // Can this property change over time?

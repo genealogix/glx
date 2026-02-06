@@ -60,12 +60,14 @@ person_properties:
     description: "Profession or trade"
     value_type: string
     temporal: true
+    gedcom: "OCCU"
 
   title:
     label: "Title"
     description: "Nobility or honorific title"
     value_type: string
     temporal: true
+    gedcom: "TITL"
 
   residence:
     label: "Residence"
@@ -78,12 +80,14 @@ person_properties:
     description: "Religious affiliation"
     value_type: string
     temporal: true
+    gedcom: "RELI"
   
   education:
     label: "Education"
     description: "Educational attainment"
     value_type: string
     temporal: true
+    gedcom: "EDUC"
   
   ethnicity:
     label: "Ethnicity"
@@ -96,16 +100,26 @@ person_properties:
     description: "National citizenship"
     value_type: string
     temporal: true
+    gedcom: "NATI"
 
   caste:
     label: "Caste"
     description: "Caste, tribe, or social group"
     value_type: string
     temporal: true
+    gedcom: "CAST"
 
   ssn:
     label: "Social Security Number"
     description: "National identification number"
     value_type: string
+    gedcom: "SSN"
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems (e.g., FamilySearch, WikiTree)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"
 
 
