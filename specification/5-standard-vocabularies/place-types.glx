@@ -48,9 +48,14 @@ place_types:
     description: "Geographic region"
     category: "geographic"
   
+  locality:
+    label: "Locality"
+    description: "General locality or inhabited area"
+    category: "geographic"
+
   neighborhood:
     label: "Neighborhood"
-    description: "Neighborhood or locality"
+    description: "Neighborhood"
     category: "geographic"
   
   street:

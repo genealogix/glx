@@ -16,6 +16,7 @@ package lib
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -571,5 +572,49 @@ func TestE2E_AllFilesHaveRequiredStructure(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestE2E_DeepPlaceHierarchyValidation tests that places with 5+ hierarchy
+// levels (which trigger the "locality" fallback in inferPlaceType) pass
+// vocabulary validation. This would have caught the missing "locality" entry
+// in place-types.glx.
+func TestE2E_DeepPlaceHierarchyValidation(t *testing.T) {
+	gedcom := "0 HEAD\n" +
+		"1 SOUR TEST\n" +
+		"1 GEDC\n" +
+		"2 VERS 5.5.1\n" +
+		"2 FORM LINEAGE-LINKED\n" +
+		"1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n" +
+		"1 NAME John /Doe/\n" +
+		"1 BIRT\n" +
+		"2 PLAC 123 Main St, Springfield, Greene County, Missouri, United States\n" +
+		"0 TRLR\n"
+
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Verify at least one place got the locality type (5 components = level 4 = default)
+	hasLocality := false
+	for _, place := range glx.Places {
+		if place.Type == PlaceTypeLocality {
+			hasLocality = true
+			break
+		}
+	}
+	if !hasLocality {
+		t.Error("Expected at least one place with type 'locality' from 5-component hierarchy")
+	}
+
+	// Validation must pass — locality must exist in vocabulary
+	result := glx.Validate()
+	if len(result.Errors) > 0 {
+		t.Errorf("Validation failed with %d errors:", len(result.Errors))
+		for _, e := range result.Errors {
+			t.Logf("  - %s", e.Message)
+		}
 	}
 }
