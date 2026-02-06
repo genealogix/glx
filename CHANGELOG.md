@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.3] - 2026-01-09
 
+### Fixed
+
+- **Added missing `locality` place type to standard vocabulary** - The GEDCOM importer's `inferPlaceType` function could assign `locality` to deeply-nested place components, but the term was not defined in `place-types.glx`
+
 ### Added
 
 #### Media as Assertion Evidence
@@ -19,12 +23,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Useful for direct visual evidence like gravestone photos, handwritten documents, or family photographs
 - JSON schema `anyOf` evidence constraint updated to include `media`
 - Media entities remain linkable to sources (via `media.source`) and citations (via `citation.media`) as before
-
-### Fixed
-
-- **Added missing `locality` place type to standard vocabulary** - The GEDCOM importer's `inferPlaceType` function could assign `locality` to deeply-nested place components, but the term was not defined in `place-types.glx`
-
-### Added
 
 #### GEDCOM Census (CENS) Support
 - **Implemented CENS tag handling for individual and family records** - Census records are no longer silently skipped during GEDCOM import
