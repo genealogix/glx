@@ -1,0 +1,276 @@
+# Assertion Workflow Example
+# Demonstrates the two approaches to recording data in GLX:
+# 1. Direct property setting (quick data entry)
+# 2. Assertion-backed properties (evidence-based research)
+
+# ===========================================================================
+# PLACES - Shared by both approaches
+# ===========================================================================
+
+places:
+  place-boston:
+    name: "Boston"
+    type: city
+    properties:
+      jurisdiction: "Massachusetts, United States"
+
+  place-new-york:
+    name: "New York"
+    type: city
+    properties:
+      jurisdiction: "New York, United States"
+
+  place-cambridge:
+    name: "Cambridge"
+    type: city
+    properties:
+      jurisdiction: "Massachusetts, United States"
+
+# ===========================================================================
+# APPROACH 1: DIRECT PROPERTY SETTING (Quick Data Entry)
+# ===========================================================================
+# This approach is ideal for:
+# - Initial data entry from known family records
+# - Quick capture of information (add evidence later)
+# - Situations where the source is well-known but formal documentation isn't needed yet
+# - Personal research where you trust your memory/notes
+
+persons:
+  # ---------------------------------------------------------------------
+  # Person with DIRECT PROPERTIES only (no assertions yet)
+  # Valid and useful, but lacks documented evidence chain
+  # ---------------------------------------------------------------------
+  person-alice-chen:
+    properties:
+      name:
+        value: "Alice Chen"
+        fields:
+          given: "Alice"
+          surname: "Chen"
+      gender: "female"
+      born_on: "1985-06-15"
+      born_at: "place-boston"
+      occupation: "software engineer"
+      residence: "place-cambridge"
+    notes: |
+      Quick data entry from family records.
+      TODO: Add source citations and assertions when time permits.
+
+  # ---------------------------------------------------------------------
+  # Person with ASSERTION-BACKED PROPERTIES (full evidence chain)
+  # Shows how assertions provide evidence for property values
+  # ---------------------------------------------------------------------
+  person-robert-chen:
+    properties:
+      name:
+        value: "Robert Chen"
+        fields:
+          given: "Robert"
+          surname: "Chen"
+      gender: "male"
+      born_on: "1955-03-22"
+      born_at: "place-new-york"
+      # Temporal occupation (changed over time)
+      occupation:
+        - value: "accountant"
+          date: "FROM 1978 TO 1995"
+        - value: "financial advisor"
+          date: "FROM 1995 TO 2020"
+        - value: "retired"
+          date: "FROM 2020"
+      # Temporal residence
+      residence:
+        - value: "place-new-york"
+          date: "FROM 1955 TO 1990"
+        - value: "place-boston"
+          date: "FROM 1990"
+    notes: |
+      Father of Alice Chen.
+      All properties backed by assertions with full evidence chain.
+
+# ===========================================================================
+# APPROACH 2: EVIDENCE CHAIN (Sources -> Citations -> Assertions)
+# ===========================================================================
+# This approach is ideal for:
+# - Professional genealogy research
+# - Documenting conflicting evidence
+# - Providing audit trail for conclusions
+# - Collaborative research where others need to verify claims
+
+# ---------------------------------------------------------------------
+# REPOSITORIES - Where sources are held
+# ---------------------------------------------------------------------
+
+repositories:
+  repository-mass-archives:
+    name: "Massachusetts State Archives"
+    type: archive
+    properties:
+      address: "220 Morrissey Boulevard, Boston, MA 02125"
+      url: "https://www.sec.state.ma.us/arc/"
+
+  repository-nyc-records:
+    name: "NYC Department of Records"
+    type: archive
+    properties:
+      address: "31 Chambers Street, New York, NY 10007"
+
+# ---------------------------------------------------------------------
+# SOURCES - Original documents and records
+# ---------------------------------------------------------------------
+
+sources:
+  source-mass-birth-records:
+    title: "Massachusetts Birth Records Index"
+    type: vital_record
+    repository: repository-mass-archives
+
+  source-nyc-birth-records:
+    title: "New York City Birth Certificates"
+    type: vital_record
+    repository: repository-nyc-records
+
+  source-1990-census:
+    title: "1990 United States Census"
+    type: census
+
+  source-2000-census:
+    title: "2000 United States Census"
+    type: census
+
+  source-linkedin:
+    title: "LinkedIn Profile - Robert Chen"
+    type: database
+    properties:
+      url: "https://linkedin.com/in/robert-chen-example"
+      accessed_date: "2024-01-15"
+
+# ---------------------------------------------------------------------
+# CITATIONS - Specific references within sources
+# ---------------------------------------------------------------------
+
+citations:
+  citation-alice-birth-cert:
+    source: source-mass-birth-records
+    properties:
+      locator: "Certificate #1985-0615-23456"
+      text_from_source: "Alice Chen, born June 15, 1985, Boston, Suffolk County"
+
+  citation-robert-birth-cert:
+    source: source-nyc-birth-records
+    properties:
+      locator: "Certificate #1955-0322-78901"
+      text_from_source: "Robert Chen, male, born March 22, 1955, Manhattan"
+
+  citation-1990-census-chen:
+    source: source-1990-census
+    properties:
+      locator: "Suffolk County, MA, ED 25-456, Sheet 12"
+      text_from_source: "Chen, Robert, Head, 35, Accountant; Chen, Alice, Daughter, 5"
+
+  citation-2000-census-chen:
+    source: source-2000-census
+    properties:
+      locator: "Suffolk County, MA, Block 2345"
+      text_from_source: "Chen, Robert, 45, Financial Advisor, Boston"
+
+  citation-linkedin-career:
+    source: source-linkedin
+    properties:
+      text_from_source: "Financial Advisor at Chen Financial Services (1995-2020)"
+
+# ---------------------------------------------------------------------
+# ASSERTIONS - Evidence-backed claims about properties
+# ---------------------------------------------------------------------
+# Assertions link properties to their supporting evidence.
+# Multiple assertions can support the same property (corroboration)
+# or conflict with each other (disputed evidence).
+
+assertions:
+  # --- Robert's birth date supported by primary evidence ---
+  assertion-robert-birth:
+    subject:
+      person: person-robert-chen
+    property: born_on
+    value: "1955-03-22"
+    citations:
+      - citation-robert-birth-cert
+    confidence: high
+    notes: "Primary source: original birth certificate"
+
+  # --- Robert's occupation history supported by multiple sources ---
+  assertion-robert-accountant:
+    subject:
+      person: person-robert-chen
+    property: occupation
+    value: "accountant"
+    citations:
+      - citation-1990-census-chen
+    confidence: high
+    notes: "Census records show occupation as accountant in 1990"
+
+  assertion-robert-financial-advisor:
+    subject:
+      person: person-robert-chen
+    property: occupation
+    value: "financial advisor"
+    citations:
+      - citation-2000-census-chen
+      - citation-linkedin-career
+    confidence: high
+    notes: "Multiple sources confirm career change to financial advisor in 1995"
+
+  # --- Robert's residence supported by census evidence ---
+  assertion-robert-boston-residence:
+    subject:
+      person: person-robert-chen
+    property: residence
+    value: "place-boston"
+    citations:
+      - citation-1990-census-chen
+      - citation-2000-census-chen
+    confidence: high
+    notes: "Census records confirm Boston residence from at least 1990"
+
+  # --- Alice's birth supported by primary evidence ---
+  assertion-alice-birth:
+    subject:
+      person: person-alice-chen
+    property: born_on
+    value: "1985-06-15"
+    citations:
+      - citation-alice-birth-cert
+    confidence: high
+    notes: "Primary source: original birth certificate"
+
+  # --- Alice's birth place from same source ---
+  assertion-alice-birthplace:
+    subject:
+      person: person-alice-chen
+    property: born_at
+    value: "place-boston"
+    citations:
+      - citation-alice-birth-cert
+    confidence: high
+
+# ===========================================================================
+# COMPARISON: Properties With vs Without Assertions
+# ===========================================================================
+#
+# person-alice-chen has:
+#   - Properties set directly (quick data entry)
+#   - Assertions added AFTER initial entry (best practice)
+#   - Shows iterative workflow: enter data first, document evidence later
+#
+# person-robert-chen has:
+#   - Properties and assertions created together
+#   - Full evidence chain from the start
+#   - Shows rigorous research methodology
+#
+# BOTH approaches are valid! The choice depends on:
+#   - Time available for documentation
+#   - Research context (personal vs. professional)
+#   - Collaboration needs (solo vs. team)
+#   - Evidence complexity (straightforward vs. conflicting)
+#
+# ===========================================================================

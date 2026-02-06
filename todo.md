@@ -13,8 +13,6 @@
 
 ## 📖 Documentation
 
-- 🟡 Add comprehensive example showing assertion-to-entity property workflow (setting properties directly vs creating assertions with evidence)
-- 🟡 Add more temporal property examples throughout entity documentation (residence, occupation, name changes over time). Note: [temporal-properties/](docs/examples/temporal-properties/) example exists but entity docs need more examples.
 - 🟢 **Git Workflow Guide**: Create separate documentation covering Git workflows, branching strategies, collaboration patterns, merge conflict resolution, and branch-based research methodologies for GLX archives
 
 ### Specification TODOs

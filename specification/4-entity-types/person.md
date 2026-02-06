@@ -105,6 +105,65 @@ properties:
       date: "FROM 1900 TO 1920"
 ```
 
+#### Temporal Property Examples
+
+Properties marked as `temporal: true` can change over time. Here are common examples:
+
+**Occupation Changes:**
+```yaml
+properties:
+  occupation:
+    - value: "farm laborer"
+      date: "1865"
+    - value: "blacksmith apprentice"
+      date: "FROM 1867 TO 1870"
+    - value: "blacksmith"
+      date: "FROM 1870 TO 1890"
+    - value: "farmer"
+      date: "FROM 1890 TO 1920"
+```
+
+**Name Changes (e.g., marriage):**
+```yaml
+properties:
+  name:
+    - value: "Mary Jones"
+      date: "FROM 1855 TO 1880"
+      fields:
+        given: "Mary"
+        surname: "Jones"
+    - value: "Mary Smith"
+      date: "FROM 1880"
+      fields:
+        given: "Mary"
+        surname: "Smith"
+        birth_surname: "Jones"
+```
+
+**Multiple Residences:**
+```yaml
+properties:
+  residence:
+    - value: "place-leeds"
+      date: "FROM 1850 TO 1870"
+    - value: "place-manchester"
+      date: "FROM 1870 TO 1885"
+    - value: "place-london"
+      date: "FROM 1885 TO 1920"
+```
+
+**Nationality/Citizenship Changes:**
+```yaml
+properties:
+  nationality:
+    - value: "British Subject"
+      date: "FROM 1850 TO 1895"
+    - value: "American Citizen"
+      date: "FROM 1895"
+```
+
+> **See Also:** [Temporal Properties Example](../../docs/examples/temporal-properties/) for a complete working archive demonstrating temporal values with assertions and evidence chains.
+
 **Key Points:**
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
