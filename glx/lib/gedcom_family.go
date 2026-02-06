@@ -71,6 +71,11 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			if err := convertFamilyEvent(husbandID, wifeID, sub, conv); err != nil {
 				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
 			}
+
+		default:
+			if isExtensionTag(sub.Tag) {
+				conv.addWarning(sub.Line, sub.Tag, "Extension tag not stored")
+			}
 		}
 	}
 
