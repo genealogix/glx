@@ -149,6 +149,16 @@ func createPropertyAssertion(subjectID string, claim string, value any, sourceRe
 	// Extract citations from SOUR subrecords
 	citationIDs := extractCitations(subjectID, sourceRecord, conv)
 
+	createPropertyAssertionWithCitations(subjectID, claim, value, citationIDs, conv)
+}
+
+// createPropertyAssertionWithCitations creates an assertion for a property using pre-extracted citation IDs.
+// This is used when citations have already been extracted or synthetically created (e.g., census records).
+func createPropertyAssertionWithCitations(subjectID string, claim string, value any, citationIDs []string, conv *ConversionContext) {
+	if claim == "" || value == nil {
+		return
+	}
+
 	// Only create assertion if there are citations to back it up
 	// The property value is already stored on the entity; assertions add evidence
 	if len(citationIDs) == 0 {

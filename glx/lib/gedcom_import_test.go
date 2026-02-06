@@ -15,7 +15,11 @@
 package lib
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // NOTE: GEDCOM import tests are now in gedcom_comprehensive_test.go
@@ -222,3 +226,231 @@ func TestBuildGEDCOMIndex(t *testing.T) {
 }
 
 // TestParseGEDCOMName is now in gedcom_integration_test.go with correct implementation
+
+// TestConvertCensus_IndividualWithDate tests minimal CENS with just DATE.
+// Should create a synthetic census source + citation but no residence property.
+func TestConvertCensus_IndividualWithDate(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 CENS
+2 DATE 1800
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, result, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Person should be created
+	assert.Equal(t, 1, result.Statistics.PersonsCreated)
+
+	// A synthetic census source should be created
+	var censusSources []*Source
+	for _, s := range glx.Sources {
+		if s.Type == SourceTypeCensus {
+			censusSources = append(censusSources, s)
+		}
+	}
+	assert.Len(t, censusSources, 1, "Should create one synthetic census source")
+	assert.Equal(t, "Census of 1800", censusSources[0].Title)
+	assert.Equal(t, DateString("1800"), censusSources[0].Date)
+
+	// A citation should reference the census source
+	assert.GreaterOrEqual(t, len(glx.Citations), 1, "Should create at least one citation")
+
+	// No residence property (no PLAC in CENS)
+	for _, p := range glx.Persons {
+		_, hasResidence := p.Properties[PersonPropertyResidence]
+		assert.False(t, hasResidence, "Should not set residence without PLAC")
+	}
+
+	// No assertions (no property to assert without PLAC)
+	assert.Empty(t, glx.Assertions, "Should not create assertions without PLAC data")
+}
+
+// TestConvertCensus_IndividualWithDateAndPlace tests CENS with DATE + PLAC.
+// Should create synthetic source + citation + residence temporal property + assertion.
+func TestConvertCensus_IndividualWithDateAndPlace(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Jane /Doe/
+1 CENS
+2 DATE 1850
+2 PLAC London, England
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, result, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, 1, result.Statistics.PersonsCreated)
+
+	// Synthetic census source
+	var censusSources []*Source
+	for _, s := range glx.Sources {
+		if s.Type == SourceTypeCensus {
+			censusSources = append(censusSources, s)
+		}
+	}
+	assert.Len(t, censusSources, 1)
+	assert.Equal(t, "Census of 1850", censusSources[0].Title)
+
+	// Citation created
+	assert.GreaterOrEqual(t, len(glx.Citations), 1)
+
+	// Places created from PLAC hierarchy
+	assert.GreaterOrEqual(t, len(glx.Places), 1, "Should create place from PLAC")
+
+	// Residence temporal property set on person
+	for _, p := range glx.Persons {
+		res, hasResidence := p.Properties[PersonPropertyResidence]
+		assert.True(t, hasResidence, "Should set residence from PLAC")
+
+		// Should be a temporal value (list with date)
+		resList, ok := res.([]any)
+		assert.True(t, ok, "Residence should be a temporal list")
+		assert.Len(t, resList, 1)
+
+		temporal, ok := resList[0].(map[string]any)
+		assert.True(t, ok, "Temporal entry should be a map")
+		assert.Equal(t, "1850", temporal["date"])
+		assert.NotEmpty(t, temporal["value"], "Should have place ID")
+	}
+
+	// Assertion for residence
+	assert.GreaterOrEqual(t, len(glx.Assertions), 1, "Should create residence assertion")
+	var residenceAssertions []*Assertion
+	for _, a := range glx.Assertions {
+		if a.Property == PersonPropertyResidence {
+			residenceAssertions = append(residenceAssertions, a)
+		}
+	}
+	assert.Len(t, residenceAssertions, 1)
+	assert.NotEmpty(t, residenceAssertions[0].Citations, "Assertion should have citations")
+}
+
+// TestConvertCensus_IndividualWithSOUR tests CENS with existing SOUR sub-records.
+// Should use the existing source instead of creating a synthetic one.
+func TestConvertCensus_IndividualWithSOUR(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL 1900 US Federal Census
+0 @I1@ INDI
+1 NAME Bob /Jones/
+1 CENS
+2 DATE 1900
+2 PLAC Ohio, United States
+2 SOUR @S1@
+3 PAGE Sheet 12, Line 45
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, result, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Only the pre-existing source should exist (no synthetic source created)
+	// Note: the pre-existing source gets Type inferred as "census" from its title
+	assert.Len(t, glx.Sources, 1, "Should only have the pre-existing source, no synthetic source")
+
+	// Citation should reference the pre-existing source
+	assert.GreaterOrEqual(t, len(glx.Citations), 1)
+
+	// Residence should be set
+	for _, p := range glx.Persons {
+		_, hasResidence := p.Properties[PersonPropertyResidence]
+		assert.True(t, hasResidence, "Should set residence from PLAC")
+	}
+}
+
+// TestConvertCensus_IndividualWithTYPE tests CENS with TYPE for source title.
+func TestConvertCensus_IndividualWithTYPE(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Mary /Williams/
+1 CENS
+2 TYPE 1900 Census
+2 DATE 1900
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+
+	// Synthetic source should use TYPE as title
+	var censusSources []*Source
+	for _, s := range glx.Sources {
+		if s.Type == SourceTypeCensus {
+			censusSources = append(censusSources, s)
+		}
+	}
+	assert.Len(t, censusSources, 1)
+	assert.Equal(t, "1900 Census", censusSources[0].Title, "Should use TYPE value as source title")
+}
+
+// TestConvertCensus_FamilyBothSpouses tests family-level CENS applied to both spouses.
+func TestConvertCensus_FamilyBothSpouses(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Husband /Test/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Wife /Test/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CENS
+2 DATE 1901
+2 PLAC New York, United States
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, result, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, 2, result.Statistics.PersonsCreated)
+
+	// Both persons should have residence set
+	personsWithResidence := 0
+	for _, p := range glx.Persons {
+		if _, has := p.Properties[PersonPropertyResidence]; has {
+			personsWithResidence++
+		}
+	}
+	assert.Equal(t, 2, personsWithResidence, "Both spouses should have residence from family CENS")
+
+	// Should have assertions for both spouses
+	residenceAssertions := 0
+	for _, a := range glx.Assertions {
+		if a.Property == PersonPropertyResidence {
+			residenceAssertions++
+		}
+	}
+	assert.Equal(t, 2, residenceAssertions, "Both spouses should have residence assertions")
+
+	// Only ONE synthetic source + citation should be created for the one CENS record
+	var censusSources []*Source
+	for _, s := range glx.Sources {
+		if s.Type == SourceTypeCensus {
+			censusSources = append(censusSources, s)
+		}
+	}
+	assert.Len(t, censusSources, 1, "Family CENS should create only one synthetic source")
+	assert.Len(t, glx.Citations, 1, "Family CENS should create only one citation")
+}

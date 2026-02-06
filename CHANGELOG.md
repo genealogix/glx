@@ -14,6 +14,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### GEDCOM Census (CENS) Support
+- **Implemented CENS tag handling for individual and family records** - Census records are no longer silently skipped during GEDCOM import
+- Census records are treated as evidence sources, not events: each CENS creates a Source (type: `census`) and Citation
+- When CENS has SOUR sub-records, uses existing sources; otherwise creates a synthetic census source (title from TYPE or DATE)
+- Extracts PLAC to set temporal `residence` property on persons with date from DATE sub-record
+- Creates property assertions for residence backed by census citations
+- Family-level CENS applies census data to both husband and wife
+- Added `createPropertyAssertionWithCitations()` helper for creating assertions with pre-extracted citation IDs
+
 #### GEDCOM Tag Mapping in Vocabularies
 - **Added `gedcom` field to `PropertyDefinition` struct** - Property vocabulary entries can now declare their corresponding GEDCOM tag
 - **Added GEDCOM tag mappings to property vocabularies**:

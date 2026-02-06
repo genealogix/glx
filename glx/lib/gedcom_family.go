@@ -60,6 +60,12 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		case GedcomTagDiv:
 			divorceRecord = sub
 
+		case GedcomTagCens:
+			// Census - apply to both spouses as citations/temporal properties
+			if err := convertFamilyCensus(husbandID, wifeID, sub, conv); err != nil {
+				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
+			}
+
 		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagEven:
 			// Other family events
 			if err := convertFamilyEvent(husbandID, wifeID, sub, conv); err != nil {
@@ -278,6 +284,34 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Store event
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
+
+	return nil
+}
+
+// convertFamilyCensus applies a family-level CENS record to both spouses.
+// Source/citation creation happens once; the resulting data is applied to each spouse.
+func convertFamilyCensus(husbandID, wifeID string, censRecord *GEDCOMRecord, conv *ConversionContext) error {
+	// Extract census data once (creates source/citation once)
+	firstSpouseID := husbandID
+	if firstSpouseID == "" {
+		firstSpouseID = wifeID
+	}
+	if firstSpouseID == "" {
+		return nil
+	}
+	data := extractCensusData(firstSpouseID, censRecord, conv)
+
+	// Apply to each spouse
+	for _, spouseID := range []string{husbandID, wifeID} {
+		if spouseID == "" {
+			continue
+		}
+		person, ok := conv.GLX.Persons[spouseID]
+		if !ok {
+			continue
+		}
+		applyCensusData(spouseID, person, data, conv)
+	}
 
 	return nil
 }

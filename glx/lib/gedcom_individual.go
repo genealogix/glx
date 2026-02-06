@@ -89,9 +89,9 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			}
 
 		case GedcomTagCens:
-			// TODO: Census is a source/citation, not an event. See todo.md
-			// For now, skip census records - they should be converted to citations
-			// that support assertions about person attributes.
+			if err := convertCensus(personID, person, sub, conv); err != nil {
+				conv.addWarning(indiRecord.Line, GedcomTagCens, err.Error())
+			}
 
 		case GedcomTagOccu, GedcomTagReli, GedcomTagEduc, GedcomTagNati, GedcomTagCast, GedcomTagSsn:
 			// Simple person properties - resolved via vocabulary index
@@ -459,6 +459,158 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 	}
 
 	return nil
+}
+
+// censusData holds extracted data from a GEDCOM CENS record.
+// Shared across individual and family census conversion so that
+// source/citation creation happens once per CENS record.
+type censusData struct {
+	dateStr     string
+	placeID     string
+	citationIDs []string
+}
+
+// convertCensus converts a GEDCOM CENS record to GLX citations and temporal properties.
+// Census records are treated as evidence sources, not events. Each CENS record produces:
+//   - A synthetic census Source + Citation (when no SOUR sub-records exist)
+//   - OR uses existing citations from SOUR sub-records
+//   - A temporal residence property (when PLAC is present)
+//   - An assertion for residence backed by citations (when PLAC and citations exist)
+func convertCensus(personID string, person *Person, censRecord *GEDCOMRecord, conv *ConversionContext) error {
+	data := extractCensusData(personID, censRecord, conv)
+	applyCensusData(personID, person, data, conv)
+
+	return nil
+}
+
+// extractCensusData extracts all data from a CENS record and creates source/citation entities.
+// This is separated from applyCensusData so that family-level CENS can extract once and apply
+// to both spouses without creating duplicate sources.
+func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *ConversionContext) censusData {
+	var dateStr string
+	var placeID string
+	var censusType string
+	var noteText string
+
+	for _, sub := range censRecord.SubRecords {
+		switch sub.Tag {
+		case GedcomTagDate:
+			dateStr = string(parseGEDCOMDate(sub.Value))
+		case GedcomTagPlac:
+			hierarchy := parseGEDCOMPlace(sub.Value)
+			if hierarchy != nil {
+				lat, lon := extractPlaceCoordinates(sub)
+				hierarchy.Latitude = lat
+				hierarchy.Longitude = lon
+				pid, err := buildPlaceHierarchy(hierarchy, conv)
+				if err != nil {
+					conv.addWarning(sub.Line, GedcomTagPlac, "Failed to build place hierarchy: "+err.Error())
+				} else if pid != "" {
+					placeID = pid
+				}
+			}
+		case GedcomTagAddr:
+			// If no PLAC was provided, try to build place from ADDR subfields
+			if placeID == "" && len(sub.SubRecords) > 0 {
+				hierarchy := buildPlaceHierarchyFromAddress(sub)
+				if hierarchy != nil {
+					pid, err := buildPlaceHierarchy(hierarchy, conv)
+					if err != nil {
+						conv.addWarning(sub.Line, GedcomTagAddr, "Failed to build place hierarchy from address: "+err.Error())
+					} else if pid != "" {
+						placeID = pid
+					}
+				}
+			}
+		case GedcomTagType:
+			censusType = sub.Value
+		case GedcomTagNote:
+			noteText = extractNoteText(sub, conv)
+		case GedcomTagSour:
+			// Handled by extractCitations below
+		case GedcomTagObje:
+			conv.addWarning(censRecord.Line, GedcomTagObje, "Media linking not yet implemented")
+		default:
+			if sub.Tag != "" {
+				conv.addWarning(sub.Line, sub.Tag, "Unhandled CENS sub-tag")
+			}
+		}
+	}
+
+	// Extract citations from any SOUR sub-records
+	citationIDs := extractCitations(personID, censRecord, conv)
+
+	// If no SOUR sub-records, create a synthetic census source and citation
+	if len(citationIDs) == 0 {
+		// Build source title from TYPE or DATE
+		title := censusType
+		if title == "" && dateStr != "" {
+			title = "Census of " + dateStr
+		}
+		if title == "" {
+			title = "Census"
+		}
+
+		// Create synthetic source
+		sourceID := generateSourceID(conv)
+		source := &Source{
+			Title: title,
+			Type:  SourceTypeCensus,
+		}
+		if dateStr != "" {
+			source.Date = DateString(dateStr)
+		}
+		conv.GLX.Sources[sourceID] = source
+		conv.Stats.SourcesCreated++
+
+		// Create citation referencing the source
+		citationID := generateCitationID(conv)
+		citation := &Citation{
+			SourceID: sourceID,
+		}
+		if noteText != "" {
+			citation.Notes = noteText
+		}
+		conv.GLX.Citations[citationID] = citation
+		conv.Stats.CitationsCreated++
+
+		citationIDs = []string{citationID}
+	}
+
+	return censusData{
+		dateStr:     dateStr,
+		placeID:     placeID,
+		citationIDs: citationIDs,
+	}
+}
+
+// applyCensusData applies extracted census data to a person: sets temporal
+// residence property and creates assertions backed by citations.
+func applyCensusData(personID string, person *Person, data censusData, conv *ConversionContext) {
+	if data.placeID == "" {
+		return
+	}
+
+	if data.dateStr != "" {
+		temporalValue := map[string]any{
+			"value": data.placeID,
+			"date":  data.dateStr,
+		}
+		if existing, ok := person.Properties[PersonPropertyResidence]; ok {
+			if existingList, ok := existing.([]any); ok {
+				person.Properties[PersonPropertyResidence] = append(existingList, temporalValue)
+			} else {
+				person.Properties[PersonPropertyResidence] = []any{existing, temporalValue}
+			}
+		} else {
+			person.Properties[PersonPropertyResidence] = []any{temporalValue}
+		}
+	} else {
+		person.Properties[PersonPropertyResidence] = data.placeID
+	}
+
+	// Create assertion for residence backed by citations
+	createPropertyAssertionWithCitations(personID, PersonPropertyResidence, data.placeID, data.citationIDs, conv)
 }
 
 // convertFact converts generic FACT tag
