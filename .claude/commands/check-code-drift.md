@@ -92,7 +92,7 @@ Compare Go types with JSON schema types:
 
 #### Assertion Entity
 - Verify mutually exclusive fields: `claim`/`participant`, `value`/`participant`
-- Check that required constraint `anyOf: [sources, citations]` is handled
+- Check that required constraint `anyOf: [sources, citations, media]` is handled
 - Verify `subject` field allows multiple entity types
 
 #### Properties Field

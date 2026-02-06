@@ -205,7 +205,7 @@ Media → (any entity)
 These relationships create validation requirements that ensure archive integrity:
 
 - Citations must reference existing sources
-- Assertions must reference existing citations or sources
+- Assertions must reference existing citations, sources, or media
 - Events must reference existing places (if place specified)
 - Participants must reference existing persons
 - Relationships must reference existing persons
@@ -534,7 +534,7 @@ assertions:
 - `subject`: Typed reference to the entity this assertion is about (person, event, relationship, place)
 - `property`: The property being asserted (references property vocabulary)
 - `value`: The concluded value of the property
-- `citations` or `sources`: Evidence supporting this assertion (at least one required)
+- `citations`, `sources`, or `media`: Evidence supporting this assertion (at least one required)
 - `confidence`: How certain we are based on evidence quality
 
 **The `property` field references property vocabularies:**
@@ -565,7 +565,7 @@ citations:
       text_from_source: "John Smith, born January 15, 1850"
 ```
 
-Every assertion requires at least one citation or source reference, creating an audit trail from conclusion back to original evidence.
+Every assertion requires at least one citation, source, or media reference, creating an audit trail from conclusion back to original evidence.
 
 ### Conflicting Evidence
 
@@ -717,7 +717,7 @@ persons:
 
 ### Source Attribution
 
-Every assertion must reference specific citations or sources, creating complete provenance:
+Every assertion must reference specific citations, sources, or media, creating complete provenance:
 
 ```yaml
 assertions:

@@ -17,7 +17,8 @@ Media entities serve several purposes:
 - Provide visual context for people, places, and events
 - Document physical artifacts and heirlooms
 - Store audio/video recordings of interviews and oral histories
-- Link supporting evidence to assertions and entities
+- Serve as direct evidence in assertions (e.g., gravestone photos, handwritten documents)
+- Link supporting evidence to citations and sources
 
 ## File Format
 
@@ -343,13 +344,17 @@ media/
 ```
 Media
     ├── source → Source ID (what source this documents)
-    └── referenced by → Citations (citations can include media array)
+    ├── referenced by → Citations (citations can include media array)
+    └── referenced by → Assertions (assertions can include media array as direct evidence)
 
 Source
     └── documented by → Media (via source field)
 
 Citation
     └── media → array of Media IDs (scans, photos supporting the citation)
+
+Assertion
+    └── media → array of Media IDs (direct visual/documentary evidence)
 ```
 
 ## File Storage Best Practices
@@ -440,7 +445,9 @@ media:
 
 ## Media Linking
 
-Media is typically linked via Citation entities:
+Media can be linked in two ways:
+
+**Via Citations** (when media supports a citation's evidence):
 
 ```yaml
 citations:
@@ -453,6 +460,21 @@ citations:
       - media-birth-cert-photo
 ```
 
+**Directly on Assertions** (when media itself is the primary evidence):
+
+```yaml
+assertions:
+  assertion-john-death:
+    subject:
+      person: person-john-smith
+    property: died_on
+    value: "1920-06-20"
+    media:
+      - media-gravestone-photo
+    confidence: medium
+    notes: "Date read from gravestone inscription"
+```
+
 ## Schema Reference
 
 See [media.schema.json](../schema/v1/media.schema.json) for the complete JSON Schema definition.
@@ -461,5 +483,6 @@ See [media.schema.json](../schema/v1/media.schema.json) for the complete JSON Sc
 
 - [Source Entity](source) - Sources that media documents
 - [Citation Entity](citation) - Citations that media supports
+- [Assertion Entity](assertion) - Assertions that media can directly evidence
 - [Person Entity](person) - People depicted in media
 - [Archive Organization](../3-archive-organization#organization-strategies) - Organizing media files

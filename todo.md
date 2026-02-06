@@ -31,7 +31,6 @@ Data that is parsed but silently dropped or not stored.
 
 Design decisions that affect the spec and should be resolved before 1.0.
 
-- **Media as evidence**: Consider adding `media` as a third evidence option for assertions (alongside `citations` and `sources`) — useful for direct visual evidence like gravestone photos. More broadly, solidify the purpose of media entities.
 - **QUAY ratings**: Currently preserved in citation notes as "GEDCOM QUAY: X". Consider mapping to GLX confidence levels or storing as structured property.
 - **Event participant requirement**: Consider relaxing — historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants.
 - **Gender/sex controlled vocabularies**: Should these be formalized?

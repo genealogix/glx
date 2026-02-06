@@ -12,6 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.3] - 2026-01-09
 
+### Added
+
+#### Media as Assertion Evidence
+- **Added `media` as a third evidence option for assertions** - Assertions can now reference media entities directly as evidence, alongside citations and sources
+- Useful for direct visual evidence like gravestone photos, handwritten documents, or family photographs
+- JSON schema `anyOf` evidence constraint updated to include `media`
+- Media entities remain linkable to sources (via `media.source`) and citations (via `citation.media`) as before
+
 ### Fixed
 
 - **Added missing `locality` place type to standard vocabulary** - The GEDCOM importer's `inferPlaceType` function could assign `locality` to deeply-nested place components, but the term was not defined in `place-types.glx`

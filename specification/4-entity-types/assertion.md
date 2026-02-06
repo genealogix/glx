@@ -48,7 +48,7 @@ assertions:
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `subject` | object | Typed reference to the entity this assertion is about |
 | `property` OR `participant` | string/object | Either a property string or participant object (mutually exclusive) |
-| `citations` OR `sources` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
+| `citations`, `sources`, or `media` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
 
 ### Optional Fields
 
@@ -142,6 +142,7 @@ property: occupation
 At least ONE of the following is required:
 - `citations` - Array of citation IDs
 - `sources` - Array of source IDs (direct source references)
+- `media` - Array of media IDs (direct visual or documentary evidence)
 
 **When to use each:**
 
@@ -152,11 +153,18 @@ At least ONE of the following is required:
   - Photographs or brief documents without meaningful subdivisions
   - Preliminary research where you'll add specific citations later
 
+- **`media`** (direct visual evidence): When media itself is the evidence, without a formal source or citation:
+  - Gravestone photos directly evidencing dates and names
+  - Family photographs evidencing relationships or locations
+  - Handwritten documents or letters where the media _is_ the primary evidence
+
 Example:
 ```yaml
 citations:
   - citation-birth-cert
   - citation-baptism-record
+media:
+  - media-gravestone-photo
 ```
 
 ## Optional Fields
@@ -383,6 +391,38 @@ assertions:
     notes: "Residence at time of 1851 census"
 ```
 
+### Assertion with Direct Media Evidence
+
+```yaml
+assertions:
+  assertion-john-death-date:
+    subject:
+      person: person-john-smith
+    property: died_on
+    value: "1920-06-20"
+    media:
+      - media-gravestone-photo
+    confidence: medium
+    notes: "Date read directly from gravestone inscription"
+```
+
+Media can also be combined with citations and sources:
+
+```yaml
+assertions:
+  assertion-john-death-confirmed:
+    subject:
+      person: person-john-smith
+    property: died_on
+    value: "1920-06-20"
+    citations:
+      - citation-death-cert
+    media:
+      - media-gravestone-photo
+    confidence: high
+    notes: "Death certificate corroborated by gravestone inscription"
+```
+
 ### Low Confidence Assertion
 
 ```yaml
@@ -424,9 +464,10 @@ The standard vocabulary defines these default confidence levels (archives may cu
 
 - `subject` must be an object with exactly one typed reference field (person, event, relationship, or place)
 - The referenced entity must exist in the archive
-- **At least one of `citations` or `sources` must be present** (this is validated as an error if missing)
+- **At least one of `citations`, `sources`, or `media` must be present** (this is validated as an error if missing)
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
+- All media references must point to existing Media entities
 - `property` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown properties generate warnings)
 - Confidence must be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary)
 
@@ -472,10 +513,15 @@ assertions/
 Assertion
     ├── subject → references Person, Event, Relationship, or Place (typed reference)
     ├── citations → array of Citation IDs (evidence)
-    └── sources → array of Source IDs (direct reference)
+    ├── sources → array of Source IDs (direct reference)
+    └── media → array of Media IDs (direct visual/documentary evidence)
 
 Citation
     └── supports → Assertion (via assertion's citations array)
+
+Media
+    └── supports → Assertion (via assertion's media array)
+    └── documents → Source or Citation (via media's source field or citation's media array)
 
 Person/Event/Relationship/Place
     └── documented by → Assertion (subject reference)

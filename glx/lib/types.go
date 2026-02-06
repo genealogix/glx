@@ -236,6 +236,7 @@ type Assertion struct {
 	Confidence  string       `refType:"confidence_levels"   yaml:"confidence,omitempty"`
 	Sources     []string     `refType:"sources"             yaml:"sources,omitempty"`
 	Citations   []string     `refType:"citations"           yaml:"citations,omitempty"`
+	Media       []string     `refType:"media"               yaml:"media,omitempty"`
 	Notes       string       `yaml:"notes,omitempty"`
 }
 
