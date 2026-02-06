@@ -99,6 +99,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `godchild` participant role** - For use in godparent relationships
 - **Updated relationship.md** - Added comprehensive example showing baptism event with godparent role linked to godparent relationship
 
+#### Type System
+
+##### Unified Participant Type
+- **Unified participant types** - Consolidated `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into single `Participant` struct
+  - All three types had identical structure: `person`, `role`, `notes` fields
+  - Reduces code duplication and simplifies the API
+  - `Event.Participants`, `Relationship.Participants`, and `Assertion.Participant` now all use the unified `Participant` type
+
 #### Documentation
 
 ##### Specification Structure

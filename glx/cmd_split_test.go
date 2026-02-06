@@ -384,10 +384,10 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 		personID := fmt.Sprintf("person-%d", i%50) // Reference one of the persons we created
 		glxFile.Events[id] = &lib.Event{
 			Type: "birth",
-			Participants: []lib.EventParticipant{
+			Participants: []lib.Participant{
 				{
-					PersonID: personID,
-					Role:     "principal",
+					Person: personID,
+					Role:   "principal",
 				},
 			},
 		}

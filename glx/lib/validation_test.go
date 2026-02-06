@@ -11,7 +11,7 @@ func TestValidateEntityReferences(t *testing.T) {
 	t.Run("valid references", func(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{"person-1": {}},
-			Events:  map[string]*Event{"event-1": {Participants: []EventParticipant{{PersonID: "person-1"}}}},
+			Events:  map[string]*Event{"event-1": {Participants: []Participant{{Person: "person-1"}}}},
 		}
 		result := archive.Validate()
 		assert.Empty(t, result.Errors)
@@ -127,9 +127,9 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
 			Events: map[string]*Event{
 				"event-1": {
-					Participants: []EventParticipant{
-						{PersonID: "person-1", Role: "bride"},
-						{PersonID: "person-2", Role: "groom"},
+					Participants: []Participant{
+						{Person: "person-1", Role: "bride"},
+						{Person: "person-2", Role: "groom"},
 					},
 				},
 			},
@@ -147,7 +147,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Persons: map[string]*Person{},
 			Events: map[string]*Event{
 				"event-1": {
-					Participants: []EventParticipant{{PersonID: "person-nonexistent"}},
+					Participants: []Participant{{Person: "person-nonexistent"}},
 				},
 			},
 		}
@@ -161,7 +161,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Persons: map[string]*Person{"person-1": {}},
 			Events: map[string]*Event{
 				"event-1": {
-					Participants: []EventParticipant{{PersonID: "person-1", Role: "invalid-role"}},
+					Participants: []Participant{{Person: "person-1", Role: "invalid-role"}},
 				},
 			},
 			ParticipantRoles: map[string]*ParticipantRole{},
@@ -176,7 +176,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
 			Relationships: map[string]*Relationship{
 				"rel-1": {
-					Participants: []RelationshipParticipant{
+					Participants: []Participant{
 						{Person: "person-1", Role: "spouse"},
 						{Person: "person-2", Role: "spouse"},
 					},
@@ -195,7 +195,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Persons: map[string]*Person{},
 			Relationships: map[string]*Relationship{
 				"rel-1": {
-					Participants: []RelationshipParticipant{{Person: "person-missing"}},
+					Participants: []Participant{{Person: "person-missing"}},
 				},
 			},
 		}
@@ -210,7 +210,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Assertions: map[string]*Assertion{
 				"assert-1": {
 					Subject: EntityRef{Event: "event-1"},
-					Participant: &AssertionParticipant{
+					Participant: &Participant{
 						Person: "person-1",
 						Role:   "witness",
 					},
@@ -231,7 +231,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 			Assertions: map[string]*Assertion{
 				"assert-1": {
 					Subject: EntityRef{Event: "event-1"},
-					Participant: &AssertionParticipant{
+					Participant: &Participant{
 						Person: "person-nonexistent",
 					},
 				},
@@ -253,7 +253,7 @@ func TestValidateSliceReferences(t *testing.T) {
 			},
 			Relationships: map[string]*Relationship{
 				"rel-1": {
-					Participants: []RelationshipParticipant{
+					Participants: []Participant{
 						{Person: "person-1"},
 						{Person: "person-2"},
 					},
@@ -271,7 +271,7 @@ func TestValidateSliceReferences(t *testing.T) {
 			},
 			Relationships: map[string]*Relationship{
 				"rel-1": {
-					Participants: []RelationshipParticipant{
+					Participants: []Participant{
 						{Person: "person-1"},
 						{Person: "person-missing"},
 					},

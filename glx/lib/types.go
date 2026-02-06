@@ -107,39 +107,32 @@ type Person struct {
 	Notes      string         `yaml:"notes,omitempty"`
 }
 
-// Relationship represents a relationship between two or more people.
-type Relationship struct {
-	Type         string                    `refType:"relationship_types" yaml:"type"`
-	Participants []RelationshipParticipant `yaml:"participants"`
-	StartEvent   string                    `refType:"events"             yaml:"start_event,omitempty"`
-	EndEvent     string                    `refType:"events"             yaml:"end_event,omitempty"`
-	Properties   map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Description  string                    `yaml:"description,omitempty"`
-	Notes        string                    `yaml:"notes,omitempty"`
-}
-
-// RelationshipParticipant defines a person's role in a relationship.
-type RelationshipParticipant struct {
+// Participant defines a person's role in an event, relationship, or assertion.
+type Participant struct {
 	Person string `refType:"persons"           yaml:"person"`
 	Role   string `refType:"participant_roles" yaml:"role,omitempty"`
 	Notes  string `yaml:"notes,omitempty"`
 }
 
-// Event represents a genealogical event.
-type Event struct {
-	Type         string             `refType:"event_types"        yaml:"type"`
-	PlaceID      string             `refType:"places"             yaml:"place,omitempty"`
-	Date         DateString         `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
-	Participants []EventParticipant `yaml:"participants"`
-	Properties   map[string]any     `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes        string             `yaml:"notes,omitempty"`
+// Relationship represents a relationship between two or more people.
+type Relationship struct {
+	Type         string         `refType:"relationship_types" yaml:"type"`
+	Participants []Participant  `yaml:"participants"`
+	StartEvent   string         `refType:"events"             yaml:"start_event,omitempty"`
+	EndEvent     string         `refType:"events"             yaml:"end_event,omitempty"`
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Description  string         `yaml:"description,omitempty"`
+	Notes        string         `yaml:"notes,omitempty"`
 }
 
-// EventParticipant defines a person's role in an event.
-type EventParticipant struct {
-	PersonID string `refType:"persons"           yaml:"person"`
-	Role     string `refType:"participant_roles" yaml:"role,omitempty"`
-	Notes    string `yaml:"notes,omitempty"`
+// Event represents a genealogical event.
+type Event struct {
+	Type         string         `refType:"event_types"        yaml:"type"`
+	PlaceID      string         `refType:"places"             yaml:"place,omitempty"`
+	Date         DateString     `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
+	Participants []Participant  `yaml:"participants"`
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes        string         `yaml:"notes,omitempty"`
 }
 
 // Place represents a geographical location.
@@ -236,21 +229,14 @@ func (e *EntityRef) ID() string {
 
 // Assertion represents a conclusion made by a researcher.
 type Assertion struct {
-	Subject     EntityRef             `yaml:"subject"`
-	Property    string                `yaml:"property,omitempty"`    // Optional, not present if participant exists
-	Value       string                `yaml:"value,omitempty"`       // Not present if participant exists
-	Participant *AssertionParticipant `yaml:"participant,omitempty"` // Not present if property/value exists
-	Confidence  string                `refType:"confidence_levels"   yaml:"confidence,omitempty"`
-	Sources     []string              `refType:"sources"             yaml:"sources,omitempty"`
-	Citations   []string              `refType:"citations"           yaml:"citations,omitempty"`
-	Notes       string                `yaml:"notes,omitempty"`
-}
-
-// AssertionParticipant represents a participant in an assertion (used for participant-based claims).
-type AssertionParticipant struct {
-	Person string `refType:"persons"           yaml:"person"`
-	Role   string `refType:"participant_roles" yaml:"role,omitempty"`
-	Notes  string `yaml:"notes,omitempty"`
+	Subject     EntityRef    `yaml:"subject"`
+	Property    string       `yaml:"property,omitempty"`    // Optional, not present if participant exists
+	Value       string       `yaml:"value,omitempty"`       // Not present if participant exists
+	Participant *Participant `yaml:"participant,omitempty"` // Not present if property/value exists
+	Confidence  string       `refType:"confidence_levels"   yaml:"confidence,omitempty"`
+	Sources     []string     `refType:"sources"             yaml:"sources,omitempty"`
+	Citations   []string     `refType:"citations"           yaml:"citations,omitempty"`
+	Notes       string       `yaml:"notes,omitempty"`
 }
 
 // Media represents a media object, like a photo or document.

@@ -36,14 +36,14 @@ Analyze the Go type definitions in **glx/lib/types.go** and compare them with:
 
 Core entities:
 - Person
-- Event
-- Relationship (including RelationshipParticipant)
+- Event (uses Participant)
+- Relationship (uses Participant)
 - Place
 - Source
 - Citation
 - Repository
 - Media
-- Assertion (including AssertionParticipant)
+- Assertion (uses Participant)
 
 ## Code Files to Check
 
@@ -84,8 +84,8 @@ Compare Go types with JSON schema types:
 - Verify reference arrays have correct `refType` tags
 
 ### 6. Nested Types
-- Check nested structs (EventParticipant, RelationshipParticipant, AssertionParticipant)
-- Verify these match the schema's object definitions
+- Check Participant struct (used by Event, Relationship, and Assertion)
+- Verify it matches the schema's object definitions
 - Check required fields in nested types
 
 ### 7. Special Cases
@@ -233,7 +233,7 @@ OR
 2. **PlaceID vs Place**: Event uses `PlaceID string` with yaml tag `place`
 3. **Repository state field**: Go uses `State` field with yaml:`state_province`
 4. **Media arrays**: Check if media references use `[]string` with `refType:"media"`
-5. **Participant types**: EventParticipant, RelationshipParticipant, AssertionParticipant
+5. **Participant type**: Unified Participant struct used by Event, Relationship, and Assertion
 
 ## Summary
 

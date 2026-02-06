@@ -74,7 +74,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 		relationship := &Relationship{
 			Type: RelationshipTypeMarriage,
-			Participants: []RelationshipParticipant{
+			Participants: []Participant{
 				{Person: husbandID, Role: ParticipantRoleSpouse},
 				{Person: wifeID, Role: ParticipantRoleSpouse},
 			},
@@ -172,17 +172,17 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	}
 
 	// Add participants for both spouses
-	var participants []EventParticipant
+	var participants []Participant
 	if husbandID != "" {
-		participants = append(participants, EventParticipant{
-			PersonID: husbandID,
-			Role:     ParticipantRoleSpouse,
+		participants = append(participants, Participant{
+			Person: husbandID,
+			Role:   ParticipantRoleSpouse,
 		})
 	}
 	if wifeID != "" {
-		participants = append(participants, EventParticipant{
-			PersonID: wifeID,
-			Role:     ParticipantRoleSpouse,
+		participants = append(participants, Participant{
+			Person: wifeID,
+			Role:   ParticipantRoleSpouse,
 		})
 	}
 	event.Participants = participants
@@ -215,17 +215,17 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	extractEventDetails(eventID, divRecord, event, conv, true)
 
 	// Add participants for both spouses
-	var participants []EventParticipant
+	var participants []Participant
 	if husbandID != "" {
-		participants = append(participants, EventParticipant{
-			PersonID: husbandID,
-			Role:     ParticipantRoleSpouse,
+		participants = append(participants, Participant{
+			Person: husbandID,
+			Role:   ParticipantRoleSpouse,
 		})
 	}
 	if wifeID != "" {
-		participants = append(participants, EventParticipant{
-			PersonID: wifeID,
-			Role:     ParticipantRoleSpouse,
+		participants = append(participants, Participant{
+			Person: wifeID,
+			Role:   ParticipantRoleSpouse,
 		})
 	}
 	event.Participants = participants
@@ -260,17 +260,17 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	extractEventDetails(eventID, eventRecord, event, conv, true)
 
 	// Add participants for both spouses
-	var participants []EventParticipant
+	var participants []Participant
 	if husbandID != "" {
-		participants = append(participants, EventParticipant{
-			PersonID: husbandID,
-			Role:     ParticipantRoleSpouse,
+		participants = append(participants, Participant{
+			Person: husbandID,
+			Role:   ParticipantRoleSpouse,
 		})
 	}
 	if wifeID != "" {
-		participants = append(participants, EventParticipant{
-			PersonID: wifeID,
-			Role:     ParticipantRoleSpouse,
+		participants = append(participants, Participant{
+			Person: wifeID,
+			Role:   ParticipantRoleSpouse,
 		})
 	}
 	event.Participants = participants

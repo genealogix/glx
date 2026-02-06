@@ -68,8 +68,8 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		eventID := "event-birth-" + personID
 		placeID := generatePlace(glxFile)
 
-		participants := []EventParticipant{
-			{PersonID: personID, Role: "principal"},
+		participants := []Participant{
+			{Person: personID, Role: "principal"},
 		}
 
 		// Add parents to birth event if we have other people
@@ -77,8 +77,8 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 			parent1 := personIDs[rand.Intn(i)]
 			parent2 := personIDs[rand.Intn(i)]
 			if parent1 != parent2 {
-				participants = append(participants, EventParticipant{PersonID: parent1, Role: "parent"})
-				participants = append(participants, EventParticipant{PersonID: parent2, Role: "parent"})
+				participants = append(participants, Participant{Person: parent1, Role: "parent"})
+				participants = append(participants, Participant{Person: parent2, Role: "parent"})
 			}
 		}
 
@@ -120,7 +120,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 			glxFile.Relationships[relID] = &Relationship{
 				Type: relType,
-				Participants: []RelationshipParticipant{
+				Participants: []Participant{
 					{Person: p1, Role: roles[0]},
 					{Person: p2, Role: roles[1]},
 				},

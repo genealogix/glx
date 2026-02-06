@@ -272,7 +272,7 @@ func TestJoinArchive(t *testing.T) {
 					Relationships: map[string]*lib.Relationship{
 						"rel-1": {
 							Type: "parent-child",
-							Participants: []lib.RelationshipParticipant{
+							Participants: []lib.Participant{
 								{Person: "person-1"},
 								{Person: "person-2"},
 							},
@@ -513,7 +513,7 @@ func TestJoinArchiveRoundTrip(t *testing.T) {
 		Relationships: map[string]*lib.Relationship{
 			"rel-1": {
 				Type: "spouse",
-				Participants: []lib.RelationshipParticipant{
+				Participants: []lib.Participant{
 					{Person: "person-1"},
 					{Person: "person-2"},
 				},

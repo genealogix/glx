@@ -188,12 +188,12 @@ persons:
 						"person-2": {Properties: make(map[string]any)},
 					},
 					Events: map[string]*lib.Event{
-						"event-1": {Type: "birth", Participants: []lib.EventParticipant{{PersonID: "person-1", Role: "principal"}}},
+						"event-1": {Type: "birth", Participants: []lib.Participant{{Person: "person-1", Role: "principal"}}},
 					},
 					Relationships: map[string]*lib.Relationship{
 						"rel-1": {
 							Type: "parent-child",
-							Participants: []lib.RelationshipParticipant{
+							Participants: []lib.Participant{
 								{Person: "person-1", Role: "child"},
 								{Person: "person-2", Role: "parent"},
 							},
@@ -596,7 +596,7 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 					Relationships: map[string]*lib.Relationship{
 						"r1": {
 							Type: "parent-child",
-							Participants: []lib.RelationshipParticipant{
+							Participants: []lib.Participant{
 								{Person: "p1"},
 								{Person: "p2"},
 							},

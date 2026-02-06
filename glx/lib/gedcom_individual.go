@@ -318,10 +318,10 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	}
 
 	// Add participant to event
-	event.Participants = []EventParticipant{
+	event.Participants = []Participant{
 		{
-			PersonID: personID,
-			Role:     ParticipantRolePrincipal,
+			Person: personID,
+			Role:   ParticipantRolePrincipal,
 		},
 	}
 
