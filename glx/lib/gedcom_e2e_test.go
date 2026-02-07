@@ -273,8 +273,13 @@ func TestE2E_GEDCOM551_TortureTest(t *testing.T) {
 		}
 	}
 
-	t.Logf("✓ Torture Test: %d persons, %d events, %d relationships",
-		len(glx.Persons), len(glx.Events), len(glx.Relationships))
+	// Media should be imported (top-level + embedded from inline OBJE)
+	if len(glx.Media) == 0 {
+		t.Error("No media entities imported from torture test")
+	}
+
+	t.Logf("✓ Torture Test: %d persons, %d events, %d relationships, %d media",
+		len(glx.Persons), len(glx.Events), len(glx.Relationships), len(glx.Media))
 }
 
 func TestE2E_GEDCOM70_Minimal(t *testing.T) {

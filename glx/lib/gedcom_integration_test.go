@@ -652,3 +652,352 @@ func TestIsGEDCOMPointer(t *testing.T) {
 		})
 	}
 }
+
+func TestMediaImport_InlineOBJEReference(t *testing.T) {
+	// Test that inline OBJE references (XRef) on persons link to top-level media
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE photo.jpg\n1 FORM jpeg\n1 TITL Family Photo\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n1 OBJE @M1@\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Should have 1 media entity from top-level OBJE
+	if len(glx.Media) != 1 {
+		t.Fatalf("Expected 1 media entity, got %d", len(glx.Media))
+	}
+
+	// Person should have media property linking to it
+	for _, person := range glx.Persons {
+		mediaIDs, ok := person.Properties[PropertyMedia].([]string)
+		if !ok {
+			t.Fatal("Person should have media property")
+		}
+		if len(mediaIDs) != 1 {
+			t.Errorf("Expected 1 media ID on person, got %d", len(mediaIDs))
+		}
+		// Verify the media ID actually exists
+		if _, exists := glx.Media[mediaIDs[0]]; !exists {
+			t.Errorf("Media ID %s referenced by person does not exist", mediaIDs[0])
+		}
+	}
+}
+
+func TestMediaImport_EmbeddedOBJE(t *testing.T) {
+	// Test embedded OBJE (no XRef, has subrecords) on person
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME Jane /Doe/\n1 OBJE\n2 FORM jpeg\n2 TITL Portrait\n2 FILE portrait.jpg\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Should have 1 media entity from embedded OBJE
+	if len(glx.Media) != 1 {
+		t.Fatalf("Expected 1 media entity, got %d", len(glx.Media))
+	}
+
+	// Verify media properties
+	for _, media := range glx.Media {
+		if media.Title != "Portrait" {
+			t.Errorf("Expected media title 'Portrait', got %q", media.Title)
+		}
+		if media.URI != "media/files/portrait.jpg" {
+			t.Errorf("Expected media URI 'media/files/portrait.jpg', got %q", media.URI)
+		}
+	}
+}
+
+func TestMediaImport_OBJEOnEvent(t *testing.T) {
+	// Test OBJE reference on an individual event (birth)
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE certificate.pdf\n1 FORM pdf\n1 TITL Birth Certificate\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n1 BIRT\n2 DATE 1 JAN 1990\n2 OBJE @M1@\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Should have 1 media from top-level OBJE
+	if len(glx.Media) != 1 {
+		t.Fatalf("Expected 1 media entity, got %d", len(glx.Media))
+	}
+
+	// Birth event should have media property
+	for _, event := range glx.Events {
+		if event.Type == EventTypeBirth {
+			mediaIDs, ok := event.Properties[PropertyMedia].([]string)
+			if !ok {
+				t.Fatal("Birth event should have media property")
+			}
+			if len(mediaIDs) != 1 {
+				t.Errorf("Expected 1 media ID on birth event, got %d", len(mediaIDs))
+			}
+
+			return
+		}
+	}
+	t.Error("No birth event found")
+}
+
+func TestMediaImport_URLTypeMedia(t *testing.T) {
+	// Test URL-type multimedia (common in GEDCOM 5.5.x)
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME Jane /Doe/\n" +
+		"1 OBJE\n2 FORM URL\n2 TITL Family Website\n2 FILE http://example.com/family\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(glx.Media) != 1 {
+		t.Fatalf("Expected 1 media entity, got %d", len(glx.Media))
+	}
+
+	for _, media := range glx.Media {
+		if media.URI != "http://example.com/family" {
+			t.Errorf("Expected URI 'http://example.com/family', got %q", media.URI)
+		}
+		if media.Title != "Family Website" {
+			t.Errorf("Expected title 'Family Website', got %q", media.Title)
+		}
+	}
+}
+
+func TestMediaImport_BLOBData(t *testing.T) {
+	// Test that BLOB data in top-level OBJE records is handled
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 TITL Flower Image\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F.jwA.Dzzzzw\n2 CONT .......A..k.a6.A.......A..k.\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(glx.Media) != 1 {
+		t.Fatalf("Expected 1 media entity, got %d", len(glx.Media))
+	}
+
+	for _, media := range glx.Media {
+		if media.Title != "Flower Image" {
+			t.Errorf("Expected title 'Flower Image', got %q", media.Title)
+		}
+		// BLOB size should be recorded in properties
+		if media.Properties == nil {
+			t.Fatal("Expected media to have properties with blob_size")
+		}
+		if _, ok := media.Properties["blob_size"]; !ok {
+			t.Error("Expected blob_size property on media with BLOB data")
+		}
+	}
+}
+
+func TestMediaImport_TortureTestMediaCount(t *testing.T) {
+	// Verify the torture test imports a significant number of media entities
+	gedcomPath := filepath.Join("..", "testdata", "gedcom", "5.5.1", "torture-test-551", "torture-test.ged")
+	logPath := filepath.Join(t.TempDir(), "import.log")
+
+	glx, _, err := importGEDCOMFromFile(gedcomPath, logPath)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// The torture test has 1 top-level OBJE + ~27 inline/embedded OBJE
+	// We should import at least 25 media entities (was only 2 before fix)
+	if len(glx.Media) < 25 {
+		t.Errorf("Expected at least 25 media entities from torture test, got %d", len(glx.Media))
+	}
+
+	// Count media with URIs (not blob-only)
+	mediaWithURIs := 0
+	for _, media := range glx.Media {
+		if media.URI != "" {
+			mediaWithURIs++
+		}
+	}
+
+	// Count media with URLs
+	mediaWithURLs := 0
+	for _, media := range glx.Media {
+		if strings.HasPrefix(media.URI, "http") || strings.HasPrefix(media.URI, "ftp") || strings.HasPrefix(media.URI, "mailto") {
+			mediaWithURLs++
+		}
+	}
+
+	t.Logf("✓ Torture test media: %d total, %d with URIs, %d with URLs",
+		len(glx.Media), mediaWithURIs, mediaWithURLs)
+
+	// Should have URL-type media (http/ftp links)
+	if mediaWithURLs < 3 {
+		t.Errorf("Expected at least 3 URL-type media, got %d", mediaWithURLs)
+	}
+}
+
+func TestClassifyFileRef(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		// Relative paths — should be copied
+		{"photo.jpg", true},
+		{"media/photo.jpg", true},
+		{"Photos/img001.jpg", true},
+		{"media/CharlotteBront%C3%AB.jpg", true},
+
+		// URLs — should NOT be copied
+		{"http://example.com/photo.jpg", false},
+		{"https://example.com/photo.jpg", false},
+		{"ftp://ftp.genealogy.org/file", false},
+		{"file:///path/to/file1", false},
+		{"mailto:support@example.com", false},
+
+		// Absolute paths — should NOT be copied
+		{"/home/user/photo.jpg", false},
+		{"C:\\Users\\photo.jpg", false},
+		{"D:/Documents/photo.jpg", false},
+
+		// Empty
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := classifyFileRef(tt.input)
+			if result != tt.expected {
+				t.Errorf("classifyFileRef(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestDeduplicateFilename(t *testing.T) {
+	usedNames := make(map[string]int)
+
+	// First use — unchanged
+	name1 := deduplicateFilename("photo.jpg", usedNames)
+	if name1 != "photo.jpg" {
+		t.Errorf("First use: got %q, want %q", name1, "photo.jpg")
+	}
+
+	// Second use — deduplicated
+	name2 := deduplicateFilename("photo.jpg", usedNames)
+	if name2 != "photo-2.jpg" {
+		t.Errorf("Second use: got %q, want %q", name2, "photo-2.jpg")
+	}
+
+	// Third use — deduplicated again
+	name3 := deduplicateFilename("photo.jpg", usedNames)
+	if name3 != "photo-3.jpg" {
+		t.Errorf("Third use: got %q, want %q", name3, "photo-3.jpg")
+	}
+
+	// Different file — unchanged
+	name4 := deduplicateFilename("document.pdf", usedNames)
+	if name4 != "document.pdf" {
+		t.Errorf("Different file: got %q, want %q", name4, "document.pdf")
+	}
+
+	// No extension
+	name5 := deduplicateFilename("README", usedNames)
+	if name5 != "README" {
+		t.Errorf("No extension: got %q, want %q", name5, "README")
+	}
+	name6 := deduplicateFilename("README", usedNames)
+	if name6 != "README-2" {
+		t.Errorf("No extension dedup: got %q, want %q", name6, "README-2")
+	}
+}
+
+func TestMediaImport_FileSourceTracking(t *testing.T) {
+	// Test that relative FILE paths produce MediaFileSource entries
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE photos/portrait.jpg\n1 FORM jpeg\n1 TITL Portrait\n" +
+		"0 @M2@ OBJE\n1 FILE http://example.com/doc.pdf\n1 FORM pdf\n1 TITL Online Doc\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	_, result, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Should have 1 file source (relative path only, not URL)
+	if len(result.MediaFiles) != 1 {
+		t.Fatalf("Expected 1 media file source, got %d", len(result.MediaFiles))
+	}
+
+	mf := result.MediaFiles[0]
+	if mf.SourceType != MediaSourceFile {
+		t.Errorf("Expected MediaSourceFile, got %d", mf.SourceType)
+	}
+	if mf.RelativePath != "photos/portrait.jpg" {
+		t.Errorf("Expected RelativePath 'photos/portrait.jpg', got %q", mf.RelativePath)
+	}
+	if mf.TargetFilename != "portrait.jpg" {
+		t.Errorf("Expected TargetFilename 'portrait.jpg', got %q", mf.TargetFilename)
+	}
+}
+
+func TestMediaImport_BlobSourceTracking(t *testing.T) {
+	// Test that BLOB data produces MediaFileSource entries
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 TITL Flower\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n2 CONT .jwA.Dzzzzw.....\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	_, result, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// Should have 1 blob source
+	if len(result.MediaFiles) != 1 {
+		t.Fatalf("Expected 1 media file source, got %d", len(result.MediaFiles))
+	}
+
+	mf := result.MediaFiles[0]
+	if mf.SourceType != MediaSourceBlob {
+		t.Errorf("Expected MediaSourceBlob, got %d", mf.SourceType)
+	}
+	if mf.BlobData == "" {
+		t.Error("Expected non-empty BlobData")
+	}
+	if !strings.HasPrefix(mf.TargetFilename, "blob-") {
+		t.Errorf("Expected TargetFilename starting with 'blob-', got %q", mf.TargetFilename)
+	}
+}
+
+func TestMediaImport_URLsNotTracked(t *testing.T) {
+	// Verify URLs, absolute paths, and special schemes don't generate MediaFileSource
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME Jane /Doe/\n" +
+		"1 OBJE\n2 FORM URL\n2 TITL Web\n2 FILE http://example.com/family\n" +
+		"1 OBJE\n2 FORM URL\n2 TITL FTP\n2 FILE ftp://ftp.example.org/file\n" +
+		"1 OBJE\n2 FORM URL\n2 TITL Email\n2 FILE mailto:test@example.com\n" +
+		"0 TRLR\n"
+
+	reader := strings.NewReader(gedcom)
+	_, result, err := ImportGEDCOM(reader, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(result.MediaFiles) != 0 {
+		t.Errorf("Expected 0 media file sources for URLs, got %d", len(result.MediaFiles))
+	}
+}

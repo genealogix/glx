@@ -29,6 +29,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Extract spouse references
 	var husbandID, wifeID string
 	var marriageRecord, divorceRecord *GEDCOMRecord
+	var objeRecords []*GEDCOMRecord
 
 	for _, sub := range famRecord.SubRecords {
 		switch sub.Tag {
@@ -72,6 +73,9 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
 			}
 
+		case GedcomTagObje:
+			objeRecords = append(objeRecords, sub)
+
 		default:
 			if isExtensionTag(sub.Tag) {
 				conv.addWarning(sub.Line, sub.Tag, "Extension tag not stored")
@@ -96,6 +100,11 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		citationIDs := extractCitations(relationshipID, famRecord, conv)
 		if len(citationIDs) > 0 {
 			relationship.Properties[PropertyCitations] = citationIDs
+		}
+
+		// Resolve FAM-level OBJE references
+		for _, obje := range objeRecords {
+			handleOBJE(obje, relationship.Properties, conv)
 		}
 
 		conv.GLX.Relationships[relationshipID] = relationship
@@ -151,34 +160,6 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 		case GedcomTagType:
 			// Marriage type (e.g., civil, religious)
 			event.Properties[PropertyMarriageType] = sub.Value
-
-		case GedcomTagObje:
-			// Media attached to event
-			if sub.Value != "" {
-				mediaID := conv.MediaIDMap[sub.Value]
-				if mediaID != "" {
-					if event.Properties[PropertyMedia] == nil {
-						event.Properties[PropertyMedia] = []string{}
-					}
-					media := event.Properties[PropertyMedia].([]string)
-					event.Properties[PropertyMedia] = append(media, mediaID)
-				}
-			} else {
-				// Embedded media
-				mediaID, err := convertEmbeddedMedia(sub, conv)
-				if err != nil {
-					conv.Logger.LogWarning(sub.Line, GedcomTagObje, "", "Failed to convert embedded media: "+err.Error())
-
-					continue
-				}
-				if mediaID != "" {
-					if event.Properties[PropertyMedia] == nil {
-						event.Properties[PropertyMedia] = []string{}
-					}
-					media := event.Properties[PropertyMedia].([]string)
-					event.Properties[PropertyMedia] = append(media, mediaID)
-				}
-			}
 		}
 	}
 

@@ -20,6 +20,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - JSON schema `anyOf` evidence constraint updated to include `media`
 - Media entities remain linkable to sources (via `media.source`) and citations (via `citation.media`) as before
 
+#### Media File Import
+- **Media files are now copied into the archive during GEDCOM import** - Relative FILE paths from GEDCOM OBJE records are copied from the GEDCOM source directory into `media/files/` in the output archive
+- **BLOB data is decoded and written to files** - GEDCOM 5.5.1 deprecated BLOB binary data is decoded using the GEDCOM custom encoding and written to `media/files/`
+- **Media URIs rewritten to archive-relative paths** - Relative FILE paths are rewritten from their GEDCOM-relative form (e.g., `photos/portrait.jpg`) to `media/files/portrait.jpg`
+- **URL and absolute path references left as-is** - HTTP, FTP, mailto, file://, and absolute paths are preserved unchanged in Media.URI
+- **Filename deduplication** - When multiple OBJE records reference files with the same basename, filenames are deduplicated with counter suffixes (e.g., `photo-2.jpg`)
+- **Missing source files produce warnings, not errors** - File copy failures are non-fatal; URL-decoded path fallback for GEDCOM 7.0 percent-encoded filenames
+
+#### GEDCOM Media/OBJE Import
+- **Implemented inline OBJE handling for persons and events** - Media references (XRef) and embedded OBJE records on individuals, birth/death/marriage events, and other life events are now imported (previously only marriage events and top-level OBJE were handled)
+- **Added `handleOBJE` shared helper** - Handles XRef references, GEDCOM 7.0 `@VOID@` pointers with subrecords, and embedded OBJE without XRef
+- **Added OBJE handling in `extractEventDetails`** - All event types (individual, family, divorce, etc.) now automatically process OBJE subrecords
+- **Added BLOB data handling** - GEDCOM 5.5.1 BLOB binary data on top-level OBJE records is now recognized and blob size recorded in media properties
+- **URL-type multimedia imported** - OBJE records with `FORM URL` and http/ftp/mailto FILE references are now correctly imported as media entities
+- **OBJE handling on all record types** - Added embedded OBJE support for source records, family records, submitter records, census records, and person property tags (e.g., OCCU). Citation OBJE now handles both references and embedded media.
+- Torture test media import improved from 2 to 32 entities (100% coverage, 0% loss)
+
 #### GEDCOM Census (CENS) Support
 - **Implemented CENS tag handling for individual and family records** - Census records are no longer silently skipped during GEDCOM import
 - Census records are treated as evidence sources, not events: each CENS creates a Source (type: `census`) and Citation

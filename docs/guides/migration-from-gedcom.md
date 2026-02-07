@@ -58,6 +58,7 @@ git commit -m "Import from GEDCOM: family.ged"
 - **ADDR subfields**: Full address preservation and place hierarchy fallback
 - Shared and inline notes
 - Source citations with locators and transcriptions
+- **Media files**: Relative FILE paths are copied to `media/files/`, BLOB data is decoded and written to files, URLs are preserved as-is
 
 For implementation details, see [GEDCOM Import Developer Docs](../development/gedcom-import.md).
 

@@ -34,7 +34,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	conv.Logger.LogInfo(fmt.Sprintf("Converting OBJE %s -> %s", objeRecord.XRef, mediaID))
 
 	// Convert using common logic
-	media := convertMediaCommon(objeRecord, conv)
+	media := convertMediaCommon(objeRecord, mediaID, conv)
 
 	// Handle SOUR subrecords (only for top-level OBJE records)
 	for _, sub := range objeRecord.SubRecords {
@@ -67,7 +67,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 	conv.Logger.LogInfo("Converting embedded OBJE -> " + mediaID)
 
 	// Convert using common logic
-	media := convertMediaCommon(objeRecord, conv)
+	media := convertMediaCommon(objeRecord, mediaID, conv)
 
 	// Store media
 	conv.GLX.Media[mediaID] = media
@@ -76,9 +76,63 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 	return mediaID, nil
 }
 
+// resolveOBJE resolves an OBJE subrecord to a media ID. It handles three cases:
+//  1. XRef reference (e.g., "1 OBJE @O1@") — looks up the already-converted top-level media
+//  2. VOID pointer (GEDCOM 7.0 "1 OBJE @VOID@") with subrecords — creates embedded media
+//  3. Embedded OBJE (no value, has subrecords) — creates a new media entity
+//
+// Returns the media ID, or empty string if resolution failed (warnings are emitted).
+func resolveOBJE(objeRecord *GEDCOMRecord, conv *ConversionContext) string {
+	isVoid := objeRecord.Value == "@VOID@"
+	hasRef := objeRecord.Value != "" && !isVoid
+
+	if hasRef {
+		// Case 1: Reference to top-level OBJE (e.g., @O1@)
+		mediaID := conv.MediaIDMap[objeRecord.Value]
+		if mediaID == "" {
+			conv.addWarning(objeRecord.Line, GedcomTagObje, "Referenced media not found: "+objeRecord.Value)
+		}
+
+		return mediaID
+	}
+
+	// Case 2 & 3: Embedded OBJE or VOID with subrecords
+	if len(objeRecord.SubRecords) > 0 {
+		mediaID, err := convertEmbeddedMedia(objeRecord, conv)
+		if err != nil {
+			conv.addWarning(objeRecord.Line, GedcomTagObje, "Failed to convert embedded media: "+err.Error())
+
+			return ""
+		}
+
+		return mediaID
+	}
+
+	return ""
+}
+
+// handleOBJE processes an OBJE subrecord and appends the resolved media ID to
+// the target properties map under PropertyMedia.
+func handleOBJE(objeRecord *GEDCOMRecord, targetProps map[string]any, conv *ConversionContext) {
+	if mediaID := resolveOBJE(objeRecord, conv); mediaID != "" {
+		appendMediaID(targetProps, mediaID)
+	}
+}
+
+// appendMediaID appends a media ID to the PropertyMedia list in a properties map.
+func appendMediaID(props map[string]any, mediaID string) {
+	if props[PropertyMedia] == nil {
+		props[PropertyMedia] = []string{}
+	}
+	media := props[PropertyMedia].([]string)
+	props[PropertyMedia] = append(media, mediaID)
+}
+
 // convertMediaCommon contains the shared logic for converting GEDCOM OBJE records to GLX Media entities.
-// It processes FILE, FORM, TITL, CROP, and NOTE subrecords.
-func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Media {
+// It processes FILE, FORM, TITL, CROP, NOTE, and BLOB subrecords.
+// When a relative FILE path is found, it creates a MediaFileSource entry and rewrites
+// the URI to point to media/files/<filename>. BLOB data is also captured for the CLI to write.
+func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *ConversionContext) *Media {
 	media := &Media{
 		Properties: make(map[string]any),
 	}
@@ -86,6 +140,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Medi
 	var fileRef string
 	var formatType string
 	var notes []string
+	var blobText string
 
 	// Process subrecords
 	for _, sub := range objeRecord.SubRecords {
@@ -143,11 +198,15 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Medi
 			if noteText != "" {
 				notes = append(notes, noteText)
 			}
+
+		case GedcomTagBlob:
+			// GEDCOM 5.5.1 BLOB data (deprecated binary embedding)
+			blobText = extractTextWithContinuation(sub)
+			if blobText != "" {
+				media.Properties["blob_size"] = len(blobText)
+			}
 		}
 	}
-
-	// Set file reference as URI
-	media.URI = fileRef
 
 	// Infer MIME type if not set (GEDCOM 5.5.1)
 	if media.MimeType == "" {
@@ -160,7 +219,40 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Medi
 
 	// Default type if still not set
 	if media.MimeType == "" {
-		media.MimeType = "application/octet-stream"
+		media.MimeType = MimeTypeOctetStream
+	}
+
+	// Track file sources for CLI to copy/write
+	if fileRef != "" && classifyFileRef(fileRef) {
+		// Relative path — track for copying and rewrite URI
+		basename := filepath.Base(normalizePathSeparators(fileRef))
+		targetName := deduplicateFilename(basename, conv.MediaFileNames)
+		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
+			MediaID:        mediaID,
+			SourceType:     MediaSourceFile,
+			RelativePath:   fileRef,
+			TargetFilename: targetName,
+		})
+		media.URI = MediaFilesDir + "/" + targetName
+	} else {
+		// URL, absolute path, or empty — leave as-is
+		media.URI = fileRef
+	}
+
+	// Track BLOB data for CLI to decode and write
+	if blobText != "" {
+		ext := extensionFromMimeType(media.MimeType)
+		targetName := deduplicateFilename("blob-"+mediaID+ext, conv.MediaFileNames)
+		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
+			MediaID:        mediaID,
+			SourceType:     MediaSourceBlob,
+			BlobData:       blobText,
+			TargetFilename: targetName,
+		})
+		// If no FILE ref, set URI to the blob file
+		if media.URI == "" {
+			media.URI = MediaFilesDir + "/" + targetName
+		}
 	}
 
 	// Combine notes
@@ -174,6 +266,55 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, conv *ConversionContext) *Medi
 	}
 
 	return media
+}
+
+// classifyFileRef determines if a GEDCOM FILE reference is a relative path
+// that should be copied into the archive. Returns true for relative paths.
+func classifyFileRef(fileRef string) bool {
+	if fileRef == "" {
+		return false
+	}
+	// URL schemes: http://, https://, ftp://, mailto:, etc.
+	if strings.Contains(fileRef, "://") || strings.HasPrefix(fileRef, "mailto:") {
+		return false
+	}
+	// Absolute Unix path
+	if strings.HasPrefix(fileRef, "/") {
+		return false
+	}
+	// Absolute Windows path (e.g., C:\, D:/)
+	if len(fileRef) >= 2 && fileRef[1] == ':' {
+		return false
+	}
+	return true
+}
+
+// deduplicateFilename returns a unique filename for media/files/.
+// If "photo.jpg" is already used, returns "photo-2.jpg", etc.
+func deduplicateFilename(basename string, usedNames map[string]int) string {
+	if _, exists := usedNames[basename]; !exists {
+		usedNames[basename] = 1
+		return basename
+	}
+	usedNames[basename]++
+	ext := filepath.Ext(basename)
+	name := strings.TrimSuffix(basename, ext)
+	return fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
+}
+
+// normalizePathSeparators converts backslashes to forward slashes.
+func normalizePathSeparators(path string) string {
+	return strings.ReplaceAll(path, "\\", "/")
+}
+
+// extensionFromMimeType returns a file extension (with dot) for a MIME type.
+func extensionFromMimeType(mimeType string) string {
+	for ext, mime := range mimeTypeByExtension {
+		if mime == mimeType {
+			return ext
+		}
+	}
+	return ".bin"
 }
 
 // inferMimeType infers MIME type from file extension.

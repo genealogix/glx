@@ -53,10 +53,43 @@ type GEDCOMRecord struct {
 	Line       int
 }
 
+// MediaSourceType distinguishes between file-based and blob-based media sources.
+type MediaSourceType int
+
+const (
+	// MediaSourceFile indicates a file to copy from the GEDCOM source directory.
+	MediaSourceFile MediaSourceType = iota
+	// MediaSourceBlob indicates inline BLOB data to decode and write.
+	MediaSourceBlob
+)
+
+// MediaFileSource describes a media file to be included in the archive.
+// The lib layer populates these during GEDCOM import; the CLI layer
+// performs the actual file I/O (copy or write).
+type MediaFileSource struct {
+	// MediaID is the GLX media entity ID this file belongs to.
+	MediaID string
+
+	// SourceType indicates where the file data comes from.
+	SourceType MediaSourceType
+
+	// RelativePath is the path from the GEDCOM file's directory to the source file.
+	// Only set when SourceType is MediaSourceFile.
+	RelativePath string
+
+	// BlobData contains the raw BLOB text from GEDCOM 5.5.1.
+	// Only set when SourceType is MediaSourceBlob.
+	BlobData string
+
+	// TargetFilename is the destination filename within media/files/.
+	TargetFilename string
+}
+
 // ImportResult contains statistics and information about the import
 type ImportResult struct {
 	Statistics ImportStatistics
 	Version    string
+	MediaFiles []MediaFileSource
 }
 
 // ImportStatistics tracks import metrics
@@ -262,6 +295,10 @@ type ConversionContext struct {
 	DeferredFamilies    []*GEDCOMRecord
 	DeferredFamilyLinks []*FamilyLink
 
+	// Media file tracking (for CLI to copy/write files)
+	MediaFileSources []MediaFileSource
+	MediaFileNames   map[string]int // basename -> count, for dedup
+
 	// Statistics
 	Stats ImportStatistics
 }
@@ -341,6 +378,7 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 		ExtensionSchemas:    make(map[string]*ExtensionSchema),
 		DeferredFamilies:    []*GEDCOMRecord{},
 		DeferredFamilyLinks: []*FamilyLink{},
+		MediaFileNames:      make(map[string]int),
 		Stats:               ImportStatistics{},
 	}
 
@@ -358,6 +396,7 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 	result := &ImportResult{
 		Statistics: conv.Stats,
 		Version:    versionString,
+		MediaFiles: conv.MediaFileSources,
 	}
 
 	return glx, result, nil

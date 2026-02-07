@@ -28,7 +28,7 @@ All GENEALOGIX files use entity type keys at the top level:
 # Any .glx file (commonly in media/ directory)
 media:
   media-birth-cert-scan:
-    uri: "media/documents/birth-certificate-john-smith.jpg"
+    uri: "media/files/birth-certificate-john-smith.jpg"
     mime_type: "image/jpeg"
     title: "Birth Certificate - John Smith"
     description: "Scan of original birth certificate"
@@ -80,14 +80,13 @@ media:
 - Description: Location of the media file
 
 The URI can be:
-- **Relative path**: `media/photos/john-smith.jpg` (recommended, relative to repository root)
-- **Absolute path**: `/home/user/genealogy/media/photo.jpg` (not portable)
+- **Local file**: `media/files/john-smith.jpg` (recommended — see [File Storage](#file-storage))
 - **URL**: `https://example.com/archives/document.pdf` (for external resources)
 - **URN**: `urn:hash:sha256:abc123...` (content-addressable)
 
 Example:
 ```yaml
-uri: "media/photos/john-smith-1890.jpg"
+uri: "media/files/john-smith-1890.jpg"
 ```
 
 ## Optional Fields
@@ -194,7 +193,7 @@ Media entities support vocabulary-defined properties through the `properties` fi
 ```yaml
 media:
   media-family-portrait:
-    uri: "media/photos/smith-family-1890.jpg"
+    uri: "media/files/smith-family-1890.jpg"
     mime_type: "image/jpeg"
     title: "Smith Family Portrait, 1890"
     properties:
@@ -213,7 +212,7 @@ media:
 ```yaml
 media:
   media-census-detail:
-    uri: "media/documents/census-1851-page-234.jpg"
+    uri: "media/files/census-1851-page-234.jpg"
     mime_type: "image/jpeg"
     title: "1851 Census - Smith Family Entry"
     properties:
@@ -231,7 +230,7 @@ media:
 ```yaml
 media:
   media-birth-cert-john:
-    uri: "media/documents/birth-certificate-john-smith-1850.pdf"
+    uri: "media/files/birth-certificate-john-smith-1850.pdf"
     mime_type: "application/pdf"
     title: "Birth Certificate - John Smith"
     description: "Original birth certificate from General Register Office, scanned 2024-01-15"
@@ -243,7 +242,7 @@ media:
 ```yaml
 media:
   media-smith-family-1890:
-    uri: "media/photos/smith-family-portrait-1890.jpg"
+    uri: "media/files/smith-family-portrait-1890.jpg"
     mime_type: "image/jpeg"
     title: "Smith Family Portrait, 1890"
     description: |
@@ -262,7 +261,7 @@ media:
 ```yaml
 media:
   media-interview-mary-2020:
-    uri: "media/audio/interview-mary-smith-2020-03-15.mp3"
+    uri: "media/files/interview-mary-smith-2020-03-15.mp3"
     mime_type: "audio/mpeg"
     title: "Oral History Interview - Mary Smith"
     description: |
@@ -288,7 +287,7 @@ media:
 ```yaml
 media:
   media-marriage-register-page:
-    uri: "media/documents/st-pauls-marriage-register-1875-page-45.tiff"
+    uri: "media/files/st-pauls-marriage-register-1875-page-45.tiff"
     mime_type: "image/tiff"
     title: "Marriage Register - St Paul's Church, 1875"
     description: |
@@ -309,36 +308,6 @@ Media types are defined in the archive's `vocabularies/media-types.glx` file.
 - Vocabulary file structure and examples
 - MIME type conventions
 
-## File Organization
-
-**Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The example below shows one-entity-per-file organization, which is recommended for collaborative projects (better git diffs) but not required.
-
-Media files and their metadata are typically organized by type:
-
-```
-media/
-├── photos/
-│   ├── media-john-portrait.glx
-│   ├── media-family-photo.glx
-│   └── images/
-│       ├── john-smith-1890.jpg
-│       └── smith-family-1890.jpg
-├── documents/
-│   ├── media-birth-cert.glx
-│   ├── media-marriage-cert.glx
-│   └── scans/
-│       ├── birth-certificate.pdf
-│       └── marriage-certificate.pdf
-├── audio/
-│   ├── media-interview-mary.glx
-│   └── recordings/
-│       └── interview-2020-03-15.mp3
-└── video/
-    ├── media-family-reunion.glx
-    └── clips/
-        └── reunion-2015.mp4
-```
-
 ## Relationship to Other Entities
 
 ```
@@ -357,50 +326,67 @@ Assertion
     └── media → array of Media IDs (direct visual/documentary evidence)
 ```
 
-## File Storage Best Practices
+## File Storage
 
-### Relative Paths
+Media entities reference files via the `uri` field. Files can be stored locally within the archive or on external storage.
 
-Use paths relative to repository root for portability:
+### Local Files: `media/files/`
+
+The standard location for local media files within a GLX archive is **`media/files/`** at the archive root. This flat directory stores the actual binary content (images, PDFs, audio, video) separately from YAML entity metadata:
+
+```
+family-archive/
+├── persons/
+│   └── person-abc12345.glx
+├── media/
+│   ├── media-portrait.glx        # Media entity metadata (.glx)
+│   └── media-birth-cert.glx
+├── media/
+│   └── files/                    # Actual binary files
+│       ├── john-smith-1890.jpg
+│       ├── birth-certificate.pdf
+│       └── interview-2020.mp3
+└── vocabularies/
+    └── event-types.glx
+```
+
+Media entities reference local files using paths relative to the archive root:
+
 ```yaml
-# ✅ Good: Relative path
-uri: "media/photos/john-smith.jpg"
+media:
+  media-portrait:
+    uri: "media/files/john-smith-1890.jpg"
+    mime_type: "image/jpeg"
+    title: "Portrait of John Smith"
+```
+
+**Why `media/files/`?**
+- Separates binary content from YAML entity data
+- Easy to apply Git LFS rules or `.gitignore` to one directory
+- Portable — relative paths work regardless of where the archive lives
+- Tools like `glx import` can populate it automatically
+
+```yaml
+# ✅ Good: Relative path from archive root
+uri: "media/files/john-smith.jpg"
 
 # ❌ Bad: Absolute path (not portable)
-uri: "/home/user/genealogy/media/photos/john-smith.jpg"
-```
-
-### File Organization
-
-**Note:** File organization is flexible. Entities can be in any .glx file with any directory structure. The examples below show organization patterns, but you can use any structure that fits your workflow.
-
-Organize media files alongside `.glx` metadata:
-```
-media/
-├── photos/
-│   ├── john-smith.jpg          # Actual file
-│   └── media-john.glx          # Metadata
-```
-
-Or separate data from metadata:
-```
-media/
-└── media-photos.glx            # All photo metadata
-
-images/
-└── john-smith.jpg              # Actual files
+uri: "/home/user/genealogy/media/files/john-smith.jpg"
 ```
 
 ### External Storage
 
-For large archives, media files can be stored externally:
+For large archives or shared projects, media files can be stored externally. The `uri` field accepts any valid URI:
+
 ```yaml
-# Reference external storage
+# Cloud storage
 uri: "https://s3.amazonaws.com/family-archives/photos/john-smith.jpg"
 
-# Or use content-addressable storage
+# Content-addressable storage
 uri: "ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco"
 ```
+
+When using external URIs, no local file is stored. The media entity simply references the remote resource directly.
 
 ## Validation Rules
 
@@ -422,7 +408,7 @@ Media entities map to GEDCOM multimedia objects:
 | `mime_type` | `OBJE.FORM` | File format |
 | `title` | `OBJE.TITL` | Media title |
 | `description` | `OBJE.NOTE` | Description/notes |
-| - | `OBJE.BLOB` | Embedded media (deprecated) |
+| `uri` | `OBJE.BLOB` | Decoded to file in `media/files/` |
 
 GEDCOM Example:
 ```
@@ -437,11 +423,21 @@ GENEALOGIX Equivalent:
 ```yaml
 media:
   media-john-portrait:
-    uri: "media/photos/john-smith.jpg"
+    uri: "media/files/john-smith.jpg"
     mime_type: "image/jpeg"
     title: "Portrait of John Smith"
     description: "Studio portrait, circa 1890"
 ```
+
+### GEDCOM Import: Media File Handling
+
+When importing from GEDCOM, the `glx import` command automatically populates `media/files/`:
+
+- **Relative FILE paths** — copied from the GEDCOM source directory into `media/files/`, URI rewritten (e.g., `photos/portrait.jpg` → `media/files/portrait.jpg`)
+- **URLs and absolute paths** — preserved as-is in the `uri` field, no file copied
+- **GEDCOM 5.5.1 BLOB data** — decoded from legacy binary encoding and written to `media/files/` (e.g., `media/files/blob-a1b2c3d4.bin`)
+- **Duplicate filenames** — deduplicated with a counter suffix (`photo.jpg`, `photo-2.jpg`, `photo-3.jpg`)
+- **Missing source files** — produce warnings, not errors; the media entity is still created
 
 ## Media Linking
 

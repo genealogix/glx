@@ -190,6 +190,9 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 					event.Properties[PropertyCitations] = append(citations, citationID)
 				}
 			}
+
+		case GedcomTagObje:
+			handleOBJE(sub, event.Properties, conv)
 		}
 	}
 

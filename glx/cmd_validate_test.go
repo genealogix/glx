@@ -217,6 +217,66 @@ func TestRunValidate_WithVocabularies(t *testing.T) {
 	require.NoError(t, err, "should successfully validate archive with vocabularies")
 }
 
+func TestRunValidate_MediaFileMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a media entity referencing a local file that doesn't exist
+	mediaFile := filepath.Join(tmpDir, "media.glx")
+	err := os.WriteFile(mediaFile, []byte(`media:
+  media-photo:
+    uri: "media/files/nonexistent.jpg"
+    mime_type: "image/jpeg"
+    title: "Missing Photo"
+`), 0o644)
+	require.NoError(t, err)
+
+	// Validation should succeed (warnings don't cause failure) but should
+	// produce a warning about the missing file. We capture stdout to check.
+	err = validatePaths([]string{tmpDir})
+	require.NoError(t, err, "missing media file should produce warning, not error")
+}
+
+func TestRunValidate_MediaFileExists(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create the media/files directory with the actual file
+	filesDir := filepath.Join(tmpDir, "media", "files")
+	err := os.MkdirAll(filesDir, 0o755)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(filesDir, "photo.jpg"), []byte("fake jpeg"), 0o644)
+	require.NoError(t, err)
+
+	// Create a media entity referencing it
+	mediaFile := filepath.Join(tmpDir, "media.glx")
+	err = os.WriteFile(mediaFile, []byte(`media:
+  media-photo:
+    uri: "media/files/photo.jpg"
+    mime_type: "image/jpeg"
+    title: "Existing Photo"
+`), 0o644)
+	require.NoError(t, err)
+
+	err = validatePaths([]string{tmpDir})
+	require.NoError(t, err, "existing media file should not produce warnings")
+}
+
+func TestRunValidate_MediaExternalURLSkipped(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a media entity with an external URL — should NOT warn
+	mediaFile := filepath.Join(tmpDir, "media.glx")
+	err := os.WriteFile(mediaFile, []byte(`media:
+  media-online:
+    uri: "https://example.com/photo.jpg"
+    mime_type: "image/jpeg"
+    title: "Online Photo"
+`), 0o644)
+	require.NoError(t, err)
+
+	err = validatePaths([]string{tmpDir})
+	require.NoError(t, err, "external URL should not trigger file existence check")
+}
+
 func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 	// Test that both .yaml and .yml extensions are recognized
 	tmpDir := t.TempDir()

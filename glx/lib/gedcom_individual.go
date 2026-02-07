@@ -136,8 +136,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Citations are extracted when creating assertions
 
 		case GedcomTagObje:
-			// Media object - will be implemented when media converter is done
-			conv.addWarning(indiRecord.Line, GedcomTagObje, "Media linking not yet implemented")
+			handleOBJE(sub, person.Properties, conv)
 
 		case GedcomTagFamc:
 			// Family as child - defer for family processing
@@ -284,10 +283,6 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 			if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
 				event.Properties[propertyKey] = sub.Value
 			}
-
-		case GedcomTagObje:
-			// Media - not yet implemented
-			conv.addWarning(eventRecord.Line, GedcomTagObje, "Media linking not yet implemented")
 		}
 	}
 
@@ -354,6 +349,13 @@ func handlePersonPropertyTag(personID string, person *Person, tag string, record
 
 	person.Properties[propertyKey] = record.Value
 	createPropertyAssertion(personID, propertyKey, record.Value, record, conv)
+
+	// Handle OBJE subrecords on person property tags (e.g., OCCU with linked media)
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagObje {
+			handleOBJE(sub, person.Properties, conv)
+		}
+	}
 
 	return true
 }
@@ -470,6 +472,7 @@ type censusData struct {
 	dateStr     string
 	placeID     string
 	citationIDs []string
+	mediaIDs    []string
 }
 
 // convertCensus converts a GEDCOM CENS record to GLX citations and temporal properties.
@@ -493,6 +496,7 @@ func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *Conversi
 	var placeID string
 	var censusType string
 	var noteText string
+	var mediaIDs []string
 
 	for _, sub := range censRecord.SubRecords {
 		switch sub.Tag {
@@ -531,7 +535,9 @@ func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *Conversi
 		case GedcomTagSour:
 			// Handled by extractCitations below
 		case GedcomTagObje:
-			conv.addWarning(censRecord.Line, GedcomTagObje, "Media linking not yet implemented")
+			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
+				mediaIDs = append(mediaIDs, mediaID)
+			}
 		default:
 			if sub.Tag != "" {
 				conv.addWarning(sub.Line, sub.Tag, "Unhandled CENS sub-tag")
@@ -583,12 +589,22 @@ func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *Conversi
 		dateStr:     dateStr,
 		placeID:     placeID,
 		citationIDs: citationIDs,
+		mediaIDs:    mediaIDs,
 	}
 }
 
 // applyCensusData applies extracted census data to a person: sets temporal
 // residence property and creates assertions backed by citations.
 func applyCensusData(personID string, person *Person, data censusData, conv *ConversionContext) {
+	// Attach media to census citations
+	if len(data.mediaIDs) > 0 {
+		for _, citID := range data.citationIDs {
+			if cit, ok := conv.GLX.Citations[citID]; ok {
+				cit.Media = append(cit.Media, data.mediaIDs...)
+			}
+		}
+	}
+
 	if data.placeID == "" {
 		return
 	}

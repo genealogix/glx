@@ -250,6 +250,10 @@ func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
 			submitter["email"] = sub.Value
 		case GedcomTagWww:
 			submitter["website"] = sub.Value
+		case GedcomTagObje:
+			// Create the media entity even though SUBM isn't stored as a GLX entity.
+			// The media is preserved in the archive but not linked to any entity.
+			resolveOBJE(sub, conv)
 		}
 	}
 

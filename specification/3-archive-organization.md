@@ -113,6 +113,9 @@ family-archive/
 │   └── event-birth-abc.glx
 ├── relationships/
 │   └── rel-marriage-001.glx
+├── media/
+│   └── files/                   # Local media files (images, PDFs, etc.)
+│       └── birth-certificate.jpg
 └── vocabularies/
     ├── relationship-types.glx
     ├── event-types.glx
@@ -149,7 +152,10 @@ persons:
 **Structure:**
 ```
 family-archive/
-└── family.glx
+├── family.glx
+└── media/
+    └── files/                   # Local media files (images, PDFs, etc.)
+        └── birth-certificate.jpg
 ```
 
 **File Contents:**
@@ -239,7 +245,7 @@ family-archive/
 │   └── place-types.glx
 └── media/
     ├── photos.glx           # References to photo files
-    └── files/
+    └── files/               # Actual media files (binary content)
         ├── photo-001.jpg
         └── photo-002.jpg
 ```
@@ -253,6 +259,12 @@ family-archive/
 - Medium-sized archives
 - Mixed collaboration patterns
 - Gradual migration from single-file format
+
+## Media File Storage
+
+The standard location for local media files (images, documents, audio, video) within any GLX archive is **`media/files/`** at the archive root. Media entity metadata (`.glx` files) references these files via the `uri` field using paths relative to the archive root (e.g., `media/files/portrait.jpg`).
+
+This convention applies to all organization strategies — single-file, multi-file, and hybrid. The `glx import` command automatically populates `media/files/` when importing from GEDCOM. See [Media Entity - File Storage](4-entity-types/media#file-storage) for details.
 
 ## ID Format Standards
 

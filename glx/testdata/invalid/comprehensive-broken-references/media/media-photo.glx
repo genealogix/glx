@@ -1,6 +1,6 @@
 media:
   media-photo:
-    uri: "media/photos/photo.jpg"
+    uri: "media/files/photo.jpg"
     mime_type: "image/jpeg"
     title: "Test Photo"
 

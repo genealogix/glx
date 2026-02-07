@@ -119,15 +119,9 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 			}
 
 		case GedcomTagObje:
-			// Media linked to citation (not commonly used, but supported)
-			if sub.Value != "" {
-				mediaID := conv.MediaIDMap[sub.Value]
-				if mediaID != "" {
-					if citation.Media == nil {
-						citation.Media = []string{}
-					}
-					citation.Media = append(citation.Media, mediaID)
-				}
+			// Media linked to citation (reference or embedded)
+			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
+				citation.Media = append(citation.Media, mediaID)
 			}
 		}
 	}

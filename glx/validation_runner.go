@@ -19,6 +19,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/genealogix/glx/glx/lib"
 )
 
 // validatePaths performs comprehensive validation on the specified paths
@@ -117,6 +120,9 @@ func validatePaths(args []string) error {
 		allErrors = append(allErrors, err.Message)
 	}
 
+	// Third pass: check media file existence on disk
+	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
+
 	fmt.Printf("Validated %d files.\n", fileCount)
 	if len(allWarnings) > 0 {
 		fmt.Printf("Found %d warnings:\n", len(allWarnings))
@@ -137,4 +143,41 @@ func validatePaths(args []string) error {
 	fmt.Println("✅ Archive is valid.")
 
 	return nil
+}
+
+// validateMediaFileExistence checks that media entities with local relative URIs
+// point to files that actually exist on disk. Returns warnings for missing files.
+func validateMediaFileExistence(archive *lib.GLXFile, archiveRoot string) []string {
+	var warnings []string
+	for mediaID, media := range archive.Media {
+		if !isLocalMediaURI(media.URI) {
+			continue
+		}
+		filePath := filepath.Join(archiveRoot, media.URI)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			warnings = append(warnings, fmt.Sprintf(
+				"media[%s]: referenced file does not exist: %s", mediaID, media.URI))
+		}
+	}
+
+	return warnings
+}
+
+// isLocalMediaURI returns true if a URI is a local relative path (not a URL,
+// absolute path, or empty string) that should exist on disk.
+func isLocalMediaURI(uri string) bool {
+	if uri == "" {
+		return false
+	}
+	if strings.Contains(uri, "://") || strings.HasPrefix(uri, "mailto:") {
+		return false
+	}
+	if strings.HasPrefix(uri, "/") {
+		return false
+	}
+	if len(uri) >= 2 && uri[1] == ':' {
+		return false
+	}
+
+	return true
 }

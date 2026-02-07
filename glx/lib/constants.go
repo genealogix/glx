@@ -97,6 +97,9 @@ const (
 	PropertyMarriageType  = "marriage_type"
 )
 
+// Media file directory within archive
+const MediaFilesDir = "media/files"
+
 // GEDCOM Tags - Top-Level Records
 const (
 	GedcomTagHead  = "HEAD"  // File header
@@ -243,6 +246,7 @@ const (
 	GedcomTagLeft   = "LEFT"   // Left coordinate
 	GedcomTagHeight = "HEIGHT" // Height
 	GedcomTagWidth  = "WIDTH"  // Width
+	GedcomTagBlob   = "BLOB"   // Binary large object (GEDCOM 5.5.1, deprecated)
 )
 
 // GEDCOM Tags - Citation/Evidence

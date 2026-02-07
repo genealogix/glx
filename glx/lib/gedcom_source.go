@@ -125,12 +125,9 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case GedcomTagObje:
-			// Media object reference
-			if sub.Value != "" {
-				mediaID := conv.MediaIDMap[sub.Value]
-				if mediaID != "" {
-					source.Media = append(source.Media, mediaID)
-				}
+			// Media object reference or embedded media
+			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
+				source.Media = append(source.Media, mediaID)
 			}
 
 		case GedcomTagType:
