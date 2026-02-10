@@ -19,9 +19,6 @@ A discrete, evidence-backed claim about a person, event, place, or relationship.
 ### Chain of Custody
 The documented path that evidence has taken from creation to current location, ensuring authenticity and reliability.
 
-### Claim
-A specific property or attribute being asserted about a subject in an assertion (e.g., "born_on", "occupation", "died_in"). Claims reference property names from the appropriate [property vocabulary](4-entity-types/vocabularies#property-vocabularies).
-
 ### Citation
 A specific reference to a location within a source document, including locator information and optional transcription. Citations link evidence to assertions.
 
@@ -280,7 +277,7 @@ The text content of a source document, especially when the original is not direc
 The process of checking GENEALOGIX files for syntax correctness, schema compliance, reference integrity, and structural consistency using the `glx validate` command.
 
 ### Value
-The specific data or content of a claim in an assertion (e.g., "1850-01-15" for a birth date, "blacksmith" for an occupation).
+The specific data or content of a property in an assertion (e.g., "1850-01-15" for a birth date, "blacksmith" for an occupation).
 
 ### Vocabularies
 Controlled lists of valid types and categories used throughout a GENEALOGIX archive, stored in the `vocabularies/` directory.

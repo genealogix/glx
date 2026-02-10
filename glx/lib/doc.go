@@ -11,9 +11,10 @@ Implementation files: gedcom_*.go
 
 	GEDCOM File → ParseGEDCOM() → ConversionContext
 	    ↓
-	Pass 1: Individuals, Sources, Notes, Places
-	Pass 2: Families (marriage relationships)
-	Pass 3: Parent-Child Relationships (with PEDI types)
+	Phase 1: Notes, Repositories (no dependencies)
+	Phase 2: Sources, Media (depend on repos/notes)
+	Phase 3: Individuals (depend on sources/media)
+	Phase 4: Families (depend on individuals)
 	    ↓
 	GLXFile
 

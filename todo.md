@@ -8,8 +8,11 @@
 
 Issues that silently lose or corrupt data during import.
 
-- ~~**Media/OBJE Import**: Only 2 of 32 multimedia references imported in torture test (94% loss). Inline OBJE tags in events, URL-type multimedia, and BLOB data are not imported.~~ **FIXED**: Now imports 32 of 32 media references (100%). Media files are copied into `media/files/` during import; BLOB data is decoded and written to files.
 - **Residence property overwrite on PLAC-without-DATE**: In `convertResidence` and `convertCensus`, when PLAC exists but DATE does not, the residence property is set as a bare place ID which overwrites any existing temporal residence list. Should append instead of overwrite. Affects [gedcom_individual.go](glx/lib/gedcom_individual.go) `convertResidence` (line ~454) and `applyCensusData`.
+- **FAM CENS/event processing depends on HUSB/WIFE tag order**: In `convertFamily`, CENS and other family events (ENGA, MARB, etc.) are processed inline during the same loop that extracts `husbandID` and `wifeID`. If these event tags appear before HUSB/WIFE in the GEDCOM file, spouse IDs will be empty strings. GEDCOM does not guarantee tag order. Marriage/divorce handle this by deferring to after the loop, but CENS and other events do not. [gedcom_family.go:64-74](glx/lib/gedcom_family.go#L64-L74)
+- **`LoadStandardVocabulariesIntoGLX` silently swallows YAML parse errors**: If a vocabulary file has a parse error, it is silently ignored and that vocabulary will be nil. This could cause subtle validation failures downstream where the validator thinks there are no valid vocabulary entries. Should return or log the error. [vocabularies.go:48-55](glx/lib/vocabularies.go#L48-L55)
+- **`appendMediaID` unchecked type assertion**: Uses `props[PropertyMedia].([]string)` which panics if the value isn't `[]string` (e.g., from YAML deserialization producing `[]any`). Should use comma-ok assertion. [gedcom_media.go:127](glx/lib/gedcom_media.go#L127)
+- **Migration guide uses stale assertion format**: Uses old format with `subject` as plain string and `claim` instead of `property`. Will mislead users about the correct assertion format. [migration-from-gedcom.md:101-106](docs/guides/migration-from-gedcom.md#L101-L106)
 
 ---
 
@@ -31,7 +34,6 @@ Data that is parsed but silently dropped or not stored.
 
 Design decisions that affect the spec and should be resolved before 1.0.
 
-- **QUAY ratings**: Currently preserved in citation notes as "GEDCOM QUAY: X". Consider mapping to GLX confidence levels or storing as structured property.
 - **Event participant requirement**: Consider relaxing — historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants.
 - **Gender/sex controlled vocabularies**: Should these be formalized?
 - **Property field data types**: Should property fields carry type information?
@@ -42,6 +44,7 @@ Design decisions that affect the spec and should be resolved before 1.0.
 
 - **Markdown link validation in CI**: Add CI check to validate all internal markdown links in specification and documentation files.
 - **Review standard vocabularies**: Audit all standard vocabulary files (.glx) in [5-standard-vocabularies/](specification/5-standard-vocabularies/) for consistency and completeness.
+- **Schema embed.go missing individual variables**: [specification/schema/v1/embed.go](specification/schema/v1/embed.go) is missing individual `[]byte` variables for `CitationPropertiesSchema` and `SourcePropertiesSchema`. The JSON files exist and are captured by the glob FS embed, but the individual variables break the pattern established for all other vocabulary schemas.
 
 ---
 
@@ -49,6 +52,10 @@ Design decisions that affect the spec and should be resolved before 1.0.
 
 - **Add validation rule sections**: Each entity type doc should include a consolidated "Validation Rules" section.
 - **Git Workflow Guide**: Create documentation covering Git workflows, branching strategies, collaboration patterns, and branch-based research methodologies for GLX archives.
+- **Broken links in migration-from-gedcom.md**: Two references to deleted `../development/gedcom-import.md` at lines 63 and 265. [migration-from-gedcom.md](docs/guides/migration-from-gedcom.md)
+- **assertion-workflow example uses undefined vocabulary properties**: `properties.address` and `properties.url` on Repository (should be direct fields `address` and `website`), `properties.accessed_date` on Source (not in source-properties vocabulary). [assertion-workflow/archive.glx:109-145](docs/examples/assertion-workflow/archive.glx#L109-L145)
+- **Duplicate `media/` directory in file storage diagram**: The media spec shows two separate `media/` directories instead of a single tree with both entity `.glx` files and a `files/` subdirectory. [media.md:337-351](specification/4-entity-types/media.md#L337-L351)
+- **Stale conversion flow comment in doc.go**: Describes old single-pass approach but actual flow is now dependency-ordered (Notes/Repos → Sources/Media → Individuals → Families). [doc.go:14](glx/lib/doc.go#L14)
 
 ---
 
@@ -58,6 +65,11 @@ Design decisions that affect the spec and should be resolved before 1.0.
 - **Add validator tags to GLX structs**: Use struct tags for validation.
 - **Move Loggers to their own package**: Better separation of concerns.
 - **Add make command for goreleaser**.
+- **`copyFile` discards `dstFile.Close()` error**: On NFS/network mounts, write errors surface at `Close()`. Should check the close error for the destination file. [media_copy.go:119-132](glx/media_copy.go#L119-L132)
+- **`decodeGEDCOMBlob` no input validation on byte range**: Characters outside valid range (0x2E-0x6D) produce garbage silently rather than returning an error. BLOB is deprecated and rare. [media_copy.go:143-155](glx/media_copy.go#L143-L155)
+- **`extensionFromMimeType` non-deterministic**: Iterates a map, so MIME types with multiple extensions (`.jpg`/`.jpeg`) return random results. [gedcom_media.go:311-318](glx/lib/gedcom_media.go#L311-L318)
+- **No path traversal check on GEDCOM FILE references**: `../../etc/passwd` would be resolved by `filepath.Join`. Impact limited since destination uses basename only and user provides the GEDCOM file. [media_copy.go:102-114](glx/media_copy.go#L102-L114)
+- **Relationship schema `additionalProperties: true` on participants**: Inconsistent with assertion schema which uses `additionalProperties: false` on its participant object. [relationship.schema.json:41](specification/schema/v1/relationship.schema.json#L41)
 
 ---
 

@@ -105,15 +105,13 @@ repositories:
   repository-mass-archives:
     name: "Massachusetts State Archives"
     type: archive
-    properties:
-      address: "220 Morrissey Boulevard, Boston, MA 02125"
-      url: "https://www.sec.state.ma.us/arc/"
+    address: "220 Morrissey Boulevard, Boston, MA 02125"
+    website: "https://www.sec.state.ma.us/arc/"
 
   repository-nyc-records:
     name: "NYC Department of Records"
     type: archive
-    properties:
-      address: "31 Chambers Street, New York, NY 10007"
+    address: "31 Chambers Street, New York, NY 10007"
 
 # ---------------------------------------------------------------------
 # SOURCES - Original documents and records
@@ -141,9 +139,7 @@ sources:
   source-linkedin:
     title: "LinkedIn Profile - Robert Chen"
     type: database
-    properties:
-      url: "https://linkedin.com/in/robert-chen-example"
-      accessed_date: "2024-01-15"
+    notes: "Accessed 2024-01-15"
 
 # ---------------------------------------------------------------------
 # CITATIONS - Specific references within sources

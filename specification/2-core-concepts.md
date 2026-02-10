@@ -664,7 +664,7 @@ Repository → Source → Citation → Assertion → Property
     ↓          ↓         ↓          ↓           ↓
  Physical   Original  Specific  Evidence-   Concluded
  Location   Material  Reference  Based      Value on
-                                 Claim      Entity
+                                 Property   Entity
 ```
 
 Each level provides context and traceability for the research:

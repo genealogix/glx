@@ -60,8 +60,6 @@ git commit -m "Import from GEDCOM: family.ged"
 - Source citations with locators and transcriptions
 - **Media files**: Relative FILE paths are copied to `media/files/`, BLOB data is decoded and written to files, URLs are preserved as-is
 
-For implementation details, see [GEDCOM Import Developer Docs](../development/gedcom-import.md).
-
 ### Manual Conversion Process
 
 If you prefer manual conversion or need to customize the import:
@@ -100,8 +98,9 @@ citations:
 
 assertions:
   assertion-birth-date:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      person: person-john-smith
+    property: born_on
     value: "1850-01-15"
     citations: [citation-birth]
 ```
@@ -262,7 +261,6 @@ glx validate family-archive/
 
 ## See Also
 
-- [GEDCOM Import Developer Documentation](../development/gedcom-import.md) - Implementation details
 - [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
 - [Best Practices](best-practices.md) - Workflow recommendations
 - [CLI Documentation](../../glx/README.md) - Command reference

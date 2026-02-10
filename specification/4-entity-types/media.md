@@ -340,8 +340,7 @@ family-archive/
 │   └── person-abc12345.glx
 ├── media/
 │   ├── media-portrait.glx        # Media entity metadata (.glx)
-│   └── media-birth-cert.glx
-├── media/
+│   ├── media-birth-cert.glx
 │   └── files/                    # Actual binary files
 │       ├── john-smith-1890.jpg
 │       ├── birth-certificate.pdf

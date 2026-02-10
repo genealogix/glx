@@ -37,22 +37,6 @@ features:
   - icon: 🚀
     title: Modern Tooling
     details: CLI tool with GEDCOM import, validation, split/join operations, and cross-reference checking.
-
-  - icon: 🤝
-    title: Open Standard
-    details: Apache 2.0 licensed specification with an active community and open governance.
-
-  - icon: 🌳
-    title: Git-Native Architecture
-    details: Full version control and collaboration support using Git workflows.
-
-  - icon: 📋
-    title: Human-Readable Format
-    details: Clear YAML files make your genealogy data easy to read, edit, and review.
-
-  - icon: ✅
-    title: Schema Validation
-    details: JSON Schema-based validation ensures data integrity and catches errors before they propagate.
 ---
 
 ## Why GENEALOGIX?

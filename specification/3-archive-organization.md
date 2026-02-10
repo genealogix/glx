@@ -90,9 +90,9 @@ Across all files in an archive, the validator checks:
 
 **Warnings (Soft Failures):**
 - Unknown properties (not defined in property vocabularies) generate warnings
-- Unknown assertion claims (not defined in property vocabularies) generate warnings
+- Unknown assertion properties (not defined in property vocabularies) generate warnings
 
-See [Entity Types - Validation](4-entity-types/README#validation) and [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies#vocabulary-validation) for complete validation policy.
+See [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies#vocabulary-validation) for complete validation policy.
 
 ## Organization Strategies
 
@@ -439,7 +439,7 @@ glx validate persons/
 
 **Validation Output:**
 - ✓ **Pass**: File/entity is valid
-- ⚠ **Warning**: Soft validation issue (unknown property, unknown claim)
+- ⚠ **Warning**: Soft validation issue (unknown property)
 - ❌ **Error**: Hard validation failure (missing reference, invalid structure)
 
 **Exit Codes:**
