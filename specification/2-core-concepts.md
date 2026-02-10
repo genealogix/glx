@@ -247,8 +247,8 @@ A true/false value.
 
 **Example:**
 ```yaml
-living: true
-verified: false
+verified: true
+primary_source: false
 ```
 
 #### Date
@@ -304,11 +304,11 @@ born_on: "0047"             # Year 47 AD (zero-padded)
 
 # Approximate dates
 born_on: "ABT 1850"         # About 1850
-death_year: "BEF 1920"      # Before 1920
-married_on: "AFT 1880-06"   # After June 1880
+died_on: "BEF 1920"         # Before 1920
+born_on: "AFT 1880-06"      # After June 1880
 
 # Date ranges
-residence_dates:
+residence:
   - value: "place-leeds"
     date: "FROM 1900 TO 1950"  # Lived in Leeds 1900-1950
   - value: "place-london"

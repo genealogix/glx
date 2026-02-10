@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.3] - 2026-02-06
+## [0.0.0-beta.3] - 2026-02-10
 
 ### Added
 
@@ -35,6 +35,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Consolidated Relationship `description` from top-level field into `properties.description`
 - Consolidated Source `creator` field into `authors` — both map from GEDCOM `SOUR.AUTH`; `authors` now accepts personal names and institutional names; removed `creator` from spec, schema, and Go types
 - Updated place properties documentation in vocabularies.md and standard-vocabularies README to include `jurisdiction`, `place_format`, and `alternative_names`
+
+#### Specification Audit Fixes (Round 2)
+- Fixed date format examples in core-concepts using undefined properties (`death_year` → `died_on`, `married_on` → `born_on`, `residence_dates` → `residence`)
+- Fixed event examples in relationship.md using `description` as top-level field (changed to `notes`)
+- Fixed assertion example using invalid date format `circa 1825` (changed to `ABT 1825`)
+- Fixed media example in vocabularies.md using `file:` instead of `uri:`
+- Fixed glossary Event Type definition that incorrectly listed occupation and residence as event types
+- Fixed relationship types count from 11 to 10 and removed non-existent `adoption` relationship type from list
+- Fixed "Event/Fact" label in specification README to just "Event"
+- Fixed "living status" in entity types README (replaced with "birth/death dates")
+- Replaced `living: true` boolean example with non-misleading property names
+- Changed `registration_district` to `district` in place example to use standard vocabulary type
+- Added Schema Reference sections to event, relationship, place, citation, and repository entity docs
 
 ### Added (continued)
 

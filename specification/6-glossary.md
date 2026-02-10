@@ -62,7 +62,7 @@ A discrete occurrence in time and place such as birth, marriage, death, baptism,
 > **See Also:** [Event Entity](4-entity-types/event)
 
 ### Event Type
-Classification of life events including birth, marriage, death, occupation, residence, education, military service, etc.
+Classification of life events including birth, marriage, death, baptism, burial, military service, immigration, naturalization, etc. Note: attributes like occupation and residence are temporal properties on Person entities, not events.
 
 > **See Also:** [Event Types Vocabulary](4-entity-types/vocabularies#event-types-vocabulary)
 

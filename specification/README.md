@@ -31,7 +31,7 @@ Version 0.0.0-beta.3
 4. [Entity Types](4-entity-types/)
    - [Person](4-entity-types/person) - Individual records
    - [Relationship](4-entity-types/relationship) - Connections between people
-   - [Event/Fact](4-entity-types/event) - Occurrences in time and place
+   - [Event](4-entity-types/event) - Occurrences in time and place
    - [Place](4-entity-types/place) - Geographic locations with hierarchy
    - [Assertion](4-entity-types/assertion) - Evidence-based conclusions
    - [Source](4-entity-types/source) - Bibliographic resources

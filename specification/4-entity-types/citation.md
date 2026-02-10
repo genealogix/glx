@@ -187,6 +187,10 @@ Or more commonly, citations are referenced by ID from assertions.
 
 Citations are part of the GENEALOGIX evidence chain. See [Core Concepts - Evidence Chain](../2-core-concepts#evidence-chain) for the complete evidence chain from Repository → Source → Citation → Assertion.
 
+## Schema Reference
+
+See [citation.schema.json](../schema/v1/citation.schema.json) for the complete JSON Schema definition.
+
 ## See Also
 
 - [Source Entity](source) - Bibliographic resource

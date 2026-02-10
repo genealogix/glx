@@ -138,7 +138,7 @@ places:
 places:
   place-leeds-registration:
     name: "Leeds Registration District"
-    type: registration_district
+    type: district
     parent: place-yorkshire
     latitude: 53.8008
     longitude: -1.5491
@@ -231,6 +231,10 @@ places/
 - Coordinates, if present, must be valid WGS84 values
 - Parent place must exist before referencing it
 - Type must be from the [place types vocabulary](vocabularies#place-types-vocabulary)
+
+## Schema Reference
+
+See [place.schema.json](../schema/v1/place.schema.json) for the complete JSON Schema definition.
 
 ## See Also
 

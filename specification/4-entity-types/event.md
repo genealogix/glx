@@ -218,6 +218,10 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 
 All supporting evidence for an event is stored in [Assertion Entities](assertion) that reference the event in their `subject` field. This keeps the event record clean while allowing for a rich, explicit evidence trail.
 
+## Schema Reference
+
+See [event.schema.json](../schema/v1/event.schema.json) for the complete JSON Schema definition.
+
 ## See Also
 
 - [Person Entity](person) - Contains event references

@@ -476,7 +476,7 @@ assertions:
     subject:
       person: person-thomas-brown
     property: born_on
-    value: "circa 1825"
+    value: "ABT 1825"
     citations:
       - citation-death-cert-age
     confidence: low

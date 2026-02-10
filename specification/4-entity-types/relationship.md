@@ -142,7 +142,7 @@ events:
     participants:
       - person: person-sarah-jones
         role: principal
-    description: "Legal adoption finalized"
+    notes: "Legal adoption finalized"
 
 # The relationship connects parent(s) and child
 relationships:
@@ -185,7 +185,7 @@ events:
         role: godparent
       - person: person-aunt-sarah
         role: godparent
-    description: "Baptism at St Mary's Church"
+    notes: "Baptism at St Mary's Church"
 
 # The relationship represents the ongoing godparent-godchild bond
 relationships:
@@ -294,6 +294,10 @@ The PEDI tag in GEDCOM 5.5.1 specifies the type of parent-child relationship. Du
 - `PEDI sealed` (LDS) → `parent-child` (not specifically modeled)
 
 This allows GLX to preserve the distinction between biological, adoptive, and foster relationships that is critical for accurate genealogical research.
+
+## Schema Reference
+
+See [relationship.schema.json](../schema/v1/relationship.schema.json) for the complete JSON Schema definition.
 
 ## See Also
 

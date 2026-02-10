@@ -231,6 +231,10 @@ Best practices for recording repository access:
 - **Citation**: May reference repository location information via Source
 - **Holdings**: Detailed inventory of materials within repository
 
+## Schema Reference
+
+See [repository.schema.json](../schema/v1/repository.schema.json) for the complete JSON Schema definition.
+
 ## See Also
 
 - [Source Entity](source) - Collections held in repositories
