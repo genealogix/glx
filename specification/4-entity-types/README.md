@@ -31,7 +31,7 @@ Represents occurrences in time and place: births, marriages, deaths, baptisms, e
 ### [Place](place)
 Represents geographic locations forming a hierarchical structure. Supports multiple names and historical variations.
 
-- **Key Properties**: Name, type, hierarchy, coordinates, alternative names
+- **Key Properties**: Name, type, hierarchy, coordinates, alternative names (via properties)
 - **GEDCOM Equivalent**: PLAC (Place structures)
 
 ### [Assertion](assertion)
@@ -88,7 +88,7 @@ Event
 
 Place
   ├── has parent Place (hierarchy)
-  ├── has alternative Names
+  ├── has alternative names (via properties)
   └── referenced by Events and Assertions
 
 Assertion

@@ -122,7 +122,7 @@ events:
     place: place-leeds
     participants:
       - person: person-john-smith
-        role: principal
+        role: subject
 ```
 
 ### Complex Event with Multiple Participants

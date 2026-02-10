@@ -137,7 +137,6 @@ properties:
       fields:
         given: "Mary"
         surname: "Smith"
-        birth_surname: "Jones"
 ```
 
 **Multiple Residences:**

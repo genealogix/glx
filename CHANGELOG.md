@@ -14,6 +14,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Place `alternative_names` Property
+- Added `alternative_names` to place properties vocabulary — temporal, multi-value string property for historical or alternate place names
+
+#### Citation Properties Vocabulary Documentation
+- Added missing `### Citation Properties Vocabulary` section to vocabularies specification
+
+### Fixed
+
+#### Specification Audit Fixes
+- Fixed Place hierarchy example that used duplicate YAML top-level keys (combined into single `places:` block)
+- Fixed event example in vocabularies.md that used undocumented `value` field (changed to `notes`)
+- Removed undocumented `birth_surname` field from person name example
+- Fixed broken anchor link in repository.md (`#repository-properties` → `#repository-properties-vocabulary`)
+- Standardized birth event examples to use `subject` role consistently
+- Removed stale `Created At` and `Created By` glossary entries (fields don't exist in any entity spec)
+- Fixed glossary Event definition that incorrectly included occupation and residence (those are temporal Person properties, not events)
+- Fixed "assertion claims" terminology to "assertion properties" in core-concepts validation section
+- Moved "Change Tracking with Git" section before "Next Steps" conclusion in core-concepts
+- Consolidated Relationship `description` from top-level field into `properties.description`
+- Consolidated Source `creator` field into `authors` — both map from GEDCOM `SOUR.AUTH`; `authors` now accepts personal names and institutional names; removed `creator` from spec, schema, and Go types
+- Updated place properties documentation in vocabularies.md and standard-vocabularies README to include `jurisdiction`, `place_format`, and `alternative_names`
+
+### Added (continued)
+
 #### Assertion `date` Field for Temporal Properties
 - **Added `date` field to assertions** - Assertions can now specify a date or date range indicating when the asserted property value applies, enabling precise temporal targeting for properties like occupation, residence, and religion that change over time
 - Added `Date` field to `Assertion` Go struct

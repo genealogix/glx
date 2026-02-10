@@ -154,7 +154,6 @@ type Source struct {
 	Date         DateString     `yaml:"date,omitempty"`
 	Description  string         `yaml:"description,omitempty"`
 	RepositoryID string         `refType:"repositories"       yaml:"repository,omitempty"`
-	Creator      string         `yaml:"creator,omitempty"`
 	Language     string         `yaml:"language,omitempty"`
 	Media        []string       `refType:"media"              yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties

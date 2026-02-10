@@ -41,13 +41,11 @@ places:
     name: "England"
     type: country
 
-places:
   place-yorkshire:
     name: "Yorkshire"
     type: county
     parent: place-england
 
-places:
   place-leeds:
     name: "Leeds"
     type: city
@@ -86,6 +84,7 @@ Place properties allow capturing historical information that doesn't fit into th
 | `description` | string | Detailed description of the place |
 | `jurisdiction` | string | Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code) |
 | `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
+| `alternative_names` | string[] | Historical or alternate names for a place (temporal, multi-value) |
 
 Example:
 ```yaml
@@ -102,6 +101,9 @@ places:
         - value: 1500
           date: "1664"
       description: "Dutch colonial settlement on Manhattan Island"
+      alternative_names:
+        - value: "Nieuw-Amsterdam"
+          date: "FROM 1626 TO 1664"
 ```
 
 **See [Vocabularies - Place Properties](vocabularies#place-properties-vocabulary) for the full vocabulary definition.**

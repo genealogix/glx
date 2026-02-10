@@ -88,7 +88,7 @@ Contact information and access details are stored in the `properties` field usin
 | `holding_types` | string | Types of materials held |
 | `external_ids` | string | External identifiers (FamilySearch, WikiTree, etc.) |
 
-**See [Vocabularies - Repository Properties](vocabularies#repository-properties) for the full vocabulary definition.**
+**See [Vocabularies - Repository Properties](vocabularies#repository-properties-vocabulary) for the full vocabulary definition.**
 
 ## Usage Patterns
 

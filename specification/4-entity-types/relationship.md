@@ -48,7 +48,6 @@ relationships:
 | `properties` | object | Vocabulary-defined properties for the relationship |
 | `start_event` | string | Event that started this relationship |
 | `end_event` | string | Event that ended this relationship |
-| `description` | string | Narrative description of the relationship |
 | `notes` | string | Research notes |
 
 ### Properties
@@ -103,7 +102,8 @@ relationships:
       - person: person-mary-jones
         role: spouse
     start_event: event-marriage-1875
-    description: "Marriage at St Paul's Cathedral"
+    properties:
+      description: "Marriage at St Paul's Cathedral"
 ```
 
 **Note: Marriage Event vs Marriage Relationship**
@@ -156,7 +156,8 @@ relationships:
       - person: person-sarah-jones
         role: adopted-child
     start_event: event-adoption-1890
-    description: "Sarah legally adopted by James and Elizabeth Smith"
+    properties:
+      description: "Sarah legally adopted by James and Elizabeth Smith"
 ```
 
 **Note: Adoption Event vs Adoptive Parent-Child Relationship**
@@ -217,7 +218,8 @@ relationships:
       - person: person-john-smith
       - person: person-james-brown
     start_event: event-ceremony-1845
-    description: "Blood brother ceremony witnessed by tribal elders"
+    properties:
+      description: "Blood brother ceremony witnessed by tribal elders"
 ```
 
 ## Participants Format

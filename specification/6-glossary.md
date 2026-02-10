@@ -24,12 +24,6 @@ A specific reference to a location within a source document, including locator i
 
 > **See Also:** [Citation Entity](4-entity-types/citation)
 
-### Created At
-A timestamp field indicating when an entity record was originally created.
-
-### Created By
-A field indicating which researcher or system originally created an entity record.
-
 ### Conflicting Evidence Resolution
 The process of evaluating multiple sources with different conclusions and determining which to accept based on quality and corroboration.
 
@@ -63,7 +57,7 @@ A typed record in a GENEALOGIX archive representing a person, event, place, rela
 > **See Also:** [Entity Types](4-entity-types/)
 
 ### Event
-A life event or biographical fact such as birth, marriage, death, occupation, or residence. Events have participants, dates, places, and descriptions.
+A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation and residence are represented as temporal properties on Person entities, not as events.
 
 > **See Also:** [Event Entity](4-entity-types/event)
 

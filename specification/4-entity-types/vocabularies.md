@@ -706,6 +706,9 @@ Standard properties include:
 - `existed_to` - When the place ceased to exist
 - `population` - Population count (temporal)
 - `description` - Place description
+- `jurisdiction` - Formal jurisdiction identifier or code
+- `place_format` - Standard format string for place hierarchy
+- `alternative_names` - Historical or alternate names for a place (temporal, multi-value)
 
 ### Media Properties Vocabulary
 
@@ -763,6 +766,20 @@ Standard properties include:
 - `coverage` - Geographic or temporal scope of source content
 - `external_ids` - External identifiers from other systems
 - `publication_info` - Publication details: publisher, place, edition (from GEDCOM PUBL)
+
+### Citation Properties Vocabulary
+
+**File**: `vocabularies/citation-properties.glx`
+
+**Used By**: [Citation Entity](citation#properties)
+
+**Purpose**: Defines properties that can be set on citation entities for locator and transcription details
+
+Standard properties include:
+
+- `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.; from GEDCOM PAGE)
+- `text_from_source` - Transcription or excerpt of relevant text from the source (from GEDCOM TEXT)
+- `source_date` - Date when the source recorded the information (from GEDCOM DATE)
 
 ### Property Definition Structure
 
@@ -1270,7 +1287,7 @@ events:
     type: land-grant  # Custom type from vocabulary
     date: "1850-03-10"
     place: place-indiana
-    value: "160 acres in Howard County"
+    notes: "160 acres in Howard County"
 ```
 
 ### Step 3: Validate

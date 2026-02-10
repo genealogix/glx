@@ -155,7 +155,7 @@ The `glx validate` command enforces vocabulary consistency with different severi
 
 **Warnings (flexible):**
 - Unknown properties not defined in property vocabularies
-- Unknown assertion claims not defined in property vocabularies
+- Unknown assertion properties not defined in property vocabularies
 - Warnings allow rapid data entry and emerging properties without breaking validation
 
 This policy balances strictness (broken references are errors) with flexibility (unknown properties generate warnings, not errors).
@@ -797,10 +797,6 @@ GENEALOGIX is designed from the ground up for Git version control:
 - **Collaborative workflows**: Multiple researchers can work simultaneously with standard Git merge tools
 - **Complete audit trail**: Git tracks every change, who made it, and when
 
-## Next Steps
-
-Now that you understand the core concepts and architecture, the next step is understanding how to organize your archive files. See [Archive Organization](3-archive-organization) for details on file formats, directory structures, and organization strategies.
-
 ### Change Tracking with Git
 
 Since GENEALOGIX archives are Git repositories, all changes are automatically tracked:
@@ -817,3 +813,7 @@ git log --since="2024-01-01" --until="2024-03-31"
 ```
 
 Git provides automatic provenance tracking for all research work, showing when conclusions were drawn and how they evolved over time.
+
+## Next Steps
+
+Now that you understand the core concepts and architecture, the next step is understanding how to organize your archive files. See [Archive Organization](3-archive-organization) for details on file formats, directory structures, and organization strategies.

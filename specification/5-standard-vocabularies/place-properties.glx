@@ -35,3 +35,10 @@ place_properties:
     description: "Standard format string for place hierarchy (GEDCOM PLAC.FORM style, e.g., 'City, County, Country')"
     value_type: string
 
+  alternative_names:
+    label: "Alternative Names"
+    description: "Historical or alternate names for a place (e.g., former names, names in other languages)"
+    value_type: string
+    temporal: true
+    multi_value: true
+

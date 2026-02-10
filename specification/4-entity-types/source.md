@@ -35,7 +35,8 @@ sources:
   source-parish-register:
     title: "St. Paul's Parish Register, 1840-1860"
     type: church_register
-    creator: "Church of England"
+    authors:
+      - "Church of England"
     repository: repository-leeds-library
     date: "FROM 1840 TO 1860"
 ```
@@ -58,11 +59,10 @@ sources:
 | Field | Type | Description |
 |-------|------|-------------|
 | `type` | string | Source type from vocabulary |
-| `authors` | array | List of authors/creators |
+| `authors` | array | Author(s) or creator(s) — personal names or institutional names |
 | `date` | string | Date or date range of the source |
 | `description` | string | Description of the source |
 | `repository` | string | Reference to Repository entity |
-| `creator` | string | Creating organization or individual |
 | `language` | string | Language of the source |
 | `media` | array | References to Media entities |
 | `properties` | object | Vocabulary-defined properties (see [Properties](#properties)) |
@@ -126,24 +126,24 @@ type: church_register
 
 - Type: Array of Strings
 - Required: No
-- Description: Author(s) or creator(s) of the source
+- Description: Author(s) or creator(s) of the source. Maps to GEDCOM `SOUR.AUTH`.
+
+Use for both personal authors and institutional creators:
 
 Example:
 ```yaml
+# Personal author
+authors:
+  - "Elizabeth Shown Mills"
+
+# Institutional creator
+authors:
+  - "General Register Office"
+
+# Multiple authors
 authors:
   - "Elizabeth Shown Mills"
   - "John Doe"
-```
-
-### `creator`
-
-- Type: String
-- Required: No
-- Description: Creating organization or individual
-
-Example:
-```yaml
-creator: "General Register Office"
 ```
 
 ### `date`
@@ -255,7 +255,8 @@ sources:
   source-birth-cert-john-smith:
     title: "Birth Certificate - John Smith, 1850"
     type: vital_record
-    creator: "General Register Office"
+    authors:
+      - "General Register Office"
     date: "1850-01-15"
     repository: repository-gro
     description: "Original birth certificate for John Smith, born Leeds"
@@ -271,7 +272,8 @@ sources:
   source-census-1851-yorkshire:
     title: "1851 Census of England and Wales"
     type: census
-    creator: "UK Census Office"
+    authors:
+      - "UK Census Office"
     date: "1851-03-30"
     repository: repository-national-archives
     description: |
@@ -287,7 +289,8 @@ sources:
   source-st-pauls-register:
     title: "St. Paul's Cathedral Parish Register, 1840-1860"
     type: church_register
-    creator: "Church of England"
+    authors:
+      - "Church of England"
     date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
     description: |
@@ -331,7 +334,8 @@ sources:
   source-ancestry-uk-census:
     title: "UK Census Collection, 1841-1911"
     type: database
-    creator: "Ancestry.com"
+    authors:
+      - "Ancestry.com"
     date: "FROM 1841 TO 1911"
     repository: repository-ancestry
     description: |
@@ -350,7 +354,8 @@ sources:
   source-leeds-mercury:
     title: "Leeds Mercury"
     type: newspaper
-    creator: "Leeds Mercury Publishing Company"
+    authors:
+      - "Leeds Mercury Publishing Company"
     date: "1890-06-15"
     repository: repository-british-library
     description: "Daily newspaper published in Leeds, Yorkshire"
@@ -364,9 +369,9 @@ sources:
   source-mary-smith-interview:
     title: "Interview with Mary Smith"
     type: oral_history
-    creator: "Mary Smith (interviewee)"
     authors:
       - "Jane Researcher (interviewer)"
+      - "Mary Smith (interviewee)"
     date: "2020-03-15"
     description: |
       Oral history interview with Mary Smith discussing her
@@ -452,7 +457,7 @@ Source entities map to GEDCOM source records:
 |-----------|------------|-------|
 | Entity ID | `@SOUR@` | Source record ID |
 | `title` | `SOUR.TITL` | Source title |
-| `authors[0]` | `SOUR.AUTH` | Author (first only in GEDCOM) |
+| `authors[0]` | `SOUR.AUTH` | Author/creator (first only in GEDCOM) |
 | `date` | `SOUR.DATE` | Publication date |
 | `repository` | `SOUR.REPO` | Repository reference |
 | `description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
@@ -478,7 +483,8 @@ GENEALOGIX Equivalent:
 sources:
   source-st-pauls:
     title: "St. Paul's Parish Register"
-    creator: "Church of England"
+    authors:
+      - "Church of England"
     date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
     description: "Parish registers for baptisms, marriages, and burials"
@@ -490,7 +496,7 @@ sources:
 
 Include as much bibliographic information as possible:
 - Full title
-- Author/creator
+- Author(s)
 - Date or date range
 - Repository location
 - Repository catalog number

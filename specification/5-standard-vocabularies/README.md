@@ -208,6 +208,9 @@ Defines standard and custom properties for place entities.
 - `existed_to` - When the place ceased to exist
 - `population` - Population count (temporal)
 - `description` - Place description
+- `jurisdiction` - Formal jurisdiction identifier or code
+- `place_format` - Standard format string for place hierarchy
+- `alternative_names` - Historical or alternate names (temporal, multi-value)
 
 **See Also:** [Place Entity Documentation](../4-entity-types/place#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#place-properties-vocabulary)
 
