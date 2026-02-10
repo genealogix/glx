@@ -669,7 +669,7 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 }
 
 // convertNegativeAssertion converts GEDCOM 7.0 NO tag (negative assertion).
-// Only creates an assertion if there are citations to back up the claim.
+// Only creates an assertion if there are citations to back up the property.
 func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// NO tag indicates something did NOT happen
 	eventType := mapGEDCOMEventType(noRecord.Value, conv.GEDCOMIndex)

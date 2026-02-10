@@ -14,6 +14,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Assertion `date` Field for Temporal Properties
+- **Added `date` field to assertions** - Assertions can now specify a date or date range indicating when the asserted property value applies, enabling precise temporal targeting for properties like occupation, residence, and religion that change over time
+- Added `Date` field to `Assertion` Go struct
+- Added `date` property to assertion JSON schema
+
+### Changed
+
+#### Assertion Terminology Cleanup
+- **Renamed `claim` to `property` throughout codebase** - Internal parameter names in GEDCOM evidence code (`createPropertyAssertion`, `createPropertyAssertionWithCitations`) and test data generator now use `property` consistently
+- **Fixed test data assertion files** - All test data YAML files updated from deprecated `claim:` field to `property:`, and bare-string `subject:` to typed `EntityRef` format (`subject: { person: ... }`)
+- **Renamed test directories** - `assertion-unknown-claim` → `assertion-unknown-property`, `assertion-participant-and-claim` → `assertion-participant-and-property`, `invalid-assertion-claims` → `invalid-assertion-properties`
+
 #### Media as Assertion Evidence
 - **Added `media` as a third evidence option for assertions** - Assertions can now reference media entities directly as evidence, alongside citations and sources
 - Useful for direct visual evidence like gravestone photos, handwritten documents, or family photographs

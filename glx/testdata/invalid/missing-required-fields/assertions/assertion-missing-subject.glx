@@ -1,8 +1,6 @@
 assertions:
   assertion-missing-subject:
-    claim: name
+    property: name
     value: "John"
     citations:
       - citation-123
-
-

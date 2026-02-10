@@ -55,6 +55,7 @@ assertions:
 | Field | Type | Description |
 |-------|------|-------------|
 | `value` | string | The concluded value of the property (not used with participant) |
+| `date` | string | Date or date range when this property value applies (for temporal properties) |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string | General notes about the assertion |
 
@@ -213,6 +214,37 @@ Example:
 property: occupation
 value: blacksmith
 ```
+
+### `date`
+
+- Type: String
+- Required: No
+- Description: Date or date range when this property value applies. Used with temporal properties (occupation, residence, etc.) to specify **when** the asserted value was true, matching the temporal value format on entities.
+
+When a temporal property on an entity has multiple dated values:
+```yaml
+# Person's temporal property
+occupation:
+  - value: "blacksmith"
+    date: "FROM 1870 TO 1890"
+  - value: "farmer"
+    date: "FROM 1890 TO 1920"
+```
+
+Each assertion can target a specific temporal entry using `date`:
+```yaml
+assertions:
+  assertion-occupation-blacksmith:
+    subject:
+      person: person-john-smith
+    property: occupation
+    value: "blacksmith"
+    date: "FROM 1870 TO 1890"
+    citations: [citation-1881-census]
+    confidence: high
+```
+
+Date formats follow the standard [date format](../2-core-concepts#date-format-standard). If omitted, the assertion applies to the property value without temporal context.
 
 ### `confidence`
 
@@ -375,7 +407,9 @@ assertions:
       Conclusion: March 10, 1852 (with some uncertainty)
 ```
 
-### Complex Residence Assertion
+### Temporal Property Assertion
+
+For temporal properties like residence and occupation, the `date` field specifies when the value applies:
 
 ```yaml
 assertions:
@@ -383,12 +417,23 @@ assertions:
     subject:
       person: person-john-smith
     property: residence
-    value: "Wellington Street, Leeds, Yorkshire"
+    value: "place-leeds"
+    date: "FROM 1850 TO 1870"
     citations:
       - citation-1851-census
       - citation-directory-1851
     confidence: high
-    notes: "Residence at time of 1851 census"
+
+  assertion-john-occupation-blacksmith:
+    subject:
+      person: person-john-smith
+    property: occupation
+    value: "blacksmith"
+    date: "FROM 1870 TO 1890"
+    citations:
+      - citation-1881-census
+      - citation-trade-directory
+    confidence: high
 ```
 
 ### Assertion with Direct Media Evidence

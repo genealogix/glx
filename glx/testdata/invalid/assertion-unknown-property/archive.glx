@@ -1,4 +1,4 @@
-# Warning-level: Unknown claim not in property vocabulary
+# Warning-level: Unknown property not in property vocabulary
 # This should generate a warning but not fail - allows flexibility
 
 persons:
@@ -18,12 +18,13 @@ citations:
   citation-record:
     source: source-record
 
-# This assertion uses an unknown claim that's not in person_properties vocabulary
+# This assertion uses an unknown property that's not in person_properties vocabulary
 # Should generate a WARNING but still validate (allows emerging properties)
 assertions:
-  assertion-custom-claim:
-    subject: person-john
-    claim: custom_property_not_in_vocab  # WARNING: unknown claim
+  assertion-custom-property:
+    subject:
+      person: person-john
+    property: custom_property_not_in_vocab  # WARNING: unknown property
     value: "some value"
     citations:
       - citation-record
@@ -48,4 +49,3 @@ person_properties:
     label: "Birth Date"
     description: "Date of birth"
     value_type: date
-

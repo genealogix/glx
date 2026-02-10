@@ -645,13 +645,14 @@ assertions:
       person: person-john
     property: occupation
     value: "blacksmith"
+    date: "FROM 1870 TO 1890"
     citations:
       - citation-1851-census
       - citation-trade-directory
     confidence: high
 ```
 
-Properties record **what** we believe. Assertions document **why** we believe it, with evidence.
+Properties record **what** we believe. Assertions document **why** we believe it, with evidence. For temporal properties like occupation, the assertion's `date` field specifies **when** the value applies.
 
 ## Evidence Chain
 

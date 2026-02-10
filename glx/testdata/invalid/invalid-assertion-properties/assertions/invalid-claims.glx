@@ -1,0 +1,7 @@
+assertions:
+  assertion-invalid-property:
+    subject:
+      person: person-father
+    property: nonexistent_property
+    value: "some value"
+    confidence: high

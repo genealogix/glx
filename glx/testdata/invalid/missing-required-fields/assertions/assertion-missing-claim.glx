@@ -1,8 +1,0 @@
-assertions:
-  assertion-missing-claim:
-    subject: person-123
-    value: "John"
-    citations:
-      - citation-123
-
-

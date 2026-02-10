@@ -232,6 +232,7 @@ type Assertion struct {
 	Subject     EntityRef    `yaml:"subject"`
 	Property    string       `yaml:"property,omitempty"`    // Optional, not present if participant exists
 	Value       string       `yaml:"value,omitempty"`       // Not present if participant exists
+	Date        string       `yaml:"date,omitempty"`        // For temporal properties
 	Participant *Participant `yaml:"participant,omitempty"` // Not present if property/value exists
 	Confidence  string       `refType:"confidence_levels"   yaml:"confidence,omitempty"`
 	Sources     []string     `refType:"sources"             yaml:"sources,omitempty"`

@@ -143,7 +143,7 @@ func generatePlace(glxFile *GLXFile) string {
 }
 
 // generateEvidenceChain creates a source, citation, and assertion for a given event.
-func generateEvidenceChain(glxFile *GLXFile, subjectID, claimType, repoID string) {
+func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID string) {
 	// Source
 	sourceID := "source-" + gofakeit.UUID()
 	glxFile.Sources[sourceID] = &Source{
@@ -165,7 +165,7 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, claimType, repoID string
 	assertionID := "assertion-" + gofakeit.UUID()
 	glxFile.Assertions[assertionID] = &Assertion{
 		Subject:   EntityRef{Event: subjectID},
-		Property:  claimType,
+		Property:  propertyName,
 		Citations: []string{citationID},
 	}
 }

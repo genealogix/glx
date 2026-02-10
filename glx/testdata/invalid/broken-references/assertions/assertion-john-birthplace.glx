@@ -1,7 +1,8 @@
 assertions:
   assertion-john-birth-place:
-    subject: person-john-smith-1850
-    claim: born_at
+    subject:
+      person: person-john-smith-1850
+    property: born_at
     value: place-leeds
     citations:
       - citation-john-birth

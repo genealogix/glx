@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/assertion.schema.json",
   "title": "Assertion",
-  "description": "A source-backed claim about an entity. ID comes from the map key in the parent structure.",
+  "description": "A source-backed conclusion about an entity. ID comes from the map key in the parent structure.",
   "type": "object",
   "required": ["subject"],
   "allOf": [
@@ -96,6 +96,10 @@
     "value": {
       "type": "string",
       "description": "The concluded value of the property (cannot be used with participant)"
+    },
+    "date": {
+      "type": "string",
+      "description": "Date or date range when this property value applies (for temporal properties)"
     },
     "participant": {
       "type": "object",

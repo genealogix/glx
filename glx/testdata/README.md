@@ -21,7 +21,7 @@ This directory contains test data for validating the GLX specification validator
 - `invalid-entity-ids/` - Archive with entity IDs that contain invalid characters (underscores)
 - `duplicate-ids/` - Archive with duplicate entity IDs across files
 - `invalid-relationship-participants/` - Archive with relationship participants referencing non-existent persons
-- `invalid-assertion-claims/` - Archive with assertions using unknown claim names
+- `invalid-assertion-properties/` - Archive with assertions using unknown property names
 
 ## Existing Test Files
 
@@ -29,11 +29,11 @@ The following files were copied from the original testdata directory and are use
 
 - `valid/assertion-with-participant.glx`
 - `valid/person-with-properties.glx`
-- `invalid/assertion-participant-and-claim.glx`
+- `invalid/assertion-participant-and-property.glx`
 - `invalid/assertion-participant-and-value.glx`
 - `invalid/assertion-participant-invalid-person.glx`
 - `invalid/assertion-participant-invalid-role.glx`
-- `invalid/assertion-unknown-claim.glx`
+- `invalid/assertion-unknown-property.glx`
 
 ## Usage
 

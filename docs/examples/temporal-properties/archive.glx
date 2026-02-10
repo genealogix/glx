@@ -91,13 +91,15 @@ citations:
     properties:
       text_from_source: "J. Smith - Blacksmith, 42 Oxford Street, London"
 
-# Assertions providing evidence for the properties
+# Assertions providing evidence for the temporal properties
+# The date field on each assertion matches the temporal entry it supports
 assertions:
   assertion-occupation-1851:
     subject:
       person: person-john-smith-1850
     property: occupation
     value: "farm laborer"
+    date: "1865"
     citations:
       - citation-1851-census
     confidence: high
@@ -108,6 +110,7 @@ assertions:
       person: person-john-smith-1850
     property: occupation
     value: "blacksmith"
+    date: "FROM 1870 TO 1890"
     citations:
       - citation-1881-census
       - citation-trade-directory
@@ -119,6 +122,7 @@ assertions:
       person: person-john-smith-1850
     property: residence
     value: "place-london"
+    date: "FROM 1870 TO 1920"
     citations:
       - citation-1881-census
       - citation-trade-directory

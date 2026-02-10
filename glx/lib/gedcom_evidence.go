@@ -135,21 +135,21 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 
 // createPropertyAssertion creates an assertion for a property, but only if there are citations.
 // Assertions without citations are not meaningful - the property value is already stored on the entity.
-func createPropertyAssertion(subjectID string, claim string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
-	if claim == "" || value == nil {
+func createPropertyAssertion(subjectID string, property string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
+	if property == "" || value == nil {
 		return
 	}
 
 	// Extract citations from SOUR subrecords
 	citationIDs := extractCitations(subjectID, sourceRecord, conv)
 
-	createPropertyAssertionWithCitations(subjectID, claim, value, citationIDs, conv)
+	createPropertyAssertionWithCitations(subjectID, property, value, citationIDs, conv)
 }
 
 // createPropertyAssertionWithCitations creates an assertion for a property using pre-extracted citation IDs.
 // This is used when citations have already been extracted or synthetically created (e.g., census records).
-func createPropertyAssertionWithCitations(subjectID string, claim string, value any, citationIDs []string, conv *ConversionContext) {
-	if claim == "" || value == nil {
+func createPropertyAssertionWithCitations(subjectID string, property string, value any, citationIDs []string, conv *ConversionContext) {
+	if property == "" || value == nil {
 		return
 	}
 
@@ -178,7 +178,7 @@ func createPropertyAssertionWithCitations(subjectID string, claim string, value 
 	// Create assertion
 	assertion := &Assertion{
 		Subject:   EntityRef{Person: subjectID},
-		Property:  claim,
+		Property:  property,
 		Value:     valueStr,
 		Citations: citationIDs,
 	}

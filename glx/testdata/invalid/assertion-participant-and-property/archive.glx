@@ -1,4 +1,4 @@
-# Invalid: Both participant and claim present
+# Invalid: Both participant and property present
 # This should fail validation - they are mutually exclusive
 
 persons:
@@ -22,15 +22,15 @@ citations:
   citation-cert:
     source: source-cert
 
-# This is INVALID - cannot have both participant and claim
+# This is INVALID - cannot have both participant and property
 assertions:
   assertion-invalid:
-    subject: event-marriage
+    subject:
+      event: event-marriage
     participant:
       person: person-john
       role: groom
-    claim: some_claim  # ERROR: should not be present with participant
+    property: some_property  # ERROR: should not be present with participant
     citations:
       - citation-cert
     confidence: high
-
