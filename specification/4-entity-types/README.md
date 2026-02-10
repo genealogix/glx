@@ -25,7 +25,7 @@ Represents connections between people such as spouse, parent-child, and other fa
 ### [Event](event)
 Represents occurrences in time and place: births, marriages, deaths, baptisms, etc.
 
-- **Key Properties**: Type, date, place, participants, description
+- **Key Properties**: Type, date, place, participants, notes
 - **GEDCOM Equivalent**: BIRT, DEAT, MARR, BAPM, etc.
 
 ### [Place](place)
@@ -61,14 +61,14 @@ Represents an institution or organization that holds genealogical sources (archi
 ### [Media](media)
 Represents digital or physical media objects associated with genealogical entities (photographs, documents, audio, etc.).
 
-- **Key Properties**: Title, file path, MIME type, description
+- **Key Properties**: Title, URI, MIME type, description
 - **GEDCOM Equivalent**: OBJE (Object/Media Record)
 
 ## Entity Relationships
 
 ```
 Person
-  ├── has many Events (birth, marriage, occupation, etc.)
+  ├── has many Events (birth, marriage, immigration, etc.)
   ├── has many Properties
   ├── has many Assertions (about properties)
   ├── links to media (via Media entity)

@@ -36,6 +36,11 @@ The result should read as if the feature was implemented correctly the first tim
 - Remove empty sections (a `### Added` with no bullets under it)
 - Keep the "Keep a Changelog" format and conventions
 
+### 5. Remove any specific audit references
+
+- We don't need to keep the context of how specific audits identified changes to make.
+- Items should be regrouped in normal sections
+
 ## Process
 
 1. Read `CHANGELOG.md`

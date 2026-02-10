@@ -323,7 +323,10 @@ events:
     type: apprenticeship  # Custom type from vocabulary
     date: "1845-03-10"
     place: place-leeds
-    description: "Apprenticed to blacksmith"
+    participants:
+      - person: person-john
+        role: principal
+    notes: "Apprenticed to blacksmith"
 ```
 
 ### Validation

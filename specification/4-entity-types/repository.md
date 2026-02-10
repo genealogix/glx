@@ -123,7 +123,10 @@ repositories:
       phones: "+44 20 8876 3444"
       emails: "enquiry@nationalarchives.gov.uk"
       access_hours: "Monday-Friday 9am-5pm"
-      holding_types: "government records; microfilm; digital images"
+      holding_types:
+        - "government records"
+        - "microfilm"
+        - "digital images"
       access_restrictions: "Some records require appointment"
 ```
 
@@ -137,7 +140,12 @@ repositories:
     website: "https://www.ancestry.com"
     properties:
       access_hours: "24/7"
-      holding_types: "census records; vital records; military records; church records; newspapers"
+      holding_types:
+        - "census records"
+        - "vital records"
+        - "military records"
+        - "church records"
+        - "newspapers"
       access_restrictions: "Subscription required"
 ```
 
@@ -154,7 +162,11 @@ repositories:
     properties:
       phones: "+44 20 7246 8348"
       emails: "archive@stpauls.co.uk"
-      holding_types: "parish registers; marriage records; baptismal records; manuscripts"
+      holding_types:
+        - "parish registers"
+        - "marriage records"
+        - "baptismal records"
+        - "manuscripts"
       access_restrictions: "By appointment only"
 ```
 

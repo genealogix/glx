@@ -45,7 +45,7 @@ When you initialize a new archive with `glx init`, standard vocabulary files are
 
 ```
 vocabularies/
-├── event-types.glx           # Birth, death, baptism, occupation, etc.
+├── event-types.glx           # Birth, death, baptism, immigration, etc.
 ├── relationship-types.glx    # Marriage, parent-child, adoption, etc.
 ├── place-types.glx           # Country, city, parish, etc.
 ├── source-types.glx          # Vital records, census, church registers, etc.
@@ -192,7 +192,7 @@ Media → (any entity)
 
 1. **Person** - Individuals in the family archive
 2. **Relationship** - Connections between people (marriage, parent-child, etc.)
-3. **Event** - Occurrences in time and place (birth, death, marriage, occupation)
+3. **Event** - Occurrences in time and place (birth, death, marriage, immigration)
 4. **Place** - Geographic locations with hierarchical structure
 5. **Source** - Information sources (books, records, websites, databases)
 6. **Citation** - Specific references within sources

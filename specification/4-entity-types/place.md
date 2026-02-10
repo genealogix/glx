@@ -181,6 +181,9 @@ events:
   event-birth-john:
     type: birth
     place: place-leeds
+    participants:
+      - person: person-john
+        role: principal
 
 # In person properties
 persons:

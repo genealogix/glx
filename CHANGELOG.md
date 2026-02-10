@@ -14,102 +14,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
-#### Place `alternative_names` Property
-- Added `alternative_names` to place properties vocabulary — temporal, multi-value string property for historical or alternate place names
-
-#### Citation Properties Vocabulary Documentation
-- Added missing `### Citation Properties Vocabulary` section to vocabularies specification
-
-### Fixed
-
-#### Specification Audit Fixes
-- Fixed Place hierarchy example that used duplicate YAML top-level keys (combined into single `places:` block)
-- Fixed event example in vocabularies.md that used undocumented `value` field (changed to `notes`)
-- Removed undocumented `birth_surname` field from person name example
-- Fixed broken anchor link in repository.md (`#repository-properties` → `#repository-properties-vocabulary`)
-- Standardized birth event examples to use `subject` role consistently
-- Removed stale `Created At` and `Created By` glossary entries (fields don't exist in any entity spec)
-- Fixed glossary Event definition that incorrectly included occupation and residence (those are temporal Person properties, not events)
-- Fixed "assertion claims" terminology to "assertion properties" in core-concepts validation section
-- Moved "Change Tracking with Git" section before "Next Steps" conclusion in core-concepts
-- Consolidated Relationship `description` from top-level field into `properties.description`
-- Consolidated Source `creator` field into `authors` — both map from GEDCOM `SOUR.AUTH`; `authors` now accepts personal names and institutional names; removed `creator` from spec, schema, and Go types
-- Updated place properties documentation in vocabularies.md and standard-vocabularies README to include `jurisdiction`, `place_format`, and `alternative_names`
-
-#### Specification Audit Fixes (Round 2)
-- Fixed date format examples in core-concepts using undefined properties (`death_year` → `died_on`, `married_on` → `born_on`, `residence_dates` → `residence`)
-- Fixed event examples in relationship.md using `description` as top-level field (changed to `notes`)
-- Fixed assertion example using invalid date format `circa 1825` (changed to `ABT 1825`)
-- Fixed media example in vocabularies.md using `file:` instead of `uri:`
-- Fixed glossary Event Type definition that incorrectly listed occupation and residence as event types
-- Fixed relationship types count from 11 to 10 and removed non-existent `adoption` relationship type from list
-- Fixed "Event/Fact" label in specification README to just "Event"
-- Fixed "living status" in entity types README (replaced with "birth/death dates")
-- Replaced `living: true` boolean example with non-misleading property names
-- Changed `registration_district` to `district` in place example to use standard vocabulary type
-- Added Schema Reference sections to event, relationship, place, citation, and repository entity docs
-
-### Added (continued)
-
 #### Assertion `date` Field for Temporal Properties
 - **Added `date` field to assertions** - Assertions can now specify a date or date range indicating when the asserted property value applies, enabling precise temporal targeting for properties like occupation, residence, and religion that change over time
 - Added `Date` field to `Assertion` Go struct
 - Added `date` property to assertion JSON schema
 
-### Changed
-
-#### Assertion Terminology Cleanup
-- **Renamed `claim` to `property` throughout codebase** - Internal parameter names in GEDCOM evidence code (`createPropertyAssertion`, `createPropertyAssertionWithCitations`) and test data generator now use `property` consistently
-- **Fixed test data assertion files** - All test data YAML files updated from deprecated `claim:` field to `property:`, and bare-string `subject:` to typed `EntityRef` format (`subject: { person: ... }`)
-- **Renamed test directories** - `assertion-unknown-claim` → `assertion-unknown-property`, `assertion-participant-and-claim` → `assertion-participant-and-property`, `invalid-assertion-claims` → `invalid-assertion-properties`
-
-#### Media as Assertion Evidence
-- **Added `media` as a third evidence option for assertions** - Assertions can now reference media entities directly as evidence, alongside citations and sources
-- Useful for direct visual evidence like gravestone photos, handwritten documents, or family photographs
-- JSON schema `anyOf` evidence constraint updated to include `media`
-- Media entities remain linkable to sources (via `media.source`) and citations (via `citation.media`) as before
-
-#### Media File Import
-- **Media files are now copied into the archive during GEDCOM import** - Relative FILE paths from GEDCOM OBJE records are copied from the GEDCOM source directory into `media/files/` in the output archive
-- **BLOB data is decoded and written to files** - GEDCOM 5.5.1 deprecated BLOB binary data is decoded using the GEDCOM custom encoding and written to `media/files/`
-- **Media URIs rewritten to archive-relative paths** - Relative FILE paths are rewritten from their GEDCOM-relative form (e.g., `photos/portrait.jpg`) to `media/files/portrait.jpg`
-- **URL and absolute path references left as-is** - HTTP, FTP, mailto, file://, and absolute paths are preserved unchanged in Media.URI
-- **Filename deduplication** - When multiple OBJE records reference files with the same basename, filenames are deduplicated with counter suffixes (e.g., `photo-2.jpg`)
-- **Missing source files produce warnings, not errors** - File copy failures are non-fatal; URL-decoded path fallback for GEDCOM 7.0 percent-encoded filenames
-
-#### GEDCOM Media/OBJE Import
-- **Implemented inline OBJE handling for persons and events** - Media references (XRef) and embedded OBJE records on individuals, birth/death/marriage events, and other life events are now imported (previously only marriage events and top-level OBJE were handled)
-- **Added `handleOBJE` shared helper** - Handles XRef references, GEDCOM 7.0 `@VOID@` pointers with subrecords, and embedded OBJE without XRef
-- **Added OBJE handling in `extractEventDetails`** - All event types (individual, family, divorce, etc.) now automatically process OBJE subrecords
-- **Added BLOB data handling** - GEDCOM 5.5.1 BLOB binary data on top-level OBJE records is now recognized and blob size recorded in media properties
-- **URL-type multimedia imported** - OBJE records with `FORM URL` and http/ftp/mailto FILE references are now correctly imported as media entities
-- **OBJE handling on all record types** - Added embedded OBJE support for source records, family records, submitter records, census records, and person property tags (e.g., OCCU). Citation OBJE now handles both references and embedded media.
-- Torture test media import improved from 2 to 32 entities (100% coverage, 0% loss)
-
-#### GEDCOM Census (CENS) Support
-- **Implemented CENS tag handling for individual and family records** - Census records are no longer silently skipped during GEDCOM import
-- Census records are treated as evidence sources, not events: each CENS creates a Source (type: `census`) and Citation
-- When CENS has SOUR sub-records, uses existing sources; otherwise creates a synthetic census source (title from TYPE or DATE)
-- Extracts PLAC to set temporal `residence` property on persons with date from DATE sub-record
-- Creates property assertions for residence backed by census citations
-- Family-level CENS applies census data to both husband and wife
-- Added `createPropertyAssertionWithCitations()` helper for creating assertions with pre-extracted citation IDs
-
-#### GEDCOM Tag Mapping in Vocabularies
-- **Added `gedcom` field to `PropertyDefinition` struct** - Property vocabulary entries can now declare their corresponding GEDCOM tag
-- **Added GEDCOM tag mappings to property vocabularies**:
-  - `person-properties.glx`: occupation (OCCU), title (TITL), religion (RELI), education (EDUC), nationality (NATI), caste (CAST), ssn (SSN), external_ids (EXID)
-  - `event-properties.glx`: age_at_event (AGE), cause (CAUS), event_subtype (TYPE)
-  - `citation-properties.glx`: locator (PAGE), text_from_source (TEXT), source_date (DATE)
-  - `source-properties.glx`: abbreviation (ABBR), publication_info (PUBL), call_number (CALN), events_recorded (EVEN), agency (AGNC), external_ids (EXID)
-  - `repository-properties.glx`: phones (PHON), emails (EMAIL), external_ids (EXID)
-  - `media-properties.glx`: medium (MEDI), crop (CROP)
-- **Added `external_ids` property to person-properties.glx** - For GEDCOM 7.0 EXID tags on person records
-- **Added event detail properties to event-properties.glx** - `age_at_event`, `cause`, `event_subtype` properties now defined in vocabulary
-- **Added `GEDCOMIndex` reverse lookup infrastructure** - Builds `map[GEDCOMTag]GLXKey` indices from loaded vocabularies at import initialization, covering event types, person/event/citation/source/repository/media properties
-- **Added `gedcom` field to all property vocabulary JSON schemas** - All 8 property vocabulary schemas now include the optional `gedcom` field in their PropertyDefinition
-- **Added `fields`/`FieldDefinition` to all property vocabulary JSON schemas** - All 8 property vocabulary schemas now support structured property components with sub-fields (previously only media-properties had this)
-- **Updated vocabulary specification documentation** - Property Definition Structure table and examples now document the `gedcom` field; person properties table includes GEDCOM column; event properties listing updated with new standard properties
+#### Citation Properties Vocabulary Documentation
+- Added missing `### Citation Properties Vocabulary` section to vocabularies specification
 
 ### Changed
 
@@ -117,38 +28,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ##### Renamed `claim` to `property`
 - **Renamed `claim` field to `property`** - The field name now matches the vocabulary terminology (property vocabularies)
-- **Updated JSON schema** - Changed field name from `claim` to `property`
-- **Updated Go types** - `Assertion.Claim` is now `Assertion.Property`
-- **Updated all specification examples and example archives** to use new field name
+- Updated JSON schema, Go types (`Assertion.Claim` → `Assertion.Property`), all specification examples, example archives, and test data YAML files
+- Internal parameter names in GEDCOM evidence code and test data generator updated to use `property` consistently
+- Renamed test directories: `assertion-unknown-claim` → `assertion-unknown-property`, `assertion-participant-and-claim` → `assertion-participant-and-property`, `invalid-assertion-claims` → `invalid-assertion-properties`
 
 ##### Typed Subject Reference
 - **Changed `subject` from string to typed reference object** - Prevents entity ID collisions in large archives
-- **Subject now uses oneOf pattern** - Must specify exactly one of: `person`, `event`, `relationship`, or `place`
-- **Before**: `subject: person-john-smith`
-- **After**: `subject: { person: person-john-smith }` or `subject: { event: marriage-1880 }`
-- **Added `EntityRef` Go type** - New type with `Type()` and `ID()` helper methods
-- **Updated validation** - EntityRef validation ensures exactly one field is set and referenced entity exists
+- Must specify exactly one of: `person`, `event`, `relationship`, or `place`
+- **Before**: `subject: person-john-smith` → **After**: `subject: { person: person-john-smith }`
+- Added `EntityRef` Go type with `Type()` and `ID()` helper methods
+- Updated validation to ensure exactly one field is set and referenced entity exists
+
+##### Media as Assertion Evidence
+- **Added `media` as a third evidence option for assertions** - Assertions can now reference media entities directly as evidence, alongside citations and sources
+- Useful for direct visual evidence like gravestone photos, handwritten documents, or family photographs
+- JSON schema `anyOf` evidence constraint updated to include `media`
 
 #### Vocabulary Consolidation
 
 ##### Adoption Modeling
 - **Removed redundant `adoption` relationship type** - Use `adoptive-parent-child` relationship type instead
-- **Clarified adoption semantics** - `adoption` event type records the legal proceeding; `adoptive-parent-child` relationship type models the ongoing parent-child bond
-- **Updated relationship.md** - Added comprehensive example showing adoption event linked to adoptive-parent-child relationship via `start_event`
-- **Removed `RelationshipTypeAdoption` constant** - Code now uses only `RelationshipTypeAdoptiveParentChild`
+- Clarified adoption semantics: `adoption` event type records the legal proceeding; `adoptive-parent-child` relationship type models the ongoing bond
+- Removed `RelationshipTypeAdoption` constant from Go code
 
 ##### Godparent Modeling
-- **Clarified godparent dual usage** - Participant role `godparent` is for event participation (baptism sponsor); relationship type `godparent` is for the ongoing bond
-- **Added `godchild` participant role** - For use in godparent relationships
-- **Updated relationship.md** - Added comprehensive example showing baptism event with godparent role linked to godparent relationship
+- **Clarified godparent dual usage** - Participant role `godparent` for event participation (baptism sponsor); relationship type `godparent` for the ongoing bond
+- Added `godchild` participant role for use in godparent relationships
 
 #### Type System
 
 ##### Unified Participant Type
 - **Unified participant types** - Consolidated `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into single `Participant` struct
-  - All three types had identical structure: `person`, `role`, `notes` fields
-  - Reduces code duplication and simplifies the API
-  - `Event.Participants`, `Relationship.Participants`, and `Assertion.Participant` now all use the unified `Participant` type
+  - All three had identical structure: `person`, `role`, `notes` fields
+  - `Event.Participants`, `Relationship.Participants`, and `Assertion.Participant` now all use the unified type
 
 #### Property Vocabularies
 
@@ -163,7 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `original_filename` - Original filename before import
   - `photographer` - Person who created the media
   - `location` - Place where the media was created
-- **Added `Properties` field to Media struct and `MediaProperties` to GLXFile**
+- Added `Properties` field to Media struct and `MediaProperties` to GLXFile
 
 ##### Repository Properties
 - **New `repository-properties.glx` vocabulary** - Standard properties for repository entities:
@@ -174,15 +86,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `access_restrictions` - Any restrictions on access (appointment required, subscription, etc.)
   - `holding_types` - Types of materials held (microfilm, digital, books, etc.) (multi-value)
   - `external_ids` - External identifiers from other systems like FamilySearch, WikiTree (multi-value)
-- **Added `RepositoryProperties` to GLXFile**
-- **Moved contact fields to properties** - Repository contact information (phone, email) now stored in `properties` instead of direct entity fields
+- Added `RepositoryProperties` to GLXFile
+- Moved contact fields (phone, email) from direct entity fields to `properties`
 
 ##### Citation Properties
 - **New `citation-properties.glx` vocabulary** - Standard properties for citation entities:
   - `locator` - Location within source (consolidates former `page` and `locator` direct fields; GEDCOM PAGE)
   - `text_from_source` - Transcription or excerpt of relevant text (moved from direct entity field)
   - `source_date` - Date when the source recorded the information (from GEDCOM DATA.DATE)
-- **Added `Properties` field to Citation struct and `CitationProperties` to GLXFile**
+- Added `Properties` field to Citation struct and `CitationProperties` to GLXFile
 
 ##### Source Properties
 - **New `source-properties.glx` vocabulary** - Standard properties for source entities:
@@ -192,104 +104,128 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `agency` - Responsible agency (from GEDCOM AGNC)
   - `coverage` - Geographic/temporal scope of source content
   - `external_ids` - External system identifiers (multi-value)
-- **Added `Properties` field to Source struct, `SourceProperties` to GLXFile, and `source-properties.schema.json`**
+- Added `Properties` field to Source struct, `SourceProperties` to GLXFile, and `source-properties.schema.json`
 
 ##### Multi-Value Property Support
 - **Added `multi_value` field to PropertyDefinition** - Properties can now be marked as supporting multiple values
-- **Validation support for multi-value properties** - Validator correctly handles array values for multi-value properties
+- Validation correctly handles array values for multi-value properties
 
 #### GEDCOM Import
-- **Vocabulary-driven tag resolution** - Replaced hardcoded event type and property mappings with `GEDCOMIndex` lookups from vocabulary `gedcom` fields. Collapsed individual property switch cases into generic `handlePersonPropertyTag()` handler.
-- **Assertions require citations** - Assertions are now only created when SOUR tags are present. Property values are still stored directly on entities; assertions exist to document evidence.
-- **Embedded citation support** - SOURCE_CITATION without pointer (`SOUR description text`) now creates synthetic Source entity per GEDCOM spec recommendation
-- **Properties-based storage** - Source tags (ABBR, CALN, EVEN, AGNC, EXID), media tags (MEDI, CROP), and citation data now stored in vocabulary-defined `properties` instead of notes
-- **Citation linkage on media** - SOUR on OBJE now properly links via `citation.Media` instead of dumping to notes
+
+##### Media/OBJE Import
+- **Implemented inline OBJE handling for all record types** - Media references and embedded OBJE records on individuals, events, sources, families, submitters, census records, and person property tags are now imported (previously only marriage events and top-level OBJE were handled)
+- Added `handleOBJE` shared helper for XRef references, GEDCOM 7.0 `@VOID@` pointers, and embedded OBJE
+- Added BLOB data handling, URL-type multimedia import, and OBJE processing in `extractEventDetails`
+- Torture test media import improved from 2 to 32 entities (100% coverage)
+
+##### Media File Import
+- **Media files are now copied into the archive during GEDCOM import** - Relative FILE paths copied to `media/files/`; BLOB data decoded and written to files
+- Media URIs rewritten to archive-relative paths; URL and absolute path references left as-is
+- Filename deduplication with counter suffixes; missing source files produce warnings, not errors
+
+##### Census (CENS) Support
+- **Implemented CENS tag handling for individual and family records** - Census records treated as evidence sources, not events
+- Each CENS creates a Source (type: `census`) and Citation; extracts PLAC for temporal `residence` property
+- Family-level CENS applies census data to both husband and wife
+- Added `createPropertyAssertionWithCitations()` helper
+
+##### Vocabulary-Driven Tag Resolution
+- **Added `gedcom` field to `PropertyDefinition` struct** - Property vocabulary entries can now declare their corresponding GEDCOM tag
+- Added GEDCOM tag mappings to all 6 property vocabularies (person, event, citation, source, repository, media)
+- Added `external_ids` to person-properties.glx and event detail properties (`age_at_event`, `cause`, `event_subtype`) to event-properties.glx
+- Added `GEDCOMIndex` reverse lookup infrastructure; replaced hardcoded mappings with vocabulary-driven lookups
+- Added `gedcom` field and `fields`/`FieldDefinition` to all 8 property vocabulary JSON schemas
+- Updated vocabulary specification documentation with `gedcom` field and GEDCOM column
+
+##### Evidence and Citation Handling
+- **Assertions require citations** - Assertions are now only created when SOUR tags are present
+- **Embedded citation support** - SOURCE_CITATION without pointer creates synthetic Source entity
+- **Properties-based storage** - Source, media, and citation tags now stored in vocabulary-defined `properties` instead of notes
+- **Citation linkage on media** - SOUR on OBJE now properly links via `citation.Media`
 
 #### Validation
 - **Place hierarchy cycle detection** - Validates that place parent references don't form cycles (e.g., A -> B -> C -> A). Reports exactly one error per cycle with the full cycle path in the error message.
 
 #### Place Entity
-- **Moved `jurisdiction` and `place_format` to properties** - These rarely-used fields are now stored in `properties` instead of dedicated entity fields
-  - `properties.jurisdiction` - Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code)
-  - `properties.place_format` - Standard format string for place hierarchy (GEDCOM PLAC.FORM style)
-- **Updated place-properties vocabulary** - Added `jurisdiction` and `place_format` property definitions
+- **Moved `jurisdiction` and `place_format` to properties** - Now stored as vocabulary-defined properties instead of dedicated entity fields
+- **Simplified `alternative_names`** - Changed from a dedicated field with `AlternativeName`/`DateRange` types to a temporal, multi-value string property in the place-properties vocabulary
 
 #### CLI
 - **Changed `glx import` default format** - Now defaults to multi-file (`-f multi`) instead of single-file
 
 #### JSON Schema URLs
-- **Standardized schema `$id` URLs** - All JSON schemas now use consistent GitHub raw content URLs
-  - Format: `https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/{name}.schema.json`
-  - Removed references to `schema.genealogix.io` and `genealogix.org` domains
+- **Standardized schema `$id` URLs** - All JSON schemas now use consistent GitHub raw content URLs; removed references to `schema.genealogix.io` and `genealogix.org` domains
 
 #### Documentation
 
 ##### Specification Structure
 - **Streamlined Introduction** - Simplified [1-introduction.md](specification/1-introduction.md) from 120 to 63 lines
-  - New concise structure: What is GENEALOGIX? → Why GENEALOGIX? → Who is it for? → Comparison Table → Getting Started → Community
-- **Restructured Core Concepts** - Reorganized [2-core-concepts.md](specification/2-core-concepts.md) to emphasize flexibility as primary differentiator
-  - **New section order**: Archive-Owned Vocabularies → Entity Relationships → Data Types → Properties → Assertions → Evidence Chain → Collaboration
-  - Removed ~115 lines of Git implementation details
-- **Merged Data Types into Core Concepts** - Integrated [6-data-types.md](specification/6-data-types.md) as section 3 of Core Concepts; deleted standalone file
-- **Updated specification table of contents** - [specification/README.md](specification/README.md) now accurately reflects 5-section structure
-- **Added Glossary to specification** - Moved glossary from `docs/guides/glossary.md` to [specification/6-glossary.md](specification/6-glossary.md)
-  - Added "Property" and "Temporal Property" term definitions
-- **Fixed broken links** - Updated 7 links across 6 files after merging data types; fixed `#evidence-hierarchy` → `#evidence-chain` anchors in 4 files; fixed `birth_date` → `born_on` in examples
+- **Restructured Core Concepts** - Reorganized [2-core-concepts.md](specification/2-core-concepts.md) to emphasize flexibility; new section order: Archive-Owned Vocabularies → Entity Relationships → Data Types → Properties → Assertions → Evidence Chain → Collaboration
+- **Merged Data Types into Core Concepts** - Integrated [6-data-types.md](specification/6-data-types.md) as section 3; deleted standalone file
+- **Added Glossary to specification** - Moved from `docs/guides/glossary.md` to [specification/6-glossary.md](specification/6-glossary.md) with "Property" and "Temporal Property" definitions
+- Updated table of contents and fixed broken links after restructuring
 
-##### Specification Audit Quick Wins
-- **Removed `.md` extensions from internal links** - Updated ~40 internal links across 12 specification files for VitePress compatibility
-- **Standardized GEDCOM mapping table headers** - All 8 entity type files now use consistent "GLX Field | GEDCOM Tag | Notes" format
-- **Fixed vocabulary directory structure example** - Removed misleading `property vocabularies/` subdirectory from [2-core-concepts.md](specification/2-core-concepts.md)
-- **Added Properties sections to entity docs** - Inline property tables added to [place.md](specification/4-entity-types/place.md) and [relationship.md](specification/4-entity-types/relationship.md)
-- Various small fixes: Person name recommended note, schema README clarification, Event/Fact → Event terminology
+##### Documentation Improvements
+- Removed `.md` extensions from ~40 internal links for VitePress compatibility
+- Standardized GEDCOM mapping table headers across all 8 entity type files
+- Added Properties sections to [place.md](specification/4-entity-types/place.md) and [relationship.md](specification/4-entity-types/relationship.md)
+- Standardized entity file structure across all entity type docs (Overview → File Format → Core Concepts → Fields → Usage Patterns → File Organization → GEDCOM Mapping → Validation Rules → See Also)
+- Added File Format sections and missing standard sections to multiple entity docs
+- Removed 59 file path comments from YAML code blocks
+- Standardized validation rules to reference vocabularies with links; added missing type validation rules to media.md and repository.md
 
 ##### User Documentation Updates
-- **Updated quickstart.md** - Examples updated to reflect schema changes: `description` → `properties.description`, `publication_info` → `properties.publication_info`, `locator`/`text_from_source` → `properties`, typed `subject` reference, `claim` → `property`
-- **Updated best-practices.md** - Assertion examples updated to use typed `subject` reference and `property` field; citation example updated to use `properties.text_from_source`
+- **Updated quickstart.md** - Examples updated to reflect schema changes: `description` → `properties.description`, typed `subject` reference, `claim` → `property`
+- **Updated best-practices.md** - Assertion examples updated to use typed `subject` reference and `property` field
 
 ##### Website Navigation
 - **Enhanced VitePress sidebar** - Core Concepts promoted to its own collapsible sidebar section with 8 direct anchor links to subsections
 
-#### Entity Type Documentation Structure
-- **Standardized entity file structure** - All entity type documentation now follows consistent section order:
-  1. Overview → File Format → Core Concepts → Fields → Usage Patterns → File Organization → GEDCOM Mapping → Validation Rules → See Also
-- **Added File Format sections** to person.md, place.md, citation.md, repository.md
-- **Added missing standard sections** to person.md (File Organization, GEDCOM Mapping, Validation Rules, expanded See Also)
-- **Reorganized place.md** - Moved GEDCOM Mapping after File Organization, merged Examples into Usage Patterns
-- **Cleaned up YAML code blocks** - Removed 59 file path comments (e.g., `# places/place-england.glx`) from examples
-
-#### Vocabulary References
-- **Standardized validation rules** - All entity types now reference vocabularies with links instead of hardcoded values or file paths
-- **Added missing type validation rules** to media.md and repository.md
-
 ### Fixed
 
-- **Added missing `locality` place type to standard vocabulary** - The GEDCOM importer's `inferPlaceType` function could assign `locality` to deeply-nested place components, but the term was not defined in `place-types.glx`
+#### Specification Corrections
+- Fixed Place hierarchy example that used duplicate YAML top-level keys
+- Fixed examples using incorrect field names throughout specification (`description` → `notes`, `value` → `notes`, `file:` → `uri:`, `death_year` → `died_on`, `married_on` → `born_on`, `residence_dates` → `residence`, `registration_district` → `district`)
+- Fixed assertion example using invalid date format (`circa 1825` → `ABT 1825`)
+- Removed undocumented `birth_surname` from person name example
+- Fixed broken anchor link in repository.md (`#repository-properties` → `#repository-properties-vocabulary`)
+- Standardized birth event examples to use `subject` role consistently
+- Removed stale `Created At` and `Created By` glossary entries
+- Fixed glossary Event and Event Type definitions that incorrectly included occupation and residence
+- Fixed "assertion claims" terminology to "assertion properties" in core-concepts
+- Moved "Change Tracking with Git" section before "Next Steps" in core-concepts
+- Consolidated Relationship `description` from top-level field into `properties.description`
+- Consolidated Source `creator` field into `authors` — removed `creator` from spec, schema, and Go types
+- Fixed relationship types count from 11 to 10; removed non-existent `adoption` relationship type
+- Fixed labels: "Event/Fact" → "Event", "living status" → "birth/death dates"
+- Replaced `living: true` boolean example with non-misleading property names
+- Replaced "occupation" with "immigration" as event type example in 3 locations
+- Fixed Event key properties ("description" → "notes") and Media key properties ("file path" → "URI") in entity-types README
+- Fixed place types count from 14 to 15; added missing `locality` to place-types.glx standard vocabulary
+- Converted `holding_types` examples from semicolon-delimited strings to YAML arrays
+- Fixed vocabulary directory structure example in core-concepts
+- Added Schema Reference sections to event, relationship, place, citation, and repository entity docs
+- Added `participants` to all event examples that were missing the required field
+- Updated place properties documentation to include `jurisdiction`, `place_format`, and `alternative_names`
 
 #### GEDCOM Import
 - **Repository deduplication** - Repositories with the same name and location are now deduplicated during import
-- **Dependency-ordered record processing** - Records now grouped by type and processed in dependency order: (1) Notes, Repositories, Schemas → (2) Sources, Media → (3) Individuals → (4) Families
+- **Dependency-ordered record processing** - Records now grouped by type and processed in dependency order
 - **Repository-to-source linking** - Sources now correctly link to their repository even when REPO records appear after SOUR records in the file
-- **NOTE reference resolution** - Shared NOTE records (e.g., `NOTE @N123@`) now resolved to actual text content during import
-- **CONT/CONC text continuation** - Long text fields spanning multiple lines using CONT/CONC tags now properly combined
+- **NOTE reference resolution** - Shared NOTE records now resolved to actual text content during import
+- **CONT/CONC text continuation** - Long text fields spanning multiple lines now properly combined
 - **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly
 
 ### Removed
 
 #### Citation Entity
-- **Removed `data_date` field** - Date the data was recorded is now captured in source or assertion context
-- **Removed `page`, `locator`, and `text_from_source` direct fields** - Consolidated into `properties` (see Citation Properties under Changed)
+- Removed `data_date`, `page`, `locator`, and `text_from_source` direct fields — consolidated into `properties`
 
 #### Source Entity
-- **Removed `citation` field** - Formatted citations belong in citation entities, not sources
-- **Removed `coverage` field** - Geographic/temporal coverage can be captured in description or properties
-
-#### Place Entity
-- **Removed `alternative_names` field and supporting types** (`AlternativeName`, `DateRange`) - Feature removed for simplicity in initial release
+- Removed `citation` and `coverage` direct fields
 
 #### Event Entity
-- **Removed `description` field** - Use `properties.description` instead (eliminates redundancy with event-properties vocabulary)
-- **Removed `tags` field** - Tags feature removed for simplicity in initial release
+- Removed `description` field (use `properties.description`) and `tags` field
 
 ## [0.0.0-beta.2] - 2025-11-25
 

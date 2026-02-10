@@ -53,7 +53,7 @@ When initializing a new archive with `glx init`, these files are automatically c
 
 **Used By**: [Event Entity](event#event-types)
 
-**Purpose**: Defines all event and fact types used in the archive (birth, marriage, death, occupation, etc.)
+**Purpose**: Defines all event and fact types used in the archive (birth, marriage, death, immigration, etc.)
 
 **Standard Templates**: See [Standard Vocabularies - Event Types](../5-standard-vocabularies/#event-types) for the complete default vocabulary with all standard event types.
 
@@ -240,7 +240,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides 14 standardized place type codes including administrative divisions (country, state, county, district), geographic features (city, town, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides 15 standardized place type codes including administrative divisions (country, state, county, district), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -1287,6 +1287,9 @@ events:
     type: land-grant  # Custom type from vocabulary
     date: "1850-03-10"
     place: place-indiana
+    participants:
+      - person: person-john
+        role: principal
     notes: "160 acres in Howard County"
 ```
 
