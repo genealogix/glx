@@ -20,19 +20,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // LoadArchive loads all GLX files from a directory with schema validation.
 // This is the primary entry point for the validate command.
-func LoadArchive(rootPath string) (*lib.GLXFile, []string, error) {
+func LoadArchive(rootPath string) (*glxlib.GLXFile, []string, error) {
 	return LoadArchiveWithOptions(rootPath, true)
 }
 
 // LoadArchiveWithOptions loads all GLX files from a directory into a single GLXFile.
 // When schemaValidate is true, each file is validated against the GLX JSON schema
 // before deserialization. Deserialization is delegated to DeserializeMultiFileFromMap.
-func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*lib.GLXFile, []string, error) {
+func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFile, []string, error) {
 	files, err := collectGLXFilesFromDir(rootPath)
 	if err != nil {
 		return nil, nil, err
@@ -70,18 +70,18 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*lib.GLXFile,
 }
 
 // createSerializer creates a new serializer with the specified options
-func createSerializer(validate, pretty bool, indent string) *lib.DefaultSerializer {
-	opts := &lib.SerializerOptions{
+func createSerializer(validate, pretty bool, indent string) *glxlib.DefaultSerializer {
+	opts := &glxlib.SerializerOptions{
 		Validate: validate,
 		Pretty:   pretty,
 		Indent:   indent,
 	}
 
-	return lib.NewSerializer(opts)
+	return glxlib.NewSerializer(opts)
 }
 
 // readSingleFileArchive reads and deserializes a single-file GLX archive
-func readSingleFileArchive(path string, validate bool) (*lib.GLXFile, error) {
+func readSingleFileArchive(path string, validate bool) (*glxlib.GLXFile, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
@@ -97,7 +97,7 @@ func readSingleFileArchive(path string, validate bool) (*lib.GLXFile, error) {
 }
 
 // writeSingleFileArchive serializes and writes a single-file GLX archive
-func writeSingleFileArchive(path string, glx *lib.GLXFile, validate bool) error {
+func writeSingleFileArchive(path string, glx *glxlib.GLXFile, validate bool) error {
 	serializer := createSerializer(validate, true, "  ")
 
 	yamlBytes, err := serializer.SerializeSingleFileBytes(glx)
@@ -113,7 +113,7 @@ func writeSingleFileArchive(path string, glx *lib.GLXFile, validate bool) error 
 }
 
 // writeMultiFileArchive serializes and writes a multi-file GLX archive
-func writeMultiFileArchive(dirPath string, glx *lib.GLXFile, validate bool) error {
+func writeMultiFileArchive(dirPath string, glx *glxlib.GLXFile, validate bool) error {
 	serializer := createSerializer(validate, true, "  ")
 
 	files, err := serializer.SerializeMultiFileToMap(glx)

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,7 +32,7 @@ func TestLoadArchive(t *testing.T) {
 		setupFunc     func() (rootPath string, cleanup func())
 		wantErr       bool
 		errorContains string
-		checkFunc     func(glx *lib.GLXFile, duplicates []string) error
+		checkFunc     func(glx *glxlib.GLXFile, duplicates []string) error
 	}{
 		{
 			name: "load valid multi-file archive",
@@ -40,8 +40,8 @@ func TestLoadArchive(t *testing.T) {
 				tmpDir := t.TempDir()
 
 				// Create GLX files
-				person1 := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				person1 := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: map[string]any{
 								"primary_name": "Alice",
@@ -49,8 +49,8 @@ func TestLoadArchive(t *testing.T) {
 						},
 					},
 				}
-				person2 := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				person2 := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-2": {
 							Properties: map[string]any{
 								"primary_name": "Bob",
@@ -71,7 +71,7 @@ func TestLoadArchive(t *testing.T) {
 				}
 			},
 			wantErr: false,
-			checkFunc: func(glx *lib.GLXFile, duplicates []string) error {
+			checkFunc: func(glx *glxlib.GLXFile, duplicates []string) error {
 				if len(glx.Persons) != 2 {
 					return &testError{"expected 2 persons, got %d", []any{len(glx.Persons)}}
 				}
@@ -88,8 +88,8 @@ func TestLoadArchive(t *testing.T) {
 				tmpDir := t.TempDir()
 
 				// Create two files with same person ID
-				person1 := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				person1 := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: map[string]any{
 								"primary_name": "Alice",
@@ -97,8 +97,8 @@ func TestLoadArchive(t *testing.T) {
 						},
 					},
 				}
-				person2 := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				person2 := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": { // Same ID as person1
 							Properties: map[string]any{
 								"primary_name": "Bob",
@@ -118,7 +118,7 @@ func TestLoadArchive(t *testing.T) {
 				}
 			},
 			wantErr: false,
-			checkFunc: func(glx *lib.GLXFile, duplicates []string) error {
+			checkFunc: func(glx *glxlib.GLXFile, duplicates []string) error {
 				if len(glx.Persons) != 1 {
 					return &testError{"expected 1 person (after merge), got %d", []any{len(glx.Persons)}}
 				}
@@ -182,50 +182,50 @@ persons:
 				tmpDir := t.TempDir()
 
 				// Create GLX file with all entity types
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: make(map[string]any)},
 						"person-2": {Properties: make(map[string]any)},
 					},
-					Events: map[string]*lib.Event{
-						"event-1": {Type: "birth", Participants: []lib.Participant{{Person: "person-1", Role: "principal"}}},
+					Events: map[string]*glxlib.Event{
+						"event-1": {Type: "birth", Participants: []glxlib.Participant{{Person: "person-1", Role: "principal"}}},
 					},
-					Relationships: map[string]*lib.Relationship{
+					Relationships: map[string]*glxlib.Relationship{
 						"rel-1": {
 							Type: "parent_child",
-							Participants: []lib.Participant{
+							Participants: []glxlib.Participant{
 								{Person: "person-1", Role: "child"},
 								{Person: "person-2", Role: "parent"},
 							},
 						},
 					},
-					Places: map[string]*lib.Place{
+					Places: map[string]*glxlib.Place{
 						"place-1": {Name: "Boston"},
 					},
-					Sources: map[string]*lib.Source{
+					Sources: map[string]*glxlib.Source{
 						"source-1": {Title: "Test Source"},
 					},
-					Citations: map[string]*lib.Citation{
+					Citations: map[string]*glxlib.Citation{
 						"citation-1": {SourceID: "source-1"},
 					},
-					Repositories: map[string]*lib.Repository{
+					Repositories: map[string]*glxlib.Repository{
 						"repo-1": {Name: "Test Repo"},
 					},
-					Assertions: map[string]*lib.Assertion{
+					Assertions: map[string]*glxlib.Assertion{
 						"assert-1": {
-							Subject:  lib.EntityRef{Person: "person-1"},
+							Subject:  glxlib.EntityRef{Person: "person-1"},
 							Sources:  []string{"source-1"},
 							Property: "born_on",
 						},
 					},
-					Media: map[string]*lib.Media{
+					Media: map[string]*glxlib.Media{
 						"media-1": {URI: "http://example.com"},
 					},
 					// Vocabularies
-					EventTypes: map[string]*lib.EventType{
+					EventTypes: map[string]*glxlib.EventType{
 						"custom": {Label: "Custom"},
 					},
-					PlaceTypes: map[string]*lib.PlaceType{
+					PlaceTypes: map[string]*glxlib.PlaceType{
 						"custom": {Label: "Custom"},
 					},
 				}
@@ -238,7 +238,7 @@ persons:
 				}
 			},
 			wantErr: false,
-			checkFunc: func(glx *lib.GLXFile, duplicates []string) error {
+			checkFunc: func(glx *glxlib.GLXFile, duplicates []string) error {
 				if len(glx.Persons) != 2 {
 					return &testError{"expected 2 persons", nil}
 				}
@@ -282,8 +282,8 @@ persons:
 				tmpDir := t.TempDir()
 
 				// Create various file types
-				glxFile := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glxFile := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: make(map[string]any)},
 					},
 				}
@@ -301,7 +301,7 @@ persons:
 				}
 			},
 			wantErr: false,
-			checkFunc: func(glx *lib.GLXFile, duplicates []string) error {
+			checkFunc: func(glx *glxlib.GLXFile, duplicates []string) error {
 				// Should load 3 files (glx, yaml, yml) each with same person, resulting in duplicates
 				if len(glx.Persons) != 1 {
 					return &testError{"expected 1 person", nil}
@@ -322,13 +322,13 @@ persons:
 				subDir := filepath.Join(tmpDir, "subdir")
 				os.MkdirAll(subDir, 0o755)
 
-				glxFile1 := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glxFile1 := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: make(map[string]any)},
 					},
 				}
-				glxFile2 := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glxFile2 := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-2": {Properties: make(map[string]any)},
 					},
 				}
@@ -344,7 +344,7 @@ persons:
 				}
 			},
 			wantErr: false,
-			checkFunc: func(glx *lib.GLXFile, duplicates []string) error {
+			checkFunc: func(glx *glxlib.GLXFile, duplicates []string) error {
 				if len(glx.Persons) != 2 {
 					return &testError{"expected 2 persons from nested dirs, got %d", []any{len(glx.Persons)}}
 				}
@@ -386,7 +386,7 @@ persons:
 func TestReadWriteSingleFileArchive(t *testing.T) {
 	tests := []struct {
 		name          string
-		setupFunc     func() (path string, glx *lib.GLXFile, cleanup func())
+		setupFunc     func() (path string, glx *glxlib.GLXFile, cleanup func())
 		validate      bool
 		wantReadErr   bool
 		wantWriteErr  bool
@@ -394,12 +394,12 @@ func TestReadWriteSingleFileArchive(t *testing.T) {
 	}{
 		{
 			name: "successful read and write",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
 				tmpDir := t.TempDir()
 				path := filepath.Join(tmpDir, "test.glx")
 
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: map[string]any{
 								"primary_name": "Test Person",
@@ -418,7 +418,7 @@ func TestReadWriteSingleFileArchive(t *testing.T) {
 		},
 		{
 			name: "read non-existent file",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
 				return "/nonexistent/file.glx", nil, func() {}
 			},
 			validate:      false,
@@ -427,9 +427,9 @@ func TestReadWriteSingleFileArchive(t *testing.T) {
 		},
 		{
 			name: "write to invalid path",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: make(map[string]any)},
 					},
 				}
@@ -442,22 +442,22 @@ func TestReadWriteSingleFileArchive(t *testing.T) {
 		},
 		{
 			name: "roundtrip without validation",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
 				tmpDir := t.TempDir()
 				path := filepath.Join(tmpDir, "test.glx")
 
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: map[string]any{
 								"primary_name": "Valid Person",
 							},
 						},
 					},
-					Events: map[string]*lib.Event{
+					Events: map[string]*glxlib.Event{
 						"event-1": {
 							Type: "birth",
-							Date: lib.DateString("1950-01-01"),
+							Date: glxlib.DateString("1950-01-01"),
 						},
 					},
 				}
@@ -520,28 +520,28 @@ func TestReadWriteSingleFileArchive(t *testing.T) {
 func TestReadWriteMultiFileArchive(t *testing.T) {
 	tests := []struct {
 		name         string
-		setupFunc    func() (dirPath string, glx *lib.GLXFile, cleanup func())
+		setupFunc    func() (dirPath string, glx *glxlib.GLXFile, cleanup func())
 		validate     bool
 		wantReadErr  bool
 		wantWriteErr bool
 	}{
 		{
 			name: "successful multi-file read and write",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
 				tmpDir := t.TempDir()
 				archiveDir := filepath.Join(tmpDir, "archive")
 				os.MkdirAll(archiveDir, 0o755)
 
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: map[string]any{"primary_name": "Alice"}},
 						"person-2": {Properties: map[string]any{"primary_name": "Bob"}},
 					},
-					Events: map[string]*lib.Event{
-						"event-1": {Type: "birth", Date: lib.DateString("1950-01-01")},
-						"event-2": {Type: "death", Date: lib.DateString("2020-01-01")},
+					Events: map[string]*glxlib.Event{
+						"event-1": {Type: "birth", Date: glxlib.DateString("1950-01-01")},
+						"event-2": {Type: "death", Date: glxlib.DateString("2020-01-01")},
 					},
-					Places: map[string]*lib.Place{
+					Places: map[string]*glxlib.Place{
 						"place-1": {Name: "New York", Type: "city"},
 					},
 				}
@@ -556,7 +556,7 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 		},
 		{
 			name: "read from non-existent directory",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
 				return "/nonexistent/directory", nil, func() {}
 			},
 			validate:    false,
@@ -564,9 +564,9 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 		},
 		{
 			name: "write to invalid directory",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: make(map[string]any)},
 					},
 				}
@@ -578,35 +578,35 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 		},
 		{
 			name: "roundtrip with complex archive",
-			setupFunc: func() (string, *lib.GLXFile, func()) {
+			setupFunc: func() (string, *glxlib.GLXFile, func()) {
 				tmpDir := t.TempDir()
 				archiveDir := filepath.Join(tmpDir, "complex")
 				os.MkdirAll(archiveDir, 0o755)
 
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"p1": {Properties: map[string]any{"name": "Person 1"}},
 						"p2": {Properties: map[string]any{"name": "Person 2"}},
 						"p3": {Properties: map[string]any{"name": "Person 3"}},
 					},
-					Events: map[string]*lib.Event{
+					Events: map[string]*glxlib.Event{
 						"e1": {Type: "birth"},
 						"e2": {Type: "death"},
 					},
-					Relationships: map[string]*lib.Relationship{
+					Relationships: map[string]*glxlib.Relationship{
 						"r1": {
 							Type: "parent_child",
-							Participants: []lib.Participant{
+							Participants: []glxlib.Participant{
 								{Person: "p1"},
 								{Person: "p2"},
 							},
 						},
 					},
-					Places: map[string]*lib.Place{
+					Places: map[string]*glxlib.Place{
 						"pl1": {Name: "Boston"},
 						"pl2": {Name: "Chicago"},
 					},
-					EventTypes: map[string]*lib.EventType{
+					EventTypes: map[string]*glxlib.EventType{
 						"custom": {Label: "Custom Event"},
 					},
 				}
@@ -669,7 +669,7 @@ func TestCreateSerializer(t *testing.T) {
 		validate  bool
 		pretty    bool
 		indent    string
-		checkOpts func(s *lib.DefaultSerializer) bool
+		checkOpts func(s *glxlib.DefaultSerializer) bool
 	}{
 		{
 			name:     "default options",
@@ -713,23 +713,23 @@ func TestCreateSerializer(t *testing.T) {
 // produce equivalent results from the same multi-file archive on disk.
 func TestLoadArchiveAndJoinProduceSameResult(t *testing.T) {
 	// Create a known archive with multiple entity types
-	glx := &lib.GLXFile{
-		Persons: map[string]*lib.Person{
+	glx := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
 			"person-1": {Properties: map[string]any{"name": map[string]any{"value": "Alice"}}},
 			"person-2": {Properties: map[string]any{"name": map[string]any{"value": "Bob"}}},
 		},
-		Events: map[string]*lib.Event{
-			"event-1": {Type: "birth", Participants: []lib.Participant{{Person: "person-1", Role: "principal"}}},
+		Events: map[string]*glxlib.Event{
+			"event-1": {Type: "birth", Participants: []glxlib.Participant{{Person: "person-1", Role: "principal"}}},
 		},
-		Relationships: map[string]*lib.Relationship{
-			"rel-1": {Type: "parent_child", Participants: []lib.Participant{{Person: "person-1"}, {Person: "person-2"}}},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-1"}, {Person: "person-2"}}},
 		},
-		Places:       map[string]*lib.Place{"place-1": {Name: "London"}},
-		Sources:      make(map[string]*lib.Source),
-		Citations:    make(map[string]*lib.Citation),
-		Repositories: make(map[string]*lib.Repository),
-		Media:        make(map[string]*lib.Media),
-		Assertions:   make(map[string]*lib.Assertion),
+		Places:       map[string]*glxlib.Place{"place-1": {Name: "London"}},
+		Sources:      make(map[string]*glxlib.Source),
+		Citations:    make(map[string]*glxlib.Citation),
+		Repositories: make(map[string]*glxlib.Repository),
+		Media:        make(map[string]*glxlib.Media),
+		Assertions:   make(map[string]*glxlib.Assertion),
 	}
 
 	// Write to multi-file archive
@@ -775,24 +775,24 @@ func TestLoadArchiveAndJoinProduceSameResult(t *testing.T) {
 
 // TestJoinPreservesEntities verifies that split→join round-trip preserves all entities.
 func TestJoinPreservesEntities(t *testing.T) {
-	glx := &lib.GLXFile{
-		Persons: map[string]*lib.Person{
+	glx := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
 			"person-1": {Properties: map[string]any{"name": map[string]any{"value": "Alice"}}},
 			"person-2": {Properties: map[string]any{"name": map[string]any{"value": "Bob"}}},
 		},
-		Events: map[string]*lib.Event{
-			"event-1": {Type: "birth", Participants: []lib.Participant{{Person: "person-1", Role: "principal"}}},
-			"event-2": {Type: "death", Participants: []lib.Participant{{Person: "person-2", Role: "principal"}}},
+		Events: map[string]*glxlib.Event{
+			"event-1": {Type: "birth", Participants: []glxlib.Participant{{Person: "person-1", Role: "principal"}}},
+			"event-2": {Type: "death", Participants: []glxlib.Participant{{Person: "person-2", Role: "principal"}}},
 		},
-		Relationships: map[string]*lib.Relationship{
-			"rel-1": {Type: "parent_child", Participants: []lib.Participant{{Person: "person-1"}, {Person: "person-2"}}},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-1"}, {Person: "person-2"}}},
 		},
-		Places:       map[string]*lib.Place{"place-1": {Name: "London"}},
-		Sources:      make(map[string]*lib.Source),
-		Citations:    make(map[string]*lib.Citation),
-		Repositories: make(map[string]*lib.Repository),
-		Media:        make(map[string]*lib.Media),
-		Assertions:   make(map[string]*lib.Assertion),
+		Places:       map[string]*glxlib.Place{"place-1": {Name: "London"}},
+		Sources:      make(map[string]*glxlib.Source),
+		Citations:    make(map[string]*glxlib.Citation),
+		Repositories: make(map[string]*glxlib.Repository),
+		Media:        make(map[string]*glxlib.Media),
+		Assertions:   make(map[string]*glxlib.Assertion),
 	}
 
 	// Write to multi-file

@@ -153,6 +153,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Moved `jurisdiction` and `place_format` to properties** - Now stored as vocabulary-defined properties instead of dedicated entity fields
 - **Simplified `alternative_names`** - Changed from a dedicated field with `AlternativeName`/`DateRange` types to a temporal, multi-value string property in the place-properties vocabulary
 
+#### Library Package Restructuring
+- **Moved core library from `glx/lib/` to `go-glx/`** - The library is now at the repository root for clean external imports
+- **Renamed package from `lib` to `glx`** - External consumers import as `glxlib "github.com/genealogix/glx/go-glx"` and use `glxlib.GLXFile`, `glxlib.NewSerializer()`, etc.
+- Updated all CLI files to use new import path and `glxlib.` qualifier
+
 #### CLI
 - **Changed `glx import` default format** - Now defaults to multi-file (`-f multi`) instead of single-file
 

@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // validatePaths performs comprehensive validation on the specified paths
@@ -147,7 +147,7 @@ func validatePaths(args []string) error {
 
 // validateMediaFileExistence checks that media entities with local relative URIs
 // point to files that actually exist on disk. Returns warnings for missing files.
-func validateMediaFileExistence(archive *lib.GLXFile, archiveRoot string) []string {
+func validateMediaFileExistence(archive *glxlib.GLXFile, archiveRoot string) []string {
 	var warnings []string
 	for mediaID, media := range archive.Media {
 		if !isLocalMediaURI(media.URI) {

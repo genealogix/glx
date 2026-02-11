@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,8 +29,8 @@ func createTestSingleFileArchive(t *testing.T, tmpDir string) string {
 	t.Helper()
 
 	// Create a GLX file with some test data
-	glxFile := &lib.GLXFile{
-		Persons: map[string]*lib.Person{
+	glxFile := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
 			"person-1": {
 				Properties: map[string]any{
 					"primary_name": "Test Person 1",
@@ -42,19 +42,19 @@ func createTestSingleFileArchive(t *testing.T, tmpDir string) string {
 				},
 			},
 		},
-		Events: map[string]*lib.Event{
+		Events: map[string]*glxlib.Event{
 			"event-1": {
 				Type: "birth",
 			},
 		},
-		EventTypes: map[string]*lib.EventType{
+		EventTypes: map[string]*glxlib.EventType{
 			"birth": {Label: "Birth"},
 			"death": {Label: "Death"},
 		},
 	}
 
 	// Serialize to single file
-	serializer := lib.NewSerializer(&lib.SerializerOptions{
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
 		Pretty:   true,
 	})
@@ -262,22 +262,22 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create a more comprehensive GLX file
-	glxFile := &lib.GLXFile{
-		Persons:       map[string]*lib.Person{"person-1": {}},
-		Events:        map[string]*lib.Event{"event-1": {}},
-		Relationships: map[string]*lib.Relationship{"rel-1": {}},
-		Places:        map[string]*lib.Place{"place-1": {}},
-		Sources:       map[string]*lib.Source{"source-1": {}},
-		Citations:     map[string]*lib.Citation{"citation-1": {}},
-		Repositories:  map[string]*lib.Repository{"repo-1": {}},
-		Assertions: map[string]*lib.Assertion{"assertion-1": {
-			Subject: lib.EntityRef{Person: "person-1"},
+	glxFile := &glxlib.GLXFile{
+		Persons:       map[string]*glxlib.Person{"person-1": {}},
+		Events:        map[string]*glxlib.Event{"event-1": {}},
+		Relationships: map[string]*glxlib.Relationship{"rel-1": {}},
+		Places:        map[string]*glxlib.Place{"place-1": {}},
+		Sources:       map[string]*glxlib.Source{"source-1": {}},
+		Citations:     map[string]*glxlib.Citation{"citation-1": {}},
+		Repositories:  map[string]*glxlib.Repository{"repo-1": {}},
+		Assertions: map[string]*glxlib.Assertion{"assertion-1": {
+			Subject: glxlib.EntityRef{Person: "person-1"},
 			Sources: []string{"source-1"},
 		}},
-		Media: map[string]*lib.Media{"media-1": {}},
+		Media: map[string]*glxlib.Media{"media-1": {}},
 	}
 
-	serializer := lib.NewSerializer(&lib.SerializerOptions{
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
 		Pretty:   true,
 	})
@@ -331,9 +331,9 @@ func TestSplitArchive_EmptyArchive(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create an empty GLX file
-	glxFile := &lib.GLXFile{}
+	glxFile := &glxlib.GLXFile{}
 
-	serializer := lib.NewSerializer(&lib.SerializerOptions{
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
 		Pretty:   true,
 	})
@@ -363,15 +363,15 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create a larger archive with multiple entities
-	glxFile := &lib.GLXFile{
-		Persons: make(map[string]*lib.Person),
-		Events:  make(map[string]*lib.Event),
+	glxFile := &glxlib.GLXFile{
+		Persons: make(map[string]*glxlib.Person),
+		Events:  make(map[string]*glxlib.Event),
 	}
 
 	// Add 50 persons
 	for i := range 50 {
 		id := fmt.Sprintf("person-%d", i)
-		glxFile.Persons[id] = &lib.Person{
+		glxFile.Persons[id] = &glxlib.Person{
 			Properties: map[string]any{
 				"primary_name": fmt.Sprintf("Person %d", i),
 			},
@@ -382,9 +382,9 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 	for i := range 30 {
 		id := fmt.Sprintf("event-%d", i)
 		personID := fmt.Sprintf("person-%d", i%50) // Reference one of the persons we created
-		glxFile.Events[id] = &lib.Event{
+		glxFile.Events[id] = &glxlib.Event{
 			Type: "birth",
-			Participants: []lib.Participant{
+			Participants: []glxlib.Participant{
 				{
 					Person: personID,
 					Role:   "principal",
@@ -393,7 +393,7 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 		}
 	}
 
-	serializer := lib.NewSerializer(&lib.SerializerOptions{
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
 		Validate: false,
 		Pretty:   true,
 	})

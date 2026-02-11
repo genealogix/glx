@@ -22,19 +22,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // copyMediaFiles copies or writes media files into the archive's media/files/ directory.
 // gedcomDir is the source directory for resolving relative FILE paths.
 // archiveDir is the root of the output archive.
 // Missing source files produce warnings on stderr, not fatal errors.
-func copyMediaFiles(archiveDir string, mediaFiles []lib.MediaFileSource, gedcomDir string, verbose bool) error {
+func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) error {
 	if len(mediaFiles) == 0 {
 		return nil
 	}
 
-	filesDir := filepath.Join(archiveDir, lib.MediaFilesDir)
+	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
 	if err := os.MkdirAll(filesDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create media/files directory: %w", err)
 	}
@@ -45,7 +45,7 @@ func copyMediaFiles(archiveDir string, mediaFiles []lib.MediaFileSource, gedcomD
 		destPath := filepath.Join(filesDir, mf.TargetFilename)
 
 		switch mf.SourceType {
-		case lib.MediaSourceFile:
+		case glxlib.MediaSourceFile:
 			if err := copyMediaFile(gedcomDir, mf.RelativePath, destPath); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
 				warnCount++
@@ -54,7 +54,7 @@ func copyMediaFiles(archiveDir string, mediaFiles []lib.MediaFileSource, gedcomD
 			}
 			copyCount++
 
-		case lib.MediaSourceBlob:
+		case glxlib.MediaSourceBlob:
 			decoded, err := decodeGEDCOMBlob(mf.BlobData)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not decode BLOB for %s: %v\n", mf.MediaID, err)

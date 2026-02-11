@@ -31,14 +31,15 @@ spec/
 ├── .claude/
 │   ├── plans/              # Active planning documents
 │   └── plans/old/          # Archived historical plans
+├── go-glx/                 # Core library (package glx) — importable by external apps
+│   │                       # import glxlib "github.com/genealogix/glx/go-glx"
+│   ├── types.go           # Core GLX entity types
+│   ├── gedcom_*.go        # GEDCOM import implementation
+│   ├── serializer.go      # Single/multi-file serialization
+│   ├── id_generator.go    # Entity ID generation
+│   └── vocabularies.go    # Vocabulary embedding
 ├── glx/                    # Main CLI application
 │   ├── cmd_*.go           # CLI command implementations (import, split, join, validate)
-│   ├── lib/               # Core library code
-│   │   ├── types.go       # Core GLX entity types
-│   │   ├── gedcom_*.go    # GEDCOM import implementation
-│   │   ├── serializer.go  # Single/multi-file serialization
-│   │   ├── id_generator.go # Entity ID generation
-│   │   └── vocabularies.go # Vocabulary embedding
 │   └── testdata/
 │       └── gedcom/        # GEDCOM test files (180+ files)
 ├── specification/
@@ -88,11 +89,11 @@ Vocabularies are defined in `.glx` files and will be embedded in the binary usin
 
 ### Before Starting Work
 
-3. **`lib/types.go`** - Core GLX entity type definitions
+3. **`go-glx/types.go`** - Core GLX entity type definitions
 
 ### For GEDCOM Work
 
-3. **`lib/gedcom_converter.go`** - Main GEDCOM conversion orchestrator
+3. **`go-glx/gedcom_converter.go`** - Main GEDCOM conversion orchestrator
 
 ## Development Workflow
 
@@ -145,9 +146,9 @@ make clean
 
 ## Key Design Decisions
 
-### Critical Architectural Rule: lib Package Must Never Do I/O
+### Critical Architectural Rule: go-glx Package Must Never Do I/O
 
-**The `glx/lib` package is a pure library and must NEVER perform filesystem I/O.**
+**The `go-glx` library package (package glx) is a pure library and must NEVER perform filesystem I/O.**
 
 This means:
 - ❌ NO `os.ReadFile`, `os.WriteFile`, `os.Open`, `os.Create`
@@ -155,29 +156,33 @@ This means:
 - ❌ NO `filepath.Join` with file operations
 - ✅ YES to `io.Reader`, `io.Writer`, `[]byte` parameters
 - ✅ YES to returning `[]byte` or accepting `[]byte`
-- ✅ The `glx` CLI package handles ALL filesystem operations
+- ✅ The `glx/` CLI package handles ALL filesystem operations
+
+**Import path:** `glxlib "github.com/genealogix/glx/go-glx"` (named import needed because of hyphen)
 
 **Correct Pattern:**
 
 ```go
-// ❌ WRONG - lib doing I/O
-package lib
+// ❌ WRONG - library doing I/O
+// go-glx/serializer.go
+package glx
 
 func SerializeSingleFile(glx *GLXFile, outputPath string) error {
     yamlBytes, _ := yaml.Marshal(glx)
     return os.WriteFile(outputPath, yamlBytes, 0o644) // NO!
 }
 
-// ✅ CORRECT - lib returns bytes, CLI does I/O
-package lib
+// ✅ CORRECT - library returns bytes, CLI does I/O
+// go-glx/serializer.go
+package glx
 
 func SerializeToBytes(glx *GLXFile) ([]byte, error) {
     return yaml.Marshal(glx)
 }
 
-// glx package (CLI)
-func saveToFile(glx *lib.GLXFile, path string) error {
-    data, err := lib.SerializeToBytes(glx)
+// glx/ CLI package
+func saveToFile(glx *glxlib.GLXFile, path string) error {
+    data, err := glxlib.SerializeToBytes(glx)
     if err != nil {
         return err
     }
@@ -186,9 +191,9 @@ func saveToFile(glx *lib.GLXFile, path string) error {
 ```
 
 **Rationale:**
-1. Makes lib package testable without filesystem
-2. Enables lib to be used in contexts where I/O isn't appropriate (web servers, embedded systems)
-3. Separates concerns: lib handles data transformation, CLI handles I/O
+1. Makes library testable without filesystem
+2. Enables library to be used in contexts where I/O isn't appropriate (web servers, embedded systems)
+3. Separates concerns: library handles data transformation, CLI handles I/O
 4. Prevents architectural violations that couple library code to filesystem
 
 ### Architectural Decisions (v0.3.0-beta Serializer)
@@ -322,7 +327,7 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 
 ### Add a New Entity Type
 
-1. Define type in `lib/types.go`
+1. Define type in `go-glx/types.go`
 2. Add to `GLXFile` struct
 3. Update serializer to handle new type
 4. Add vocabulary if needed
@@ -330,17 +335,17 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 
 ### Add GEDCOM Tag Support
 
-1. Find appropriate converter file (e.g., `lib/gedcom_individual.go`)
+1. Find appropriate converter file (e.g., `go-glx/gedcom_individual.go`)
 2. Add tag handling in `switch` statement
 3. Extract data and map to GLX entity
-4. Add test case in `lib/gedcom_test.go`
+4. Add test case in `go-glx/gedcom_test.go`
 5. Update gap analysis if fixing a gap
 
 ### Debug GEDCOM Import
 
 1. Enable verbose logging: `ctx.Logger.LogInfo(...)`
 2. Check `ConversionContext` for entity maps
-3. Run specific test: `go test -v -run TestImportShakespeare ./lib`
+3. Run specific test: `make test` (always use Makefile)
 4. Check error accumulation in `ctx.Errors`
 
 ---
@@ -467,4 +472,4 @@ Also available:
 
 ---
 
-Last Updated: 2025-11-18
+Last Updated: 2026-02-11

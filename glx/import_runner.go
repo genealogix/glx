@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // importGEDCOM imports a GEDCOM file and converts it to GLX format
@@ -47,7 +47,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 	defer func() { _ = gedcomFile.Close() }()
 
 	// Import GEDCOM from reader
-	glx, result, err := lib.ImportGEDCOM(gedcomFile, nil)
+	glx, result, err := glxlib.ImportGEDCOM(gedcomFile, nil)
 	if err != nil {
 		return fmt.Errorf("failed to import GEDCOM: %w", err)
 	}
@@ -64,7 +64,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 }
 
 // importToSingleFile writes the imported GLX data to a single file
-func importToSingleFile(glx *lib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []lib.MediaFileSource, gedcomDir string) error {
+func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string) error {
 	if verbose {
 		fmt.Printf("Writing single-file archive: %s\n", outputPath)
 	}
@@ -90,7 +90,7 @@ func importToSingleFile(glx *lib.GLXFile, outputPath string, validate, verbose b
 }
 
 // importToMultiFile writes the imported GLX data to a multi-file directory
-func importToMultiFile(glx *lib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []lib.MediaFileSource, gedcomDir string) error {
+func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string) error {
 	if verbose {
 		fmt.Printf("Writing multi-file archive: %s\n", outputPath)
 	}

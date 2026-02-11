@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
 )
 
@@ -126,7 +126,7 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 
 	if numTestData > 0 {
 		fmt.Printf("Generating test data for %d persons...\n", numTestData)
-		testData, err := lib.GenerateTestData(numTestData)
+		testData, err := glxlib.GenerateTestData(numTestData)
 		if err != nil {
 			return fmt.Errorf("failed to generate test data: %w", err)
 		}
@@ -152,7 +152,7 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 }
 
 // writeTestData writes test data to entity files
-func writeTestData(data *lib.GLXFile) error {
+func writeTestData(data *glxlib.GLXFile) error {
 	entityTypes := map[string]map[string]any{
 		"persons":       mustMarshal(data.Persons),
 		"relationships": mustMarshal(data.Relationships),

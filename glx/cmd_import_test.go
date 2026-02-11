@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -40,7 +40,7 @@ func TestImportGEDCOM_SingleFileFormat(t *testing.T) {
 	data, err := os.ReadFile(outputPath)
 	require.NoError(t, err)
 
-	var glxFile lib.GLXFile
+	var glxFile glxlib.GLXFile
 	err = yaml.Unmarshal(data, &glxFile)
 	require.NoError(t, err, "output should be valid YAML")
 
@@ -138,7 +138,7 @@ func TestImportGEDCOM_Shakespeare(t *testing.T) {
 	data, err := os.ReadFile(outputPath)
 	require.NoError(t, err)
 
-	var glxFile lib.GLXFile
+	var glxFile glxlib.GLXFile
 	err = yaml.Unmarshal(data, &glxFile)
 	require.NoError(t, err)
 
@@ -192,7 +192,7 @@ func TestImportGEDCOM_OverwriteExistingFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, string(data), "existing content", "file should be overwritten")
 
-	var glxFile lib.GLXFile
+	var glxFile glxlib.GLXFile
 	err = yaml.Unmarshal(data, &glxFile)
 	require.NoError(t, err, "overwritten file should contain valid GLX data")
 }
@@ -226,7 +226,7 @@ func TestImportGEDCOM_GEDCOM551(t *testing.T) {
 	data, err := os.ReadFile(outputPath)
 	require.NoError(t, err)
 
-	var glxFile lib.GLXFile
+	var glxFile glxlib.GLXFile
 	err = yaml.Unmarshal(data, &glxFile)
 	require.NoError(t, err)
 	require.NotEmpty(t, glxFile.Persons, "should have imported persons from GEDCOM 5.5.1")
@@ -243,7 +243,7 @@ func TestImportGEDCOM_GEDCOM70(t *testing.T) {
 	data, err := os.ReadFile(outputPath)
 	require.NoError(t, err)
 
-	var glxFile lib.GLXFile
+	var glxFile glxlib.GLXFile
 	err = yaml.Unmarshal(data, &glxFile)
 	require.NoError(t, err)
 	require.NotEmpty(t, glxFile.Persons, "should have imported persons from GEDCOM 7.0")

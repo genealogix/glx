@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -41,7 +41,7 @@ func TestRunInit_SingleFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify it's valid YAML by parsing into GLXFile structure
-	var glxFile lib.GLXFile
+	var glxFile glxlib.GLXFile
 	err = yaml.Unmarshal(content, &glxFile)
 	require.NoError(t, err, "archive.glx should contain valid YAML")
 
@@ -138,7 +138,7 @@ func TestRunInit_WithTestData(t *testing.T) {
 
 		// Parse as a mini GLX file with persons map
 		var miniGlx struct {
-			Persons map[string]*lib.Person `yaml:"persons"`
+			Persons map[string]*glxlib.Person `yaml:"persons"`
 		}
 		err = yaml.Unmarshal(content, &miniGlx)
 		require.NoError(t, err, "person file should contain valid YAML")
@@ -164,7 +164,7 @@ func TestRunInit_WithTestData(t *testing.T) {
 
 		// Parse as a mini GLX file with events map
 		var miniGlx struct {
-			Events map[string]*lib.Event `yaml:"events"`
+			Events map[string]*glxlib.Event `yaml:"events"`
 		}
 		err = yaml.Unmarshal(content, &miniGlx)
 		require.NoError(t, err, "event file should contain valid YAML")

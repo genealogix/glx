@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestDecodeGEDCOMBlob(t *testing.T) {
@@ -78,10 +78,10 @@ func TestCopyMediaFiles_FileCopy(t *testing.T) {
 	// Set up destination directory
 	destDir := t.TempDir()
 
-	mediaFiles := []lib.MediaFileSource{
+	mediaFiles := []glxlib.MediaFileSource{
 		{
 			MediaID:        "media-1",
-			SourceType:     lib.MediaSourceFile,
+			SourceType:     glxlib.MediaSourceFile,
 			RelativePath:   "photos/portrait.jpg",
 			TargetFilename: "portrait.jpg",
 		},
@@ -106,10 +106,10 @@ func TestCopyMediaFiles_BlobWrite(t *testing.T) {
 	destDir := t.TempDir()
 
 	// 4 dots = 3 zero bytes
-	mediaFiles := []lib.MediaFileSource{
+	mediaFiles := []glxlib.MediaFileSource{
 		{
 			MediaID:        "media-1",
-			SourceType:     lib.MediaSourceBlob,
+			SourceType:     glxlib.MediaSourceBlob,
 			BlobData:       "....",
 			TargetFilename: "blob-media-1.bin",
 		},
@@ -134,10 +134,10 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir() // Empty source directory
 
-	mediaFiles := []lib.MediaFileSource{
+	mediaFiles := []glxlib.MediaFileSource{
 		{
 			MediaID:        "media-1",
-			SourceType:     lib.MediaSourceFile,
+			SourceType:     glxlib.MediaSourceFile,
 			RelativePath:   "nonexistent.jpg",
 			TargetFilename: "nonexistent.jpg",
 		},
@@ -186,7 +186,7 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 	}
 	defer func() { _ = gedcomFile.Close() }()
 
-	glx, result, err := lib.ImportGEDCOM(gedcomFile, nil)
+	glx, result, err := glxlib.ImportGEDCOM(gedcomFile, nil)
 	if err != nil {
 		t.Fatalf("Import failed: %v", err)
 	}
@@ -198,12 +198,12 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 	t.Logf("Import produced %d MediaFileSource entries", len(result.MediaFiles))
 
 	// Categorize media file sources
-	var fileSources, blobSources []lib.MediaFileSource
+	var fileSources, blobSources []glxlib.MediaFileSource
 	for _, mf := range result.MediaFiles {
 		switch mf.SourceType {
-		case lib.MediaSourceFile:
+		case glxlib.MediaSourceFile:
 			fileSources = append(fileSources, mf)
-		case lib.MediaSourceBlob:
+		case glxlib.MediaSourceBlob:
 			blobSources = append(blobSources, mf)
 		}
 	}

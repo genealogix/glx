@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,26 +43,26 @@ func TestJoinArchive(t *testing.T) {
 				os.MkdirAll(inputDir, 0o755)
 
 				// Use writeMultiFileArchive to create proper directory structure
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: map[string]any{
 							"name": map[string]any{"value": "John Doe"},
 						}},
 					},
-					Events: map[string]*lib.Event{
+					Events: map[string]*glxlib.Event{
 						"event-1": {
 							Type:         "birth",
-							Date:         lib.DateString("1900-01-01"),
-							Participants: []lib.Participant{{Person: "person-1", Role: "principal"}},
+							Date:         glxlib.DateString("1900-01-01"),
+							Participants: []glxlib.Participant{{Person: "person-1", Role: "principal"}},
 						},
 					},
-					Relationships: make(map[string]*lib.Relationship),
-					Places:        make(map[string]*lib.Place),
-					Sources:       make(map[string]*lib.Source),
-					Citations:     make(map[string]*lib.Citation),
-					Repositories:  make(map[string]*lib.Repository),
-					Media:         make(map[string]*lib.Media),
-					Assertions:    make(map[string]*lib.Assertion),
+					Relationships: make(map[string]*glxlib.Relationship),
+					Places:        make(map[string]*glxlib.Place),
+					Sources:       make(map[string]*glxlib.Source),
+					Citations:     make(map[string]*glxlib.Citation),
+					Repositories:  make(map[string]*glxlib.Repository),
+					Media:         make(map[string]*glxlib.Media),
+					Assertions:    make(map[string]*glxlib.Assertion),
 				}
 				if err := writeMultiFileArchive(inputDir, glx, false); err != nil {
 					t.Fatalf("setup failed: %v", err)
@@ -84,8 +84,8 @@ func TestJoinArchive(t *testing.T) {
 				os.MkdirAll(inputDir, 0o755)
 
 				// Create minimal valid archive
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: make(map[string]any),
 						},
@@ -132,8 +132,8 @@ func TestJoinArchive(t *testing.T) {
 				inputDir := filepath.Join(tmpDir, "input")
 				os.MkdirAll(inputDir, 0o755)
 
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: make(map[string]any),
 						},
@@ -164,8 +164,8 @@ func TestJoinArchive(t *testing.T) {
 				inputDir := filepath.Join(tmpDir, "input")
 				os.MkdirAll(inputDir, 0o755)
 
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: make(map[string]any),
 						},
@@ -199,8 +199,8 @@ func TestJoinArchive(t *testing.T) {
 				os.MkdirAll(inputDir, 0o755)
 
 				// Create GLX file with invalid reference
-				glx := &lib.GLXFile{
-					Events: map[string]*lib.Event{
+				glx := &glxlib.GLXFile{
+					Events: map[string]*glxlib.Event{
 						"event-1": {
 							Type:    "birth",
 							PlaceID: "nonexistent-place", // Invalid reference
@@ -231,8 +231,8 @@ func TestJoinArchive(t *testing.T) {
 				os.MkdirAll(inputDir, 0o755)
 
 				// Create person file
-				person := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				person := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: map[string]any{
 								"primary_name": "Jane Smith",
@@ -247,25 +247,25 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				// Create event file
-				event := &lib.GLXFile{
-					Events: map[string]*lib.Event{
+				event := &glxlib.GLXFile{
+					Events: map[string]*glxlib.Event{
 						"event-1": {
 							Type: "birth",
-							Date: lib.DateString("1950-05-15"),
+							Date: glxlib.DateString("1950-05-15"),
 						},
 						"event-2": {
 							Type: "death",
-							Date: lib.DateString("2020-03-10"),
+							Date: glxlib.DateString("2020-03-10"),
 						},
 					},
 				}
 
 				// Create relationship file
-				rel := &lib.GLXFile{
-					Relationships: map[string]*lib.Relationship{
+				rel := &glxlib.GLXFile{
+					Relationships: map[string]*glxlib.Relationship{
 						"rel-1": {
 							Type: "parent_child",
-							Participants: []lib.Participant{
+							Participants: []glxlib.Participant{
 								{Person: "person-1"},
 								{Person: "person-2"},
 							},
@@ -274,8 +274,8 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				// Create place file
-				place := &lib.GLXFile{
-					Places: map[string]*lib.Place{
+				place := &glxlib.GLXFile{
+					Places: map[string]*glxlib.Place{
 						"place-1": {
 							Name: "New York",
 							Type: "city",
@@ -315,19 +315,19 @@ func TestJoinArchive(t *testing.T) {
 				os.MkdirAll(inputDir, 0o755)
 
 				// Create GLX file with vocabularies
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: make(map[string]any),
 						},
 					},
-					EventTypes: map[string]*lib.EventType{
+					EventTypes: map[string]*glxlib.EventType{
 						"custom-event": {
 							Label:       "Custom Event",
 							Description: "A custom event type",
 						},
 					},
-					PlaceTypes: map[string]*lib.PlaceType{
+					PlaceTypes: map[string]*glxlib.PlaceType{
 						"custom-place": {
 							Label: "Custom Place",
 						},
@@ -378,8 +378,8 @@ func TestJoinArchive(t *testing.T) {
 				os.WriteFile(filepath.Join(inputDir, "data.json"), []byte("{}"), 0o644)
 
 				// Create one valid GLX file
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: make(map[string]any),
 						},
@@ -407,8 +407,8 @@ func TestJoinArchive(t *testing.T) {
 				inputDir := filepath.Join(tmpDir, "input")
 				os.MkdirAll(inputDir, 0o755)
 
-				glx := &lib.GLXFile{
-					Persons: map[string]*lib.Person{
+				glx := &glxlib.GLXFile{
+					Persons: map[string]*glxlib.Person{
 						"person-1": {
 							Properties: make(map[string]any),
 						},
@@ -472,7 +472,7 @@ func TestJoinArchive(t *testing.T) {
 					t.Errorf("Failed to read output file: %v", err)
 				}
 
-				var glx lib.GLXFile
+				var glx glxlib.GLXFile
 				if err := yaml.Unmarshal(data, &glx); err != nil {
 					t.Errorf("Output file is not valid YAML: %v", err)
 				}
@@ -484,8 +484,8 @@ func TestJoinArchive(t *testing.T) {
 // TestJoinArchiveRoundTrip tests that split and join operations are inverses
 func TestJoinArchiveRoundTrip(t *testing.T) {
 	// Create a complex GLX file
-	original := &lib.GLXFile{
-		Persons: map[string]*lib.Person{
+	original := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
 			"person-1": {
 				Properties: map[string]any{
 					"primary_name": "Alice Johnson",
@@ -497,28 +497,28 @@ func TestJoinArchiveRoundTrip(t *testing.T) {
 				},
 			},
 		},
-		Events: map[string]*lib.Event{
+		Events: map[string]*glxlib.Event{
 			"event-1": {
 				Type: "birth",
-				Date: lib.DateString("1980-01-15"),
+				Date: glxlib.DateString("1980-01-15"),
 			},
 		},
-		Relationships: map[string]*lib.Relationship{
+		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {
 				Type: "spouse",
-				Participants: []lib.Participant{
+				Participants: []glxlib.Participant{
 					{Person: "person-1"},
 					{Person: "person-2"},
 				},
 			},
 		},
-		Places: map[string]*lib.Place{
+		Places: map[string]*glxlib.Place{
 			"place-1": {
 				Name: "Boston",
 				Type: "city",
 			},
 		},
-		EventTypes: map[string]*lib.EventType{
+		EventTypes: map[string]*glxlib.EventType{
 			"custom": {
 				Label: "Custom Event",
 			},

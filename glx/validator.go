@@ -20,7 +20,7 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 	schema "github.com/genealogix/glx/specification/schema/v1"
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
@@ -342,9 +342,9 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 
 	// Validate entity ID formats (only for entity types, not vocabularies or property definitions)
 	entityTypes := []string{
-		lib.EntityTypePersons, lib.EntityTypeEvents, lib.EntityTypeRelationships,
-		lib.EntityTypePlaces, lib.EntityTypeSources, lib.EntityTypeCitations,
-		lib.EntityTypeRepositories, lib.EntityTypeAssertions, lib.EntityTypeMedia,
+		glxlib.EntityTypePersons, glxlib.EntityTypeEvents, glxlib.EntityTypeRelationships,
+		glxlib.EntityTypePlaces, glxlib.EntityTypeSources, glxlib.EntityTypeCitations,
+		glxlib.EntityTypeRepositories, glxlib.EntityTypeAssertions, glxlib.EntityTypeMedia,
 	}
 
 	for _, entityType := range entityTypes {

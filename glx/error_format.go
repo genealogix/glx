@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 const defaultShowFirstErrors = 10
@@ -19,7 +19,7 @@ func formatValidationError(err error, showFirstErrors int) error {
 	}
 
 	// Check if this is a structured validation error
-	var structuredErr *lib.StructuredValidationError
+	var structuredErr *glxlib.StructuredValidationError
 	if !errors.As(err, &structuredErr) {
 		// Not a structured validation error, return as-is
 		return err

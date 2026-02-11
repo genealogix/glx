@@ -17,11 +17,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/genealogix/glx/glx/lib"
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // printArchiveStatistics prints entity counts from a GLX archive
-func printArchiveStatistics(glx *lib.GLXFile) {
+func printArchiveStatistics(glx *glxlib.GLXFile) {
 	fmt.Println("\nImport statistics:")
 	fmt.Printf("  Persons:       %d\n", len(glx.Persons))
 	fmt.Printf("  Events:        %d\n", len(glx.Events))
@@ -35,7 +35,7 @@ func printArchiveStatistics(glx *lib.GLXFile) {
 }
 
 // printVerboseArchiveStatistics prints entity counts with a header message
-func printVerboseArchiveStatistics(glx *lib.GLXFile, message string) {
+func printVerboseArchiveStatistics(glx *glxlib.GLXFile, message string) {
 	fmt.Println(message)
 	fmt.Printf("  Persons:       %d\n", len(glx.Persons))
 	fmt.Printf("  Events:        %d\n", len(glx.Events))
