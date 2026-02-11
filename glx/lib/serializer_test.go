@@ -493,7 +493,7 @@ func TestLoadMultiFile(t *testing.T) {
 	}
 
 	// Load from map
-	loaded, err := s.DeserializeMultiFileFromMap(filesRead)
+	loaded, _, err := s.DeserializeMultiFileFromMap(filesRead)
 	if err != nil {
 		t.Fatalf("Failed to load: %v", err)
 	}

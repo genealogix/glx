@@ -73,7 +73,8 @@ func deserializeMultiFileTest(s *DefaultSerializer, dir string) (*GLXFile, error
 		return nil, err
 	}
 
-	return s.DeserializeMultiFileFromMap(files)
+	glx, _, err := s.DeserializeMultiFileFromMap(files)
+	return glx, err
 }
 
 // TestGEDCOMToSingleFileRoundTrip tests GEDCOM -> Single-file GLX -> Deserialization

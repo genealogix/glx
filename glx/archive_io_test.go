@@ -636,9 +636,9 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 
 			// Test read (only if write was successful or testing read-only)
 			if glx == nil || !tt.wantWriteErr {
-				loaded, err := readMultiFileArchive(dirPath, tt.validate)
+				loaded, _, err := LoadArchiveWithOptions(dirPath, tt.validate)
 				if (err != nil) != tt.wantReadErr {
-					t.Errorf("readMultiFileArchive() error = %v, wantReadErr %v", err, tt.wantReadErr)
+					t.Errorf("LoadArchiveWithOptions() error = %v, wantReadErr %v", err, tt.wantReadErr)
 				}
 
 				// Verify roundtrip if both succeeded
@@ -706,6 +706,133 @@ func TestCreateSerializer(t *testing.T) {
 			// We can't directly check the options as they're private,
 			// but we can verify the serializer was created
 		})
+	}
+}
+
+// TestLoadArchiveAndJoinProduceSameResult verifies both deserialization paths
+// produce equivalent results from the same multi-file archive on disk.
+func TestLoadArchiveAndJoinProduceSameResult(t *testing.T) {
+	// Create a known archive with multiple entity types
+	glx := &lib.GLXFile{
+		Persons: map[string]*lib.Person{
+			"person-1": {Properties: map[string]any{"name": map[string]any{"value": "Alice"}}},
+			"person-2": {Properties: map[string]any{"name": map[string]any{"value": "Bob"}}},
+		},
+		Events: map[string]*lib.Event{
+			"event-1": {Type: "birth", Participants: []lib.Participant{{Person: "person-1", Role: "principal"}}},
+		},
+		Relationships: map[string]*lib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []lib.Participant{{Person: "person-1"}, {Person: "person-2"}}},
+		},
+		Places:       map[string]*lib.Place{"place-1": {Name: "London"}},
+		Sources:      make(map[string]*lib.Source),
+		Citations:    make(map[string]*lib.Citation),
+		Repositories: make(map[string]*lib.Repository),
+		Media:        make(map[string]*lib.Media),
+		Assertions:   make(map[string]*lib.Assertion),
+	}
+
+	// Write to multi-file archive
+	dirPath := t.TempDir()
+	if err := writeMultiFileArchive(dirPath, glx, false); err != nil {
+		t.Fatalf("writeMultiFileArchive failed: %v", err)
+	}
+
+	// Load with schema validation (used by validate command)
+	loaded1, duplicates, err := LoadArchiveWithOptions(dirPath, true)
+	if err != nil {
+		t.Fatalf("LoadArchiveWithOptions(validate=true) failed: %v", err)
+	}
+	if len(duplicates) > 0 {
+		t.Errorf("Unexpected duplicates: %v", duplicates)
+	}
+
+	// Load without schema validation (used by join command)
+	loaded2, _, err := LoadArchiveWithOptions(dirPath, false)
+	if err != nil {
+		t.Fatalf("LoadArchiveWithOptions(validate=false) failed: %v", err)
+	}
+
+	// Both should produce the same entity counts
+	if len(loaded1.Persons) != len(loaded2.Persons) {
+		t.Errorf("Person count mismatch: validated=%d, unvalidated=%d", len(loaded1.Persons), len(loaded2.Persons))
+	}
+	if len(loaded1.Events) != len(loaded2.Events) {
+		t.Errorf("Event count mismatch: validated=%d, unvalidated=%d", len(loaded1.Events), len(loaded2.Events))
+	}
+	if len(loaded1.Relationships) != len(loaded2.Relationships) {
+		t.Errorf("Relationship count mismatch: validated=%d, unvalidated=%d", len(loaded1.Relationships), len(loaded2.Relationships))
+	}
+	if len(loaded1.Places) != len(loaded2.Places) {
+		t.Errorf("Place count mismatch: validated=%d, unvalidated=%d", len(loaded1.Places), len(loaded2.Places))
+	}
+
+	// Verify specific entities exist
+	if _, ok := loaded1.Persons["person-1"]; !ok {
+		t.Error("Missing person-1")
+	}
+}
+
+// TestJoinPreservesEntities verifies that split→join round-trip preserves all entities.
+func TestJoinPreservesEntities(t *testing.T) {
+	glx := &lib.GLXFile{
+		Persons: map[string]*lib.Person{
+			"person-1": {Properties: map[string]any{"name": map[string]any{"value": "Alice"}}},
+			"person-2": {Properties: map[string]any{"name": map[string]any{"value": "Bob"}}},
+		},
+		Events: map[string]*lib.Event{
+			"event-1": {Type: "birth", Participants: []lib.Participant{{Person: "person-1", Role: "principal"}}},
+			"event-2": {Type: "death", Participants: []lib.Participant{{Person: "person-2", Role: "principal"}}},
+		},
+		Relationships: map[string]*lib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []lib.Participant{{Person: "person-1"}, {Person: "person-2"}}},
+		},
+		Places:       map[string]*lib.Place{"place-1": {Name: "London"}},
+		Sources:      make(map[string]*lib.Source),
+		Citations:    make(map[string]*lib.Citation),
+		Repositories: make(map[string]*lib.Repository),
+		Media:        make(map[string]*lib.Media),
+		Assertions:   make(map[string]*lib.Assertion),
+	}
+
+	// Write to multi-file
+	splitDir := t.TempDir()
+	if err := writeMultiFileArchive(splitDir, glx, false); err != nil {
+		t.Fatalf("writeMultiFileArchive failed: %v", err)
+	}
+
+	// Join back to single file
+	joinedPath := filepath.Join(t.TempDir(), "joined.glx")
+	if err := joinArchive(splitDir, joinedPath, false, false, 0); err != nil {
+		t.Fatalf("joinArchive failed: %v", err)
+	}
+
+	// Read the joined file
+	joined, err := readSingleFileArchive(joinedPath, false)
+	if err != nil {
+		t.Fatalf("readSingleFileArchive failed: %v", err)
+	}
+
+	// Verify all entity counts
+	if len(joined.Persons) != 2 {
+		t.Errorf("Expected 2 persons, got %d", len(joined.Persons))
+	}
+	if len(joined.Events) != 2 {
+		t.Errorf("Expected 2 events, got %d", len(joined.Events))
+	}
+	if len(joined.Relationships) != 1 {
+		t.Errorf("Expected 1 relationship, got %d", len(joined.Relationships))
+	}
+	if len(joined.Places) != 1 {
+		t.Errorf("Expected 1 place, got %d", len(joined.Places))
+	}
+
+	// Verify specific entities
+	if _, ok := joined.Persons["person-1"]; !ok {
+		t.Error("Joined archive missing person-1")
+	}
+	if _, ok := joined.Events["event-2"]; !ok {
+		t.Error("Joined archive missing event-2")
 	}
 }
 

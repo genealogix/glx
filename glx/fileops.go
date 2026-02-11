@@ -102,26 +102,28 @@ func walkGLXFiles(rootPath string, visitor func(path string, data []byte) error)
 	})
 }
 
-// collectFilesFromDir recursively collects all files from a directory into a map
-// with relative paths as keys and file contents as values
-func collectFilesFromDir(rootDir string) (map[string][]byte, error) {
+// collectGLXFilesFromDir recursively collects all GLX/YAML files from a directory
+// into a map with relative paths as keys and file contents as values.
+// Only files with .glx, .yaml, or .yml extensions are included.
+func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
+		if d.IsDir() {
+			return nil
+		}
+		if !isGLXFile(d.Name()) {
 			return nil
 		}
 
-		// Read file content
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", path, err)
 		}
 
-		// Get relative path from rootDir
 		relPath, err := filepath.Rel(rootDir, path)
 		if err != nil {
 			return fmt.Errorf("failed to get relative path: %w", err)

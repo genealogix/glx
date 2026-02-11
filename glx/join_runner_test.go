@@ -38,47 +38,40 @@ func TestJoinArchive(t *testing.T) {
 		{
 			name: "successful join of valid multi-file archive",
 			setupFunc: func() (string, string, func()) {
-				// Create temp directory
 				tmpDir := t.TempDir()
-
-				// Create input directory with multi-file archive
 				inputDir := filepath.Join(tmpDir, "input")
 				os.MkdirAll(inputDir, 0o755)
 
-				// Create test entities
-				person := &lib.GLXFile{
+				// Use writeMultiFileArchive to create proper directory structure
+				glx := &lib.GLXFile{
 					Persons: map[string]*lib.Person{
-						"person-1": {
-							Properties: map[string]any{
-								"primary_name": "John Doe",
-							},
-						},
+						"person-1": {Properties: map[string]any{
+							"name": map[string]any{"value": "John Doe"},
+						}},
 					},
-				}
-
-				event := &lib.GLXFile{
 					Events: map[string]*lib.Event{
 						"event-1": {
-							Type: "birth",
-							Date: lib.DateString("1900-01-01"),
+							Type:         "birth",
+							Date:         lib.DateString("1900-01-01"),
+							Participants: []lib.Participant{{Person: "person-1", Role: "principal"}},
 						},
 					},
+					Relationships: make(map[string]*lib.Relationship),
+					Places:        make(map[string]*lib.Place),
+					Sources:       make(map[string]*lib.Source),
+					Citations:     make(map[string]*lib.Citation),
+					Repositories:  make(map[string]*lib.Repository),
+					Media:         make(map[string]*lib.Media),
+					Assertions:    make(map[string]*lib.Assertion),
 				}
-
-				// Write entity files
-				personData, _ := yaml.Marshal(person)
-				os.WriteFile(filepath.Join(inputDir, "person-1.glx"), personData, 0o644)
-
-				eventData, _ := yaml.Marshal(event)
-				os.WriteFile(filepath.Join(inputDir, "event-1.glx"), eventData, 0o644)
+				if err := writeMultiFileArchive(inputDir, glx, false); err != nil {
+					t.Fatalf("setup failed: %v", err)
+				}
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
-
-				return inputDir, outputPath, func() {
-					os.RemoveAll(tmpDir)
-				}
+				return inputDir, outputPath, func() {}
 			},
-			validate:        true,
+			validate:        false,
 			verbose:         false,
 			showFirstErrors: 10,
 			wantErr:         false,

@@ -3,7 +3,6 @@ package lib
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -21,8 +20,9 @@ type Serializer interface {
 	// Map keys are relative paths like "persons/person-abc123.glx", "vocabularies/event-types.glx"
 	SerializeMultiFileToMap(glx *GLXFile) (map[string][]byte, error)
 
-	// DeserializeMultiFileFromMap loads a GLX archive from a map of relative paths to file contents
-	DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, error)
+	// DeserializeMultiFileFromMap loads a GLX archive from a map of relative paths to file contents.
+	// Returns the loaded archive, a list of duplicate entity IDs, and any error.
+	DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, []string, error)
 }
 
 // SerializerOptions configures the serializer behavior.
@@ -211,7 +211,8 @@ func (s *DefaultSerializer) DeserializeSingleFileBytes(data []byte) (*GLXFile, e
 }
 
 // DeserializeMultiFileFromMap loads a GLX archive from a map of relative paths to file contents.
-func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, error) {
+// Returns the loaded archive, a list of duplicate entity IDs, and any error.
+func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte) (*GLXFile, []string, error) {
 	glx := &GLXFile{
 		Persons:       make(map[string]*Person),
 		Events:        make(map[string]*Event),
@@ -222,92 +223,52 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		Repositories:  make(map[string]*Repository),
 		Media:         make(map[string]*Media),
 		Assertions:    make(map[string]*Assertion),
+
+		EventTypes:        make(map[string]*EventType),
+		ParticipantRoles:  make(map[string]*ParticipantRole),
+		ConfidenceLevels:  make(map[string]*ConfidenceLevel),
+		RelationshipTypes: make(map[string]*RelationshipType),
+		PlaceTypes:        make(map[string]*PlaceType),
+		SourceTypes:       make(map[string]*SourceType),
+		RepositoryTypes:   make(map[string]*RepositoryType),
+		MediaTypes:        make(map[string]*MediaType),
+
+		PersonProperties:       make(map[string]*PropertyDefinition),
+		EventProperties:        make(map[string]*PropertyDefinition),
+		RelationshipProperties: make(map[string]*PropertyDefinition),
+		PlaceProperties:        make(map[string]*PropertyDefinition),
+		MediaProperties:        make(map[string]*PropertyDefinition),
+		RepositoryProperties:   make(map[string]*PropertyDefinition),
+		CitationProperties:     make(map[string]*PropertyDefinition),
+		SourceProperties:       make(map[string]*PropertyDefinition),
 	}
 
-	// Load vocabularies from map
-	vocabFiles := make(map[string][]byte)
-	for path, content := range files {
-		if strings.HasPrefix(path, "vocabularies/") || strings.HasPrefix(path, "vocabularies\\") {
-			// Extract filename from path
-			filename := filepath.Base(path)
-			vocabFiles[filename] = content
-		}
-	}
-	if len(vocabFiles) > 0 {
-		if err := LoadVocabulariesFromMap(vocabFiles, glx); err != nil {
-			return nil, fmt.Errorf("failed to load vocabularies: %w", err)
-		}
-	}
+	var allDuplicates []string
 
-	// Load entities from map
-	if err := deserializeEntitiesFromMap(files, "persons", glx.Persons); err != nil {
-		return nil, fmt.Errorf("failed to load persons: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "events", glx.Events); err != nil {
-		return nil, fmt.Errorf("failed to load events: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "relationships", glx.Relationships); err != nil {
-		return nil, fmt.Errorf("failed to load relationships: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "places", glx.Places); err != nil {
-		return nil, fmt.Errorf("failed to load places: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "sources", glx.Sources); err != nil {
-		return nil, fmt.Errorf("failed to load sources: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "citations", glx.Citations); err != nil {
-		return nil, fmt.Errorf("failed to load citations: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "repositories", glx.Repositories); err != nil {
-		return nil, fmt.Errorf("failed to load repositories: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "media", glx.Media); err != nil {
-		return nil, fmt.Errorf("failed to load media: %w", err)
-	}
-	if err := deserializeEntitiesFromMap(files, "assertions", glx.Assertions); err != nil {
-		return nil, fmt.Errorf("failed to load assertions: %w", err)
+	// Each file is a GLXFile fragment — the YAML top-level keys (persons:,
+	// events:, event_types:, etc.) determine what entities it contains,
+	// regardless of which directory the file lives in.
+	for path, data := range files {
+		ext := filepath.Ext(path)
+		if ext != FileExtGLX && ext != ".yaml" && ext != ".yml" {
+			continue
+		}
+		var partial GLXFile
+		if err := yaml.Unmarshal(data, &partial); err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
+		}
+		duplicates := glx.Merge(&partial)
+		allDuplicates = append(allDuplicates, duplicates...)
 	}
 
 	// Validate if requested
 	if s.Options.Validate {
 		if err := validateGLXFile(glx); err != nil {
-			return nil, fmt.Errorf("validation failed: %w", err)
+			return nil, nil, fmt.Errorf("validation failed: %w", err)
 		}
 	}
 
-	return glx, nil
-}
-
-// deserializeEntitiesFromMap loads entities from the files map.
-// Each file contains standard GLX structure: {collectionKey: {entityID: entity}}.
-func deserializeEntitiesFromMap[T any](files map[string][]byte, dirName string, entities map[string]T) error {
-	for path, data := range files {
-		// Check if this file belongs to the specified directory
-		dir := filepath.Dir(path)
-		if dir != dirName && dir != strings.ReplaceAll(dirName, "/", "\\") {
-			continue
-		}
-
-		// Check file extension
-		if filepath.Ext(path) != FileExtGLX {
-			continue
-		}
-
-		// Unmarshal as {collectionKey: {entityID: entity}}
-		var wrapper map[string]map[string]T
-		if err := yaml.Unmarshal(data, &wrapper); err != nil {
-			return fmt.Errorf("failed to unmarshal %s: %w", path, err)
-		}
-
-		// Extract entities from the collection key
-		if collection, ok := wrapper[dirName]; ok {
-			for id, entity := range collection {
-				entities[id] = entity
-			}
-		}
-	}
-
-	return nil
+	return glx, allDuplicates, nil
 }
 
 // validateGLXFile validates a GLX archive using the built-in validation system.
