@@ -111,7 +111,7 @@ relationships:
 4. Check [Archive Organization](3-archive-organization) for organization patterns
 5. Review [Standard Vocabularies](5-standard-vocabularies/) for controlled type definitions
 6. See [examples/](../docs/examples/) for working examples
-7. Use [glx CLI](../../glx/) for validation
+7. Use [glx CLI](../glx/) for validation
 
 ## Contributing
 

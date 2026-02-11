@@ -39,7 +39,7 @@ relationships:
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `type` | string | Relationship type from `vocabularies/relationship-types.glx` |
-| `participants` | array | Array of participant objects defining who is in the relationship |
+| `participants` | array | Array of participant objects defining who is in the relationship (at least 2 required) |
 
 ### Optional Fields
 
@@ -141,7 +141,7 @@ events:
     place: place-county-court
     participants:
       - person: person-sarah-jones
-        role: principal
+        role: subject
     notes: "Legal adoption finalized"
 
 # The relationship connects parent(s) and child
@@ -180,7 +180,7 @@ events:
     place: place-st-marys-church
     participants:
       - person: person-baby-william
-        role: principal
+        role: subject
       - person: person-uncle-james
         role: godparent
       - person: person-aunt-sarah

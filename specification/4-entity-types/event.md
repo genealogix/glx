@@ -61,7 +61,7 @@ Domain-specific events can be added via vocabularies:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `date` | string/object | Date as string or object with fuzzy support |
+| `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
 | `notes` | string | Free-form notes |
@@ -79,7 +79,7 @@ Domain-specific events can be added via vocabularies:
 ```yaml
 participants:
   - person: "person-abc123de"
-    role: "principal"
+    role: "subject"
     notes: "The bride"
   - person: "person-def456gh"
     role: "officiant"
@@ -224,7 +224,7 @@ See [event.schema.json](../schema/v1/event.schema.json) for the complete JSON Sc
 
 ## See Also
 
-- [Person Entity](person) - Contains event references
+- [Person Entity](person) - Participates in events
 - [Assertion Entity](assertion) - Provides evidence for events
 - [Place Entity](place) - Geographic context for events
 - [Relationship Entity](relationship) - Multi-person events

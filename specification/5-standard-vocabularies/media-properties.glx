@@ -33,7 +33,7 @@ media_properties:
   crop:
     label: "Crop"
     description: "Crop coordinates for displaying a region of the media"
-    value_type: string
+    value_type: integer
     gedcom: "CROP"
     fields:
       top:

@@ -45,10 +45,10 @@ The quickest way to understand GENEALOGIX:
 
 1. **Glossary**: Review key terms in the [Glossary](6-glossary)
 2. **Core Concepts**: Read [Core Concepts](2-core-concepts) to understand the architecture
-3. **Quick Start**: Follow the [5-minute tutorial](../../docs/quickstart.md)
+3. **Quick Start**: Follow the [5-minute tutorial](../docs/quickstart.md)
 4. **Examples**: Explore the [complete family example](../docs/examples/complete-family/)
 5. **Entity Specifications**: See detailed entity documentation in [Entity Types](4-entity-types)
-6. **CLI Tool**: Use the [glx command](../../glx/) for validation and management
+6. **CLI Tool**: Use the [glx command](../glx/) for validation and management
 
 ## Community and Support
 
@@ -56,8 +56,8 @@ GENEALOGIX is open source and welcomes contributions:
 
 - **Issues**: [Bug reports and feature requests](https://github.com/genealogix/glx/issues)
 - **Discussions**: [Community Q&A and collaboration](https://github.com/genealogix/glx/discussions)
-- **Contributing**: See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines
+- **Contributing**: See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines
 
 ## Version History
 
-This specification follows semantic versioning. See [CHANGELOG.md](../../CHANGELOG.md) for detailed version history.
+This specification follows semantic versioning. See [CHANGELOG.md](../CHANGELOG.md) for detailed version history.

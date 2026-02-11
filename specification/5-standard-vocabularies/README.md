@@ -325,7 +325,7 @@ events:
     place: place-leeds
     participants:
       - person: person-john
-        role: principal
+        role: subject
     notes: "Apprenticed to blacksmith"
 ```
 

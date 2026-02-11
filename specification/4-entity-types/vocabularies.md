@@ -1289,7 +1289,7 @@ events:
     place: place-indiana
     participants:
       - person: person-john
-        role: principal
+        role: subject
     notes: "160 acres in Howard County"
 ```
 

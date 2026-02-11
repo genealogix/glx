@@ -190,6 +190,13 @@ event_types:
     category: "migration"
     gedcom: "EMIG"
 
+  # Census Events
+  census:
+    label: "Census"
+    description: "Census enumeration"
+    category: "other"
+    gedcom: "CENS"
+
   # Generic Events
   event:
     label: "Event"

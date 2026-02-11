@@ -37,6 +37,7 @@ Design decisions that affect the spec and should be resolved before 1.0.
 - **Event participant requirement**: Consider relaxing — historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants.
 - **Gender/sex controlled vocabularies**: Should these be formalized?
 - **Property field data types**: Should property fields carry type information?
+- **Repository address fields**: Consider moving `address`, `city`, `state_province`, `postal_code`, `country` from direct entity fields into the `repository_properties` vocabulary for consistency with other entity types.
 
 ---
 

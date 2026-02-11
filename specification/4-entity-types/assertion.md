@@ -54,7 +54,7 @@ assertions:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `value` | string | The concluded value of the property (not used with participant) |
+| `value` | string | The concluded value of the property (**required** when `property` is present; not used with `participant`) |
 | `date` | string | Date or date range when this property value applies (for temporal properties) |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string | General notes about the assertion |
@@ -206,8 +206,8 @@ assertions:
 ### `value`
 
 - Type: String
-- Required: No for participant assertions; recommended for property assertions
-- Description: The concluded value of the property (not used with `participant`)
+- Required: Yes when `property` is present; not used with `participant`
+- Description: The concluded value of the property
 
 Example:
 ```yaml
@@ -219,7 +219,7 @@ value: blacksmith
 
 - Type: String
 - Required: No
-- Description: Date or date range when this property value applies. Used with temporal properties (occupation, residence, etc.) to specify **when** the asserted value was true, matching the temporal value format on entities.
+- Description: Date or date range when this property value applies. Used with temporal properties (occupation, residence, etc.) to specify **when** the asserted value was true, matching the temporal value format on entities. This field is strictly for temporal targeting — it is NOT an "evidence date" or "observation date".
 
 When a temporal property on an entity has multiple dated values:
 ```yaml

@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Census Event Type
+- **Added `census` event type to standard vocabulary** - Census enumeration events (`CENS` GEDCOM tag) now included in `event-types.glx`
+
 #### Assertion `date` Field for Temporal Properties
 - **Added `date` field to assertions** - Assertions can now specify a date or date range indicating when the asserted property value applies, enabling precise temporal targeting for properties like occupation, residence, and religion that change over time
 - Added `Date` field to `Assertion` Go struct
@@ -189,7 +192,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Fixed assertion example using invalid date format (`circa 1825` → `ABT 1825`)
 - Removed undocumented `birth_surname` from person name example
 - Fixed broken anchor link in repository.md (`#repository-properties` → `#repository-properties-vocabulary`)
-- Standardized birth event examples to use `subject` role consistently
+- Standardized all event examples to use `subject` role consistently (replaced remaining `principal` usages in place, relationship, vocabularies docs)
+- Fixed Event `date` field type from `string/object` to `string` (object form was never documented)
+- Fixed Event See Also to say Person "participates in events" instead of "contains event references"
+- Fixed broken relative links in `1-introduction.md` and `specification/README.md` (`../../` → `../`)
+- Fixed `residence` reference type example in `2-core-concepts.md` to use temporal format
+- Changed `crop` property `value_type` from `string` to `integer` in `media-properties.glx`
+- Made assertion `value` field required when `property` is present
+- Clarified assertion `date` field is strictly for temporal targeting, not evidence dates
+- Added minimum participant count (at least 2) to relationship fields table
+- Added naming convention note (hyphens for file/entry names, underscores for YAML section keys) to core concepts
 - Removed stale `Created At` and `Created By` glossary entries
 - Fixed glossary Event and Event Type definitions that incorrectly included occupation and residence
 - Fixed "assertion claims" terminology to "assertion properties" in core-concepts

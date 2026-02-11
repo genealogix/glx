@@ -183,7 +183,7 @@ events:
     place: place-leeds
     participants:
       - person: person-john
-        role: principal
+        role: subject
 
 # In person properties
 persons:
