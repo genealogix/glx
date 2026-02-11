@@ -377,39 +377,44 @@ func (glx *GLXFile) validatePropertyReference(
 	referenceType string,
 	result *ValidationResult,
 ) {
+	// Simple string reference
 	if refID, ok := propValue.(string); ok {
-		if _, exists := result.Entities[referenceType][refID]; !exists {
-			result.Errors = append(result.Errors, ValidationError{
-				SourceType:  entityType,
-				SourceID:    entityID,
-				SourceField: "properties." + propName,
-				TargetType:  referenceType,
-				TargetID:    refID,
-				Message: fmt.Sprintf("%s[%s].properties.%s references non-existent %s: %s",
-					entityType, entityID, propName, referenceType, refID),
-			})
-		}
+		glx.checkPropertyRef(entityType, entityID, "properties."+propName, referenceType, refID, result)
 
 		return
 	}
+
+	// Array of references (multi-value or temporal)
 	if valueList, ok := propValue.([]any); ok {
 		for i, item := range valueList {
-			if itemMap, ok := item.(map[string]any); ok {
-				if refID, ok := itemMap["value"].(string); ok {
-					if _, exists := result.Entities[referenceType][refID]; !exists {
-						result.Errors = append(result.Errors, ValidationError{
-							SourceType:  entityType,
-							SourceID:    entityID,
-							SourceField: fmt.Sprintf("properties.%s[%d].value", propName, i),
-							TargetType:  referenceType,
-							TargetID:    refID,
-							Message: fmt.Sprintf("%s[%s].properties.%s[%d].value references non-existent %s: %s",
-								entityType, entityID, propName, i, referenceType, refID),
-						})
-					}
+			switch v := item.(type) {
+			case string:
+				// Multi-value: simple string reference IDs
+				glx.checkPropertyRef(entityType, entityID,
+					fmt.Sprintf("properties.%s[%d]", propName, i), referenceType, v, result)
+			case map[string]any:
+				// Temporal: {value: refID, date: ...}
+				if refID, ok := v["value"].(string); ok {
+					glx.checkPropertyRef(entityType, entityID,
+						fmt.Sprintf("properties.%s[%d].value", propName, i), referenceType, refID, result)
 				}
 			}
 		}
+	}
+}
+
+// checkPropertyRef validates that a single property reference ID exists.
+func (glx *GLXFile) checkPropertyRef(entityType, entityID, field, referenceType, refID string, result *ValidationResult) {
+	if _, exists := result.Entities[referenceType][refID]; !exists {
+		result.Errors = append(result.Errors, ValidationError{
+			SourceType:  entityType,
+			SourceID:    entityID,
+			SourceField: field,
+			TargetType:  referenceType,
+			TargetID:    refID,
+			Message: fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
+				entityType, entityID, field, referenceType, refID),
+		})
 	}
 }
 
@@ -424,12 +429,16 @@ func (glx *GLXFile) validatePropertyValue(
 	isTemporal := propDef.Temporal != nil && *propDef.Temporal
 	isMultiValue := propDef.MultiValue != nil && *propDef.MultiValue
 
-	// Handle multi-value properties: can be array of simple values
+	// Handle multi-value properties: can be array of simple values or structured objects
 	if isMultiValue {
 		if listVal, isList := propValue.([]any); isList {
-			// Validate each item in the array
 			for i, item := range listVal {
-				glx.validateValueType(entityType, entityID, fmt.Sprintf("properties.%s[%d]", propName, i), item, propDef.ValueType, result)
+				fieldPath := fmt.Sprintf("properties.%s[%d]", propName, i)
+				if structuredVal, isMap := item.(map[string]any); isMap {
+					glx.validateStructuredValue(entityType, entityID, propName+"["+fmt.Sprint(i)+"]", structuredVal, propDef, result)
+				} else {
+					glx.validateValueType(entityType, entityID, fieldPath, item, propDef.ValueType, result)
+				}
 			}
 		} else {
 			// Single value is also allowed for multi-value properties
@@ -439,9 +448,8 @@ func (glx *GLXFile) validatePropertyValue(
 		return
 	}
 
-	// Handle non-temporal, non-multi-value properties: must be simple value
+	// Handle non-temporal, non-multi-value properties: simple value or structured {value, fields}
 	if !isTemporal {
-		// For non-temporal properties, value should NOT be a list
 		if _, isList := propValue.([]any); isList {
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: entityType,
@@ -450,8 +458,10 @@ func (glx *GLXFile) validatePropertyValue(
 				Message: fmt.Sprintf("%s[%s].properties.%s: non-temporal property has list value (expected simple value or use multi_value: true)",
 					entityType, entityID, propName),
 			})
+		} else if structuredVal, isMap := propValue.(map[string]any); isMap {
+			// Structured value: {value: ..., fields: {...}} — validate inner value and fields
+			glx.validateStructuredValue(entityType, entityID, propName, structuredVal, propDef, result)
 		} else {
-			// Validate the simple value against its value_type
 			glx.validateValueType(entityType, entityID, "properties."+propName, propValue, propDef.ValueType, result)
 		}
 
@@ -503,6 +513,28 @@ func (glx *GLXFile) validatePropertyValue(
 		}
 
 		glx.validateTemporalItem(entityType, entityID, propName, i, itemMap, propDef, result)
+	}
+}
+
+// validateStructuredValue validates a structured property value of the form
+// {value: ..., fields: {...}}. This covers non-temporal properties that use the
+// structured format (e.g., name with given/surname fields).
+func (glx *GLXFile) validateStructuredValue(
+	entityType, entityID, propName string,
+	structuredVal map[string]any,
+	propDef *PropertyDefinition,
+	result *ValidationResult,
+) {
+	fieldPath := "properties." + propName
+
+	// Validate the inner 'value' field if present
+	if value, hasValue := structuredVal["value"]; hasValue && propDef.ValueType != "" {
+		glx.validateValueType(entityType, entityID, fieldPath+".value", value, propDef.ValueType, result)
+	}
+
+	// Validate fields if present and property definition has fields schema
+	if fields, hasFields := structuredVal["fields"]; hasFields && propDef.Fields != nil {
+		glx.validateTemporalFields(entityType, entityID, fieldPath, fields, propDef.Fields, result)
 	}
 }
 

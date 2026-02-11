@@ -2,24 +2,35 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/repository-types.schema.json",
   "title": "Repository Types Vocabulary",
+  "description": "Defines the standard and custom repository types available for repository entities",
   "type": "object",
+  "required": ["repository_types"],
   "properties": {
     "repository_types": {
       "type": "object",
-      "patternProperties": {
-        "^[a-zA-Z0-9_-]{1,64}$": {
-          "type": "object",
-          "required": ["label"],
-          "properties": {
-            "label": { "type": "string" },
-            "description": { "type": "string" }
-          },
-          "additionalProperties": true
-        }
+      "description": "Map of repository type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/RepositoryTypeDefinition"
       }
     }
   },
-  "required": ["repository_types"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "RepositoryTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single repository type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the repository type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the repository type"
+        }
+      }
+    }
+  }
 }
-

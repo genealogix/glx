@@ -2,25 +2,39 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/media-types.schema.json",
   "title": "Media Types Vocabulary",
+  "description": "Defines the standard and custom media types available for media entities",
   "type": "object",
+  "required": ["media_types"],
   "properties": {
     "media_types": {
       "type": "object",
-      "patternProperties": {
-        "^[a-zA-Z0-9_-]{1,64}$": {
-          "type": "object",
-          "required": ["label"],
-          "properties": {
-            "label": { "type": "string" },
-            "description": { "type": "string" },
-            "mime_type": { "type": "string" }
-          },
-          "additionalProperties": true
-        }
+      "description": "Map of media type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/MediaTypeDefinition"
       }
     }
   },
-  "required": ["media_types"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "MediaTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single media type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the media type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the media type"
+        },
+        "mime_type": {
+          "type": "string",
+          "description": "MIME type associated with this media type"
+        }
+      }
+    }
+  }
 }
-

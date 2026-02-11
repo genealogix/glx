@@ -56,321 +56,76 @@ func GetStandardVocabulary(name string) ([]byte, error) {
 // This populates the vocabulary maps (EventTypes, RelationshipTypes, etc.) so that
 // validation can check references against the standard vocabulary values.
 // Returns error if vocabulary parsing fails.
-//
-//nolint:gocognit,gocyclo
 func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
-	vocabs := vocabularies.Files
-
-	// Load event types
-	if data, ok := vocabs["event-types.glx"]; ok {
-		var doc struct {
-			EventTypes map[string]*EventType `yaml:"event_types"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing event-types.glx: %w", err)
-		}
-		glx.EventTypes = doc.EventTypes
-	}
-
-	// Load relationship types
-	if data, ok := vocabs["relationship-types.glx"]; ok {
-		var doc struct {
-			RelationshipTypes map[string]*RelationshipType `yaml:"relationship_types"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing relationship-types.glx: %w", err)
-		}
-		glx.RelationshipTypes = doc.RelationshipTypes
-	}
-
-	// Load place types
-	if data, ok := vocabs["place-types.glx"]; ok {
-		var doc struct {
-			PlaceTypes map[string]*PlaceType `yaml:"place_types"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing place-types.glx: %w", err)
-		}
-		glx.PlaceTypes = doc.PlaceTypes
-	}
-
-	// Load source types
-	if data, ok := vocabs["source-types.glx"]; ok {
-		var doc struct {
-			SourceTypes map[string]*SourceType `yaml:"source_types"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing source-types.glx: %w", err)
-		}
-		glx.SourceTypes = doc.SourceTypes
-	}
-
-	// Load repository types
-	if data, ok := vocabs["repository-types.glx"]; ok {
-		var doc struct {
-			RepositoryTypes map[string]*RepositoryType `yaml:"repository_types"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing repository-types.glx: %w", err)
-		}
-		glx.RepositoryTypes = doc.RepositoryTypes
-	}
-
-	// Load participant roles
-	if data, ok := vocabs["participant-roles.glx"]; ok {
-		var doc struct {
-			ParticipantRoles map[string]*ParticipantRole `yaml:"participant_roles"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing participant-roles.glx: %w", err)
-		}
-		glx.ParticipantRoles = doc.ParticipantRoles
-	}
-
-	// Load media types
-	if data, ok := vocabs["media-types.glx"]; ok {
-		var doc struct {
-			MediaTypes map[string]*MediaType `yaml:"media_types"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing media-types.glx: %w", err)
-		}
-		glx.MediaTypes = doc.MediaTypes
-	}
-
-	// Load confidence levels
-	if data, ok := vocabs["confidence-levels.glx"]; ok {
-		var doc struct {
-			ConfidenceLevels map[string]*ConfidenceLevel `yaml:"confidence_levels"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing confidence-levels.glx: %w", err)
-		}
-		glx.ConfidenceLevels = doc.ConfidenceLevels
-	}
-
-	// Load property vocabularies
-	if data, ok := vocabs["person-properties.glx"]; ok {
-		var doc struct {
-			PersonProperties map[string]*PropertyDefinition `yaml:"person_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing person-properties.glx: %w", err)
-		}
-		glx.PersonProperties = doc.PersonProperties
-	}
-
-	if data, ok := vocabs["event-properties.glx"]; ok {
-		var doc struct {
-			EventProperties map[string]*PropertyDefinition `yaml:"event_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing event-properties.glx: %w", err)
-		}
-		glx.EventProperties = doc.EventProperties
-	}
-
-	if data, ok := vocabs["relationship-properties.glx"]; ok {
-		var doc struct {
-			RelationshipProperties map[string]*PropertyDefinition `yaml:"relationship_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing relationship-properties.glx: %w", err)
-		}
-		glx.RelationshipProperties = doc.RelationshipProperties
-	}
-
-	if data, ok := vocabs["place-properties.glx"]; ok {
-		var doc struct {
-			PlaceProperties map[string]*PropertyDefinition `yaml:"place_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing place-properties.glx: %w", err)
-		}
-		glx.PlaceProperties = doc.PlaceProperties
-	}
-
-	if data, ok := vocabs["media-properties.glx"]; ok {
-		var doc struct {
-			MediaProperties map[string]*PropertyDefinition `yaml:"media_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing media-properties.glx: %w", err)
-		}
-		glx.MediaProperties = doc.MediaProperties
-	}
-
-	if data, ok := vocabs["repository-properties.glx"]; ok {
-		var doc struct {
-			RepositoryProperties map[string]*PropertyDefinition `yaml:"repository_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing repository-properties.glx: %w", err)
-		}
-		glx.RepositoryProperties = doc.RepositoryProperties
-	}
-
-	if data, ok := vocabs["citation-properties.glx"]; ok {
-		var doc struct {
-			CitationProperties map[string]*PropertyDefinition `yaml:"citation_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing citation-properties.glx: %w", err)
-		}
-		glx.CitationProperties = doc.CitationProperties
-	}
-
-	if data, ok := vocabs["source-properties.glx"]; ok {
-		var doc struct {
-			SourceProperties map[string]*PropertyDefinition `yaml:"source_properties"`
-		}
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("parsing source-properties.glx: %w", err)
-		}
-		glx.SourceProperties = doc.SourceProperties
-	}
-
-	return nil
+	return LoadVocabulariesFromMap(vocabularies.Files, glx)
 }
 
 // LoadVocabulariesFromMap loads vocabularies from a map of filenames to content into a GLXFile.
 // This populates the vocabulary maps (EventTypes, RelationshipTypes, etc.) from the provided files.
 // Returns error if vocabulary parsing fails.
-//
-//nolint:gocognit,gocyclo
 func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 	for filename, data := range vocabFiles {
-		// Parse based on filename
-		switch filename {
-		case "event-types.glx":
-			var doc struct {
-				EventTypes map[string]*EventType `yaml:"event_types"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.EventTypes = doc.EventTypes
-		case "relationship-types.glx":
-			var doc struct {
-				RelationshipTypes map[string]*RelationshipType `yaml:"relationship_types"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.RelationshipTypes = doc.RelationshipTypes
-		case "place-types.glx":
-			var doc struct {
-				PlaceTypes map[string]*PlaceType `yaml:"place_types"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.PlaceTypes = doc.PlaceTypes
-		case "source-types.glx":
-			var doc struct {
-				SourceTypes map[string]*SourceType `yaml:"source_types"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.SourceTypes = doc.SourceTypes
-		case "repository-types.glx":
-			var doc struct {
-				RepositoryTypes map[string]*RepositoryType `yaml:"repository_types"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.RepositoryTypes = doc.RepositoryTypes
-		case "participant-roles.glx":
-			var doc struct {
-				ParticipantRoles map[string]*ParticipantRole `yaml:"participant_roles"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.ParticipantRoles = doc.ParticipantRoles
-		case "media-types.glx":
-			var doc struct {
-				MediaTypes map[string]*MediaType `yaml:"media_types"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.MediaTypes = doc.MediaTypes
-		case "confidence-levels.glx":
-			var doc struct {
-				ConfidenceLevels map[string]*ConfidenceLevel `yaml:"confidence_levels"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.ConfidenceLevels = doc.ConfidenceLevels
-		case "person-properties.glx":
-			var doc struct {
-				PersonProperties map[string]*PropertyDefinition `yaml:"person_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.PersonProperties = doc.PersonProperties
-		case "event-properties.glx":
-			var doc struct {
-				EventProperties map[string]*PropertyDefinition `yaml:"event_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.EventProperties = doc.EventProperties
-		case "relationship-properties.glx":
-			var doc struct {
-				RelationshipProperties map[string]*PropertyDefinition `yaml:"relationship_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.RelationshipProperties = doc.RelationshipProperties
-		case "place-properties.glx":
-			var doc struct {
-				PlaceProperties map[string]*PropertyDefinition `yaml:"place_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.PlaceProperties = doc.PlaceProperties
-		case "media-properties.glx":
-			var doc struct {
-				MediaProperties map[string]*PropertyDefinition `yaml:"media_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.MediaProperties = doc.MediaProperties
-		case "repository-properties.glx":
-			var doc struct {
-				RepositoryProperties map[string]*PropertyDefinition `yaml:"repository_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.RepositoryProperties = doc.RepositoryProperties
-		case "citation-properties.glx":
-			var doc struct {
-				CitationProperties map[string]*PropertyDefinition `yaml:"citation_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.CitationProperties = doc.CitationProperties
-		case "source-properties.glx":
-			var doc struct {
-				SourceProperties map[string]*PropertyDefinition `yaml:"source_properties"`
-			}
-			if err := yaml.Unmarshal(data, &doc); err != nil {
-				return fmt.Errorf("parsing %s: %w", filename, err)
-			}
-			glx.SourceProperties = doc.SourceProperties
+		if err := loadVocabulary(filename, data, glx); err != nil {
+			return err
 		}
+	}
+
+	return nil
+}
+
+// loadVocabulary parses a single vocabulary file and assigns its contents to the
+// appropriate field on the GLXFile. Unrecognized filenames are silently skipped.
+//
+//nolint:gocyclo
+func loadVocabulary(filename string, data []byte, glx *GLXFile) error {
+	switch filename {
+	case "event-types.glx":
+		return unmarshalVocab(filename, data, "event_types", &glx.EventTypes)
+	case "relationship-types.glx":
+		return unmarshalVocab(filename, data, "relationship_types", &glx.RelationshipTypes)
+	case "place-types.glx":
+		return unmarshalVocab(filename, data, "place_types", &glx.PlaceTypes)
+	case "source-types.glx":
+		return unmarshalVocab(filename, data, "source_types", &glx.SourceTypes)
+	case "repository-types.glx":
+		return unmarshalVocab(filename, data, "repository_types", &glx.RepositoryTypes)
+	case "participant-roles.glx":
+		return unmarshalVocab(filename, data, "participant_roles", &glx.ParticipantRoles)
+	case "media-types.glx":
+		return unmarshalVocab(filename, data, "media_types", &glx.MediaTypes)
+	case "confidence-levels.glx":
+		return unmarshalVocab(filename, data, "confidence_levels", &glx.ConfidenceLevels)
+	case "person-properties.glx":
+		return unmarshalVocab(filename, data, "person_properties", &glx.PersonProperties)
+	case "event-properties.glx":
+		return unmarshalVocab(filename, data, "event_properties", &glx.EventProperties)
+	case "relationship-properties.glx":
+		return unmarshalVocab(filename, data, "relationship_properties", &glx.RelationshipProperties)
+	case "place-properties.glx":
+		return unmarshalVocab(filename, data, "place_properties", &glx.PlaceProperties)
+	case "media-properties.glx":
+		return unmarshalVocab(filename, data, "media_properties", &glx.MediaProperties)
+	case "repository-properties.glx":
+		return unmarshalVocab(filename, data, "repository_properties", &glx.RepositoryProperties)
+	case "citation-properties.glx":
+		return unmarshalVocab(filename, data, "citation_properties", &glx.CitationProperties)
+	case "source-properties.glx":
+		return unmarshalVocab(filename, data, "source_properties", &glx.SourceProperties)
+	}
+
+	return nil
+}
+
+// unmarshalVocab is a generic helper that unmarshals a YAML vocabulary file into
+// the target map pointer. The yamlKey is the top-level YAML key (e.g. "event_types").
+func unmarshalVocab[T any](filename string, data []byte, yamlKey string, target *map[string]*T) error {
+	// Unmarshal into a generic wrapper keyed by the YAML top-level key
+	var raw map[string]map[string]*T
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("parsing %s: %w", filename, err)
+	}
+	if entries, ok := raw[yamlKey]; ok {
+		*target = entries
 	}
 
 	return nil

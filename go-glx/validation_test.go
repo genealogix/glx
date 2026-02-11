@@ -834,6 +834,115 @@ func TestValidateCitationProperties(t *testing.T) {
 	})
 }
 
+func TestValidateMultiValueReferenceProperties(t *testing.T) {
+	t.Run("valid multi-value reference array", func(t *testing.T) {
+		archive := &GLXFile{
+			Media: map[string]*Media{
+				"media-1": {Properties: map[string]any{
+					"subjects": []any{"person-1", "person-2"},
+				}},
+			},
+			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
+			MediaProperties: map[string]*PropertyDefinition{
+				"subjects": {ReferenceType: "persons", MultiValue: boolPtr(true)},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+	})
+
+	t.Run("invalid multi-value reference in array", func(t *testing.T) {
+		archive := &GLXFile{
+			Media: map[string]*Media{
+				"media-1": {Properties: map[string]any{
+					"subjects": []any{"person-1", "person-gone"},
+				}},
+			},
+			Persons: map[string]*Person{"person-1": {}},
+			MediaProperties: map[string]*PropertyDefinition{
+				"subjects": {ReferenceType: "persons", MultiValue: boolPtr(true)},
+			},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		assert.Contains(t, result.Errors[0].Message, "person-gone")
+		assert.Contains(t, result.Errors[0].SourceField, "subjects[1]")
+	})
+}
+
+func TestValidateStructuredPropertyValue(t *testing.T) {
+	t.Run("non-temporal structured value with fields", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{
+					"name": map[string]any{
+						"value":  "John Smith",
+						"fields": map[string]any{"given": "John", "surname": "Smith"},
+					},
+				}},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"name": {
+					ValueType: "string",
+					Fields: map[string]*FieldDefinition{
+						"given":   {Label: "Given name"},
+						"surname": {Label: "Surname"},
+					},
+				},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("non-temporal structured value with unknown field", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{
+					"name": map[string]any{
+						"value":  "John Smith",
+						"fields": map[string]any{"given": "John", "middle": "Q"},
+					},
+				}},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"name": {
+					ValueType: "string",
+					Fields: map[string]*FieldDefinition{
+						"given":   {Label: "Given name"},
+						"surname": {Label: "Surname"},
+					},
+				},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "unknown field")
+		assert.Contains(t, result.Warnings[0].Field, "fields.middle")
+	})
+
+	t.Run("multi-value with structured objects", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{
+					"external_ids": []any{
+						map[string]any{"value": "ABC-123"},
+						map[string]any{"value": "DEF-456"},
+					},
+				}},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"external_ids": {ValueType: "string", MultiValue: boolPtr(true)},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		assert.Empty(t, result.Warnings)
+	})
+}
+
 // Helper function for test readability
 func boolPtr(b bool) *bool {
 	return &b

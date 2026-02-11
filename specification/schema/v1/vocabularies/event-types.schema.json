@@ -2,26 +2,44 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/event-types.schema.json",
   "title": "Event Types Vocabulary",
+  "description": "Defines the standard and custom event types available for event entities",
   "type": "object",
+  "required": ["event_types"],
   "properties": {
     "event_types": {
       "type": "object",
-      "patternProperties": {
-        "^[a-zA-Z0-9_-]{1,64}$": {
-          "type": "object",
-          "required": ["label"],
-          "properties": {
-            "label": { "type": "string" },
-            "description": { "type": "string" },
-            "gedcom": { "type": "string" },
-            "category": { "type": "string", "enum": ["lifecycle", "religious", "legal", "migration", "other"] }
-          },
-          "additionalProperties": true
-        }
+      "description": "Map of event type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/EventTypeDefinition"
       }
     }
   },
-  "required": ["event_types"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "EventTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single event type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the event type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the event type"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM tag for import/export mapping"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["lifecycle", "religious", "legal", "migration", "other"],
+          "description": "Functional category of the event type"
+        }
+      }
+    }
+  }
 }
-

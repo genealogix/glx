@@ -43,13 +43,14 @@ func joinArchive(inputDir, outputPath string, validate, verbose bool, showFirstE
 		return err
 	}
 
-	if verbose {
-		if len(duplicates) > 0 {
-			fmt.Printf("Warning: found %d duplicate entity IDs\n", len(duplicates))
-			for _, dup := range duplicates {
-				fmt.Printf("  - %s\n", dup)
-			}
+	if len(duplicates) > 0 {
+		fmt.Printf("Warning: found %d duplicate entity IDs\n", len(duplicates))
+		for _, dup := range duplicates {
+			fmt.Printf("  - %s\n", dup)
 		}
+	}
+
+	if verbose {
 		printVerboseArchiveStatistics(glx, "Archive loaded successfully")
 	}
 

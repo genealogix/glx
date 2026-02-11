@@ -2,24 +2,35 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/participant-roles.schema.json",
   "title": "Participant Roles Vocabulary",
+  "description": "Defines the standard and custom participant roles available for events, relationships, and assertions",
   "type": "object",
+  "required": ["participant_roles"],
   "properties": {
     "participant_roles": {
       "type": "object",
-      "patternProperties": {
-        "^[a-zA-Z0-9_-]{1,64}$": {
-          "type": "object",
-          "required": ["label"],
-          "properties": {
-            "label": { "type": "string" },
-            "description": { "type": "string" }
-          },
-          "additionalProperties": true
-        }
+      "description": "Map of participant role definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/ParticipantRoleDefinition"
       }
     }
   },
-  "required": ["participant_roles"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "ParticipantRoleDefinition": {
+      "type": "object",
+      "description": "Definition of a single participant role",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the participant role"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the participant role"
+        }
+      }
+    }
+  }
 }
-

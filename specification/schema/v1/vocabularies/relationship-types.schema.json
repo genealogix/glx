@@ -2,25 +2,39 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/relationship-types.schema.json",
   "title": "Relationship Types Vocabulary",
+  "description": "Defines the standard and custom relationship types available for relationship entities",
   "type": "object",
+  "required": ["relationship_types"],
   "properties": {
     "relationship_types": {
       "type": "object",
-      "patternProperties": {
-        "^[a-zA-Z0-9_-]{1,64}$": {
-          "type": "object",
-          "required": ["label"],
-          "properties": {
-            "label": { "type": "string" },
-            "description": { "type": "string" },
-            "gedcom": { "type": "string" }
-          },
-          "additionalProperties": true
-        }
+      "description": "Map of relationship type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/RelationshipTypeDefinition"
       }
     }
   },
-  "required": ["relationship_types"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "RelationshipTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single relationship type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the relationship type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the relationship type"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM tag for import/export mapping"
+        }
+      }
+    }
+  }
 }
-
