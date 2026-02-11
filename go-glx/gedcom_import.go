@@ -512,7 +512,7 @@ func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
 	if strings.HasPrefix(parts[1], "@") && strings.HasSuffix(parts[1], "@") {
 		line.XRef = parts[1]
 		idx = 2
-		if len(parts) < 3 {
+		if len(parts) < 3 { //nolint:mnd // GEDCOM line: LEVEL XREF TAG [VALUE] requires at least 3 parts
 			return nil, ErrMissingTagAfterXRef
 		}
 	}
@@ -570,6 +570,8 @@ func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
 }
 
 // detectGEDCOMVersion detects GEDCOM version from header
+//
+//nolint:gocognit,gocyclo
 func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 	for _, record := range records {
 		if record.Tag == GedcomTagHead {
@@ -595,7 +597,7 @@ func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 }
 
 // addError adds an error to the conversion context
-func (conv *ConversionContext) addError(line int, tag string, message string) {
+func (conv *ConversionContext) addError(line int, tag, message string) {
 	conv.Stats.Errors = append(conv.Stats.Errors, ImportError{
 		Line:    line,
 		Tag:     tag,
@@ -604,7 +606,7 @@ func (conv *ConversionContext) addError(line int, tag string, message string) {
 }
 
 // addWarning adds a warning to the conversion context
-func (conv *ConversionContext) addWarning(line int, tag string, message string) {
+func (conv *ConversionContext) addWarning(line int, tag, message string) {
 	conv.Stats.Warnings = append(conv.Stats.Warnings, ImportWarning{
 		Line:    line,
 		Tag:     tag,

@@ -24,7 +24,7 @@ import (
 func createStandardVocabularies() error {
 	for filename, content := range vocabularies.Files {
 		outputPath := "vocabularies/" + filename
-		if err := os.WriteFile(outputPath, content, 0o644); err != nil {
+		if err := os.WriteFile(outputPath, content, filePermissions); err != nil {
 			return fmt.Errorf("failed to create %s: %w", outputPath, err)
 		}
 	}

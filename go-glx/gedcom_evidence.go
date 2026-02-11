@@ -21,7 +21,9 @@ import (
 )
 
 // createCitationFromSOUR creates a citation from a GEDCOM SOUR subrecord
-func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
+//
+//nolint:gocognit,gocyclo
+func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
 	var sourceID string
 
 	// Check if it's a reference or embedded source
@@ -135,20 +137,20 @@ func createCitationFromSOUR(subjectID string, sourRecord *GEDCOMRecord, conv *Co
 
 // createPropertyAssertion creates an assertion for a property, but only if there are citations.
 // Assertions without citations are not meaningful - the property value is already stored on the entity.
-func createPropertyAssertion(subjectID string, property string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
+func createPropertyAssertion(subjectID, property string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
 	if property == "" || value == nil {
 		return
 	}
 
 	// Extract citations from SOUR subrecords
-	citationIDs := extractCitations(subjectID, sourceRecord, conv)
+	citationIDs := extractCitations(sourceRecord, conv)
 
 	createPropertyAssertionWithCitations(subjectID, property, value, citationIDs, conv)
 }
 
 // createPropertyAssertionWithCitations creates an assertion for a property using pre-extracted citation IDs.
 // This is used when citations have already been extracted or synthetically created (e.g., census records).
-func createPropertyAssertionWithCitations(subjectID string, property string, value any, citationIDs []string, conv *ConversionContext) {
+func createPropertyAssertionWithCitations(subjectID, property string, value any, citationIDs []string, conv *ConversionContext) {
 	if property == "" || value == nil {
 		return
 	}
@@ -189,12 +191,12 @@ func createPropertyAssertionWithCitations(subjectID string, property string, val
 }
 
 // extractCitations extracts all citations from a record's SOUR subrecords
-func extractCitations(subjectID string, record *GEDCOMRecord, conv *ConversionContext) []string {
+func extractCitations(record *GEDCOMRecord, conv *ConversionContext) []string {
 	var citationIDs []string
 
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagSour {
-			citationID, err := createCitationFromSOUR(subjectID, sub, conv)
+			citationID, err := createCitationFromSOUR(sub, conv)
 			if err != nil {
 				// Error already logged in createCitationFromSOUR, skip this citation
 				continue

@@ -25,6 +25,8 @@ import (
 )
 
 // validatePaths performs comprehensive validation on the specified paths
+//
+//nolint:gocognit,gocyclo
 func validatePaths(args []string) error {
 	paths := args
 	if len(paths) == 0 {

@@ -21,8 +21,9 @@ import (
 	"strings"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // TestLoadArchive tests the LoadArchive function that loads and merges multi-file archives

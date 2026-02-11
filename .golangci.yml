@@ -1,7 +1,7 @@
 # golangci-lint configuration for GLX project
-# See https://golangci-lint.run/usage/configuration/ for all options
+# See https://golangci-lint.run/docs/configuration/ for all options
 
-version: 2
+version: "2"
 
 run:
   timeout: 5m
@@ -13,6 +13,17 @@ formatters:
     - gofmt
     - gofumpt
     - goimports
+
+  settings:
+    gofmt:
+      simplify: true
+
+    gofumpt:
+      extra-rules: true
+
+    goimports:
+      local-prefixes:
+        - github.com/genealogix/glx
 
 linters:
   enable:
@@ -45,7 +56,6 @@ linters:
     - err113 # Check for error handling issues with Go 1.13+ error wrapping
     - errname # Check error variable naming conventions
 
-
     # Style
     - revive # Replacement for golint
     - goheader # Check for proper file headers
@@ -58,9 +68,7 @@ linters:
 
     # Bugs
     - bodyclose # Check HTTP response body is closed
-    - errname # Check error naming conventions
     - errorlint # Find code that will cause problems with Go 1.13+ error wrapping
-    - nilerr # Check for returning nil error
 
     # Complexity
     - gocyclo # Cyclomatic complexity
@@ -75,124 +83,122 @@ linters:
     - goconst # Find repeated strings that could be constants
     - mnd # Detect magic numbers
 
-formatters-settings:
-  gofmt:
-    simplify: true
+  settings:
+    gocyclo:
+      min-complexity: 20
 
-  gofumpt:
-    extra-rules: true
+    gocognit:
+      min-complexity: 30
 
-  goimports:
-    local-prefixes: github.com/genealogix/glx
+    importas:
+      no-extra-aliases: true
+      alias:
+        - pkg: "github.com/genealogix/glx/go-glx"
+          alias: glxlib
+        - pkg: "github.com/genealogix/glx/specification/schema/v1"
+          alias: schema
+        - pkg: "github.com/genealogix/glx/specification/5-standard-vocabularies"
+          alias: vocabularies
 
-linters-settings:
-  gocyclo:
-    min-complexity: 15
+    goheader:
+      template: |-
+          Copyright 2025 Oracynth, Inc.
 
-  gocognit:
-    min-complexity: 20
+          Licensed under the Apache License, Version 2.0 (the "License");
+          you may not use this file except in compliance with the License.
+          You may obtain a copy of the License at
 
+              http://www.apache.org/licenses/LICENSE-2.0
 
-  importas:
-    # Do not allow unaliased imports of aliased packages.
-    # Default: false
-    no-unaliased: true
-    # Do not allow non-required aliases.
-    # Default: false
-    no-extra-aliases: true
+          Unless required by applicable law or agreed to in writing, software
+          distributed under the License is distributed on an "AS IS" BASIS,
+          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+          See the License for the specific language governing permissions and
+          limitations under the License.
 
-  goheader:
-    template: |-
-        // Copyright 2025 Oracynth, Inc.
-        //
-        // Licensed under the Apache License, Version 2.0 (the "License");
-        // you may not use this file except in compliance with the License.
-        // You may obtain a copy of the License at
-        //
-        //     http://www.apache.org/licenses/LICENSE-2.0
-        //
-        // Unless required by applicable law or agreed to in writing, software
-        // distributed under the License is distributed on an "AS IS" BASIS,
-        // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-        // See the License for the specific language governing permissions and
-        // limitations under the License.
+    revive:
+      rules:
+        - name: exported
+          disabled: false
+        - name: package-comments
+          disabled: true # Not all packages need comments yet
+        - name: var-naming
+          disabled: false
+        - name: use-any
+          disabled: false # Enforce using 'any' instead of 'interface{}'
 
-  revive:
+    errcheck:
+      check-blank: false
+      check-type-assertions: true
+
+    misspell:
+      locale: US
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+      match-constant: true
+      numbers: false
+
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - operation
+        - return
+        - assign
+      ignored-numbers:
+        - "0"
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+        - "6"
+        - "7"
+        - "8"
+        - "9"
+        - "10"
+        - "11"
+        - "12"
+        - "100"
+        - "1024"
+        - "644"
+        - "755"
+      ignored-functions:
+        - "make"
+        - "len"
+        - "cap"
+        - "append"
+        - "time.*"
+        - "strings.SplitN"
+        - "strings.Repeat"
+
+    grouper:
+      import-require-single-import: true
+      import-require-grouping: true
+
+  exclusions:
+    generated: lax
     rules:
-      - name: exported
-        disabled: false
-      - name: package-comments
-        disabled: true # Not all packages need comments yet
-      - name: var-naming
-        disabled: false
-      - name: use-any
-        disabled: false # Enforce using 'any' instead of 'interface{}'
-
-  errcheck:
-    check-blank: false
-    check-type-assertions: true
-
-  misspell:
-    locale: US
-
-  goconst:
-    min-len: 3 # Minimum length of string constant
-    min-occurrences: 3 # Minimum number of occurrences to trigger
-    ignore-tests: true # Don't check test files for repeated strings
-    match-constant: true # Match constants in other packages
-    numbers: false # Don't check for repeated numbers (mnd handles this)
-    ignore-strings: # Strings to ignore (empty = none)
-      - "0o755" # Common file permission
-      - "0o644" # Common file permission
-  mnd:
-    # List of enabled checks, see https://github.com/tommy-muehle/go-mnd/#checks for description
-    checks:
-      - argument # Check function arguments
-      - case # Check case statements
-      - condition # Check conditional statements
-      - operation # Check operations
-      - return # Check return statements
-      - assign # Check assignments
-    ignored-numbers:
-      - "0" # Common default/zero value
-      - "1" # Common increment/single item
-      - "2" # Common pair/dual
-      - "10" # Common base-10 operations
-      - "100" # Common percentage base
-      - "1024" # Common KB size
-      - "644" # Common file permission
-      - "755" # Common file permission
-    ignored-functions:
-      - "make" # make([]T, size) is fine
-      - "len" # len comparisons are fine
-      - "cap" # cap comparisons are fine
-      - "append" # append operations are fine
-      - "time.*" # time functions often use magic numbers
-      - "strings.SplitN" # SplitN(s, sep, n) where n is often a small number
-      - "strings.Repeat" # Repeat often uses small numbers
-
-  grouper:
-    import-require-single-import: true
-    import-require-grouping: true
-    var-require-grouping: true
-    const-require-grouping: true
+      # Exclude some linters for test files
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - gocognit
+          - errcheck
+          - dupl
+          - mnd
+          - goconst
 
 issues:
-  exclude-use-default: false
-  exclude-rules:
-    # Exclude some linters for test files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - gocognit
-        - errcheck
-        - dupl
-
   max-issues-per-linter: 0
   max-same-issues: 0
 
 output:
-  format: colored-line-number
-  print-issued-lines: true
-  print-linter-name: true
-  sort-results: true
+  sort-order:
+    - linter
+    - severity
+    - file
+  show-stats: true

@@ -35,7 +35,7 @@ func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedc
 	}
 
 	filesDir := filepath.Join(archiveDir, glxlib.MediaFilesDir)
-	if err := os.MkdirAll(filesDir, 0o755); err != nil {
+	if err := os.MkdirAll(filesDir, dirPermissions); err != nil {
 		return fmt.Errorf("failed to create media/files directory: %w", err)
 	}
 
@@ -62,7 +62,7 @@ func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedc
 
 				continue
 			}
-			if err := os.WriteFile(destPath, decoded, 0o644); err != nil {
+			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
@@ -97,7 +97,7 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	// Try URL-decoded version (e.g., "CharlotteBront%C3%AB.jpg" -> "CharlotteBrontë.jpg")
 	decoded, decodeErr := url.PathUnescape(normalized)
 	if decodeErr != nil || decoded == normalized {
-		return fmt.Errorf("file not found: %s", srcPath)
+		return fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
 	}
 
 	decodedPath := filepath.Join(gedcomDir, decoded)
@@ -132,11 +132,11 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 	cleaned := strings.NewReplacer("\n", "", "\r", "", " ", "").Replace(blobText)
 
 	if len(cleaned) == 0 {
-		return nil, fmt.Errorf("empty BLOB data")
+		return nil, ErrEmptyBlobData
 	}
 
 	if len(cleaned)%4 != 0 {
-		return nil, fmt.Errorf("invalid BLOB data length: %d (must be multiple of 4)", len(cleaned))
+		return nil, fmt.Errorf("%w: %d (must be multiple of 4)", ErrInvalidBlobLength, len(cleaned))
 	}
 
 	result := make([]byte, 0, len(cleaned)*3/4)
@@ -146,9 +146,9 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 		b3 := cleaned[i+2] - '.'
 		b4 := cleaned[i+3] - '.'
 
-		result = append(result, (b1<<2)|(b2>>4))
-		result = append(result, (b2<<4)|(b3>>2))
-		result = append(result, (b3<<6)|b4)
+		result = append(result, (b1<<2)|(b2>>4)) //nolint:mnd // well-known base64 bit shifts
+		result = append(result, (b2<<4)|(b3>>2)) //nolint:mnd // well-known base64 bit shifts
+		result = append(result, (b3<<6)|b4)      //nolint:mnd // well-known base64 bit shifts
 	}
 
 	return result, nil

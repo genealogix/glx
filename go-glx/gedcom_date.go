@@ -95,6 +95,8 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 
 // parseExactDate parses an exact GEDCOM date to YYYY-MM-DD format
 // Formats: "DD MMM YYYY" -> "YYYY-MM-DD", "MMM YYYY" -> "YYYY-MM", "YYYY" -> "YYYY"
+//
+//nolint:gocyclo
 func parseExactDate(dateStr string) string {
 	if dateStr == "" {
 		return ""

@@ -19,8 +19,9 @@ import (
 	"os"
 	"path/filepath"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // runInit initializes a new GLX archive in the specified directory
@@ -43,7 +44,7 @@ func runInit(targetDir string, singleFile bool, numTestData int) error {
 	}
 
 	// Create the directory if it doesn't exist
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+	if err := os.MkdirAll(targetDir, dirPermissions); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
 	}
 
@@ -79,7 +80,7 @@ repositories: {}
 assertions: {}
 media: {}
 `
-	if err := os.WriteFile("archive.glx", []byte(template), 0o644); err != nil {
+	if err := os.WriteFile("archive.glx", []byte(template), filePermissions); err != nil {
 		return fmt.Errorf("failed to create archive.glx: %w", err)
 	}
 
@@ -115,12 +116,12 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 	}
 
 	// Create .gitignore file
-	if err := os.WriteFile(".gitignore", defaultGitignore, 0o644); err != nil {
+	if err := os.WriteFile(".gitignore", defaultGitignore, filePermissions); err != nil {
 		return fmt.Errorf("failed to create .gitignore: %w", err)
 	}
 
 	// Create README.md for the repository
-	if err := os.WriteFile("README.md", defaultReadme, 0o644); err != nil {
+	if err := os.WriteFile("README.md", defaultReadme, filePermissions); err != nil {
 		return fmt.Errorf("failed to create README.md: %w", err)
 	}
 
@@ -177,7 +178,7 @@ func writeTestData(data *glxlib.GLXFile) error {
 			if err != nil {
 				return fmt.Errorf("failed to marshal %s: %w", id, err)
 			}
-			if err := os.WriteFile(fileName, yamlData, 0o644); err != nil {
+			if err := os.WriteFile(fileName, yamlData, filePermissions); err != nil {
 				return fmt.Errorf("failed to write file %s: %w", fileName, err)
 			}
 		}

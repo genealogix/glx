@@ -14,7 +14,9 @@
 
 package glx
 
-import "errors"
+import (
+	"errors"
+)
 
 // GEDCOM import errors
 var (

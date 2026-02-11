@@ -20,8 +20,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // Helper function to create a test single-file GLX archive

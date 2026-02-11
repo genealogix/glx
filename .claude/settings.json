@@ -3,7 +3,9 @@
     "allow": [
       "Bash(grep:*)",
       "Bash(go test:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(golangci-lint config verify:*)",
+      "Bash(golangci-lint run:*)"
     ]
   }
 }

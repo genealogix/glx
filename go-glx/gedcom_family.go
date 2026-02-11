@@ -19,6 +19,8 @@ import (
 )
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
+//
+//nolint:gocognit,gocyclo
 func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if famRecord.Tag != GedcomTagFam {
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRecordType, GedcomTagFam, famRecord.Tag)
@@ -63,15 +65,11 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 		case GedcomTagCens:
 			// Census - apply to both spouses as citations/temporal properties
-			if err := convertFamilyCensus(husbandID, wifeID, sub, conv); err != nil {
-				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
-			}
+			convertFamilyCensus(husbandID, wifeID, sub, conv)
 
 		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagEven:
 			// Other family events
-			if err := convertFamilyEvent(husbandID, wifeID, sub, conv); err != nil {
-				conv.Logger.LogError(sub.Line, sub.Tag, famRecord.XRef, err)
-			}
+			convertFamilyEvent(husbandID, wifeID, sub, conv)
 
 		case GedcomTagObje:
 			objeRecords = append(objeRecords, sub)
@@ -97,7 +95,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 
 		// Extract citations from FAM record itself
-		citationIDs := extractCitations(relationshipID, famRecord, conv)
+		citationIDs := extractCitations(famRecord, conv)
 		if len(citationIDs) > 0 {
 			relationship.Properties[PropertyCitations] = citationIDs
 		}
@@ -112,16 +110,12 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 		// Process marriage event if exists
 		if marriageRecord != nil {
-			if err := convertMarriageEvent(husbandID, wifeID, relationshipID, marriageRecord, conv); err != nil {
-				conv.Logger.LogError(marriageRecord.Line, GedcomTagMarr, famRecord.XRef, err)
-			}
+			convertMarriageEvent(husbandID, wifeID, relationshipID, marriageRecord, conv)
 		}
 
 		// Process divorce event if exists
 		if divorceRecord != nil {
-			if err := convertDivorceEvent(husbandID, wifeID, relationshipID, divorceRecord, conv); err != nil {
-				conv.Logger.LogError(divorceRecord.Line, GedcomTagDiv, famRecord.XRef, err)
-			}
+			convertDivorceEvent(husbandID, wifeID, relationshipID, divorceRecord, conv)
 		}
 	}
 
@@ -143,7 +137,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 }
 
 // convertMarriageEvent converts a MARR subrecord to a marriage event
-func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *GEDCOMRecord, conv *ConversionContext) error {
+func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *GEDCOMRecord, conv *ConversionContext) {
 	eventID := generateEventID(conv)
 
 	event := &Event{
@@ -156,8 +150,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 
 	// Process marriage-specific tags
 	for _, sub := range marrRecord.SubRecords {
-		switch sub.Tag {
-		case GedcomTagType:
+		if sub.Tag == GedcomTagType {
 			// Marriage type (e.g., civil, religious)
 			event.Properties[PropertyMarriageType] = sub.Value
 		}
@@ -190,12 +183,10 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 			relationship.Properties[PropertyMarriageEvent] = eventID
 		}
 	}
-
-	return nil
 }
 
 // convertDivorceEvent converts a DIV subrecord to a divorce event
-func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GEDCOMRecord, conv *ConversionContext) error {
+func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GEDCOMRecord, conv *ConversionContext) {
 	eventID := generateEventID(conv)
 
 	event := &Event{
@@ -233,12 +224,10 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 			relationship.Properties[PropertyDivorceEvent] = eventID
 		}
 	}
-
-	return nil
 }
 
 // convertFamilyEvent converts other family events (ENGA, MARB, MARC, MARL, MARS)
-func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, conv *ConversionContext) error {
+func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, conv *ConversionContext) {
 	eventID := generateEventID(conv)
 
 	eventType := mapFamilyEventType(eventRecord.Tag, conv.GEDCOMIndex)
@@ -270,22 +259,20 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Store event
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
-
-	return nil
 }
 
 // convertFamilyCensus applies a family-level CENS record to both spouses.
 // Source/citation creation happens once; the resulting data is applied to each spouse.
-func convertFamilyCensus(husbandID, wifeID string, censRecord *GEDCOMRecord, conv *ConversionContext) error {
+func convertFamilyCensus(husbandID, wifeID string, censRecord *GEDCOMRecord, conv *ConversionContext) {
 	// Extract census data once (creates source/citation once)
 	firstSpouseID := husbandID
 	if firstSpouseID == "" {
 		firstSpouseID = wifeID
 	}
 	if firstSpouseID == "" {
-		return nil
+		return
 	}
-	data := extractCensusData(firstSpouseID, censRecord, conv)
+	data := extractCensusData(censRecord, conv)
 
 	// Apply to each spouse
 	for _, spouseID := range []string{husbandID, wifeID} {
@@ -298,8 +285,6 @@ func convertFamilyCensus(husbandID, wifeID string, censRecord *GEDCOMRecord, con
 		}
 		applyCensusData(spouseID, person, data, conv)
 	}
-
-	return nil
 }
 
 // mapFamilyEventType maps GEDCOM family event tags to GLX event types using the vocabulary index.

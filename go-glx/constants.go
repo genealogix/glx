@@ -1,3 +1,17 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package glx
 
 // Standard Event Types - from event-types.glx vocabulary
@@ -15,8 +29,8 @@ const (
 	EventTypeMarriageContract   = "marriage_contract"
 	EventTypeMarriageLicense    = "marriage_license"
 	EventTypeMarriageSettlement = "marriage_settlement"
-	EventTypeDivorceFiled  = "divorce_filed"
-	EventTypeImmigration   = "immigration"
+	EventTypeDivorceFiled       = "divorce_filed"
+	EventTypeImmigration        = "immigration"
 	EventTypeEmigration         = "emigration"
 	EventTypeNaturalization     = "naturalization"
 	EventTypeResidence          = "residence"
@@ -65,13 +79,13 @@ const (
 
 // Standard Person Property Names - commonly used properties on Person entities
 const (
-	PersonPropertyName        = "name"
-	PersonPropertyGender      = "gender"
-	PersonPropertyBornOn      = "born_on"
-	PersonPropertyBornAt      = "born_at"
-	PersonPropertyDiedOn      = "died_on"
-	PersonPropertyDiedAt      = "died_at"
-	PersonPropertyResidence   = "residence"
+	PersonPropertyName      = "name"
+	PersonPropertyGender    = "gender"
+	PersonPropertyBornOn    = "born_on"
+	PersonPropertyBornAt    = "born_at"
+	PersonPropertyDiedOn    = "died_on"
+	PersonPropertyDiedAt    = "died_at"
+	PersonPropertyResidence = "residence"
 )
 
 // Name Field Constants - used in the name property's fields structure

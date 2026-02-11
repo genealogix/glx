@@ -25,14 +25,9 @@ import (
 func TestRunValidate_SingleValidFile(t *testing.T) {
 	// Test validating a single valid GLX file
 	// Need to change to the directory since single file validation loads archive from "."
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { _ = os.Chdir(originalDir) }()
+	t.Chdir("../docs/examples/basic-family")
 
-	err = os.Chdir("../docs/examples/basic-family")
-	require.NoError(t, err)
-
-	err = validatePaths([]string{"persons/person-father.glx"})
+	err := validatePaths([]string{"persons/person-father.glx"})
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 }
 
@@ -45,28 +40,18 @@ func TestRunValidate_ValidDirectory(t *testing.T) {
 func TestRunValidate_CurrentDirectory(t *testing.T) {
 	// Test validating current directory (no args)
 	// Change to basic-family example
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { _ = os.Chdir(originalDir) }()
+	t.Chdir("../docs/examples/basic-family")
 
-	err = os.Chdir("../docs/examples/basic-family")
-	require.NoError(t, err)
-
-	err = validatePaths([]string{})
+	err := validatePaths([]string{})
 	require.NoError(t, err, "should successfully validate current directory when no args provided")
 }
 
 func TestRunValidate_MultiplePaths(t *testing.T) {
 	// Test validating multiple paths at once
 	// Change to the archive directory to avoid loading invalid testdata
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { _ = os.Chdir(originalDir) }()
+	t.Chdir("../docs/examples/basic-family")
 
-	err = os.Chdir("../docs/examples/basic-family")
-	require.NoError(t, err)
-
-	err = validatePaths([]string{"persons", "relationships"})
+	err := validatePaths([]string{"persons", "relationships"})
 	require.NoError(t, err, "should successfully validate multiple valid paths")
 }
 
@@ -129,14 +114,9 @@ func TestRunValidate_BrokenReferences(t *testing.T) {
 func TestRunValidate_NonExistentPath(t *testing.T) {
 	// Test with a path that doesn't exist in a clean directory
 	tmpDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { _ = os.Chdir(originalDir) }()
+	t.Chdir(tmpDir)
 
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
-
-	err = validatePaths([]string{"does-not-exist"})
+	err := validatePaths([]string{"does-not-exist"})
 	// When the path doesn't exist, WalkDir continues but finds 0 files
 	// The validation succeeds with 0 files validated
 	require.NoError(t, err, "non-existent path results in 0 files validated")

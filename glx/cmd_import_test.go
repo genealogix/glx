@@ -20,9 +20,10 @@ import (
 	"strings"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestImportGEDCOM_SingleFileFormat(t *testing.T) {

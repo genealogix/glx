@@ -14,7 +14,9 @@
 
 package glx
 
-import "gopkg.in/yaml.v3"
+import (
+	"gopkg.in/yaml.v3"
+)
 
 // DateString is a string type that always marshals to YAML with quotes.
 // This ensures consistent formatting of dates in GLX files, regardless of

@@ -14,7 +14,9 @@
 
 package main
 
-import _ "embed"
+import (
+	_ "embed"
+)
 
 //go:embed defaults/.gitignore
 var defaultGitignore []byte

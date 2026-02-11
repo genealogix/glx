@@ -124,15 +124,10 @@ func TestRunCheckSchemas(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			originalDir, err := os.Getwd()
-			require.NoError(t, err)
-
 			testDir := tt.setup()
-			err = os.Chdir(testDir)
-			require.NoError(t, err)
-			defer func() { _ = os.Chdir(originalDir) }()
+			t.Chdir(testDir)
 
-			err = checkSchemaFiles()
+			err := checkSchemaFiles()
 			if tt.wantError {
 				require.Error(t, err)
 			} else {

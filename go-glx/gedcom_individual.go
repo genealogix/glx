@@ -20,6 +20,8 @@ import (
 )
 
 // convertIndividual converts a GEDCOM INDI record to a GLX Person
+//
+//nolint:gocognit,gocyclo
 func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if indiRecord.Tag != GedcomTagIndi {
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRecordType, GedcomTagIndi, indiRecord.Tag)
@@ -68,9 +70,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			}
 
 			// Create name assertion (with evidence/citations)
-			if err := createNameAssertion(personID, parsedName, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, GedcomTagName, err.Error())
-			}
+			createNameAssertion(personID, parsedName, sub, conv)
 
 		case GedcomTagSex:
 			// Gender mapping
@@ -89,9 +89,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			}
 
 		case GedcomTagCens:
-			if err := convertCensus(personID, person, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, GedcomTagCens, err.Error())
-			}
+			convertCensus(personID, person, sub, conv)
 
 		case GedcomTagOccu, GedcomTagReli, GedcomTagEduc, GedcomTagNati, GedcomTagCast, GedcomTagSsn:
 			// Simple person properties - resolved via vocabulary index
@@ -99,9 +97,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		case GedcomTagResi:
 			// Residence - convert to event or property
-			if err := convertResidence(personID, person, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, GedcomTagResi, err.Error())
-			}
+			convertResidence(personID, person, sub, conv)
 
 		case GedcomTagTitl:
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
@@ -166,9 +162,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		case GedcomTagNo:
 			// Negative assertion (GEDCOM 7.0)
-			if err := convertNegativeAssertion(personID, sub, conv); err != nil {
-				conv.addWarning(indiRecord.Line, GedcomTagNo, err.Error())
-			}
+			convertNegativeAssertion(personID, sub, conv)
 
 		default:
 			if isExtensionTag(sub.Tag) {
@@ -214,18 +208,18 @@ func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
 
 // createNameAssertion creates an assertion for the name property, but only if there are citations.
 // Assertions without citations are not meaningful - the name is already stored on the person entity.
-func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) error {
+func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) {
 	fullName := name.FormatFullName()
 	if fullName == "" {
-		return nil
+		return
 	}
 
 	// Create citations from SOUR tags
-	citationIDs := extractCitations(personID, nameRecord, conv)
+	citationIDs := extractCitations(nameRecord, conv)
 
 	// Only create assertion if there are citations to back it up
 	if len(citationIDs) == 0 {
-		return nil
+		return
 	}
 
 	// Create single assertion for the name
@@ -237,8 +231,6 @@ func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRec
 		Citations: citationIDs,
 	}
 	conv.Stats.AssertionsCreated++
-
-	return nil
 }
 
 // convertIndividualEvent converts individual event tags to GLX events
@@ -416,7 +408,7 @@ func buildPlaceHierarchyFromAddress(addrRecord *GEDCOMRecord) *PlaceHierarchy {
 }
 
 // convertResidence converts RESI to residence temporal property on person
-func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, conv *ConversionContext) error {
+func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, conv *ConversionContext) {
 	// Extract place and date from RESI record
 	var placeID string
 	var dateStr string
@@ -426,7 +418,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		case GedcomTagPlac:
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
-				placeID, _ = buildPlaceHierarchy(hierarchy, conv)
+				placeID = buildPlaceHierarchy(hierarchy, conv)
 			}
 		case GedcomTagDate:
 			dateStr = string(parseGEDCOMDate(sub.Value))
@@ -461,8 +453,6 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		// Create assertion for the residence
 		createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
 	}
-
-	return nil
 }
 
 // censusData holds extracted data from a GEDCOM CENS record.
@@ -481,17 +471,17 @@ type censusData struct {
 //   - OR uses existing citations from SOUR sub-records
 //   - A temporal residence property (when PLAC is present)
 //   - An assertion for residence backed by citations (when PLAC and citations exist)
-func convertCensus(personID string, person *Person, censRecord *GEDCOMRecord, conv *ConversionContext) error {
-	data := extractCensusData(personID, censRecord, conv)
+func convertCensus(personID string, person *Person, censRecord *GEDCOMRecord, conv *ConversionContext) {
+	data := extractCensusData(censRecord, conv)
 	applyCensusData(personID, person, data, conv)
-
-	return nil
 }
 
 // extractCensusData extracts all data from a CENS record and creates source/citation entities.
 // This is separated from applyCensusData so that family-level CENS can extract once and apply
 // to both spouses without creating duplicate sources.
-func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *ConversionContext) censusData {
+//
+//nolint:gocognit,gocyclo
+func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) censusData {
 	var dateStr string
 	var placeID string
 	var censusType string
@@ -508,10 +498,8 @@ func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *Conversi
 				lat, lon := extractPlaceCoordinates(sub)
 				hierarchy.Latitude = lat
 				hierarchy.Longitude = lon
-				pid, err := buildPlaceHierarchy(hierarchy, conv)
-				if err != nil {
-					conv.addWarning(sub.Line, GedcomTagPlac, "Failed to build place hierarchy: "+err.Error())
-				} else if pid != "" {
+				pid := buildPlaceHierarchy(hierarchy, conv)
+				if pid != "" {
 					placeID = pid
 				}
 			}
@@ -520,10 +508,8 @@ func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *Conversi
 			if placeID == "" && len(sub.SubRecords) > 0 {
 				hierarchy := buildPlaceHierarchyFromAddress(sub)
 				if hierarchy != nil {
-					pid, err := buildPlaceHierarchy(hierarchy, conv)
-					if err != nil {
-						conv.addWarning(sub.Line, GedcomTagAddr, "Failed to build place hierarchy from address: "+err.Error())
-					} else if pid != "" {
+					pid := buildPlaceHierarchy(hierarchy, conv)
+					if pid != "" {
 						placeID = pid
 					}
 				}
@@ -546,7 +532,7 @@ func extractCensusData(personID string, censRecord *GEDCOMRecord, conv *Conversi
 	}
 
 	// Extract citations from any SOUR sub-records
-	citationIDs := extractCitations(personID, censRecord, conv)
+	citationIDs := extractCitations(censRecord, conv)
 
 	// If no SOUR sub-records, create a synthetic census source and citation
 	if len(citationIDs) == 0 {
@@ -670,15 +656,15 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 
 // convertNegativeAssertion converts GEDCOM 7.0 NO tag (negative assertion).
 // Only creates an assertion if there are citations to back up the property.
-func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) error {
+func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) {
 	// NO tag indicates something did NOT happen
 	eventType := mapGEDCOMEventType(noRecord.Value, conv.GEDCOMIndex)
 
-	citationIDs := extractCitations(personID, noRecord, conv)
+	citationIDs := extractCitations(noRecord, conv)
 
 	// Only create assertion if there are citations to back it up
 	if len(citationIDs) == 0 {
-		return nil
+		return
 	}
 
 	assertionID := generateAssertionID(conv)
@@ -689,6 +675,4 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 		Citations: citationIDs,
 	}
 	conv.Stats.AssertionsCreated++
-
-	return nil
 }

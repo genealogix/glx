@@ -14,11 +14,13 @@
 
 package glx
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // GLXFile represents the top-level structure of a .glx file, which can
 // contain maps of different entity types and vocabulary definitions.
-type GLXFile struct {
+type GLXFile struct { //nolint:revive // GLXFile is the established name across the codebase
 	// Entity types
 	Persons       map[string]*Person       `yaml:"persons,omitempty"`
 	Relationships map[string]*Relationship `yaml:"relationships,omitempty"`
@@ -126,8 +128,8 @@ type Relationship struct {
 
 // Event represents a genealogical event.
 type Event struct {
-	Type         string         `refType:"event_types"        yaml:"type"`
-	PlaceID      string         `refType:"places"             yaml:"place,omitempty"`
+	Type         string         `refType:"event_types"       yaml:"type"`
+	PlaceID      string         `refType:"places"            yaml:"place,omitempty"`
 	Date         DateString     `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []Participant  `yaml:"participants"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
@@ -137,8 +139,8 @@ type Event struct {
 // Place represents a geographical location.
 type Place struct {
 	Name       string         `yaml:"name"`
-	ParentID   string         `refType:"places"              yaml:"parent,omitempty"`
-	Type       string         `refType:"place_types"         yaml:"type,omitempty"`
+	ParentID   string         `refType:"places"            yaml:"parent,omitempty"`
+	Type       string         `refType:"place_types"       yaml:"type,omitempty"`
 	Latitude   *float64       `yaml:"latitude,omitempty"`
 	Longitude  *float64       `yaml:"longitude,omitempty"`
 	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (jurisdiction, place_format, etc.)
@@ -232,10 +234,10 @@ type Assertion struct {
 	Value       string       `yaml:"value,omitempty"`       // Not present if participant exists
 	Date        string       `yaml:"date,omitempty"`        // For temporal properties
 	Participant *Participant `yaml:"participant,omitempty"` // Not present if property/value exists
-	Confidence  string       `refType:"confidence_levels"   yaml:"confidence,omitempty"`
-	Sources     []string     `refType:"sources"             yaml:"sources,omitempty"`
-	Citations   []string     `refType:"citations"           yaml:"citations,omitempty"`
-	Media       []string     `refType:"media"               yaml:"media,omitempty"`
+	Confidence  string       `refType:"confidence_levels"  yaml:"confidence,omitempty"`
+	Sources     []string     `refType:"sources"            yaml:"sources,omitempty"`
+	Citations   []string     `refType:"citations"          yaml:"citations,omitempty"`
+	Media       []string     `refType:"media"              yaml:"media,omitempty"`
 	Notes       string       `yaml:"notes,omitempty"`
 }
 
@@ -344,7 +346,7 @@ type TemporalValue struct {
 // Merge combines another GLXFile into this one, returning duplicate IDs as errors.
 // Duplicates are fatal errors for both entities and vocabularies.
 func (g *GLXFile) Merge(other *GLXFile) []string {
-	var duplicates []string
+	duplicates := make([]string, 0, 10)
 
 	// Merge entities (fail on duplicates)
 	duplicates = append(duplicates, mergeMap("persons", g.Persons, other.Persons)...)

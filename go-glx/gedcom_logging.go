@@ -38,7 +38,7 @@ func NewImportLogger(w io.Writer) *ImportLogger {
 }
 
 // LogError logs an error during import
-func (il *ImportLogger) LogError(line int, tag string, gedcomXRef string, err error) {
+func (il *ImportLogger) LogError(line int, tag, gedcomXRef string, err error) {
 	if il.logger == nil {
 		return
 	}
@@ -47,7 +47,7 @@ func (il *ImportLogger) LogError(line int, tag string, gedcomXRef string, err er
 }
 
 // LogWarning logs a warning during import
-func (il *ImportLogger) LogWarning(line int, tag string, gedcomXRef string, message string) {
+func (il *ImportLogger) LogWarning(line int, tag, gedcomXRef, message string) {
 	if il.logger == nil {
 		return
 	}
@@ -65,7 +65,7 @@ func (il *ImportLogger) LogInfo(message string) {
 }
 
 // LogException logs an exception with full context
-func (il *ImportLogger) LogException(line int, tag string, gedcomXRef string, operation string, err error, context map[string]any) {
+func (il *ImportLogger) LogException(line int, tag, gedcomXRef, operation string, err error, context map[string]any) {
 	if il.logger == nil {
 		return
 	}

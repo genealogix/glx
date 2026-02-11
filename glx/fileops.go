@@ -29,6 +29,12 @@ const (
 	FileExtYML  = ".yml"
 )
 
+// File permission constants
+const (
+	dirPermissions  = 0o755
+	filePermissions = 0o644
+)
+
 // ensureGLXExtension adds .glx extension if not present
 func ensureGLXExtension(path string) string {
 	if !strings.HasSuffix(path, FileExtGLX) {
@@ -79,29 +85,6 @@ func isDirectoryEmpty(path string) error {
 	return ErrNonEmptyDirectory
 }
 
-// walkGLXFiles walks a directory and calls the visitor function for each GLX file
-func walkGLXFiles(rootPath string, visitor func(path string, data []byte) error) error {
-	return filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-
-		if !isGLXFile(d.Name()) {
-			return nil
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", path, err)
-		}
-
-		return visitor(path, data)
-	})
-}
-
 // collectGLXFilesFromDir recursively collects all GLX/YAML files from a directory
 // into a map with relative paths as keys and file contents as values.
 // Only files with .glx, .yaml, or .yml extensions are included.
@@ -140,7 +123,7 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 // writeFilesToDir writes a map of files (relative path -> content) to a directory
 func writeFilesToDir(rootDir string, files map[string][]byte) error {
 	// Create root directory
-	if err := os.MkdirAll(rootDir, 0o755); err != nil {
+	if err := os.MkdirAll(rootDir, dirPermissions); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -150,12 +133,12 @@ func writeFilesToDir(rootDir string, files map[string][]byte) error {
 
 		// Create parent directory
 		parentDir := filepath.Dir(absPath)
-		if err := os.MkdirAll(parentDir, 0o755); err != nil {
+		if err := os.MkdirAll(parentDir, dirPermissions); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", parentDir, err)
 		}
 
 		// Write file
-		if err := os.WriteFile(absPath, content, 0o644); err != nil {
+		if err := os.WriteFile(absPath, content, filePermissions); err != nil {
 			return fmt.Errorf("failed to write file %s: %w", absPath, err)
 		}
 	}
@@ -166,7 +149,7 @@ func writeFilesToDir(rootDir string, files map[string][]byte) error {
 // createDirectoryStructure creates a list of directories
 func createDirectoryStructure(dirs []string) error {
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, dirPermissions); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}

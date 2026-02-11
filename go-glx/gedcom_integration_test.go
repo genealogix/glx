@@ -375,6 +375,7 @@ func TestRepositoryDeduplication(t *testing.T) {
 	for sourceID, source := range glx.Sources {
 		if source.RepositoryID == "" {
 			t.Errorf("Source %s has no repository ID", sourceID)
+
 			continue
 		}
 		if _, exists := glx.Repositories[source.RepositoryID]; !exists {

@@ -20,10 +20,11 @@ import (
 	"maps"
 	"strings"
 
-	glxlib "github.com/genealogix/glx/go-glx"
-	schema "github.com/genealogix/glx/specification/schema/v1"
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
+	schema "github.com/genealogix/glx/specification/schema/v1"
 )
 
 const (
@@ -140,7 +141,7 @@ func resolveRefsWithRoot(obj any, root map[string]any) error {
 }
 
 // resolveMapValues recursively processes all values in a map
-func resolveMapValues(m map[string]any, root map[string]any) error {
+func resolveMapValues(m, root map[string]any) error {
 	for _, value := range m {
 		if err := resolveRefsWithRoot(value, root); err != nil {
 			return err
@@ -151,7 +152,7 @@ func resolveMapValues(m map[string]any, root map[string]any) error {
 }
 
 // resolveJSONPointerRef resolves a JSON Pointer reference like #/definitions/Something
-func resolveJSONPointerRef(target map[string]any, root map[string]any, refStr string) error {
+func resolveJSONPointerRef(target, root map[string]any, refStr string) error {
 	resolved, err := resolveJSONPointer(root, refStr)
 	if err != nil {
 		return fmt.Errorf("failed to resolve JSON pointer %s: %w", refStr, err)
@@ -198,7 +199,7 @@ func resolveFileRef(target map[string]any, refStr string) error {
 }
 
 // resolveVocabularyRef extracts the pattern/entry definition from vocabulary schemas
-func resolveVocabularyRef(target map[string]any, refSchema map[string]any) error {
+func resolveVocabularyRef(target, refSchema map[string]any) error {
 	props, ok := refSchema["properties"].(map[string]any)
 	if !ok {
 		// No properties, use whole schema

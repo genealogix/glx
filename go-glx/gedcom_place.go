@@ -55,9 +55,9 @@ func parseGEDCOMPlace(placeValue string) *PlaceHierarchy {
 
 // buildPlaceHierarchy creates GLX Place entities for a place hierarchy
 // Returns the ID of the most specific place (leaf)
-func buildPlaceHierarchy(hierarchy *PlaceHierarchy, conv *ConversionContext) (string, error) {
+func buildPlaceHierarchy(hierarchy *PlaceHierarchy, conv *ConversionContext) string {
 	if hierarchy == nil || len(hierarchy.Components) == 0 {
-		return "", nil
+		return ""
 	}
 
 	var parentID string
@@ -88,11 +88,11 @@ func buildPlaceHierarchy(hierarchy *PlaceHierarchy, conv *ConversionContext) (st
 		parentID = placeID
 	}
 
-	return leafID, nil
+	return leafID
 }
 
 // createOrGetPlace creates a place or returns existing place ID
-func createOrGetPlace(name string, parentID string, level int, latitude, longitude *float64, conv *ConversionContext) string {
+func createOrGetPlace(name, parentID string, level int, latitude, longitude *float64, conv *ConversionContext) string {
 	// Create a key for deduplication
 	key := name
 	if parentID != "" {
@@ -170,7 +170,7 @@ func inferPlaceType(name string, level int) string {
 	case 2:
 		// Third level - likely state/province
 		return PlaceTypeState
-	case 3:
+	case 3: //nolint:mnd // fourth hierarchy level = country
 		// Fourth level - likely country
 		return PlaceTypeCountry
 	default:

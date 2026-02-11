@@ -19,10 +19,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestRunInit_SingleFile(t *testing.T) {
@@ -179,15 +180,10 @@ func TestRunInit_WithTestData(t *testing.T) {
 
 func TestCreateStandardVocabularies(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
-	defer func() { _ = os.Chdir(originalDir) }()
+	t.Chdir(tmpDir)
 
 	// Create vocabularies directory first
-	err = os.MkdirAll("vocabularies", 0o755)
+	err := os.MkdirAll("vocabularies", 0o755)
 	require.NoError(t, err)
 
 	err = createStandardVocabularies()

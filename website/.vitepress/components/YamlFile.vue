@@ -46,12 +46,18 @@ watch(
 
 <template>
   <div class="yaml-file">
-    <div v-if="title" class="yaml-file-header">
+    <div
+      v-if="title"
+      class="yaml-file-header"
+    >
       <h4>{{ title }}</h4>
     </div>
     <div class="yaml-file-content">
       <div class="language-yaml vp-adaptive-theme">
-        <button title="Copy Code" class="copy" />
+        <button
+          title="Copy Code"
+          class="copy"
+        />
         <span class="lang">yaml</span>
         <div v-html="highlightedCode" />
       </div>

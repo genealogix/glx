@@ -39,7 +39,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Handle SOUR subrecords (only for top-level OBJE records)
 	for _, sub := range objeRecord.SubRecords {
 		if sub.Tag == GedcomTagSour {
-			citationID, err := createCitationFromSOUR(mediaID, sub, conv)
+			citationID, err := createCitationFromSOUR(sub, conv)
 			if err != nil {
 				// Error already logged in createCitationFromSOUR, skip this citation
 				continue
@@ -60,7 +60,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 }
 
 // convertEmbeddedMedia converts an embedded OBJE (without XRef) and returns the media ID
-func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
+func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) string {
 	// Generate media ID for embedded object
 	mediaID := generateMediaID(conv)
 
@@ -73,7 +73,7 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) (st
 	conv.GLX.Media[mediaID] = media
 	conv.Stats.MediaCreated++
 
-	return mediaID, nil
+	return mediaID
 }
 
 // resolveOBJE resolves an OBJE subrecord to a media ID. It handles three cases:
@@ -98,14 +98,7 @@ func resolveOBJE(objeRecord *GEDCOMRecord, conv *ConversionContext) string {
 
 	// Case 2 & 3: Embedded OBJE or VOID with subrecords
 	if len(objeRecord.SubRecords) > 0 {
-		mediaID, err := convertEmbeddedMedia(objeRecord, conv)
-		if err != nil {
-			conv.addWarning(objeRecord.Line, GedcomTagObje, "Failed to convert embedded media: "+err.Error())
-
-			return ""
-		}
-
-		return mediaID
+		return convertEmbeddedMedia(objeRecord, conv)
 	}
 
 	return ""
@@ -124,7 +117,7 @@ func appendMediaID(props map[string]any, mediaID string) {
 	if props[PropertyMedia] == nil {
 		props[PropertyMedia] = []string{}
 	}
-	media := props[PropertyMedia].([]string)
+	media, _ := props[PropertyMedia].([]string)
 	props[PropertyMedia] = append(media, mediaID)
 }
 
@@ -132,6 +125,8 @@ func appendMediaID(props map[string]any, mediaID string) {
 // It processes FILE, FORM, TITL, CROP, NOTE, and BLOB subrecords.
 // When a relative FILE path is found, it creates a MediaFileSource entry and rewrites
 // the URI to point to media/files/<filename>. BLOB data is also captured for the CLI to write.
+//
+//nolint:gocognit,gocyclo
 func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *ConversionContext) *Media {
 	media := &Media{
 		Properties: make(map[string]any),
@@ -286,6 +281,7 @@ func classifyFileRef(fileRef string) bool {
 	if len(fileRef) >= 2 && fileRef[1] == ':' {
 		return false
 	}
+
 	return true
 }
 
@@ -294,11 +290,13 @@ func classifyFileRef(fileRef string) bool {
 func deduplicateFilename(basename string, usedNames map[string]int) string {
 	if _, exists := usedNames[basename]; !exists {
 		usedNames[basename] = 1
+
 		return basename
 	}
 	usedNames[basename]++
 	ext := filepath.Ext(basename)
 	name := strings.TrimSuffix(basename, ext)
+
 	return fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
 }
 
@@ -314,6 +312,7 @@ func extensionFromMimeType(mimeType string) string {
 			return ext
 		}
 	}
+
 	return ".bin"
 }
 

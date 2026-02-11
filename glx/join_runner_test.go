@@ -20,15 +20,16 @@ import (
 	"strings"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // TestJoinArchive tests the joinArchive function with various scenarios
 func TestJoinArchive(t *testing.T) {
 	tests := []struct {
 		name            string
-		setupFunc       func() (inputDir string, outputPath string, cleanup func())
+		setupFunc       func() (inputDir, outputPath string, cleanup func())
 		validate        bool
 		verbose         bool
 		showFirstErrors int
@@ -69,6 +70,7 @@ func TestJoinArchive(t *testing.T) {
 				}
 
 				outputPath := filepath.Join(tmpDir, "output.glx")
+
 				return inputDir, outputPath, func() {}
 			},
 			validate:        false,

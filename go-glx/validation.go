@@ -1,3 +1,17 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package glx
 
 import (
@@ -610,6 +624,7 @@ func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
 					Message: fmt.Sprintf("places: place hierarchy cycle detected: %s -> %s",
 						strings.Join(cycleMembers, " -> "), current),
 				})
+
 				break
 			}
 
@@ -679,7 +694,7 @@ func (glx *GLXFile) validateDateFormat(entityType, entityID, field, dateStr stri
 // isValidSimpleDate checks if a string matches YYYY, YYYY-MM, or YYYY-MM-DD format
 func isValidSimpleDate(s string) bool {
 	// YYYY (4 digits)
-	if len(s) == 4 {
+	if len(s) == 4 { //nolint:mnd // standard date format length: YYYY
 		for _, c := range s {
 			if c < '0' || c > '9' {
 				return false
@@ -690,12 +705,12 @@ func isValidSimpleDate(s string) bool {
 	}
 
 	// YYYY-MM (7 characters)
-	if len(s) == 7 {
+	if len(s) == 7 { //nolint:mnd // standard date format length: YYYY-MM
 		return s[4] == '-' && isDigits(s[0:4]) && isDigits(s[5:7])
 	}
 
 	// YYYY-MM-DD (10 characters)
-	if len(s) == 10 {
+	if len(s) == 10 { //nolint:mnd // standard date format length: YYYY-MM-DD
 		return s[4] == '-' && s[7] == '-' && isDigits(s[0:4]) && isDigits(s[5:7]) && isDigits(s[8:10])
 	}
 

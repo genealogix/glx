@@ -14,10 +14,16 @@
 
 package main
 
-import "errors"
+import (
+	"errors"
+)
 
 // Command validation errors
 var (
+	ErrMediaFileNotFound          = errors.New("file not found")
+	ErrEmptyBlobData              = errors.New("empty BLOB data")
+	ErrInvalidBlobLength          = errors.New("invalid BLOB data length")
+	ErrValidationWithErrors       = errors.New("validation failed with errors")
 	ErrInvalidFormat              = errors.New("invalid format (must be 'single' or 'multi')")
 	ErrGEDCOMFileNotFound         = errors.New("GEDCOM file not found")
 	ErrTargetNotDirectory         = errors.New("target path exists and is not a directory")

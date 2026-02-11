@@ -93,7 +93,7 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) 
 }
 
 // convertExtensionData converts extension tag data into properties map
-func convertExtensionData(tag string, value string, subRecords []*GEDCOMRecord) map[string]any {
+func convertExtensionData(tag, value string, subRecords []*GEDCOMRecord) map[string]any {
 	properties := make(map[string]any)
 
 	// Only process extension tags (those starting with underscore)
@@ -123,6 +123,8 @@ func convertExtensionData(tag string, value string, subRecords []*GEDCOMRecord) 
 // If eventID is non-empty and includeCitations is true, SOUR records will be processed
 // and added to event.Properties[PropertyCitations].
 // Returns the place ID if one was extracted (for callers that need it for additional processing).
+//
+//nolint:gocognit,gocyclo
 func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event, conv *ConversionContext, includeCitations bool) string {
 	var placeID string
 
@@ -139,10 +141,8 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 				hierarchy.Latitude = lat
 				hierarchy.Longitude = lon
 
-				pid, err := buildPlaceHierarchy(hierarchy, conv)
-				if err != nil {
-					conv.Logger.LogWarning(sub.Line, GedcomTagPlac, sub.Value, "Failed to build place hierarchy: "+err.Error())
-				} else if pid != "" {
+				pid := buildPlaceHierarchy(hierarchy, conv)
+				if pid != "" {
 					event.PlaceID = pid
 					placeID = pid
 				}
@@ -165,10 +165,8 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 			if event.PlaceID == "" && len(sub.SubRecords) > 0 {
 				hierarchy := buildPlaceHierarchyFromAddress(sub)
 				if hierarchy != nil {
-					pid, err := buildPlaceHierarchy(hierarchy, conv)
-					if err != nil {
-						conv.Logger.LogWarning(sub.Line, GedcomTagAddr, "", "Failed to build place hierarchy from address: "+err.Error())
-					} else if pid != "" {
+					pid := buildPlaceHierarchy(hierarchy, conv)
+					if pid != "" {
 						event.PlaceID = pid
 						placeID = pid
 					}
@@ -177,7 +175,7 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 
 		case GedcomTagSour:
 			if includeCitations && eventID != "" {
-				citationID, err := createCitationFromSOUR(eventID, sub, conv)
+				citationID, err := createCitationFromSOUR(sub, conv)
 				if err != nil {
 					// Error already logged in createCitationFromSOUR, skip this citation
 					continue

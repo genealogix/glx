@@ -1,10 +1,25 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package glx
 
 import (
 	"fmt"
 
-	vocabularies "github.com/genealogix/glx/specification/5-standard-vocabularies"
 	"gopkg.in/yaml.v3"
+
+	vocabularies "github.com/genealogix/glx/specification/5-standard-vocabularies"
 )
 
 // StandardVocabularies returns a map of vocabulary filename to content bytes.
@@ -41,6 +56,8 @@ func GetStandardVocabulary(name string) ([]byte, error) {
 // This populates the vocabulary maps (EventTypes, RelationshipTypes, etc.) so that
 // validation can check references against the standard vocabulary values.
 // Returns error if vocabulary parsing fails.
+//
+//nolint:gocognit,gocyclo
 func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 	vocabs := vocabularies.Files
 
@@ -219,6 +236,8 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 // LoadVocabulariesFromMap loads vocabularies from a map of filenames to content into a GLXFile.
 // This populates the vocabulary maps (EventTypes, RelationshipTypes, etc.) from the provided files.
 // Returns error if vocabulary parsing fails.
+//
+//nolint:gocognit,gocyclo
 func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 	for filename, data := range vocabFiles {
 		// Parse based on filename

@@ -607,6 +607,7 @@ func TestE2E_DeepPlaceHierarchyValidation(t *testing.T) {
 	for _, place := range glx.Places {
 		if place.Type == PlaceTypeLocality {
 			hasLocality = true
+
 			break
 		}
 	}

@@ -135,11 +135,23 @@ export default defineConfig({
           text: 'Core Concepts',
           items: [
             { text: 'Overview', link: '/specification/2-core-concepts' },
-            { text: 'Archive-Owned Vocabularies', link: '/specification/2-core-concepts#archive-owned-vocabularies' },
-            { text: 'Entity Relationships', link: '/specification/2-core-concepts#entity-relationships' },
+            {
+              text: 'Archive-Owned Vocabularies',
+              link: '/specification/2-core-concepts#archive-owned-vocabularies'
+            },
+            {
+              text: 'Entity Relationships',
+              link: '/specification/2-core-concepts#entity-relationships'
+            },
             { text: 'Data Types', link: '/specification/2-core-concepts#data-types' },
-            { text: 'Properties', link: '/specification/2-core-concepts#properties-recording-conclusions' },
-            { text: 'Assertions', link: '/specification/2-core-concepts#assertion-aware-data-model' },
+            {
+              text: 'Properties',
+              link: '/specification/2-core-concepts#properties-recording-conclusions'
+            },
+            {
+              text: 'Assertions',
+              link: '/specification/2-core-concepts#assertion-aware-data-model'
+            },
             { text: 'Evidence Chain', link: '/specification/2-core-concepts#evidence-chain' },
             { text: 'Collaboration', link: '/specification/2-core-concepts#collaboration' }
           ]
@@ -186,11 +198,23 @@ export default defineConfig({
           text: 'Core Concepts',
           items: [
             { text: 'Overview', link: '/specification/2-core-concepts' },
-            { text: 'Archive-Owned Vocabularies', link: '/specification/2-core-concepts#archive-owned-vocabularies' },
-            { text: 'Entity Relationships', link: '/specification/2-core-concepts#entity-relationships' },
+            {
+              text: 'Archive-Owned Vocabularies',
+              link: '/specification/2-core-concepts#archive-owned-vocabularies'
+            },
+            {
+              text: 'Entity Relationships',
+              link: '/specification/2-core-concepts#entity-relationships'
+            },
             { text: 'Data Types', link: '/specification/2-core-concepts#data-types' },
-            { text: 'Properties', link: '/specification/2-core-concepts#properties-recording-conclusions' },
-            { text: 'Assertions', link: '/specification/2-core-concepts#assertion-aware-data-model' },
+            {
+              text: 'Properties',
+              link: '/specification/2-core-concepts#properties-recording-conclusions'
+            },
+            {
+              text: 'Assertions',
+              link: '/specification/2-core-concepts#assertion-aware-data-model'
+            },
             { text: 'Evidence Chain', link: '/specification/2-core-concepts#evidence-chain' },
             { text: 'Collaboration', link: '/specification/2-core-concepts#collaboration' }
           ]
