@@ -55,7 +55,6 @@ Design decisions that affect the spec and should be resolved before 1.0.
 - **Add validation rule sections**: Each entity type doc should include a consolidated "Validation Rules" section.
 - **Git Workflow Guide**: Create documentation covering Git workflows, branching strategies, collaboration patterns, and branch-based research methodologies for GLX archives.
 - **Broken links in migration-from-gedcom.md**: Two references to deleted `../development/gedcom-import.md` at lines 63 and 265. [migration-from-gedcom.md](docs/guides/migration-from-gedcom.md)
-- **assertion-workflow example uses undefined vocabulary properties**: `properties.address` and `properties.url` on Repository (should be direct fields `address` and `website`), `properties.accessed_date` on Source (not in source-properties vocabulary). [assertion-workflow/archive.glx:109-145](docs/examples/assertion-workflow/archive.glx#L109-L145)
 - **Duplicate `media/` directory in file storage diagram**: The media spec shows two separate `media/` directories instead of a single tree with both entity `.glx` files and a `files/` subdirectory. [media.md:337-351](specification/4-entity-types/media.md#L337-L351)
 - **Stale conversion flow comment in doc.go**: Describes old single-pass approach but actual flow is now dependency-ordered (Notes/Repos → Sources/Media → Individuals → Families). [doc.go:14](glx/lib/doc.go#L14)
 

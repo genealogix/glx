@@ -104,64 +104,47 @@ Compare Go types with JSON schema types:
 - Verify yaml tags match schema (e.g., `persons`, `events`, etc.)
 - Check vocabulary definition fields
 
-### 8. Validation Logic and Constraints (BIDIRECTIONAL CHECK)
+### 8. Validation Logic and Constraints
 
-This is where validation logic often lives ONLY in the code. Check both directions:
+**IMPORTANT — Two-Layer Validation Architecture:**
 
-#### Code → Specification (Documentation Gaps)
-Look for validation logic in **glx/lib/validator.go** and other validation code that is NOT documented in the specification:
+The CLI (`glx validate`) runs validation in two passes:
 
-- **Field format validation** (e.g., regex patterns, length constraints)
-  - Example: Email format validation, ID format validation
-  - If code validates format, specification should document the format
+1. **Pass 1 — JSON Schema validation** (`glx/validator.go` → `ValidateGLXFileStructure` using `gojsonschema`):
+   Enforces ALL structural constraints from the JSON schemas:
+   - `required` fields
+   - `minLength`, `minItems`, `minimum`/`maximum` constraints
+   - `allOf`/`anyOf`/`not` constraints (e.g., Assertion mutual exclusivity)
+   - `additionalProperties: false`
+   - `pattern` on entity ID references
+   - `format` constraints (e.g., URI)
 
-- **Cross-field constraints** (e.g., mutually exclusive fields, conditional requirements)
-  - Example: "If field A is present, field B is required"
-  - If code enforces constraint, specification should document it
+2. **Pass 2 — Go cross-reference validation** (`go-glx/validation.go` → `archive.Validate()`):
+   Handles things JSON schema CANNOT check:
+   - Entity/vocabulary reference existence (does the referenced ID actually exist?)
+   - Place hierarchy cycle detection
+   - Property vocabulary validation (is this property name defined?)
+   - Property value type validation (does the value match the vocabulary's value_type?)
+   - Date format validation
+   - Temporal property structure validation
 
-- **Business rules** (e.g., date ranges, logical constraints)
-  - Example: "Birth date must be before death date"
-  - If code validates rule, specification should document it
+**DO NOT flag constraints already enforced by JSON schema as "missing from Go code."**
+The Go validator intentionally does NOT duplicate JSON schema constraints. Only flag
+validation gaps where NEITHER layer covers a requirement from the specification.
 
-- **Reference validation** (e.g., checking that referenced entities exist)
-  - Example: "person_id must reference a valid Person entity"
-  - If code validates references, specification should document the requirement
+#### What to Check
 
-- **Enumeration constraints** (e.g., allowed values for fields)
-  - Example: "type field must be one of: [value1, value2, value3]"
-  - If code validates enums, specification should document allowed values
+Look for validation rules documented in **specification/4-entity-types/*.md** that are NOT
+enforced by EITHER the JSON schema OR the Go validator:
 
-#### Specification → Code (Implementation Gaps)
-Look for validation rules documented in **specification/4-entity-types/*.md** that are NOT implemented in the code:
+- **Business rules** not expressible in JSON schema (e.g., "birth date must be before death date")
+- **Cross-entity constraints** beyond simple reference existence
+- **Semantic validation** that requires understanding entity relationships
 
-- **Required fields** specified in prose but not validated in code
-- **Format requirements** described in specification but not checked in validator
-- **Constraints** documented in specification but not enforced in code
-- **Business rules** written in specification but missing from validation logic
-- **Edge cases** described in specification but not handled in code
+Also check the reverse direction — validation logic in Go code that is NOT documented in the specification:
 
-#### What to Report
-For each validation rule or constraint:
-
-**Code has validation NOT in specification**:
-```
-⚠️ Validation Gap in Specification
-
-Location: lib/validator.go:123
-Validation: Email field must match regex pattern `^[a-z]+@[a-z]+\.[a-z]+$`
-Issue: This validation exists in code but is NOT documented in specification/4-entity-types/person.md
-Action: Add format requirement to specification
-```
-
-**Specification has validation NOT in code**:
-```
-⚠️ Validation Missing in Code
-
-Location: specification/4-entity-types/event.md (line 45)
-Requirement: "The end_date, if present, must be after the date field"
-Issue: This constraint is documented in specification but NOT enforced in lib/validator.go
-Action: Implement validation in code
-```
+- **Custom validation rules** in `go-glx/validation.go` not mentioned in spec
+- **Warning-level checks** that users should know about
 
 ### 9. Common Issues to Look For
 
@@ -240,27 +223,19 @@ OR
 At the end, provide:
 - Total entity types checked
 - Count of entity types with structural drift (field/type/yaml tag issues)
-- Count of entity types with validation drift
 - List of Go types that need updates to match schema
-- List of validation gaps found:
-  - Validation in code but not in specification (needs documentation)
-  - Validation in specification but not in code (needs implementation)
+- Any validation gaps not covered by EITHER JSON schema or Go validator
 - Severity assessment (critical/major/minor)
-- Recommended actions:
-  - "Update lib/types.go [specific types] to match schema"
-  - "Document validation logic in specification/4-entity-types/[files]"
-  - "Implement missing validation in lib/validator.go"
+- Recommended actions
 
 ## Notes
 
 - **Schema is the source of truth** - Go code should be updated to match it
-- **Validation drift is BIDIRECTIONAL** - both code and specification may need updates
+- **Two-layer validation** - JSON schema (pass 1) handles structural constraints; Go validator (pass 2) handles cross-references and semantic checks. Do NOT flag schema-covered constraints as missing from Go code.
 - Internal fields (like `validation *ValidationResult` in GLXFile) are expected to not be in schemas
 - Comment differences are informational only unless significantly misleading
 - Focus on structural issues that could cause marshaling/unmarshaling problems
 - Check both directions: schema → Go (missing in Go) AND Go → schema (not in schema, may need removal)
-- Check both directions for validation: code → spec (missing documentation) AND spec → code (missing implementation)
 - Pay special attention to required fields - these are critical for validation
 - Required field with `omitempty` is a **CRITICAL** error
-- Validation logic that exists in code but not in specification is a **MAJOR** documentation issue
-- Validation requirements in specification but not in code is a **CRITICAL** implementation issue
+- Go fields that exist but are NOT in the schema (with `additionalProperties: false`) are **CRITICAL** — they produce schema-invalid YAML

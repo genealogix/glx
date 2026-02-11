@@ -121,7 +121,6 @@ type Relationship struct {
 	StartEvent   string         `refType:"events"             yaml:"start_event,omitempty"`
 	EndEvent     string         `refType:"events"             yaml:"end_event,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Description  string         `yaml:"description,omitempty"`
 	Notes        string         `yaml:"notes,omitempty"`
 }
 

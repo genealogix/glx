@@ -1,3 +1,9 @@
+---
+title: Assertion Workflow Example
+description: Demonstrates direct property setting vs assertion-backed properties in GLX
+layout: doc
+---
+
 # Assertion Workflow Example
 
 This example demonstrates the two approaches to recording genealogical data in GLX and when to use each.

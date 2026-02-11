@@ -167,7 +167,7 @@ A geographic location with hierarchical organization, including coordinates, alt
 > **See Also:** [Place Entity](4-entity-types/place)
 
 ### Place Type
-Classification of geographic locations including country, county, city, address, cemetery, church, etc.
+Classification of geographic locations including country, county, city, parish, cemetery, church, etc.
 
 > **See Also:** [Place Types Vocabulary](4-entity-types/vocabularies#place-types-vocabulary)
 

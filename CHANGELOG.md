@@ -17,22 +17,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Census Event Type
 - **Added `census` event type to standard vocabulary** - Census enumeration events (`CENS` GEDCOM tag) now included in `event-types.glx`
 
-#### Assertion `date` Field for Temporal Properties
-- **Added `date` field to assertions** - Assertions can now specify a date or date range indicating when the asserted property value applies, enabling precise temporal targeting for properties like occupation, residence, and religion that change over time
-- Added `Date` field to `Assertion` Go struct
-- Added `date` property to assertion JSON schema
-
-#### Citation Properties Vocabulary Documentation
-- Added missing `### Citation Properties Vocabulary` section to vocabularies specification
-
 ### Changed
 
 #### Assertion Entity Improvements
 
 ##### Renamed `claim` to `property`
 - **Renamed `claim` field to `property`** - The field name now matches the vocabulary terminology (property vocabularies)
-- Updated JSON schema, Go types (`Assertion.Claim` → `Assertion.Property`), all specification examples, example archives, and test data YAML files
-- Internal parameter names in GEDCOM evidence code and test data generator updated to use `property` consistently
+- Updated JSON schema, Go types (`Assertion.Claim` → `Assertion.Property`), all specification examples, example archives, test data, and terminology throughout docs
 - Renamed test directories: `assertion-unknown-claim` → `assertion-unknown-property`, `assertion-participant-and-claim` → `assertion-participant-and-property`, `invalid-assertion-claims` → `invalid-assertion-properties`
 
 ##### Typed Subject Reference
@@ -46,6 +37,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `media` as a third evidence option for assertions** - Assertions can now reference media entities directly as evidence, alongside citations and sources
 - Useful for direct visual evidence like gravestone photos, handwritten documents, or family photographs
 - JSON schema `anyOf` evidence constraint updated to include `media`
+
+##### Temporal `date` Field
+- **Added `date` field to assertions** - Assertions can now specify a date or date range indicating when the asserted property value applies, enabling precise temporal targeting for properties like occupation, residence, and religion that change over time
+- Added `Date` field to `Assertion` Go struct and `date` property to assertion JSON schema
+- Assertion `value` field is now required when `property` is present
 
 #### Vocabulary Consolidation
 
@@ -73,7 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `width`, `height` - Dimensions in pixels for images/video
   - `duration` - Duration in seconds for audio/video
   - `file_size` - File size in bytes
-  - `crop` - Crop coordinates (top, left, width, height)
+  - `crop` - Crop coordinates as integers (top, left, width, height)
   - `medium` - Physical medium type (photograph, document, film)
   - `original_filename` - Original filename before import
   - `photographer` - Person who created the media
@@ -87,7 +83,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `fax` - Fax number
   - `access_hours` - Hours of operation or access availability
   - `access_restrictions` - Any restrictions on access (appointment required, subscription, etc.)
-  - `holding_types` - Types of materials held (microfilm, digital, books, etc.) (multi-value)
+  - `holding_types` - Types of materials held as YAML arrays (multi-value)
   - `external_ids` - External identifiers from other systems like FamilySearch, WikiTree (multi-value)
 - Added `RepositoryProperties` to GLXFile
 - Moved contact fields (phone, email) from direct entity fields to `properties`
@@ -97,7 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - `locator` - Location within source (consolidates former `page` and `locator` direct fields; GEDCOM PAGE)
   - `text_from_source` - Transcription or excerpt of relevant text (moved from direct entity field)
   - `source_date` - Date when the source recorded the information (from GEDCOM DATA.DATE)
-- Added `Properties` field to Citation struct and `CitationProperties` to GLXFile
+- Added `Properties` field to Citation struct, `CitationProperties` to GLXFile, and vocabulary specification section
 
 ##### Source Properties
 - **New `source-properties.glx` vocabulary** - Standard properties for source entities:
@@ -150,8 +146,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Place hierarchy cycle detection** - Validates that place parent references don't form cycles (e.g., A -> B -> C -> A). Reports exactly one error per cycle with the full cycle path in the error message.
 
 #### Place Entity
-- **Moved `jurisdiction` and `place_format` to properties** - Now stored as vocabulary-defined properties instead of dedicated entity fields
-- **Simplified `alternative_names`** - Changed from a dedicated field with `AlternativeName`/`DateRange` types to a temporal, multi-value string property in the place-properties vocabulary
+- **Moved `jurisdiction`, `place_format`, and `alternative_names` to properties** - Now stored as vocabulary-defined properties instead of dedicated entity fields. `alternative_names` simplified from `AlternativeName`/`DateRange` types to a temporal, multi-value string property.
+
+#### Relationship Entity
+- **Consolidated `description` into `properties.description`** - Removed as a top-level field
+
+#### Source Entity
+- **Consolidated `creator` field into `authors`** - Removed `creator` from spec, schema, and Go types
 
 #### Library Package Restructuring
 - **Moved core library from `glx/lib/` to `go-glx/`** - The library is now at the repository root for clean external imports
@@ -165,65 +166,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Standardized schema `$id` URLs** - All JSON schemas now use consistent GitHub raw content URLs; removed references to `schema.genealogix.io` and `genealogix.org` domains
 
 #### Documentation
-
-##### Specification Structure
 - **Streamlined Introduction** - Simplified [1-introduction.md](specification/1-introduction.md) from 120 to 63 lines
 - **Restructured Core Concepts** - Reorganized [2-core-concepts.md](specification/2-core-concepts.md) to emphasize flexibility; new section order: Archive-Owned Vocabularies → Entity Relationships → Data Types → Properties → Assertions → Evidence Chain → Collaboration
 - **Merged Data Types into Core Concepts** - Integrated [6-data-types.md](specification/6-data-types.md) as section 3; deleted standalone file
 - **Added Glossary to specification** - Moved from `docs/guides/glossary.md` to [specification/6-glossary.md](specification/6-glossary.md) with "Property" and "Temporal Property" definitions
 - Updated table of contents and fixed broken links after restructuring
-
-##### Documentation Improvements
 - Removed `.md` extensions from ~40 internal links for VitePress compatibility
 - Standardized GEDCOM mapping table headers across all 8 entity type files
 - Added Properties sections to [place.md](specification/4-entity-types/place.md) and [relationship.md](specification/4-entity-types/relationship.md)
-- Standardized entity file structure across all entity type docs (Overview → File Format → Core Concepts → Fields → Usage Patterns → File Organization → GEDCOM Mapping → Validation Rules → See Also)
-- Added File Format sections and missing standard sections to multiple entity docs
+- Standardized entity file structure across all entity type docs
+- Added Schema Reference sections to event, relationship, place, citation, and repository entity docs
+- Added naming convention note (hyphens for file/entry names, underscores for YAML section keys) to core concepts
+- Moved "Change Tracking with Git" section before "Next Steps" in core-concepts
 - Removed 59 file path comments from YAML code blocks
-- Standardized validation rules to reference vocabularies with links; added missing type validation rules to media.md and repository.md
-
-##### User Documentation Updates
-- **Updated quickstart.md** - Examples updated to reflect schema changes: `description` → `properties.description`, typed `subject` reference, `claim` → `property`
+- Standardized validation rules to reference vocabularies with links
+- Added `participants` to all event examples that were missing the required field
+- **Enhanced VitePress sidebar** - Core Concepts promoted to its own collapsible sidebar section with 8 direct anchor links
+- **Updated quickstart.md** - Examples updated to reflect schema changes
 - **Updated best-practices.md** - Assertion examples updated to use typed `subject` reference and `property` field
-
-##### Website Navigation
-- **Enhanced VitePress sidebar** - Core Concepts promoted to its own collapsible sidebar section with 8 direct anchor links to subsections
 
 ### Fixed
 
-#### Specification Corrections
+#### Specification
 - Fixed Place hierarchy example that used duplicate YAML top-level keys
 - Fixed examples using incorrect field names throughout specification (`description` → `notes`, `value` → `notes`, `file:` → `uri:`, `death_year` → `died_on`, `married_on` → `born_on`, `residence_dates` → `residence`, `registration_district` → `district`)
 - Fixed assertion example using invalid date format (`circa 1825` → `ABT 1825`)
 - Removed undocumented `birth_surname` from person name example
 - Fixed broken anchor link in repository.md (`#repository-properties` → `#repository-properties-vocabulary`)
-- Standardized all event examples to use `subject` role consistently (replaced remaining `principal` usages in place, relationship, vocabularies docs)
+- Standardized all event examples to use `subject` role consistently (replaced remaining `principal` usages)
 - Fixed Event `date` field type from `string/object` to `string` (object form was never documented)
 - Fixed Event See Also to say Person "participates in events" instead of "contains event references"
-- Fixed broken relative links in `1-introduction.md` and `specification/README.md` (`../../` → `../`)
+- Fixed broken relative links in `1-introduction.md` and `specification/README.md`
 - Fixed `residence` reference type example in `2-core-concepts.md` to use temporal format
-- Changed `crop` property `value_type` from `string` to `integer` in `media-properties.glx`
-- Made assertion `value` field required when `property` is present
-- Clarified assertion `date` field is strictly for temporal targeting, not evidence dates
 - Added minimum participant count (at least 2) to relationship fields table
-- Added naming convention note (hyphens for file/entry names, underscores for YAML section keys) to core concepts
 - Removed stale `Created At` and `Created By` glossary entries
 - Fixed glossary Event and Event Type definitions that incorrectly included occupation and residence
-- Fixed "assertion claims" terminology to "assertion properties" in core-concepts
-- Moved "Change Tracking with Git" section before "Next Steps" in core-concepts
-- Consolidated Relationship `description` from top-level field into `properties.description`
-- Consolidated Source `creator` field into `authors` — removed `creator` from spec, schema, and Go types
-- Fixed relationship types count from 11 to 10; removed non-existent `adoption` relationship type
 - Fixed labels: "Event/Fact" → "Event", "living status" → "birth/death dates"
 - Replaced `living: true` boolean example with non-misleading property names
 - Replaced "occupation" with "immigration" as event type example in 3 locations
 - Fixed Event key properties ("description" → "notes") and Media key properties ("file path" → "URI") in entity-types README
 - Fixed place types count from 14 to 15; added missing `locality` to place-types.glx standard vocabulary
-- Converted `holding_types` examples from semicolon-delimited strings to YAML arrays
 - Fixed vocabulary directory structure example in core-concepts
-- Added Schema Reference sections to event, relationship, place, citation, and repository entity docs
-- Added `participants` to all event examples that were missing the required field
-- Updated place properties documentation to include `jurisdiction`, `place_format`, and `alternative_names`
 
 #### GEDCOM Import
 - **Repository deduplication** - Repositories with the same name and location are now deduplicated during import
@@ -239,7 +222,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Removed `data_date`, `page`, `locator`, and `text_from_source` direct fields — consolidated into `properties`
 
 #### Source Entity
-- Removed `citation` and `coverage` direct fields
+- Removed `citation`, `coverage`, and `creator` direct fields (`creator` consolidated into `authors`)
 
 #### Event Entity
 - Removed `description` field (use `properties.description`) and `tags` field

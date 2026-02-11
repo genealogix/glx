@@ -7,4 +7,4 @@ relationships:
       - person: person-mary-brown-1852
         role: spouse
     start_event: event-marriage-1875
-    description: "Marriage of John Smith and Mary Brown, May 10, 1875"
+    notes: "Marriage of John Smith and Mary Brown, May 10, 1875"

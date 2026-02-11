@@ -6,18 +6,18 @@
   "type": "object",
   "required": ["title"],
   "properties": {
-    "title": { "type": "string", "minLength": 1 },
-    "type": { "type": "string" },
-    "authors": { "type": "array", "items": { "type": "string" } },
-    "date": { "type": "string" },
-    "description": { "type": "string" },
+    "title": { "type": "string", "minLength": 1, "description": "Full title of the source" },
+    "type": { "type": "string", "description": "Source type from vocabulary (validated against source_types vocabulary)" },
+    "authors": { "type": "array", "items": { "type": "string" }, "description": "Author(s) or creator(s) of the source" },
+    "date": { "type": "string", "description": "Publication date or date range covered by the source" },
+    "description": { "type": "string", "description": "Detailed description of the source content and scope" },
     "repository": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to Repository where source is held"
     },
-    "language": { "type": "string" },
-    "notes": { "type": "string" },
+    "language": { "type": "string", "description": "Language of the source" },
+    "notes": { "type": "string", "description": "Free-form notes about the source" },
     "media": {
       "type": "array",
       "description": "References to Media entities",

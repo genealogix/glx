@@ -1,80 +1,111 @@
 /*
-Package glx provides core GLX functionality including GEDCOM import,
-validation, and serialization.
+Package glx provides a Go library for working with GLX (Genealogix) archives,
+a modern YAML-based format for genealogical data.
+
+# Overview
+
+GLX archives store genealogical data as interconnected entities: persons, events,
+relationships, places, sources, citations, repositories, media, and assertions.
+Each entity type uses controlled vocabularies for type-safe property definitions.
+
+This package provides:
+
+  - GEDCOM import (5.5.1 and 7.0)
+  - Serialization to single-file and multi-file GLX formats
+  - Archive validation with reference integrity checking
+  - Standard vocabulary management
+
+# Quick Start
+
+Import a GEDCOM file:
+
+	glxFile, result, err := glx.ImportGEDCOM(reader, nil)
+	if err != nil {
+	    log.Fatal(err)
+	}
+	fmt.Printf("Imported %d persons\n", len(glxFile.Persons))
+
+Serialize to a single YAML file:
+
+	s := glx.NewSerializer(nil)
+	bytes, err := s.SerializeSingleFileBytes(glxFile)
+
+Serialize to a multi-file archive (one file per entity):
+
+	s := glx.NewSerializer(nil)
+	files, err := s.SerializeMultiFileToMap(glxFile)
+	// files maps relative paths ("persons/person-abc123.glx") to YAML content
+
+Validate an archive:
+
+	result := glxFile.Validate()
+	if len(result.Errors) > 0 {
+	    for _, e := range result.Errors {
+	        fmt.Println(e.Message)
+	    }
+	}
+
+# Entity Types
+
+The core entity types map to genealogical concepts:
+
+  - [Person] — an individual, with vocabulary-defined properties (name, gender, etc.)
+  - [Event] — a life event (birth, death, marriage) linked to participants and places
+  - [Relationship] — a connection between people (parent-child, marriage, etc.)
+  - [Place] — a geographic location with optional hierarchical parent
+  - [Source] — an information source (book, record, website)
+  - [Citation] — a specific reference within a source
+  - [Repository] — where sources are held (archive, library)
+  - [Media] — a photo, document, or other file
+  - [Assertion] — a researcher's conclusion backed by evidence
+
+All entities are stored in [GLXFile], keyed by unique string IDs.
+
+# Vocabularies
+
+GLX uses controlled vocabularies to define valid entity types, participant roles,
+and property schemas. Standard vocabularies are embedded in the binary and loaded
+automatically during GEDCOM import.
+
+Use [StandardVocabularies] to access them programmatically, or
+[LoadStandardVocabulariesIntoGLX] to populate a [GLXFile].
+
+# Serialization
+
+[DefaultSerializer] supports two formats:
+
+Single-file: all entities in one YAML document, suitable for small archives
+or programmatic exchange. See [DefaultSerializer.SerializeSingleFileBytes].
+
+Multi-file: one YAML file per entity, organized in directories by type.
+Designed for version control (git) and human editing.
+See [DefaultSerializer.SerializeMultiFileToMap].
+
+Use [NewSerializer] to create a serializer with default or custom
+[SerializerOptions].
 
 # GEDCOM Import
 
-The GEDCOM import converts GEDCOM 5.5.1 and 7.0 files into GLX format.
-Implementation files: gedcom_*.go
+[ImportGEDCOM] converts GEDCOM 5.5.1 and 7.0 files into GLX format. The import
+handles name parsing, place hierarchy construction, source/citation linking, and
+media file tracking. It accumulates errors rather than failing fast, enabling
+partial conversion of malformed files.
 
-## Conversion Flow
+The returned [ImportResult] contains statistics and a list of [MediaFileSource]
+entries describing media files to be copied into the archive. The caller is
+responsible for performing the actual file I/O.
 
-	GEDCOM File → ParseGEDCOM() → ConversionContext
-	    ↓
-	Phase 1: Notes, Repositories (no dependencies)
-	Phase 2: Sources, Media (depend on repos/notes)
-	Phase 3: Individuals (depend on sources/media)
-	Phase 4: Families (depend on individuals)
-	    ↓
-	GLXFile
+# Validation
 
-## Core Files
+[GLXFile.Validate] checks reference integrity (all entity cross-references
+resolve), vocabulary compliance (types and roles exist in vocabularies), and
+structural rules (required fields, participant counts). Results are cached and
+invalidated by [GLXFile.InvalidateCache].
 
-  - gedcom_converter.go: Main conversion orchestrator
-  - gedcom_individual.go: Person and event conversion
-  - gedcom_family.go: Family/relationship conversion
-  - gedcom_source.go: Source/citation conversion
-  - gedcom_place.go: Place hierarchy building
+# I/O Boundary
 
-## Key Mappings
-
-Person properties:
-  - NAME → properties.name.value + optional fields
-  - SEX → properties.gender
-  - BIRT/DEAT/CHR → Event entities
-  - SOUR → Citation + Assertion entities
-
-Name fields are only populated from explicit GEDCOM substructure tags
-(GIVN, SURN, NPFX, NICK, SPFX, NSFX) - never inferred from parsing.
-
-Relationships:
-  - HUSB + WIFE → marriage
-  - CHIL + PEDI birth → biological_parent_child
-  - CHIL + PEDI adopted → adoptive_parent_child
-  - CHIL + PEDI foster → foster_parent_child
-  - CHIL (no PEDI) → parent_child
-
-Places: GEDCOM flat strings become hierarchical GLX entities linked by
-parent references. When PLAC is missing, hierarchy is built from ADDR
-subfields (CITY/ADR2, STAE, CTRY).
-
-## Version Differences
-
-  - Shared notes: 5.5.1 uses NOTE, 7.0 uses SNOTE
-  - External IDs: Only in 7.0 (EXID)
-
-Both versions are fully supported.
-
-## Error Handling
-
-Errors accumulate in ConversionContext.Errors for partial conversion.
-Philosophy: convert as much as possible, report all errors at end.
-
-Malformed line recovery: Lines missing CONT/CONC prefixes (common in
-MyHeritage exports) are treated as continuations of the previous line.
-
-## Adding New Tag Support
-
- 1. Find the appropriate converter file
- 2. Add tag handling in the switch statement
- 3. Map to GLX entity
- 4. Add test case
- 5. Run make test
-
-## References
-
-  - GEDCOM specs: docs/gedcom-spec/ (use split PDFs, not full specs)
-  - GLX spec: specification/
-  - User guide: docs/guides/migration-from-gedcom.md
+This package is a pure library and never performs filesystem I/O. All methods
+accept and return in-memory types ([]byte, io.Reader, io.Writer, map[string][]byte).
+The calling application is responsible for reading from and writing to disk.
 */
 package glx

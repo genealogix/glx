@@ -14,8 +14,6 @@ The smallest valid GENEALOGIX archive with one person.
 minimal/
 ├── persons/
 │   └── person-abc123.glx
-├── media/
-│   └── media-photo.glx
 ├── vocabularies/           # Symlinks to standard vocabularies
 └── README.md
 ```

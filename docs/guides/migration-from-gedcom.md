@@ -115,7 +115,7 @@ assertions:
 | `NAME` | Person.properties.name | Unified name with optional fields |
 | `BIRT` | Event (birth) | Separate entity |
 | `DEAT` | Event (death) | Separate entity |
-| `OCCU` | Event (occupation) | Separate entity |
+| `OCCU` | Person.properties.occupation | Temporal property |
 
 ### Family Records (FAM)
 

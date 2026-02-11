@@ -24,7 +24,7 @@ GENEALOGIX is designed to be flexible and extensible beyond traditional genealog
 ```yaml
 # Standard vocabularies
 event_types: birth, death, marriage, baptism, burial
-relationship_types: parent_child, spouse, sibling
+relationship_types: parent_child, marriage, sibling
 ```
 
 **Perfect For:**

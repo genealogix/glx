@@ -1,4 +1,3 @@
-// Package glx provides core GENEALOGIX data types and GEDCOM conversion functionality.
 package glx
 
 // Standard Event Types - from event-types.glx vocabulary
@@ -96,7 +95,7 @@ const (
 	PropertyMarriageType  = "marriage_type"
 )
 
-// Media file directory within archive
+// MediaFilesDir is the directory within an archive where media files are stored.
 const MediaFilesDir = "media/files"
 
 // GEDCOM Tags - Top-Level Records

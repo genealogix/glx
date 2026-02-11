@@ -37,11 +37,23 @@ glx --help
 
 **Expected output:**
 ```
-genealogix CLI
+GLX is the official command-line tool for working with GENEALOGIX family archives.
+
+GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
+Use GLX to initialize new archives, validate files, and ensure data quality.
+
 Usage:
-  glx init                Initialize a new genealogix repository
-  glx validate [paths]    Validate .glx files (defaults to current directory)
-  glx check-schemas       Validate schema files for required metadata
+  glx [command]
+
+Available Commands:
+  check-schemas Validate JSON schema files for required metadata
+  completion    Generate the autocompletion script for the specified shell
+  help          Help about any command
+  import        Import a GEDCOM file to GLX format
+  init          Initialize a new GENEALOGIX archive in the specified directory
+  join          Join a multi-file GLX archive into single-file format
+  split         Split a single-file GLX archive into multi-file format
+  validate      Validate GLX files and cross-references
 ```
 
 ## Step 2: Create Your First Repository
@@ -116,7 +128,7 @@ events:
     place: place-leeds
     participants:
       - person: person-john-smith
-        role: principal
+        role: subject
     properties:
       description: |
         Birth of John Smith, first child of Thomas and Mary Smith.
@@ -138,10 +150,8 @@ glx validate places/
 
 **Expected output:**
 ```
-✓ persons/person-john-smith.glx
-✓ places/place-leeds.glx
-✓ events/event-john-birth.glx
-Validated 3 file(s)
+Validated 3 files.
+✅ Archive is valid.
 ```
 
 ## Step 7: Add Evidence with Citations
@@ -154,7 +164,8 @@ sources:
   source-parish-register:
     title: "St. Paul's Parish Register"
     type: church_register
-    creator: "Church of England, St. Paul's Parish"
+    authors:
+      - "Church of England, St. Paul's Parish"
     date: "1849-1855"
     repository: repository-leeds-library
     properties:

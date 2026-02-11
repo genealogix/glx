@@ -1,12 +1,12 @@
 ---
 title: Complete Family Example
-description: Demonstrates all 9 GENEALOGIX entity types with evidence chains and cross-references
+description: Demonstrates GENEALOGIX entity types with evidence chains and cross-references
 layout: doc
 ---
 
 # Complete Family Example
 
-This example demonstrates all 9 GENEALOGIX entity types with proper cross-references, evidence chains, and descriptive entity IDs.
+This example demonstrates 8 GENEALOGIX entity types with proper cross-references, evidence chains, and descriptive entity IDs.
 
 ## Family Structure
 
@@ -82,9 +82,9 @@ This example demonstrates a complete evidence chain for John Smith's birth:
 
 Repository → Source → Citation → Assertion
 
-- `repository-leeds-library` → `source-parish-register` → `citation-john-birth` → `assertion-john-birth`
+- `repository-leeds-library` → `source-parish-leeds` → `citation-john-birth` → `assertion-john-birth-date`
 
-> **Learn More:** See [Core Concepts: Evidence Hierarchy](../../specification/2-core-concepts.md#evidence-hierarchy) for detailed explanation.
+> **Learn More:** See [Core Concepts: Evidence Hierarchy](../../specification/2-core-concepts#evidence-hierarchy) for detailed explanation.
 
 ## File Format
 
@@ -115,20 +115,16 @@ cd examples/complete-family
 glx validate
 ```
 
-Should validate successfully with:
-- ✓ All 21 files pass validation
-- ✓ All cross-references valid
-- ✓ Evidence chains complete
-- ✓ No duplicate entity IDs
+Should validate successfully with no errors.
 
 ## Key Features Demonstrated
 
-✅ **All 9 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions, media  
-✅ **Descriptive IDs**: Human-readable entity identifiers  
-✅ **Evidence Chains**: Complete provenance from repository to conclusion  
-✅ **Confidence Levels**: Assertions express certainty (high, medium, low, disputed)  
-✅ **Hierarchical Places**: England → Yorkshire → Leeds  
-✅ **Cross-References**: All entities properly linked and validated  
-✅ **Multi-Generation Family**: Parents and children with relationships  
-✅ **Flexible Files**: Some files have one entity, some have multiple  
-✅ **Unified Format**: All files use entity type keys at top level
+- **8 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions
+- **Descriptive IDs**: Human-readable entity identifiers
+- **Evidence Chains**: Complete provenance from repository to conclusion
+- **Confidence Levels**: Assertions express certainty
+- **Hierarchical Places**: England → Yorkshire → Leeds
+- **Cross-References**: All entities properly linked and validated
+- **Multi-Generation Family**: Parents and children with relationships
+- **Flexible Files**: Some files have one entity, some have multiple
+- **Unified Format**: All files use entity type keys at top level
