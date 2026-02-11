@@ -17,7 +17,7 @@
       "additionalProperties": true
     },
     "parent": {
-      "type": ["string", "null"],
+      "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Reference to parent place in hierarchy"
     },
@@ -27,13 +27,13 @@
       "description": "Type of geographic location (validated against place_types vocabulary)"
     },
     "latitude": {
-      "type": ["number", "null"],
+      "type": "number",
       "minimum": -90,
       "maximum": 90,
       "description": "WGS84 latitude coordinate"
     },
     "longitude": {
-      "type": ["number", "null"],
+      "type": "number",
       "minimum": -180,
       "maximum": 180,
       "description": "WGS84 longitude coordinate"

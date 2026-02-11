@@ -62,9 +62,6 @@ vocabularies/
 ├── source-properties.glx
 └── citation-properties.glx
 ```
-
-> **Naming convention:** File names and vocabulary entry keys use **hyphens** (e.g., `event-types.glx`, `parent-child`). YAML top-level section keys use **underscores** (e.g., `event_types:`, `person_properties:`) because YAML keys with hyphens require quoting.
-
 ### Property Vocabularies
 
 **Property vocabularies** are a special category that define the custom properties available for each entity type. These are critical for the assertion model (see sections below).

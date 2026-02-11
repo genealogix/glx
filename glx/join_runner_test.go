@@ -271,7 +271,7 @@ func TestJoinArchive(t *testing.T) {
 				rel := &lib.GLXFile{
 					Relationships: map[string]*lib.Relationship{
 						"rel-1": {
-							Type: "parent-child",
+							Type: "parent_child",
 							Participants: []lib.Participant{
 								{Person: "person-1"},
 								{Person: "person-2"},

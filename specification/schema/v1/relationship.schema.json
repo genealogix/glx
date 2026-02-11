@@ -38,7 +38,7 @@
             "description": "Notes about participant's involvement"
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "start_event": {
@@ -50,10 +50,6 @@
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
       "description": "Event that ended this relationship"
-    },
-    "description": {
-      "type": "string",
-      "description": "Description of the relationship"
     },
     "notes": {
       "type": "string",

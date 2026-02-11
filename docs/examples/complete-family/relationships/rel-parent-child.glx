@@ -1,18 +1,18 @@
 relationships:
   rel-john-jane:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-john-smith-1850
         role: parent
       - person: person-jane-smith-1876
         role: child
-    description: "John Smith is father of Jane Smith"
+    notes: "John Smith is father of Jane Smith"
   
   rel-mary-jane:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-mary-brown-1852
         role: parent
       - person: person-jane-smith-1876
         role: child
-    description: "Mary Brown is mother of Jane Smith"
+    notes: "Mary Brown is mother of Jane Smith"

@@ -8,22 +8,22 @@ relationship_types:
     description: "Legal or religious union of two people"
     gedcom: "MARR"
   
-  parent-child:
+  parent_child:
     label: "Parent-Child"
     description: "Parent-child relationship (unspecified type)"
     gedcom: "CHIL/FAMC"
 
-  biological-parent-child:
+  biological_parent_child:
     label: "Biological Parent-Child"
     description: "Biological parent-child relationship"
     gedcom: "CHIL/FAMC with PEDI birth"
 
-  adoptive-parent-child:
+  adoptive_parent_child:
     label: "Adoptive Parent-Child"
     description: "Adoptive parent-child relationship"
     gedcom: "CHIL/FAMC with PEDI adopted"
 
-  foster-parent-child:
+  foster_parent_child:
     label: "Foster Parent-Child"
     description: "Foster parent-child relationship"
     gedcom: "CHIL/FAMC with PEDI foster"
@@ -33,7 +33,7 @@ relationship_types:
     description: "Brother or sister relationship"
     gedcom: "SIBL"
 
-  step-parent:
+  step_parent:
     label: "Step-Parent"
     description: "Step-parent through marriage"
   

@@ -139,7 +139,7 @@ relationship_types:
     description: "Legal or religious union of two people"
     gedcom: "MARR"
   
-  parent-child:
+  parent_child:
     label: "Parent-Child"
     description: "Biological, adoptive, or legal parent-child relationship"
     gedcom: "CHIL/FAMC"
@@ -594,7 +594,7 @@ Common relationship roles:
 - `spouse` - Marriage partner
 - `parent` - Parent in parent-child relationship
 - `child` - Child in parent-child relationship
-- `adoptive-parent`, `adopted-child` - Adoption roles
+- `adoptive_parent`, `adopted_child` - Adoption roles
 - `sibling` - Brother or sister
 
 ---
@@ -1321,7 +1321,7 @@ When adding additional types:
 
 ### Keep Vocabularies Consistent
 
-- Use consistent naming conventions (lowercase with hyphens)
+- Use consistent naming conventions (lowercase with underscores)
 - Group related types together
 - Add comments to explain complex types
 - Version vocabulary files alongside schema updates
@@ -1354,25 +1354,6 @@ event_types:
     color: "#4A90E2"
     requires_place: true
     requires_participants: true
-```
-
-### Hierarchical Types
-
-Create type hierarchies:
-
-```yaml
-event_types:
-  military:
-    label: "Military Service"
-    category: "lifecycle"
-
-  military.enlistment:
-    label: "Military Enlistment"
-    parent: "military"
-
-  military.discharge:
-    label: "Military Discharge"
-    parent: "military"
 ```
 
 ### Localization

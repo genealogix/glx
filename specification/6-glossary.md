@@ -128,9 +128,6 @@ Evidence that requires interpretation or additional information to support a con
 
 ## L
 
-### Living Status
-A field indicating whether a person is alive or deceased, used for privacy and research considerations.
-
 ### Locator
 A specific reference to a location within a source document, such as page number, entry number, film number, or URL.
 
@@ -255,7 +252,7 @@ Classification of original materials including vital_record, census, church_regi
 > **See Also:** [Source Types Vocabulary](4-entity-types/vocabularies#source-types-vocabulary)
 
 ### Structural Validation
-Checking that files are in correct directories, have proper extensions, and follow naming conventions.
+Checking that files are valid YAML, have proper entity type keys at the top level, and pass JSON Schema validation.
 
 ## T
 

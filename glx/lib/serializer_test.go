@@ -373,7 +373,7 @@ func TestSerializeMultiFile(t *testing.T) {
 		t.Errorf("Expected 1 event file, got %d", len(eventFiles))
 	}
 
-	// Verify content of a person file
+	// Verify content of a person file uses standard GLX structure
 	if len(personFiles) > 0 {
 		firstPersonPath := filepath.Join(personsDir, personFiles[0].Name())
 		personData, err := os.ReadFile(firstPersonPath)
@@ -381,24 +381,25 @@ func TestSerializeMultiFile(t *testing.T) {
 			t.Fatalf("Failed to read person file: %v", err)
 		}
 
-		// Parse and verify structure
-		var personWrapper EntityWithID[Person]
-		if err := yaml.Unmarshal(personData, &personWrapper); err != nil {
+		// Parse as GLXFile — should have persons collection key
+		var parsed GLXFile
+		if err := yaml.Unmarshal(personData, &parsed); err != nil {
 			t.Fatalf("Person file is not valid YAML: %v", err)
 		}
 
-		// Verify _id field is present
-		if personWrapper.ID == "" {
-			t.Error("Person file missing _id field")
+		if len(parsed.Persons) != 1 {
+			t.Errorf("Expected 1 person in file, got %d", len(parsed.Persons))
 		}
 
-		// Verify properties contain name
-		if personWrapper.Entity.Properties == nil {
-			t.Error("Person properties should not be nil")
+		// Verify the entity has properties
+		for _, person := range parsed.Persons {
+			if person.Properties == nil {
+				t.Error("Person properties should not be nil")
+			}
 		}
 	}
 
-	// Verify event file content
+	// Verify event file content uses standard GLX structure
 	if len(eventFiles) > 0 {
 		firstEventPath := filepath.Join(eventsDir, eventFiles[0].Name())
 		eventData, err := os.ReadFile(firstEventPath)
@@ -406,16 +407,19 @@ func TestSerializeMultiFile(t *testing.T) {
 			t.Fatalf("Failed to read event file: %v", err)
 		}
 
-		var eventWrapper EntityWithID[Event]
-		if err := yaml.Unmarshal(eventData, &eventWrapper); err != nil {
+		var parsed GLXFile
+		if err := yaml.Unmarshal(eventData, &parsed); err != nil {
 			t.Fatalf("Event file is not valid YAML: %v", err)
 		}
 
-		if eventWrapper.ID == "" {
-			t.Error("Event file missing _id field")
+		if len(parsed.Events) != 1 {
+			t.Errorf("Expected 1 event in file, got %d", len(parsed.Events))
 		}
-		if eventWrapper.Entity.Type != "birth" {
-			t.Errorf("Expected event type 'birth', got %q", eventWrapper.Entity.Type)
+
+		for _, event := range parsed.Events {
+			if event.Type != "birth" {
+				t.Errorf("Expected event type 'birth', got %q", event.Type)
+			}
 		}
 	}
 }
@@ -591,8 +595,9 @@ func TestRoundTripSingleFile(t *testing.T) {
 	}
 }
 
-func TestEntityWithID(t *testing.T) {
-	person := Person{
+func TestMultiFileEntityFormat(t *testing.T) {
+	// Verify the multi-file serializer produces standard GLX structure
+	person := &Person{
 		Properties: map[string]any{
 			"name": map[string]any{
 				"value": "John Doe",
@@ -604,9 +609,8 @@ func TestEntityWithID(t *testing.T) {
 		},
 	}
 
-	wrapper := EntityWithID[Person]{
-		ID:     "person-001",
-		Entity: person,
+	wrapper := map[string]map[string]*Person{
+		"persons": {"person-001": person},
 	}
 
 	// Marshal
@@ -619,19 +623,19 @@ func TestEntityWithID(t *testing.T) {
 		t.Fatal("Marshalled YAML is empty")
 	}
 
-	// Unmarshal and verify round-trip
-	var restored EntityWithID[Person]
+	// Unmarshal as GLXFile and verify round-trip
+	var restored GLXFile
 	if err := yaml.Unmarshal(yamlBytes, &restored); err != nil {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
 
-	// Check ID restored correctly
-	if restored.ID != wrapper.ID {
-		t.Errorf("Expected ID %q, got %q", wrapper.ID, restored.ID)
+	// Check entity was restored correctly
+	restoredPerson, ok := restored.Persons["person-001"]
+	if !ok {
+		t.Fatal("person-001 not found after round-trip")
 	}
 
-	// Check entity properties restored correctly
-	given, surname := ExtractNameFields(restored.Entity.Properties["name"])
+	given, surname := ExtractNameFields(restoredPerson.Properties["name"])
 	if given != "John" {
 		t.Errorf("Expected given name 'John', got %q", given)
 	}

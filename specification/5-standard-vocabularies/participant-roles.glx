@@ -65,13 +65,13 @@ participant_roles:
     applies_to:
       - relationship
   
-  adoptive-parent:
+  adoptive_parent:
     label: "Adoptive Parent"
     description: "Adoptive parent in adoption relationship"
     applies_to:
       - relationship
-  
-  adopted-child:
+
+  adopted_child:
     label: "Adopted Child"
     description: "Adopted child in adoption relationship"
     applies_to:

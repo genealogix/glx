@@ -172,7 +172,7 @@ source: source-parish-register
 
 ## Properties
 
-Media entities support vocabulary-defined properties through the `properties` field. Standard media properties are defined in `vocabularies/media-properties.glx`.
+Media entities support vocabulary-defined properties through the `properties` field. The following are standard properties from the default vocabulary; archives can define additional properties by extending the vocabulary.
 
 ### Standard Media Properties
 

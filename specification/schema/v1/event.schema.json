@@ -22,17 +22,8 @@
       "description": "Reference to Place where event occurred"
     },
     "date": {
-      "oneOf": [
-        { "type": "string" },
-        {
-          "type": "object",
-          "properties": {
-            "value": { "type": "string" },
-            "range_start": { "type": "string" },
-            "range_end": { "type": "string" }
-          }
-        }
-      ]
+      "type": "string",
+      "description": "Date or date range (e.g., '1850-01-15', 'FROM 1870 TO 1890')"
     },
     "participants": {
       "type": "array",
@@ -56,7 +47,7 @@
             "description": "Notes about participant's involvement"
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "notes": {

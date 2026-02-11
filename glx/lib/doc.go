@@ -39,10 +39,10 @@ Name fields are only populated from explicit GEDCOM substructure tags
 
 Relationships:
   - HUSB + WIFE → marriage
-  - CHIL + PEDI birth → biological-parent-child
-  - CHIL + PEDI adopted → adoptive-parent-child
-  - CHIL + PEDI foster → foster-parent-child
-  - CHIL (no PEDI) → parent-child
+  - CHIL + PEDI birth → biological_parent_child
+  - CHIL + PEDI adopted → adoptive_parent_child
+  - CHIL + PEDI foster → foster_parent_child
+  - CHIL (no PEDI) → parent_child
 
 Places: GEDCOM flat strings become hierarchical GLX entities linked by
 parent references. When PLAC is missing, hierarchy is built from ADDR

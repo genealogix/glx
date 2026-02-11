@@ -63,12 +63,6 @@ func NewSerializer(options *SerializerOptions) *DefaultSerializer {
 	}
 }
 
-// EntityWithID wraps an entity with its ID for multi-file serialization.
-// The _id field is embedded in the YAML to preserve entity IDs when using random filenames.
-type EntityWithID[T any] struct {
-	ID     string `yaml:"_id"`
-	Entity T      `yaml:",inline"`
-}
 
 // SerializeSingleFileBytes serializes a GLX archive to YAML bytes (single-file format).
 func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, error) {
@@ -139,35 +133,36 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 }
 
 // serializeEntitiesToMap serializes entities to the files map with random filenames.
+// Each entity file uses the standard GLX structure: {collectionKey: {entityID: entity}}
 func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entityType string, files map[string][]byte) error {
 	// Type switch to handle different entity map types
 	switch typedEntities := entities.(type) {
 	case map[string]*Person:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Event:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Relationship:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Place:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Source:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Citation:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Repository:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Media:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Assertion:
-		return serializeEntitiesWithID(typedEntities, dirName, entityType, files)
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	default:
 		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
 	}
 }
 
-// serializeEntitiesWithID serializes entities with embedded ID field to the files map.
-// Uses random filenames with collision detection.
-func serializeEntitiesWithID[T any](entities map[string]T, dirName, entityType string, files map[string][]byte) error {
+// serializeEntitiesWrapped serializes each entity as a standard GLX file:
+// {collectionKey: {entityID: entity}}. Uses random filenames with collision detection.
+func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType string, files map[string][]byte) error {
 	usedFilenames := make(map[string]bool)
 
 	for entityID, entity := range entities {
@@ -177,10 +172,9 @@ func serializeEntitiesWithID[T any](entities map[string]T, dirName, entityType s
 			return fmt.Errorf("failed to generate filename for %s: %w", entityID, err)
 		}
 
-		// Wrap entity with ID
-		wrapper := EntityWithID[T]{
-			ID:     entityID,
-			Entity: entity,
+		// Wrap as standard GLX structure: {collectionKey: {entityID: entity}}
+		wrapper := map[string]map[string]T{
+			dirName: {entityID: entity},
 		}
 
 		// Marshal to YAML
@@ -284,7 +278,8 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 	return glx, nil
 }
 
-// deserializeEntitiesFromMap loads entities with embedded _id field from the files map.
+// deserializeEntitiesFromMap loads entities from the files map.
+// Each file contains standard GLX structure: {collectionKey: {entityID: entity}}.
 func deserializeEntitiesFromMap[T any](files map[string][]byte, dirName string, entities map[string]T) error {
 	for path, data := range files {
 		// Check if this file belongs to the specified directory
@@ -298,13 +293,18 @@ func deserializeEntitiesFromMap[T any](files map[string][]byte, dirName string, 
 			continue
 		}
 
-		// Unmarshal entity
-		var wrapper EntityWithID[T]
+		// Unmarshal as {collectionKey: {entityID: entity}}
+		var wrapper map[string]map[string]T
 		if err := yaml.Unmarshal(data, &wrapper); err != nil {
 			return fmt.Errorf("failed to unmarshal %s: %w", path, err)
 		}
 
-		entities[wrapper.ID] = wrapper.Entity
+		// Extract entities from the collection key
+		if collection, ok := wrapper[dirName]; ok {
+			for id, entity := range collection {
+				entities[id] = entity
+			}
+		}
 	}
 
 	return nil

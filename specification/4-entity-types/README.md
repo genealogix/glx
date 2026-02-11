@@ -68,7 +68,7 @@ Represents digital or physical media objects associated with genealogical entiti
 
 ```
 Person
-  ├── has many Events (birth, marriage, immigration, etc.)
+  ├── participates in Events (birth, marriage, immigration, etc.)
   ├── has many Properties
   ├── has many Assertions (about properties)
   ├── links to media (via Media entity)

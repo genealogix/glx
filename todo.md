@@ -34,6 +34,7 @@ Data that is parsed but silently dropped or not stored.
 
 Design decisions that affect the spec and should be resolved before 1.0.
 
+- **Source `description` GEDCOM mapping ambiguity**: The `description` field on Source maps to both GEDCOM SOUR.TEXT (text from source) and SOUR.NOTE (general note). These are semantically different — TEXT is an excerpt from the original, NOTE is researcher commentary. Consider splitting into separate fields or documenting the merge.
 - **Event participant requirement**: Consider relaxing — historical events (wars, famines, natural disasters) may be relevant to genealogy without specific participants.
 - **Gender/sex controlled vocabularies**: Should these be formalized?
 - **Property field data types**: Should property fields carry type information?

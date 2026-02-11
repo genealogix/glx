@@ -102,7 +102,7 @@ relationships:
 ```yaml
 relationships:
   rel-parent-alice:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-mother
         role: parent
@@ -116,7 +116,7 @@ relationships:
 ```yaml
 relationships:
   rel-parent-bob:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-mother
         role: parent

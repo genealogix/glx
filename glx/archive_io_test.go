@@ -192,7 +192,7 @@ persons:
 					},
 					Relationships: map[string]*lib.Relationship{
 						"rel-1": {
-							Type: "parent-child",
+							Type: "parent_child",
 							Participants: []lib.Participant{
 								{Person: "person-1", Role: "child"},
 								{Person: "person-2", Role: "parent"},
@@ -595,7 +595,7 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 					},
 					Relationships: map[string]*lib.Relationship{
 						"r1": {
-							Type: "parent-child",
+							Type: "parent_child",
 							Participants: []lib.Participant{
 								{Person: "p1"},
 								{Person: "p2"},

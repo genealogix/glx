@@ -52,7 +52,7 @@ relationships:
 
 ### Properties
 
-Relationship properties capture additional details that don't fit into the standard structural fields. Properties are defined in the `relationship_properties` vocabulary.
+Relationship properties capture additional details that don't fit into the standard structural fields. The following are standard properties from the default vocabulary; archives can define additional properties by extending the vocabulary.
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -120,7 +120,7 @@ Link them using `start_event` to reference the ceremony. Use both when you have 
 ```yaml
 relationships:
   rel-parents-alice:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-john-smith
         role: parent
@@ -147,14 +147,14 @@ events:
 # The relationship connects parent(s) and child
 relationships:
   rel-adoptive-family-sarah:
-    type: adoptive-parent-child
+    type: adoptive_parent_child
     participants:
       - person: person-james-smith
-        role: adoptive-parent
+        role: adoptive_parent
       - person: person-elizabeth-smith
-        role: adoptive-parent
+        role: adoptive_parent
       - person: person-sarah-jones
-        role: adopted-child
+        role: adopted_child
     start_event: event-adoption-1890
     properties:
       description: "Sarah legally adopted by James and Elizabeth Smith"
@@ -165,7 +165,7 @@ relationships:
 Similar to how marriage works in GLX:
 
 - **Event type `adoption`** ([Event Entity](event)): The legal adoption proceeding - records the date, place, court, and other details of when the adoption was finalized
-- **Relationship type `adoptive-parent-child`** (this entity): The ongoing parent-child relationship - connects adoptive parent(s) to the adopted child
+- **Relationship type `adoptive_parent_child`** (this entity): The ongoing parent-child relationship - connects adoptive parent(s) to the adopted child
 
 Link them using `start_event` to reference the adoption event. Use both when you have details about when the adoption occurred; use just the relationship if you only know the relationship exists without specifics.
 
@@ -277,21 +277,21 @@ Relationships map to GEDCOM family and individual structures:
 | GLX Field | GEDCOM Tag | Notes |
 |-----------|------------|-------|
 | `marriage` | FAM record | Family with MARR event |
-| `parent-child` | FAM.CHIL + INDI.FAMC | Child link to family (no PEDI or PEDI unknown) |
-| `biological-parent-child` | FAM.CHIL + INDI.FAMC with PEDI birth | Biological child relationship |
-| `adoptive-parent-child` | FAM.CHIL + INDI.FAMC with PEDI adopted | Legally adopted child (use `adoption` event for ADOP tag) |
-| `foster-parent-child` | FAM.CHIL + INDI.FAMC with PEDI foster | Foster care relationship |
+| `parent_child` | FAM.CHIL + INDI.FAMC | Child link to family (no PEDI or PEDI unknown) |
+| `biological_parent_child` | FAM.CHIL + INDI.FAMC with PEDI birth | Biological child relationship |
+| `adoptive_parent_child` | FAM.CHIL + INDI.FAMC with PEDI adopted | Legally adopted child (use `adoption` event for ADOP tag) |
+| `foster_parent_child` | FAM.CHIL + INDI.FAMC with PEDI foster | Foster care relationship |
 | `sibling` | Shared FAM.CHIL | Siblings share parents |
 
 **PEDI (Pedigree Linkage)**:
 
 The PEDI tag in GEDCOM 5.5.1 specifies the type of parent-child relationship. During import, PEDI values are mapped to specific relationship types:
 
-- `PEDI birth` → `biological-parent-child`
-- `PEDI adopted` → `adoptive-parent-child`
-- `PEDI foster` → `foster-parent-child`
-- `PEDI unknown` or missing → `parent-child` (generic)
-- `PEDI sealed` (LDS) → `parent-child` (not specifically modeled)
+- `PEDI birth` → `biological_parent_child`
+- `PEDI adopted` → `adoptive_parent_child`
+- `PEDI foster` → `foster_parent_child`
+- `PEDI unknown` or missing → `parent_child` (generic)
+- `PEDI sealed` (LDS) → `parent_child` (not specifically modeled)
 
 This allows GLX to preserve the distinction between biological, adoptive, and foster relationships that is critical for accurate genealogical research.
 

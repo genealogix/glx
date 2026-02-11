@@ -74,7 +74,7 @@ places:
 
 ### Properties
 
-Place properties allow capturing historical information that doesn't fit into the standard structural fields. Properties are defined in the `place_properties` vocabulary.
+Place properties allow capturing historical information that doesn't fit into the standard structural fields. The following are standard properties from the default vocabulary; archives can define additional properties by extending the vocabulary.
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -232,7 +232,7 @@ places/
 
 - Place hierarchy must be acyclic (no circular parent references)
 - Coordinates, if present, must be valid WGS84 values
-- Parent place must exist before referencing it
+- Parent place must reference an existing Place entity
 - Type must be from the [place types vocabulary](vocabularies#place-types-vocabulary)
 
 ## Schema Reference

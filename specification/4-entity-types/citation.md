@@ -59,7 +59,7 @@ One source can have many citations referencing different pages or sections.
 
 ### Properties
 
-Citation properties are defined in the `citation_properties` vocabulary. Standard properties include:
+The following are standard properties from the default vocabulary; archives can define additional properties by extending the vocabulary:
 
 | Property | Type | Description |
 |----------|------|-------------|

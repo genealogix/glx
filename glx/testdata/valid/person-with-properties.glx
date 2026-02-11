@@ -95,7 +95,7 @@ persons:
       gender: "female"
       born_on: "1855-03-20"
       born_at: "place-london"
-      # No died_on, so living status implied as true
+      # No died_on — person is implied to be living
     notes: "Additional research needed"
 
 

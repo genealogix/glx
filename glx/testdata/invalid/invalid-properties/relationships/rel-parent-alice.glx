@@ -1,6 +1,6 @@
 relationships:
   rel-parent-alice:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-father
         role: parent

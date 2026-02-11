@@ -227,7 +227,7 @@ The multi-file format organizes entities into separate directories:
 - assertions/ - One file per assertion (assertion-{id}.glx)
 - vocabularies/ - Standard vocabulary definitions
 
-Each entity file includes an _id field to preserve the entity ID.`,
+Each entity file uses standard GLX structure with the entity ID as the map key.`,
 	Example: `  # Split an archive
   glx split family.glx family-archive
 
@@ -276,7 +276,7 @@ The multi-file structure should contain:
 - media/ - Media entity files
 - assertions/ - Assertion entity files
 
-Entity IDs are restored from the _id field in each file.`,
+Entity IDs are read from the map key in each file.`,
 	Example: `  # Join an archive
   glx join family-archive family.glx
 

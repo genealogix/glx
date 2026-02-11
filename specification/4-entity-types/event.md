@@ -169,7 +169,7 @@ events/
 
 Most events map directly to GEDCOM tags:
 
-| GLX Field | GEDCOM Tag | Notes |
+| GLX Event Type | GEDCOM Tag | Notes |
 |-----------|------------|-------|
 | `birth` | INDI.BIRT | Individual birth |
 | `death` | INDI.DEAT | Individual death |

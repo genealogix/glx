@@ -1,6 +1,6 @@
 relationships:
   rel-john-jane:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-john-smith-1850
         role: parent
@@ -9,7 +9,7 @@ relationships:
     description: "John Smith is father of Jane Smith"
   
   rel-mary-jane:
-    type: parent-child
+    type: parent_child
     participants:
       - person: person-mary-brown-1852
         role: parent

@@ -76,17 +76,17 @@ GENEALOGIX supports various repository types:
 
 ### Properties
 
-Contact information and access details are stored in the `properties` field using the repository properties vocabulary:
+Contact information and access details are stored in the `properties` field. The following are standard properties from the default vocabulary; archives can define additional properties by extending the vocabulary:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `phones` | string | Phone number(s) for the repository |
-| `emails` | string | Email address(es) for the repository |
+| `phones` | string[] | Phone number(s) for the repository |
+| `emails` | string[] | Email address(es) for the repository |
 | `fax` | string | Fax number |
 | `access_hours` | string | Hours of operation/access |
 | `access_restrictions` | string | Any restrictions on access |
-| `holding_types` | string | Types of materials held |
-| `external_ids` | string | External identifiers (FamilySearch, WikiTree, etc.) |
+| `holding_types` | string[] | Types of materials held |
+| `external_ids` | string[] | External identifiers (FamilySearch, WikiTree, etc.) |
 
 **See [Vocabularies - Repository Properties](vocabularies#repository-properties-vocabulary) for the full vocabulary definition.**
 

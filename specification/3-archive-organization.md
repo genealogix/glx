@@ -316,18 +316,7 @@ fmt.Sprintf("%x", b)
 
 ## Vocabularies Directory
 
-Every GENEALOGIX archive should include a `vocabularies/` directory containing controlled vocabulary definitions. These files define valid types for entities:
-
-```
-vocabularies/
-├── relationship-types.glx    # Marriage, parent-child, adoption, etc.
-├── event-types.glx           # Birth, death, baptism, occupation, etc.
-├── place-types.glx           # Country, city, parish, etc.
-├── repository-types.glx      # Archive, library, church, etc.
-├── participant-roles.glx     # Principal, witness, officiant, etc.
-├── media-types.glx           # Photo, document, audio, etc.
-└── confidence-levels.glx     # High, medium, low, disputed
-```
+Every GENEALOGIX archive should include a `vocabularies/` directory containing controlled vocabulary definitions. These files define valid types and properties for entities.
 
 ### Vocabulary Files
 
@@ -340,7 +329,7 @@ relationship_types:
     label: "Marriage"
     description: "Legal or religious union of two people"
     gedcom: "MARR"
-  parent-child:
+  parent_child:
     label: "Parent-Child"
     description: "Biological, adoptive, or legal parent-child relationship"
     gedcom: "CHIL/FAMC"

@@ -217,7 +217,7 @@ media:
 - Required: No
 - Description: Vocabulary-defined properties for additional source metadata
 
-Standard source properties:
+The following are standard properties from the default vocabulary; archives can define additional properties by extending the vocabulary:
 
 | Property | Type | Description |
 |----------|------|-------------|
