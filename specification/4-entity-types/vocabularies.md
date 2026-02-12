@@ -1125,7 +1125,7 @@ properties:
       date: "FROM 1920 TO 1950"
 ```
 
-See [Core Concepts - Data Types - Temporal Values](../2-core-concepts#temporal-values) for complete documentation.
+See [Core Concepts - Data Types - Temporal Properties](../2-core-concepts#temporal-properties) for complete documentation.
 
 ### Adding Additional Properties
 
