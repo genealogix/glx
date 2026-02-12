@@ -4,10 +4,25 @@ This glossary defines key terms used in the GENEALOGIX specification.
 
 ## A
 
+### Approximate Date
+A date with uncertainty or imprecision, expressed using keywords like ABT (about), BEF (before), AFT (after), or BET (between). Part of GENEALOGIX's fuzzy date support.
+
+> **See Also:** [Date Format Standard](2-core-concepts#date-format-standard)
+
 ### Archive
 A complete GENEALOGIX repository containing family history data organized in a Git repository with standardized directory structure and validation.
 
 > **See Also:** [Archive Organization](3-archive-organization)
+
+### Archive-Level Validation
+Validation performed across all files in an archive, checking for duplicate entity IDs, broken cross-references, and undefined vocabulary types. Generates both errors (hard failures) and warnings (soft failures).
+
+> **See Also:** [Validation Levels](3-archive-organization#validation-levels)
+
+### Archive-Owned Vocabularies
+Controlled vocabulary definitions stored in each archive's `vocabularies/` directory, allowing archives to customize and extend type systems while maintaining validation and consistency.
+
+> **See Also:** [Archive-Owned Vocabularies](2-core-concepts#archive-owned-vocabularies)
 
 ### Assertion
 A discrete, evidence-backed claim about a person, event, place, or relationship. Assertions separate conclusions from evidence, allowing multiple claims about the same fact with different supporting evidence.
@@ -15,9 +30,6 @@ A discrete, evidence-backed claim about a person, event, place, or relationship.
 > **See Also:** [Assertion Entity](4-entity-types/assertion)
 
 ## C
-
-### Chain of Custody
-The documented path that evidence has taken from creation to current location, ensuring authenticity and reliability.
 
 ### Citation
 A specific reference to a location within a source document, including locator information and optional transcription. Citations link evidence to assertions.
@@ -35,7 +47,17 @@ An assessment of how certain a conclusion is based on available evidence. Common
 ### Corroboration
 Supporting evidence from multiple independent sources that agree on a conclusion.
 
+### Cross-Reference
+A reference from one entity to another entity in the archive (e.g., event referencing a place, assertion referencing a citation). Cross-references are validated to ensure they point to existing entities.
+
+> **See Also:** [Reference Integrity](#reference-integrity)
+
 ## D
+
+### Date Keywords
+Keywords used in GENEALOGIX date formats to express uncertainty or ranges: ABT (about), BEF (before), AFT (after), BET (between), FROM, TO, CAL (calculated), INT (interpreted).
+
+> **See Also:** [Date Format Standard](2-core-concepts#date-format-standard)
 
 ### Derivative Evidence
 Copies, transcriptions, or compilations of original evidence.
@@ -56,6 +78,11 @@ A typed record in a GENEALOGIX archive representing a person, event, place, rela
 
 > **See Also:** [Entity Types](4-entity-types/)
 
+### Entity ID
+A unique identifier for each entity, used as the YAML map key. Format: 1-64 alphanumeric characters with hyphens. Can be descriptive (john-smith-1850) or random (a1b2c3d4).
+
+> **See Also:** [ID (Identifier)](#id-identifier), [ID Format Standards](3-archive-organization#id-format-standards)
+
 ### Event
 A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation and residence are represented as temporal properties on Person entities, not as events.
 
@@ -75,7 +102,7 @@ The complete path from physical repository through source and citation to geneal
 The process of assessing source quality, analyzing content, and determining reliability for genealogical conclusions.
 
 ### Evidence Hierarchy
-The four dimensions used to evaluate evidence quality: primary vs secondary, direct vs indirect, original vs derivative, and information vs evidence.
+Classification system for evaluating evidence quality, including dimensions such as primary vs secondary, direct vs indirect, and original vs derivative evidence.
 
 ### Evidence Integration
 The process of combining evidence from multiple sources and resolving conflicts through Git merge operations.
@@ -84,6 +111,21 @@ The process of combining evidence from multiple sources and resolving conflicts 
 
 ### Feature Branch
 A Git branch used for developing new features or researching specific topics in isolation.
+
+### Fields
+Structured components within properties that break down complex values into named parts (e.g., name property has fields: given, surname, prefix, suffix).
+
+> **See Also:** [Structured Properties](#structured-property)
+
+### File-Level Validation
+Validation performed on individual GLX files, checking for valid YAML syntax, proper entity type keys, schema compliance, and properly formatted entity IDs.
+
+> **See Also:** [Validation Levels](3-archive-organization#validation-levels)
+
+### Fuzzy Date
+A date with imprecision or uncertainty, such as "about 1850" or "between 1880 and 1890". GENEALOGIX supports fuzzy dates through date keywords.
+
+> **See Also:** [Date Format Standard](2-core-concepts#date-format-standard), [Approximate Date](#approximate-date)
 
 ## G
 
@@ -94,15 +136,14 @@ An open standard for version-controlled family archives using Git-native workflo
 The process of using Git version control for collaborative genealogy research, including branching strategies, merge conflict resolution, and evidence integration.
 
 ### .glx Extension
-The file extension used for all GENEALOGIX entity files. Pronounced "gl-ex" (genealogical exchange).
-
-### GRO
-General Register Office (UK birth, marriage, death records).
+The file extension used for all GENEALOGIX entity files.
 
 ## H
 
-### HO107
-UK Census series identifier (1841-1911 census returns).
+### Hard Failure
+A validation error that must be fixed before the archive is considered valid. Examples include broken entity references, duplicate IDs, and undefined vocabulary types.
+
+> **See Also:** [Archive-Level Validation](#archive-level-validation)
 
 ## I
 
@@ -118,10 +159,7 @@ A unique identifier for each entity, used as the map key in YAML. Format: 1-64 a
 
 > **Note:** Examples use prefixes (e.g., `person-`) for readability. Prefixes are not required.
 
-> **See Also:** [ID Format Standards](3-archive-organization#id-format-standards)
-
-### ID Pattern
-Entity IDs are alphanumeric with hyphens, 1-64 characters.
+> **See Also:** [ID Format Standards](3-archive-organization#id-format-standards), [Entity ID](#entity-id)
 
 ### Indirect Evidence
 Evidence that requires interpretation or additional information to support a conclusion.
@@ -133,6 +171,11 @@ A specific reference to a location within a source document, such as page number
 
 ## M
 
+### Map Key
+The YAML map key used to identify entities. In GENEALOGIX, entity IDs serve as map keys in the entity type collections (persons, events, etc.).
+
+> **See Also:** [Entity ID](#entity-id)
+
 ### Media
 Supporting files such as photos, documents, audio recordings, or videos that provide evidence or context for genealogical assertions.
 
@@ -140,6 +183,16 @@ Supporting files such as photos, documents, audio recordings, or videos that pro
 
 ### MIME Type
 Media type identifier (e.g., "image/jpeg", "application/pdf") that specifies the format of a media file.
+
+### Multi-File Archive
+An archive organization strategy where each entity is stored in a separate file, recommended for collaborative projects due to better Git diff granularity and merge conflict resolution.
+
+> **See Also:** [One Entity Per File](3-archive-organization#one-entity-per-file-recommended-for-collaboration)
+
+### Multi-Value Property
+A property that can have multiple values, either as a simple list or as temporal values with associated dates (e.g., multiple occupations or residences over time).
+
+> **See Also:** [Temporal Property](#temporal-property)
 
 ## O
 
@@ -171,19 +224,18 @@ Classification of geographic locations including country, county, city, parish, 
 
 > **See Also:** [Place Types Vocabulary](4-entity-types/vocabularies#place-types-vocabulary)
 
-### Preponderance of Evidence
-When conflicting evidence exists, the conclusion supported by the majority of higher-quality sources.
-
 ### Primary Evidence
 Information created at the time of the event by someone with direct knowledge (birth certificates, contemporary letters).
-
-### Primary Name
-The preferred or most commonly used name for a person in genealogical records.
 
 ### Property
 A vocabulary-defined attribute of an entity (e.g., `born_on`, `occupation`, `residence`). Properties are defined in property vocabularies and used in the `properties` field of entities.
 
 > **See Also:** [Property Vocabularies](4-entity-types/vocabularies#property-vocabularies)
+
+### Property Vocabulary
+A special vocabulary type that defines available properties for each entity type, including property names, data types, whether they're temporal, and whether they have structured fields.
+
+> **See Also:** [Property Vocabularies](2-core-concepts#property-vocabularies)
 
 ### Provenance
 The complete history of how information came to be known, including source attribution, chain of custody, author identification, and research context.
@@ -197,6 +249,11 @@ GEDCOM quality indicator (0-3 scale). When importing GEDCOM files, QUAY values a
 
 ### Reference Integrity
 The requirement that all entity references (person IDs, place IDs, etc.) must point to existing entities.
+
+### Reference Type
+A property value type that indicates the value is an entity ID reference rather than a literal value. Reference types specify which entity collection the reference points to (persons, places, events, etc.).
+
+> **See Also:** [Reference Types](2-core-concepts#reference-types)
 
 ### Relationship
 A connection between people such as parent-child, marriage, adoption, or other family/social connections.
@@ -232,11 +289,18 @@ JSON Schema definitions that specify the structure, validation rules, and data t
 ### Schema Compliance
 Conformance to JSON Schema definitions that specify valid structure and data types for each entity.
 
-### Subject
-The entity (person, event, place, etc.) that an assertion makes a claim about.
-
 ### Secondary Evidence
 Information created later, often compiled from primary sources (census records, published indexes).
+
+### Single-File Archive
+An archive organization strategy where all entities are stored in a single GLX file, recommended for personal research and small family trees.
+
+> **See Also:** [Single File Archive](3-archive-organization#single-file-archive)
+
+### Soft Failure
+A validation warning that indicates a potential issue but doesn't prevent the archive from being valid. Examples include unknown properties not defined in property vocabularies.
+
+> **See Also:** [Archive-Level Validation](#archive-level-validation)
 
 ### Source
 An original document, record, publication, or material containing genealogical information.
@@ -254,7 +318,20 @@ Classification of original materials including vital_record, census, church_regi
 ### Structural Validation
 Checking that files are valid YAML, have proper entity type keys at the top level, and pass JSON Schema validation.
 
+### Structured Property
+A property with structured fields that break down complex values into named components. The `value` field preserves the original form while `fields` provide structured access.
+
+> **See Also:** [Structured Properties](2-core-concepts#structured-properties)
+
+### Subject
+In assertions, the typed reference to the entity the assertion is about. The subject field specifies both the entity type and entity ID.
+
+> **See Also:** [Assertion Entity](4-entity-types/assertion)
+
 ## T
+
+### Typed Reference
+A reference that specifies both the entity type and entity ID, used in assertion subjects (e.g., `person: person-john-smith` rather than just `person-john-smith`).
 
 ### Temporal Property
 A property that can change over time (e.g., residence, occupation, name). Temporal properties support date ranges and multiple values representing changes over a person's life.
@@ -269,6 +346,11 @@ The process of checking GENEALOGIX files for syntax correctness, schema complian
 
 ### Value
 The specific data or content of a property in an assertion (e.g., "1850-01-15" for a birth date, "blacksmith" for an occupation).
+
+### Value Type
+The data type specification for a property value: string, date, integer, boolean, or a reference type pointing to entities.
+
+> **See Also:** [Data Types](2-core-concepts#data-types)
 
 ### Vocabularies
 Controlled lists of valid types and categories used throughout a GENEALOGIX archive, stored in the `vocabularies/` directory.

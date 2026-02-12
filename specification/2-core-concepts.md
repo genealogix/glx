@@ -159,19 +159,7 @@ The `glx validate` command enforces vocabulary consistency with different severi
 
 This policy balances strictness (broken references are errors) with flexibility (unknown properties generate warnings, not errors).
 
-### No Limits, No Boundaries
-
-**Traditional genealogy formats say**: "You can only use these predefined types"
-
-**GENEALOGIX says**: "Define whatever types your research needs"
-
-This makes GLX suitable for:
-- Traditional family history
-- Local and community history
-- Biographical research
-- Prosopography (collective biography)
-- Historical demography
-- Any research involving people, events, and relationships
+This flexibility makes GLX suitable for traditional family history, local and community history, biographical research, prosopography (collective biography), historical demography, and any research involving people, events, and relationships.
 
 ## Entity Relationships
 
@@ -201,15 +189,7 @@ Media → (any entity)
 
 ### Validation Dependencies
 
-These relationships create validation requirements that ensure archive integrity:
-
-- Citations must reference existing sources
-- Assertions must reference existing citations, sources, or media
-- Events must reference existing places (if place specified)
-- Participants must reference existing persons
-- Relationships must reference existing persons
-
-GENEALOGIX enforces referential integrity through the `glx validate` command, preventing broken references and maintaining data consistency.
+These relationships create validation requirements that ensure archive integrity. The `glx validate` command enforces referential integrity (citations → sources, assertions → citations/sources/media, events → places, participants → persons, relationships → persons). See [Validation Behavior](#validation-behavior) for complete validation policy.
 
 ## Data Types
 
@@ -252,19 +232,19 @@ primary_source: false
 
 #### Date
 
-A calendar date or fuzzy date specification. GENEALOGIX uses ISO 8601-style dates (YYYY-MM-DD) combined with FamilySearch-inspired keywords for fuzzy dates.
+A calendar date or fuzzy date specification. GENEALOGIX uses YYYY-MM-DD format for precise dates combined with FamilySearch-inspired keywords for fuzzy dates.
 
 ### Date Format Standard
 
 GENEALOGIX uses a **hybrid date format** combining:
-- **ISO 8601-style dates** for precise calendar dates
+- **YYYY-MM-DD dates** for precise calendar dates
 - **FamilySearch-inspired keywords** for approximate, ranged, and calculated dates
 
 This format supports both precise dates and fuzzy/approximate dates commonly encountered in genealogical research.
 
 #### Format Specification
 
-**Simple Dates (ISO 8601-style):**
+**Simple Dates:**
 - `YYYY` - Year only (4 digits required, e.g., `1850`, `2020`, `0047`)
 - `YYYY-MM` - Year and month (e.g., `1850-03`, `2020-12`)
 - `YYYY-MM-DD` - Full date (e.g., `1850-03-15`, `2020-12-31`)
@@ -288,9 +268,11 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
 
 1. **Year Format:** Years must be exactly 4 digits. Pad with zeros for years before 1000 CE (e.g., `0047` for year 47, `0800` for year 800).
 
-2. **Keywords vs Full Format:** GENEALOGIX uses **keywords inspired by** the FamilySearch Normalized Date Format, but the underlying date representation uses ISO 8601-style dates (YYYY-MM-DD), not the full FamilySearch format.
+2. **Date Format:** GENEALOGIX uses YYYY-MM-DD format (e.g., `1850-03-15` for March 15, 1850). This is the international standard for date representation, chosen for its clarity and sortability.
 
-3. **Keyword Combinations:** Keywords can be combined with any simple date format (e.g., `ABT 1850`, `ABT 1850-03`, `ABT 1850-03-15`).
+3. **Keywords vs Full Format:** GENEALOGIX uses **keywords inspired by** the FamilySearch Normalized Date Format, but the underlying date representation uses YYYY-MM-DD, not the full FamilySearch format.
+
+4. **Keyword Combinations:** Keywords can be combined with any simple date format (e.g., `ABT 1850`, `ABT 1850-03`, `ABT 1850-03-15`).
 
 #### Date Examples
 
@@ -355,52 +337,6 @@ properties:
       date: "FROM 1900 TO 1920"
 ```
 
-### Temporal Values
-
-Properties marked as `temporal: true` in their property definition can represent values that change over time. Such properties support two formats:
-
-#### Single Value (Non-Temporal)
-
-For properties that represent a state at a point in time:
-
-```yaml
-properties:
-  gender: "male"
-  born_on: "1850-01-15"
-```
-
-#### Temporal History (Multiple Values with Dates)
-
-For properties that capture how a value changed over time, represented as a list of objects:
-
-```yaml
-properties:
-  residence:
-    - value: "place-leeds"
-      date: "FROM 1900 TO 1920"
-    - value: "place-london"
-      date: "FROM 1920 TO 1950"
-  occupation:
-    - value: "blacksmith"
-      date: "1880"
-    - value: "farmer"
-      date: "FROM 1885 TO 1920"
-```
-
-Each entry in a temporal property must include:
-- `value` - The actual property value, conforming to the property's `value_type` or `reference_type`
-- `date` - Optional date string (if omitted, the entry is undated)
-
-#### Temporal Value Validation
-
-When validating temporal properties:
-1. If the property definition has `temporal: true`, the value can be either:
-   - A single value (primitive or reference)
-   - A list of temporal value objects
-2. Each temporal value object must have a valid `value` field
-3. The `date` field is optional but recommended for temporal properties
-4. All values are validated according to the property's `value_type` or `reference_type`
-
 ## Properties: Recording Conclusions
 
 ### What Are Properties?
@@ -434,27 +370,20 @@ All properties are defined in property vocabularies (see Archive-Owned Vocabular
 
 ### Properties Can Exist Without Assertions
 
-**Critical point**: Properties can be set without assertions. This supports rapid data entry:
-
-```yaml
-# Quick data entry - just properties
-persons:
-  person-mary-jones:
-    properties:
-      name:
-        value: "Mary Jones"
-        fields:
-          given: "Mary"
-          surname: "Jones"
-      born_on: "1852-03-10"
-    notes: "Initial data entry from family records"
-```
-
-This person record is valid even without assertions documenting the evidence for these properties. You can add assertions later as you research sources.
+Properties can be set without assertions, supporting rapid data entry. You can add assertions later as you research sources. See [How Properties and Assertions Work Together](#how-properties-and-assertions-work-together) for examples.
 
 ### Temporal Properties
 
-Properties marked as `temporal: true` in vocabularies can change over time:
+Properties marked as `temporal: true` in vocabularies can represent values that change over time. Temporal properties support two formats:
+
+**Single Value** (for properties that don't change or represent a point in time):
+```yaml
+properties:
+  gender: "male"
+  born_on: "1850-01-15"
+```
+
+**Temporal History** (for properties that change over time):
 
 ```yaml
 properties:
@@ -470,10 +399,22 @@ properties:
       date: "FROM 1900 TO 1920"
 ```
 
+Each temporal entry includes:
+- `value` - The property value, conforming to the property's `value_type` or `reference_type`
+- `date` - Optional date string (if omitted, the entry is undated)
+
 ### Structured Properties
 
-Properties can have structured fields for complex data:
+Properties can have structured fields for complex data. There are three usage patterns:
 
+**1. Value only** (simple properties):
+```yaml
+properties:
+  occupation: "blacksmith"
+  religion: "Church of England"
+```
+
+**2. Value + Fields** (preserve original while providing structure):
 ```yaml
 properties:
   name:
@@ -485,7 +426,34 @@ properties:
       suffix: "Jr."
 ```
 
-The `value` field preserves the original recorded form, while `fields` provide structured access to components.
+The `value` field preserves the original recorded form, while `fields` provide structured access to components. This is the recommended approach for most structured properties.
+
+**3. Fields only** (no original form to preserve):
+
+> **TODO:** Define behavior for fields-only properties (e.g., GEDCOM CROP coordinates where there's no natural "value" representation). Should fields-only be allowed, or should a computed value be required?
+
+### Notes Field
+
+All entities support an optional `notes` field for free-form text:
+
+```yaml
+persons:
+  person-john-smith:
+    properties:
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
+    notes: |
+      Research notes about this person.
+      Questions for future investigation.
+```
+
+Use notes to:
+- Document research decisions and uncertainties
+- Record questions for future investigation
+- Provide context not captured elsewhere
 
 ### How Properties Complement Assertions
 
@@ -669,36 +637,30 @@ Repository → Source → Citation → Assertion → Property
                                  Property   Entity
 ```
 
-Each level provides context and traceability for the research:
+Each level provides context and traceability for research. Here's a complete example showing all links in the chain:
 
-**1. Repository** - Physical or digital institution holding sources
 ```yaml
+# 1. Repository - Physical institution
 repositories:
   repository-gro:
     name: General Register Office
     address: "London, England"
-```
 
-**2. Source** - Original document, record, or material
-```yaml
+# 2. Source - Original document
 sources:
   source-birth-register:
     title: England Birth Register 1850
     repository: repository-gro
-```
 
-**3. Citation** - Specific reference within the source
-```yaml
+# 3. Citation - Specific reference
 citations:
   citation-john-birth:
     source: source-birth-register
     properties:
       locator: "Volume 23, Page 145, Entry 23"
       text_from_source: "John Smith, born 15 January 1850, Leeds"
-```
 
-**4. Assertion** - Evidence-based conclusion
-```yaml
+# 4. Assertion - Evidence-based conclusion
 assertions:
   assertion-john-born:
     subject:
@@ -707,19 +669,17 @@ assertions:
     value: "1850-01-15"
     citations: [citation-john-birth]
     confidence: high
-```
 
-**5. Property** - Concluded value on entity
-```yaml
+# 5. Property - Concluded value
 persons:
   person-john-smith:
     properties:
       born_on: "1850-01-15"
 ```
 
-### Source Attribution
+### Multiple Citations and Corroboration
 
-Every assertion must reference specific citations, sources, or media, creating complete provenance:
+Assertions can reference multiple citations, showing corroboration from independent sources:
 
 ```yaml
 assertions:
@@ -735,11 +695,9 @@ assertions:
     confidence: high
 ```
 
-This links the conclusion ("blacksmith") directly to three independent sources, enabling readers to verify the evidence.
+### Research Notes
 
-### Research Notes and Analysis
-
-Structured fields document research decisions:
+Use the `notes` field to document research decisions, conflicting evidence, and uncertainties:
 
 ```yaml
 assertions:
@@ -760,29 +718,6 @@ assertions:
       - citation-birth-cert
       - citation-baptism-record
 ```
-
-### Media Documentation
-
-Media entities (photographs, scans, audio) can document sources:
-
-```yaml
-# Media documenting the source
-media:
-  media-birth-cert-scan:
-    uri: "file:///media/birth-certificates/john-smith-1850.jpg"
-    type: document
-    title: "Birth Certificate Scan - John Smith"
-
-# Citation references the media
-citations:
-  citation-birth-cert:
-    source: source-gro-register
-    media: [media-birth-cert-scan]
-    properties:
-      locator: "Certificate 1850-LEEDS-00145"
-```
-
-Media is not required but highly recommended for preservation and verification.
 
 
 ## Collaboration
