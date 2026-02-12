@@ -46,11 +46,6 @@ Version 0.0.0-beta.3
 6. [Glossary](6-glossary)
    - Key terms and definitions
 
-## Normative References
-
-This specification uses RFC 2119 keywords (MUST, SHOULD, MAY) for
-requirement levels.
-
 ## Specification Status
 
 This specification is under active development.
