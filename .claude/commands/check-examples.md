@@ -32,11 +32,12 @@ Perform a comprehensive review of all example archives using both:
 
 ```
 docs/examples/
-├── minimal/              # Bare minimum valid archive
-├── basic-family/         # Simple family relationships
-├── complete-family/      # Full-featured example with all entity types
-├── single-file/          # Single-file archive format
-├── temporal-properties/  # Temporal property demonstrations
+├── minimal/                # Bare minimum valid archive
+├── basic-family/           # Simple family relationships
+├── complete-family/        # Full-featured example with all entity types
+├── single-file/            # Single-file archive format
+├── assertion-workflow/     # Assertion workflow demonstration
+├── temporal-properties/    # Temporal property demonstrations
 └── participant-assertions/ # Assertion participant patterns
 ```
 
@@ -53,6 +54,7 @@ Run the GLX CLI validator on all example archives:
 ./bin/glx validate docs/examples/basic-family/
 ./bin/glx validate docs/examples/complete-family/
 ./bin/glx validate docs/examples/single-file/
+./bin/glx validate docs/examples/assertion-workflow/
 ./bin/glx validate docs/examples/temporal-properties/
 ./bin/glx validate docs/examples/participant-assertions/
 ```

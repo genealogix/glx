@@ -140,7 +140,7 @@ sources:
     type: church_register
     authors:
       - "Church of England, St. Paul's Parish"
-    date: "1849-1855"
+    date: "FROM 1849 TO 1855"
     properties:
       publication_info: "St. Paul's Church, Leeds, Yorkshire"
 ```

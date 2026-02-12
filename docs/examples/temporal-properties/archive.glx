@@ -29,10 +29,7 @@ persons:
             given: "John"
             surname: "Smith"
 
-      # Gender as temporal property
-      gender:
-        - value: "male"
-          date: "1850"
+      gender: "male"
 
       # Occupations throughout life
       occupation:

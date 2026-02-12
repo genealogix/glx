@@ -84,7 +84,7 @@ Repository → Source → Citation → Assertion
 
 - `repository-leeds-library` → `source-parish-leeds` → `citation-john-birth` → `assertion-john-birth-date`
 
-> **Learn More:** See [Core Concepts: Evidence Hierarchy](../../specification/2-core-concepts#evidence-hierarchy) for detailed explanation.
+> **Learn More:** See [Core Concepts: Evidence Hierarchy](../../specification/2-core-concepts#evidence-chain) for detailed explanation.
 
 ## File Format
 

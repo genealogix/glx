@@ -131,9 +131,6 @@ relationships:
 ```bash
 glx validate
 # ✓ All files valid
-
-glx check-schemas
-# ✓ schemas valid
 ```
 
 ## What This Demonstrates
