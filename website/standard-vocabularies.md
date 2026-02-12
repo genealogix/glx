@@ -135,6 +135,32 @@ Defines categories of genealogical sources including vital records, census, chur
 
 ---
 
+### Source Properties
+
+Defines additional properties that can be associated with sources (such as abbreviation, call number, publication information).
+
+<YamlFile
+  :content="vocabularies['source-properties']"
+  title="vocabularies/source-properties.glx"
+/>
+
+**See Also:** [Source Entity Documentation](/specification/4-entity-types/source) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#source-properties-vocabulary)
+
+---
+
+### Citation Properties
+
+Defines properties that can be associated with citations (such as locator, text from source, source date).
+
+<YamlFile
+  :content="vocabularies['citation-properties']"
+  title="vocabularies/citation-properties.glx"
+/>
+
+**See Also:** [Citation Entity Documentation](/specification/4-entity-types/citation) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#citation-properties-vocabulary)
+
+---
+
 ### Media Types
 
 Defines categories of media objects including photographs, documents, audio recordings, and video.
@@ -145,6 +171,19 @@ Defines categories of media objects including photographs, documents, audio reco
 />
 
 **See Also:** [Media Entity Documentation](/specification/4-entity-types/media) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#media-types-vocabulary)
+
+---
+
+### Media Properties
+
+Defines additional properties that can be associated with media objects (such as dimensions, duration, subjects, crop coordinates).
+
+<YamlFile
+  :content="vocabularies['media-properties']"
+  title="vocabularies/media-properties.glx"
+/>
+
+**See Also:** [Media Entity Documentation](/specification/4-entity-types/media) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#media-properties-vocabulary)
 
 ---
 
@@ -184,6 +223,19 @@ Defines categories of institutions that hold genealogical sources (archives, lib
 />
 
 **See Also:** [Repository Entity Documentation](/specification/4-entity-types/repository) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#repository-types-vocabulary)
+
+---
+
+### Repository Properties
+
+Defines additional properties that can be associated with repositories (such as phone numbers, email, access hours, holdings).
+
+<YamlFile
+  :content="vocabularies['repository-properties']"
+  title="vocabularies/repository-properties.glx"
+/>
+
+**See Also:** [Repository Entity Documentation](/specification/4-entity-types/repository) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#repository-properties-vocabulary)
 
 ---
 
@@ -235,12 +287,11 @@ $ glx validate
 
 1. **Use Standard Types First** - Standard types ensure GEDCOM compatibility and interoperability
 2. **Document Custom Types** - Provide clear labels and descriptions for custom types
-3.
-4. **Map to GEDCOM** - Include GEDCOM mappings when possible (use `_TAG` format for custom tags)
+3. **Map to GEDCOM** - Include GEDCOM mappings when possible (use `_TAG` format for custom tags)
 5. **Keep Consistent** - Use consistent naming conventions (lowercase with hyphens)
 
 ## See Also
 
 - [Vocabularies Documentation](/specification/4-entity-types/vocabularies) - Complete vocabulary reference
-- [Core Concepts - Repository-Owned Vocabularies](/specification/2-core-concepts#repository-owned-vocabularies)
+- [Core Concepts - Archive-Owned Vocabularies](/specification/2-core-concepts#archive-owned-vocabularies)
 - [Archive Organization](/specification/3-archive-organization#vocabularies-directory)

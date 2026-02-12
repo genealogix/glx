@@ -84,4 +84,4 @@ glx validate
 
 **Made with ❤️ for genealogists, by genealogists**
 
-Licensed under [Apache License 2.0](https://github.com/genealogix/glx/blob/main/LICENSE) • Copyright © 2025 Oracynth, Inc.
+Licensed under [Apache License 2.0](https://github.com/genealogix/glx/blob/main/LICENSE) • Copyright © 2025-2026 Oracynth, Inc.

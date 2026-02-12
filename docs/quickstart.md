@@ -328,14 +328,14 @@ GLX adapts to YOUR research domain:
 🎉 **Congratulations!** You have a working GENEALOGIX archive.
 
 **Continue learning:**
-- [Complete Examples](examples/) - See all entity types in action
-- [Specification](../../specification/) - Detailed format documentation
-- [Best Practices](../../docs/guides/best-practices.md) - Recommended workflows
+- [Complete Examples](/examples/) - See all entity types in action
+- [Specification](/specification/) - Detailed format documentation
+- [Best Practices](/guides/best-practices) - Recommended workflows
 
 **Get help:**
 - [GitHub Issues](https://github.com/genealogix/glx/issues) - Bug reports and feature requests
 - [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Community Q&A
-- [Contributing Guide](../../CONTRIBUTING.md) - Help improve GENEALOGIX
+- [Contributing Guide](/development/contributing) - Help improve GENEALOGIX
 
 ## Quick Reference
 

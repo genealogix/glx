@@ -42,7 +42,7 @@ assertions:
     citations: [citation-birth-cert, citation-baptism]
 ```
 
-Use assertion confidence levels to express certainty about conclusions. See [Assertion Entity](../../specification/4-entity-types/assertion.md) and [Confidence Levels Vocabulary](../../specification/5-standard-vocabularies/confidence-levels.glx).
+Use assertion confidence levels to express certainty about conclusions. See [Assertion Entity](../../specification/4-entity-types/assertion) and [Confidence Levels Vocabulary](../../specification/4-entity-types/vocabularies#confidence-levels-vocabulary).
 
 ### Transcribe Key Evidence
 

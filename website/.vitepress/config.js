@@ -56,6 +56,7 @@ export default defineConfig({
     'docs/examples/single-file/README.md': 'examples/single-file/index.md',
     'docs/examples/temporal-properties/README.md': 'examples/temporal-properties/index.md',
     'docs/examples/participant-assertions/README.md': 'examples/participant-assertions/index.md',
+    'docs/examples/assertion-workflow/README.md': 'examples/assertion-workflow/index.md',
     'docs/guides/:page*': 'guides/:page*',
     'docs/examples/:page*': 'examples/:page*',
 
@@ -101,11 +102,6 @@ export default defineConfig({
       {
         text: 'Development',
         items: [
-          { text: 'Architecture', link: '/development/architecture' },
-          { text: 'Setup', link: '/development/setup' },
-          { text: 'Testing Guide', link: '/development/testing-guide' },
-          { text: 'Schema Development', link: '/development/schema-development' },
-          { text: 'GEDCOM Import', link: '/development/gedcom-import' },
           { text: 'Contributing Guide', link: '/development/contributing' },
           { text: 'Code of Conduct', link: '/development/code-of-conduct' }
         ]
@@ -259,16 +255,6 @@ export default defineConfig({
       ],
       '/development/': [
         {
-          text: 'Developer Guides',
-          items: [
-            { text: 'Architecture', link: '/development/architecture' },
-            { text: 'Setup', link: '/development/setup' },
-            { text: 'Testing Guide', link: '/development/testing-guide' },
-            { text: 'Schema Development', link: '/development/schema-development' },
-            { text: 'GEDCOM Import', link: '/development/gedcom-import' }
-          ]
-        },
-        {
           text: 'Contributing',
           items: [
             { text: 'Contributing Guide', link: '/development/contributing' },
@@ -294,7 +280,8 @@ export default defineConfig({
           items: [
             { text: 'Single-File Archives', link: '/examples/single-file/' },
             { text: 'Temporal Properties', link: '/examples/temporal-properties/' },
-            { text: 'Participant Assertions', link: '/examples/participant-assertions/' }
+            { text: 'Participant Assertions', link: '/examples/participant-assertions/' },
+            { text: 'Assertion Workflow', link: '/examples/assertion-workflow/' }
           ]
         }
       ]
@@ -306,7 +293,7 @@ export default defineConfig({
     // Footer
     footer: {
       message: 'Licensed under Apache License 2.0',
-      copyright: 'Copyright © 2025 Oracynth, Inc.'
+      copyright: 'Copyright © 2025-2026 Oracynth, Inc.'
     },
 
     // Edit link
