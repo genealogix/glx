@@ -85,7 +85,6 @@ places:
   place-leeds:
     name: "Leeds"
     type: city
-    parent: place-yorkshire
     latitude: 53.7960
     longitude: -1.5479
     notes: |
@@ -123,7 +122,7 @@ glx validate
 
 **Expected output:**
 ```
-Validated 3 files.
+Validated 19 files.
 ✅ Archive is valid.
 ```
 
@@ -142,7 +141,6 @@ sources:
     authors:
       - "Church of England, St. Paul's Parish"
     date: "1849-1855"
-    repository: repository-leeds-library
     properties:
       publication_info: "St. Paul's Church, Leeds, Yorkshire"
 ```
@@ -279,7 +277,7 @@ events:
     place: place-liverpool
     participants:
       - person: person-john-smith
-        role: passenger
+        role: subject
 ```
 
 **Validate your custom vocabulary:**

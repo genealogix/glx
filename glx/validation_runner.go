@@ -130,7 +130,7 @@ func validatePaths(args []string) error {
 		return nil
 	}
 
-	archive, duplicates, err := LoadArchive(archiveRoot)
+	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, false)
 	if err != nil {
 		// This error comes from LoadArchive if a file fails validation during load
 		fmt.Fprintf(os.Stderr, "Error loading archive: %v\n", err)

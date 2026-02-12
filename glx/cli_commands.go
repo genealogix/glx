@@ -29,7 +29,13 @@ var rootCmd = &cobra.Command{
 
 GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
-	Version: "0.0.0-beta.3",
+	Version:       "0.0.0-beta.3",
+	SilenceErrors: true,
+	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
+	// arg-count errors still show usage but runtime errors from RunE do not.
+	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+		cmd.SilenceUsage = true
+	},
 }
 
 // Execute runs the root command
