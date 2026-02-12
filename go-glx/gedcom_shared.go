@@ -180,17 +180,23 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 
 		case GedcomTagSour:
 			if includeCitations && eventID != "" {
-				citationID, err := createCitationFromSOUR(sub, conv)
+				result, err := createCitationFromSOUR(sub, conv)
 				if err != nil {
-					// Error already logged in createCitationFromSOUR, skip this citation
+					// Error already logged in createCitationFromSOUR, skip
 					continue
 				}
-				if citationID != "" {
+				if result.CitationID != "" {
 					citations, ok := event.Properties[PropertyCitations].([]string)
 					if !ok {
 						citations = []string{}
 					}
-					event.Properties[PropertyCitations] = append(citations, citationID)
+					event.Properties[PropertyCitations] = append(citations, result.CitationID)
+				} else if result.SourceID != "" {
+					sources, ok := event.Properties[PropertySources].([]string)
+					if !ok {
+						sources = []string{}
+					}
+					event.Properties[PropertySources] = append(sources, result.SourceID)
 				}
 			}
 

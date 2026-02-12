@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Schema Embeds
 - **`CitationPropertiesSchema` and `SourcePropertiesSchema` embed variables** - Completes the pattern established by all other vocabulary schema embeds in `embed.go`
 
+#### GEDCOM Import: Eliminate Meaningless Citations
+- **Bare source references no longer create empty citation entities** - When a GEDCOM SOUR tag references a source without any citation-level detail (no PAGE, DATA, TEXT, QUAY, NOTE, or OBJE subrecords), the assertion or event now references the source directly via the `sources` field instead of creating a citation that only contains a source reference
+- Added `PropertySources` constant for event/relationship properties
+
 ### Changed
 
 #### Assertion Entity Improvements

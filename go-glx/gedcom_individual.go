@@ -214,11 +214,11 @@ func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRec
 		return
 	}
 
-	// Create citations from SOUR tags
-	citationIDs := extractCitations(nameRecord, conv)
+	// Extract evidence from SOUR tags
+	refs := extractEvidence(nameRecord, conv)
 
-	// Only create assertion if there are citations to back it up
-	if len(citationIDs) == 0 {
+	// Only create assertion if there is evidence to back it up
+	if !refs.hasEvidence() {
 		return
 	}
 
@@ -228,7 +228,8 @@ func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRec
 		Subject:   EntityRef{Person: personID},
 		Property:  PersonPropertyName,
 		Value:     fullName,
-		Citations: citationIDs,
+		Sources:   refs.SourceIDs,
+		Citations: refs.CitationIDs,
 	}
 	conv.Stats.AssertionsCreated++
 }
@@ -459,10 +460,10 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 // Shared across individual and family census conversion so that
 // source/citation creation happens once per CENS record.
 type censusData struct {
-	dateStr     string
-	placeID     string
-	citationIDs []string
-	mediaIDs    []string
+	dateStr  string
+	placeID  string
+	evidence evidenceRefs
+	mediaIDs []string
 }
 
 // convertCensus converts a GEDCOM CENS record to GLX citations and temporal properties.
@@ -519,7 +520,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		case GedcomTagNote:
 			noteText = extractNoteText(sub, conv)
 		case GedcomTagSour:
-			// Handled by extractCitations below
+			// Handled by extractEvidence below
 		case GedcomTagObje:
 			if mediaID := resolveOBJE(sub, conv); mediaID != "" {
 				mediaIDs = append(mediaIDs, mediaID)
@@ -531,11 +532,11 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		}
 	}
 
-	// Extract citations from any SOUR sub-records
-	citationIDs := extractCitations(censRecord, conv)
+	// Extract evidence from any SOUR sub-records
+	refs := extractEvidence(censRecord, conv)
 
-	// If no SOUR sub-records, create a synthetic census source and citation
-	if len(citationIDs) == 0 {
+	// If no SOUR sub-records, create a synthetic census source
+	if !refs.hasEvidence() {
 		// Build source title from TYPE or DATE
 		title := censusType
 		if title == "" && dateStr != "" {
@@ -557,36 +558,43 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		conv.GLX.Sources[sourceID] = source
 		conv.Stats.SourcesCreated++
 
-		// Create citation referencing the source
-		citationID := generateCitationID(conv)
-		citation := &Citation{
-			SourceID: sourceID,
-		}
+		// If there's a note, create a citation to hold it; otherwise just reference the source
 		if noteText != "" {
-			citation.Notes = noteText
-		}
-		conv.GLX.Citations[citationID] = citation
-		conv.Stats.CitationsCreated++
+			citationID := generateCitationID(conv)
+			citation := &Citation{
+				SourceID: sourceID,
+				Notes:    noteText,
+			}
+			conv.GLX.Citations[citationID] = citation
+			conv.Stats.CitationsCreated++
 
-		citationIDs = []string{citationID}
+			refs.CitationIDs = []string{citationID}
+		} else {
+			refs.SourceIDs = []string{sourceID}
+		}
 	}
 
 	return censusData{
-		dateStr:     dateStr,
-		placeID:     placeID,
-		citationIDs: citationIDs,
-		mediaIDs:    mediaIDs,
+		dateStr:  dateStr,
+		placeID:  placeID,
+		evidence: refs,
+		mediaIDs: mediaIDs,
 	}
 }
 
 // applyCensusData applies extracted census data to a person: sets temporal
 // residence property and creates assertions backed by citations.
 func applyCensusData(personID string, person *Person, data censusData, conv *ConversionContext) {
-	// Attach media to census citations
+	// Attach media to census citations and sources
 	if len(data.mediaIDs) > 0 {
-		for _, citID := range data.citationIDs {
+		for _, citID := range data.evidence.CitationIDs {
 			if cit, ok := conv.GLX.Citations[citID]; ok {
 				cit.Media = append(cit.Media, data.mediaIDs...)
+			}
+		}
+		for _, srcID := range data.evidence.SourceIDs {
+			if src, ok := conv.GLX.Sources[srcID]; ok {
+				src.Media = append(src.Media, data.mediaIDs...)
 			}
 		}
 	}
@@ -614,7 +622,7 @@ func applyCensusData(personID string, person *Person, data censusData, conv *Con
 	}
 
 	// Create assertion for residence backed by citations
-	createPropertyAssertionWithCitations(personID, PersonPropertyResidence, data.placeID, data.citationIDs, conv)
+	createPropertyAssertionWithEvidence(personID, PersonPropertyResidence, data.placeID, data.evidence, conv)
 }
 
 // convertFact converts generic FACT tag
@@ -660,10 +668,10 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 	// NO tag indicates something did NOT happen
 	eventType := mapGEDCOMEventType(noRecord.Value, conv.GEDCOMIndex)
 
-	citationIDs := extractCitations(noRecord, conv)
+	refs := extractEvidence(noRecord, conv)
 
-	// Only create assertion if there are citations to back it up
-	if len(citationIDs) == 0 {
+	// Only create assertion if there is evidence to back it up
+	if !refs.hasEvidence() {
 		return
 	}
 
@@ -672,7 +680,8 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 		Subject:   EntityRef{Person: personID},
 		Property:  "no_" + eventType,
 		Value:     "true", // Negative assertion (NO tag from GEDCOM 7.0)
-		Citations: citationIDs,
+		Sources:   refs.SourceIDs,
+		Citations: refs.CitationIDs,
 	}
 	conv.Stats.AssertionsCreated++
 }

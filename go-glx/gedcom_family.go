@@ -94,10 +94,13 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			Properties: make(map[string]any),
 		}
 
-		// Extract citations from FAM record itself
-		citationIDs := extractCitations(famRecord, conv)
-		if len(citationIDs) > 0 {
-			relationship.Properties[PropertyCitations] = citationIDs
+		// Extract evidence from FAM record itself
+		refs := extractEvidence(famRecord, conv)
+		if len(refs.SourceIDs) > 0 {
+			relationship.Properties[PropertySources] = refs.SourceIDs
+		}
+		if len(refs.CitationIDs) > 0 {
+			relationship.Properties[PropertyCitations] = refs.CitationIDs
 		}
 
 		// Resolve FAM-level OBJE references

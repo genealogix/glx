@@ -258,8 +258,8 @@ func TestConvertCensus_IndividualWithDate(t *testing.T) {
 	assert.Equal(t, "Census of 1800", censusSources[0].Title)
 	assert.Equal(t, DateString("1800"), censusSources[0].Date)
 
-	// A citation should reference the census source
-	assert.GreaterOrEqual(t, len(glx.Citations), 1, "Should create at least one citation")
+	// No citation needed - bare source reference has no citation-level detail
+	assert.Empty(t, glx.Citations, "Should not create meaningless citations")
 
 	// No residence property (no PLAC in CENS)
 	for _, p := range glx.Persons {
@@ -301,8 +301,8 @@ func TestConvertCensus_IndividualWithDateAndPlace(t *testing.T) {
 	assert.Len(t, censusSources, 1)
 	assert.Equal(t, "Census of 1850", censusSources[0].Title)
 
-	// Citation created
-	assert.GreaterOrEqual(t, len(glx.Citations), 1)
+	// No citation needed - bare source reference has no citation-level detail
+	assert.Empty(t, glx.Citations, "Should not create meaningless citations")
 
 	// Places created from PLAC hierarchy
 	assert.GreaterOrEqual(t, len(glx.Places), 1, "Should create place from PLAC")
@@ -323,7 +323,7 @@ func TestConvertCensus_IndividualWithDateAndPlace(t *testing.T) {
 		assert.NotEmpty(t, temporal["value"], "Should have place ID")
 	}
 
-	// Assertion for residence
+	// Assertion for residence with source reference (not citation)
 	assert.GreaterOrEqual(t, len(glx.Assertions), 1, "Should create residence assertion")
 	var residenceAssertions []*Assertion
 	for _, a := range glx.Assertions {
@@ -332,7 +332,7 @@ func TestConvertCensus_IndividualWithDateAndPlace(t *testing.T) {
 		}
 	}
 	assert.Len(t, residenceAssertions, 1)
-	assert.NotEmpty(t, residenceAssertions[0].Citations, "Assertion should have citations")
+	assert.NotEmpty(t, residenceAssertions[0].Sources, "Assertion should have source references")
 }
 
 // TestConvertCensus_IndividualWithSOUR tests CENS with existing SOUR sub-records.
@@ -452,5 +452,5 @@ func TestConvertCensus_FamilyBothSpouses(t *testing.T) {
 		}
 	}
 	assert.Len(t, censusSources, 1, "Family CENS should create only one synthetic source")
-	assert.Len(t, glx.Citations, 1, "Family CENS should create only one citation")
+	assert.Empty(t, glx.Citations, "Should not create meaningless citations")
 }

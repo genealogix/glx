@@ -100,6 +100,7 @@ const (
 
 // Common Property Names - used across multiple entity types
 const (
+	PropertySources       = "sources"
 	PropertyCitations     = "citations"
 	PropertyMedia         = "media"
 	PropertyNotes         = "notes"

@@ -20,10 +20,22 @@ import (
 	"strings"
 )
 
-// createCitationFromSOUR creates a citation from a GEDCOM SOUR subrecord
+// sourResult holds the result of processing a GEDCOM SOUR subrecord.
+// If the SOUR has citation-level detail (PAGE, DATA, TEXT, QUAY, NOTE, OBJE),
+// a Citation entity is created and CitationID is set.
+// If it only references a source with no additional detail, SourceID is set instead
+// so the caller can reference the source directly without a meaningless citation.
+type sourResult struct {
+	CitationID string
+	SourceID   string
+}
+
+// createCitationFromSOUR processes a GEDCOM SOUR subrecord.
+// Returns a sourResult: either a citation ID (if the SOUR has detail) or
+// a bare source ID (if it only references a source with no added value).
 //
 //nolint:gocognit,gocyclo
-func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (string, error) {
+func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (sourResult, error) {
 	var sourceID string
 
 	// Check if it's a reference or embedded source
@@ -37,7 +49,7 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 			// Source doesn't exist yet, log warning but continue
 			conv.Logger.LogWarning(sourRecord.Line, GedcomTagSour, sourRecord.Value, "Referenced source not found")
 
-			return "", fmt.Errorf("%w: %s", ErrSourceNotFound, sourRecord.Value)
+			return sourResult{}, fmt.Errorf("%w: %s", ErrSourceNotFound, sourRecord.Value)
 		}
 	} else {
 		// Embedded citation (form 2) - create a synthetic source
@@ -47,9 +59,7 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 		sourceID = createSyntheticSourceFromEmbeddedCitation(sourRecord, conv)
 	}
 
-	// Create citation
-	citationID := generateCitationID(conv)
-
+	// Build citation from SOUR subrecords
 	citation := &Citation{
 		SourceID: sourceID,
 	}
@@ -128,36 +138,48 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 		}
 	}
 
+	// If the citation adds no value beyond referencing the source, skip creating it
+	// and return the source ID directly so the caller can reference the source.
+	if !citationHasDetail(citation) {
+		return sourResult{SourceID: sourceID}, nil
+	}
+
 	// Store citation
+	citationID := generateCitationID(conv)
 	conv.GLX.Citations[citationID] = citation
 	conv.Stats.CitationsCreated++
 
-	return citationID, nil
+	return sourResult{CitationID: citationID}, nil
 }
 
-// createPropertyAssertion creates an assertion for a property, but only if there are citations.
-// Assertions without citations are not meaningful - the property value is already stored on the entity.
+// citationHasDetail reports whether a citation contains any data beyond its source reference.
+func citationHasDetail(c *Citation) bool {
+	return c.RepositoryID != "" || len(c.Properties) > 0 || c.Notes != "" || len(c.Media) > 0
+}
+
+// createPropertyAssertion creates an assertion for a property, but only if there is evidence.
+// Assertions without evidence are not meaningful - the property value is already stored on the entity.
 func createPropertyAssertion(subjectID, property string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
 	if property == "" || value == nil {
 		return
 	}
 
-	// Extract citations from SOUR subrecords
-	citationIDs := extractCitations(sourceRecord, conv)
+	// Extract evidence from SOUR subrecords
+	refs := extractEvidence(sourceRecord, conv)
 
-	createPropertyAssertionWithCitations(subjectID, property, value, citationIDs, conv)
+	createPropertyAssertionWithEvidence(subjectID, property, value, refs, conv)
 }
 
-// createPropertyAssertionWithCitations creates an assertion for a property using pre-extracted citation IDs.
-// This is used when citations have already been extracted or synthetically created (e.g., census records).
-func createPropertyAssertionWithCitations(subjectID, property string, value any, citationIDs []string, conv *ConversionContext) {
+// createPropertyAssertionWithEvidence creates an assertion for a property using pre-extracted evidence.
+// This is used when evidence has already been extracted or synthetically created (e.g., census records).
+func createPropertyAssertionWithEvidence(subjectID, property string, value any, refs evidenceRefs, conv *ConversionContext) {
 	if property == "" || value == nil {
 		return
 	}
 
-	// Only create assertion if there are citations to back it up
+	// Only create assertion if there is evidence to back it up
 	// The property value is already stored on the entity; assertions add evidence
-	if len(citationIDs) == 0 {
+	if !refs.hasEvidence() {
 		return
 	}
 
@@ -182,7 +204,8 @@ func createPropertyAssertionWithCitations(subjectID, property string, value any,
 		Subject:   EntityRef{Person: subjectID},
 		Property:  property,
 		Value:     valueStr,
-		Citations: citationIDs,
+		Sources:   refs.SourceIDs,
+		Citations: refs.CitationIDs,
 	}
 
 	// Store assertion
@@ -190,24 +213,40 @@ func createPropertyAssertionWithCitations(subjectID, property string, value any,
 	conv.Stats.AssertionsCreated++
 }
 
-// extractCitations extracts all citations from a record's SOUR subrecords
-func extractCitations(record *GEDCOMRecord, conv *ConversionContext) []string {
-	var citationIDs []string
+// evidenceRefs holds citation IDs and bare source IDs extracted from SOUR subrecords.
+type evidenceRefs struct {
+	CitationIDs []string
+	SourceIDs   []string
+}
+
+// extractEvidence extracts all evidence references from a record's SOUR subrecords.
+// SOUR records that contain citation-level detail (PAGE, DATA, TEXT, QUAY, NOTE, OBJE)
+// produce citation IDs. SOUR records that only reference a source with no additional
+// detail produce bare source IDs, avoiding meaningless citation entities.
+func extractEvidence(record *GEDCOMRecord, conv *ConversionContext) evidenceRefs {
+	var refs evidenceRefs
 
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagSour {
-			citationID, err := createCitationFromSOUR(sub, conv)
+			result, err := createCitationFromSOUR(sub, conv)
 			if err != nil {
-				// Error already logged in createCitationFromSOUR, skip this citation
+				// Error already logged in createCitationFromSOUR, skip
 				continue
 			}
-			if citationID != "" {
-				citationIDs = append(citationIDs, citationID)
+			if result.CitationID != "" {
+				refs.CitationIDs = append(refs.CitationIDs, result.CitationID)
+			} else if result.SourceID != "" {
+				refs.SourceIDs = append(refs.SourceIDs, result.SourceID)
 			}
 		}
 	}
 
-	return citationIDs
+	return refs
+}
+
+// hasEvidence reports whether the refs contain any citations or source references.
+func (r evidenceRefs) hasEvidence() bool {
+	return len(r.CitationIDs) > 0 || len(r.SourceIDs) > 0
 }
 
 // extractNoteText extracts note text from NOTE record
