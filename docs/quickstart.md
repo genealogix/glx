@@ -140,12 +140,15 @@ events:
 Validate that all your files follow the correct format:
 
 ```bash
-# Validate the entire archive
+# Validate the entire archive (with cross-reference checks)
 glx validate
 
-# Or validate specific files
+# Or validate specific directories (with cross-reference checks)
 glx validate persons/
 glx validate places/
+
+# Validate a single file (structure only, no cross-reference checks)
+glx validate persons/person-abc123.glx
 ```
 
 **Expected output:**

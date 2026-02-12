@@ -25,8 +25,7 @@ import (
 )
 
 func TestRunValidate_SingleValidFile(t *testing.T) {
-	// Test validating a single valid GLX file
-	// Need to change to the directory since single file validation loads archive from "."
+	// Test validating a single valid GLX file (structure only, no cross-references)
 	t.Chdir("../docs/examples/basic-family")
 
 	err := validatePaths([]string{"persons/person-father.glx"})

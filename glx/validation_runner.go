@@ -90,15 +90,44 @@ func validatePaths(args []string) error {
 	}
 
 	// Second pass: load and cross-reference validation
-	// We assume a single archive root for simplicity here. A more robust implementation
-	// might handle multiple disconnected roots.
-	archiveRoot := "."
+	// Determine if we should do cross-reference validation
+	var archiveRoot string
+	var shouldValidateCrossRefs bool
+
 	if len(paths) == 1 {
-		if info, err := os.Stat(paths[0]); err != nil {
-			// Stat failed, keep default archiveRoot
-		} else if info.IsDir() {
-			archiveRoot = paths[0]
+		if info, err := os.Stat(paths[0]); err == nil {
+			if info.IsDir() {
+				// Directory: validate with cross-references
+				archiveRoot = paths[0]
+				shouldValidateCrossRefs = true
+			} else {
+				// Single file: skip cross-reference validation
+				shouldValidateCrossRefs = false
+			}
 		}
+	} else if len(paths) == 0 {
+		// No paths specified, validate current directory
+		archiveRoot = "."
+		shouldValidateCrossRefs = true
+	} else {
+		// Multiple paths: use first path's directory or current dir
+		// This case is less common but we'll try to make it work
+		if info, err := os.Stat(paths[0]); err == nil {
+			if info.IsDir() {
+				archiveRoot = paths[0]
+			} else {
+				archiveRoot = filepath.Dir(paths[0])
+			}
+			shouldValidateCrossRefs = true
+		}
+	}
+
+	if !shouldValidateCrossRefs {
+		fmt.Println("⚠️  Cross-reference validation skipped (single file specified).")
+		fmt.Printf("Validated %d file.\n", fileCount)
+		fmt.Println("✅ File structure is valid.")
+
+		return nil
 	}
 
 	archive, duplicates, err := LoadArchive(archiveRoot)

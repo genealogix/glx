@@ -176,22 +176,24 @@ Performs comprehensive validation including:
 - YAML syntax correctness
 - Required fields presence
 - Entity ID format validation
-- Cross-reference integrity
-- Duplicate ID detection
+- Cross-reference integrity (directories only)
+- Duplicate ID detection (directories only)
 - Vocabulary validation (if vocabularies/ exists)
 
-When validating directories, automatically checks all .glx, .yaml, and .yml files
-and validates cross-references between entities.`,
-	Example: `  # Validate current directory
+Validation behavior:
+- Single file: Validates file structure only, skips cross-reference checks
+- Directory: Validates all .glx files with full cross-reference validation
+- No arguments: Validates current directory with full cross-reference validation`,
+	Example: `  # Validate current directory (with cross-reference checks)
   glx validate
 
-  # Validate specific directory
+  # Validate specific directory (with cross-reference checks)
   glx validate persons/
 
-  # Validate multiple paths
+  # Validate multiple paths (with cross-reference checks)
   glx validate persons/ events/ places/
 
-  # Validate single file
+  # Validate single file (structure only, no cross-reference checks)
   glx validate archive.glx`,
 	RunE: runValidate,
 }

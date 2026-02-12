@@ -226,6 +226,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Property vocabulary documentation** - Fixed `value_type` and `reference_type` field requirements (marked "No*" instead of "Yes*" to match "exactly one required" constraint)
 - **Test assertion completeness** - `TestRunValidate_MediaFileMissing` now captures stdout and verifies warning is actually produced
 
+#### CLI
+- **`glx validate` single file behavior** - Validating a single file now only validates that file's structure instead of loading the entire current directory. Cross-reference validation is skipped for single files with a warning message. Directory validation still performs full cross-reference checks.
+
 ### Removed
 
 #### Citation Entity
