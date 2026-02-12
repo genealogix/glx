@@ -6,7 +6,11 @@ layout: doc
 
 # Quickstart Guide
 
-Get started with GENEALOGIX in 5 minutes! This guide walks you through creating your first family archive.
+Get started with GENEALOGIX in 5 minutes! This guide walks you through creating your first family archive from scratch.
+
+::: tip Already have a GEDCOM file?
+See the [Migration from GEDCOM](/guides/migration-from-gedcom) guide to import your existing data.
+:::
 
 ## What You'll Learn
 
