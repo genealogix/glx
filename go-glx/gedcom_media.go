@@ -114,11 +114,20 @@ func handleOBJE(objeRecord *GEDCOMRecord, targetProps map[string]any, conv *Conv
 
 // appendMediaID appends a media ID to the PropertyMedia list in a properties map.
 func appendMediaID(props map[string]any, mediaID string) {
-	if props[PropertyMedia] == nil {
-		props[PropertyMedia] = []string{}
+	switch v := props[PropertyMedia].(type) {
+	case []string:
+		props[PropertyMedia] = append(v, mediaID)
+	case []any:
+		list := make([]string, 0, len(v)+1)
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				list = append(list, s)
+			}
+		}
+		props[PropertyMedia] = append(list, mediaID)
+	default:
+		props[PropertyMedia] = []string{mediaID}
 	}
-	media, _ := props[PropertyMedia].([]string)
-	props[PropertyMedia] = append(media, mediaID)
 }
 
 // convertMediaCommon contains the shared logic for converting GEDCOM OBJE records to GLX Media entities.
@@ -305,8 +314,19 @@ func normalizePathSeparators(path string) string {
 	return strings.ReplaceAll(path, "\\", "/")
 }
 
+// preferredExtension maps MIME types to their canonical file extension.
+// This avoids non-deterministic results from iterating mimeTypeByExtension
+// where multiple extensions map to the same MIME type (.jpg/.jpeg, .tif/.tiff).
+var preferredExtension = map[string]string{
+	MimeTypeJPEG: ".jpg",
+	MimeTypeTIFF: ".tif",
+}
+
 // extensionFromMimeType returns a file extension (with dot) for a MIME type.
 func extensionFromMimeType(mimeType string) string {
+	if ext, ok := preferredExtension[mimeType]; ok {
+		return ext
+	}
 	for ext, mime := range mimeTypeByExtension {
 		if mime == mimeType {
 			return ext

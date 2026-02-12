@@ -89,3 +89,13 @@ var MediaPropertiesSchema []byte
 //
 //go:embed vocabularies/repository-properties.schema.json
 var RepositoryPropertiesSchema []byte
+
+// CitationPropertiesSchema contains the embedded citation-properties vocabulary schema.
+//
+//go:embed vocabularies/citation-properties.schema.json
+var CitationPropertiesSchema []byte
+
+// SourcePropertiesSchema contains the embedded source-properties vocabulary schema.
+//
+//go:embed vocabularies/source-properties.schema.json
+var SourcePropertiesSchema []byte

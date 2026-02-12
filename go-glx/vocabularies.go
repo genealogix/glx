@@ -124,9 +124,11 @@ func unmarshalVocab[T any](filename string, data []byte, yamlKey string, target 
 	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return fmt.Errorf("parsing %s: %w", filename, err)
 	}
-	if entries, ok := raw[yamlKey]; ok {
-		*target = entries
+	entries, ok := raw[yamlKey]
+	if !ok {
+		return fmt.Errorf("parsing %s: missing expected key %q", filename, yamlKey)
 	}
+	*target = entries
 
 	return nil
 }

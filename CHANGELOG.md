@@ -12,20 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.3] - 2026-02-10
 
-### Removed
-
-- **Removed `glx check-schemas` CLI command** - Moved to `make check-schemas` Makefile target; this is a repo-internal dev tool, not a user-facing command
-
-### Changed
-
-#### Documentation
-- **Rewrote Migration from GEDCOM guide** - Expanded from a skeleton to a comprehensive guide covering all supported GEDCOM tags, CLI flags, field mapping tables, common challenges, troubleshooting, and GEDCOM 5.5.1 vs 7.0 differences
-- **Clarified vocabulary file location is flexible** - Spec, quickstart, and vocabulary docs now emphasize that vocabulary files can live anywhere in the archive, not only in `vocabularies/`
-
 ### Added
 
 #### Census Event Type
 - **Added `census` event type to standard vocabulary** - Census enumeration events (`CENS` GEDCOM tag) now included in `event-types.glx`
+
+#### Schema Embeds
+- **`CitationPropertiesSchema` and `SourcePropertiesSchema` embed variables** - Completes the pattern established by all other vocabulary schema embeds in `embed.go`
 
 ### Changed
 
@@ -176,6 +169,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Standardized schema `$id` URLs** - All JSON schemas now use consistent GitHub raw content URLs; removed references to `schema.genealogix.io` and `genealogix.org` domains
 
 #### Documentation
+- **Rewrote Migration from GEDCOM guide** - Expanded from a skeleton to a comprehensive guide covering all supported GEDCOM tags, CLI flags, field mapping tables, common challenges, troubleshooting, and GEDCOM 5.5.1 vs 7.0 differences
+- **Clarified vocabulary file location is flexible** - Spec, quickstart, and vocabulary docs now emphasize that vocabulary files can live anywhere in the archive, not only in `vocabularies/`
 - **Streamlined Introduction** - Simplified [1-introduction.md](specification/1-introduction.md) from 120 to 63 lines
 - **Restructured Core Concepts** - Reorganized [2-core-concepts.md](specification/2-core-concepts.md) to emphasize flexibility; new section order: Archive-Owned Vocabularies → Entity Relationships → Data Types → Properties → Assertions → Evidence Chain → Collaboration
 - **Merged Data Types into Core Concepts** - Integrated [6-data-types.md](specification/6-data-types.md) as section 3; deleted standalone file
@@ -227,6 +222,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly
 
 #### Code Quality & Robustness
+- **`unmarshalVocab` now returns error on missing YAML key** - Previously silently returned nil when the expected top-level key was absent, causing downstream validation to think no vocabulary entries exist
+- **`appendMediaID` safe type assertion** - Now handles `[]any` (from YAML deserialization) instead of panicking on a bare type assertion to `[]string`
+- **`extensionFromMimeType` deterministic output** - MIME types with multiple extensions (`.jpg`/`.jpeg`, `.tif`/`.tiff`) now return a consistent preferred extension instead of random map iteration order
 - **Directory emptiness check error handling** - `isDirectoryEmpty` now only treats `io.EOF` as "empty", not all errors (permissions, I/O failures now properly reported)
 - **Media file copy error handling** - `copyMediaFile` now checks `os.IsNotExist` before fallback to URL-decoded paths, preserving original errors for permissions/disk issues
 - **BLOB character validation** - `decodeGEDCOMBlob` now validates characters are in valid GEDCOM BLOB range ('.' to 'm') before decoding, preventing silent corruption
@@ -240,6 +238,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **`glx validate` single file behavior** - Validating a single file now only validates that file's structure instead of loading the entire current directory. Cross-reference validation is skipped for single files with a warning message. Directory validation still performs full cross-reference checks.
 
 ### Removed
+
+- **Removed `glx check-schemas` CLI command** - Moved to `make check-schemas` Makefile target; this is a repo-internal dev tool, not a user-facing command
 
 #### Citation Entity
 - Removed `data_date`, `page`, `locator`, and `text_from_source` direct fields — consolidated into `properties`
