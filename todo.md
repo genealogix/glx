@@ -17,6 +17,7 @@ Issues that silently lose or corrupt data during import.
 
 Data that is parsed but silently dropped or not stored.
 
+- **Media entities with empty URI from GEDCOM import**: GEDCOM OBJE records with empty `FILE` values (e.g., cloud-hosted media referenced only by app-specific `_OID` tags) produce media entities with empty `uri`. Should either skip these media entities, populate URI from extension tags, or set a meaningful placeholder.
 - **Census NOTE discarded when SOUR exists**: In `convertCensus`, NOTE text from CENS records is only attached to synthetic citations. When SOUR sub-records exist, the NOTE is silently discarded. Should store on the person or pass through to citations.
 - **HEAD Metadata** ([gedcom_converter.go:220-221](glx/lib/gedcom_converter.go#L220-L221)): Store HEAD metadata (export_date, source_file, copyright, language, source_system).
 - **SUBM Metadata** ([gedcom_converter.go:246-247](glx/lib/gedcom_converter.go#L246-L247)): Store SUBM (submitter) metadata.

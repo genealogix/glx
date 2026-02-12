@@ -6,7 +6,7 @@
   "type": "object",
   "required": ["uri"],
   "properties": {
-    "uri": { "type": "string", "minLength": 1, "description": "Location of the media file" },
+    "uri": { "type": "string", "description": "Location of the media file" },
     "type": { "type": "string", "description": "Media type (validated against media_types vocabulary)" },
     "mime_type": { "type": "string", "description": "MIME type of the media" },
     "hash": { "type": "string", "description": "Content hash for verification" },

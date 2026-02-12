@@ -49,11 +49,11 @@ Open your `.ged` file in a text editor and look near the top for a line like `2 
 ### Basic Usage
 
 ```bash
-# Import to single-file archive (default)
-glx import family.ged -o family.glx
+# Import to multi-file archive (default)
+glx import family.ged -o family-archive/
 
-# Import to multi-file archive
-glx import family.ged -o family-archive/ --format multi
+# Import to single-file archive
+glx import family.ged -o family.glx --format single
 ```
 
 ### CLI Flags
@@ -61,7 +61,7 @@ glx import family.ged -o family-archive/ --format multi
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
 | `--output` | `-o` | (required) | Output file or directory |
-| `--format` | `-f` | `single` | Output format: `single` or `multi` |
+| `--format` | `-f` | `multi` | Output format: `multi` or `single` |
 | `--no-validate` | | `false` | Skip validation before saving |
 | `--verbose` | `-v` | `false` | Show detailed import progress |
 | `--show-first-errors` | | `10` | Number of validation errors to show (0 for all) |
