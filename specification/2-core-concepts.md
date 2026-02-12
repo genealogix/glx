@@ -12,7 +12,7 @@ This section explains how GENEALOGIX works: the flexible vocabularies, entities,
 
 ### Why Archive-Level Control?
 
-Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **archive-owned controlled vocabularies**. Each archive defines its own valid types in the `vocabularies/` directory, combining standardization with flexibility.
+Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **archive-owned controlled vocabularies**. Each archive defines its own valid types in vocabulary files, combining standardization with flexibility.
 
 **This is GENEALOGIX's most powerful feature: each archive controls its own type system.**
 
@@ -41,27 +41,26 @@ You get both standardization AND flexibility:
 
 ### Standard Vocabulary Files
 
-When you initialize a new archive with `glx init`, standard vocabulary files are automatically created:
+When you create an archive with `glx init` or `glx import`, standard vocabulary files are automatically created (by default in a `vocabularies/` directory, though they can live anywhere in the archive):
 
-```
-vocabularies/
-├── event-types.glx           # Birth, death, baptism, immigration, etc.
-├── relationship-types.glx    # Marriage, parent-child, adoption, etc.
-├── place-types.glx           # Country, city, parish, etc.
-├── source-types.glx          # Vital records, census, church registers, etc.
-├── repository-types.glx      # Archive, library, church, etc.
-├── media-types.glx           # Photo, document, audio, etc.
-├── participant-roles.glx     # Principal, witness, godparent, etc.
-├── confidence-levels.glx     # High, medium, low, disputed
-├── person-properties.glx     # Person properties (name, occupation, etc.)
-├── event-properties.glx      # Event properties
-├── relationship-properties.glx
-├── place-properties.glx
-├── media-properties.glx
-├── repository-properties.glx
-├── source-properties.glx
-└── citation-properties.glx
-```
+| File | Contents |
+|------|----------|
+| `event-types.glx` | Birth, death, baptism, immigration, etc. |
+| `relationship-types.glx` | Marriage, parent-child, adoption, etc. |
+| `place-types.glx` | Country, city, parish, etc. |
+| `source-types.glx` | Vital records, census, church registers, etc. |
+| `repository-types.glx` | Archive, library, church, etc. |
+| `media-types.glx` | Photo, document, audio, etc. |
+| `participant-roles.glx` | Principal, witness, godparent, etc. |
+| `confidence-levels.glx` | High, medium, low, disputed |
+| `person-properties.glx` | Person properties (name, occupation, etc.) |
+| `event-properties.glx` | Event properties |
+| `relationship-properties.glx` | Relationship properties |
+| `place-properties.glx` | Place properties |
+| `media-properties.glx` | Media properties |
+| `repository-properties.glx` | Repository properties |
+| `source-properties.glx` | Source properties |
+| `citation-properties.glx` | Citation properties |
 ### Property Vocabularies
 
 **Property vocabularies** are a special category that define the custom properties available for each entity type. These are critical for the assertion model (see sections below).
@@ -110,7 +109,7 @@ Adding custom types is straightforward:
 **1. Edit the appropriate vocabulary file**
 
 ```yaml
-# vocabularies/event-types.glx
+# event-types.glx
 event_types:
   # ... standard types ...
 
@@ -578,7 +577,7 @@ confidence_levels:
   disputed: "Multiple sources conflict, resolution unclear"
 ```
 
-Confidence levels are defined in `vocabularies/confidence-levels.glx` and can be customized per archive.
+Confidence levels are defined in `confidence-levels.glx` and can be customized per archive.
 
 ### Benefits of This Approach
 

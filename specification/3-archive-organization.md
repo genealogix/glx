@@ -314,16 +314,18 @@ fmt.Sprintf("%x", b)
 
 **Note:** Descriptive IDs are fine for personal use but may cause conflicts when merging archives. Random IDs reduce collision risk in collaborative projects.
 
-## Vocabularies Directory
+## Vocabulary Files
 
-Every GENEALOGIX archive should include a `vocabularies/` directory containing controlled vocabulary definitions. These files define valid types and properties for entities.
+Every GENEALOGIX archive should include vocabulary definitions. These files define valid types and properties for entities. Like all `.glx` files, vocabulary files can live anywhere in the archive — the parser identifies them by their top-level keys, not by location.
 
-### Vocabulary Files
+By convention, the CLI places vocabulary files in a `vocabularies/` directory (via `glx init` and `glx import`), but you're free to organize them however you like (alongside entity files, in a custom directory, etc.).
+
+### Format
 
 Vocabulary files use the same GLX format with vocabulary-specific top-level keys:
 
 ```yaml
-# vocabularies/relationship-types.glx
+# relationship-types.glx
 relationship_types:
   marriage:
     label: "Marriage"
@@ -338,7 +340,7 @@ relationship_types:
 
 ### Initialization
 
-When you run `glx init`, the CLI automatically creates the `vocabularies/` directory by copying the standard vocabulary templates from [Standard Vocabularies](5-standard-vocabularies/). You can then customize these files to add archive-specific types.
+When you run `glx init` or `glx import`, the CLI copies the standard vocabulary templates from [Standard Vocabularies](5-standard-vocabularies/) into a `vocabularies/` directory. You can then customize these files to add archive-specific types, or move them to a different location.
 
 See [Core Concepts](2-core-concepts#archive-owned-vocabularies) for details on defining custom vocabulary entries and [Standard Vocabularies](5-standard-vocabularies/) for the complete set of standard vocabulary files.
 

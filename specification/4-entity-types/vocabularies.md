@@ -10,7 +10,7 @@ layout: doc
 
 ## Overview
 
-GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabularies are stored as YAML files in the `vocabularies/` directory and allow each archive to customize its terminology while maintaining consistency and validation.
+GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of types, roles, and classifications used throughout the archive. Vocabulary files are ordinary `.glx` files that can live anywhere in the archive — the parser scans all `.glx` and `.yaml` files regardless of directory. By convention, the CLI places them in a `vocabularies/` directory (via `glx init` and `glx import`), but this is not a requirement.
 
 ## Benefits of Vocabularies
 
@@ -22,34 +22,32 @@ GENEALOGIX uses **archive-owned vocabularies** to define controlled lists of typ
 
 ## Vocabulary Files
 
-All vocabulary files are stored in the `vocabularies/` directory of each archive:
-```
-vocabularies/
-├── event-types.glx
-├── relationship-types.glx
-├── place-types.glx
-├── source-types.glx
-├── media-types.glx
-├── confidence-levels.glx
-├── participant-roles.glx
-├── repository-types.glx
-├── person-properties.glx
-├── event-properties.glx
-├── relationship-properties.glx
-├── place-properties.glx
-├── media-properties.glx
-├── repository-properties.glx
-├── source-properties.glx
-└── citation-properties.glx
-```
+The standard vocabulary files are:
 
-When initializing a new archive with `glx init`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates.
+- `event-types.glx`
+- `relationship-types.glx`
+- `place-types.glx`
+- `source-types.glx`
+- `media-types.glx`
+- `confidence-levels.glx`
+- `participant-roles.glx`
+- `repository-types.glx`
+- `person-properties.glx`
+- `event-properties.glx`
+- `relationship-properties.glx`
+- `place-properties.glx`
+- `media-properties.glx`
+- `repository-properties.glx`
+- `source-properties.glx`
+- `citation-properties.glx`
+
+When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
 ---
 
 ## Event Types Vocabulary
 
-**File**: `vocabularies/event-types.glx`
+**Default file**: `vocabularies/event-types.glx`
 
 **Used By**: [Event Entity](event#event-types)
 
@@ -122,7 +120,7 @@ event_types:
 
 ## Relationship Types Vocabulary
 
-**File**: `vocabularies/relationship-types.glx`
+**Default file**: `vocabularies/relationship-types.glx`
 
 **Used By**: [Relationship Entity](relationship#relationship-types)
 
@@ -191,7 +189,7 @@ relationship_types:
 
 ## Place Types Vocabulary
 
-**File**: `vocabularies/place-types.glx`
+**Default file**: `vocabularies/place-types.glx`
 
 **Used By**: [Place Entity](place#place-types)
 
@@ -268,7 +266,7 @@ place_types:
 
 ## Source Types Vocabulary
 
-**File**: `vocabularies/source-types.glx`
+**Default file**: `vocabularies/source-types.glx`
 
 **Used By**: [Source Entity](source#source-types)
 
@@ -332,7 +330,7 @@ source_types:
 
 ## Media Types Vocabulary
 
-**File**: `vocabularies/media-types.glx`
+**Default file**: `vocabularies/media-types.glx`
 
 **Used By**: [Media Entity](media#media-types)
 
@@ -408,7 +406,7 @@ media_types:
 
 ## Confidence Levels Vocabulary
 
-**File**: `vocabularies/confidence-levels.glx`
+**Default file**: `vocabularies/confidence-levels.glx`
 
 **Used By**: [Assertion Entity](assertion#confidence)
 
@@ -460,7 +458,7 @@ See [Assertion Entity - Confidence](assertion#confidence) for usage details.
 
 ## Repository Types Vocabulary
 
-**File**: `vocabularies/repository-types.glx`
+**Default file**: `vocabularies/repository-types.glx`
 
 **Used By**: [Repository Entity](repository#repository-types)
 
@@ -513,7 +511,7 @@ See [Repository Entity](repository#repository-types) for the complete list of st
 
 ## Participant Roles Vocabulary
 
-**File**: `vocabularies/participant-roles.glx`
+**Default file**: `vocabularies/participant-roles.glx`
 
 **Used By**: [Event Entity](event#participant-roles), [Relationship Entity](relationship#participant-roles)
 
@@ -631,7 +629,7 @@ vocabularies/
 
 ### Person Properties Vocabulary
 
-**File**: `vocabularies/person-properties.glx`
+**Default file**: `vocabularies/person-properties.glx`
 
 **Used By**: [Person Entity](person#properties)
 
@@ -662,7 +660,7 @@ GENEALOGIX provides standard person properties:
 
 ### Event Properties Vocabulary
 
-**File**: `vocabularies/event-properties.glx`
+**Default file**: `vocabularies/event-properties.glx`
 
 **Used By**: [Event Entity](event#properties)
 
@@ -679,7 +677,7 @@ Event properties are generally less common than person properties, since most ev
 
 ### Relationship Properties Vocabulary
 
-**File**: `vocabularies/relationship-properties.glx`
+**Default file**: `vocabularies/relationship-properties.glx`
 
 **Used By**: [Relationship Entity](relationship#properties)
 
@@ -694,7 +692,7 @@ Standard properties include:
 
 ### Place Properties Vocabulary
 
-**File**: `vocabularies/place-properties.glx`
+**Default file**: `vocabularies/place-properties.glx`
 
 **Used By**: [Place Entity](place#properties)
 
@@ -712,7 +710,7 @@ Standard properties include:
 
 ### Media Properties Vocabulary
 
-**File**: `vocabularies/media-properties.glx`
+**Default file**: `vocabularies/media-properties.glx`
 
 **Used By**: [Media Entity](media#properties)
 
@@ -733,7 +731,7 @@ Standard properties include:
 
 ### Repository Properties Vocabulary
 
-**File**: `vocabularies/repository-properties.glx`
+**Default file**: `vocabularies/repository-properties.glx`
 
 **Used By**: [Repository Entity](repository#properties)
 
@@ -751,7 +749,7 @@ Standard properties include:
 
 ### Source Properties Vocabulary
 
-**File**: `vocabularies/source-properties.glx`
+**Default file**: `vocabularies/source-properties.glx`
 
 **Used By**: [Source Entity](source#properties)
 
@@ -769,7 +767,7 @@ Standard properties include:
 
 ### Citation Properties Vocabulary
 
-**File**: `vocabularies/citation-properties.glx`
+**Default file**: `vocabularies/citation-properties.glx`
 
 **Used By**: [Citation Entity](citation#properties)
 

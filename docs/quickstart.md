@@ -223,11 +223,11 @@ glx validate examples/complete-family/
 
 ## Step 10: Customize Vocabularies for Your Research
 
-GLX isn't limited to traditional genealogy! Customize the vocabularies to match your research domain.
+GLX isn't limited to traditional genealogy! Customize the vocabularies to match your research domain. Vocabulary files can live anywhere in your archive — the examples below use the default `vocabularies/` directory created by `glx init`.
 
 ### Example: Maritime History Research
 
-**Edit `vocabularies/event-types.glx`:**
+**Edit `vocabularies/event-types.glx` (or wherever you keep your event types):**
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -249,7 +249,7 @@ event_types:
 
 ### Example: Academic Biography
 
-**Edit `vocabularies/relationship-types.glx`:**
+**Edit `vocabularies/relationship-types.glx` (or wherever you keep your relationship types):**
 ```yaml
 # vocabularies/relationship-types.glx
 relationship_types:

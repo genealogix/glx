@@ -14,7 +14,7 @@ import { data as vocabularies } from '../../website/.vitepress/data/vocabularies
 This page uses VitePress components to render vocabulary content inline. If you're viewing the raw markdown on GitHub or another platform, the vocabulary content won't display. Use the **View Source** links below each vocabulary to see the raw `.glx` files directly.
 :::
 
-GENEALOGIX includes a comprehensive set of standard vocabularies that define controlled types for events, relationships, places, sources, media, and more. These vocabularies are automatically copied to new archives during initialization with `glx init`.
+GENEALOGIX includes a comprehensive set of standard vocabularies that define controlled types for events, relationships, places, sources, media, and more. These vocabularies are automatically copied to new archives by `glx init` and `glx import`.
 
 ## Overview
 
