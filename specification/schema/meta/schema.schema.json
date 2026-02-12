@@ -4,15 +4,57 @@
   "title": "GENEALOGIX Meta-Schema",
   "description": "Meta-schema used to validate GENEALOGIX JSON Schemas",
   "type": "object",
-  "required": ["$schema", "$id", "title", "type"],
+  "required": ["$schema", "$id", "title", "description", "type"],
   "properties": {
-    "$schema": { "type": "string" },
-    "$id": { "type": "string" },
-    "title": { "type": "string" },
-    "description": { "type": "string" },
-    "type": { "type": "string", "enum": ["object"] },
-    "additionalProperties": { "type": ["boolean", "object"] }
+    "$schema": {
+      "type": "string",
+      "enum": ["http://json-schema.org/draft-07/schema#"]
+    },
+    "$id": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://raw\\.githubusercontent\\.com/genealogix/glx/main/specification/schema/"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "enum": ["object"]
+    },
+    "required": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "properties": {
+      "type": "object"
+    },
+    "definitions": {
+      "type": "object"
+    },
+    "patternProperties": {
+      "type": "object"
+    },
+    "additionalProperties": {
+      "type": ["boolean", "object"]
+    },
+    "allOf": {
+      "type": "array"
+    },
+    "anyOf": {
+      "type": "array"
+    },
+    "oneOf": {
+      "type": "array"
+    },
+    "not": {
+      "type": "object"
+    }
   }
 }
-
-

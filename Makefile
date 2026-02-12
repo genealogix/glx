@@ -1,56 +1,57 @@
 # GENEALOGIX Makefile
-.PHONY: build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas
+.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas
 
-# Install dependencies - Go modules and npm packages
-install-deps:
+.DEFAULT_GOAL := help
+
+## Help
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+## Dependencies
+install-deps: ## Install Go modules and npm packages
 	@echo "Installing Go dependencies..."
 	go mod download
 	@echo "Installing website dependencies..."
 	cd website && npm install
 
-# Build CLI - builds the glx binary to bin directory
-build-cli:
+## Build
+build-cli: ## Build the glx binary to bin/
 	@mkdir -p bin
 	go build -o bin/glx ./glx
 
-# Build website - builds the documentation site
-build-website:
+build-website: ## Build the documentation site
 	@echo "Building website..."
 	cd website && npm run build
 
-# Build - builds both CLI and website
-build: build-cli build-website
+build: build-cli build-website ## Build CLI and website
 
-fmt:
+## Code Quality
+fmt: ## Format Go and website code
 	@echo "Formatting Go code..."
 	golangci-lint fmt
 	@echo "Formatting website..."
 	cd website && npm run format
 
-# Lint target - runs golangci-lint and eslint
-lint:
+lint: ## Run linters (Go + website)
 	@echo "Linting Go code..."
 	golangci-lint run ./...
 	@echo "Linting website..."
 	cd website && npm run lint
 
-# Lint-fix target - runs golangci-lint and eslint with automatic fixes
-lint-fix:
+lint-fix: ## Run linters with automatic fixes
 	@echo "Fixing Go code..."
 	golangci-lint run --fix ./...
 	@echo "Fixing website..."
 	cd website && npm run lint:fix
 
-# Test target - runs all tests
-test:
+## Testing
+test: ## Run all tests
 	go test ./...
 
-# Test-verbose target - runs all tests with verbose output
-test-verbose:
+test-verbose: ## Run all tests with verbose output
 	go test -v ./...
 
-# Test-coverage target - runs tests with coverage report generation
-test-coverage:
+test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
 	@mkdir -p coverage
 	go test -coverprofile=coverage/coverage.out ./...
@@ -60,25 +61,24 @@ test-coverage:
 	@echo "Opening coverage report in browser..."
 	@go tool cover -func=coverage/coverage.out | tail -n 1
 
-# Check schemas - validates JSON schema files have required $schema and $id fields
-check-schemas:
+## Specification
+check-schemas: ## Validate JSON schema files have required metadata
 	@fail=0; \
 	for f in $$(find specification/schema -name '*.json'); do \
-		if ! grep -q '"\$$schema"' "$$f"; then \
-			echo "missing \$$schema in $$f"; fail=1; \
-		fi; \
-		if ! grep -q '"\$$id"' "$$f"; then \
-			echo "missing \$$id in $$f"; fail=1; \
-		fi; \
+		for field in '"\$$schema"' '"\$$id"' '"title"' '"description"'; do \
+			if ! grep -q $$field "$$f"; then \
+				echo "missing $$field in $$f"; fail=1; \
+			fi; \
+		done; \
 	done; \
 	if [ "$$fail" -eq 1 ]; then \
 		echo "schema validation failed"; exit 1; \
 	else \
-		echo "All schema files contain \$$schema and \$$id"; \
+		echo "All schema files contain required metadata"; \
 	fi
 
-# Clean target - removes build artifacts
-clean:
+## Cleanup
+clean: ## Remove build artifacts
 	rm -rf bin
 	rm -rf coverage
 	rm -rf website/.vitepress/dist
