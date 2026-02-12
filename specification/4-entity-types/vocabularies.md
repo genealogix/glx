@@ -1041,28 +1041,32 @@ properties:
       clan: "MacLeod"  # WARNING: unknown field if not defined in vocabulary
 ```
 
-**The `value` Field Should Always Be Present**
+**The `value` Field**
 
-When using structured format, the `value` field should contain the complete recorded value. Omitting `value` while providing only `fields` is permitted but discouraged:
+When a property has a natural single-value representation, include `value` alongside `fields` to preserve the original recorded form:
 
 ```yaml
-# Recommended: include both value and fields
+# Value + fields: preserves original while providing structure
 properties:
   name:
     value: "John Smith"
     fields:
       given: "John"
       surname: "Smith"
-
-# Permitted but discouraged: fields without value
-properties:
-  name:
-    fields:
-      given: "John"
-      surname: "Smith"
 ```
 
-Validators may issue a warning when `fields` is present without a `value`, as this loses the original recorded form.
+When there is no natural single-value representation, fields-only is valid:
+
+```yaml
+# Fields only: appropriate for structured data like coordinates
+properties:
+  crop:
+    fields:
+      top: 450
+      left: 100
+      width: 800
+      height: 200
+```
 
 #### Custom Structured Properties
 

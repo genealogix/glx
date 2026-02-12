@@ -37,6 +37,7 @@ Design decisions that affect the spec and should be resolved before 1.0.
 - **Gender/sex controlled vocabularies**: Should these be formalized?
 - **Property field data types**: Should property fields carry type information?
 - **Repository address fields**: Consider moving `address`, `city`, `state_province`, `postal_code`, `country` from direct entity fields into the `repository_properties` vocabulary for consistency with other entity types.
+- **Fields-only structured properties**: Spec now allows `fields` without `value` (e.g., crop coordinates). Ensure code and validation fully support this — validator should not warn on fields-only properties.
 
 ---
 

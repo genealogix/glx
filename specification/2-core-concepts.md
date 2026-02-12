@@ -427,9 +427,16 @@ properties:
 
 The `value` field preserves the original recorded form, while `fields` provide structured access to components. This is the recommended approach for most structured properties.
 
-**3. Fields only** (no original form to preserve):
-
-> **TODO:** Define behavior for fields-only properties (e.g., GEDCOM CROP coordinates where there's no natural "value" representation). Should fields-only be allowed, or should a computed value be required?
+**3. Fields only** (when there's no natural single-value representation):
+```yaml
+properties:
+  crop:
+    fields:
+      top: 450
+      left: 100
+      width: 800
+      height: 200
+```
 
 ### Notes Field
 
