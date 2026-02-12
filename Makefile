@@ -62,20 +62,27 @@ test-coverage: ## Run tests with coverage report
 	@go tool cover -func=coverage/coverage.out | tail -n 1
 
 ## Specification
-check-schemas: ## Validate JSON schema files have required metadata
-	@fail=0; \
-	for f in $$(find specification/schema -name '*.json'); do \
-		for field in '"\$$schema"' '"\$$id"' '"title"' '"description"'; do \
-			if ! grep -q $$field "$$f"; then \
-				echo "missing $$field in $$f"; fail=1; \
-			fi; \
-		done; \
-	done; \
-	if [ "$$fail" -eq 1 ]; then \
-		echo "schema validation failed"; exit 1; \
-	else \
-		echo "All schema files contain required metadata"; \
-	fi
+AJV := npx --yes --package=ajv-cli --package=ajv-formats ajv
+
+check-schemas: ## Validate JSON schema files
+	@echo "Validating schemas against meta-schema..."
+	@$(AJV) validate -s specification/schema/meta/schema.schema.json -d "specification/schema/v1/*.schema.json" -c ajv-formats
+	@$(AJV) validate -s specification/schema/meta/schema.schema.json -d "specification/schema/v1/vocabularies/*.schema.json" -c ajv-formats
+	@echo "Compiling schemas..."
+	@$(AJV) compile -s specification/schema/meta/schema.schema.json -c ajv-formats
+	@find specification/schema/v1 -name "*.schema.json" ! -name "glx-file.schema.json" -exec $(AJV) compile -s {} -c ajv-formats \;
+	@$(AJV) compile -s specification/schema/v1/glx-file.schema.json \
+		-r "specification/schema/v1/person.schema.json" \
+		-r "specification/schema/v1/event.schema.json" \
+		-r "specification/schema/v1/relationship.schema.json" \
+		-r "specification/schema/v1/place.schema.json" \
+		-r "specification/schema/v1/source.schema.json" \
+		-r "specification/schema/v1/citation.schema.json" \
+		-r "specification/schema/v1/repository.schema.json" \
+		-r "specification/schema/v1/assertion.schema.json" \
+		-r "specification/schema/v1/media.schema.json" \
+		-r "specification/schema/v1/vocabularies/*.schema.json" \
+		-c ajv-formats
 
 ## Cleanup
 clean: ## Remove build artifacts

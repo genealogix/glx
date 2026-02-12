@@ -17,12 +17,6 @@ jobs:
           go-version: '1.25'
       
       - name: Validate JSON Schemas
-        run: |
-          npm install -g ajv-cli
-          ajv compile -s specification/schema/meta/schema.schema.json
-          find specification/schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
-      
-      - name: Check Schema References
         run: make check-schemas
   
   validate-examples:
