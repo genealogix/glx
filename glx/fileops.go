@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -78,7 +79,11 @@ func isDirectoryEmpty(path string) error {
 	_, err = f.Readdirnames(1)
 	if err != nil {
 		// io.EOF means directory is empty (success case)
-		return nil
+		if err == io.EOF {
+			return nil
+		}
+		// Other errors (permissions, I/O failures) should be returned
+		return fmt.Errorf("error reading directory: %w", err)
 	}
 
 	// Successfully read an entry, so directory is not empty

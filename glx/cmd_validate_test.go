@@ -15,8 +15,10 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -210,10 +212,27 @@ func TestRunValidate_MediaFileMissing(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	// Validation should succeed (warnings don't cause failure) but should
-	// produce a warning about the missing file. We capture stdout to check.
+	// Capture stdout during validation
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Validation should succeed (warnings don't cause failure)
 	err = validatePaths([]string{tmpDir})
+
+	// Restore stdout and read captured output
+	w.Close()
+	os.Stdout = oldStdout
+	var buf strings.Builder
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// Verify validation succeeded
 	require.NoError(t, err, "missing media file should produce warning, not error")
+
+	// Verify warning was produced
+	require.Contains(t, output, "media[media-photo]: referenced file does not exist: media/files/nonexistent.jpg",
+		"should produce warning about missing media file")
 }
 
 func TestRunValidate_MediaFileExists(t *testing.T) {

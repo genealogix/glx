@@ -90,19 +90,36 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	normalized := strings.ReplaceAll(relativePath, "\\", "/")
 
 	srcPath := filepath.Join(gedcomDir, normalized)
-	if err := copyFile(srcPath, destPath); err == nil {
+	err := copyFile(srcPath, destPath)
+	if err == nil {
 		return nil
+	}
+
+	// Only fall back to URL-decoded path if the source file does not exist.
+	// Other errors (permissions, disk full, etc.) should be returned immediately.
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("copying media file from %s: %w", srcPath, err)
 	}
 
 	// Try URL-decoded version (e.g., "CharlotteBront%C3%AB.jpg" -> "CharlotteBrontë.jpg")
 	decoded, decodeErr := url.PathUnescape(normalized)
-	if decodeErr != nil || decoded == normalized {
+	if decodeErr != nil {
+		return fmt.Errorf("failed to decode media path %q: %w", normalized, decodeErr)
+	}
+	if decoded == normalized {
 		return fmt.Errorf("%w: %s", ErrMediaFileNotFound, srcPath)
 	}
 
 	decodedPath := filepath.Join(gedcomDir, decoded)
+	err = copyFile(decodedPath, destPath)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		return fmt.Errorf("%w: %s", ErrMediaFileNotFound, decodedPath)
+	}
 
-	return copyFile(decodedPath, destPath)
+	return fmt.Errorf("copying media file from %s: %w", decodedPath, err)
 }
 
 // copyFile copies a single file from src to dst using streaming I/O.
@@ -141,6 +158,15 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 
 	result := make([]byte, 0, len(cleaned)*3/4)
 	for i := 0; i < len(cleaned); i += 4 {
+		// Validate each character is in valid GEDCOM BLOB range (0x2E '.' to 0x6D 'm')
+		// This gives 6-bit values (0-63) after subtracting 0x2E
+		for j := 0; j < 4; j++ {
+			char := cleaned[i+j]
+			if char < '.' || char > 'm' {
+				return nil, fmt.Errorf("invalid BLOB character at position %d: %q (must be in range '.' to 'm')", i+j, char)
+			}
+		}
+
 		b1 := cleaned[i] - '.'
 		b2 := cleaned[i+1] - '.'
 		b3 := cleaned[i+2] - '.'

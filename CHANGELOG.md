@@ -216,6 +216,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **CONT/CONC text continuation** - Long text fields spanning multiple lines now properly combined
 - **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly
 
+#### Code Quality & Robustness
+- **Directory emptiness check error handling** - `isDirectoryEmpty` now only treats `io.EOF` as "empty", not all errors (permissions, I/O failures now properly reported)
+- **Media file copy error handling** - `copyMediaFile` now checks `os.IsNotExist` before fallback to URL-decoded paths, preserving original errors for permissions/disk issues
+- **BLOB character validation** - `decodeGEDCOMBlob` now validates characters are in valid GEDCOM BLOB range ('.' to 'm') before decoding, preventing silent corruption
+- **EXID ID validation** - GEDCOM external ID extraction now validates `id` field exists before use, skipping entries without usable IDs
+- **Event Properties initialization** - `extractEventDetails` now ensures `event.Properties` map is initialized before writing, preventing panics
+- **Archive validation wiring** - `LoadArchiveWithOptions` now correctly passes `schemaValidate` flag to serializer for referential integrity validation
+- **Property vocabulary documentation** - Fixed `value_type` and `reference_type` field requirements (marked "No*" instead of "Yes*" to match "exactly one required" constraint)
+- **Test assertion completeness** - `TestRunValidate_MediaFileMissing` now captures stdout and verifies warning is actually produced
+
 ### Removed
 
 #### Citation Entity

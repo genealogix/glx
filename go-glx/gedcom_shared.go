@@ -126,6 +126,11 @@ func convertExtensionData(tag, value string, subRecords []*GEDCOMRecord) map[str
 //
 //nolint:gocognit,gocyclo
 func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event, conv *ConversionContext, includeCitations bool) string {
+	// Ensure Properties map is initialized before writing to it
+	if event.Properties == nil {
+		event.Properties = make(map[string]any)
+	}
+
 	var placeID string
 
 	for _, sub := range eventRecord.SubRecords {

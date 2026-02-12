@@ -54,9 +54,10 @@ func TestRunValidate_TemporalPropertiesValid(t *testing.T) {
 
 // TestRunValidate_TemporalPropertiesMalformed tests malformed temporal property usage
 func TestRunValidate_TemporalPropertiesMalformed(t *testing.T) {
-	archive, _, err := LoadArchive("testdata/invalid/temporal-properties-malformed")
+	// Load without validation since this test uses intentionally malformed data
+	archive, _, err := LoadArchiveWithOptions("testdata/invalid/temporal-properties-malformed", false)
 	if err != nil {
-		t.Fatalf("LoadArchive failed: %v", err)
+		t.Fatalf("LoadArchiveWithOptions failed: %v", err)
 	}
 
 	result := archive.Validate()

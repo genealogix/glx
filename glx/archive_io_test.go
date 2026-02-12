@@ -222,9 +222,18 @@ persons:
 					Media: map[string]*glxlib.Media{
 						"media-1": {URI: "http://example.com"},
 					},
-					// Vocabularies
+					// Vocabularies (include referenced values for validation)
 					EventTypes: map[string]*glxlib.EventType{
+						"birth":  {Label: "Birth"},
 						"custom": {Label: "Custom"},
+					},
+					ParticipantRoles: map[string]*glxlib.ParticipantRole{
+						"principal": {Label: "Principal"},
+						"child":     {Label: "Child"},
+						"parent":    {Label: "Parent"},
+					},
+					RelationshipTypes: map[string]*glxlib.RelationshipType{
+						"parent_child": {Label: "Parent-Child"},
 					},
 					PlaceTypes: map[string]*glxlib.PlaceType{
 						"custom": {Label: "Custom"},
@@ -267,8 +276,14 @@ persons:
 				if len(glx.Media) != 1 {
 					return &testError{"expected 1 media", nil}
 				}
-				if len(glx.EventTypes) != 1 {
-					return &testError{"expected 1 event type", nil}
+				if len(glx.EventTypes) != 2 {
+					return &testError{"expected 2 event types", nil}
+				}
+				if len(glx.ParticipantRoles) != 3 {
+					return &testError{"expected 3 participant roles", nil}
+				}
+				if len(glx.RelationshipTypes) != 1 {
+					return &testError{"expected 1 relationship type", nil}
 				}
 				if len(glx.PlaceTypes) != 1 {
 					return &testError{"expected 1 place type", nil}

@@ -60,7 +60,8 @@ func LoadArchiveWithOptions(rootPath string, schemaValidate bool) (*glxlib.GLXFi
 		}
 	}
 
-	serializer := createSerializer(false, false, "")
+	// Pass schemaValidate to serializer to enable referential integrity validation
+	serializer := createSerializer(schemaValidate, false, "")
 	glx, duplicates, err := serializer.DeserializeMultiFileFromMap(files)
 	if err != nil {
 		return nil, nil, err

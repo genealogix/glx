@@ -5,7 +5,8 @@
       "Bash(go test:*)",
       "Bash(tree:*)",
       "Bash(golangci-lint config verify:*)",
-      "Bash(golangci-lint run:*)"
+      "Bash(golangci-lint run:*)",
+      "Bash(./workspaces/glx/bin/glx validate:*)"
     ]
   }
 }

@@ -811,14 +811,14 @@ person_properties:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label for the property |
 | `description` | No | Detailed description of the property |
-| `value_type` | Yes* | Data type: `string`, `date`, `integer`, or `boolean` |
-| `reference_type` | Yes* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
+| `value_type` | No* | Data type: `string`, `date`, `integer`, or `boolean` |
+| `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
 | `temporal` | No | Whether property can change over time (default: false) |
 | `multi_value` | No | Whether property can have multiple values as an array (default: false) |
 | `gedcom` | No | Corresponding GEDCOM tag for import/export mapping (e.g., `OCCU`, `PAGE`) |
 | `fields` | No | Sub-schema for structured property components (see below) |
 
-***Exactly one of `value_type` or `reference_type` must be specified** - there is no implicit default
+***Exactly one of `value_type` or `reference_type` must be specified** (there is no implicit default)
 
 ### Multi-Value Properties
 
