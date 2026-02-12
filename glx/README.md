@@ -203,19 +203,23 @@ glx validate [paths...]
 - ✓ Duplicate ID detection
 - ✓ Vocabulary validation (if vocabularies/ exists)
 
+**Behavior:**
+- **Directory or multi-path validation** performs full cross-reference checking across all files
+- **Single-file validation** checks structure only (no cross-reference checks)
+
 **Examples:**
 
 ```bash
-# Validate current directory
+# Validate current directory (with cross-reference checks)
 glx validate
 
-# Validate specific directory
+# Validate specific directory (with cross-reference checks)
 glx validate persons/
 
-# Validate multiple paths
+# Validate multiple paths (with cross-reference checks)
 glx validate persons/ events/ places/
 
-# Validate single file
+# Validate single file (structure only, no cross-reference checks)
 glx validate archive.glx
 
 # Validate example archives

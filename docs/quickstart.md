@@ -10,50 +10,27 @@ Get started with GENEALOGIX in 5 minutes! This guide walks you through creating 
 
 ## What You'll Learn
 
-- Installing the `glx` CLI tool
+- Setting up the `glx` CLI tool
 - Creating a new genealogy repository
-- **Customizing vocabularies for your research domain**
 - Adding your first person, event, and relationship
 - Validating your archive
+- Adding evidence with source citations
+- **Customizing vocabularies for your research domain**
 - Using Git for version control
 
 ## Prerequisites
 
-- **Go 1.25+** (for installing the CLI tool)
 - **Git** (for version control)
 - **Text editor** (any editor that can edit YAML files)
 
 ## Step 1: Install the CLI Tool
 
-Install the `glx` command-line tool:
+Follow the [installation instructions](https://github.com/genealogix/glx/blob/main/glx/README.md#installation) to download the latest `glx` binary for your platform.
+
+Verify it works:
 
 ```bash
-# Install the latest version
-go install github.com/genealogix/glx/glx@latest
-
-# Verify installation
 glx --help
-```
-
-**Expected output:**
-```
-GLX is the official command-line tool for working with GENEALOGIX family archives.
-
-GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
-Use GLX to initialize new archives, validate files, and ensure data quality.
-
-Usage:
-  glx [command]
-
-Available Commands:
-  check-schemas Validate JSON schema files for required metadata
-  completion    Generate the autocompletion script for the specified shell
-  help          Help about any command
-  import        Import a GEDCOM file to GLX format
-  init          Initialize a new GENEALOGIX archive in the specified directory
-  join          Join a multi-file GLX archive into single-file format
-  split         Split a single-file GLX archive into multi-file format
-  validate      Validate GLX files and cross-references
 ```
 
 ## Step 2: Create Your First Repository
@@ -72,10 +49,7 @@ glx init
 glx init --single-file
 ```
 
-**What `glx init` creates:**
-- Directory structure for all entity types (persons, events, places, etc.)
-- `.gitignore` file for Git
-- `README.md` with repository documentation
+This creates a directory structure with folders for all entity types, standard vocabularies, a `.gitignore`, and a `README.md`. See the [CLI README](https://github.com/genealogix/glx/blob/main/glx/README.md#glx-init) for the full layout.
 
 ## Step 3: Add Your First Person
 
@@ -140,15 +114,7 @@ events:
 Validate that all your files follow the correct format:
 
 ```bash
-# Validate the entire archive (with cross-reference checks)
 glx validate
-
-# Or validate specific directories (with cross-reference checks)
-glx validate persons/
-glx validate places/
-
-# Validate a single file (structure only, no cross-reference checks)
-glx validate persons/person-abc123.glx
 ```
 
 **Expected output:**
@@ -156,6 +122,8 @@ glx validate persons/person-abc123.glx
 Validated 3 files.
 ✅ Archive is valid.
 ```
+
+You can also validate specific directories or single files. See the [CLI README](https://github.com/genealogix/glx/blob/main/glx/README.md#glx-validate) for all validation options.
 
 ## Step 7: Add Evidence with Citations
 
@@ -342,27 +310,4 @@ GLX adapts to YOUR research domain:
 
 ## Quick Reference
 
-**Entity Types:**
-- `persons/` - Individual people
-- `relationships/` - Family connections
-- `events/` - Life events and facts
-- `places/` - Geographic locations
-- `sources/` - Books, records, websites
-- `citations/` - Specific references
-- `repositories/` - Archives and libraries
-- `assertions/` - Evidence-based conclusions
-- `media/` - Photos and documents
-
-**ID Format:**
-- `person-` + 8 hex chars (e.g., `person-a1b2c3d4`)
-- `event-` + 8 hex chars
-- `place-` + 8 hex chars
-- etc.
-
-**Common Commands:**
-```bash
-glx init                    # Create new repository
-glx validate                # Check all files
-glx validate persons/       # Check specific directory
-glx validate file.glx       # Check specific file
-```
+For the full list of entity types, ID format, file format details, and CLI commands, see the [GLX CLI README](https://github.com/genealogix/glx/blob/main/glx/README.md).
