@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.3] - 2026-02-10
 
+### Removed
+
+- **Removed `glx check-schemas` CLI command** - Moved to `make check-schemas` Makefile target; this is a repo-internal dev tool, not a user-facing command
+
 ### Changed
 
 #### Documentation

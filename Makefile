@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt
+.PHONY: build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas
 
 # Install dependencies - Go modules and npm packages
 install-deps:
@@ -59,6 +59,23 @@ test-coverage:
 	@echo "Coverage report generated at coverage/coverage.html"
 	@echo "Opening coverage report in browser..."
 	@go tool cover -func=coverage/coverage.out | tail -n 1
+
+# Check schemas - validates JSON schema files have required $schema and $id fields
+check-schemas:
+	@fail=0; \
+	for f in $$(find specification/schema -name '*.json'); do \
+		if ! grep -q '"\$$schema"' "$$f"; then \
+			echo "missing \$$schema in $$f"; fail=1; \
+		fi; \
+		if ! grep -q '"\$$id"' "$$f"; then \
+			echo "missing \$$id in $$f"; fail=1; \
+		fi; \
+	done; \
+	if [ "$$fail" -eq 1 ]; then \
+		echo "schema validation failed"; exit 1; \
+	else \
+		echo "All schema files contain \$$schema and \$$id"; \
+	fi
 
 # Clean target - removes build artifacts
 clean:

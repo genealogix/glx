@@ -23,8 +23,7 @@ jobs:
           find specification/schema/v1 -name "*.schema.json" -exec ajv compile -s {} \;
       
       - name: Check Schema References
-        run: |
-          cd specification && go run ../glx check-schemas
+        run: make check-schemas
   
   validate-examples:
     runs-on: ubuntu-latest

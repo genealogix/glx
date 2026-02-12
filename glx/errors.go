@@ -34,7 +34,6 @@ var (
 	ErrOutputDirectoryExists      = errors.New("output directory already exists (please remove it first)")
 	ErrStructuralValidationFailed = errors.New("structural validation failed")
 	ErrValidationFailed           = errors.New("validation failed")
-	ErrSchemaValidationFailed     = errors.New("schema validation failed")
 	ErrYAMLNotObject              = errors.New("YAML document is not an object")
 	ErrPathNotFound               = errors.New("path not found")
 	ErrInvalidPath                = errors.New("invalid path")

@@ -53,7 +53,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
-	rootCmd.AddCommand(checkSchemasCmd)
+
 }
 
 // ============================================================================
@@ -304,30 +304,3 @@ func runJoin(_ *cobra.Command, args []string) error {
 	return joinArchive(args[0], args[1], !joinNoValidate, joinVerbose, joinShowFirstErrors)
 }
 
-// ============================================================================
-// Check Schemas Command
-// ============================================================================
-
-var checkSchemasCmd = &cobra.Command{
-	Use:   "check-schemas",
-	Short: "Validate JSON schema files for required metadata",
-	Long: `Validate that JSON schema files contain required metadata fields.
-
-Checks all .json files in the schema/ directory to ensure they have:
-- $schema field (JSON Schema version)
-- $id field (unique identifier)
-
-This command is primarily used for GENEALOGIX specification development
-to ensure all schema files are properly formatted.`,
-	Example: `  # Check schemas in current directory
-  glx check-schemas
-
-  # Run from specification directory
-  cd specification/
-  glx check-schemas`,
-	RunE: runCheckSchemas,
-}
-
-func runCheckSchemas(_ *cobra.Command, _ []string) error {
-	return checkSchemaFiles()
-}

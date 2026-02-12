@@ -372,25 +372,6 @@ glx join family-archive family.glx --no-validate
 glx join family-archive family.glx --verbose
 ```
 
-### `glx check-schemas`
-
-Validate JSON schema files for required metadata.
-
-**Usage:**
-```bash
-glx check-schemas
-```
-
-**Checks:**
-- ✓ `$schema` field presence
-- ✓ `$id` field presence
-
-**Example:**
-```bash
-cd specification/
-glx check-schemas
-```
-
 ## File Format
 
 GENEALOGIX uses YAML files with `.glx` extension. Entities are stored as maps where the key is the entity ID.
