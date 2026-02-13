@@ -1,0 +1,4 @@
+/* Ensure navbar always has a solid background, even on the home page */
+.VPNav {
+  background-color: var(--vp-nav-bg-color);
+}
