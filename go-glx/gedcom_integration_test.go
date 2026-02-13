@@ -922,6 +922,12 @@ func TestDeduplicateFilename(t *testing.T) {
 	if name6 != "README-2" {
 		t.Errorf("No extension dedup: got %q, want %q", name6, "README-2")
 	}
+
+	// Collision: natural name matches a previously deduplicated name
+	name7 := deduplicateFilename("photo-2.jpg", usedNames)
+	if name7 != "photo-2-2.jpg" {
+		t.Errorf("Collision with deduped name: got %q, want %q", name7, "photo-2-2.jpg")
+	}
 }
 
 func TestMediaImport_FileSourceTracking(t *testing.T) {

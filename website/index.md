@@ -57,21 +57,25 @@ Traditional genealogy software traps your research in proprietary databases and 
 | **Interoperability**  | GEDCOM export only           | Import/export + Git workflows |
 | **Custom Types**      | Fixed schema                 | Archive-defined vocabularies  |
 
-## Quick Start
+## What is a GLX Archive?
+
+A GENEALOGIX archive is a collection of plain YAML files — one per person, event, place, source, and so on — organized in a simple folder structure. Each archive also includes vocabulary files that define the types your research uses (event types, relationship types, etc.), so the archive is completely self-describing.
+
+Because it's just files and folders, you can edit your archive in any text editor, store it anywhere, back it up however you like, and track every change with Git. There's no database, no proprietary binary format, and no software required to read your data.
+
+::: tip Ready to dive in?
+Follow the [Quickstart Guide](/quickstart) to create your first archive in 5 minutes, or read the [Core Concepts](/specification/2-core-concepts) to understand the architecture.
+:::
+
+## Migrating from GEDCOM?
+
+If you already have a GEDCOM file, the `glx` CLI can import it automatically:
 
 ```bash
-# Install the glx CLI tool
-go install github.com/genealogix/glx/glx@latest
-
-# Import from GEDCOM
-glx import family.ged -o family.glx
-
-# Or create a new genealogix repository
-glx init
-
-# Validate your archive
-glx validate
+glx import family.ged -o family-archive
 ```
+
+See the full [Migration from GEDCOM](/guides/migration-from-gedcom) guide for field mapping details, troubleshooting, and post-migration workflow.
 
 ## Community
 

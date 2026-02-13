@@ -312,8 +312,10 @@ func deduplicateFilename(basename string, usedNames map[string]int) string {
 	usedNames[basename]++
 	ext := filepath.Ext(basename)
 	name := strings.TrimSuffix(basename, ext)
+	deduped := fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
+	usedNames[deduped] = 1
 
-	return fmt.Sprintf("%s-%d%s", name, usedNames[basename], ext)
+	return deduped
 }
 
 // normalizePathSeparators converts backslashes to forward slashes.

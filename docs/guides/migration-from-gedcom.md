@@ -74,7 +74,7 @@ glx import family.ged -o family.glx --format single
 
 ```bash
 # Single-file output
-glx import family.ged -o family.glx
+glx import family.ged -o family.glx --format single
 
 # Multi-file output creates a directory structure:
 # family-archive/
@@ -88,7 +88,7 @@ glx import family.ged -o family.glx
 # ├── media/
 # ├── assertions/
 # └── vocabularies/
-glx import family.ged -o family-archive/ --format multi
+glx import family.ged -o family-archive/
 ```
 
 ### Import Statistics

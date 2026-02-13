@@ -18,7 +18,7 @@ Unlike traditional genealogy formats with fixed type systems, GENEALOGIX uses **
 
 #### Freedom and Flexibility
 
-Unlike formats with centrally-defined types, GLX lets each archive define exactly what it needs:
+Unlike formats with centrally-defined types, GLX lets each archive define exactly what it needs. You can add custom entries to any vocabulary — event types, relationship types, place types, and more:
 
 - **Traditional Genealogy**: Use standard types (marriage, parent-child, adoption)
 - **Colonial History**: Add custom types (indenture, manumission, land_grant)
