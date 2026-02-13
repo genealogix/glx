@@ -161,7 +161,7 @@ properties:
       date: "FROM 1895"
 ```
 
-> **See Also:** [Temporal Properties Example](../../docs/examples/temporal-properties/) for a complete working archive demonstrating temporal values with assertions and evidence chains.
+> **See Also:** [Temporal Properties Example](/examples/temporal-properties/) for a complete working archive demonstrating temporal values with assertions and evidence chains.
 
 **Key Points:**
 - All properties are optional

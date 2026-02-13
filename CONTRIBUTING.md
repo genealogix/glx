@@ -310,7 +310,7 @@ For questions or to start a discussion, use [GitHub Discussions](https://github.
    
    Fixes #123
    ```
-4. **PR Description**: Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md)
+4. **PR Description**: Use the [PR template](https://github.com/genealogix/glx/blob/main/.github/PULL_REQUEST_TEMPLATE.md)
 5. **Testing**: Ensure all tests pass and add new tests for new features
 6. **Documentation**: Update relevant documentation
 
@@ -384,7 +384,7 @@ Contributors are recognized in:
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](/development/code-of-conduct).
 
 ### Expected Behavior
 

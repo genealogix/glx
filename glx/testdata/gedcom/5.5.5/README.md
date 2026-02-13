@@ -18,7 +18,7 @@ GEDCOM 5.5.5 is a refinement of GEDCOM 5.5.1, primarily consisting of bug fixes 
 ## Test Categories
 
 ### Specification Samples
-- **[spec-samples/](spec-samples/)** - Official gedcom.org specification samples
+- **[spec-samples/](https://github.com/genealogix/glx/tree/main/glx/testdata/gedcom/5.5.5/spec-samples)** - Official gedcom.org specification samples
   - Standard specification sample (2.0 KB)
   - Minimal valid GEDCOM (132 bytes - smallest possible file)
   - Remarriage scenario

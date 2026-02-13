@@ -7,7 +7,7 @@ layout: doc
 # GENEALOGIX Specification
 
 [![Version](https://img.shields.io/badge/version-0.0.0--beta.3-blue.svg)](https://github.com/genealogix/glx/releases)
-[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/genealogix/glx/blob/main/LICENSE)
 [![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
 [![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
@@ -16,12 +16,12 @@ The official specification for **GENEALOGIX (GLX)** - a portable, extensible arc
 
 ## Quick Links
 
-- [📖 Read the Specification](specification/)
-- [📋 JSON Schemas](specification/schema/)
-- [💡 Examples](docs/examples/)
-- [🧪 Test Suite](glx/tests/)
-- [🛠 CLI](glx/)
-- [🧱 Dev Container](.devcontainer/)
+- [📖 Read the Specification](/specification/)
+- [📋 JSON Schemas](/specification/schema/)
+- [💡 Examples](/examples/)
+- [🧪 Test Suite](https://github.com/genealogix/glx/tree/main/glx/tests)
+- [🛠 CLI](/cli)
+- [🧱 Dev Container](https://github.com/genealogix/glx/tree/main/.devcontainer)
 
 ## Current Version
 
@@ -81,7 +81,7 @@ assertions:
     confidence: high
 ```
 
-> **Learn More:** See [Core Concepts](specification/2-core-concepts.md) for the complete assertion model and evidence chain explanation.
+> **Learn More:** See [Core Concepts](/specification/2-core-concepts) for the complete assertion model and evidence chain explanation.
 
 ### Beyond Exchange: A True Research Foundation
 
@@ -194,27 +194,27 @@ GENEALOGIX is an open-source project that thrives on community participation:
 - [Mailing List](https://groups.google.com/g/genealogix) - Email discussions
 
 ### 📚 Documentation & Learning
-- [Quickstart Guide](docs/quickstart.md) - 5-minute getting started
-- [Best Practices](docs/guides/best-practices.md) - Recommended workflows
-- [Migration Guide](docs/guides/migration-from-gedcom.md) - Manual conversion guidance from GEDCOM
-- [Glossary](specification/6-glossary.md) - Key terms and concepts
+- [Quickstart Guide](/quickstart) - 5-minute getting started
+- [Best Practices](/guides/best-practices) - Recommended workflows
+- [Migration Guide](/guides/migration-from-gedcom) - Manual conversion guidance from GEDCOM
+- [Glossary](/specification/6-glossary) - Key terms and concepts
 
 ### 🤝 Contributing
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
-- [Code of Conduct](CODE_OF_CONDUCT.md) - Community standards
+- [Contributing Guide](/development/contributing) - How to contribute to the project
+- [Code of Conduct](/development/code-of-conduct) - Community standards
 
 ### 🎯 Getting Help
 
 **For Users:**
-1. Start with the [Quickstart Guide](docs/quickstart.md)
-2. Explore [Complete Examples](docs/examples/complete-family/)
+1. Start with the [Quickstart Guide](/quickstart)
+2. Explore [Complete Examples](/examples/complete-family/)
 3. Ask questions in [GitHub Discussions](https://github.com/genealogix/glx/discussions)
 
 **For Developers:**
 1. Read [CLAUDE.md](CLAUDE.md) for project context
-2. Review the [Contributing Guide](CONTRIBUTING.md)
+2. Review the [Contributing Guide](/development/contributing)
 3. Check [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions)
-4. Follow [Best Practices](docs/guides/best-practices.md)
+4. Follow [Best Practices](/guides/best-practices)
 
 ### 📊 Project Status
 
@@ -246,7 +246,7 @@ GENEALOGIX builds on decades of genealogy research and the contributions of:
 
 Copyright 2025 Oracynth, Inc.
 
-Licensed under the [Apache License, Version 2.0](LICENSE) (the "License");
+Licensed under the [Apache License, Version 2.0](https://github.com/genealogix/glx/blob/main/LICENSE) (the "License");
 you may not use this project except in compliance with the License.
 You may obtain a copy of the License at
 

@@ -16,9 +16,6 @@ export default defineConfig({
   // This allows VitePress to access all markdown files in the repo
   srcDir: '..',
 
-  // Ignore dead links temporarily during setup
-  ignoreDeadLinks: true,
-
   // Head configuration
   head: [
     ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],

@@ -10,7 +10,7 @@ Practical recommendations for maintaining GENEALOGIX archives.
 
 ## Evidence Documentation
 
-> **Background:** For an explanation of the assertion-based evidence model, see [Core Concepts](../../specification/2-core-concepts.md#assertion-aware-data-model).
+> **Background:** For an explanation of the assertion-based evidence model, see [Core Concepts](/specification/2-core-concepts#assertion-aware-data-model).
 
 ### Complete Evidence Chains
 
@@ -42,7 +42,7 @@ assertions:
     citations: [citation-birth-cert, citation-baptism]
 ```
 
-Use assertion confidence levels to express certainty about conclusions. See [Assertion Entity](../../specification/4-entity-types/assertion) and [Confidence Levels Vocabulary](../../specification/4-entity-types/vocabularies#confidence-levels-vocabulary).
+Use assertion confidence levels to express certainty about conclusions. See [Assertion Entity](/specification/4-entity-types/assertion) and [Confidence Levels Vocabulary](/specification/4-entity-types/vocabularies#confidence-levels-vocabulary).
 
 ### Transcribe Key Evidence
 
@@ -250,5 +250,5 @@ glx validate
 
 ## See Also
 
-- [Entity Types](../../specification/4-entity-types/README.md) - Entity specifications
-- [CLI Documentation](../../glx/README.md) - Command reference
+- [Entity Types](/specification/4-entity-types/) - Entity specifications
+- [CLI Documentation](/cli) - Command reference
