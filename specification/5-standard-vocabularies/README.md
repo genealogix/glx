@@ -36,7 +36,7 @@ Defines lifecycle events (birth, death, marriage, adoption), religious events (b
   title="vocabularies/event-types.glx"
 />
 
-**View Source:** [event-types.glx](event-types.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Vocabularies Specification](../4-entity-types/vocabularies#event-types-vocabulary)
+**View Source:** [event-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/event-types.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Vocabularies Specification](../4-entity-types/vocabularies#event-types-vocabulary)
 
 ---
 
@@ -49,7 +49,7 @@ Defines relationships between people including marriage, parent-child (biologica
   title="vocabularies/relationship-types.glx"
 />
 
-**View Source:** [relationship-types.glx](relationship-types.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-types-vocabulary)
+**View Source:** [relationship-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/relationship-types.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-types-vocabulary)
 
 ---
 
@@ -62,7 +62,7 @@ Defines geographic and administrative place classifications from countries down 
   title="vocabularies/place-types.glx"
 />
 
-**View Source:** [place-types.glx](place-types.glx) | **See Also:** [Place Entity Documentation](../4-entity-types/place) | [Vocabularies Specification](../4-entity-types/vocabularies#place-types-vocabulary)
+**View Source:** [place-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/place-types.glx) | **See Also:** [Place Entity Documentation](../4-entity-types/place) | [Vocabularies Specification](../4-entity-types/vocabularies#place-types-vocabulary)
 
 ---
 
@@ -75,7 +75,7 @@ Defines categories of genealogical sources including vital records, census, chur
   title="vocabularies/source-types.glx"
 />
 
-**View Source:** [source-types.glx](source-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-types-vocabulary)
+**View Source:** [source-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-types-vocabulary)
 
 ---
 
@@ -88,7 +88,7 @@ Defines categories of media objects including photographs, documents, audio reco
   title="vocabularies/media-types.glx"
 />
 
-**View Source:** [media-types.glx](media-types.glx) | **See Also:** [Media Entity Documentation](../4-entity-types/media) | [Vocabularies Specification](../4-entity-types/vocabularies#media-types-vocabulary)
+**View Source:** [media-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/media-types.glx) | **See Also:** [Media Entity Documentation](../4-entity-types/media) | [Vocabularies Specification](../4-entity-types/vocabularies#media-types-vocabulary)
 
 ---
 
@@ -101,7 +101,7 @@ Defines confidence levels for assertions, representing researcher certainty in c
   title="vocabularies/confidence-levels.glx"
 />
 
-**View Source:** [confidence-levels.glx](confidence-levels.glx) | **See Also:** [Assertion Entity Documentation](../4-entity-types/assertion) | [Vocabularies Specification](../4-entity-types/vocabularies#confidence-levels-vocabulary)
+**View Source:** [confidence-levels.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/confidence-levels.glx) | **See Also:** [Assertion Entity Documentation](../4-entity-types/assertion) | [Vocabularies Specification](../4-entity-types/vocabularies#confidence-levels-vocabulary)
 
 ---
 
@@ -114,7 +114,7 @@ Defines roles that people play in events and relationships (principal, witness, 
   title="vocabularies/participant-roles.glx"
 />
 
-**View Source:** [participant-roles.glx](participant-roles.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#participant-roles-vocabulary)
+**View Source:** [participant-roles.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/participant-roles.glx) | **See Also:** [Event Entity Documentation](../4-entity-types/event) | [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#participant-roles-vocabulary)
 
 ---
 
@@ -127,7 +127,7 @@ Defines categories of institutions that hold genealogical sources (archives, lib
   title="vocabularies/repository-types.glx"
 />
 
-**View Source:** [repository-types.glx](repository-types.glx) | **See Also:** [Repository Entity Documentation](../4-entity-types/repository) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-types-vocabulary)
+**View Source:** [repository-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/repository-types.glx) | **See Also:** [Repository Entity Documentation](../4-entity-types/repository) | [Vocabularies Specification](../4-entity-types/vocabularies#repository-types-vocabulary)
 
 ---
 
@@ -139,7 +139,7 @@ Property vocabularies define the custom properties available for each entity typ
 
 Defines standard and custom properties for person entities (birth date, occupation, residence, etc.). Supports temporal properties that change over time.
 
-**View Source:** [person-properties.glx](person-properties.glx)
+**View Source:** [person-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/person-properties.glx)
 
 **Standard Properties Include:**
 - `name` - Unified name property with optional structured fields (given, surname, prefix, suffix, etc.) (temporal)
@@ -167,7 +167,7 @@ Defines standard and custom properties for person entities (birth date, occupati
 
 Defines standard and custom properties for event entities.
 
-**View Source:** [event-properties.glx](event-properties.glx)
+**View Source:** [event-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/event-properties.glx)
 
 **Standard Properties Include:**
 - `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
@@ -185,7 +185,7 @@ Defines standard and custom properties for event entities.
 
 Defines standard and custom properties for relationship entities.
 
-**View Source:** [relationship-properties.glx](relationship-properties.glx)
+**View Source:** [relationship-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/relationship-properties.glx)
 
 **Standard Properties Include:**
 - `started_on` - When the relationship began
@@ -201,7 +201,7 @@ Defines standard and custom properties for relationship entities.
 
 Defines standard and custom properties for place entities.
 
-**View Source:** [place-properties.glx](place-properties.glx)
+**View Source:** [place-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/place-properties.glx)
 
 **Standard Properties Include:**
 - `existed_from` - When the place came into existence
@@ -220,7 +220,7 @@ Defines standard and custom properties for place entities.
 
 Defines standard and custom properties for media entities.
 
-**View Source:** [media-properties.glx](media-properties.glx)
+**View Source:** [media-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/media-properties.glx)
 
 **Standard Properties Include:**
 - `subjects` - People or entities depicted/recorded (multi-value, reference)
@@ -241,7 +241,7 @@ Defines standard and custom properties for media entities.
 
 Defines standard and custom properties for repository entities including contact information, access details, and holdings.
 
-**View Source:** [repository-properties.glx](repository-properties.glx)
+**View Source:** [repository-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/repository-properties.glx)
 
 **Standard Properties Include:**
 - `phones` - Phone numbers for the repository (multi-value)
@@ -260,7 +260,7 @@ Defines standard and custom properties for repository entities including contact
 
 Defines standard and custom properties for source entities including bibliographic metadata from GEDCOM imports.
 
-**View Source:** [source-properties.glx](source-properties.glx)
+**View Source:** [source-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-properties.glx)
 
 **Standard Properties Include:**
 - `abbreviation` - Short reference name or title (from GEDCOM ABBR)
@@ -279,7 +279,7 @@ Defines standard and custom properties for source entities including bibliograph
 
 Defines standard and custom properties for citation entities including location and transcribed text.
 
-**View Source:** [citation-properties.glx](citation-properties.glx)
+**View Source:** [citation-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/citation-properties.glx)
 
 **Standard Properties Include:**
 - `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.)

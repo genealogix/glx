@@ -1,7 +1,7 @@
 # GLX - GENEALOGIX CLI Tool
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx/glx)](https://goreportcard.com/report/github.com/genealogix/glx/glx)
-[![Coverage](https://img.shields.io/badge/coverage-70.5%25-yellow.svg)](coverage.out)
+[![Coverage](https://img.shields.io/badge/coverage-70.5%25-yellow.svg)](#test-coverage)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#running-tests)
 
 The official command-line tool for working with GENEALOGIX (GLX) family archives. Validates GLX files, initializes new archives, and checks schema conformance.
@@ -524,7 +524,7 @@ Covered areas:
 - Duplicate IDs (archive-duplicate-ids.glx)
 - Invalid formats (person-bad-id-format.glx)
 
-See [testdata/README.md](testdata/README.md) for complete test data documentation.
+See [testdata/README.md](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md) for complete test data documentation.
 
 ## Development
 
@@ -579,20 +579,20 @@ Contributions are welcome! Please:
 
 ## Related Documentation
 
-- [GENEALOGIX Specification](../specification/)
-- [JSON Schemas](../specification/schema/v1/)
-- [Examples](../docs/examples/)
-- [Test Data Documentation](testdata/README.md)
-- [Contributing Guide](../CONTRIBUTING.md)
+- [GENEALOGIX Specification](/specification/)
+- [JSON Schemas](/specification/schema/)
+- [Examples](/examples/)
+- [Test Data Documentation](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md)
+- [Contributing Guide](/development/contributing)
 
 ## License
 
-Apache License 2.0 - See [LICENSE](../LICENSE) for details.
+Apache License 2.0 - See [LICENSE](https://github.com/genealogix/glx/blob/main/LICENSE) for details.
 
 ## Support
 
-- 📖 [Specification](../specification/)
-- 💡 [Examples](../docs/examples/)
+- 📖 [Specification](/specification/)
+- 💡 [Examples](/examples/)
 - 🐛 [Issue Tracker](https://github.com/genealogix/glx/issues)
 - 💬 [Discussions](https://github.com/genealogix/glx/discussions)
 

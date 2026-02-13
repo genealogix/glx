@@ -177,7 +177,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Clarified vocabulary file location is flexible** - Spec, quickstart, and vocabulary docs now emphasize that vocabulary files can live anywhere in the archive, not only in `vocabularies/`
 - **Streamlined Introduction** - Simplified [1-introduction.md](specification/1-introduction.md) from 120 to 63 lines
 - **Restructured Core Concepts** - Reorganized [2-core-concepts.md](specification/2-core-concepts.md) to emphasize flexibility; new section order: Archive-Owned Vocabularies → Entity Relationships → Data Types → Properties → Assertions → Evidence Chain → Collaboration
-- **Merged Data Types into Core Concepts** - Integrated [6-data-types.md](specification/6-data-types.md) as section 3; deleted standalone file
+- **Merged Data Types into Core Concepts** - Integrated `6-data-types.md` as section 3; deleted standalone file
 - **Added Glossary to specification** - Moved from `docs/guides/glossary.md` to [specification/6-glossary.md](specification/6-glossary.md) with "Property" and "Temporal Property" definitions
 - Updated table of contents and fixed broken links after restructuring
 - Removed `.md` extensions from ~40 internal links for VitePress compatibility

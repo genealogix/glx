@@ -1,4 +1,9 @@
 import { defineConfig } from 'vitepress'
+import { fileURLToPath } from 'url'
+import path from 'path'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const websiteNodeModules = path.resolve(__dirname, '../node_modules')
 
 export default defineConfig({
   title: 'GENEALOGIX',
@@ -11,11 +16,12 @@ export default defineConfig({
   // This allows VitePress to access all markdown files in the repo
   srcDir: '..',
 
-  // Ignore dead links temporarily during setup
-  ignoreDeadLinks: true,
-
   // Head configuration
-  head: [['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }]],
+  head: [
+    ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
+    ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
+    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-N2YJJJFE6K');"]
+  ],
 
   // Vite configuration for file watching in Docker/WSL
   vite: {
@@ -25,9 +31,10 @@ export default defineConfig({
         interval: 100
       }
     },
-    build: {
-      rollupOptions: {
-        external: ['vue', 'vue/server-renderer']
+    resolve: {
+      alias: {
+        'vue/server-renderer': path.resolve(websiteNodeModules, 'vue/server-renderer'),
+        'vue': path.resolve(websiteNodeModules, 'vue')
       }
     }
   },

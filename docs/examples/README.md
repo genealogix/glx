@@ -64,13 +64,13 @@ glx validate examples/complete-family/
 
 ## Contributing
 
-To add new examples, see the [Contributing Guide](../../CONTRIBUTING.md).
+To add new examples, see the [Contributing Guide](/development/contributing).
 
 ## References
 
-- [GENEALOGIX Specification](../../specification/)
-- [CLI Tool](../../glx/)
-- [JSON Schemas](../../specification/schema/v1/)
-- [Contributing Guide](../../CONTRIBUTING.md)
+- [GENEALOGIX Specification](/specification/)
+- [CLI Tool](/cli)
+- [JSON Schemas](/specification/schema/)
+- [Contributing Guide](/development/contributing)
 
 

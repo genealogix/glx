@@ -105,8 +105,8 @@ relationships:
 3. Review [Entity Types](4-entity-types/) to understand data structure
 4. Check [Archive Organization](3-archive-organization) for organization patterns
 5. Review [Standard Vocabularies](5-standard-vocabularies/) for controlled type definitions
-6. See [examples/](../docs/examples/) for working examples
-7. Use [glx CLI](../glx/) for validation
+6. See [examples/](/examples/) for working examples
+7. Use [glx CLI](/cli) for validation
 
 ## Contributing
 

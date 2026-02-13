@@ -190,4 +190,4 @@ assertions:
 
 - [Temporal Properties Example](../temporal-properties/) - Detailed temporal value patterns
 - [Complete Family Example](../complete-family/) - Full multi-file archive structure
-- [Core Concepts - Assertion-Aware Data Model](../../../specification/2-core-concepts#assertion-aware-data-model)
+- [Core Concepts - Assertion-Aware Data Model](/specification/2-core-concepts#assertion-aware-data-model)

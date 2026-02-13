@@ -365,7 +365,7 @@ GEDCOM dates are converted to ISO 8601 format where possible. Qualified and rang
 | `BET 1849 AND 1851` | `BET 1849 AND 1851` | Between range |
 | `FROM 1900 TO 1950` | `FROM 1900 TO 1950` | Period range |
 
-See [Core Concepts - Data Types](../../specification/2-core-concepts#data-types) for the complete date format specification.
+See [Core Concepts - Data Types](/specification/2-core-concepts#data-types) for the complete date format specification.
 
 ### Evidence Chains
 
@@ -521,6 +521,6 @@ Most differences are handled transparently by the importer, but it helps to know
 ## See Also
 
 - [Quickstart Guide](/quickstart) - Create a new archive from scratch
-- [Entity Types](../../specification/4-entity-types/README) - Entity specifications
+- [Entity Types](/specification/4-entity-types/) - Entity specifications
 - [Best Practices](best-practices) - Workflow recommendations
-- [CLI Documentation](../../glx/README) - Command reference
+- [CLI Documentation](/cli) - Command reference
