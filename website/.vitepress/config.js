@@ -1,4 +1,9 @@
 import { defineConfig } from 'vitepress'
+import { fileURLToPath } from 'url'
+import path from 'path'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const websiteNodeModules = path.resolve(__dirname, '../node_modules')
 
 export default defineConfig({
   title: 'GENEALOGIX',
@@ -25,9 +30,10 @@ export default defineConfig({
         interval: 100
       }
     },
-    build: {
-      rollupOptions: {
-        external: ['vue', 'vue/server-renderer']
+    resolve: {
+      alias: {
+        'vue/server-renderer': path.resolve(websiteNodeModules, 'vue/server-renderer'),
+        'vue': path.resolve(websiteNodeModules, 'vue')
       }
     }
   },
