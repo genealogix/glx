@@ -1,6 +1,6 @@
 # GLX - GENEALOGIX CLI Tool
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx/glx)](https://goreportcard.com/report/github.com/genealogix/glx/glx)
+[![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
 [![Coverage](https://img.shields.io/badge/coverage-70.5%25-yellow.svg)](#test-coverage)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#running-tests)
 
