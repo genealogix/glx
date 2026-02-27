@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"slices"
 )
 
 // convertSharedNote551 converts a GEDCOM 5.5.1 NOTE record to shared note storage
@@ -190,13 +191,17 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 					if !ok {
 						citations = []string{}
 					}
-					event.Properties[PropertyCitations] = append(citations, result.CitationID)
+					if !slices.Contains(citations, result.CitationID) {
+						event.Properties[PropertyCitations] = append(citations, result.CitationID)
+					}
 				} else if result.SourceID != "" {
 					sources, ok := event.Properties[PropertySources].([]string)
 					if !ok {
 						sources = []string{}
 					}
-					event.Properties[PropertySources] = append(sources, result.SourceID)
+					if !slices.Contains(sources, result.SourceID) {
+						event.Properties[PropertySources] = append(sources, result.SourceID)
+					}
 				}
 			}
 
@@ -234,3 +239,4 @@ func extractExternalIDs(record *GEDCOMRecord) []map[string]string {
 
 	return exids
 }
+

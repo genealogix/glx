@@ -1008,3 +1008,104 @@ func TestMediaImport_URLsNotTracked(t *testing.T) {
 		t.Errorf("Expected 0 media file sources for URLs, got %d", len(result.MediaFiles))
 	}
 }
+
+func TestDuplicateSourceRefsDeduped(t *testing.T) {
+	// Issue #12: GEDCOM records referencing the same source multiple times
+	// should not produce duplicate entries in assertion evidence refs.
+	gedcomData := `0 HEAD
+1 SOUR Test
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @S1@ SOUR
+1 TITL Census Record
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 1 JAN 1900
+2 SOUR @S1@
+2 SOUR @S1@
+0 TRLR
+`
+	glx, result, err := ImportGEDCOM(strings.NewReader(gedcomData), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+	for _, e := range result.Statistics.Errors {
+		t.Logf("Error [Line %d] %s: %s", e.Line, e.Tag, e.Message)
+	}
+
+	// Find assertions — the birth event's assertion should have Sources with no duplicates
+	for id, assertion := range glx.Assertions {
+		seen := map[string]bool{}
+		for _, sid := range assertion.Sources {
+			if seen[sid] {
+				t.Errorf("Assertion %s has duplicate source ID %q in Sources", id, sid)
+			}
+			seen[sid] = true
+		}
+		seenCit := map[string]bool{}
+		for _, cid := range assertion.Citations {
+			if seenCit[cid] {
+				t.Errorf("Assertion %s has duplicate citation ID %q in Citations", id, cid)
+			}
+			seenCit[cid] = true
+		}
+	}
+}
+
+func TestDuplicateEventSourceRefsDeduped(t *testing.T) {
+	// Issue #12: Event-level SOUR accumulation should also deduplicate.
+	gedcomData := `0 HEAD
+1 SOUR Test
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @S1@ SOUR
+1 TITL Census Record
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 1 JAN 1900
+2 SOUR @S1@
+2 SOUR @S1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 MARR
+2 DATE 1 JUN 1920
+2 SOUR @S1@
+2 SOUR @S1@
+0 TRLR
+`
+	glx, result, err := ImportGEDCOM(strings.NewReader(gedcomData), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+	for _, e := range result.Statistics.Errors {
+		t.Logf("Error [Line %d] %s: %s", e.Line, e.Tag, e.Message)
+	}
+
+	// Check events for duplicate source/citation IDs in properties
+	for id, event := range glx.Events {
+		if sources, ok := event.Properties[PropertySources].([]string); ok {
+			seen := map[string]bool{}
+			for _, sid := range sources {
+				if seen[sid] {
+					t.Errorf("Event %s has duplicate source ID %q in Properties[%s]", id, sid, PropertySources)
+				}
+				seen[sid] = true
+			}
+		}
+		if citations, ok := event.Properties[PropertyCitations].([]string); ok {
+			seen := map[string]bool{}
+			for _, cid := range citations {
+				if seen[cid] {
+					t.Errorf("Event %s has duplicate citation ID %q in Properties[%s]", id, cid, PropertyCitations)
+				}
+				seen[cid] = true
+			}
+		}
+	}
+}

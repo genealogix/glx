@@ -10,6 +10,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.4]
+
+### Fixed
+
+#### GEDCOM Import: Deduplicate Evidence References
+- **Duplicate source/citation IDs in assertions and events are now deduplicated** - When a GEDCOM record references the same source multiple times, `extractEvidence()` and `extractEventDetails()` now skip IDs already seen, preventing duplicate entries that violate unique constraints in downstream consumers (#12)
+
 ## [0.0.0-beta.3] - 2026-02-10
 
 ### Added

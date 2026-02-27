@@ -225,6 +225,8 @@ type evidenceRefs struct {
 // detail produce bare source IDs, avoiding meaningless citation entities.
 func extractEvidence(record *GEDCOMRecord, conv *ConversionContext) evidenceRefs {
 	var refs evidenceRefs
+	seenCitations := map[string]bool{}
+	seenSources := map[string]bool{}
 
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagSour {
@@ -233,9 +235,11 @@ func extractEvidence(record *GEDCOMRecord, conv *ConversionContext) evidenceRefs
 				// Error already logged in createCitationFromSOUR, skip
 				continue
 			}
-			if result.CitationID != "" {
+			if result.CitationID != "" && !seenCitations[result.CitationID] {
+				seenCitations[result.CitationID] = true
 				refs.CitationIDs = append(refs.CitationIDs, result.CitationID)
-			} else if result.SourceID != "" {
+			} else if result.SourceID != "" && !seenSources[result.SourceID] {
+				seenSources[result.SourceID] = true
 				refs.SourceIDs = append(refs.SourceIDs, result.SourceID)
 			}
 		}
