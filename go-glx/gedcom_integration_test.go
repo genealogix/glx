@@ -1036,8 +1036,15 @@ func TestDuplicateSourceRefsDeduped(t *testing.T) {
 		t.Logf("Error [Line %d] %s: %s", e.Line, e.Tag, e.Message)
 	}
 
-	// Find assertions — the birth event's assertion should have Sources with no duplicates
+	// Verify at least one assertion was created with evidence refs
+	if len(glx.Assertions) == 0 {
+		t.Fatal("Expected at least one assertion, got 0")
+	}
+	foundEvidence := false
 	for id, assertion := range glx.Assertions {
+		if len(assertion.Sources) > 0 || len(assertion.Citations) > 0 {
+			foundEvidence = true
+		}
 		seen := map[string]bool{}
 		for _, sid := range assertion.Sources {
 			if seen[sid] {
@@ -1053,6 +1060,9 @@ func TestDuplicateSourceRefsDeduped(t *testing.T) {
 			seenCit[cid] = true
 		}
 	}
+	if !foundEvidence {
+		t.Fatal("No assertions had Sources or Citations — test did not exercise dedup logic")
+	}
 }
 
 func TestDuplicateEventSourceRefsDeduped(t *testing.T) {
@@ -1067,12 +1077,11 @@ func TestDuplicateEventSourceRefsDeduped(t *testing.T) {
 1 TITL Census Record
 0 @I1@ INDI
 1 NAME John /Smith/
-1 BIRT
-2 DATE 1 JAN 1900
-2 SOUR @S1@
-2 SOUR @S1@
+0 @I2@ INDI
+1 NAME Jane /Doe/
 0 @F1@ FAM
 1 HUSB @I1@
+1 WIFE @I2@
 1 MARR
 2 DATE 1 JUN 1920
 2 SOUR @S1@
@@ -1087,9 +1096,17 @@ func TestDuplicateEventSourceRefsDeduped(t *testing.T) {
 		t.Logf("Error [Line %d] %s: %s", e.Line, e.Tag, e.Message)
 	}
 
-	// Check events for duplicate source/citation IDs in properties
+	// Verify at least one event has source/citation refs
+	if len(glx.Events) == 0 {
+		t.Fatal("Expected at least one event, got 0")
+	}
+	foundRefs := false
 	for id, event := range glx.Events {
 		if sources, ok := event.Properties[PropertySources].([]string); ok {
+			foundRefs = true
+			if len(sources) != 1 {
+				t.Errorf("Event %s: expected exactly 1 source after dedup, got %d", id, len(sources))
+			}
 			seen := map[string]bool{}
 			for _, sid := range sources {
 				if seen[sid] {
@@ -1099,6 +1116,10 @@ func TestDuplicateEventSourceRefsDeduped(t *testing.T) {
 			}
 		}
 		if citations, ok := event.Properties[PropertyCitations].([]string); ok {
+			foundRefs = true
+			if len(citations) != 1 {
+				t.Errorf("Event %s: expected exactly 1 citation after dedup, got %d", id, len(citations))
+			}
 			seen := map[string]bool{}
 			for _, cid := range citations {
 				if seen[cid] {
@@ -1107,5 +1128,8 @@ func TestDuplicateEventSourceRefsDeduped(t *testing.T) {
 				seen[cid] = true
 			}
 		}
+	}
+	if !foundRefs {
+		t.Fatal("No events had PropertySources or PropertyCitations — test did not exercise dedup logic")
 	}
 }
