@@ -47,3 +47,8 @@ source_properties:
     description: "Publication details including publisher, place, date, and edition (from GEDCOM PUBL tag)"
     value_type: string
     gedcom: "PUBL"
+
+  url:
+    label: "URL"
+    description: "Web address where the source can be accessed online (e.g., FamilySearch, Ancestry, FindAGrave)"
+    value_type: string

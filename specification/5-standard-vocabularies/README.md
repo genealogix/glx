@@ -270,6 +270,7 @@ Defines standard and custom properties for source entities including bibliograph
 - `coverage` - Geographic or temporal scope
 - `external_ids` - External identifiers (multi-value)
 - `publication_info` - Publication details: publisher, place, edition (from GEDCOM PUBL)
+- `url` - Web address where the source can be accessed online
 
 **See Also:** [Source Entity Documentation](../4-entity-types/source#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#source-properties-vocabulary)
 
@@ -285,6 +286,7 @@ Defines standard and custom properties for citation entities including location 
 - `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.)
 - `text_from_source` - Transcription or excerpt of relevant text from the source
 - `source_date` - Date when the source recorded the information
+- `accessed` - Date when an online source or digital record was last accessed or retrieved
 
 **See Also:** [Citation Entity Documentation](../4-entity-types/citation#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#citation-properties-vocabulary)
 

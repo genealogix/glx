@@ -764,6 +764,7 @@ Standard properties include:
 - `coverage` - Geographic or temporal scope of source content
 - `external_ids` - External identifiers from other systems
 - `publication_info` - Publication details: publisher, place, edition (from GEDCOM PUBL)
+- `url` - Web address where the source can be accessed online (e.g., FamilySearch, Ancestry)
 
 ### Citation Properties Vocabulary
 
@@ -778,6 +779,7 @@ Standard properties include:
 - `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.; from GEDCOM PAGE)
 - `text_from_source` - Transcription or excerpt of relevant text from the source (from GEDCOM TEXT)
 - `source_date` - Date when the source recorded the information (from GEDCOM DATE)
+- `accessed` - Date when an online source or digital record was last accessed or retrieved
 
 ### Property Definition Structure
 

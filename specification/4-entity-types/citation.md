@@ -66,6 +66,7 @@ The following are standard properties from the default vocabulary; archives can 
 | `locator` | string | Location within source (e.g., 'Page 45', 'Film 1234567, Image 87', 'Entry 123') |
 | `text_from_source` | string | Transcription or excerpt from the source |
 | `source_date` | date | Date when the source recorded the information |
+| `accessed` | date | Date when an online source or digital record was last accessed |
 
 **See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README#citation-properties)
 
