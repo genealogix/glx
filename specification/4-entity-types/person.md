@@ -71,6 +71,7 @@ properties:
   name:                      # Unified name property with optional fields
     value: String           # Full name as recorded
     fields:                 # Optional structured breakdown
+      type: String          # Name classification (birth, married, alias, etc.)
       given: String
       surname: String
       prefix: String

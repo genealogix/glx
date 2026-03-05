@@ -10,6 +10,9 @@ person_properties:
     value_type: string
     temporal: true
     fields:
+      type:
+        label: "Name Type"
+        description: "Classification of name usage (e.g., birth, married, alias, immigrant, religious, formal)"
       prefix:
         label: "Prefix"
         description: "Honorific prefix (Dr., Rev., Hon.)"
