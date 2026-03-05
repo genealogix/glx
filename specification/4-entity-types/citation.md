@@ -68,7 +68,7 @@ The following are standard properties from the default vocabulary; archives can 
 | `source_date` | date | Date when the source recorded the information |
 | `accessed` | date | Date when an online source or digital record was last accessed |
 | `url` | string | Direct web address for the specific cited material (e.g., a permalink to a record or image viewer) |
-| `external_ids` | string (multi) | Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK) |
+| `external_ids` | string (multi) | Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID) |
 
 **See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README#citation-properties)
 
