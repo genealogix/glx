@@ -275,13 +275,13 @@ func (glx *GLXFile) checkReference(
 		}
 	}
 	if !found {
-		// Check if a hyphen/underscore swap would match a vocabulary entry,
+		// Check if a hyphen/underscore swap would match an existing key,
 		// and suggest the correct key if so.
-		suggestion := glx.suggestVocabKey(targetTypes, refID, result)
+		suggestion := glx.suggestReferenceKey(targetTypes, refID, result)
 		msg := fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
 			entityType, entityID, fieldName, refType, refID)
 		if suggestion != "" {
-			msg += fmt.Sprintf(" (did you mean %q?)", suggestion)
+			msg += fmt.Sprintf(" (did you mean '%s'?)", suggestion)
 		}
 		result.Errors = append(result.Errors, ValidationError{
 			SourceType:  entityType,
@@ -294,9 +294,9 @@ func (glx *GLXFile) checkReference(
 	}
 }
 
-// suggestVocabKey checks if swapping hyphens and underscores in refID would
+// suggestReferenceKey checks if swapping hyphens and underscores in refID would
 // match an existing vocabulary or entity key. Returns the matching key or "".
-func (glx *GLXFile) suggestVocabKey(targetTypes []string, refID string, result *ValidationResult) string {
+func (glx *GLXFile) suggestReferenceKey(targetTypes []string, refID string, result *ValidationResult) string {
 	// Try swapping hyphens <-> underscores
 	alternatives := []string{
 		strings.ReplaceAll(refID, "-", "_"),

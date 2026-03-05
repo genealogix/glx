@@ -947,3 +947,36 @@ func TestValidateStructuredPropertyValue(t *testing.T) {
 func boolPtr(b bool) *bool {
 	return &b
 }
+
+func TestValidateSuggestReferenceKey(t *testing.T) {
+	t.Run("suggests underscore when hyphen used in vocabulary type", func(t *testing.T) {
+		archive := &GLXFile{
+			Relationships:     map[string]*Relationship{"rel-1": {Type: "parent-child"}},
+			RelationshipTypes: map[string]*RelationshipType{"parent_child": {Label: "Parent-Child"}},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		assert.Contains(t, result.Errors[0].Message, "did you mean 'parent_child'?")
+	})
+
+	t.Run("suggests hyphen when underscore used in entity ref", func(t *testing.T) {
+		archive := &GLXFile{
+			Events:     map[string]*Event{"event-1": {PlaceID: "place_leeds"}},
+			Places:     map[string]*Place{"place-leeds": {Name: "Leeds"}},
+			EventTypes: map[string]*EventType{},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		assert.Contains(t, result.Errors[0].Message, "did you mean 'place-leeds'?")
+	})
+
+	t.Run("no suggestion when no close match exists", func(t *testing.T) {
+		archive := &GLXFile{
+			Relationships:     map[string]*Relationship{"rel-1": {Type: "nonexistent"}},
+			RelationshipTypes: map[string]*RelationshipType{"parent_child": {Label: "Parent-Child"}},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		assert.NotContains(t, result.Errors[0].Message, "did you mean")
+	})
+}
