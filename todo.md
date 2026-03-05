@@ -22,7 +22,6 @@ Data that is parsed but silently dropped or not stored.
 - **HEAD Metadata** ([gedcom_converter.go:220-221](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_converter.go#L220-L221)): Store HEAD metadata (export_date, source_file, copyright, language, source_system).
 - **SUBM Metadata** ([gedcom_converter.go:246-247](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_converter.go#L246-L247)): Store SUBM (submitter) metadata.
 - **NCHI Tag** ([gedcom_family.go](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_family.go)): Store NCHI (number of children) — can differ from actual CHIL count.
-- **NAME TYPE** ([gedcom_name.go](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_name.go)): Store NAME TYPE subfield (birth, married, aka).
 - **LANG Tag Normalization**: GEDCOM 5.5.x uses free-form text (`English`, `French`) while 7.0 uses ISO format (`en-US`). Should normalize 5.5.x values to ISO codes on import.
 - **PLAC Validation** ([gedcom_place.go](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_place.go)): Reject non-geographic text like "Died in childbirth", "Unmarried", "Unknown".
 
