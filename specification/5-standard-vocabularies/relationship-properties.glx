@@ -24,3 +24,8 @@ relationship_properties:
     description: "Detailed description of the relationship"
     value_type: string
 
+  existence:
+    label: "Existence"
+    description: "Whether this relationship is evidenced to exist (for use in assertions to link a relationship to supporting citations)"
+    value_type: string
+
