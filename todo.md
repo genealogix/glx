@@ -62,6 +62,8 @@ Design decisions to resolve before 1.0.
 
 - **Add validation rule sections**: Each entity type doc should include a consolidated "Validation Rules" section.
 - **Git Workflow Guide**: Document branching strategies, collaboration patterns, and branch-based research methodologies for GLX archives.
+- **Place schema: enforce latitude/longitude co-dependency**: Schema allows `latitude` without `longitude` (and vice versa). Add a `dependencies` clause so both must be present together.
+- **Validate media `hash` format**: Media `hash` field should follow `algorithm:hexstring` format (e.g., `sha256:abc123...`). Currently not validated.
 
 ---
 
