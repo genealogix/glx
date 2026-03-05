@@ -194,6 +194,7 @@ assertions:
     citations:
       - citation-robert-birth-cert
     confidence: high
+    status: proven
     notes: "Primary source: original birth certificate"
 
   # --- Robert's occupation history supported by multiple sources ---
@@ -216,6 +217,7 @@ assertions:
       - citation-2000-census-chen
       - citation-linkedin-career
     confidence: high
+    status: proven
     notes: "Multiple sources confirm career change to financial advisor in 1995"
 
   # --- Robert's residence supported by census evidence ---
@@ -228,7 +230,8 @@ assertions:
       - citation-1990-census-chen
       - citation-2000-census-chen
     confidence: high
-    notes: "Census records confirm Boston residence from at least 1990"
+    status: speculative
+    notes: "Census records confirm Boston residence from at least 1990, but earlier records not yet checked"
 
   # --- Alice's birth supported by primary evidence ---
   assertion-alice-birth:
@@ -239,6 +242,7 @@ assertions:
     citations:
       - citation-alice-birth-cert
     confidence: high
+    status: proven
     notes: "Primary source: original birth certificate"
 
   # --- Alice's birth place from same source ---
@@ -270,5 +274,14 @@ assertions:
 #   - Research context (personal vs. professional)
 #   - Collaboration needs (solo vs. team)
 #   - Evidence complexity (straightforward vs. conflicting)
+#
+# The `status` field tracks research state independently of `confidence`:
+#   - status: proven     — verified through primary evidence
+#   - status: speculative — hypothesis that needs further research
+#   - status: disproven  — evidence contradicts this assertion
+#   - confidence: high   — how certain you are about the claim
+#
+# A `confidence: high` + `status: speculative` assertion means
+# "I'm fairly sure this is right, but I haven't verified it yet."
 #
 # ===========================================================================
