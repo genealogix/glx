@@ -323,6 +323,11 @@ A property with structured fields that break down complex values into named comp
 
 > **See Also:** [Structured Properties](2-core-concepts#structured-properties)
 
+### Status (Assertion)
+The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), and `disproven` (evidence contradicts the assertion). Free-text; archives may use any labels.
+
+> **See Also:** [Assertion Entity - Status](4-entity-types/assertion#status)
+
 ### Subject
 In assertions, the typed reference to the entity the assertion is about. The subject field specifies both the entity type and entity ID.
 
@@ -334,7 +339,7 @@ In assertions, the typed reference to the entity the assertion is about. The sub
 A reference that specifies both the entity type and entity ID, used in assertion subjects (e.g., `person: person-john-smith` rather than just `person-john-smith`).
 
 ### Temporal Property
-A property that can change over time (e.g., residence, occupation, name). Temporal properties support date ranges and multiple values representing changes over a person's life.
+A property that can hold multiple values, with or without dates. Temporal properties support dated lists (values that change over time), undated lists (multiple values without known dates, e.g., occupations from an obituary), or a single value.
 
 ### Transcription
 The text content of a source document, especially when the original is not directly accessible or when specific text is relevant to an assertion.

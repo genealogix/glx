@@ -212,8 +212,8 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 
 | GEDCOM Tag | GLX Event Type | Notes |
 |------------|---------------|-------|
-| `MARR` | `marriage` | Also sets `marriage_event` on the relationship |
-| `DIV` | `divorce` | Also sets `divorce_event` on the relationship |
+| `MARR` | `marriage` | Also sets `start_event` on the relationship |
+| `DIV` | `divorce` | Also sets `end_event` on the relationship |
 | `ENGA` | `engagement` | |
 | `MARB` | `marriage_banns` | |
 | `MARC` | `marriage_contract` | |
@@ -465,6 +465,7 @@ After importing, review the results:
 The automated import creates a solid foundation. Consider enhancing:
 
 - **Confidence levels**: Add `confidence: high/medium/low` to assertions
+- **Assertion status**: Add `status: proven/speculative/disproven` to track research verification
 - **Transcriptions**: Add `text_from_source` to citations
 - **Place details**: Add coordinates and refine place types
 - **Research notes**: Add notes to entities documenting your analysis
