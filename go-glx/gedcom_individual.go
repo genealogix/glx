@@ -447,8 +447,16 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 				person.Properties[PersonPropertyResidence] = []any{temporalValue}
 			}
 		} else {
-			// No date - just set the place
-			person.Properties[PersonPropertyResidence] = placeID
+			// No date - append place to existing residence list
+			if existing, ok := person.Properties[PersonPropertyResidence]; ok {
+				if existingList, ok := existing.([]any); ok {
+					person.Properties[PersonPropertyResidence] = append(existingList, placeID)
+				} else {
+					person.Properties[PersonPropertyResidence] = []any{existing, placeID}
+				}
+			} else {
+				person.Properties[PersonPropertyResidence] = placeID
+			}
 		}
 
 		// Create assertion for the residence
@@ -618,7 +626,16 @@ func applyCensusData(personID string, person *Person, data censusData, conv *Con
 			person.Properties[PersonPropertyResidence] = []any{temporalValue}
 		}
 	} else {
-		person.Properties[PersonPropertyResidence] = data.placeID
+		// No date - append place to existing residence list
+		if existing, ok := person.Properties[PersonPropertyResidence]; ok {
+			if existingList, ok := existing.([]any); ok {
+				person.Properties[PersonPropertyResidence] = append(existingList, data.placeID)
+			} else {
+				person.Properties[PersonPropertyResidence] = []any{existing, data.placeID}
+			}
+		} else {
+			person.Properties[PersonPropertyResidence] = data.placeID
+		}
 	}
 
 	// Create assertion for residence backed by citations
