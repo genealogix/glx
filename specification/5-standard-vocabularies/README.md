@@ -154,6 +154,7 @@ Defines standard and custom properties for person entities (birth date, occupati
 - `religion` - Religious affiliation (temporal, GEDCOM: RELI)
 - `education` - Educational attainment (temporal, GEDCOM: EDUC)
 - `ethnicity` - Ethnic background (temporal)
+- `race` - Racial classification as recorded in historical documents (temporal)
 - `nationality` - National citizenship (temporal, GEDCOM: NATI)
 - `caste` - Caste, tribe, or social group (temporal, GEDCOM: CAST)
 - `ssn` - Social Security Number (GEDCOM: SSN)

@@ -95,6 +95,12 @@ person_properties:
     value_type: string
     temporal: true
   
+  race:
+    label: "Race"
+    description: "Racial classification as recorded in historical documents (e.g., census records)"
+    value_type: string
+    temporal: true
+
   nationality:
     label: "Nationality"
     description: "National citizenship"

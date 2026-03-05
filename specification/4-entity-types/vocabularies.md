@@ -653,6 +653,7 @@ GENEALOGIX provides standard person properties:
 | `religion` | string | Yes | RELI | Religious affiliation |
 | `education` | string | Yes | EDUC | Educational attainment |
 | `ethnicity` | string | Yes | | Ethnic background |
+| `race` | string | Yes | | Racial classification as recorded in historical documents |
 | `nationality` | string | Yes | NATI | National citizenship |
 | `caste` | string | Yes | CAST | Caste, tribe, or social group |
 | `ssn` | string | No | SSN | Social Security Number |
