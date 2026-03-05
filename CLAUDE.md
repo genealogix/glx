@@ -99,12 +99,18 @@ Vocabularies are defined in `.glx` files and will be embedded in the binary usin
 
 ### Git Workflow
 
-```bash
-# Feature branches follow this pattern:
-claude/feature-name-{sessionId}
+**Use standard branch naming conventions** — do NOT use `claude/` prefix or session IDs.
 
-# Example:
-claude/gedcom-import-function-01EsRP3qVbnSKcufKho9gVhK
+```bash
+# Branch naming: use conventional prefixes
+feat/short-description
+fix/short-description
+docs/short-description
+
+# Examples:
+feat/name-type-implementation
+fix/gedcom-note-resolution
+docs/update-quickstart
 
 # Always push with -u flag:
 git push -u origin <branch-name>
@@ -391,7 +397,7 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 ### Commit Messages
 
 - Keep messages brief - prefer single-line messages when possible
-- Do NOT include "Generated with Claude Code" or Co-Authored-By footers
+- Do NOT include "Generated with Claude Code", Co-Authored-By footers, or any AI attribution in commits, PRs, or any other output
 - Use conventional commits format
 - Examples:
   - `feat: Add GEDCOM 7.0 EXID support`
@@ -467,7 +473,7 @@ Also available:
 ## Contact and Collaboration
 
 **Repository**: genealogix/glx
-**Branch Pattern**: `claude/feature-name-{sessionId}`
+**Branch Pattern**: `feat/short-description`, `fix/short-description`, `docs/short-description`
 **Workflow**: Feature branches → Push → (PR created manually by user)
 
 ---
