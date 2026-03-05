@@ -275,16 +275,51 @@ func (glx *GLXFile) checkReference(
 		}
 	}
 	if !found {
+		// Check if a hyphen/underscore swap would match a vocabulary entry,
+		// and suggest the correct key if so.
+		suggestion := glx.suggestVocabKey(targetTypes, refID, result)
+		msg := fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
+			entityType, entityID, fieldName, refType, refID)
+		if suggestion != "" {
+			msg += fmt.Sprintf(" (did you mean %q?)", suggestion)
+		}
 		result.Errors = append(result.Errors, ValidationError{
 			SourceType:  entityType,
 			SourceID:    entityID,
 			SourceField: fieldName,
 			TargetType:  refType,
 			TargetID:    refID,
-			Message: fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
-				entityType, entityID, fieldName, refType, refID),
+			Message:     msg,
 		})
 	}
+}
+
+// suggestVocabKey checks if swapping hyphens and underscores in refID would
+// match an existing vocabulary or entity key. Returns the matching key or "".
+func (glx *GLXFile) suggestVocabKey(targetTypes []string, refID string, result *ValidationResult) string {
+	// Try swapping hyphens <-> underscores
+	alternatives := []string{
+		strings.ReplaceAll(refID, "-", "_"),
+		strings.ReplaceAll(refID, "_", "-"),
+	}
+	for _, alt := range alternatives {
+		if alt == refID {
+			continue
+		}
+		for _, targetType := range targetTypes {
+			targetType = strings.TrimSpace(targetType)
+			if isVocabularyType(targetType) {
+				if _, exists := result.Vocabularies[targetType][alt]; exists {
+					return alt
+				}
+			} else {
+				if _, exists := result.Entities[targetType][alt]; exists {
+					return alt
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // isVocabularyType is a helper to distinguish vocabulary types from entity types.
