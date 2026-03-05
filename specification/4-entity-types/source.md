@@ -228,6 +228,7 @@ The following are standard properties from the default vocabulary; archives can 
 | `coverage` | string | Geographic/temporal scope |
 | `external_ids` | string[] | External system identifiers |
 | `publication_info` | string | Publication details: publisher, place, edition (from GEDCOM PUBL) |
+| `url` | string | Web address where the source can be accessed online |
 
 Example:
 ```yaml
