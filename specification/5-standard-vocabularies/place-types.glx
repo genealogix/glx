@@ -28,6 +28,11 @@ place_types:
     description: "Town or village"
     category: "geographic"
 
+  township:
+    label: "Township"
+    description: "Township or civil subdivision of a county (common in U.S. land survey and census records)"
+    category: "administrative"
+
   parish:
     label: "Parish"
     description: "Church parish or ecclesiastical division"
