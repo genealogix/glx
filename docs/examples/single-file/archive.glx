@@ -73,6 +73,9 @@ person_properties:
     value_type: string
     temporal: true
     fields:
+      type:
+        label: "Name Type"
+        description: "Classification of name usage (e.g., birth, married, alias, immigrant, religious, formal)"
       prefix:
         label: "Prefix"
         description: "Honorific prefix (Dr., Rev., Hon.)"
@@ -107,6 +110,12 @@ person_properties:
     description: "Gender identity"
     value_type: string
 
+source_properties:
+  url:
+    label: "URL"
+    description: "Web address where the source can be accessed online"
+    value_type: string
+
 citation_properties:
   locator:
     label: "Locator"
@@ -116,6 +125,10 @@ citation_properties:
     label: "Text from Source"
     description: "Transcription or excerpt of relevant text from the source"
     value_type: string
+  accessed:
+    label: "Date Accessed"
+    description: "Date when an online source or digital record was last accessed or verified"
+    value_type: date
 
 persons:
   person-a1b2c3d4:

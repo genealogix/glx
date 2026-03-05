@@ -10,15 +10,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.5] - WIP
+
+### Added
+
+#### Standard Vocabularies
+- **Added `url` and `accessed` properties for digital sources** - Sources can now record a `url` property, and citations can record an `accessed` date for when an online source was last verified (#21)
+
+#### GEDCOM Import
+- **Import NAME.TYPE subfield** - GEDCOM `NAME.TYPE` values (BIRTH, MARRIED, AKA, etc.) are now lowercased and stored in the name property's `type` field (#25)
+
+---
+
 ## [0.0.0-beta.4] - 2026-03-04
 
 ### Added
 
 #### Standard Vocabularies
 - **Added `township` place type** - Township is a common administrative division in U.S. census and land records, distinct from `town` (a geographic settlement vs. a civil subdivision of a county) (#16)
-
-#### GEDCOM Import
-- **Import NAME.TYPE subfield** - GEDCOM `NAME.TYPE` values (BIRTH, MARRIED, AKA, etc.) are now lowercased and stored in the name property's `type` field (#25)
 
 ### Fixed
 
