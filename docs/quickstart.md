@@ -78,7 +78,7 @@ persons:
 ```
 
 ::: details What's the difference between `value` and `fields`?
-Properties in GLX can have a simple `value` (the human-readable form) and optional `fields` that break it into structured parts. For a name, `value` is what you'd display ("John Smith") while `fields` lets software know which part is the given name and which is the surname. See [Properties](/specification/2-core-concepts#properties-recording-conclusions) in the specification for the full details.
+Properties in GLX can have a simple `value` (the human-readable form) and optional `fields` that break it into structured parts. For a name, `value` is what you'd display ("John Smith") while `fields` lets software know which part is the given name and which is the surname. You can also add a `type` field to classify the name (e.g., "birth", "married", "alias"). See [Properties](/specification/2-core-concepts#properties-recording-conclusions) in the specification for the full details.
 :::
 
 

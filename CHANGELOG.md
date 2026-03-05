@@ -10,6 +10,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.5] - WIP
+
+### Added
+
+#### Standard Vocabularies
+- **Added `url` and `accessed` properties for digital sources** - Sources can now record a `url` property, and citations can record an `accessed` date for when an online source was last verified (#21)
+- **Added `race` person property** - Temporal string property for recording racial classifications as they appear in historical documents such as census records (#24)
+
+#### GEDCOM Import
+- **Import NAME.TYPE subfield** - GEDCOM `NAME.TYPE` values (BIRTH, MARRIED, AKA, etc.) are now lowercased and stored in the name property's `type` field (#25)
+
+---
+
 ## [0.0.0-beta.4] - 2026-03-04
 
 ### Added

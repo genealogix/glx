@@ -139,7 +139,8 @@ sources:
   source-linkedin:
     title: "LinkedIn Profile - Robert Chen"
     type: database
-    notes: "Accessed 2024-01-15"
+    properties:
+      url: "https://www.linkedin.com/in/robert-chen-example"
 
 # ---------------------------------------------------------------------
 # CITATIONS - Specific references within sources
@@ -174,6 +175,7 @@ citations:
     source: source-linkedin
     properties:
       text_from_source: "Financial Advisor at Chen Financial Services (1995-2020)"
+      accessed: "2024-01-15"
 
 # ---------------------------------------------------------------------
 # ASSERTIONS - Evidence-backed claims about properties

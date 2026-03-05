@@ -186,6 +186,113 @@ func TestParseGEDCOMName(t *testing.T) {
 	}
 }
 
+func TestNameSubstructureToFieldsWithType(t *testing.T) {
+	tests := []struct {
+		name       string
+		ns         *NameSubstructure
+		wantType   string
+		wantAbsent bool // true = key should not exist in map
+		wantNil    bool
+	}{
+		{
+			name:     "birth type",
+			ns:       &NameSubstructure{TYPE: "birth", GIVN: "Mary", SURN: "Green"},
+			wantType: "birth",
+		},
+		{
+			name:     "married type",
+			ns:       &NameSubstructure{TYPE: "married", GIVN: "Mary", SURN: "Lane"},
+			wantType: "married",
+		},
+		{
+			name:     "aka type",
+			ns:       &NameSubstructure{TYPE: "aka", GIVN: "Johnny", SURN: "Smith"},
+			wantType: "aka",
+		},
+		{
+			name:     "immigrant type",
+			ns:       &NameSubstructure{TYPE: "immigrant", GIVN: "Johann", SURN: "Schmidt"},
+			wantType: "immigrant",
+		},
+		{
+			name:       "no type - key absent",
+			ns:         &NameSubstructure{GIVN: "John", SURN: "Smith"},
+			wantAbsent: true,
+		},
+		{
+			name:    "nil substructure",
+			ns:      nil,
+			wantNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fields := tt.ns.ToFields()
+			if tt.wantNil {
+				if fields != nil {
+					t.Errorf("expected nil fields, got %v", fields)
+				}
+				return
+			}
+			if tt.wantAbsent {
+				if _, exists := fields[NameFieldType]; exists {
+					t.Error("expected type field to be absent from fields map")
+				}
+				return
+			}
+			got, _ := fields[NameFieldType].(string)
+			if got != tt.wantType {
+				t.Errorf("fields[type] = %q, want %q", got, tt.wantType)
+			}
+		})
+	}
+}
+
+func TestNameTypeExtraction(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME Mary /Green/\n2 TYPE BIRTH\n2 GIVN Mary\n2 SURN Green\n" +
+		"1 NAME Mary /Lane/\n2 TYPE MARRIED\n2 GIVN Mary\n2 SURN Lane\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("ImportGEDCOM failed: %v", err)
+	}
+
+	// Find the person
+	var person *Person
+	for _, p := range glxFile.Persons {
+		person = p
+		break
+	}
+	if person == nil {
+		t.Fatal("expected at least one person")
+	}
+
+	// The last NAME record wins for the single-value name property
+	nameProp, ok := person.Properties[PersonPropertyName]
+	if !ok {
+		t.Fatal("expected name property")
+	}
+	nameMap, ok := nameProp.(map[string]any)
+	if !ok {
+		t.Fatalf("expected name to be map[string]any, got %T", nameProp)
+	}
+	fields, ok := nameMap["fields"]
+	if !ok {
+		t.Fatal("expected fields in name property")
+	}
+	fieldsMap, ok := fields.(map[string]any)
+	if !ok {
+		t.Fatalf("expected fields to be map[string]any, got %T", fields)
+	}
+	got, _ := fieldsMap[NameFieldType].(string)
+	if got != "married" {
+		t.Errorf("name type = %q, want %q", got, "married")
+	}
+}
+
 func TestParseGEDCOMPlace(t *testing.T) {
 	tests := []struct {
 		input      string
