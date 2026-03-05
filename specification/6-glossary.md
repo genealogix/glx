@@ -20,7 +20,7 @@ Validation performed across all files in an archive, checking for duplicate enti
 > **See Also:** [Validation Levels](3-archive-organization#validation-levels)
 
 ### Archive-Owned Vocabularies
-Controlled vocabulary definitions stored in each archive's `vocabularies/` directory, allowing archives to customize and extend type systems while maintaining validation and consistency.
+Controlled vocabulary definitions owned by each archive, allowing archives to customize and extend type systems while maintaining validation and consistency. Vocabulary files are identified by their top-level keys (e.g., `event_types`, `place_types`) and can be placed anywhere in the archive, though `vocabularies/` is the conventional directory.
 
 > **See Also:** [Archive-Owned Vocabularies](2-core-concepts#archive-owned-vocabularies)
 
@@ -353,7 +353,7 @@ The data type specification for a property value: string, date, integer, boolean
 > **See Also:** [Data Types](2-core-concepts#data-types)
 
 ### Vocabularies
-Controlled lists of valid types and categories used throughout a GENEALOGIX archive, stored in the `vocabularies/` directory.
+Controlled lists of valid types and categories used throughout a GENEALOGIX archive. Conventionally stored in the `vocabularies/` directory, but can be placed in any `.glx` file.
 
 > **See Also:** [Vocabularies](4-entity-types/vocabularies), [Standard Vocabularies](5-standard-vocabularies/)
 

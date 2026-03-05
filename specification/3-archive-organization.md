@@ -398,20 +398,14 @@ git commit -m "Add John Smith and birth event with sources"
 ### Converting Multi-File to Single-File
 
 ```bash
-# Using glx tool (future feature)
-glx convert --output family.glx persons/ events/ sources/
+glx join path/to/archive/ -o family.glx
 ```
-
-Manual approach: Copy all entity type sections from individual files into one file.
 
 ### Converting Single-File to Multi-File
 
 ```bash
-# Using glx tool (future feature)
-glx split family.glx --output-dir .
+glx split family.glx -o path/to/archive/
 ```
-
-Manual approach: Extract each entity into its own file with the appropriate entity type key.
 
 ## Validation
 

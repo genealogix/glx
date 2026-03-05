@@ -419,6 +419,7 @@ properties:
   name:
     value: "Dr. John Smith Jr."
     fields:
+      type: "birth"
       prefix: "Dr."
       given: "John"
       surname: "Smith"
@@ -511,6 +512,7 @@ assertions:
 - `value`: The concluded value of the property
 - `citations`, `sources`, or `media`: Evidence supporting this assertion (at least one required)
 - `confidence`: How certain we are based on evidence quality
+- `status`: Research state of the assertion (e.g., `proven`, `speculative`, `disproven`) — independent of confidence
 
 **The `property` field references property vocabularies:**
 

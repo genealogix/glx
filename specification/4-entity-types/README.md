@@ -13,7 +13,7 @@ This section defines the core entity types in GENEALOGIX. Each entity represents
 ### [Person](person)
 Represents an individual in the family archive. Contains personal identity information, names, events, and relationships.
 
-- **Key Properties**: Names, gender, birth/death dates, events, relationships
+- **Key Properties**: Names, gender, birth/death dates, occupation, residence
 - **GEDCOM Equivalent**: INDI (Individual Record)
 
 ### [Relationship](relationship)
@@ -37,7 +37,7 @@ Represents geographic locations forming a hierarchical structure. Supports multi
 ### [Assertion](assertion)
 Represents an evidence-based conclusion about a specific genealogical fact. Forms the core of the GENEALOGIX assertion model.
 
-- **Key Properties**: Subject, property, value, citations, confidence
+- **Key Properties**: Subject, property, value, citations, confidence, status
 - **GEDCOM Equivalent**: Implicit (derived from GEDCOM structure and SOUR references)
 
 ### [Source](source)
@@ -49,7 +49,7 @@ Represents a bibliographic resource or information source. Can be books, documen
 ### [Citation](citation)
 Represents a specific reference to evidence within a source. Links sources to specific pages, records, or items.
 
-- **Key Properties**: Source reference, page, data date, locator
+- **Key Properties**: Source reference, locator, text from source, accessed date
 - **GEDCOM Equivalent**: SOUR.PAGE, SOUR.QUAY
 
 ### [Repository](repository)
