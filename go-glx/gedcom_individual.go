@@ -408,6 +408,29 @@ func buildPlaceHierarchyFromAddress(addrRecord *GEDCOMRecord) *PlaceHierarchy {
 	}
 }
 
+// appendResidence appends a residence value to a person's residence property.
+// The value may be a temporal map (with date) or a bare place ID string.
+// If the property already exists, it is converted to/appended to a list.
+// If the property does not exist, a bare value is stored directly (scalar for
+// a single undated entry, single-element list for a dated entry).
+func appendResidence(person *Person, value any) {
+	existing, exists := person.Properties[PersonPropertyResidence]
+	if !exists {
+		// Temporal entries (maps with date) always start as a list
+		if _, isMap := value.(map[string]any); isMap {
+			person.Properties[PersonPropertyResidence] = []any{value}
+		} else {
+			person.Properties[PersonPropertyResidence] = value
+		}
+		return
+	}
+	if existingList, ok := existing.([]any); ok {
+		person.Properties[PersonPropertyResidence] = append(existingList, value)
+	} else {
+		person.Properties[PersonPropertyResidence] = []any{existing, value}
+	}
+}
+
 // convertResidence converts RESI to residence temporal property on person
 func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, conv *ConversionContext) {
 	// Extract place and date from RESI record
@@ -428,27 +451,13 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 
 	// If we have a place, create temporal property
 	if placeID != "" {
-		// Build temporal value with date if present
 		if dateStr != "" {
-			// Add as temporal property with date
-			temporalValue := map[string]any{
+			appendResidence(person, map[string]any{
 				"value": placeID,
 				"date":  dateStr,
-			}
-			// Append to existing residence history or create new
-			if existing, ok := person.Properties[PersonPropertyResidence]; ok {
-				if existingList, ok := existing.([]any); ok {
-					person.Properties[PersonPropertyResidence] = append(existingList, temporalValue)
-				} else {
-					// Convert single value to list
-					person.Properties[PersonPropertyResidence] = []any{existing, temporalValue}
-				}
-			} else {
-				person.Properties[PersonPropertyResidence] = []any{temporalValue}
-			}
+			})
 		} else {
-			// No date - just set the place
-			person.Properties[PersonPropertyResidence] = placeID
+			appendResidence(person, placeID)
 		}
 
 		// Create assertion for the residence
@@ -604,21 +613,12 @@ func applyCensusData(personID string, person *Person, data censusData, conv *Con
 	}
 
 	if data.dateStr != "" {
-		temporalValue := map[string]any{
+		appendResidence(person, map[string]any{
 			"value": data.placeID,
 			"date":  data.dateStr,
-		}
-		if existing, ok := person.Properties[PersonPropertyResidence]; ok {
-			if existingList, ok := existing.([]any); ok {
-				person.Properties[PersonPropertyResidence] = append(existingList, temporalValue)
-			} else {
-				person.Properties[PersonPropertyResidence] = []any{existing, temporalValue}
-			}
-		} else {
-			person.Properties[PersonPropertyResidence] = []any{temporalValue}
-		}
+		})
 	} else {
-		person.Properties[PersonPropertyResidence] = data.placeID
+		appendResidence(person, data.placeID)
 	}
 
 	// Create assertion for residence backed by citations
