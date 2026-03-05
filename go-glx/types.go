@@ -235,6 +235,7 @@ type Assertion struct {
 	Date        string       `yaml:"date,omitempty"`        // For temporal properties
 	Participant *Participant `yaml:"participant,omitempty"` // Not present if property/value exists
 	Confidence  string       `refType:"confidence_levels"  yaml:"confidence,omitempty"`
+	Status      string       `yaml:"status,omitempty"`
 	Sources     []string     `refType:"sources"            yaml:"sources,omitempty"`
 	Citations   []string     `refType:"citations"          yaml:"citations,omitempty"`
 	Media       []string     `refType:"media"              yaml:"media,omitempty"`
