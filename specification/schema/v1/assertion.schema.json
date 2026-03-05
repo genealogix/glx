@@ -131,6 +131,10 @@
       "type": "string",
       "description": "General notes about the assertion"
     },
+    "status": {
+      "type": "string",
+      "description": "Research status of this assertion (e.g., proven, disproven, speculative)"
+    },
     "sources": {
       "type": "array",
       "minItems": 1,

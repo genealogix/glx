@@ -58,6 +58,7 @@ assertions:
 | `date` | string | Date or date range when this property value applies (for temporal properties) |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string | General notes about the assertion |
+| `status` | string | Research status of this assertion (e.g., proven, disproven, speculative) |
 
 ### Subject Object
 

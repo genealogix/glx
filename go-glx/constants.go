@@ -90,6 +90,7 @@ const (
 
 // Name Field Constants - used in the name property's fields structure
 const (
+	NameFieldType          = "type"
 	NameFieldPrefix        = "prefix"
 	NameFieldGiven         = "given"
 	NameFieldNickname      = "nickname"
