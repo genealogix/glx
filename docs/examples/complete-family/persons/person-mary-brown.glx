@@ -5,11 +5,13 @@ persons:
         - value: "Mary Brown"
           date: "FROM 1852 TO 1875"
           fields:
+            type: "birth"
             given: "Mary"
             surname: "Brown"
         - value: "Mary Smith"
           date: "FROM 1875"
           fields:
+            type: "married"
             given: "Mary"
             surname: "Smith"
       born_on: "1852-03-20"

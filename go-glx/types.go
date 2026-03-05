@@ -157,7 +157,7 @@ type Source struct {
 	RepositoryID string         `refType:"repositories"       yaml:"repository,omitempty"`
 	Language     string         `yaml:"language,omitempty"`
 	Media        []string       `refType:"media"              yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (abbreviation, call_number, url, etc.)
 	Notes        string         `yaml:"notes,omitempty"`
 }
 
@@ -166,7 +166,7 @@ type Citation struct {
 	SourceID     string         `refType:"sources"           yaml:"source"`
 	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date)
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed)
 	Notes        string         `yaml:"notes,omitempty"`
 }
 
@@ -235,6 +235,7 @@ type Assertion struct {
 	Date        string       `yaml:"date,omitempty"`        // For temporal properties
 	Participant *Participant `yaml:"participant,omitempty"` // Not present if property/value exists
 	Confidence  string       `refType:"confidence_levels"  yaml:"confidence,omitempty"`
+	Status      string       `yaml:"status,omitempty"`
 	Sources     []string     `refType:"sources"            yaml:"sources,omitempty"`
 	Citations   []string     `refType:"citations"          yaml:"citations,omitempty"`
 	Media       []string     `refType:"media"              yaml:"media,omitempty"`

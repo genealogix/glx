@@ -188,6 +188,8 @@ func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
 
 	for _, sub := range nameRecord.SubRecords {
 		switch sub.Tag {
+		case GedcomTagType:
+			ns.TYPE = strings.ToLower(sub.Value)
 		case GedcomTagNpfx:
 			ns.NPFX = sub.Value
 		case GedcomTagGivn:
