@@ -74,14 +74,13 @@ func isDirectoryEmpty(path string) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	// Read a few directory entries to provide helpful context in error messages.
-	names, err := f.Readdirnames(5)
-	if err != nil {
-		// io.EOF means directory is empty (success case)
-		if err == io.EOF {
-			return nil
-		}
-		// Other errors (permissions, I/O failures) should be returned
+	// Read up to 6 entries: display at most 5, use the 6th to detect truncation.
+	// Readdirnames may return a non-empty slice AND io.EOF when the directory
+	// has fewer than n entries, so we must check len(names) before treating
+	// io.EOF as "empty directory".
+	const displayLimit = 5
+	names, err := f.Readdirnames(displayLimit + 1)
+	if err != nil && err != io.EOF {
 		return fmt.Errorf("error reading directory: %w", err)
 	}
 
@@ -91,8 +90,13 @@ func isDirectoryEmpty(path string) error {
 
 	// Show what files were found to help diagnose unexpected blockers
 	// (e.g., .DS_Store, OneDrive sync files, hidden files)
-	listing := strings.Join(names, ", ")
-	if len(names) == 5 {
+	truncated := len(names) > displayLimit
+	display := names
+	if truncated {
+		display = names[:displayLimit]
+	}
+	listing := strings.Join(display, ", ")
+	if truncated {
 		listing += ", ..."
 	}
 	return fmt.Errorf("%w (found: %s)", ErrNonEmptyDirectory, listing)
