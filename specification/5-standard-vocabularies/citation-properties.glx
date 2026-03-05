@@ -21,3 +21,8 @@ citation_properties:
     description: "Date when the source recorded the information (from GEDCOM DATA.DATE)"
     value_type: date
     gedcom: "DATE"
+
+  accessed:
+    label: "Accessed Date"
+    description: "Date when an online source or digital record was last accessed or retrieved"
+    value_type: date
