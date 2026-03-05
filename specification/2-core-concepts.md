@@ -373,7 +373,7 @@ Properties can be set without assertions, supporting rapid data entry. You can a
 
 ### Temporal Properties
 
-Properties marked as `temporal: true` in vocabularies can represent values that change over time. Temporal properties support two formats:
+Properties marked as `temporal: true` in vocabularies can hold multiple values — either dated (for values that change over time) or undated (for multiple values without known dates). They support three formats:
 
 **Single Value** (for properties that don't change or represent a point in time):
 ```yaml
@@ -382,7 +382,7 @@ properties:
   born_on: "1850-01-15"
 ```
 
-**Temporal History** (for properties that change over time):
+**Dated List** (for values that change over time):
 
 ```yaml
 properties:
@@ -398,9 +398,24 @@ properties:
       date: "FROM 1900 TO 1920"
 ```
 
-Each temporal entry includes:
+**Undated List** (for multiple values without date information):
+
+```yaml
+# An obituary lists occupations but no dates
+properties:
+  occupation:
+    - value: "teacher"
+    - value: "school principal"
+    - value: "county superintendent"
+```
+
+This is common when a source (like an obituary, biographical sketch, or family letter) mentions multiple values but doesn't specify when each applied. The list format captures all known values without forcing artificial dates.
+
+Each list entry includes:
 - `value` - The property value, conforming to the property's `value_type` or `reference_type`
-- `date` - Optional date string (if omitted, the entry is undated)
+- `date` - Optional date string specifying when the value applied
+
+Dated and undated entries can be mixed in the same list — use dates where you have them, omit where you don't.
 
 ### Structured Properties
 
