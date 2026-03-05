@@ -37,6 +37,7 @@ type PersonName struct {
 
 // NameSubstructure holds NAME subrecord fields from GEDCOM
 type NameSubstructure struct {
+	TYPE string // Name type (birth, married, aka, etc.)
 	NPFX string // Name prefix
 	GIVN string // Given name
 	NICK string // Nickname
@@ -196,6 +197,9 @@ func (ns *NameSubstructure) ToFields() map[string]string {
 
 	fields := make(map[string]string)
 
+	if ns.TYPE != "" {
+		fields[NameFieldType] = ns.TYPE
+	}
 	if ns.NPFX != "" {
 		fields[NameFieldPrefix] = ns.NPFX
 	}
