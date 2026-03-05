@@ -487,6 +487,34 @@ func TestConvertResidence_PlaceWithoutDateAppendsToExisting(t *testing.T) {
 	}
 }
 
+// TestConvertResidence_TwoUndatedAppendsToList tests that two consecutive RESI with PLAC
+// but no DATE both get preserved (covers the non-list append branch).
+func TestConvertResidence_TwoUndatedAppendsToList(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Carol /Test/
+1 RESI
+2 PLAC London, England
+1 RESI
+2 PLAC Paris, France
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+
+	for _, p := range glx.Persons {
+		res, hasResidence := p.Properties[PersonPropertyResidence]
+		require.True(t, hasResidence, "Person should have residence property")
+
+		resList, ok := res.([]any)
+		require.True(t, ok, "Residence should be a list when multiple undated entries exist, got %T", res)
+		assert.Len(t, resList, 2, "Both undated residence entries should be preserved")
+	}
+}
+
 // TestConvertCensus_PlaceWithoutDateAppendsToExisting tests that CENS with PLAC but no DATE
 // appends to existing residence list instead of overwriting it (issue #14).
 func TestConvertCensus_PlaceWithoutDateAppendsToExisting(t *testing.T) {
