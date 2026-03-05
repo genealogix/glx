@@ -10,12 +10,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.4]
+## [0.0.0-beta.4] - 2026-03-04
+
+### Added
+
+#### Standard Vocabularies
+- **Added `township` place type** - Township is a common administrative division in U.S. census and land records, distinct from `town` (a geographic settlement vs. a civil subdivision of a county) (#16)
 
 ### Fixed
 
-#### GEDCOM Import: Deduplicate Evidence References
-- **Duplicate source/citation IDs in assertions and events are now deduplicated** - When a GEDCOM record references the same source multiple times, `extractEvidence()` and `extractEventDetails()` now skip IDs already seen, preventing duplicate entries that violate unique constraints in downstream consumers (#12)
+#### Validation
+- **Suggest correct vocabulary key on hyphen/underscore mismatch** - When a reference fails validation due to a hyphen/underscore swap (e.g., `birth_date` vs `birth-date`), the error message now suggests the correct key (#19)
+
+#### CLI
+- **Show directory contents in `glx init` non-empty error** - When `glx init` fails because the target directory is not empty, the error message now lists up to 5 files found (e.g., `.DS_Store`, `.git`), helping users diagnose unexpected blockers like hidden files or sync artifacts (#18)
+- **Remove self-referencing `replace` directive that blocks `go install`** - The `go.mod` contained a no-op self-referencing replace directive that prevented `go install github.com/genealogix/glx/glx@latest` from working (#17)
+
+#### GEDCOM Import
+- **Deduplicate evidence references** - When a GEDCOM record references the same source multiple times, `extractEvidence()` and `extractEventDetails()` now skip IDs already seen, preventing duplicate entries that violate unique constraints in downstream consumers (#13)
+
+#### Documentation & Website
+- **Fix dead links and website issues** - Rewrote 83 dead links across the site to point to GitHub URLs and VitePress paths, added solid background to navbar on home page, and fixed module path resolution (#10)
+- **Fix Go Report Card link** - Corrected badge link in CLI README to point to the repository root (#11)
 
 ## [0.0.0-beta.3] - 2026-02-10
 
