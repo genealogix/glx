@@ -454,3 +454,95 @@ func TestConvertCensus_FamilyBothSpouses(t *testing.T) {
 	assert.Len(t, censusSources, 1, "Family CENS should create only one synthetic source")
 	assert.Empty(t, glx.Citations, "Should not create meaningless citations")
 }
+
+// TestConvertResidence_PlaceWithoutDateAppendsToExisting tests that RESI with PLAC but no DATE
+// appends to existing residence list instead of overwriting it (issue #14).
+func TestConvertResidence_PlaceWithoutDateAppendsToExisting(t *testing.T) {
+	// Person has two RESI records: first with DATE+PLAC (temporal), second with only PLAC.
+	// The second should append, not overwrite the first.
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Alice /Test/
+1 RESI
+2 DATE 1900
+2 PLAC London, England
+1 RESI
+2 PLAC Paris, France
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+
+	for _, p := range glx.Persons {
+		res, hasResidence := p.Properties[PersonPropertyResidence]
+		require.True(t, hasResidence, "Person should have residence property")
+
+		// Should be a list with both entries preserved
+		resList, ok := res.([]any)
+		require.True(t, ok, "Residence should be a list, got %T", res)
+		assert.Len(t, resList, 2, "Both residence entries should be preserved, not overwritten")
+	}
+}
+
+// TestConvertResidence_TwoUndatedAppendsToList tests that two consecutive RESI with PLAC
+// but no DATE both get preserved (covers the non-list append branch).
+func TestConvertResidence_TwoUndatedAppendsToList(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Carol /Test/
+1 RESI
+2 PLAC London, England
+1 RESI
+2 PLAC Paris, France
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+
+	for _, p := range glx.Persons {
+		res, hasResidence := p.Properties[PersonPropertyResidence]
+		require.True(t, hasResidence, "Person should have residence property")
+
+		resList, ok := res.([]any)
+		require.True(t, ok, "Residence should be a list when multiple undated entries exist, got %T", res)
+		assert.Len(t, resList, 2, "Both undated residence entries should be preserved")
+	}
+}
+
+// TestConvertCensus_PlaceWithoutDateAppendsToExisting tests that CENS with PLAC but no DATE
+// appends to existing residence list instead of overwriting it (issue #14).
+func TestConvertCensus_PlaceWithoutDateAppendsToExisting(t *testing.T) {
+	// Person has a RESI with DATE+PLAC, then a CENS with only PLAC (no DATE).
+	// The CENS should append, not overwrite the existing RESI.
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Bob /Test/
+1 RESI
+2 DATE 1900
+2 PLAC London, England
+1 CENS
+2 PLAC Manchester, England
+0 TRLR`
+
+	reader := strings.NewReader(gedcom)
+	glx, _, err := ImportGEDCOM(reader, nil)
+	require.NoError(t, err)
+
+	for _, p := range glx.Persons {
+		res, hasResidence := p.Properties[PersonPropertyResidence]
+		require.True(t, hasResidence, "Person should have residence property")
+
+		// Should be a list with both entries preserved
+		resList, ok := res.([]any)
+		require.True(t, ok, "Residence should be a list, got %T", res)
+		assert.Len(t, resList, 2, "Both residence entries should be preserved, not overwritten")
+	}
+}
