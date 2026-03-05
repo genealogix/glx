@@ -37,3 +37,4 @@ citation_properties:
     description: "Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID)"
     value_type: string
     multi_value: true
+    gedcom: "EXID"
