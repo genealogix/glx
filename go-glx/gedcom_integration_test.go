@@ -224,7 +224,8 @@ func TestNameSubstructureToFieldsWithType(t *testing.T) {
 				}
 				return
 			}
-			if got := fields[NameFieldType]; got != tt.wantType {
+			got, _ := fields[NameFieldType].(string)
+			if got != tt.wantType {
 				t.Errorf("fields[type] = %q, want %q", got, tt.wantType)
 			}
 		})
@@ -265,11 +266,12 @@ func TestNameTypeExtraction(t *testing.T) {
 	if !ok {
 		t.Fatal("expected fields in name property")
 	}
-	fieldsMap, ok := fields.(map[string]string)
+	fieldsMap, ok := fields.(map[string]any)
 	if !ok {
-		t.Fatalf("expected fields to be map[string]string, got %T", fields)
+		t.Fatalf("expected fields to be map[string]any, got %T", fields)
 	}
-	if got := fieldsMap[NameFieldType]; got != "married" {
+	got, _ := fieldsMap[NameFieldType].(string)
+	if got != "married" {
 		t.Errorf("name type = %q, want %q", got, "married")
 	}
 }

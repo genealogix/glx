@@ -190,12 +190,12 @@ func (n PersonName) FormatFullName() string {
 // ToFields converts a NameSubstructure to a map suitable for the name property's fields.
 // Only includes fields that were explicitly present in GEDCOM substructure tags.
 // We do NOT infer fields from parsing the name string - only explicit GEDCOM tags are used.
-func (ns *NameSubstructure) ToFields() map[string]string {
+func (ns *NameSubstructure) ToFields() map[string]any {
 	if ns == nil {
 		return nil
 	}
 
-	fields := make(map[string]string)
+	fields := make(map[string]any)
 
 	if ns.TYPE != "" {
 		fields[NameFieldType] = ns.TYPE
@@ -244,9 +244,6 @@ func ExtractNameFields(nameProperty any) (given, surname string) {
 				if s, ok := fields[NameFieldSurname].(string); ok {
 					surname = s
 				}
-			} else if fields, ok := fieldsVal.(map[string]string); ok {
-				given = fields[NameFieldGiven]
-				surname = fields[NameFieldSurname]
 			}
 		}
 	}
