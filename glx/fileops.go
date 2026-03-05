@@ -74,9 +74,8 @@ func isDirectoryEmpty(path string) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	// Read exactly one directory entry.
-	// Readdirnames returns io.EOF if the directory is empty.
-	_, err = f.Readdirnames(1)
+	// Read a few directory entries to provide helpful context in error messages.
+	names, err := f.Readdirnames(5)
 	if err != nil {
 		// io.EOF means directory is empty (success case)
 		if err == io.EOF {
@@ -86,8 +85,17 @@ func isDirectoryEmpty(path string) error {
 		return fmt.Errorf("error reading directory: %w", err)
 	}
 
-	// Successfully read an entry, so directory is not empty
-	return ErrNonEmptyDirectory
+	if len(names) == 0 {
+		return nil
+	}
+
+	// Show what files were found to help diagnose unexpected blockers
+	// (e.g., .DS_Store, OneDrive sync files, hidden files)
+	listing := strings.Join(names, ", ")
+	if len(names) == 5 {
+		listing += ", ..."
+	}
+	return fmt.Errorf("%w (found: %s)", ErrNonEmptyDirectory, listing)
 }
 
 // collectGLXFilesFromDir recursively collects all GLX/YAML files from a directory
