@@ -18,6 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `url` and `accessed` properties for digital sources** - Sources can now record a `url` property, and citations can record an `accessed` date for when an online source was last verified (#21)
 - **Added `race` person property** - Temporal string property for recording racial classifications as they appear in historical documents such as census records (#24)
 
+#### Assertion Entity
+- **Added `status` field to assertion entity** — Assertions can now record a research status (e.g., `proven`, `disproven`, `speculative`) independently of `confidence`, allowing researchers to distinguish between certainty and verification state (#27)
+
 #### GEDCOM Import
 - **Import NAME.TYPE subfield** - GEDCOM `NAME.TYPE` values (BIRTH, MARRIED, AKA, etc.) are now lowercased and stored in the name property's `type` field (#25)
 

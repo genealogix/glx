@@ -60,6 +60,7 @@ assertions:
     citations:
       - citation-robert-birth-cert
     confidence: high
+    status: proven
     notes: "Primary source: original birth certificate"
 ```
 
@@ -121,6 +122,15 @@ Start with direct properties, then add evidence chain incrementally:
 2. **Week 2**: Add source for key documents
 3. **Month 3**: Create citations for specific references
 4. **Ongoing**: Build assertions as you research
+
+## Confidence vs Status
+
+Assertions have two independent fields for tracking certainty and verification:
+
+- **`confidence`** — how certain you are about the claim (`high`, `medium`, `low`, `disputed`)
+- **`status`** — the research state of the assertion (`proven`, `speculative`, `disproven`)
+
+A `confidence: high` + `status: speculative` assertion means "I'm fairly sure this is right, but I haven't verified it yet."
 
 ## Properties vs Assertions: Key Differences
 
