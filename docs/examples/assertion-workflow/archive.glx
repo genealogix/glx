@@ -140,7 +140,7 @@ sources:
     title: "LinkedIn Profile - Robert Chen"
     type: database
     properties:
-      url: "https://www.linkedin.com/in/robertchen"
+      url: "https://www.linkedin.com/in/robert-chen-example"
 
 # ---------------------------------------------------------------------
 # CITATIONS - Specific references within sources
