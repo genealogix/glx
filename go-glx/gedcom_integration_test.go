@@ -188,10 +188,11 @@ func TestParseGEDCOMName(t *testing.T) {
 
 func TestNameSubstructureToFieldsWithType(t *testing.T) {
 	tests := []struct {
-		name     string
-		ns       *NameSubstructure
-		wantType string
-		wantNil  bool
+		name       string
+		ns         *NameSubstructure
+		wantType   string
+		wantAbsent bool // true = key should not exist in map
+		wantNil    bool
 	}{
 		{
 			name:     "birth type",
@@ -204,9 +205,19 @@ func TestNameSubstructureToFieldsWithType(t *testing.T) {
 			wantType: "married",
 		},
 		{
-			name:     "no type",
-			ns:       &NameSubstructure{GIVN: "John", SURN: "Smith"},
-			wantType: "",
+			name:     "aka type",
+			ns:       &NameSubstructure{TYPE: "aka", GIVN: "Johnny", SURN: "Smith"},
+			wantType: "aka",
+		},
+		{
+			name:     "immigrant type",
+			ns:       &NameSubstructure{TYPE: "immigrant", GIVN: "Johann", SURN: "Schmidt"},
+			wantType: "immigrant",
+		},
+		{
+			name:       "no type - key absent",
+			ns:         &NameSubstructure{GIVN: "John", SURN: "Smith"},
+			wantAbsent: true,
 		},
 		{
 			name:    "nil substructure",
@@ -221,6 +232,12 @@ func TestNameSubstructureToFieldsWithType(t *testing.T) {
 			if tt.wantNil {
 				if fields != nil {
 					t.Errorf("expected nil fields, got %v", fields)
+				}
+				return
+			}
+			if tt.wantAbsent {
+				if _, exists := fields[NameFieldType]; exists {
+					t.Error("expected type field to be absent from fields map")
 				}
 				return
 			}

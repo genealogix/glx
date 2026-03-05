@@ -136,6 +136,7 @@ persons:
       name:
         value: "John Smith"
         fields:
+          type: "birth"
           given: "John"
           surname: "Smith"
       born_on: "1850-01-15"
@@ -147,6 +148,7 @@ persons:
       name:
         value: "Mary Brown"
         fields:
+          type: "birth"
           given: "Mary"
           surname: "Brown"
       born_on: "1852-03-20"
