@@ -219,7 +219,7 @@ func buildExternalIDEntry(exidRecord *GEDCOMRecord) any {
 	idValue := exidRecord.Value
 	var exidType string
 	for _, sub := range exidRecord.SubRecords {
-		if sub.Tag == "TYPE" && sub.Value != "" {
+		if sub.Tag == GedcomTagType && sub.Value != "" {
 			exidType = sub.Value
 			break
 		}
