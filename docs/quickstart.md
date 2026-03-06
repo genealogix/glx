@@ -69,6 +69,7 @@ persons:
       name:
         value: "John Smith"      # The display name
         fields:                  # Structured name parts
+          type: "birth"          # Name classification
           given: "John"
           surname: "Smith"
       gender: "male"
@@ -183,6 +184,7 @@ assertions:
     citations:
       - citation-birth-entry             # The evidence supporting it
     confidence: high                     # How confident you are
+    status: proven                       # Research verification state
 ```
 
 This is the complete **evidence chain**: Source → Citation → Assertion. It traces your conclusion all the way back to the original document. See [Evidence Chain](/specification/2-core-concepts#evidence-chain) in the specification for more on this model.

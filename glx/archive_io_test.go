@@ -217,6 +217,7 @@ persons:
 							Subject:  glxlib.EntityRef{Person: "person-1"},
 							Sources:  []string{"source-1"},
 							Property: "born_on",
+							Value:    "1850-01-15",
 						},
 					},
 					Media: map[string]*glxlib.Media{

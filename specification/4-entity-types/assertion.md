@@ -271,6 +271,35 @@ Example:
 confidence: high
 ```
 
+### `status`
+
+- Type: String
+- Required: No
+- Description: Research status of the assertion, tracking where it stands in the research process
+
+Unlike `confidence` (which measures how certain you are about the claim), `status` records the verification state of the assertion itself. Common values include:
+
+- `proven` — verified through primary evidence
+- `speculative` — a hypothesis that needs further research
+- `disproven` — evidence has been found that contradicts this assertion
+
+These values are free-text; archives may use any status labels appropriate for their research methodology.
+
+Example:
+```yaml
+# High confidence but not yet verified
+confidence: high
+status: speculative
+
+# High confidence and verified
+confidence: high
+status: proven
+
+# High confidence that this is wrong
+confidence: high
+status: disproven
+```
+
 ### `notes`
 
 - Type: String
@@ -481,6 +510,7 @@ assertions:
     citations:
       - citation-death-cert-age
     confidence: low
+    status: speculative
     notes: |
       No birth record found. Age at death (1900) reported as 75,
       suggesting birth around 1825. However, age reporting in
