@@ -773,7 +773,7 @@ Standard properties include:
 
 **Used By**: [Citation Entity](citation#properties)
 
-**Purpose**: Defines properties that can be set on citation entities for locator and transcription details
+**Purpose**: Defines properties that can be set on citation entities for locator, transcription, record-level links, and external identifier details
 
 Standard properties include:
 

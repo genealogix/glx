@@ -279,7 +279,7 @@ Defines standard and custom properties for source entities including bibliograph
 
 ### Citation Properties
 
-Defines standard and custom properties for citation entities including location and transcribed text.
+Defines standard and custom properties for citation entities including location, transcribed text, record-level links, and external identifiers.
 
 **View Source:** [citation-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/citation-properties.glx)
 
