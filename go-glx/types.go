@@ -33,6 +33,14 @@ type Metadata struct {
 	Notes             string     `yaml:"notes,omitempty"`
 }
 
+// hasContent returns true if any metadata field is populated.
+func (m *Metadata) hasContent() bool {
+	return m.ExportDate != "" || m.SourceFile != "" || m.Copyright != "" ||
+		m.Language != "" || m.SourceSystem != "" || m.SourceVersion != "" ||
+		m.SourceCorporation != "" || m.GEDCOMVersion != "" || m.CharacterSet != "" ||
+		m.Notes != "" || m.Submitter != nil
+}
+
 // Submitter holds contact information from the GEDCOM SUBM record.
 type Submitter struct {
 	Name    string `yaml:"name,omitempty"`
@@ -375,6 +383,11 @@ type TemporalValue struct {
 // Duplicates are fatal errors for both entities and vocabularies.
 func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates := make([]string, 0, 10)
+
+	// Merge metadata (first one wins)
+	if g.ImportMetadata == nil && other.ImportMetadata != nil {
+		g.ImportMetadata = other.ImportMetadata
+	}
 
 	// Merge entities (fail on duplicates)
 	duplicates = append(duplicates, mergeMap("persons", g.Persons, other.Persons)...)

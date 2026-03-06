@@ -191,10 +191,8 @@ func mapPedigreeToRelationshipType(pediValue string) string {
 
 // convertHeader extracts metadata from HEAD record and stores it on the GLXFile.
 func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
-	if conv.GLX.ImportMetadata == nil {
-		conv.GLX.ImportMetadata = &Metadata{}
-	}
-	meta := conv.GLX.ImportMetadata
+	meta := &Metadata{}
+	var submitterXRef string
 
 	for _, sub := range headRecord.SubRecords {
 		switch sub.Tag {
@@ -218,7 +216,7 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 				}
 			}
 		case GedcomTagSubm:
-			// Submitter reference — resolved in convertSubmitter
+			submitterXRef = sub.Value
 		case GedcomTagGedc:
 			for _, gedcSub := range sub.SubRecords {
 				if gedcSub.Tag == GedcomTagVers {
@@ -232,13 +230,19 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 		}
 	}
 
-	conv.Logger.LogInfo(fmt.Sprintf("HEAD metadata stored: %+v", meta))
+	if meta.hasContent() {
+		conv.GLX.ImportMetadata = meta
+		conv.SubmitterXRef = submitterXRef
+		conv.Logger.LogInfo("HEAD metadata stored")
+	}
 }
 
 // convertSubmitter extracts submitter info from SUBM record and stores it on the GLXFile.
+// Only attaches the submitter referenced by HEAD's SUBM pointer.
 func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
-	if conv.GLX.ImportMetadata == nil {
-		conv.GLX.ImportMetadata = &Metadata{}
+	// Only process the submitter referenced by HEAD
+	if conv.SubmitterXRef != "" && submRecord.XRef != conv.SubmitterXRef {
+		return
 	}
 
 	subm := &Submitter{}
@@ -261,8 +265,11 @@ func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
 	}
 
 	if subm.Name != "" || subm.Address != "" || subm.Phone != "" || subm.Email != "" || subm.Website != "" {
+		if conv.GLX.ImportMetadata == nil {
+			conv.GLX.ImportMetadata = &Metadata{}
+		}
 		conv.GLX.ImportMetadata.Submitter = subm
-		conv.Logger.LogInfo(fmt.Sprintf("SUBM submitter stored: %+v", subm))
+		conv.Logger.LogInfo("SUBM submitter stored")
 	}
 }
 

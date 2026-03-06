@@ -113,8 +113,8 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 		files[vocabPath] = content
 	}
 
-	// Serialize metadata if present
-	if glx.ImportMetadata != nil {
+	// Serialize metadata if present and non-empty
+	if glx.ImportMetadata != nil && glx.ImportMetadata.hasContent() {
 		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
 		yamlBytes, err := yaml.Marshal(metaWrapper)
 		if err != nil {
