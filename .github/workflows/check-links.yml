@@ -6,16 +6,12 @@ on:
     paths:
       - 'specification/**/*.md'
       - 'docs/**/*.md'
-      - 'README.md'
-      - 'CONTRIBUTING.md'
-      - 'CODE_OF_CONDUCT.md'
+      - '*.md'
   pull_request:
     paths:
       - 'specification/**/*.md'
       - 'docs/**/*.md'
-      - 'README.md'
-      - 'CONTRIBUTING.md'
-      - 'CODE_OF_CONDUCT.md'
+      - '*.md'
 
 jobs:
   check-relative-links:

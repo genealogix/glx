@@ -45,11 +45,10 @@ done < <(find specification docs -name "*.md" \
   -not -path "*/gedcom-spec/*" \
   -print0 2>/dev/null) > "$LINKS_FILE"
 
-# Collect links from root markdown files
-for root_file in README.md CONTRIBUTING.md CODE_OF_CONDUCT.md; do
-  [[ -f "$root_file" ]] || continue
+# Collect links from all root markdown files
+while IFS= read -r -d '' root_file; do
   extract_links "$root_file"
-done >> "$LINKS_FILE"
+done < <(find . -maxdepth 1 -type f -name "*.md" -print0 2>/dev/null) >> "$LINKS_FILE"
 
 # Validate each relative link
 while IFS='|' read -r source_file lineno link; do
@@ -79,7 +78,7 @@ while IFS='|' read -r source_file lineno link; do
   ERRORS=$((ERRORS + 1))
 done < "$LINKS_FILE"
 
-echo "Checked $CHECKED relative links across specification/, docs/, and root files"
+echo "Checked $CHECKED relative links across specification/, docs/, and root markdown files"
 if [[ $ERRORS -gt 0 ]]; then
   echo "Found $ERRORS broken link(s)!"
   exit 1
