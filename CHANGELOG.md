@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.5] - WIP
+## [0.0.0-beta.5] - 2026-03-06
 
 ### Added
 
@@ -18,15 +18,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `url` and `accessed` properties for digital sources** - Sources can now record a `url` property, and citations can record an `accessed` date for when an online source was last verified (#21)
 - **Added `race` person property** - Temporal string property for recording racial classifications as they appear in historical documents such as census records (#24)
 - **Added `url` and `external_ids` citation properties** - Citations can now record a direct URL to cited material and external identifiers (e.g., FamilySearch ARK) for record-level specificity (#23)
-- **Added `type` field to `external_ids` property** - All `external_ids` properties (person, source, citation, repository) now support a structured `fields.type` to record the issuing authority (e.g., FamilySearch URI from GEDCOM EXID.TYPE)
+- **Added `type` field to `external_ids` property** - All `external_ids` properties (person, source, citation, repository) now support a structured `fields.type` to record the issuing authority (e.g., FamilySearch URI from GEDCOM EXID.TYPE) (#32)
+- **Added `type` field to `name` property** - Name property now supports a `fields.type` to classify name usage (e.g., birth, married, alias) (#25)
 
 #### Assertion Entity
 - **Added `status` field to assertion entity** — Assertions can now record a research status (e.g., `proven`, `disproven`, `speculative`) independently of `confidence`, allowing researchers to distinguish between certainty and verification state (#27)
 
 #### GEDCOM Import
 - **Import NAME.TYPE subfield** - GEDCOM `NAME.TYPE` values (BIRTH, MARRIED, AKA, etc.) are now lowercased and stored in the name property's `type` field (#25)
-- **Import EXID on citations** - GEDCOM 7.0 `EXID` tags on source citations are now imported as `external_ids` citation properties
-- **Structured EXID import** - GEDCOM EXID.TYPE is now stored in `fields.type` instead of being concatenated into the ID string; applies to all entity types
+- **Import EXID on citations** - GEDCOM 7.0 `EXID` tags on source citations are now imported as `external_ids` citation properties (#32)
+- **Structured EXID import** - GEDCOM EXID.TYPE is now stored in `fields.type` instead of being concatenated into the ID string; applies to all entity types (#32)
+
+### Fixed
+
+#### GEDCOM Import
+- **Append residence on PLAC-without-DATE instead of overwriting** - When residence came from a GEDCOM RESI tag or census-derived CENS data with a PLAC but no DATE, the residence property was overwritten instead of appended (#22)
 
 ---
 
