@@ -10,6 +10,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.6] - Unreleased
+
+### Added
+
+#### Standard Vocabularies
+- **Added relationship types `neighbor`, `coworker`, `housemate`** - Non-familial relationships commonly found in census, tax, and social records
+- **Added event type `legal_separation`** - Legal separation of a married couple without dissolution of the marriage
+- **Added event types `taxation` and `voter_registration`** - Administrative events commonly recorded in tax rolls, tithes, and voter rolls
+- **Added source types `population_register`, `tax_record`, `military_record`, `notarial_record`** - Common European and colonial record types
+
+---
+
 ## [0.0.0-beta.5] - 2026-03-06
 
 ### Added

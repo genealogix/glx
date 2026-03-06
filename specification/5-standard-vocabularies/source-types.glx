@@ -63,6 +63,22 @@ source_types:
     label: "Photograph Collection"
     description: "Photo collections"
   
+  population_register:
+    label: "Population Register"
+    description: "Civil population registers, household registration records"
+
+  tax_record:
+    label: "Tax Record"
+    description: "Tax rolls, assessments, tithes, and related fiscal records"
+
+  military_record:
+    label: "Military Record"
+    description: "Draft registrations, muster rolls, service records, pension files"
+
+  notarial_record:
+    label: "Notarial Record"
+    description: "Notarial acts, contracts, and legal instruments recorded by a notary"
+
   other:
     label: "Other"
     description: "Other source types"
