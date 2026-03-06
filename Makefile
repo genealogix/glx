@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas
+.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas check-links
 
 .DEFAULT_GOAL := help
 
@@ -83,6 +83,10 @@ check-schemas: ## Validate JSON schema files
 		-r "specification/schema/v1/media.schema.json" \
 		-r "specification/schema/v1/vocabularies/*.schema.json" \
 		-c ajv-formats
+
+## Link Checking
+check-links: ## Validate internal markdown links
+	@bash scripts/check-links.sh
 
 ## Cleanup
 clean: ## Remove build artifacts
