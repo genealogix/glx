@@ -26,3 +26,15 @@ citation_properties:
     label: "Accessed Date"
     description: "Date when an online source or digital record was last accessed or retrieved"
     value_type: date
+
+  url:
+    label: "URL"
+    description: "Direct web address for the specific cited material (e.g., a permalink to a record or image viewer)"
+    value_type: string
+
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"

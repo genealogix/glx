@@ -27,7 +27,7 @@
     },
     "properties": {
       "type": "object",
-      "description": "Vocabulary-defined properties (locator, text_from_source, source_date, accessed)",
+      "description": "Vocabulary-defined properties (locator, text_from_source, source_date, accessed, url, external_ids)",
       "additionalProperties": true
     },
     "notes": {

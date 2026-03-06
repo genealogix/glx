@@ -67,6 +67,8 @@ The following are standard properties from the default vocabulary; archives can 
 | `text_from_source` | string | Transcription or excerpt from the source |
 | `source_date` | date | Date when the source recorded the information |
 | `accessed` | date | Date when an online source or digital record was last accessed |
+| `url` | string | Direct web address for the specific cited material (e.g., a permalink to a record or image viewer) |
+| `external_ids` | string (multi) | Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID) |
 
 **See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README#citation-properties)
 
@@ -176,6 +178,7 @@ Or more commonly, citations are referenced by ID from assertions.
 | `properties.locator` | SOUR.PAGE | Location within source (GEDCOM PAGE is free-form text, not just page numbers) |
 | `properties.text_from_source` | SOUR.TEXT, SOUR.DATA.TEXT | Transcribed text |
 | `properties.source_date` | SOUR.DATA.DATE | Date when source recorded the information |
+| `properties.external_ids` | SOUR.CITN.EXID | External identifiers for the specific cited record |
 
 ## Validation Rules
 
