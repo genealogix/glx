@@ -212,30 +212,50 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 	return placeID
 }
 
-// extractExternalIDs extracts EXID tags from a record and returns them as a slice
-// EXID format (GEDCOM 7.0):
-//
-//	1 EXID <identifier>
-//	2 TYPE <type>  (optional, e.g., "wikitree", "familysearch", "findagrave")
-func extractExternalIDs(record *GEDCOMRecord) []map[string]string {
-	var exids []map[string]string
 
-	for _, sub := range record.SubRecords {
-		if sub.Tag == GedcomTagExid {
-			exid := make(map[string]string)
-			exid["id"] = sub.Value
-
-			// Check for TYPE subrecord
-			for _, exidSub := range sub.SubRecords {
-				if exidSub.Tag == "TYPE" {
-					exid["type"] = exidSub.Value
-				}
-			}
-
-			exids = append(exids, exid)
+// buildExternalIDEntry builds a structured property entry from an EXID record.
+// If TYPE is present, returns a map with value and fields.type; otherwise returns a plain string.
+func buildExternalIDEntry(exidRecord *GEDCOMRecord) any {
+	idValue := exidRecord.Value
+	var exidType string
+	for _, sub := range exidRecord.SubRecords {
+		if sub.Tag == GedcomTagType && sub.Value != "" {
+			exidType = sub.Value
+			break
 		}
 	}
+	if exidType != "" {
+		return map[string]any{
+			"value":  idValue,
+			"fields": map[string]any{"type": exidType},
+		}
+	}
+	return idValue
+}
 
-	return exids
+// appendMultiValueProperty appends a value to a multi-value property slice.
+// If the key already holds a non-slice value, it is wrapped into a slice first.
+func appendMultiValueProperty(props map[string]any, key string, value any) {
+	if existing, ok := props[key]; ok {
+		if existingSlice, ok := existing.([]any); ok {
+			props[key] = append(existingSlice, value)
+		} else {
+			props[key] = []any{existing, value}
+		}
+	} else {
+		props[key] = []any{value}
+	}
+}
+
+// extractExternalIDs extracts EXID tags from a record and stores them as structured
+// multi-value properties. Each EXID with a TYPE sub-record becomes a structured entry
+// with value and fields.type; bare EXIDs become plain strings.
+func extractExternalIDs(record *GEDCOMRecord, propertyKey string, props map[string]any) {
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagExid && sub.Value != "" {
+			entry := buildExternalIDEntry(sub)
+			appendMultiValueProperty(props, propertyKey, entry)
+		}
+	}
 }
 

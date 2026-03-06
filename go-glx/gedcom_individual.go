@@ -39,11 +39,8 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 	}
 
 	// Extract external IDs (GEDCOM 7.0 EXID tags)
-	exids := extractExternalIDs(indiRecord)
-	if len(exids) > 0 {
-		if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[GedcomTagExid]; ok {
-			person.Properties[propertyKey] = exids
-		}
+	if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[GedcomTagExid]; ok {
+		extractExternalIDs(indiRecord, propertyKey, person.Properties)
 	}
 
 	// Process all subrecords

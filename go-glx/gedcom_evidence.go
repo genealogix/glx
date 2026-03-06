@@ -111,6 +111,18 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 				citation.Properties[propertyKey] = extractTextWithContinuation(sub)
 			}
 
+		case GedcomTagExid:
+			// External ID (GEDCOM 7.0) - store as structured multi-value property
+			if sub.Value != "" {
+				if propertyKey, ok := conv.GEDCOMIndex.CitationProperties[sub.Tag]; ok {
+					if citation.Properties == nil {
+						citation.Properties = make(map[string]any)
+					}
+					entry := buildExternalIDEntry(sub)
+					appendMultiValueProperty(citation.Properties, propertyKey, entry)
+				}
+			}
+
 		case GedcomTagQuay:
 			// GEDCOM quality assessment (0-3) - preserve in notes
 			if citation.Notes != "" {

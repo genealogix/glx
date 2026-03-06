@@ -38,3 +38,7 @@ citation_properties:
     value_type: string
     multi_value: true
     gedcom: "EXID"
+    fields:
+      type:
+        label: "Identifier Type"
+        description: "Authority or system that issued this identifier (e.g., familysearch, ancestry, wikitree). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."
