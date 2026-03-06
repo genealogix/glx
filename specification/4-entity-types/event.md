@@ -212,7 +212,7 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
 - Date formats must follow genealogical date conventions
-- Participant roles must be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary)
+- Participant roles should be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary) (unknown roles generate warnings)
 
 ## Confidence and Provenance
 

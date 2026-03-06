@@ -324,7 +324,6 @@ const (
 	SourceTypePhotograph     = "photograph"      // Photograph collections
 	SourceTypePopulationRegister = "population_register" // Civil population registers
 	SourceTypeTaxRecord          = "tax_record"          // Tax rolls, assessments, tithes
-	SourceTypeMilitaryRecord     = "military_record"     // Draft registrations, muster rolls
 	SourceTypeNotarialRecord     = "notarial_record"     // Notarial acts and contracts
 	SourceTypeOther              = "other"               // Other source types
 )

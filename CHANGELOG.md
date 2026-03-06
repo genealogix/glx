@@ -18,7 +18,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added relationship types `neighbor`, `coworker`, `housemate`** - Non-familial relationships commonly found in census, tax, and social records
 - **Added event type `legal_separation`** - Legal separation of a married couple without dissolution of the marriage
 - **Added event types `taxation` and `voter_registration`** - Administrative events commonly recorded in tax rolls, tithes, and voter rolls
-- **Added source types `population_register`, `tax_record`, `military_record`, `notarial_record`** - Common European and colonial record types
+- **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
+- **Expanded `military` source type description** - Now includes draft registrations and muster rolls
+
+#### Specification Fixes
+- **Fixed citation GEDCOM mapping** - Corrected `SOUR.CITN.EXID` (invalid tag) to `SOUR.EXID`
+- **Fixed missing blank line in core-concepts.md** - Property Vocabularies heading was merging with preceding table
+- **Clarified validation wording** - Person properties and event participant roles generate warnings (not errors) for unknown values, matching the validation policy in core concepts
+- **Clarified `subject` participant role** - Documented as preferred over `principal`
+- **Fixed glossary Secondary Evidence example** - Census records are primary evidence; replaced with published indexes and compiled genealogies
 
 ---
 

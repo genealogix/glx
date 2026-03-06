@@ -17,7 +17,7 @@ source_types:
   
   military:
     label: "Military Record"
-    description: "Military service records, pension files"
+    description: "Military service records, draft registrations, muster rolls, pension files"
   
   newspaper:
     label: "Newspaper"
@@ -70,10 +70,6 @@ source_types:
   tax_record:
     label: "Tax Record"
     description: "Tax rolls, assessments, tithes, and related fiscal records"
-
-  military_record:
-    label: "Military Record"
-    description: "Draft registrations, muster rolls, service records, pension files"
 
   notarial_record:
     label: "Notarial Record"
