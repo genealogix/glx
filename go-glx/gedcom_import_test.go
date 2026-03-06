@@ -179,6 +179,7 @@ func TestBuildGEDCOMIndex(t *testing.T) {
 		"PAGE": "locator",
 		"TEXT": "text_from_source",
 		"DATE": "source_date",
+		"EXID": "external_ids",
 	}
 	for tag, want := range citationPropTests {
 		if got := index.CitationProperties[tag]; got != want {

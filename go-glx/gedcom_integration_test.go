@@ -733,6 +733,70 @@ func TestEmbeddedCitations(t *testing.T) {
 		len(glx.Sources), len(glx.Citations))
 }
 
+func TestCitationEXID(t *testing.T) {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 @S1@ SOUR
+1 TITL Wisconsin County Marriages
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 1 JAN 1850
+2 SOUR @S1@
+3 PAGE Film 1266197, Image 586
+3 EXID ark:/61903/1:1:XR68-1M3
+4 TYPE familysearch
+3 EXID rec-12345
+0 TRLR
+`
+
+	glx, result, err := ImportGEDCOM(strings.NewReader(gedcomData), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+	for _, e := range result.Statistics.Errors {
+		t.Logf("Error [Line %d] %s: %s", e.Line, e.Tag, e.Message)
+	}
+
+	if len(glx.Citations) == 0 {
+		t.Fatal("No citations created")
+	}
+
+	// Find citation with external_ids
+	found := false
+	for _, citation := range glx.Citations {
+		if citation.Properties == nil {
+			continue
+		}
+		exids, ok := citation.Properties["external_ids"]
+		if !ok {
+			continue
+		}
+		found = true
+		exidSlice, ok := exids.([]string)
+		if !ok {
+			t.Fatalf("external_ids should be []string, got %T", exids)
+		}
+		if len(exidSlice) != 2 {
+			t.Fatalf("expected 2 external_ids, got %d: %v", len(exidSlice), exidSlice)
+		}
+		// First EXID has TYPE, should be formatted as "type:id"
+		if exidSlice[0] != "familysearch:ark:/61903/1:1:XR68-1M3" {
+			t.Errorf("expected first EXID to be 'familysearch:ark:/61903/1:1:XR68-1M3', got %q", exidSlice[0])
+		}
+		// Second EXID has no TYPE, should be bare ID
+		if exidSlice[1] != "rec-12345" {
+			t.Errorf("expected second EXID to be 'rec-12345', got %q", exidSlice[1])
+		}
+	}
+
+	if !found {
+		t.Error("No citation found with external_ids property")
+	}
+}
+
 func TestIsGEDCOMPointer(t *testing.T) {
 	tests := []struct {
 		value    string
