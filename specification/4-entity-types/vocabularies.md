@@ -774,7 +774,7 @@ Standard properties include:
 
 **Used By**: [Citation Entity](citation#properties)
 
-**Purpose**: Defines properties that can be set on citation entities for locator and transcription details
+**Purpose**: Defines properties that can be set on citation entities for locator, transcription, record-level links, and external identifier details
 
 Standard properties include:
 
@@ -782,6 +782,8 @@ Standard properties include:
 - `text_from_source` - Transcription or excerpt of relevant text from the source (from GEDCOM TEXT)
 - `source_date` - Date when the source recorded the information (from GEDCOM DATE)
 - `accessed` - Date when an online source or digital record was last accessed or retrieved
+- `url` - Direct web address for the specific cited material (e.g., a permalink to a record or image viewer)
+- `external_ids` - Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID; multi-value)
 
 ### Property Definition Structure
 
