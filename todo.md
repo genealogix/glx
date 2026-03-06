@@ -45,7 +45,7 @@ Design decisions to resolve before 1.0.
 
 - **Markdown link validation in CI**: Validate all internal links in specification and documentation.
 - **Vocabulary audit**: Review all standard vocabulary files in [5-standard-vocabularies/](specification/5-standard-vocabularies/) for consistency and completeness.
-- **Add make command for goreleaser**.
+- ~~**Add make command for goreleaser**~~ ✅ Added `make release-snapshot` for local builds; updated release workflow to latest action versions.
 
 ---
 

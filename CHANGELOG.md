@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Build & Release
+- **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
+- **Updated release workflow to latest action versions** - `actions/checkout@v4` (with `fetch-depth: 0` for proper changelog), `actions/setup-go@v5`, `goreleaser/goreleaser-action@v6`
+
 #### Standard Vocabularies
 - **Added `url` and `accessed` properties for digital sources** - Sources can now record a `url` property, and citations can record an `accessed` date for when an online source was last verified (#21)
 - **Added `race` person property** - Temporal string property for recording racial classifications as they appear in historical documents such as census records (#24)
