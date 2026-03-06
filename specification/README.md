@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-Version 0.0.0-beta.3
+Version 0.0.0-beta.5
 
 ## Table of Contents
 
@@ -50,7 +50,7 @@ Version 0.0.0-beta.3
 
 This specification is under active development.
 
-- **Version**: 0.0.0-beta.3
+- **Version**: 0.0.0-beta.5
 - **Status**: Beta
 - **Stability**: Unstable API (breaking changes possible)
 
@@ -102,11 +102,12 @@ relationships:
 
 1. Read [Introduction](1-introduction) for overview
 2. Review [Glossary](6-glossary) for key terms and definitions
-3. Review [Entity Types](4-entity-types/) to understand data structure
-4. Check [Archive Organization](3-archive-organization) for organization patterns
-5. Review [Standard Vocabularies](5-standard-vocabularies/) for controlled type definitions
-6. See [examples/](/examples/) for working examples
-7. Use [glx CLI](/cli) for validation
+3. Read [Core Concepts](2-core-concepts) to understand the architecture
+4. Review [Entity Types](4-entity-types/) to understand data structure
+5. Check [Archive Organization](3-archive-organization) for organization patterns
+6. Review [Standard Vocabularies](5-standard-vocabularies/) for controlled type definitions
+7. See [examples/](/examples/) for working examples
+8. Use [glx CLI](/cli) for validation
 
 ## Contributing
 

@@ -226,3 +226,4 @@ assertions:
     citations:
       - citation-abcdef12
     confidence: high
+    status: proven

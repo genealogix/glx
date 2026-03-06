@@ -238,7 +238,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides 15 standardized place type codes including administrative divisions (country, state, county, district), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides 16 standardized place type codes including administrative divisions (country, state, county, district, township), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -932,6 +932,9 @@ person_properties:
     value_type: string
     temporal: true
     fields:
+      type:
+        label: "Name Type"
+        description: "Classification of name usage (e.g., birth, married, alias, immigrant, religious, formal)"
       prefix:
         label: "Prefix"
         description: "Honorific prefix (Dr., Rev., Hon.)"

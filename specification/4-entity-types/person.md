@@ -108,7 +108,7 @@ properties:
 
 #### Temporal Property Examples
 
-Properties marked as `temporal: true` can change over time. Here are common examples:
+Properties marked as `temporal: true` can hold multiple values. Dates are optional — use them when you know when each value applied, omit them when you don't.
 
 **Occupation Changes:**
 ```yaml
@@ -122,6 +122,15 @@ properties:
       date: "FROM 1870 TO 1890"
     - value: "farmer"
       date: "FROM 1890 TO 1920"
+```
+
+**Occupations Without Dates** (e.g., from an obituary):
+```yaml
+properties:
+  occupation:
+    - value: "teacher"
+    - value: "school principal"
+    - value: "county superintendent"
 ```
 
 **Name Changes (e.g., marriage):**
