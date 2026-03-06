@@ -33,11 +33,11 @@ Data that is parsed but silently dropped or not stored.
 Design decisions to resolve before 1.0.
 
 - **Source `description` GEDCOM mapping ambiguity**: Maps to both SOUR.TEXT (excerpt from original) and SOUR.NOTE (researcher commentary). These are semantically different. Consider splitting or documenting the merge.
-- **Event participant requirement**: Consider relaxing — historical events (wars, famines) may be relevant without specific participants.
-- **Repository address fields**: Consider moving `address`, `city`, `state_province`, `postal_code`, `country` into `repository_properties` vocabulary for consistency.
+- ~~**Event participant requirement**~~ ✅ Decision: keep participants required (min 1). GLX is genealogical — every event connects to at least one person. Documented in spec.
+- ~~**Repository address fields**~~ ✅ Decision: keep as direct entity fields. Core identifying attributes, not extensible metadata. Documented in spec.
 - **Fields-only structured properties**: Spec allows `fields` without `value` (e.g., crop coordinates). Ensure validator doesn't warn on this.
-- **Gender/sex controlled vocabularies**: Should these be formalized?
-- **Participant role requirement**: Should events, relationships, and assertions require participant roles?
+- ~~**Gender/sex controlled vocabularies**~~ ✅ Decision: keep as free-form string. Terminology varies across periods/cultures; recommended values documented in spec, not enforced.
+- ~~**Participant role requirement**~~ ✅ Decision: roles remain optional on participants (schema does not require `role`, only `person`). This accommodates cases where the role is unknown.
 
 ---
 

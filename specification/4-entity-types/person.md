@@ -106,6 +106,10 @@ properties:
       date: "FROM 1900 TO 1920"
 ```
 
+#### Gender Property
+
+The `gender` property is a free-form string. GLX does not enforce a controlled vocabulary for gender because terminology varies across historical periods, cultures, and personal preferences. Recommended values imported from GEDCOM are `male`, `female`, `unknown`, and `other`, but archives may use any value appropriate to the context. The property is temporal, allowing changes to be recorded over time.
+
 #### Temporal Property Examples
 
 Properties marked as `temporal: true` can hold multiple values. Dates are optional — use them when you know when each value applied, omit them when you don't.
