@@ -49,3 +49,15 @@ relationship_types:
     label: "Partner"
     description: "Domestic partnership or cohabitation"
 
+  neighbor:
+    label: "Neighbor"
+    description: "People who lived near each other"
+
+  coworker:
+    label: "Coworker"
+    description: "People who worked together"
+
+  housemate:
+    label: "Housemate"
+    description: "People who shared a household without a family relationship"
+

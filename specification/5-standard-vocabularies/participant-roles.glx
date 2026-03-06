@@ -12,7 +12,7 @@ participant_roles:
   
   subject:
     label: "Subject"
-    description: "Subject of the event (alias for principal)"
+    description: "Subject of the event (preferred over 'principal')"
     applies_to:
       - event
   

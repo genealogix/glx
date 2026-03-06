@@ -251,7 +251,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 - Relationship type must be from the [relationship types vocabulary](vocabularies#relationship-types-vocabulary)
 - `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
-- Participant roles must be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary)
+- Participant roles should be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary) (unknown roles generate warnings)
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
 
 ## File Organization

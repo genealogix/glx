@@ -61,6 +61,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `repository-properties.glx` | Repository properties |
 | `source-properties.glx` | Source properties |
 | `citation-properties.glx` | Citation properties |
+
 ### Property Vocabularies
 
 **Property vocabularies** are a special category that define the custom properties available for each entity type. These are critical for the assertion model (see sections below).
