@@ -49,6 +49,9 @@ func (glx *GLXFile) Validate() *ValidationResult {
 	// Phase 4: Validate structural constraints
 	glx.validatePlaceHierarchyCycles(result)
 
+	// Phase 5: Validate entity-level field formats
+	glx.validateEntityFieldFormats(result)
+
 	result.validated = true
 	glx.validation = result
 
@@ -600,20 +603,19 @@ func (glx *GLXFile) validateTemporalItem(
 		})
 	}
 
-	// Optional: validate 'date' field exists (temporal items should have dates, but single objects may omit it)
+	// Validate 'date' field format if present (date is optional on temporal items)
 	if dateVal, hasDate := itemMap["date"]; hasDate {
-		// Validate date format
 		if dateStr, ok := dateVal.(string); ok {
 			glx.validateDateFormat(entityType, entityID, fieldPath+".date", dateStr, result)
+		} else {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      fieldPath + ".date",
+				Message: fmt.Sprintf("%s: date value should be a quoted string, got %T (use \"1850\" not 1850)",
+					msgPath, dateVal),
+			})
 		}
-	} else if index >= 0 {
-		// Only warn about missing date for list items, not single objects
-		result.Warnings = append(result.Warnings, ValidationWarning{
-			SourceType: entityType,
-			SourceID:   entityID,
-			Field:      fieldPath + ".date",
-			Message:    msgPath + ": temporal list item missing 'date' field",
-		})
 	}
 
 	// Validate the value field against the property's value_type
@@ -848,4 +850,82 @@ func (glx *GLXFile) validateValueType(entityType, entityID, field string, value 
 			})
 		}
 	}
+}
+
+// validateEntityFieldFormats performs additional lightweight validation of format
+// constraints on top-level entity fields beyond what is currently enforced via schema.
+func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
+	// Validate date fields on events, sources, and media
+	for id, event := range glx.Events {
+		if event.Date != "" {
+			glx.validateDateFormat(EntityTypeEvents, id, "date", string(event.Date), result)
+		}
+	}
+	for id, source := range glx.Sources {
+		if source.Date != "" {
+			glx.validateDateFormat(EntityTypeSources, id, "date", string(source.Date), result)
+		}
+	}
+	for id, media := range glx.Media {
+		if media.Date != "" {
+			glx.validateDateFormat(EntityTypeMedia, id, "date", string(media.Date), result)
+		}
+	}
+
+	// Validate repository website URLs
+	for id, repo := range glx.Repositories {
+		if repo.Website != "" && !isValidURL(repo.Website) {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: EntityTypeRepositories,
+				SourceID:   id,
+				Field:      "website",
+				Message: fmt.Sprintf("%s[%s].website: '%s' does not appear to be a valid URL",
+					EntityTypeRepositories, id, repo.Website),
+			})
+		}
+	}
+
+	// Validate media URI and MIME type formats
+	for id, media := range glx.Media {
+		if media.URI != "" && !isValidMediaURI(media.URI) {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: EntityTypeMedia,
+				SourceID:   id,
+				Field:      "uri",
+				Message: fmt.Sprintf("%s[%s].uri: '%s' does not appear to be a valid URI or relative path",
+					EntityTypeMedia, id, media.URI),
+			})
+		}
+		if media.MimeType != "" && !isValidMIMEType(media.MimeType) {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: EntityTypeMedia,
+				SourceID:   id,
+				Field:      "mime_type",
+				Message: fmt.Sprintf("%s[%s].mime_type: '%s' does not follow standard MIME type format (type/subtype)",
+					EntityTypeMedia, id, media.MimeType),
+			})
+		}
+	}
+}
+
+// isValidURL checks if a string looks like a valid URL (starts with http:// or https://).
+func isValidURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
+}
+
+// isValidMediaURI checks if a string looks like a valid URI or relative file path.
+func isValidMediaURI(s string) bool {
+	// Accept URLs
+	if strings.Contains(s, "://") {
+		return true
+	}
+	// Accept relative paths (must not be empty, already checked before calling)
+	// Reject strings that are clearly not paths (e.g., just whitespace)
+	return strings.TrimSpace(s) == s && !strings.ContainsAny(s, "\n\r\t")
+}
+
+// isValidMIMEType checks if a string follows the standard type/subtype MIME format.
+func isValidMIMEType(s string) bool {
+	parts := strings.SplitN(s, "/", 2)
+	return len(parts) == 2 && len(parts[0]) > 0 && len(parts[1]) > 0
 }

@@ -165,7 +165,7 @@ func TestValidatePropertyValue_TemporalListMissingDate(t *testing.T) {
 					"occupation": []any{
 						map[string]any{
 							"value": "blacksmith",
-							// Missing "date" field
+							// Missing "date" field — this is valid (date is optional)
 						},
 					},
 				},
@@ -183,25 +183,12 @@ func TestValidatePropertyValue_TemporalListMissingDate(t *testing.T) {
 	result := &ValidationResult{}
 	glx.validatePropertyValue("persons", "person-1", "occupation", glx.Persons["person-1"].Properties["occupation"], propDef, result)
 
-	// Should have 0 errors (value is present)
-	// Should have 1 warning: temporal list item missing 'date' field
+	// Should have 0 errors and 0 warnings — date is optional on temporal list items
 	if len(result.Errors) != 0 {
 		t.Errorf("Expected 0 errors, got %d: %v", len(result.Errors), result.Errors)
 	}
-	if len(result.Warnings) != 1 {
-		t.Errorf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
-	} else {
-		// Verify warning details
-		warning := result.Warnings[0]
-		if warning.SourceType != "persons" {
-			t.Errorf("Warning should have source type 'persons', got: %s", warning.SourceType)
-		}
-		if warning.SourceID != "person-1" {
-			t.Errorf("Warning should have source ID 'person-1', got: %s", warning.SourceID)
-		}
-		if !strings.Contains(warning.Message, "date") {
-			t.Errorf("Warning message should mention missing 'date', got: %s", warning.Message)
-		}
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings, got %d: %v", len(result.Warnings), result.Warnings)
 	}
 }
 

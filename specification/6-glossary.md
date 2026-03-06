@@ -20,7 +20,7 @@ Validation performed across all files in an archive, checking for duplicate enti
 > **See Also:** [Validation Levels](3-archive-organization#validation-levels)
 
 ### Archive-Owned Vocabularies
-Controlled vocabulary definitions stored in each archive's `vocabularies/` directory, allowing archives to customize and extend type systems while maintaining validation and consistency.
+Controlled vocabulary definitions owned by each archive, allowing archives to customize and extend type systems while maintaining validation and consistency. Vocabulary files are identified by their top-level keys (e.g., `event_types`, `place_types`) and can be placed anywhere in the archive, though `vocabularies/` is the conventional directory.
 
 > **See Also:** [Archive-Owned Vocabularies](2-core-concepts#archive-owned-vocabularies)
 
@@ -323,6 +323,11 @@ A property with structured fields that break down complex values into named comp
 
 > **See Also:** [Structured Properties](2-core-concepts#structured-properties)
 
+### Status (Assertion)
+The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), and `disproven` (evidence contradicts the assertion). Free-text; archives may use any labels.
+
+> **See Also:** [Assertion Entity - Status](4-entity-types/assertion#status)
+
 ### Subject
 In assertions, the typed reference to the entity the assertion is about. The subject field specifies both the entity type and entity ID.
 
@@ -334,7 +339,7 @@ In assertions, the typed reference to the entity the assertion is about. The sub
 A reference that specifies both the entity type and entity ID, used in assertion subjects (e.g., `person: person-john-smith` rather than just `person-john-smith`).
 
 ### Temporal Property
-A property that can change over time (e.g., residence, occupation, name). Temporal properties support date ranges and multiple values representing changes over a person's life.
+A property that can hold multiple values, with or without dates. Temporal properties support dated lists (values that change over time), undated lists (multiple values without known dates, e.g., occupations from an obituary), or a single value.
 
 ### Transcription
 The text content of a source document, especially when the original is not directly accessible or when specific text is relevant to an assertion.
@@ -353,7 +358,7 @@ The data type specification for a property value: string, date, integer, boolean
 > **See Also:** [Data Types](2-core-concepts#data-types)
 
 ### Vocabularies
-Controlled lists of valid types and categories used throughout a GENEALOGIX archive, stored in the `vocabularies/` directory.
+Controlled lists of valid types and categories used throughout a GENEALOGIX archive. Conventionally stored in the `vocabularies/` directory, but can be placed in any `.glx` file.
 
 > **See Also:** [Vocabularies](4-entity-types/vocabularies), [Standard Vocabularies](5-standard-vocabularies/)
 

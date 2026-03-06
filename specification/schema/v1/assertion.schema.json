@@ -32,6 +32,11 @@
         { "required": ["property"] },
         { "required": ["participant"] }
       ]
+    },
+    {
+      "description": "value is required when property is present",
+      "if": { "required": ["property"] },
+      "then": { "required": ["value"] }
     }
   ],
   "properties": {

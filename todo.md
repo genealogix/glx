@@ -10,6 +10,7 @@ Issues that silently lose or corrupt data during import.
 
 - **Multiple GEDCOM NAME records silently dropped** ([#29](https://github.com/genealogix/glx/issues/29)): When a person has multiple NAME records (e.g., birth name + married name), only the last one is stored. Earlier names are silently lost. Should convert to a temporal name list. [gedcom_individual.go:52-70](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_individual.go#L52-L70)
 - **FAM event processing depends on HUSB/WIFE tag order** ([#15](https://github.com/genealogix/glx/issues/15)): CENS and other family events (ENGA, MARB, etc.) are processed inline during the same loop that extracts `husbandID`/`wifeID`. If event tags appear before HUSB/WIFE, spouse IDs are empty. GEDCOM does not guarantee tag order. [gedcom_family.go:64-74](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_family.go#L64-L74)
+- **GEDCOM marriage/divorce events stored as properties instead of `start_event`/`end_event`** ([gedcom_family.go:185-227](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_family.go#L185-L227)): The GEDCOM converter writes `marriage_event`/`divorce_event` as relationship properties (which are not in the vocabulary and generate warnings), instead of using the relationship's top-level `start_event`/`end_event` fields.
 - **Census NOTE discarded when SOUR exists** ([#30](https://github.com/genealogix/glx/issues/30)): In `convertCensus`, NOTE text is only attached to synthetic citations. When SOUR sub-records exist, the NOTE is silently discarded.
 
 ---
@@ -62,6 +63,8 @@ Design decisions to resolve before 1.0.
 
 - **Add validation rule sections**: Each entity type doc should include a consolidated "Validation Rules" section.
 - **Git Workflow Guide**: Document branching strategies, collaboration patterns, and branch-based research methodologies for GLX archives.
+- **Place schema: enforce latitude/longitude co-dependency**: Schema allows `latitude` without `longitude` (and vice versa). Add a `dependencies` clause so both must be present together.
+- **Validate media `hash` format**: Media `hash` field should follow `algorithm:hexstring` format (e.g., `sha256:abc123...`). Currently not validated.
 
 ---
 

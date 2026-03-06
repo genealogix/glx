@@ -187,6 +187,7 @@ Media entities support vocabulary-defined properties through the `properties` fi
 | `medium` | string | Physical medium type (e.g., photograph, film, document) |
 | `photographer` | reference (persons) | Person who created the media |
 | `location` | reference (places) | Place where the media was created |
+| `original_filename` | string | Original filename of the media file |
 
 ### Example with Properties
 
