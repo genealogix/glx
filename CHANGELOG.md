@@ -32,7 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 #### GEDCOM Import
-- **Append residence on PLAC-without-DATE instead of overwriting** - When a GEDCOM RESI tag had a PLAC but no DATE, the residence property was overwritten instead of appended (#22)
+- **Append residence on PLAC-without-DATE instead of overwriting** - When residence came from a GEDCOM RESI tag or census-derived CENS data with a PLAC but no DATE, the residence property was overwritten instead of appended (#22)
 
 ---
 
