@@ -190,6 +190,21 @@ event_types:
     category: "migration"
     gedcom: "EMIG"
 
+  legal_separation:
+    label: "Legal Separation"
+    description: "Legal separation of a married couple without dissolution of the marriage"
+    category: "legal"
+
+  taxation:
+    label: "Taxation"
+    description: "Tax assessment, payment, or listing (e.g., tax rolls, tithes)"
+    category: "legal"
+
+  voter_registration:
+    label: "Voter Registration"
+    description: "Registration to vote or appearance on a voter roll"
+    category: "legal"
+
   # Census Events
   census:
     label: "Census"

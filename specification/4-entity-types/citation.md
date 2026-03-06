@@ -178,7 +178,7 @@ Or more commonly, citations are referenced by ID from assertions.
 | `properties.locator` | SOUR.PAGE | Location within source (GEDCOM PAGE is free-form text, not just page numbers) |
 | `properties.text_from_source` | SOUR.TEXT, SOUR.DATA.TEXT | Transcribed text |
 | `properties.source_date` | SOUR.DATA.DATE | Date when source recorded the information |
-| `properties.external_ids` | SOUR.CITN.EXID | External identifiers for the specific cited record |
+| `properties.external_ids` | SOUR.EXID | External identifiers (GEDCOM 7.0 EXID within source citation context) |
 
 ## Validation Rules
 

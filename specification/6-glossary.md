@@ -290,7 +290,7 @@ JSON Schema definitions that specify the structure, validation rules, and data t
 Conformance to JSON Schema definitions that specify valid structure and data types for each entity.
 
 ### Secondary Evidence
-Information created later, often compiled from primary sources (census records, published indexes).
+Information created later, often compiled from primary sources (published indexes, compiled genealogies).
 
 ### Single-File Archive
 An archive organization strategy where all entities are stored in a single GLX file, recommended for personal research and small family trees.
