@@ -215,6 +215,11 @@ func saveToFile(glx *glxlib.GLXFile, path string) error {
 - Use `any` instead of `interface{}` (Go 1.18+)
 - Use `yaml:"field,omitempty"` for optional fields
 - Keep functions focused and testable
+- GLXFile entity maps use pointer values: `map[string]*Event`, `map[string]*Person`, etc. (not value types)
+
+### GitHub API Patterns
+
+- Reply to PR review comment: `gh api repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies -f body="..."`
 
 ### Naming Conventions
 
