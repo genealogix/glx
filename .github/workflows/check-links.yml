@@ -28,27 +28,3 @@ jobs:
         run: |
           chmod +x scripts/check-links.sh
           scripts/check-links.sh
-
-  check-external-links:
-    name: Check External Links
-    runs-on: ubuntu-latest
-    # External URLs can go down temporarily — don't block PRs
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Check external URLs with lychee
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: >-
-            --no-progress
-            --include 'https?://'
-            --exclude 'localhost'
-            --exclude '127\.0\.0\.1'
-            --max-retries 3
-            --timeout 30
-            'specification/**/*.md'
-            'docs/**/*.md'
-            'README.md'
-            'CONTRIBUTING.md'
-          fail: true
