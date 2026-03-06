@@ -43,26 +43,11 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	var eventsRecorded []string
 
 	// Extract external IDs (GEDCOM 7.0 EXID tags) and store in properties
-	exids := extractExternalIDs(sourRecord)
-	if len(exids) > 0 {
-		var externalIDs []string
-		for _, exid := range exids {
-			// Validate that the ID value exists
-			idValue, hasID := exid["id"]
-			if !hasID || idValue == "" {
-				// Skip external IDs that don't have a usable ID value
-				continue
-			}
-
-			if idType, ok := exid["type"]; ok {
-				externalIDs = append(externalIDs, fmt.Sprintf("%s:%s", idType, idValue))
-			} else {
-				externalIDs = append(externalIDs, idValue)
-			}
-		}
-		if len(externalIDs) > 0 {
-			if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[GedcomTagExid]; ok {
-				source.Properties[propertyKey] = externalIDs
+	if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[GedcomTagExid]; ok {
+		for _, sub := range sourRecord.SubRecords {
+			if sub.Tag == GedcomTagExid && sub.Value != "" {
+				entry := buildExternalIDEntry(sub)
+				appendMultiValueProperty(source.Properties, propertyKey, entry)
 			}
 		}
 	}

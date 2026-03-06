@@ -746,8 +746,8 @@ func TestCitationEXID(t *testing.T) {
 2 DATE 1 JAN 1850
 2 SOUR @S1@
 3 PAGE Film 1266197, Image 586
-3 EXID ark:/61903/1:1:XR68-1M3
-4 TYPE familysearch
+3 EXID 1:1:XR68-1M3
+4 TYPE https://www.familysearch.org/ark:/61903/
 3 EXID rec-12345
 0 TRLR
 `
@@ -775,20 +775,32 @@ func TestCitationEXID(t *testing.T) {
 			continue
 		}
 		found = true
-		exidSlice, ok := exids.([]string)
+		exidSlice, ok := exids.([]any)
 		if !ok {
-			t.Fatalf("external_ids should be []string, got %T", exids)
+			t.Fatalf("external_ids should be []any, got %T", exids)
 		}
 		if len(exidSlice) != 2 {
 			t.Fatalf("expected 2 external_ids, got %d: %v", len(exidSlice), exidSlice)
 		}
-		// First EXID has TYPE, should be formatted as "type:id"
-		if exidSlice[0] != "familysearch:ark:/61903/1:1:XR68-1M3" {
-			t.Errorf("expected first EXID to be 'familysearch:ark:/61903/1:1:XR68-1M3', got %q", exidSlice[0])
+		// First EXID has TYPE — should be structured with value and fields.type
+		entry1, ok := exidSlice[0].(map[string]any)
+		if !ok {
+			t.Fatalf("first EXID should be structured map, got %T", exidSlice[0])
 		}
-		// Second EXID has no TYPE, should be bare ID
-		if exidSlice[1] != "rec-12345" {
-			t.Errorf("expected second EXID to be 'rec-12345', got %q", exidSlice[1])
+		if entry1["value"] != "1:1:XR68-1M3" {
+			t.Errorf("expected first EXID value '1:1:XR68-1M3', got %v", entry1["value"])
+		}
+		fields1, _ := entry1["fields"].(map[string]any)
+		if fields1["type"] != "https://www.familysearch.org/ark:/61903/" {
+			t.Errorf("expected first EXID type 'https://www.familysearch.org/ark:/61903/', got %v", fields1["type"])
+		}
+		// Second EXID has no TYPE — should be bare string
+		entry2, ok := exidSlice[1].(string)
+		if !ok {
+			t.Fatalf("second EXID should be bare string, got %T", exidSlice[1])
+		}
+		if entry2 != "rec-12345" {
+			t.Errorf("expected second EXID to be 'rec-12345', got %q", entry2)
 		}
 	}
 
