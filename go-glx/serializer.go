@@ -113,6 +113,16 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 		files[vocabPath] = content
 	}
 
+	// Serialize metadata if present
+	if glx.ImportMetadata != nil {
+		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
+		yamlBytes, err := yaml.Marshal(metaWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+		files["metadata.glx"] = yamlBytes
+	}
+
 	// Serialize entities by type
 	if err := s.serializeEntitiesToMap(glx.Persons, "persons", "person", files); err != nil {
 		return nil, err

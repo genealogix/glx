@@ -189,79 +189,80 @@ func mapPedigreeToRelationshipType(pediValue string) string {
 	}
 }
 
-// convertHeader extracts metadata from HEAD record
+// convertHeader extracts metadata from HEAD record and stores it on the GLXFile.
 func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
-	metadata := make(map[string]any)
+	if conv.GLX.ImportMetadata == nil {
+		conv.GLX.ImportMetadata = &Metadata{}
+	}
+	meta := conv.GLX.ImportMetadata
 
 	for _, sub := range headRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagDate:
-			metadata["export_date"] = sub.Value
+			meta.ExportDate = sub.Value
 		case GedcomTagFile:
-			metadata["source_file"] = sub.Value
+			meta.SourceFile = sub.Value
 		case GedcomTagCopr:
-			metadata["copyright"] = sub.Value
+			meta.Copyright = sub.Value
 		case GedcomTagLang:
-			metadata["language"] = sub.Value
+			meta.Language = sub.Value
 		case GedcomTagSour:
-			// Source system
 			for _, sourSub := range sub.SubRecords {
 				switch sourSub.Tag {
 				case GedcomTagName:
-					metadata["source_system"] = sourSub.Value
+					meta.SourceSystem = sourSub.Value
 				case GedcomTagVers:
-					metadata["source_version"] = sourSub.Value
+					meta.SourceVersion = sourSub.Value
 				case GedcomTagCorp:
-					metadata["source_corporation"] = sourSub.Value
+					meta.SourceCorporation = sourSub.Value
 				}
 			}
 		case GedcomTagSubm:
-			metadata["submitter_ref"] = sub.Value
+			// Submitter reference — resolved in convertSubmitter
 		case GedcomTagGedc:
 			for _, gedcSub := range sub.SubRecords {
 				if gedcSub.Tag == GedcomTagVers {
-					metadata["gedcom_version"] = gedcSub.Value
+					meta.GEDCOMVersion = gedcSub.Value
 				}
 			}
 		case GedcomTagChar:
-			metadata["character_set"] = sub.Value
+			meta.CharacterSet = sub.Value
 		case GedcomTagNote:
-			metadata["notes"] = extractNoteText(sub, conv)
+			meta.Notes = extractNoteText(sub, conv)
 		}
 	}
 
-	// HEAD metadata is processed but not yet stored (see todo.md)
-	if len(metadata) > 0 {
-		conv.Logger.LogInfo(fmt.Sprintf("HEAD metadata: %+v", metadata))
-	}
+	conv.Logger.LogInfo(fmt.Sprintf("HEAD metadata stored: %+v", meta))
 }
 
-// convertSubmitter converts SUBM record to metadata
+// convertSubmitter extracts submitter info from SUBM record and stores it on the GLXFile.
 func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
-	submitter := make(map[string]any)
+	if conv.GLX.ImportMetadata == nil {
+		conv.GLX.ImportMetadata = &Metadata{}
+	}
+
+	subm := &Submitter{}
 
 	for _, sub := range submRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagName:
-			submitter["name"] = sub.Value
+			subm.Name = sub.Value
 		case GedcomTagAddr:
-			submitter["address"] = extractAddress(sub)
+			subm.Address = extractAddress(sub)
 		case GedcomTagPhon:
-			submitter["phone"] = sub.Value
+			subm.Phone = sub.Value
 		case GedcomTagEmail:
-			submitter["email"] = sub.Value
+			subm.Email = sub.Value
 		case GedcomTagWww:
-			submitter["website"] = sub.Value
+			subm.Website = sub.Value
 		case GedcomTagObje:
-			// Create the media entity even though SUBM isn't stored as a GLX entity.
-			// The media is preserved in the archive but not linked to any entity.
 			resolveOBJE(sub, conv)
 		}
 	}
 
-	// SUBM metadata is processed but not yet stored (see todo.md)
-	if len(submitter) > 0 {
-		conv.Logger.LogInfo(fmt.Sprintf("SUBM submitter: %+v", submitter))
+	if subm.Name != "" || subm.Address != "" || subm.Phone != "" || subm.Email != "" || subm.Website != "" {
+		conv.GLX.ImportMetadata.Submitter = subm
+		conv.Logger.LogInfo(fmt.Sprintf("SUBM submitter stored: %+v", subm))
 	}
 }
 

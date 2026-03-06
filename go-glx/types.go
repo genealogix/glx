@@ -18,9 +18,36 @@ import (
 	"fmt"
 )
 
+// Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.
+type Metadata struct {
+	ExportDate        string     `yaml:"export_date,omitempty"`
+	SourceFile        string     `yaml:"source_file,omitempty"`
+	Copyright         string     `yaml:"copyright,omitempty"`
+	Language          string     `yaml:"language,omitempty"`
+	SourceSystem      string     `yaml:"source_system,omitempty"`
+	SourceVersion     string     `yaml:"source_version,omitempty"`
+	SourceCorporation string     `yaml:"source_corporation,omitempty"`
+	GEDCOMVersion     string     `yaml:"gedcom_version,omitempty"`
+	CharacterSet      string     `yaml:"character_set,omitempty"`
+	Submitter         *Submitter `yaml:"submitter,omitempty"`
+	Notes             string     `yaml:"notes,omitempty"`
+}
+
+// Submitter holds contact information from the GEDCOM SUBM record.
+type Submitter struct {
+	Name    string `yaml:"name,omitempty"`
+	Address string `yaml:"address,omitempty"`
+	Phone   string `yaml:"phone,omitempty"`
+	Email   string `yaml:"email,omitempty"`
+	Website string `yaml:"website,omitempty"`
+}
+
 // GLXFile represents the top-level structure of a .glx file, which can
 // contain maps of different entity types and vocabulary definitions.
 type GLXFile struct { //nolint:revive // GLXFile is the established name across the codebase
+	// Archive metadata (from GEDCOM HEAD/SUBM)
+	ImportMetadata *Metadata `yaml:"metadata,omitempty"`
+
 	// Entity types
 	Persons       map[string]*Person       `yaml:"persons,omitempty"`
 	Relationships map[string]*Relationship `yaml:"relationships,omitempty"`
