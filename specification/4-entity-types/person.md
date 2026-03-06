@@ -252,7 +252,7 @@ persons/
 
 ## Validation Rules
 
-- Properties must be from the [person properties vocabulary](vocabularies#person-properties-vocabulary)
+- Properties should be from the [person properties vocabulary](vocabularies#person-properties-vocabulary) (unknown properties generate warnings)
 - All place references must point to existing Place entities
 - Date formats must follow genealogical date conventions
 

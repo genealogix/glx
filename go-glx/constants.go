@@ -49,6 +49,9 @@ const (
 	EventTypeOrdination         = "ordination"
 	EventTypeProbate            = "probate"
 	EventTypeWill               = "will"
+	EventTypeLegalSeparation    = "legal_separation"
+	EventTypeTaxation           = "taxation"
+	EventTypeVoterRegistration  = "voter_registration"
 	EventTypeGeneric            = "event"
 )
 
@@ -64,6 +67,9 @@ const (
 	RelationshipTypeGodparent             = "godparent"
 	RelationshipTypeGuardian              = "guardian"
 	RelationshipTypePartner               = "partner"
+	RelationshipTypeNeighbor              = "neighbor"
+	RelationshipTypeCoworker              = "coworker"
+	RelationshipTypeHousemate             = "housemate"
 )
 
 // Standard Participant Roles - from participant-roles.glx vocabulary
@@ -316,7 +322,10 @@ const (
 	SourceTypeOralHistory    = "oral_history"    // Interviews, recorded memories
 	SourceTypeCorrespondence = "correspondence"  // Letters, emails, personal papers
 	SourceTypePhotograph     = "photograph"      // Photograph collections
-	SourceTypeOther          = "other"           // Other source types
+	SourceTypePopulationRegister = "population_register" // Civil population registers
+	SourceTypeTaxRecord          = "tax_record"          // Tax rolls, assessments, tithes
+	SourceTypeNotarialRecord     = "notarial_record"     // Notarial acts and contracts
+	SourceTypeOther              = "other"               // Other source types
 )
 
 // gedcomSourceTypeMapping maps GEDCOM source type values to GLX source types.
@@ -336,6 +345,9 @@ var gedcomSourceTypeMapping = map[string]string{
 	"court":      SourceTypeCourt,
 	"photo":      SourceTypePhotograph,
 	"photograph": SourceTypePhotograph,
+	"tax":        SourceTypeTaxRecord,
+	"notarial":   SourceTypeNotarialRecord,
+	"population": SourceTypePopulationRegister,
 }
 
 // Entity type constants - plural form used as map keys in GLXFile

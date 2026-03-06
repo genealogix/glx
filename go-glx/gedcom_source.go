@@ -198,6 +198,15 @@ func inferSourceType(title string) string {
 	if strings.Contains(titleLower, "deed") || strings.Contains(titleLower, "land") {
 		return SourceTypeLand
 	}
+	if strings.Contains(titleLower, "population register") || strings.Contains(titleLower, "household register") {
+		return SourceTypePopulationRegister
+	}
+	if strings.Contains(titleLower, "tax roll") || strings.Contains(titleLower, "tax record") || strings.Contains(titleLower, "tithe") {
+		return SourceTypeTaxRecord
+	}
+	if strings.Contains(titleLower, "notarial") || strings.Contains(titleLower, "notary") {
+		return SourceTypeNotarialRecord
+	}
 
 	// Default
 	return SourceTypeOther
