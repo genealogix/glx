@@ -398,13 +398,13 @@ git commit -m "Add John Smith and birth event with sources"
 ### Converting Multi-File to Single-File
 
 ```bash
-glx join path/to/archive/ -o family.glx
+glx join path/to/archive/ family.glx
 ```
 
 ### Converting Single-File to Multi-File
 
 ```bash
-glx split family.glx -o path/to/archive/
+glx split family.glx path/to/archive/
 ```
 
 ## Validation

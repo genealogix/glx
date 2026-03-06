@@ -603,11 +603,18 @@ func (glx *GLXFile) validateTemporalItem(
 		})
 	}
 
-	// Optional: validate 'date' field exists (temporal items should have dates, but single objects may omit it)
+	// Validate 'date' field format if present (date is optional on temporal items)
 	if dateVal, hasDate := itemMap["date"]; hasDate {
-		// Validate date format
 		if dateStr, ok := dateVal.(string); ok {
 			glx.validateDateFormat(entityType, entityID, fieldPath+".date", dateStr, result)
+		} else {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      fieldPath + ".date",
+				Message: fmt.Sprintf("%s: date value should be a quoted string, got %T (use \"1850\" not 1850)",
+					msgPath, dateVal),
+			})
 		}
 	}
 
@@ -845,8 +852,8 @@ func (glx *GLXFile) validateValueType(entityType, entityID, field string, value 
 	}
 }
 
-// validateEntityFieldFormats validates format constraints on top-level entity fields
-// that JSON Schema cannot enforce (e.g., date format, URI format, MIME type format).
+// validateEntityFieldFormats performs additional lightweight validation of format
+// constraints on top-level entity fields beyond what is currently enforced via schema.
 func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
 	// Validate date fields on events, sources, and media
 	for id, event := range glx.Events {
