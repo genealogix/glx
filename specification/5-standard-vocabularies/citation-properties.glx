@@ -40,5 +40,5 @@ citation_properties:
     gedcom: "EXID"
     fields:
       type:
-        label: "Authority"
+        label: "Identifier Type"
         description: "Authority or system that issued this identifier (e.g., familysearch, ancestry, wikitree). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."

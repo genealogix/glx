@@ -113,16 +113,14 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 
 		case GedcomTagExid:
 			// External ID (GEDCOM 7.0) - store as structured multi-value property
-			if propertyKey, ok := conv.GEDCOMIndex.CitationProperties[sub.Tag]; ok {
-				idValue := sub.Value
-				if idValue == "" {
-					break
+			if sub.Value != "" {
+				if propertyKey, ok := conv.GEDCOMIndex.CitationProperties[sub.Tag]; ok {
+					if citation.Properties == nil {
+						citation.Properties = make(map[string]any)
+					}
+					entry := buildExternalIDEntry(sub)
+					appendMultiValueProperty(citation.Properties, propertyKey, entry)
 				}
-				if citation.Properties == nil {
-					citation.Properties = make(map[string]any)
-				}
-				entry := buildExternalIDEntry(sub)
-				appendMultiValueProperty(citation.Properties, propertyKey, entry)
 			}
 
 		case GedcomTagQuay:

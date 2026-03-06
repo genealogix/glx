@@ -809,6 +809,154 @@ func TestCitationEXID(t *testing.T) {
 	}
 }
 
+func TestSourceEXID(t *testing.T) {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 @S1@ SOUR
+1 TITL Wisconsin County Marriages
+1 EXID col-12345
+2 TYPE https://www.familysearch.org/collection/
+1 EXID bare-id
+0 TRLR
+`
+
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcomData), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(glx.Sources) == 0 {
+		t.Fatal("No sources created")
+	}
+
+	for _, source := range glx.Sources {
+		exids, ok := source.Properties["external_ids"]
+		if !ok {
+			continue
+		}
+		exidSlice, ok := exids.([]any)
+		if !ok {
+			t.Fatalf("external_ids should be []any, got %T", exids)
+		}
+		if len(exidSlice) != 2 {
+			t.Fatalf("expected 2 external_ids, got %d", len(exidSlice))
+		}
+		// Typed entry
+		entry1, ok := exidSlice[0].(map[string]any)
+		if !ok {
+			t.Fatalf("first EXID should be structured map, got %T", exidSlice[0])
+		}
+		if entry1["value"] != "col-12345" {
+			t.Errorf("expected value 'col-12345', got %v", entry1["value"])
+		}
+		fields1, _ := entry1["fields"].(map[string]any)
+		if fields1["type"] != "https://www.familysearch.org/collection/" {
+			t.Errorf("expected type URI, got %v", fields1["type"])
+		}
+		// Bare entry
+		if exidSlice[1] != "bare-id" {
+			t.Errorf("expected bare 'bare-id', got %v", exidSlice[1])
+		}
+		return
+	}
+	t.Error("No source found with external_ids")
+}
+
+func TestBuildExternalIDEntry(t *testing.T) {
+	tests := []struct {
+		name     string
+		record   GEDCOMRecord
+		isMap    bool
+		value    string
+		exidType string
+	}{
+		{
+			name:   "bare EXID without TYPE",
+			record: GEDCOMRecord{Tag: "EXID", Value: "abc-123"},
+			isMap:  false,
+			value:  "abc-123",
+		},
+		{
+			name: "EXID with TYPE",
+			record: GEDCOMRecord{Tag: "EXID", Value: "abc-123", SubRecords: []*GEDCOMRecord{
+				{Tag: "TYPE", Value: "https://example.com/"},
+			}},
+			isMap:    true,
+			value:    "abc-123",
+			exidType: "https://example.com/",
+		},
+		{
+			name: "EXID with empty TYPE",
+			record: GEDCOMRecord{Tag: "EXID", Value: "abc-123", SubRecords: []*GEDCOMRecord{
+				{Tag: "TYPE", Value: ""},
+			}},
+			isMap: false,
+			value: "abc-123",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := buildExternalIDEntry(&tt.record)
+			if tt.isMap {
+				m, ok := result.(map[string]any)
+				if !ok {
+					t.Fatalf("expected map, got %T", result)
+				}
+				if m["value"] != tt.value {
+					t.Errorf("value = %v, want %v", m["value"], tt.value)
+				}
+				fields, _ := m["fields"].(map[string]any)
+				if fields["type"] != tt.exidType {
+					t.Errorf("type = %v, want %v", fields["type"], tt.exidType)
+				}
+			} else {
+				s, ok := result.(string)
+				if !ok {
+					t.Fatalf("expected string, got %T", result)
+				}
+				if s != tt.value {
+					t.Errorf("value = %q, want %q", s, tt.value)
+				}
+			}
+		})
+	}
+}
+
+func TestAppendMultiValueProperty(t *testing.T) {
+	t.Run("new key", func(t *testing.T) {
+		props := map[string]any{}
+		appendMultiValueProperty(props, "ids", "a")
+		slice, ok := props["ids"].([]any)
+		if !ok || len(slice) != 1 || slice[0] != "a" {
+			t.Errorf("expected [a], got %v", props["ids"])
+		}
+	})
+
+	t.Run("append to existing slice", func(t *testing.T) {
+		props := map[string]any{"ids": []any{"a"}}
+		appendMultiValueProperty(props, "ids", "b")
+		slice := props["ids"].([]any)
+		if len(slice) != 2 || slice[1] != "b" {
+			t.Errorf("expected [a b], got %v", slice)
+		}
+	})
+
+	t.Run("wrap existing non-slice value", func(t *testing.T) {
+		props := map[string]any{"ids": "existing"}
+		appendMultiValueProperty(props, "ids", "new")
+		slice, ok := props["ids"].([]any)
+		if !ok || len(slice) != 2 {
+			t.Fatalf("expected []any with 2 elements, got %T: %v", props["ids"], props["ids"])
+		}
+		if slice[0] != "existing" || slice[1] != "new" {
+			t.Errorf("expected [existing new], got %v", slice)
+		}
+	})
+}
+
 func TestIsGEDCOMPointer(t *testing.T) {
 	tests := []struct {
 		value    string

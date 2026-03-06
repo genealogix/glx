@@ -38,12 +38,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 	// Extract external IDs (GEDCOM 7.0 EXID tags)
 	if propertyKey, ok := conv.GEDCOMIndex.RepositoryProperties[GedcomTagExid]; ok {
-		for _, sub := range repoRecord.SubRecords {
-			if sub.Tag == GedcomTagExid && sub.Value != "" {
-				entry := buildExternalIDEntry(sub)
-				appendMultiValueProperty(repository.Properties, propertyKey, entry)
-			}
-		}
+		extractExternalIDs(repoRecord, propertyKey, repository.Properties)
 	}
 
 	// Process subrecords

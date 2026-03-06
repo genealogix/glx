@@ -44,12 +44,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 	// Extract external IDs (GEDCOM 7.0 EXID tags) and store in properties
 	if propertyKey, ok := conv.GEDCOMIndex.SourceProperties[GedcomTagExid]; ok {
-		for _, sub := range sourRecord.SubRecords {
-			if sub.Tag == GedcomTagExid && sub.Value != "" {
-				entry := buildExternalIDEntry(sub)
-				appendMultiValueProperty(source.Properties, propertyKey, entry)
-			}
-		}
+		extractExternalIDs(sourRecord, propertyKey, source.Properties)
 	}
 
 	// Process subrecords

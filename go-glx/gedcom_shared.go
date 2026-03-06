@@ -234,13 +234,28 @@ func buildExternalIDEntry(exidRecord *GEDCOMRecord) any {
 }
 
 // appendMultiValueProperty appends a value to a multi-value property slice.
+// If the key already holds a non-slice value, it is wrapped into a slice first.
 func appendMultiValueProperty(props map[string]any, key string, value any) {
 	if existing, ok := props[key]; ok {
 		if existingSlice, ok := existing.([]any); ok {
 			props[key] = append(existingSlice, value)
+		} else {
+			props[key] = []any{existing, value}
 		}
 	} else {
 		props[key] = []any{value}
+	}
+}
+
+// extractExternalIDs extracts EXID tags from a record and stores them as structured
+// multi-value properties. Each EXID with a TYPE sub-record becomes a structured entry
+// with value and fields.type; bare EXIDs become plain strings.
+func extractExternalIDs(record *GEDCOMRecord, propertyKey string, props map[string]any) {
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagExid && sub.Value != "" {
+			entry := buildExternalIDEntry(sub)
+			appendMultiValueProperty(props, propertyKey, entry)
+		}
 	}
 }
 
