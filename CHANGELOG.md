@@ -10,6 +10,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.6] - Unreleased
+
+### Added
+
+#### Standard Vocabularies
+- **Added relationship types `neighbor`, `coworker`, `housemate`** - Non-familial relationships commonly found in census, tax, and social records
+- **Added event types `legal_separation`, `taxation`, `voter_registration`** - Legal/administrative events for separations, tax rolls, and voter rolls
+- **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
+- **Expanded `military` source type description** - Now includes draft registrations and muster rolls
+
+### Changed
+
+#### Specification
+- **Clarified validation wording** - Person properties and event/relationship participant roles generate warnings (not errors) for unknown values, matching the validation policy in core concepts
+- **Clarified `subject` participant role** - Documented as preferred over `principal`
+
+### Fixed
+
+#### Specification
+- **Fixed citation GEDCOM mapping** - Corrected invalid `SOUR.CITN.EXID` tag to `SOUR.EXID`
+- **Fixed core-concepts.md formatting** - Property Vocabularies heading was merging with preceding table
+- **Fixed glossary Secondary Evidence example** - Replaced "census records" (primary evidence) with "published indexes, compiled genealogies"
+
+---
+
 ## [0.0.0-beta.5] - 2026-03-06
 
 ### Added

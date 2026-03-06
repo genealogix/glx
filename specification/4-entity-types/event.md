@@ -216,7 +216,7 @@ Events require at least one participant. GLX is a genealogy format, and every ev
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities
 - Date formats must follow genealogical date conventions
-- Participant roles must be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary)
+- Participant roles should be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary) (unknown roles generate warnings)
 
 ## Confidence and Provenance
 
