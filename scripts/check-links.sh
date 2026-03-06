@@ -18,7 +18,7 @@ trap 'rm -f "$LINKS_FILE"' EXIT
 # Uses a single awk pass to strip code and extract link targets with line numbers.
 extract_links() {
   local file="$1"
-  awk '
+  if ! awk '
     /^[ \t]*```/ { in_code = !in_code; next }
     in_code { next }
     {
@@ -31,7 +31,10 @@ extract_links() {
         line = substr(line, RSTART + RLENGTH)
       }
     }
-  ' "$file" 2>/dev/null || true
+  ' "$file"; then
+    echo "ERROR: awk failed processing $file" >&2
+    exit 1
+  fi
 }
 
 # Collect links from specification/ and docs/
