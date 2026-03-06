@@ -60,7 +60,7 @@ Relationship properties capture additional details that don't fit into the stand
 | `ended_on` | date | When the relationship ended |
 | `location` | reference | Location where the relationship occurred (reference to Place) |
 | `description` | string | Detailed description of the relationship |
-| `existence` | string | Whether this relationship is evidenced to exist (for assertions) |
+| `existence` | string | Whether this relationship is evidenced to exist (e.g., `"supported"`, `"refuted"`, `"inferred"`); values must be quoted strings in YAML |
 
 Example:
 ```yaml
