@@ -382,9 +382,6 @@ func (glx *GLXFile) validateParticipantProperties(
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
-	if len(propVocab) == 0 {
-		return
-	}
 	entitiesVal := reflect.ValueOf(entities)
 	if entitiesVal.Kind() != reflect.Map {
 		return
@@ -394,6 +391,34 @@ func (glx *GLXFile) validateParticipantProperties(
 		entity := entitiesVal.MapIndex(key).Elem()
 		participantsField := entity.FieldByName("Participants")
 		if !participantsField.IsValid() {
+			continue
+		}
+		if len(propVocab) == 0 {
+			// Check if any participant has properties — if so, emit one warning per entity.
+			hasParticipantProps := false
+			for i := range participantsField.Len() {
+				p := participantsField.Index(i)
+				pf := p.FieldByName("Properties")
+				if pf.IsValid() && !pf.IsNil() {
+					if props, ok := pf.Interface().(map[string]any); ok && len(props) > 0 {
+						hasParticipantProps = true
+						break
+					}
+				}
+			}
+			// Only warn if the entity-level check won't already warn (i.e., entity has no top-level properties).
+			if hasParticipantProps {
+				topProps := entity.FieldByName("Properties")
+				entityAlreadyWarns := topProps.IsValid() && !topProps.IsNil()
+				if !entityAlreadyWarns {
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: entityType,
+						SourceID:   entityID,
+						Field:      "participants.properties",
+						Message:    fmt.Sprintf("%s[%s]: has properties but no %s vocabulary was found", entityType, entityID, propVocabKey),
+					})
+				}
+			}
 			continue
 		}
 		for i := range participantsField.Len() {

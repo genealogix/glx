@@ -1020,7 +1020,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
 		assert.Equal(t, "events", result.Warnings[0].SourceType)
-		assert.Equal(t, "event-1", result.Warnings[0].SourceID)
+		assert.Equal(t, "event-1 participants[0]", result.Warnings[0].SourceID)
 	})
 
 	t.Run("participant property reference validated", func(t *testing.T) {
@@ -1041,7 +1041,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
 		assert.Equal(t, "events", result.Errors[0].SourceType)
-		assert.Equal(t, "event-1", result.Errors[0].SourceID)
+		assert.Equal(t, "event-1 participants[0]", result.Errors[0].SourceID)
 		assert.Contains(t, result.Errors[0].SourceField, "residence")
 	})
 
@@ -1081,6 +1081,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
 		assert.Equal(t, "assertions", result.Warnings[0].SourceType)
+		assert.Equal(t, "assert-1 participant", result.Warnings[0].SourceID)
 	})
 
 	t.Run("relationship participant uses relationship_properties vocab", func(t *testing.T) {
@@ -1123,5 +1124,31 @@ func TestValidateParticipantProperties(t *testing.T) {
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
 		assert.Equal(t, "relationships", result.Warnings[0].SourceType)
+		assert.Equal(t, "rel-1 participants[0]", result.Warnings[0].SourceID)
+	})
+
+	t.Run("missing vocab warning not duplicated for entity and participant properties", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
+			Events: map[string]*Event{
+				"event-1": {
+					Properties: map[string]any{"description": "test"},
+					Participants: []Participant{
+						{Person: "person-1", Properties: map[string]any{"age_at_event": 42}},
+						{Person: "person-2", Properties: map[string]any{"age_at_event": 28}},
+					},
+				},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		// Should get exactly 1 warning for missing vocab, not 3
+		vocabWarnings := 0
+		for _, w := range result.Warnings {
+			if w.SourceType == "events" {
+				vocabWarnings++
+			}
+		}
+		assert.Equal(t, 1, vocabWarnings, "should have exactly 1 missing-vocab warning per entity, not per participant")
 	})
 }
