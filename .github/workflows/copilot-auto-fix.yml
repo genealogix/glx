@@ -30,11 +30,11 @@ jobs:
           PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" \
             --head "${{ github.event.workflow_run.head_branch }}" \
             --state open --json number --jq '.[0].number')
-          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
             echo "No open PR found for branch ${{ github.event.workflow_run.head_branch }}"
             exit 0
           fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "Found PR #$PR_NUMBER"
 
       - name: Check for unresolved Copilot threads
