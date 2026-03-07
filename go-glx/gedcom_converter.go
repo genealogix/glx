@@ -230,9 +230,11 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 		}
 	}
 
+	// Always store the SUBM cross-reference so convertSubmitter can filter
+	conv.SubmitterXRef = submitterXRef
+
 	if meta.hasContent() {
 		conv.GLX.ImportMetadata = meta
-		conv.SubmitterXRef = submitterXRef
 		conv.Logger.LogInfo("HEAD metadata stored")
 	}
 }
@@ -240,8 +242,9 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 // convertSubmitter extracts submitter info from SUBM record and stores it on the GLXFile.
 // Only attaches the submitter referenced by HEAD's SUBM pointer.
 func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
-	// Only process the submitter referenced by HEAD
-	if conv.SubmitterXRef != "" && submRecord.XRef != conv.SubmitterXRef {
+	// Only process the submitter referenced by HEAD's SUBM pointer.
+	// If no SUBM pointer was found in HEAD, skip all SUBM records.
+	if conv.SubmitterXRef == "" || submRecord.XRef != conv.SubmitterXRef {
 		return
 	}
 
