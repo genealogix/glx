@@ -337,6 +337,9 @@ func queryMedia(archive *glxlib.GLXFile) error {
 func extractPersonName(person *glxlib.Person) string {
 	raw, ok := person.Properties["name"]
 	if !ok {
+		raw, ok = person.Properties["primary_name"]
+	}
+	if !ok {
 		return "(unnamed)"
 	}
 

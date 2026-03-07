@@ -329,12 +329,13 @@ Supported entity types: persons, events, assertions, sources,
 relationships, places, citations, repositories, media.
 
 Filters vary by entity type:
-  persons:      --name, --born-before, --born-after
-  events:       --type, --before, --after
-  assertions:   --confidence, --status
-  sources:      --name
+  persons:       --name, --born-before, --born-after
+  events:        --type, --before, --after
+  assertions:    --confidence, --status
+  sources:       --name, --type
   relationships: --type
-  places:       --name
+  places:        --name
+  repositories:  --name
 
 All entity types support --archive to specify the archive path.`,
 	Example: `  # Find persons born before 1850

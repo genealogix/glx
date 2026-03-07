@@ -159,6 +159,11 @@ func TestExtractPersonName(t *testing.T) {
 			want:  "First Name",
 		},
 		{
+			name:  "primary_name fallback",
+			props: map[string]any{"primary_name": "Bob Clark"},
+			want:  "Bob Clark",
+		},
+		{
 			name:  "no name property",
 			props: map[string]any{"gender": "male"},
 			want:  "(unnamed)",
