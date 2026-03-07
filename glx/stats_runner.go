@@ -22,6 +22,11 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// printEntityCounts prints the count of each entity type, reusing the shared helper.
+func printEntityCounts(archive *glxlib.GLXFile) {
+	printVerboseArchiveStatistics(archive, "Entity counts:")
+}
+
 // showStats loads a GLX archive and prints summary statistics.
 func showStats(path string) error {
 	archive, err := loadArchiveForStats(path)
@@ -60,20 +65,6 @@ func loadArchiveForStats(path string) (*glxlib.GLXFile, error) {
 	return archive, nil
 }
 
-// printEntityCounts prints the count of each entity type.
-func printEntityCounts(archive *glxlib.GLXFile) {
-	fmt.Println("Entity counts:")
-	fmt.Printf("  Persons:       %d\n", len(archive.Persons))
-	fmt.Printf("  Events:        %d\n", len(archive.Events))
-	fmt.Printf("  Relationships: %d\n", len(archive.Relationships))
-	fmt.Printf("  Places:        %d\n", len(archive.Places))
-	fmt.Printf("  Sources:       %d\n", len(archive.Sources))
-	fmt.Printf("  Citations:     %d\n", len(archive.Citations))
-	fmt.Printf("  Repositories:  %d\n", len(archive.Repositories))
-	fmt.Printf("  Media:         %d\n", len(archive.Media))
-	fmt.Printf("  Assertions:    %d\n", len(archive.Assertions))
-}
-
 // printConfidenceDistribution prints a breakdown of assertions by confidence level.
 func printConfidenceDistribution(archive *glxlib.GLXFile) {
 	if len(archive.Assertions) == 0 {
@@ -103,8 +94,8 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 	}
 }
 
-// printEntityCoverage shows how many persons, events, and relationships are
-// referenced by at least one assertion.
+// printEntityCoverage shows how many persons, events, relationships, and places
+// are referenced by at least one assertion.
 func printEntityCoverage(archive *glxlib.GLXFile) {
 	if len(archive.Assertions) == 0 {
 		return
@@ -113,6 +104,7 @@ func printEntityCoverage(archive *glxlib.GLXFile) {
 	coveredPersons := make(map[string]struct{})
 	coveredEvents := make(map[string]struct{})
 	coveredRelationships := make(map[string]struct{})
+	coveredPlaces := make(map[string]struct{})
 
 	for _, a := range archive.Assertions {
 		if a.Subject.Person != "" {
@@ -124,12 +116,16 @@ func printEntityCoverage(archive *glxlib.GLXFile) {
 		if a.Subject.Relationship != "" {
 			coveredRelationships[a.Subject.Relationship] = struct{}{}
 		}
+		if a.Subject.Place != "" {
+			coveredPlaces[a.Subject.Place] = struct{}{}
+		}
 	}
 
 	fmt.Println("\nEntity coverage (referenced by assertions):")
 	printCoverageRow("Persons", len(coveredPersons), len(archive.Persons))
 	printCoverageRow("Events", len(coveredEvents), len(archive.Events))
 	printCoverageRow("Relationships", len(coveredRelationships), len(archive.Relationships))
+	printCoverageRow("Places", len(coveredPlaces), len(archive.Places))
 }
 
 // printCoverageRow prints a single coverage line with percentage.

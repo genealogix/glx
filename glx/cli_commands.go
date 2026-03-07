@@ -338,4 +338,3 @@ func runStats(_ *cobra.Command, args []string) error {
 
 	return showStats(path)
 }
-
