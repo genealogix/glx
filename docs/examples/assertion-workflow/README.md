@@ -151,8 +151,11 @@ An assertion with neither `property` nor `participant` is an **existential asser
 relationships:
   rel-robert-alice-parent-child:
     type: parent_child
-    person1: person-robert-chen
-    person2: person-alice-chen
+    participants:
+      - person: person-robert-chen
+        role: parent
+      - person: person-alice-chen
+        role: child
 
 assertions:
   assertion-robert-alice-parentage:
