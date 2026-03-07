@@ -53,7 +53,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
-
+	rootCmd.AddCommand(placesCmd)
 }
 
 // ============================================================================
@@ -304,3 +304,41 @@ func runJoin(_ *cobra.Command, args []string) error {
 	return joinArchive(args[0], args[1], !joinNoValidate, joinVerbose, joinShowFirstErrors)
 }
 
+// ============================================================================
+// Places Command
+// ============================================================================
+
+var placesCmd = &cobra.Command{
+	Use:   "places [path]",
+	Short: "Analyze places for ambiguity and completeness",
+	Long: `Analyze places in a GENEALOGIX archive for data quality issues.
+
+Reports:
+- Duplicate names: places that share the same name (ambiguous without context)
+- Missing coordinates: places without latitude/longitude
+- Missing type: places without a type classification
+- No parent: non-country places missing a parent (hierarchy gap)
+- Unreferenced: places not used by any event
+
+Each place is shown with its full canonical hierarchy path.
+If no path is given, uses the current directory.`,
+	Example: `  # Analyze places in current directory
+  glx places
+
+  # Analyze places in a specific archive
+  glx places my-family-archive
+
+  # Analyze a single-file archive
+  glx places family.glx`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runPlaces,
+}
+
+func runPlaces(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	return analyzePlaces(path)
+}
