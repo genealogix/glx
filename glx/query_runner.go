@@ -38,8 +38,19 @@ type queryOpts struct {
 	Status     string
 }
 
-// queryEntities loads the archive and dispatches to the appropriate entity query.
+// validEntityTypes lists the entity types supported by the query command.
+var validEntityTypes = map[string]bool{
+	"persons": true, "events": true, "assertions": true, "sources": true,
+	"relationships": true, "places": true, "citations": true,
+	"repositories": true, "media": true,
+}
+
+// queryEntities validates the entity type, loads the archive, and dispatches.
 func queryEntities(entityType string, opts queryOpts) error {
+	if !validEntityTypes[entityType] {
+		return fmt.Errorf("unknown entity type: %s", entityType)
+	}
+
 	archive, err := loadArchiveForQuery(opts.Archive)
 	if err != nil {
 		return err
@@ -62,10 +73,8 @@ func queryEntities(entityType string, opts queryOpts) error {
 		return queryCitations(archive)
 	case "repositories":
 		return queryRepositories(archive, opts)
-	case "media":
-		return queryMedia(archive)
 	default:
-		return fmt.Errorf("unknown entity type: %s", entityType)
+		return queryMedia(archive)
 	}
 }
 
@@ -85,12 +94,7 @@ func loadArchiveForQuery(path string) (*glxlib.GLXFile, error) {
 		return archive, nil
 	}
 
-	archive, err := readSingleFileArchive(path, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load archive: %w", err)
-	}
-
-	return archive, nil
+	return readSingleFileArchive(path, false)
 }
 
 // queryPersons filters and displays persons.
