@@ -1,0 +1,26 @@
+name: Check Links
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'specification/**/*.md'
+      - 'docs/**/*.md'
+      - '*.md'
+  pull_request:
+    paths:
+      - 'specification/**/*.md'
+      - 'docs/**/*.md'
+      - '*.md'
+
+jobs:
+  check-relative-links:
+    name: Check Relative Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check internal markdown links
+        run: |
+          chmod +x scripts/check-links.sh
+          scripts/check-links.sh
