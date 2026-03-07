@@ -50,9 +50,12 @@ func loadArchiveForPlaces(path string) (*glxlib.GLXFile, error) {
 	}
 
 	if info.IsDir() {
-		archive, _, err := LoadArchiveWithOptions(path, false)
+		archive, duplicates, err := LoadArchiveWithOptions(path, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
+		}
+		for _, d := range duplicates {
+			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
 
 		return archive, nil
@@ -60,7 +63,7 @@ func loadArchiveForPlaces(path string) (*glxlib.GLXFile, error) {
 
 	archive, err := readSingleFileArchive(path, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load archive: %w", err)
+		return nil, err
 	}
 
 	return archive, nil

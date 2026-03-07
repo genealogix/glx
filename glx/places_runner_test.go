@@ -168,6 +168,37 @@ func TestBuildPlaceAnalysis_Unreferenced(t *testing.T) {
 	assert.NotContains(t, a.Unreferenced, "place-used")
 }
 
+func TestBuildPlaceAnalysis_MissingType(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-typed":   {Name: "USA", Type: "country"},
+			"place-untyped": {Name: "Somewhere"},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	a := buildPlaceAnalysis(archive)
+	assert.Contains(t, a.MissingType, "place-untyped")
+	assert.NotContains(t, a.MissingType, "place-typed")
+}
+
+func TestBuildPlaceAnalysis_AssertionReferencedPlace(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-only-assertion": {Name: "Assertion Place", Type: "city"},
+			"place-unreferenced":   {Name: "Nowhere", Type: "city"},
+		},
+		Events:     map[string]*glxlib.Event{},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-1": {Subject: glxlib.AssertionSubject{Place: "place-only-assertion"}},
+		},
+	}
+
+	a := buildPlaceAnalysis(archive)
+	assert.NotContains(t, a.Unreferenced, "place-only-assertion")
+	assert.Contains(t, a.Unreferenced, "place-unreferenced")
+}
+
 func TestBuildPlaceAnalysis_ParentReferenceCounts(t *testing.T) {
 	// A place referenced only as a parent should not be unreferenced
 	archive := &glxlib.GLXFile{
