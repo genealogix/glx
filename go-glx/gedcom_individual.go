@@ -63,7 +63,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 				if fields != nil {
 					nameValue["fields"] = fields
 				}
-				person.Properties[PersonPropertyName] = nameValue
+				appendNameProperty(person, nameValue)
 			}
 
 			// Create name assertion (with evidence/citations)
@@ -407,6 +407,23 @@ func buildPlaceHierarchyFromAddress(addrRecord *GEDCOMRecord) *PlaceHierarchy {
 	}
 }
 
+// appendNameProperty appends a name value to a person's name property.
+// The name property is temporal, so multiple names (birth name, married name, etc.)
+// are stored as a list. A single name is stored as a scalar map.
+func appendNameProperty(person *Person, nameValue map[string]any) {
+	existing, exists := person.Properties[PersonPropertyName]
+	if !exists {
+		person.Properties[PersonPropertyName] = nameValue
+		return
+	}
+	// Convert existing scalar to list and append
+	if existingList, ok := existing.([]any); ok {
+		person.Properties[PersonPropertyName] = append(existingList, nameValue)
+	} else {
+		person.Properties[PersonPropertyName] = []any{existing, nameValue}
+	}
+}
+
 // appendResidence appends a residence value to a person's residence property.
 // The value may be a temporal map (with date) or a bare place ID string.
 // If the property already exists, it is converted to/appended to a list.
@@ -542,6 +559,33 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 
 	// Extract evidence from any SOUR sub-records
 	refs := extractEvidence(censRecord, conv)
+
+	// When SOUR sub-records exist but we also have a NOTE, attach the note
+	// to existing citations so it's not silently lost (#30).
+	// If only bare source references exist (no citations), attach to sources.
+	if refs.hasEvidence() && noteText != "" {
+		if len(refs.CitationIDs) > 0 {
+			for _, citID := range refs.CitationIDs {
+				if cit, ok := conv.GLX.Citations[citID]; ok {
+					if cit.Notes == "" {
+						cit.Notes = noteText
+					} else {
+						cit.Notes += "\n\n" + noteText
+					}
+				}
+			}
+		} else if len(refs.SourceIDs) > 0 {
+			for _, srcID := range refs.SourceIDs {
+				if src, ok := conv.GLX.Sources[srcID]; ok {
+					if src.Notes == "" {
+						src.Notes = noteText
+					} else {
+						src.Notes += "\n\n" + noteText
+					}
+				}
+			}
+		}
+	}
 
 	// If no SOUR sub-records, create a synthetic census source
 	if !refs.hasEvidence() {

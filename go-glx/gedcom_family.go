@@ -28,30 +28,30 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 	conv.Logger.LogInfo("Converting FAM " + famRecord.XRef)
 
-	// Extract spouse references
+	// Two-pass processing: first extract spouse IDs, then process events.
+	// GEDCOM does not guarantee tag order, so event tags may appear before
+	// HUSB/WIFE tags. Collecting everything first prevents empty spouse IDs.
 	var husbandID, wifeID string
 	var marriageRecord, divorceRecord *GEDCOMRecord
+	var censusRecords []*GEDCOMRecord
+	var familyEventRecords []*GEDCOMRecord
 	var objeRecords []*GEDCOMRecord
 
 	for _, sub := range famRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagHusb:
-			// Husband reference
 			husbandID = conv.PersonIDMap[sub.Value]
 			if husbandID == "" {
 				conv.Logger.LogWarning(famRecord.Line, GedcomTagHusb, sub.Value, "Referenced person not found")
 			}
 
 		case GedcomTagWife:
-			// Wife reference
 			wifeID = conv.PersonIDMap[sub.Value]
 			if wifeID == "" {
 				conv.Logger.LogWarning(famRecord.Line, GedcomTagWife, sub.Value, "Referenced person not found")
 			}
 
 		case GedcomTagChil:
-			// Child reference - validation only, parent-child relationships are
-			// created when processing INDI records (which contain PEDI information)
 			childID := conv.PersonIDMap[sub.Value]
 			if childID == "" {
 				conv.Logger.LogWarning(famRecord.Line, GedcomTagChil, sub.Value, "Referenced person not found")
@@ -59,25 +59,29 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 		case GedcomTagMarr:
 			marriageRecord = sub
-
 		case GedcomTagDiv:
 			divorceRecord = sub
-
 		case GedcomTagCens:
-			// Census - apply to both spouses as citations/temporal properties
-			convertFamilyCensus(husbandID, wifeID, sub, conv)
-
+			censusRecords = append(censusRecords, sub)
 		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagEven:
-			// Other family events
-			convertFamilyEvent(husbandID, wifeID, sub, conv)
-
+			familyEventRecords = append(familyEventRecords, sub)
 		case GedcomTagObje:
 			objeRecords = append(objeRecords, sub)
-
 		default:
 			if isExtensionTag(sub.Tag) {
 				conv.addWarning(sub.Line, sub.Tag, "Extension tag not stored")
 			}
+		}
+	}
+
+	// Second pass: process deferred family events now that spouse IDs are known
+	// Skip if both spouse IDs are empty — events require at least one participant
+	if husbandID != "" || wifeID != "" {
+		for _, censRec := range censusRecords {
+			convertFamilyCensus(husbandID, wifeID, censRec, conv)
+		}
+		for _, eventRec := range familyEventRecords {
+			convertFamilyEvent(husbandID, wifeID, eventRec, conv)
 		}
 	}
 
@@ -179,12 +183,10 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
 
-	// Link event to relationship
+	// Link marriage event as the relationship's start_event
 	relationship := conv.GLX.Relationships[relationshipID]
-	if relationship != nil {
-		if relationship.Properties[PropertyMarriageEvent] == nil {
-			relationship.Properties[PropertyMarriageEvent] = eventID
-		}
+	if relationship != nil && relationship.StartEvent == "" {
+		relationship.StartEvent = eventID
 	}
 }
 
@@ -220,12 +222,10 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
 
-	// Link event to relationship
+	// Link divorce event as the relationship's end_event
 	relationship := conv.GLX.Relationships[relationshipID]
-	if relationship != nil {
-		if relationship.Properties[PropertyDivorceEvent] == nil {
-			relationship.Properties[PropertyDivorceEvent] = eventID
-		}
+	if relationship != nil && relationship.EndEvent == "" {
+		relationship.EndEvent = eventID
 	}
 }
 
