@@ -68,15 +68,16 @@ func loadArchiveForPlaces(path string) (*glxlib.GLXFile, error) {
 
 // placeAnalysis holds the results of place quality analysis.
 type placeAnalysis struct {
-	Total             int
-	Canonical         map[string]string   // placeID -> canonical path
-	Duplicates        map[string][]string // name -> list of placeIDs with that name
-	MissingCoords     []string            // placeIDs without coordinates
-	MissingType       []string            // placeIDs without a type
-	NoParent          []string            // non-country placeIDs without a parent
-	DanglingParent    []string            // placeIDs whose parent doesn't exist
-	DanglingParentIDs map[string]string   // placeID -> missing parent ID
-	Unreferenced      []string            // placeIDs not referenced by any event
+	Total              int
+	Canonical          map[string]string   // placeID -> canonical path
+	Duplicates         map[string][]string // normalized name -> list of placeIDs with that name
+	DuplicateOriginals map[string]string   // normalized name -> first original-cased name seen
+	MissingCoords      []string            // placeIDs without coordinates
+	MissingType        []string            // placeIDs without a type
+	NoParent           []string            // non-country placeIDs without a parent
+	DanglingParent     []string            // placeIDs whose parent doesn't exist
+	DanglingParentIDs  map[string]string   // placeID -> missing parent ID
+	Unreferenced       []string            // placeIDs not referenced by any event, assertion, or parent
 }
 
 // topLevelTypes are place types that don't require a parent.
@@ -88,10 +89,11 @@ var topLevelTypes = map[string]bool{
 // buildPlaceAnalysis analyzes all places in the archive.
 func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 	a := &placeAnalysis{
-		Total:             len(archive.Places),
-		Canonical:         make(map[string]string),
-		Duplicates:        make(map[string][]string),
-		DanglingParentIDs: make(map[string]string),
+		Total:              len(archive.Places),
+		Canonical:          make(map[string]string),
+		Duplicates:         make(map[string][]string),
+		DuplicateOriginals: make(map[string]string),
+		DanglingParentIDs:  make(map[string]string),
 	}
 
 	// Build canonical paths and detect issues
@@ -103,6 +105,9 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 		if rawName != "" {
 			name := strings.ToLower(rawName)
 			a.Duplicates[name] = append(a.Duplicates[name], id)
+			if _, ok := a.DuplicateOriginals[name]; !ok {
+				a.DuplicateOriginals[name] = rawName
+			}
 		}
 
 		// Missing coordinates
@@ -170,14 +175,18 @@ func buildCanonicalPath(placeID string, places map[string]*glxlib.Place) string 
 		if !ok {
 			break
 		}
-		parts = append(parts, place.Name)
+		name := strings.TrimSpace(place.Name)
+		if name != "" {
+			parts = append(parts, name)
+		}
 		current = place.ParentID
 	}
 
 	return strings.Join(parts, ", ")
 }
 
-// collectReferencedPlaces returns the set of place IDs referenced by events.
+// collectReferencedPlaces returns the set of place IDs referenced by events,
+// assertions, or as parents.
 func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	referenced := make(map[string]struct{})
 
@@ -187,7 +196,14 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 		}
 	}
 
-	// Also count places referenced as parents
+	// Places referenced as assertion subjects
+	for _, a := range archive.Assertions {
+		if a.Subject.Place != "" {
+			referenced[a.Subject.Place] = struct{}{}
+		}
+	}
+
+	// Places referenced as parents
 	for _, place := range archive.Places {
 		if place.ParentID != "" {
 			referenced[place.ParentID] = struct{}{}
@@ -217,7 +233,8 @@ func printPlaceAnalysis(a *placeAnalysis) {
 		for _, name := range names {
 			ids := a.Duplicates[name]
 			sort.Strings(ids)
-			fmt.Printf("  \"%s\" appears %d times:\n", name, len(ids))
+			displayName := a.DuplicateOriginals[name]
+			fmt.Printf("  \"%s\" appears %d times:\n", displayName, len(ids))
 			for _, id := range ids {
 				fmt.Printf("    %s  %s\n", id, a.Canonical[id])
 			}
@@ -263,7 +280,7 @@ func printPlaceAnalysis(a *placeAnalysis) {
 	// Unreferenced
 	if len(a.Unreferenced) > 0 {
 		issues += len(a.Unreferenced)
-		fmt.Printf("\nUnreferenced (not used by any event or as parent):\n")
+		fmt.Printf("\nUnreferenced (not used by any event, assertion, or as parent):\n")
 		for _, id := range a.Unreferenced {
 			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
 		}

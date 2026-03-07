@@ -319,7 +319,7 @@ Reports:
 - Missing type: places without a type classification
 - No parent: non-country places missing a parent (hierarchy gap)
 - Dangling parent: places referencing a parent that doesn't exist in the archive
-- Unreferenced: places not used by any event
+- Unreferenced: places not used by any event, assertion, or as a parent
 
 Each place is shown with its full canonical hierarchy path.
 If no path is given, uses the current directory.`,
