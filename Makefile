@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas check-links
+.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas check-links release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -84,6 +84,10 @@ check-schemas: ## Validate JSON schema files
 		-r "specification/schema/v1/vocabularies/*.schema.json" \
 		-c ajv-formats
 
+## Release
+release-snapshot: ## Build cross-platform binaries locally (no publish)
+	goreleaser release --snapshot --clean
+
 ## Link Checking
 check-links: ## Validate internal markdown links
 	@bash scripts/check-links.sh
@@ -92,5 +96,6 @@ check-links: ## Validate internal markdown links
 clean: ## Remove build artifacts
 	rm -rf bin
 	rm -rf coverage
+	rm -rf dist
 	rm -rf website/.vitepress/dist
 	rm -rf website/.vitepress/cache
