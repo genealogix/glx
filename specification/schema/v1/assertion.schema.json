@@ -27,16 +27,12 @@
       }
     },
     {
-      "description": "Must have either property or participant (but not both)",
-      "anyOf": [
-        { "required": ["property"] },
-        { "required": ["participant"] }
-      ]
-    },
-    {
-      "description": "value is required when property is present",
+      "description": "value is required when property is present, and vice versa",
       "if": { "required": ["property"] },
-      "then": { "required": ["value"] }
+      "then": { "required": ["value"] },
+      "else": {
+        "not": { "required": ["value"] }
+      }
     }
   ],
   "properties": {
@@ -96,15 +92,15 @@
     "property": {
       "type": "string",
       "minLength": 1,
-      "description": "The property being asserted (required if not using participant)"
+      "description": "The property being asserted (optional; omit for existential assertions)"
     },
     "value": {
       "type": "string",
-      "description": "The concluded value of the property (cannot be used with participant)"
+      "description": "The concluded value of the property (required when property is present; cannot be used with participant)"
     },
     "date": {
       "type": "string",
-      "description": "Date or date range when this property value applies (for temporal properties)"
+      "description": "Date or date range: when property is present, specifies when the value applies; on existential assertions, indicates when the subject existed"
     },
     "participant": {
       "type": "object",

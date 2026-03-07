@@ -143,6 +143,38 @@ A `confidence: high` + `status: speculative` assertion means "I'm fairly sure th
 | Collaboration | Limited | Excellent |
 | Audit Trail | None | Complete |
 
+## Existential Assertions
+
+An assertion with neither `property` nor `participant` is an **existential assertion** — it simply says "this entity is evidenced by these sources." This is the minimum useful assertion, and is especially helpful for relationships and events where you want to document existence without claiming any specific property value.
+
+```yaml
+relationships:
+  rel-robert-alice-parent-child:
+    type: parent_child
+    participants:
+      - person: person-robert-chen
+        role: parent
+      - person: person-alice-chen
+        role: child
+
+assertions:
+  assertion-robert-alice-parentage:
+    subject:
+      relationship: rel-robert-alice-parent-child
+    date: "1990"
+    citations:
+      - citation-1990-census-chen
+    confidence: high
+    notes: "1990 census lists Robert Chen as head of household with Alice Chen (age 5) as daughter"
+```
+
+Adding `date` makes it temporal: "this relationship existed in 1990." Without `date`, the assertion simply says the relationship is evidenced by the source, with no temporal scope.
+
+**When to use existential assertions:**
+- Relationships — evidencing a parent-child or marriage without asserting a specific property
+- Events — confirming an event occurred without asserting its date or place yet
+- Places — documenting that a place existed at a given time
+
 ## Multiple Evidence for Same Property
 
 Assertions can corroborate each other:
@@ -200,4 +232,6 @@ assertions:
 
 - [Temporal Properties Example](../temporal-properties/) - Detailed temporal value patterns
 - [Complete Family Example](../complete-family/) - Full multi-file archive structure
+- [Participant Assertions Example](../participant-assertions/) - Evidencing who participated in an event
 - [Core Concepts - Assertion-Aware Data Model](/specification/2-core-concepts#assertion-aware-data-model)
+- [Assertion Entity - Existential Assertions](/specification/4-entity-types/assertion#existential-assertions)

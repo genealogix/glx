@@ -88,6 +88,16 @@ persons:
       Father of Alice Chen.
       All properties backed by assertions with full evidence chain.
 
+relationships:
+  # Parent-child relationship between Robert and Alice
+  rel-robert-alice-parent-child:
+    type: parent_child
+    participants:
+      - person: person-robert-chen
+        role: parent
+      - person: person-alice-chen
+        role: child
+
 # ===========================================================================
 # APPROACH 2: EVIDENCE CHAIN (Sources -> Citations -> Assertions)
 # ===========================================================================
@@ -255,6 +265,18 @@ assertions:
       - citation-alice-birth-cert
     confidence: high
 
+  # --- EXISTENTIAL ASSERTION: relationship exists, evidenced by census ---
+  # No property or participant — this simply asserts the relationship exists,
+  # backed by source evidence. Adding a date scopes it to a specific time.
+  assertion-robert-alice-parentage:
+    subject:
+      relationship: rel-robert-alice-parent-child
+    date: "1990"
+    citations:
+      - citation-1990-census-chen
+    confidence: high
+    notes: "1990 census lists Robert Chen as head of household with Alice Chen (age 5) as daughter"
+
 # ===========================================================================
 # COMPARISON: Properties With vs Without Assertions
 # ===========================================================================
@@ -268,6 +290,13 @@ assertions:
 #   - Properties and assertions created together
 #   - Full evidence chain from the start
 #   - Shows rigorous research methodology
+#
+# rel-robert-alice-parent-child has:
+#   - An EXISTENTIAL assertion (no property or participant)
+#   - The assertion simply says "this relationship is evidenced by this source"
+#   - Adding `date` scopes existence to a specific time ("existed in 1990")
+#   - Useful for relationships, events, and places where you want to document
+#     that the entity exists without asserting any specific property value
 #
 # BOTH approaches are valid! The choice depends on:
 #   - Time available for documentation
