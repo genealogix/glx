@@ -354,20 +354,27 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 }
 
 // validateAssertionParticipantProperties validates properties on assertion participants.
+// Skips validation when no vocabulary is loaded to avoid duplicate "missing vocab" warnings.
 func (glx *GLXFile) validateAssertionParticipantProperties(
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
+	if len(propVocab) == 0 {
+		return
+	}
 	for assertionID, assertion := range glx.Assertions {
 		if assertion.Participant == nil || len(assertion.Participant.Properties) == 0 {
 			continue
 		}
-		glx.validateProperties(EntityTypeAssertions, assertionID, PropEventProperties, assertion.Participant.Properties, propVocab, result)
+		participantEntityID := assertionID + " participant"
+		glx.validateProperties(EntityTypeAssertions, participantEntityID, PropEventProperties, assertion.Participant.Properties, propVocab, result)
 	}
 }
 
 // validateParticipantProperties validates the properties field on participants
 // within entities that have a Participants field, using the specified property vocabulary.
+// When no vocabulary is loaded, entity-level validation already warns once per entity,
+// so we skip participant-level calls to avoid duplicate "missing vocab" warnings.
 func (glx *GLXFile) validateParticipantProperties(
 	entityType string,
 	propVocabKey string,
@@ -375,6 +382,9 @@ func (glx *GLXFile) validateParticipantProperties(
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
+	if len(propVocab) == 0 {
+		return
+	}
 	entitiesVal := reflect.ValueOf(entities)
 	if entitiesVal.Kind() != reflect.Map {
 		return
@@ -393,7 +403,8 @@ func (glx *GLXFile) validateParticipantProperties(
 				continue
 			}
 			if properties, ok := propsField.Interface().(map[string]any); ok {
-				glx.validateProperties(entityType, entityID, propVocabKey, properties, propVocab, result)
+				participantEntityID := fmt.Sprintf("%s participants[%d]", entityID, i)
+				glx.validateProperties(entityType, participantEntityID, propVocabKey, properties, propVocab, result)
 			}
 		}
 	}
