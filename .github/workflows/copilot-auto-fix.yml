@@ -6,10 +6,11 @@ on:
 
 jobs:
   auto-fix:
-    # Only trigger on Copilot reviews with comments (not approvals/request-changes with no suggestions)
+    # Only trigger on Copilot reviews with comments, and only for same-repo PRs (not forks)
     if: |
       github.event.review.user.login == 'copilot-pull-request-reviewer[bot]' &&
-      github.event.review.state == 'commented'
+      github.event.review.state == 'commented' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     # Prevent loops: only one run per PR at a time, cancel in-progress if re-triggered
     concurrency:
@@ -24,6 +25,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
@@ -45,8 +47,9 @@ jobs:
                a. Read and understand the suggestion
                b. If it's a valid code improvement, make the fix in the codebase
                c. If it's not actionable (e.g. asking for tests that already exist, or suggesting changes that would break things), skip it but still reply explaining why
-            3. After making all code fixes, commit and push them in a single commit with message "fix: address Copilot review suggestions"
-            4. Reply to each Copilot comment explaining what was done
+            3. Only if there are actual file changes: commit and push in a single commit with message "fix: address Copilot review suggestions"
+               If no files were changed, skip the commit/push step entirely.
+            4. Reply to each Copilot comment explaining what was done (or why it was skipped)
             5. Resolve each thread using the GraphQL resolveReviewThread mutation
 
             Important rules:
@@ -55,3 +58,4 @@ jobs:
             - Do NOT modify files unrelated to the suggestions
             - If a suggestion seems wrong or would break something, reply explaining why and resolve the thread anyway
             - Keep changes minimal and focused
+            - Do NOT commit if there are no file changes — just reply and resolve
