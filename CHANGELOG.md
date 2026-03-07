@@ -64,6 +64,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 #### GEDCOM Import
+- **Multiple GEDCOM NAME records no longer silently dropped** (#29) - When a person has multiple NAME records (birth name, married name, etc.), all names are now stored as a temporal list instead of only keeping the last one
+- **FAM event processing no longer depends on HUSB/WIFE tag order** (#15) - Family events (CENS, ENGA, MARB, etc.) are now collected in a first pass and processed after spouse IDs are extracted, so GEDCOM tag order no longer matters
+- **Census NOTE no longer discarded when SOUR exists** (#30) - NOTE text on CENS records is now appended to existing citation notes when SOUR sub-records are present, instead of being silently lost
+- **Marriage/divorce events use `start_event`/`end_event` instead of properties** - GEDCOM MARR and DIV events are now correctly linked to relationships via the top-level `start_event` and `end_event` fields, eliminating non-vocabulary `marriage_event`/`divorce_event` property warnings
 - **Append residence on PLAC-without-DATE instead of overwriting** - When residence came from a GEDCOM RESI tag or census-derived CENS data with a PLAC but no DATE, the residence property was overwritten instead of appended (#22)
 
 ---

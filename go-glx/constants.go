@@ -107,14 +107,12 @@ const (
 
 // Common Property Names - used across multiple entity types
 const (
-	PropertySources       = "sources"
-	PropertyCitations     = "citations"
-	PropertyMedia         = "media"
-	PropertyNotes         = "notes"
-	PropertyAddress       = "address"
-	PropertyMarriageEvent = "marriage_event"
-	PropertyDivorceEvent  = "divorce_event"
-	PropertyMarriageType  = "marriage_type"
+	PropertySources      = "sources"
+	PropertyCitations    = "citations"
+	PropertyMedia        = "media"
+	PropertyNotes        = "notes"
+	PropertyAddress      = "address"
+	PropertyMarriageType = "marriage_type"
 )
 
 // MediaFilesDir is the directory within an archive where media files are stored.
