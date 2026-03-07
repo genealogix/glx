@@ -222,6 +222,6 @@ func TestConfidenceReport_NonExistentPath(t *testing.T) {
 }
 
 func TestConfidenceReport_SingleFile(t *testing.T) {
-	err := confidenceReport("../docs/examples/single-file/family-archive.glx")
+	err := confidenceReport("../docs/examples/single-file/archive.glx")
 	require.NoError(t, err)
 }
