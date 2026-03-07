@@ -236,7 +236,7 @@ participants:
     notes: "Bride"
 ```
 
-Each participant object supports: `person` (required), `role`, `properties`, and `notes`. The `properties` field allows per-participant data and is validated against the event_properties vocabulary. See [Event Entity - Census Example](event#census-event-with-per-participant-properties) for usage details.
+Each participant object supports: `person` (required), `role`, `properties`, and `notes`. The `properties` field allows per-participant data and is validated against the relationship_properties vocabulary.
 
 ## Participant Roles
 

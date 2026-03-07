@@ -1083,7 +1083,27 @@ func TestValidateParticipantProperties(t *testing.T) {
 		assert.Equal(t, "assertions", result.Warnings[0].SourceType)
 	})
 
-	t.Run("participant properties on relationship", func(t *testing.T) {
+	t.Run("relationship participant uses relationship_properties vocab", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
+			Relationships: map[string]*Relationship{
+				"rel-1": {
+					Participants: []Participant{
+						{Person: "person-1", Properties: map[string]any{"custody_type": "full"}},
+						{Person: "person-2"},
+					},
+				},
+			},
+			RelationshipProperties: map[string]*PropertyDefinition{
+				"custody_type": {ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("relationship participant unknown prop warns against relationship vocab", func(t *testing.T) {
 		archive := &GLXFile{
 			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
 			Relationships: map[string]*Relationship{
@@ -1094,8 +1114,8 @@ func TestValidateParticipantProperties(t *testing.T) {
 					},
 				},
 			},
-			EventProperties: map[string]*PropertyDefinition{
-				"age_at_event": {ValueType: "integer"},
+			RelationshipProperties: map[string]*PropertyDefinition{
+				"custody_type": {ValueType: "string"},
 			},
 		}
 		result := archive.Validate()

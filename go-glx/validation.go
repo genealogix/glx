@@ -345,10 +345,11 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 	glx.validateEntityProperties(EntityTypeCitations, PropCitationProperties, glx.Citations, result.PropertyVocabs[PropCitationProperties], result)
 	glx.validateEntityProperties(EntityTypeSources, PropSourceProperties, glx.Sources, result.PropertyVocabs[PropSourceProperties], result)
 
-	// Validate participant properties using the event_properties vocabulary.
+	// Validate participant properties against the vocabulary matching their parent entity.
 	eventPropVocab := result.PropertyVocabs[PropEventProperties]
-	glx.validateParticipantProperties(EntityTypeEvents, glx.Events, eventPropVocab, result)
-	glx.validateParticipantProperties(EntityTypeRelationships, glx.Relationships, eventPropVocab, result)
+	relPropVocab := result.PropertyVocabs[PropRelationshipProperties]
+	glx.validateParticipantProperties(EntityTypeEvents, PropEventProperties, glx.Events, eventPropVocab, result)
+	glx.validateParticipantProperties(EntityTypeRelationships, PropRelationshipProperties, glx.Relationships, relPropVocab, result)
 	glx.validateAssertionParticipantProperties(eventPropVocab, result)
 }
 
@@ -366,9 +367,10 @@ func (glx *GLXFile) validateAssertionParticipantProperties(
 }
 
 // validateParticipantProperties validates the properties field on participants
-// within entities that have a Participants field, using the event_properties vocabulary.
+// within entities that have a Participants field, using the specified property vocabulary.
 func (glx *GLXFile) validateParticipantProperties(
 	entityType string,
+	propVocabKey string,
 	entities any,
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
@@ -391,7 +393,7 @@ func (glx *GLXFile) validateParticipantProperties(
 				continue
 			}
 			if properties, ok := propsField.Interface().(map[string]any); ok {
-				glx.validateProperties(entityType, entityID, PropEventProperties, properties, propVocab, result)
+				glx.validateProperties(entityType, entityID, propVocabKey, properties, propVocab, result)
 			}
 		}
 	}
