@@ -935,7 +935,7 @@ person_properties:
     fields:
       type:
         label: "Name Type"
-        description: "Classification of name usage (e.g., birth, married, alias, immigrant, religious, formal)"
+        description: "Classification of name usage or origin. Standard values: birth, married, maiden, alias, aka, immigrant, anglicized, religious, formal, professional, as_recorded"
       prefix:
         label: "Prefix"
         description: "Honorific prefix (Dr., Rev., Hon.)"
