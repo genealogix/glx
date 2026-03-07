@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
 
+#### Assertion Entity
+- **Added existential assertions** - Assertions no longer require `property` or `participant`; an assertion with only `subject` and evidence asserts the entity's existence, optionally at a specific `date` (#26)
+
 ### Changed
 
 #### Specification

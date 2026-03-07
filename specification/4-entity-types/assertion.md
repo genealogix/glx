@@ -47,15 +47,16 @@ assertions:
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `subject` | object | Typed reference to the entity this assertion is about |
-| `property` OR `participant` | string/object | Either a property string or participant object (mutually exclusive) |
 | `citations`, `sources`, or `media` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `property` | string | Property being asserted (mutually exclusive with `participant`; when omitted, assertion is [existential](#existential-assertions)) |
+| `participant` | object | Participant in an event or relationship (mutually exclusive with `property`/`value`) |
 | `value` | string | The concluded value of the property (**required** when `property` is present; not used with `participant`) |
-| `date` | string | Date or date range when this property value applies (for temporal properties) |
+| `date` | string | Date or date range: when `property` is present, specifies when the value applies; on existential assertions, indicates when the subject existed |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string | General notes about the assertion |
 | `status` | string | Research status of this assertion (e.g., proven, disproven, speculative) |
@@ -121,7 +122,7 @@ subject:
 ### `property` (or `participant`)
 
 - Type: String (for `property`) or Object (for `participant`)
-- Required: One of `property` or `participant` must be present (mutually exclusive)
+- Required: No — both are optional and mutually exclusive. When neither is present, the assertion is an [existential assertion](#existential-assertions).
 - Description: Either a property name being asserted, or a participant object for event/relationship participation
 
 > **Note:** The `property` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `property: born_on` references the `born_on` property from the person properties vocabulary. Unknown properties generate validation warnings.
@@ -220,7 +221,7 @@ value: blacksmith
 
 - Type: String
 - Required: No
-- Description: Date or date range when this property value applies. Used with temporal properties (occupation, residence, etc.) to specify **when** the asserted value was true, matching the temporal value format on entities. This field is strictly for temporal targeting — it is NOT an "evidence date" or "observation date".
+- Description: Date or date range. When `property` is present, specifies when the asserted value was true (matching the temporal value format on entities). On [existential assertions](#existential-assertions) (no `property` or `participant`), indicates when the subject existed. This field is strictly for temporal targeting — it is NOT an "evidence date" or "observation date".
 
 When a temporal property on an entity has multiple dated values:
 ```yaml
@@ -382,6 +383,43 @@ assertions:
       Needs further research.
 ```
 
+## Existential Assertions
+
+An assertion with neither `property` nor `participant` is an **existential assertion** — it asserts that the subject entity exists, backed by evidence. This is the simplest form of assertion: "this entity is evidenced by these sources."
+
+### Basic Existential Assertion
+
+```yaml
+assertions:
+  assertion-lane-family:
+    subject:
+      relationship: rel-lane-parent-child
+    citations:
+      - citation-1860-census-lane
+    confidence: high
+    notes: "Census shows D. Lane (45) as head of household with these children"
+```
+
+### Temporal Existential Assertion
+
+When a `date` is present without `property`, the assertion reads as "the subject existed at this time":
+
+```yaml
+assertions:
+  assertion-lane-1860:
+    subject:
+      relationship: rel-lane-parent-child
+    date: "1860"
+    citations:
+      - citation-1860-census-lane
+    confidence: high
+```
+
+Existential assertions are particularly useful for:
+- **Relationships** — evidencing that a relationship exists without asserting a specific property
+- **Events** — confirming an event occurred, backed by a source
+- **Places** — documenting that a place existed at a given time
+
 ## Usage Patterns
 
 ### Basic Biographical Assertion
@@ -541,6 +579,8 @@ The standard vocabulary defines these default confidence levels (archives may cu
 - `subject` must be an object with exactly one typed reference field (person, event, relationship, or place)
 - The referenced entity must exist in the archive
 - **At least one of `citations`, `sources`, or `media` must be present** (this is validated as an error if missing)
+- `property` and `participant` are mutually exclusive — an assertion may have one, the other, or neither (existential assertion)
+- When `property` is present, `value` is required; `value` cannot appear without `property`
 - All citation references must point to existing Citation entities
 - All source references must point to existing Source entities
 - All media references must point to existing Media entities
