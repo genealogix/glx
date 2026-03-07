@@ -647,6 +647,41 @@ assertions:
 
 Properties record **what** we believe. Assertions document **why** we believe it, with evidence. For temporal properties like occupation, the assertion's `date` field specifies **when** the value applies.
 
+### Existential Assertions
+
+An assertion with only a `subject` and evidence — no `property`, `value`, or `participant` — is an **existential assertion**. It simply says: "this entity is evidenced by these sources."
+
+```yaml
+assertions:
+  assertion-john-alice-parentage:
+    subject:
+      relationship: rel-john-alice-parent-child
+    citations:
+      - citation-1880-census
+    confidence: high
+    notes: "Census shows John Smith as head of household with Alice listed as daughter"
+```
+
+Adding a `date` makes it temporal — "this entity existed at this time":
+
+```yaml
+assertions:
+  assertion-john-alice-parentage:
+    subject:
+      relationship: rel-john-alice-parent-child
+    date: "1880"
+    citations:
+      - citation-1880-census
+    confidence: high
+```
+
+**When to use existential assertions:**
+- **Relationships** — evidence that a parent-child or marriage relationship existed, before asserting specific property values
+- **Events** — confirming an event occurred without yet asserting its date or place
+- **Places** — documenting that a place existed at a given time
+
+Existential assertions are useful during early research phases when you have evidence that an entity exists but haven't yet established specific property values. They let you document the evidence chain immediately, then add property assertions later as research progresses.
+
 ## Evidence Chain
 
 GENEALOGIX organizes genealogical evidence in a hierarchical chain from physical sources to conclusions:
