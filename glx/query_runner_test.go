@@ -15,6 +15,7 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -112,7 +113,7 @@ func TestQueryUnknownEntityType(t *testing.T) {
 }
 
 func TestQueryNonexistentArchive(t *testing.T) {
-	err := queryEntities("persons", queryOpts{Archive: "/nonexistent/path"})
+	err := queryEntities("persons", queryOpts{Archive: filepath.Join(t.TempDir(), "does-not-exist")})
 	require.Error(t, err)
 }
 

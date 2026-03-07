@@ -56,6 +56,9 @@ func queryEntities(entityType string, opts queryOpts) error {
 		return err
 	}
 
+	// Pre-lowercase filter strings for case-insensitive comparisons
+	opts.Name = strings.ToLower(opts.Name)
+
 	switch entityType {
 	case "persons":
 		return queryPersons(archive, opts)
@@ -73,8 +76,10 @@ func queryEntities(entityType string, opts queryOpts) error {
 		return queryCitations(archive)
 	case "repositories":
 		return queryRepositories(archive, opts)
-	default:
+	case "media":
 		return queryMedia(archive)
+	default:
+		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
 }
 
@@ -86,9 +91,12 @@ func loadArchiveForQuery(path string) (*glxlib.GLXFile, error) {
 	}
 
 	if info.IsDir() {
-		archive, _, err := LoadArchiveWithOptions(path, false)
+		archive, duplicates, err := LoadArchiveWithOptions(path, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
+		}
+		if len(duplicates) > 0 {
+			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found\n", len(duplicates))
 		}
 
 		return archive, nil
@@ -108,15 +116,12 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		if opts.Name != "" && !nameMatches(person, opts.Name) {
 			continue
 		}
-		if opts.BornBefore > 0 {
+		if opts.BornBefore > 0 || opts.BornAfter > 0 {
 			year := extractPropertyYear(person.Properties, "born_on")
-			if year == 0 || year >= opts.BornBefore {
+			if opts.BornBefore > 0 && (year == 0 || year >= opts.BornBefore) {
 				continue
 			}
-		}
-		if opts.BornAfter > 0 {
-			year := extractPropertyYear(person.Properties, "born_on")
-			if year == 0 || year <= opts.BornAfter {
+			if opts.BornAfter > 0 && (year == 0 || year <= opts.BornAfter) {
 				continue
 			}
 		}
@@ -421,8 +426,8 @@ func extractDateYear(dateStr string) int {
 }
 
 // containsFold checks if s contains substr (case-insensitive).
-func containsFold(s, substr string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+func containsFold(s, lowerSubstr string) bool {
+	return strings.Contains(strings.ToLower(s), lowerSubstr)
 }
 
 // sortedKeys returns map keys sorted alphabetically.
