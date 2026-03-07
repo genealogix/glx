@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,16 +39,16 @@ type queryOpts struct {
 	Status     string
 }
 
-// validEntityTypes lists the entity types supported by the query command.
-var validEntityTypes = map[string]bool{
-	"persons": true, "events": true, "assertions": true, "sources": true,
-	"relationships": true, "places": true, "citations": true,
-	"repositories": true, "media": true,
+// queryEntityTypes lists the entity types supported by the query command.
+var queryEntityTypes = []string{
+	"persons", "events", "assertions", "sources",
+	"relationships", "places", "citations",
+	"repositories", "media",
 }
 
 // queryEntities validates the entity type, loads the archive, and dispatches.
 func queryEntities(entityType string, opts queryOpts) error {
-	if !validEntityTypes[entityType] {
+	if !slices.Contains(queryEntityTypes, entityType) {
 		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
 
@@ -95,8 +96,8 @@ func loadArchiveForQuery(path string) (*glxlib.GLXFile, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
 		}
-		if len(duplicates) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found\n", len(duplicates))
+		for _, d := range duplicates {
+			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
 
 		return archive, nil
@@ -131,8 +132,13 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		diedOn := propertyString(person.Properties, "died_on")
 
 		detail := name
-		if bornOn != "" || diedOn != "" {
-			detail += "  (" + bornOn + " – " + diedOn + ")"
+		switch {
+		case bornOn != "" && diedOn != "":
+			detail += fmt.Sprintf("  (%s – %s)", bornOn, diedOn)
+		case bornOn != "":
+			detail += fmt.Sprintf("  (b. %s)", bornOn)
+		case diedOn != "":
+			detail += fmt.Sprintf("  (d. %s)", diedOn)
 		}
 		fmt.Printf("  %s  %s\n", id, detail)
 		count++

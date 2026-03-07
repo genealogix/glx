@@ -353,7 +353,7 @@ All entity types support --archive to specify the archive path.`,
   # List all sources
   glx query sources`,
 	Args:      cobra.ExactArgs(1),
-	ValidArgs: []string{"persons", "events", "assertions", "sources", "relationships", "places", "citations", "repositories", "media"},
+	ValidArgs: queryEntityTypes,
 	RunE:      runQuery,
 }
 
