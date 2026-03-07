@@ -75,11 +75,14 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	}
 
 	// Second pass: process deferred family events now that spouse IDs are known
-	for _, censRec := range censusRecords {
-		convertFamilyCensus(husbandID, wifeID, censRec, conv)
-	}
-	for _, eventRec := range familyEventRecords {
-		convertFamilyEvent(husbandID, wifeID, eventRec, conv)
+	// Skip if both spouse IDs are empty — events require at least one participant
+	if husbandID != "" || wifeID != "" {
+		for _, censRec := range censusRecords {
+			convertFamilyCensus(husbandID, wifeID, censRec, conv)
+		}
+		for _, eventRec := range familyEventRecords {
+			convertFamilyEvent(husbandID, wifeID, eventRec, conv)
+		}
 	}
 
 	// Create spousal relationship if both spouses exist

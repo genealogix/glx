@@ -561,14 +561,27 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 	refs := extractEvidence(censRecord, conv)
 
 	// When SOUR sub-records exist but we also have a NOTE, attach the note
-	// to existing citations so it's not silently lost (#30)
+	// to existing citations so it's not silently lost (#30).
+	// If only bare source references exist (no citations), attach to sources.
 	if refs.hasEvidence() && noteText != "" {
-		for _, citID := range refs.CitationIDs {
-			if cit, ok := conv.GLX.Citations[citID]; ok {
-				if cit.Notes == "" {
-					cit.Notes = noteText
-				} else {
-					cit.Notes += "\n\n" + noteText
+		if len(refs.CitationIDs) > 0 {
+			for _, citID := range refs.CitationIDs {
+				if cit, ok := conv.GLX.Citations[citID]; ok {
+					if cit.Notes == "" {
+						cit.Notes = noteText
+					} else {
+						cit.Notes += "\n\n" + noteText
+					}
+				}
+			}
+		} else if len(refs.SourceIDs) > 0 {
+			for _, srcID := range refs.SourceIDs {
+				if src, ok := conv.GLX.Sources[srcID]; ok {
+					if src.Notes == "" {
+						src.Notes = noteText
+					} else {
+						src.Notes += "\n\n" + noteText
+					}
 				}
 			}
 		}
