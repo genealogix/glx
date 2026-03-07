@@ -49,9 +49,12 @@ func loadArchiveForStats(path string) (*glxlib.GLXFile, error) {
 	}
 
 	if info.IsDir() {
-		archive, _, err := LoadArchiveWithOptions(path, false)
+		archive, duplicates, err := LoadArchiveWithOptions(path, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
+		}
+		if len(duplicates) > 0 {
+			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found\n", len(duplicates))
 		}
 
 		return archive, nil
@@ -80,12 +83,32 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 		counts[level]++
 	}
 
-	// Sort levels for deterministic output
-	levels := make([]string, 0, len(counts))
-	for level := range counts {
-		levels = append(levels, level)
+	// Sort levels: standard order first, then custom alphabetically, then (unset) last
+	var levels []string
+	standardOrder := []string{
+		glxlib.ConfidenceLevelHigh,
+		glxlib.ConfidenceLevelMedium,
+		glxlib.ConfidenceLevelLow,
+		glxlib.ConfidenceLevelDisputed,
 	}
-	sort.Strings(levels)
+	seen := make(map[string]bool)
+	for _, level := range standardOrder {
+		if counts[level] > 0 {
+			levels = append(levels, level)
+			seen[level] = true
+		}
+	}
+	var custom []string
+	for level := range counts {
+		if !seen[level] && level != "(unset)" {
+			custom = append(custom, level)
+		}
+	}
+	sort.Strings(custom)
+	levels = append(levels, custom...)
+	if counts["(unset)"] > 0 {
+		levels = append(levels, "(unset)")
+	}
 
 	fmt.Println("\nAssertion confidence:")
 	for _, level := range levels {

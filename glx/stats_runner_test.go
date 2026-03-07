@@ -17,8 +17,10 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,4 +85,64 @@ func TestShowStats_WithAssertions(t *testing.T) {
 
 	err := showStats(tmpDir)
 	require.NoError(t, err)
+}
+
+func TestShowStats_OutputContent(t *testing.T) {
+	// Capture stdout to verify output format
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	tmpDir := t.TempDir()
+
+	personsDir := filepath.Join(tmpDir, "persons")
+	require.NoError(t, os.MkdirAll(personsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(personsDir, "person-p1.glx"), []byte(`persons:
+  p1:
+    properties:
+      name:
+        value: "Test Person"
+`), 0o644))
+
+	assertionsDir := filepath.Join(tmpDir, "assertions")
+	require.NoError(t, os.MkdirAll(assertionsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(assertionsDir, "assertion-a1.glx"), []byte(`assertions:
+  a1:
+    subject:
+      person: p1
+    property: name
+    value: "Test Person"
+    confidence: high
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(assertionsDir, "assertion-a2.glx"), []byte(`assertions:
+  a2:
+    subject:
+      person: p1
+    property: born_on
+    value: "1900"
+`), 0o644))
+
+	require.NoError(t, showStats(tmpDir))
+
+	w.Close()
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	os.Stdout = oldStdout
+	output := string(buf[:n])
+
+	// Verify entity counts section
+	assert.Contains(t, output, "Persons:")
+	assert.Contains(t, output, "Assertions:")
+
+	// Verify confidence distribution shows high before (unset)
+	highIdx := strings.Index(output, "high")
+	unsetIdx := strings.Index(output, "(unset)")
+	require.True(t, highIdx > 0, "output should contain 'high'")
+	require.True(t, unsetIdx > 0, "output should contain '(unset)'")
+	assert.True(t, highIdx < unsetIdx, "(unset) should appear after high in output")
+
+	// Verify coverage section
+	assert.Contains(t, output, "Entity coverage")
+	assert.Contains(t, output, "1/1")
 }
