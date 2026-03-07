@@ -157,7 +157,9 @@ properties:
 
 The `type` field on name entries distinguishes why multiple names exist. Use it not just for temporal changes (birth to married) but also for alternate spellings, abbreviations, and names as recorded in specific documents.
 
-**Standard name type values:**
+The authoritative list of name `type` values is defined in the [person properties vocabulary](vocabularies#person-properties-vocabulary). The table below highlights common values and how to use them.
+
+**Common name type values:**
 
 | Type | Usage |
 |------|-------|
