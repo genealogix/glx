@@ -389,9 +389,13 @@ type TemporalValue struct {
 func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates := make([]string, 0, 10)
 
-	// Merge metadata (first one wins)
-	if g.ImportMetadata == nil && other.ImportMetadata != nil {
-		g.ImportMetadata = other.ImportMetadata
+	// Merge metadata (first one wins; report duplicate if both have content)
+	if other.ImportMetadata != nil && other.ImportMetadata.hasContent() {
+		if g.ImportMetadata != nil && g.ImportMetadata.hasContent() {
+			duplicates = append(duplicates, "duplicate metadata: metadata appears in multiple files")
+		} else {
+			g.ImportMetadata = other.ImportMetadata
+		}
 	}
 
 	// Merge entities (fail on duplicates)
