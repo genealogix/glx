@@ -8,9 +8,12 @@ on:
       - 'glx/**'
       - 'specification/**'
       - 'docs/**'
-      - '*.go'
+      - 'website/**'
+      - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+      - 'CHANGELOG.md'
+      - 'CLAUDE.md'
 
 jobs:
   claude-review:
