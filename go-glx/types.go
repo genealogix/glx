@@ -38,7 +38,12 @@ func (m *Metadata) hasContent() bool {
 	return m.ExportDate != "" || m.SourceFile != "" || m.Copyright != "" ||
 		m.Language != "" || m.SourceSystem != "" || m.SourceVersion != "" ||
 		m.SourceCorporation != "" || m.GEDCOMVersion != "" || m.CharacterSet != "" ||
-		m.Notes != "" || m.Submitter != nil
+		m.Notes != "" || (m.Submitter != nil && m.Submitter.hasContent())
+}
+
+// hasContent returns true if any submitter field is populated.
+func (s *Submitter) hasContent() bool {
+	return s.Name != "" || s.Address != "" || s.Phone != "" || s.Email != "" || s.Website != ""
 }
 
 // Submitter holds contact information from the GEDCOM SUBM record.
