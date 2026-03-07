@@ -267,7 +267,7 @@ func convertSubmitter(submRecord *GEDCOMRecord, conv *ConversionContext) {
 		}
 	}
 
-	if subm.Name != "" || subm.Address != "" || subm.Phone != "" || subm.Email != "" || subm.Website != "" {
+	if subm.hasContent() {
 		if conv.GLX.ImportMetadata == nil {
 			conv.GLX.ImportMetadata = &Metadata{}
 		}

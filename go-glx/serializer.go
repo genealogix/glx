@@ -86,6 +86,11 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 		}
 	}
 
+	// Normalize empty metadata to nil so omitempty suppresses it
+	if glx.ImportMetadata != nil && !glx.ImportMetadata.hasContent() {
+		glx.ImportMetadata = nil
+	}
+
 	// Marshal to YAML
 	yamlBytes, err := yaml.Marshal(glx)
 	if err != nil {
