@@ -72,6 +72,7 @@ Domain-specific events can be added via vocabularies:
 |-------|------|-------------|
 | `person` | string | Reference to Person entity |
 | `role` | string | Role of participant |
+| `properties` | object | Per-participant properties (e.g., `age_at_event`) |
 | `notes` | string | Notes about participant's involvement |
 
 ### Participant Structure
@@ -149,6 +150,33 @@ events:
     properties:
       description: "Marriage celebrated at St Paul's Cathedral"
 ```
+
+### Census Event with Per-Participant Properties
+
+Census events and similar multi-person events can record per-participant data using the `properties` field on each participant entry:
+
+```yaml
+events:
+  event-1860-census-lane:
+    type: census
+    date: "1860"
+    place: place-marston-sauk-wi
+    participants:
+      - person: person-d-lane
+        role: subject
+        properties:
+          age_at_event: "45"
+      - person: person-mary-lane
+        role: subject
+        properties:
+          age_at_event: "28"
+      - person: person-harriett-lane
+        role: subject
+        properties:
+          age_at_event: "8"
+```
+
+Participant-level properties use the same vocabulary as event properties (`event-properties.glx`). This avoids needing separate events for each person in a shared event like a census enumeration.
 
 ## File Organization
 
