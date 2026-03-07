@@ -205,6 +205,10 @@ Participant roles (principal, witness, officiant, etc.) are defined in the archi
 - Vocabulary file structure and examples
 - Which roles apply to events vs. relationships
 
+## Design Note: Participant Requirement
+
+Events require at least one participant. GLX is a genealogy format, and every event should connect to at least one person in the archive. Historical context (wars, famines, plagues) that affected a person can be recorded in event `notes` or `properties`, with the affected person as a participant. Events with no connection to any person in the archive are outside the scope of a genealogy file.
+
 ## Validation Rules
 
 - Event type must be from the [event types vocabulary](vocabularies#event-types-vocabulary)

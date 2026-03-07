@@ -233,6 +233,14 @@ func ExtractNameFields(nameProperty any) (given, surname string) {
 		return "", ""
 	}
 
+	// Handle temporal list (multiple names) — use first entry as primary
+	if nameList, ok := nameProperty.([]any); ok {
+		if len(nameList) > 0 {
+			return ExtractNameFields(nameList[0])
+		}
+		return "", ""
+	}
+
 	// Handle map[string]any (the typical structure from YAML parsing or code)
 	if nameMap, ok := nameProperty.(map[string]any); ok {
 		// Check for fields sub-map
@@ -255,6 +263,14 @@ func ExtractNameFields(nameProperty any) (given, surname string) {
 // Returns empty string if not found.
 func GetFullName(nameProperty any) string {
 	if nameProperty == nil {
+		return ""
+	}
+
+	// Handle temporal list (multiple names) — use first entry as primary
+	if nameList, ok := nameProperty.([]any); ok {
+		if len(nameList) > 0 {
+			return GetFullName(nameList[0])
+		}
 		return ""
 	}
 
