@@ -980,3 +980,128 @@ func TestValidateSuggestReferenceKey(t *testing.T) {
 		assert.NotContains(t, result.Errors[0].Message, "did you mean")
 	})
 }
+
+func TestValidateParticipantProperties(t *testing.T) {
+	t.Run("valid participant properties on event", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}},
+			Events: map[string]*Event{
+				"event-1": {
+					Participants: []Participant{
+						{Person: "person-1", Properties: map[string]any{"age_at_event": 42}},
+					},
+				},
+			},
+			EventProperties: map[string]*PropertyDefinition{
+				"age_at_event": {ValueType: "integer"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("unknown participant property warns", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}},
+			Events: map[string]*Event{
+				"event-1": {
+					Participants: []Participant{
+						{Person: "person-1", Properties: map[string]any{"unknown_prop": "value"}},
+					},
+				},
+			},
+			EventProperties: map[string]*PropertyDefinition{
+				"age_at_event": {ValueType: "integer"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
+		assert.Equal(t, "events", result.Warnings[0].SourceType)
+		assert.Equal(t, "event-1", result.Warnings[0].SourceID)
+	})
+
+	t.Run("participant property reference validated", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}},
+			Places:  map[string]*Place{},
+			Events: map[string]*Event{
+				"event-1": {
+					Participants: []Participant{
+						{Person: "person-1", Properties: map[string]any{"residence": "place-missing"}},
+					},
+				},
+			},
+			EventProperties: map[string]*PropertyDefinition{
+				"residence": {ReferenceType: "places"},
+			},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		assert.Equal(t, "events", result.Errors[0].SourceType)
+		assert.Equal(t, "event-1", result.Errors[0].SourceID)
+		assert.Contains(t, result.Errors[0].SourceField, "residence")
+	})
+
+	t.Run("missing event property vocab warns for participant properties", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}},
+			Events: map[string]*Event{
+				"event-1": {
+					Participants: []Participant{
+						{Person: "person-1", Properties: map[string]any{"age_at_event": 42}},
+					},
+				},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "event_properties")
+	})
+
+	t.Run("participant properties on assertion", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}},
+			Events:  map[string]*Event{"event-1": {}},
+			Assertions: map[string]*Assertion{
+				"assert-1": {
+					Subject:     EntityRef{Event: "event-1"},
+					Participant: &Participant{Person: "person-1", Properties: map[string]any{"unknown_prop": "val"}},
+				},
+			},
+			EventProperties: map[string]*PropertyDefinition{
+				"age_at_event": {ValueType: "integer"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
+		assert.Equal(t, "assertions", result.Warnings[0].SourceType)
+	})
+
+	t.Run("participant properties on relationship", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
+			Relationships: map[string]*Relationship{
+				"rel-1": {
+					Participants: []Participant{
+						{Person: "person-1", Properties: map[string]any{"unknown_prop": "val"}},
+						{Person: "person-2"},
+					},
+				},
+			},
+			EventProperties: map[string]*PropertyDefinition{
+				"age_at_event": {ValueType: "integer"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
+		assert.Equal(t, "relationships", result.Warnings[0].SourceType)
+	})
+}

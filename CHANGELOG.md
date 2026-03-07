@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Event Entity
 - **Added `properties` to event participants** - Participants can now carry per-participant properties like `age_at_event`, enabling shared events (census, passenger lists) to record individual data without creating separate events per person
+- **Participant properties validated against event_properties vocabulary** - Properties on participants in events, relationships, and assertions are now validated using the same vocabulary as event-level properties
 
 #### Assertion Entity
 - **Added existential assertions** - Assertions no longer require `property` or `participant`; an assertion with only `subject` and evidence asserts the entity's existence, optionally at a specific `date` (#26)

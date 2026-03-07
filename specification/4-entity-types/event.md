@@ -176,7 +176,7 @@ events:
           age_at_event: "8"
 ```
 
-By convention, participant-level properties use the same vocabulary as event properties (`event-properties.glx`), although current tooling does not enforce this. This avoids needing separate events for each person in a shared event like a census enumeration.
+Participant-level properties use the same vocabulary as event properties (`event-properties.glx`) and are validated against it. This avoids needing separate events for each person in a shared event like a census enumeration.
 
 ## File Organization
 

@@ -344,6 +344,57 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 	glx.validateEntityProperties(EntityTypeRepositories, PropRepositoryProperties, glx.Repositories, result.PropertyVocabs[PropRepositoryProperties], result)
 	glx.validateEntityProperties(EntityTypeCitations, PropCitationProperties, glx.Citations, result.PropertyVocabs[PropCitationProperties], result)
 	glx.validateEntityProperties(EntityTypeSources, PropSourceProperties, glx.Sources, result.PropertyVocabs[PropSourceProperties], result)
+
+	// Validate participant properties using the event_properties vocabulary.
+	eventPropVocab := result.PropertyVocabs[PropEventProperties]
+	glx.validateParticipantProperties(EntityTypeEvents, glx.Events, eventPropVocab, result)
+	glx.validateParticipantProperties(EntityTypeRelationships, glx.Relationships, eventPropVocab, result)
+	glx.validateAssertionParticipantProperties(eventPropVocab, result)
+}
+
+// validateAssertionParticipantProperties validates properties on assertion participants.
+func (glx *GLXFile) validateAssertionParticipantProperties(
+	propVocab map[string]*PropertyDefinition,
+	result *ValidationResult,
+) {
+	for assertionID, assertion := range glx.Assertions {
+		if assertion.Participant == nil || len(assertion.Participant.Properties) == 0 {
+			continue
+		}
+		glx.validateProperties(EntityTypeAssertions, assertionID, PropEventProperties, assertion.Participant.Properties, propVocab, result)
+	}
+}
+
+// validateParticipantProperties validates the properties field on participants
+// within entities that have a Participants field, using the event_properties vocabulary.
+func (glx *GLXFile) validateParticipantProperties(
+	entityType string,
+	entities any,
+	propVocab map[string]*PropertyDefinition,
+	result *ValidationResult,
+) {
+	entitiesVal := reflect.ValueOf(entities)
+	if entitiesVal.Kind() != reflect.Map {
+		return
+	}
+	for _, key := range entitiesVal.MapKeys() {
+		entityID := key.String()
+		entity := entitiesVal.MapIndex(key).Elem()
+		participantsField := entity.FieldByName("Participants")
+		if !participantsField.IsValid() {
+			continue
+		}
+		for i := range participantsField.Len() {
+			participant := participantsField.Index(i)
+			propsField := participant.FieldByName("Properties")
+			if !propsField.IsValid() || propsField.IsNil() {
+				continue
+			}
+			if properties, ok := propsField.Interface().(map[string]any); ok {
+				glx.validateProperties(entityType, entityID, PropEventProperties, properties, propVocab, result)
+			}
+		}
+	}
 }
 
 // validateEntityProperties iterates over entities and validates their properties.
