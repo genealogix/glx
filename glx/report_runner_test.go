@@ -206,7 +206,8 @@ func TestBuildConfidenceOrder(t *testing.T) {
 
 	order := buildConfidenceOrder(counts)
 
-	// high, low, disputed first (standard order), then custom, then (unset)
+	// Standard order is high, medium, low, disputed; medium is absent from counts,
+	// so we expect high, low, disputed first, then custom, then (unset).
 	assert.Equal(t, []string{"high", "low", "disputed", "custom", "(unset)"}, order)
 }
 

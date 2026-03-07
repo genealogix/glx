@@ -188,7 +188,11 @@ Validate GLX files and verify cross-references.
 **Usage:**
 ```bash
 glx validate [paths...]
+glx validate [path] --report
 ```
+
+**Options:**
+- `--report` - Generate confidence summary report (assertion coverage and gaps)
 
 **Validation Checks:**
 - ✓ YAML syntax correctness
@@ -221,6 +225,10 @@ glx validate archive.glx
 
 # Validate example archives
 glx validate ../docs/examples/complete-family/
+
+# Generate confidence summary report
+glx validate --report
+glx validate path/to/archive --report
 ```
 
 **Output:**

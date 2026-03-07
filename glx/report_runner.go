@@ -44,9 +44,15 @@ func loadArchiveForReport(path string) (*glxlib.GLXFile, error) {
 	}
 
 	if info.IsDir() {
-		archive, _, err := LoadArchiveWithOptions(path, false)
+		archive, duplicates, err := LoadArchiveWithOptions(path, false)
 		if err != nil {
 			return nil, err
+		}
+		if len(duplicates) > 0 {
+			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found:\n", len(duplicates))
+			for _, d := range duplicates {
+				fmt.Fprintf(os.Stderr, "  - %s\n", d)
+			}
 		}
 
 		return archive, nil
@@ -142,7 +148,7 @@ func summarizeAssertion(id string, a *glxlib.Assertion) assertionSummary {
 	return s
 }
 
-// findUnbacked returns sorted IDs of entities that have no assertions referencing them.
+// findUnbacked returns IDs of entities that have no assertions referencing them.
 func findUnbacked[V any](entities map[string]V, asserted map[string]bool) []string {
 	var unbacked []string
 	for id := range entities {

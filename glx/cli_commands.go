@@ -219,8 +219,11 @@ func init() {
 
 func runValidate(_ *cobra.Command, args []string) error {
 	if validateReport {
+		if len(args) > 1 {
+			return fmt.Errorf("--report accepts at most one path argument")
+		}
 		path := "."
-		if len(args) > 0 {
+		if len(args) == 1 {
 			path = args[0]
 		}
 
