@@ -205,33 +205,31 @@ func printConfidenceReport(report reportData) {
 
 	if report.TotalAssertions == 0 {
 		fmt.Println("\nNo assertions found in this archive.")
-
-		return
-	}
-
-	// Confidence breakdown
-	fmt.Printf("\nAssertions: %d total\n\n", report.TotalAssertions)
-	fmt.Println("  Confidence Level    Count")
-	fmt.Println("  " + strings.Repeat("-", 30))
-	for _, level := range report.ConfidenceOrder {
-		fmt.Printf("  %-20s %d\n", level, report.ByConfidence[level])
-	}
-
-	// Assertions without confidence
-	if len(report.NoConfidence) > 0 {
-		fmt.Printf("\nAssertions without confidence level (%d):\n", len(report.NoConfidence))
-		for _, a := range report.NoConfidence {
-			desc := formatAssertionDesc(a)
-			fmt.Printf("  - %s: %s\n", a.ID, desc)
+	} else {
+		// Confidence breakdown
+		fmt.Printf("\nAssertions: %d total\n\n", report.TotalAssertions)
+		fmt.Println("  Confidence Level    Count")
+		fmt.Println("  " + strings.Repeat("-", 30))
+		for _, level := range report.ConfidenceOrder {
+			fmt.Printf("  %-20s %d\n", level, report.ByConfidence[level])
 		}
-	}
 
-	// Assertions without citations
-	if len(report.NoCitations) > 0 {
-		fmt.Printf("\nAssertions without citations (%d):\n", len(report.NoCitations))
-		for _, a := range report.NoCitations {
-			desc := formatAssertionDesc(a)
-			fmt.Printf("  - %s: %s\n", a.ID, desc)
+		// Assertions without confidence
+		if len(report.NoConfidence) > 0 {
+			fmt.Printf("\nAssertions without confidence level (%d):\n", len(report.NoConfidence))
+			for _, a := range report.NoConfidence {
+				desc := formatAssertionDesc(a)
+				fmt.Printf("  - %s: %s\n", a.ID, desc)
+			}
+		}
+
+		// Assertions without citations
+		if len(report.NoCitations) > 0 {
+			fmt.Printf("\nAssertions without citations (%d):\n", len(report.NoCitations))
+			for _, a := range report.NoCitations {
+				desc := formatAssertionDesc(a)
+				fmt.Printf("  - %s: %s\n", a.ID, desc)
+			}
 		}
 	}
 
