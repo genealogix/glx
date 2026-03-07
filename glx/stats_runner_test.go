@@ -15,6 +15,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -126,10 +127,9 @@ func TestShowStats_OutputContent(t *testing.T) {
 	require.NoError(t, showStats(tmpDir))
 
 	w.Close()
-	buf := make([]byte, 4096)
-	n, _ := r.Read(buf)
+	out, _ := io.ReadAll(r)
 	os.Stdout = oldStdout
-	output := string(buf[:n])
+	output := string(out)
 
 	// Verify entity counts section
 	assert.Contains(t, output, "Persons:")

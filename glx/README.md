@@ -415,9 +415,9 @@ Entity counts:
   Assertions:    20
 
 Assertion confidence:
-  (unset)        6  ( 30.0%)
   high           8  ( 40.0%)
   medium         6  ( 30.0%)
+  (unset)        6  ( 30.0%)
 
 Entity coverage (referenced by assertions):
   Persons          12/31  (38.7%)
@@ -426,7 +426,7 @@ Entity coverage (referenced by assertions):
   Places           -
 ```
 
-> **Note:** The confidence distribution is sorted alphabetically, so `(unset)` appears before named levels. The coverage section shows `-` for entity types with no entries in the archive.
+> **Note:** The confidence distribution lists standard levels first (high, medium, low, disputed), then any custom levels alphabetically, with `(unset)` last. The coverage section shows `-` for entity types with no entries in the archive.
 
 ## File Format
 
