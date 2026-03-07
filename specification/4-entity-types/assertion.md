@@ -47,15 +47,16 @@ assertions:
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `subject` | object | Typed reference to the entity this assertion is about |
-| `property` OR `participant` | string/object | Either a property string or participant object (mutually exclusive; both optional — see [Existential Assertions](#existential-assertions)) |
 | `citations`, `sources`, or `media` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `property` | string | Property being asserted (mutually exclusive with `participant`; when omitted, assertion is [existential](#existential-assertions)) |
+| `participant` | object | Participant in an event or relationship (mutually exclusive with `property`/`value`) |
 | `value` | string | The concluded value of the property (**required** when `property` is present; not used with `participant`) |
-| `date` | string | Date or date range when this property value applies (for temporal properties) |
+| `date` | string | Date or date range: when `property` is present, specifies when the value applies; on existential assertions, indicates when the subject existed |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string | General notes about the assertion |
 | `status` | string | Research status of this assertion (e.g., proven, disproven, speculative) |
@@ -220,7 +221,7 @@ value: blacksmith
 
 - Type: String
 - Required: No
-- Description: Date or date range when this property value applies. Used with temporal properties (occupation, residence, etc.) to specify **when** the asserted value was true, matching the temporal value format on entities. This field is strictly for temporal targeting — it is NOT an "evidence date" or "observation date".
+- Description: Date or date range. When `property` is present, specifies when the asserted value was true (matching the temporal value format on entities). On [existential assertions](#existential-assertions) (no `property` or `participant`), indicates when the subject existed. This field is strictly for temporal targeting — it is NOT an "evidence date" or "observation date".
 
 When a temporal property on an entity has multiple dated values:
 ```yaml
