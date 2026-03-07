@@ -15,6 +15,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -33,8 +35,29 @@ func TestAnalyzePlaces_EmptyArchive(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestAnalyzePlaces_SingleFile(t *testing.T) {
+	content := `places:
+  place-paris:
+    name: "Paris"
+    type: city
+    parent: place-france
+  place-france:
+    name: "France"
+    type: country
+events:
+  event-1:
+    place: place-paris
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+
+	err := analyzePlaces(path)
+	require.NoError(t, err)
+}
+
 func TestAnalyzePlaces_NonexistentPath(t *testing.T) {
-	err := analyzePlaces("/nonexistent/path")
+	err := analyzePlaces(filepath.Join(t.TempDir(), "does-not-exist"))
 	require.Error(t, err)
 }
 
@@ -112,6 +135,21 @@ func TestBuildPlaceAnalysis_NoParent(t *testing.T) {
 	a := buildPlaceAnalysis(archive)
 	assert.Contains(t, a.NoParent, "place-city")
 	assert.NotContains(t, a.NoParent, "place-us") // country is OK without parent
+}
+
+func TestBuildPlaceAnalysis_DanglingParent(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-city": {Name: "Sometown", Type: "city", ParentID: "place-missing"},
+			"place-us":   {Name: "USA", Type: "country"},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	a := buildPlaceAnalysis(archive)
+	assert.Contains(t, a.DanglingParent, "place-city")
+	assert.Equal(t, "place-missing", a.DanglingParentIDs["place-city"])
+	assert.NotContains(t, a.DanglingParent, "place-us")
 }
 
 func TestBuildPlaceAnalysis_Unreferenced(t *testing.T) {

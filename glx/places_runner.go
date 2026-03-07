@@ -68,13 +68,15 @@ func loadArchiveForPlaces(path string) (*glxlib.GLXFile, error) {
 
 // placeAnalysis holds the results of place quality analysis.
 type placeAnalysis struct {
-	Total         int
-	Canonical     map[string]string // placeID -> canonical path
-	Duplicates    map[string][]string // name -> list of placeIDs with that name
-	MissingCoords []string // placeIDs without coordinates
-	MissingType   []string // placeIDs without a type
-	NoParent      []string // non-country placeIDs without a parent
-	Unreferenced  []string // placeIDs not referenced by any event
+	Total             int
+	Canonical         map[string]string   // placeID -> canonical path
+	Duplicates        map[string][]string // name -> list of placeIDs with that name
+	MissingCoords     []string            // placeIDs without coordinates
+	MissingType       []string            // placeIDs without a type
+	NoParent          []string            // non-country placeIDs without a parent
+	DanglingParent    []string            // placeIDs whose parent doesn't exist
+	DanglingParentIDs map[string]string   // placeID -> missing parent ID
+	Unreferenced      []string            // placeIDs not referenced by any event
 }
 
 // topLevelTypes are place types that don't require a parent.
@@ -86,18 +88,22 @@ var topLevelTypes = map[string]bool{
 // buildPlaceAnalysis analyzes all places in the archive.
 func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 	a := &placeAnalysis{
-		Total:     len(archive.Places),
-		Canonical: make(map[string]string),
-		Duplicates: make(map[string][]string),
+		Total:             len(archive.Places),
+		Canonical:         make(map[string]string),
+		Duplicates:        make(map[string][]string),
+		DanglingParentIDs: make(map[string]string),
 	}
 
 	// Build canonical paths and detect issues
 	for id, place := range archive.Places {
 		a.Canonical[id] = buildCanonicalPath(id, archive.Places)
 
-		// Track names for duplicate detection
-		name := strings.ToLower(place.Name)
-		a.Duplicates[name] = append(a.Duplicates[name], id)
+		// Track names for duplicate detection (skip empty names)
+		rawName := strings.TrimSpace(place.Name)
+		if rawName != "" {
+			name := strings.ToLower(rawName)
+			a.Duplicates[name] = append(a.Duplicates[name], id)
+		}
 
 		// Missing coordinates
 		if place.Latitude == nil || place.Longitude == nil {
@@ -112,6 +118,14 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 		// No parent (exclude top-level types)
 		if place.ParentID == "" && !topLevelTypes[place.Type] {
 			a.NoParent = append(a.NoParent, id)
+		}
+
+		// Dangling parent (references a parent that doesn't exist)
+		if place.ParentID != "" {
+			if _, ok := archive.Places[place.ParentID]; !ok {
+				a.DanglingParent = append(a.DanglingParent, id)
+				a.DanglingParentIDs[id] = place.ParentID
+			}
 		}
 	}
 
@@ -134,6 +148,7 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 	sort.Strings(a.MissingCoords)
 	sort.Strings(a.MissingType)
 	sort.Strings(a.NoParent)
+	sort.Strings(a.DanglingParent)
 	sort.Strings(a.Unreferenced)
 
 	return a
@@ -233,6 +248,15 @@ func printPlaceAnalysis(a *placeAnalysis) {
 		fmt.Printf("\nNo parent (hierarchy gap):\n")
 		for _, id := range a.NoParent {
 			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
+		}
+	}
+
+	// Dangling parent
+	if len(a.DanglingParent) > 0 {
+		issues += len(a.DanglingParent)
+		fmt.Printf("\nDangling parent (references missing place):\n")
+		for _, id := range a.DanglingParent {
+			fmt.Printf("  %s  %s  (parent: %s)\n", id, a.Canonical[id], a.DanglingParentIDs[id])
 		}
 	}
 
