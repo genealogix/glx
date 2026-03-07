@@ -379,11 +379,11 @@ Display a summary dashboard for any GLX archive, showing entity counts, assertio
 
 **Usage:**
 ```bash
-glx stats <path>
+glx stats [path]
 ```
 
 **Arguments:**
-- `<path>` - Path to a multi-file archive directory or a single-file `.glx` archive
+- `[path]` - Path to a multi-file archive directory or a single-file `.glx` archive (defaults to current directory)
 
 **Output sections:**
 
