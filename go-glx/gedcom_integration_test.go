@@ -270,26 +270,43 @@ func TestNameTypeExtraction(t *testing.T) {
 		t.Fatal("expected at least one person")
 	}
 
-	// The last NAME record wins for the single-value name property
+	// Multiple NAME records are stored as a temporal list
 	nameProp, ok := person.Properties[PersonPropertyName]
 	if !ok {
 		t.Fatal("expected name property")
 	}
-	nameMap, ok := nameProp.(map[string]any)
+	nameList, ok := nameProp.([]any)
 	if !ok {
-		t.Fatalf("expected name to be map[string]any, got %T", nameProp)
+		t.Fatalf("expected name to be []any (temporal list), got %T", nameProp)
 	}
-	fields, ok := nameMap["fields"]
+	if len(nameList) != 2 {
+		t.Fatalf("expected 2 names, got %d", len(nameList))
+	}
+
+	// First name should be the birth name
+	firstMap, ok := nameList[0].(map[string]any)
 	if !ok {
-		t.Fatal("expected fields in name property")
+		t.Fatalf("expected first name to be map[string]any, got %T", nameList[0])
 	}
-	fieldsMap, ok := fields.(map[string]any)
+	firstFields, _ := firstMap["fields"].(map[string]any)
+	if got, _ := firstFields[NameFieldType].(string); got != "birth" {
+		t.Errorf("first name type = %q, want %q", got, "birth")
+	}
+
+	// Second name should be the married name
+	secondMap, ok := nameList[1].(map[string]any)
 	if !ok {
-		t.Fatalf("expected fields to be map[string]any, got %T", fields)
+		t.Fatalf("expected second name to be map[string]any, got %T", nameList[1])
 	}
-	got, _ := fieldsMap[NameFieldType].(string)
-	if got != "married" {
-		t.Errorf("name type = %q, want %q", got, "married")
+	secondFields, _ := secondMap["fields"].(map[string]any)
+	if got, _ := secondFields[NameFieldType].(string); got != "married" {
+		t.Errorf("second name type = %q, want %q", got, "married")
+	}
+
+	// ExtractNameFields should return the first (primary) name's fields
+	given, surname := ExtractNameFields(nameProp)
+	if given != "Mary" || surname != "Green" {
+		t.Errorf("ExtractNameFields = (%q, %q), want (\"Mary\", \"Green\")", given, surname)
 	}
 }
 
