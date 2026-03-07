@@ -163,7 +163,7 @@ The `type` field on name entries distinguishes why multiple names exist. Use it 
 |------|-------|
 | `birth` | Name at birth |
 | `married` | Name after marriage |
-| `maiden` | Maiden name (when birth name is uncertain) |
+| `maiden` | Name used before marriage (typically pre-marriage surname) |
 | `alias` | Known alternate identity |
 | `aka` | Also known as (general alternate name) |
 | `immigrant` | Name used when immigrating |
