@@ -193,7 +193,6 @@ Defines standard and custom properties for relationship entities.
 - `ended_on` - When the relationship ended
 - `location` - Location of the relationship (reference)
 - `description` - Relationship description
-- `existence` - Whether this relationship is evidenced to exist, as a quoted string (e.g., `"supported"`, `"refuted"`, `"inferred"`)
 
 **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#relationship-properties-vocabulary)
 

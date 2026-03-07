@@ -690,7 +690,6 @@ Standard properties include:
 - `ended_on` - When the relationship ended
 - `location` - Location of the relationship
 - `description` - Relationship description
-- `existence` - Whether this relationship is evidenced to exist, as a quoted string (e.g., `"supported"`, `"refuted"`, `"inferred"`)
 
 ### Place Properties Vocabulary
 

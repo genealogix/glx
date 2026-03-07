@@ -24,8 +24,4 @@ relationship_properties:
     description: "Detailed description of the relationship"
     value_type: string
 
-  existence:
-    label: "Existence"
-    description: "Whether this relationship is evidenced to exist (e.g., \"supported\", \"refuted\", \"inferred\"); values must be quoted strings in YAML to avoid boolean parsing"
-    value_type: string
 

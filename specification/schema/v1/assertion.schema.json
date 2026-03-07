@@ -27,16 +27,12 @@
       }
     },
     {
-      "description": "Must have either property or participant (but not both)",
-      "anyOf": [
-        { "required": ["property"] },
-        { "required": ["participant"] }
-      ]
-    },
-    {
-      "description": "value is required when property is present",
+      "description": "value is required when property is present, and vice versa",
       "if": { "required": ["property"] },
-      "then": { "required": ["value"] }
+      "then": { "required": ["value"] },
+      "else": {
+        "not": { "required": ["value"] }
+      }
     }
   ],
   "properties": {
