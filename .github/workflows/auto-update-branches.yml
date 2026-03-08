@@ -42,9 +42,17 @@ jobs:
           fi
 
           echo "$PRS" | while read -r PR_NUMBER BRANCH; do
+            # URL-encode branch name (slashes in feat/foo would break the API path)
+            ENCODED_BRANCH=$(printf '%s' "$BRANCH" | jq -sRr @uri)
+
             # Check if branch is behind main using compare API
-            BEHIND=$(gh api repos/$REPO/compare/$BRANCH...$MAIN_SHA \
-              --jq '.ahead_by' 2>/dev/null || echo "0")
+            COMPARE_OUTPUT=$(gh api "repos/$REPO/compare/$ENCODED_BRANCH...$MAIN_SHA" \
+              --jq '.ahead_by' 2>&1)
+            if [ $? -ne 0 ]; then
+              echo "PR #$PR_NUMBER ($BRANCH): failed to compare with main: $COMPARE_OUTPUT"
+              continue
+            fi
+            BEHIND="$COMPARE_OUTPUT"
 
             if [ "$BEHIND" = "0" ] || [ -z "$BEHIND" ]; then
               echo "PR #$PR_NUMBER ($BRANCH): up to date"
