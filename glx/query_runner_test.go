@@ -15,6 +15,9 @@
 package main
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -196,9 +199,21 @@ func TestQueryAssertions_SourceFilter(t *testing.T) {
 		},
 	}
 
-	// queryAssertions prints to stdout; just verify no error and correct filtering
+	// Capture stdout to verify filtering
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
 	err := queryAssertions(archive, queryOpts{Source: "source-abc"})
+
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
 	require.NoError(t, err)
+	assert.Contains(t, output, "2 assertion(s) found")
 }
 
 func TestQueryAssertions_CitationFilter(t *testing.T) {
@@ -215,8 +230,21 @@ func TestQueryAssertions_CitationFilter(t *testing.T) {
 		},
 	}
 
+	// Capture stdout to verify filtering
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
 	err := queryAssertions(archive, queryOpts{Citation: "cit-1"})
+
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
 	require.NoError(t, err)
+	assert.Contains(t, output, "1 assertion(s) found")
 }
 
 func TestQueryUnsupportedFlag_SourceOnPersons(t *testing.T) {
