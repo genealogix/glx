@@ -139,7 +139,7 @@ relationship_types:
   
   parent_child:
     label: "Parent-Child"
-    description: "Biological, adoptive, or legal parent-child relationship"
+    description: "Parent-child relationship (unspecified type)"
     gedcom: "CHIL/FAMC"
   
   sibling:
@@ -582,7 +582,7 @@ participant_roles:
 
 Common event roles:
 - `principal` - Primary person in the event
-- `subject` - Subject of the event (alias for principal)
+- `subject` - Subject of the event (preferred over 'principal')
 - `groom`, `bride` - Marriage participants
 - `witness` - Event witness
 - `officiant` - Ceremony officiant
@@ -782,6 +782,7 @@ Standard properties include:
 - `source_date` - Date when the source recorded the information (from GEDCOM DATE)
 - `accessed` - Date when an online source or digital record was last accessed or retrieved
 - `url` - Direct web address for the specific cited material (e.g., a permalink to a record or image viewer)
+- `original_place_name` - Verbatim place name from the source before normalization to a place entity
 - `external_ids` - Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID; multi-value)
 
 ### Property Definition Structure

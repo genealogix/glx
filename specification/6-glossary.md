@@ -141,7 +141,7 @@ The file extension used for all GENEALOGIX entity files.
 ## H
 
 ### Hard Failure
-A validation error that must be fixed before the archive is considered valid. Examples include broken entity references, duplicate IDs, and undefined vocabulary types.
+A validation error that must be fixed before the archive is considered valid. Examples include broken entity references and duplicate IDs.
 
 > **See Also:** [Archive-Level Validation](#archive-level-validation)
 
