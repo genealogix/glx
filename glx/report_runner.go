@@ -71,7 +71,6 @@ type reportData struct {
 	UnbackedEvents     []string                  // event IDs with no assertions
 	UnbackedRelations  []string                  // relationship IDs with no assertions
 	ConfidenceOrder    []string                  // ordered confidence levels for display
-	AssertedSubjects   map[string]map[string]bool // entityType -> entityID -> true
 }
 
 // assertionSummary is a short description of an assertion for display.
@@ -85,9 +84,9 @@ type assertionSummary struct {
 // buildConfidenceReport analyzes assertions in the archive and returns report data.
 func buildConfidenceReport(archive *glxlib.GLXFile) reportData {
 	report := reportData{
-		ByConfidence:     make(map[string]int),
-		AssertedSubjects: make(map[string]map[string]bool),
+		ByConfidence: make(map[string]int),
 	}
+	assertedSubjects := make(map[string]map[string]bool)
 
 	for id, assertion := range archive.Assertions {
 		report.TotalAssertions++
@@ -109,17 +108,17 @@ func buildConfidenceReport(archive *glxlib.GLXFile) reportData {
 		subjectType := assertion.Subject.Type()
 		subjectID := assertion.Subject.ID()
 		if subjectType != "" && subjectID != "" {
-			if report.AssertedSubjects[subjectType] == nil {
-				report.AssertedSubjects[subjectType] = make(map[string]bool)
+			if assertedSubjects[subjectType] == nil {
+				assertedSubjects[subjectType] = make(map[string]bool)
 			}
-			report.AssertedSubjects[subjectType][subjectID] = true
+			assertedSubjects[subjectType][subjectID] = true
 		}
 	}
 
 	// Find entities with no assertions
-	report.UnbackedPersons = findUnbacked(archive.Persons, report.AssertedSubjects[glxlib.EntityTypePersons])
-	report.UnbackedEvents = findUnbacked(archive.Events, report.AssertedSubjects[glxlib.EntityTypeEvents])
-	report.UnbackedRelations = findUnbacked(archive.Relationships, report.AssertedSubjects[glxlib.EntityTypeRelationships])
+	report.UnbackedPersons = findUnbacked(archive.Persons, assertedSubjects[glxlib.EntityTypePersons])
+	report.UnbackedEvents = findUnbacked(archive.Events, assertedSubjects[glxlib.EntityTypeEvents])
+	report.UnbackedRelations = findUnbacked(archive.Relationships, assertedSubjects[glxlib.EntityTypeRelationships])
 
 	// Build ordered confidence levels: known levels first, then custom, then (unset)
 	report.ConfidenceOrder = buildConfidenceOrder(report.ByConfidence)
