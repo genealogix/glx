@@ -64,6 +64,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	// Build person events index (person ID -> event IDs where person is principal)
 	buildPersonEventsIndex(expCtx)
 
+	// Reconstruct families from relationships (before building records)
+	reconstructFamilies(expCtx)
+
 	// Build GEDCOM records
 	var records []*GEDCOMRecord
 
@@ -106,11 +109,18 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		expCtx.Stats.PersonsExported++
 	}
 
+	// Family records
+	for _, family := range expCtx.Families {
+		record := exportFamily(family, expCtx)
+		records = append(records, record)
+		expCtx.Stats.FamiliesExported++
+	}
+
 	// TRLR record
 	records = append(records, &GEDCOMRecord{Tag: GedcomTagTrlr})
 
-	logger.LogInfo(fmt.Sprintf("Export completed: %d persons, %d repositories, %d sources, %d media",
-		expCtx.Stats.PersonsExported, expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported))
+	logger.LogInfo(fmt.Sprintf("Export completed: %d persons, %d families, %d repositories, %d sources, %d media",
+		expCtx.Stats.PersonsExported, expCtx.Stats.FamiliesExported, expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported))
 
 	// Serialize to bytes
 	data := serializeGEDCOMRecords(records)
@@ -149,6 +159,14 @@ type ExportContext struct {
 
 	// PersonEvents maps person ID -> event IDs where person is principal
 	PersonEvents map[string][]string
+
+	// Reconstructed family records
+	Families     []*ExportFamily
+	FamilyXRefMap map[string]string // relationship ID -> family XREF
+
+	// Person-to-family reverse maps for FAMS/FAMC back-references
+	PersonSpouseFamilies map[string][]string          // person ID -> family XRefs where spouse
+	PersonChildFamilies  map[string][]childFamilyRef  // person ID -> family refs where child
 
 	Stats ExportStatistics
 }

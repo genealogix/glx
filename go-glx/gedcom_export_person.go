@@ -107,6 +107,32 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	// SOUR references from sources and citations properties
 	exportPersonSourceRefs(personID, person, expCtx, record)
 
+	// FAMS back-references (families where this person is a spouse)
+	if famsXRefs, ok := expCtx.PersonSpouseFamilies[personID]; ok {
+		for _, famsXRef := range famsXRefs {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagFams,
+				Value: famsXRef,
+			})
+		}
+	}
+
+	// FAMC back-references (families where this person is a child)
+	if famcRefs, ok := expCtx.PersonChildFamilies[personID]; ok {
+		for _, famcRef := range famcRefs {
+			famcRecord := &GEDCOMRecord{
+				Tag:   GedcomTagFamc,
+				Value: famcRef.FamilyXRef,
+			}
+			if famcRef.Pedigree != "" {
+				famcRecord.SubRecords = []*GEDCOMRecord{
+					{Tag: GedcomTagPedi, Value: famcRef.Pedigree},
+				}
+			}
+			record.SubRecords = append(record.SubRecords, famcRecord)
+		}
+	}
+
 	return record
 }
 
