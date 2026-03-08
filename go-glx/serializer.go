@@ -86,8 +86,23 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 		}
 	}
 
+	// Guard against nil input when validation is disabled.
+	if glx == nil {
+		return nil, ErrGLXFileNil
+	}
+
+	// Normalize empty metadata to nil so omitempty suppresses it.
+	// Save and restore the original value to avoid mutating the caller's data.
+	origMetadata := glx.ImportMetadata
+	if glx.ImportMetadata != nil && !glx.ImportMetadata.hasContent() {
+		glx.ImportMetadata = nil
+	}
+
 	// Marshal to YAML
 	yamlBytes, err := yaml.Marshal(glx)
+
+	glx.ImportMetadata = origMetadata
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal YAML: %w", err)
 	}
@@ -105,12 +120,27 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 		}
 	}
 
+	// Guard against nil input when validation is disabled.
+	if glx == nil {
+		return nil, ErrGLXFileNil
+	}
+
 	files := make(map[string][]byte)
 
 	// Add standard vocabularies
 	for filename, content := range StandardVocabularies() {
 		vocabPath := filepath.Join("vocabularies", filename)
 		files[vocabPath] = content
+	}
+
+	// Serialize metadata if present and non-empty
+	if glx.ImportMetadata != nil && glx.ImportMetadata.hasContent() {
+		metaWrapper := map[string]*Metadata{"metadata": glx.ImportMetadata}
+		yamlBytes, err := yaml.Marshal(metaWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+		files["metadata.glx"] = yamlBytes
 	}
 
 	// Serialize entities by type
