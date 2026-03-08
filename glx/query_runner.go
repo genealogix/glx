@@ -190,6 +190,13 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		case diedOn != "":
 			detail += fmt.Sprintf("  (d. %s)", diedOn)
 		}
+
+		// Show alternate names if present
+		allNames := extractAllNames(person)
+		if len(allNames) > 1 {
+			detail += "  aka: " + strings.Join(allNames[1:], ", ")
+		}
+
 		fmt.Printf("  %s  %s\n", id, detail)
 		count++
 	}
@@ -456,11 +463,59 @@ func extractPersonName(person *glxlib.Person) string {
 	return "(unnamed)"
 }
 
-// nameMatches checks if a person's name contains the query string (case-insensitive).
+// nameMatches checks if any of a person's name variants contain the query
+// string (case-insensitive). This searches across all name entries including
+// birth names, married names, as-recorded variants, and maiden names.
 func nameMatches(person *glxlib.Person, query string) bool {
-	name := extractPersonName(person)
+	for _, name := range extractAllNames(person) {
+		if containsFold(name, query) {
+			return true
+		}
+	}
 
-	return containsFold(name, query)
+	return false
+}
+
+// extractAllNames returns all name variants for a person.
+// Handles simple strings, structured maps, and temporal lists.
+func extractAllNames(person *glxlib.Person) []string {
+	raw, ok := person.Properties["name"]
+	if !ok {
+		raw, ok = person.Properties["primary_name"]
+	}
+	if !ok {
+		return nil
+	}
+
+	// Simple string value
+	if s, ok := raw.(string); ok {
+		return []string{s}
+	}
+
+	// Structured: map with "value" key (single name entry)
+	if m, ok := raw.(map[string]any); ok {
+		if v, ok := m["value"]; ok {
+			return []string{fmt.Sprint(v)}
+		}
+
+		return nil
+	}
+
+	// Temporal list: []any where each entry has a "value" key
+	if list, ok := raw.([]any); ok {
+		var names []string
+		for _, entry := range list {
+			if m, ok := entry.(map[string]any); ok {
+				if v, ok := m["value"]; ok {
+					names = append(names, fmt.Sprint(v))
+				}
+			}
+		}
+
+		return names
+	}
+
+	return nil
 }
 
 // propertyString extracts a simple string value from properties.

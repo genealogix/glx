@@ -283,6 +283,63 @@ func TestExtractDateYear(t *testing.T) {
 	}
 }
 
+func TestExtractAllNames_Simple(t *testing.T) {
+	person := &glxlib.Person{Properties: map[string]any{"name": "John Smith"}}
+	names := extractAllNames(person)
+	assert.Equal(t, []string{"John Smith"}, names)
+}
+
+func TestExtractAllNames_StructuredMap(t *testing.T) {
+	person := &glxlib.Person{Properties: map[string]any{
+		"name": map[string]any{"value": "Jane Doe"},
+	}}
+	names := extractAllNames(person)
+	assert.Equal(t, []string{"Jane Doe"}, names)
+}
+
+func TestExtractAllNames_TemporalList(t *testing.T) {
+	person := &glxlib.Person{Properties: map[string]any{
+		"name": []any{
+			map[string]any{"value": "Mary Green", "fields": map[string]any{"type": "maiden"}},
+			map[string]any{"value": "Mary Lane", "fields": map[string]any{"type": "married"}},
+			map[string]any{"value": "Mary Laine", "fields": map[string]any{"type": "as_recorded"}},
+		},
+	}}
+	names := extractAllNames(person)
+	assert.Equal(t, []string{"Mary Green", "Mary Lane", "Mary Laine"}, names)
+}
+
+func TestExtractAllNames_NoName(t *testing.T) {
+	person := &glxlib.Person{Properties: map[string]any{"gender": "male"}}
+	names := extractAllNames(person)
+	assert.Nil(t, names)
+}
+
+func TestNameMatches_SearchesAllVariants(t *testing.T) {
+	person := &glxlib.Person{Properties: map[string]any{
+		"name": []any{
+			map[string]any{"value": "Mary Ellen Lane"},
+			map[string]any{"value": "Ellen Lane"},
+			map[string]any{"value": "Mary Ellen Laine"},
+		},
+	}}
+
+	assert.True(t, nameMatches(person, "ellen lane"))
+	assert.True(t, nameMatches(person, "laine"))
+	assert.True(t, nameMatches(person, "mary ellen"))
+	assert.False(t, nameMatches(person, "smith"))
+}
+
+func TestNameMatches_SingleName(t *testing.T) {
+	person := &glxlib.Person{Properties: map[string]any{
+		"name": "Daniel Lane",
+	}}
+
+	assert.True(t, nameMatches(person, "daniel"))
+	assert.True(t, nameMatches(person, "lane"))
+	assert.False(t, nameMatches(person, "smith"))
+}
+
 func TestExtractPersonName(t *testing.T) {
 	tests := []struct {
 		name  string
