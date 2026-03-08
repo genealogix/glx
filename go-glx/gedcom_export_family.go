@@ -86,7 +86,20 @@ func reconstructFamilies(expCtx *ExportContext) {
 		parentToFamilies[wifeID] = append(parentToFamilies[wifeID], familyIdx)
 	}
 
-	// Step 2: Attach children from parent-child relationships
+	// Step 2: Collect all parent-child relationships per child.
+	// A child may have two parent-child relationships (one per parent).
+	// We use this to match children to the correct family when a parent has
+	// multiple marriages.
+	type childParentInfo struct {
+		relID    string
+		parentID string
+		childID  string
+		pedi     string
+	}
+
+	// childParents maps child ID -> list of parent relationships
+	childParents := make(map[string][]childParentInfo)
+
 	for _, relID := range relIDs {
 		rel := expCtx.GLX.Relationships[relID]
 		pediValue := relationshipTypeToPedi(rel.Type)
@@ -101,23 +114,84 @@ func reconstructFamilies(expCtx *ExportContext) {
 			continue
 		}
 
-		// Find which family this parent belongs to
-		familyIdx := findFamilyForParent(parentID, parentToFamilies, expCtx)
+		childParents[childID] = append(childParents[childID], childParentInfo{
+			relID:    relID,
+			parentID: parentID,
+			childID:  childID,
+			pedi:     pediValue,
+		})
+	}
+
+	// Now attach each child to the correct family.
+	// When a child has two parents, use parentPairToFamily to find the family
+	// containing both parents (handles multi-marriage cases correctly).
+	childIDs := make([]string, 0, len(childParents))
+	for childID := range childParents {
+		childIDs = append(childIDs, childID)
+	}
+	sort.Strings(childIDs)
+
+	for _, childID := range childIDs {
+		parents := childParents[childID]
+
+		// Collect unique parent IDs and best pedigree value
+		parentIDs := make(map[string]string) // parent ID -> pedi
+		for _, cp := range parents {
+			if existing, ok := parentIDs[cp.parentID]; !ok || (existing == "" && cp.pedi != "") {
+				parentIDs[cp.parentID] = cp.pedi
+			}
+		}
+
+		// Best pedigree: prefer non-empty
+		bestPedi := ""
+		for _, pedi := range parentIDs {
+			if pedi != "" {
+				bestPedi = pedi
+				break
+			}
+		}
+
+		familyIdx := -1
+
+		// If child has two known parents, look up the family by parent pair
+		if len(parentIDs) == 2 {
+			pids := make([]string, 0, 2)
+			for pid := range parentIDs {
+				pids = append(pids, pid)
+			}
+			pairKey := makeParentPairKey(pids[0], pids[1])
+			if idx, ok := parentPairToFamily[pairKey]; ok {
+				familyIdx = idx
+			}
+		}
+
+		// Fallback: use the first parent's family
 		if familyIdx < 0 {
-			// Parent has no marriage family - create a synthetic single-parent FAM
-			familyIdx = createSyntheticFamily(parentID, expCtx, parentToFamilies)
+			for _, cp := range parents {
+				familyIdx = findFamilyForParent(cp.parentID, parentToFamilies)
+				if familyIdx >= 0 {
+					break
+				}
+			}
+		}
+
+		// Still no family: create a synthetic single-parent FAM
+		if familyIdx < 0 && len(parents) > 0 {
+			familyIdx = createSyntheticFamily(parents[0].parentID, expCtx, parentToFamilies)
+		}
+
+		if familyIdx < 0 {
+			continue
 		}
 
 		family := expCtx.Families[familyIdx]
 
-		// Avoid duplicate children
 		if !containsString(family.ChildIDs, childID) {
 			family.ChildIDs = append(family.ChildIDs, childID)
 		}
 
-		// Store pedigree value (prefer more specific over existing)
-		if pediValue != "" {
-			family.ChildPedigrees[childID] = pediValue
+		if bestPedi != "" {
+			family.ChildPedigrees[childID] = bestPedi
 		}
 	}
 
@@ -326,11 +400,26 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 // Returns person IDs for participants with "spouse" role, or all participants if none have that role.
 func extractSpouseIDs(rel *Relationship) []string {
 	var spouseIDs []string
+
+	// First, collect participants explicitly marked as "spouse"
+	for _, p := range rel.Participants {
+		if p.Role == ParticipantRoleSpouse && p.Person != "" {
+			spouseIDs = append(spouseIDs, p.Person)
+		}
+	}
+
+	// If any spouse-role participants were found, return only those
+	if len(spouseIDs) > 0 {
+		return spouseIDs
+	}
+
+	// Fallback: no explicit spouse-role participants; return all participants
 	for _, p := range rel.Participants {
 		if p.Person != "" {
 			spouseIDs = append(spouseIDs, p.Person)
 		}
 	}
+
 	return spouseIDs
 }
 
@@ -407,19 +496,12 @@ func extractParentChildIDs(rel *Relationship) (parentID, childID string) {
 }
 
 // findFamilyForParent finds the family index for a parent, preferring the first marriage family.
-func findFamilyForParent(parentID string, parentToFamilies map[string][]int, expCtx *ExportContext) int {
+func findFamilyForParent(parentID string, parentToFamilies map[string][]int) int {
 	familyIndices, ok := parentToFamilies[parentID]
 	if !ok || len(familyIndices) == 0 {
 		return -1
 	}
 
-	// If parent has exactly one family, use it
-	if len(familyIndices) == 1 {
-		return familyIndices[0]
-	}
-
-	// Multiple families — return the first one (deterministic since relationships are sorted)
-	_ = expCtx // available for future use
 	return familyIndices[0]
 }
 

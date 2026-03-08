@@ -23,6 +23,9 @@ import (
 // ExportGEDCOM converts a GLX archive to GEDCOM format bytes.
 // version selects GEDCOM551 or GEDCOM70.
 // logWriter receives progress/diagnostic output (nil to suppress).
+//
+// If glx.EventTypes is nil, standard vocabularies are loaded into the GLXFile
+// (mutating the input) to enable GEDCOM tag mapping.
 func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]byte, *ExportResult, error) {
 	if glx == nil {
 		return nil, nil, ErrGLXFileNil

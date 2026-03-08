@@ -15,7 +15,7 @@
 package glx
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -39,8 +39,7 @@ func resolvePlaceString(placeID string, expCtx *ExportContext) string {
 		return cached
 	}
 
-	place, ok := expCtx.GLX.Places[placeID]
-	if !ok {
+	if _, ok := expCtx.GLX.Places[placeID]; !ok {
 		return ""
 	}
 
@@ -69,8 +68,8 @@ func resolvePlaceString(placeID string, expCtx *ExportContext) string {
 
 	result := strings.Join(parts, ", ")
 
-	// Cache intermediate results too (the starting place)
-	_ = place // suppress unused warning; we've already confirmed it exists
+	// Cache so subsequent lookups skip the parent-chain walk
+	expCtx.PlaceStrings[placeID] = result
 
 	return result
 }
@@ -110,7 +109,7 @@ func exportPlaceSubrecords(placeID string, expCtx *ExportContext) []*GEDCOMRecor
 			}
 			mapRecord.SubRecords = append(mapRecord.SubRecords, &GEDCOMRecord{
 				Tag:   GedcomTagLati,
-				Value: fmt.Sprintf("%s%f", direction, lat),
+				Value: direction + strconv.FormatFloat(lat, 'f', -1, 64),
 			})
 		}
 
@@ -123,7 +122,7 @@ func exportPlaceSubrecords(placeID string, expCtx *ExportContext) []*GEDCOMRecor
 			}
 			mapRecord.SubRecords = append(mapRecord.SubRecords, &GEDCOMRecord{
 				Tag:   GedcomTagLong,
-				Value: fmt.Sprintf("%s%f", direction, lon),
+				Value: direction + strconv.FormatFloat(lon, 'f', -1, 64),
 			})
 		}
 
