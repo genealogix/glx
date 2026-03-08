@@ -391,7 +391,7 @@ When using external URIs, no local file is stored. The media entity simply refer
 ## Validation Rules
 
 - `uri` must be a valid URI or path
-- `type` must be from the [media types vocabulary](vocabularies#media-types-vocabulary)
+- `type` should be from the [media types vocabulary](vocabularies#media-types-vocabulary) (undefined types generate warnings)
 - If `mime_type` is specified, it should follow standard MIME type format
 - If `hash` is specified, it should follow `algorithm:hexstring` format
 - If `date` is specified, it should follow standard date formats

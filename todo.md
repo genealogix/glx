@@ -21,12 +21,12 @@ Design decisions to resolve before 1.0.
 
 - **Source `description` GEDCOM mapping ambiguity**: Maps to both SOUR.TEXT (excerpt from original) and SOUR.NOTE (researcher commentary). These are semantically different. Consider splitting or documenting the merge.
 - **Fields-only structured properties**: Spec allows `fields` without `value` (e.g., crop coordinates). Ensure validator doesn't warn on this.
+- **Property `value_type` for structured-only properties**: Properties like `crop` that only use `fields` (no single value) currently require `value_type: integer`, which is misleading. Consider adding an `object` or `nil` value type, or relaxing the "exactly one of `value_type`/`reference_type`" requirement for fields-only properties.
 
 ---
 
 ## 🟡 Tooling & Infrastructure
 
-- **Markdown link validation in CI**: Validate all internal links in specification and documentation.
 - **Vocabulary audit**: Review all standard vocabulary files in [5-standard-vocabularies/](specification/5-standard-vocabularies/) for consistency and completeness.
 
 ---

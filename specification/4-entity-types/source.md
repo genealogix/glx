@@ -115,6 +115,9 @@ Common source types:
 - `oral_history` - Interviews, recorded memories
 - `correspondence` - Letters, emails, personal papers
 - `photograph` - Photo collections
+- `population_register` - Civil population registers, household registration records
+- `tax_record` - Tax rolls, assessments, tithes
+- `notarial_record` - Notarial acts, contracts, legal instruments
 - `other` - Other source types
 
 Example:
@@ -448,7 +451,7 @@ Media
 - If `repository` is specified, it must reference an existing Repository entity
 - If `media` array is present, all IDs must reference existing Media entities
 - `date` should follow standard date formats (YYYY, YYYY-MM-DD, or `FROM YYYY TO YYYY` for ranges)
-- Type must be from the [source types vocabulary](vocabularies#source-types-vocabulary)
+- Type should be from the [source types vocabulary](vocabularies#source-types-vocabulary) (undefined types generate warnings)
 
 ## GEDCOM Mapping
 

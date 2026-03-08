@@ -107,7 +107,25 @@ person_properties:
 
 Adding custom types is straightforward:
 
-**1. Edit the appropriate vocabulary file**
+**1. Edit the appropriate vocabulary files**
+
+```yaml
+# participant-roles.glx
+participant_roles:
+  # ... standard roles ...
+
+  # Your custom roles
+  apprentice:
+    label: "Apprentice"
+    description: "Person learning a trade"
+    applies_to:
+      - event
+  master:
+    label: "Master"
+    description: "Person teaching a trade"
+    applies_to:
+      - event
+```
 
 ```yaml
 # event-types.glx
@@ -121,7 +139,7 @@ event_types:
     category: "occupation"
 ```
 
-**2. Use the new type in your data**
+**2. Use the new types in your data**
 
 ```yaml
 # events/event-john-apprentice.glx
@@ -133,6 +151,8 @@ events:
     participants:
       - person: person-john-smith
         role: apprentice
+      - person: person-thomas-brown
+        role: master
 ```
 
 **3. Validate your archive**
@@ -149,10 +169,10 @@ The `glx validate` command enforces vocabulary consistency with different severi
 
 **Errors (must be fixed):**
 - Entity references that don't exist (person, place, source, etc.)
-- Vocabulary type references that aren't defined (event_types, relationship_types, etc.)
 - Property references when properties are defined as `reference_type` but the referenced entity doesn't exist
 
 **Warnings (flexible):**
+- Undefined vocabulary types (event_types, relationship_types, etc.)
 - Unknown properties not defined in property vocabularies
 - Unknown assertion properties not defined in property vocabularies
 - Warnings allow rapid data entry and emerging properties without breaking validation
@@ -596,10 +616,18 @@ Assertions include confidence levels based on evidence quality:
 
 ```yaml
 confidence_levels:
-  high:    "Multiple high-quality sources agree, minimal uncertainty"
-  medium:  "Some evidence supports conclusion, but conflicts or gaps exist"
-  low:     "Limited evidence, significant uncertainty"
-  disputed: "Multiple sources conflict, resolution unclear"
+  high:
+    label: "High Confidence"
+    description: "Multiple high-quality sources agree, minimal uncertainty"
+  medium:
+    label: "Medium Confidence"
+    description: "Some evidence supports conclusion, but conflicts or gaps exist"
+  low:
+    label: "Low Confidence"
+    description: "Limited evidence, significant uncertainty"
+  disputed:
+    label: "Disputed"
+    description: "Multiple sources conflict, resolution unclear"
 ```
 
 Confidence levels are defined in `confidence-levels.glx` and can be customized per archive.

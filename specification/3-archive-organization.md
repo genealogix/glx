@@ -85,10 +85,10 @@ Across all files in an archive, the validator checks:
 **Errors (Hard Failures):**
 - Entity IDs must be unique (no duplicates)
 - All entity cross-references must point to existing entities
-- All vocabulary type references must be defined (event_types, relationship_types, etc.)
 - All property `reference_type` values must point to existing entities
 
 **Warnings (Soft Failures):**
+- Undefined vocabulary types (event_types, relationship_types, etc.) generate warnings
 - Unknown properties (not defined in property vocabularies) generate warnings
 - Unknown assertion properties (not defined in property vocabularies) generate warnings
 

@@ -163,7 +163,7 @@ relationship_types:
 
 ### Standard Relationship Types
 
-**Standard Relationship Types**: GENEALOGIX provides 10 standardized relationship type codes including marriage, parent-child (plus biological, adoptive, and foster variants), sibling, step-parent, godparent, guardian, and partner relationships.
+**Standard Relationship Types**: GENEALOGIX provides standardized relationship type codes including marriage, parent-child (plus biological, adoptive, and foster variants), sibling, step-parent, godparent, guardian, partner, and social/occupational relationships.
 
 **Complete List**: See [Standard Vocabularies - Relationship Types](../5-standard-vocabularies/#relationship-types) for the complete default vocabulary file with all standard types.
 
@@ -238,7 +238,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides 16 standardized place type codes including administrative divisions (country, state, county, district, township), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, district, township), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -308,7 +308,7 @@ source_types:
 
 ### Standard Source Types
 
-**Standard Source Types**: GENEALOGIX provides 16 standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, and other.
+**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, and other.
 
 **Complete List**: See [Standard Vocabularies - Source Types](../5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
@@ -378,7 +378,7 @@ media_types:
 
 ### Standard Media Types
 
-**Standard Media Types**: GENEALOGIX provides 7 standardized media type codes including photograph, document, audio, video, scan, image, and certificate, each with default MIME types.
+**Standard Media Types**: GENEALOGIX provides standardized media type codes including photograph, document, audio, video, scan, image, and certificate, each with default MIME types.
 
 **Complete List**: See [Standard Vocabularies - Media Types](../5-standard-vocabularies/#media-types) for the complete default vocabulary file with all standard types.
 
@@ -1194,7 +1194,24 @@ The `glx validate` command performs comprehensive validation with different seve
 
 The following issues cause validation to fail:
 
-1. **Missing vocabulary types**: All types used in entities must be defined in vocabularies
+1. **Broken entity references**: All entity references must point to existing entities
+
+2. **Broken property references**: Properties defined with `reference_type` must reference existing entities
+   ```yaml
+   # Error: place-nonexistent doesn't exist
+   persons:
+     person-john:
+       properties:
+         born_at: place-nonexistent  # ERROR if born_at has reference_type: places
+   ```
+
+3. **Structural validation**: Files must follow proper YAML/JSON structure and schema
+
+### Validation Warnings (Soft Failures)
+
+The following issues generate warnings but don't fail validation:
+
+1. **Undefined vocabulary types**: Types used in entities but not defined in the corresponding vocabulary
    - Event types (`event_types`)
    - Relationship types (`relationship_types`)
    - Place types (`place_types`)
@@ -1204,32 +1221,7 @@ The following issues cause validation to fail:
    - Participant roles (`participant_roles`)
    - Confidence levels (`confidence_levels`)
 
-2. **Broken entity references**: All entity references must point to existing entities
-   - Person references
-   - Event references
-   - Place references
-   - Source references
-   - Citation references
-   - Repository references
-   - Media references
-   - Relationship references
-
-3. **Broken property references**: Properties defined with `reference_type` must reference existing entities
-   ```yaml
-   # Error: place-nonexistent doesn't exist
-   persons:
-     person-john:
-       properties:
-         born_at: place-nonexistent  # ERROR if born_at has reference_type: places
-   ```
-
-4. **Structural validation**: Files must follow proper YAML/JSON structure and schema
-
-### Validation Warnings (Soft Failures)
-
-The following issues generate warnings but don't fail validation:
-
-1. **Unknown property definitions**: Properties used but not defined in property vocabularies
+2. **Unknown property definitions**: Properties used but not defined in property vocabularies
    ```yaml
    # Warning: custom_field not in person_properties vocabulary
    persons:
@@ -1238,7 +1230,7 @@ The following issues generate warnings but don't fail validation:
          custom_field: "some value"  # WARNING: unknown property
    ```
 
-2. **Unknown assertion properties**: Properties used but not defined in property vocabularies
+3. **Unknown assertion properties**: Properties used but not defined in property vocabularies
    ```yaml
    # Warning: custom_property not in person_properties vocabulary
    assertions:
@@ -1259,15 +1251,15 @@ $ glx validate
 ✓ vocabularies/event-types.glx
 ✓ vocabularies/relationship-types.glx
 ✓ events/event-birth.glx
-  - event type 'birth' found in vocabulary
 ✓ relationships/rel-marriage.glx
-  - relationship type 'marriage' found in vocabulary
 
 ⚠ persons/person-john.glx
   - WARNING: property 'custom_field' not defined in person_properties vocabulary
 
-❌ events/event-custom.glx
-  - ERROR: event type 'unknown-type' not found in vocabularies/event-types.glx
+⚠ events/event-custom.glx
+  - WARNING: event type 'unknown-type' not found in vocabularies/event-types.glx
+
+❌ events/event-broken-ref.glx
   - ERROR: place reference 'place-nonexistent' not found
 ```
 

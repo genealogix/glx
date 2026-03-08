@@ -586,7 +586,7 @@ The standard vocabulary defines these default confidence levels (archives may cu
 - All source references must point to existing Source entities
 - All media references must point to existing Media entities
 - `property` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown properties generate warnings)
-- Confidence must be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary)
+- Confidence should be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary) (undefined levels generate warnings)
 
 ## File Organization
 

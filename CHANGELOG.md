@@ -54,7 +54,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Changed
 
 #### Specification
-- **Clarified validation wording** - Person properties and event/relationship participant roles generate warnings (not errors) for unknown values, matching the validation policy in core concepts
+- **Undefined vocabulary types are now warnings** - All undefined vocabulary references (event types, relationship types, place types, source types, media types, repository types, participant roles, confidence levels) generate warnings instead of errors, matching the flexible validation policy for properties and enabling rapid data entry with custom types
+- **Removed hard-coded vocabulary counts** - Replaced "N standardized type codes" with descriptive text to prevent stale counts as vocabularies grow
+- **Fixed confidence levels example format** - Core concepts example now uses the correct `label`/`description` structure instead of simple key-value strings
+- **Added missing source types to inline list** - Source entity documentation now includes `population_register`, `tax_record`, and `notarial_record`
+- **Improved custom type example** - Custom event type example now shows defining custom participant roles (`apprentice`, `master`) alongside the custom event type
 - **Clarified `subject` participant role** - Documented as preferred over `principal`
 
 ### Fixed
