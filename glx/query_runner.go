@@ -191,10 +191,18 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 			detail += fmt.Sprintf("  (d. %s)", diedOn)
 		}
 
-		// Show alternate names if present
+		// Show alternate names if present (deduplicated, excluding primary)
 		allNames := extractAllNames(person)
-		if len(allNames) > 1 {
-			detail += "  aka: " + strings.Join(allNames[1:], ", ")
+		seen := map[string]bool{name: true}
+		var akaNames []string
+		for _, n := range allNames {
+			if n != "" && !seen[n] {
+				seen[n] = true
+				akaNames = append(akaNames, n)
+			}
+		}
+		if len(akaNames) > 0 {
+			detail += "  aka: " + strings.Join(akaNames, ", ")
 		}
 
 		fmt.Printf("  %s  %s\n", id, detail)
@@ -430,45 +438,23 @@ func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sou
 
 // extractPersonName extracts a display name from person properties.
 // Handles both simple string values and structured name objects.
+// Delegates to extractAllNames and returns the first entry.
 func extractPersonName(person *glxlib.Person) string {
-	raw, ok := person.Properties["name"]
-	if !ok {
-		raw, ok = person.Properties["primary_name"]
-	}
-	if !ok {
+	names := extractAllNames(person)
+	if len(names) == 0 {
 		return "(unnamed)"
 	}
 
-	// Simple string value
-	if s, ok := raw.(string); ok {
-		return s
-	}
-
-	// Structured: map with "value" key
-	if m, ok := raw.(map[string]any); ok {
-		if v, ok := m["value"]; ok {
-			return fmt.Sprint(v)
-		}
-	}
-
-	// Temporal list: []any where each entry has a "value" key
-	if list, ok := raw.([]any); ok && len(list) > 0 {
-		if m, ok := list[0].(map[string]any); ok {
-			if v, ok := m["value"]; ok {
-				return fmt.Sprint(v)
-			}
-		}
-	}
-
-	return "(unnamed)"
+	return names[0]
 }
 
 // nameMatches checks if any of a person's name variants contain the query
 // string (case-insensitive). This searches across all name entries including
 // birth names, married names, as-recorded variants, and maiden names.
 func nameMatches(person *glxlib.Person, query string) bool {
+	lowerQuery := strings.ToLower(query)
 	for _, name := range extractAllNames(person) {
-		if containsFold(name, query) {
+		if containsFold(name, lowerQuery) {
 			return true
 		}
 	}
@@ -495,7 +481,9 @@ func extractAllNames(person *glxlib.Person) []string {
 	// Structured: map with "value" key (single name entry)
 	if m, ok := raw.(map[string]any); ok {
 		if v, ok := m["value"]; ok {
-			return []string{fmt.Sprint(v)}
+			if s, ok := v.(string); ok && s != "" {
+				return []string{s}
+			}
 		}
 
 		return nil
@@ -507,7 +495,9 @@ func extractAllNames(person *glxlib.Person) []string {
 		for _, entry := range list {
 			if m, ok := entry.(map[string]any); ok {
 				if v, ok := m["value"]; ok {
-					names = append(names, fmt.Sprint(v))
+					if s, ok := v.(string); ok && s != "" {
+						names = append(names, s)
+					}
 				}
 			}
 		}

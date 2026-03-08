@@ -315,6 +315,14 @@ func TestExtractAllNames_NoName(t *testing.T) {
 	assert.Nil(t, names)
 }
 
+func TestExtractAllNames_PrimaryNameFallback(t *testing.T) {
+	person := &glxlib.Person{Properties: map[string]any{
+		"primary_name": "Bob Clark",
+	}}
+	names := extractAllNames(person)
+	assert.Equal(t, []string{"Bob Clark"}, names)
+}
+
 func TestNameMatches_SearchesAllVariants(t *testing.T) {
 	person := &glxlib.Person{Properties: map[string]any{
 		"name": []any{
