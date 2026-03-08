@@ -12,6 +12,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files to GLX format
 - 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
+- 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - 70.5% code coverage with comprehensive test fixtures
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -115,6 +116,9 @@ glx validate
 
 # Join multi-file archive back to single file
 glx join family-archive combined.glx
+
+# Show a stats dashboard for an archive
+glx stats family-archive
 
 # Validate specific files or directories
 glx validate persons/
@@ -368,6 +372,61 @@ glx join family-archive family.glx --no-validate
 # Verbose output
 glx join family-archive family.glx --verbose
 ```
+
+### `glx stats`
+
+Display a summary dashboard for any GLX archive, showing entity counts, assertion confidence distribution, and entity coverage.
+
+**Usage:**
+```bash
+glx stats [path]
+```
+
+**Arguments:**
+- `[path]` - Path to a multi-file archive directory or a single-file `.glx` archive (defaults to current directory)
+
+**Output sections:**
+
+- **Entity counts** — total number of each entity type in the archive
+- **Assertion confidence** — breakdown of assertions by confidence level with percentages (only shown when assertions exist)
+- **Entity coverage** — how many persons, events, relationships, and places are referenced by at least one assertion (only shown when assertions exist)
+
+**Examples:**
+
+```bash
+# Stats for a multi-file archive directory
+glx stats family-archive
+
+# Stats for a single-file archive
+glx stats family.glx
+```
+
+**Output:**
+```
+Entity counts:
+  Persons:       31
+  Events:        77
+  Relationships: 42
+  Places:        5
+  Sources:       5
+  Citations:     12
+  Repositories:  2
+  Media:         0
+  Assertions:    20
+
+Assertion confidence:
+  high           8  ( 40.0%)
+  medium         6  ( 30.0%)
+  (unset)        6  ( 30.0%)
+
+Entity coverage (referenced by assertions):
+  Persons          12/31  (38.7%)
+  Events           5/77  (6.5%)
+  Relationships    3/42  (7.1%)
+  Places           -
+```
+
+> **Note:** The confidence distribution lists standard levels first (high, medium, low, disputed), then any custom levels alphabetically, with `(unset)` last. The coverage section shows `-` for entity types with no entries in the archive.
 
 ## File Format
 
