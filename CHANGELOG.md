@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### CLI
+- **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
+
 #### Build & Release
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
 - **Updated release workflow to latest action versions** - `actions/checkout@v4` (with `fetch-depth: 0` for proper changelog), `actions/setup-go@v5`, `goreleaser/goreleaser-action@v6`

@@ -53,7 +53,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
-
+	rootCmd.AddCommand(queryCmd)
 }
 
 // ============================================================================
@@ -302,5 +302,84 @@ func init() {
 
 func runJoin(_ *cobra.Command, args []string) error {
 	return joinArchive(args[0], args[1], !joinNoValidate, joinVerbose, joinShowFirstErrors)
+}
+
+// ============================================================================
+// Query Command
+// ============================================================================
+
+var (
+	queryArchive    string
+	queryName       string
+	queryBornBefore int
+	queryBornAfter  int
+	queryType       string
+	queryBefore     int
+	queryAfter      int
+	queryConfidence string
+	queryStatus     string
+)
+
+var queryCmd = &cobra.Command{
+	Use:   "query <entity-type>",
+	Short: "Query entities in a GLX archive",
+	Long: `Filter and list entities from a GENEALOGIX archive.
+
+Supported entity types: persons, events, assertions, sources,
+relationships, places, citations, repositories, media.
+
+Filters vary by entity type:
+  persons:       --name, --born-before, --born-after
+  events:        --type, --before, --after
+  assertions:    --confidence, --status
+  sources:       --name, --type
+  relationships: --type
+  places:        --name
+  repositories:  --name
+
+All entity types support --archive to specify the archive path.`,
+	Example: `  # Find persons born before 1850
+  glx query persons --born-before 1850
+
+  # Find low-confidence assertions
+  glx query assertions --confidence low
+
+  # Find marriage events
+  glx query events --type marriage
+
+  # Find persons by name in a specific archive
+  glx query persons --name "Smith" --archive my-archive
+
+  # List all sources
+  glx query sources`,
+	Args:      cobra.ExactArgs(1),
+	ValidArgs: queryEntityTypes,
+	RunE:      runQuery,
+}
+
+func init() {
+	queryCmd.Flags().StringVarP(&queryArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	queryCmd.Flags().StringVar(&queryName, "name", "", "Filter by name (substring match, case-insensitive)")
+	queryCmd.Flags().IntVar(&queryBornBefore, "born-before", 0, "Filter persons born before this year")
+	queryCmd.Flags().IntVar(&queryBornAfter, "born-after", 0, "Filter persons born after this year")
+	queryCmd.Flags().StringVar(&queryType, "type", "", "Filter by type (event type, relationship type, etc.)")
+	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
+	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
+	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+}
+
+func runQuery(_ *cobra.Command, args []string) error {
+	return queryEntities(args[0], queryOpts{
+		Archive:    queryArchive,
+		Name:       queryName,
+		BornBefore: queryBornBefore,
+		BornAfter:  queryBornAfter,
+		Type:       queryType,
+		Before:     queryBefore,
+		After:      queryAfter,
+		Confidence: queryConfidence,
+		Status:     queryStatus,
+	})
 }
 
