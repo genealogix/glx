@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 // temporalYearRegexp matches the first 4-digit year in a date string.
@@ -66,9 +65,9 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 		var parentIDs, childIDs []string
 		for _, p := range rel.Participants {
 			switch p.Role {
-			case "parent":
+			case ParticipantRoleParent:
 				parentIDs = append(parentIDs, p.Person)
-			case "child":
+			case ParticipantRoleChild:
 				childIDs = append(childIDs, p.Person)
 			}
 		}
@@ -111,7 +110,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 // any participant's birth.
 func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 	for eventID, event := range glx.Events {
-		if !strings.EqualFold(event.Type, "marriage") {
+		if event.Type != EventTypeMarriage {
 			continue
 		}
 
@@ -148,8 +147,8 @@ func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 // parent-child connection.
 func isParentChildRelType(relType string) bool {
 	switch relType {
-	case "parent_child", "biological_parent_child", "adoptive_parent_child",
-		"foster_parent_child", "step_parent":
+	case RelationshipTypeParentChild, RelationshipTypeBiologicalParentChild, RelationshipTypeAdoptiveParentChild,
+		RelationshipTypeFosterParentChild, RelationshipTypeStepParent:
 		return true
 	}
 
