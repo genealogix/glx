@@ -120,6 +120,11 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 		}
 	}
 
+	// Guard against nil input when validation is disabled.
+	if glx == nil {
+		return nil, ErrGLXFileNil
+	}
+
 	files := make(map[string][]byte)
 
 	// Add standard vocabularies
