@@ -61,6 +61,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	// Pre-resolve all place strings
 	resolvePlaceStrings(expCtx)
 
+	// Build person events index (person ID -> event IDs where person is principal)
+	buildPersonEventsIndex(expCtx)
+
 	// Build GEDCOM records
 	var records []*GEDCOMRecord
 
@@ -94,11 +97,20 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		expCtx.Stats.MediaExported++
 	}
 
+	// Person records
+	personIDs := sortedKeys(glx.Persons)
+	for _, personID := range personIDs {
+		person := glx.Persons[personID]
+		record := exportPerson(personID, person, expCtx)
+		records = append(records, record)
+		expCtx.Stats.PersonsExported++
+	}
+
 	// TRLR record
 	records = append(records, &GEDCOMRecord{Tag: GedcomTagTrlr})
 
-	logger.LogInfo(fmt.Sprintf("Export completed: %d repositories, %d sources, %d media",
-		expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported))
+	logger.LogInfo(fmt.Sprintf("Export completed: %d persons, %d repositories, %d sources, %d media",
+		expCtx.Stats.PersonsExported, expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported))
 
 	// Serialize to bytes
 	data := serializeGEDCOMRecords(records)
@@ -134,6 +146,9 @@ type ExportContext struct {
 
 	// Place cache: placeID -> full GEDCOM place string
 	PlaceStrings map[string]string
+
+	// PersonEvents maps person ID -> event IDs where person is principal
+	PersonEvents map[string][]string
 
 	Stats ExportStatistics
 }

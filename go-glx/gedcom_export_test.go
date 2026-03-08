@@ -1539,3 +1539,692 @@ func TestGetStringProperty(t *testing.T) {
 	_, ok = getStringProperty(nil, "key1")
 	assert.False(t, ok)
 }
+
+// ============================================================================
+// exportPerson tests
+// ============================================================================
+
+func TestExportPerson_Basic(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-1": "@I1@",
+		},
+		MediaXRefMap:  make(map[string]string),
+		SourceXRefMap: make(map[string]string),
+		ExportIndex: &ExportIndex{
+			EventTypes:       make(map[string]string),
+			PersonProperties: make(map[string]string),
+			EventProperties:  make(map[string]string),
+		},
+		PersonEvents: make(map[string][]string),
+		Stats:        ExportStatistics{},
+	}
+
+	person := &Person{
+		Properties: map[string]any{
+			"name": map[string]any{
+				"value": "John Smith",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Smith",
+					"type":    "birth",
+				},
+			},
+			"gender": "male",
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	assert.Equal(t, "@I1@", record.XRef)
+	assert.Equal(t, GedcomTagIndi, record.Tag)
+
+	var foundName, foundSex bool
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagName:
+			foundName = true
+			assert.Equal(t, "John /Smith/", sub.Value)
+			// Check substructure
+			var hasType, hasGivn, hasSurn bool
+			for _, nameSub := range sub.SubRecords {
+				switch nameSub.Tag {
+				case GedcomTagType:
+					hasType = true
+					assert.Equal(t, "birth", nameSub.Value)
+				case GedcomTagGivn:
+					hasGivn = true
+					assert.Equal(t, "John", nameSub.Value)
+				case GedcomTagSurn:
+					hasSurn = true
+					assert.Equal(t, "Smith", nameSub.Value)
+				}
+			}
+			assert.True(t, hasType, "missing TYPE")
+			assert.True(t, hasGivn, "missing GIVN")
+			assert.True(t, hasSurn, "missing SURN")
+		case GedcomTagSex:
+			foundSex = true
+			assert.Equal(t, "M", sub.Value)
+		}
+	}
+
+	assert.True(t, foundName, "missing NAME")
+	assert.True(t, foundSex, "missing SEX")
+}
+
+func TestExportPerson_WithEvents(t *testing.T) {
+	glxFile := &GLXFile{
+		Events: map[string]*Event{
+			"event-1": {
+				Type: "birth",
+				Date: "1850-03-15",
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRolePrincipal},
+				},
+			},
+			"event-2": {
+				Type:    "death",
+				Date:    "1920-11-02",
+				PlaceID: "place-1",
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRolePrincipal},
+				},
+				Properties: map[string]any{
+					"cause": "heart failure",
+				},
+			},
+		},
+		Places: map[string]*Place{
+			"place-1": {Name: "Springfield, Illinois"},
+		},
+	}
+
+	expCtx := &ExportContext{
+		GLX: glxFile,
+		PersonXRefMap: map[string]string{
+			"person-1": "@I1@",
+		},
+		MediaXRefMap:  make(map[string]string),
+		SourceXRefMap: make(map[string]string),
+		PlaceStrings: map[string]string{
+			"place-1": "Springfield, Illinois",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: map[string]string{
+				"birth": "BIRT",
+				"death": "DEAT",
+			},
+			PersonProperties: make(map[string]string),
+			EventProperties: map[string]string{
+				"cause": "CAUS",
+			},
+		},
+		PersonEvents: make(map[string][]string),
+		Stats:        ExportStatistics{},
+	}
+
+	// Build the person events index
+	buildPersonEventsIndex(expCtx)
+
+	person := &Person{
+		Properties: map[string]any{
+			"name": map[string]any{
+				"value": "John Smith",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Smith",
+				},
+			},
+			"gender": "male",
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	var foundBirt, foundDeat bool
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagBirt:
+			foundBirt = true
+			var hasDate bool
+			for _, birtSub := range sub.SubRecords {
+				if birtSub.Tag == GedcomTagDate {
+					hasDate = true
+					assert.Equal(t, "15 MAR 1850", birtSub.Value)
+				}
+			}
+			assert.True(t, hasDate, "BIRT missing DATE")
+		case GedcomTagDeat:
+			foundDeat = true
+			var hasDate, hasPlac, hasCaus bool
+			for _, deatSub := range sub.SubRecords {
+				switch deatSub.Tag {
+				case GedcomTagDate:
+					hasDate = true
+					assert.Equal(t, "2 NOV 1920", deatSub.Value)
+				case GedcomTagPlac:
+					hasPlac = true
+					assert.Equal(t, "Springfield, Illinois", deatSub.Value)
+				case GedcomTagCaus:
+					hasCaus = true
+					assert.Equal(t, "heart failure", deatSub.Value)
+				}
+			}
+			assert.True(t, hasDate, "DEAT missing DATE")
+			assert.True(t, hasPlac, "DEAT missing PLAC")
+			assert.True(t, hasCaus, "DEAT missing CAUS")
+		}
+	}
+
+	assert.True(t, foundBirt, "missing BIRT")
+	assert.True(t, foundDeat, "missing DEAT")
+	assert.Equal(t, 2, expCtx.Stats.EventsProcessed)
+}
+
+func TestExportPerson_MultipleNames(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-1": "@I1@",
+		},
+		MediaXRefMap:  make(map[string]string),
+		SourceXRefMap: make(map[string]string),
+		ExportIndex: &ExportIndex{
+			EventTypes:       make(map[string]string),
+			PersonProperties: make(map[string]string),
+			EventProperties:  make(map[string]string),
+		},
+		PersonEvents: make(map[string][]string),
+		Stats:        ExportStatistics{},
+	}
+
+	person := &Person{
+		Properties: map[string]any{
+			"name": []any{
+				map[string]any{
+					"value": "Mary Johnson",
+					"fields": map[string]any{
+						"given":   "Mary",
+						"surname": "Johnson",
+						"type":    "birth",
+					},
+				},
+				map[string]any{
+					"value": "Mary Smith",
+					"fields": map[string]any{
+						"given":   "Mary",
+						"surname": "Smith",
+						"type":    "married",
+					},
+				},
+			},
+			"gender": "female",
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	var nameCount int
+	var nameTypes []string
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagName {
+			nameCount++
+			for _, nameSub := range sub.SubRecords {
+				if nameSub.Tag == GedcomTagType {
+					nameTypes = append(nameTypes, nameSub.Value)
+				}
+			}
+		}
+	}
+
+	assert.Equal(t, 2, nameCount, "should have 2 NAME records")
+	assert.Contains(t, nameTypes, "birth")
+	assert.Contains(t, nameTypes, "married")
+}
+
+func TestExportPerson_WithProperties(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-1": "@I1@",
+		},
+		MediaXRefMap:  make(map[string]string),
+		SourceXRefMap: make(map[string]string),
+		ExportIndex: &ExportIndex{
+			EventTypes: make(map[string]string),
+			PersonProperties: map[string]string{
+				"occupation":  "OCCU",
+				"religion":    "RELI",
+				"education":   "EDUC",
+				"nationality": "NATI",
+				"title":       "TITL",
+			},
+			EventProperties: make(map[string]string),
+		},
+		PersonEvents: make(map[string][]string),
+		Stats:        ExportStatistics{},
+	}
+
+	person := &Person{
+		Properties: map[string]any{
+			"name": map[string]any{
+				"value": "John Smith",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Smith",
+				},
+			},
+			"gender":      "male",
+			"occupation":  "Farmer",
+			"religion":    "Baptist",
+			"education":   "Harvard",
+			"nationality": "American",
+			"title":       "Dr.",
+			"born_on":     "1850-03-15", // should be skipped
+			"died_on":     "1920-11-02", // should be skipped
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	var foundOccu, foundReli, foundEduc, foundNati, foundTitl bool
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagOccu:
+			foundOccu = true
+			assert.Equal(t, "Farmer", sub.Value)
+		case GedcomTagReli:
+			foundReli = true
+			assert.Equal(t, "Baptist", sub.Value)
+		case GedcomTagEduc:
+			foundEduc = true
+			assert.Equal(t, "Harvard", sub.Value)
+		case GedcomTagNati:
+			foundNati = true
+			assert.Equal(t, "American", sub.Value)
+		case GedcomTagTitl:
+			foundTitl = true
+			assert.Equal(t, "Dr.", sub.Value)
+		}
+	}
+
+	assert.True(t, foundOccu, "missing OCCU")
+	assert.True(t, foundReli, "missing RELI")
+	assert.True(t, foundEduc, "missing EDUC")
+	assert.True(t, foundNati, "missing NATI")
+	assert.True(t, foundTitl, "missing TITL")
+
+	// Verify born_on and died_on are NOT exported as tags
+	for _, sub := range record.SubRecords {
+		assert.NotEqual(t, "born_on", sub.Tag)
+		assert.NotEqual(t, "died_on", sub.Tag)
+	}
+}
+
+func TestExportPerson_NameFormat(t *testing.T) {
+	tests := []struct {
+		name     string
+		nameVal  map[string]any
+		expected string
+	}{
+		{
+			name: "basic given and surname",
+			nameVal: map[string]any{
+				"value": "John Smith",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Smith",
+				},
+			},
+			expected: "John /Smith/",
+		},
+		{
+			name: "with surname prefix",
+			nameVal: map[string]any{
+				"value": "Ludwig van Beethoven",
+				"fields": map[string]any{
+					"given":          "Ludwig",
+					"surname_prefix": "van",
+					"surname":        "Beethoven",
+				},
+			},
+			expected: "Ludwig /van Beethoven/",
+		},
+		{
+			name: "with suffix",
+			nameVal: map[string]any{
+				"value": "John Smith Jr.",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Smith",
+					"suffix":  "Jr.",
+				},
+			},
+			expected: "John /Smith/ Jr.",
+		},
+		{
+			name: "with prefix",
+			nameVal: map[string]any{
+				"value": "Dr. John Smith",
+				"fields": map[string]any{
+					"prefix":  "Dr.",
+					"given":   "John",
+					"surname": "Smith",
+				},
+			},
+			// Note: NPFX is a substructure tag; the formatted NAME value
+			// only uses given/surname/suffix
+			expected: "John /Smith/",
+		},
+		{
+			name: "no fields - parse from value",
+			nameVal: map[string]any{
+				"value": "John Smith",
+			},
+			expected: "John /Smith/",
+		},
+		{
+			name: "single name no fields",
+			nameVal: map[string]any{
+				"value": "Madonna",
+			},
+			expected: "Madonna //",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			record := exportNameRecord(tt.nameVal)
+			require.NotNil(t, record)
+			assert.Equal(t, tt.expected, record.Value)
+		})
+	}
+}
+
+func TestMapGenderToSex(t *testing.T) {
+	assert.Equal(t, "M", mapGenderToSex("male"))
+	assert.Equal(t, "F", mapGenderToSex("female"))
+	assert.Equal(t, "X", mapGenderToSex("other"))
+	assert.Equal(t, "U", mapGenderToSex("unknown"))
+	assert.Equal(t, "U", mapGenderToSex(""))
+}
+
+func TestBuildPersonEventsIndex(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-1": {
+					Type: "birth",
+					Participants: []Participant{
+						{Person: "person-1", Role: ParticipantRolePrincipal},
+					},
+				},
+				"event-2": {
+					Type: "death",
+					Participants: []Participant{
+						{Person: "person-1", Role: ParticipantRolePrincipal},
+					},
+				},
+				"event-3": {
+					Type: "marriage",
+					Participants: []Participant{
+						{Person: "person-1", Role: ParticipantRoleSpouse},
+						{Person: "person-2", Role: ParticipantRoleSpouse},
+					},
+				},
+				"event-4": {
+					Type: "birth",
+					Participants: []Participant{
+						{Person: "person-2", Role: ParticipantRolePrincipal},
+					},
+				},
+			},
+		},
+	}
+
+	buildPersonEventsIndex(expCtx)
+
+	// person-1 should have 2 events where they are principal
+	assert.Len(t, expCtx.PersonEvents["person-1"], 2)
+	assert.Contains(t, expCtx.PersonEvents["person-1"], "event-1")
+	assert.Contains(t, expCtx.PersonEvents["person-1"], "event-2")
+
+	// person-2 should have 1 event where they are principal
+	assert.Len(t, expCtx.PersonEvents["person-2"], 1)
+	assert.Contains(t, expCtx.PersonEvents["person-2"], "event-4")
+
+	// Marriage event (spouse role) should NOT be in the index
+	for _, events := range expCtx.PersonEvents {
+		assert.NotContains(t, events, "event-3")
+	}
+}
+
+func TestExportPerson_WithNotes(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-1": "@I1@",
+		},
+		MediaXRefMap:  make(map[string]string),
+		SourceXRefMap: make(map[string]string),
+		ExportIndex: &ExportIndex{
+			EventTypes:       make(map[string]string),
+			PersonProperties: make(map[string]string),
+			EventProperties:  make(map[string]string),
+		},
+		PersonEvents: make(map[string][]string),
+		Stats:        ExportStatistics{},
+	}
+
+	person := &Person{
+		Properties: map[string]any{
+			"name": map[string]any{
+				"value": "John Smith",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Smith",
+				},
+			},
+		},
+		Notes: "Prominent local farmer",
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	var foundNote bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagNote {
+			foundNote = true
+			assert.Equal(t, "Prominent local farmer", sub.Value)
+		}
+	}
+	assert.True(t, foundNote, "missing NOTE")
+}
+
+// ============================================================================
+// ExportGEDCOM end-to-end tests (with persons)
+// ============================================================================
+
+func TestExportGEDCOM_WithPersons(t *testing.T) {
+	glxFile := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {
+				Properties: map[string]any{
+					"name": map[string]any{
+						"value": "John Smith",
+						"fields": map[string]any{
+							"given":   "John",
+							"surname": "Smith",
+							"type":    "birth",
+						},
+					},
+					"gender": "male",
+				},
+			},
+			"person-2": {
+				Properties: map[string]any{
+					"name": map[string]any{
+						"value": "Jane Doe",
+						"fields": map[string]any{
+							"given":   "Jane",
+							"surname": "Doe",
+						},
+					},
+					"gender": "female",
+				},
+			},
+		},
+		Events: map[string]*Event{
+			"event-1": {
+				Type:    "birth",
+				Date:    "1850-03-15",
+				PlaceID: "place-1",
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRolePrincipal},
+				},
+			},
+			"event-2": {
+				Type: "death",
+				Date: "1920-11-02",
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRolePrincipal},
+				},
+			},
+		},
+		Relationships: make(map[string]*Relationship),
+		Places: map[string]*Place{
+			"place-1": {Name: "Springfield"},
+		},
+		Sources:      make(map[string]*Source),
+		Repositories: make(map[string]*Repository),
+		Media:        make(map[string]*Media),
+		Citations:    make(map[string]*Citation),
+		Assertions:   make(map[string]*Assertion),
+	}
+
+	data, result, err := ExportGEDCOM(glxFile, GEDCOM551, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	output := string(data)
+
+	// Should have HEAD and TRLR
+	assert.Contains(t, output, "0 HEAD\n")
+	assert.Contains(t, output, "0 TRLR\n")
+
+	// Person 1
+	assert.Contains(t, output, "@I1@ INDI")
+	assert.Contains(t, output, "NAME John /Smith/")
+	assert.Contains(t, output, "SEX M")
+	assert.Contains(t, output, "BIRT")
+	assert.Contains(t, output, "DATE 15 MAR 1850")
+	assert.Contains(t, output, "PLAC Springfield")
+	assert.Contains(t, output, "DEAT")
+	assert.Contains(t, output, "DATE 2 NOV 1920")
+
+	// Person 2
+	assert.Contains(t, output, "@I2@ INDI")
+	assert.Contains(t, output, "NAME Jane /Doe/")
+	assert.Contains(t, output, "SEX F")
+
+	// Statistics
+	assert.Equal(t, 2, result.Statistics.PersonsExported)
+	assert.Equal(t, 2, result.Statistics.EventsProcessed)
+
+	// Verify order: HEAD, INDI records, TRLR
+	headIdx := strings.Index(output, "0 HEAD")
+	indi1Idx := strings.Index(output, "@I1@ INDI")
+	indi2Idx := strings.Index(output, "@I2@ INDI")
+	trlrIdx := strings.Index(output, "0 TRLR")
+
+	assert.True(t, headIdx < indi1Idx, "HEAD should come before INDI")
+	assert.True(t, indi1Idx < indi2Idx, "INDI 1 should come before INDI 2")
+	assert.True(t, indi2Idx < trlrIdx, "INDI should come before TRLR")
+}
+
+func TestExportPerson_WithMediaAndSources(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events:   make(map[string]*Event),
+			Citations: map[string]*Citation{
+				"cit-1": {
+					SourceID: "source-1",
+					Properties: map[string]any{
+						"locator": "Page 42",
+					},
+				},
+			},
+		},
+		PersonXRefMap: map[string]string{
+			"person-1": "@I1@",
+		},
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:       make(map[string]string),
+			PersonProperties: make(map[string]string),
+			EventProperties:  make(map[string]string),
+		},
+		PersonEvents: make(map[string][]string),
+		Stats:        ExportStatistics{},
+	}
+
+	person := &Person{
+		Properties: map[string]any{
+			"name": map[string]any{
+				"value": "John Smith",
+				"fields": map[string]any{
+					"given":   "John",
+					"surname": "Smith",
+				},
+			},
+			"media":     []any{"media-1"},
+			"sources":   []any{"source-1"},
+			"citations": []any{"cit-1"},
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	var foundObje, foundSourDirect, foundSourFromCit bool
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagObje:
+			foundObje = true
+			assert.Equal(t, "@O1@", sub.Value)
+		case GedcomTagSour:
+			if sub.Value == "@S1@" && len(sub.SubRecords) > 0 {
+				// This is the citation-sourced SOUR with PAGE
+				foundSourFromCit = true
+				var foundPage bool
+				for _, sourSub := range sub.SubRecords {
+					if sourSub.Tag == GedcomTagPage {
+						foundPage = true
+						assert.Equal(t, "Page 42", sourSub.Value)
+					}
+				}
+				assert.True(t, foundPage, "SOUR from citation missing PAGE")
+			} else if sub.Value == "@S1@" {
+				foundSourDirect = true
+			}
+		}
+	}
+
+	assert.True(t, foundObje, "missing OBJE")
+	assert.True(t, foundSourDirect, "missing direct SOUR")
+	assert.True(t, foundSourFromCit, "missing SOUR from citation")
+}
