@@ -190,7 +190,7 @@ func TestBuildPlaceAnalysis_AssertionReferencedPlace(t *testing.T) {
 		},
 		Events:     map[string]*glxlib.Event{},
 		Assertions: map[string]*glxlib.Assertion{
-			"assertion-1": {Subject: glxlib.AssertionSubject{Place: "place-only-assertion"}},
+			"assertion-1": {Subject: glxlib.EntityRef{Place: "place-only-assertion"}},
 		},
 	}
 
