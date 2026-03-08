@@ -30,7 +30,7 @@ jobs:
         run: |
           # Get all open same-repo PRs (exclude forks)
           PRS=$(gh pr list --repo "${{ github.repository }}" \
-            --state open --json number,headRefName,isCrossRepository \
+            --state open --limit 999 --json number,headRefName,isCrossRepository \
             --jq '.[] | select(.isCrossRepository == false) | .number')
 
           for PR_NUMBER in $PRS; do
@@ -38,7 +38,7 @@ jobs:
               query($owner: String!, $name: String!, $pr: Int!) {
                 repository(owner: $owner, name: $name) {
                   pullRequest(number: $pr) {
-                    reviewThreads(first: 50) {
+                    reviewThreads(first: 100) {
                       nodes {
                         isResolved
                         comments(first: 1) {
