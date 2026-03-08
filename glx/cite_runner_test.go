@@ -69,6 +69,13 @@ func fullCiteArchive() *glxlib.GLXFile {
 					"url": "https://example.com",
 				},
 			},
+			"cit-override": {
+				SourceID:     "source-marriages",
+				RepositoryID: "repo-nara",
+				Properties: map[string]any{
+					"url": "https://example.com/override",
+				},
+			},
 		},
 	}
 }
@@ -142,9 +149,9 @@ func TestResolveRepositoryName(t *testing.T) {
 	cit := archive.Citations["cit-full"]
 	assert.Equal(t, "FamilySearch", resolveRepositoryName(cit, archive))
 
-	// Via citation's own repo (overrides source)
-	cit = archive.Citations["cit-with-own-repo"]
-	assert.Equal(t, "FamilySearch", resolveRepositoryName(cit, archive))
+	// Via citation's own repo (overrides source's repo)
+	cit = archive.Citations["cit-override"]
+	assert.Equal(t, "NARA", resolveRepositoryName(cit, archive))
 
 	// No repo
 	cit = archive.Citations["cit-bare"]

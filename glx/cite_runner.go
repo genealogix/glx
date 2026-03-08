@@ -182,20 +182,7 @@ func buildAccessClause(repoName, url, accessed string) string {
 
 // citationProperty extracts a string property from citation properties.
 func citationProperty(cit *glxlib.Citation, key string) string {
-	if cit.Properties == nil {
-		return ""
-	}
-
-	raw, ok := cit.Properties[key]
-	if !ok {
-		return ""
-	}
-
-	if s, ok := raw.(string); ok {
-		return s
-	}
-
-	return fmt.Sprint(raw)
+	return propertyString(cit.Properties, key)
 }
 
 // joinNonEmpty joins non-empty strings with the given separator.
