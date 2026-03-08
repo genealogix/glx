@@ -823,3 +823,719 @@ func TestAssignXRefIDs(t *testing.T) {
 	// Media
 	assert.Equal(t, "@O1@", expCtx.MediaXRefMap["media-1"])
 }
+
+// ============================================================================
+// exportSource tests
+// ============================================================================
+
+func TestExportSource_Basic(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM551,
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		RepositoryXRefMap: map[string]string{
+			"repo-1": "@R1@",
+		},
+		MediaXRefMap: make(map[string]string),
+		ExportIndex: &ExportIndex{
+			SourceProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	source := &Source{
+		Title:        "Census of 1850",
+		Authors:      []string{"U.S. Government"},
+		RepositoryID: "repo-1",
+		Properties:   make(map[string]any),
+	}
+
+	record := exportSource("source-1", source, expCtx)
+
+	assert.Equal(t, "@S1@", record.XRef)
+	assert.Equal(t, GedcomTagSour, record.Tag)
+
+	var foundTitl, foundAuth, foundRepo bool
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagTitl:
+			foundTitl = true
+			assert.Equal(t, "Census of 1850", sub.Value)
+		case GedcomTagAuth:
+			foundAuth = true
+			assert.Equal(t, "U.S. Government", sub.Value)
+		case GedcomTagRepo:
+			foundRepo = true
+			assert.Equal(t, "@R1@", sub.Value)
+		}
+	}
+
+	assert.True(t, foundTitl, "missing TITL")
+	assert.True(t, foundAuth, "missing AUTH")
+	assert.True(t, foundRepo, "missing REPO")
+}
+
+func TestExportSource_WithProperties(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM551,
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		RepositoryXRefMap: map[string]string{
+			"repo-1": "@R1@",
+		},
+		MediaXRefMap: make(map[string]string),
+		ExportIndex: &ExportIndex{
+			SourceProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	source := &Source{
+		Title:        "Parish Register",
+		RepositoryID: "repo-1",
+		Date:         "1850-06",
+		Properties: map[string]any{
+			"publication_info":  "Published by Archives, 2001",
+			"abbreviation":     "PR",
+			"call_number":      "MS-123",
+			"agency":           "Church of England",
+			"events_recorded":  []string{"births", "marriages", "deaths"},
+		},
+	}
+
+	record := exportSource("source-1", source, expCtx)
+
+	var foundPubl, foundAbbr, foundData bool
+	var foundCaln bool
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagPubl:
+			foundPubl = true
+			assert.Equal(t, "Published by Archives, 2001", sub.Value)
+		case GedcomTagAbbr:
+			foundAbbr = true
+			assert.Equal(t, "PR", sub.Value)
+		case GedcomTagRepo:
+			// Check CALN subrecord
+			for _, repoSub := range sub.SubRecords {
+				if repoSub.Tag == GedcomTagCaln {
+					foundCaln = true
+					assert.Equal(t, "MS-123", repoSub.Value)
+				}
+			}
+		case GedcomTagData:
+			foundData = true
+			// Check DATA subrecords
+			var hasEven, hasAgnc, hasDate bool
+			var evenCount int
+			for _, dataSub := range sub.SubRecords {
+				switch dataSub.Tag {
+				case GedcomTagEven:
+					hasEven = true
+					evenCount++
+				case GedcomTagAgnc:
+					hasAgnc = true
+					assert.Equal(t, "Church of England", dataSub.Value)
+				case GedcomTagDate:
+					hasDate = true
+					assert.Equal(t, "JUN 1850", dataSub.Value)
+				}
+			}
+			assert.True(t, hasEven, "DATA missing EVEN")
+			assert.Equal(t, 3, evenCount, "expected 3 EVEN subrecords")
+			assert.True(t, hasAgnc, "DATA missing AGNC")
+			assert.True(t, hasDate, "DATA missing DATE")
+		}
+	}
+
+	assert.True(t, foundPubl, "missing PUBL")
+	assert.True(t, foundAbbr, "missing ABBR")
+	assert.True(t, foundCaln, "missing CALN under REPO")
+	assert.True(t, foundData, "missing DATA")
+}
+
+func TestExportSource_WithNotes(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM551,
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		RepositoryXRefMap: make(map[string]string),
+		MediaXRefMap:      make(map[string]string),
+		ExportIndex: &ExportIndex{
+			SourceProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	source := &Source{
+		Title:       "Family Bible",
+		Description: "Entries in the family Bible of John Smith",
+		Notes:       "Handwritten entries, some water damage",
+		Properties:  make(map[string]any),
+	}
+
+	record := exportSource("source-1", source, expCtx)
+
+	var foundText, foundNote bool
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagText:
+			foundText = true
+			assert.Equal(t, "Entries in the family Bible of John Smith", sub.Value)
+		case GedcomTagNote:
+			foundNote = true
+			assert.Equal(t, "Handwritten entries, some water damage", sub.Value)
+		}
+	}
+
+	assert.True(t, foundText, "missing TEXT")
+	assert.True(t, foundNote, "missing NOTE")
+}
+
+func TestExportSource_MultipleAuthors(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM551,
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		RepositoryXRefMap: make(map[string]string),
+		MediaXRefMap:      make(map[string]string),
+		ExportIndex: &ExportIndex{
+			SourceProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	source := &Source{
+		Title:      "Joint Publication",
+		Authors:    []string{"Alice Smith", "Bob Jones", "Carol White"},
+		Properties: make(map[string]any),
+	}
+
+	record := exportSource("source-1", source, expCtx)
+
+	var foundAuth bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagAuth {
+			foundAuth = true
+			assert.Equal(t, "Alice Smith; Bob Jones; Carol White", sub.Value)
+		}
+	}
+
+	assert.True(t, foundAuth, "missing AUTH")
+}
+
+func TestExportSource_TypeOnlyGEDCOM70(t *testing.T) {
+	// GEDCOM 5.5.1 should NOT include TYPE
+	expCtx551 := &ExportContext{
+		Version: GEDCOM551,
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		RepositoryXRefMap: make(map[string]string),
+		MediaXRefMap:      make(map[string]string),
+		ExportIndex: &ExportIndex{
+			SourceProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	source := &Source{
+		Title:      "Test Source",
+		Type:       "census",
+		Properties: make(map[string]any),
+	}
+
+	record551 := exportSource("source-1", source, expCtx551)
+	var foundType551 bool
+	for _, sub := range record551.SubRecords {
+		if sub.Tag == GedcomTagType {
+			foundType551 = true
+		}
+	}
+	assert.False(t, foundType551, "GEDCOM 5.5.1 should NOT include TYPE")
+
+	// GEDCOM 7.0 SHOULD include TYPE
+	expCtx70 := &ExportContext{
+		Version: GEDCOM70,
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		RepositoryXRefMap: make(map[string]string),
+		MediaXRefMap:      make(map[string]string),
+		ExportIndex: &ExportIndex{
+			SourceProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	record70 := exportSource("source-1", source, expCtx70)
+	var foundType70 bool
+	for _, sub := range record70.SubRecords {
+		if sub.Tag == GedcomTagType {
+			foundType70 = true
+			assert.Equal(t, "census", sub.Value)
+		}
+	}
+	assert.True(t, foundType70, "GEDCOM 7.0 should include TYPE")
+}
+
+// ============================================================================
+// exportMedia tests
+// ============================================================================
+
+func TestExportMedia_Basic551(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM551,
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		ExportIndex: &ExportIndex{
+			MediaProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	media := &Media{
+		URI:        "media/files/photo.jpg",
+		MimeType:   MimeTypeJPEG,
+		Properties: make(map[string]any),
+	}
+
+	record := exportMedia("media-1", media, expCtx)
+
+	assert.Equal(t, "@O1@", record.XRef)
+	assert.Equal(t, GedcomTagObje, record.Tag)
+
+	// Should have FILE subrecord
+	require.NotEmpty(t, record.SubRecords)
+	fileRecord := record.SubRecords[0]
+	assert.Equal(t, GedcomTagFile, fileRecord.Tag)
+	assert.Equal(t, "media/files/photo.jpg", fileRecord.Value)
+
+	// GEDCOM 5.5.1: FORM under FILE
+	require.NotEmpty(t, fileRecord.SubRecords)
+	formRecord := fileRecord.SubRecords[0]
+	assert.Equal(t, GedcomTagForm, formRecord.Tag)
+	assert.Equal(t, "jpg", formRecord.Value)
+}
+
+func TestExportMedia_Basic70(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM70,
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		ExportIndex: &ExportIndex{
+			MediaProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	media := &Media{
+		URI:        "https://example.com/photo.png",
+		MimeType:   MimeTypePNG,
+		Properties: make(map[string]any),
+	}
+
+	record := exportMedia("media-1", media, expCtx)
+
+	assert.Equal(t, "@O1@", record.XRef)
+	assert.Equal(t, GedcomTagObje, record.Tag)
+
+	// Should have FILE subrecord
+	require.NotEmpty(t, record.SubRecords)
+	fileRecord := record.SubRecords[0]
+	assert.Equal(t, GedcomTagFile, fileRecord.Tag)
+	assert.Equal(t, "https://example.com/photo.png", fileRecord.Value)
+
+	// GEDCOM 7.0: MIME under FILE
+	require.NotEmpty(t, fileRecord.SubRecords)
+	mimeRecord := fileRecord.SubRecords[0]
+	assert.Equal(t, GedcomTagMime, mimeRecord.Tag)
+	assert.Equal(t, MimeTypePNG, mimeRecord.Value)
+}
+
+func TestExportMedia_WithTitle(t *testing.T) {
+	// Test GEDCOM 5.5.1: TITL at OBJE level
+	expCtx551 := &ExportContext{
+		Version: GEDCOM551,
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		ExportIndex: &ExportIndex{
+			MediaProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	media := &Media{
+		URI:        "media/files/wedding.jpg",
+		MimeType:   MimeTypeJPEG,
+		Title:      "Wedding Photo",
+		Properties: make(map[string]any),
+	}
+
+	record551 := exportMedia("media-1", media, expCtx551)
+	var foundTitlAtObje bool
+	for _, sub := range record551.SubRecords {
+		if sub.Tag == GedcomTagTitl {
+			foundTitlAtObje = true
+			assert.Equal(t, "Wedding Photo", sub.Value)
+		}
+	}
+	assert.True(t, foundTitlAtObje, "5.5.1 should have TITL at OBJE level")
+
+	// Test GEDCOM 7.0: TITL under FILE
+	expCtx70 := &ExportContext{
+		Version: GEDCOM70,
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		ExportIndex: &ExportIndex{
+			MediaProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	record70 := exportMedia("media-1", media, expCtx70)
+	// TITL should be under FILE, not at OBJE level
+	var foundTitlAtObjeLvl70 bool
+	for _, sub := range record70.SubRecords {
+		if sub.Tag == GedcomTagTitl {
+			foundTitlAtObjeLvl70 = true
+		}
+	}
+	assert.False(t, foundTitlAtObjeLvl70, "7.0 should NOT have TITL at OBJE level")
+
+	// Check TITL is under FILE
+	fileRecord := record70.SubRecords[0]
+	assert.Equal(t, GedcomTagFile, fileRecord.Tag)
+	var foundTitlUnderFile bool
+	for _, fileSub := range fileRecord.SubRecords {
+		if fileSub.Tag == GedcomTagTitl {
+			foundTitlUnderFile = true
+			assert.Equal(t, "Wedding Photo", fileSub.Value)
+		}
+	}
+	assert.True(t, foundTitlUnderFile, "7.0 should have TITL under FILE")
+}
+
+func TestExportMedia_WithMedium551(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM551,
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		ExportIndex: &ExportIndex{
+			MediaProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	media := &Media{
+		URI:      "media/files/doc.pdf",
+		MimeType: MimeTypePDF,
+		Properties: map[string]any{
+			"medium": "document",
+		},
+	}
+
+	record := exportMedia("media-1", media, expCtx)
+
+	// Should have FORM with MEDI subrecord at OBJE level
+	var foundFormWithMedi bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagForm && len(sub.SubRecords) > 0 {
+			for _, formSub := range sub.SubRecords {
+				if formSub.Tag == GedcomTagMedi {
+					foundFormWithMedi = true
+					assert.Equal(t, "document", formSub.Value)
+				}
+			}
+		}
+	}
+	assert.True(t, foundFormWithMedi, "5.5.1 should have FORM/MEDI for medium property")
+}
+
+func TestExportMedia_WithCrop70(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM70,
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		ExportIndex: &ExportIndex{
+			MediaProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	media := &Media{
+		URI:      "https://example.com/photo.jpg",
+		MimeType: MimeTypeJPEG,
+		Properties: map[string]any{
+			"crop": map[string]any{
+				"top":    10,
+				"left":   20,
+				"height": 100,
+				"width":  200,
+			},
+		},
+	}
+
+	record := exportMedia("media-1", media, expCtx)
+
+	var foundCrop bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagCrop {
+			foundCrop = true
+			assert.Len(t, sub.SubRecords, 4)
+
+			cropValues := make(map[string]string)
+			for _, cropSub := range sub.SubRecords {
+				cropValues[cropSub.Tag] = cropSub.Value
+			}
+			assert.Equal(t, "10", cropValues[GedcomTagTop])
+			assert.Equal(t, "20", cropValues[GedcomTagLeft])
+			assert.Equal(t, "100", cropValues[GedcomTagHeight])
+			assert.Equal(t, "200", cropValues[GedcomTagWidth])
+		}
+	}
+	assert.True(t, foundCrop, "7.0 should have CROP subrecord")
+}
+
+func TestExportMedia_WithNotes(t *testing.T) {
+	expCtx := &ExportContext{
+		Version: GEDCOM551,
+		MediaXRefMap: map[string]string{
+			"media-1": "@O1@",
+		},
+		ExportIndex: &ExportIndex{
+			MediaProperties: make(map[string]string),
+		},
+		Stats: ExportStatistics{},
+	}
+
+	media := &Media{
+		URI:        "media/files/photo.jpg",
+		MimeType:   MimeTypeJPEG,
+		Notes:      "Taken at the family reunion",
+		Properties: make(map[string]any),
+	}
+
+	record := exportMedia("media-1", media, expCtx)
+
+	var foundNote bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagNote {
+			foundNote = true
+			assert.Equal(t, "Taken at the family reunion", sub.Value)
+		}
+	}
+	assert.True(t, foundNote, "missing NOTE")
+}
+
+// ============================================================================
+// ExportGEDCOM end-to-end tests (sources and media)
+// ============================================================================
+
+func TestExportGEDCOM_WithSourcesAndMedia(t *testing.T) {
+	glx := &GLXFile{
+		Persons:       make(map[string]*Person),
+		Events:        make(map[string]*Event),
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources: map[string]*Source{
+			"source-1": {
+				Title:        "Census of 1850",
+				Authors:      []string{"U.S. Government"},
+				RepositoryID: "repo-1",
+				Description:  "Population schedules",
+				Media:        []string{"media-1"},
+				Properties: map[string]any{
+					"publication_info": "Washington, D.C.",
+				},
+			},
+		},
+		Repositories: map[string]*Repository{
+			"repo-1": {
+				Name:       "National Archives",
+				Properties: make(map[string]any),
+			},
+		},
+		Media: map[string]*Media{
+			"media-1": {
+				URI:        "media/files/census.jpg",
+				MimeType:   MimeTypeJPEG,
+				Title:      "Census Page",
+				Properties: make(map[string]any),
+			},
+		},
+		Citations:  make(map[string]*Citation),
+		Assertions: make(map[string]*Assertion),
+	}
+
+	data, result, err := ExportGEDCOM(glx, GEDCOM551, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	output := string(data)
+
+	// Should contain HEAD and TRLR
+	assert.Contains(t, output, "0 HEAD\n")
+	assert.Contains(t, output, "0 TRLR\n")
+
+	// Repository
+	assert.Contains(t, output, "@R1@ REPO")
+	assert.Contains(t, output, "NAME National Archives")
+
+	// Source
+	assert.Contains(t, output, "@S1@ SOUR")
+	assert.Contains(t, output, "TITL Census of 1850")
+	assert.Contains(t, output, "AUTH U.S. Government")
+	assert.Contains(t, output, "PUBL Washington, D.C.")
+	assert.Contains(t, output, "TEXT Population schedules")
+	assert.Contains(t, output, "REPO @R1@")
+	assert.Contains(t, output, "OBJE @O1@")
+
+	// Media
+	assert.Contains(t, output, "@O1@ OBJE")
+	assert.Contains(t, output, "FILE media/files/census.jpg")
+	assert.Contains(t, output, "TITL Census Page")
+
+	// Statistics
+	assert.Equal(t, 1, result.Statistics.RepositoriesExported)
+	assert.Equal(t, 1, result.Statistics.SourcesExported)
+	assert.Equal(t, 1, result.Statistics.MediaExported)
+
+	// Verify order: HEAD, REPO, SOUR, OBJE, TRLR
+	headIdx := strings.Index(output, "0 HEAD")
+	repoIdx := strings.Index(output, "@R1@ REPO")
+	sourIdx := strings.Index(output, "@S1@ SOUR")
+	objeIdx := strings.Index(output, "@O1@ OBJE")
+	trlrIdx := strings.Index(output, "0 TRLR")
+
+	assert.True(t, headIdx < repoIdx, "HEAD should come before REPO")
+	assert.True(t, repoIdx < sourIdx, "REPO should come before SOUR")
+	assert.True(t, sourIdx < objeIdx, "SOUR should come before OBJE")
+	assert.True(t, objeIdx < trlrIdx, "OBJE should come before TRLR")
+}
+
+func TestExportGEDCOM_WithSourcesAndMedia_GEDCOM70(t *testing.T) {
+	glx := &GLXFile{
+		Persons:       make(map[string]*Person),
+		Events:        make(map[string]*Event),
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources: map[string]*Source{
+			"source-1": {
+				Title:      "Test Source",
+				Type:       "census",
+				Properties: make(map[string]any),
+			},
+		},
+		Repositories: make(map[string]*Repository),
+		Media: map[string]*Media{
+			"media-1": {
+				URI:      "https://example.com/photo.png",
+				MimeType: MimeTypePNG,
+				Title:    "Test Photo",
+				Properties: map[string]any{
+					"crop": map[string]any{
+						"top":    5,
+						"left":   10,
+						"height": 50,
+						"width":  80,
+					},
+				},
+			},
+		},
+		Citations:  make(map[string]*Citation),
+		Assertions: make(map[string]*Assertion),
+	}
+
+	data, result, err := ExportGEDCOM(glx, GEDCOM70, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	output := string(data)
+
+	// GEDCOM 7.0 specifics
+	assert.Contains(t, output, "VERS 7.0")
+
+	// Source with TYPE
+	assert.Contains(t, output, "@S1@ SOUR")
+	assert.Contains(t, output, "TYPE census")
+
+	// Media with MIME (not FORM)
+	assert.Contains(t, output, "@O1@ OBJE")
+	assert.Contains(t, output, "MIME "+MimeTypePNG)
+
+	// CROP subrecord
+	assert.Contains(t, output, "CROP")
+	assert.Contains(t, output, "TOP 5")
+	assert.Contains(t, output, "LEFT 10")
+	assert.Contains(t, output, "HEIGHT 50")
+	assert.Contains(t, output, "WIDTH 80")
+
+	// Title should be under FILE for 7.0
+	// (Can't easily verify nesting in string form, but at least it should be present)
+	assert.Contains(t, output, "TITL Test Photo")
+
+	assert.Equal(t, 1, result.Statistics.SourcesExported)
+	assert.Equal(t, 1, result.Statistics.MediaExported)
+	assert.Equal(t, "7.0", result.Version)
+}
+
+// ============================================================================
+// mimeToGEDCOMFormat tests
+// ============================================================================
+
+func TestMimeToGEDCOMFormat(t *testing.T) {
+	// JPEG should map to "jpg" (shorter than "jpeg")
+	assert.Equal(t, "jpg", mimeToGEDCOMFormat[MimeTypeJPEG])
+
+	// TIFF should map to "tif" (shorter than "tiff")
+	assert.Equal(t, "tif", mimeToGEDCOMFormat[MimeTypeTIFF])
+
+	// PNG maps directly
+	assert.Equal(t, "png", mimeToGEDCOMFormat[MimeTypePNG])
+
+	// PDF maps directly
+	assert.Equal(t, "pdf", mimeToGEDCOMFormat[MimeTypePDF])
+}
+
+// ============================================================================
+// getStringProperty tests
+// ============================================================================
+
+func TestGetStringProperty(t *testing.T) {
+	props := map[string]any{
+		"key1": "value1",
+		"key2": 42,
+		"key3": "",
+	}
+
+	val, ok := getStringProperty(props, "key1")
+	assert.True(t, ok)
+	assert.Equal(t, "value1", val)
+
+	// Non-string value
+	_, ok = getStringProperty(props, "key2")
+	assert.False(t, ok)
+
+	// Empty string
+	_, ok = getStringProperty(props, "key3")
+	assert.False(t, ok)
+
+	// Missing key
+	_, ok = getStringProperty(props, "missing")
+	assert.False(t, ok)
+
+	// Nil map
+	_, ok = getStringProperty(nil, "key1")
+	assert.False(t, ok)
+}

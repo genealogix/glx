@@ -76,11 +76,29 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		expCtx.Stats.RepositoriesExported++
 	}
 
+	// Source records (after repositories, since sources reference repos)
+	sourceIDs := sortedKeys(glx.Sources)
+	for _, sourceID := range sourceIDs {
+		source := glx.Sources[sourceID]
+		record := exportSource(sourceID, source, expCtx)
+		records = append(records, record)
+		expCtx.Stats.SourcesExported++
+	}
+
+	// Media records
+	mediaIDs := sortedKeys(glx.Media)
+	for _, mediaID := range mediaIDs {
+		media := glx.Media[mediaID]
+		record := exportMedia(mediaID, media, expCtx)
+		records = append(records, record)
+		expCtx.Stats.MediaExported++
+	}
+
 	// TRLR record
 	records = append(records, &GEDCOMRecord{Tag: GedcomTagTrlr})
 
-	logger.LogInfo(fmt.Sprintf("Export completed: %d repositories",
-		expCtx.Stats.RepositoriesExported))
+	logger.LogInfo(fmt.Sprintf("Export completed: %d repositories, %d sources, %d media",
+		expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported))
 
 	// Serialize to bytes
 	data := serializeGEDCOMRecords(records)
