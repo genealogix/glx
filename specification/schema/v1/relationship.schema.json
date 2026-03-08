@@ -33,6 +33,11 @@
             "type": "string",
             "description": "Role of the participant in this relationship"
           },
+          "properties": {
+            "type": "object",
+            "description": "Per-participant properties",
+            "additionalProperties": true
+          },
           "notes": {
             "type": "string",
             "description": "Notes about participant's involvement"

@@ -111,9 +111,10 @@ type Person struct {
 
 // Participant defines a person's role in an event, relationship, or assertion.
 type Participant struct {
-	Person string `refType:"persons"           yaml:"person"`
-	Role   string `refType:"participant_roles" yaml:"role,omitempty"`
-	Notes  string `yaml:"notes,omitempty"`
+	Person     string         `refType:"persons"           yaml:"person"`
+	Role       string         `refType:"participant_roles" yaml:"role,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"`
+	Notes      string         `yaml:"notes,omitempty"`
 }
 
 // Relationship represents a relationship between two or more people.
