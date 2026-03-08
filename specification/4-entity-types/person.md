@@ -153,6 +153,82 @@ properties:
         surname: "Smith"
 ```
 
+#### Name Variation Examples
+
+The `type` field on name entries distinguishes why multiple names exist. Use it not just for temporal changes (birth to married) but also for alternate spellings, abbreviations, and names as recorded in specific documents.
+
+The authoritative list of name `type` values is defined in the [person properties vocabulary](vocabularies#person-properties-vocabulary). The table below highlights common values and how to use them.
+
+**Common name type values:**
+
+| Type | Usage |
+|------|-------|
+| `birth` | Name at birth |
+| `married` | Name after marriage |
+| `maiden` | Name used before marriage (typically pre-marriage surname) |
+| `alias` | Known alternate identity |
+| `aka` | Also known as (general alternate name) |
+| `immigrant` | Name used when immigrating |
+| `anglicized` | Anglicized or localized form of a foreign name |
+| `religious` | Name taken for religious purposes |
+| `formal` | Formal or legal name |
+| `professional` | Professional or stage name |
+| `as_recorded` | Name exactly as it appears in a source document |
+
+**Alternate Spellings and Abbreviations:**
+```yaml
+properties:
+  name:
+    - value: "Daniel Lane"
+      fields:
+        type: "birth"
+        given: "Daniel"
+        surname: "Lane"
+    - value: "D. Lane"
+      fields:
+        type: "as_recorded"
+        given: "D."
+        surname: "Lane"
+```
+
+**Anglicized Name:**
+```yaml
+properties:
+  name:
+    - value: "Johann Schmidt"
+      fields:
+        type: "birth"
+        given: "Johann"
+        surname: "Schmidt"
+    - value: "John Smith"
+      date: "FROM 1885"
+      fields:
+        type: "anglicized"
+        given: "John"
+        surname: "Smith"
+```
+
+**Multiple Known Aliases:**
+```yaml
+properties:
+  name:
+    - value: "William Henry McCarty"
+      fields:
+        type: "birth"
+        given: "William Henry"
+        surname: "McCarty"
+    - value: "William H. Bonney"
+      fields:
+        type: "alias"
+        given: "William H."
+        surname: "Bonney"
+    - value: "Billy the Kid"
+      fields:
+        type: "aka"
+```
+
+> **Tip:** Dates are optional on name entries. Use them when you know when a name was adopted; omit them for variations that aren't tied to a specific time period. The `type` field clarifies why each entry exists without implying temporal succession.
+
 **Multiple Residences:**
 ```yaml
 properties:
