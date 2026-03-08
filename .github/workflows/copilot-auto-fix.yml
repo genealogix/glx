@@ -1,20 +1,20 @@
 name: Auto-resolve Copilot suggestions
 
 on:
-  pull_request_review:
-    types: [submitted]
+  workflow_run:
+    workflows: ["Copilot code review"]
+    types: [completed]
 
 jobs:
   auto-fix:
-    # Only trigger on Copilot reviews with comments, and only for same-repo PRs (not forks)
-    if: |
-      github.event.review.user.login == 'copilot-pull-request-reviewer[bot]' &&
-      github.event.review.state == 'commented' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+    # Only run for PR-triggered Copilot reviews on same-repo branches
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
-    # Prevent loops: only one run per PR at a time, cancel in-progress if re-triggered
     concurrency:
-      group: copilot-auto-fix-${{ github.event.pull_request.number }}
+      group: copilot-auto-fix-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: true
     permissions:
       contents: write
@@ -22,14 +22,59 @@ jobs:
       issues: write
       id-token: write
     steps:
+      - name: Get PR number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" \
+            --head "${{ github.event.workflow_run.head_branch }}" \
+            --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "No open PR found for branch ${{ github.event.workflow_run.head_branch }}"
+            exit 0
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Found PR #$PR_NUMBER"
+
+      - name: Check for unresolved Copilot threads
+        if: steps.pr.outputs.number
+        id: threads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COUNT=$(gh api graphql -f query='
+            query($owner: String!, $name: String!, $pr: Int!) {
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $pr) {
+                  reviewThreads(first: 50) {
+                    nodes {
+                      isResolved
+                      comments(first: 1) {
+                        nodes { author { login } }
+                      }
+                    }
+                  }
+                }
+              }
+            }' -f owner="${{ github.repository_owner }}" \
+               -f name="$(echo '${{ github.repository }}' | cut -d/ -f2)" \
+               -F pr="${{ steps.pr.outputs.number }}" \
+            --jq '[.data.repository.pullRequest.reviewThreads.nodes[]
+                   | select(.isResolved == false)
+                   | select(.comments.nodes[0].author.login == "copilot-pull-request-reviewer")] | length')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Found $COUNT unresolved Copilot threads"
+
       - name: Checkout repository
+        if: steps.pr.outputs.number && steps.threads.outputs.count != '0'
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
 
       - name: Run Claude Code to resolve Copilot suggestions
+        if: steps.pr.outputs.number && steps.threads.outputs.count != '0'
         id: claude-fix
         uses: anthropics/claude-code-action@v1
         with:
@@ -38,7 +83,7 @@ jobs:
             contents: write
             pull-requests: write
           prompt: |
-            Copilot just reviewed PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Copilot just reviewed PR #${{ steps.pr.outputs.number }} in ${{ github.repository }}.
 
             Your task:
             1. Read ALL unresolved Copilot review threads on this PR using:
