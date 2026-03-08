@@ -18,6 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
 - **Updated release workflow to latest action versions** - `actions/checkout@v4` (with `fetch-depth: 0` for proper changelog), `actions/setup-go@v5`, `goreleaser/goreleaser-action@v6`
 
+#### Person Entity
+- **Added name variation tracking** - Expanded the `name.fields.type` classification field with standard values for alternate spellings, abbreviations, and as-recorded forms (`aka`, `maiden`, `anglicized`, `professional`, `as_recorded`). Added documentation and examples for representing name variations like "D. Lane" vs. "Daniel Lane"
+
 #### Standard Vocabularies
 - **Added `original_place_name` citation property** - Records the verbatim place name from a source before normalization to a place entity (e.g., "The Town Of Marston" vs the normalized place reference)
 - **Added relationship types `neighbor`, `coworker`, `housemate`** - Non-familial relationships commonly found in census, tax, and social records
