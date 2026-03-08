@@ -138,8 +138,8 @@ func TestShowStats_OutputContent(t *testing.T) {
 	// Verify confidence distribution shows high before (unset)
 	highIdx := strings.Index(output, "high")
 	unsetIdx := strings.Index(output, "(unset)")
-	require.True(t, highIdx > 0, "output should contain 'high'")
-	require.True(t, unsetIdx > 0, "output should contain '(unset)'")
+	require.True(t, highIdx >= 0, "output should contain 'high'")
+	require.True(t, unsetIdx >= 0, "output should contain '(unset)'")
 	assert.True(t, highIdx < unsetIdx, "(unset) should appear after high in output")
 
 	// Verify coverage section
