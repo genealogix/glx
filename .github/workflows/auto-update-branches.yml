@@ -28,7 +28,14 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           REPO="${{ github.repository }}"
-          MAIN_SHA=$(gh api repos/$REPO/git/ref/heads/main --jq '.object.sha')
+          if ! MAIN_SHA=$(gh api "repos/$REPO/git/ref/heads/main" --jq '.object.sha'); then
+            echo "Failed to resolve main branch SHA. Aborting." >&2
+            exit 1
+          fi
+          if [ -z "$MAIN_SHA" ]; then
+            echo "Main branch SHA is empty after lookup. Aborting." >&2
+            exit 1
+          fi
           echo "Main branch SHA: $MAIN_SHA"
 
           # Get all open same-repo PRs
@@ -52,27 +59,37 @@ jobs:
               echo "PR #$PR_NUMBER ($BRANCH): failed to compare with main: $COMPARE_OUTPUT"
               continue
             fi
-            BEHIND="$COMPARE_OUTPUT"
+            COMMITS_BEHIND="$COMPARE_OUTPUT"
 
-            if [ "$BEHIND" = "0" ] || [ -z "$BEHIND" ]; then
+            if [ "$COMMITS_BEHIND" = "0" ] || [ -z "$COMMITS_BEHIND" ]; then
               echo "PR #$PR_NUMBER ($BRANCH): up to date"
               continue
             fi
 
-            echo "PR #$PR_NUMBER ($BRANCH): $BEHIND commits behind main, updating..."
+            echo "PR #$PR_NUMBER ($BRANCH): $COMMITS_BEHIND commits behind main, updating..."
 
             # Use the merge endpoint to merge main into the branch
             RESULT=$(gh api repos/$REPO/merges \
               -f base="$BRANCH" \
               -f head="main" \
               -f commit_message="Merge main into $BRANCH" \
-              2>&1) || true
+              2>&1)
+            MERGE_EXIT=$?
+
+            if [ $MERGE_EXIT -ne 0 ]; then
+              if echo "$RESULT" | grep -q 'Merge conflict'; then
+                echo "  Merge conflict — skipping (needs manual resolution)"
+              else
+                echo "  Error merging main into $BRANCH (exit $MERGE_EXIT): $RESULT"
+              fi
+              continue
+            fi
 
             if echo "$RESULT" | grep -q '"sha"'; then
               echo "  Updated successfully"
-            elif echo "$RESULT" | grep -q 'Merge conflict'; then
-              echo "  Merge conflict — skipping (needs manual resolution)"
+            elif [ -z "$RESULT" ]; then
+              echo "  Already up to date"
             else
-              echo "  Already up to date or error: $RESULT"
+              echo "  Unexpected response: $RESULT"
             fi
           done
