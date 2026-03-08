@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+- **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
 - **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
 
 #### Build & Release
