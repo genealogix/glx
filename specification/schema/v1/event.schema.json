@@ -42,6 +42,11 @@
             "type": "string",
             "description": "Role of participant in event"
           },
+          "properties": {
+            "type": "object",
+            "description": "Per-participant properties (e.g., age_at_event)",
+            "additionalProperties": true
+          },
           "notes": {
             "type": "string",
             "description": "Notes about participant's involvement"
