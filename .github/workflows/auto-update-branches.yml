@@ -1,0 +1,70 @@
+name: Auto-update PR branches
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Every 30 minutes
+  push:
+    branches: [main]
+
+jobs:
+  update-branches:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: auto-update-branches
+      cancel-in-progress: false
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Update out-of-date PR branches
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          MAIN_SHA=$(gh api repos/$REPO/git/ref/heads/main --jq '.object.sha')
+          echo "Main branch SHA: $MAIN_SHA"
+
+          # Get all open same-repo PRs
+          PRS=$(gh pr list --repo "$REPO" --state open --limit 999 \
+            --json number,headRefName,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository == false) | "\(.number) \(.headRefName)"')
+
+          if [ -z "$PRS" ]; then
+            echo "No open PRs to update"
+            exit 0
+          fi
+
+          echo "$PRS" | while read -r PR_NUMBER BRANCH; do
+            # Check if branch is behind main using compare API
+            BEHIND=$(gh api repos/$REPO/compare/$BRANCH...$MAIN_SHA \
+              --jq '.ahead_by' 2>/dev/null || echo "0")
+
+            if [ "$BEHIND" = "0" ] || [ -z "$BEHIND" ]; then
+              echo "PR #$PR_NUMBER ($BRANCH): up to date"
+              continue
+            fi
+
+            echo "PR #$PR_NUMBER ($BRANCH): $BEHIND commits behind main, updating..."
+
+            # Use the merge endpoint to merge main into the branch
+            RESULT=$(gh api repos/$REPO/merges \
+              -f base="$BRANCH" \
+              -f head="main" \
+              -f commit_message="Merge main into $BRANCH" \
+              2>&1) || true
+
+            if echo "$RESULT" | grep -q '"sha"'; then
+              echo "  Updated successfully"
+            elif echo "$RESULT" | grep -q 'Merge conflict'; then
+              echo "  Merge conflict — skipping (needs manual resolution)"
+            else
+              echo "  Already up to date or error: $RESULT"
+            fi
+          done
