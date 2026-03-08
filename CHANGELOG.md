@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+- **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
 - **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
 
 #### Build & Release
@@ -40,6 +41,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 - **Added `glx validate --report`** - Generates a confidence summary report showing assertion breakdown by confidence level, assertions without citations, and entities with no assertion coverage
+
+#### GEDCOM Import
+- **Import HEAD metadata** - GEDCOM HEAD record fields (export date, source file, copyright, language, source system/version/corporation, GEDCOM version, character set, notes) are now stored in a `metadata` section on the GLX archive instead of being discarded after logging
+- **Import SUBM metadata** - GEDCOM SUBM submitter information (name, address, phone, email, website) is now stored in `metadata.submitter` on the GLX archive
+
+#### Data Model
+- **Added `Metadata` type** - New top-level `metadata` field on GLX archives for storing import provenance information
+- **Added `Submitter` type** - Nested within metadata to hold submitter contact details
 
 ### Changed
 
