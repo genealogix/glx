@@ -70,7 +70,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.find-pr.outputs.number
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.find-pr.outputs.branch }}
           token: ${{ steps.app-token.outputs.token }}
