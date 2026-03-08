@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-[![Version](https://img.shields.io/badge/version-0.0.0--beta.3-blue.svg)](https://github.com/genealogix/glx/releases)
+[![Version](https://img.shields.io/badge/version-0.0.0--beta.6-blue.svg)](https://github.com/genealogix/glx/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/genealogix/glx/blob/main/LICENSE)
 [![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
@@ -25,7 +25,7 @@ The official specification for **GENEALOGIX (GLX)** - a portable, extensible arc
 
 ## Current Version
 
-**Version:** 0.0.0-beta.3
+**Version:** 0.0.0-beta.6
 **Status:** Beta
 **Last Updated:** 2025-11-18
 
@@ -218,7 +218,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 ### 📊 Project Status
 
-**Current Release:** v0.0.0-beta.3 (Beta)
+**Current Release:** v0.0.0-beta.6 (Beta)
 - ✅ 9 core entity types defined
 - ✅ JSON Schema validation
 - ✅ CLI tool with vocabulary-based validation

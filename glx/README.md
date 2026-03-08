@@ -13,6 +13,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
+- 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
 - 🔎 **Query** - Filter and list entities from an archive by name, date, type, and more
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - 70.5% code coverage with comprehensive test fixtures
@@ -120,6 +121,9 @@ glx join family-archive combined.glx
 
 # Show a stats dashboard for an archive
 glx stats family-archive
+
+# Analyze places for data quality issues
+glx places family-archive
 
 # Query persons born before 1850
 glx query persons --born-before 1850
@@ -445,6 +449,66 @@ Entity coverage (referenced by assertions):
 ```
 
 > **Note:** The confidence distribution lists standard levels first (high, medium, low, disputed), then any custom levels alphabetically, with `(unset)` last. The coverage section shows `-` for entity types with no entries in the archive.
+
+### `glx places`
+
+Analyze places in a GLX archive for data quality issues. Reports duplicate names, missing coordinates, missing types, hierarchy gaps, dangling parent references, and unreferenced places.
+
+**Usage:**
+```bash
+glx places [path]
+```
+
+**Arguments:**
+- `[path]` - Path to a multi-file archive directory or a single-file `.glx` archive (defaults to current directory)
+
+**Reports:**
+
+- **Duplicate names** — places that share the same name (ambiguous without context)
+- **Missing coordinates** — places without latitude/longitude
+- **Missing type** — places without a type classification
+- **No parent** — non-country/region places missing a parent (hierarchy gap)
+- **Dangling parent** — places referencing a parent that doesn't exist in the archive
+- **Unreferenced** — places not used by any event, assertion, or as a parent
+
+Each place is shown with its full canonical hierarchy path (e.g., "Leeds, Yorkshire, England").
+
+**Examples:**
+
+```bash
+# Analyze places in current directory
+glx places
+
+# Analyze places in a specific archive
+glx places my-family-archive
+
+# Analyze a single-file archive
+glx places family.glx
+```
+
+**Output:**
+```
+Place analysis: 106 places
+
+Missing coordinates (106 of 106):
+  place-acorn-hall  Acorn Hall, The Riverlands, Westeros
+  place-astapor  Astapor, Essos
+  place-braavos  Braavos, Essos
+  ...
+
+No parent (hierarchy gap):
+  place-essos  Essos
+  place-sothoryos  Sothoryos
+  place-the-stepstones  The Stepstones
+  place-westeros  Westeros
+
+Unreferenced (not used by any event, assertion, or as parent):
+  place-acorn-hall  Acorn Hall, The Riverlands, Westeros
+  place-barrowton  Barrowton, The North, Westeros
+  ...
+```
+
+> **Note:** Only sections with issues are shown. If all places have coordinates, parents, and are referenced, those sections are omitted and "No issues found." is printed.
 
 ### `glx query`
 
