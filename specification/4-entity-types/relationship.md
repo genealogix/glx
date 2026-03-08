@@ -236,6 +236,8 @@ participants:
     notes: "Bride"
 ```
 
+Each participant object supports: `person` (required), `role`, `properties`, and `notes`. The `properties` field allows per-participant data and is validated against the relationship_properties vocabulary.
+
 ## Participant Roles
 
 Participant roles (spouse, parent, child, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
