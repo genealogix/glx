@@ -19,8 +19,8 @@ Issues that silently lose or corrupt data during import.
 
 Data that is parsed but silently dropped or not stored.
 
-- **HEAD Metadata** ([gedcom_converter.go:220-221](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_converter.go#L220-L221)): Store export_date, source_file, copyright, language, source_system.
-- **SUBM Metadata** ([gedcom_converter.go:246-247](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_converter.go#L246-L247)): Store submitter information.
+- ~~**HEAD Metadata**: Store export_date, source_file, copyright, language, source_system.~~ ✅ Done
+- ~~**SUBM Metadata**: Store submitter information.~~ ✅ Done
 - **NCHI Tag** ([gedcom_family.go](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_family.go)): Store number of children — can differ from actual CHIL count.
 - **LANG Tag Normalization**: GEDCOM 5.5.x uses free-form text (`English`) while 7.0 uses ISO format (`en-US`). Should normalize on import.
 - **Media entities with empty URI**: GEDCOM OBJE records with empty `FILE` values produce media entities with empty `uri`. Should skip, populate from extension tags, or set a placeholder.

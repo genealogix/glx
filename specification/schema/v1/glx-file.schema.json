@@ -6,6 +6,34 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Import metadata from GEDCOM HEAD/SUBM records",
+      "additionalProperties": false,
+      "properties": {
+        "export_date": { "type": "string" },
+        "source_file": { "type": "string" },
+        "copyright": { "type": "string" },
+        "language": { "type": "string" },
+        "source_system": { "type": "string" },
+        "source_version": { "type": "string" },
+        "source_corporation": { "type": "string" },
+        "gedcom_version": { "type": "string" },
+        "character_set": { "type": "string" },
+        "notes": { "type": "string" },
+        "submitter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "address": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string" },
+            "website": { "type": "string" }
+          }
+        }
+      }
+    },
     "persons": {
       "type": "object",
       "description": "Map of person entities",
