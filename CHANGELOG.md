@@ -28,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
 
+#### Participant Object
+- **Added `properties` to participants** - Participants across events, relationships, and assertions can now carry per-participant properties like `age_at_event`, enabling shared events (census, passenger lists) to record individual data without creating separate events per person
+- **Participant properties validated against parent entity vocabulary** - Event participant properties validated against event_properties, relationship participant properties against relationship_properties, assertion participant properties against event_properties
+
 #### Assertion Entity
 - **Added existential assertions** - Assertions no longer require `property` or `participant`; an assertion with only `subject` and evidence asserts the entity's existence, optionally at a specific `date` (#26)
 
