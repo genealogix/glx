@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx places` command** - Analyze places for ambiguity and completeness: flags duplicate names, missing coordinates, missing types, hierarchy gaps, and unreferenced places with canonical hierarchy paths
 - **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
 - **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
+- **Added `glx summary` command** - Comprehensive person profile showing identity (name, sex, alternate names), vital events, life events, family (spouses with marriage info, parents, siblings), other relationships, and an auto-generated life history narrative. Supports lookup by person ID or name substring
 
 #### Build & Release
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode

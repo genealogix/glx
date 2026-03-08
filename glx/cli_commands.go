@@ -56,6 +56,7 @@ func init() {
 	rootCmd.AddCommand(placesCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
+	rootCmd.AddCommand(summaryCmd)
 }
 
 // ============================================================================
@@ -483,4 +484,48 @@ func runStats(_ *cobra.Command, args []string) error {
 	}
 
 	return showStats(path)
+}
+
+// ============================================================================
+// Summary Command
+// ============================================================================
+
+var summaryArchive string
+
+var summaryCmd = &cobra.Command{
+	Use:   "summary <person>",
+	Short: "Show a comprehensive profile for a person",
+	Long: `Display a full summary of a person including identity, vital events,
+life events, family relationships, other relationships, and an
+auto-generated life history narrative.
+
+The person can be specified by exact ID (e.g., "person-abc123") or by
+name substring (case-insensitive). If multiple persons match, all
+matches are listed for disambiguation.
+
+Sections displayed:
+  - Identity: name, sex, alternate names (birth, married, maiden, AKA, etc.)
+  - Vital Events: birth, christening, death, burial
+  - Life Events: census, immigration, naturalization, military service, etc.
+  - Family: spouse(s) with marriage info, parents, siblings
+  - Relationships: godparent, neighbor, household, employment, etc.
+  - Life History: auto-generated biographical narrative`,
+	Example: `  # Summary by person ID
+  glx summary person-abc123
+
+  # Summary by name search
+  glx summary "Mary Lane"
+
+  # Summary in a specific archive
+  glx summary "John Smith" --archive my-family-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runSummary,
+}
+
+func init() {
+	summaryCmd.Flags().StringVarP(&summaryArchive, "archive", "a", ".", "Archive path (directory or single file)")
+}
+
+func runSummary(_ *cobra.Command, args []string) error {
+	return showSummary(summaryArchive, args[0])
 }
