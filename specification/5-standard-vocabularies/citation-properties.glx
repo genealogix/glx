@@ -32,6 +32,11 @@ citation_properties:
     description: "Direct web address for the specific cited material (e.g., a permalink to a record or image viewer)"
     value_type: string
 
+  original_place_name:
+    label: "Original Place Name"
+    description: "Place name exactly as recorded in the source, before normalization to a place entity (e.g., 'The Town Of Marston, Sauk, Wisconsin, United States' vs the normalized place reference)"
+    value_type: string
+
   external_ids:
     label: "External Identifiers"
     description: "Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID)"
