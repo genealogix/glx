@@ -316,6 +316,8 @@ properties:
 
 The importer also handles GEDCOM name substructure tags (`NPFX`, `GIVN`, `NICK`, `SPFX`, `SURN`, `NSFX`) which override the parsed values when present.
 
+**Multiple NAME records** on a single individual are imported as a temporal name list. The `TYPE` subrecord (e.g., `birth`, `married`, `aka`) is preserved as the `type` field. See [Name Variations](/specification/4-entity-types/person#name-variation-examples) for all supported type values.
+
 Recognized surname prefixes include: von, van, de, der, den, del, della, di, da, le, la, du, des, af, av.
 
 ### Place Hierarchy
