@@ -354,14 +354,13 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 }
 
 // validateAssertionParticipantProperties validates properties on assertion participants.
-// Skips validation when no vocabulary is loaded to avoid duplicate "missing vocab" warnings.
+// Unlike events and relationships, assertions have no top-level Properties field, so
+// this is the only place where "missing vocab" warnings for assertion participants
+// can be emitted.
 func (glx *GLXFile) validateAssertionParticipantProperties(
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
-	if len(propVocab) == 0 {
-		return
-	}
 	for assertionID, assertion := range glx.Assertions {
 		if assertion.Participant == nil || len(assertion.Participant.Properties) == 0 {
 			continue
@@ -409,7 +408,12 @@ func (glx *GLXFile) validateParticipantProperties(
 			// Only warn if the entity-level check won't already warn (i.e., entity has no top-level properties).
 			if hasParticipantProps {
 				topProps := entity.FieldByName("Properties")
-				entityAlreadyWarns := topProps.IsValid() && !topProps.IsNil()
+				entityAlreadyWarns := false
+				if topProps.IsValid() && !topProps.IsNil() {
+					if props, ok := topProps.Interface().(map[string]any); ok && len(props) > 0 {
+						entityAlreadyWarns = true
+					}
+				}
 				if !entityAlreadyWarns {
 					result.Warnings = append(result.Warnings, ValidationWarning{
 						SourceType: entityType,
