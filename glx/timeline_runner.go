@@ -182,10 +182,9 @@ func collectFamilyEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 
 // relatedPerson describes a person related to the target through a relationship.
 type relatedPerson struct {
-	PersonID     string // The related person's ID
-	Name         string // Display name
-	Relation     string // "spouse", "child", "parent"
-	Relationship string // Relationship ID (for dedup)
+	PersonID string // The related person's ID
+	Name     string // Display name
+	Relation string // "spouse", "child", "parent"
 }
 
 // findRelatedPersons traverses relationships to find family members.
@@ -193,7 +192,9 @@ func findRelatedPersons(personID string, archive *glxlib.GLXFile) []relatedPerso
 	var related []relatedPerson
 	seen := make(map[string]bool) // Avoid duplicate related persons
 
-	for _, rel := range archive.Relationships {
+	relIDs := sortedKeys(archive.Relationships)
+	for _, relID := range relIDs {
+		rel := archive.Relationships[relID]
 		if !familyRelationshipTypes[rel.Type] {
 			continue
 		}
@@ -313,6 +314,8 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 		return nil
 	}
 
+	foundEventTypes := make(map[string]bool)
+
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
@@ -320,10 +323,13 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 			continue
 		}
 
-		labelTemplate, ok := includeTypes[strings.ToLower(event.Type)]
+		eventType := strings.ToLower(event.Type)
+		labelTemplate, ok := includeTypes[eventType]
 		if !ok {
 			continue
 		}
+
+		foundEventTypes[eventType] = true
 
 		date := string(event.Date)
 		label := fmt.Sprintf(labelTemplate, rel.Name)
@@ -345,16 +351,7 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 		return entries
 	}
 
-	hasEventType := make(map[string]bool)
-	for _, e := range entries {
-		for eventType := range includeTypes {
-			if strings.Contains(strings.ToLower(e.Label), eventType) {
-				hasEventType[eventType] = true
-			}
-		}
-	}
-
-	if _, want := includeTypes["birth"]; want && !hasEventType["birth"] {
+	if _, want := includeTypes["birth"]; want && !foundEventTypes["birth"] {
 		date := propertyString(person.Properties, "born_on")
 		if date != "" {
 			placeID := propertyString(person.Properties, "born_at")
@@ -370,7 +367,7 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 		}
 	}
 
-	if _, want := includeTypes["death"]; want && !hasEventType["death"] {
+	if _, want := includeTypes["death"]; want && !foundEventTypes["death"] {
 		date := propertyString(person.Properties, "died_on")
 		if date != "" {
 			placeID := propertyString(person.Properties, "died_at")
@@ -522,10 +519,14 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 		fmt.Println()
 		fmt.Println("  Undated:")
 		for _, e := range undated {
+			date := e.Date
+			if date == "" {
+				date = "(no date)"
+			}
 			if e.Detail != "" {
-				fmt.Printf("  %-12s  %-*s  %s\n", "(no date)", maxLabel, e.Label, e.Detail)
+				fmt.Printf("  %-12s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
 			} else {
-				fmt.Printf("  %-12s  %-*s\n", "(no date)", maxLabel, e.Label)
+				fmt.Printf("  %-12s  %-*s\n", date, maxLabel, e.Label)
 			}
 		}
 	}
