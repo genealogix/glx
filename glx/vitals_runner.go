@@ -85,7 +85,9 @@ func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, 
 	lowerQuery := strings.ToLower(query)
 	var matches []string
 
-	for id, person := range archive.Persons {
+	ids := sortedKeys(archive.Persons)
+	for _, id := range ids {
+		person := archive.Persons[id]
 		name := extractPersonName(person)
 		if strings.Contains(strings.ToLower(name), lowerQuery) {
 			matches = append(matches, id)
@@ -180,8 +182,11 @@ func formatPropertyDatePlace(props map[string]any, dateKey, placeKey string, arc
 }
 
 // findEventByType finds the first event of a given type where the person is a participant.
+// Iterates in sorted key order for deterministic output.
 func findEventByType(personID, eventType string, archive *glxlib.GLXFile) string {
-	for _, event := range archive.Events {
+	ids := sortedKeys(archive.Events)
+	for _, id := range ids {
+		event := archive.Events[id]
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
 		}
@@ -220,7 +225,11 @@ func findOtherEvents(personID string, archive *glxlib.GLXFile) []vitalRecord {
 			continue
 		}
 
-		label := strings.ToUpper(event.Type[:1]) + event.Type[1:]
+		labelSource := event.Type
+		if labelSource == "" {
+			labelSource = id
+		}
+		label := strings.ToUpper(labelSource[:1]) + labelSource[1:]
 
 		value := formatEventDatePlace(event, archive)
 		if value == "" {
