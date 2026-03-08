@@ -86,6 +86,11 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 		}
 	}
 
+	// Guard against nil input when validation is disabled.
+	if glx == nil {
+		return nil, ErrGLXFileNil
+	}
+
 	// Normalize empty metadata to nil so omitempty suppresses it.
 	// Save and restore the original value to avoid mutating the caller's data.
 	origMetadata := glx.ImportMetadata

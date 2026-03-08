@@ -385,8 +385,9 @@ type TemporalValue struct {
 	Date  string `yaml:"date,omitempty"` // FamilySearch normalized date string
 }
 
-// Merge combines another GLXFile into this one, returning duplicate IDs as errors.
-// Duplicates are fatal errors for both entities and vocabularies.
+// Merge combines another GLXFile into this one, returning duplicate/conflict messages.
+// Messages may report duplicate entity or vocabulary IDs ("duplicate <type> ID: <id>")
+// or metadata conflicts ("duplicate metadata: ...").
 func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates := make([]string, 0, 10)
 
