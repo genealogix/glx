@@ -29,10 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Standard Vocabularies
 - **Added `original_place_name` citation property** - Records the verbatim place name from a source before normalization to a place entity (e.g., "The Town Of Marston" vs the normalized place reference)
-- **Added relationship types `neighbor`, `coworker`, `housemate`** - Non-familial relationships commonly found in census, tax, and social records
-- **Added relationship types `apprenticeship`, `employment`, `enslavement`, `relative`** - Master-apprentice, employer-employee, enslaver-enslaved, and generic kinship relationships
-- **Added event types `legal_separation`, `taxation`, `voter_registration`** - Legal/administrative events for separations, tax rolls, and voter rolls
-- **Added event types `military_service`, `stillborn`, `affiliation`** - Military service periods, stillbirths, and organizational memberships
+- **Added relationship types** - `neighbor`, `coworker`, `housemate` for census/social records; `apprenticeship`, `employment`, `enslavement`, `relative` for occupational and generic kinship relationships
+- **Added event types** - `legal_separation`, `taxation`, `voter_registration` for legal/administrative events; `military_service`, `stillborn`, `affiliation` for service periods, stillbirths, and memberships
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
 
@@ -56,14 +54,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Specification
 - **Undefined vocabulary types are now warnings** - All undefined vocabulary references (event types, relationship types, place types, source types, media types, repository types, participant roles, confidence levels) generate warnings instead of errors, matching the flexible validation policy for properties and enabling rapid data entry with custom types
 - **Removed hard-coded vocabulary counts** - Replaced "N standardized type codes" with descriptive text to prevent stale counts as vocabularies grow
-- **Fixed confidence levels example format** - Core concepts example now uses the correct `label`/`description` structure instead of simple key-value strings
-- **Added missing source types to inline list** - Source entity documentation now includes `population_register`, `tax_record`, and `notarial_record`
 - **Improved custom type example** - Custom event type example now shows defining custom participant roles (`apprentice`, `master`) alongside the custom event type
 - **Clarified `subject` participant role** - Documented as preferred over `principal`
 
 ### Fixed
 
 #### Specification
+- **Fixed confidence levels example format** - Core concepts example now uses the correct `label`/`description` structure instead of simple key-value strings
 - **Fixed citation GEDCOM mapping** - Corrected invalid `SOUR.CITN.EXID` tag to `SOUR.EXID`
 - **Fixed core-concepts.md formatting** - Property Vocabularies heading was merging with preceding table
 - **Fixed glossary Secondary Evidence example** - Replaced "census records" (primary evidence) with "published indexes, compiled genealogies"
