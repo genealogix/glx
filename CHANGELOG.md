@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### CLI
+- **Added `glx places` command** - Analyze places for ambiguity and completeness: flags duplicate names, missing coordinates, missing types, hierarchy gaps, and unreferenced places with canonical hierarchy paths
+
 #### Build & Release
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
 - **Updated release workflow to latest action versions** - `actions/checkout@v4` (with `fetch-depth: 0` for proper changelog), `actions/setup-go@v5`, `goreleaser/goreleaser-action@v6`
