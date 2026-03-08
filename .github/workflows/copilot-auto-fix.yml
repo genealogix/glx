@@ -7,9 +7,14 @@ on:
 jobs:
   auto-fix:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
     concurrency:
       group: copilot-auto-fix
-      cancel-in-progress: true
+      cancel-in-progress: false
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -23,9 +28,10 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          # Get all open PRs
+          # Get all open same-repo PRs (exclude forks)
           PRS=$(gh pr list --repo "${{ github.repository }}" \
-            --state open --json number,headRefName --jq '.[].number')
+            --state open --json number,headRefName,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository == false) | .number')
 
           for PR_NUMBER in $PRS; do
             COUNT=$(gh api graphql -f query='
