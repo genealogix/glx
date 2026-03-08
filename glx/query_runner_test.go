@@ -112,6 +112,26 @@ func TestQueryUnknownEntityType(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown entity type")
 }
 
+func TestQueryUnsupportedFlag(t *testing.T) {
+	tests := []struct {
+		name       string
+		entityType string
+		opts       queryOpts
+	}{
+		{"born-before on events", "events", queryOpts{Archive: "../docs/examples/basic-family", BornBefore: 1850}},
+		{"name on citations", "citations", queryOpts{Archive: "../docs/examples/complete-family", Name: "foo"}},
+		{"type on persons", "persons", queryOpts{Archive: "../docs/examples/basic-family", Type: "birth"}},
+		{"confidence on places", "places", queryOpts{Archive: "../docs/examples/complete-family", Confidence: "high"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := queryEntities(tt.entityType, tt.opts)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "not supported for entity type")
+		})
+	}
+}
+
 func TestQueryNonexistentArchive(t *testing.T) {
 	err := queryEntities("persons", queryOpts{Archive: filepath.Join(t.TempDir(), "does-not-exist")})
 	require.Error(t, err)

@@ -46,10 +46,56 @@ var queryEntityTypes = []string{
 	"repositories", "media",
 }
 
+// validateQueryFlags checks that the given filter flags are applicable to the
+// entity type and returns an error for any unsupported combination.
+func validateQueryFlags(entityType string, opts queryOpts) error {
+	type check struct {
+		flag  string
+		value bool
+	}
+
+	checks := []check{
+		{"--name", opts.Name != ""},
+		{"--born-before", opts.BornBefore != 0},
+		{"--born-after", opts.BornAfter != 0},
+		{"--type", opts.Type != ""},
+		{"--before", opts.Before != 0},
+		{"--after", opts.After != 0},
+		{"--confidence", opts.Confidence != ""},
+		{"--status", opts.Status != ""},
+	}
+
+	// Map each entity type to its supported flags.
+	supported := map[string]map[string]bool{
+		"persons":       {"--name": true, "--born-before": true, "--born-after": true},
+		"events":        {"--type": true, "--before": true, "--after": true},
+		"assertions":    {"--confidence": true, "--status": true},
+		"sources":       {"--name": true, "--type": true},
+		"relationships": {"--type": true},
+		"places":        {"--name": true},
+		"repositories":  {"--name": true},
+		"citations":     {},
+		"media":         {},
+	}
+
+	allowed := supported[entityType]
+	for _, c := range checks {
+		if c.value && !allowed[c.flag] {
+			return fmt.Errorf("flag %s is not supported for entity type %q", c.flag, entityType)
+		}
+	}
+
+	return nil
+}
+
 // queryEntities validates the entity type, loads the archive, and dispatches.
 func queryEntities(entityType string, opts queryOpts) error {
 	if !slices.Contains(queryEntityTypes, entityType) {
 		return fmt.Errorf("unknown entity type: %s", entityType)
+	}
+
+	if err := validateQueryFlags(entityType, opts); err != nil {
+		return err
 	}
 
 	archive, err := loadArchiveForQuery(opts.Archive)
