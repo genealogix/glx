@@ -214,3 +214,26 @@ func TestBuildPlaceAnalysis_ParentReferenceCounts(t *testing.T) {
 	a := buildPlaceAnalysis(archive)
 	assert.NotContains(t, a.Unreferenced, "place-parent")
 }
+
+func TestBuildPlaceAnalysis_NilParentIsDangling(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-child":  {Name: "Child", Type: "city", ParentID: "place-nil"},
+			"place-nil":    nil, // present in map but nil
+			"place-normal": {Name: "Normal", Type: "country"},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-1": {PlaceID: "place-child"},
+		},
+	}
+
+	a := buildPlaceAnalysis(archive)
+
+	// A nil parent should be treated as dangling
+	assert.Contains(t, a.DanglingParent, "place-child")
+	assert.Equal(t, "place-nil", a.DanglingParentIDs["place-child"])
+
+	// A nil place referenced only as a parent should still be unreferenced
+	// (since nil parents are not counted as valid references)
+	assert.Contains(t, a.Unreferenced, "place-nil")
+}

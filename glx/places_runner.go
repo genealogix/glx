@@ -131,9 +131,9 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 			a.NoParent = append(a.NoParent, id)
 		}
 
-		// Dangling parent (references a parent that doesn't exist)
+		// Dangling parent (references a parent that doesn't exist or is nil)
 		if place.ParentID != "" {
-			if _, ok := archive.Places[place.ParentID]; !ok {
+			if parent, ok := archive.Places[place.ParentID]; !ok || parent == nil {
 				a.DanglingParent = append(a.DanglingParent, id)
 				a.DanglingParentIDs[id] = place.ParentID
 			}
@@ -152,6 +152,7 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 	for name, ids := range a.Duplicates {
 		if len(ids) < 2 {
 			delete(a.Duplicates, name)
+			delete(a.DuplicateOriginals, name)
 		}
 	}
 
@@ -209,10 +210,12 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 		}
 	}
 
-	// Places referenced as parents
+	// Places referenced as parents (only if the parent exists and is non-nil)
 	for _, place := range archive.Places {
 		if place != nil && place.ParentID != "" {
-			referenced[place.ParentID] = struct{}{}
+			if parent, ok := archive.Places[place.ParentID]; ok && parent != nil {
+				referenced[place.ParentID] = struct{}{}
+			}
 		}
 	}
 
