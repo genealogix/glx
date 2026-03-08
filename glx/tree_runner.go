@@ -36,9 +36,118 @@ var parentChildRelTypes = map[string]bool{
 type treeNode struct {
 	PersonID string
 	Name     string
-	Dates    string // "(b. 1850 – d. 1920)" or similar
+	Dates    string // "(1850 – 1920)" or similar
 	RelType  string // relationship type connecting to parent/child
 	Children []*treeNode
+}
+
+// relatedPerson holds a person ID and the relationship type connecting them.
+type relatedPerson struct {
+	personID string
+	relType  string
+}
+
+// treeContext holds the archive and prebuilt adjacency indexes for efficient
+// tree traversal without repeated O(relationships) scans.
+type treeContext struct {
+	archive  *glxlib.GLXFile
+	parents  map[string][]relatedPerson // child ID → parents
+	children map[string][]relatedPerson // parent ID → children
+}
+
+// newTreeContext builds a treeContext with precomputed parent/child indexes.
+func newTreeContext(archive *glxlib.GLXFile) *treeContext {
+	return &treeContext{
+		archive:  archive,
+		parents:  buildParentIndex(archive),
+		children: buildChildIndex(archive),
+	}
+}
+
+// buildParentIndex scans all relationships once and returns a map from
+// child ID to their parents.
+func buildParentIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
+	index := make(map[string][]relatedPerson)
+
+	for _, rel := range archive.Relationships {
+		if !parentChildRelTypes[rel.Type] {
+			continue
+		}
+
+		var parentIDs []string
+		var childIDs []string
+		for _, p := range rel.Participants {
+			switch p.Role {
+			case "parent":
+				parentIDs = append(parentIDs, p.Person)
+			case "child":
+				childIDs = append(childIDs, p.Person)
+			}
+		}
+
+		for _, childID := range childIDs {
+			for _, parentID := range parentIDs {
+				index[childID] = append(index[childID], relatedPerson{
+					personID: parentID,
+					relType:  rel.Type,
+				})
+			}
+		}
+	}
+
+	for id := range index {
+		sortRelatedPersons(index[id])
+	}
+
+	return index
+}
+
+// buildChildIndex scans all relationships once and returns a map from
+// parent ID to their children.
+func buildChildIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
+	index := make(map[string][]relatedPerson)
+
+	for _, rel := range archive.Relationships {
+		if !parentChildRelTypes[rel.Type] {
+			continue
+		}
+
+		var parentIDs []string
+		var childIDs []string
+		for _, p := range rel.Participants {
+			switch p.Role {
+			case "parent":
+				parentIDs = append(parentIDs, p.Person)
+			case "child":
+				childIDs = append(childIDs, p.Person)
+			}
+		}
+
+		for _, parentID := range parentIDs {
+			for _, childID := range childIDs {
+				index[parentID] = append(index[parentID], relatedPerson{
+					personID: childID,
+					relType:  rel.Type,
+				})
+			}
+		}
+	}
+
+	for id := range index {
+		sortRelatedPersons(index[id])
+	}
+
+	return index
+}
+
+// findParents returns the parents of a person using the prebuilt index.
+func findParents(tc *treeContext, personID string) []relatedPerson {
+	return tc.parents[personID]
+}
+
+// findChildren returns the children of a person using the prebuilt index.
+func findChildren(tc *treeContext, personID string) []relatedPerson {
+	return tc.children[personID]
 }
 
 // showAncestors loads the archive and prints the ancestor tree for a person.
@@ -52,7 +161,8 @@ func showAncestors(archivePath, personID string, maxGen int) error {
 		return fmt.Errorf("person %q not found in archive", personID)
 	}
 
-	root := buildAncestorTree(archive, personID, maxGen, 0, make(map[string]bool))
+	tc := newTreeContext(archive)
+	root := buildAncestorTree(tc, personID, maxGen, 0, make(map[string]bool))
 	printTree(root, "", true)
 
 	return nil
@@ -69,28 +179,33 @@ func showDescendants(archivePath, personID string, maxGen int) error {
 		return fmt.Errorf("person %q not found in archive", personID)
 	}
 
-	root := buildDescendantTree(archive, personID, maxGen, 0, make(map[string]bool))
+	tc := newTreeContext(archive)
+	root := buildDescendantTree(tc, personID, maxGen, 0, make(map[string]bool))
 	printTree(root, "", true)
 
 	return nil
 }
 
 // buildAncestorTree recursively builds the ancestor tree for a person.
-func buildAncestorTree(archive *glxlib.GLXFile, personID string, maxGen, depth int, visited map[string]bool) *treeNode {
-	node := makeTreeNode(archive, personID)
+// The visited map uses path-scoped cycle detection: entries are marked on entry
+// and unmarked on return, allowing the same person to appear via multiple
+// legitimate paths (pedigree collapse).
+func buildAncestorTree(tc *treeContext, personID string, maxGen, depth int, visited map[string]bool) *treeNode {
+	node := makeTreeNode(tc.archive, personID)
 
 	if visited[personID] {
 		return node
 	}
 	visited[personID] = true
+	defer delete(visited, personID)
 
 	if maxGen > 0 && depth >= maxGen {
 		return node
 	}
 
-	parents := findParents(archive, personID)
+	parents := findParents(tc, personID)
 	for _, p := range parents {
-		child := buildAncestorTree(archive, p.personID, maxGen, depth+1, visited)
+		child := buildAncestorTree(tc, p.personID, maxGen, depth+1, visited)
 		child.RelType = p.relType
 		node.Children = append(node.Children, child)
 	}
@@ -99,98 +214,30 @@ func buildAncestorTree(archive *glxlib.GLXFile, personID string, maxGen, depth i
 }
 
 // buildDescendantTree recursively builds the descendant tree for a person.
-func buildDescendantTree(archive *glxlib.GLXFile, personID string, maxGen, depth int, visited map[string]bool) *treeNode {
-	node := makeTreeNode(archive, personID)
+// The visited map uses path-scoped cycle detection: entries are marked on entry
+// and unmarked on return, allowing the same person to appear via multiple
+// legitimate paths (pedigree collapse).
+func buildDescendantTree(tc *treeContext, personID string, maxGen, depth int, visited map[string]bool) *treeNode {
+	node := makeTreeNode(tc.archive, personID)
 
 	if visited[personID] {
 		return node
 	}
 	visited[personID] = true
+	defer delete(visited, personID)
 
 	if maxGen > 0 && depth >= maxGen {
 		return node
 	}
 
-	children := findChildren(archive, personID)
+	children := findChildren(tc, personID)
 	for _, c := range children {
-		child := buildDescendantTree(archive, c.personID, maxGen, depth+1, visited)
+		child := buildDescendantTree(tc, c.personID, maxGen, depth+1, visited)
 		child.RelType = c.relType
 		node.Children = append(node.Children, child)
 	}
 
 	return node
-}
-
-// relatedPerson holds a person ID and the relationship type connecting them.
-type relatedPerson struct {
-	personID string
-	relType  string
-}
-
-// findParents finds all parents of a person by scanning relationships.
-func findParents(archive *glxlib.GLXFile, personID string) []relatedPerson {
-	var parents []relatedPerson
-
-	for _, rel := range archive.Relationships {
-		if !parentChildRelTypes[rel.Type] {
-			continue
-		}
-
-		isChild := false
-		for _, p := range rel.Participants {
-			if p.Person == personID && p.Role == "child" {
-				isChild = true
-				break
-			}
-		}
-
-		if !isChild {
-			continue
-		}
-
-		for _, p := range rel.Participants {
-			if p.Role == "parent" {
-				parents = append(parents, relatedPerson{personID: p.Person, relType: rel.Type})
-			}
-		}
-	}
-
-	sortRelatedPersons(parents)
-
-	return parents
-}
-
-// findChildren finds all children of a person by scanning relationships.
-func findChildren(archive *glxlib.GLXFile, personID string) []relatedPerson {
-	var children []relatedPerson
-
-	for _, rel := range archive.Relationships {
-		if !parentChildRelTypes[rel.Type] {
-			continue
-		}
-
-		isParent := false
-		for _, p := range rel.Participants {
-			if p.Person == personID && p.Role == "parent" {
-				isParent = true
-				break
-			}
-		}
-
-		if !isParent {
-			continue
-		}
-
-		for _, p := range rel.Participants {
-			if p.Role == "child" {
-				children = append(children, relatedPerson{personID: p.Person, relType: rel.Type})
-			}
-		}
-	}
-
-	sortRelatedPersons(children)
-
-	return children
 }
 
 // sortRelatedPersons sorts related persons by person ID for deterministic output.
@@ -268,15 +315,16 @@ func formatNodeLabel(node *treeNode) string {
 
 // formatRelType converts a relationship type to a human-readable label.
 func formatRelType(relType string) string {
-	labels := map[string]string{
-		"biological_parent_child": "biological",
-		"adoptive_parent_child":   "adoptive",
-		"foster_parent_child":     "foster",
-		"step_parent":             "step",
+	switch relType {
+	case "biological_parent_child":
+		return "biological"
+	case "adoptive_parent_child":
+		return "adoptive"
+	case "foster_parent_child":
+		return "foster"
+	case "step_parent":
+		return "step"
+	default:
+		return relType
 	}
-	if label, ok := labels[relType]; ok {
-		return label
-	}
-
-	return relType
 }

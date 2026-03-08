@@ -75,8 +75,9 @@ func threeGenArchive() *glxlib.GLXFile {
 
 func TestFindParents(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	parents := findParents(archive, "person-child")
+	parents := findParents(tc, "person-child")
 	assert.Len(t, parents, 2)
 
 	ids := []string{parents[0].personID, parents[1].personID}
@@ -86,15 +87,17 @@ func TestFindParents(t *testing.T) {
 
 func TestFindParents_NoParents(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	parents := findParents(archive, "person-grandpa")
+	parents := findParents(tc, "person-grandpa")
 	assert.Empty(t, parents)
 }
 
 func TestFindChildren(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	children := findChildren(archive, "person-father")
+	children := findChildren(tc, "person-father")
 	assert.Len(t, children, 2)
 
 	ids := []string{children[0].personID, children[1].personID}
@@ -104,15 +107,17 @@ func TestFindChildren(t *testing.T) {
 
 func TestFindChildren_NoChildren(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	children := findChildren(archive, "person-child")
+	children := findChildren(tc, "person-child")
 	assert.Empty(t, children)
 }
 
 func TestFindChildren_AdoptiveRelType(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	children := findChildren(archive, "person-father")
+	children := findChildren(tc, "person-father")
 	for _, c := range children {
 		if c.personID == "person-adopted" {
 			assert.Equal(t, "adoptive_parent_child", c.relType)
@@ -124,8 +129,9 @@ func TestFindChildren_AdoptiveRelType(t *testing.T) {
 
 func TestBuildAncestorTree(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	root := buildAncestorTree(archive, "person-child", 0, 0, make(map[string]bool))
+	root := buildAncestorTree(tc, "person-child", 0, 0, make(map[string]bool))
 
 	assert.Equal(t, "person-child", root.PersonID)
 	assert.Equal(t, "Child Smith", root.Name)
@@ -144,8 +150,9 @@ func TestBuildAncestorTree(t *testing.T) {
 
 func TestBuildAncestorTree_MaxGen(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	root := buildAncestorTree(archive, "person-child", 1, 0, make(map[string]bool))
+	root := buildAncestorTree(tc, "person-child", 1, 0, make(map[string]bool))
 
 	assert.Equal(t, "person-child", root.PersonID)
 	assert.Len(t, root.Children, 2) // father, mother
@@ -158,8 +165,9 @@ func TestBuildAncestorTree_MaxGen(t *testing.T) {
 
 func TestBuildDescendantTree(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	root := buildDescendantTree(archive, "person-grandpa", 0, 0, make(map[string]bool))
+	root := buildDescendantTree(tc, "person-grandpa", 0, 0, make(map[string]bool))
 
 	assert.Equal(t, "person-grandpa", root.PersonID)
 	assert.Len(t, root.Children, 1) // father
@@ -171,8 +179,9 @@ func TestBuildDescendantTree(t *testing.T) {
 
 func TestBuildDescendantTree_MaxGen(t *testing.T) {
 	archive := threeGenArchive()
+	tc := newTreeContext(archive)
 
-	root := buildDescendantTree(archive, "person-grandpa", 1, 0, make(map[string]bool))
+	root := buildDescendantTree(tc, "person-grandpa", 1, 0, make(map[string]bool))
 
 	assert.Len(t, root.Children, 1)
 	assert.Empty(t, root.Children[0].Children) // generation limit
@@ -202,8 +211,10 @@ func TestBuildAncestorTree_CycleDetection(t *testing.T) {
 		},
 	}
 
+	tc := newTreeContext(archive)
+
 	// Should terminate without infinite loop
-	root := buildAncestorTree(archive, "person-a", 0, 0, make(map[string]bool))
+	root := buildAncestorTree(tc, "person-a", 0, 0, make(map[string]bool))
 	assert.Equal(t, "person-a", root.PersonID)
 }
 
@@ -274,7 +285,8 @@ func TestFindParents_IgnoresNonParentChild(t *testing.T) {
 		},
 	}
 
-	parents := findParents(archive, "person-a")
+	tc := newTreeContext(archive)
+	parents := findParents(tc, "person-a")
 	assert.Empty(t, parents)
 }
 
