@@ -273,7 +273,7 @@ type Assertion struct {
 	Subject     EntityRef    `yaml:"subject"`
 	Property    string       `yaml:"property,omitempty"`    // Optional, not present if participant exists
 	Value       string       `yaml:"value,omitempty"`       // Not present if participant exists
-	Date        string       `yaml:"date,omitempty"`        // For temporal properties
+	Date        DateString   `yaml:"date,omitempty"`        // For temporal properties
 	Participant *Participant `yaml:"participant,omitempty"` // Not present if property/value exists
 	Confidence  string       `refType:"confidence_levels"  yaml:"confidence,omitempty"`
 	Status      string       `yaml:"status,omitempty"`
@@ -315,9 +315,8 @@ type EventType struct {
 
 // ParticipantRole represents a standard participant role vocabulary entry.
 type ParticipantRole struct {
-	Label       string   `yaml:"label"`
-	Description string   `yaml:"description,omitempty"`
-	AppliesTo   []string `yaml:"applies_to,omitempty"`
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
 }
 
 // ConfidenceLevel represents a standard confidence level vocabulary entry.

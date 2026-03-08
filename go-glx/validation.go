@@ -964,6 +964,11 @@ func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
 			glx.validateDateFormat(EntityTypeMedia, id, "date", string(media.Date), result)
 		}
 	}
+	for id, assertion := range glx.Assertions {
+		if assertion.Date != "" {
+			glx.validateDateFormat(EntityTypeAssertions, id, "date", string(assertion.Date), result)
+		}
+	}
 
 	// Validate repository website URLs
 	for id, repo := range glx.Repositories {
