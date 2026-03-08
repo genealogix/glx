@@ -54,6 +54,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
+	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
 }
 
@@ -228,6 +229,8 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 // Validate Command
 // ============================================================================
 
+var validateReport bool
+
 var validateCmd = &cobra.Command{
 	Use:   "validate [paths...]",
 	Short: "Validate GLX files and cross-references",
@@ -244,7 +247,10 @@ Performs comprehensive validation including:
 Validation behavior:
 - Single file: Validates file structure only, skips cross-reference checks
 - Directory: Validates all .glx files with full cross-reference validation
-- No arguments: Validates current directory with full cross-reference validation`,
+- No arguments: Validates current directory with full cross-reference validation
+
+Use --report to generate a confidence summary showing assertion coverage
+and highlighting unsupported claims.`,
 	Example: `  # Validate current directory (with cross-reference checks)
   glx validate
 
@@ -255,11 +261,31 @@ Validation behavior:
   glx validate persons/ events/ places/
 
   # Validate single file (structure only, no cross-reference checks)
-  glx validate archive.glx`,
+  glx validate archive.glx
+
+  # Generate confidence summary report
+  glx validate --report
+  glx validate path/to/archive --report`,
 	RunE: runValidate,
 }
 
+func init() {
+	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+}
+
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateReport {
+		if len(args) > 1 {
+			return fmt.Errorf("--report accepts at most one path argument")
+		}
+		path := "."
+		if len(args) == 1 {
+			path = args[0]
+		}
+
+		return confidenceReport(path)
+	}
+
 	return validatePaths(args)
 }
 
@@ -360,6 +386,85 @@ func runJoin(_ *cobra.Command, args []string) error {
 }
 
 // ============================================================================
+// Query Command
+// ============================================================================
+
+var (
+	queryArchive    string
+	queryName       string
+	queryBornBefore int
+	queryBornAfter  int
+	queryType       string
+	queryBefore     int
+	queryAfter      int
+	queryConfidence string
+	queryStatus     string
+)
+
+var queryCmd = &cobra.Command{
+	Use:   "query <entity-type>",
+	Short: "Query entities in a GLX archive",
+	Long: `Filter and list entities from a GENEALOGIX archive.
+
+Supported entity types: persons, events, assertions, sources,
+relationships, places, citations, repositories, media.
+
+Filters vary by entity type:
+  persons:       --name, --born-before, --born-after
+  events:        --type, --before, --after
+  assertions:    --confidence, --status
+  sources:       --name, --type
+  relationships: --type
+  places:        --name
+  repositories:  --name
+
+All entity types support --archive to specify the archive path.`,
+	Example: `  # Find persons born before 1850
+  glx query persons --born-before 1850
+
+  # Find low-confidence assertions
+  glx query assertions --confidence low
+
+  # Find marriage events
+  glx query events --type marriage
+
+  # Find persons by name in a specific archive
+  glx query persons --name "Smith" --archive my-archive
+
+  # List all sources
+  glx query sources`,
+	Args:      cobra.ExactValidArgs(1),
+	ValidArgs: queryEntityTypes,
+	RunE:      runQuery,
+}
+
+func init() {
+	queryCmd.Flags().StringVarP(&queryArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	queryCmd.Flags().StringVar(&queryName, "name", "", "Filter by name (substring match, case-insensitive)")
+	queryCmd.Flags().IntVar(&queryBornBefore, "born-before", 0, "Filter persons born before this year")
+	queryCmd.Flags().IntVar(&queryBornAfter, "born-after", 0, "Filter persons born after this year")
+	queryCmd.Flags().StringVar(&queryType, "type", "", "Filter by type (event type, relationship type, etc.)")
+	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
+	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
+	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+}
+
+func runQuery(_ *cobra.Command, args []string) error {
+	return queryEntities(args[0], queryOpts{
+		Archive:    queryArchive,
+		Name:       queryName,
+		BornBefore: queryBornBefore,
+		BornAfter:  queryBornAfter,
+		Type:       queryType,
+		Before:     queryBefore,
+		After:      queryAfter,
+		Confidence: queryConfidence,
+		Status:     queryStatus,
+	})
+}
+
+// ============================================================================
 // Stats Command
 // ============================================================================
 
@@ -393,3 +498,4 @@ func runStats(_ *cobra.Command, args []string) error {
 
 	return showStats(path)
 }
+

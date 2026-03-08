@@ -13,6 +13,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
+- 🔎 **Query** - Filter and list entities from an archive by name, date, type, and more
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - 70.5% code coverage with comprehensive test fixtures
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -120,6 +121,15 @@ glx join family-archive combined.glx
 # Show a stats dashboard for an archive
 glx stats family-archive
 
+# Query persons born before 1850
+glx query persons --born-before 1850
+
+# Find all marriage events
+glx query events --type marriage
+
+# List all sources
+glx query sources
+
 # Validate specific files or directories
 glx validate persons/
 glx validate archive.glx
@@ -192,7 +202,11 @@ Validate GLX files and verify cross-references.
 **Usage:**
 ```bash
 glx validate [paths...]
+glx validate [path] --report
 ```
+
+**Options:**
+- `--report` - Generate confidence summary report (assertion coverage and gaps)
 
 **Validation Checks:**
 - ✓ YAML syntax correctness
@@ -225,6 +239,10 @@ glx validate archive.glx
 
 # Validate example archives
 glx validate ../docs/examples/complete-family/
+
+# Generate confidence summary report
+glx validate --report
+glx validate path/to/archive --report
 ```
 
 **Output:**
@@ -427,6 +445,102 @@ Entity coverage (referenced by assertions):
 ```
 
 > **Note:** The confidence distribution lists standard levels first (high, medium, low, disputed), then any custom levels alphabetically, with `(unset)` last. The coverage section shows `-` for entity types with no entries in the archive.
+
+### `glx query`
+
+Filter and list entities from a GENEALOGIX archive. Supports all nine entity types with type-specific filter flags.
+
+**Usage:**
+```bash
+glx query <entity-type> [flags]
+```
+
+**Arguments:**
+- `<entity-type>` - One of: `persons`, `events`, `assertions`, `sources`, `relationships`, `places`, `citations`, `repositories`, `media`
+
+**Common options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+
+**Type-specific filter options:**
+
+| Entity type    | Supported flags                          |
+| -------------- | ---------------------------------------- |
+| `persons`      | `--name`, `--born-before`, `--born-after` |
+| `events`       | `--type`, `--before`, `--after`          |
+| `assertions`   | `--confidence`, `--status`               |
+| `sources`      | `--name`, `--type`                       |
+| `relationships`| `--type`                                 |
+| `places`       | `--name`                                 |
+| `repositories` | `--name`                                 |
+| `citations`    | _(no filters)_                           |
+| `media`        | _(no filters)_                           |
+
+**All filter options:**
+- `--name <string>` - Filter by name (substring match, case-insensitive)
+- `--born-before <year>` - Filter persons born before this year
+- `--born-after <year>` - Filter persons born after this year
+- `--type <string>` - Filter by type (event type, relationship type, or source type)
+- `--before <year>` - Filter events with date before this year
+- `--after <year>` - Filter events with date after this year
+- `--confidence <string>` - Filter assertions by confidence level (e.g. `high`, `medium`, `low`)
+- `--status <string>` - Filter assertions by status
+
+**Examples:**
+
+```bash
+# List all persons in the current archive
+glx query persons
+
+# Find persons with "Smith" in their name
+glx query persons --name "Smith"
+
+# Find persons born before 1850
+glx query persons --born-before 1850
+
+# Find persons born between 1800 and 1860
+glx query persons --born-after 1800 --born-before 1860
+
+# List all marriage events
+glx query events --type marriage
+
+# Find events before 1900
+glx query events --before 1900
+
+# List low-confidence assertions
+glx query assertions --confidence low
+
+# Find disputed assertions with a specific status
+glx query assertions --confidence disputed --status reviewed
+
+# Find sources by title keyword
+glx query sources --name "census"
+
+# Find sources of a specific type
+glx query sources --type vital-record
+
+# Find parent-child relationships
+glx query relationships --type parent-child
+
+# Find places by name in a specific archive
+glx query places --name "London" --archive family-archive
+
+# List all citations in a single-file archive
+glx query citations --archive family.glx
+
+# List all repositories
+glx query repositories
+```
+
+**Output:**
+```
+  person-a3f8d2c1  John Smith  (b. 1842-03-15 – d. 1901-07-22)
+  person-b7c1e4f2  Mary Brown  (b. 1848)
+  person-d9a2f6b3  Thomas Smith  (b. ABT 1870)
+
+3 person(s) found
+```
+
+> **Note:** Name matching is case-insensitive and matches any substring. Year filters use the first four-digit year found in a date string, so formats like `ABT 1850`, `BEF 1920-01-15`, and `BET 1880 AND 1890` are all supported.
 
 ## File Format
 

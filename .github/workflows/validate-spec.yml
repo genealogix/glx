@@ -9,7 +9,7 @@ jobs:
   validate-schemas:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -22,7 +22,7 @@ jobs:
   validate-examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -45,7 +45,7 @@ jobs:
   test-conformance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       
       - name: Set up Go
         uses: actions/setup-go@v4
