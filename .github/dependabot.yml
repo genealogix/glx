@@ -7,9 +7,6 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
-  # NOTE: package-lock.json is gitignored, so Dependabot can only bump
-  # version ranges in package.json. Patch/minor updates already within
-  # range won't produce PRs.
   - package-ecosystem: npm
     directory: /website
     schedule:
