@@ -141,8 +141,7 @@ func TestCollectVitals(t *testing.T) {
 				},
 			},
 			"event-marriage-john": {
-				Title: "1875 Marriage — Smith & Jones",
-				Type:  "marriage",
+				Type: "marriage",
 				Date:  "1875-05-10",
 				Participants: []glxlib.Participant{
 					{Person: "person-john", Role: "groom"},

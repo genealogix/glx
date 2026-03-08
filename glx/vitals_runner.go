@@ -221,9 +221,6 @@ func findOtherEvents(personID string, archive *glxlib.GLXFile) []vitalRecord {
 		}
 
 		label := strings.ToUpper(event.Type[:1]) + event.Type[1:]
-		if event.Title != "" {
-			label = event.Title
-		}
 
 		value := formatEventDatePlace(event, archive)
 		if value == "" {
