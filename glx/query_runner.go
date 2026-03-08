@@ -431,7 +431,8 @@ func extractDateYear(dateStr string) int {
 	return year
 }
 
-// containsFold checks if s contains substr (case-insensitive).
+// containsFold checks if s contains lowerSubstr (case-insensitive).
+// lowerSubstr must already be in lowercase; callers should pre-lowercase the needle.
 func containsFold(s, lowerSubstr string) bool {
 	return strings.Contains(strings.ToLower(s), lowerSubstr)
 }
