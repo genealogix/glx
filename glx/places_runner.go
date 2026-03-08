@@ -101,6 +101,9 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 
 	// Build canonical paths and detect issues
 	for id, place := range archive.Places {
+		if place == nil {
+			continue
+		}
 		a.Canonical[id] = buildCanonicalPath(id, archive.Places)
 
 		// Track names for duplicate detection (skip empty names)
@@ -175,7 +178,7 @@ func buildCanonicalPath(placeID string, places map[string]*glxlib.Place) string 
 		visited[current] = true
 
 		place, ok := places[current]
-		if !ok {
+		if !ok || place == nil {
 			break
 		}
 		name := strings.TrimSpace(place.Name)
@@ -194,21 +197,21 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	referenced := make(map[string]struct{})
 
 	for _, event := range archive.Events {
-		if event.PlaceID != "" {
+		if event != nil && event.PlaceID != "" {
 			referenced[event.PlaceID] = struct{}{}
 		}
 	}
 
 	// Places referenced as assertion subjects
 	for _, a := range archive.Assertions {
-		if a.Subject.Place != "" {
+		if a != nil && a.Subject.Place != "" {
 			referenced[a.Subject.Place] = struct{}{}
 		}
 	}
 
 	// Places referenced as parents
 	for _, place := range archive.Places {
-		if place.ParentID != "" {
+		if place != nil && place.ParentID != "" {
 			referenced[place.ParentID] = struct{}{}
 		}
 	}
