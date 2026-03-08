@@ -53,7 +53,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
-
+	rootCmd.AddCommand(statsCmd)
 }
 
 // ============================================================================
@@ -304,3 +304,37 @@ func runJoin(_ *cobra.Command, args []string) error {
 	return joinArchive(args[0], args[1], !joinNoValidate, joinVerbose, joinShowFirstErrors)
 }
 
+// ============================================================================
+// Stats Command
+// ============================================================================
+
+var statsCmd = &cobra.Command{
+	Use:   "stats [path]",
+	Short: "Show summary statistics for a GLX archive",
+	Long: `Display a summary dashboard of a GENEALOGIX archive.
+
+Shows entity counts, assertion confidence distribution, and entity coverage
+metrics for quick feedback on archive health.
+
+Accepts either a multi-file directory or a single .glx file.
+If no path is given, uses the current directory.`,
+	Example: `  # Stats for current directory
+  glx stats
+
+  # Stats for a specific archive directory
+  glx stats my-family-archive
+
+  # Stats for a single-file archive
+  glx stats family.glx`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runStats,
+}
+
+func runStats(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	return showStats(path)
+}

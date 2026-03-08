@@ -344,6 +344,99 @@ func (glx *GLXFile) validateAllProperties(result *ValidationResult) {
 	glx.validateEntityProperties(EntityTypeRepositories, PropRepositoryProperties, glx.Repositories, result.PropertyVocabs[PropRepositoryProperties], result)
 	glx.validateEntityProperties(EntityTypeCitations, PropCitationProperties, glx.Citations, result.PropertyVocabs[PropCitationProperties], result)
 	glx.validateEntityProperties(EntityTypeSources, PropSourceProperties, glx.Sources, result.PropertyVocabs[PropSourceProperties], result)
+
+	// Validate participant properties against the vocabulary matching their parent entity.
+	eventPropVocab := result.PropertyVocabs[PropEventProperties]
+	relPropVocab := result.PropertyVocabs[PropRelationshipProperties]
+	glx.validateParticipantProperties(EntityTypeEvents, PropEventProperties, glx.Events, eventPropVocab, result)
+	glx.validateParticipantProperties(EntityTypeRelationships, PropRelationshipProperties, glx.Relationships, relPropVocab, result)
+	glx.validateAssertionParticipantProperties(eventPropVocab, result)
+}
+
+// validateAssertionParticipantProperties validates properties on assertion participants.
+// Unlike events and relationships, assertions have no top-level Properties field, so
+// this is the only place where "missing vocab" warnings for assertion participants
+// can be emitted.
+func (glx *GLXFile) validateAssertionParticipantProperties(
+	propVocab map[string]*PropertyDefinition,
+	result *ValidationResult,
+) {
+	for assertionID, assertion := range glx.Assertions {
+		if assertion.Participant == nil || len(assertion.Participant.Properties) == 0 {
+			continue
+		}
+		participantEntityID := assertionID + " participant"
+		glx.validateProperties(EntityTypeAssertions, participantEntityID, PropEventProperties, assertion.Participant.Properties, propVocab, result)
+	}
+}
+
+// validateParticipantProperties validates the properties field on participants
+// within entities that have a Participants field, using the specified property vocabulary.
+// When no vocabulary is loaded, entity-level validation already warns once per entity,
+// so we skip participant-level calls to avoid duplicate "missing vocab" warnings.
+func (glx *GLXFile) validateParticipantProperties(
+	entityType string,
+	propVocabKey string,
+	entities any,
+	propVocab map[string]*PropertyDefinition,
+	result *ValidationResult,
+) {
+	entitiesVal := reflect.ValueOf(entities)
+	if entitiesVal.Kind() != reflect.Map {
+		return
+	}
+	for _, key := range entitiesVal.MapKeys() {
+		entityID := key.String()
+		entity := entitiesVal.MapIndex(key).Elem()
+		participantsField := entity.FieldByName("Participants")
+		if !participantsField.IsValid() {
+			continue
+		}
+		if len(propVocab) == 0 {
+			// Check if any participant has properties — if so, emit one warning per entity.
+			hasParticipantProps := false
+			for i := range participantsField.Len() {
+				p := participantsField.Index(i)
+				pf := p.FieldByName("Properties")
+				if pf.IsValid() && !pf.IsNil() {
+					if props, ok := pf.Interface().(map[string]any); ok && len(props) > 0 {
+						hasParticipantProps = true
+						break
+					}
+				}
+			}
+			// Only warn if the entity-level check won't already warn (i.e., entity has no top-level properties).
+			if hasParticipantProps {
+				topProps := entity.FieldByName("Properties")
+				entityAlreadyWarns := false
+				if topProps.IsValid() && !topProps.IsNil() {
+					if props, ok := topProps.Interface().(map[string]any); ok && len(props) > 0 {
+						entityAlreadyWarns = true
+					}
+				}
+				if !entityAlreadyWarns {
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: entityType,
+						SourceID:   entityID,
+						Field:      "participants.properties",
+						Message:    fmt.Sprintf("%s[%s]: has properties but no %s vocabulary was found", entityType, entityID, propVocabKey),
+					})
+				}
+			}
+			continue
+		}
+		for i := range participantsField.Len() {
+			participant := participantsField.Index(i)
+			propsField := participant.FieldByName("Properties")
+			if !propsField.IsValid() || propsField.IsNil() {
+				continue
+			}
+			if properties, ok := propsField.Interface().(map[string]any); ok {
+				participantEntityID := fmt.Sprintf("%s participants[%d]", entityID, i)
+				glx.validateProperties(entityType, participantEntityID, propVocabKey, properties, propVocab, result)
+			}
+		}
+	}
 }
 
 // validateEntityProperties iterates over entities and validates their properties.
