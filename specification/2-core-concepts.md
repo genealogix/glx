@@ -357,7 +357,7 @@ persons:
       born_on: "1850-01-15"
       born_at: "place-leeds"
       occupation: "blacksmith"
-      residence: "place-leeds"
+      residence: "place-leeds"  # Single-value shorthand; see Temporal Properties for list format
 ```
 
 ### Defined by Property Vocabularies
@@ -693,7 +693,7 @@ Repository → Source → Citation → Assertion → Property
     ↓          ↓         ↓          ↓           ↓
  Physical   Original  Specific  Evidence-   Concluded
  Location   Material  Reference  Based      Value on
-                                 Property   Entity
+                                 Claim      Entity
 ```
 
 Each level provides context and traceability for research. Here's a complete example showing all links in the chain:
