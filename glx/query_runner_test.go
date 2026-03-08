@@ -137,6 +137,97 @@ func TestQueryNonexistentArchive(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestAssertionReferencesSource_DirectSource(t *testing.T) {
+	archive := &glxlib.GLXFile{}
+	a := &glxlib.Assertion{
+		Sources: []string{"source-abc", "source-def"},
+	}
+
+	assert.True(t, assertionReferencesSource(a, archive, "source-abc"))
+	assert.True(t, assertionReferencesSource(a, archive, "source-def"))
+	assert.False(t, assertionReferencesSource(a, archive, "source-xyz"))
+}
+
+func TestAssertionReferencesSource_ViaCitation(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Citations: map[string]*glxlib.Citation{
+			"cit-1": {SourceID: "source-abc"},
+			"cit-2": {SourceID: "source-def"},
+		},
+	}
+	a := &glxlib.Assertion{
+		Citations: []string{"cit-1", "cit-2"},
+	}
+
+	assert.True(t, assertionReferencesSource(a, archive, "source-abc"))
+	assert.True(t, assertionReferencesSource(a, archive, "source-def"))
+	assert.False(t, assertionReferencesSource(a, archive, "source-xyz"))
+}
+
+func TestAssertionReferencesSource_MissingCitation(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Citations: map[string]*glxlib.Citation{},
+	}
+	a := &glxlib.Assertion{
+		Citations: []string{"cit-nonexistent"},
+	}
+
+	assert.False(t, assertionReferencesSource(a, archive, "source-abc"))
+}
+
+func TestQueryAssertions_SourceFilter(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {
+				Subject: glxlib.EntityRef{Person: "person-1"},
+				Sources: []string{"source-abc"},
+			},
+			"a-2": {
+				Subject:   glxlib.EntityRef{Person: "person-2"},
+				Citations: []string{"cit-1"},
+			},
+			"a-3": {
+				Subject: glxlib.EntityRef{Person: "person-3"},
+				Sources: []string{"source-other"},
+			},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"cit-1": {SourceID: "source-abc"},
+		},
+	}
+
+	// queryAssertions prints to stdout; just verify no error and correct filtering
+	err := queryAssertions(archive, queryOpts{Source: "source-abc"})
+	require.NoError(t, err)
+}
+
+func TestQueryAssertions_CitationFilter(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {
+				Subject:   glxlib.EntityRef{Person: "person-1"},
+				Citations: []string{"cit-1", "cit-2"},
+			},
+			"a-2": {
+				Subject:   glxlib.EntityRef{Person: "person-2"},
+				Citations: []string{"cit-3"},
+			},
+		},
+	}
+
+	err := queryAssertions(archive, queryOpts{Citation: "cit-1"})
+	require.NoError(t, err)
+}
+
+func TestQueryUnsupportedFlag_SourceOnPersons(t *testing.T) {
+	err := queryEntities("persons", queryOpts{
+		Archive: "../docs/examples/basic-family",
+		Source:  "source-abc",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not supported for entity type")
+}
+
 func TestExtractDateYear(t *testing.T) {
 	tests := []struct {
 		input string
