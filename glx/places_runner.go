@@ -77,7 +77,7 @@ type placeAnalysis struct {
 	DuplicateOriginals map[string]string   // normalized name -> first original-cased name seen
 	MissingCoords      []string            // placeIDs without coordinates
 	MissingType        []string            // placeIDs without a type
-	NoParent           []string            // non-country placeIDs without a parent
+	NoParent           []string            // non-country/region placeIDs without a parent
 	DanglingParent     []string            // placeIDs whose parent doesn't exist
 	DanglingParentIDs  map[string]string   // placeID -> missing parent ID
 	Unreferenced       []string            // placeIDs not referenced by any event, assertion, or parent
@@ -92,7 +92,6 @@ var topLevelTypes = map[string]bool{
 // buildPlaceAnalysis analyzes all places in the archive.
 func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 	a := &placeAnalysis{
-		Total:              len(archive.Places),
 		Canonical:          make(map[string]string),
 		Duplicates:         make(map[string][]string),
 		DuplicateOriginals: make(map[string]string),
@@ -104,6 +103,7 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 		if place == nil {
 			continue
 		}
+		a.Total++
 		a.Canonical[id] = buildCanonicalPath(id, archive.Places)
 
 		// Track names for duplicate detection (skip empty names)
@@ -140,9 +140,12 @@ func buildPlaceAnalysis(archive *glxlib.GLXFile) *placeAnalysis {
 		}
 	}
 
-	// Find unreferenced places
+	// Find unreferenced places (skip nil entries)
 	referenced := collectReferencedPlaces(archive)
-	for id := range archive.Places {
+	for id, place := range archive.Places {
+		if place == nil {
+			continue
+		}
 		if _, ok := referenced[id]; !ok {
 			a.Unreferenced = append(a.Unreferenced, id)
 		}

@@ -233,7 +233,6 @@ func TestBuildPlaceAnalysis_NilParentIsDangling(t *testing.T) {
 	assert.Contains(t, a.DanglingParent, "place-child")
 	assert.Equal(t, "place-nil", a.DanglingParentIDs["place-child"])
 
-	// A nil place referenced only as a parent should still be unreferenced
-	// (since nil parents are not counted as valid references)
-	assert.Contains(t, a.Unreferenced, "place-nil")
+	// A nil place entry is skipped entirely (not included in Unreferenced)
+	assert.NotContains(t, a.Unreferenced, "place-nil")
 }

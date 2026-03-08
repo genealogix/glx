@@ -344,7 +344,7 @@ Reports:
 - Duplicate names: places that share the same name (ambiguous without context)
 - Missing coordinates: places without latitude/longitude
 - Missing type: places without a type classification
-- No parent: non-country places missing a parent (hierarchy gap)
+- No parent: non-country/region places missing a parent (hierarchy gap)
 - Dangling parent: places referencing a parent that doesn't exist in the archive
 - Unreferenced: places not used by any event, assertion, or as a parent
 

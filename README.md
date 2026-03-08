@@ -23,12 +23,6 @@ The official specification for **GENEALOGIX (GLX)** - a portable, extensible arc
 - [🛠 CLI](/cli)
 - [🧱 Dev Container](https://github.com/genealogix/glx/tree/main/.devcontainer)
 
-## Current Version
-
-**Version:** 0.0.0-beta.6
-**Status:** Beta
-**Last Updated:** 2025-11-18
-
 ## Why GENEALOGIX?
 
 Traditional genealogy formats like GEDCOM have served researchers well, but they have limitations in the modern collaborative research environment. GENEALOGIX addresses these challenges with a fresh approach.
