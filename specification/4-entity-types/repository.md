@@ -215,7 +215,7 @@ repositories/
 - `name` must be present and non-empty
 - `type` must be from the [repository types vocabulary](vocabularies#repository-types-vocabulary)
 - If `website` is specified, it should be a valid URL
-- Properties must be defined in the repository properties vocabulary
+- Properties should be from the [repository properties vocabulary](vocabularies#repository-properties-vocabulary) (unknown properties generate warnings)
 
 ## GEDCOM Mapping
 

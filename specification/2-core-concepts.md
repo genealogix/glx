@@ -51,7 +51,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `source-types.glx` | Vital records, census, church registers, etc. |
 | `repository-types.glx` | Archive, library, church, etc. |
 | `media-types.glx` | Photo, document, audio, etc. |
-| `participant-roles.glx` | Principal, witness, godparent, etc. |
+| `participant-roles.glx` | Subject, witness, godparent, etc. |
 | `confidence-levels.glx` | High, medium, low, disputed |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
