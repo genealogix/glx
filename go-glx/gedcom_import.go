@@ -287,6 +287,9 @@ type ConversionContext struct {
 	AssertionCounter     int
 	ParticipationCounter int
 
+	// HEAD submitter reference (SUBM xref from HEAD record)
+	SubmitterXRef string
+
 	// GEDCOM 7.0 specific
 	SharedNotes      map[string]string
 	ExtensionSchemas map[string]*ExtensionSchema
