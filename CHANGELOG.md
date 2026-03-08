@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 - **Added `glx places` command** - Analyze places for ambiguity and completeness: flags duplicate names, missing coordinates, missing types, hierarchy gaps, and unreferenced places with canonical hierarchy paths
+- **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
+- **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
 
 #### Build & Release
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
@@ -31,8 +33,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
 
+#### Participant Object
+- **Added `properties` to participants** - Participants across events, relationships, and assertions can now carry per-participant properties like `age_at_event`, enabling shared events (census, passenger lists) to record individual data without creating separate events per person
+- **Participant properties validated against parent entity vocabulary** - Event participant properties validated against event_properties, relationship participant properties against relationship_properties, assertion participant properties against event_properties
+
 #### Assertion Entity
 - **Added existential assertions** - Assertions no longer require `property` or `participant`; an assertion with only `subject` and evidence asserts the entity's existence, optionally at a specific `date` (#26)
+
+#### CLI
+- **Added `glx validate --report`** - Generates a confidence summary report showing assertion breakdown by confidence level, assertions without citations, and entities with no assertion coverage
+
+#### GEDCOM Import
+- **Import HEAD metadata** - GEDCOM HEAD record fields (export date, source file, copyright, language, source system/version/corporation, GEDCOM version, character set, notes) are now stored in a `metadata` section on the GLX archive instead of being discarded after logging
+- **Import SUBM metadata** - GEDCOM SUBM submitter information (name, address, phone, email, website) is now stored in `metadata.submitter` on the GLX archive
+
+#### Data Model
+- **Added `Metadata` type** - New top-level `metadata` field on GLX archives for storing import provenance information
+- **Added `Submitter` type** - Nested within metadata to hold submitter contact details
 
 ### Changed
 

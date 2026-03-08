@@ -78,6 +78,7 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 |-------|------|----------|-------------|
 | `person` | string | Yes | Reference to the person entity |
 | `role` | string | No | Role of the participant |
+| `properties` | object | No | Per-participant properties (validated against event_properties vocabulary) |
 | `notes` | string | No | Notes about this participant |
 
 ## Required Fields
