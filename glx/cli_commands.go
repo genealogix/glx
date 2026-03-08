@@ -55,6 +55,8 @@ func init() {
 	rootCmd.AddCommand(joinCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
+	rootCmd.AddCommand(ancestorsCmd)
+	rootCmd.AddCommand(descendantsCmd)
 }
 
 // ============================================================================
@@ -442,5 +444,85 @@ func runStats(_ *cobra.Command, args []string) error {
 	}
 
 	return showStats(path)
+}
+
+// ============================================================================
+// Ancestors Command
+// ============================================================================
+
+var (
+	ancestorsArchive string
+	ancestorsMaxGen  int
+)
+
+var ancestorsCmd = &cobra.Command{
+	Use:   "ancestors <person-id>",
+	Short: "Show ancestor tree for a person",
+	Long: `Display the ancestor tree for a person by traversing parent-child relationships.
+
+Walks up parent-child, biological, adoptive, foster, and step-parent
+relationships to build and display the full ancestor tree.
+
+Non-standard relationship types (adoptive, foster, step) are annotated
+in the output.`,
+	Example: `  # Show ancestors
+  glx ancestors person-abc123
+
+  # Limit to 3 generations
+  glx ancestors person-abc123 --generations 3
+
+  # Use a specific archive
+  glx ancestors person-abc123 --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runAncestors,
+}
+
+func init() {
+	ancestorsCmd.Flags().StringVarP(&ancestorsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	ancestorsCmd.Flags().IntVarP(&ancestorsMaxGen, "generations", "g", 0, "Maximum number of generations (0 for unlimited)")
+}
+
+func runAncestors(_ *cobra.Command, args []string) error {
+	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen)
+}
+
+// ============================================================================
+// Descendants Command
+// ============================================================================
+
+var (
+	descendantsArchive string
+	descendantsMaxGen  int
+)
+
+var descendantsCmd = &cobra.Command{
+	Use:   "descendants <person-id>",
+	Short: "Show descendant tree for a person",
+	Long: `Display the descendant tree for a person by traversing parent-child relationships.
+
+Walks down parent-child, biological, adoptive, foster, and step-parent
+relationships to build and display the full descendant tree.
+
+Non-standard relationship types (adoptive, foster, step) are annotated
+in the output.`,
+	Example: `  # Show descendants
+  glx descendants person-abc123
+
+  # Limit to 3 generations
+  glx descendants person-abc123 --generations 3
+
+  # Use a specific archive
+  glx descendants person-abc123 --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runDescendants,
+}
+
+func init() {
+	descendantsCmd.Flags().StringVarP(&descendantsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	descendantsCmd.Flags().IntVarP(&descendantsMaxGen, "generations", "g", 0, "Maximum number of generations (0 for unlimited)")
+}
+
+func runDescendants(_ *cobra.Command, args []string) error {
+	return showDescendants(descendantsArchive, args[0], descendantsMaxGen)
 }
 
