@@ -173,6 +173,8 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 // Validate Command
 // ============================================================================
 
+var validateReport bool
+
 var validateCmd = &cobra.Command{
 	Use:   "validate [paths...]",
 	Short: "Validate GLX files and cross-references",
@@ -189,7 +191,10 @@ Performs comprehensive validation including:
 Validation behavior:
 - Single file: Validates file structure only, skips cross-reference checks
 - Directory: Validates all .glx files with full cross-reference validation
-- No arguments: Validates current directory with full cross-reference validation`,
+- No arguments: Validates current directory with full cross-reference validation
+
+Use --report to generate a confidence summary showing assertion coverage
+and highlighting unsupported claims.`,
 	Example: `  # Validate current directory (with cross-reference checks)
   glx validate
 
@@ -200,11 +205,31 @@ Validation behavior:
   glx validate persons/ events/ places/
 
   # Validate single file (structure only, no cross-reference checks)
-  glx validate archive.glx`,
+  glx validate archive.glx
+
+  # Generate confidence summary report
+  glx validate --report
+  glx validate path/to/archive --report`,
 	RunE: runValidate,
 }
 
+func init() {
+	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+}
+
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateReport {
+		if len(args) > 1 {
+			return fmt.Errorf("--report accepts at most one path argument")
+		}
+		path := "."
+		if len(args) == 1 {
+			path = args[0]
+		}
+
+		return confidenceReport(path)
+	}
+
 	return validatePaths(args)
 }
 
