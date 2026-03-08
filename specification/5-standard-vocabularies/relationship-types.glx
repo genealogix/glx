@@ -61,3 +61,19 @@ relationship_types:
     label: "Housemate"
     description: "People who shared a household without a family relationship"
 
+  apprenticeship:
+    label: "Apprenticeship"
+    description: "Master-apprentice relationship for learning a trade or skill"
+
+  employment:
+    label: "Employment"
+    description: "Employer-employee relationship"
+
+  enslavement:
+    label: "Enslavement"
+    description: "Enslaver-enslaved relationship"
+
+  relative:
+    label: "Relative"
+    description: "Generic kinship relationship when the specific type is unknown or not applicable"
+

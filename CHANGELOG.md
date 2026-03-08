@@ -29,7 +29,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Standard Vocabularies
 - **Added `original_place_name` citation property** - Records the verbatim place name from a source before normalization to a place entity (e.g., "The Town Of Marston" vs the normalized place reference)
 - **Added relationship types `neighbor`, `coworker`, `housemate`** - Non-familial relationships commonly found in census, tax, and social records
+- **Added relationship types `apprenticeship`, `employment`, `enslavement`, `relative`** - Master-apprentice, employer-employee, enslaver-enslaved, and generic kinship relationships
 - **Added event types `legal_separation`, `taxation`, `voter_registration`** - Legal/administrative events for separations, tax rolls, and voter rolls
+- **Added event types `military_service`, `stillborn`, `affiliation`** - Military service periods, stillbirths, and organizational memberships
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
 
