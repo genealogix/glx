@@ -99,11 +99,11 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		case GedcomTagTitl:
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
 			// May have CONT/CONC for long titles - needs extractTextWithContinuation
+			// May have DATE sub-records (e.g., habsburg file) - preserve as temporal list
 			titleText := extractTextWithContinuation(sub)
 			if titleText != "" {
 				if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[sub.Tag]; ok {
-					person.Properties[propertyKey] = titleText
-					createPropertyAssertion(personID, propertyKey, titleText, sub, conv)
+					convertPropertyWithDate(personID, person, propertyKey, titleText, sub, conv)
 				}
 			}
 
@@ -250,9 +250,8 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		Properties: make(map[string]any),
 	}
 
-	// Extract common event details (DATE, PLAC, NOTE, ADDR)
-	// SOUR is handled when creating participations, so includeCitations=false
-	eventPlace := extractEventDetails(eventID, eventRecord, event, conv, false)
+	// Extract common event details (DATE, PLAC, NOTE, ADDR, SOUR)
+	eventPlace := extractEventDetails(eventID, eventRecord, event, conv, true)
 	eventDate := event.Date
 
 	// Process individual-specific tags
@@ -324,6 +323,42 @@ func mapGEDCOMSex(sex string) string {
 		return GenderOther
 	default:
 		return GenderUnknown
+	}
+}
+
+// convertPropertyWithDate stores a person property, using a temporal list item
+// with a date field when the GEDCOM record has a DATE sub-record.
+func convertPropertyWithDate(personID string, person *Person, propertyKey, value string, record *GEDCOMRecord, conv *ConversionContext) {
+	var dateStr string
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagDate {
+			dateStr = string(parseGEDCOMDate(sub.Value))
+			break
+		}
+	}
+
+	var item any
+	if dateStr != "" {
+		item = map[string]any{"value": value, "date": dateStr}
+	} else {
+		item = map[string]any{"value": value}
+	}
+	appendTemporalProperty(person, propertyKey, item)
+	createPropertyAssertion(personID, propertyKey, value, record, conv)
+}
+
+// appendTemporalProperty appends an item to a person property, creating a temporal
+// list when multiple values exist.
+func appendTemporalProperty(person *Person, propertyKey string, item any) {
+	if existing, exists := person.Properties[propertyKey]; exists {
+		switch v := existing.(type) {
+		case []any:
+			person.Properties[propertyKey] = append(v, item)
+		default:
+			person.Properties[propertyKey] = []any{v, item}
+		}
+	} else {
+		person.Properties[propertyKey] = item
 	}
 }
 

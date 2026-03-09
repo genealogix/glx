@@ -57,16 +57,27 @@ func reconstructFamilies(expCtx *ExportContext) {
 			continue
 		}
 
-		// Extract the two spouse person IDs from participants
+		// Extract spouse person IDs from participants
 		spouseIDs := extractSpouseIDs(rel)
-		if len(spouseIDs) < 2 {
+		if len(spouseIDs) == 0 {
 			expCtx.addExportWarning(EntityTypeRelationships, relID,
-				"marriage relationship has fewer than 2 spouse participants")
+				"marriage relationship has no spouse participants")
 			continue
 		}
 
 		// Determine HUSB/WIFE by gender
-		husbandID, wifeID := assignHusbandWife(spouseIDs[0], spouseIDs[1], expCtx)
+		var husbandID, wifeID string
+		if len(spouseIDs) >= 2 {
+			husbandID, wifeID = assignHusbandWife(spouseIDs[0], spouseIDs[1], expCtx)
+		} else {
+			// Single-spouse marriage — assign by gender
+			gender := getPersonGender(spouseIDs[0], expCtx)
+			if gender == GenderFemale {
+				wifeID = spouseIDs[0]
+			} else {
+				husbandID = spouseIDs[0]
+			}
+		}
 
 		familyIdx := len(expCtx.Families)
 		family := &ExportFamily{

@@ -601,33 +601,57 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 
 		val := person.Properties[key]
 
-		// Collect string values — single string, or list of strings/{value: ...} maps
-		var values []string
+		// Collect property items — single string, or list of strings/{value:, date:} maps
+		type propItem struct {
+			value string
+			date  string
+		}
+		var items []propItem
 		switch v := val.(type) {
 		case string:
 			if v != "" {
-				values = []string{v}
+				items = []propItem{{value: v}}
+			}
+		case map[string]any:
+			if s, ok := v["value"].(string); ok && s != "" {
+				pi := propItem{value: s}
+				if d, ok := v["date"].(string); ok {
+					pi.date = d
+				}
+				items = []propItem{pi}
 			}
 		case []any:
 			for _, item := range v {
 				switch it := item.(type) {
 				case string:
 					if it != "" {
-						values = append(values, it)
+						items = append(items, propItem{value: it})
 					}
 				case map[string]any:
 					if s, ok := it["value"].(string); ok && s != "" {
-						values = append(values, s)
+						pi := propItem{value: s}
+						if d, ok := it["date"].(string); ok {
+							pi.date = d
+						}
+						items = append(items, pi)
 					}
 				}
 			}
 		}
 
-		for _, s := range values {
+		for _, item := range items {
 			propRecord := &GEDCOMRecord{
 				Tag:        gedcomTag,
-				Value:      s,
+				Value:      item.value,
 				SubRecords: []*GEDCOMRecord{},
+			}
+
+			// Emit DATE sub-record from temporal list item
+			if item.date != "" {
+				propRecord.SubRecords = append(propRecord.SubRecords, &GEDCOMRecord{
+					Tag:   GedcomTagDate,
+					Value: formatGEDCOMDate(DateString(item.date)),
+				})
 			}
 
 			// Add SOUR from assertions for this property

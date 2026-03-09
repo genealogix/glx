@@ -258,9 +258,9 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 	for _, rel := range glx.Relationships {
 		if rel.Type == RelationshipTypeMarriage {
 			marriageRelationships++
-			// Verify participants are linked
-			if len(rel.Participants) < 2 {
-				t.Errorf("Marriage relationship has %d participants, expected at least 2", len(rel.Participants))
+			// Verify participants are linked (single-spouse families may have only 1)
+			if len(rel.Participants) < 1 {
+				t.Errorf("Marriage relationship has %d participants, expected at least 1", len(rel.Participants))
 			}
 		}
 	}

@@ -609,6 +609,139 @@ func TestImportGenericEVEN_CreatesEvent(t *testing.T) {
 	assert.True(t, foundEvent, "Generic EVEN should create an event")
 }
 
+func TestImportIndividualEvent_SOURCitationsPreserved(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @S1@ SOUR\n1 TITL Birth Record\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 BIRT\n2 DATE 1 JAN 1900\n2 SOUR @S1@\n3 PAGE Page 42\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Find the birth event
+	var birthEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == "birth" && event.Date == "1900-01-01" {
+			birthEvent = event
+			break
+		}
+	}
+	require.NotNil(t, birthEvent, "Should have a birth event")
+
+	// The event should have citations or sources in its properties
+	hasCitations := false
+	if citations, ok := birthEvent.Properties[PropertyCitations].([]string); ok && len(citations) > 0 {
+		hasCitations = true
+	}
+	if sources, ok := birthEvent.Properties[PropertySources].([]string); ok && len(sources) > 0 {
+		hasCitations = true
+	}
+	assert.True(t, hasCitations, "Birth event should have SOUR citations stored in Properties")
+}
+
+func TestImportTITL_WithDatePreserved(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 TITL König\n2 DATE 1991\n" +
+		"1 TITL Baron\n2 DATE 1985\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1)
+
+	for _, person := range glxFile.Persons {
+		titleVal, ok := person.Properties["title"]
+		require.True(t, ok, "Person should have title property")
+
+		// Multiple TITL with DATE should be stored as temporal list
+		titleList, ok := titleVal.([]any)
+		require.True(t, ok, "Multiple titles should be a list, got %T", titleVal)
+		assert.Len(t, titleList, 2)
+
+		// Each item should have value and date
+		for _, item := range titleList {
+			itemMap, ok := item.(map[string]any)
+			require.True(t, ok, "Item should be a map")
+			assert.Contains(t, itemMap, "value")
+			assert.Contains(t, itemMap, "date")
+		}
+	}
+}
+
+func TestImportDate_CalendarEscapePreserved(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 BIRT\n2 DATE @#DJULIAN@ 11 FEB 1731/32\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var birthEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == "birth" {
+			birthEvent = event
+			break
+		}
+	}
+	require.NotNil(t, birthEvent, "Should have a birth event")
+	assert.NotEmpty(t, string(birthEvent.Date), "Julian calendar date should be preserved, not dropped")
+}
+
+func TestImportDate_BCEPreserved(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SCHMA\n" +
+		"0 @I1@ INDI\n1 NAME Julius /Caesar/\n" +
+		"1 BIRT\n2 DATE 100 BCE\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var birthEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == "birth" {
+			birthEvent = event
+			break
+		}
+	}
+	require.NotNil(t, birthEvent, "Should have a birth event")
+	assert.NotEmpty(t, string(birthEvent.Date), "BCE date should be preserved, not dropped")
+}
+
+func TestImportSingleSpouseFamily_MarriagePreserved(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n1 FAMS @F1@\n" +
+		"0 @F1@ FAM\n1 HUSB @I1@\n1 MARR\n2 DATE 1 JAN 1900\n2 PLAC London\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should have a marriage relationship even with single spouse
+	var foundMarriage bool
+	for _, rel := range glxFile.Relationships {
+		if rel.Type == RelationshipTypeMarriage {
+			foundMarriage = true
+			// Should have at least one participant
+			assert.GreaterOrEqual(t, len(rel.Participants), 1, "Marriage should have at least one participant")
+			break
+		}
+	}
+	assert.True(t, foundMarriage, "Single-spouse family with MARR should create marriage relationship")
+
+	// The marriage event should exist with the date
+	var foundMarriageEvent bool
+	for _, event := range glxFile.Events {
+		if event.Type == "marriage" && event.Date == "1900-01-01" {
+			foundMarriageEvent = true
+			break
+		}
+	}
+	assert.True(t, foundMarriageEvent, "Marriage event with date should be created")
+}
+
 func TestImportMultipleOCCU_PreservesAll(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +

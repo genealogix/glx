@@ -85,17 +85,22 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 	}
 
-	// Create spousal relationship if both spouses exist
-	if husbandID != "" && wifeID != "" {
+	// Create spousal relationship if at least one spouse exists
+	if husbandID != "" || wifeID != "" {
 		relationshipID := generateRelationshipID(conv)
 
+		var participants []Participant
+		if husbandID != "" {
+			participants = append(participants, Participant{Person: husbandID, Role: ParticipantRoleSpouse})
+		}
+		if wifeID != "" {
+			participants = append(participants, Participant{Person: wifeID, Role: ParticipantRoleSpouse})
+		}
+
 		relationship := &Relationship{
-			Type: RelationshipTypeMarriage,
-			Participants: []Participant{
-				{Person: husbandID, Role: ParticipantRoleSpouse},
-				{Person: wifeID, Role: ParticipantRoleSpouse},
-			},
-			Properties: make(map[string]any),
+			Type:         RelationshipTypeMarriage,
+			Participants: participants,
+			Properties:   make(map[string]any),
 		}
 
 		// Extract evidence from FAM record itself
