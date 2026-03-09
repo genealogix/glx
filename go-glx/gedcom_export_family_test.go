@@ -1095,3 +1095,67 @@ func TestIsParentChildType(t *testing.T) {
 	assert.False(t, isParentChildType(RelationshipTypeMarriage))
 	assert.False(t, isParentChildType(RelationshipTypeSibling))
 }
+
+func TestExportFamily_MarriageWithoutStartEvent(t *testing.T) {
+	// A marriage relationship that has no StartEvent should still emit a MARR tag
+	glxFile := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"gender": "male", "name": map[string]any{"value": "John"}}},
+			"person-2": {Properties: map[string]any{"gender": "female", "name": map[string]any{"value": "Jane"}}},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeMarriage,
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRoleSpouse},
+					{Person: "person-2", Role: ParticipantRoleSpouse},
+				},
+				// No StartEvent — marriage imported from GEDCOM with only _UID/RIN
+			},
+		},
+		Events:            make(map[string]*Event),
+		EventTypes:        make(map[string]*EventType),
+		PersonProperties:  make(map[string]*PropertyDefinition),
+		RelationshipTypes: make(map[string]*RelationshipType),
+		Sources:           make(map[string]*Source),
+		Citations:         make(map[string]*Citation),
+		Repositories:      make(map[string]*Repository),
+		Media:             make(map[string]*Media),
+		Assertions:        make(map[string]*Assertion),
+	}
+
+	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
+		t.Fatal(err)
+	}
+
+	expCtx := &ExportContext{
+		GLX:                      glxFile,
+		Version:                  GEDCOM551,
+		Logger:                   NewImportLogger(nil),
+		ExportIndex:              buildExportIndex(glxFile),
+		PersonXRefMap:            map[string]string{"person-1": "@I1@", "person-2": "@I2@"},
+		SourceXRefMap:            make(map[string]string),
+		RepositoryXRefMap:        make(map[string]string),
+		MediaXRefMap:             make(map[string]string),
+		PlaceStrings:             make(map[string]string),
+		PersonEvents:             make(map[string][]string),
+		PersonSpouseFamilies:     make(map[string][]string),
+		PersonChildFamilies:      make(map[string][]childFamilyRef),
+		PersonPropertyAssertions: make(map[string]map[string][]*Assertion),
+		Families:                 []*ExportFamily{},
+		FamilyXRefMap:            make(map[string]string),
+	}
+
+	reconstructFamilies(expCtx)
+	require.Len(t, expCtx.Families, 1)
+
+	record := exportFamily(expCtx.Families[0], expCtx)
+
+	var foundMarr bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagMarr {
+			foundMarr = true
+		}
+	}
+	assert.True(t, foundMarr, "Family from marriage relationship should have MARR even without StartEvent")
+}
