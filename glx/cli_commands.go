@@ -386,6 +386,8 @@ var (
 	queryAfter      int
 	queryConfidence string
 	queryStatus     string
+	querySource     string
+	queryCitation   string
 )
 
 var queryCmd = &cobra.Command{
@@ -399,7 +401,7 @@ relationships, places, citations, repositories, media.
 Filters vary by entity type:
   persons:       --name, --born-before, --born-after
   events:        --type, --before, --after
-  assertions:    --confidence, --status
+  assertions:    --confidence, --status, --source, --citation
   sources:       --name, --type
   relationships: --type
   places:        --name
@@ -411,6 +413,12 @@ All entity types support --archive to specify the archive path.`,
 
   # Find low-confidence assertions
   glx query assertions --confidence low
+
+  # Find assertions citing a specific source
+  glx query assertions --source source-abc123
+
+  # Find assertions using a specific citation
+  glx query assertions --citation citation-abc123
 
   # Find marriage events
   glx query events --type marriage
@@ -435,6 +443,8 @@ func init() {
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
 	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
+	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
 }
 
 func runQuery(_ *cobra.Command, args []string) error {
@@ -448,6 +458,8 @@ func runQuery(_ *cobra.Command, args []string) error {
 		After:      queryAfter,
 		Confidence: queryConfidence,
 		Status:     queryStatus,
+		Source:     querySource,
+		Citation:   queryCitation,
 	})
 }
 

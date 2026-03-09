@@ -76,6 +76,8 @@ GENEALOGIX supports various repository types:
 
 **Design note:** Address fields (`address`, `city`, `state_province`, `postal_code`, `country`) are kept as direct entity fields rather than properties because they are core identifying attributes of a repository, analogous to `name`. They are not expected to change over time or vary by context, unlike contact details (phones, emails) which are in `properties`.
 
+> **Note:** Properties defined with `multi_value: true` in the vocabulary (such as `phones`, `emails`, `holding_types`) accept either a single string value or a YAML array. A single string is treated as a one-element array. Examples below use single strings for brevity; use arrays when multiple values are needed.
+
 ### Properties
 
 Contact information and access details are stored in the `properties` field. The following are standard properties from the default vocabulary; archives can define additional properties by extending the vocabulary:
@@ -215,7 +217,7 @@ repositories/
 - `name` must be present and non-empty
 - `type` must be from the [repository types vocabulary](vocabularies#repository-types-vocabulary)
 - If `website` is specified, it should be a valid URL
-- Properties must be defined in the repository properties vocabulary
+- Properties should be from the [repository properties vocabulary](vocabularies#repository-properties-vocabulary) (unknown properties generate warnings)
 
 ## GEDCOM Mapping
 

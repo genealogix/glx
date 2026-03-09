@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -57,12 +58,6 @@ var parentChildRelTypes = map[string]bool{
 var marriageRelTypes = map[string]bool{
 	"marriage": true,
 	"partner":  true,
-}
-
-// summaryVitalEventTypes are event types shown in the vital events section.
-var summaryVitalEventTypes = map[string]bool{
-	"birth": true, "christening": true, "baptism": true,
-	"death": true, "burial": true, "cremation": true,
 }
 
 // summarySkippedEventTypes are event types excluded from the life events section.
@@ -339,7 +334,7 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 			continue
 		}
 
-		label := snakeCaseToTitle(event.Type)
+		label := snakeCaseToTitle(event.Type) + ":"
 		detail := formatSummaryEventDatePlace(event, archive)
 		fmt.Printf("  %-18s%s\n", label, detail)
 		hasContent = true
@@ -929,19 +924,20 @@ func findEventDatePlace(personID, eventType string, archive *glxlib.GLXFile) (st
 
 // narrativeDate converts a GLX date string to narrative form.
 func narrativeDate(date string) string {
-	upper := strings.ToUpper(strings.TrimSpace(date))
+	trimmed := strings.TrimSpace(date)
+	upper := strings.ToUpper(trimmed)
 
 	switch {
 	case strings.HasPrefix(upper, "ABT "):
-		return "about " + date[4:]
+		return "about " + trimmed[4:]
 	case strings.HasPrefix(upper, "BEF "):
-		return "before " + date[4:]
+		return "before " + trimmed[4:]
 	case strings.HasPrefix(upper, "AFT "):
-		return "after " + date[4:]
+		return "after " + trimmed[4:]
 	case strings.HasPrefix(upper, "BET "):
-		return "between " + strings.Replace(date[4:], " AND ", " and ", 1)
+		return "between " + strings.Replace(trimmed[4:], " AND ", " and ", 1)
 	default:
-		return "in " + date
+		return "in " + trimmed
 	}
 }
 
@@ -985,7 +981,7 @@ func joinNames(names []string) string {
 func sectionHeader(title string) string {
 	const width = 50
 	prefix := "── " + title + " "
-	remaining := width - len(prefix)
+	remaining := width - utf8.RuneCountInString(prefix)
 	if remaining < 2 {
 		remaining = 2
 	}
