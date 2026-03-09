@@ -557,10 +557,13 @@ func runStats(_ *cobra.Command, args []string) error {
 // WikiTree Command
 // ============================================================================
 
-var wikiTreeArchive string
+var (
+	wikiTreeArchive string
+	wikiTreeStale   bool
+)
 
 var wikiTreeCmd = &cobra.Command{
-	Use:   "wikitree <person>",
+	Use:   "wikitree [person]",
 	Short: "Generate a WikiTree biography for a person",
 	Long: `Generate WikiTree-compatible biography markup for a person in the archive.
 
@@ -569,7 +572,10 @@ Evidence Explained citation style. Includes Biography, Research Notes,
 and Sources sections following WikiTree formatting guidelines.
 
 The person argument can be an exact entity ID (e.g., person-d-lane) or
-a name to search for (e.g., "Daniel Lane").`,
+a name to search for (e.g., "Daniel Lane").
+
+Use --stale to list persons whose biographies may be outdated because
+archive files have changed since the last generation.`,
 	Example: `  # Generate biography by person ID
   glx wikitree person-d-lane
 
@@ -577,15 +583,26 @@ a name to search for (e.g., "Daniel Lane").`,
   glx wikitree "Daniel Lane"
 
   # Specify archive path
-  glx wikitree "Daniel Lane" --archive my-archive`,
-	Args: cobra.ExactArgs(1),
+  glx wikitree "Daniel Lane" --archive my-archive
+
+  # List stale biographies
+  glx wikitree --stale --archive my-archive`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runWikiTree,
 }
 
 func init() {
 	wikiTreeCmd.Flags().StringVarP(&wikiTreeArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	wikiTreeCmd.Flags().BoolVar(&wikiTreeStale, "stale", false, "List persons with stale or missing WikiTree biographies")
 }
 
 func runWikiTree(_ *cobra.Command, args []string) error {
+	if wikiTreeStale {
+		return showWikiTreeStale(wikiTreeArchive)
+	}
+	if len(args) == 0 {
+		return fmt.Errorf("person argument is required (use --stale to list stale biographies)")
+	}
+
 	return showWikiTree(wikiTreeArchive, args[0])
 }

@@ -15,8 +15,11 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -285,5 +288,89 @@ func TestRefTracker(t *testing.T) {
 	second := refs.ref("cit-1", archive)
 	if second != `<ref name="cit-1" />` {
 		t.Errorf("second ref should be short form, got: %s", second)
+	}
+}
+
+func TestRecordAndLoadWikiTreeTracking(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Record a generation
+	err := recordWikiTreeGeneration(tmpDir, "person-john")
+	if err != nil {
+		t.Fatalf("unexpected error recording generation: %v", err)
+	}
+
+	// Verify tracking file was created
+	trackingPath := filepath.Join(tmpDir, wikiTreeTrackingFile)
+	if _, err := os.Stat(trackingPath); os.IsNotExist(err) {
+		t.Fatal("tracking file was not created")
+	}
+
+	// Load and verify
+	tracking := loadWikiTreeTracking(tmpDir)
+	ts, ok := tracking["person-john"]
+	if !ok {
+		t.Fatal("person-john not found in tracking")
+	}
+
+	parsed, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		t.Fatalf("invalid timestamp format: %v", err)
+	}
+
+	// Should be within the last minute
+	if time.Since(parsed) > time.Minute {
+		t.Errorf("timestamp too old: %v", parsed)
+	}
+}
+
+func TestLoadWikiTreeTracking_MissingFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	tracking := loadWikiTreeTracking(tmpDir)
+
+	if len(tracking) != 0 {
+		t.Errorf("expected empty tracking for missing file, got %d entries", len(tracking))
+	}
+}
+
+func TestFindStaleFiles(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Events: map[string]*glxlib.Event{
+			"event-census": {
+				Type: "census",
+				Participants: []glxlib.Participant{
+					{Person: "person-john", Role: "subject"},
+				},
+			},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"assert-birth": {
+				Subject: glxlib.EntityRef{Person: "person-john"},
+			},
+		},
+	}
+
+	genTime := time.Now().Add(-time.Hour) // Generated 1 hour ago
+
+	// Files modified after generation
+	fileMtimes := map[string]time.Time{
+		"persons/person-john.glx":       time.Now(), // Modified after gen
+		"events/event-census.glx":       time.Now(), // Modified after gen
+		"assertions/assert-birth.glx":   time.Now(), // Modified after gen
+		"events/event-unrelated.glx":    time.Now(), // Unrelated
+		"persons/person-other.glx":      time.Now(), // Unrelated
+	}
+
+	stale := findStaleFiles("person-john", archive, fileMtimes, genTime)
+
+	if len(stale) < 2 {
+		t.Errorf("expected at least 2 stale files (person + event or assertion), got %d: %v", len(stale), stale)
+	}
+
+	// Should not include unrelated files
+	for _, f := range stale {
+		if f == "events/event-unrelated.glx" || f == "persons/person-other.glx" {
+			t.Errorf("should not include unrelated file: %s", f)
+		}
 	}
 }

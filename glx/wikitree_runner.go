@@ -17,10 +17,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"gopkg.in/yaml.v3"
 )
 
 // wikiTreeEvent holds an event with its ID for sorting.
@@ -28,6 +31,12 @@ type wikiTreeEvent struct {
 	ID    string
 	Event *glxlib.Event
 }
+
+// wikiTreeTrackingFile is the filename used to track generation timestamps.
+const wikiTreeTrackingFile = ".wikitree.yml"
+
+// wikiTreeTracking maps person IDs to their last generation timestamp.
+type wikiTreeTracking map[string]string // person ID -> RFC3339 timestamp
 
 // showWikiTree generates a WikiTree biography for a person.
 func showWikiTree(archivePath, personQuery string) error {
@@ -44,7 +53,177 @@ func showWikiTree(archivePath, personQuery string) error {
 	bio := generateWikiTreeBio(personID, person, archive)
 	fmt.Print(bio)
 
+	// Record generation timestamp
+	if err := recordWikiTreeGeneration(archivePath, personID); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not update tracking file: %v\n", err)
+	}
+
 	return nil
+}
+
+// showWikiTreeStale lists persons whose WikiTree bios may be stale.
+func showWikiTreeStale(archivePath string) error {
+	archive, err := loadArchiveForWikiTree(archivePath)
+	if err != nil {
+		return err
+	}
+
+	tracking := loadWikiTreeTracking(archivePath)
+	archiveDir := resolveArchiveDir(archivePath)
+
+	// Collect file modification times for staleness detection
+	fileMtimes := collectArchiveFileMtimes(archiveDir)
+
+	ids := sortedKeys(archive.Persons)
+	hasOutput := false
+
+	for _, personID := range ids {
+		person := archive.Persons[personID]
+		name := extractPersonName(person)
+		genTime, generated := tracking[personID]
+
+		if !generated {
+			fmt.Printf("  %-30s  %-25s  (never generated)\n", personID, name)
+			hasOutput = true
+
+			continue
+		}
+
+		genParsed, err := time.Parse(time.RFC3339, genTime)
+		if err != nil {
+			fmt.Printf("  %-30s  %-25s  (invalid timestamp)\n", personID, name)
+			hasOutput = true
+
+			continue
+		}
+
+		// Check if any related file was modified after generation
+		staleFiles := findStaleFiles(personID, archive, fileMtimes, genParsed)
+		if len(staleFiles) > 0 {
+			fmt.Printf("  %-30s  %-25s  generated %s  STALE (%d files changed)\n",
+				personID, name, genParsed.Format("2006-01-02"), len(staleFiles))
+			hasOutput = true
+		}
+	}
+
+	if !hasOutput {
+		fmt.Println("All generated biographies are up to date.")
+	}
+
+	return nil
+}
+
+// recordWikiTreeGeneration updates the tracking file with the current timestamp.
+func recordWikiTreeGeneration(archivePath, personID string) error {
+	archiveDir := resolveArchiveDir(archivePath)
+	trackingPath := filepath.Join(archiveDir, wikiTreeTrackingFile)
+
+	tracking := loadWikiTreeTracking(archivePath)
+	tracking[personID] = time.Now().UTC().Format(time.RFC3339)
+
+	data, err := yaml.Marshal(tracking)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(trackingPath, data, 0o644)
+}
+
+// loadWikiTreeTracking reads the tracking file from the archive directory.
+func loadWikiTreeTracking(archivePath string) wikiTreeTracking {
+	archiveDir := resolveArchiveDir(archivePath)
+	trackingPath := filepath.Join(archiveDir, wikiTreeTrackingFile)
+
+	data, err := os.ReadFile(trackingPath)
+	if err != nil {
+		return make(wikiTreeTracking)
+	}
+
+	var tracking wikiTreeTracking
+	if err := yaml.Unmarshal(data, &tracking); err != nil {
+		return make(wikiTreeTracking)
+	}
+
+	return tracking
+}
+
+// resolveArchiveDir returns the directory containing the archive.
+func resolveArchiveDir(archivePath string) string {
+	info, err := os.Stat(archivePath)
+	if err != nil {
+		return archivePath
+	}
+	if info.IsDir() {
+		return archivePath
+	}
+
+	return filepath.Dir(archivePath)
+}
+
+// collectArchiveFileMtimes walks the archive directory and returns a map of
+// relative file paths to their modification times.
+func collectArchiveFileMtimes(archiveDir string) map[string]time.Time {
+	mtimes := make(map[string]time.Time)
+
+	_ = filepath.Walk(archiveDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) != ".glx" {
+			return nil
+		}
+		rel, _ := filepath.Rel(archiveDir, path)
+		mtimes[rel] = info.ModTime()
+
+		return nil
+	})
+
+	return mtimes
+}
+
+// findStaleFiles checks if any GLX files referencing a person were modified after genTime.
+func findStaleFiles(personID string, archive *glxlib.GLXFile, fileMtimes map[string]time.Time, genTime time.Time) []string {
+	var stale []string
+
+	// Check person file
+	for path, mtime := range fileMtimes {
+		if !mtime.After(genTime) {
+			continue
+		}
+
+		// Person files
+		if strings.Contains(path, personID) {
+			stale = append(stale, path)
+
+			continue
+		}
+
+		// Event files — check if person is a participant
+		for eventID, event := range archive.Events {
+			if !strings.Contains(path, eventID) {
+				continue
+			}
+			for _, p := range event.Participants {
+				if p.Person == personID {
+					stale = append(stale, path)
+
+					break
+				}
+			}
+		}
+
+		// Assertion files — check if person is the subject
+		for assertionID, assertion := range archive.Assertions {
+			if !strings.Contains(path, assertionID) {
+				continue
+			}
+			if assertion.Subject.Person == personID {
+				stale = append(stale, path)
+			}
+		}
+	}
+
+	return stale
 }
 
 // loadArchiveForWikiTree loads an archive from a path (directory or single file).
