@@ -114,6 +114,9 @@ func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, 
 func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFile) []vitalRecord {
 	var vitals []vitalRecord
 
+	// Sort event keys once and reuse for all lookups
+	eventIDs := sortedKeys(archive.Events)
+
 	// Name
 	name := extractPersonName(person)
 	vitals = append(vitals, vitalRecord{"Name", name})
@@ -128,33 +131,33 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	// Birth — check person properties first, then events
 	birth := formatPropertyDatePlace(person.Properties, "born_on", "born_at", archive)
 	if birth == "" {
-		birth = findEventByType(personID, "birth", archive)
+		birth = findEventByType(personID, "birth", eventIDs, archive)
 	}
 	vitals = append(vitals, vitalRecord{"Birth", displayOrDash(birth)})
 
 	// Christening/Baptism — from events
-	christening := findEventByType(personID, "christening", archive)
+	christening := findEventByType(personID, "christening", eventIDs, archive)
 	if christening == "" {
-		christening = findEventByType(personID, "baptism", archive)
+		christening = findEventByType(personID, "baptism", eventIDs, archive)
 	}
 	vitals = append(vitals, vitalRecord{"Christening", displayOrDash(christening)})
 
 	// Death — check person properties first, then events
 	death := formatPropertyDatePlace(person.Properties, "died_on", "died_at", archive)
 	if death == "" {
-		death = findEventByType(personID, "death", archive)
+		death = findEventByType(personID, "death", eventIDs, archive)
 	}
 	vitals = append(vitals, vitalRecord{"Death", displayOrDash(death)})
 
 	// Burial — from events
-	burial := findEventByType(personID, "burial", archive)
+	burial := findEventByType(personID, "burial", eventIDs, archive)
 	if burial == "" {
-		burial = findEventByType(personID, "cremation", archive)
+		burial = findEventByType(personID, "cremation", eventIDs, archive)
 	}
 	vitals = append(vitals, vitalRecord{"Burial", displayOrDash(burial)})
 
 	// Other life events (not already covered by vitals)
-	others := findOtherEvents(personID, archive)
+	others := findOtherEvents(personID, eventIDs, archive)
 	for _, other := range others {
 		vitals = append(vitals, other)
 	}
@@ -182,10 +185,9 @@ func formatPropertyDatePlace(props map[string]any, dateKey, placeKey string, arc
 }
 
 // findEventByType finds the first event of a given type where the person is a participant.
-// Iterates in sorted key order for deterministic output.
-func findEventByType(personID, eventType string, archive *glxlib.GLXFile) string {
-	ids := sortedKeys(archive.Events)
-	for _, id := range ids {
+// Accepts pre-sorted event IDs to avoid repeated sorting across multiple calls.
+func findEventByType(personID, eventType string, eventIDs []string, archive *glxlib.GLXFile) string {
+	for _, id := range eventIDs {
 		event := archive.Events[id]
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
@@ -201,11 +203,11 @@ func findEventByType(personID, eventType string, archive *glxlib.GLXFile) string
 }
 
 // findOtherEvents returns events the person participates in that aren't standard vitals.
-func findOtherEvents(personID string, archive *glxlib.GLXFile) []vitalRecord {
+// Accepts pre-sorted event IDs to avoid repeated sorting.
+func findOtherEvents(personID string, eventIDs []string, archive *glxlib.GLXFile) []vitalRecord {
 	var others []vitalRecord
 
-	ids := sortedKeys(archive.Events)
-	for _, id := range ids {
+	for _, id := range eventIDs {
 		event := archive.Events[id]
 		if !isParticipant(personID, event) {
 			continue
