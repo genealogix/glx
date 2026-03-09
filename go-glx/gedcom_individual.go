@@ -79,7 +79,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		case GedcomTagBirt, GedcomTagChr, GedcomTagDeat, GedcomTagBuri, GedcomTagCrem, GedcomTagAdop, GedcomTagBapm, GedcomTagBarm, GedcomTagBatm, GedcomTagBasm,
 			GedcomTagBles, GedcomTagChra, GedcomTagConf, GedcomTagFcom, GedcomTagOrdn, GedcomTagNatu, GedcomTagEmig, GedcomTagImmi,
-			GedcomTagProb, GedcomTagWill, GedcomTagGrad, GedcomTagReti:
+			GedcomTagProb, GedcomTagWill, GedcomTagGrad, GedcomTagReti, GedcomTagEven:
 			// Convert vital/individual event
 			if err := convertIndividualEvent(personID, person, sub, conv); err != nil {
 				conv.addWarning(indiRecord.Line, sub.Tag, err.Error())

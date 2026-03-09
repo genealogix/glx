@@ -588,6 +588,27 @@ func TestConvertCensus_PlaceWithoutDateAppendsToExisting(t *testing.T) {
 	}
 }
 
+func TestImportGenericEVEN_CreatesEvent(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 EVEN\n2 TYPE Anecdote\n2 DATE 1900\n2 NOTE A funny story\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var foundEvent bool
+	for _, event := range glxFile.Events {
+		// EVEN with TYPE "Anecdote" should create an event with type "anecdote" or "even"
+		if event.Date == "1900" {
+			foundEvent = true
+			assert.NotEmpty(t, event.Type, "Generic EVEN should have a type")
+			assert.Equal(t, "A funny story", event.Notes, "EVEN NOTE should be in Notes field")
+		}
+	}
+	assert.True(t, foundEvent, "Generic EVEN should create an event")
+}
+
 func TestImportMultipleOCCU_PreservesAll(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
