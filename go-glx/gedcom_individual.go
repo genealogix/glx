@@ -329,21 +329,24 @@ func mapGEDCOMSex(sex string) string {
 // convertPropertyWithDate stores a person property, using a temporal list item
 // with a date field when the GEDCOM record has a DATE sub-record.
 func convertPropertyWithDate(personID string, person *Person, propertyKey, value string, record *GEDCOMRecord, conv *ConversionContext) {
-	var dateStr string
+	var dateStr, placeStr string
 	for _, sub := range record.SubRecords {
-		if sub.Tag == GedcomTagDate {
+		switch sub.Tag {
+		case GedcomTagDate:
 			dateStr = string(parseGEDCOMDate(sub.Value))
-			break
+		case GedcomTagPlac:
+			placeStr = sub.Value
 		}
 	}
 
-	var item any
+	itemMap := map[string]any{"value": value}
 	if dateStr != "" {
-		item = map[string]any{"value": value, "date": dateStr}
-	} else {
-		item = map[string]any{"value": value}
+		itemMap["date"] = dateStr
 	}
-	appendTemporalProperty(person, propertyKey, item)
+	if placeStr != "" {
+		itemMap["place"] = placeStr
+	}
+	appendTemporalProperty(person, propertyKey, itemMap)
 	createPropertyAssertion(personID, propertyKey, value, record, conv)
 }
 

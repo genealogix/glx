@@ -605,6 +605,7 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 		type propItem struct {
 			value string
 			date  string
+			place string
 		}
 		var items []propItem
 		switch v := val.(type) {
@@ -617,6 +618,9 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 				pi := propItem{value: s}
 				if d, ok := v["date"].(string); ok {
 					pi.date = d
+				}
+				if p, ok := v["place"].(string); ok {
+					pi.place = p
 				}
 				items = []propItem{pi}
 			}
@@ -632,6 +636,9 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 						pi := propItem{value: s}
 						if d, ok := it["date"].(string); ok {
 							pi.date = d
+						}
+						if p, ok := it["place"].(string); ok {
+							pi.place = p
 						}
 						items = append(items, pi)
 					}
@@ -651,6 +658,14 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 				propRecord.SubRecords = append(propRecord.SubRecords, &GEDCOMRecord{
 					Tag:   GedcomTagDate,
 					Value: formatGEDCOMDate(DateString(item.date)),
+				})
+			}
+
+			// Emit PLAC sub-record from temporal list item
+			if item.place != "" {
+				propRecord.SubRecords = append(propRecord.SubRecords, &GEDCOMRecord{
+					Tag:   GedcomTagPlac,
+					Value: item.place,
 				})
 			}
 
