@@ -54,6 +54,69 @@ func buildPersonEventsIndex(expCtx *ExportContext) {
 	}
 }
 
+// buildPersonPropertyAssertionsIndex builds a lookup from (personID, property) to
+// assertions. This is used to export SOUR on NAME, OCCU, RESI, and other records
+// that have assertion-based evidence.
+func buildPersonPropertyAssertionsIndex(expCtx *ExportContext) {
+	expCtx.PersonPropertyAssertions = make(map[string]map[string][]*Assertion)
+
+	for _, assertion := range expCtx.GLX.Assertions {
+		personID := assertion.Subject.Person
+		if personID == "" || assertion.Property == "" {
+			continue
+		}
+		if len(assertion.Sources) == 0 && len(assertion.Citations) == 0 {
+			continue
+		}
+
+		if _, ok := expCtx.PersonPropertyAssertions[personID]; !ok {
+			expCtx.PersonPropertyAssertions[personID] = make(map[string][]*Assertion)
+		}
+		expCtx.PersonPropertyAssertions[personID][assertion.Property] = append(
+			expCtx.PersonPropertyAssertions[personID][assertion.Property], assertion)
+	}
+}
+
+// exportAssertionSourceRefs adds SOUR subrecords from assertion sources and citations.
+func exportAssertionSourceRefs(assertions []*Assertion, expCtx *ExportContext, record *GEDCOMRecord) {
+	for _, assertion := range assertions {
+		// Direct sources
+		for _, sourceID := range assertion.Sources {
+			if sourceXRef := expCtx.SourceXRefMap[sourceID]; sourceXRef != "" {
+				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+					Tag:   GedcomTagSour,
+					Value: sourceXRef,
+				})
+			}
+		}
+
+		// Citations
+		for _, citationID := range assertion.Citations {
+			citation, exists := expCtx.GLX.Citations[citationID]
+			if !exists {
+				continue
+			}
+
+			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
+				sourRecord := &GEDCOMRecord{
+					Tag:        GedcomTagSour,
+					Value:      sourceXRef,
+					SubRecords: []*GEDCOMRecord{},
+				}
+
+				if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
+					sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
+						Tag:   GedcomTagPage,
+						Value: locator,
+					})
+				}
+
+				record.SubRecords = append(record.SubRecords, sourRecord)
+			}
+		}
+	}
+}
+
 // exportPerson converts a GLX Person to a GEDCOM INDI record.
 func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCOMRecord {
 	xref := expCtx.PersonXRefMap[personID]
@@ -66,7 +129,7 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 
 	// NAME records
 	if nameVal, ok := person.Properties[PersonPropertyName]; ok {
-		nameRecords := exportNameRecords(nameVal)
+		nameRecords := exportNameRecords(personID, nameVal, expCtx)
 		record.SubRecords = append(record.SubRecords, nameRecords...)
 	}
 
@@ -90,8 +153,11 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 		}
 	}
 
+	// RESI (residence) records from temporal property
+	record.SubRecords = append(record.SubRecords, exportResidenceRecords(personID, person, expCtx)...)
+
 	// Person properties with GEDCOM tag mappings (OCCU, RELI, EDUC, etc.)
-	record.SubRecords = append(record.SubRecords, exportMappedPersonProperties(person, expCtx)...)
+	record.SubRecords = append(record.SubRecords, exportMappedPersonProperties(personID, person, expCtx)...)
 
 	// NOTE
 	if person.Notes != "" {
@@ -138,10 +204,16 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 
 // exportNameRecords handles the name property which can be a single map or a list.
 // Returns one or more NAME GEDCOMRecords.
-func exportNameRecords(nameVal any) []*GEDCOMRecord {
+func exportNameRecords(personID string, nameVal any, expCtx *ExportContext) []*GEDCOMRecord {
+	// Look up all name assertions for this person
+	var nameAssertions []*Assertion
+	if personAssertions, ok := expCtx.PersonPropertyAssertions[personID]; ok {
+		nameAssertions = personAssertions[PersonPropertyName]
+	}
+
 	switch v := nameVal.(type) {
 	case map[string]any:
-		rec := exportNameRecord(v)
+		rec := exportNameRecord(v, nameAssertions, expCtx)
 		if rec != nil {
 			return []*GEDCOMRecord{rec}
 		}
@@ -149,7 +221,7 @@ func exportNameRecords(nameVal any) []*GEDCOMRecord {
 		var records []*GEDCOMRecord
 		for _, item := range v {
 			if nameMap, ok := item.(map[string]any); ok {
-				rec := exportNameRecord(nameMap)
+				rec := exportNameRecord(nameMap, nameAssertions, expCtx)
 				if rec != nil {
 					records = append(records, rec)
 				}
@@ -163,7 +235,7 @@ func exportNameRecords(nameVal any) []*GEDCOMRecord {
 
 // exportNameRecord converts a single name property value (map with "value" and "fields")
 // to a GEDCOM NAME record with substructure.
-func exportNameRecord(nameMap map[string]any) *GEDCOMRecord {
+func exportNameRecord(nameMap map[string]any, nameAssertions []*Assertion, expCtx *ExportContext) *GEDCOMRecord {
 	value, _ := nameMap["value"].(string)
 	if value == "" {
 		return nil
@@ -240,6 +312,13 @@ func exportNameRecord(nameMap map[string]any) *GEDCOMRecord {
 				Tag:   GedcomTagNsfx,
 				Value: nsfx,
 			})
+		}
+	}
+
+	// SOUR from assertions matching this name value
+	for _, assertion := range nameAssertions {
+		if assertion.Value == value {
+			exportAssertionSourceRefs([]*Assertion{assertion}, expCtx, record)
 		}
 	}
 
@@ -397,9 +476,85 @@ func exportEventPropertySubrecords(event *Event, expCtx *ExportContext) []*GEDCO
 	return records
 }
 
+// exportResidenceRecords exports RESI records from the person's residence temporal property.
+func exportResidenceRecords(personID string, person *Person, expCtx *ExportContext) []*GEDCOMRecord {
+	resiVal, ok := person.Properties[PersonPropertyResidence]
+	if !ok {
+		return nil
+	}
+
+	resiList, ok := resiVal.([]any)
+	if !ok {
+		return nil
+	}
+
+	// Look up assertions for residence citations
+	var assertions []*Assertion
+	if personAssertions, ok := expCtx.PersonPropertyAssertions[personID]; ok {
+		assertions = personAssertions[PersonPropertyResidence]
+	}
+
+	// Build a map from placeID -> assertions for matching
+	assertionsByPlace := make(map[string][]*Assertion)
+	for _, a := range assertions {
+		assertionsByPlace[a.Value] = append(assertionsByPlace[a.Value], a)
+	}
+
+	var records []*GEDCOMRecord
+
+	for _, entry := range resiList {
+		record := &GEDCOMRecord{
+			Tag:        GedcomTagResi,
+			SubRecords: []*GEDCOMRecord{},
+		}
+
+		var placeID, dateStr string
+
+		switch v := entry.(type) {
+		case string:
+			placeID = v
+		case map[string]any:
+			if val, ok := v["value"].(string); ok {
+				placeID = val
+			}
+			if d, ok := v["date"].(string); ok {
+				dateStr = d
+			}
+		default:
+			continue
+		}
+
+		if dateStr != "" {
+			gedcomDate := formatGEDCOMDate(DateString(dateStr))
+			if gedcomDate != "" {
+				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+					Tag:   GedcomTagDate,
+					Value: gedcomDate,
+				})
+			}
+		}
+
+		if placeID != "" {
+			placRecords := exportPlaceSubrecords(placeID, expCtx)
+			if placRecords != nil {
+				record.SubRecords = append(record.SubRecords, placRecords...)
+			}
+
+			// Add SOUR from assertions matching this place
+			if placeAssertions, ok := assertionsByPlace[placeID]; ok {
+				exportAssertionSourceRefs(placeAssertions, expCtx, record)
+			}
+		}
+
+		records = append(records, record)
+	}
+
+	return records
+}
+
 // exportMappedPersonProperties exports person properties that have GEDCOM tag mappings
 // (e.g., occupation -> OCCU, religion -> RELI), skipping properties handled elsewhere.
-func exportMappedPersonProperties(person *Person, expCtx *ExportContext) []*GEDCOMRecord {
+func exportMappedPersonProperties(personID string, person *Person, expCtx *ExportContext) []*GEDCOMRecord {
 	if len(person.Properties) == 0 {
 		return nil
 	}
@@ -426,10 +581,20 @@ func exportMappedPersonProperties(person *Person, expCtx *ExportContext) []*GEDC
 
 		val := person.Properties[key]
 		if s, ok := val.(string); ok && s != "" {
-			records = append(records, &GEDCOMRecord{
-				Tag:   gedcomTag,
-				Value: s,
-			})
+			propRecord := &GEDCOMRecord{
+				Tag:        gedcomTag,
+				Value:      s,
+				SubRecords: []*GEDCOMRecord{},
+			}
+
+			// Add SOUR from assertions for this property
+			if personAssertions, ok := expCtx.PersonPropertyAssertions[personID]; ok {
+				if assertions, ok := personAssertions[key]; ok {
+					exportAssertionSourceRefs(assertions, expCtx, propRecord)
+				}
+			}
+
+			records = append(records, propRecord)
 		}
 	}
 

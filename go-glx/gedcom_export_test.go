@@ -1942,7 +1942,10 @@ func TestExportPerson_NameFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			record := exportNameRecord(tt.nameVal)
+			record := exportNameRecord(tt.nameVal, nil, &ExportContext{
+				GLX:           &GLXFile{Citations: make(map[string]*Citation)},
+				SourceXRefMap: make(map[string]string),
+			})
 			require.NotNil(t, record)
 			assert.Equal(t, tt.expected, record.Value)
 		})
@@ -2390,4 +2393,267 @@ func TestExportFamilyEvent_WithCitations(t *testing.T) {
 	}
 
 	assert.True(t, foundSour, "family event missing SOUR subrecord from citation")
+}
+
+// ============================================================================
+// Residence (RESI) export tests
+// ============================================================================
+
+func TestExportPerson_ResidenceExported(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {
+					Properties: map[string]any{
+						PersonPropertyName: map[string]any{
+							"value": "John Smith",
+						},
+						PersonPropertyResidence: []any{
+							map[string]any{
+								"value": "place-1",
+								"date":  "1920",
+							},
+							"place-2",
+						},
+					},
+				},
+			},
+			Events:        make(map[string]*Event),
+			Relationships: make(map[string]*Relationship),
+			Citations:     make(map[string]*Citation),
+			Assertions:    make(map[string]*Assertion),
+		},
+		PersonXRefMap: map[string]string{
+			"person-1": "@I1@",
+		},
+		SourceXRefMap: make(map[string]string),
+		ExportIndex: &ExportIndex{
+			EventTypes:       make(map[string]string),
+			PersonProperties: map[string]string{},
+			EventProperties:  make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: map[string]string{
+			"place-1": "New York, USA",
+			"place-2": "Boston, Massachusetts, USA",
+		},
+		PersonEvents:         make(map[string][]string),
+		PersonSpouseFamilies: make(map[string][]string),
+		PersonChildFamilies:  make(map[string][]childFamilyRef),
+	}
+
+	buildPersonPropertyAssertionsIndex(expCtx)
+	record := exportPerson("person-1", expCtx.GLX.Persons["person-1"], expCtx)
+
+	// Count RESI subrecords
+	resiCount := 0
+	var resiWithDate, resiWithoutDate *GEDCOMRecord
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagResi {
+			resiCount++
+			hasDate := false
+			for _, s := range sub.SubRecords {
+				if s.Tag == GedcomTagDate {
+					hasDate = true
+				}
+			}
+			if hasDate {
+				resiWithDate = sub
+			} else {
+				resiWithoutDate = sub
+			}
+		}
+	}
+
+	assert.Equal(t, 2, resiCount, "expected 2 RESI records")
+
+	// First RESI: with date and place
+	require.NotNil(t, resiWithDate, "RESI with date not found")
+	var foundDate, foundPlac bool
+	for _, sub := range resiWithDate.SubRecords {
+		if sub.Tag == GedcomTagDate {
+			foundDate = true
+			assert.Equal(t, "1920", sub.Value)
+		}
+		if sub.Tag == GedcomTagPlac {
+			foundPlac = true
+			assert.Equal(t, "New York, USA", sub.Value)
+		}
+	}
+	assert.True(t, foundDate, "RESI missing DATE")
+	assert.True(t, foundPlac, "RESI missing PLAC")
+
+	// Second RESI: place only
+	require.NotNil(t, resiWithoutDate, "RESI without date not found")
+	foundPlac = false
+	for _, sub := range resiWithoutDate.SubRecords {
+		if sub.Tag == GedcomTagPlac {
+			foundPlac = true
+			assert.Equal(t, "Boston, Massachusetts, USA", sub.Value)
+		}
+	}
+	assert.True(t, foundPlac, "RESI without date missing PLAC")
+}
+
+// ============================================================================
+// Assertion-based citation export tests (NAME and property citations)
+// ============================================================================
+
+func TestExportPerson_NameCitationsFromAssertions(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {
+					Properties: map[string]any{
+						PersonPropertyName: map[string]any{
+							"value": "Jane Doe",
+							"fields": map[string]any{
+								NameFieldGiven:   "Jane",
+								NameFieldSurname: "Doe",
+							},
+						},
+					},
+				},
+			},
+			Events:        make(map[string]*Event),
+			Relationships: make(map[string]*Relationship),
+			Citations: map[string]*Citation{
+				"cit-name": {
+					SourceID: "source-1",
+					Properties: map[string]any{
+						"locator": "Entry 5",
+					},
+				},
+			},
+			Assertions: map[string]*Assertion{
+				"assert-name": {
+					Subject:   EntityRef{Person: "person-1"},
+					Property:  PersonPropertyName,
+					Value:     "Jane Doe",
+					Sources:   []string{"source-2"},
+					Citations: []string{"cit-name"},
+				},
+			},
+		},
+		PersonXRefMap: map[string]string{"person-1": "@I1@"},
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+			"source-2": "@S2@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			PersonProperties:  make(map[string]string),
+			EventProperties:   make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings:         make(map[string]string),
+		PersonEvents:         make(map[string][]string),
+		PersonSpouseFamilies: make(map[string][]string),
+		PersonChildFamilies:  make(map[string][]childFamilyRef),
+	}
+
+	buildPersonPropertyAssertionsIndex(expCtx)
+	record := exportPerson("person-1", expCtx.GLX.Persons["person-1"], expCtx)
+
+	// Find the NAME subrecord
+	var nameRecord *GEDCOMRecord
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagName {
+			nameRecord = sub
+			break
+		}
+	}
+	require.NotNil(t, nameRecord, "NAME record not found")
+
+	// Should have SOUR subrecords from the assertion
+	var foundSourDirect, foundSourCitation bool
+	for _, sub := range nameRecord.SubRecords {
+		if sub.Tag == GedcomTagSour {
+			if sub.Value == "@S2@" {
+				foundSourDirect = true
+			}
+			if sub.Value == "@S1@" {
+				foundSourCitation = true
+				// Check PAGE
+				var foundPage bool
+				for _, pageSub := range sub.SubRecords {
+					if pageSub.Tag == GedcomTagPage {
+						foundPage = true
+						assert.Equal(t, "Entry 5", pageSub.Value)
+					}
+				}
+				assert.True(t, foundPage, "NAME SOUR from citation missing PAGE")
+			}
+		}
+	}
+
+	assert.True(t, foundSourDirect, "NAME missing direct SOUR from assertion")
+	assert.True(t, foundSourCitation, "NAME missing SOUR from assertion citation")
+}
+
+func TestExportPerson_PropertyCitationsFromAssertions(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {
+					Properties: map[string]any{
+						PersonPropertyName: map[string]any{
+							"value": "John Smith",
+						},
+						"occupation": "Farmer",
+					},
+				},
+			},
+			Events:        make(map[string]*Event),
+			Relationships: make(map[string]*Relationship),
+			Citations:     make(map[string]*Citation),
+			Assertions: map[string]*Assertion{
+				"assert-occu": {
+					Subject:  EntityRef{Person: "person-1"},
+					Property: "occupation",
+					Value:    "Farmer",
+					Sources:  []string{"source-1"},
+				},
+			},
+		},
+		PersonXRefMap: map[string]string{"person-1": "@I1@"},
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			PersonProperties:  map[string]string{"occupation": "OCCU"},
+			EventProperties:   make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings:         make(map[string]string),
+		PersonEvents:         make(map[string][]string),
+		PersonSpouseFamilies: make(map[string][]string),
+		PersonChildFamilies:  make(map[string][]childFamilyRef),
+	}
+
+	buildPersonPropertyAssertionsIndex(expCtx)
+	record := exportPerson("person-1", expCtx.GLX.Persons["person-1"], expCtx)
+
+	// Find the OCCU subrecord
+	var occuRecord *GEDCOMRecord
+	for _, sub := range record.SubRecords {
+		if sub.Tag == "OCCU" {
+			occuRecord = sub
+			break
+		}
+	}
+	require.NotNil(t, occuRecord, "OCCU record not found")
+	assert.Equal(t, "Farmer", occuRecord.Value)
+
+	// Should have SOUR subrecord from the assertion
+	var foundSour bool
+	for _, sub := range occuRecord.SubRecords {
+		if sub.Tag == GedcomTagSour {
+			foundSour = true
+			assert.Equal(t, "@S1@", sub.Value)
+		}
+	}
+
+	assert.True(t, foundSour, "OCCU missing SOUR from assertion")
 }

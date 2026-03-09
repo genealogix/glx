@@ -67,6 +67,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	// Build person events index (person ID -> event IDs where person is principal)
 	buildPersonEventsIndex(expCtx)
 
+	// Build assertion lookup index (person ID + property -> assertions)
+	buildPersonPropertyAssertionsIndex(expCtx)
+
 	// Reconstruct families from relationships (before building records)
 	reconstructFamilies(expCtx)
 
@@ -170,6 +173,10 @@ type ExportContext struct {
 	// Person-to-family reverse maps for FAMS/FAMC back-references
 	PersonSpouseFamilies map[string][]string          // person ID -> family XRefs where spouse
 	PersonChildFamilies  map[string][]childFamilyRef  // person ID -> family refs where child
+
+	// PersonPropertyAssertions maps personID -> property -> assertions
+	// Used to export SOUR on NAME, OCCU, RESI, etc. from assertion evidence
+	PersonPropertyAssertions map[string]map[string][]*Assertion
 
 	Stats ExportStatistics
 }
