@@ -17,7 +17,6 @@ package glx
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -676,10 +675,44 @@ func TestEventTitleRoundTrip(t *testing.T) {
 		t.Errorf("Expected empty title for birth event, got %q", birth.Title)
 	}
 
-	// Verify title appears in serialized YAML and omitempty works
-	yamlStr := string(yamlBytes)
-	if !strings.Contains(yamlStr, "title:") {
-		t.Error("Expected title field in serialized YAML for census event")
+	// Verify title appears only for census event in serialized YAML and omitempty works
+	var raw map[string]any
+	if err := yaml.Unmarshal(yamlBytes, &raw); err != nil {
+		t.Fatalf("Failed to unmarshal serialized YAML for inspection: %v", err)
+	}
+
+	eventsVal, ok := raw["events"]
+	if !ok {
+		t.Fatalf("Serialized YAML missing top-level 'events' key")
+	}
+
+	eventsMap, ok := eventsVal.(map[string]any)
+	if !ok {
+		t.Fatalf("Serialized 'events' value has unexpected type %T", eventsVal)
+	}
+
+	censusVal, ok := eventsMap["event-census-1860"]
+	if !ok {
+		t.Fatalf("Serialized YAML missing 'event-census-1860' entry")
+	}
+	censusMap, ok := censusVal.(map[string]any)
+	if !ok {
+		t.Fatalf("Serialized 'event-census-1860' has unexpected type %T", censusVal)
+	}
+	if _, ok := censusMap["title"]; !ok {
+		t.Error("Expected 'title' field for census event in serialized YAML")
+	}
+
+	birthVal, ok := eventsMap["event-birth-001"]
+	if !ok {
+		t.Fatalf("Serialized YAML missing 'event-birth-001' entry")
+	}
+	birthMap, ok := birthVal.(map[string]any)
+	if !ok {
+		t.Fatalf("Serialized 'event-birth-001' has unexpected type %T", birthVal)
+	}
+	if _, ok := birthMap["title"]; ok {
+		t.Error("Did not expect 'title' field for birth event in serialized YAML (omitempty should omit empty titles)")
 	}
 }
 
