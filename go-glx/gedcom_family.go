@@ -32,7 +32,8 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// GEDCOM does not guarantee tag order, so event tags may appear before
 	// HUSB/WIFE tags. Collecting everything first prevents empty spouse IDs.
 	var husbandID, wifeID string
-	var marriageRecord, divorceRecord *GEDCOMRecord
+	var marriageRecords []*GEDCOMRecord
+	var divorceRecord *GEDCOMRecord
 	var censusRecords []*GEDCOMRecord
 	var familyEventRecords []*GEDCOMRecord
 	var objeRecords []*GEDCOMRecord
@@ -58,7 +59,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case GedcomTagMarr:
-			marriageRecord = sub
+			marriageRecords = append(marriageRecords, sub)
 		case GedcomTagDiv:
 			divorceRecord = sub
 		case GedcomTagCens:
@@ -120,9 +121,13 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		conv.GLX.Relationships[relationshipID] = relationship
 		conv.Stats.RelationshipsCreated++
 
-		// Process marriage event if exists
-		if marriageRecord != nil {
-			convertMarriageEvent(husbandID, wifeID, relationshipID, marriageRecord, conv)
+		// Process marriage events — first becomes StartEvent, rest become family events
+		for i, marrRec := range marriageRecords {
+			if i == 0 {
+				convertMarriageEvent(husbandID, wifeID, relationshipID, marrRec, conv)
+			} else {
+				convertFamilyEvent(husbandID, wifeID, marrRec, conv)
+			}
 		}
 
 		// Process divorce event if exists
