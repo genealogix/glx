@@ -41,4 +41,6 @@ var (
 	ErrFileValidationFailed       = errors.New("validation of file failed")
 	ErrYAMLParseFailed            = errors.New("failed to parse YAML file")
 	ErrMultipleFilesFailed        = errors.New("multiple files failed validation")
+	ErrInvalidExportFormat        = errors.New("invalid GEDCOM version format")
+	ErrInputNotFound              = errors.New("input path not found")
 )
