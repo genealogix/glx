@@ -34,6 +34,7 @@ persons:
 
 events:
   event-marriage-1880:
+    title: "Smith-Doe Wedding"
     type: marriage
     date: "1880-06-15"
     participants:
