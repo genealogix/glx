@@ -167,10 +167,9 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		allNames := extractAllNames(person)
 
 		if opts.Name != "" {
-			lowerQuery := strings.ToLower(opts.Name)
 			matched := false
 			for _, n := range allNames {
-				if containsFold(n, lowerQuery) {
+				if containsFold(n, opts.Name) {
 					matched = true
 					break
 				}
@@ -460,20 +459,6 @@ func extractPersonName(person *glxlib.Person) string {
 	}
 
 	return names[0]
-}
-
-// nameMatches checks if any of a person's name variants contain the query
-// string (case-insensitive). This searches across all name entries including
-// birth names, married names, as-recorded variants, and maiden names.
-func nameMatches(person *glxlib.Person, query string) bool {
-	lowerQuery := strings.ToLower(query)
-	for _, name := range extractAllNames(person) {
-		if containsFold(name, lowerQuery) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // extractAllNames returns all name variants for a person.
