@@ -391,7 +391,7 @@ func generateWikiTreeBio(personID string, person *glxlib.Person, archive *glxlib
 	writeMarriageAndFamily(&b, personID, archive, refs, idx)
 
 	// == Research Notes ==
-	writeResearchNotes(&b, personID, person, archive)
+	writeResearchNotes(&b, personID, person, archive, refs)
 
 	// == Sources ==
 	b.WriteString("== Sources ==\n")
@@ -1266,15 +1266,18 @@ func findFirstSpouseName(personID string, archive *glxlib.GLXFile) string {
 
 // writeResearchNotes writes the Research Notes section from assertion notes and low-confidence items.
 // Deduplicates notes that cover the same topic from different sources.
-func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile) {
+// Adds inline citation refs so evidence is traceable to the Sources section.
+func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker) {
 	var notes []string
 
-	// Person-level notes
+	// Person-level notes — attach refs from any assertions whose evidence
+	// is mentioned in the text but not yet cited inline.
 	if person.Notes != "" {
-		notes = append(notes, person.Notes)
+		personNoteRefs := refsForPersonNotes(personID, person.Notes, archive, refs)
+		notes = append(notes, person.Notes+personNoteRefs)
 	}
 
-	// Low-confidence or noteworthy assertions
+	// Low-confidence or noteworthy assertions — include their citation refs
 	ids := sortedKeys(archive.Assertions)
 	for _, id := range ids {
 		a := archive.Assertions[id]
@@ -1283,7 +1286,8 @@ func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Pers
 		}
 		if a.Confidence != "" && a.Confidence != "high" && a.Notes != "" {
 			propName := humanPropertyName(a.Property)
-			notes = append(notes, fmt.Sprintf("%s: %s (%s confidence)", propName, a.Notes, a.Confidence))
+			citRefs := assertionCitationRefs(a, archive, refs)
+			notes = append(notes, fmt.Sprintf("%s: %s (%s confidence)%s", propName, a.Notes, a.Confidence, citRefs))
 		}
 	}
 
@@ -1317,6 +1321,74 @@ func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Pers
 	for _, note := range notes {
 		b.WriteString(note + "\n\n")
 	}
+}
+
+// assertionCitationRefs returns <ref> tags for all citations on an assertion.
+func assertionCitationRefs(a *glxlib.Assertion, archive *glxlib.GLXFile, refs *refTracker) string {
+	var parts []string
+	for _, citID := range a.Citations {
+		parts = append(parts, refs.ref(citID, archive))
+	}
+
+	return strings.Join(parts, "")
+}
+
+// refsForPersonNotes finds citations from assertions about a person that match
+// evidence references mentioned in the person's notes text. This links free-text
+// evidence mentions to formal citations so they appear in the Sources section.
+func refsForPersonNotes(personID, notesText string, archive *glxlib.GLXFile, refs *refTracker) string {
+	evidenceRefs := extractEvidenceRefs(notesText)
+	if len(evidenceRefs) == 0 {
+		return ""
+	}
+
+	// Collect all citation IDs from assertions about this person,
+	// indexed by evidence refs extracted from both citation text and citation ID.
+	citationsByEvidence := make(map[string]string) // evidence ref key -> citation ID
+	for _, id := range sortedKeys(archive.Assertions) {
+		a := archive.Assertions[id]
+		if a.Subject.Person != personID {
+			continue
+		}
+		for _, citID := range a.Citations {
+			// Extract evidence refs from citation text
+			citText := strings.ToLower(formatCitationText(citID, archive))
+			for ref := range extractEvidenceRefs(citText) {
+				if _, exists := citationsByEvidence[ref]; !exists {
+					citationsByEvidence[ref] = citID
+				}
+			}
+			// Also extract from the citation ID itself (e.g. "citation-1899-marriage-abbott-lane")
+			for ref := range extractEvidenceRefs(strings.ReplaceAll(citID, "-", " ")) {
+				if _, exists := citationsByEvidence[ref]; !exists {
+					citationsByEvidence[ref] = citID
+				}
+			}
+		}
+	}
+
+	// Match person note evidence refs to citations, emit refs for matches
+	seen := make(map[string]bool)
+	var parts []string
+	for _, ref := range sortedEvidenceRefs(evidenceRefs) {
+		if citID, ok := citationsByEvidence[ref]; ok && !seen[citID] {
+			seen[citID] = true
+			parts = append(parts, refs.ref(citID, archive))
+		}
+	}
+
+	return strings.Join(parts, "")
+}
+
+// sortedEvidenceRefs returns evidence ref keys in sorted order for deterministic output.
+func sortedEvidenceRefs(refs map[string]bool) []string {
+	keys := make([]string, 0, len(refs))
+	for k := range refs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	return keys
 }
 
 // isRedundantNote checks whether a candidate note is substantially covered by
