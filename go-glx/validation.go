@@ -52,6 +52,9 @@ func (glx *GLXFile) Validate() *ValidationResult {
 	// Phase 5: Validate entity-level field formats
 	glx.validateEntityFieldFormats(result)
 
+	// Phase 6: Validate temporal consistency
+	glx.validateTemporalConsistency(result)
+
 	result.validated = true
 	glx.validation = result
 
