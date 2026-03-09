@@ -74,6 +74,9 @@ func showWikiTreeStale(archivePath string) error {
 	// Collect file modification times for staleness detection
 	fileMtimes := collectArchiveFileMtimes(archiveDir)
 
+	// Pre-index: person -> related entity IDs (events, assertions)
+	relatedIDs := buildPersonEntityIndex(archive)
+
 	ids := sortedKeys(archive.Persons)
 	hasOutput := false
 
@@ -98,7 +101,7 @@ func showWikiTreeStale(archivePath string) error {
 		}
 
 		// Check if any related file was modified after generation
-		staleFiles := findStaleFiles(personID, archive, fileMtimes, genParsed)
+		staleFiles := findStaleFiles(personID, relatedIDs[personID], fileMtimes, genParsed)
 		if len(staleFiles) > 0 {
 			fmt.Printf("  %-30s  %-25s  generated %s  STALE (%d files changed)\n",
 				personID, name, genParsed.Format("2006-01-02"), len(staleFiles))
@@ -126,7 +129,7 @@ func recordWikiTreeGeneration(archivePath, personID string) error {
 		return err
 	}
 
-	return os.WriteFile(trackingPath, data, 0o644)
+	return os.WriteFile(trackingPath, data, filePermissions)
 }
 
 // loadWikiTreeTracking reads the tracking file from the archive directory.
@@ -141,6 +144,8 @@ func loadWikiTreeTracking(archivePath string) wikiTreeTracking {
 
 	var tracking wikiTreeTracking
 	if err := yaml.Unmarshal(data, &tracking); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: corrupted tracking file %s: %v\n", trackingPath, err)
+
 		return make(wikiTreeTracking)
 	}
 
@@ -166,13 +171,23 @@ func collectArchiveFileMtimes(archiveDir string) map[string]time.Time {
 	mtimes := make(map[string]time.Time)
 
 	_ = filepath.Walk(archiveDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: cannot access %s: %v\n", path, err)
+
+			return nil
+		}
+		if info.IsDir() {
 			return nil
 		}
 		if filepath.Ext(path) != ".glx" {
 			return nil
 		}
-		rel, _ := filepath.Rel(archiveDir, path)
+		rel, relErr := filepath.Rel(archiveDir, path)
+		if relErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: cannot compute relative path for %s: %v\n", path, relErr)
+
+			return nil
+		}
 		mtimes[rel] = info.ModTime()
 
 		return nil
@@ -181,44 +196,52 @@ func collectArchiveFileMtimes(archiveDir string) map[string]time.Time {
 	return mtimes
 }
 
+// buildPersonEntityIndex creates a map of person ID -> set of related entity IDs
+// (the person's own ID, plus event and assertion IDs that reference them).
+func buildPersonEntityIndex(archive *glxlib.GLXFile) map[string]map[string]bool {
+	idx := make(map[string]map[string]bool)
+
+	// Initialize with person IDs themselves
+	for personID := range archive.Persons {
+		idx[personID] = map[string]bool{personID: true}
+	}
+
+	// Index events by participant
+	for eventID, event := range archive.Events {
+		for _, p := range event.Participants {
+			if _, ok := idx[p.Person]; ok {
+				idx[p.Person][eventID] = true
+			}
+		}
+	}
+
+	// Index assertions by subject
+	for assertionID, assertion := range archive.Assertions {
+		if pid := assertion.Subject.Person; pid != "" {
+			if _, ok := idx[pid]; ok {
+				idx[pid][assertionID] = true
+			}
+		}
+	}
+
+	return idx
+}
+
 // findStaleFiles checks if any GLX files referencing a person were modified after genTime.
-func findStaleFiles(personID string, archive *glxlib.GLXFile, fileMtimes map[string]time.Time, genTime time.Time) []string {
+// entityIDs is the pre-indexed set of entity IDs related to the person.
+func findStaleFiles(personID string, entityIDs map[string]bool, fileMtimes map[string]time.Time, genTime time.Time) []string {
 	var stale []string
 
-	// Check person file
 	for path, mtime := range fileMtimes {
 		if !mtime.After(genTime) {
 			continue
 		}
 
-		// Person files
-		if strings.Contains(path, personID) {
-			stale = append(stale, path)
-
-			continue
-		}
-
-		// Event files — check if person is a participant
-		for eventID, event := range archive.Events {
-			if !strings.Contains(path, eventID) {
-				continue
-			}
-			for _, p := range event.Participants {
-				if p.Person == personID {
-					stale = append(stale, path)
-
-					break
-				}
-			}
-		}
-
-		// Assertion files — check if person is the subject
-		for assertionID, assertion := range archive.Assertions {
-			if !strings.Contains(path, assertionID) {
-				continue
-			}
-			if assertion.Subject.Person == personID {
+		for entityID := range entityIDs {
+			if strings.Contains(path, entityID) {
 				stale = append(stale, path)
+
+				break
 			}
 		}
 	}
@@ -446,10 +469,8 @@ func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Pe
 		b.WriteString(fmt.Sprintf(" was born in %s", placeName))
 	}
 
-	birthRefs := refsForAssertions(personID, "born_on", archive, refs, idx)
-	if birthRefs == "" {
-		birthRefs = refsForAssertions(personID, "born_at", archive, refs, idx)
-	}
+	birthRefs := refsForAssertions(personID, "born_on", archive, refs, idx) +
+		refsForAssertions(personID, "born_at", archive, refs, idx)
 	b.WriteString(birthRefs)
 
 	// Occupation — only add pronoun + occupation if occupation exists
@@ -500,7 +521,6 @@ func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLX
 		}
 
 		eventRefs := refsForEvent(we.ID, archive, refs, idx)
-		// Also check for citations on assertions about this person's residence at this date
 		b.WriteString(line + eventRefs + ".\n\n")
 
 		if event.Notes != "" {
@@ -646,7 +666,11 @@ func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.G
 
 	// Write relationship-based marriages (no event)
 	for _, rm := range relMarriages {
-		b.WriteString(fmt.Sprintf("%s married %s.\n\n", name, rm.spouseName))
+		b.WriteString(fmt.Sprintf("%s married %s.", name, rm.spouseName))
+		if rm.notes != "" {
+			b.WriteString(" " + rm.notes)
+		}
+		b.WriteString("\n\n")
 	}
 }
 
@@ -670,7 +694,8 @@ func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Perso
 
 	// Death
 	if diedOn != "" || deathPlace != "" {
-		deathRefs := refsForAssertions(personID, "died_on", archive, refs, idx)
+		deathRefs := refsForAssertions(personID, "died_on", archive, refs, idx) +
+			refsForAssertions(personID, "died_at", archive, refs, idx)
 
 		switch {
 		case diedOn != "" && deathPlace != "":

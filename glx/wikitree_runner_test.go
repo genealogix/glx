@@ -335,6 +335,9 @@ func TestLoadWikiTreeTracking_MissingFile(t *testing.T) {
 
 func TestFindStaleFiles(t *testing.T) {
 	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-john": {},
+		},
 		Events: map[string]*glxlib.Event{
 			"event-census": {
 				Type: "census",
@@ -350,18 +353,21 @@ func TestFindStaleFiles(t *testing.T) {
 		},
 	}
 
+	// Build the person entity index
+	relatedIDs := buildPersonEntityIndex(archive)
+
 	genTime := time.Now().Add(-time.Hour) // Generated 1 hour ago
 
 	// Files modified after generation
 	fileMtimes := map[string]time.Time{
-		"persons/person-john.glx":       time.Now(), // Modified after gen
-		"events/event-census.glx":       time.Now(), // Modified after gen
-		"assertions/assert-birth.glx":   time.Now(), // Modified after gen
-		"events/event-unrelated.glx":    time.Now(), // Unrelated
-		"persons/person-other.glx":      time.Now(), // Unrelated
+		"persons/person-john.glx":     time.Now(), // Modified after gen
+		"events/event-census.glx":     time.Now(), // Modified after gen
+		"assertions/assert-birth.glx": time.Now(), // Modified after gen
+		"events/event-unrelated.glx":  time.Now(), // Unrelated
+		"persons/person-other.glx":    time.Now(), // Unrelated
 	}
 
-	stale := findStaleFiles("person-john", archive, fileMtimes, genTime)
+	stale := findStaleFiles("person-john", relatedIDs["person-john"], fileMtimes, genTime)
 
 	if len(stale) < 2 {
 		t.Errorf("expected at least 2 stale files (person + event or assertion), got %d: %v", len(stale), stale)
