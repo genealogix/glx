@@ -163,9 +163,23 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 
 	for _, id := range ids {
 		person := archive.Persons[id]
-
-		if opts.Name != "" && !nameMatches(person, opts.Name) {
+		if person == nil {
 			continue
+		}
+
+		allNames := extractAllNames(person)
+
+		if opts.Name != "" {
+			matched := false
+			for _, n := range allNames {
+				if containsFold(n, opts.Name) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
 		}
 		if opts.BornBefore > 0 || opts.BornAfter > 0 {
 			year := extractPropertyYear(person.Properties, "born_on")
@@ -177,7 +191,10 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 			}
 		}
 
-		name := extractPersonName(person)
+		name := "(unnamed)"
+		if len(allNames) > 0 {
+			name = allNames[0]
+		}
 		bornOn := propertyString(person.Properties, "born_on")
 		diedOn := propertyString(person.Properties, "died_on")
 
@@ -190,6 +207,20 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		case diedOn != "":
 			detail += fmt.Sprintf("  (d. %s)", diedOn)
 		}
+
+		// Show alternate names if present (deduplicated, excluding primary)
+		seen := map[string]bool{name: true}
+		var akaNames []string
+		for _, n := range allNames {
+			if n != "" && !seen[n] {
+				seen[n] = true
+				akaNames = append(akaNames, n)
+			}
+		}
+		if len(akaNames) > 0 {
+			detail += "  aka: " + strings.Join(akaNames, ", ")
+		}
+
 		fmt.Printf("  %s  %s\n", id, detail)
 		count++
 	}
@@ -422,45 +453,68 @@ func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sou
 // ============================================================================
 
 // extractPersonName extracts a display name from person properties.
-// Handles both simple string values and structured name objects.
+// Handles simple strings, structured maps, and temporal lists.
+// Delegates to extractAllNames and returns the first entry.
 func extractPersonName(person *glxlib.Person) string {
-	raw, ok := person.Properties["name"]
-	if !ok {
-		raw, ok = person.Properties["primary_name"]
-	}
-	if !ok {
+	names := extractAllNames(person)
+	if len(names) == 0 {
 		return "(unnamed)"
+	}
+
+	return names[0]
+}
+
+// extractAllNames returns all name variants for a person.
+// Handles simple strings, structured maps, and temporal lists.
+// Falls back to primary_name if name is missing or yields no usable entries.
+func extractAllNames(person *glxlib.Person) []string {
+	if names := extractNamesFromProperty(person.Properties, "name"); len(names) > 0 {
+		return names
+	}
+	return extractNamesFromProperty(person.Properties, "primary_name")
+}
+
+// extractNamesFromProperty extracts name strings from a property value.
+func extractNamesFromProperty(props map[string]any, key string) []string {
+	raw, ok := props[key]
+	if !ok {
+		return nil
 	}
 
 	// Simple string value
 	if s, ok := raw.(string); ok {
-		return s
+		if s == "" {
+			return nil
+		}
+		return []string{s}
 	}
 
-	// Structured: map with "value" key
+	// Structured: map with "value" key (single name entry)
 	if m, ok := raw.(map[string]any); ok {
 		if v, ok := m["value"]; ok {
-			return fmt.Sprint(v)
+			if s, ok := v.(string); ok && s != "" {
+				return []string{s}
+			}
 		}
+		return nil
 	}
 
 	// Temporal list: []any where each entry has a "value" key
-	if list, ok := raw.([]any); ok && len(list) > 0 {
-		if m, ok := list[0].(map[string]any); ok {
-			if v, ok := m["value"]; ok {
-				return fmt.Sprint(v)
+	if list, ok := raw.([]any); ok {
+		var names []string
+		for _, entry := range list {
+			if m, ok := entry.(map[string]any); ok {
+				if v, ok := m["value"]; ok {
+					if s, ok := v.(string); ok && s != "" {
+						names = append(names, s)
+					}
+				}
 			}
 		}
+		return names
 	}
 
-	return "(unnamed)"
-}
-
-// nameMatches checks if a person's name contains the query string (case-insensitive).
-func nameMatches(person *glxlib.Person, query string) bool {
-	name := extractPersonName(person)
-
-	return containsFold(name, query)
+	return nil
 }
 
 // propertyString extracts a simple string value from properties.
