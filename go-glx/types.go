@@ -315,8 +315,9 @@ type EventType struct {
 
 // ParticipantRole represents a standard participant role vocabulary entry.
 type ParticipantRole struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
+	Label       string   `yaml:"label"`
+	Description string   `yaml:"description,omitempty"`
+	AppliesTo   []string `yaml:"applies_to,omitempty"`
 }
 
 // ConfidenceLevel represents a standard confidence level vocabulary entry.
