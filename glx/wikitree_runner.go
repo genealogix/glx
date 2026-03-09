@@ -689,18 +689,47 @@ func writeCensusStandalone(b *strings.Builder, pronoun string, events []wikiTree
 	}
 }
 
-// censusEventRef returns a ref tag for a census event, using assertion refs or
-// falling back to the first paragraph of event notes.
+// censusEventRef returns a ref tag for a census event, using assertion refs,
+// then checking for an already-emitted citation covering the same census,
+// then falling back to the first paragraph of event notes.
 func censusEventRef(we wikiTreeEvent, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) string {
 	eventRefs := refsForEvent(we.ID, archive, refs, idx)
-	if eventRefs == "" && we.Event.Notes != "" {
+	if eventRefs != "" {
+		return eventRefs
+	}
+
+	// Check if there's already a citation covering this census year.
+	// This prevents duplicate footnotes when e.g. a birth assertion and a
+	// census event both reference the same census record.
+	year := extractYear(string(we.Event.Date))
+	if year != "" {
+		if citID := findMatchingCensusCitation(year, archive, refs); citID != "" {
+			return refs.ref(citID, archive)
+		}
+	}
+
+	// Fall back to event notes as an anonymous ref
+	if we.Event.Notes != "" {
 		noteText := firstNoteParagraph(we.Event.Notes)
 		if noteText != "" {
 			return fmt.Sprintf("<ref>%s</ref>", noteText)
 		}
 	}
 
-	return eventRefs
+	return ""
+}
+
+// findMatchingCensusCitation searches already-emitted citations for one that
+// covers the given census year. Returns the citation ID or empty string.
+func findMatchingCensusCitation(year string, archive *glxlib.GLXFile, refs *refTracker) string {
+	for citID := range refs.citations {
+		citText := strings.ToLower(formatCitationText(citID, archive))
+		if strings.Contains(citText, "census") && strings.Contains(citText, year) {
+			return citID
+		}
+	}
+
+	return ""
 }
 
 // spouseDescription returns a brief description of a spouse, e.g. "a Virginia-born farmer".
