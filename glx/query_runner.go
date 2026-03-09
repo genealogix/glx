@@ -163,6 +163,9 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 
 	for _, id := range ids {
 		person := archive.Persons[id]
+		if person == nil {
+			continue
+		}
 
 		allNames := extractAllNames(person)
 
@@ -450,7 +453,7 @@ func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sou
 // ============================================================================
 
 // extractPersonName extracts a display name from person properties.
-// Handles both simple string values and structured name objects.
+// Handles simple strings, structured maps, and temporal lists.
 // Delegates to extractAllNames and returns the first entry.
 func extractPersonName(person *glxlib.Person) string {
 	names := extractAllNames(person)
@@ -463,11 +466,17 @@ func extractPersonName(person *glxlib.Person) string {
 
 // extractAllNames returns all name variants for a person.
 // Handles simple strings, structured maps, and temporal lists.
+// Falls back to primary_name if name is missing or yields no usable entries.
 func extractAllNames(person *glxlib.Person) []string {
-	raw, ok := person.Properties["name"]
-	if !ok {
-		raw, ok = person.Properties["primary_name"]
+	if names := extractNamesFromProperty(person.Properties, "name"); len(names) > 0 {
+		return names
 	}
+	return extractNamesFromProperty(person.Properties, "primary_name")
+}
+
+// extractNamesFromProperty extracts name strings from a property value.
+func extractNamesFromProperty(props map[string]any, key string) []string {
+	raw, ok := props[key]
 	if !ok {
 		return nil
 	}
@@ -487,7 +496,6 @@ func extractAllNames(person *glxlib.Person) []string {
 				return []string{s}
 			}
 		}
-
 		return nil
 	}
 
@@ -503,7 +511,6 @@ func extractAllNames(person *glxlib.Person) []string {
 				}
 			}
 		}
-
 		return names
 	}
 
