@@ -544,9 +544,37 @@ func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLX
 		b.WriteString(line + eventRefs + ".\n\n")
 
 		if event.Notes != "" {
-			b.WriteString(event.Notes + "\n\n")
+			// Split notes into paragraphs; skip FAN neighbor lists (research-only data)
+			inFAN := false
+			for _, para := range strings.Split(event.Notes, "\n\n") {
+				trimmed := strings.TrimSpace(para)
+				if trimmed == "" {
+					continue
+				}
+				if strings.HasPrefix(trimmed, "FAN") {
+					inFAN = true
+
+					continue
+				}
+				if inFAN && isFANContinuation(trimmed) {
+					continue
+				}
+				inFAN = false
+				b.WriteString(trimmed + "\n\n")
+			}
 		}
 	}
+}
+
+// isFANContinuation returns true if a paragraph looks like a continuation of
+// FAN neighbor data (e.g. "Previous page:", "Current page:", "Next page:", "Same page:").
+func isFANContinuation(s string) bool {
+	lower := strings.ToLower(s)
+
+	return strings.HasPrefix(lower, "previous page") ||
+		strings.HasPrefix(lower, "current page") ||
+		strings.HasPrefix(lower, "next page") ||
+		strings.HasPrefix(lower, "same page")
 }
 
 // writeMilitarySection writes military service events.
