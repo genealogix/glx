@@ -1223,6 +1223,7 @@ func findFirstSpouseName(personID string, archive *glxlib.GLXFile) string {
 }
 
 // writeResearchNotes writes the Research Notes section from assertion notes and low-confidence items.
+// Deduplicates notes that cover the same topic from different sources.
 func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile) {
 	var notes []string
 
@@ -1244,7 +1245,7 @@ func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Pers
 		}
 	}
 
-	// Collect relationship notes (marriage inferences, etc.)
+	// Collect relationship notes, but skip if already covered by an assertion or person note.
 	for _, relID := range sortedKeys(archive.Relationships) {
 		rel := archive.Relationships[relID]
 		if rel.Notes == "" {
@@ -1258,7 +1259,10 @@ func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Pers
 				break
 			}
 		}
-		if hasPerson {
+		if !hasPerson {
+			continue
+		}
+		if !isRedundantNote(rel.Notes, notes) {
 			notes = append(notes, rel.Notes)
 		}
 	}
@@ -1271,6 +1275,91 @@ func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Pers
 	for _, note := range notes {
 		b.WriteString(note + "\n\n")
 	}
+}
+
+// isRedundantNote checks whether a candidate note is substantially covered by
+// any already-collected note. Two notes are considered redundant if they share
+// evidence references (year + record type patterns like "1897 marriage record",
+// "1860 census") on the same topic.
+func isRedundantNote(candidate string, existing []string) bool {
+	candidateRefs := extractEvidenceRefs(candidate)
+	if len(candidateRefs) == 0 {
+		return false
+	}
+
+	for _, note := range existing {
+		noteRefs := extractEvidenceRefs(note)
+		shared := 0
+		for ref := range candidateRefs {
+			if noteRefs[ref] {
+				shared++
+			}
+		}
+		// If any evidence reference is shared, the notes cover the same ground
+		if shared > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// extractEvidenceRefs extracts evidence reference identifiers from text.
+// Looks for patterns like "1897 marriage record", "1860 census", "1855 census"
+// that identify the specific record being cited.
+func extractEvidenceRefs(text string) map[string]bool {
+	refs := make(map[string]bool)
+	lower := strings.ToLower(text)
+	words := strings.Fields(lower)
+
+	for i, word := range words {
+		// Look for 4-digit years followed by a record type keyword
+		if len(word) >= 4 && isYear(word[:4]) && i+1 < len(words) {
+			nextWord := strings.TrimRight(words[i+1], ".,;:)")
+			switch nextWord {
+			case "census", "marriage", "death", "burial", "birth",
+				"baptism", "probate", "will", "deed", "land":
+				refs[word[:4]+" "+nextWord] = true
+			case "u", "us", "federal", "state":
+				// "1860 u.s. census" or "1860 federal census"
+				for j := i + 2; j < len(words) && j <= i+3; j++ {
+					kw := strings.TrimRight(words[j], ".,;:)")
+					if kw == "census" || kw == "marriage" {
+						refs[word[:4]+" "+kw] = true
+
+						break
+					}
+				}
+			}
+		}
+
+		// Also catch "marriage record of [name]" pattern
+		if word == "marriage" && i+2 < len(words) && words[i+1] == "record" {
+			// Find the year nearby (within previous 3 words)
+			for j := max(0, i-3); j < i; j++ {
+				w := strings.TrimRight(words[j], ".,;:)")
+				if len(w) >= 4 && isYear(w[:4]) {
+					refs[w[:4]+" marriage"] = true
+				}
+			}
+		}
+	}
+
+	return refs
+}
+
+// isYear checks if a string looks like a year (1000-2099).
+func isYear(s string) bool {
+	if len(s) != 4 {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+
+	return s >= "1000" && s <= "2099"
 }
 
 // writeSourcesList writes a "See also:" list of sources not already cited inline.
