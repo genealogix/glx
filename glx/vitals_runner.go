@@ -277,7 +277,7 @@ func resolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
 	if placeID == "" {
 		return ""
 	}
-	if place, ok := archive.Places[placeID]; ok {
+	if place, ok := archive.Places[placeID]; ok && place != nil {
 		return place.Name
 	}
 
