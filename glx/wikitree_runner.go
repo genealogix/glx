@@ -936,7 +936,7 @@ func writeMarriageAndFamily(b *strings.Builder, personID string, archive *glxlib
 
 	// List marriages with dates and context
 	for _, spouseID := range spouseIDs {
-		writeMarriageEntry(b, personID, spouseID, archive)
+		writeMarriageEntry(b, personID, spouseID, archive, refs, idx)
 	}
 
 	// Children list
@@ -953,8 +953,8 @@ func writeMarriageAndFamily(b *strings.Builder, personID string, archive *glxlib
 }
 
 // writeMarriageEntry writes a single marriage with date, spouse description, and end context.
-func writeMarriageEntry(b *strings.Builder, personID, spouseID string, archive *glxlib.GLXFile) {
-	// Get subject's short name for pronoun reference
+// Includes military service and sourced death/burial for the spouse when available.
+func writeMarriageEntry(b *strings.Builder, personID, spouseID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	subjectShort := personID
 	if _, ok := archive.Persons[personID]; ok {
 		subjectShort = extractPersonNameShort(personID, archive)
@@ -964,10 +964,11 @@ func writeMarriageEntry(b *strings.Builder, personID, spouseID string, archive *
 	if sp, ok := archive.Persons[spouseID]; ok {
 		spouseName = extractPersonName(sp)
 	}
+	spouseShort := extractPersonNameShort(spouseID, archive)
 
 	marriageDate, marriagePlace := findMarriageDate(personID, spouseID, archive)
 
-	// Build marriage sentence: "Mary married Daniel Lane about 1850-1851."
+	// Marriage sentence: "Mary married Daniel Lane about 1850-1851."
 	sentence := subjectShort + " married " + spouseName
 	if marriageDate != "" && marriagePlace != "" {
 		sentence += fmt.Sprintf(" %s in %s", narrativeDateWT(marriageDate), marriagePlace)
@@ -977,15 +978,131 @@ func writeMarriageEntry(b *strings.Builder, personID, spouseID string, archive *
 		sentence += " in " + marriagePlace
 	}
 	sentence += "."
+	b.WriteString(sentence)
 
-	// Check if spouse died — append as separate sentence
-	spouseDeathInfo := personDeathSummary(spouseID, archive)
-	if spouseDeathInfo != "" {
-		spouseShort := extractPersonNameShort(spouseID, archive)
-		sentence += " " + spouseShort + " " + spouseDeathInfo + "."
+	// Military service for spouse (notable context for how marriage ended)
+	milEvents := findPersonEventsByType(spouseID, "military_service", archive)
+	if len(milEvents) > 0 {
+		milSentence := spouseMilitarySummary(spouseShort, milEvents[0], archive, refs, idx)
+		if milSentence != "" {
+			b.WriteString(" " + milSentence)
+		}
 	}
 
-	b.WriteString(sentence + "\n\n")
+	// Death/burial for spouse with citation
+	deathSentence := spouseDeathWithRef(spouseShort, spouseID, archive, refs, idx)
+	if deathSentence != "" {
+		b.WriteString(" " + deathSentence)
+	}
+
+	b.WriteString("\n\n")
+}
+
+// spouseMilitarySummary returns a brief sentence about a spouse's military service with citation.
+// e.g. "Daniel served as a Private in Co. B, 12th Wisconsin Infantry during the Civil War.<ref>"
+func spouseMilitarySummary(shortName string, we wikiTreeEvent, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) string {
+	personID := ""
+	for _, p := range we.Event.Participants {
+		if p.Person != "" {
+			personID = p.Person
+
+			break
+		}
+	}
+
+	milRefs := refsForAssertions(personID, "military_service", archive, refs, idx)
+	if milRefs == "" {
+		milRefs = refsForEvent(we.ID, archive, refs, idx)
+	}
+
+	// Use assertion value for clean unit description (e.g. "Private, Co. B, 12th Regiment, Wisconsin Infantry, Union")
+	desc := findAssertionValue(personID, "military_service", archive)
+	if desc == "" {
+		// Fall back to participant notes
+		for _, p := range we.Event.Participants {
+			if p.Notes != "" {
+				desc = strings.TrimSpace(p.Notes)
+
+				break
+			}
+		}
+	}
+
+	if desc != "" {
+		return fmt.Sprintf("%s served as a %s.%s", shortName, desc, milRefs)
+	}
+
+	date := string(we.Event.Date)
+	if date != "" {
+		return fmt.Sprintf("%s served in the military %s.%s", shortName, narrativeDateWT(date), milRefs)
+	}
+
+	return ""
+}
+
+// findAssertionValue returns the value from an assertion matching a person and property.
+func findAssertionValue(personID, property string, archive *glxlib.GLXFile) string {
+	for _, id := range sortedKeys(archive.Assertions) {
+		a := archive.Assertions[id]
+		if a.Subject.Person == personID && a.Property == property && a.Value != "" {
+			return a.Value
+		}
+	}
+
+	return ""
+}
+
+// spouseDeathWithRef returns a death/burial sentence for a spouse with citation refs.
+// e.g. "Daniel was buried at Memphis National Cemetery.<ref>"
+func spouseDeathWithRef(shortName, spouseID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) string {
+	person, ok := archive.Persons[spouseID]
+	if !ok {
+		return ""
+	}
+
+	// Check died_on/died_at properties
+	diedOn := propertyString(person.Properties, "died_on")
+	diedAt := propertyString(person.Properties, "died_at")
+	deathPlace := wikiTreePlaceName(diedAt, archive)
+	deathRefs := refsForMultipleProperties(spouseID, []string{"died_on", "died_at"}, archive, refs, idx)
+
+	if diedOn != "" && deathPlace != "" {
+		return fmt.Sprintf("%s died %s in %s.%s", shortName, narrativeDateWT(diedOn), deathPlace, deathRefs)
+	}
+	if diedOn != "" {
+		return fmt.Sprintf("%s died %s.%s", shortName, narrativeDateWT(diedOn), deathRefs)
+	}
+
+	// Check death events
+	deathEvents := findPersonEventsByType(spouseID, "death", archive)
+	if len(deathEvents) > 0 {
+		we := deathEvents[0]
+		date := string(we.Event.Date)
+		place := wikiTreePlaceName(we.Event.PlaceID, archive)
+		eventRefs := refsForEvent(we.ID, archive, refs, idx)
+		if date != "" && place != "" {
+			return fmt.Sprintf("%s died %s in %s.%s", shortName, narrativeDateWT(date), place, eventRefs)
+		}
+		if date != "" {
+			return fmt.Sprintf("%s died %s.%s", shortName, narrativeDateWT(date), eventRefs)
+		}
+	}
+
+	// Check burial events
+	burialEvents := findPersonEventsByType(spouseID, "burial", archive)
+	if len(burialEvents) > 0 {
+		we := burialEvents[0]
+		place := wikiTreePlaceName(we.Event.PlaceID, archive)
+		burialRefs := refsForAssertions(spouseID, "burial_place", archive, refs, idx)
+		if burialRefs == "" {
+			burialRefs = refsForEvent(we.ID, archive, refs, idx)
+		}
+		if place != "" {
+			return fmt.Sprintf("%s was buried at %s.%s", shortName, place, burialRefs)
+		}
+	}
+
+	return ""
 }
 
 // findMarriageDate returns the date and place of a marriage between two people,
@@ -1047,50 +1164,6 @@ func extractApproxDateFromNotes(notes string) string {
 
 	return ""
 }
-
-// personDeathSummary returns a brief death summary for narrative use, e.g. "died on 1863-02-10".
-func personDeathSummary(personID string, archive *glxlib.GLXFile) string {
-	person, ok := archive.Persons[personID]
-	if !ok {
-		return ""
-	}
-
-	diedOn := propertyString(person.Properties, "died_on")
-	diedAt := propertyString(person.Properties, "died_at")
-	deathPlace := wikiTreePlaceName(diedAt, archive)
-
-	if diedOn != "" && deathPlace != "" {
-		return fmt.Sprintf("died %s in %s", narrativeDateWT(diedOn), deathPlace)
-	}
-	if diedOn != "" {
-		return "died " + narrativeDateWT(diedOn)
-	}
-
-	// Check death events
-	deathEvents := findPersonEventsByType(personID, "death", archive)
-	if len(deathEvents) > 0 {
-		date := string(deathEvents[0].Event.Date)
-		place := wikiTreePlaceName(deathEvents[0].Event.PlaceID, archive)
-		if date != "" && place != "" {
-			return fmt.Sprintf("died %s in %s", narrativeDateWT(date), place)
-		}
-		if date != "" {
-			return "died " + narrativeDateWT(date)
-		}
-	}
-
-	// Check burial events as fallback (implies death)
-	burialEvents := findPersonEventsByType(personID, "burial", archive)
-	if len(burialEvents) > 0 {
-		place := wikiTreePlaceName(burialEvents[0].Event.PlaceID, archive)
-		if place != "" {
-			return "was buried at " + place
-		}
-	}
-
-	return ""
-}
-
 
 // childInfo holds display information for a child, used for sorting.
 type childInfo struct {
