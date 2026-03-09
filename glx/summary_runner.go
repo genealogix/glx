@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -76,9 +77,31 @@ var summarySkippedProperties = map[string]bool{
 	"died_on": true, "died_at": true,
 }
 
+// loadArchiveForSummary loads an archive from a path (directory or single file).
+func loadArchiveForSummary(path string) (*glxlib.GLXFile, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot access path: %w", err)
+	}
+
+	if info.IsDir() {
+		archive, duplicates, err := LoadArchiveWithOptions(path, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load archive: %w", err)
+		}
+		for _, d := range duplicates {
+			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
+		}
+
+		return archive, nil
+	}
+
+	return readSingleFileArchive(path, false)
+}
+
 // showSummary loads an archive and displays a comprehensive person profile.
 func showSummary(archivePath, personQuery string) error {
-	archive, err := loadArchiveForQuery(archivePath)
+	archive, err := loadArchiveForSummary(archivePath)
 	if err != nil {
 		return err
 	}
