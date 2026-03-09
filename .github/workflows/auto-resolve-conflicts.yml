@@ -24,7 +24,7 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
@@ -52,7 +52,10 @@ jobs:
             echo "=== PR #$PR_NUMBER ($BRANCH) ==="
 
             # Clean state for each PR
-            git checkout main 2>/dev/null
+            if ! git checkout main; then
+              echo "  Failed to checkout main — aborting job"
+              exit 1
+            fi
             git branch -D "resolve-$BRANCH" 2>/dev/null || true
 
             # Check out the PR branch
@@ -69,7 +72,6 @@ jobs:
 
             if [ -z "$CONFLICTED_FILES" ]; then
               echo "  No conflicts detected (merge may have succeeded) — skipping"
-              git merge --abort 2>/dev/null || true
               continue
             fi
 
@@ -89,7 +91,7 @@ jobs:
             sed -i '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' CHANGELOG.md
 
             # Verify no conflict markers remain
-            if grep -qE '^(<<<<<<<|=======|>>>>>>>)' CHANGELOG.md; then
+            if grep -qE '^(<<<<<<< |=======$|>>>>>>> )' CHANGELOG.md; then
               echo "  Conflict markers still present after resolution — skipping"
               git merge --abort 2>/dev/null || true
               continue
