@@ -201,7 +201,9 @@ func TestQueryAssertions_SourceFilter(t *testing.T) {
 
 	// Capture stdout to verify filtering
 	old := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, pipeErr := os.Pipe()
+	require.NoError(t, pipeErr)
+	t.Cleanup(func() { r.Close() })
 	os.Stdout = w
 
 	err := queryAssertions(archive, queryOpts{Source: "source-abc"})
@@ -209,7 +211,8 @@ func TestQueryAssertions_SourceFilter(t *testing.T) {
 	w.Close()
 	os.Stdout = old
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
 	output := buf.String()
 
 	require.NoError(t, err)
@@ -232,7 +235,9 @@ func TestQueryAssertions_CitationFilter(t *testing.T) {
 
 	// Capture stdout to verify filtering
 	old := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, pipeErr := os.Pipe()
+	require.NoError(t, pipeErr)
+	t.Cleanup(func() { r.Close() })
 	os.Stdout = w
 
 	err := queryAssertions(archive, queryOpts{Citation: "cit-1"})
@@ -240,7 +245,8 @@ func TestQueryAssertions_CitationFilter(t *testing.T) {
 	w.Close()
 	os.Stdout = old
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
 	output := buf.String()
 
 	require.NoError(t, err)
