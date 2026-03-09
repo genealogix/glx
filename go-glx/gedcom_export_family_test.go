@@ -1096,8 +1096,10 @@ func TestIsParentChildType(t *testing.T) {
 	assert.False(t, isParentChildType(RelationshipTypeSibling))
 }
 
-func TestExportFamily_MarriageWithoutStartEvent(t *testing.T) {
-	// A marriage relationship that has no StartEvent should still emit a MARR tag
+func TestExportFamily_MarriageWithoutStartEvent_NoMarr(t *testing.T) {
+	// A marriage relationship without a StartEvent should NOT emit MARR,
+	// because we can't distinguish "FAM without MARR" from "FAM with empty MARR"
+	// after import. The conservative choice avoids inflating MARR counts.
 	glxFile := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {Properties: map[string]any{"gender": "male", "name": map[string]any{"value": "John"}}},
@@ -1110,7 +1112,6 @@ func TestExportFamily_MarriageWithoutStartEvent(t *testing.T) {
 					{Person: "person-1", Role: ParticipantRoleSpouse},
 					{Person: "person-2", Role: ParticipantRoleSpouse},
 				},
-				// No StartEvent — marriage imported from GEDCOM with only _UID/RIN
 			},
 		},
 		Events:            make(map[string]*Event),
@@ -1151,11 +1152,8 @@ func TestExportFamily_MarriageWithoutStartEvent(t *testing.T) {
 
 	record := exportFamily(expCtx.Families[0], expCtx)
 
-	var foundMarr bool
 	for _, sub := range record.SubRecords {
-		if sub.Tag == GedcomTagMarr {
-			foundMarr = true
-		}
+		assert.NotEqual(t, GedcomTagMarr, sub.Tag,
+			"Should NOT emit MARR for marriage relationship without StartEvent")
 	}
-	assert.True(t, foundMarr, "Family from marriage relationship should have MARR even without StartEvent")
 }

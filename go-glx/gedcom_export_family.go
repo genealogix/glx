@@ -296,17 +296,12 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 	if family.RelationshipID != "" {
 		rel, ok := expCtx.GLX.Relationships[family.RelationshipID]
 		if ok {
-			// MARR from start_event, or empty MARR if marriage has no event
+			// MARR from start_event
 			if rel.StartEvent != "" {
 				marrRecord := exportFamilyEvent(rel.StartEvent, GedcomTagMarr, expCtx)
 				if marrRecord != nil {
 					record.SubRecords = append(record.SubRecords, marrRecord)
 				}
-			} else {
-				// Marriage relationship without a start event — emit bare MARR
-				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
-					Tag: GedcomTagMarr,
-				})
 			}
 
 			// DIV from end_event
