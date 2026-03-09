@@ -569,11 +569,12 @@ var ancestorsCmd = &cobra.Command{
 	Short: "Show ancestor tree for a person",
 	Long: `Display the ancestor tree for a person by traversing parent-child relationships.
 
-Walks up parent-child, biological, adoptive, foster, and step-parent
-relationships to build and display the full ancestor tree.
+Walks up parent-child relationships, including biological, adoptive,
+foster, and step-parent variants, to build and display the full
+ancestor tree.
 
-Non-default relationship types (adoptive, foster, step) are annotated
-in the output.`,
+Non-default parent/child relationship types (biological, adoptive, foster, step)
+are annotated in the output when the relationship type is not parent_child.`,
 	Example: `  # Show ancestors
   glx ancestors person-abc123
 
@@ -609,11 +610,12 @@ var descendantsCmd = &cobra.Command{
 	Short: "Show descendant tree for a person",
 	Long: `Display the descendant tree for a person by traversing parent-child relationships.
 
-Walks down parent-child, biological, adoptive, foster, and step-parent
-relationships to build and display the full descendant tree.
+Walks down parent-child relationships, including biological, adoptive,
+foster, and step-parent variants, to build and display the full
+descendant tree.
 
-Non-default relationship types (adoptive, foster, step) are annotated
-in the output.`,
+Non-default parent/child relationship types (biological, adoptive, foster, step)
+are annotated in the output when the relationship type is not parent_child.`,
 	Example: `  # Show descendants
   glx descendants person-abc123
 
