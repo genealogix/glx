@@ -114,13 +114,13 @@ func TestRoundtrip_MinimalFamily(t *testing.T) {
 		switch {
 		case strings.Contains(name, "John") && strings.Contains(name, "Smith"):
 			foundJohn = true
-			assert.Equal(t, "male", getPersonGender(person))
+			assert.Equal(t, "male", testGetPersonGender(person))
 		case strings.Contains(name, "Mary") && strings.Contains(name, "Jones"):
 			foundMary = true
-			assert.Equal(t, "female", getPersonGender(person))
+			assert.Equal(t, "female", testGetPersonGender(person))
 		case strings.Contains(name, "James") && strings.Contains(name, "Smith"):
 			foundJames = true
-			assert.Equal(t, "male", getPersonGender(person))
+			assert.Equal(t, "male", testGetPersonGender(person))
 		}
 	}
 	assert.True(t, foundJohn, "John Smith not found after roundtrip")
@@ -451,8 +451,8 @@ func getPersonNameValue(person *Person) string {
 	return ""
 }
 
-// getPersonGender extracts the gender from a person's properties
-func getPersonGender(person *Person) string {
+// testGetPersonGender extracts the gender from a person's properties
+func testGetPersonGender(person *Person) string {
 	if person == nil || person.Properties == nil {
 		return ""
 	}
