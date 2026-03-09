@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx places` command** - Analyze places for ambiguity and completeness: flags duplicate names, missing coordinates, missing types, hierarchy gaps, and unreferenced places with canonical hierarchy paths
 - **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
 - **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
+- **Added `glx timeline` command** - Chronological timeline of all events in a person's life, including family events (spouse births/deaths, children's births/deaths, parent deaths) discovered through relationship traversal. Supports lookup by person ID or name substring, with `--no-family` to show only direct events
 - **Added `glx validate --report`** - Generates a confidence summary report showing assertion breakdown by confidence level, assertions without citations, and entities with no assertion coverage
 
 #### Build & Release
