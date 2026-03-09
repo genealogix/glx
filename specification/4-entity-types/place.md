@@ -233,7 +233,7 @@ places/
 - Place hierarchy must be acyclic (no circular parent references)
 - Coordinates, if present, must be valid WGS84 values
 - Parent place must reference an existing Place entity
-- Type should be from the [place types vocabulary](vocabularies#place-types-vocabulary) (undefined types generate warnings)
+- Type must be from the [place types vocabulary](vocabularies#place-types-vocabulary)
 
 ## Schema Reference
 

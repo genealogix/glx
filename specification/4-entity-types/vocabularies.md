@@ -1195,24 +1195,7 @@ The `glx validate` command performs comprehensive validation with different seve
 
 The following issues cause validation to fail:
 
-1. **Broken entity references**: All entity references must point to existing entities
-
-2. **Broken property references**: Properties defined with `reference_type` must reference existing entities
-   ```yaml
-   # Error: place-nonexistent doesn't exist
-   persons:
-     person-john:
-       properties:
-         born_at: place-nonexistent  # ERROR if born_at has reference_type: places
-   ```
-
-3. **Structural validation**: Files must follow proper YAML/JSON structure and schema
-
-### Validation Warnings (Soft Failures)
-
-The following issues generate warnings but don't fail validation:
-
-1. **Undefined vocabulary types**: Types used in entities but not defined in the corresponding vocabulary
+1. **Missing vocabulary types**: All types used in entities must be defined in vocabularies
    - Event types (`event_types`)
    - Relationship types (`relationship_types`)
    - Place types (`place_types`)
@@ -1222,7 +1205,24 @@ The following issues generate warnings but don't fail validation:
    - Participant roles (`participant_roles`)
    - Confidence levels (`confidence_levels`)
 
-2. **Unknown property definitions**: Properties used but not defined in property vocabularies
+2. **Broken entity references**: All entity references must point to existing entities
+
+3. **Broken property references**: Properties defined with `reference_type` must reference existing entities
+   ```yaml
+   # Error: place-nonexistent doesn't exist
+   persons:
+     person-john:
+       properties:
+         born_at: place-nonexistent  # ERROR if born_at has reference_type: places
+   ```
+
+4. **Structural validation**: Files must follow proper YAML/JSON structure and schema
+
+### Validation Warnings (Soft Failures)
+
+The following issues generate warnings but don't fail validation:
+
+1. **Unknown property definitions**: Properties used but not defined in property vocabularies
    ```yaml
    # Warning: custom_field not in person_properties vocabulary
    persons:
@@ -1257,10 +1257,8 @@ $ glx validate
 ⚠ persons/person-john.glx
   - WARNING: property 'custom_field' not defined in person_properties vocabulary
 
-⚠ events/event-custom.glx
-  - WARNING: event type 'unknown-type' not found in vocabularies/event-types.glx
-
-❌ events/event-broken-ref.glx
+❌ events/event-custom.glx
+  - ERROR: event type 'unknown-type' not found in vocabularies/event-types.glx
   - ERROR: place reference 'place-nonexistent' not found
 ```
 

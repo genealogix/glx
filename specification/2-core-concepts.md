@@ -169,10 +169,10 @@ The `glx validate` command enforces vocabulary consistency with different severi
 
 **Errors (must be fixed):**
 - Entity references that don't exist (person, place, source, etc.)
+- Vocabulary type references that aren't defined (event_types, relationship_types, etc.)
 - Property references when properties are defined as `reference_type` but the referenced entity doesn't exist
 
 **Warnings (flexible):**
-- Undefined vocabulary types (event_types, relationship_types, etc.)
 - Unknown properties not defined in property vocabularies
 - Unknown assertion properties not defined in property vocabularies
 - Warnings allow rapid data entry and emerging properties without breaking validation

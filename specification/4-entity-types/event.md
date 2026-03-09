@@ -239,7 +239,7 @@ Events require at least one participant. GLX is a genealogy format, and every ev
 
 ## Validation Rules
 
-- Event type should be from the [event types vocabulary](vocabularies#event-types-vocabulary) (undefined types generate warnings)
+- Event type must be from the [event types vocabulary](vocabularies#event-types-vocabulary)
 - At least one participant is required
 - Place, if referenced, must exist in the archive
 - All person references must point to existing Person entities

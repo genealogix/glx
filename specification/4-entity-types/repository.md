@@ -215,7 +215,7 @@ repositories/
 ## Validation Rules
 
 - `name` must be present and non-empty
-- `type` should be from the [repository types vocabulary](vocabularies#repository-types-vocabulary) (undefined types generate warnings)
+- `type` must be from the [repository types vocabulary](vocabularies#repository-types-vocabulary)
 - If `website` is specified, it should be a valid URL
 - Properties should be from the [repository properties vocabulary](vocabularies#repository-properties-vocabulary) (unknown properties generate warnings)
 

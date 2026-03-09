@@ -250,7 +250,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 
 ## Validation Rules
 
-- Relationship type should be from the [relationship types vocabulary](vocabularies#relationship-types-vocabulary) (undefined types generate warnings)
+- Relationship type must be from the [relationship types vocabulary](vocabularies#relationship-types-vocabulary)
 - `participants` array must contain at least 2 participants
 - All person references must point to existing Person entities
 - Participant roles should be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary) (unknown roles generate warnings)

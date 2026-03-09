@@ -586,7 +586,7 @@ The standard vocabulary defines these default confidence levels (archives may cu
 - All source references must point to existing Source entities
 - All media references must point to existing Media entities
 - `property` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown properties generate warnings)
-- Confidence should be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary) (undefined levels generate warnings)
+- Confidence must be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary)
 
 ## File Organization
 
@@ -655,7 +655,7 @@ GENEALOGIX assertions are implicit in GEDCOM:
 | `property` | Property tag (BIRT, DEAT, OCCU, etc.) | |
 | `value` | Property value | |
 | `citations` | SOUR tags on property | |
-| `confidence` | SOUR.QUAY | QUAY preserved in citation notes; not auto-mapped to confidence |
+| `confidence` | (none) | Set by researcher; not derived from GEDCOM |
 
 GEDCOM Example:
 ```
