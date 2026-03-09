@@ -599,7 +599,9 @@ func init() {
 
 func runTimeline(_ *cobra.Command, args []string) error {
 	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
+}
 
+// ============================================================================
 // Vitals Command
 // ============================================================================
 
