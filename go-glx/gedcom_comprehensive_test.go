@@ -99,14 +99,14 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 
 			// Data persistence checks - verify person properties are populated
 			if len(glx.Persons) > 0 {
-				personWithProperties := 0
+				personWithData := 0
 				for _, person := range glx.Persons {
-					if len(person.Properties) > 0 {
-						personWithProperties++
+					if len(person.Properties) > 0 || person.Notes != "" {
+						personWithData++
 					}
 				}
-				if personWithProperties == 0 {
-					t.Error("No persons have properties - person data not persisted")
+				if personWithData == 0 {
+					t.Error("No persons have properties or notes - person data not persisted")
 				}
 			}
 

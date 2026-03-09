@@ -114,13 +114,13 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			}
 
 		case GedcomTagNote:
-			// Notes
+			// Notes — store in struct field, not Properties
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if notes, ok := person.Properties[PropertyNotes].(string); ok {
-					person.Properties[PropertyNotes] = notes + "\n\n" + noteText
+				if person.Notes != "" {
+					person.Notes += "\n\n" + noteText
 				} else {
-					person.Properties[PropertyNotes] = noteText
+					person.Notes = noteText
 				}
 			}
 

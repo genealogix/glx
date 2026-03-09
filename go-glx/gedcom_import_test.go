@@ -516,6 +516,46 @@ func TestConvertResidence_TwoUndatedAppendsToList(t *testing.T) {
 	}
 }
 
+func TestImportPersonNote_StoredInNotesField(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n1 NOTE This is a person note\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1)
+
+	for _, person := range glxFile.Persons {
+		assert.Equal(t, "This is a person note", person.Notes,
+			"NOTE should be stored in person.Notes struct field")
+		_, inProps := person.Properties[PropertyNotes]
+		assert.False(t, inProps,
+			"NOTE should NOT be stored in Properties['notes']")
+	}
+}
+
+func TestImportEventNote_StoredInNotesField(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 BIRT\n2 DATE 1850\n2 NOTE Born in a small village\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var foundNote bool
+	for _, event := range glxFile.Events {
+		if event.Type == "birth" && event.Notes != "" {
+			assert.Equal(t, "Born in a small village", event.Notes)
+			_, inProps := event.Properties[PropertyNotes]
+			assert.False(t, inProps,
+				"NOTE should NOT be stored in event Properties['notes']")
+			foundNote = true
+		}
+	}
+	assert.True(t, foundNote, "Should find birth event with note")
+}
+
 // TestConvertCensus_PlaceWithoutDateAppendsToExisting tests that CENS with PLAC but no DATE
 // appends to existing residence list instead of overwriting it (issue #14).
 func TestConvertCensus_PlaceWithoutDateAppendsToExisting(t *testing.T) {
