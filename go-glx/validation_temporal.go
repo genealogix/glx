@@ -1,0 +1,207 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package glx
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+)
+
+// temporalYearRegexp matches the first 4-digit year in a date string.
+var temporalYearRegexp = regexp.MustCompile(`\b(\d{4})\b`)
+
+// validateTemporalConsistency checks for logical inconsistencies in dates
+// across persons, events, and relationships. All issues are reported as
+// warnings since dates are often estimates (ABT, BEF, etc.).
+func (glx *GLXFile) validateTemporalConsistency(result *ValidationResult) {
+	glx.validateDeathBeforeBirth(result)
+	glx.validateParentChildAges(result)
+	glx.validateMarriageBeforeBirth(result)
+}
+
+// validateDeathBeforeBirth checks that no person has a death date earlier than
+// their birth date.
+func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
+	for id, person := range glx.Persons {
+		birthYear := extractPropertyYear(person.Properties, PersonPropertyBornOn)
+		deathYear := extractPropertyYear(person.Properties, PersonPropertyDiedOn)
+
+		if birthYear == 0 || deathYear == 0 {
+			continue
+		}
+
+		if deathYear < birthYear {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: EntityTypePersons,
+				SourceID:   id,
+				Field:      PersonPropertyDiedOn,
+				Message: fmt.Sprintf("%s[%s]: death year (%d) is before birth year (%d)",
+					EntityTypePersons, id, deathYear, birthYear),
+			})
+		}
+	}
+}
+
+// validateParentChildAges checks that parents are born before their children.
+func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
+	for relID, rel := range glx.Relationships {
+		if !isParentChildRelType(rel.Type) {
+			continue
+		}
+
+		var parentIDs, childIDs []string
+		for _, p := range rel.Participants {
+			switch p.Role {
+			case ParticipantRoleParent:
+				parentIDs = append(parentIDs, p.Person)
+			case ParticipantRoleChild:
+				childIDs = append(childIDs, p.Person)
+			}
+		}
+
+		for _, parentID := range parentIDs {
+			parent, ok := glx.Persons[parentID]
+			if !ok {
+				continue
+			}
+			parentBirth := extractPropertyYear(parent.Properties, PersonPropertyBornOn)
+			if parentBirth == 0 {
+				continue
+			}
+
+			for _, childID := range childIDs {
+				child, ok := glx.Persons[childID]
+				if !ok {
+					continue
+				}
+				childBirth := extractPropertyYear(child.Properties, PersonPropertyBornOn)
+				if childBirth == 0 {
+					continue
+				}
+
+				if parentBirth > childBirth {
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: EntityTypeRelationships,
+						SourceID:   relID,
+						Field:      "participants",
+						Message: fmt.Sprintf("%s[%s]: parent %s (born %d) is born after child %s (born %d)",
+							EntityTypeRelationships, relID, parentID, parentBirth, childID, childBirth),
+					})
+				}
+			}
+		}
+	}
+}
+
+// validateMarriageBeforeBirth checks that marriage events do not occur before
+// any participant's birth.
+func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
+	for eventID, event := range glx.Events {
+		if event.Type != EventTypeMarriage {
+			continue
+		}
+
+		eventYear := extractFirstYear(string(event.Date))
+		if eventYear == 0 {
+			continue
+		}
+
+		for _, p := range event.Participants {
+			person, ok := glx.Persons[p.Person]
+			if !ok {
+				continue
+			}
+
+			birthYear := extractPropertyYear(person.Properties, PersonPropertyBornOn)
+			if birthYear == 0 {
+				continue
+			}
+
+			if eventYear < birthYear {
+				result.Warnings = append(result.Warnings, ValidationWarning{
+					SourceType: EntityTypeEvents,
+					SourceID:   eventID,
+					Field:      "date",
+					Message: fmt.Sprintf("%s[%s]: marriage year (%d) is before participant %s birth year (%d)",
+						EntityTypeEvents, eventID, eventYear, p.Person, birthYear),
+				})
+			}
+		}
+	}
+}
+
+// isParentChildRelType returns true for relationship types that model a
+// parent-child connection.
+func isParentChildRelType(relType string) bool {
+	switch relType {
+	case RelationshipTypeParentChild, RelationshipTypeBiologicalParentChild, RelationshipTypeAdoptiveParentChild,
+		RelationshipTypeFosterParentChild, RelationshipTypeStepParent:
+		return true
+	}
+
+	return false
+}
+
+// extractPropertyYear extracts the first 4-digit year from a person property.
+// Handles simple string values, structured maps with a "value" key, and
+// temporal lists where each entry has a "value" key.
+func extractPropertyYear(props map[string]any, key string) int {
+	raw, ok := props[key]
+	if !ok {
+		return 0
+	}
+
+	var dateStr string
+
+	switch v := raw.(type) {
+	case string:
+		dateStr = v
+	case map[string]any:
+		if val, ok := v["value"]; ok {
+			dateStr = fmt.Sprint(val)
+		}
+	case []any:
+		if len(v) > 0 {
+			if m, ok := v[0].(map[string]any); ok {
+				if val, ok := m["value"]; ok {
+					dateStr = fmt.Sprint(val)
+				}
+			}
+		}
+	}
+
+	return extractFirstYear(dateStr)
+}
+
+// extractFirstYear extracts the first 4-digit year from a date string.
+// Returns 0 if no year is found.
+func extractFirstYear(dateStr string) int {
+	if dateStr == "" {
+		return 0
+	}
+
+	match := temporalYearRegexp.FindStringSubmatch(dateStr)
+	if len(match) < 2 {
+		return 0
+	}
+
+	year, err := strconv.Atoi(match[1])
+	if err != nil {
+		return 0
+	}
+
+	return year
+}

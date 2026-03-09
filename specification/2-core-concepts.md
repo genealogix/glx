@@ -51,7 +51,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `source-types.glx` | Vital records, census, church registers, etc. |
 | `repository-types.glx` | Archive, library, church, etc. |
 | `media-types.glx` | Photo, document, audio, etc. |
-| `participant-roles.glx` | Principal, witness, godparent, etc. |
+| `participant-roles.glx` | Subject, witness, godparent, etc. |
 | `confidence-levels.glx` | High, medium, low, disputed |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
@@ -107,7 +107,25 @@ person_properties:
 
 Adding custom types is straightforward:
 
-**1. Edit the appropriate vocabulary file**
+**1. Edit the appropriate vocabulary files**
+
+```yaml
+# participant-roles.glx
+participant_roles:
+  # ... standard roles ...
+
+  # Your custom roles
+  apprentice:
+    label: "Apprentice"
+    description: "Person learning a trade"
+    applies_to:
+      - event
+  master:
+    label: "Master"
+    description: "Person teaching a trade"
+    applies_to:
+      - event
+```
 
 ```yaml
 # event-types.glx
@@ -121,7 +139,7 @@ event_types:
     category: "occupation"
 ```
 
-**2. Use the new type in your data**
+**2. Use the new types in your data**
 
 ```yaml
 # events/event-john-apprentice.glx
@@ -133,6 +151,8 @@ events:
     participants:
       - person: person-john-smith
         role: apprentice
+      - person: person-thomas-brown
+        role: master
 ```
 
 **3. Validate your archive**
@@ -357,7 +377,7 @@ persons:
       born_on: "1850-01-15"
       born_at: "place-leeds"
       occupation: "blacksmith"
-      residence: "place-leeds"
+      residence: "place-leeds"  # Single-value shorthand; see Temporal Properties for list format
 ```
 
 ### Defined by Property Vocabularies
@@ -596,10 +616,18 @@ Assertions include confidence levels based on evidence quality:
 
 ```yaml
 confidence_levels:
-  high:    "Multiple high-quality sources agree, minimal uncertainty"
-  medium:  "Some evidence supports conclusion, but conflicts or gaps exist"
-  low:     "Limited evidence, significant uncertainty"
-  disputed: "Multiple sources conflict, resolution unclear"
+  high:
+    label: "High Confidence"
+    description: "Multiple high-quality sources agree, minimal uncertainty"
+  medium:
+    label: "Medium Confidence"
+    description: "Some evidence supports conclusion, but conflicts or gaps exist"
+  low:
+    label: "Low Confidence"
+    description: "Limited evidence, significant uncertainty"
+  disputed:
+    label: "Disputed"
+    description: "Multiple sources conflict, resolution unclear"
 ```
 
 Confidence levels are defined in `confidence-levels.glx` and can be customized per archive.
@@ -693,7 +721,7 @@ Repository → Source → Citation → Assertion → Property
     ↓          ↓         ↓          ↓           ↓
  Physical   Original  Specific  Evidence-   Concluded
  Location   Material  Reference  Based      Value on
-                                 Property   Entity
+                                 Claim      Entity
 ```
 
 Each level provides context and traceability for research. Here's a complete example showing all links in the chain:

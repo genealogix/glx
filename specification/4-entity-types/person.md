@@ -72,9 +72,11 @@ properties:
     value: String           # Full name as recorded
     fields:                 # Optional structured breakdown
       type: String          # Name classification (birth, married, alias, etc.)
-      given: String
-      surname: String
       prefix: String
+      given: String
+      nickname: String
+      surname_prefix: String  # e.g., von, van, de
+      surname: String
       suffix: String
   gender: String            # From person_properties vocabulary
   born_on: Date            # From person_properties vocabulary
