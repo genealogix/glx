@@ -1231,7 +1231,7 @@ The following issues generate warnings but don't fail validation:
          custom_field: "some value"  # WARNING: unknown property
    ```
 
-3. **Unknown assertion properties**: Properties used but not defined in property vocabularies
+2. **Unknown assertion properties**: Properties used but not defined in property vocabularies
    ```yaml
    # Warning: custom_property not in person_properties vocabulary
    assertions:
