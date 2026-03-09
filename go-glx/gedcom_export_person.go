@@ -358,6 +358,9 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 	// Event properties (AGE, CAUS, TYPE)
 	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
 
+	// SOUR references from event sources and citations
+	exportEventSourceRefs(event, expCtx, record)
+
 	return record
 }
 
@@ -505,6 +508,50 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 			} else {
 				expCtx.addExportWarning(EntityTypePersons, personID,
 					fmt.Sprintf("citation %s source %s has no XREF mapping", citationID, citation.SourceID))
+			}
+		}
+	}
+}
+
+// exportEventSourceRefs adds SOUR references for sources and citations attached to an event.
+func exportEventSourceRefs(event *Event, expCtx *ExportContext, record *GEDCOMRecord) {
+	// Direct sources
+	if sourcesVal, ok := event.Properties[PropertySources]; ok {
+		sourceIDs := extractStringList(sourcesVal)
+		for _, sourceID := range sourceIDs {
+			if sourceXRef := expCtx.SourceXRefMap[sourceID]; sourceXRef != "" {
+				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+					Tag:   GedcomTagSour,
+					Value: sourceXRef,
+				})
+			}
+		}
+	}
+
+	// Citations (resolve to source references)
+	if citationsVal, ok := event.Properties[PropertyCitations]; ok {
+		citationIDs := extractStringList(citationsVal)
+		for _, citationID := range citationIDs {
+			citation, exists := expCtx.GLX.Citations[citationID]
+			if !exists {
+				continue
+			}
+
+			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
+				sourRecord := &GEDCOMRecord{
+					Tag:        GedcomTagSour,
+					Value:      sourceXRef,
+					SubRecords: []*GEDCOMRecord{},
+				}
+
+				if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
+					sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
+						Tag:   GedcomTagPage,
+						Value: locator,
+					})
+				}
+
+				record.SubRecords = append(record.SubRecords, sourRecord)
 			}
 		}
 	}

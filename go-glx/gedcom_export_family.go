@@ -131,6 +131,28 @@ func reconstructFamilies(expCtx *ExportContext) {
 	}
 	sort.Strings(childIDs)
 
+	// Pre-scan: identify families that will have pair-matched children (both parents known).
+	// This lets us avoid merging single-parent children into a two-parent family that
+	// already has properly paired children from a different family unit.
+	familiesWithPairedChildren := make(map[int]bool)
+	for _, cID := range childIDs {
+		cParents := childParents[cID]
+		cParentIDs := make(map[string]bool)
+		for _, cp := range cParents {
+			cParentIDs[cp.parentID] = true
+		}
+		if len(cParentIDs) == 2 {
+			pids := make([]string, 0, 2)
+			for pid := range cParentIDs {
+				pids = append(pids, pid)
+			}
+			pairKey := makeParentPairKey(pids[0], pids[1])
+			if idx, ok := parentPairToFamily[pairKey]; ok {
+				familiesWithPairedChildren[idx] = true
+			}
+		}
+	}
+
 	for _, childID := range childIDs {
 		parents := childParents[childID]
 
@@ -168,7 +190,17 @@ func reconstructFamilies(expCtx *ExportContext) {
 		// Fallback: use the first parent's family
 		if familyIdx < 0 {
 			for _, cp := range parents {
-				familyIdx = findFamilyForParent(cp.parentID, parentToFamilies)
+				familyIndices := parentToFamilies[cp.parentID]
+				for _, idx := range familyIndices {
+					// If child has only one parent and the family already has
+					// pair-matched children, this child belongs to a different
+					// family unit — don't merge it in.
+					if len(parentIDs) == 1 && familiesWithPairedChildren[idx] {
+						continue
+					}
+					familyIdx = idx
+					break
+				}
 				if familyIdx >= 0 {
 					break
 				}
@@ -329,6 +361,9 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 	if placRecords != nil {
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
+
+	// SOUR references from event sources and citations
+	exportEventSourceRefs(event, expCtx, record)
 
 	return record
 }

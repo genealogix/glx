@@ -2228,3 +2228,166 @@ func TestExportPerson_WithMediaAndSources(t *testing.T) {
 	assert.True(t, foundSourDirect, "missing direct SOUR")
 	assert.True(t, foundSourFromCit, "missing SOUR from citation")
 }
+
+// ============================================================================
+// Event inline citation export tests
+// ============================================================================
+
+func TestExportPersonEvent_WithCitations(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Citations: map[string]*Citation{
+				"cit-1": {
+					SourceID: "source-1",
+					Properties: map[string]any{
+						"locator": "p. 42",
+					},
+				},
+			},
+		},
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: map[string]string{
+				"birth": GedcomTagBirt,
+			},
+			EventProperties: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+	}
+
+	event := &Event{
+		Type: "birth",
+		Date: "1850-03-15",
+		Properties: map[string]any{
+			PropertyCitations: []string{"cit-1"},
+		},
+	}
+
+	record := exportPersonEvent(event, expCtx)
+	require.NotNil(t, record)
+	assert.Equal(t, GedcomTagBirt, record.Tag)
+
+	// Should have DATE + SOUR subrecords
+	var foundDate, foundSour bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagDate {
+			foundDate = true
+			assert.Equal(t, "15 MAR 1850", sub.Value)
+		}
+		if sub.Tag == GedcomTagSour {
+			foundSour = true
+			assert.Equal(t, "@S1@", sub.Value)
+			// Should have PAGE subrecord
+			var foundPage bool
+			for _, pageSub := range sub.SubRecords {
+				if pageSub.Tag == GedcomTagPage {
+					foundPage = true
+					assert.Equal(t, "p. 42", pageSub.Value)
+				}
+			}
+			assert.True(t, foundPage, "SOUR subrecord missing PAGE")
+		}
+	}
+
+	assert.True(t, foundDate, "missing DATE subrecord")
+	assert.True(t, foundSour, "missing SOUR subrecord from citation")
+}
+
+func TestExportPersonEvent_WithDirectSources(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Citations: make(map[string]*Citation),
+		},
+		SourceXRefMap: map[string]string{
+			"source-1": "@S1@",
+			"source-2": "@S2@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: map[string]string{
+				"death": GedcomTagDeat,
+			},
+			EventProperties: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+	}
+
+	event := &Event{
+		Type: "death",
+		Date: "1920",
+		Properties: map[string]any{
+			PropertySources: []string{"source-1", "source-2"},
+		},
+	}
+
+	record := exportPersonEvent(event, expCtx)
+	require.NotNil(t, record)
+
+	sourCount := 0
+	sourXRefs := []string{}
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagSour {
+			sourCount++
+			sourXRefs = append(sourXRefs, sub.Value)
+		}
+	}
+
+	assert.Equal(t, 2, sourCount, "expected 2 SOUR subrecords")
+	assert.Contains(t, sourXRefs, "@S1@")
+	assert.Contains(t, sourXRefs, "@S2@")
+}
+
+func TestExportFamilyEvent_WithCitations(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-marriage": {
+					Type: "marriage",
+					Date: "1875-06-12",
+					Properties: map[string]any{
+						PropertyCitations: []string{"cit-marr"},
+					},
+				},
+			},
+			Citations: map[string]*Citation{
+				"cit-marr": {
+					SourceID: "source-church",
+					Properties: map[string]any{
+						"locator": "Entry 234",
+					},
+				},
+			},
+		},
+		SourceXRefMap: map[string]string{
+			"source-church": "@S5@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:      make(map[string]string),
+			EventProperties: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+	}
+
+	record := exportFamilyEvent("event-marriage", GedcomTagMarr, expCtx)
+	require.NotNil(t, record)
+	assert.Equal(t, GedcomTagMarr, record.Tag)
+
+	var foundSour bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagSour {
+			foundSour = true
+			assert.Equal(t, "@S5@", sub.Value)
+			var foundPage bool
+			for _, pageSub := range sub.SubRecords {
+				if pageSub.Tag == GedcomTagPage {
+					foundPage = true
+					assert.Equal(t, "Entry 234", pageSub.Value)
+				}
+			}
+			assert.True(t, foundPage, "SOUR subrecord missing PAGE")
+		}
+	}
+
+	assert.True(t, foundSour, "family event missing SOUR subrecord from citation")
+}

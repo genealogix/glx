@@ -211,6 +211,119 @@ func TestReconstructFamilies_SingleParent(t *testing.T) {
 	assert.Equal(t, "", family.RelationshipID) // synthetic family has no marriage relationship
 }
 
+// TestReconstructFamilies_SingleParentWithExistingFamily verifies that when a parent
+// appears in both a marriage family AND has children from another relationship (no spouse),
+// a separate synthetic family is created for the spouse-less children instead of merging
+// them into the marriage family.
+func TestReconstructFamilies_SingleParentWithExistingFamily(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-father": {
+					Properties: map[string]any{
+						PersonPropertyGender: "male",
+					},
+				},
+				"person-mother": {
+					Properties: map[string]any{
+						PersonPropertyGender: "female",
+					},
+				},
+				"person-child-married": {
+					Properties: map[string]any{},
+				},
+				"person-child-other1": {
+					Properties: map[string]any{},
+				},
+				"person-child-other2": {
+					Properties: map[string]any{},
+				},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-marriage": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleSpouse},
+						{Person: "person-mother", Role: ParticipantRoleSpouse},
+					},
+				},
+				// Child from the marriage
+				"rel-pc-married-f": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-married", Role: ParticipantRoleChild},
+					},
+				},
+				"rel-pc-married-m": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-mother", Role: ParticipantRoleParent},
+						{Person: "person-child-married", Role: ParticipantRoleChild},
+					},
+				},
+				// Children from another relationship (father only, no mother)
+				"rel-pc-other1": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-other1", Role: ParticipantRoleChild},
+					},
+				},
+				"rel-pc-other2": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-other2", Role: ParticipantRoleChild},
+					},
+				},
+			},
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-father":        "@I1@",
+			"person-mother":        "@I2@",
+			"person-child-married": "@I3@",
+			"person-child-other1":  "@I4@",
+			"person-child-other2":  "@I5@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
+	}
+
+	reconstructFamilies(expCtx)
+
+	// Should create TWO families: one for the marriage, one synthetic for father-only children
+	require.Len(t, expCtx.Families, 2, "expected 2 families: 1 marriage + 1 synthetic single-parent")
+
+	// Find the marriage family and the synthetic family
+	var marriageFamily, syntheticFamily *ExportFamily
+	for _, f := range expCtx.Families {
+		if f.HusbandID != "" && f.WifeID != "" {
+			marriageFamily = f
+		} else if f.WifeID == "" && f.HusbandID == "person-father" {
+			syntheticFamily = f
+		}
+	}
+
+	require.NotNil(t, marriageFamily, "marriage family not found")
+	require.NotNil(t, syntheticFamily, "synthetic single-parent family not found")
+
+	// Marriage family should have the child from the marriage
+	assert.Contains(t, marriageFamily.ChildIDs, "person-child-married")
+	assert.NotContains(t, marriageFamily.ChildIDs, "person-child-other1")
+	assert.NotContains(t, marriageFamily.ChildIDs, "person-child-other2")
+
+	// Synthetic family should have the father-only children
+	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other1")
+	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other2")
+	assert.Equal(t, "", syntheticFamily.RelationshipID)
+}
+
 func TestReconstructFamilies_PedigreeTypes(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
