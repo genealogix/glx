@@ -881,23 +881,172 @@ func writeMilitarySection(b *strings.Builder, personID string, archive *glxlib.G
 }
 
 // writeMarriageAndFamily writes the Marriage and Family subsection.
-// Marriages are covered in the narrative; this section lists children.
+// Lists marriages with dates and context, then children with vital details.
 func writeMarriageAndFamily(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
+	spouseIDs := findSpouseIDs(personID, archive)
 	children := findChildren(personID, archive)
-	if len(children) == 0 {
+
+	if len(spouseIDs) == 0 && len(children) == 0 {
 		return
 	}
 
 	b.WriteString("=== Marriage and Family ===\n\n")
 
-	fullName := extractPersonName(archive.Persons[personID])
-	b.WriteString(fmt.Sprintf("Children of %s:\n", fullName))
-
-	for _, child := range children {
-		b.WriteString(fmt.Sprintf("# %s\n", child.displayName))
+	// List marriages with dates and context
+	for _, spouseID := range spouseIDs {
+		writeMarriageEntry(b, personID, spouseID, archive)
 	}
 
-	b.WriteString("\n")
+	// Children list
+	if len(children) > 0 {
+		fullName := extractPersonName(archive.Persons[personID])
+		b.WriteString(fmt.Sprintf("Children of %s:\n", fullName))
+
+		for _, child := range children {
+			b.WriteString(fmt.Sprintf("# %s\n", child.displayName))
+		}
+
+		b.WriteString("\n")
+	}
+}
+
+// writeMarriageEntry writes a single marriage with date, spouse description, and end context.
+func writeMarriageEntry(b *strings.Builder, personID, spouseID string, archive *glxlib.GLXFile) {
+	// Get subject's short name for pronoun reference
+	subjectShort := personID
+	if _, ok := archive.Persons[personID]; ok {
+		subjectShort = extractPersonNameShort(personID, archive)
+	}
+
+	spouseName := spouseID
+	if sp, ok := archive.Persons[spouseID]; ok {
+		spouseName = extractPersonName(sp)
+	}
+
+	marriageDate, marriagePlace := findMarriageDate(personID, spouseID, archive)
+
+	// Build marriage sentence: "Mary married Daniel Lane about 1850-1851."
+	sentence := subjectShort + " married " + spouseName
+	if marriageDate != "" && marriagePlace != "" {
+		sentence += fmt.Sprintf(" %s in %s", narrativeDateWT(marriageDate), marriagePlace)
+	} else if marriageDate != "" {
+		sentence += " " + narrativeDateWT(marriageDate)
+	} else if marriagePlace != "" {
+		sentence += " in " + marriagePlace
+	}
+	sentence += "."
+
+	// Check if spouse died — append as separate sentence
+	spouseDeathInfo := personDeathSummary(spouseID, archive)
+	if spouseDeathInfo != "" {
+		spouseShort := extractPersonNameShort(spouseID, archive)
+		sentence += " " + spouseShort + " " + spouseDeathInfo + "."
+	}
+
+	b.WriteString(sentence + "\n\n")
+}
+
+// findMarriageDate returns the date and place of a marriage between two people,
+// checking the relationship's start_event first, then the relationship notes.
+func findMarriageDate(personID, spouseID string, archive *glxlib.GLXFile) (string, string) {
+	for _, rel := range archive.Relationships {
+		relType := strings.ToLower(rel.Type)
+		if relType != "marriage" && relType != "spouse" {
+			continue
+		}
+
+		hasPerson := false
+		hasSpouse := false
+		for _, p := range rel.Participants {
+			if p.Person == personID {
+				hasPerson = true
+			}
+			if p.Person == spouseID {
+				hasSpouse = true
+			}
+		}
+		if !hasPerson || !hasSpouse {
+			continue
+		}
+
+		// Check start_event for formal marriage date
+		if rel.StartEvent != "" {
+			if event, ok := archive.Events[rel.StartEvent]; ok {
+				date := string(event.Date)
+				place := wikiTreePlaceName(event.PlaceID, archive)
+
+				return date, place
+			}
+		}
+
+		// Extract approximate date from notes (e.g., "~1850-1851")
+		if rel.Notes != "" {
+			if date := extractApproxDateFromNotes(rel.Notes); date != "" {
+				return date, ""
+			}
+		}
+
+		return "", ""
+	}
+
+	return "", ""
+}
+
+// extractApproxDateFromNotes extracts approximate date patterns from relationship notes.
+// Looks for "~YYYY", "~YYYY-YYYY", "Likely married ~YYYY" patterns.
+func extractApproxDateFromNotes(notes string) string {
+	// Look for "~YYYY-YYYY" or "~YYYY"
+	for _, word := range strings.Fields(notes) {
+		word = strings.TrimRight(word, ".,;:")
+		if strings.HasPrefix(word, "~") {
+			return "ABT " + strings.TrimPrefix(word, "~")
+		}
+	}
+
+	return ""
+}
+
+// personDeathSummary returns a brief death summary for narrative use, e.g. "died on 1863-02-10".
+func personDeathSummary(personID string, archive *glxlib.GLXFile) string {
+	person, ok := archive.Persons[personID]
+	if !ok {
+		return ""
+	}
+
+	diedOn := propertyString(person.Properties, "died_on")
+	diedAt := propertyString(person.Properties, "died_at")
+	deathPlace := wikiTreePlaceName(diedAt, archive)
+
+	if diedOn != "" && deathPlace != "" {
+		return fmt.Sprintf("died %s in %s", narrativeDateWT(diedOn), deathPlace)
+	}
+	if diedOn != "" {
+		return "died " + narrativeDateWT(diedOn)
+	}
+
+	// Check death events
+	deathEvents := findPersonEventsByType(personID, "death", archive)
+	if len(deathEvents) > 0 {
+		date := string(deathEvents[0].Event.Date)
+		place := wikiTreePlaceName(deathEvents[0].Event.PlaceID, archive)
+		if date != "" && place != "" {
+			return fmt.Sprintf("died %s in %s", narrativeDateWT(date), place)
+		}
+		if date != "" {
+			return "died " + narrativeDateWT(date)
+		}
+	}
+
+	// Check burial events as fallback (implies death)
+	burialEvents := findPersonEventsByType(personID, "burial", archive)
+	if len(burialEvents) > 0 {
+		place := wikiTreePlaceName(burialEvents[0].Event.PlaceID, archive)
+		if place != "" {
+			return "was buried at " + place
+		}
+	}
+
+	return ""
 }
 
 
@@ -909,7 +1058,9 @@ type childInfo struct {
 }
 
 // findChildren returns sorted children for a person via parent-child relationships.
+// Includes birth year, death year, and married name where available.
 func findChildren(personID string, archive *glxlib.GLXFile) []childInfo {
+	seen := make(map[string]bool)
 	var children []childInfo
 
 	ids := sortedKeys(archive.Relationships)
@@ -936,15 +1087,14 @@ func findChildren(personID string, archive *glxlib.GLXFile) []childInfo {
 		}
 
 		for _, p := range rel.Participants {
-			if strings.EqualFold(p.Role, "child") {
+			if strings.EqualFold(p.Role, "child") && !seen[p.Person] {
+				seen[p.Person] = true
 				childEntry := childInfo{personID: p.Person, displayName: p.Person}
 				if child, ok := archive.Persons[p.Person]; ok {
 					childEntry.displayName = extractPersonName(child)
 					bornOn := propertyString(child.Properties, "born_on")
 					childEntry.birthYear = extractYear(bornOn)
-					if childEntry.birthYear != "" {
-						childEntry.displayName += " (b. " + childEntry.birthYear + ")"
-					}
+					childEntry.displayName += childVitalAnnotation(p.Person, childEntry.birthYear, archive)
 				}
 				children = append(children, childEntry)
 			}
@@ -964,6 +1114,112 @@ func findChildren(personID string, archive *glxlib.GLXFile) []childInfo {
 	})
 
 	return children
+}
+
+// childVitalAnnotation builds a parenthetical annotation for a child listing.
+// e.g. " (b. 1855; d. 1920)" or " (b. 1855; m. Thomas Clark)" or " (b. 1855)"
+func childVitalAnnotation(childID, birthYear string, archive *glxlib.GLXFile) string {
+	var parts []string
+
+	if birthYear != "" {
+		parts = append(parts, "b. "+birthYear)
+	}
+
+	// Check for death year
+	if child, ok := archive.Persons[childID]; ok {
+		diedOn := propertyString(child.Properties, "died_on")
+		if deathYear := extractYear(diedOn); deathYear != "" {
+			parts = append(parts, "d. "+deathYear)
+		} else {
+			// Check death events
+			deathEvents := findPersonEventsByType(childID, "death", archive)
+			if len(deathEvents) > 0 {
+				if dy := extractYear(string(deathEvents[0].Event.Date)); dy != "" {
+					parts = append(parts, "d. "+dy)
+				}
+			}
+		}
+	}
+
+	// Check for spouse (married name)
+	spouseName := findFirstSpouseName(childID, archive)
+	if spouseName != "" {
+		parts = append(parts, "m. "+spouseName)
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return " (" + strings.Join(parts, "; ") + ")"
+}
+
+// findFirstSpouseName returns the name of the chronologically first spouse of a person.
+// Uses marriage event dates when available, falls back to sorted relationship ID order.
+func findFirstSpouseName(personID string, archive *glxlib.GLXFile) string {
+	type marriageInfo struct {
+		spouseID string
+		date     string // for sorting
+	}
+
+	var marriages []marriageInfo
+
+	for _, relID := range sortedKeys(archive.Relationships) {
+		rel := archive.Relationships[relID]
+		relType := strings.ToLower(rel.Type)
+		if relType != "marriage" && relType != "spouse" {
+			continue
+		}
+
+		hasPerson := false
+		for _, p := range rel.Participants {
+			if p.Person == personID {
+				hasPerson = true
+
+				break
+			}
+		}
+		if !hasPerson {
+			continue
+		}
+
+		for _, p := range rel.Participants {
+			if p.Person != personID {
+				date := ""
+				if rel.StartEvent != "" {
+					if event, ok := archive.Events[rel.StartEvent]; ok {
+						date = string(event.Date)
+					}
+				}
+				marriages = append(marriages, marriageInfo{spouseID: p.Person, date: date})
+			}
+		}
+	}
+
+	if len(marriages) == 0 {
+		return ""
+	}
+
+	// Sort by date (marriages with dates first, then alphabetical)
+	sort.Slice(marriages, func(i, j int) bool {
+		if marriages[i].date == "" && marriages[j].date == "" {
+			return marriages[i].spouseID < marriages[j].spouseID
+		}
+		if marriages[i].date == "" {
+			return false
+		}
+		if marriages[j].date == "" {
+			return true
+		}
+
+		return marriages[i].date < marriages[j].date
+	})
+
+	if sp, ok := archive.Persons[marriages[0].spouseID]; ok {
+		return extractPersonName(sp)
+	}
+
+	return marriages[0].spouseID
 }
 
 // writeResearchNotes writes the Research Notes section from assertion notes and low-confidence items.
