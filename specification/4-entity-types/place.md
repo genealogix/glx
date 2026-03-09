@@ -84,7 +84,7 @@ Place properties allow capturing historical information that doesn't fit into th
 | `description` | string | Detailed description of the place |
 | `jurisdiction` | string | Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code) |
 | `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
-| `alternative_names` | string[] | Historical or alternate names for a place (temporal, multi-value) |
+| `alternative_names` | string (temporal, multi-value) | Historical or alternate names for a place |
 
 Example:
 ```yaml

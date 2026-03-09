@@ -59,6 +59,7 @@ For each entity type, verify:
 ### 4. Field Descriptions
 - Check that descriptions in markdown tables roughly match schema descriptions
 - Flag significant discrepancies
+- **IGNORE** inline lists of vocabulary-defined values in description strings (e.g., a `properties` field description listing common property names like "locator, text_from_source, ..."). These are informational hints, not normative. They do not need to be updated every time a vocabulary entry is added.
 
 ### 5. Special Constraints
 - Check for complex validation rules (patterns, minItems, anyOf, allOf, not)

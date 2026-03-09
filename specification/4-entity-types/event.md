@@ -68,12 +68,12 @@ Domain-specific events can be added via vocabularies:
 
 ### Participant Object Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `person` | string | Reference to Person entity |
-| `role` | string | Role of participant |
-| `properties` | object | Per-participant properties (e.g., `age_at_event`) |
-| `notes` | string | Notes about participant's involvement |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `person` | string | Yes | Reference to Person entity |
+| `role` | string | No | Role of participant |
+| `properties` | object | No | Per-participant properties (e.g., `age_at_event`) |
+| `notes` | string | No | Notes about participant's involvement |
 
 ### Participant Structure
 

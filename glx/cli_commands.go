@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 
 GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
-	Version:       "0.0.0-beta.3",
+	Version:       "0.0.0-beta.6",
 	SilenceErrors: true,
 	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
 	// arg-count errors still show usage but runtime errors from RunE do not.
@@ -54,6 +54,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
+	rootCmd.AddCommand(placesCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
 }
@@ -386,6 +387,46 @@ func runJoin(_ *cobra.Command, args []string) error {
 }
 
 // ============================================================================
+// Places Command
+// ============================================================================
+
+var placesCmd = &cobra.Command{
+	Use:   "places [path]",
+	Short: "Analyze places for ambiguity and completeness",
+	Long: `Analyze places in a GENEALOGIX archive for data quality issues.
+
+Reports:
+- Duplicate names: places that share the same name (ambiguous without context)
+- Missing coordinates: places without latitude/longitude
+- Missing type: places without a type classification
+- No parent: non-country/region places missing a parent (hierarchy gap)
+- Dangling parent: places referencing a parent that doesn't exist in the archive
+- Unreferenced: places not used by any event, assertion, or as a parent
+
+Each place is shown with its full canonical hierarchy path.
+If no path is given, uses the current directory.`,
+	Example: `  # Analyze places in current directory
+  glx places
+
+  # Analyze places in a specific archive
+  glx places my-family-archive
+
+  # Analyze a single-file archive
+  glx places family.glx`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runPlaces,
+}
+
+func runPlaces(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	return analyzePlaces(path)
+}
+
+// ============================================================================
 // Query Command
 // ============================================================================
 
@@ -399,6 +440,8 @@ var (
 	queryAfter      int
 	queryConfidence string
 	queryStatus     string
+	querySource     string
+	queryCitation   string
 )
 
 var queryCmd = &cobra.Command{
@@ -412,7 +455,7 @@ relationships, places, citations, repositories, media.
 Filters vary by entity type:
   persons:       --name, --born-before, --born-after
   events:        --type, --before, --after
-  assertions:    --confidence, --status
+  assertions:    --confidence, --status, --source, --citation
   sources:       --name, --type
   relationships: --type
   places:        --name
@@ -424,6 +467,12 @@ All entity types support --archive to specify the archive path.`,
 
   # Find low-confidence assertions
   glx query assertions --confidence low
+
+  # Find assertions citing a specific source
+  glx query assertions --source source-abc123
+
+  # Find assertions using a specific citation
+  glx query assertions --citation citation-abc123
 
   # Find marriage events
   glx query events --type marriage
@@ -448,6 +497,8 @@ func init() {
 	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
 	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
 	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
+	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
 }
 
 func runQuery(_ *cobra.Command, args []string) error {
@@ -461,6 +512,8 @@ func runQuery(_ *cobra.Command, args []string) error {
 		After:      queryAfter,
 		Confidence: queryConfidence,
 		Status:     queryStatus,
+		Source:     querySource,
+		Citation:   queryCitation,
 	})
 }
 
@@ -498,4 +551,3 @@ func runStats(_ *cobra.Command, args []string) error {
 
 	return showStats(path)
 }
-

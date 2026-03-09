@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // gedcomMaxLineValueLength is the maximum number of characters for a GEDCOM line value
@@ -78,9 +79,10 @@ func writeValueWithContinuation(prefix, value string, level int, buf *bytes.Buff
 }
 
 // writeLineSplitByCONC writes a single logical line, splitting with CONC if it exceeds
-// the maximum line length.
+// the maximum line length. Splitting is rune-safe to avoid breaking multi-byte UTF-8
+// characters at chunk boundaries.
 func writeLineSplitByCONC(prefix, value string, level int, buf *bytes.Buffer) {
-	if len(value) <= gedcomMaxLineValueLength {
+	if utf8.RuneCountInString(value) <= gedcomMaxLineValueLength {
 		// Fits in one line
 		if value == "" {
 			buf.WriteString(prefix)
@@ -94,18 +96,26 @@ func writeLineSplitByCONC(prefix, value string, level int, buf *bytes.Buffer) {
 		return
 	}
 
-	// First chunk
+	// Split by rune count to avoid breaking multi-byte UTF-8 characters
 	remaining := value
 	first := true
 
 	for len(remaining) > 0 {
 		chunkSize := gedcomMaxLineValueLength
-		if chunkSize > len(remaining) {
-			chunkSize = len(remaining)
+		runeCount := utf8.RuneCountInString(remaining)
+		if chunkSize > runeCount {
+			chunkSize = runeCount
 		}
 
-		chunk := remaining[:chunkSize]
-		remaining = remaining[chunkSize:]
+		// Advance by runes, not bytes
+		byteOffset := 0
+		for range chunkSize {
+			_, size := utf8.DecodeRuneInString(remaining[byteOffset:])
+			byteOffset += size
+		}
+
+		chunk := remaining[:byteOffset]
+		remaining = remaining[byteOffset:]
 
 		if first {
 			buf.WriteString(prefix)
