@@ -115,6 +115,9 @@ Common source types:
 - `oral_history` - Interviews, recorded memories
 - `correspondence` - Letters, emails, personal papers
 - `photograph` - Photo collections
+- `population_register` - Civil population registers, household registration records
+- `tax_record` - Tax rolls, assessments, tithes
+- `notarial_record` - Notarial acts, contracts, legal instruments
 - `other` - Other source types
 
 Example:

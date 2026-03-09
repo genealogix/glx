@@ -506,7 +506,7 @@ func TestGLXFile_Merge_Metadata_AdoptFromOther(t *testing.T) {
 	require.Empty(t, duplicates, "should have no duplicates")
 	require.NotNil(t, g1.ImportMetadata, "metadata should be adopted from other")
 	require.Equal(t, "MyApp", g1.ImportMetadata.SourceSystem)
-	require.Equal(t, "2026-01-15", g1.ImportMetadata.ExportDate)
+	require.Equal(t, DateString("2026-01-15"), g1.ImportMetadata.ExportDate)
 }
 
 func TestGLXFile_Merge_Metadata_DuplicateDetected(t *testing.T) {
