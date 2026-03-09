@@ -8,7 +8,8 @@
   "properties": {
     "title": {
       "type": "string",
-      "description": "Optional human-readable label for the event"
+      "minLength": 1,
+      "description": "Human-readable label for the event"
     },
     "type": {
       "type": "string",

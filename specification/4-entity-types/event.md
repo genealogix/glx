@@ -61,7 +61,7 @@ Domain-specific events can be added via vocabularies:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `title` | string | Human-readable label for the event (e.g., "1860 Census — Lane Household") |
+| `title` | string | Short label for the event (e.g., "1860 Census — Lane Household"). Distinct from `properties.description`, which is a longer narrative |
 | `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |

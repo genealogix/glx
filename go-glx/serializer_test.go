@@ -17,6 +17,7 @@ package glx
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -606,6 +607,79 @@ func TestRoundTripSingleFile(t *testing.T) {
 	}
 	if len(loaded.Relationships) != len(original.Relationships) {
 		t.Errorf("Relationships count mismatch: expected %d, got %d", len(original.Relationships), len(loaded.Relationships))
+	}
+}
+
+func TestEventTitleRoundTrip(t *testing.T) {
+	original := &GLXFile{
+		Persons: map[string]*Person{
+			"person-001": {
+				Properties: map[string]any{
+					"name": map[string]any{"value": "D. Lane"},
+				},
+			},
+		},
+		Events: map[string]*Event{
+			"event-census-1860": {
+				Title: "1860 Census — Lane Household",
+				Type:  "census",
+				Date:  "1860",
+				Participants: []Participant{
+					{Person: "person-001", Role: "subject"},
+				},
+			},
+			"event-birth-001": {
+				Type: "birth",
+				Date: "1815",
+				Participants: []Participant{
+					{Person: "person-001", Role: "subject"},
+				},
+			},
+		},
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources:       make(map[string]*Source),
+		Citations:     make(map[string]*Citation),
+		Repositories:  make(map[string]*Repository),
+		Media:         make(map[string]*Media),
+		Assertions:    make(map[string]*Assertion),
+	}
+
+	s := NewSerializer(&SerializerOptions{Validate: false})
+
+	// Single-file roundtrip
+	yamlBytes, err := s.SerializeSingleFileBytes(original)
+	if err != nil {
+		t.Fatalf("Failed to serialize: %v", err)
+	}
+
+	loaded, err := s.DeserializeSingleFileBytes(yamlBytes)
+	if err != nil {
+		t.Fatalf("Failed to deserialize: %v", err)
+	}
+
+	// Event with title should preserve it
+	census := loaded.Events["event-census-1860"]
+	if census == nil {
+		t.Fatal("event-census-1860 not found after round-trip")
+	}
+	if census.Title != "1860 Census — Lane Household" {
+		t.Errorf("Title mismatch: expected %q, got %q", "1860 Census — Lane Household", census.Title)
+	}
+
+	// Event without title should have empty string
+	birth := loaded.Events["event-birth-001"]
+	if birth == nil {
+		t.Fatal("event-birth-001 not found after round-trip")
+	}
+	if birth.Title != "" {
+		t.Errorf("Expected empty title for birth event, got %q", birth.Title)
+	}
+
+	// Verify title appears in serialized YAML and omitempty works
+	yamlStr := string(yamlBytes)
+	if !strings.Contains(yamlStr, "title:") {
+		t.Error("Expected title field in serialized YAML for census event")
 	}
 }
 
