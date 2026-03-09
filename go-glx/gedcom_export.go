@@ -122,6 +122,11 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		expCtx.Stats.FamiliesExported++
 	}
 
+	// SUBM record (required by GEDCOM 5.5.1)
+	if expCtx.Version == GEDCOM551 {
+		records = append(records, buildSUBMRecord(expCtx))
+	}
+
 	// TRLR record
 	records = append(records, &GEDCOMRecord{Tag: GedcomTagTrlr})
 
@@ -369,7 +374,35 @@ func buildHEADRecord(expCtx *ExportContext) *GEDCOMRecord {
 		})
 	}
 
+	// Submitter reference (GEDCOM 5.5.1 requires SUBM)
+	if expCtx.Version == GEDCOM551 {
+		head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagSubm,
+			Value: "@SUBM@",
+		})
+	}
+
 	return head
+}
+
+// buildSUBMRecord constructs the GEDCOM SUBM (submitter) record from GLX metadata.
+func buildSUBMRecord(expCtx *ExportContext) *GEDCOMRecord {
+	subm := &GEDCOMRecord{
+		XRef:       "@SUBM@",
+		Tag:        GedcomTagSubm,
+		SubRecords: []*GEDCOMRecord{},
+	}
+
+	name := "GLX Export"
+	if expCtx.GLX.ImportMetadata != nil && expCtx.GLX.ImportMetadata.Submitter != nil && expCtx.GLX.ImportMetadata.Submitter.Name != "" {
+		name = expCtx.GLX.ImportMetadata.Submitter.Name
+	}
+	subm.SubRecords = append(subm.SubRecords, &GEDCOMRecord{
+		Tag:   GedcomTagName,
+		Value: name,
+	})
+
+	return subm
 }
 
 // sortedKeys returns the keys of a map in sorted order.
