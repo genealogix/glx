@@ -398,7 +398,20 @@ func generateWikiTreeBio(personID string, person *glxlib.Person, archive *glxlib
 	b.WriteString("<references />\n")
 	writeSourcesList(&b, personID, archive, refs)
 
-	return b.String()
+	return sanitizeBioText(b.String())
+}
+
+// sanitizeBioText replaces non-ASCII characters that cause encoding issues
+// on Windows terminals and clipboards.
+func sanitizeBioText(text string) string {
+	text = strings.ReplaceAll(text, "\u2014", "--")  // em-dash
+	text = strings.ReplaceAll(text, "\u2013", "-")   // en-dash
+	text = strings.ReplaceAll(text, "\u2018", "'")   // left single quote
+	text = strings.ReplaceAll(text, "\u2019", "'")   // right single quote
+	text = strings.ReplaceAll(text, "\u201c", "\"")  // left double quote
+	text = strings.ReplaceAll(text, "\u201d", "\"")  // right double quote
+
+	return text
 }
 
 // refTracker manages inline citation numbering.
