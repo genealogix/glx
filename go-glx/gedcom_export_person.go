@@ -600,7 +600,30 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 		}
 
 		val := person.Properties[key]
-		if s, ok := val.(string); ok && s != "" {
+
+		// Collect string values — single string, or list of strings/{value: ...} maps
+		var values []string
+		switch v := val.(type) {
+		case string:
+			if v != "" {
+				values = []string{v}
+			}
+		case []any:
+			for _, item := range v {
+				switch it := item.(type) {
+				case string:
+					if it != "" {
+						values = append(values, it)
+					}
+				case map[string]any:
+					if s, ok := it["value"].(string); ok && s != "" {
+						values = append(values, s)
+					}
+				}
+			}
+		}
+
+		for _, s := range values {
 			propRecord := &GEDCOMRecord{
 				Tag:        gedcomTag,
 				Value:      s,

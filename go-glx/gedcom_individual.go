@@ -339,7 +339,26 @@ func handlePersonPropertyTag(personID string, person *Person, tag string, record
 		return true
 	}
 
-	person.Properties[propertyKey] = record.Value
+	// Append to list if property already exists (e.g., multiple OCCU)
+	// Wrap in {value: ...} objects for temporal list compatibility
+	if existing, exists := person.Properties[propertyKey]; exists {
+		newItem := map[string]any{"value": record.Value}
+		switch v := existing.(type) {
+		case []any:
+			person.Properties[propertyKey] = append(v, newItem)
+		case string:
+			// Convert existing simple string to temporal list
+			person.Properties[propertyKey] = []any{
+				map[string]any{"value": v},
+				newItem,
+			}
+		default:
+			// Existing is already a map or other type, wrap in list
+			person.Properties[propertyKey] = []any{v, newItem}
+		}
+	} else {
+		person.Properties[propertyKey] = record.Value
+	}
 	createPropertyAssertion(personID, propertyKey, record.Value, record, conv)
 
 	// Handle OBJE subrecords on person property tags (e.g., OCCU with linked media)

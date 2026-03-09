@@ -587,3 +587,31 @@ func TestConvertCensus_PlaceWithoutDateAppendsToExisting(t *testing.T) {
 		assert.Len(t, resList, 2, "Both residence entries should be preserved, not overwritten")
 	}
 }
+
+func TestImportMultipleOCCU_PreservesAll(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 OCCU Farmer\n1 OCCU Blacksmith\n1 OCCU Mayor\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1)
+
+	for _, person := range glxFile.Persons {
+		occVal, ok := person.Properties["occupation"]
+		require.True(t, ok, "Person should have occupation property")
+
+		// Multiple OCCU should be stored as a temporal list of {value: ...} objects
+		occList, ok := occVal.([]any)
+		require.True(t, ok, "Multiple occupations should be a list, got %T", occVal)
+		assert.Len(t, occList, 3, "All three occupations should be preserved")
+
+		// Each item should be a {value: ...} map
+		for i, item := range occList {
+			itemMap, ok := item.(map[string]any)
+			require.True(t, ok, "Item %d should be a map, got %T", i, item)
+			assert.Contains(t, itemMap, "value", "Item %d should have 'value' key", i)
+		}
+	}
+}

@@ -2764,3 +2764,65 @@ func TestExportPersonEvent_NoteFromProperties(t *testing.T) {
 	require.NotNil(t, noteRecord, "NOTE should be exported from event Properties['notes']")
 	assert.Equal(t, "Born at Turnberry Castle", noteRecord.Value)
 }
+
+func TestExportPerson_MultipleOccupations(t *testing.T) {
+	glxFile := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {
+				Properties: map[string]any{
+					"gender": "male",
+					"name": map[string]any{
+						"value":  "John Smith",
+						"fields": map[string]any{"given": "John", "surname": "Smith"},
+					},
+					"occupation": []any{
+						map[string]any{"value": "Farmer"},
+						map[string]any{"value": "Blacksmith"},
+						map[string]any{"value": "Mayor"},
+					},
+				},
+			},
+		},
+		EventTypes:         make(map[string]*EventType),
+		PersonProperties:   make(map[string]*PropertyDefinition),
+		RelationshipTypes:  make(map[string]*RelationshipType),
+		Events:             make(map[string]*Event),
+		Relationships:      make(map[string]*Relationship),
+		Sources:            make(map[string]*Source),
+		Citations:          make(map[string]*Citation),
+		Repositories:       make(map[string]*Repository),
+		Media:              make(map[string]*Media),
+		Assertions:         make(map[string]*Assertion),
+	}
+
+	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
+		t.Fatal(err)
+	}
+
+	expCtx := &ExportContext{
+		GLX:                      glxFile,
+		Version:                  GEDCOM551,
+		Logger:                   NewImportLogger(nil),
+		ExportIndex:              buildExportIndex(glxFile),
+		PersonXRefMap:            map[string]string{"person-1": "@I1@"},
+		SourceXRefMap:            make(map[string]string),
+		RepositoryXRefMap:        make(map[string]string),
+		MediaXRefMap:             make(map[string]string),
+		PlaceStrings:             make(map[string]string),
+		PersonEvents:             make(map[string][]string),
+		PersonSpouseFamilies:     make(map[string][]string),
+		PersonChildFamilies:      make(map[string][]childFamilyRef),
+		PersonPropertyAssertions: make(map[string]map[string][]*Assertion),
+	}
+	buildPersonPropertyAssertionsIndex(expCtx)
+
+	record := exportPerson("person-1", glxFile.Persons["person-1"], expCtx)
+
+	var occuCount int
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagOccu {
+			occuCount++
+		}
+	}
+	assert.Equal(t, 3, occuCount, "Should export 3 separate OCCU records for list-valued occupation")
+}
