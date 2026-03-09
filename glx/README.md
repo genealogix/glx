@@ -1,8 +1,6 @@
 # GLX - GENEALOGIX CLI Tool
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
-[![Coverage](https://img.shields.io/badge/coverage-70.5%25-yellow.svg)](#test-coverage)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#running-tests)
 
 The official command-line tool for working with GENEALOGIX (GLX) family archives. Validates GLX files, initializes new archives, and checks schema conformance.
 
@@ -13,8 +11,10 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
+- 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
+- 🔎 **Query** - Filter and list entities from an archive by name, date, type, and more
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
-- 🧪 **Test Suite** - 70.5% code coverage with comprehensive test fixtures
+- 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
 - 📚 **Examples Validation** - Automatically validates documentation examples
 
 ## Installation
@@ -120,6 +120,18 @@ glx join family-archive combined.glx
 # Show a stats dashboard for an archive
 glx stats family-archive
 
+# Analyze places for data quality issues
+glx places family-archive
+
+# Query persons born before 1850
+glx query persons --born-before 1850
+
+# Find all marriage events
+glx query events --type marriage
+
+# List all sources
+glx query sources
+
 # Validate specific files or directories
 glx validate persons/
 glx validate archive.glx
@@ -192,7 +204,11 @@ Validate GLX files and verify cross-references.
 **Usage:**
 ```bash
 glx validate [paths...]
+glx validate [path] --report
 ```
+
+**Options:**
+- `--report` - Generate confidence summary report (assertion coverage and gaps)
 
 **Validation Checks:**
 - ✓ YAML syntax correctness
@@ -225,6 +241,10 @@ glx validate archive.glx
 
 # Validate example archives
 glx validate ../docs/examples/complete-family/
+
+# Generate confidence summary report
+glx validate --report
+glx validate path/to/archive --report
 ```
 
 **Output:**
@@ -428,6 +448,162 @@ Entity coverage (referenced by assertions):
 
 > **Note:** The confidence distribution lists standard levels first (high, medium, low, disputed), then any custom levels alphabetically, with `(unset)` last. The coverage section shows `-` for entity types with no entries in the archive.
 
+### `glx places`
+
+Analyze places in a GLX archive for data quality issues. Reports duplicate names, missing coordinates, missing types, hierarchy gaps, dangling parent references, and unreferenced places.
+
+**Usage:**
+```bash
+glx places [path]
+```
+
+**Arguments:**
+- `[path]` - Path to a multi-file archive directory or a single-file `.glx` archive (defaults to current directory)
+
+**Reports:**
+
+- **Duplicate names** — places that share the same name (ambiguous without context)
+- **Missing coordinates** — places without latitude/longitude
+- **Missing type** — places without a type classification
+- **No parent** — places (other than countries and regions) missing a parent (hierarchy gap)
+- **Dangling parent** — places referencing a parent that doesn't exist in the archive
+- **Unreferenced** — places not used by any event, assertion, or as a parent
+
+Each place is shown with its full canonical hierarchy path (e.g., "Leeds, Yorkshire, England").
+
+**Examples:**
+
+```bash
+# Analyze places in current directory
+glx places
+
+# Analyze places in a specific archive
+glx places my-family-archive
+
+# Analyze a single-file archive
+glx places family.glx
+```
+
+**Output:**
+```
+Place analysis: 106 places
+
+Missing coordinates (106 of 106):
+  place-acorn-hall  Acorn Hall, The Riverlands, Westeros
+  place-astapor  Astapor, Essos
+  place-braavos  Braavos, Essos
+  ...
+
+No parent (hierarchy gap):
+  place-essos  Essos
+  place-sothoryos  Sothoryos
+  place-the-stepstones  The Stepstones
+  place-westeros  Westeros
+
+Unreferenced (not used by any event, assertion, or as parent):
+  place-acorn-hall  Acorn Hall, The Riverlands, Westeros
+  place-barrowton  Barrowton, The North, Westeros
+  ...
+```
+
+> **Note:** Only sections with issues are shown. If all places have coordinates, parents, and are referenced, those sections are omitted and "No issues found." is printed.
+
+### `glx query`
+
+Filter and list entities from a GENEALOGIX archive. Supports all nine entity types with type-specific filter flags.
+
+**Usage:**
+```bash
+glx query <entity-type> [flags]
+```
+
+**Arguments:**
+- `<entity-type>` - One of: `persons`, `events`, `assertions`, `sources`, `relationships`, `places`, `citations`, `repositories`, `media`
+
+**Common options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+
+**Type-specific filter options:**
+
+| Entity type    | Supported flags                          |
+| -------------- | ---------------------------------------- |
+| `persons`      | `--name`, `--born-before`, `--born-after` |
+| `events`       | `--type`, `--before`, `--after`          |
+| `assertions`   | `--confidence`, `--status`               |
+| `sources`      | `--name`, `--type`                       |
+| `relationships`| `--type`                                 |
+| `places`       | `--name`                                 |
+| `repositories` | `--name`                                 |
+| `citations`    | _(no filters)_                           |
+| `media`        | _(no filters)_                           |
+
+**All filter options:**
+- `--name <string>` - Filter by name (substring match, case-insensitive)
+- `--born-before <year>` - Filter persons born before this year
+- `--born-after <year>` - Filter persons born after this year
+- `--type <string>` - Filter by type (event type, relationship type, or source type)
+- `--before <year>` - Filter events with date before this year
+- `--after <year>` - Filter events with date after this year
+- `--confidence <string>` - Filter assertions by confidence level (e.g. `high`, `medium`, `low`)
+- `--status <string>` - Filter assertions by status
+
+**Examples:**
+
+```bash
+# List all persons in the current archive
+glx query persons
+
+# Find persons with "Smith" in their name
+glx query persons --name "Smith"
+
+# Find persons born before 1850
+glx query persons --born-before 1850
+
+# Find persons born between 1800 and 1860
+glx query persons --born-after 1800 --born-before 1860
+
+# List all marriage events
+glx query events --type marriage
+
+# Find events before 1900
+glx query events --before 1900
+
+# List low-confidence assertions
+glx query assertions --confidence low
+
+# Find disputed assertions with a specific status
+glx query assertions --confidence disputed --status reviewed
+
+# Find sources by title keyword
+glx query sources --name "census"
+
+# Find sources of a specific type
+glx query sources --type vital-record
+
+# Find parent-child relationships
+glx query relationships --type parent-child
+
+# Find places by name in a specific archive
+glx query places --name "London" --archive family-archive
+
+# List all citations in a single-file archive
+glx query citations --archive family.glx
+
+# List all repositories
+glx query repositories
+```
+
+**Output:**
+```
+  person-a3f8d2c1  John Smith  (b. 1842-03-15 – d. 1901-07-22)
+  person-b7c1e4f2  Mary Brown  (b. 1848)
+  person-d9a2f6b3  Thomas Smith  (b. ABT 1870)
+
+3 person(s) found
+```
+
+> **Note:** Name matching is case-insensitive and matches any substring. Year filters use the first four-digit year found in a date string, so formats like `ABT 1850`, `BEF 1920-01-15`, and `BET 1880 AND 1890` are all supported.
+
 ## File Format
 
 GENEALOGIX uses YAML files with `.glx` extension. Entities are stored as maps where the key is the entity ID.
@@ -488,153 +664,43 @@ events:
         role: "principal"
 ```
 
-## Project Structure
-
-```
-glx/
-├── main.go                  # CLI entry point
-├── validate.go              # Validation orchestration
-├── validator.go             # Core validation logic
-├── check_schemas.go         # Schema validation
-├── main_test.go            # Tests for main.go
-├── validate_test.go        # Tests for validation
-├── check_schemas_test.go   # Tests for schema checks
-├── examples_test.go        # Tests for docs/examples
-├── testdata/               # Test fixtures
-│   ├── valid/             # Valid test files
-│   │   ├── person-minimal.glx
-│   │   ├── archive-small-family.glx
-│   │   └── ...
-│   ├── invalid/           # Invalid test files
-│   │   ├── person-missing-id.glx
-│   │   ├── archive-broken-references.glx
-│   │   └── ...
-│   └── README.md          # Test data documentation
-└── README.md              # This file
-```
-
 ## Testing
-
-### Running Tests
 
 ```bash
 # Run all tests
-go test -v
+make test
 
-# Run specific test
-go test -v -run TestValidate
-
-# Run with coverage
-go test -cover
-
-# Generate coverage report
-go test -coverprofile=coverage.out
-go tool cover -html=coverage.out
+# Run all tests with verbose output
+make test-verbose
 ```
 
-### Test Coverage
-
-Current coverage: **69.1%**
-
-Covered areas:
-- ✓ Entity validation (persons, events, places, sources, etc.)
-- ✓ Cross-reference validation
-- ✓ Duplicate ID detection
-- ✓ Single-entity and multi-entity archives
-- ✓ Examples validation (36 files)
-- ✓ CLI commands (init, validate, check-schemas)
-- ✓ Error handling
-
-### Test Categories
-
-#### Unit Tests (`validate_test.go`)
-- Entity ID validation
-- YAML parsing
-- Entity type-specific validation
-- Vocabulary loading
-- Cross-reference checking
-- Archive validation
-
-#### Integration Tests (`main_test.go`)
-- Repository initialization
-- Single-file vs multi-file creation
-- Vocabulary generation
-- Directory structure validation
-
-#### Examples Tests (`examples_test.go`)
-- Validates all 36 example files in `docs/examples/`
-- Tests minimal, basic-family, and complete-family examples
-- Verifies cross-reference integrity across examples
-- Checks example directory structure
-
-#### Schema Tests (`check_schemas_test.go`)
-- Schema metadata validation
-- Missing field detection
-
-### Test Fixtures
-
-**Valid test files** (23 files in `testdata/valid/`):
-- Single-entity tests (person-minimal.glx, event-complete.glx, etc.)
-- Multi-entity archives (archive-small-family.glx, archive-evidence-chain.glx, etc.)
-
-**Invalid test files** (18 files in `testdata/invalid/`):
-- Missing fields (person-missing-id.glx, event-missing-type.glx, etc.)
-- Broken references (archive-broken-references.glx)
-- Duplicate IDs (archive-duplicate-ids.glx)
-- Invalid formats (person-bad-id-format.glx)
-
-See [testdata/README.md](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md) for complete test data documentation.
+See [testdata/README.md](https://github.com/genealogix/glx/blob/main/glx/testdata/README.md) for test data documentation.
 
 ## Development
 
 ### Prerequisites
 
-- Go 1.25 or later
+- Go (see `go.mod` for minimum version)
 - Git
 
 ### Building
 
 ```bash
-go build -o glx .
+make build
 ```
 
 ### Dependencies
 
-```go
-require (
-    github.com/spf13/cobra v1.10.1          // CLI framework
-    github.com/xeipuuv/gojsonschema v1.2.0  // JSON Schema validation
-    github.com/stretchr/testify v1.11.1      // Test assertions
-    gopkg.in/yaml.v3 v3.0.1                  // YAML parsing
-)
-```
-
-### Code Organization
-
-- **`main.go`** - Entry point (calls Execute())
-- **`cmd_root.go`** - Cobra root command setup
-- **`cmd_init.go`** - `glx init` command implementation
-- **`cmd_validate.go`** - `glx validate` command implementation
-- **`cmd_check_schemas.go`** - `glx check-schemas` command implementation
-- **`vocabularies_embed.go`** - Embedded standard vocabulary files
-- **`validator.go`** - Core entity validation, cross-references, vocabularies
-
-### Adding New Validation Rules
-
-1. Add logic to `validator.go::ValidateGLXFile()` or `basicValidateEntity()`
-2. Add test cases to `validate_test.go`
-3. Add test fixtures to `testdata/valid/` or `testdata/invalid/`
-4. Update documentation
+See `go.mod` for the current dependency list.
 
 ### Contributing
 
 Contributions are welcome! Please:
 
 1. Write tests for new functionality
-2. Ensure `go test -cover` shows increased coverage
-3. Run `go test -v` before submitting
-4. Follow Go conventions and idioms
-5. Update documentation
+2. Run `make test` before submitting
+3. Follow Go conventions and idioms
+4. Update documentation
 
 ## Related Documentation
 

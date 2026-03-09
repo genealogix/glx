@@ -489,3 +489,91 @@ func TestGLXFile_Merge_DuplicateReporting(t *testing.T) {
 	require.Contains(t, duplicateStr, "duplicate assertions ID: assertion-1")
 	require.Contains(t, duplicateStr, "duplicate media ID: media-1")
 }
+
+func TestGLXFile_Merge_Metadata_AdoptFromOther(t *testing.T) {
+	// When g1 has no metadata and g2 has metadata with content, g1 adopts it.
+	g1 := &GLXFile{
+		Persons: map[string]*Person{},
+	}
+	g2 := &GLXFile{
+		ImportMetadata: &Metadata{
+			SourceSystem: "MyApp",
+			ExportDate:   "2026-01-15",
+		},
+	}
+
+	duplicates := g1.Merge(g2)
+	require.Empty(t, duplicates, "should have no duplicates")
+	require.NotNil(t, g1.ImportMetadata, "metadata should be adopted from other")
+	require.Equal(t, "MyApp", g1.ImportMetadata.SourceSystem)
+	require.Equal(t, DateString("2026-01-15"), g1.ImportMetadata.ExportDate)
+}
+
+func TestGLXFile_Merge_Metadata_DuplicateDetected(t *testing.T) {
+	// When both g1 and g2 have metadata with content, a duplicate is reported.
+	g1 := &GLXFile{
+		Persons: map[string]*Person{},
+		ImportMetadata: &Metadata{
+			SourceSystem: "AppA",
+		},
+	}
+	g2 := &GLXFile{
+		ImportMetadata: &Metadata{
+			SourceSystem: "AppB",
+		},
+	}
+
+	duplicates := g1.Merge(g2)
+	require.Len(t, duplicates, 1, "should detect one metadata duplicate")
+	require.Contains(t, duplicates[0], "duplicate metadata")
+
+	// Original metadata is preserved (first one wins)
+	require.Equal(t, "AppA", g1.ImportMetadata.SourceSystem)
+}
+
+func TestGLXFile_Merge_Metadata_EmptyMetadataIgnored(t *testing.T) {
+	// When g2 has a non-nil Metadata but no content, it should not be adopted.
+	g1 := &GLXFile{
+		Persons: map[string]*Person{},
+	}
+	g2 := &GLXFile{
+		ImportMetadata: &Metadata{}, // all fields empty
+	}
+
+	duplicates := g1.Merge(g2)
+	require.Empty(t, duplicates, "should have no duplicates")
+	require.Nil(t, g1.ImportMetadata, "empty metadata should not be adopted")
+}
+
+func TestGLXFile_Merge_Metadata_NilMetadataBothSides(t *testing.T) {
+	// When both sides have nil metadata, nothing happens.
+	g1 := &GLXFile{
+		Persons: map[string]*Person{},
+	}
+	g2 := &GLXFile{
+		Persons: map[string]*Person{},
+	}
+
+	duplicates := g1.Merge(g2)
+	require.Empty(t, duplicates)
+	require.Nil(t, g1.ImportMetadata)
+}
+
+func TestGLXFile_Merge_Metadata_ExistingEmptyDoesNotConflict(t *testing.T) {
+	// When g1 has empty metadata (no content) and g2 has metadata with content,
+	// g2's metadata is adopted (no conflict since g1's has no content).
+	g1 := &GLXFile{
+		Persons:        map[string]*Person{},
+		ImportMetadata: &Metadata{}, // non-nil but empty
+	}
+	g2 := &GLXFile{
+		ImportMetadata: &Metadata{
+			SourceSystem: "NewApp",
+		},
+	}
+
+	duplicates := g1.Merge(g2)
+	require.Empty(t, duplicates, "should have no duplicates since g1 metadata has no content")
+	require.NotNil(t, g1.ImportMetadata)
+	require.Equal(t, "NewApp", g1.ImportMetadata.SourceSystem)
+}

@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 
 GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
-	Version:       "0.0.0-beta.3",
+	Version:       "0.0.0-beta.6",
 	SilenceErrors: true,
 	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
 	// arg-count errors still show usage but runtime errors from RunE do not.
@@ -53,6 +53,8 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
+	rootCmd.AddCommand(placesCmd)
+	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
 }
 
@@ -173,6 +175,8 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 // Validate Command
 // ============================================================================
 
+var validateReport bool
+
 var validateCmd = &cobra.Command{
 	Use:   "validate [paths...]",
 	Short: "Validate GLX files and cross-references",
@@ -189,7 +193,10 @@ Performs comprehensive validation including:
 Validation behavior:
 - Single file: Validates file structure only, skips cross-reference checks
 - Directory: Validates all .glx files with full cross-reference validation
-- No arguments: Validates current directory with full cross-reference validation`,
+- No arguments: Validates current directory with full cross-reference validation
+
+Use --report to generate a confidence summary showing assertion coverage
+and highlighting unsupported claims.`,
 	Example: `  # Validate current directory (with cross-reference checks)
   glx validate
 
@@ -200,11 +207,31 @@ Validation behavior:
   glx validate persons/ events/ places/
 
   # Validate single file (structure only, no cross-reference checks)
-  glx validate archive.glx`,
+  glx validate archive.glx
+
+  # Generate confidence summary report
+  glx validate --report
+  glx validate path/to/archive --report`,
 	RunE: runValidate,
 }
 
+func init() {
+	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+}
+
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateReport {
+		if len(args) > 1 {
+			return fmt.Errorf("--report accepts at most one path argument")
+		}
+		path := "."
+		if len(args) == 1 {
+			path = args[0]
+		}
+
+		return confidenceReport(path)
+	}
+
 	return validatePaths(args)
 }
 
@@ -302,6 +329,125 @@ func init() {
 
 func runJoin(_ *cobra.Command, args []string) error {
 	return joinArchive(args[0], args[1], !joinNoValidate, joinVerbose, joinShowFirstErrors)
+}
+
+// ============================================================================
+// Places Command
+// ============================================================================
+
+var placesCmd = &cobra.Command{
+	Use:   "places [path]",
+	Short: "Analyze places for ambiguity and completeness",
+	Long: `Analyze places in a GENEALOGIX archive for data quality issues.
+
+Reports:
+- Duplicate names: places that share the same name (ambiguous without context)
+- Missing coordinates: places without latitude/longitude
+- Missing type: places without a type classification
+- No parent: non-country/region places missing a parent (hierarchy gap)
+- Dangling parent: places referencing a parent that doesn't exist in the archive
+- Unreferenced: places not used by any event, assertion, or as a parent
+
+Each place is shown with its full canonical hierarchy path.
+If no path is given, uses the current directory.`,
+	Example: `  # Analyze places in current directory
+  glx places
+
+  # Analyze places in a specific archive
+  glx places my-family-archive
+
+  # Analyze a single-file archive
+  glx places family.glx`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runPlaces,
+}
+
+func runPlaces(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	return analyzePlaces(path)
+}
+
+// ============================================================================
+// Query Command
+// ============================================================================
+
+var (
+	queryArchive    string
+	queryName       string
+	queryBornBefore int
+	queryBornAfter  int
+	queryType       string
+	queryBefore     int
+	queryAfter      int
+	queryConfidence string
+	queryStatus     string
+)
+
+var queryCmd = &cobra.Command{
+	Use:   "query <entity-type>",
+	Short: "Query entities in a GLX archive",
+	Long: `Filter and list entities from a GENEALOGIX archive.
+
+Supported entity types: persons, events, assertions, sources,
+relationships, places, citations, repositories, media.
+
+Filters vary by entity type:
+  persons:       --name, --born-before, --born-after
+  events:        --type, --before, --after
+  assertions:    --confidence, --status
+  sources:       --name, --type
+  relationships: --type
+  places:        --name
+  repositories:  --name
+
+All entity types support --archive to specify the archive path.`,
+	Example: `  # Find persons born before 1850
+  glx query persons --born-before 1850
+
+  # Find low-confidence assertions
+  glx query assertions --confidence low
+
+  # Find marriage events
+  glx query events --type marriage
+
+  # Find persons by name in a specific archive
+  glx query persons --name "Smith" --archive my-archive
+
+  # List all sources
+  glx query sources`,
+	Args:      cobra.ExactValidArgs(1),
+	ValidArgs: queryEntityTypes,
+	RunE:      runQuery,
+}
+
+func init() {
+	queryCmd.Flags().StringVarP(&queryArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	queryCmd.Flags().StringVar(&queryName, "name", "", "Filter by name (substring match, case-insensitive)")
+	queryCmd.Flags().IntVar(&queryBornBefore, "born-before", 0, "Filter persons born before this year")
+	queryCmd.Flags().IntVar(&queryBornAfter, "born-after", 0, "Filter persons born after this year")
+	queryCmd.Flags().StringVar(&queryType, "type", "", "Filter by type (event type, relationship type, etc.)")
+	queryCmd.Flags().IntVar(&queryBefore, "before", 0, "Filter events with date before this year")
+	queryCmd.Flags().IntVar(&queryAfter, "after", 0, "Filter events with date after this year")
+	queryCmd.Flags().StringVar(&queryConfidence, "confidence", "", "Filter assertions by confidence level")
+	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
+}
+
+func runQuery(_ *cobra.Command, args []string) error {
+	return queryEntities(args[0], queryOpts{
+		Archive:    queryArchive,
+		Name:       queryName,
+		BornBefore: queryBornBefore,
+		BornAfter:  queryBornAfter,
+		Type:       queryType,
+		Before:     queryBefore,
+		After:      queryAfter,
+		Confidence: queryConfidence,
+		Status:     queryStatus,
+	})
 }
 
 // ============================================================================

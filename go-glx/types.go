@@ -18,9 +18,49 @@ import (
 	"fmt"
 )
 
+// Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.
+type Metadata struct {
+	ExportDate        DateString `yaml:"export_date,omitempty"`
+	SourceFile        string     `yaml:"source_file,omitempty"`
+	Copyright         string     `yaml:"copyright,omitempty"`
+	Language          string     `yaml:"language,omitempty"`
+	SourceSystem      string     `yaml:"source_system,omitempty"`
+	SourceVersion     string     `yaml:"source_version,omitempty"`
+	SourceCorporation string     `yaml:"source_corporation,omitempty"`
+	GEDCOMVersion     string     `yaml:"gedcom_version,omitempty"`
+	CharacterSet      string     `yaml:"character_set,omitempty"`
+	Submitter         *Submitter `yaml:"submitter,omitempty"`
+	Notes             string     `yaml:"notes,omitempty"`
+}
+
+// hasContent returns true if any metadata field is populated.
+func (m *Metadata) hasContent() bool {
+	return m.ExportDate != "" || m.SourceFile != "" || m.Copyright != "" ||
+		m.Language != "" || m.SourceSystem != "" || m.SourceVersion != "" ||
+		m.SourceCorporation != "" || m.GEDCOMVersion != "" || m.CharacterSet != "" ||
+		m.Notes != "" || (m.Submitter != nil && m.Submitter.hasContent())
+}
+
+// hasContent returns true if any submitter field is populated.
+func (s *Submitter) hasContent() bool {
+	return s.Name != "" || s.Address != "" || s.Phone != "" || s.Email != "" || s.Website != ""
+}
+
+// Submitter holds contact information from the GEDCOM SUBM record.
+type Submitter struct {
+	Name    string `yaml:"name,omitempty"`
+	Address string `yaml:"address,omitempty"`
+	Phone   string `yaml:"phone,omitempty"`
+	Email   string `yaml:"email,omitempty"`
+	Website string `yaml:"website,omitempty"`
+}
+
 // GLXFile represents the top-level structure of a .glx file, which can
 // contain maps of different entity types and vocabulary definitions.
 type GLXFile struct { //nolint:revive // GLXFile is the established name across the codebase
+	// Archive metadata (from GEDCOM HEAD/SUBM)
+	ImportMetadata *Metadata `yaml:"metadata,omitempty"`
+
 	// Entity types
 	Persons       map[string]*Person       `yaml:"persons,omitempty"`
 	Relationships map[string]*Relationship `yaml:"relationships,omitempty"`
@@ -234,7 +274,7 @@ type Assertion struct {
 	Subject     EntityRef    `yaml:"subject"`
 	Property    string       `yaml:"property,omitempty"`    // Optional, not present if participant exists
 	Value       string       `yaml:"value,omitempty"`       // Not present if participant exists
-	Date        string       `yaml:"date,omitempty"`        // For temporal properties
+	Date        DateString   `yaml:"date,omitempty"`        // For temporal properties
 	Participant *Participant `yaml:"participant,omitempty"` // Not present if property/value exists
 	Confidence  string       `refType:"confidence_levels"  yaml:"confidence,omitempty"`
 	Status      string       `yaml:"status,omitempty"`
@@ -343,13 +383,23 @@ type FieldDefinition struct {
 // It is used when a temporal property is represented as a list.
 type TemporalValue struct {
 	Value any    `yaml:"value"`
-	Date  string `yaml:"date,omitempty"` // FamilySearch normalized date string
+	Date  DateString `yaml:"date,omitempty"` // FamilySearch normalized date string
 }
 
-// Merge combines another GLXFile into this one, returning duplicate IDs as errors.
-// Duplicates are fatal errors for both entities and vocabularies.
+// Merge combines another GLXFile into this one, returning duplicate/conflict messages.
+// Messages may report duplicate entity or vocabulary IDs ("duplicate <type> ID: <id>")
+// or metadata conflicts ("duplicate metadata: ...").
 func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates := make([]string, 0, 10)
+
+	// Merge metadata (first one wins; report duplicate if both have content)
+	if other.ImportMetadata != nil && other.ImportMetadata.hasContent() {
+		if g.ImportMetadata != nil && g.ImportMetadata.hasContent() {
+			duplicates = append(duplicates, "duplicate metadata: metadata appears in multiple files")
+		} else {
+			g.ImportMetadata = other.ImportMetadata
+		}
+	}
 
 	// Merge entities (fail on duplicates)
 	duplicates = append(duplicates, mergeMap("persons", g.Persons, other.Persons)...)

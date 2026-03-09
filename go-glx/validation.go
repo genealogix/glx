@@ -948,7 +948,7 @@ func (glx *GLXFile) validateValueType(entityType, entityID, field string, value 
 // validateEntityFieldFormats performs additional lightweight validation of format
 // constraints on top-level entity fields beyond what is currently enforced via schema.
 func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
-	// Validate date fields on events, sources, and media
+	// Validate date fields on events, sources, media, and assertions
 	for id, event := range glx.Events {
 		if event.Date != "" {
 			glx.validateDateFormat(EntityTypeEvents, id, "date", string(event.Date), result)
@@ -962,6 +962,11 @@ func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
 	for id, media := range glx.Media {
 		if media.Date != "" {
 			glx.validateDateFormat(EntityTypeMedia, id, "date", string(media.Date), result)
+		}
+	}
+	for id, assertion := range glx.Assertions {
+		if assertion.Date != "" {
+			glx.validateDateFormat(EntityTypeAssertions, id, "date", string(assertion.Date), result)
 		}
 	}
 

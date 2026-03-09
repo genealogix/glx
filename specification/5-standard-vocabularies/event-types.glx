@@ -205,6 +205,23 @@ event_types:
     description: "Registration to vote or appearance on a voter roll"
     category: "legal"
 
+  # Military and Service Events
+  military_service:
+    label: "Military Service"
+    description: "Period of military service, enlistment, or conscription"
+    category: "lifecycle"
+
+  # Other Lifecycle Events
+  stillborn:
+    label: "Stillborn"
+    description: "Stillbirth"
+    category: "lifecycle"
+
+  affiliation:
+    label: "Affiliation"
+    description: "Membership or association with an organization, society, or group"
+    category: "other"
+
   # Census Events
   census:
     label: "Census"
