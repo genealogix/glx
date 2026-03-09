@@ -1,20 +1,22 @@
 name: Auto-resolve Copilot suggestions
 
 on:
-  schedule:
-    - cron: '*/15 * * * *' # Every 15 minutes
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   auto-fix:
+    # Only run for Copilot reviews on same-repo PRs (not forks)
+    if: >-
+      github.event.review.user.login == 'copilot-pull-request-reviewer' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-      issues: write
-      id-token: write
     concurrency:
-      group: copilot-auto-fix
-      cancel-in-progress: false
+      group: copilot-auto-fix-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -23,75 +25,26 @@ jobs:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
-      - name: Find PR with unresolved Copilot threads
-        id: find-pr
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          # Get all open same-repo PRs (exclude forks)
-          PRS=$(gh pr list --repo "${{ github.repository }}" \
-            --state open --limit 999 --json number,headRefName,isCrossRepository \
-            --jq '.[] | select(.isCrossRepository == false) | .number')
-
-          for PR_NUMBER in $PRS; do
-            COUNT=$(gh api graphql -f query='
-              query($owner: String!, $name: String!, $pr: Int!) {
-                repository(owner: $owner, name: $name) {
-                  pullRequest(number: $pr) {
-                    reviewThreads(first: 100) {
-                      nodes {
-                        isResolved
-                        comments(first: 1) {
-                          nodes { author { login } }
-                        }
-                      }
-                    }
-                  }
-                }
-              }' -f owner="${{ github.repository_owner }}" \
-                 -f name="$(echo '${{ github.repository }}' | cut -d/ -f2)" \
-                 -F pr="$PR_NUMBER" \
-              --jq '[.data.repository.pullRequest.reviewThreads.nodes[]
-                     | select(.isResolved == false)
-                     | select(.comments.nodes[0].author.login == "copilot-pull-request-reviewer")] | length')
-
-            if [ "$COUNT" != "0" ]; then
-              BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefName --jq '.headRefName')
-              echo "Found PR #$PR_NUMBER with $COUNT unresolved Copilot threads"
-              echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-              echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-              break
-            fi
-          done
-
-          if [ -z "$(grep 'number=' "$GITHUB_OUTPUT" 2>/dev/null)" ]; then
-            echo "No PRs with unresolved Copilot threads"
-          fi
-
       - name: Checkout repository
-        if: steps.find-pr.outputs.number
         uses: actions/checkout@v6
         with:
-          ref: ${{ steps.find-pr.outputs.branch }}
+          ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
       - name: Run Claude Code to resolve Copilot suggestions
-        if: steps.find-pr.outputs.number
-        id: claude-fix
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          additional_permissions: |
-            contents: write
-            pull-requests: write
+          github_token: ${{ steps.app-token.outputs.token }}
           prompt: |
-            Copilot just reviewed PR #${{ steps.find-pr.outputs.number }} in ${{ github.repository }}.
+            Copilot just reviewed PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
 
             Your task:
             1. Read ALL unresolved Copilot review threads on this PR using:
                gh api graphql to get reviewThreads where isResolved == false
-            2. For each unresolved thread:
+               and where the first comment author is "copilot-pull-request-reviewer"
+            2. For each unresolved Copilot thread:
                a. Read and understand the suggestion
                b. If it's a valid code improvement, make the fix in the codebase
                c. If it's not actionable (e.g. asking for tests that already exist, or suggesting changes that would break things), skip it but still reply explaining why
