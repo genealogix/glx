@@ -452,6 +452,27 @@ func refsForEvent(eventID string, archive *glxlib.GLXFile, refs *refTracker, idx
 	return strings.Join(refParts, "")
 }
 
+// refsForMultipleProperties collects unique citation IDs across multiple assertion
+// properties for a person, then emits refs without duplicates.
+func refsForMultipleProperties(personID string, properties []string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) string {
+	seen := make(map[string]bool)
+	var refParts []string
+
+	for _, prop := range properties {
+		key := personID + "\x00" + prop
+		for _, a := range idx.byPersonProperty[key] {
+			for _, citID := range a.Citations {
+				if !seen[citID] {
+					seen[citID] = true
+					refParts = append(refParts, refs.ref(citID, archive))
+				}
+			}
+		}
+	}
+
+	return strings.Join(refParts, "")
+}
+
 // writeOpeningSentence writes the birth/origin line.
 func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	name := extractPersonName(person)
@@ -469,8 +490,7 @@ func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Pe
 		b.WriteString(fmt.Sprintf(" was born in %s", placeName))
 	}
 
-	birthRefs := refsForAssertions(personID, "born_on", archive, refs, idx) +
-		refsForAssertions(personID, "born_at", archive, refs, idx)
+	birthRefs := refsForMultipleProperties(personID, []string{"born_on", "born_at"}, archive, refs, idx)
 	b.WriteString(birthRefs)
 
 	// Occupation — only add pronoun + occupation if occupation exists
@@ -694,8 +714,7 @@ func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Perso
 
 	// Death
 	if diedOn != "" || deathPlace != "" {
-		deathRefs := refsForAssertions(personID, "died_on", archive, refs, idx) +
-			refsForAssertions(personID, "died_at", archive, refs, idx)
+		deathRefs := refsForMultipleProperties(personID, []string{"died_on", "died_at"}, archive, refs, idx)
 
 		switch {
 		case diedOn != "" && deathPlace != "":
