@@ -20,7 +20,7 @@ import (
 
 // Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.
 type Metadata struct {
-	ExportDate        string     `yaml:"export_date,omitempty"`
+	ExportDate        DateString `yaml:"export_date,omitempty"`
 	SourceFile        string     `yaml:"source_file,omitempty"`
 	Copyright         string     `yaml:"copyright,omitempty"`
 	Language          string     `yaml:"language,omitempty"`
@@ -382,7 +382,7 @@ type FieldDefinition struct {
 // It is used when a temporal property is represented as a list.
 type TemporalValue struct {
 	Value any    `yaml:"value"`
-	Date  string `yaml:"date,omitempty"` // FamilySearch normalized date string
+	Date  DateString `yaml:"date,omitempty"` // FamilySearch normalized date string
 }
 
 // Merge combines another GLXFile into this one, returning duplicate/conflict messages.
