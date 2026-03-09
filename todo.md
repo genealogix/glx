@@ -28,6 +28,7 @@ Design decisions to resolve before 1.0.
 ## 🟡 Tooling & Infrastructure
 
 - **Vocabulary audit**: Review all standard vocabulary files in [5-standard-vocabularies/](specification/5-standard-vocabularies/) for consistency and completeness.
+- **Validate participant role `applies_to`**: Roles with `applies_to: [event]` should error when used on relationships, and vice versa. Currently `applies_to` is deserialized but never checked.
 
 ---
 
