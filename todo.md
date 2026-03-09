@@ -34,6 +34,8 @@ Design decisions to resolve before 1.0.
 
 ## 🟢 Code Quality
 
+- **Move command logic from `glx/` CLI into `go-glx/` library**: Newer commands (`places_runner.go`, `query_runner.go`, `report_runner.go`, `stats_runner.go`) have non-I/O logic in the CLI package that should live in the library. CLI should only handle I/O and flag parsing; all data transformation, analysis, and formatting logic belongs in `go-glx/`.
+- **Migrate from `gopkg.in/yaml.v3` to `github.com/goccy/go-yaml`**: `gopkg.in/yaml.v3` is archived and no longer maintained. Used across 14 files in `go-glx/` and `glx/`.
 - **`copyFile` discards `dstFile.Close()` error**: Write errors on NFS/network mounts surface at `Close()`. [media_copy.go:119-132](https://github.com/genealogix/glx/blob/main/glx/media_copy.go#L119-L132)
 - **`decodeGEDCOMBlob` no input validation**: Characters outside valid range produce garbage silently. BLOB is deprecated and rare. [media_copy.go:143-155](https://github.com/genealogix/glx/blob/main/glx/media_copy.go#L143-L155)
 - **No path traversal check on GEDCOM FILE references**: Impact limited since destination uses basename only. [media_copy.go:102-114](https://github.com/genealogix/glx/blob/main/glx/media_copy.go#L102-L114)
