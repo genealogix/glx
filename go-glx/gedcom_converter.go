@@ -197,7 +197,7 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 	for _, sub := range headRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagDate:
-			meta.ExportDate = sub.Value
+			meta.ExportDate = DateString(sub.Value)
 		case GedcomTagFile:
 			meta.SourceFile = sub.Value
 		case GedcomTagCopr:

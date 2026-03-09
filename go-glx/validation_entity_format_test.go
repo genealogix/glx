@@ -74,6 +74,30 @@ func TestValidateEntityFieldFormats_SourceDate(t *testing.T) {
 	}
 }
 
+func TestValidateEntityFieldFormats_AssertionDate(t *testing.T) {
+	glxFile := &GLXFile{
+		Assertions: map[string]*Assertion{
+			"assertion-valid": {Date: "1900-01-15"},
+			"assertion-range": {Date: "FROM 1900 TO 1910"},
+			"assertion-empty": {Date: ""},
+			"assertion-bad":   {Date: "not-a-date"},
+		},
+	}
+
+	result := &ValidationResult{}
+	glxFile.validateEntityFieldFormats(result)
+
+	warnings := 0
+	for _, w := range result.Warnings {
+		if w.Field == "date" {
+			warnings++
+		}
+	}
+	if warnings != 1 {
+		t.Errorf("expected 1 date warning for invalid assertion date, got %d", warnings)
+	}
+}
+
 func TestValidateEntityFieldFormats_RepositoryWebsite(t *testing.T) {
 	tests := []struct {
 		name        string

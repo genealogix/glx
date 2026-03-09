@@ -37,6 +37,8 @@ type queryOpts struct {
 	After      int
 	Confidence string
 	Status     string
+	Source     string
+	Citation   string
 }
 
 // queryEntityTypes lists the entity types supported by the query command.
@@ -63,13 +65,15 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 		{"--after", opts.After != 0},
 		{"--confidence", opts.Confidence != ""},
 		{"--status", opts.Status != ""},
+		{"--source", opts.Source != ""},
+		{"--citation", opts.Citation != ""},
 	}
 
 	// Map each entity type to its supported flags.
 	supported := map[string]map[string]bool{
 		"persons":       {"--name": true, "--born-before": true, "--born-after": true},
 		"events":        {"--type": true, "--before": true, "--after": true},
-		"assertions":    {"--confidence": true, "--status": true},
+		"assertions":    {"--confidence": true, "--status": true, "--source": true, "--citation": true},
 		"sources":       {"--name": true, "--type": true},
 		"relationships": {"--type": true},
 		"places":        {"--name": true},
@@ -241,6 +245,12 @@ func queryAssertions(archive *glxlib.GLXFile, opts queryOpts) error {
 		if opts.Status != "" && !strings.EqualFold(a.Status, opts.Status) {
 			continue
 		}
+		if opts.Source != "" && !assertionReferencesSource(a, archive, opts.Source) {
+			continue
+		}
+		if opts.Citation != "" && !slices.Contains(a.Citations, opts.Citation) {
+			continue
+		}
 
 		subject := a.Subject.ID()
 		subjectType := a.Subject.Type()
@@ -387,6 +397,24 @@ func queryMedia(archive *glxlib.GLXFile) error {
 	fmt.Printf("\n%d media found\n", len(ids))
 
 	return nil
+}
+
+// assertionReferencesSource checks if an assertion references a source, either
+// directly via its Sources list or indirectly via a citation whose SourceID matches.
+func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sourceID string) bool {
+	// Check direct source references
+	if slices.Contains(a.Sources, sourceID) {
+		return true
+	}
+
+	// Check indirect references via citations
+	for _, citID := range a.Citations {
+		if cit, ok := archive.Citations[citID]; ok && cit.SourceID == sourceID {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ============================================================================

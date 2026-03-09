@@ -4,23 +4,10 @@
 
 ---
 
-## 🔴 Bugs & Data Integrity
-
-Issues that silently lose or corrupt data during import.
-
-- ~~**Multiple GEDCOM NAME records silently dropped** ([#29](https://github.com/genealogix/glx/issues/29))~~ ✅ Multiple NAMEs now stored as temporal list via `appendNameProperty`.
-- ~~**FAM event processing depends on HUSB/WIFE tag order** ([#15](https://github.com/genealogix/glx/issues/15))~~ ✅ Two-pass processing: collect all sub-records first, process events after HUSB/WIFE extraction.
-- ~~**GEDCOM marriage/divorce events stored as properties instead of `start_event`/`end_event`**~~ ✅ Now uses `relationship.StartEvent`/`EndEvent` instead of properties.
-- ~~**Census NOTE discarded when SOUR exists** ([#30](https://github.com/genealogix/glx/issues/30))~~ ✅ NOTE text now appended to existing citations when SOUR sub-records exist.
-
----
-
 ## 🟡 Import Gaps
 
 Data that is parsed but silently dropped or not stored.
 
-- ~~**HEAD Metadata**: Store export_date, source_file, copyright, language, source_system.~~ ✅ Done
-- ~~**SUBM Metadata**: Store submitter information.~~ ✅ Done
 - **NCHI Tag** ([gedcom_family.go](https://github.com/genealogix/glx/blob/main/go-glx/gedcom_family.go)): Store number of children — can differ from actual CHIL count.
 - **LANG Tag Normalization**: GEDCOM 5.5.x uses free-form text (`English`) while 7.0 uses ISO format (`en-US`). Should normalize on import.
 - **Media entities with empty URI**: GEDCOM OBJE records with empty `FILE` values produce media entities with empty `uri`. Should skip, populate from extension tags, or set a placeholder.
@@ -33,19 +20,15 @@ Data that is parsed but silently dropped or not stored.
 Design decisions to resolve before 1.0.
 
 - **Source `description` GEDCOM mapping ambiguity**: Maps to both SOUR.TEXT (excerpt from original) and SOUR.NOTE (researcher commentary). These are semantically different. Consider splitting or documenting the merge.
-- ~~**Event participant requirement**~~ ✅ Decision: keep participants required (min 1). GLX is genealogical — every event connects to at least one person. Documented in spec.
-- ~~**Repository address fields**~~ ✅ Decision: keep as direct entity fields. Core identifying attributes, not extensible metadata. Documented in spec.
 - **Fields-only structured properties**: Spec allows `fields` without `value` (e.g., crop coordinates). Ensure validator doesn't warn on this.
-- ~~**Gender/sex controlled vocabularies**~~ ✅ Decision: keep as free-form string. Terminology varies across periods/cultures; recommended values documented in spec, not enforced.
-- ~~**Participant role requirement**~~ ✅ Decision: roles remain optional on participants (schema does not require `role`, only `person`). This accommodates cases where the role is unknown.
+- **Property `value_type` for structured-only properties**: Properties like `crop` that only use `fields` (no single value) currently require `value_type: integer`, which is misleading. Consider adding an `object` or `nil` value type, or relaxing the "exactly one of `value_type`/`reference_type`" requirement for fields-only properties.
 
 ---
 
 ## 🟡 Tooling & Infrastructure
 
-- **Markdown link validation in CI**: Validate all internal links in specification and documentation.
 - **Vocabulary audit**: Review all standard vocabulary files in [5-standard-vocabularies/](specification/5-standard-vocabularies/) for consistency and completeness.
-- ~~**Add make command for goreleaser**~~ ✅ Added `make release-snapshot` for local builds; updated release workflow to latest action versions.
+- **Validate participant role `applies_to`**: Roles with `applies_to: [event]` should error when used on relationships, and vice versa. Currently `applies_to` is deserialized but never checked.
 
 ---
 

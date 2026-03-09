@@ -139,7 +139,7 @@ relationship_types:
   
   parent_child:
     label: "Parent-Child"
-    description: "Biological, adoptive, or legal parent-child relationship"
+    description: "Parent-child relationship (unspecified type)"
     gedcom: "CHIL/FAMC"
   
   sibling:
@@ -163,7 +163,7 @@ relationship_types:
 
 ### Standard Relationship Types
 
-**Standard Relationship Types**: GENEALOGIX provides 10 standardized relationship type codes including marriage, parent-child (plus biological, adoptive, and foster variants), sibling, step-parent, godparent, guardian, and partner relationships.
+**Standard Relationship Types**: GENEALOGIX provides standardized relationship type codes including marriage, parent-child (plus biological, adoptive, and foster variants), sibling, step-parent, godparent, guardian, partner, and social/occupational relationships.
 
 **Complete List**: See [Standard Vocabularies - Relationship Types](../5-standard-vocabularies/#relationship-types) for the complete default vocabulary file with all standard types.
 
@@ -238,7 +238,7 @@ place_types:
 
 ### Standard Place Types
 
-**Standard Place Types**: GENEALOGIX provides 16 standardized place type codes including administrative divisions (country, state, county, district, township), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
+**Standard Place Types**: GENEALOGIX provides standardized place type codes including administrative divisions (country, state, county, district, township), geographic features (city, town, locality, region, neighborhood, street, building), religious divisions (parish, church), and institutions (hospital, cemetery).
 
 **Complete List**: See [Standard Vocabularies - Place Types](../5-standard-vocabularies/#place-types) for the complete default vocabulary file with all standard types.
 
@@ -308,7 +308,7 @@ source_types:
 
 ### Standard Source Types
 
-**Standard Source Types**: GENEALOGIX provides 16 standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, and other.
+**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, and other.
 
 **Complete List**: See [Standard Vocabularies - Source Types](../5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
@@ -378,7 +378,7 @@ media_types:
 
 ### Standard Media Types
 
-**Standard Media Types**: GENEALOGIX provides 7 standardized media type codes including photograph, document, audio, video, scan, image, and certificate, each with default MIME types.
+**Standard Media Types**: GENEALOGIX provides standardized media type codes including photograph, document, audio, video, scan, image, and certificate, each with default MIME types.
 
 **Complete List**: See [Standard Vocabularies - Media Types](../5-standard-vocabularies/#media-types) for the complete default vocabulary file with all standard types.
 
@@ -582,7 +582,7 @@ participant_roles:
 
 Common event roles:
 - `principal` - Primary person in the event
-- `subject` - Subject of the event (alias for principal)
+- `subject` - Subject of the event (preferred over 'principal')
 - `groom`, `bride` - Marriage participants
 - `witness` - Event witness
 - `officiant` - Ceremony officiant
@@ -782,6 +782,7 @@ Standard properties include:
 - `source_date` - Date when the source recorded the information (from GEDCOM DATE)
 - `accessed` - Date when an online source or digital record was last accessed or retrieved
 - `url` - Direct web address for the specific cited material (e.g., a permalink to a record or image viewer)
+- `original_place_name` - Verbatim place name from the source before normalization to a place entity
 - `external_ids` - Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID; multi-value)
 
 ### Property Definition Structure
@@ -1205,14 +1206,6 @@ The following issues cause validation to fail:
    - Confidence levels (`confidence_levels`)
 
 2. **Broken entity references**: All entity references must point to existing entities
-   - Person references
-   - Event references
-   - Place references
-   - Source references
-   - Citation references
-   - Repository references
-   - Media references
-   - Relationship references
 
 3. **Broken property references**: Properties defined with `reference_type` must reference existing entities
    ```yaml
@@ -1259,9 +1252,7 @@ $ glx validate
 ✓ vocabularies/event-types.glx
 ✓ vocabularies/relationship-types.glx
 ✓ events/event-birth.glx
-  - event type 'birth' found in vocabulary
 ✓ relationships/rel-marriage.glx
-  - relationship type 'marriage' found in vocabulary
 
 ⚠ persons/person-john.glx
   - WARNING: property 'custom_field' not defined in person_properties vocabulary

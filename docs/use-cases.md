@@ -300,22 +300,28 @@ relationship_types:
 - Git version control for collaborative data entry
 - Validation for data quality assurance
 
-**Custom Properties:**
+**Event Participant Properties:**
 ```yaml
-# persons/person-*.glx
-persons:
-  person-john-doe:
-    properties:
-      name:
-        value: "John Doe"
-        fields:
-          given: "John"
-          surname: "Doe"
-
-      # Census-specific properties
-      census_occupation: "Agricultural Labourer"
-      census_household_number: "15"
-      literacy: true
+# events/event-1851-census.glx
+events:
+  event-1851-census-district12:
+    type: census
+    date: "1851-03-30"
+    place: place-leeds-yorkshire
+    participants:
+      - person: person-john-doe
+        role: subject
+        properties:
+          age_at_event: "32"
+          occupation: "Agricultural Labourer"
+          household_number: "15"
+          literacy: "can read and write"
+      - person: person-mary-doe
+        role: subject
+        properties:
+          age_at_event: "28"
+          occupation: "Domestic Duties"
+          household_number: "15"
 ```
 
 **Perfect For:**
