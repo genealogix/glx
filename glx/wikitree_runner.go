@@ -452,34 +452,31 @@ func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Pe
 	}
 	b.WriteString(birthRefs)
 
-	// Gender
-	gender := propertyString(person.Properties, "gender")
-	if gender == "" {
-		gender = propertyString(person.Properties, "sex")
-	}
-	if strings.EqualFold(gender, "male") {
-		b.WriteString(". He")
-	} else if strings.EqualFold(gender, "female") {
-		b.WriteString(". She")
-	} else {
-		b.WriteString(". They")
-	}
-
-	// Occupation
+	// Occupation — only add pronoun + occupation if occupation exists
 	occ := wikiTreePropertyValue(person.Properties, "occupation")
 	if occ != "" {
+		gender := propertyString(person.Properties, "gender")
+		if gender == "" {
+			gender = propertyString(person.Properties, "sex")
+		}
+		if strings.EqualFold(gender, "male") {
+			b.WriteString(". He")
+		} else if strings.EqualFold(gender, "female") {
+			b.WriteString(". She")
+		} else {
+			b.WriteString(". They")
+		}
 		b.WriteString(fmt.Sprintf(" was a %s", strings.ToLower(occ)))
+		occRefs := refsForAssertions(personID, "occupation", archive, refs, idx)
+		b.WriteString(occRefs)
 	}
-
-	occRefs := refsForAssertions(personID, "occupation", archive, refs, idx)
-	b.WriteString(occRefs)
 
 	b.WriteString(".\n\n")
 }
 
 // writeCensusSection writes census event entries.
 func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
-	events := findPersonEventsByType(personID, "census", archive)
+	events := findHouseholdCensusEvents(personID, archive)
 	if len(events) == 0 {
 		return
 	}
@@ -489,14 +486,15 @@ func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLX
 	for _, we := range events {
 		event := we.Event
 		date := string(event.Date)
+		censusYear := extractYear(date)
 		place := wikiTreePlaceName(event.PlaceID, archive)
 
 		var line string
 		switch {
-		case date != "" && place != "":
-			line = fmt.Sprintf("In the %s census, %s was enumerated in %s", date, extractPersonNameShort(personID, archive), place)
-		case date != "":
-			line = fmt.Sprintf("In the %s census", date)
+		case censusYear != "" && place != "":
+			line = fmt.Sprintf("In the %s census, %s was enumerated in %s", censusYear, extractPersonNameShort(personID, archive), place)
+		case censusYear != "":
+			line = fmt.Sprintf("In the %s census", censusYear)
 		default:
 			line = "A census record exists"
 		}
@@ -550,12 +548,57 @@ func writeMilitarySection(b *strings.Builder, personID string, archive *glxlib.G
 // writeMarriageSection writes marriage events and spouse relationships.
 func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	events := findPersonEventsByType(personID, "marriage", archive)
-	if len(events) == 0 {
+	hasEvents := len(events) > 0
+
+	// Also check for marriage relationships (inferred marriages without an event)
+	type marriageRelInfo struct {
+		spouseName string
+		notes      string
+	}
+	var relMarriages []marriageRelInfo
+
+	if !hasEvents {
+		spouseIDs := findSpouseIDs(personID, archive)
+		for _, spouseID := range spouseIDs {
+			name := spouseID
+			if sp, ok := archive.Persons[spouseID]; ok {
+				name = extractPersonName(sp)
+			}
+
+			// Find the relationship notes
+			notes := ""
+			for _, rel := range archive.Relationships {
+				relType := strings.ToLower(rel.Type)
+				if relType != "marriage" && relType != "spouse" {
+					continue
+				}
+				hasPersonID, hasSpouse := false, false
+				for _, p := range rel.Participants {
+					if p.Person == personID {
+						hasPersonID = true
+					}
+					if p.Person == spouseID {
+						hasSpouse = true
+					}
+				}
+				if hasPersonID && hasSpouse && rel.Notes != "" {
+					notes = rel.Notes
+				}
+			}
+
+			relMarriages = append(relMarriages, marriageRelInfo{spouseName: name, notes: notes})
+		}
+	}
+
+	if !hasEvents && len(relMarriages) == 0 {
 		return
 	}
 
 	b.WriteString("=== Marriage ===\n\n")
 
+	name := extractPersonNameShort(personID, archive)
+
+	// Write marriage events
 	for _, we := range events {
 		event := we.Event
 		date := string(event.Date)
@@ -597,9 +640,13 @@ func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.G
 		}
 
 		if len(parts) > 0 {
-			name := extractPersonNameShort(personID, archive)
 			b.WriteString(fmt.Sprintf("%s %s%s.\n\n", name, strings.Join(parts, " "), eventRefs))
 		}
+	}
+
+	// Write relationship-based marriages (no event)
+	for _, rm := range relMarriages {
+		b.WriteString(fmt.Sprintf("%s married %s.\n\n", name, rm.spouseName))
 	}
 }
 
@@ -667,9 +714,16 @@ func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Perso
 	}
 }
 
+// childInfo holds display information for a child, used for sorting.
+type childInfo struct {
+	personID    string
+	displayName string
+	birthYear   string
+}
+
 // writeChildrenSection lists children found via parent-child relationships.
 func writeChildrenSection(b *strings.Builder, personID string, archive *glxlib.GLXFile) {
-	var children []string
+	var children []childInfo
 
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
@@ -696,15 +750,16 @@ func writeChildrenSection(b *strings.Builder, personID string, archive *glxlib.G
 
 		for _, p := range rel.Participants {
 			if strings.EqualFold(p.Role, "child") {
-				childName := p.Person
+				childEntry := childInfo{personID: p.Person, displayName: p.Person}
 				if child, ok := archive.Persons[p.Person]; ok {
-					childName = extractPersonName(child)
+					childEntry.displayName = extractPersonName(child)
 					bornOn := propertyString(child.Properties, "born_on")
-					if bornOn != "" {
-						childName += " (b. " + bornOn + ")"
+					childEntry.birthYear = extractYear(bornOn)
+					if childEntry.birthYear != "" {
+						childEntry.displayName += " (b. " + childEntry.birthYear + ")"
 					}
 				}
-				children = append(children, childName)
+				children = append(children, childEntry)
 			}
 		}
 	}
@@ -713,9 +768,21 @@ func writeChildrenSection(b *strings.Builder, personID string, archive *glxlib.G
 		return
 	}
 
+	// Sort children by birth year (unknown years sort last)
+	sort.Slice(children, func(i, j int) bool {
+		if children[i].birthYear == "" {
+			return false
+		}
+		if children[j].birthYear == "" {
+			return true
+		}
+
+		return children[i].birthYear < children[j].birthYear
+	})
+
 	b.WriteString("=== Children ===\n\n")
 	for _, child := range children {
-		b.WriteString(fmt.Sprintf("# %s\n", child))
+		b.WriteString(fmt.Sprintf("# %s\n", child.displayName))
 	}
 	b.WriteString("\n")
 }
@@ -804,6 +871,70 @@ func writeSourcesList(b *strings.Builder, personID string, archive *glxlib.GLXFi
 // ============================================================================
 // Helpers
 // ============================================================================
+
+// findHouseholdCensusEvents finds census events where the person or their spouse participates.
+// This catches household-level census records where only the head-of-household is listed.
+func findHouseholdCensusEvents(personID string, archive *glxlib.GLXFile) []wikiTreeEvent {
+	// First get direct census events
+	direct := findPersonEventsByType(personID, "census", archive)
+	seen := make(map[string]bool)
+	for _, e := range direct {
+		seen[e.ID] = true
+	}
+
+	// Find spouse IDs from marriage relationships
+	spouseIDs := findSpouseIDs(personID, archive)
+
+	// Find census events where a spouse participates
+	for _, spouseID := range spouseIDs {
+		spouseEvents := findPersonEventsByType(spouseID, "census", archive)
+		for _, e := range spouseEvents {
+			if !seen[e.ID] {
+				seen[e.ID] = true
+				direct = append(direct, e)
+			}
+		}
+	}
+
+	// Re-sort by date
+	sort.Slice(direct, func(i, j int) bool {
+		return string(direct[i].Event.Date) < string(direct[j].Event.Date)
+	})
+
+	return direct
+}
+
+// findSpouseIDs returns person IDs of all spouses via marriage relationships.
+func findSpouseIDs(personID string, archive *glxlib.GLXFile) []string {
+	var spouses []string
+
+	for _, rel := range archive.Relationships {
+		relType := strings.ToLower(rel.Type)
+		if relType != "marriage" && relType != "spouse" {
+			continue
+		}
+
+		isMember := false
+		for _, p := range rel.Participants {
+			if p.Person == personID {
+				isMember = true
+
+				break
+			}
+		}
+		if !isMember {
+			continue
+		}
+
+		for _, p := range rel.Participants {
+			if p.Person != personID {
+				spouses = append(spouses, p.Person)
+			}
+		}
+	}
+
+	return spouses
+}
 
 // findPersonEventsByType finds all events of a given type where the person participates, sorted by date.
 func findPersonEventsByType(personID, eventType string, archive *glxlib.GLXFile) []wikiTreeEvent {
@@ -935,4 +1066,28 @@ func narrativeDateWT(date string) string {
 	}
 
 	return "on " + d
+}
+
+// extractYear returns just the 4-digit year from a date string.
+// Handles formats like "1860-07-17", "1860", "ABT 1858", "BEF 1920".
+func extractYear(date string) string {
+	d := strings.TrimSpace(date)
+	if d == "" {
+		return ""
+	}
+
+	// Strip GLX date prefixes
+	for _, prefix := range []string{"ABT ", "BEF ", "AFT ", "BET "} {
+		if strings.HasPrefix(strings.ToUpper(d), prefix) {
+			d = strings.TrimSpace(d[len(prefix):])
+
+			break
+		}
+	}
+
+	if len(d) >= 4 {
+		return d[:4]
+	}
+
+	return d
 }
