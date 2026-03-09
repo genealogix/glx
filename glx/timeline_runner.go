@@ -265,7 +265,8 @@ func inferRelation(relType, targetRole, otherRole string) string {
 			return ""
 		}
 	case relType == "guardian":
-		if targetRole == "parent" || targetRole == "guardian" {
+		// In standard archives, guardians use the "parent" participant role.
+		if targetRole == "parent" {
 			return "child"
 		}
 

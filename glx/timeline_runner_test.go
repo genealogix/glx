@@ -419,9 +419,14 @@ func TestInferRelation(t *testing.T) {
 		{"parent_child", "child", "parent", "parent"},
 		{"biological_parent_child", "parent", "child", "child"},
 		{"adoptive_parent_child", "child", "parent", "parent"},
+		{"foster_parent_child", "parent", "child", "child"},
+		{"step_parent", "child", "parent", "parent"},
+		{"guardian", "parent", "child", "child"},
+		{"guardian", "child", "parent", "parent"},
 		{"parent_child", "", "parent", "parent"},
 		{"parent_child", "", "child", "child"},
 		{"parent_child", "", "", ""},
+		{"neighbor", "principal", "principal", ""},
 	}
 
 	for _, tt := range tests {
