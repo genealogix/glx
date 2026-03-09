@@ -49,6 +49,7 @@ func Execute() {
 func init() {
 	rootCmd.SetVersionTemplate("glx version {{.Version}}\n")
 	rootCmd.AddCommand(importCmd)
+	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
@@ -120,6 +121,60 @@ func init() {
 
 func runImport(_ *cobra.Command, args []string) error {
 	return importGEDCOM(args[0], importOutput, importFormat, !importNoValidate, importVerbose, importShowFirstErrors)
+}
+
+// ============================================================================
+// Export Command
+// ============================================================================
+
+var (
+	exportOutput  string
+	exportFormat  string
+	exportVerbose bool
+)
+
+var exportCmd = &cobra.Command{
+	Use:   "export <glx-archive>",
+	Short: "Export a GLX archive to GEDCOM format",
+	Long: `Export a GLX archive to GEDCOM format.
+
+Supports both GEDCOM 5.5.1 and GEDCOM 7.0 output formats.
+
+The input can be either a single-file GLX archive (.glx) or a multi-file
+archive directory.
+
+The exported GEDCOM file will include:
+- All individuals (INDI records)
+- All families (FAM records, reconstructed from relationships)
+- All sources (SOUR records)
+- All repositories (REPO records)
+- All media objects (OBJE records)
+- Events, places, citations, and notes`,
+	Example: `  # Export to GEDCOM 5.5.1 (default)
+  glx export family-archive -o family.ged
+
+  # Export a single-file archive
+  glx export family.glx -o family.ged
+
+  # Export to GEDCOM 7.0
+  glx export family-archive -o family.ged --format 70
+
+  # Export with verbose output
+  glx export family-archive -o family.ged --verbose`,
+	Args: cobra.ExactArgs(1),
+	RunE: runExport,
+}
+
+func init() {
+	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output GEDCOM file path (required)")
+	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "GEDCOM version: 551 or 70")
+	exportCmd.Flags().BoolVarP(&exportVerbose, "verbose", "v", false, "Verbose output")
+
+	_ = exportCmd.MarkFlagRequired("output")
+}
+
+func runExport(_ *cobra.Command, args []string) error {
+	return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose)
 }
 
 // ============================================================================
