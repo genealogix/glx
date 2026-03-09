@@ -560,6 +560,7 @@ func runStats(_ *cobra.Command, args []string) error {
 var (
 	wikiTreeArchive string
 	wikiTreeStale   bool
+	wikiTreeOutput  string
 )
 
 var wikiTreeCmd = &cobra.Command{
@@ -594,6 +595,7 @@ archive files have changed since the last generation.`,
 func init() {
 	wikiTreeCmd.Flags().StringVarP(&wikiTreeArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	wikiTreeCmd.Flags().BoolVar(&wikiTreeStale, "stale", false, "List persons with stale or missing WikiTree biographies")
+	wikiTreeCmd.Flags().StringVarP(&wikiTreeOutput, "output", "o", "", "Write biography to file (default: stdout)")
 }
 
 func runWikiTree(_ *cobra.Command, args []string) error {
@@ -604,5 +606,5 @@ func runWikiTree(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("person argument is required (use --stale to list stale biographies)")
 	}
 
-	return showWikiTree(wikiTreeArchive, args[0])
+	return showWikiTree(wikiTreeArchive, args[0], wikiTreeOutput)
 }

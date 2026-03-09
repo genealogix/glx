@@ -86,9 +86,9 @@ func TestGenerateWikiTreeBio_BasicPerson(t *testing.T) {
 		t.Error("missing birth place")
 	}
 
-	// Check death section
-	if !strings.Contains(bio, "=== Death and Burial ===") {
-		t.Error("missing Death and Burial subsection")
+	// Check death info in narrative
+	if !strings.Contains(bio, "died") {
+		t.Error("missing death narrative")
 	}
 	if !strings.Contains(bio, "London, England") {
 		t.Error("missing death place")
@@ -200,8 +200,11 @@ func TestGenerateWikiTreeBio_Children(t *testing.T) {
 
 	bio := generateWikiTreeBio("person-parent", archive.Persons["person-parent"], archive)
 
-	if !strings.Contains(bio, "=== Children ===") {
-		t.Error("missing Children subsection")
+	if !strings.Contains(bio, "=== Marriage and Family ===") {
+		t.Error("missing Marriage and Family subsection")
+	}
+	if !strings.Contains(bio, "Children of Mary Lane:") {
+		t.Error("missing children intro line")
 	}
 	if !strings.Contains(bio, "Alice Lane (b. 1855)") {
 		t.Error("missing child Alice with birth year")

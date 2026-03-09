@@ -17,7 +17,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -39,7 +41,8 @@ const wikiTreeTrackingFile = ".wikitree.yml"
 type wikiTreeTracking map[string]string // person ID -> RFC3339 timestamp
 
 // showWikiTree generates a WikiTree biography for a person.
-func showWikiTree(archivePath, personQuery string) error {
+// If outputPath is non-empty, writes to that file; otherwise prints to stdout.
+func showWikiTree(archivePath, personQuery, outputPath string) error {
 	archive, err := loadArchiveForWikiTree(archivePath)
 	if err != nil {
 		return err
@@ -51,7 +54,23 @@ func showWikiTree(archivePath, personQuery string) error {
 	}
 
 	bio := generateWikiTreeBio(personID, person, archive)
-	fmt.Print(bio)
+
+	if outputPath != "" {
+		if err := os.WriteFile(outputPath, []byte(bio), filePermissions); err != nil {
+			return fmt.Errorf("failed to write output file: %w", err)
+		}
+		absPath, _ := filepath.Abs(outputPath)
+		fmt.Fprintf(os.Stderr, "Biography written to %s\n", absPath)
+	}
+
+	// Copy to clipboard
+	if err := copyToClipboard(bio); err == nil {
+		fmt.Fprintln(os.Stderr, "Biography copied to clipboard.")
+	}
+
+	if outputPath == "" {
+		fmt.Print(bio)
+	}
 
 	// Record generation timestamp
 	if err := recordWikiTreeGeneration(archivePath, personID); err != nil {
@@ -249,6 +268,24 @@ func findStaleFiles(personID string, entityIDs map[string]bool, fileMtimes map[s
 	return stale
 }
 
+// copyToClipboard copies text to the system clipboard.
+func copyToClipboard(text string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("clip")
+	case "darwin":
+		cmd = exec.Command("pbcopy")
+	default:
+		cmd = exec.Command("xclip", "-selection", "clipboard")
+	}
+
+	cmd.Stdin = strings.NewReader(text)
+
+	return cmd.Run()
+}
+
 // loadArchiveForWikiTree loads an archive from a path (directory or single file).
 func loadArchiveForWikiTree(path string) (*glxlib.GLXFile, error) {
 	info, err := os.Stat(path)
@@ -344,23 +381,14 @@ func generateWikiTreeBio(personID string, person *glxlib.Person, archive *glxlib
 	// == Biography ==
 	b.WriteString("== Biography ==\n\n")
 
-	// Opening sentence
-	writeOpeningSentence(&b, personID, person, archive, refs, idx)
+	// Flowing life narrative: birth, residence, occupation, death
+	writeLifeNarrative(&b, personID, person, archive, refs, idx)
 
-	// Census / Residence
-	writeCensusSection(&b, personID, archive, refs, idx)
-
-	// Military Service
+	// Military Service (subsection if applicable)
 	writeMilitarySection(&b, personID, archive, refs, idx)
 
-	// Marriage(s)
-	writeMarriageSection(&b, personID, archive, refs, idx)
-
-	// Death and Burial
-	writeDeathSection(&b, personID, person, archive, refs, idx)
-
-	// Children
-	writeChildrenSection(&b, personID, archive)
+	// Marriage and Family
+	writeMarriageAndFamily(&b, personID, archive, refs, idx)
 
 	// == Research Notes ==
 	writeResearchNotes(&b, personID, person, archive)
@@ -382,8 +410,10 @@ type refTracker struct {
 // ref returns the WikiTree <ref> markup for a citation.
 // First use emits the full citation text; subsequent uses emit a short ref.
 func (r *refTracker) ref(citationID string, archive *glxlib.GLXFile) string {
+	name := shortRefName(citationID)
+
 	if _, seen := r.citations[citationID]; seen {
-		return fmt.Sprintf(`<ref name="%s" />`, citationID)
+		return fmt.Sprintf(`<ref name="%s" />`, name)
 	}
 
 	r.nextRef++
@@ -391,7 +421,7 @@ func (r *refTracker) ref(citationID string, archive *glxlib.GLXFile) string {
 
 	text := formatCitationText(citationID, archive)
 
-	return fmt.Sprintf(`<ref name="%s">%s</ref>`, citationID, text)
+	return fmt.Sprintf(`<ref name="%s">%s</ref>`, name, text)
 }
 
 // formatCitationText builds the citation text for a <ref> tag.
@@ -421,6 +451,12 @@ func formatCitationText(citationID string, archive *glxlib.GLXFile) string {
 	}
 
 	return citationID
+}
+
+// shortRefName converts a citation ID to a shorter WikiTree ref name.
+// WikiTree convention: short, lowercase, descriptive.
+func shortRefName(citationID string) string {
+	return strings.TrimPrefix(citationID, "citation-")
 }
 
 // refsForAssertions returns ref markup for all citations on assertions matching
@@ -473,97 +509,290 @@ func refsForMultipleProperties(personID string, properties []string, archive *gl
 	return strings.Join(refParts, "")
 }
 
-// writeOpeningSentence writes the birth/origin line.
-func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
+// writeLifeNarrative writes a flowing biographical narrative weaving together
+// birth, marriage, settlement, census, occupation, and death into connected prose.
+func writeLifeNarrative(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	name := extractPersonName(person)
+	shortName := extractPersonNameShort(personID, archive)
+	pronoun := pronounFor(person.Properties)
+
+	// --- Birth ---
 	b.WriteString(fmt.Sprintf("'''%s'''", name))
 
 	bornOn := propertyString(person.Properties, "born_on")
 	bornAt := propertyString(person.Properties, "born_at")
-	placeName := wikiTreePlaceName(bornAt, archive)
+	birthPlace := wikiTreePlaceName(bornAt, archive)
 
-	if bornOn != "" && placeName != "" {
-		b.WriteString(fmt.Sprintf(" was born %s in %s", narrativeDateWT(bornOn), placeName))
+	hasBirth := bornOn != "" || birthPlace != ""
+	if bornOn != "" && birthPlace != "" {
+		b.WriteString(fmt.Sprintf(" was born %s in %s", narrativeDateWT(bornOn), birthPlace))
 	} else if bornOn != "" {
 		b.WriteString(fmt.Sprintf(" was born %s", narrativeDateWT(bornOn)))
-	} else if placeName != "" {
-		b.WriteString(fmt.Sprintf(" was born in %s", placeName))
+	} else if birthPlace != "" {
+		b.WriteString(fmt.Sprintf(" was born in %s", birthPlace))
 	}
 
 	birthRefs := refsForMultipleProperties(personID, []string{"born_on", "born_at"}, archive, refs, idx)
-	b.WriteString(birthRefs)
-
-	// Occupation — only add pronoun + occupation if occupation exists
-	occ := wikiTreePropertyValue(person.Properties, "occupation")
-	if occ != "" {
-		gender := propertyString(person.Properties, "gender")
-		if gender == "" {
-			gender = propertyString(person.Properties, "sex")
-		}
-		if strings.EqualFold(gender, "male") {
-			b.WriteString(". He")
-		} else if strings.EqualFold(gender, "female") {
-			b.WriteString(". She")
-		} else {
-			b.WriteString(". They")
-		}
-		b.WriteString(fmt.Sprintf(" was a %s", strings.ToLower(occ)))
-		occRefs := refsForAssertions(personID, "occupation", archive, refs, idx)
-		b.WriteString(occRefs)
+	if hasBirth {
+		b.WriteString(".")
+		b.WriteString(birthRefs)
+	} else {
+		b.WriteString(".")
 	}
 
-	b.WriteString(".\n\n")
+	// --- Gather narrative data ---
+	spouseIDs := findSpouseIDs(personID, archive)
+	censusEvents := findHouseholdCensusEvents(personID, archive)
+
+	// --- First marriage + settlement ---
+	if len(spouseIDs) > 0 {
+		firstSpouseID := spouseIDs[0]
+		spouseName := firstSpouseID
+		if sp, ok := archive.Persons[firstSpouseID]; ok {
+			spouseName = extractPersonName(sp)
+		}
+		desc := spouseDescription(firstSpouseID, archive)
+
+		if desc != "" {
+			b.WriteString(fmt.Sprintf(" %s married %s, %s", pronoun, spouseName, desc))
+		} else {
+			b.WriteString(fmt.Sprintf(" %s married %s", pronoun, spouseName))
+		}
+
+		// Weave census into settlement narrative
+		if len(censusEvents) > 0 {
+			writeCensusWithSettlement(b, birthPlace, censusEvents, archive, refs, idx)
+		} else {
+			b.WriteString(".")
+		}
+
+		// Later marriages
+		for i := 1; i < len(spouseIDs); i++ {
+			laterName := spouseIDs[i]
+			if sp, ok := archive.Persons[laterName]; ok {
+				laterName = extractPersonName(sp)
+			}
+			b.WriteString(fmt.Sprintf(" %s later married %s.", shortName, laterName))
+		}
+	} else if len(censusEvents) > 0 {
+		// No marriage — standalone census narrative
+		writeCensusStandalone(b, pronoun, censusEvents, archive, refs, idx)
+	}
+
+	// Occupation (if not already implied by spouse description)
+	occ := wikiTreePropertyValue(person.Properties, "occupation")
+	if occ != "" {
+		b.WriteString(fmt.Sprintf(" %s was a %s.", pronoun, strings.ToLower(occ)))
+		b.WriteString(refsForAssertions(personID, "occupation", archive, refs, idx))
+	}
+
+	b.WriteString("\n\n")
+
+	// --- Death and Burial ---
+	writeDeathNarrative(b, personID, person, shortName, archive, refs, idx)
 }
 
-// writeCensusSection writes census event entries.
-func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
-	events := findHouseholdCensusEvents(personID, archive)
-	if len(events) == 0 {
+// writeCensusWithSettlement writes census data woven into a marriage/settlement sentence.
+// Continues from "married [spouse]" — adds settlement location and census refs.
+func writeCensusWithSettlement(b *strings.Builder, birthPlace string, events []wikiTreeEvent, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
+	firstPlace := wikiTreePlaceName(events[0].Event.PlaceID, archive)
+
+	// Check if all census events share the same place
+	allSamePlace := true
+	for _, we := range events[1:] {
+		if wikiTreePlaceName(we.Event.PlaceID, archive) != firstPlace {
+			allSamePlace = false
+
+			break
+		}
+	}
+
+	if allSamePlace && firstPlace != "" {
+		// "...and the family settled in [place], where they appear in the [year] census<ref> and the [year] census.<ref>"
+		if firstPlace != birthPlace {
+			b.WriteString(fmt.Sprintf(", and the family settled in %s", firstPlace))
+		}
+		b.WriteString(", where they appear in ")
+
+		for i, we := range events {
+			year := extractYear(string(we.Event.Date))
+			ref := censusEventRef(we, archive, refs, idx)
+
+			if i > 0 {
+				b.WriteString(" and ")
+			}
+			b.WriteString(fmt.Sprintf("the %s census", year))
+
+			if i == len(events)-1 {
+				b.WriteString(".")
+				b.WriteString(ref)
+			} else {
+				b.WriteString(ref)
+			}
+		}
+	} else {
+		// Different places — list as separate sentences
+		b.WriteString(".")
+
+		for _, we := range events {
+			year := extractYear(string(we.Event.Date))
+			place := wikiTreePlaceName(we.Event.PlaceID, archive)
+			ref := censusEventRef(we, archive, refs, idx)
+
+			if year != "" && place != "" {
+				b.WriteString(fmt.Sprintf(" By %s, the family was living in %s.", year, place))
+			} else if year != "" {
+				b.WriteString(fmt.Sprintf(" They appeared in the %s census.", year))
+			}
+			b.WriteString(ref)
+		}
+	}
+}
+
+// writeCensusStandalone writes census data when there's no marriage to weave it with.
+func writeCensusStandalone(b *strings.Builder, pronoun string, events []wikiTreeEvent, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
+	prevPlace := ""
+
+	for _, we := range events {
+		year := extractYear(string(we.Event.Date))
+		place := wikiTreePlaceName(we.Event.PlaceID, archive)
+		ref := censusEventRef(we, archive, refs, idx)
+
+		switch {
+		case place != "" && place == prevPlace && year != "":
+			b.WriteString(fmt.Sprintf(" %s was still residing there in %s.", pronoun, year))
+		case place != "" && year != "":
+			b.WriteString(fmt.Sprintf(" By %s, %s was living in %s.", year, strings.ToLower(pronoun), place))
+		case place != "":
+			b.WriteString(fmt.Sprintf(" %s was living in %s.", pronoun, place))
+		case year != "":
+			b.WriteString(fmt.Sprintf(" %s appeared in the %s census.", pronoun, year))
+		}
+		b.WriteString(ref)
+
+		if place != "" {
+			prevPlace = place
+		}
+	}
+}
+
+// censusEventRef returns a ref tag for a census event, using assertion refs or
+// falling back to the first paragraph of event notes.
+func censusEventRef(we wikiTreeEvent, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) string {
+	eventRefs := refsForEvent(we.ID, archive, refs, idx)
+	if eventRefs == "" && we.Event.Notes != "" {
+		noteText := firstNoteParagraph(we.Event.Notes)
+		if noteText != "" {
+			return fmt.Sprintf("<ref>%s</ref>", noteText)
+		}
+	}
+
+	return eventRefs
+}
+
+// spouseDescription returns a brief description of a spouse, e.g. "a Virginia-born farmer".
+func spouseDescription(spouseID string, archive *glxlib.GLXFile) string {
+	spouse, ok := archive.Persons[spouseID]
+	if !ok {
+		return ""
+	}
+
+	var parts []string
+
+	bornAt := propertyString(spouse.Properties, "born_at")
+	if region := birthRegion(bornAt, archive); region != "" {
+		parts = append(parts, region+"-born")
+	}
+
+	occ := wikiTreePropertyValue(spouse.Properties, "occupation")
+	if occ != "" {
+		parts = append(parts, strings.ToLower(occ))
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return "a " + strings.Join(parts, " ")
+}
+
+// birthRegion extracts the first component of a place name (e.g. "Virginia" from "Virginia, United States").
+func birthRegion(placeID string, archive *glxlib.GLXFile) string {
+	if placeID == "" {
+		return ""
+	}
+	place, ok := archive.Places[placeID]
+	if !ok {
+		return ""
+	}
+	parts := strings.SplitN(place.Name, ",", 2)
+
+	return strings.TrimSpace(parts[0])
+}
+
+// pronounFor returns "He", "She", or "They" based on person properties.
+func pronounFor(props map[string]any) string {
+	gender := propertyString(props, "gender")
+	if gender == "" {
+		gender = propertyString(props, "sex")
+	}
+
+	if strings.EqualFold(gender, "male") {
+		return "He"
+	}
+	if strings.EqualFold(gender, "female") {
+		return "She"
+	}
+
+	return "They"
+}
+
+// writeDeathNarrative writes death and burial as narrative prose (no subsection header).
+func writeDeathNarrative(b *strings.Builder, personID string, person *glxlib.Person, shortName string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
+	diedOn := propertyString(person.Properties, "died_on")
+	diedAt := propertyString(person.Properties, "died_at")
+	deathPlace := wikiTreePlaceName(diedAt, archive)
+	deathEvents := findPersonEventsByType(personID, "death", archive)
+	burialEvents := findPersonEventsByType(personID, "burial", archive)
+
+	if diedOn == "" && deathPlace == "" && len(deathEvents) == 0 && len(burialEvents) == 0 {
 		return
 	}
 
-	b.WriteString("=== Census Records ===\n\n")
-
-	for _, we := range events {
-		event := we.Event
-		date := string(event.Date)
-		censusYear := extractYear(date)
-		place := wikiTreePlaceName(event.PlaceID, archive)
-
-		var line string
+	if diedOn != "" || deathPlace != "" {
+		deathRefs := refsForMultipleProperties(personID, []string{"died_on", "died_at"}, archive, refs, idx)
 		switch {
-		case censusYear != "" && place != "":
-			line = fmt.Sprintf("In the %s census, %s was enumerated in %s", censusYear, extractPersonNameShort(personID, archive), place)
-		case censusYear != "":
-			line = fmt.Sprintf("In the %s census", censusYear)
-		default:
-			line = "A census record exists"
+		case diedOn != "" && deathPlace != "":
+			b.WriteString(fmt.Sprintf("%s died %s in %s.%s", shortName, narrativeDateWT(diedOn), deathPlace, deathRefs))
+		case diedOn != "":
+			b.WriteString(fmt.Sprintf("%s died %s.%s", shortName, narrativeDateWT(diedOn), deathRefs))
+		case deathPlace != "":
+			b.WriteString(fmt.Sprintf("%s died in %s.%s", shortName, deathPlace, deathRefs))
 		}
-
+	} else if len(deathEvents) > 0 {
+		we := deathEvents[0]
 		eventRefs := refsForEvent(we.ID, archive, refs, idx)
-		b.WriteString(line + eventRefs + ".\n\n")
-
-		if event.Notes != "" {
-			// Split notes into paragraphs; skip FAN neighbor lists (research-only data)
-			inFAN := false
-			for _, para := range strings.Split(event.Notes, "\n\n") {
-				trimmed := strings.TrimSpace(para)
-				if trimmed == "" {
-					continue
-				}
-				if strings.HasPrefix(trimmed, "FAN") {
-					inFAN = true
-
-					continue
-				}
-				if inFAN && isFANContinuation(trimmed) {
-					continue
-				}
-				inFAN = false
-				b.WriteString(trimmed + "\n\n")
-			}
+		date := string(we.Event.Date)
+		place := wikiTreePlaceName(we.Event.PlaceID, archive)
+		switch {
+		case date != "" && place != "":
+			b.WriteString(fmt.Sprintf("%s died %s in %s.%s", shortName, narrativeDateWT(date), place, eventRefs))
+		case date != "":
+			b.WriteString(fmt.Sprintf("%s died %s.%s", shortName, narrativeDateWT(date), eventRefs))
+		case place != "":
+			b.WriteString(fmt.Sprintf("%s died in %s.%s", shortName, place, eventRefs))
 		}
 	}
+
+	for _, we := range burialEvents {
+		burialRefs := refsForEvent(we.ID, archive, refs, idx)
+		place := wikiTreePlaceName(we.Event.PlaceID, archive)
+		if place != "" {
+			b.WriteString(fmt.Sprintf(" %s was buried at %s.%s", shortName, place, burialRefs))
+		}
+	}
+
+	b.WriteString("\n\n")
 }
 
 // isFANContinuation returns true if a paragraph looks like a continuation of
@@ -575,6 +804,40 @@ func isFANContinuation(s string) bool {
 		strings.HasPrefix(lower, "current page") ||
 		strings.HasPrefix(lower, "next page") ||
 		strings.HasPrefix(lower, "same page")
+}
+
+// firstNoteParagraph returns the first non-empty, non-FAN paragraph from event notes.
+func firstNoteParagraph(notes string) string {
+	for _, para := range strings.Split(notes, "\n\n") {
+		trimmed := strings.TrimSpace(para)
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "FAN") || isFANContinuation(trimmed) {
+			continue
+		}
+
+		return trimmed
+	}
+
+	return ""
+}
+
+// humanPropertyName converts a GLX property key to a human-readable label.
+func humanPropertyName(prop string) string {
+	names := map[string]string{
+		"born_on":    "Birth date",
+		"born_at":    "Birthplace",
+		"died_on":    "Death date",
+		"died_at":    "Death place",
+		"married":    "Marriage",
+		"occupation": "Occupation",
+	}
+	if name, ok := names[prop]; ok {
+		return name
+	}
+
+	return strings.ReplaceAll(prop, "_", " ")
 }
 
 // writeMilitarySection writes military service events.
@@ -601,190 +864,42 @@ func writeMilitarySection(b *strings.Builder, personID string, archive *glxlib.G
 		}
 
 		if event.Notes != "" {
-			b.WriteString(event.Notes + allRefs + "\n\n")
+			notes := strings.TrimRight(event.Notes, " \n")
+			if !strings.HasSuffix(notes, ".") {
+				notes += "."
+			}
+			b.WriteString(notes + allRefs + "\n\n")
 		} else {
 			date := string(event.Date)
 			if date != "" {
-				b.WriteString(fmt.Sprintf("Served in the military (%s)%s.\n\n", date, allRefs))
+				b.WriteString(fmt.Sprintf("Served in the military (%s).%s\n\n", date, allRefs))
 			} else {
-				b.WriteString(fmt.Sprintf("Served in the military%s.\n\n", allRefs))
+				b.WriteString(fmt.Sprintf("Served in the military.%s\n\n", allRefs))
 			}
 		}
 	}
 }
 
-// writeMarriageSection writes marriage events and spouse relationships.
-func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
-	events := findPersonEventsByType(personID, "marriage", archive)
-	hasEvents := len(events) > 0
-
-	// Also check for marriage relationships (inferred marriages without an event)
-	type marriageRelInfo struct {
-		spouseName string
-		notes      string
-	}
-	var relMarriages []marriageRelInfo
-
-	if !hasEvents {
-		spouseIDs := findSpouseIDs(personID, archive)
-		for _, spouseID := range spouseIDs {
-			name := spouseID
-			if sp, ok := archive.Persons[spouseID]; ok {
-				name = extractPersonName(sp)
-			}
-
-			// Find the relationship notes
-			notes := ""
-			for _, rel := range archive.Relationships {
-				relType := strings.ToLower(rel.Type)
-				if relType != "marriage" && relType != "spouse" {
-					continue
-				}
-				hasPersonID, hasSpouse := false, false
-				for _, p := range rel.Participants {
-					if p.Person == personID {
-						hasPersonID = true
-					}
-					if p.Person == spouseID {
-						hasSpouse = true
-					}
-				}
-				if hasPersonID && hasSpouse && rel.Notes != "" {
-					notes = rel.Notes
-				}
-			}
-
-			relMarriages = append(relMarriages, marriageRelInfo{spouseName: name, notes: notes})
-		}
-	}
-
-	if !hasEvents && len(relMarriages) == 0 {
+// writeMarriageAndFamily writes the Marriage and Family subsection.
+// Marriages are covered in the narrative; this section lists children.
+func writeMarriageAndFamily(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
+	children := findChildren(personID, archive)
+	if len(children) == 0 {
 		return
 	}
 
-	b.WriteString("=== Marriage ===\n\n")
+	b.WriteString("=== Marriage and Family ===\n\n")
 
-	name := extractPersonNameShort(personID, archive)
+	fullName := extractPersonName(archive.Persons[personID])
+	b.WriteString(fmt.Sprintf("Children of %s:\n", fullName))
 
-	// Write marriage events
-	for _, we := range events {
-		event := we.Event
-		date := string(event.Date)
-		place := wikiTreePlaceName(event.PlaceID, archive)
-
-		// Find the spouse in participants (look for spouse-like roles)
-		spouseName := ""
-		spouseRoles := map[string]bool{
-			"spouse": true, "husband": true, "wife": true,
-			"groom": true, "bride": true,
-		}
-		for _, p := range event.Participants {
-			if p.Person == personID {
-				continue
-			}
-			role := strings.ToLower(p.Role)
-			if spouseRoles[role] || role == "" {
-				if sp, ok := archive.Persons[p.Person]; ok {
-					spouseName = extractPersonName(sp)
-				} else {
-					spouseName = p.Person
-				}
-
-				break
-			}
-		}
-
-		eventRefs := refsForEvent(we.ID, archive, refs, idx)
-
-		var parts []string
-		if spouseName != "" {
-			parts = append(parts, fmt.Sprintf("married %s", spouseName))
-		}
-		if date != "" {
-			parts = append(parts, narrativeDateWT(date))
-		}
-		if place != "" {
-			parts = append(parts, fmt.Sprintf("in %s", place))
-		}
-
-		if len(parts) > 0 {
-			b.WriteString(fmt.Sprintf("%s %s%s.\n\n", name, strings.Join(parts, " "), eventRefs))
-		}
+	for _, child := range children {
+		b.WriteString(fmt.Sprintf("# %s\n", child.displayName))
 	}
 
-	// Write relationship-based marriages (no event)
-	for _, rm := range relMarriages {
-		b.WriteString(fmt.Sprintf("%s married %s.", name, rm.spouseName))
-		if rm.notes != "" {
-			b.WriteString(" " + rm.notes)
-		}
-		b.WriteString("\n\n")
-	}
+	b.WriteString("\n")
 }
 
-// writeDeathSection writes death and burial information.
-func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
-	diedOn := propertyString(person.Properties, "died_on")
-	diedAt := propertyString(person.Properties, "died_at")
-	deathPlace := wikiTreePlaceName(diedAt, archive)
-
-	deathEvents := findPersonEventsByType(personID, "death", archive)
-	burialEvents := findPersonEventsByType(personID, "burial", archive)
-
-	hasContent := diedOn != "" || deathPlace != "" || len(deathEvents) > 0 || len(burialEvents) > 0
-	if !hasContent {
-		return
-	}
-
-	b.WriteString("=== Death and Burial ===\n\n")
-
-	name := extractPersonNameShort(personID, archive)
-
-	// Death
-	if diedOn != "" || deathPlace != "" {
-		deathRefs := refsForMultipleProperties(personID, []string{"died_on", "died_at"}, archive, refs, idx)
-
-		switch {
-		case diedOn != "" && deathPlace != "":
-			b.WriteString(fmt.Sprintf("%s died %s in %s%s.\n\n", name, narrativeDateWT(diedOn), deathPlace, deathRefs))
-		case diedOn != "":
-			b.WriteString(fmt.Sprintf("%s died %s%s.\n\n", name, narrativeDateWT(diedOn), deathRefs))
-		case deathPlace != "":
-			b.WriteString(fmt.Sprintf("%s died in %s%s.\n\n", name, deathPlace, deathRefs))
-		}
-	} else if len(deathEvents) > 0 {
-		for _, we := range deathEvents {
-			event := we.Event
-			eventRefs := refsForEvent(we.ID, archive, refs, idx)
-			date := string(event.Date)
-			place := wikiTreePlaceName(event.PlaceID, archive)
-
-			switch {
-			case date != "" && place != "":
-				b.WriteString(fmt.Sprintf("%s died %s in %s%s.\n\n", name, narrativeDateWT(date), place, eventRefs))
-			case date != "":
-				b.WriteString(fmt.Sprintf("%s died %s%s.\n\n", name, narrativeDateWT(date), eventRefs))
-			case place != "":
-				b.WriteString(fmt.Sprintf("%s died in %s%s.\n\n", name, place, eventRefs))
-			}
-		}
-	}
-
-	// Burial
-	for _, we := range burialEvents {
-		event := we.Event
-		burialRefs := refsForEvent(we.ID, archive, refs, idx)
-		place := wikiTreePlaceName(event.PlaceID, archive)
-
-		if place != "" {
-			b.WriteString(fmt.Sprintf("%s was buried at %s%s.\n\n", name, place, burialRefs))
-		}
-
-		if event.Notes != "" {
-			b.WriteString(event.Notes + "\n\n")
-		}
-	}
-}
 
 // childInfo holds display information for a child, used for sorting.
 type childInfo struct {
@@ -793,8 +908,8 @@ type childInfo struct {
 	birthYear   string
 }
 
-// writeChildrenSection lists children found via parent-child relationships.
-func writeChildrenSection(b *strings.Builder, personID string, archive *glxlib.GLXFile) {
+// findChildren returns sorted children for a person via parent-child relationships.
+func findChildren(personID string, archive *glxlib.GLXFile) []childInfo {
 	var children []childInfo
 
 	ids := sortedKeys(archive.Relationships)
@@ -836,10 +951,6 @@ func writeChildrenSection(b *strings.Builder, personID string, archive *glxlib.G
 		}
 	}
 
-	if len(children) == 0 {
-		return
-	}
-
 	// Sort children by birth year (unknown years sort last)
 	sort.Slice(children, func(i, j int) bool {
 		if children[i].birthYear == "" {
@@ -852,11 +963,7 @@ func writeChildrenSection(b *strings.Builder, personID string, archive *glxlib.G
 		return children[i].birthYear < children[j].birthYear
 	})
 
-	b.WriteString("=== Children ===\n\n")
-	for _, child := range children {
-		b.WriteString(fmt.Sprintf("# %s\n", child.displayName))
-	}
-	b.WriteString("\n")
+	return children
 }
 
 // writeResearchNotes writes the Research Notes section from assertion notes and low-confidence items.
@@ -876,7 +983,27 @@ func writeResearchNotes(b *strings.Builder, personID string, person *glxlib.Pers
 			continue
 		}
 		if a.Confidence != "" && a.Confidence != "high" && a.Notes != "" {
-			notes = append(notes, fmt.Sprintf("%s (%s confidence): %s", a.Property, a.Confidence, a.Notes))
+			propName := humanPropertyName(a.Property)
+			notes = append(notes, fmt.Sprintf("%s: %s (%s confidence)", propName, a.Notes, a.Confidence))
+		}
+	}
+
+	// Collect relationship notes (marriage inferences, etc.)
+	for _, relID := range sortedKeys(archive.Relationships) {
+		rel := archive.Relationships[relID]
+		if rel.Notes == "" {
+			continue
+		}
+		hasPerson := false
+		for _, p := range rel.Participants {
+			if p.Person == personID {
+				hasPerson = true
+
+				break
+			}
+		}
+		if hasPerson {
+			notes = append(notes, rel.Notes)
 		}
 	}
 
@@ -976,11 +1103,19 @@ func findHouseholdCensusEvents(personID string, archive *glxlib.GLXFile) []wikiT
 	return direct
 }
 
-// findSpouseIDs returns person IDs of all spouses via marriage relationships.
+// findSpouseIDs returns person IDs of all spouses via marriage relationships,
+// in deterministic order (sorted by relationship ID).
 func findSpouseIDs(personID string, archive *glxlib.GLXFile) []string {
+	relIDs := make([]string, 0, len(archive.Relationships))
+	for id := range archive.Relationships {
+		relIDs = append(relIDs, id)
+	}
+	sort.Strings(relIDs)
+
 	var spouses []string
 
-	for _, rel := range archive.Relationships {
+	for _, relID := range relIDs {
+		rel := archive.Relationships[relID]
 		relType := strings.ToLower(rel.Type)
 		if relType != "marriage" && relType != "spouse" {
 			continue
