@@ -118,12 +118,15 @@ func TestFormatCitation_Bare(t *testing.T) {
 
 func TestFormatCitation_CitationOwnRepo(t *testing.T) {
 	archive := fullCiteArchive()
-	cit := archive.Citations["cit-with-own-repo"]
+
+	// cit-override points to source-marriages (repo-fs / FamilySearch) but sets
+	// its own RepositoryID to repo-nara (NARA). The citation's repo must win.
+	cit := archive.Citations["cit-override"]
 
 	result := formatCitation(cit, archive)
-	// Citation's own repo should take precedence
-	assert.Contains(t, result, "FamilySearch")
-	assert.Contains(t, result, "https://example.com")
+	assert.Contains(t, result, "NARA")
+	assert.NotContains(t, result, "FamilySearch")
+	assert.Contains(t, result, "https://example.com/override")
 }
 
 func TestResolveSourceTitle(t *testing.T) {
