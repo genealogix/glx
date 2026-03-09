@@ -78,7 +78,7 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 |-------|------|----------|-------------|
 | `person` | string | Yes | Reference to the person entity |
 | `role` | string | No | Role of the participant |
-| `properties` | object | No | Per-participant properties (validated against event_properties vocabulary) |
+| `properties` | object | No | Per-participant properties (validated against `event_properties` vocabulary for event subjects, `relationship_properties` for relationship subjects) |
 | `notes` | string | No | Notes about this participant |
 
 ## Required Fields
@@ -655,7 +655,7 @@ GENEALOGIX assertions are implicit in GEDCOM:
 | `property` | Property tag (BIRT, DEAT, OCCU, etc.) | |
 | `value` | Property value | |
 | `citations` | SOUR tags on property | |
-| `confidence` | Derived from QUAY values | |
+| `confidence` | (none) | Set by researcher; not derived from GEDCOM |
 
 GEDCOM Example:
 ```

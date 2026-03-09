@@ -10,14 +10,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.6] - Unreleased
+## [0.0.0-beta.7] - Unreleased
 
 ### Added
 
 #### CLI
+- **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
+- **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
+
+#### Validation
+- **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
+
+---
+
+## [0.0.0-beta.6] - 2026-03-08
+
+### Added
+
+#### CLI
+- **Added `glx places` command** - Analyze places for ambiguity and completeness: flags duplicate names, missing coordinates, missing types, hierarchy gaps, and unreferenced places with canonical hierarchy paths
 - **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
 - **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
+- **Added `glx validate --report`** - Generates a confidence summary report showing assertion breakdown by confidence level, assertions without citations, and entities with no assertion coverage
 
 #### Build & Release
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
@@ -28,8 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Standard Vocabularies
 - **Added `original_place_name` citation property** - Records the verbatim place name from a source before normalization to a place entity (e.g., "The Town Of Marston" vs the normalized place reference)
-- **Added relationship types `neighbor`, `coworker`, `housemate`** - Non-familial relationships commonly found in census, tax, and social records
-- **Added event types `legal_separation`, `taxation`, `voter_registration`** - Legal/administrative events for separations, tax rolls, and voter rolls
+- **Added relationship types** - `neighbor`, `coworker`, `housemate` for census/social records; `apprenticeship`, `employment`, `enslavement`, `relative` for occupational and generic kinship relationships
+- **Added event types** - `legal_separation`, `taxation`, `voter_registration` for legal/administrative events; `military_service`, `stillborn`, `affiliation` for service periods, stillbirths, and memberships
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
 
@@ -39,9 +54,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Assertion Entity
 - **Added existential assertions** - Assertions no longer require `property` or `participant`; an assertion with only `subject` and evidence asserts the entity's existence, optionally at a specific `date` (#26)
-
-#### CLI
-- **Added `glx validate --report`** - Generates a confidence summary report showing assertion breakdown by confidence level, assertions without citations, and entities with no assertion coverage
 
 #### GEDCOM Import
 - **Import HEAD metadata** - GEDCOM HEAD record fields (export date, source file, copyright, language, source system/version/corporation, GEDCOM version, character set, notes) are now stored in a `metadata` section on the GLX archive instead of being discarded after logging
@@ -54,12 +66,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Changed
 
 #### Specification
-- **Clarified validation wording** - Person properties and event/relationship participant roles generate warnings (not errors) for unknown values, matching the validation policy in core concepts
+- **Removed hard-coded vocabulary counts** - Replaced "N standardized type codes" with descriptive text to prevent stale counts as vocabularies grow
+- **Improved custom type example** - Custom event type example now shows defining custom participant roles (`apprentice`, `master`) alongside the custom event type
 - **Clarified `subject` participant role** - Documented as preferred over `principal`
 
 ### Fixed
 
 #### Specification
+- **Fixed confidence levels example format** - Core concepts example now uses the correct `label`/`description` structure instead of simple key-value strings
 - **Fixed citation GEDCOM mapping** - Corrected invalid `SOUR.CITN.EXID` tag to `SOUR.EXID`
 - **Fixed core-concepts.md formatting** - Property Vocabularies heading was merging with preceding table
 - **Fixed glossary Secondary Evidence example** - Replaced "census records" (primary evidence) with "published indexes, compiled genealogies"

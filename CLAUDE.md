@@ -408,7 +408,7 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 ### Changelog
 
 - Always update `CHANGELOG.md` when making user-facing changes
-- Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.3]`)
+- Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.6]`)
 - Use appropriate subsections: Added, Changed, Fixed, Removed
 - Group related changes under descriptive headers (e.g., `#### Citation Entity`)
 

@@ -289,6 +289,7 @@ Defines standard and custom properties for citation entities including location,
 - `source_date` - Date when the source recorded the information
 - `accessed` - Date when an online source or digital record was last accessed or retrieved
 - `url` - Direct web address for the specific cited material (e.g., a permalink to a record or image viewer)
+- `original_place_name` - Verbatim place name from the source before normalization to a place entity
 - `external_ids` - Identifiers from external systems for the specific cited record (multi-value; use provider-prefixed values to avoid collisions, e.g., `fs:ark:/...`, `ancestry:record-id:...`)
 
 **See Also:** [Citation Entity Documentation](../4-entity-types/citation#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#citation-properties-vocabulary)

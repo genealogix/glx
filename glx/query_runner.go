@@ -37,6 +37,8 @@ type queryOpts struct {
 	After      int
 	Confidence string
 	Status     string
+	Source     string
+	Citation   string
 }
 
 // queryEntityTypes lists the entity types supported by the query command.
@@ -63,13 +65,15 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 		{"--after", opts.After != 0},
 		{"--confidence", opts.Confidence != ""},
 		{"--status", opts.Status != ""},
+		{"--source", opts.Source != ""},
+		{"--citation", opts.Citation != ""},
 	}
 
 	// Map each entity type to its supported flags.
 	supported := map[string]map[string]bool{
 		"persons":       {"--name": true, "--born-before": true, "--born-after": true},
 		"events":        {"--type": true, "--before": true, "--after": true},
-		"assertions":    {"--confidence": true, "--status": true},
+		"assertions":    {"--confidence": true, "--status": true, "--source": true, "--citation": true},
 		"sources":       {"--name": true, "--type": true},
 		"relationships": {"--type": true},
 		"places":        {"--name": true},
@@ -160,8 +164,20 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 	for _, id := range ids {
 		person := archive.Persons[id]
 
-		if opts.Name != "" && !nameMatches(person, opts.Name) {
-			continue
+		allNames := extractAllNames(person)
+
+		if opts.Name != "" {
+			lowerQuery := strings.ToLower(opts.Name)
+			matched := false
+			for _, n := range allNames {
+				if containsFold(n, lowerQuery) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
 		}
 		if opts.BornBefore > 0 || opts.BornAfter > 0 {
 			year := extractPropertyYear(person.Properties, "born_on")
@@ -173,7 +189,10 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 			}
 		}
 
-		name := extractPersonName(person)
+		name := "(unnamed)"
+		if len(allNames) > 0 {
+			name = allNames[0]
+		}
 		bornOn := propertyString(person.Properties, "born_on")
 		diedOn := propertyString(person.Properties, "died_on")
 
@@ -188,7 +207,6 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		}
 
 		// Show alternate names if present (deduplicated, excluding primary)
-		allNames := extractAllNames(person)
 		seen := map[string]bool{name: true}
 		var akaNames []string
 		for _, n := range allNames {
@@ -254,6 +272,12 @@ func queryAssertions(archive *glxlib.GLXFile, opts queryOpts) error {
 			continue
 		}
 		if opts.Status != "" && !strings.EqualFold(a.Status, opts.Status) {
+			continue
+		}
+		if opts.Source != "" && !assertionReferencesSource(a, archive, opts.Source) {
+			continue
+		}
+		if opts.Citation != "" && !slices.Contains(a.Citations, opts.Citation) {
 			continue
 		}
 
@@ -404,6 +428,24 @@ func queryMedia(archive *glxlib.GLXFile) error {
 	return nil
 }
 
+// assertionReferencesSource checks if an assertion references a source, either
+// directly via its Sources list or indirectly via a citation whose SourceID matches.
+func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sourceID string) bool {
+	// Check direct source references
+	if slices.Contains(a.Sources, sourceID) {
+		return true
+	}
+
+	// Check indirect references via citations
+	for _, citID := range a.Citations {
+		if cit, ok := archive.Citations[citID]; ok && cit.SourceID == sourceID {
+			return true
+		}
+	}
+
+	return false
+}
+
 // ============================================================================
 // Helper functions
 // ============================================================================
@@ -447,6 +489,9 @@ func extractAllNames(person *glxlib.Person) []string {
 
 	// Simple string value
 	if s, ok := raw.(string); ok {
+		if s == "" {
+			return nil
+		}
 		return []string{s}
 	}
 
