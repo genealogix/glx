@@ -52,6 +52,7 @@ var parentChildRelTypes = map[string]bool{
 	"adoptive_parent_child":   true,
 	"foster_parent_child":     true,
 	"step_parent":             true,
+	"sibling":                 true,
 }
 
 // marriageRelTypes maps relationship types that represent spouse/partner connections.
@@ -627,38 +628,54 @@ func findParentIDs(personID string, archive *glxlib.GLXFile) []string {
 
 // findSiblingIDs finds siblings by looking for other children of the same parents.
 func findSiblingIDs(personID string, parentIDs []string, archive *glxlib.GLXFile) []string {
-	if len(parentIDs) == 0 {
-		return nil
-	}
-
-	parentSet := map[string]bool{}
-	for _, pid := range parentIDs {
-		parentSet[pid] = true
-	}
-
 	siblings := map[string]bool{}
 
+	// Infer siblings from shared parent-child relationships
+	if len(parentIDs) > 0 {
+		parentSet := map[string]bool{}
+		for _, pid := range parentIDs {
+			parentSet[pid] = true
+		}
+
+		ids := sortedKeys(archive.Relationships)
+		for _, relID := range ids {
+			rel := archive.Relationships[relID]
+			if !parentChildRelTypes[strings.ToLower(rel.Type)] || strings.EqualFold(rel.Type, "sibling") {
+				continue
+			}
+
+			hasKnownParent := false
+			for _, p := range rel.Participants {
+				if strings.EqualFold(p.Role, "parent") && parentSet[p.Person] {
+					hasKnownParent = true
+
+					break
+				}
+			}
+			if !hasKnownParent {
+				continue
+			}
+
+			for _, p := range rel.Participants {
+				if p.Person != personID && strings.EqualFold(p.Role, "child") {
+					siblings[p.Person] = true
+				}
+			}
+		}
+	}
+
+	// Also include explicit sibling relationships
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
 		rel := archive.Relationships[relID]
-		if !parentChildRelTypes[strings.ToLower(rel.Type)] {
+		if !strings.EqualFold(rel.Type, "sibling") {
 			continue
 		}
-
-		hasKnownParent := false
-		for _, p := range rel.Participants {
-			if strings.EqualFold(p.Role, "parent") && parentSet[p.Person] {
-				hasKnownParent = true
-
-				break
-			}
-		}
-		if !hasKnownParent {
+		if !hasParticipant(personID, rel.Participants) {
 			continue
 		}
-
 		for _, p := range rel.Participants {
-			if p.Person != personID && strings.EqualFold(p.Role, "child") {
+			if p.Person != personID {
 				siblings[p.Person] = true
 			}
 		}
