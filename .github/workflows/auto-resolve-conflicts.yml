@@ -1,0 +1,113 @@
+name: Auto-resolve CHANGELOG conflicts
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 * * * *' # Every hour (fallback)
+
+jobs:
+  resolve-conflicts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    concurrency:
+      group: auto-resolve-conflicts
+      cancel-in-progress: false
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Resolve CHANGELOG-only conflicts
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          REPO="${{ github.repository }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Find PRs with merge conflicts
+          CONFLICTING_PRS=$(gh pr list --repo "$REPO" --state open --limit 999 \
+            --json number,headRefName,isCrossRepository,mergeable \
+            --jq '.[] | select(.isCrossRepository == false and .mergeable == "CONFLICTING") | "\(.number) \(.headRefName)"')
+
+          if [ -z "$CONFLICTING_PRS" ]; then
+            echo "No conflicting PRs found"
+            exit 0
+          fi
+
+          while read -r PR_NUMBER BRANCH; do
+            echo "=== PR #$PR_NUMBER ($BRANCH) ==="
+
+            # Clean state for each PR
+            if ! git checkout main; then
+              echo "  Failed to checkout main — aborting job"
+              exit 1
+            fi
+            git branch -D "resolve-$BRANCH" 2>/dev/null || true
+
+            # Check out the PR branch
+            if ! git checkout -b "resolve-$BRANCH" "origin/$BRANCH" 2>/dev/null; then
+              echo "  Failed to checkout $BRANCH — skipping"
+              continue
+            fi
+
+            # Attempt merge
+            git merge origin/main --no-edit 2>&1 || true
+
+            # Get list of conflicted files
+            CONFLICTED_FILES=$(git diff --name-only --diff-filter=U 2>/dev/null)
+
+            if [ -z "$CONFLICTED_FILES" ]; then
+              echo "  No conflicts detected (merge may have succeeded) — skipping"
+              continue
+            fi
+
+            # Check if ONLY CHANGELOG.md is conflicted
+            NON_CHANGELOG=$(echo "$CONFLICTED_FILES" | grep -v '^CHANGELOG.md$' || true)
+
+            if [ -n "$NON_CHANGELOG" ]; then
+              echo "  Conflicts in non-CHANGELOG files — skipping (needs manual resolution):"
+              echo "$NON_CHANGELOG" | sed 's/^/    /'
+              git merge --abort 2>/dev/null || true
+              continue
+            fi
+
+            echo "  Only CHANGELOG.md conflicted — auto-resolving (keep both sides)..."
+
+            # Resolve by keeping both sides (remove conflict markers)
+            sed -i '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' CHANGELOG.md
+
+            # Verify no conflict markers remain
+            if grep -qE '^(<<<<<<< |=======$|>>>>>>> )' CHANGELOG.md; then
+              echo "  Conflict markers still present after resolution — skipping"
+              git merge --abort 2>/dev/null || true
+              continue
+            fi
+
+            # Stage and commit
+            git add CHANGELOG.md
+            if ! git commit --no-edit; then
+              echo "  Commit failed — skipping"
+              continue
+            fi
+
+            # Push to the PR branch
+            if git push origin "HEAD:$BRANCH" 2>/dev/null; then
+              echo "  Resolved and pushed successfully"
+            else
+              echo "  Failed to push — skipping"
+            fi
+          done < <(echo "$CONFLICTING_PRS")
