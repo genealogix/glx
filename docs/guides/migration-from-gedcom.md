@@ -262,7 +262,7 @@ If no `TYPE` tag is present, the importer infers the source type from keywords i
 | GEDCOM Tag | GLX Field | Notes |
 |------------|-----------|-------|
 | `NAME` | `repository.name` | |
-| `ADDR` | `repository.address`, `.city`, `.state`, `.postal_code`, `.country` | Full address with subfields |
+| `ADDR` | `repository.address`, `.city`, `.state_province`, `.postal_code`, `.country` | Full address with subfields |
 | `PHON` | `repository.properties.phones` | |
 | `EMAIL` | `repository.properties.emails` | |
 | `WWW` | `repository.website` | |

@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 
 GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
-	Version:       "0.0.0-beta.3",
+	Version:       "0.0.0-beta.6",
 	SilenceErrors: true,
 	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
 	// arg-count errors still show usage but runtime errors from RunE do not.
@@ -53,6 +53,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(splitCmd)
 	rootCmd.AddCommand(joinCmd)
+	rootCmd.AddCommand(placesCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
 }
@@ -331,6 +332,46 @@ func runJoin(_ *cobra.Command, args []string) error {
 }
 
 // ============================================================================
+// Places Command
+// ============================================================================
+
+var placesCmd = &cobra.Command{
+	Use:   "places [path]",
+	Short: "Analyze places for ambiguity and completeness",
+	Long: `Analyze places in a GENEALOGIX archive for data quality issues.
+
+Reports:
+- Duplicate names: places that share the same name (ambiguous without context)
+- Missing coordinates: places without latitude/longitude
+- Missing type: places without a type classification
+- No parent: non-country/region places missing a parent (hierarchy gap)
+- Dangling parent: places referencing a parent that doesn't exist in the archive
+- Unreferenced: places not used by any event, assertion, or as a parent
+
+Each place is shown with its full canonical hierarchy path.
+If no path is given, uses the current directory.`,
+	Example: `  # Analyze places in current directory
+  glx places
+
+  # Analyze places in a specific archive
+  glx places my-family-archive
+
+  # Analyze a single-file archive
+  glx places family.glx`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runPlaces,
+}
+
+func runPlaces(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	return analyzePlaces(path)
+}
+
+// ============================================================================
 // Query Command
 // ============================================================================
 
@@ -443,4 +484,3 @@ func runStats(_ *cobra.Command, args []string) error {
 
 	return showStats(path)
 }
-
