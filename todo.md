@@ -4,6 +4,20 @@
 
 ---
 
+## 🔴 Roundtrip Fidelity Gaps
+
+Known data loss during GED → GLX → GED roundtrip. See `fix/export-event-citations-and-family-reconstruction` branch for fixes already applied.
+
+- **~7 person notes lost in queen roundtrip**: Queen shows 1321→1314 (7 notes lost). All notes are on INDI records. Likely multi-line notes with CONT/CONC not fully preserved, or edge-case encoding. Steps to reproduce: `glx import queen.ged -o q.glx && glx export q.glx -o q-rt.ged`, compare `grep -c "^1 NOTE"`.
+- **Relationship notes stored in Properties, not Notes field**: Import for relationship/family-level NOTEs may still use `Properties["notes"]` while export checks `rel.Notes` (struct field). Steps to reproduce: import a GEDCOM with NOTE on a FAM record, check `relationship.Notes` vs `Properties["notes"]`.
+- **RESI partially lost** (bullinger 26→13, assess 2→0): Some RESI formats not handled by `exportResidenceRecords` — likely date-only RESI entries or RESI without temporal list format. Steps to reproduce: roundtrip bullinger.ged, compare `grep -c "^1 RESI"`.
+- **Inline SOUR refs partially lost** (bullinger 281→202, maximal70 29→4): Level-2+ SOUR citations on some tags still missing. Bullinger has level-3 NOTE refs on SOUR citations (`3 NOTE @N0022@`) that are deeply nested. Steps to reproduce: roundtrip bullinger.ged, compare `grep -c "^[2-9] SOUR @"`.
+- **FAM count small losses** (royal92 -6, bullinger -1): Family reconstruction doesn't perfectly match original FAM grouping. Root cause: GLX parent-child relationships don't preserve which GEDCOM family they came from.
+- **MARR without events not roundtripped** (queen 2503→1795): GEDCOM FAMs with MARR containing only `_UID`/`RIN` are imported as marriage relationships without events. Export only emits MARR when StartEvent exists. Can't distinguish "FAM without MARR" from "FAM with empty MARR" after import — conservative approach avoids MARR inflation.
+- **CHAN dates not exported**: GEDCOM CHAN (change timestamp) records aren't preserved through GLX. Accounts for ~1300 DATE loss in bullinger. Design decision — change metadata, not genealogical data.
+- **Shared NOTE references on SOUR citations** (bullinger 8→0): Level-3 `NOTE @Nxxx@` on inline SOUR records within events are deeply nested and not exported.
+- **Head-level NOTE not roundtripped**: Notes on HEAD records (metadata-level) are not preserved.
+
 ## 🟡 Import Gaps
 
 Data that is parsed but silently dropped or not stored.
