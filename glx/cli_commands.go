@@ -58,6 +58,7 @@ func init() {
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
 	rootCmd.AddCommand(timelineCmd)
+	rootCmd.AddCommand(vitalsCmd)
 }
 
 // ============================================================================
@@ -598,4 +599,39 @@ func init() {
 
 func runTimeline(_ *cobra.Command, args []string) error {
 	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
+
+// Vitals Command
+// ============================================================================
+
+var vitalsArchive string
+
+var vitalsCmd = &cobra.Command{
+	Use:   "vitals <person>",
+	Short: "Show vital records for a person",
+	Long: `Display vital records for a person in the archive.
+
+Shows: Name, Sex, Birth, Christening, Death, Burial, plus any other
+life events the person participated in (marriages, census records, etc.).
+
+The person argument can be an exact entity ID (e.g., person-d-lane) or
+a name to search for (e.g., "Mary Green"). If the name matches multiple
+persons, all matches are listed for disambiguation.`,
+	Example: `  # Look up by person ID
+  glx vitals person-d-lane
+
+  # Look up by name
+  glx vitals "Mary Green"
+
+  # Specify archive path
+  glx vitals "Mary Green" --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runVitals,
+}
+
+func init() {
+	vitalsCmd.Flags().StringVarP(&vitalsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+}
+
+func runVitals(_ *cobra.Command, args []string) error {
+	return showVitals(vitalsArchive, args[0])
 }
