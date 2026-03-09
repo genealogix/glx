@@ -57,6 +57,7 @@ func init() {
 	rootCmd.AddCommand(placesCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
+	rootCmd.AddCommand(wikiTreeCmd)
 }
 
 // ============================================================================
@@ -550,4 +551,41 @@ func runStats(_ *cobra.Command, args []string) error {
 	}
 
 	return showStats(path)
+}
+
+// ============================================================================
+// WikiTree Command
+// ============================================================================
+
+var wikiTreeArchive string
+
+var wikiTreeCmd = &cobra.Command{
+	Use:   "wikitree <person>",
+	Short: "Generate a WikiTree biography for a person",
+	Long: `Generate WikiTree-compatible biography markup for a person in the archive.
+
+Outputs a complete WikiTree biography with inline citations, using the
+Evidence Explained citation style. Includes Biography, Research Notes,
+and Sources sections following WikiTree formatting guidelines.
+
+The person argument can be an exact entity ID (e.g., person-d-lane) or
+a name to search for (e.g., "Daniel Lane").`,
+	Example: `  # Generate biography by person ID
+  glx wikitree person-d-lane
+
+  # Generate biography by name search
+  glx wikitree "Daniel Lane"
+
+  # Specify archive path
+  glx wikitree "Daniel Lane" --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runWikiTree,
+}
+
+func init() {
+	wikiTreeCmd.Flags().StringVarP(&wikiTreeArchive, "archive", "a", ".", "Archive path (directory or single file)")
+}
+
+func runWikiTree(_ *cobra.Command, args []string) error {
+	return showWikiTree(wikiTreeArchive, args[0])
 }

@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
+- **Added `glx wikitree` command** - Generate WikiTree-compatible biography markup for a person. Outputs a complete biography with inline `<ref>` citations in Evidence Explained format, chronological subsections (census, military, marriage, death/burial, children), Research Notes for low-confidence assertions, and a Sources section with `<references />` tag
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 
 #### Validation
