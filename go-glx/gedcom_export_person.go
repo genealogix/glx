@@ -159,11 +159,17 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	// Person properties with GEDCOM tag mappings (OCCU, RELI, EDUC, etc.)
 	record.SubRecords = append(record.SubRecords, exportMappedPersonProperties(personID, person, expCtx)...)
 
-	// NOTE
-	if person.Notes != "" {
+	// NOTE - check both struct field and Properties map
+	noteText := person.Notes
+	if noteText == "" {
+		if propNotes, ok := person.Properties[PropertyNotes].(string); ok {
+			noteText = propNotes
+		}
+	}
+	if noteText != "" {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: person.Notes,
+			Value: noteText,
 		})
 	}
 
@@ -436,6 +442,20 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 
 	// Event properties (AGE, CAUS, TYPE)
 	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
+
+	// NOTE - check both struct field and Properties map
+	eventNoteText := event.Notes
+	if eventNoteText == "" {
+		if propNotes, ok := event.Properties[PropertyNotes].(string); ok {
+			eventNoteText = propNotes
+		}
+	}
+	if eventNoteText != "" {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagNote,
+			Value: eventNoteText,
+		})
+	}
 
 	// SOUR references from event sources and citations
 	exportEventSourceRefs(event, expCtx, record)

@@ -362,6 +362,20 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
 
+	// NOTE - check both struct field and Properties map
+	famEventNoteText := event.Notes
+	if famEventNoteText == "" {
+		if propNotes, ok := event.Properties[PropertyNotes].(string); ok {
+			famEventNoteText = propNotes
+		}
+	}
+	if famEventNoteText != "" {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagNote,
+			Value: famEventNoteText,
+		})
+	}
+
 	// SOUR references from event sources and citations
 	exportEventSourceRefs(event, expCtx, record)
 

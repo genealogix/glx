@@ -2657,3 +2657,110 @@ func TestExportPerson_PropertyCitationsFromAssertions(t *testing.T) {
 
 	assert.True(t, foundSour, "OCCU missing SOUR from assertion")
 }
+
+func TestExportPerson_NoteFromProperties(t *testing.T) {
+	glxFile := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {
+				Properties: map[string]any{
+					"gender": "male",
+					"name": map[string]any{
+						"value": "Robert Bruce",
+						"fields": map[string]any{
+							"given":   "Robert",
+							"surname": "Bruce",
+						},
+					},
+					"notes": "King of Scotland, fought at Bannockburn",
+				},
+			},
+		},
+		EventTypes:         make(map[string]*EventType),
+		PersonProperties:   make(map[string]*PropertyDefinition),
+		RelationshipTypes:  make(map[string]*RelationshipType),
+		Events:             make(map[string]*Event),
+		Relationships:      make(map[string]*Relationship),
+		Sources:            make(map[string]*Source),
+		Citations:          make(map[string]*Citation),
+		Repositories:       make(map[string]*Repository),
+		Media:              make(map[string]*Media),
+		Assertions:         make(map[string]*Assertion),
+	}
+
+	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
+		t.Fatal(err)
+	}
+
+	expCtx := &ExportContext{
+		GLX:                      glxFile,
+		Version:                  GEDCOM551,
+		Logger:                   NewImportLogger(nil),
+		ExportIndex:              buildExportIndex(glxFile),
+		PersonXRefMap:            map[string]string{"person-1": "@I1@"},
+		SourceXRefMap:            make(map[string]string),
+		RepositoryXRefMap:        make(map[string]string),
+		MediaXRefMap:             make(map[string]string),
+		PlaceStrings:             make(map[string]string),
+		PersonEvents:             make(map[string][]string),
+		PersonSpouseFamilies:     make(map[string][]string),
+		PersonChildFamilies:      make(map[string][]childFamilyRef),
+		PersonPropertyAssertions: make(map[string]map[string][]*Assertion),
+	}
+	buildPersonPropertyAssertionsIndex(expCtx)
+
+	record := exportPerson("person-1", glxFile.Persons["person-1"], expCtx)
+
+	var noteRecord *GEDCOMRecord
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagNote {
+			noteRecord = sub
+			break
+		}
+	}
+
+	require.NotNil(t, noteRecord, "NOTE record should be exported from Properties['notes']")
+	assert.Equal(t, "King of Scotland, fought at Bannockburn", noteRecord.Value)
+}
+
+func TestExportPersonEvent_NoteFromProperties(t *testing.T) {
+	glxFile := &GLXFile{
+		EventTypes:       make(map[string]*EventType),
+		EventProperties:  make(map[string]*PropertyDefinition),
+		PersonProperties: make(map[string]*PropertyDefinition),
+		Events:           make(map[string]*Event),
+		Sources:          make(map[string]*Source),
+		Citations:        make(map[string]*Citation),
+	}
+	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
+		t.Fatal(err)
+	}
+
+	event := &Event{
+		Type: "birth",
+		Date: "1274",
+		Properties: map[string]any{
+			"notes": "Born at Turnberry Castle",
+		},
+	}
+
+	expCtx := &ExportContext{
+		GLX:           glxFile,
+		ExportIndex:   buildExportIndex(glxFile),
+		SourceXRefMap: make(map[string]string),
+	}
+
+	record := exportPersonEvent(event, expCtx)
+	require.NotNil(t, record)
+	assert.Equal(t, GedcomTagBirt, record.Tag)
+
+	var noteRecord *GEDCOMRecord
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagNote {
+			noteRecord = sub
+			break
+		}
+	}
+
+	require.NotNil(t, noteRecord, "NOTE should be exported from event Properties['notes']")
+	assert.Equal(t, "Born at Turnberry Castle", noteRecord.Value)
+}
