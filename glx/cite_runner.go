@@ -16,16 +16,39 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// loadArchiveForCite loads a GLX archive for cite operations.
+func loadArchiveForCite(path string) (*glxlib.GLXFile, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot access path: %w", err)
+	}
+
+	if info.IsDir() {
+		archive, duplicates, err := LoadArchiveWithOptions(path, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load archive: %w", err)
+		}
+		for _, d := range duplicates {
+			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
+		}
+
+		return archive, nil
+	}
+
+	return readSingleFileArchive(path, false)
+}
+
 // showCitation generates and prints a formatted citation string for the given
 // citation ID. It assembles the citation from structured fields: source title,
 // source type, repository name, URL, and accessed date.
 func showCitation(archivePath, citationID string) error {
-	archive, err := loadArchiveForQuery(archivePath)
+	archive, err := loadArchiveForCite(archivePath)
 	if err != nil {
 		return err
 	}
@@ -44,7 +67,7 @@ func showCitation(archivePath, citationID string) error {
 // showAllCitations generates formatted citation strings for all citations
 // in the archive.
 func showAllCitations(archivePath string) error {
-	archive, err := loadArchiveForQuery(archivePath)
+	archive, err := loadArchiveForCite(archivePath)
 	if err != nil {
 		return err
 	}
