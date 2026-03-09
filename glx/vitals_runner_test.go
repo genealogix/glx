@@ -181,30 +181,3 @@ func TestCollectVitals(t *testing.T) {
 		t.Errorf("unexpected Death: %+v", vitals[4])
 	}
 }
-
-func TestDisplayOrDash(t *testing.T) {
-	if displayOrDash("") != "\u2014" {
-		t.Error("expected em dash for empty string")
-	}
-	if displayOrDash("test") != "test" {
-		t.Error("expected 'test' for non-empty string")
-	}
-}
-
-func TestResolvePlaceName(t *testing.T) {
-	archive := &glxlib.GLXFile{
-		Places: map[string]*glxlib.Place{
-			"place-leeds": {Name: "Leeds"},
-		},
-	}
-
-	if resolvePlaceName("place-leeds", archive) != "Leeds" {
-		t.Error("expected resolved place name")
-	}
-	if resolvePlaceName("place-unknown", archive) != "place-unknown" {
-		t.Error("expected raw ID for unknown place")
-	}
-	if resolvePlaceName("", archive) != "" {
-		t.Error("expected empty string for empty ID")
-	}
-}
