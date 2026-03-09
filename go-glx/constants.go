@@ -52,6 +52,7 @@ const (
 	EventTypeLegalSeparation    = "legal_separation"
 	EventTypeTaxation           = "taxation"
 	EventTypeVoterRegistration  = "voter_registration"
+	EventTypeCensus             = "census"
 	EventTypeGeneric            = "event"
 )
 

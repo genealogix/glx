@@ -37,7 +37,7 @@ var eventTypeLabels = map[string]string{
 	EventTypeImmigration:        "Immigration",
 	EventTypeEmigration:         "Emigration",
 	EventTypeNaturalization:     "Naturalization",
-	"census":                    "Census",
+	EventTypeCensus:             "Census",
 	EventTypeResidence:          "Residence",
 	EventTypeOccupation:         "Occupation",
 	EventTypeEducation:          "Education",
