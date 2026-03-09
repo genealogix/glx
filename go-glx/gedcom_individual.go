@@ -370,14 +370,24 @@ func handlePersonPropertyTag(personID string, person *Person, tag string, record
 		return false
 	}
 
-	if record.Value == "" {
-		return true
+	value := record.Value
+	if value == "" {
+		// Some GEDCOM files store the value in PLAC sub-record (e.g., habsburg OCCU)
+		for _, sub := range record.SubRecords {
+			if sub.Tag == GedcomTagPlac && sub.Value != "" {
+				value = sub.Value
+				break
+			}
+		}
+		if value == "" {
+			return true
+		}
 	}
 
 	// Append to list if property already exists (e.g., multiple OCCU)
 	// Wrap in {value: ...} objects for temporal list compatibility
 	if existing, exists := person.Properties[propertyKey]; exists {
-		newItem := map[string]any{"value": record.Value}
+		newItem := map[string]any{"value": value}
 		switch v := existing.(type) {
 		case []any:
 			person.Properties[propertyKey] = append(v, newItem)
@@ -392,9 +402,9 @@ func handlePersonPropertyTag(personID string, person *Person, tag string, record
 			person.Properties[propertyKey] = []any{v, newItem}
 		}
 	} else {
-		person.Properties[propertyKey] = record.Value
+		person.Properties[propertyKey] = value
 	}
-	createPropertyAssertion(personID, propertyKey, record.Value, record, conv)
+	createPropertyAssertion(personID, propertyKey, value, record, conv)
 
 	// Handle OBJE subrecords on person property tags (e.g., OCCU with linked media)
 	for _, sub := range record.SubRecords {
