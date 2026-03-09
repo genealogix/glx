@@ -98,20 +98,7 @@ func exportAssertionSourceRefs(assertions []*Assertion, expCtx *ExportContext, r
 			}
 
 			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
-				sourRecord := &GEDCOMRecord{
-					Tag:        GedcomTagSour,
-					Value:      sourceXRef,
-					SubRecords: []*GEDCOMRecord{},
-				}
-
-				if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
-					sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
-						Tag:   GedcomTagPage,
-						Value: locator,
-					})
-				}
-
-				record.SubRecords = append(record.SubRecords, sourRecord)
+				record.SubRecords = append(record.SubRecords, exportCitationAsSOUR(citation, sourceXRef, expCtx))
 			}
 		}
 	}
@@ -785,23 +772,69 @@ func exportEventSourceRefs(event *Event, expCtx *ExportContext, record *GEDCOMRe
 			}
 
 			if sourceXRef := expCtx.SourceXRefMap[citation.SourceID]; sourceXRef != "" {
-				sourRecord := &GEDCOMRecord{
-					Tag:        GedcomTagSour,
-					Value:      sourceXRef,
-					SubRecords: []*GEDCOMRecord{},
-				}
-
-				if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
-					sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
-						Tag:   GedcomTagPage,
-						Value: locator,
-					})
-				}
-
-				record.SubRecords = append(record.SubRecords, sourRecord)
+				record.SubRecords = append(record.SubRecords, exportCitationAsSOUR(citation, sourceXRef, expCtx))
 			}
 		}
 	}
+}
+
+// exportCitationAsSOUR creates a GEDCOM SOUR sub-record from a GLX Citation,
+// including PAGE, NOTE, DATA (DATE/TEXT), and OBJE sub-records.
+func exportCitationAsSOUR(citation *Citation, sourceXRef string, expCtx *ExportContext) *GEDCOMRecord {
+	sourRecord := &GEDCOMRecord{
+		Tag:        GedcomTagSour,
+		Value:      sourceXRef,
+		SubRecords: []*GEDCOMRecord{},
+	}
+
+	// PAGE (locator)
+	if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
+		sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagPage,
+			Value: locator,
+		})
+	}
+
+	// DATA sub-record (date and text)
+	var dataSubRecords []*GEDCOMRecord
+	if dateStr, ok := getStringProperty(citation.Properties, "date"); ok {
+		dataSubRecords = append(dataSubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagDate,
+			Value: formatGEDCOMDate(DateString(dateStr)),
+		})
+	}
+	if text, ok := getStringProperty(citation.Properties, "description"); ok {
+		dataSubRecords = append(dataSubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagText,
+			Value: text,
+		})
+	}
+	if len(dataSubRecords) > 0 {
+		sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
+			Tag:        GedcomTagData,
+			SubRecords: dataSubRecords,
+		})
+	}
+
+	// NOTE
+	if citation.Notes != "" {
+		sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagNote,
+			Value: citation.Notes,
+		})
+	}
+
+	// OBJE (media references)
+	for _, mediaID := range citation.Media {
+		if mediaXRef := expCtx.MediaXRefMap[mediaID]; mediaXRef != "" {
+			sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagObje,
+				Value: mediaXRef,
+			})
+		}
+	}
+
+	return sourRecord
 }
 
 // extractStringList converts a property value to a list of strings.
