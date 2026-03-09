@@ -609,6 +609,113 @@ func TestRoundTripSingleFile(t *testing.T) {
 	}
 }
 
+func TestEventTitleRoundTrip(t *testing.T) {
+	original := &GLXFile{
+		Persons: map[string]*Person{
+			"person-001": {
+				Properties: map[string]any{
+					"name": map[string]any{"value": "D. Lane"},
+				},
+			},
+		},
+		Events: map[string]*Event{
+			"event-census-1860": {
+				Title: "1860 Census — Lane Household",
+				Type:  "census",
+				Date:  "1860",
+				Participants: []Participant{
+					{Person: "person-001", Role: "subject"},
+				},
+			},
+			"event-birth-001": {
+				Type: "birth",
+				Date: "1815",
+				Participants: []Participant{
+					{Person: "person-001", Role: "subject"},
+				},
+			},
+		},
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources:       make(map[string]*Source),
+		Citations:     make(map[string]*Citation),
+		Repositories:  make(map[string]*Repository),
+		Media:         make(map[string]*Media),
+		Assertions:    make(map[string]*Assertion),
+	}
+
+	s := NewSerializer(&SerializerOptions{Validate: false})
+
+	// Single-file roundtrip
+	yamlBytes, err := s.SerializeSingleFileBytes(original)
+	if err != nil {
+		t.Fatalf("Failed to serialize: %v", err)
+	}
+
+	loaded, err := s.DeserializeSingleFileBytes(yamlBytes)
+	if err != nil {
+		t.Fatalf("Failed to deserialize: %v", err)
+	}
+
+	// Event with title should preserve it
+	census := loaded.Events["event-census-1860"]
+	if census == nil {
+		t.Fatal("event-census-1860 not found after round-trip")
+	}
+	if census.Title != "1860 Census — Lane Household" {
+		t.Errorf("Title mismatch: expected %q, got %q", "1860 Census — Lane Household", census.Title)
+	}
+
+	// Event without title should have empty string
+	birth := loaded.Events["event-birth-001"]
+	if birth == nil {
+		t.Fatal("event-birth-001 not found after round-trip")
+	}
+	if birth.Title != "" {
+		t.Errorf("Expected empty title for birth event, got %q", birth.Title)
+	}
+
+	// Verify title appears only for census event in serialized YAML and omitempty works
+	var raw map[string]any
+	if err := yaml.Unmarshal(yamlBytes, &raw); err != nil {
+		t.Fatalf("Failed to unmarshal serialized YAML for inspection: %v", err)
+	}
+
+	eventsVal, ok := raw["events"]
+	if !ok {
+		t.Fatalf("Serialized YAML missing top-level 'events' key")
+	}
+
+	eventsMap, ok := eventsVal.(map[string]any)
+	if !ok {
+		t.Fatalf("Serialized 'events' value has unexpected type %T", eventsVal)
+	}
+
+	censusVal, ok := eventsMap["event-census-1860"]
+	if !ok {
+		t.Fatalf("Serialized YAML missing 'event-census-1860' entry")
+	}
+	censusMap, ok := censusVal.(map[string]any)
+	if !ok {
+		t.Fatalf("Serialized 'event-census-1860' has unexpected type %T", censusVal)
+	}
+	if _, ok := censusMap["title"]; !ok {
+		t.Error("Expected 'title' field for census event in serialized YAML")
+	}
+
+	birthVal, ok := eventsMap["event-birth-001"]
+	if !ok {
+		t.Fatalf("Serialized YAML missing 'event-birth-001' entry")
+	}
+	birthMap, ok := birthVal.(map[string]any)
+	if !ok {
+		t.Fatalf("Serialized 'event-birth-001' has unexpected type %T", birthVal)
+	}
+	if _, ok := birthMap["title"]; ok {
+		t.Error("Did not expect 'title' field for birth event in serialized YAML (omitempty should omit empty titles)")
+	}
+}
+
 func TestMultiFileEntityFormat(t *testing.T) {
 	// Verify the multi-file serializer produces standard GLX structure
 	person := &Person{
