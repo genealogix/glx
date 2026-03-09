@@ -6,6 +6,11 @@
   "type": "object",
   "required": ["type", "participants"],
   "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable label for the event"
+    },
     "type": {
       "type": "string",
       "minLength": 1,
