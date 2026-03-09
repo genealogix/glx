@@ -1,0 +1,532 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package glx
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// Properties that are handled specially and should not be exported as generic tags.
+var skipPersonProperties = map[string]bool{
+	PersonPropertyName:      true,
+	PersonPropertyGender:    true,
+	PersonPropertyBornOn:    true,
+	PersonPropertyBornAt:    true,
+	PersonPropertyDiedOn:    true,
+	PersonPropertyDiedAt:    true,
+	PersonPropertyResidence: true,
+	PropertyNotes:           true,
+	PropertyMedia:           true,
+	PropertySources:         true,
+	PropertyCitations:       true,
+}
+
+// buildPersonEventsIndex scans all events and builds a map from person ID
+// to the event IDs where that person participates as principal.
+// This avoids scanning all events for each person during export.
+func buildPersonEventsIndex(expCtx *ExportContext) {
+	expCtx.PersonEvents = make(map[string][]string)
+
+	// Sort event IDs for deterministic output
+	eventIDs := sortedKeys(expCtx.GLX.Events)
+	for _, eventID := range eventIDs {
+		event := expCtx.GLX.Events[eventID]
+		for _, participant := range event.Participants {
+			if participant.Role == ParticipantRolePrincipal && participant.Person != "" {
+				expCtx.PersonEvents[participant.Person] = append(
+					expCtx.PersonEvents[participant.Person], eventID)
+			}
+		}
+	}
+}
+
+// exportPerson converts a GLX Person to a GEDCOM INDI record.
+func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCOMRecord {
+	xref := expCtx.PersonXRefMap[personID]
+
+	record := &GEDCOMRecord{
+		XRef:       xref,
+		Tag:        GedcomTagIndi,
+		SubRecords: []*GEDCOMRecord{},
+	}
+
+	// NAME records
+	if nameVal, ok := person.Properties[PersonPropertyName]; ok {
+		nameRecords := exportNameRecords(nameVal)
+		record.SubRecords = append(record.SubRecords, nameRecords...)
+	}
+
+	// SEX
+	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagSex,
+			Value: mapGenderToSex(gender),
+		})
+	}
+
+	// Person events (BIRT, DEAT, BAPM, etc.)
+	if eventIDs, ok := expCtx.PersonEvents[personID]; ok {
+		for _, eventID := range eventIDs {
+			event := expCtx.GLX.Events[eventID]
+			eventRecord := exportPersonEvent(event, expCtx)
+			if eventRecord != nil {
+				record.SubRecords = append(record.SubRecords, eventRecord)
+				expCtx.Stats.EventsProcessed++
+			}
+		}
+	}
+
+	// Person properties with GEDCOM tag mappings (OCCU, RELI, EDUC, etc.)
+	record.SubRecords = append(record.SubRecords, exportMappedPersonProperties(person, expCtx)...)
+
+	// NOTE
+	if person.Notes != "" {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagNote,
+			Value: person.Notes,
+		})
+	}
+
+	// OBJE references from media property
+	exportPersonMediaRefs(personID, person, expCtx, record)
+
+	// SOUR references from sources and citations properties
+	exportPersonSourceRefs(personID, person, expCtx, record)
+
+	// FAMS back-references (families where this person is a spouse)
+	if famsXRefs, ok := expCtx.PersonSpouseFamilies[personID]; ok {
+		for _, famsXRef := range famsXRefs {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagFams,
+				Value: famsXRef,
+			})
+		}
+	}
+
+	// FAMC back-references (families where this person is a child)
+	if famcRefs, ok := expCtx.PersonChildFamilies[personID]; ok {
+		for _, famcRef := range famcRefs {
+			famcRecord := &GEDCOMRecord{
+				Tag:   GedcomTagFamc,
+				Value: famcRef.FamilyXRef,
+			}
+			if famcRef.Pedigree != "" {
+				famcRecord.SubRecords = []*GEDCOMRecord{
+					{Tag: GedcomTagPedi, Value: famcRef.Pedigree},
+				}
+			}
+			record.SubRecords = append(record.SubRecords, famcRecord)
+		}
+	}
+
+	return record
+}
+
+// exportNameRecords handles the name property which can be a single map or a list.
+// Returns one or more NAME GEDCOMRecords.
+func exportNameRecords(nameVal any) []*GEDCOMRecord {
+	switch v := nameVal.(type) {
+	case map[string]any:
+		rec := exportNameRecord(v)
+		if rec != nil {
+			return []*GEDCOMRecord{rec}
+		}
+	case []any:
+		var records []*GEDCOMRecord
+		for _, item := range v {
+			if nameMap, ok := item.(map[string]any); ok {
+				rec := exportNameRecord(nameMap)
+				if rec != nil {
+					records = append(records, rec)
+				}
+			}
+		}
+		return records
+	}
+
+	return nil
+}
+
+// exportNameRecord converts a single name property value (map with "value" and "fields")
+// to a GEDCOM NAME record with substructure.
+func exportNameRecord(nameMap map[string]any) *GEDCOMRecord {
+	value, _ := nameMap["value"].(string)
+	if value == "" {
+		return nil
+	}
+
+	// Extract fields if present
+	var fields map[string]any
+	if fieldsVal, ok := nameMap["fields"]; ok {
+		fields, _ = fieldsVal.(map[string]any)
+	}
+
+	// Build the GEDCOM NAME value: "Given /Surname/ Suffix"
+	nameValue := formatGEDCOMNameValue(value, fields)
+
+	record := &GEDCOMRecord{
+		Tag:        GedcomTagName,
+		Value:      nameValue,
+		SubRecords: []*GEDCOMRecord{},
+	}
+
+	// Add substructure tags from fields
+	if fields != nil {
+		// TYPE (birth, married, aka, etc.)
+		if nameType, ok := fields[NameFieldType].(string); ok && nameType != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagType,
+				Value: nameType,
+			})
+		}
+
+		// NPFX (name prefix)
+		if prefix, ok := fields[NameFieldPrefix].(string); ok && prefix != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNpfx,
+				Value: prefix,
+			})
+		}
+
+		// GIVN (given name)
+		if given, ok := fields[NameFieldGiven].(string); ok && given != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagGivn,
+				Value: given,
+			})
+		}
+
+		// NICK (nickname)
+		if nick, ok := fields[NameFieldNickname].(string); ok && nick != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNick,
+				Value: nick,
+			})
+		}
+
+		// SPFX (surname prefix)
+		if spfx, ok := fields[NameFieldSurnamePrefix].(string); ok && spfx != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagSpfx,
+				Value: spfx,
+			})
+		}
+
+		// SURN (surname)
+		if surn, ok := fields[NameFieldSurname].(string); ok && surn != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagSurn,
+				Value: surn,
+			})
+		}
+
+		// NSFX (name suffix)
+		if nsfx, ok := fields[NameFieldSuffix].(string); ok && nsfx != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNsfx,
+				Value: nsfx,
+			})
+		}
+	}
+
+	return record
+}
+
+// formatGEDCOMNameValue constructs a GEDCOM-formatted name string.
+// If fields with given/surname are available, format as "Given /Surname/ Suffix".
+// Otherwise, parse the value string to extract surname for slash notation.
+func formatGEDCOMNameValue(value string, fields map[string]any) string {
+	if fields != nil {
+		given, _ := fields[NameFieldGiven].(string)
+		surname, _ := fields[NameFieldSurname].(string)
+		surnamePrefix, _ := fields[NameFieldSurnamePrefix].(string)
+		suffix, _ := fields[NameFieldSuffix].(string)
+
+		// Build "Given /SurnamePrefix Surname/ Suffix"
+		var parts []string
+
+		if given != "" {
+			parts = append(parts, given)
+		}
+
+		// Construct the surname part with slashes
+		fullSurname := strings.TrimSpace(surnamePrefix + " " + surname)
+		fullSurname = strings.TrimSpace(fullSurname)
+		if fullSurname != "" {
+			parts = append(parts, "/"+fullSurname+"/")
+		} else {
+			// Even with no surname, GEDCOM expects //
+			parts = append(parts, "//")
+		}
+
+		if suffix != "" {
+			parts = append(parts, suffix)
+		}
+
+		result := strings.Join(parts, " ")
+		return strings.TrimSpace(result)
+	}
+
+	// No fields available — try to parse the value string
+	// Look for a surname that could be the last word
+	return parseValueToGEDCOMName(value)
+}
+
+// parseValueToGEDCOMName attempts to convert a simple "Given Surname" string
+// to GEDCOM "Given /Surname/" format by treating the last word as surname.
+func parseValueToGEDCOMName(value string) string {
+	// If already contains slashes, return as-is
+	if strings.Contains(value, "/") {
+		return value
+	}
+
+	words := strings.Fields(value)
+	if len(words) == 0 {
+		return value
+	}
+
+	if len(words) == 1 {
+		// Single name — could be given or surname, use as given with empty surname
+		return words[0] + " //"
+	}
+
+	// Treat last word as surname, rest as given
+	given := strings.Join(words[:len(words)-1], " ")
+	surname := words[len(words)-1]
+
+	return given + " /" + surname + "/"
+}
+
+// mapGenderToSex converts a GLX gender value to a GEDCOM SEX value.
+func mapGenderToSex(gender string) string {
+	switch gender {
+	case GenderMale:
+		return "M"
+	case GenderFemale:
+		return "F"
+	case GenderOther:
+		return "X"
+	default:
+		return "U"
+	}
+}
+
+// exportPersonEvent converts a GLX Event to a GEDCOM event subrecord of INDI.
+// Returns nil if the event type has no GEDCOM mapping.
+func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
+	gedcomTag, ok := expCtx.ExportIndex.EventTypes[event.Type]
+	if !ok || gedcomTag == "" {
+		return nil
+	}
+
+	record := &GEDCOMRecord{
+		Tag:        gedcomTag,
+		SubRecords: []*GEDCOMRecord{},
+	}
+
+	// DATE
+	if event.Date != "" {
+		gedcomDate := formatGEDCOMDate(event.Date)
+		if gedcomDate != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagDate,
+				Value: gedcomDate,
+			})
+		}
+	}
+
+	// PLAC (from PlaceStrings cache)
+	placRecords := exportPlaceSubrecords(event.PlaceID, expCtx)
+	if placRecords != nil {
+		record.SubRecords = append(record.SubRecords, placRecords...)
+	}
+
+	// Event properties (AGE, CAUS, TYPE)
+	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
+
+	return record
+}
+
+// exportEventPropertySubrecords exports event properties that have GEDCOM tag mappings.
+func exportEventPropertySubrecords(event *Event, expCtx *ExportContext) []*GEDCOMRecord {
+	if len(event.Properties) == 0 {
+		return nil
+	}
+
+	var records []*GEDCOMRecord
+
+	// Sort property keys for deterministic output
+	keys := make([]string, 0, len(event.Properties))
+	for k := range event.Properties {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		gedcomTag, ok := expCtx.ExportIndex.EventProperties[key]
+		if !ok || gedcomTag == "" {
+			continue
+		}
+
+		val := event.Properties[key]
+		if s, ok := val.(string); ok && s != "" {
+			records = append(records, &GEDCOMRecord{
+				Tag:   gedcomTag,
+				Value: s,
+			})
+		}
+	}
+
+	return records
+}
+
+// exportMappedPersonProperties exports person properties that have GEDCOM tag mappings
+// (e.g., occupation -> OCCU, religion -> RELI), skipping properties handled elsewhere.
+func exportMappedPersonProperties(person *Person, expCtx *ExportContext) []*GEDCOMRecord {
+	if len(person.Properties) == 0 {
+		return nil
+	}
+
+	var records []*GEDCOMRecord
+
+	// Sort property keys for deterministic output
+	keys := make([]string, 0, len(person.Properties))
+	for k := range person.Properties {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		// Skip properties handled elsewhere
+		if skipPersonProperties[key] {
+			continue
+		}
+
+		gedcomTag, ok := expCtx.ExportIndex.PersonProperties[key]
+		if !ok || gedcomTag == "" {
+			continue
+		}
+
+		val := person.Properties[key]
+		if s, ok := val.(string); ok && s != "" {
+			records = append(records, &GEDCOMRecord{
+				Tag:   gedcomTag,
+				Value: s,
+			})
+		}
+	}
+
+	return records
+}
+
+// exportPersonMediaRefs adds OBJE references for media attached to a person.
+func exportPersonMediaRefs(personID string, person *Person, expCtx *ExportContext, record *GEDCOMRecord) {
+	mediaVal, ok := person.Properties[PropertyMedia]
+	if !ok {
+		return
+	}
+
+	mediaIDs := extractStringList(mediaVal)
+	for _, mediaID := range mediaIDs {
+		mediaXRef := expCtx.MediaXRefMap[mediaID]
+		if mediaXRef != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagObje,
+				Value: mediaXRef,
+			})
+		} else {
+			expCtx.addExportWarning(EntityTypePersons, personID,
+				fmt.Sprintf("media %s has no XREF mapping", mediaID))
+		}
+	}
+}
+
+// exportPersonSourceRefs adds SOUR references for sources and citations attached to a person.
+func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportContext, record *GEDCOMRecord) {
+	// Sources
+	if sourcesVal, ok := person.Properties[PropertySources]; ok {
+		sourceIDs := extractStringList(sourcesVal)
+		for _, sourceID := range sourceIDs {
+			sourceXRef := expCtx.SourceXRefMap[sourceID]
+			if sourceXRef != "" {
+				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+					Tag:   GedcomTagSour,
+					Value: sourceXRef,
+				})
+			} else {
+				expCtx.addExportWarning(EntityTypePersons, personID,
+					fmt.Sprintf("source %s has no XREF mapping", sourceID))
+			}
+		}
+	}
+
+	// Citations (resolve to source references)
+	if citationsVal, ok := person.Properties[PropertyCitations]; ok {
+		citationIDs := extractStringList(citationsVal)
+		for _, citationID := range citationIDs {
+			citation, exists := expCtx.GLX.Citations[citationID]
+			if !exists {
+				expCtx.addExportWarning(EntityTypePersons, personID,
+					fmt.Sprintf("citation %s not found", citationID))
+				continue
+			}
+
+			sourceXRef := expCtx.SourceXRefMap[citation.SourceID]
+			if sourceXRef != "" {
+				sourRecord := &GEDCOMRecord{
+					Tag:        GedcomTagSour,
+					Value:      sourceXRef,
+					SubRecords: []*GEDCOMRecord{},
+				}
+
+				// PAGE from locator
+				if locator, ok := getStringProperty(citation.Properties, "locator"); ok {
+					sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
+						Tag:   GedcomTagPage,
+						Value: locator,
+					})
+				}
+
+				record.SubRecords = append(record.SubRecords, sourRecord)
+			} else {
+				expCtx.addExportWarning(EntityTypePersons, personID,
+					fmt.Sprintf("citation %s source %s has no XREF mapping", citationID, citation.SourceID))
+			}
+		}
+	}
+}
+
+// extractStringList converts a property value to a list of strings.
+// Handles both []string and []any types.
+func extractStringList(val any) []string {
+	switch v := val.(type) {
+	case []string:
+		return v
+	case []any:
+		result := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	case string:
+		return []string{v}
+	default:
+		return nil
+	}
+}
