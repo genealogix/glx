@@ -19,6 +19,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 
+#### GEDCOM Roundtrip Fidelity
+- **Inline SOUR citations on individual events** - Birth, death, burial, and other individual events now preserve SOUR citations during import/export roundtrip (~25K tags recovered in habsburg)
+- **Single-spouse family marriages** - FAM records with only HUSB or WIFE now create marriage relationships and events instead of being silently dropped (~700 tags recovered in queen)
+- **Non-standard date preservation** - BCE dates, Julian/Hebrew/French Republican calendar dates, and dual-year dates are preserved as raw strings instead of being dropped (~2,800 tags recovered in date-all)
+- **TITL with DATE/PLAC sub-records** - Title properties with dates and places are stored as temporal list items and roundtrip correctly (~2,900 tags recovered)
+- **Multiple MARR events per family** - Families with multiple MARR records now preserve all marriage events
+- **Empty OCCU with PLAC fallback** - OCCU records with empty values but PLAC sub-records now extract the place text as the occupation value
+
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
 
