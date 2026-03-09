@@ -62,13 +62,6 @@ func fullCiteArchive() *glxlib.GLXFile {
 				SourceID:   "source-bare",
 				Properties: map[string]any{},
 			},
-			"cit-with-own-repo": {
-				SourceID:     "source-bare",
-				RepositoryID: "repo-fs",
-				Properties: map[string]any{
-					"url": "https://example.com",
-				},
-			},
 			"cit-override": {
 				SourceID:     "source-marriages",
 				RepositoryID: "repo-nara",
