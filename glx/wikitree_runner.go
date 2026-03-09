@@ -282,28 +282,59 @@ func findPersonForWikiTree(archive *glxlib.GLXFile, query string) (string, *glxl
 	}
 }
 
+// assertionIndex pre-indexes assertions for efficient lookup.
+type assertionIndex struct {
+	byPersonProperty map[string][]*glxlib.Assertion // "personID\x00property" -> assertions
+	byEvent          map[string][]*glxlib.Assertion  // eventID -> assertions
+}
+
+// buildAssertionIndex builds an index over all assertions for efficient lookup.
+func buildAssertionIndex(archive *glxlib.GLXFile) *assertionIndex {
+	idx := &assertionIndex{
+		byPersonProperty: make(map[string][]*glxlib.Assertion),
+		byEvent:          make(map[string][]*glxlib.Assertion),
+	}
+
+	for _, id := range sortedKeys(archive.Assertions) {
+		a := archive.Assertions[id]
+		if a.Subject.Person != "" {
+			key := a.Subject.Person + "\x00" + a.Property
+			idx.byPersonProperty[key] = append(idx.byPersonProperty[key], a)
+			// Also index with empty property for "all assertions for person"
+			allKey := a.Subject.Person + "\x00"
+			idx.byPersonProperty[allKey] = append(idx.byPersonProperty[allKey], a)
+		}
+		if a.Subject.Event != "" {
+			idx.byEvent[a.Subject.Event] = append(idx.byEvent[a.Subject.Event], a)
+		}
+	}
+
+	return idx
+}
+
 // generateWikiTreeBio builds the full WikiTree biography markup for a person.
 func generateWikiTreeBio(personID string, person *glxlib.Person, archive *glxlib.GLXFile) string {
 	var b strings.Builder
 	refs := &refTracker{citations: make(map[string]int)}
+	idx := buildAssertionIndex(archive)
 
 	// == Biography ==
 	b.WriteString("== Biography ==\n\n")
 
 	// Opening sentence
-	writeOpeningSentence(&b, personID, person, archive, refs)
+	writeOpeningSentence(&b, personID, person, archive, refs, idx)
 
 	// Census / Residence
-	writeCensusSection(&b, personID, archive, refs)
+	writeCensusSection(&b, personID, archive, refs, idx)
 
 	// Military Service
-	writeMilitarySection(&b, personID, archive, refs)
+	writeMilitarySection(&b, personID, archive, refs, idx)
 
 	// Marriage(s)
-	writeMarriageSection(&b, personID, archive, refs)
+	writeMarriageSection(&b, personID, archive, refs, idx)
 
 	// Death and Burial
-	writeDeathSection(&b, personID, person, archive, refs)
+	writeDeathSection(&b, personID, person, archive, refs, idx)
 
 	// Children
 	writeChildrenSection(&b, personID, archive)
@@ -370,19 +401,12 @@ func formatCitationText(citationID string, archive *glxlib.GLXFile) string {
 }
 
 // refsForAssertions returns ref markup for all citations on assertions matching
-// a person and optionally a property.
-func refsForAssertions(personID, property string, archive *glxlib.GLXFile, refs *refTracker) string {
+// a person and optionally a property, using a pre-built index.
+func refsForAssertions(personID, property string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) string {
 	var refParts []string
 
-	ids := sortedKeys(archive.Assertions)
-	for _, id := range ids {
-		a := archive.Assertions[id]
-		if a.Subject.Person != personID {
-			continue
-		}
-		if property != "" && a.Property != property {
-			continue
-		}
+	key := personID + "\x00" + property
+	for _, a := range idx.byPersonProperty[key] {
 		for _, citID := range a.Citations {
 			refParts = append(refParts, refs.ref(citID, archive))
 		}
@@ -391,16 +415,12 @@ func refsForAssertions(personID, property string, archive *glxlib.GLXFile, refs 
 	return strings.Join(refParts, "")
 }
 
-// refsForEvent returns ref markup for citations linked to assertions about an event.
-func refsForEvent(eventID string, archive *glxlib.GLXFile, refs *refTracker) string {
+// refsForEvent returns ref markup for citations linked to assertions about an event,
+// using a pre-built index.
+func refsForEvent(eventID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) string {
 	var refParts []string
 
-	ids := sortedKeys(archive.Assertions)
-	for _, id := range ids {
-		a := archive.Assertions[id]
-		if a.Subject.Event != eventID {
-			continue
-		}
+	for _, a := range idx.byEvent[eventID] {
 		for _, citID := range a.Citations {
 			refParts = append(refParts, refs.ref(citID, archive))
 		}
@@ -410,7 +430,7 @@ func refsForEvent(eventID string, archive *glxlib.GLXFile, refs *refTracker) str
 }
 
 // writeOpeningSentence writes the birth/origin line.
-func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker) {
+func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	name := extractPersonName(person)
 	b.WriteString(fmt.Sprintf("'''%s'''", name))
 
@@ -426,9 +446,9 @@ func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Pe
 		b.WriteString(fmt.Sprintf(" was born in %s", placeName))
 	}
 
-	birthRefs := refsForAssertions(personID, "birth_date", archive, refs)
+	birthRefs := refsForAssertions(personID, "born_on", archive, refs, idx)
 	if birthRefs == "" {
-		birthRefs = refsForAssertions(personID, "birthplace", archive, refs)
+		birthRefs = refsForAssertions(personID, "born_at", archive, refs, idx)
 	}
 	b.WriteString(birthRefs)
 
@@ -451,14 +471,14 @@ func writeOpeningSentence(b *strings.Builder, personID string, person *glxlib.Pe
 		b.WriteString(fmt.Sprintf(" was a %s", strings.ToLower(occ)))
 	}
 
-	occRefs := refsForAssertions(personID, "occupation", archive, refs)
+	occRefs := refsForAssertions(personID, "occupation", archive, refs, idx)
 	b.WriteString(occRefs)
 
 	b.WriteString(".\n\n")
 }
 
 // writeCensusSection writes census event entries.
-func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker) {
+func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	events := findPersonEventsByType(personID, "census", archive)
 	if len(events) == 0 {
 		return
@@ -481,7 +501,7 @@ func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLX
 			line = "A census record exists"
 		}
 
-		eventRefs := refsForEvent(we.ID, archive, refs)
+		eventRefs := refsForEvent(we.ID, archive, refs, idx)
 		// Also check for citations on assertions about this person's residence at this date
 		b.WriteString(line + eventRefs + ".\n\n")
 
@@ -492,7 +512,7 @@ func writeCensusSection(b *strings.Builder, personID string, archive *glxlib.GLX
 }
 
 // writeMilitarySection writes military service events.
-func writeMilitarySection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker) {
+func writeMilitarySection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	events := findPersonEventsByType(personID, "military_service", archive)
 	if len(events) == 0 {
 		return
@@ -504,14 +524,14 @@ func writeMilitarySection(b *strings.Builder, personID string, archive *glxlib.G
 		event := we.Event
 
 		// Look for assertions about military service
-		serviceRefs := refsForAssertions(personID, "military_service", archive, refs)
-		unitRefs := refsForAssertions(personID, "military_unit", archive, refs)
-		rankRefs := refsForAssertions(personID, "military_rank", archive, refs)
+		serviceRefs := refsForAssertions(personID, "military_service", archive, refs, idx)
+		unitRefs := refsForAssertions(personID, "military_unit", archive, refs, idx)
+		rankRefs := refsForAssertions(personID, "military_rank", archive, refs, idx)
 		allRefs := serviceRefs + unitRefs + rankRefs
 
 		// If no assertion refs, try event-level refs
 		if allRefs == "" {
-			allRefs = refsForEvent(we.ID, archive, refs)
+			allRefs = refsForEvent(we.ID, archive, refs, idx)
 		}
 
 		if event.Notes != "" {
@@ -528,7 +548,7 @@ func writeMilitarySection(b *strings.Builder, personID string, archive *glxlib.G
 }
 
 // writeMarriageSection writes marriage events and spouse relationships.
-func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker) {
+func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	events := findPersonEventsByType(personID, "marriage", archive)
 	if len(events) == 0 {
 		return
@@ -541,26 +561,36 @@ func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.G
 		date := string(event.Date)
 		place := wikiTreePlaceName(event.PlaceID, archive)
 
-		// Find the spouse in participants
+		// Find the spouse in participants (look for spouse-like roles)
 		spouseName := ""
+		spouseRoles := map[string]bool{
+			"spouse": true, "husband": true, "wife": true,
+			"groom": true, "bride": true,
+		}
 		for _, p := range event.Participants {
-			if p.Person != personID {
+			if p.Person == personID {
+				continue
+			}
+			role := strings.ToLower(p.Role)
+			if spouseRoles[role] || role == "" {
 				if sp, ok := archive.Persons[p.Person]; ok {
 					spouseName = extractPersonName(sp)
 				} else {
 					spouseName = p.Person
 				}
+
+				break
 			}
 		}
 
-		eventRefs := refsForEvent(we.ID, archive, refs)
+		eventRefs := refsForEvent(we.ID, archive, refs, idx)
 
 		var parts []string
 		if spouseName != "" {
 			parts = append(parts, fmt.Sprintf("married %s", spouseName))
 		}
 		if date != "" {
-			parts = append(parts, fmt.Sprintf("on %s", narrativeDateWT(date)))
+			parts = append(parts, narrativeDateWT(date))
 		}
 		if place != "" {
 			parts = append(parts, fmt.Sprintf("in %s", place))
@@ -574,7 +604,7 @@ func writeMarriageSection(b *strings.Builder, personID string, archive *glxlib.G
 }
 
 // writeDeathSection writes death and burial information.
-func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker) {
+func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Person, archive *glxlib.GLXFile, refs *refTracker, idx *assertionIndex) {
 	diedOn := propertyString(person.Properties, "died_on")
 	diedAt := propertyString(person.Properties, "died_at")
 	deathPlace := wikiTreePlaceName(diedAt, archive)
@@ -593,7 +623,7 @@ func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Perso
 
 	// Death
 	if diedOn != "" || deathPlace != "" {
-		deathRefs := refsForAssertions(personID, "death_date", archive, refs)
+		deathRefs := refsForAssertions(personID, "died_on", archive, refs, idx)
 
 		switch {
 		case diedOn != "" && deathPlace != "":
@@ -606,7 +636,7 @@ func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Perso
 	} else if len(deathEvents) > 0 {
 		for _, we := range deathEvents {
 			event := we.Event
-			eventRefs := refsForEvent(we.ID, archive, refs)
+			eventRefs := refsForEvent(we.ID, archive, refs, idx)
 			date := string(event.Date)
 			place := wikiTreePlaceName(event.PlaceID, archive)
 
@@ -624,10 +654,7 @@ func writeDeathSection(b *strings.Builder, personID string, person *glxlib.Perso
 	// Burial
 	for _, we := range burialEvents {
 		event := we.Event
-		burialRefs := refsForAssertions(personID, "burial_place", archive, refs)
-		if burialRefs == "" {
-			burialRefs = refsForEvent(we.ID, archive, refs)
-		}
+		burialRefs := refsForEvent(we.ID, archive, refs, idx)
 		place := wikiTreePlaceName(event.PlaceID, archive)
 
 		if place != "" {

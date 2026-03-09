@@ -123,7 +123,7 @@ func TestGenerateWikiTreeBio_WithCitations(t *testing.T) {
 		Assertions: map[string]*glxlib.Assertion{
 			"assert-birth": {
 				Subject:    glxlib.EntityRef{Person: "person-jane"},
-				Property:   "birth_date",
+				Property:   "born_on",
 				Value:      "ABT 1832",
 				Citations:  []string{"cit-census"},
 				Confidence: "medium",
