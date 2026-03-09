@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -150,9 +151,31 @@ func findChildren(tc *treeContext, personID string) []relatedPerson {
 	return tc.children[personID]
 }
 
+// loadArchiveForTree loads a GLX archive for tree operations.
+func loadArchiveForTree(path string) (*glxlib.GLXFile, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot access path: %w", err)
+	}
+
+	if info.IsDir() {
+		archive, duplicates, err := LoadArchiveWithOptions(path, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load archive: %w", err)
+		}
+		for _, d := range duplicates {
+			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
+		}
+
+		return archive, nil
+	}
+
+	return readSingleFileArchive(path, false)
+}
+
 // showAncestors loads the archive and prints the ancestor tree for a person.
 func showAncestors(archivePath, personID string, maxGen int) error {
-	archive, err := loadArchiveForQuery(archivePath)
+	archive, err := loadArchiveForTree(archivePath)
 	if err != nil {
 		return err
 	}
@@ -170,7 +193,7 @@ func showAncestors(archivePath, personID string, maxGen int) error {
 
 // showDescendants loads the archive and prints the descendant tree for a person.
 func showDescendants(archivePath, personID string, maxGen int) error {
-	archive, err := loadArchiveForQuery(archivePath)
+	archive, err := loadArchiveForTree(archivePath)
 	if err != nil {
 		return err
 	}
