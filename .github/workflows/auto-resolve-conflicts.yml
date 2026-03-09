@@ -48,7 +48,7 @@ jobs:
             exit 0
           fi
 
-          echo "$CONFLICTING_PRS" | while read -r PR_NUMBER BRANCH; do
+          while read -r PR_NUMBER BRANCH; do
             echo "=== PR #$PR_NUMBER ($BRANCH) ==="
 
             # Clean state for each PR
@@ -65,7 +65,7 @@ jobs:
             fi
 
             # Attempt merge
-            MERGE_OUTPUT=$(git merge origin/main --no-edit 2>&1) || true
+            git merge origin/main --no-edit 2>&1 || true
 
             # Get list of conflicted files
             CONFLICTED_FILES=$(git diff --name-only --diff-filter=U 2>/dev/null)
@@ -99,7 +99,10 @@ jobs:
 
             # Stage and commit
             git add CHANGELOG.md
-            git commit --no-edit 2>/dev/null
+            if ! git commit --no-edit; then
+              echo "  Commit failed — skipping"
+              continue
+            fi
 
             # Push to the PR branch
             if git push origin "HEAD:$BRANCH" 2>/dev/null; then
@@ -107,4 +110,4 @@ jobs:
             else
               echo "  Failed to push — skipping"
             fi
-          done
+          done < <(echo "$CONFLICTING_PRS")
