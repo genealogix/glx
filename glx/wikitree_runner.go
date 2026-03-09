@@ -960,7 +960,7 @@ func writeMarriageAndFamily(b *strings.Builder, personID string, archive *glxlib
 		b.WriteString(fmt.Sprintf("Children of %s:\n", fullName))
 
 		for _, child := range children {
-			b.WriteString(fmt.Sprintf("# %s\n", child.displayName))
+			b.WriteString(fmt.Sprintf("* %s\n", child.displayName))
 		}
 
 		b.WriteString("\n")
