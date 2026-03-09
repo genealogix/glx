@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 
+#### Import
+- **Auto-generate event titles on GEDCOM import** - Events now receive human-readable titles like "Birth of Daniel Lane (1815)" or "Marriage of John Smith and Jane Doe (1850)". Titles are generated from the event type, participant names, and date
+
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
 
