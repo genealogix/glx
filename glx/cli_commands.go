@@ -63,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
+	rootCmd.AddCommand(diffCmd)
 }
 
 // ============================================================================
@@ -806,4 +807,60 @@ func init() {
 
 func runVitals(_ *cobra.Command, args []string) error {
 	return showVitals(vitalsArchive, args[0])
+}
+
+// ============================================================================
+// Diff Command
+// ============================================================================
+
+var (
+	diffVerbose bool
+	diffShort   bool
+	diffJSON    bool
+	diffPerson  string
+)
+
+var diffCmd = &cobra.Command{
+	Use:   "diff <dir1> <dir2>",
+	Short: "Compare two GLX archive states",
+	Long: `Compare two GLX archive states and show genealogy-aware differences.
+
+Summarizes changes in terms of entities and evidence rather than raw YAML lines.
+Shows added, modified, and removed entities along with specific field changes,
+confidence upgrades/downgrades, and new evidence.
+
+Output modes:
+  (default)  Summary table grouped by entity type
+  --verbose  Full field-level details for all modified entities
+  --short    Single-line compact summary
+  --json     Machine-readable JSON output
+
+Use --person to filter changes relevant to a specific person.`,
+	Example: `  # Compare two archive directories
+  glx diff ./archive-v1 ./archive-v2
+
+  # Verbose field-level details
+  glx diff ./old ./new --verbose
+
+  # Compact one-liner
+  glx diff ./old ./new --short
+
+  # JSON output for tooling
+  glx diff ./old ./new --json
+
+  # Filter changes for a specific person
+  glx diff ./old ./new --person person-mary-lane`,
+	Args: cobra.ExactArgs(2),
+	RunE: runDiff,
+}
+
+func init() {
+	diffCmd.Flags().BoolVarP(&diffVerbose, "verbose", "v", false, "Show full field-level details")
+	diffCmd.Flags().BoolVar(&diffShort, "short", false, "Compact single-line output")
+	diffCmd.Flags().BoolVar(&diffJSON, "json", false, "JSON output")
+	diffCmd.Flags().StringVar(&diffPerson, "person", "", "Filter changes for a specific person ID")
+}
+
+func runDiff(_ *cobra.Command, args []string) error {
+	return diffArchives(args[0], args[1], diffPerson, diffVerbose, diffShort, diffJSON)
 }
