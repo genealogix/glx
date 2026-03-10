@@ -3,23 +3,18 @@ description: Report a bug or unexpected behavior
 title: "[Bug] "
 labels: ["bug", "needs-triage"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for reporting a bug! Please fill out the information below to help us understand and reproduce the issue.
-
   - type: textarea
     attributes:
-      label: Description
-      description: A clear and concise description of what the bug is.
-      placeholder: What happens? What did you expect to happen?
+      label: Summary
+      description: What happened, and what did you expect instead?
+      placeholder: A short description of the bug.
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Steps to Reproduce
-      description: Steps to reproduce the behavior.
+      label: Reproduction
+      description: How can we reproduce it?
       placeholder: |
         1. Go to '...'
         2. Click on '....'
@@ -30,45 +25,12 @@ body:
 
   - type: textarea
     attributes:
-      label: Expected Behavior
-      description: A clear and concise description of what you expected to happen.
-    validations:
-      required: true
-
-  - type: textarea
-    attributes:
-      label: Actual Behavior
-      description: A clear and concise description of what actually happened.
-    validations:
-      required: true
-
-  - type: textarea
-    attributes:
-      label: Environment
-      description: |
-        Please provide information about your environment:
-
-        - OS: [e.g. Ubuntu 20.04, macOS 12.1, Windows 11]
-        - CLI Version: [e.g. 1.0.0]
-        - Go Version: [e.g. 1.19]
+      label: Context
+      description: Include relevant environment details, logs, or validation output.
       placeholder: |
         - OS:
-        - CLI Version:
-        - Go Version:
-    validations:
-      required: false
-
-  - type: textarea
-    attributes:
-      label: Additional Context
-      description: Add any other context about the problem here.
-    validations:
-      required: false
-
-  - type: textarea
-    attributes:
-      label: Validation Output
-      description: If this is a validation error, please include the complete output of `glx validate`.
-      render: text
+        - GLX version:
+        - Go version:
+        - Anything else relevant:
     validations:
       required: false

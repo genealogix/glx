@@ -357,12 +357,8 @@ func TestImportNoteReferenceResolution(t *testing.T) {
 		if event.Type != "will" {
 			continue
 		}
-		notes, ok := event.Properties[PropertyNotes]
-		if !ok {
-			continue
-		}
-		noteStr, ok := notes.(string)
-		if !ok {
+		noteStr := event.Notes
+		if noteStr == "" {
 			continue
 		}
 

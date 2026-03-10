@@ -3,16 +3,10 @@ description: Suggest a new feature or enhancement
 title: "[Feature] "
 labels: ["enhancement", "needs-triage"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for suggesting a new feature! Please describe what you'd like to see added or improved.
-
   - type: textarea
     attributes:
-      label: Problem Statement
-      description: |
-        Describe the problem you're trying to solve. What limitation or pain point are you experiencing?
+      label: Problem
+      description: What limitation or pain point are you trying to address?
       placeholder: |
         I'm trying to do X, but I can't because Y.
         When I do Z, it would be helpful if W happened instead.
@@ -21,9 +15,8 @@ body:
 
   - type: textarea
     attributes:
-      label: Proposed Solution
-      description: |
-        Describe your proposed solution. How should this feature work?
+      label: Proposal
+      description: What should change?
       placeholder: |
         I propose adding a new command `glx migrate` that...
         The validation should support checking for...
@@ -32,58 +25,11 @@ body:
 
   - type: textarea
     attributes:
-      label: Use Cases
-      description: |
-        Describe specific scenarios where this feature would be useful.
+      label: Context
+      description: Use cases, workarounds, or implementation notes.
       placeholder: |
         - When migrating from GEDCOM files
         - When collaborating with other researchers
         - When validating large family trees
     validations:
-      required: true
-
-  - type: textarea
-    attributes:
-      label: Alternatives Considered
-      description: |
-        Have you considered alternative solutions or workarounds?
-      placeholder: |
-        I could work around this by manually doing X, but it would be error-prone.
-        There's a similar feature in Gramps that works like Y.
-    validations:
       required: false
-
-  - type: textarea
-    attributes:
-      label: Implementation Details
-      description: |
-        If you have thoughts on how this could be implemented, please share them.
-        (This is optional - the maintainers will figure out the implementation details.)
-      placeholder: |
-        This could be implemented by adding a new validation rule in the schema...
-        The CLI could add a new command that parses the family tree and...
-    validations:
-      required: false
-
-  - type: dropdown
-    attributes:
-      label: Priority
-      description: How important is this feature to you?
-      options:
-        - Nice to have (low priority)
-        - Useful (medium priority)
-        - Important (high priority)
-        - Critical (blocking priority)
-      default: 2
-    validations:
-      required: true
-
-  - type: checkboxes
-    attributes:
-      label: Specification Impact
-      description: |
-        Major changes to the specification should be discussed via GitHub issues and discussions.
-        Check this box if this feature would require changes to the core specification.
-      options:
-        - label: This feature requires specification changes (will need extended discussion)
-          required: false
