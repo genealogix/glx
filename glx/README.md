@@ -940,17 +940,20 @@ glx cluster person-mary-lane --archive my-archive
 
 **Output:**
 ```
-FAN cluster for person-mary-lane (Mary Lane):
+Associates of Mary Lane (person-mary-lane):
 
-  Score  Person                          Connections
-  ─────  ──────────────────────────────  ──────────────────────────
-      8  person-john-doe (John Doe)      census-1850 (3), census-1855 (3), place-ironton (1), marriage-witness (1)
-      5  person-jane-smith (Jane Smith)  census-1850 (3), place-ironton (1), baptism-sponsor (1)
-      3  person-william-green (Wm Green) census-1855 (3)
-      2  person-henry-brown (H. Brown)   land-sale (2)
-      1  person-sarah-clark (S. Clark)   place-ironton (1)
+  Census Households:
+    John Doe (person-john-doe) — boarder  [1850 Census]  (score: 8)
+    Jane Smith (person-jane-smith) — neighbor  [1850 Census]  (score: 5)
+    William Green (person-william-green) — head  [1855 Census]  (score: 3)
 
-5 associate(s) found
+  Shared Events:
+    Henry Brown (person-henry-brown) — witness  [Land Sale (1852)]  (score: 2)
+
+  Same Place, Same Period:
+    Sarah Clark (person-sarah-clark)  [Same place: Ironton, Sauk Co., WI (1850–1860)]  (score: 1)
+
+  5 associate(s) found
 ```
 
 ### `glx analyze`

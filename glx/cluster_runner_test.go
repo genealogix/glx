@@ -430,26 +430,6 @@ func TestYearInRange(t *testing.T) {
 	}
 }
 
-func TestClusterExtractYear(t *testing.T) {
-	tests := []struct {
-		input string
-		want  int
-	}{
-		{"1860", 1860},
-		{"ABT 1832", 1832},
-		{"BEF 1900", 1900},
-		{"12 MAR 1855", 1855},
-		{"", 0},
-		{"no year", 0},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			assert.Equal(t, tt.want, clusterExtractYear(tt.input))
-		})
-	}
-}
-
 func TestFormatYearRange(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -661,16 +641,22 @@ func TestShowCluster_PersonNotFound(t *testing.T) {
 func TestHasEventLinkAtPlace(t *testing.T) {
 	linkMap := map[string][]associateLink{
 		"person-mary": {
-			{Type: "census_household", EventID: "event-1"},
+			{Type: "census_household", EventID: "event-1", PlaceID: "place-ironton"},
 		},
 		"person-bob": {
 			{Type: "place_overlap"},
 		},
+		"person-jane": {
+			{Type: "event_coparticipant", EventID: "event-2", PlaceID: "place-nyc"},
+		},
 	}
 
-	assert.True(t, hasEventLinkAtPlace("person-mary", linkMap))
-	assert.False(t, hasEventLinkAtPlace("person-bob", linkMap))
-	assert.False(t, hasEventLinkAtPlace("person-unknown", linkMap))
+	assert.True(t, hasEventLinkAtPlace("person-mary", "place-ironton", linkMap))
+	assert.False(t, hasEventLinkAtPlace("person-mary", "place-nyc", linkMap))
+	assert.False(t, hasEventLinkAtPlace("person-bob", "place-ironton", linkMap))
+	assert.False(t, hasEventLinkAtPlace("person-unknown", "place-ironton", linkMap))
+	assert.True(t, hasEventLinkAtPlace("person-jane", "place-nyc", linkMap))
+	assert.False(t, hasEventLinkAtPlace("person-jane", "place-ironton", linkMap))
 }
 
 func writeTestArchive(t *testing.T, path string, archive *glxlib.GLXFile) {

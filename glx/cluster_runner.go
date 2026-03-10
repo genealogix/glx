@@ -18,16 +18,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
-
-// clusterYearRegexp extracts the first 4-digit year from a date string.
-var clusterYearRegexp = regexp.MustCompile(`\b(\d{4})\b`)
 
 // associate represents a person connected to the target through shared context.
 type associate struct {
@@ -39,8 +34,9 @@ type associate struct {
 
 // associateLink describes one connection between the target and an associate.
 type associateLink struct {
-	Type    string `json:"type"`              // "census_household", "event_coparticipant", "place_overlap"
+	Type    string `json:"type"`               // "census_household", "event_coparticipant", "place_overlap"
 	EventID string `json:"event_id,omitempty"`
+	PlaceID string `json:"place_id,omitempty"`
 	Label   string `json:"label"`
 	Role    string `json:"role,omitempty"`
 	Year    int    `json:"year,omitempty"`
@@ -175,7 +171,7 @@ func collectCensusLinks(personID string, archive *glxlib.GLXFile, linkMap map[st
 			continue
 		}
 
-		year := clusterExtractYear(string(event.Date))
+		year := extractDateYear(string(event.Date))
 		if !yearInRange(year, beforeYear, afterYear) {
 			continue
 		}
@@ -201,6 +197,7 @@ func collectCensusLinks(personID string, archive *glxlib.GLXFile, linkMap map[st
 			linkMap[p.Person] = append(linkMap[p.Person], associateLink{
 				Type:    "census_household",
 				EventID: eventID,
+				PlaceID: event.PlaceID,
 				Label:   label,
 				Role:    p.Role,
 				Year:    year,
@@ -222,7 +219,7 @@ func collectEventLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 			continue
 		}
 
-		year := clusterExtractYear(string(event.Date))
+		year := extractDateYear(string(event.Date))
 		if !yearInRange(year, beforeYear, afterYear) {
 			continue
 		}
@@ -253,6 +250,7 @@ func collectEventLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 			linkMap[p.Person] = append(linkMap[p.Person], associateLink{
 				Type:    "event_coparticipant",
 				EventID: eventID,
+				PlaceID: event.PlaceID,
 				Label:   label,
 				Role:    p.Role,
 				Year:    year,
@@ -292,8 +290,8 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 
 			// Check for temporal overlap (within 10-year window)
 			if yearsOverlap(targetYears, otherYears) {
-				// Skip if already linked via a census or event at this place
-				if hasEventLinkAtPlace(otherID, linkMap) {
+				// Skip if already linked via a census or event at this specific place
+				if hasEventLinkAtPlace(otherID, placeID, linkMap) {
 					continue
 				}
 
@@ -328,7 +326,7 @@ func personPlaceYears(personID string, archive *glxlib.GLXFile) placeYearSet {
 			continue
 		}
 
-		year := clusterExtractYear(string(event.Date))
+		year := extractDateYear(string(event.Date))
 		if year > 0 {
 			result[event.PlaceID] = append(result[event.PlaceID], year)
 		}
@@ -353,11 +351,11 @@ func yearsOverlap(a, b []int) bool {
 	return false
 }
 
-// hasEventLinkAtPlace checks if an associate already has a census/event link,
-// to avoid redundant place_overlap entries.
-func hasEventLinkAtPlace(personID string, linkMap map[string][]associateLink) bool {
+// hasEventLinkAtPlace checks if an associate already has a census/event link
+// at the given place, to avoid redundant place_overlap entries.
+func hasEventLinkAtPlace(personID, placeID string, linkMap map[string][]associateLink) bool {
 	for _, link := range linkMap[personID] {
-		if link.Type == "census_household" || link.Type == "event_coparticipant" {
+		if (link.Type == "census_household" || link.Type == "event_coparticipant") && link.PlaceID == placeID {
 			return true
 		}
 	}
@@ -442,22 +440,6 @@ func placeIsDescendant(placeID, ancestorID string, archive *glxlib.GLXFile) bool
 	return false
 }
 
-// clusterExtractYear extracts the first 4-digit year from a date string.
-func clusterExtractYear(dateStr string) int {
-	if dateStr == "" {
-		return 0
-	}
-	match := clusterYearRegexp.FindStringSubmatch(dateStr)
-	if len(match) < 2 {
-		return 0
-	}
-	year, err := strconv.Atoi(match[1])
-	if err != nil {
-		return 0
-	}
-	return year
-}
-
 // yearInRange checks if a year falls within the filter range.
 // A zero year always passes (undated events are included).
 func yearInRange(year, beforeYear, afterYear int) bool {
@@ -536,7 +518,7 @@ func printClusterText(result *clusterResult) {
 						line += fmt.Sprintf(" — %s", link.Role)
 					}
 					line += fmt.Sprintf("  [%s]", link.Label)
-					if link.Type != "place_overlap" && assoc.Score > 0 {
+					if assoc.Score > 0 {
 						line += fmt.Sprintf("  (score: %d)", assoc.Score)
 					}
 					entries = append(entries, line)

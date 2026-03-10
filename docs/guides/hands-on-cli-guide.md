@@ -437,10 +437,10 @@ Associates are scored by how they connect: census co-residence is worth 3 points
 Narrow the results to a specific place and time period:
 
 ```bash
-glx cluster person-eddard-stark --place place-winterfell --before 290
+glx cluster person-eddard-stark --place place-winterfell --before 1300
 ```
 
-This filters to only associates connected through events at Winterfell before the year 290 — useful for isolating a specific community at a specific time.
+This filters to only associates connected through events at Winterfell before the year 1300 — useful for isolating a specific community at a specific time.
 
 Use `--json` for scripting or piping into other tools:
 
