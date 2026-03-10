@@ -48,6 +48,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
 
+#### Documentation
+- **Added [Westeros example archive](/examples/westeros/)** - Large-scale example featuring 790+ characters from *A Song of Ice and Fire* with full evidence chains, 200+ custom vocabulary types, and temporal properties. Hosted at [github.com/genealogix/glx-archive-westeros](https://github.com/genealogix/glx-archive-westeros)
+- **Added [Hands-On CLI Guide](/guides/hands-on-cli-guide)** - Step-by-step walkthrough of every `glx` command using the Westeros demo archive, with real output examples
+
 ### Fixed
 - **SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N×N duplication when a person has multiple values for TITL, OCCU, etc.
 
