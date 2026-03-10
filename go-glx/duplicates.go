@@ -19,6 +19,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // DuplicateSignal describes one scoring component for a duplicate pair.
@@ -70,13 +71,13 @@ type duplicateIndex struct {
 // FindDuplicates scans an archive for potential duplicate persons.
 func FindDuplicates(archive *GLXFile, opts DuplicateOptions) *DuplicateResult {
 	if archive == nil || len(archive.Persons) < 2 {
-		return &DuplicateResult{Threshold: opts.Threshold}
+		return &DuplicateResult{Threshold: opts.Threshold, Pairs: []DuplicatePair{}}
 	}
 
 	idx := buildDuplicateIndex(archive)
 	pairs := generateCandidatePairs(archive, idx, opts.PersonFilter)
 
-	var results []DuplicatePair
+	results := []DuplicatePair{}
 	for _, pair := range pairs {
 		personA := archive.Persons[pair[0]]
 		personB := archive.Persons[pair[1]]
@@ -621,7 +622,7 @@ var nicknameTable = map[string]string{
 	"benjamin": "benjamin", "benj": "benjamin", "ben": "benjamin",
 	// Richard variants
 	"richard": "richard", "richd": "richard", "dick": "richard",
-	// Henry variants
+	// Henry variants (Harry was historically a nickname for Henry in English records)
 	"henry": "henry", "harry": "henry",
 	// Edward variants
 	"edward": "edward", "edw": "edward", "ed": "edward", "edwd": "edward", "ned": "edward", "ted": "edward",
@@ -641,8 +642,8 @@ var nicknameTable = map[string]string{
 	"ann": "ann", "anna": "ann", "annie": "ann", "nancy": "ann",
 	// Rebecca variants
 	"rebecca": "rebecca", "becky": "rebecca",
-	// Jonathan variants
-	"jonathan": "jonathan", "nathan": "jonathan",
+	// Jonathan variants (Nathan is a distinct name, not a nickname for Jonathan)
+	"jonathan": "jonathan",
 	// Alexander variants
 	"alexander": "alexander", "alex": "alexander",
 	// Abraham variants
@@ -664,15 +665,16 @@ func areNicknameVariants(a, b string) bool {
 }
 
 // isInitialMatch returns true if one name is a single-character initial that
-// matches the first letter of the other name.
+// matches the first letter of the other name. Uses rune counting for correct
+// Unicode handling (e.g., "É" is one character despite being multi-byte in UTF-8).
 func isInitialMatch(a, b string) bool {
 	cleanA := strings.TrimSuffix(a, ".")
 	cleanB := strings.TrimSuffix(b, ".")
 
-	if len(cleanA) == 1 && len(cleanB) > 1 {
+	if utf8.RuneCountInString(cleanA) == 1 && utf8.RuneCountInString(cleanB) > 1 {
 		return strings.HasPrefix(cleanB, cleanA)
 	}
-	if len(cleanB) == 1 && len(cleanA) > 1 {
+	if utf8.RuneCountInString(cleanB) == 1 && utf8.RuneCountInString(cleanA) > 1 {
 		return strings.HasPrefix(cleanA, cleanB)
 	}
 	return false

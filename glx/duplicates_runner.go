@@ -29,6 +29,12 @@ func findDuplicates(archivePath string, threshold float64, personFilter string, 
 		return err
 	}
 
+	if personFilter != "" {
+		if _, ok := archive.Persons[personFilter]; !ok {
+			return fmt.Errorf("person %q not found in archive", personFilter)
+		}
+	}
+
 	opts := glxlib.DuplicateOptions{
 		Threshold:    threshold,
 		PersonFilter: personFilter,

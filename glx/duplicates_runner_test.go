@@ -15,8 +15,10 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,8 +32,14 @@ func TestFindDuplicates_Integration_TextOutput(t *testing.T) {
 	writeTestPersonFull(t, dir, "person-d-lane", "D Lane", "1815", "place-va")
 	writeTestPersonFull(t, dir, "person-daniel-lane", "Daniel Lane", "1815", "place-va")
 
-	err := findDuplicates(dir, 0.4, "", false)
-	assert.NoError(t, err)
+	output := captureStdout(t, func() {
+		err := findDuplicates(dir, 0.4, "", false)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "Potential duplicates")
+	assert.Contains(t, output, "Score:")
+	assert.Contains(t, output, "duplicate pair(s)")
 }
 
 func TestFindDuplicates_Integration_JSONOutput(t *testing.T) {
@@ -41,8 +49,14 @@ func TestFindDuplicates_Integration_JSONOutput(t *testing.T) {
 	writeTestPersonFull(t, dir, "person-d-lane", "D Lane", "1815", "place-va")
 	writeTestPersonFull(t, dir, "person-daniel-lane", "Daniel Lane", "1815", "place-va")
 
-	err := findDuplicates(dir, 0.4, "", true)
-	assert.NoError(t, err)
+	output := captureStdout(t, func() {
+		err := findDuplicates(dir, 0.4, "", true)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, `"threshold"`)
+	assert.Contains(t, output, `"pairs"`)
+	assert.True(t, strings.HasPrefix(strings.TrimSpace(output), "{"), "JSON output should start with {")
 }
 
 func TestFindDuplicates_Integration_PersonFilter(t *testing.T) {
@@ -91,4 +105,26 @@ func writeTestPersonFull(t *testing.T, dir, id, name, born, bornAt string) {
 	t.Helper()
 	yaml := "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n      born_on: \"" + born + "\"\n      born_at: \"" + bornAt + "\"\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", id+".glx"), []byte(yaml), 0o644))
+}
+
+// captureStdout redirects os.Stdout during fn execution and returns what was written.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	origStdout := os.Stdout
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = origStdout
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	require.NoError(t, err)
+
+	return buf.String()
 }
