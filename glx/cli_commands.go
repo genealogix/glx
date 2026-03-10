@@ -63,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
+	rootCmd.AddCommand(censusCmd)
 }
 
 // ============================================================================
@@ -806,4 +807,67 @@ func init() {
 
 func runVitals(_ *cobra.Command, args []string) error {
 	return showVitals(vitalsArchive, args[0])
+}
+
+// ============================================================================
+// Census Command
+// ============================================================================
+
+var censusCmd = &cobra.Command{
+	Use:   "census",
+	Short: "Bulk census record tools",
+	Long: `Tools for working with census records in a GENEALOGIX archive.
+
+Subcommands:
+  add    Import a census template into the archive`,
+}
+
+var (
+	censusAddFrom    string
+	censusAddArchive string
+	censusAddDryRun  bool
+	censusAddVerbose bool
+)
+
+var censusAddCmd = &cobra.Command{
+	Use:   "add",
+	Short: "Import a census template into the archive",
+	Long: `Generate GLX entities from a structured census template file.
+
+Reads a YAML census template and generates:
+- Person records (new or matched to existing)
+- A census event with participants
+- A source (new or matched to existing)
+- A citation with locator, URL, transcription
+- Assertions for birth year, birthplace, gender, occupation, residence
+
+The template format uses a simple YAML structure describing the census
+year, location, household members, and citation details. Members can
+reference existing persons by ID or by name (matched against the archive).
+
+Use --dry-run to preview what would be generated without writing files.`,
+	Example: `  # Import a census template
+  glx census add --from 1860-census-lane.yaml --archive my-archive
+
+  # Preview without writing
+  glx census add --from 1860-census-lane.yaml --archive my-archive --dry-run
+
+  # Verbose output
+  glx census add --from 1860-census-lane.yaml --archive my-archive --verbose`,
+	RunE: runCensusAdd,
+}
+
+func init() {
+	censusCmd.AddCommand(censusAddCmd)
+
+	censusAddCmd.Flags().StringVar(&censusAddFrom, "from", "", "Path to census template YAML file (required)")
+	censusAddCmd.Flags().StringVarP(&censusAddArchive, "archive", "a", ".", "Archive path (directory)")
+	censusAddCmd.Flags().BoolVar(&censusAddDryRun, "dry-run", false, "Preview generated entities without writing files")
+	censusAddCmd.Flags().BoolVarP(&censusAddVerbose, "verbose", "v", false, "Show detailed summary of generated entities")
+
+	_ = censusAddCmd.MarkFlagRequired("from")
+}
+
+func runCensusAdd(_ *cobra.Command, _ []string) error {
+	return censusAdd(censusAddFrom, censusAddArchive, censusAddDryRun, censusAddVerbose)
 }
