@@ -22,6 +22,11 @@ event_properties:
     value_type: string
     gedcom: "TYPE"
 
+  marriage_type:
+    label: "Marriage Type"
+    description: "Classification of the marriage (e.g., civil, religious, common-law). Imported from GEDCOM TYPE sub-record on MARR events"
+    value_type: string
+
   description:
     label: "Event Description"
     description: "Detailed description of the event"
