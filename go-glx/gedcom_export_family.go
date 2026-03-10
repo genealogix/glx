@@ -93,8 +93,12 @@ func reconstructFamilies(expCtx *ExportContext) {
 		parentPairToFamily[pairKey] = familyIdx
 
 		// Map each parent to this family
-		parentToFamilies[husbandID] = append(parentToFamilies[husbandID], familyIdx)
-		parentToFamilies[wifeID] = append(parentToFamilies[wifeID], familyIdx)
+		if husbandID != "" {
+			parentToFamilies[husbandID] = append(parentToFamilies[husbandID], familyIdx)
+		}
+		if wifeID != "" {
+			parentToFamilies[wifeID] = append(parentToFamilies[wifeID], familyIdx)
+		}
 	}
 
 	// Step 2: Collect all parent-child relationships per child.
@@ -393,16 +397,23 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 		})
 	}
 
-	// TYPE (marriage_type property)
+	// TYPE (marriage_type property takes precedence, then event_subtype via exportEventPropertySubrecords)
+	hasExplicitType := false
 	if marriageType, ok := event.Properties[PropertyMarriageType].(string); ok && marriageType != "" {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagType,
 			Value: marriageType,
 		})
+		hasExplicitType = true
 	}
 
 	// Other event properties (event_subtype, cause, age_at_event, etc.)
-	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
+	for _, propRec := range exportEventPropertySubrecords(event, expCtx) {
+		if hasExplicitType && propRec.Tag == GedcomTagType {
+			continue // Skip duplicate TYPE
+		}
+		record.SubRecords = append(record.SubRecords, propRec)
+	}
 
 	// SOUR references from event sources and citations
 	exportEventSourceRefs(event, expCtx, record)
@@ -410,8 +421,9 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 	return record
 }
 
-// findFamilyEvents finds events where both spouses participate with role "spouse",
+// findFamilyEvents finds events where the family's spouses participate with role "spouse",
 // excluding the start and end events (already exported as MARR/DIV).
+// For single-spouse families, only the known spouse needs to participate.
 func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx *ExportContext) []*GEDCOMRecord {
 	var records []*GEDCOMRecord
 
@@ -424,7 +436,8 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 
 		event := expCtx.GLX.Events[eventID]
 
-		// Check if both spouses participate as "spouse"
+		// Check if the family's spouses participate as "spouse".
+		// For single-spouse families, only require the known spouse.
 		var hasHusband, hasWife bool
 		for _, p := range event.Participants {
 			if p.Role == ParticipantRoleSpouse {
@@ -437,7 +450,12 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 			}
 		}
 
-		if !hasHusband || !hasWife {
+		needHusband := husbandID != ""
+		needWife := wifeID != ""
+		if (needHusband && !hasHusband) || (needWife && !hasWife) {
+			continue
+		}
+		if !hasHusband && !hasWife {
 			continue
 		}
 
@@ -447,30 +465,11 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 			continue
 		}
 
-		famEventRecord := &GEDCOMRecord{
-			Tag:        gedcomTag,
-			SubRecords: []*GEDCOMRecord{},
+		// Reuse exportFamilyEvent to get full sub-record export (DATE, PLAC, NOTE, SOUR, properties)
+		famEventRecord := exportFamilyEvent(eventID, gedcomTag, expCtx)
+		if famEventRecord != nil {
+			records = append(records, famEventRecord)
 		}
-
-		if event.Date != "" {
-			gedcomDate := formatGEDCOMDate(event.Date)
-			if gedcomDate != "" {
-				famEventRecord.SubRecords = append(famEventRecord.SubRecords, &GEDCOMRecord{
-					Tag:   GedcomTagDate,
-					Value: gedcomDate,
-				})
-			}
-		}
-
-		placRecords := exportPlaceSubrecords(event.PlaceID, expCtx)
-		if placRecords != nil {
-			famEventRecord.SubRecords = append(famEventRecord.SubRecords, placRecords...)
-		}
-
-		// Event properties (TYPE, CAUS, AGE, etc.)
-		famEventRecord.SubRecords = append(famEventRecord.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
-
-		records = append(records, famEventRecord)
 	}
 
 	return records

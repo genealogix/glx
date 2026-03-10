@@ -333,7 +333,31 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 }
 
 // convertFamilyResidence applies a family-level RESI record to both spouses.
+// Evidence is extracted once to avoid creating duplicate citations.
 func convertFamilyResidence(husbandID, wifeID string, resiRecord *GEDCOMRecord, conv *ConversionContext) {
+	// Extract residence data and evidence once
+	var placeID string
+	var dateStr string
+
+	for _, sub := range resiRecord.SubRecords {
+		switch sub.Tag {
+		case GedcomTagPlac:
+			hierarchy := parseGEDCOMPlace(sub.Value)
+			if hierarchy != nil {
+				placeID = buildPlaceHierarchy(hierarchy, conv)
+			}
+		case GedcomTagDate:
+			dateStr = string(parseGEDCOMDate(sub.Value))
+		}
+	}
+
+	if placeID == "" {
+		return
+	}
+
+	refs := extractEvidence(resiRecord, conv)
+
+	// Apply to each spouse
 	for _, spouseID := range []string{husbandID, wifeID} {
 		if spouseID == "" {
 			continue
@@ -342,7 +366,17 @@ func convertFamilyResidence(husbandID, wifeID string, resiRecord *GEDCOMRecord, 
 		if !ok {
 			continue
 		}
-		convertResidence(spouseID, person, resiRecord, conv)
+
+		if dateStr != "" {
+			appendResidence(person, map[string]any{
+				"value": placeID,
+				"date":  dateStr,
+			})
+		} else {
+			appendResidence(person, placeID)
+		}
+
+		createPropertyAssertionWithEvidence(spouseID, PersonPropertyResidence, placeID, refs, conv)
 	}
 }
 
