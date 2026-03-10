@@ -189,7 +189,7 @@ type personSourceInfo struct {
 }
 
 // collectPersonSources gathers all sources and citations that reference a person
-// via assertions or events.
+// via assertions.
 func collectPersonSources(personID string, archive *glxlib.GLXFile) []personSourceInfo {
 	var sources []personSourceInfo
 	seen := make(map[string]bool)
@@ -277,7 +277,7 @@ func buildCensusRecords(birthYear, deathYear int, sources []personSourceInfo, ev
 		if deathYear > 0 && year > deathYear {
 			break
 		}
-		// Skip census years before the person would be old enough to appear (~0 years)
+		// Approximate age at this census year (may be 0 if census year == birth year)
 		age := year - birthYear
 
 		label := fmt.Sprintf("%d US Census (age ~%d)", year, age)
@@ -407,11 +407,24 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 			}
 		}
 		if !found {
-			// Fall back to checking events for a marriage involving this person
-			for _, e := range events {
-				if e.EventType == glxlib.EventTypeMarriage {
+			// Fall back to checking for a marriage event that involves both this person and this spouse
+			for eventID, ev := range archive.Events {
+				if ev == nil || ev.Type != glxlib.EventTypeMarriage {
+					continue
+				}
+				hasPerson := false
+				hasSpouse := false
+				for _, ep := range ev.Participants {
+					if ep.Person == personID {
+						hasPerson = true
+					}
+					if ep.Person == spouseID {
+						hasSpouse = true
+					}
+				}
+				if hasPerson && hasSpouse {
 					found = true
-					ref = e.Ref
+					ref = eventID
 					break
 				}
 			}
