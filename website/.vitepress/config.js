@@ -251,6 +251,49 @@ export default defineConfig({
           items: [{ text: 'JSON Schemas', link: '/specification/schema/' }]
         }
       ],
+      '/cli': [
+        {
+          text: 'CLI Tool',
+          items: [
+            { text: 'Overview', link: '/cli' }
+          ]
+        },
+        {
+          text: 'Archive Management',
+          items: [
+            { text: 'glx init', link: '/cli#glx-init' },
+            { text: 'glx validate', link: '/cli#glx-validate' },
+            { text: 'glx split', link: '/cli#glx-split' },
+            { text: 'glx join', link: '/cli#glx-join' }
+          ]
+        },
+        {
+          text: 'Import & Export',
+          items: [
+            { text: 'glx import', link: '/cli#glx-import' },
+            { text: 'glx export', link: '/cli#glx-export' }
+          ]
+        },
+        {
+          text: 'Exploration',
+          items: [
+            { text: 'glx query', link: '/cli#glx-query' },
+            { text: 'glx vitals', link: '/cli#glx-vitals' },
+            { text: 'glx timeline', link: '/cli#glx-timeline' },
+            { text: 'glx summary', link: '/cli#glx-summary' },
+            { text: 'glx ancestors', link: '/cli#glx-ancestors' },
+            { text: 'glx descendants', link: '/cli#glx-descendants' },
+            { text: 'glx cite', link: '/cli#glx-cite' }
+          ]
+        },
+        {
+          text: 'Analysis',
+          items: [
+            { text: 'glx stats', link: '/cli#glx-stats' },
+            { text: 'glx places', link: '/cli#glx-places' }
+          ]
+        }
+      ],
       '/guides/': [
         {
           text: 'User Guides',
