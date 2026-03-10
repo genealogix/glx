@@ -31,6 +31,12 @@ func TestExtractFirstYear(t *testing.T) {
 		{"BET 1880 AND 1890", 1880},
 		{"", 0},
 		{"unknown", 0},
+		{"800", 800},
+		{"476", 476},
+		{"ABT 476", 476},
+		{"BET 900 AND 1000", 900},
+		{"15 MAR 800", 800},
+		{"5 JAN 476", 476},
 	}
 
 	for _, tt := range tests {

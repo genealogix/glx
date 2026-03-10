@@ -417,22 +417,42 @@ func sortTimelineEntries(entries []timelineEntry) {
 	})
 }
 
-// dateSortKeyRegexp matches the first date-like portion in a date string.
-var dateSortKeyRegexp = regexp.MustCompile(`(\d{4}(?:-\d{2}(?:-\d{2})?)?)`)
+// timelineDayMonthRegexp matches day-of-month followed by a month abbreviation
+// (e.g., "15 MAR"). Used to strip day values before year extraction.
+var timelineDayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b`)
+
+// dateSortKeyRegexp matches a 1–4 digit year optionally followed by -MM and -DD,
+// using word boundaries to avoid partial matches inside longer digit sequences.
+var dateSortKeyRegexp = regexp.MustCompile(`\b(\d{1,4}(?:-\d{2}(?:-\d{2})?)?)\b`)
 
 // dateSortKey extracts a sortable date string from a GLX date value.
-// Strips qualifiers like ABT, BEF, AFT, BET...AND.
+// Strips qualifiers like ABT, BEF, AFT, BET...AND and day-of-month values.
+// Years are zero-padded to 4 digits for correct chronological sorting.
 // Returns "\xff" for empty/unparseable dates (sorts last).
 func dateSortKey(dateStr string) string {
 	if dateStr == "" {
 		return "\xff"
 	}
 
-	match := dateSortKeyRegexp.FindString(dateStr)
+	cleaned := timelineDayMonthRegexp.ReplaceAllString(dateStr, "")
+
+	match := dateSortKeyRegexp.FindString(cleaned)
 	if match == "" {
 		return "\xff"
 	}
 
+	// Zero-pad the year portion to 4 digits for proper string sorting.
+	if idx := strings.Index(match, "-"); idx >= 0 {
+		year := match[:idx]
+		rest := match[idx:]
+		for len(year) < 4 {
+			year = "0" + year
+		}
+		return year + rest
+	}
+	for len(match) < 4 {
+		match = "0" + match
+	}
 	return match
 }
 
