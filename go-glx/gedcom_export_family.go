@@ -574,16 +574,6 @@ func extractParentChildIDs(rel *Relationship) (parentID, childID string) {
 	return parentID, childID
 }
 
-// findFamilyForParent finds the family index for a parent, preferring the first marriage family.
-func findFamilyForParent(parentID string, parentToFamilies map[string][]int) int {
-	familyIndices, ok := parentToFamilies[parentID]
-	if !ok || len(familyIndices) == 0 {
-		return -1
-	}
-
-	return familyIndices[0]
-}
-
 // createSyntheticFamily creates a single-parent FAM for a parent without a marriage.
 func createSyntheticFamily(parentID string, expCtx *ExportContext, parentToFamilies map[string][]int) int {
 	gender := getPersonGender(parentID, expCtx)
