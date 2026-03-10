@@ -16,6 +16,7 @@ package glx
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -428,9 +429,18 @@ func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCO
 
 // parseGEDCOMLines parses GEDCOM file line by line
 func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
+	// Read all bytes so we can detect the CHAR encoding header and convert
+	// non-UTF-8 encodings (ANSI/CP1252, ANSEL, ISO-8859-1) before parsing.
+	rawBytes, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("reading input: %w", err)
+	}
+
+	rawBytes = convertToUTF8(rawBytes)
+
 	var lines []*GEDCOMLine
 
-	scanner := bufio.NewScanner(reader)
+	scanner := bufio.NewScanner(bytes.NewReader(rawBytes))
 	// Handle all line ending formats: LF, CRLF, and CR (old Mac Classic)
 	scanner.Split(scanLinesAllEndings)
 
