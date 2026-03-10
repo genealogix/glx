@@ -59,6 +59,8 @@ func init() {
 	rootCmd.AddCommand(statsCmd)
 	rootCmd.AddCommand(ancestorsCmd)
 	rootCmd.AddCommand(descendantsCmd)
+	rootCmd.AddCommand(summaryCmd)
+	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
 }
 
@@ -635,6 +637,97 @@ func init() {
 
 func runDescendants(_ *cobra.Command, args []string) error {
 	return showDescendants(descendantsArchive, args[0], descendantsMaxGen)
+}
+
+// ============================================================================
+// Summary Command
+// ============================================================================
+
+var summaryArchive string
+
+var summaryCmd = &cobra.Command{
+	Use:   "summary <person>",
+	Short: "Show a comprehensive profile for a person",
+	Long: `Display a full summary of a person including identity, vital events,
+life events, family relationships, other relationships, and an
+auto-generated life history narrative.
+
+The person can be specified by exact ID (e.g., "person-abc123") or by
+name substring (case-insensitive). If multiple persons match, all
+matches are listed for disambiguation.
+
+Sections displayed:
+  - Identity: name, sex, alternate names (birth, married, maiden, AKA, etc.)
+  - Vital Events: birth, christening, death, burial
+  - Life Events: census, immigration, naturalization, military service, etc.
+  - Family: spouse(s) with marriage info, parents, siblings
+  - Relationships: godparent, neighbor, household, employment, etc.
+  - Life History: auto-generated biographical narrative`,
+	Example: `  # Summary by person ID
+  glx summary person-abc123
+
+  # Summary by name search
+  glx summary "Mary Lane"
+
+  # Summary in a specific archive
+  glx summary "John Smith" --archive my-family-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runSummary,
+}
+
+func init() {
+	summaryCmd.Flags().StringVarP(&summaryArchive, "archive", "a", ".", "Archive path (directory or single file)")
+}
+
+func runSummary(_ *cobra.Command, args []string) error {
+	return showSummary(summaryArchive, args[0])
+}
+
+// ============================================================================
+// Timeline Command
+// ============================================================================
+
+var (
+	timelineArchive  string
+	timelineNoFamily bool
+)
+
+var timelineCmd = &cobra.Command{
+	Use:   "timeline <person>",
+	Short: "Show chronological timeline of events for a person",
+	Long: `Display a chronological timeline of all events in a person's life.
+
+Shows direct events (where the person is a participant) and family events
+(spouse births/deaths, children's births/deaths, parent deaths) discovered
+through relationship traversal.
+
+The person argument can be an exact entity ID (e.g., person-john-smith)
+or a name to search for (e.g., "John Smith"). If the name matches
+multiple persons, all matches are listed for disambiguation.
+
+Use --no-family to exclude family events and show only direct events.`,
+	Example: `  # Timeline by person ID
+  glx timeline person-john-smith
+
+  # Timeline by name
+  glx timeline "John Smith"
+
+  # Direct events only (no family events)
+  glx timeline "John Smith" --no-family
+
+  # Specify archive path
+  glx timeline "John Smith" --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runTimeline,
+}
+
+func init() {
+	timelineCmd.Flags().StringVarP(&timelineArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	timelineCmd.Flags().BoolVar(&timelineNoFamily, "no-family", false, "Exclude family events (show only direct events)")
+}
+
+func runTimeline(_ *cobra.Command, args []string) error {
+	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
 }
 
 // ============================================================================

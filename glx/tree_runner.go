@@ -23,9 +23,9 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// parentChildRelTypes is the set of relationship types that represent
+// treeParentChildRelTypes is the set of relationship types that represent
 // parent-child connections for tree traversal.
-var parentChildRelTypes = map[string]bool{
+var treeParentChildRelTypes = map[string]bool{
 	"parent_child":            true,
 	"biological_parent_child": true,
 	"adoptive_parent_child":   true,
@@ -42,8 +42,8 @@ type treeNode struct {
 	Children []*treeNode
 }
 
-// relatedPerson holds a person ID and the relationship type connecting them.
-type relatedPerson struct {
+// treeRelPerson holds a person ID and the relationship type connecting them.
+type treeRelPerson struct {
 	personID string
 	relType  string
 }
@@ -52,8 +52,8 @@ type relatedPerson struct {
 // tree traversal without repeated O(relationships) scans.
 type treeContext struct {
 	archive  *glxlib.GLXFile
-	parents  map[string][]relatedPerson // child ID → parents
-	children map[string][]relatedPerson // parent ID → children
+	parents  map[string][]treeRelPerson // child ID → parents
+	children map[string][]treeRelPerson // parent ID → children
 }
 
 // newTreeContext builds a treeContext with precomputed parent/child indexes.
@@ -67,11 +67,11 @@ func newTreeContext(archive *glxlib.GLXFile) *treeContext {
 
 // buildParentIndex scans all relationships once and returns a map from
 // child ID to their parents.
-func buildParentIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
-	index := make(map[string][]relatedPerson)
+func buildParentIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
+	index := make(map[string][]treeRelPerson)
 
 	for _, rel := range archive.Relationships {
-		if !parentChildRelTypes[rel.Type] {
+		if !treeParentChildRelTypes[rel.Type] {
 			continue
 		}
 
@@ -88,7 +88,7 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
 
 		for _, childID := range childIDs {
 			for _, parentID := range parentIDs {
-				index[childID] = append(index[childID], relatedPerson{
+				index[childID] = append(index[childID], treeRelPerson{
 					personID: parentID,
 					relType:  rel.Type,
 				})
@@ -105,11 +105,11 @@ func buildParentIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
 
 // buildChildIndex scans all relationships once and returns a map from
 // parent ID to their children.
-func buildChildIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
-	index := make(map[string][]relatedPerson)
+func buildChildIndex(archive *glxlib.GLXFile) map[string][]treeRelPerson {
+	index := make(map[string][]treeRelPerson)
 
 	for _, rel := range archive.Relationships {
-		if !parentChildRelTypes[rel.Type] {
+		if !treeParentChildRelTypes[rel.Type] {
 			continue
 		}
 
@@ -126,7 +126,7 @@ func buildChildIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
 
 		for _, parentID := range parentIDs {
 			for _, childID := range childIDs {
-				index[parentID] = append(index[parentID], relatedPerson{
+				index[parentID] = append(index[parentID], treeRelPerson{
 					personID: childID,
 					relType:  rel.Type,
 				})
@@ -142,12 +142,12 @@ func buildChildIndex(archive *glxlib.GLXFile) map[string][]relatedPerson {
 }
 
 // findParents returns the parents of a person using the prebuilt index.
-func findParents(tc *treeContext, personID string) []relatedPerson {
+func findParents(tc *treeContext, personID string) []treeRelPerson {
 	return tc.parents[personID]
 }
 
 // findChildren returns the children of a person using the prebuilt index.
-func findChildren(tc *treeContext, personID string) []relatedPerson {
+func findChildren(tc *treeContext, personID string) []treeRelPerson {
 	return tc.children[personID]
 }
 
@@ -264,7 +264,7 @@ func buildDescendantTree(tc *treeContext, personID string, maxGen, depth int, vi
 }
 
 // sortRelatedPersons sorts related persons by person ID for deterministic output.
-func sortRelatedPersons(persons []relatedPerson) {
+func sortRelatedPersons(persons []treeRelPerson) {
 	sort.Slice(persons, func(i, j int) bool {
 		return persons[i].personID < persons[j].personID
 	})
