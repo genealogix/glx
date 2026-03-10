@@ -69,6 +69,22 @@ func TestParseGEDCOMLine(t *testing.T) {
 			wantValue: "",
 		},
 		{
+			name:      "date value starting with same digit as level",
+			line:      "2 DATE 2 AUG 1944",
+			wantLevel: 2,
+			wantXRef:  "",
+			wantTag:   "DATE",
+			wantValue: "2 AUG 1944",
+		},
+		{
+			name:      "tag name appearing inside xref",
+			line:      "0 @NOTE1@ NOTE This is a note",
+			wantLevel: 0,
+			wantXRef:  "@NOTE1@",
+			wantTag:   "NOTE",
+			wantValue: "This is a note",
+		},
+		{
 			name:        "invalid - no level",
 			line:        "INVALID",
 			expectError: true,
