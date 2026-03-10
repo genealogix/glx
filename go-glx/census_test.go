@@ -233,6 +233,12 @@ func TestBuildCensusEntities_ExplicitSourceID_NotFound(t *testing.T) {
 }
 
 func TestBuildCensusEntities_ExplicitPlaceID(t *testing.T) {
+	existing := &GLXFile{
+		Places: map[string]*Place{
+			"place-marion-county": {Name: "Marion County"},
+		},
+	}
+
 	tpl := &CensusTemplate{
 		Census: CensusData{
 			Year:     1860,
@@ -245,11 +251,29 @@ func TestBuildCensusEntities_ExplicitPlaceID(t *testing.T) {
 		},
 	}
 
-	result, err := BuildCensusEntities(tpl, nil)
+	result, err := BuildCensusEntities(tpl, existing)
 	require.NoError(t, err)
 
 	assert.Equal(t, "place-marion-county", result.PlaceID)
 	assert.Empty(t, result.Place, "should not create place when explicit ID given")
+}
+
+func TestBuildCensusEntities_ExplicitPlaceID_NotFound(t *testing.T) {
+	tpl := &CensusTemplate{
+		Census: CensusData{
+			Year:     1860,
+			Location: CensusLocation{PlaceID: "place-does-not-exist"},
+			Household: CensusHousehold{
+				Members: []CensusHouseholdMember{
+					{Name: "Daniel Lane"},
+				},
+			},
+		},
+	}
+
+	_, err := BuildCensusEntities(tpl, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "does not exist")
 }
 
 func TestBuildCensusEntities_Citation(t *testing.T) {
@@ -664,4 +688,114 @@ func TestBuildCensusEntities_NoAgeSkipsBirthYearAssertion(t *testing.T) {
 	// Should still have residence assertion
 	_, hasResidence := result.Assertions["assertion-daniel-lane-residence-1860"]
 	assert.True(t, hasResidence, "should have residence assertion regardless")
+}
+
+func TestBuildCensusEntities_NilTemplate(t *testing.T) {
+	_, err := BuildCensusEntities(nil, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "census template is required")
+}
+
+func TestBuildCensusEntities_DuplicateNamesInBatch(t *testing.T) {
+	tpl := &CensusTemplate{
+		Census: CensusData{
+			Year:     1850,
+			Location: CensusLocation{Place: "Ironton, Ohio"},
+			Household: CensusHousehold{
+				Members: []CensusHouseholdMember{
+					{Name: "John Smith", Age: intPtr(40), Sex: "male"},
+					{Name: "John Smith", Age: intPtr(12), Sex: "male"},
+				},
+			},
+		},
+	}
+
+	result, err := BuildCensusEntities(tpl, nil)
+	require.NoError(t, err)
+
+	// Should create 2 distinct persons, not merge them
+	assert.Len(t, result.Persons, 2)
+	assert.Len(t, result.NewPersonIDs, 2)
+	assert.NotEqual(t, result.NewPersonIDs[0], result.NewPersonIDs[1],
+		"duplicate names should get distinct person IDs")
+}
+
+func TestBuildCensusEntities_PersonIDCollisionWithExisting(t *testing.T) {
+	// Archive has person-john-smith but it's a DIFFERENT John Smith
+	// (name search won't match because it's "Jonathan Smith")
+	existing := &GLXFile{
+		Persons: map[string]*Person{
+			"person-john-smith": {
+				Properties: map[string]any{
+					PersonPropertyName: "Jonathan Smith",
+				},
+			},
+		},
+	}
+
+	tpl := &CensusTemplate{
+		Census: CensusData{
+			Year:     1850,
+			Location: CensusLocation{Place: "Ironton, Ohio"},
+			Household: CensusHousehold{
+				Members: []CensusHouseholdMember{
+					{Name: "John Smith"},
+				},
+			},
+		},
+	}
+
+	result, err := BuildCensusEntities(tpl, existing)
+	require.NoError(t, err)
+
+	// Should create a new person with a disambiguated ID
+	assert.Len(t, result.Persons, 1)
+	assert.Len(t, result.NewPersonIDs, 1)
+	assert.NotEqual(t, "person-john-smith", result.NewPersonIDs[0],
+		"should not reuse existing person ID for a different individual")
+}
+
+func TestBuildCensusEntities_ResolveBirthplaceFromExisting(t *testing.T) {
+	existing := &GLXFile{
+		Places: map[string]*Place{
+			"place-virginia": {Name: "Virginia"},
+		},
+	}
+
+	tpl := &CensusTemplate{
+		Census: CensusData{
+			Year:     1860,
+			Location: CensusLocation{Place: "Marion County, Florida"},
+			Household: CensusHousehold{
+				Members: []CensusHouseholdMember{
+					{Name: "Daniel Lane", Birthplace: "Virginia"},
+				},
+			},
+		},
+	}
+
+	result, err := BuildCensusEntities(tpl, existing)
+	require.NoError(t, err)
+
+	// Birthplace assertion should reference the existing place ID
+	bpAssertion := result.Assertions["assertion-daniel-lane-birthplace-1860"]
+	require.NotNil(t, bpAssertion)
+	assert.Equal(t, "place-virginia", bpAssertion.Value,
+		"should resolve birthplace against existing archive places")
+}
+
+func TestTruncateID(t *testing.T) {
+	assert.Equal(t, "short-id", truncateID("short-id"))
+	long := "prefix-1860-census-this-is-a-very-long-place-name-that-exceeds-the-sixty-four-character-limit"
+	result := truncateID(long)
+	assert.LessOrEqual(t, len(result), 64)
+	assert.False(t, result[len(result)-1] == '-', "truncated ID should not end with hyphen")
+}
+
+func TestCensusSlugIDWithHousehold(t *testing.T) {
+	loc := CensusLocation{Place: "Marion County, Florida"}
+	id := censusSlugIDWithHousehold("event", 1860, loc, "Lane")
+	assert.Contains(t, id, "lane")
+	assert.Contains(t, id, "1860")
+	assert.LessOrEqual(t, len(id), 64)
 }

@@ -140,8 +140,9 @@ func BuildCensusEntities(template *CensusTemplate, existing *GLXFile) (*CensusRe
 	}
 	result.SourceID = sourceID
 
-	// 3. Create citation
-	citationID := censusSlugID("citation", census.Year, census.Location)
+	// 3. Create citation (include household surname for uniqueness)
+	surname := lastWord(census.Household.Members[0].Name)
+	citationID := censusSlugIDWithHousehold("citation", census.Year, census.Location, surname)
 	result.CitationID = citationID
 	result.Citation[citationID] = buildCensusCitation(census, sourceID)
 
@@ -151,19 +152,22 @@ func BuildCensusEntities(template *CensusTemplate, existing *GLXFile) (*CensusRe
 		return nil, err
 	}
 
-	// 5. Create census event
-	eventID := censusSlugID("event", census.Year, census.Location)
+	// 5. Create census event (include household surname for uniqueness)
+	eventID := censusSlugIDWithHousehold("event", census.Year, census.Location, surname)
 	result.EventID = eventID
 	result.Event[eventID] = buildCensusEvent(census, placeID, participants)
 
 	// 6. Generate assertions for each member (using resolved IDs, not re-derived)
-	generateCensusAssertions(census, resolvedIDs, placeID, citationID, result)
+	generateCensusAssertions(census, resolvedIDs, placeID, citationID, existing, result)
 
 	return result, nil
 }
 
 // validateCensusTemplate checks for required fields.
 func validateCensusTemplate(template *CensusTemplate) error {
+	if template == nil {
+		return fmt.Errorf("census template is required")
+	}
 	c := &template.Census
 	if c.Year == 0 {
 		return fmt.Errorf("census.year is required")
@@ -192,7 +196,7 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 				return loc.PlaceID, nil
 			}
 		}
-		return loc.PlaceID, nil // trust user-provided ID even if not found
+		return "", fmt.Errorf("census.location.place_id %q does not exist in the loaded archive", loc.PlaceID)
 	}
 
 	// Search by name
@@ -268,7 +272,10 @@ func buildCensusCitation(census *CensusData, sourceID string) *Citation {
 		props["text_from_source"] = census.Citation.TextFromSource
 	}
 	if census.Citation.CitationText != "" {
-		props["citation_text"] = census.Citation.CitationText
+		// Map citation_text to text_from_source (standard property) as a fallback
+		if census.Citation.TextFromSource == "" {
+			props["text_from_source"] = census.Citation.CitationText
+		}
 	}
 	if census.Citation.URL != "" {
 		props["url"] = census.Citation.URL
@@ -346,44 +353,30 @@ func resolveCensusPerson(member CensusHouseholdMember, existing *GLXFile, result
 		return "", false, fmt.Errorf("person_id %q not found in archive", member.PersonID)
 	}
 
-	// Search by name in existing archive
+	// Search by exact name in existing archive (substring matches are
+	// treated as ambiguous — require explicit person_id to disambiguate)
 	if existing.Persons != nil {
-		lowerName := strings.ToLower(member.Name)
-		var matches []string
+		var exactMatches []string
 		for id, person := range existing.Persons {
 			if person == nil {
 				continue
 			}
 			displayName := PersonDisplayName(person)
 			if strings.EqualFold(displayName, member.Name) {
-				// Exact match — use immediately
-				return id, false, nil
-			}
-			if strings.Contains(strings.ToLower(displayName), lowerName) {
-				matches = append(matches, id)
+				exactMatches = append(exactMatches, id)
 			}
 		}
-		if len(matches) == 1 {
-			return matches[0], false, nil
+		if len(exactMatches) == 1 {
+			return exactMatches[0], false, nil
 		}
-		if len(matches) > 1 {
+		if len(exactMatches) > 1 {
 			return "", false, fmt.Errorf("ambiguous name %q matches %d persons: %s (use person_id to disambiguate)",
-				member.Name, len(matches), strings.Join(matches, ", "))
+				member.Name, len(exactMatches), strings.Join(exactMatches, ", "))
 		}
 	}
 
-	// Create new person
-	personID := Slugify("person", member.Name)
-
-	// Deduplicate ID against existing archive and current batch
-	if existing.Persons != nil {
-		if _, exists := existing.Persons[personID]; exists {
-			return personID, false, nil // treat as match
-		}
-	}
-	if _, exists := result.Persons[personID]; exists {
-		return personID, false, nil // already created in this batch
-	}
+	// Create new person with unique ID
+	personID := uniquePersonID(Slugify("person", member.Name), existing, result)
 
 	person := &Person{
 		Properties: map[string]any{
@@ -435,7 +428,7 @@ func buildCensusEvent(census *CensusData, placeID string, participants []Partici
 // generateCensusAssertions creates assertions for each household member.
 // resolvedIDs contains the actual person ID for each member (resolved during
 // person resolution), avoiding re-derivation that could mismatch existing IDs.
-func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID, citationID string, result *CensusResult) {
+func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID, citationID string, existing *GLXFile, result *CensusResult) {
 	yearStr := fmt.Sprintf("%d", census.Year)
 
 	for i, member := range census.Household.Members {
@@ -460,8 +453,8 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 		// Birthplace
 		birthplaceRef := member.BirthplaceID
 		if birthplaceRef == "" && member.Birthplace != "" {
-			// Try to find matching place in the result or use as string
-			birthplaceRef = resolveBirthplace(member.Birthplace, result)
+			// Try to find matching place in existing archive and current batch
+			birthplaceRef = resolveBirthplace(member.Birthplace, existing, result)
 		}
 		if birthplaceRef != "" {
 			assertionID := fmt.Sprintf("assertion-%s-birthplace-%s", slug, yearStr)
@@ -532,10 +525,18 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 	}
 }
 
-// resolveBirthplace attempts to match a birthplace name to a place ID,
-// or returns the name as-is if no match.
-func resolveBirthplace(name string, result *CensusResult) string {
-	// Check newly created places
+// resolveBirthplace attempts to match a birthplace name to a place ID
+// in the existing archive and current batch, or returns the name as-is.
+func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) string {
+	// Check existing archive places
+	if existing != nil && existing.Places != nil {
+		for id, place := range existing.Places {
+			if place != nil && strings.EqualFold(place.Name, name) {
+				return id
+			}
+		}
+	}
+	// Check newly created places in current batch
 	for id, place := range result.Place {
 		if place != nil && strings.EqualFold(place.Name, name) {
 			return id
@@ -550,7 +551,45 @@ func censusSlugID(prefix string, year int, loc CensusLocation) string {
 	if name == "" {
 		name = loc.PlaceID
 	}
-	return fmt.Sprintf("%s-%d-census-%s", prefix, year, slugifyString(name))
+	return truncateID(fmt.Sprintf("%s-%d-census-%s", prefix, year, slugifyString(name)))
+}
+
+// censusSlugIDWithHousehold generates a deterministic entity ID that includes
+// the household surname for uniqueness across multiple households at the same place/year.
+func censusSlugIDWithHousehold(prefix string, year int, loc CensusLocation, surname string) string {
+	name := loc.Place
+	if name == "" {
+		name = loc.PlaceID
+	}
+	return truncateID(fmt.Sprintf("%s-%d-census-%s-%s", prefix, year, slugifyString(name), slugifyString(surname)))
+}
+
+// truncateID truncates an entity ID to the 64-character maximum.
+func truncateID(id string) string {
+	if len(id) <= 64 {
+		return id
+	}
+	return strings.TrimRight(id[:64], "-")
+}
+
+// uniquePersonID returns a person ID that doesn't collide with existing archive
+// or current batch entries. If baseID already exists, appends an incrementing suffix.
+func uniquePersonID(baseID string, existing *GLXFile, result *CensusResult) string {
+	candidate := baseID
+	for suffix := 2; ; suffix++ {
+		existsInArchive := existing != nil && existing.Persons != nil
+		if existsInArchive {
+			if _, ok := existing.Persons[candidate]; ok {
+				candidate = fmt.Sprintf("%s-%d", baseID, suffix)
+				continue
+			}
+		}
+		if _, ok := result.Persons[candidate]; ok {
+			candidate = fmt.Sprintf("%s-%d", baseID, suffix)
+			continue
+		}
+		return truncateID(candidate)
+	}
 }
 
 // Slugify generates a deterministic entity ID from a prefix and name.

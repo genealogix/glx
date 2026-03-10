@@ -78,25 +78,26 @@ func readCensusTemplate(path string) (*glxlib.CensusTemplate, error) {
 	return &tpl, nil
 }
 
-// loadArchiveForCensus loads an archive from a path (directory or single file).
+// loadArchiveForCensus loads an archive from a directory path.
+// Census import writes multi-file output, so single-file archives are not supported.
 func loadArchiveForCensus(path string) (*glxlib.GLXFile, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access path: %w", err)
 	}
 
-	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveWithOptions(path, false)
-		if loadErr != nil {
-			return nil, fmt.Errorf("failed to load archive: %w", loadErr)
-		}
-		for _, d := range duplicates {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
-		}
-		return archive, nil
+	if !info.IsDir() {
+		return nil, fmt.Errorf("census requires an archive directory, but %s is not a directory", path)
 	}
 
-	return readSingleFileArchive(path, false)
+	archive, duplicates, loadErr := LoadArchiveWithOptions(path, false)
+	if loadErr != nil {
+		return nil, fmt.Errorf("failed to load archive: %w", loadErr)
+	}
+	for _, d := range duplicates {
+		fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
+	}
+	return archive, nil
 }
 
 // writeCensusEntities serializes the generated entities and writes them to
@@ -128,6 +129,14 @@ func writeCensusEntities(archivePath string, result *glxlib.CensusResult) (int, 
 			continue
 		}
 		entityFiles[relPath] = data
+	}
+
+	// Warn about any existing files that will be overwritten
+	for relPath := range entityFiles {
+		absPath := archivePath + "/" + relPath
+		if _, err := os.Stat(absPath); err == nil {
+			fmt.Fprintf(os.Stderr, "Warning: overwriting existing file %s\n", relPath)
+		}
 	}
 
 	if err := writeFilesToDir(archivePath, entityFiles); err != nil {
