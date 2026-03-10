@@ -256,7 +256,14 @@ var severityRank = map[string]int{
 // sortIssues sorts issues by severity (high first), then by person/entity ID.
 func sortIssues(issues []AnalysisIssue) {
 	sort.SliceStable(issues, func(i, j int) bool {
-		ri, rj := severityRank[issues[i].Severity], severityRank[issues[j].Severity]
+		ri, okI := severityRank[issues[i].Severity]
+		if !okI {
+			ri = len(severityRank)
+		}
+		rj, okJ := severityRank[issues[j].Severity]
+		if !okJ {
+			rj = len(severityRank)
+		}
 		if ri != rj {
 			return ri < rj
 		}

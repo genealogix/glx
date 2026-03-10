@@ -26,6 +26,9 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
 
 	personEvents := buildPersonEventIndex(archive)
+	childHasParents := buildChildHasParentsIndex(archive)
+	hasSpouseRel := buildHasSpouseRelIndex(archive)
+	hasMarriageEvent := buildHasMarriageEventIndex(archive)
 
 	for _, id := range sortedPersonIDs(archive.Persons) {
 		person := archive.Persons[id]
@@ -37,12 +40,79 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 
 		issues = append(issues, checkMissingBirth(id, name, person)...)
 		issues = append(issues, checkMissingDeath(id, name, person)...)
-		issues = append(issues, checkNoParents(id, name, archive)...)
+		if !childHasParents[id] {
+			issues = append(issues, AnalysisIssue{
+				Category: "gap",
+				Severity: "medium",
+				Person:   id,
+				Message:  fmt.Sprintf("%s — no parents (no parent_child relationship as child)", name),
+			})
+		}
 		issues = append(issues, checkNoEvents(id, name, personEvents)...)
-		issues = append(issues, checkNoMarriageEvent(id, name, archive)...)
+		if hasSpouseRel[id] && !hasMarriageEvent[id] {
+			issues = append(issues, AnalysisIssue{
+				Category: "gap",
+				Severity: "medium",
+				Person:   id,
+				Message:  fmt.Sprintf("%s — no marriage event (spouse relationship exists but no date/place)", name),
+			})
+		}
 	}
 
 	return issues
+}
+
+// buildChildHasParentsIndex returns a set of person IDs that appear as a child
+// in at least one parent-child relationship.
+func buildChildHasParentsIndex(archive *glxlib.GLXFile) map[string]bool {
+	index := make(map[string]bool)
+	for _, rel := range archive.Relationships {
+		if rel == nil || !isParentChildType(rel.Type) {
+			continue
+		}
+		for _, p := range rel.Participants {
+			if p.Role == glxlib.ParticipantRoleChild {
+				index[p.Person] = true
+			}
+		}
+	}
+	return index
+}
+
+// buildHasSpouseRelIndex returns a set of person IDs that participate in a
+// marriage or partner relationship.
+func buildHasSpouseRelIndex(archive *glxlib.GLXFile) map[string]bool {
+	index := make(map[string]bool)
+	for _, rel := range archive.Relationships {
+		if rel == nil {
+			continue
+		}
+		if rel.Type != glxlib.RelationshipTypeMarriage && rel.Type != glxlib.RelationshipTypePartner {
+			continue
+		}
+		for _, p := range rel.Participants {
+			index[p.Person] = true
+		}
+	}
+	return index
+}
+
+// buildHasMarriageEventIndex returns a set of person IDs that participate in a
+// marriage event with a date or place.
+func buildHasMarriageEventIndex(archive *glxlib.GLXFile) map[string]bool {
+	index := make(map[string]bool)
+	for _, event := range archive.Events {
+		if event == nil || event.Type != glxlib.EventTypeMarriage {
+			continue
+		}
+		if event.Date == "" && event.PlaceID == "" {
+			continue
+		}
+		for _, p := range event.Participants {
+			index[p.Person] = true
+		}
+	}
+	return index
 }
 
 // checkMissingBirth reports persons with no birth date or place.
@@ -92,30 +162,6 @@ func checkMissingDeath(id, name string, person *glxlib.Person) []AnalysisIssue {
 	}}
 }
 
-// checkNoParents reports persons with no parent_child relationship as child.
-func checkNoParents(id, name string, archive *glxlib.GLXFile) []AnalysisIssue {
-	for _, rel := range archive.Relationships {
-		if rel == nil {
-			continue
-		}
-		if !isParentChildType(rel.Type) {
-			continue
-		}
-		for _, p := range rel.Participants {
-			if p.Person == id && p.Role == glxlib.ParticipantRoleChild {
-				return nil
-			}
-		}
-	}
-
-	return []AnalysisIssue{{
-		Category: "gap",
-		Severity: "medium",
-		Person:   id,
-		Message:  fmt.Sprintf("%s — no parents (no parent_child relationship as child)", name),
-	}}
-}
-
 // checkNoEvents reports persons who participate in zero events.
 func checkNoEvents(id, name string, personEvents map[string]int) []AnalysisIssue {
 	if personEvents[id] > 0 {
@@ -127,55 +173,6 @@ func checkNoEvents(id, name string, personEvents map[string]int) []AnalysisIssue
 		Severity: "high",
 		Person:   id,
 		Message:  fmt.Sprintf("%s — no events (person participates in zero events)", name),
-	}}
-}
-
-// checkNoMarriageEvent reports persons who have a spouse relationship but
-// no marriage event with a date/place.
-func checkNoMarriageEvent(id, name string, archive *glxlib.GLXFile) []AnalysisIssue {
-	hasSpouse := false
-	for _, rel := range archive.Relationships {
-		if rel == nil {
-			continue
-		}
-		if rel.Type != glxlib.RelationshipTypeMarriage && rel.Type != glxlib.RelationshipTypePartner {
-			continue
-		}
-		for _, p := range rel.Participants {
-			if p.Person == id {
-				hasSpouse = true
-				break
-			}
-		}
-		if hasSpouse {
-			break
-		}
-	}
-
-	if !hasSpouse {
-		return nil
-	}
-
-	// Check if there's a marriage event for this person
-	for _, event := range archive.Events {
-		if event == nil {
-			continue
-		}
-		if event.Type != glxlib.EventTypeMarriage {
-			continue
-		}
-		for _, p := range event.Participants {
-			if p.Person == id && (event.Date != "" || event.PlaceID != "") {
-				return nil
-			}
-		}
-	}
-
-	return []AnalysisIssue{{
-		Category: "gap",
-		Severity: "medium",
-		Person:   id,
-		Message:  fmt.Sprintf("%s — no marriage event (spouse relationship exists but no date/place)", name),
 	}}
 }
 
