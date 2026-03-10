@@ -1312,3 +1312,50 @@ func TestImportFamilyEvent_UnmappedTag(t *testing.T) {
 	}
 	assert.True(t, foundGeneric, "EVEN on family should create a generic event")
 }
+
+func TestImportOCCU_EmptyValueWithPLACFallback(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 OCCU
+2 PLAC Vienna, Austria
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	for _, person := range glxFile.Persons {
+		occ, ok := person.Properties[PersonPropertyOccupation]
+		if !ok {
+			continue
+		}
+		assert.Equal(t, "Vienna, Austria", occ, "Empty OCCU with PLAC sub-record should use place as occupation value")
+		return
+	}
+	t.Fatal("expected person with occupation property")
+}
+
+func TestImportHeadNote_StoredInMetadata(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE This file was exported from MyApp.
+0 @I1@ INDI
+1 NAME Jane /Doe/
+1 SEX F
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	require.NotNil(t, glxFile.ImportMetadata, "ImportMetadata should be set")
+	assert.Equal(t, "This file was exported from MyApp.", glxFile.ImportMetadata.Notes,
+		"HEAD-level NOTE should be stored in ImportMetadata.Notes")
+}

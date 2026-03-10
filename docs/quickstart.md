@@ -21,6 +21,8 @@ See the [Migration from GEDCOM](/guides/migration-from-gedcom) guide to import y
 - Documenting evidence with sources, citations, and assertions
 - Using Git for version control
 - Customizing vocabularies for your research domain
+- Exploring your data with vitals, timeline, summary, and tree commands
+- Exporting back to GEDCOM for sharing with other software
 
 ## Prerequisites
 
@@ -289,6 +291,47 @@ GLX adapts to YOUR research domain:
 - **Maritime History**: Document voyages and naval careers
 - **Religious Studies**: Record ordinations, pilgrimages, and church roles
 - **And more**: Any domain with people, events, and relationships
+
+## Step 11: Explore Your Archive
+
+Once you have data in your archive, the CLI offers several commands to explore it:
+
+```bash
+# Look up vital records for a person (by name or ID)
+glx vitals "John Smith"
+
+# Show a chronological timeline of events
+glx timeline "John Smith"
+
+# Display a comprehensive person profile with life history
+glx summary "John Smith"
+
+# Display ancestor and descendant trees
+glx ancestors person-john-smith
+glx descendants person-john-smith --generations 3
+
+# Generate formatted citation text from structured data
+glx cite citation-birth-entry
+
+# Query and filter entities
+glx query persons --name "Smith"
+glx query events --type birth
+glx query assertions --source source-parish-register
+```
+
+## Step 12: Export to GEDCOM
+
+If you need to share your archive with traditional genealogy software, export it back to GEDCOM:
+
+```bash
+# Export to GEDCOM 5.5.1 (default)
+glx export . -o my-family.ged
+
+# Export to GEDCOM 7.0
+glx export . -o my-family.ged --format 70
+```
+
+See the [CLI reference](/cli) for full documentation of all commands.
 
 ## Next Steps
 

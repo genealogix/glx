@@ -91,6 +91,12 @@ Across all files in an archive, the validator checks:
 **Warnings (Soft Failures):**
 - Unknown properties (not defined in property vocabularies) generate warnings
 - Unknown assertion properties (not defined in property vocabularies) generate warnings
+- Temporal consistency issues generate warnings:
+  - Death year before birth year
+  - Parent born after child (in parent-child relationships)
+  - Marriage event before a participant's birth year
+
+> **Note:** Temporal checks are warnings rather than errors because dates in genealogical records are often estimates (e.g., `ABT 1850`). A flagged inconsistency may indicate a data entry error or simply imprecise dating.
 
 See [Vocabularies - Vocabulary Validation](4-entity-types/vocabularies#vocabulary-validation) for complete validation policy.
 
