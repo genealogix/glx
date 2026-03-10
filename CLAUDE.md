@@ -347,6 +347,14 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 4. Add test case in `go-glx/gedcom_test.go`
 5. Update gap analysis if fixing a gap
 
+### Add a New CLI Command
+
+When adding a new CLI command, update all four documentation locations:
+1. `glx/README.md` — Features list, Quick Start examples, and full command reference section
+2. `website/.vitepress/config.js` — Add to appropriate sidebar menu group
+3. `docs/guides/hands-on-cli-guide.md` — Add walkthrough section with Westeros examples
+4. `CHANGELOG.md` — Add entry to the current unreleased beta section
+
 ### Debug GEDCOM Import
 
 1. Enable verbose logging: `ctx.Logger.LogInfo(...)`
@@ -411,6 +419,7 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 - Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.6]`)
 - Use appropriate subsections: Added, Changed, Fixed, Removed
 - Group related changes under descriptive headers (e.g., `#### Citation Entity`)
+- **Feature branch changelog hygiene**: Feature branches often have stale/mangled changelogs. To fix: `git checkout main -- CHANGELOG.md`, then add the branch's entries to the current unreleased section. Never try to merge a diverged changelog — restore and re-add.
 
 ### What NOT to Do
 
@@ -434,6 +443,12 @@ func validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, 
 - Entity IDs are random, so filenames are not deterministic
 - Must embed `_id` field in YAML to preserve entity IDs in multi-file format
 - Vocabularies must be written to multi-file archives
+
+### Feature Branch Merges
+
+- `glx/cli_commands.go` and `CHANGELOG.md` conflict frequently when merging main into feature branches
+- For `cli_commands.go`: keep both commands — add the new command's `rootCmd.AddCommand()` call and its full command block
+- For worktree-based branch work: use `/tmp/glx-<name>` as worktree path, build with `go build -o bin/glx ./glx` (Makefile requires vitepress)
 
 ### Testing
 
