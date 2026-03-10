@@ -181,3 +181,4 @@ func TestCollectVitals(t *testing.T) {
 		t.Errorf("unexpected Death: %+v", vitals[4])
 	}
 }
+
