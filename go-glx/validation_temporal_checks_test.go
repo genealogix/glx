@@ -35,9 +35,9 @@ func TestExtractFirstYear(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := extractFirstYear(tt.input)
+		got := ExtractFirstYear(tt.input)
 		if got != tt.want {
-			t.Errorf("extractFirstYear(%q) = %d, want %d", tt.input, got, tt.want)
+			t.Errorf("ExtractFirstYear(%q) = %d, want %d", tt.input, got, tt.want)
 		}
 	}
 }
@@ -85,9 +85,9 @@ func TestExtractPropertyYear(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractPropertyYear(tt.props, tt.key)
+			got := ExtractPropertyYear(tt.props, tt.key)
 			if got != tt.want {
-				t.Errorf("extractPropertyYear() = %d, want %d", got, tt.want)
+				t.Errorf("ExtractPropertyYear() = %d, want %d", got, tt.want)
 			}
 		})
 	}
