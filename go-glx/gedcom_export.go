@@ -382,12 +382,32 @@ func buildHEADRecord(expCtx *ExportContext) *GEDCOMRecord {
 		})
 	}
 
-	// HEAD-level NOTE (roundtrip preservation)
-	if expCtx.GLX.ImportMetadata != nil && expCtx.GLX.ImportMetadata.Notes != "" {
-		head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
-			Tag:   GedcomTagNote,
-			Value: expCtx.GLX.ImportMetadata.Notes,
-		})
+	// Import metadata roundtrip preservation
+	if meta := expCtx.GLX.ImportMetadata; meta != nil {
+		if meta.Language != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagLang,
+				Value: meta.Language,
+			})
+		}
+		if meta.SourceFile != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagFile,
+				Value: meta.SourceFile,
+			})
+		}
+		if meta.Copyright != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagCopr,
+				Value: meta.Copyright,
+			})
+		}
+		if meta.Notes != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNote,
+				Value: meta.Notes,
+			})
+		}
 	}
 
 	return head

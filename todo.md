@@ -6,15 +6,30 @@
 
 ## 🔴 Roundtrip Fidelity Gaps
 
-Known data loss during GED → GLX → GED roundtrip. See `fix/export-event-citations-and-family-reconstruction` branch for fixes already applied.
+Known data loss during GED → GLX → GED roundtrip. Steps to reproduce any: `glx import FILE.ged -o rt.glx && glx export rt.glx -o rt.ged`, then compare tag counts.
 
-- **~7 person notes lost in queen roundtrip**: Queen shows 1321→1314. NOTEs shift between INDI and FAM contexts during family reconstruction. Steps to reproduce: `glx import queen.ged -o q.glx && glx export q.glx -o q-rt.ged`, compare `grep -c "^1 NOTE"`.
-- **Multi-NOTE merging on import** (queen -7): Multiple NOTE records on a person are concatenated into one `person.Notes` string. On export, they become a single NOTE with CONT lines instead of separate NOTE records. Content is preserved but record boundaries are lost.
-- **RESI with no PLAC lost** (bullinger 26→19): RESI records with only DATE/TYPE/value but no PLAC sub-record cannot be stored in the place-reference residence model. 7 such records in bullinger are bare markers like `RESI Y` or `RESI\n2 TYPE married`.
+### Family Reconstruction
+
+- **Children lost in multi-child families** (queen CHIL 3655→3158, bullinger CHIL 628→617): Family reconstruction algorithm scatters children from multi-child families into separate single-child families. Original families with 5-15 children get compressed to max 5. Root cause: when a parent has multiple marriages, children aren't correctly assigned to the right family. Queen loses 497 children, bullinger loses 11.
+- **Extra FAMS references** (queen FAMS +124→-124, british-royalty FAMS +22): Synthetic single-parent families created during reconstruction generate FAMS references that didn't exist in the original.
 - **No-spouse FAM records with MARR dropped** (habsburg -145): FAM records with no HUSB/WIFE at all can't create marriage relationships (zero participants). These MARR events are silently dropped.
+
+### Notes
+
+- **Multi-NOTE merging on import** (queen NOTE -7, habsburg NOTE -76): Multiple NOTE records on a person/family are concatenated into one `Notes` string. On export, they become a single NOTE with CONT lines instead of separate NOTE records. Content is preserved but record boundaries are lost. Would require changing Notes from `string` to `[]string`.
+
+### Model Limitations
+
+- **RESI with no PLAC lost** (bullinger RESI 26→19): RESI records with only DATE/TYPE/value but no PLAC sub-record cannot be stored in the place-reference residence model. 7 such records in bullinger are bare markers like `RESI Y` or `RESI\n2 TYPE married`.
+- **FACT tag not imported** (bullinger -7): GEDCOM FACT records (e.g., `FACT P908 / TYPE Merged Gramps ID`) are not imported. Most are application-specific metadata (Gramps merge IDs, alias markers), not genealogical facts.
+
+### Minor / By Design
+
 - **Minor SOUR surplus** (bullinger +7, habsburg -108): Small SOUR count differences from assertions on dropped structures (e.g., RESI without PLAC) or citation deduplication during import.
 - **CONT line wrapping differences** (queen -167): Multiline text roundtrips with different CONT/CONC splitting than the original. Content is preserved, formatting differs.
 - **CHAN dates not exported**: GEDCOM CHAN (change timestamp) records aren't preserved through GLX. Design decision — change metadata, not genealogical data.
+- **Extension tags dropped**: Proprietary tags (_MSTAT, _UID, _NSTY, _MARNM, _FREL, _MREL, etc.) are silently dropped on import. By design — these are application-specific.
+- **HEAD DEST/SOUR.CORP not roundtripped**: DEST (receiving system) not imported. SOUR.CORP hardcoded to GLX on export (original source system info preserved in ImportMetadata but not re-emitted in HEAD).
 
 ## 🟡 Import Gaps
 

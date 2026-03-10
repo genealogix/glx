@@ -769,3 +769,117 @@ func TestImportMultipleOCCU_PreservesAll(t *testing.T) {
 		}
 	}
 }
+
+func TestImportFamilyEventType_Preserved(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 15 JUN 1950
+1 EVEN
+2 TYPE separation
+2 DATE 1965
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Find the generic event with event_subtype = "separation"
+	var foundSeparation bool
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeGeneric {
+			if st, ok := event.Properties["event_subtype"]; ok && st == "separation" {
+				foundSeparation = true
+				// Should have both spouses as participants
+				assert.GreaterOrEqual(t, len(event.Participants), 2,
+					"Family event should have both spouses as participants")
+				assert.Contains(t, string(event.Date), "1965")
+			}
+		}
+	}
+	assert.True(t, foundSeparation, "Family EVEN with TYPE separation should be imported with event_subtype")
+}
+
+func TestImportFamilyNote_PreservedOnRelationship(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 15 JUN 1950
+1 NOTE Marriage performed at city hall.
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Find the marriage relationship and check Notes
+	var foundNote bool
+	for _, rel := range glxFile.Relationships {
+		if rel.Type == RelationshipTypeMarriage && rel.Notes != "" {
+			assert.Equal(t, "Marriage performed at city hall.", rel.Notes)
+			foundNote = true
+		}
+	}
+	assert.True(t, foundNote, "FAM-level NOTE should be stored on relationship.Notes")
+}
+
+func TestImportFamilyRESI_DistributedToSpouses(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 RESI
+2 PLAC Springfield, Illinois, USA
+2 DATE 1920
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Both spouses should have a residence property
+	var residenceCount int
+	for _, person := range glxFile.Persons {
+		if _, ok := person.Properties[PersonPropertyResidence]; ok {
+			residenceCount++
+		}
+	}
+	assert.Equal(t, 2, residenceCount, "Family-level RESI should be distributed to both spouses")
+}

@@ -2826,3 +2826,89 @@ func TestExportPerson_MultipleOccupations(t *testing.T) {
 	}
 	assert.Equal(t, 3, occuCount, "Should export 3 separate OCCU records for list-valued occupation")
 }
+
+// ============================================================================
+// HEAD metadata roundtrip tests
+// ============================================================================
+
+func TestBuildHEADRecord_ImportMetadataPreserved(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			ImportMetadata: &Metadata{
+				Language:   "English",
+				SourceFile: "my-family.ged",
+				Copyright:  "© 2023 Test Author",
+				Notes:      "This is a test archive.",
+			},
+		},
+		Version: GEDCOM551,
+	}
+
+	head := buildHEADRecord(expCtx)
+	require.NotNil(t, head)
+
+	var foundLang, foundFile, foundCopr, foundNote bool
+	for _, sub := range head.SubRecords {
+		switch sub.Tag {
+		case GedcomTagLang:
+			foundLang = true
+			assert.Equal(t, "English", sub.Value)
+		case GedcomTagFile:
+			foundFile = true
+			assert.Equal(t, "my-family.ged", sub.Value)
+		case GedcomTagCopr:
+			foundCopr = true
+			assert.Equal(t, "© 2023 Test Author", sub.Value)
+		case GedcomTagNote:
+			foundNote = true
+			assert.Equal(t, "This is a test archive.", sub.Value)
+		}
+	}
+	assert.True(t, foundLang, "HEAD should include LANG from ImportMetadata")
+	assert.True(t, foundFile, "HEAD should include FILE from ImportMetadata")
+	assert.True(t, foundCopr, "HEAD should include COPR from ImportMetadata")
+	assert.True(t, foundNote, "HEAD should include NOTE from ImportMetadata")
+}
+
+func TestBuildHEADRecord_NoImportMetadata(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			ImportMetadata: nil,
+		},
+		Version: GEDCOM551,
+	}
+
+	head := buildHEADRecord(expCtx)
+	require.NotNil(t, head)
+
+	for _, sub := range head.SubRecords {
+		assert.NotEqual(t, GedcomTagLang, sub.Tag, "HEAD should NOT include LANG without ImportMetadata")
+		assert.NotEqual(t, GedcomTagFile, sub.Tag, "HEAD should NOT include FILE without ImportMetadata")
+		assert.NotEqual(t, GedcomTagCopr, sub.Tag, "HEAD should NOT include COPR without ImportMetadata")
+	}
+}
+
+func TestBuildHEADRecord_EmptyImportMetadataFields(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			ImportMetadata: &Metadata{
+				Language: "English",
+				// SourceFile, Copyright, Notes are empty
+			},
+		},
+		Version: GEDCOM551,
+	}
+
+	head := buildHEADRecord(expCtx)
+	require.NotNil(t, head)
+
+	var foundLang bool
+	for _, sub := range head.SubRecords {
+		if sub.Tag == GedcomTagLang {
+			foundLang = true
+		}
+		assert.NotEqual(t, GedcomTagFile, sub.Tag, "HEAD should NOT include empty FILE")
+		assert.NotEqual(t, GedcomTagCopr, sub.Tag, "HEAD should NOT include empty COPR")
+	}
+	assert.True(t, foundLang, "HEAD should include non-empty LANG")
+}

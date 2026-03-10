@@ -468,3 +468,172 @@ func testGetPersonGender(person *Person) string {
 
 	return ""
 }
+
+func TestRoundtrip_MarriageTypePreserved(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 15 JUN 1950
+2 TYPE civil
+0 TRLR
+`
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Verify marriage_type was imported
+	var foundMarriageType bool
+	for _, event := range glx1.Events {
+		if event.Type == EventTypeMarriage {
+			if mt, ok := event.Properties[PropertyMarriageType]; ok {
+				assert.Equal(t, "civil", mt)
+				foundMarriageType = true
+			}
+		}
+	}
+	assert.True(t, foundMarriageType, "marriage_type should be imported from MARR TYPE")
+
+	// Export
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err)
+	exportedStr := string(exported)
+
+	// Verify TYPE appears in exported MARR
+	assert.Contains(t, exportedStr, "1 MARR")
+	assert.Contains(t, exportedStr, "2 TYPE civil")
+
+	// Re-import and verify preserved
+	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
+	require.NoError(t, err)
+
+	var foundAfterRoundtrip bool
+	for _, event := range glx2.Events {
+		if event.Type == EventTypeMarriage {
+			if mt, ok := event.Properties[PropertyMarriageType]; ok {
+				assert.Equal(t, "civil", mt)
+				foundAfterRoundtrip = true
+			}
+		}
+	}
+	assert.True(t, foundAfterRoundtrip, "marriage_type should survive roundtrip")
+}
+
+func TestRoundtrip_FamilyEventTypePreserved(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 15 JUN 1950
+1 EVEN
+2 TYPE separation
+2 DATE 1965
+0 TRLR
+`
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Verify event_subtype was imported on the family event
+	var foundSubtype bool
+	for _, event := range glx1.Events {
+		if st, ok := event.Properties["event_subtype"]; ok && st == "separation" {
+			foundSubtype = true
+		}
+	}
+	assert.True(t, foundSubtype, "event_subtype should be imported from family EVEN TYPE")
+
+	// Export
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err)
+	exportedStr := string(exported)
+
+	// Verify TYPE separation appears in exported EVEN
+	assert.Contains(t, exportedStr, "TYPE separation")
+
+	// Re-import and verify preserved
+	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
+	require.NoError(t, err)
+
+	var foundAfterRoundtrip bool
+	for _, event := range glx2.Events {
+		if st, ok := event.Properties["event_subtype"]; ok && st == "separation" {
+			foundAfterRoundtrip = true
+		}
+	}
+	assert.True(t, foundAfterRoundtrip, "event_subtype should survive roundtrip")
+}
+
+func TestRoundtrip_HeadMetadataPreserved(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR PAF
+2 NAME Personal Ancestral File
+2 VERS 5.2
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG English
+1 FILE my-tree.ged
+1 COPR (c) 2023 Test Author
+1 NOTE This is a test archive.
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+0 TRLR
+`
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Verify metadata imported
+	require.NotNil(t, glx1.ImportMetadata)
+	assert.Equal(t, "English", glx1.ImportMetadata.Language)
+	assert.Equal(t, "my-tree.ged", glx1.ImportMetadata.SourceFile)
+	assert.Equal(t, "(c) 2023 Test Author", glx1.ImportMetadata.Copyright)
+	assert.Equal(t, "This is a test archive.", glx1.ImportMetadata.Notes)
+
+	// Export
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err)
+	exportedStr := string(exported)
+
+	// Verify metadata in exported HEAD
+	assert.Contains(t, exportedStr, "1 LANG English")
+	assert.Contains(t, exportedStr, "1 FILE my-tree.ged")
+	assert.Contains(t, exportedStr, "1 COPR (c) 2023 Test Author")
+	assert.Contains(t, exportedStr, "1 NOTE This is a test archive.")
+
+	// Re-import and verify preserved
+	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
+	require.NoError(t, err)
+
+	require.NotNil(t, glx2.ImportMetadata)
+	assert.Equal(t, "English", glx2.ImportMetadata.Language)
+	assert.Equal(t, "my-tree.ged", glx2.ImportMetadata.SourceFile)
+	assert.Equal(t, "(c) 2023 Test Author", glx2.ImportMetadata.Copyright)
+	assert.Equal(t, "This is a test archive.", glx2.ImportMetadata.Notes)
+}

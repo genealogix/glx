@@ -31,6 +31,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Family-level NOTE import/export** - NOTE records on FAM are now stored on the relationship's Notes field and roundtrip correctly
 - **Single-value RESI export** - RESI stored as scalar (not list) now exports correctly instead of being silently dropped
 - **Fixed SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N x N duplication when a person has multiple values for TITL, OCCU, etc. (~1,348 phantom SOURs eliminated in habsburg)
+- **Marriage TYPE export** - Marriage `marriage_type` property (e.g., "civil", "religious", "marriage") now exported as TYPE sub-record on MARR. Previously imported but silently dropped on export (~65 TYPE tags recovered in british-royalty)
+- **Family event TYPE/properties export** - Family events (EVEN, ENGA, etc.) now export event_subtype and other event properties (TYPE, CAUS, AGE) that were previously lost
+- **HEAD metadata roundtrip** - LANG, FILE, COPR sub-records from the original GEDCOM HEAD are now preserved through import/export
 
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates

@@ -271,6 +271,16 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Extract common event details (DATE, PLAC, NOTE, ADDR, SOUR)
 	extractEventDetails(eventID, eventRecord, event, conv, true)
 
+	// Extract TYPE as event_subtype (same as individual events)
+	for _, sub := range eventRecord.SubRecords {
+		if sub.Tag == GedcomTagType {
+			if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+				event.Properties[propertyKey] = sub.Value
+			}
+			break
+		}
+	}
+
 	// Add participants for both spouses
 	var participants []Participant
 	if husbandID != "" {

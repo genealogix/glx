@@ -387,6 +387,17 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 		})
 	}
 
+	// TYPE (marriage_type property)
+	if marriageType, ok := event.Properties[PropertyMarriageType].(string); ok && marriageType != "" {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagType,
+			Value: marriageType,
+		})
+	}
+
+	// Other event properties (event_subtype, cause, age_at_event, etc.)
+	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
+
 	// SOUR references from event sources and citations
 	exportEventSourceRefs(event, expCtx, record)
 
@@ -449,6 +460,9 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 		if placRecords != nil {
 			famEventRecord.SubRecords = append(famEventRecord.SubRecords, placRecords...)
 		}
+
+		// Event properties (TYPE, CAUS, AGE, etc.)
+		famEventRecord.SubRecords = append(famEventRecord.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
 
 		records = append(records, famEventRecord)
 	}

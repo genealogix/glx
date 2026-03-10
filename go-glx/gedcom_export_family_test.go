@@ -1157,3 +1157,159 @@ func TestExportFamily_MarriageWithoutStartEvent_NoMarr(t *testing.T) {
 			"Should NOT emit MARR for marriage relationship without StartEvent")
 	}
 }
+
+// ============================================================================
+// Marriage TYPE export tests
+// ============================================================================
+
+func TestExportFamilyEvent_MarriageType(t *testing.T) {
+	// marriage_type property should be exported as TYPE sub-record on MARR
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-marr": {
+					Type: EventTypeMarriage,
+					Date: "1950-06-15",
+					Properties: map[string]any{
+						PropertyMarriageType: "civil",
+					},
+				},
+			},
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:      make(map[string]string),
+			EventProperties: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+	}
+
+	record := exportFamilyEvent("event-marr", GedcomTagMarr, expCtx)
+	require.NotNil(t, record)
+
+	var foundType bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagType {
+			foundType = true
+			assert.Equal(t, "civil", sub.Value)
+		}
+	}
+	assert.True(t, foundType, "MARR should have TYPE sub-record from marriage_type property")
+}
+
+func TestExportFamilyEvent_EventSubtype(t *testing.T) {
+	// event_subtype property should be exported as TYPE via exportEventPropertySubrecords
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-even": {
+					Type: EventTypeGeneric,
+					Date: "2019",
+					Properties: map[string]any{
+						"event_subtype": "separation",
+					},
+				},
+			},
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: make(map[string]string),
+			EventProperties: map[string]string{
+				"event_subtype": GedcomTagType,
+			},
+		},
+		PlaceStrings: make(map[string]string),
+	}
+
+	record := exportFamilyEvent("event-even", GedcomTagEven, expCtx)
+	require.NotNil(t, record)
+
+	var foundType bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagType {
+			foundType = true
+			assert.Equal(t, "separation", sub.Value)
+		}
+	}
+	assert.True(t, foundType, "family event should have TYPE sub-record from event_subtype")
+}
+
+func TestExportFamily_FamilyEventsPreserveEventProperties(t *testing.T) {
+	// findFamilyEvents should include event properties (TYPE, CAUS, etc.)
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-h": {Properties: map[string]any{PersonPropertyGender: "male"}},
+				"person-w": {Properties: map[string]any{PersonPropertyGender: "female"}},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-1": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-h", Role: ParticipantRoleSpouse},
+						{Person: "person-w", Role: ParticipantRoleSpouse},
+					},
+					StartEvent: "event-marr",
+				},
+			},
+			Events: map[string]*Event{
+				"event-marr": {
+					Type: EventTypeMarriage,
+					Date: "1950-06-15",
+				},
+				"event-separation": {
+					Type: EventTypeGeneric,
+					Date: "1965",
+					Properties: map[string]any{
+						"event_subtype": "separation",
+					},
+					Participants: []Participant{
+						{Person: "person-h", Role: ParticipantRoleSpouse},
+						{Person: "person-w", Role: ParticipantRoleSpouse},
+					},
+				},
+			},
+			Places: make(map[string]*Place),
+		},
+		PersonXRefMap: map[string]string{
+			"person-h": "@I1@",
+			"person-w": "@I2@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: map[string]string{
+				EventTypeMarriage: GedcomTagMarr,
+				EventTypeGeneric:  GedcomTagEven,
+			},
+			EventProperties: map[string]string{
+				"event_subtype": GedcomTagType,
+			},
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
+	}
+
+	family := &ExportFamily{
+		FamilyXRef:     "@F1@",
+		HusbandID:      "person-h",
+		WifeID:         "person-w",
+		ChildPedigrees: make(map[string]string),
+		RelationshipID: "rel-1",
+	}
+
+	record := exportFamily(family, expCtx)
+
+	var foundEven bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagEven {
+			foundEven = true
+			var foundType bool
+			for _, evenSub := range sub.SubRecords {
+				if evenSub.Tag == GedcomTagType {
+					foundType = true
+					assert.Equal(t, "separation", evenSub.Value)
+				}
+			}
+			assert.True(t, foundType, "EVEN family event should have TYPE sub-record")
+		}
+	}
+	assert.True(t, foundEven, "family should have EVEN event for separation")
+}
