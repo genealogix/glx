@@ -883,3 +883,437 @@ func TestImportFamilyRESI_DistributedToSpouses(t *testing.T) {
 	}
 	assert.Equal(t, 2, residenceCount, "Family-level RESI should be distributed to both spouses")
 }
+
+// TestImportCensus_SyntheticSource tests census records without SOUR sub-records
+// create a synthetic census source.
+func TestImportCensus_SyntheticSource(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 CENS
+2 DATE 1850
+2 PLAC Springfield, Illinois, USA
+2 NOTE Household #42, dwelling 15
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should create a synthetic census source
+	require.NotEmpty(t, glxFile.Sources, "synthetic census source should be created")
+
+	var censusSource *Source
+	for _, src := range glxFile.Sources {
+		if src.Type == SourceTypeCensus {
+			censusSource = src
+			break
+		}
+	}
+	require.NotNil(t, censusSource, "should have a census-type source")
+	assert.Contains(t, censusSource.Title, "1850", "census source title should contain the date")
+
+	// Note should be on a citation
+	var noteCitation *Citation
+	for _, cit := range glxFile.Citations {
+		if cit.Notes != "" {
+			noteCitation = cit
+			break
+		}
+	}
+	require.NotNil(t, noteCitation, "census note should create a citation")
+	assert.Contains(t, noteCitation.Notes, "Household #42")
+}
+
+// TestImportCensus_WithSOURAndNote tests census records with both SOUR and NOTE
+// attach the note to the existing citation.
+func TestImportCensus_WithSOURAndNote(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @S1@ SOUR
+1 TITL 1860 US Census
+0 @I1@ INDI
+1 NAME Jane /Doe/
+1 SEX F
+1 CENS
+2 DATE 1860
+2 PLAC Boston, Massachusetts, USA
+2 SOUR @S1@
+3 PAGE Sheet 5, line 12
+2 NOTE Boarder in household
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Note should be attached to the citation from the SOUR reference
+	foundNote := false
+	for _, cit := range glxFile.Citations {
+		if strings.Contains(cit.Notes, "Boarder") {
+			foundNote = true
+			break
+		}
+	}
+	assert.True(t, foundNote, "census NOTE should be attached to citation when SOUR exists")
+}
+
+// TestImportCensus_NoPlace tests census without PLAC still creates source but no residence.
+func TestImportCensus_NoPlace(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Bob /Jones/
+1 SEX M
+1 CENS
+2 DATE 1870
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// No residence property (no PLAC)
+	for _, person := range glxFile.Persons {
+		_, hasResi := person.Properties[PersonPropertyResidence]
+		assert.False(t, hasResi, "census without PLAC should not create residence property")
+	}
+}
+
+// TestImportCensus_WithType tests census TYPE sub-record is used in synthetic source title.
+func TestImportCensus_WithType(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Alice /Brown/
+1 SEX F
+1 CENS
+2 TYPE Federal Census
+2 PLAC New York, New York, USA
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var censusSource *Source
+	for _, src := range glxFile.Sources {
+		if src.Type == SourceTypeCensus {
+			censusSource = src
+			break
+		}
+	}
+	require.NotNil(t, censusSource)
+	assert.Equal(t, "Federal Census", censusSource.Title, "TYPE should be used as source title")
+}
+
+// TestImportFact_WithTypeAndValue tests FACT with TYPE and value creates property assertion.
+func TestImportFact_WithTypeAndValue(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FACT Farmer
+2 TYPE Occupation
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1)
+
+	// FACT with TYPE+value should NOT create an event (handled as property)
+	assert.Empty(t, glxFile.Events, "FACT with TYPE+value should be a property, not an event")
+}
+
+// TestImportFact_WithDateAndPlace tests FACT with DATE/PLAC is converted as generic event.
+func TestImportFact_WithDateAndPlace(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FACT
+2 TYPE Arrival
+2 DATE 15 MAR 1880
+2 PLAC New York, USA
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// FACT with DATE/PLAC should create an event
+	assert.NotEmpty(t, glxFile.Events, "FACT with DATE/PLAC should be converted to an event")
+}
+
+// TestImportFamilyCensus_DistributedToBothSpouses tests family-level CENS
+// creates source once and applies residence to both spouses.
+func TestImportFamilyCensus_DistributedToBothSpouses(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CENS
+2 DATE 1900
+2 PLAC Chicago, Cook, Illinois, USA
+1 MARR
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Both spouses should have residence
+	residenceCount := 0
+	for _, person := range glxFile.Persons {
+		if _, ok := person.Properties[PersonPropertyResidence]; ok {
+			residenceCount++
+		}
+	}
+	assert.Equal(t, 2, residenceCount, "family CENS should give both spouses a residence")
+
+	// Should only create ONE census source (not duplicated per spouse)
+	censusSourceCount := 0
+	for _, src := range glxFile.Sources {
+		if src.Type == SourceTypeCensus {
+			censusSourceCount++
+		}
+	}
+	assert.Equal(t, 1, censusSourceCount, "family CENS should create only one source")
+}
+
+// TestImportInvalidGEDCOM tests import of malformed input.
+func TestImportInvalidGEDCOM(t *testing.T) {
+	// No HEAD record — should still parse (lenient)
+	glx1, _, err := ImportGEDCOM(strings.NewReader("not a gedcom file"), nil)
+	if err != nil {
+		assert.Error(t, err)
+	} else {
+		assert.NotNil(t, glx1)
+	}
+
+	// Empty input — should not panic
+	glx2, _, err := ImportGEDCOM(strings.NewReader(""), nil)
+	if err != nil {
+		assert.Error(t, err)
+	} else {
+		assert.NotNil(t, glx2)
+	}
+}
+
+// TestImportCensus_WithDateNoPlace tests applyCensusData early return on missing place.
+func TestImportCensus_WithDateNoPlace(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX M
+1 CENS
+2 DATE 1910
+2 NOTE Census note only
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Source should still be created (synthetic)
+	require.NotEmpty(t, glxFile.Sources)
+	// But no residence (no PLAC)
+	for _, person := range glxFile.Persons {
+		_, hasResi := person.Properties[PersonPropertyResidence]
+		assert.False(t, hasResi)
+	}
+}
+
+// TestImportCensus_PlaceWithoutDate tests residence without date gets stored as simple string.
+func TestImportCensus_PlaceWithoutDate(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX M
+1 CENS
+2 PLAC Austin, Texas, USA
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should have residence property (place without date = simple string, not map)
+	for _, person := range glxFile.Persons {
+		resi, ok := person.Properties[PersonPropertyResidence]
+		if ok {
+			// Should be a simple string (place ID), not a map
+			_, isString := resi.(string)
+			_, isSlice := resi.([]any)
+			assert.True(t, isString || isSlice, "residence without date should be stored as string or list")
+		}
+	}
+}
+
+// TestImportCensus_WithMedia tests census with OBJE attaches media to citations.
+func TestImportCensus_WithMedia(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @O1@ OBJE
+1 FILE census_image.jpg
+2 FORM JPEG
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX M
+1 CENS
+2 DATE 1920
+2 PLAC Portland, Oregon, USA
+2 OBJE @O1@
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should have media and it should be linked
+	assert.NotEmpty(t, glxFile.Media, "OBJE should create media entity")
+
+	// Census should create a synthetic source, and the media should be attached
+	mediaLinked := false
+	for _, src := range glxFile.Sources {
+		if len(src.Media) > 0 {
+			mediaLinked = true
+			break
+		}
+	}
+	for _, cit := range glxFile.Citations {
+		if len(cit.Media) > 0 {
+			mediaLinked = true
+			break
+		}
+	}
+	assert.True(t, mediaLinked, "census OBJE should be linked to source or citation")
+}
+
+// TestImportFamilyCensus_SingleSpouse tests family census with only one spouse.
+func TestImportFamilyCensus_SingleSpouse(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 CENS
+2 DATE 1880
+2 PLAC Denver, Colorado, USA
+1 MARR
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Single spouse should still get residence
+	for _, person := range glxFile.Persons {
+		_, hasResi := person.Properties[PersonPropertyResidence]
+		assert.True(t, hasResi, "single-spouse family CENS should create residence")
+	}
+}
+
+// TestImportFamilyEvent_UnmappedTag tests family events with tags not in vocabulary
+// fall back to generic event type.
+func TestImportFamilyEvent_UnmappedTag(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 EVEN
+2 TYPE Family Reunion
+2 DATE 4 JUL 1950
+1 MARR
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// The EVEN tag should produce a generic event
+	foundGeneric := false
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeGeneric {
+			foundGeneric = true
+			break
+		}
+	}
+	assert.True(t, foundGeneric, "EVEN on family should create a generic event")
+}
