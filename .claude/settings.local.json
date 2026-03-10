@@ -9,7 +9,17 @@
       "Bash(./bin/glx:*)",
       "Bash(make test-coverage:*)",
       "Bash(go tool cover:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(tail:*)",
+      "Bash(awk:*)",
+      "Bash(make build-cli:*)",
+      "Bash(python3:*)",
+      "Bash(while read f)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//Users/noah/Code/glx/**)",
+      "Bash(done)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)"
     ],
     "deny": [],
     "ask": []

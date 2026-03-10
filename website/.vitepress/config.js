@@ -292,7 +292,8 @@ export default defineConfig({
           text: 'Analysis',
           items: [
             { text: 'glx stats', link: '/cli#glx-stats' },
-            { text: 'glx places', link: '/cli#glx-places' }
+            { text: 'glx places', link: '/cli#glx-places' },
+            { text: 'glx analyze', link: '/cli#glx-analyze' }
           ]
         }
       ],
