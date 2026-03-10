@@ -97,7 +97,7 @@ func loadArchiveForCoverage(path string) (*glxlib.GLXFile, error) {
 
 // findPersonForCoverage finds a person by ID or name substring.
 func findPersonForCoverage(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
-	if person, ok := archive.Persons[query]; ok {
+	if person, ok := archive.Persons[query]; ok && person != nil {
 		return query, person, nil
 	}
 
@@ -128,10 +128,15 @@ func findPersonForCoverage(archive *glxlib.GLXFile, query string) (string, *glxl
 
 // buildCoverage generates the coverage checklist for a person.
 func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFile) *coverageResult {
-	bornOn := propertyString(person.Properties, glxlib.PersonPropertyBornOn)
-	bornAt := propertyString(person.Properties, glxlib.PersonPropertyBornAt)
-	diedOn := propertyString(person.Properties, glxlib.PersonPropertyDiedOn)
-	diedAt := propertyString(person.Properties, glxlib.PersonPropertyDiedAt)
+	var props map[string]any
+	if person != nil {
+		props = person.Properties
+	}
+
+	bornOn := propertyString(props, glxlib.PersonPropertyBornOn)
+	bornAt := propertyString(props, glxlib.PersonPropertyBornAt)
+	diedOn := propertyString(props, glxlib.PersonPropertyDiedOn)
+	diedAt := propertyString(props, glxlib.PersonPropertyDiedAt)
 
 	birthYear := glxlib.ExtractFirstYear(bornOn)
 	deathYear := glxlib.ExtractFirstYear(diedOn)
@@ -396,10 +401,13 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 		found := false
 		ref := ""
 		if rel.StartEvent != "" {
-			found = true
-			ref = rel.StartEvent
-		} else {
-			// Check events for a marriage involving this person
+			if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil && ev.Type == glxlib.EventTypeMarriage {
+				found = true
+				ref = rel.StartEvent
+			}
+		}
+		if !found {
+			// Fall back to checking events for a marriage involving this person
 			for _, e := range events {
 				if e.EventType == glxlib.EventTypeMarriage {
 					found = true
@@ -472,7 +480,7 @@ func coverageResolvePlaceName(placeRef string, archive *glxlib.GLXFile) string {
 	if placeRef == "" {
 		return ""
 	}
-	if place, ok := archive.Places[placeRef]; ok {
+	if place, ok := archive.Places[placeRef]; ok && place != nil {
 		return place.Name
 	}
 	return placeRef
