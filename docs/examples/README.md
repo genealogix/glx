@@ -24,22 +24,29 @@ This directory contains complete, working GENEALOGIX archives demonstrating vari
    - Complete evidence chains
    - Real-world family structure
 
+### Real-World Scale
+4. **[Westeros: A Song of Ice and Fire](westeros/)** - Large-scale archive
+   - 790+ persons across 70+ houses
+   - Full evidence chains with 1,800+ assertions
+   - 200+ custom vocabulary types
+   - Demonstrates every GLX feature at scale
+
 ### Advanced Concepts
-4. **[Single-File](single-file/)** - Single-file archives
+5. **[Single-File](single-file/)** - Single-file archives
    - All entities in one file
    - Portable format
 
-5. **[Assertion Workflow](assertion-workflow/)** - Evidence documentation
+6. **[Assertion Workflow](assertion-workflow/)** - Evidence documentation
    - Direct properties vs assertion-backed properties
    - Complete evidence chain pattern
    - Iterative research workflow
 
-6. **[Temporal Properties](temporal-properties/)** - Time-changing values
+7. **[Temporal Properties](temporal-properties/)** - Time-changing values
    - Properties that change over time
    - Occupations, residences, names
    - Date-stamped values
 
-7. **[Participant Assertions](participant-assertions/)** - Event participants
+8. **[Participant Assertions](participant-assertions/)** - Event participants
    - Assertion-based participant roles
    - Evidence for event participation
 
@@ -54,6 +61,7 @@ This directory contains complete, working GENEALOGIX archives demonstrating vari
 | **[Assertion Workflow](assertion-workflow/)** | Evidence chains | Direct vs assertion-backed properties |
 | **[Temporal Properties](temporal-properties/)** | Time-changing data | Changing occupations/names |
 | **[Participant Assertions](participant-assertions/)** | Event participation | Evidence-based participants |
+| **[Westeros](westeros/)** | Scale & custom vocabularies | 790+ persons, 200+ custom types, full evidence chains |
 
 ## Validation
 

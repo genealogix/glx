@@ -92,7 +92,8 @@ const (
 	PersonPropertyBornAt    = "born_at"
 	PersonPropertyDiedOn    = "died_on"
 	PersonPropertyDiedAt    = "died_at"
-	PersonPropertyResidence = "residence"
+	PersonPropertyResidence  = "residence"
+	PersonPropertyOccupation = "occupation"
 )
 
 // Name Field Constants - used in the name property's fields structure

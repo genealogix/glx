@@ -8,11 +8,17 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
 - 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files to GLX format
-- 🔍 **Validate Files** - Comprehensive validation with cross-reference checking
+- 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
+- 🔍 **Validate Files** - Comprehensive validation with cross-reference and temporal consistency checking
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
 - 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
-- 🔎 **Query** - Filter and list entities from an archive by name, date, type, and more
+- 🔎 **Query** - Filter and list entities from an archive by name, date, type, source, and more
+- 👤 **Vitals** - Display vital records (birth, death, burial) for a person
+- 📅 **Timeline** - Show chronological events for a person, including family events
+- 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
+- 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
+- 📎 **Cite** - Generate formatted citation text from structured citation data
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -117,17 +123,40 @@ glx validate
 # Join multi-file archive back to single file
 glx join family-archive combined.glx
 
+# Export back to GEDCOM
+glx export family-archive -o family.ged
+glx export family-archive -o family70.ged --format 70
+
 # Show a stats dashboard for an archive
 glx stats family-archive
 
 # Analyze places for data quality issues
 glx places family-archive
 
+# Look up a person's vital records
+glx vitals "John Smith"
+
+# Show a chronological timeline of events
+glx timeline "John Smith"
+
+# Display a comprehensive person profile
+glx summary "John Smith"
+
+# Display ancestor and descendant trees
+glx ancestors person-abc123
+glx descendants person-abc123 --generations 3
+
+# Generate formatted citation text
+glx cite citation-abc123
+
 # Query persons born before 1850
 glx query persons --born-before 1850
 
 # Find all marriage events
 glx query events --type marriage
+
+# Find assertions from a specific source
+glx query assertions --source source-abc123
 
 # List all sources
 glx query sources
@@ -316,6 +345,48 @@ Import statistics:
   Repositories:  0
   Media:         0
   Assertions:    150
+```
+
+### `glx export`
+
+Export a GLX archive to GEDCOM format.
+
+**Usage:**
+```bash
+glx export <glx-archive> -o <output> [flags]
+```
+
+**Options:**
+- `-o, --output <path>` - Output GEDCOM file path (required)
+- `-f, --format <format>` - GEDCOM version: `551` or `70` (default: `551`)
+- `-v, --verbose` - Verbose output
+
+**Supported Output Formats:**
+- GEDCOM 5.5.1 (default)
+- GEDCOM 7.0
+
+**Features:**
+- Accepts single-file (`.glx`) or multi-file archive directories as input
+- Reconstructs GEDCOM FAM records from GLX relationships
+- Converts dates, places, and names back to GEDCOM format
+- Preserves sources, repositories, media, citations, and notes
+- Exports inline SOUR citations on individual events
+- Handles single-spouse families, multiple marriage events, and multi-family children
+
+**Examples:**
+
+```bash
+# Export to GEDCOM 5.5.1 (default)
+glx export family-archive -o family.ged
+
+# Export a single-file archive
+glx export family.glx -o family.ged
+
+# Export to GEDCOM 7.0
+glx export family-archive -o family.ged --format 70
+
+# Export with verbose output
+glx export family-archive -o family.ged --verbose
 ```
 
 ### `glx split`
@@ -525,20 +596,20 @@ glx query <entity-type> [flags]
 
 **Type-specific filter options:**
 
-| Entity type    | Supported flags                          |
-| -------------- | ---------------------------------------- |
-| `persons`      | `--name`, `--born-before`, `--born-after` |
-| `events`       | `--type`, `--before`, `--after`          |
-| `assertions`   | `--confidence`, `--status`               |
-| `sources`      | `--name`, `--type`                       |
-| `relationships`| `--type`                                 |
-| `places`       | `--name`                                 |
-| `repositories` | `--name`                                 |
-| `citations`    | _(no filters)_                           |
-| `media`        | _(no filters)_                           |
+| Entity type    | Supported flags                                        |
+| -------------- | ------------------------------------------------------ |
+| `persons`      | `--name`, `--born-before`, `--born-after`               |
+| `events`       | `--type`, `--before`, `--after`                         |
+| `assertions`   | `--confidence`, `--status`, `--source`, `--citation`    |
+| `sources`      | `--name`, `--type`                                      |
+| `relationships`| `--type`                                                |
+| `places`       | `--name`                                                |
+| `repositories` | `--name`                                                |
+| `citations`    | _(no filters)_                                          |
+| `media`        | _(no filters)_                                          |
 
 **All filter options:**
-- `--name <string>` - Filter by name (substring match, case-insensitive)
+- `--name <string>` - Filter by name (substring match, case-insensitive). For persons, searches all name variants including birth names, married names, maiden names, and as-recorded forms
 - `--born-before <year>` - Filter persons born before this year
 - `--born-after <year>` - Filter persons born after this year
 - `--type <string>` - Filter by type (event type, relationship type, or source type)
@@ -546,6 +617,8 @@ glx query <entity-type> [flags]
 - `--after <year>` - Filter events with date after this year
 - `--confidence <string>` - Filter assertions by confidence level (e.g. `high`, `medium`, `low`)
 - `--status <string>` - Filter assertions by status
+- `--source <id>` - Filter assertions by source ID (matches assertions referencing the source directly or via a citation)
+- `--citation <id>` - Filter assertions by citation ID
 
 **Examples:**
 
@@ -573,6 +646,12 @@ glx query assertions --confidence low
 
 # Find disputed assertions with a specific status
 glx query assertions --confidence disputed --status reviewed
+
+# Find all assertions citing a specific source
+glx query assertions --source source-1860-census
+
+# Find assertions using a specific citation
+glx query assertions --citation citation-abc123
 
 # Find sources by title keyword
 glx query sources --name "census"
@@ -602,7 +681,206 @@ glx query repositories
 3 person(s) found
 ```
 
-> **Note:** Name matching is case-insensitive and matches any substring. Year filters use the first four-digit year found in a date string, so formats like `ABT 1850`, `BEF 1920-01-15`, and `BET 1880 AND 1890` are all supported.
+> **Note:** Name matching is case-insensitive and matches any substring. For persons, `--name` searches all name variants including birth names, married names, maiden names, and as-recorded forms — not just the primary name. Results show alternate names with an "aka:" suffix. Year filters use the first four-digit year found in a date string, so formats like `ABT 1850`, `BEF 1920-01-15`, and `BET 1880 AND 1890` are all supported.
+
+### `glx vitals`
+
+Display vital records for a person.
+
+**Usage:**
+```bash
+glx vitals <person> [flags]
+```
+
+**Arguments:**
+- `<person>` - Person ID (e.g., `person-d-lane`) or name to search for (case-insensitive substring match)
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+
+**Shows:**
+- Name, Sex, Birth, Christening, Death, Burial
+- Any other life events the person participated in (marriages, census records, etc.)
+
+If the name matches multiple persons, all matches are listed for disambiguation.
+
+**Examples:**
+
+```bash
+# Look up by person ID
+glx vitals person-d-lane
+
+# Look up by name
+glx vitals "Mary Green"
+
+# Specify archive path
+glx vitals "Mary Green" --archive my-archive
+```
+
+### `glx timeline`
+
+Display a chronological timeline of all events in a person's life.
+
+**Usage:**
+```bash
+glx timeline <person> [flags]
+```
+
+**Arguments:**
+- `<person>` - Person ID or name to search for
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `--no-family` - Exclude family events (show only direct events)
+
+**Shows:**
+- Direct events where the person is a participant
+- Family events discovered through relationship traversal (spouse births/deaths, children's births/deaths, parent deaths)
+- Undated events in a separate section
+
+**Examples:**
+
+```bash
+# Timeline by person ID
+glx timeline person-john-smith
+
+# Timeline by name
+glx timeline "John Smith"
+
+# Direct events only (no family events)
+glx timeline "John Smith" --no-family
+
+# Specify archive path
+glx timeline "John Smith" --archive my-archive
+```
+
+### `glx summary`
+
+Display a comprehensive profile for a person, including an auto-generated life history narrative.
+
+**Usage:**
+```bash
+glx summary <person> [flags]
+```
+
+**Arguments:**
+- `<person>` - Person ID or name to search for
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+
+**Sections displayed:**
+- **Identity** - Name, sex, alternate names (birth, married, maiden, AKA, etc.)
+- **Vital Events** - Birth, christening, death, burial
+- **Life Events** - Census, immigration, naturalization, military service, etc.
+- **Family** - Spouse(s) with marriage info, parents, siblings
+- **Relationships** - Godparent, neighbor, household, employment, etc.
+- **Life History** - Auto-generated biographical narrative
+
+**Examples:**
+
+```bash
+# Summary by person ID
+glx summary person-abc123
+
+# Summary by name search
+glx summary "Mary Lane"
+
+# Summary in a specific archive
+glx summary "John Smith" --archive my-family-archive
+```
+
+### `glx ancestors`
+
+Display the ancestor tree for a person by traversing parent-child relationships.
+
+**Usage:**
+```bash
+glx ancestors <person-id> [flags]
+```
+
+**Arguments:**
+- `<person-id>` - Person entity ID
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `-g, --generations <n>` - Maximum number of generations (0 for unlimited, default: 0)
+
+Traverses all parent-child relationship variants (biological, adoptive, foster, step). Non-default relationship types are annotated in the output. Includes cycle detection.
+
+**Examples:**
+
+```bash
+# Show ancestors
+glx ancestors person-abc123
+
+# Limit to 3 generations
+glx ancestors person-abc123 --generations 3
+
+# Use a specific archive
+glx ancestors person-abc123 --archive my-archive
+```
+
+### `glx descendants`
+
+Display the descendant tree for a person by traversing parent-child relationships.
+
+**Usage:**
+```bash
+glx descendants <person-id> [flags]
+```
+
+**Arguments:**
+- `<person-id>` - Person entity ID
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `-g, --generations <n>` - Maximum number of generations (0 for unlimited, default: 0)
+
+Traverses all parent-child relationship variants (biological, adoptive, foster, step). Non-default relationship types are annotated in the output. Includes cycle detection.
+
+**Examples:**
+
+```bash
+# Show descendants
+glx descendants person-abc123
+
+# Limit to 3 generations
+glx descendants person-abc123 --generations 3
+
+# Use a specific archive
+glx descendants person-abc123 --archive my-archive
+```
+
+### `glx cite`
+
+Generate formatted citation text from structured citation data.
+
+**Usage:**
+```bash
+glx cite [citation-id] [flags]
+```
+
+**Arguments:**
+- `[citation-id]` - Optional citation entity ID. If omitted, prints all citations in the archive.
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+
+Assembles citations from the source title, source type, repository name, URL, and accessed date already stored in the archive. This eliminates repetitive manual writing of the `citation_text` property.
+
+**Examples:**
+
+```bash
+# Format a specific citation
+glx cite citation-1860-census-lane-household
+
+# Format all citations in the archive
+glx cite
+
+# Use a specific archive
+glx cite --archive my-archive
+```
 
 ## File Format
 
