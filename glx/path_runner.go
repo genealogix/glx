@@ -180,6 +180,7 @@ type bfsNode struct {
 	PersonID string
 	Edge     *pathEdge // nil for the start node
 	Parent   *bfsNode
+	Depth    int
 }
 
 // bfsPath performs BFS from start to goal, returning the path as a slice of
@@ -196,12 +197,7 @@ func bfsPath(startID, goalID string, adj map[string][]pathEdge, maxHops int) []*
 		current := queue[0]
 		queue = queue[1:]
 
-		// Count depth
-		depth := 0
-		for n := current; n.Parent != nil; n = n.Parent {
-			depth++
-		}
-		if depth >= maxHops {
+		if current.Depth >= maxHops {
 			continue
 		}
 
@@ -215,6 +211,7 @@ func bfsPath(startID, goalID string, adj map[string][]pathEdge, maxHops int) []*
 				PersonID: edge.PersonID,
 				Edge:     &edgeCopy,
 				Parent:   current,
+				Depth:    current.Depth + 1,
 			}
 
 			if edge.PersonID == goalID {

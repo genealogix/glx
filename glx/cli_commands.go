@@ -852,7 +852,7 @@ Person arguments can be exact entity IDs or name substrings.`,
 
 func init() {
 	pathCmd.Flags().StringVarP(&pathArchive, "archive", "a", ".", "Archive path (directory or single file)")
-	pathCmd.Flags().IntVar(&pathMaxHops, "max-hops", 10, "Maximum number of hops to search (default 10)")
+	pathCmd.Flags().IntVar(&pathMaxHops, "max-hops", 10, "Maximum number of hops to search")
 	pathCmd.Flags().BoolVar(&pathJSON, "json", false, "Output as JSON")
 }
 

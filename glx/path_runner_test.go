@@ -281,3 +281,41 @@ func TestPathPersonName(t *testing.T) {
 	assert.Equal(t, "Parent Smith", pathPersonName(archive, "person-parent"))
 	assert.Equal(t, "unknown-id", pathPersonName(archive, "unknown-id"))
 }
+
+// Integration tests using the complete-family example archive.
+
+func TestShowPath_CompleteFamily(t *testing.T) {
+	// Jane is child of John; should find 1-hop path
+	err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-john-smith-1850", 10, false)
+	require.NoError(t, err)
+}
+
+func TestShowPath_CompleteFamily_JSON(t *testing.T) {
+	err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-mary-brown-1852", 10, true)
+	require.NoError(t, err)
+}
+
+func TestShowPath_CompleteFamily_ViaMarriage(t *testing.T) {
+	// Jane to Mary: 1 hop (direct parent-child)
+	// John to Mary: 1 hop (marriage)
+	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-mary-brown-1852", 10, false)
+	require.NoError(t, err)
+}
+
+func TestShowPath_PersonNotFound(t *testing.T) {
+	err := showPath("../docs/examples/complete-family", "person-nonexistent", "person-john-smith-1850", 10, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no person found")
+}
+
+func TestShowPath_ArchiveNotFound(t *testing.T) {
+	err := showPath("/nonexistent/path", "a", "b", 10, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot access path")
+}
+
+func TestShowPath_SamePerson(t *testing.T) {
+	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-john-smith-1850", 10, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "same person")
+}
