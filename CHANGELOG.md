@@ -22,6 +22,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
 
+#### GEDCOM Roundtrip Fidelity
+- **Inline SOUR citations on individual events** - Birth, death, burial, and other individual events now preserve SOUR citations during import/export roundtrip (~25K tags recovered in habsburg)
+- **Single-spouse family marriages** - FAM records with only HUSB or WIFE now create marriage relationships and events instead of being silently dropped (~700 tags recovered in queen)
+- **Non-standard date preservation** - BCE dates, Julian/Hebrew/French Republican calendar dates, and dual-year dates are preserved as raw strings instead of being dropped (~2,800 tags recovered in date-all)
+- **TITL with DATE/PLAC sub-records** - Title properties with dates and places are stored as temporal list items and roundtrip correctly (~2,900 tags recovered)
+- **Multiple MARR events per family** - Families with multiple MARR records now preserve all marriage events
+- **Empty OCCU with PLAC fallback** - OCCU records with empty values but PLAC sub-records now extract the place text as the occupation value
+- **HEAD-level NOTE preservation** - Notes on GEDCOM HEAD records are now imported and exported, fixing NOTE loss in ~10 files
+- **Family-level RESI import** - RESI records under FAM are now distributed to both spouses as residence properties
+- **Family-level NOTE import/export** - NOTE records on FAM are now stored on the relationship's Notes field and roundtrip correctly
+- **Single-value RESI export** - RESI stored as scalar (not list) now exports correctly instead of being silently dropped
+- **Fixed SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N x N duplication when a person has multiple values for TITL, OCCU, etc. (~1,348 phantom SOURs eliminated in habsburg)
+- **Marriage TYPE export** - Marriage `marriage_type` property (e.g., "civil", "religious", "marriage") now exported as TYPE sub-record on MARR. Previously imported but silently dropped on export (~65 TYPE tags recovered in british-royalty)
+- **Family event TYPE/properties export** - Family events (EVEN, ENGA, etc.) now export event_subtype and other event properties (TYPE, CAUS, AGE) that were previously lost
+- **HEAD metadata roundtrip** - LANG, FILE, COPR sub-records from the original GEDCOM HEAD are now preserved through import/export
+
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
 

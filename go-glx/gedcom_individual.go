@@ -79,7 +79,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		case GedcomTagBirt, GedcomTagChr, GedcomTagDeat, GedcomTagBuri, GedcomTagCrem, GedcomTagAdop, GedcomTagBapm, GedcomTagBarm, GedcomTagBatm, GedcomTagBasm,
 			GedcomTagBles, GedcomTagChra, GedcomTagConf, GedcomTagFcom, GedcomTagOrdn, GedcomTagNatu, GedcomTagEmig, GedcomTagImmi,
-			GedcomTagProb, GedcomTagWill, GedcomTagGrad, GedcomTagReti:
+			GedcomTagProb, GedcomTagWill, GedcomTagGrad, GedcomTagReti, GedcomTagEven:
 			// Convert vital/individual event
 			if err := convertIndividualEvent(personID, person, sub, conv); err != nil {
 				conv.addWarning(indiRecord.Line, sub.Tag, err.Error())
@@ -99,11 +99,11 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		case GedcomTagTitl:
 			// Title of nobility, rank, or honor (e.g., Dr., Sir, Baron)
 			// May have CONT/CONC for long titles - needs extractTextWithContinuation
+			// May have DATE sub-records (e.g., habsburg file) - preserve as temporal list
 			titleText := extractTextWithContinuation(sub)
 			if titleText != "" {
 				if propertyKey, ok := conv.GEDCOMIndex.PersonProperties[sub.Tag]; ok {
-					person.Properties[propertyKey] = titleText
-					createPropertyAssertion(personID, propertyKey, titleText, sub, conv)
+					convertPropertyWithDate(personID, person, propertyKey, titleText, sub, conv)
 				}
 			}
 
@@ -114,13 +114,13 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			}
 
 		case GedcomTagNote:
-			// Notes
+			// Notes — store in struct field, not Properties
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if notes, ok := person.Properties[PropertyNotes].(string); ok {
-					person.Properties[PropertyNotes] = notes + "\n\n" + noteText
+				if person.Notes != "" {
+					person.Notes += "\n\n" + noteText
 				} else {
-					person.Properties[PropertyNotes] = noteText
+					person.Notes = noteText
 				}
 			}
 
@@ -250,9 +250,8 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		Properties: make(map[string]any),
 	}
 
-	// Extract common event details (DATE, PLAC, NOTE, ADDR)
-	// SOUR is handled when creating participations, so includeCitations=false
-	eventPlace := extractEventDetails(eventID, eventRecord, event, conv, false)
+	// Extract common event details (DATE, PLAC, NOTE, ADDR, SOUR)
+	eventPlace := extractEventDetails(eventID, eventRecord, event, conv, true)
 	eventDate := event.Date
 
 	// Process individual-specific tags
@@ -330,6 +329,45 @@ func mapGEDCOMSex(sex string) string {
 	}
 }
 
+// convertPropertyWithDate stores a person property, using a temporal list item
+// with a date field when the GEDCOM record has a DATE sub-record.
+func convertPropertyWithDate(personID string, person *Person, propertyKey, value string, record *GEDCOMRecord, conv *ConversionContext) {
+	var dateStr, placeStr string
+	for _, sub := range record.SubRecords {
+		switch sub.Tag {
+		case GedcomTagDate:
+			dateStr = string(parseGEDCOMDate(sub.Value))
+		case GedcomTagPlac:
+			placeStr = sub.Value
+		}
+	}
+
+	itemMap := map[string]any{"value": value}
+	if dateStr != "" {
+		itemMap["date"] = dateStr
+	}
+	if placeStr != "" {
+		itemMap["place"] = placeStr
+	}
+	appendTemporalProperty(person, propertyKey, itemMap)
+	createPropertyAssertion(personID, propertyKey, value, record, conv)
+}
+
+// appendTemporalProperty appends an item to a person property, creating a temporal
+// list when multiple values exist.
+func appendTemporalProperty(person *Person, propertyKey string, item any) {
+	if existing, exists := person.Properties[propertyKey]; exists {
+		switch v := existing.(type) {
+		case []any:
+			person.Properties[propertyKey] = append(v, item)
+		default:
+			person.Properties[propertyKey] = []any{v, item}
+		}
+	} else {
+		person.Properties[propertyKey] = item
+	}
+}
+
 // handlePersonPropertyTag processes a GEDCOM tag that maps to a simple person property
 // via the vocabulary index. Returns true if the tag was handled.
 func handlePersonPropertyTag(personID string, person *Person, tag string, record *GEDCOMRecord, conv *ConversionContext) bool {
@@ -338,12 +376,41 @@ func handlePersonPropertyTag(personID string, person *Person, tag string, record
 		return false
 	}
 
-	if record.Value == "" {
-		return true
+	value := record.Value
+	if value == "" {
+		// Some GEDCOM files store the value in PLAC sub-record (e.g., habsburg OCCU)
+		for _, sub := range record.SubRecords {
+			if sub.Tag == GedcomTagPlac && sub.Value != "" {
+				value = sub.Value
+				break
+			}
+		}
+		if value == "" {
+			return true
+		}
 	}
 
-	person.Properties[propertyKey] = record.Value
-	createPropertyAssertion(personID, propertyKey, record.Value, record, conv)
+	// Append to list if property already exists (e.g., multiple OCCU)
+	// Wrap in {value: ...} objects for temporal list compatibility
+	if existing, exists := person.Properties[propertyKey]; exists {
+		newItem := map[string]any{"value": value}
+		switch v := existing.(type) {
+		case []any:
+			person.Properties[propertyKey] = append(v, newItem)
+		case string:
+			// Convert existing simple string to temporal list
+			person.Properties[propertyKey] = []any{
+				map[string]any{"value": v},
+				newItem,
+			}
+		default:
+			// Existing is already a map or other type, wrap in list
+			person.Properties[propertyKey] = []any{v, newItem}
+		}
+	} else {
+		person.Properties[propertyKey] = value
+	}
+	createPropertyAssertion(personID, propertyKey, value, record, conv)
 
 	// Handle OBJE subrecords on person property tags (e.g., OCCU with linked media)
 	for _, sub := range record.SubRecords {
@@ -452,7 +519,6 @@ func appendResidence(person *Person, value any) {
 
 // convertResidence converts RESI to residence temporal property on person
 func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, conv *ConversionContext) {
-	// Extract place and date from RESI record
 	var placeID string
 	var dateStr string
 
@@ -468,7 +534,6 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		}
 	}
 
-	// If we have a place, create temporal property
 	if placeID != "" {
 		if dateStr != "" {
 			appendResidence(person, map[string]any{
@@ -479,7 +544,6 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 			appendResidence(person, placeID)
 		}
 
-		// Create assertion for the residence
 		createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
 	}
 }

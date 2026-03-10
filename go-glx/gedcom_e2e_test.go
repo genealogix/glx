@@ -43,8 +43,8 @@ func TestE2E_GEDCOM551_Shakespeare(t *testing.T) {
 	if len(glx.Events) != 77 {
 		t.Errorf("Expected 77 events, got %d", len(glx.Events))
 	}
-	if len(glx.Relationships) != 49 {
-		t.Errorf("Expected 49 relationships, got %d", len(glx.Relationships))
+	if len(glx.Relationships) != 50 {
+		t.Errorf("Expected 50 relationships, got %d", len(glx.Relationships))
 	}
 
 	// Vocabularies loaded

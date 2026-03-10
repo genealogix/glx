@@ -90,7 +90,42 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 	}
 
 	// Try to parse as exact date - return YYYY-MM-DD format
-	return DateString(parseExactDate(date))
+	if result := parseExactDate(date); result != "" {
+		return DateString(result)
+	}
+
+	// If standard parsing failed, try stripping calendar escapes
+	// GEDCOM uses @#DJULIAN@, @#DHEBREW@, @#DFRENCH R@, @#DGREGORIAN@ prefixes
+	calendarStripped := stripCalendarEscape(date)
+	if calendarStripped != date {
+		if result := parseExactDate(calendarStripped); result != "" {
+			return DateString(result)
+		}
+	}
+
+	// Preserve the raw GEDCOM date string for non-standard formats
+	// (BCE dates, non-Gregorian calendars, dual dates like 1731/32)
+	// so they survive roundtrip rather than being silently dropped
+	return DateString(date)
+}
+
+// stripCalendarEscape removes GEDCOM calendar escape sequences like @#DJULIAN@, @#DHEBREW@, etc.
+func stripCalendarEscape(date string) string {
+	if idx := strings.Index(date, "@#D"); idx != -1 {
+		endIdx := strings.Index(date[idx:], "@ ")
+		if endIdx != -1 {
+			return strings.TrimSpace(date[idx+endIdx+2:])
+		}
+		// Handle case where @ is at end with no trailing space
+		endIdx = strings.LastIndex(date[idx:], "@")
+		if endIdx > 3 {
+			remainder := strings.TrimSpace(date[idx+endIdx+1:])
+			if remainder != "" {
+				return remainder
+			}
+		}
+	}
+	return date
 }
 
 // parseExactDate parses an exact GEDCOM date to YYYY-MM-DD format
