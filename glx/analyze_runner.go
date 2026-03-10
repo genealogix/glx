@@ -80,7 +80,16 @@ func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
 		"suggestions": analyzeSuggestions,
 	}
 
+	// Accept singular aliases ("gap" → "gaps", "suggestion" → "suggestions")
+	singularToPlural := map[string]string{
+		"gap":        "gaps",
+		"suggestion": "suggestions",
+	}
+
 	if checkFilter != "" {
+		if mapped, ok := singularToPlural[checkFilter]; ok {
+			checkFilter = mapped
+		}
 		fn, ok := checks[checkFilter]
 		if !ok {
 			return fmt.Errorf("unknown check category: %q (valid: gaps, evidence, consistency, suggestions)", checkFilter)
@@ -96,6 +105,9 @@ func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
 	if personFilter != "" {
 		issues = filterByPerson(issues, personFilter, archive)
 	}
+
+	// Sort by severity (high → medium → low → info) then by person/entity for stability
+	sortIssues(issues)
 
 	result := AnalysisResult{
 		Summary: buildSummary(issues),
@@ -231,6 +243,26 @@ func printIssue(issue AnalysisIssue) {
 		sev := strings.ToUpper(issue.Severity)
 		fmt.Printf("  %-4s %-30s %s\n", sev, ref, issue.Message)
 	}
+}
+
+// severityRank maps severity strings to numeric rank for sorting (lower = more severe).
+var severityRank = map[string]int{
+	"high":   0,
+	"medium": 1,
+	"low":    2,
+	"info":   3,
+}
+
+// sortIssues sorts issues by severity (high first), then by person/entity ID.
+func sortIssues(issues []AnalysisIssue) {
+	sort.SliceStable(issues, func(i, j int) bool {
+		ri, rj := severityRank[issues[i].Severity], severityRank[issues[j].Severity]
+		if ri != rj {
+			return ri < rj
+		}
+		pi, pj := issues[i].Person+issues[i].Entity, issues[j].Person+issues[j].Entity
+		return pi < pj
+	})
 }
 
 // personName returns the display name for a person ID, or the ID itself.

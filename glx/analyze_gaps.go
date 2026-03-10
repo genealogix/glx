@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -76,7 +77,8 @@ func checkMissingDeath(id, name string, person *glxlib.Person) []AnalysisIssue {
 	}
 
 	birthYear := glxlib.ExtractFirstYear(bornOn)
-	if birthYear == 0 || birthYear > 1915 {
+	cutoff := time.Now().Year() - 110
+	if birthYear == 0 || birthYear > cutoff {
 		// Unknown birth year or could still be alive — skip.
 		return nil
 	}

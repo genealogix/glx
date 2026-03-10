@@ -44,7 +44,7 @@ func checkUnsupportedAssertions(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		if len(assertion.Citations) > 0 || len(assertion.Sources) > 0 {
+		if len(assertion.Citations) > 0 || len(assertion.Sources) > 0 || len(assertion.Media) > 0 {
 			continue
 		}
 

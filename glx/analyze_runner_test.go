@@ -231,6 +231,26 @@ func TestAnalyzeEvidence_SupportedAssertion(t *testing.T) {
 	}
 }
 
+func TestAnalyzeEvidence_MediaSupportedAssertion(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-1": {
+				Subject: glxlib.EntityRef{Person: "person-a"},
+				Media:   []string{"media-1"},
+			},
+		},
+	}
+
+	issues := analyzeEvidence(archive)
+	found := findIssueByEntity(issues, "assertion-1")
+	if found != nil {
+		t.Error("should not flag assertion with media evidence")
+	}
+}
+
 func TestAnalyzeEvidence_OrphanedCitation(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Citations: map[string]*glxlib.Citation{
