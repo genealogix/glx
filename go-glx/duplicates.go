@@ -214,6 +214,9 @@ func generateCandidatePairs(archive *GLXFile, idx *duplicateIndex, personFilter 
 			continue
 		}
 		_, surname := ExtractNameFields(person.Properties[PersonPropertyName])
+		if surname == "" {
+			_, surname = splitFullName(PersonDisplayName(person))
+		}
 		key := strings.ToLower(strings.TrimSpace(surname))
 		if key == "" {
 			key = "_nosurname"
@@ -484,9 +487,6 @@ func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, st
 	}
 
 	score := float64(common) / float64(maxPeers)
-	if score > 1.0 {
-		score = 1.0
-	}
 
 	return score, pluralize(common, "shared")
 }
@@ -521,9 +521,6 @@ func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string) {
 	}
 
 	score := float64(common) / float64(maxEvents)
-	if score > 1.0 {
-		score = 1.0
-	}
 
 	return score, pluralize(common, "shared")
 }

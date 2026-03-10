@@ -117,10 +117,18 @@ func captureStdout(t *testing.T, fn func()) string {
 	origStdout := os.Stdout
 	os.Stdout = w
 
+	wClosed := false
+	defer func() {
+		if !wClosed {
+			_ = w.Close()
+		}
+		os.Stdout = origStdout
+	}()
+
 	fn()
 
-	w.Close()
-	os.Stdout = origStdout
+	require.NoError(t, w.Close())
+	wClosed = true
 
 	var buf bytes.Buffer
 	_, err = buf.ReadFrom(r)
