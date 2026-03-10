@@ -421,8 +421,9 @@ func sortTimelineEntries(entries []timelineEntry) {
 // (e.g., "15 MAR"). Used to strip day values before year extraction.
 var timelineDayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b`)
 
-// dateSortKeyRegexp matches a 1–4 digit year optionally followed by -MM and -DD.
-var dateSortKeyRegexp = regexp.MustCompile(`(\d{1,4}(?:-\d{2}(?:-\d{2})?)?)`)
+// dateSortKeyRegexp matches a 1–4 digit year optionally followed by -MM and -DD,
+// using word boundaries to avoid partial matches inside longer digit sequences.
+var dateSortKeyRegexp = regexp.MustCompile(`\b(\d{1,4}(?:-\d{2}(?:-\d{2})?)?)\b`)
 
 // dateSortKey extracts a sortable date string from a GLX date value.
 // Strips qualifiers like ABT, BEF, AFT, BET...AND and day-of-month values.
