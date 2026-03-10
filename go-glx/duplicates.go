@@ -404,8 +404,8 @@ func compareGivenNames(a, b string) float64 {
 
 // scoreYearSimilarity compares year values from person properties.
 func scoreYearSimilarity(propsA, propsB map[string]any, propertyKey string) (float64, string) {
-	yearA := extractPropertyYear(propsA, propertyKey)
-	yearB := extractPropertyYear(propsB, propertyKey)
+	yearA := ExtractPropertyYear(propsA, propertyKey)
+	yearB := ExtractPropertyYear(propsB, propertyKey)
 
 	if yearA == 0 || yearB == 0 {
 		return 0, "no data"

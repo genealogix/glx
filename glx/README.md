@@ -9,7 +9,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
 - 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files to GLX format
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
-- 🔍 **Validate Files** - Comprehensive validation with cross-reference and temporal consistency checking
+- 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
 - 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
@@ -19,6 +19,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
+- 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -133,6 +134,11 @@ glx stats family-archive
 # Analyze places for data quality issues
 glx places family-archive
 
+# Run research gap analysis
+glx analyze family-archive
+glx analyze --check consistency
+glx analyze "John Smith"
+
 # Look up a person's vital records
 glx vitals "John Smith"
 
@@ -228,7 +234,7 @@ my-family-archive/
 
 ### `glx validate`
 
-Validate GLX files and verify cross-references.
+Validate GLX files for structural and referential integrity.
 
 **Usage:**
 ```bash
@@ -248,6 +254,8 @@ glx validate [path] --report
 - ✓ Cross-reference integrity
 - ✓ Duplicate ID detection
 - ✓ Vocabulary validation (if vocabularies/ exists)
+
+> **Note:** Temporal consistency checks (death before birth, parent younger than child, etc.) are handled by `glx analyze`, not `glx validate`. This keeps validation focused on structural correctness.
 
 **Behavior:**
 - **Directory or multi-path validation** performs full cross-reference checking across all files
@@ -880,6 +888,73 @@ glx cite
 
 # Use a specific archive
 glx cite --archive my-archive
+```
+
+### `glx analyze`
+
+Analyze a GLX archive for research gaps, evidence quality issues, chronological inconsistencies, and research suggestions.
+
+**Usage:**
+```bash
+glx analyze [person] [flags]
+```
+
+**Arguments:**
+- `[person]` - Optional person ID or name to filter results to a single person
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `-c, --check <category>` - Run a single analysis category: `gaps`, `evidence`, `consistency`, or `suggestions`
+- `-f, --format <format>` - Output format (`json` for machine-readable)
+- `-p, --person <id-or-name>` - Filter results to a specific person (alternative to positional argument)
+
+**Analysis categories:**
+
+| Category | What it checks |
+| --- | --- |
+| `gaps` | Missing data that should be findable (no birth date, no parents, no events) |
+| `evidence` | Unsupported or weakly supported claims (no citations, single-source persons, orphaned citations/sources) |
+| `consistency` | Chronological cross-checks (death before birth, parent younger than child, implausible lifespan) |
+| `suggestions` | Research recommendations (census years to search, vital records to locate) |
+
+**Examples:**
+
+```bash
+# Full analysis of current directory
+glx analyze
+
+# Focus on one person
+glx analyze person-mary-lane
+
+# Run only gap analysis
+glx analyze --check gaps
+
+# JSON output for tooling
+glx analyze --format json
+
+# Analyze a specific archive
+glx analyze --archive my-archive
+```
+
+**Output:**
+```
+=== Research Gap Analysis: 42 issues found ===
+
+EVIDENCE GAPS (15)
+  HIGH person-john-smith             No birth date
+  HIGH person-mary-brown             No parents
+  MED  person-thomas-smith           No death date (born before 1930)
+
+EVIDENCE QUALITY (12)
+  HIGH person-john-smith             No assertions backed by citations
+  MED  person-mary-brown             Only one source
+
+CONSISTENCY (5)
+  HIGH person-jane-doe               Death year (1810) before birth year (1842)
+
+SUGGESTIONS (10)
+  →   person-john-smith              Search 1850 census (born ~1842)
+  →   person-mary-brown              Look for vital records in Leeds
 ```
 
 ## File Format

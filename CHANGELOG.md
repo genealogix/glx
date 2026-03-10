@@ -15,31 +15,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
-- **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
-- **Added `glx vitals` command** - Display vital records (name, sex, birth, christening, death, burial) for a person by ID or name search, plus any other life events they participated in
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
-- **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
+- **Added `glx timeline` command** - Display chronological events for a person, including direct events and family events (spouse/child births, parent deaths) via relationship traversal. Supports `--no-family` flag to exclude family events; undated events shown in a separate section
+- **Added `glx summary` command** - Comprehensive person profile showing identity, vital events, life events, family (spouses, parents, siblings), other relationships, and an auto-generated life history narrative
+- **Added `glx ancestors` and `glx descendants` commands** - Display ancestor/descendant trees using box-drawing characters. Traverses parent-child relationships with `--generations` flag to limit depth. Handles biological, adoptive, foster, and step-parent types with cycle detection
+- **Added `glx vitals` command** - Display vital records (name, sex, birth, christening, death, burial) for a person by ID or name search, plus any other life events they participated in
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
+- **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
+- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
+- **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
 
-#### GEDCOM Roundtrip Fidelity
-- **Inline SOUR citations on individual events** - Birth, death, burial, and other individual events now preserve SOUR citations during import/export roundtrip (~25K tags recovered in habsburg)
-- **Single-spouse family marriages** - FAM records with only HUSB or WIFE now create marriage relationships and events instead of being silently dropped (~700 tags recovered in queen)
-- **Non-standard date preservation** - BCE dates, Julian/Hebrew/French Republican calendar dates, and dual-year dates are preserved as raw strings instead of being dropped (~2,800 tags recovered in date-all)
-- **TITL with DATE/PLAC sub-records** - Title properties with dates and places are stored as temporal list items and roundtrip correctly (~2,900 tags recovered)
-- **Multiple MARR events per family** - Families with multiple MARR records now preserve all marriage events
+#### Event Entity
+- **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import (e.g., "Birth of Daniel Lane (1815)", "Marriage of John Smith and Jane Doe (1850)")
+
+#### GEDCOM Import
+- **Non-standard date preservation** - BCE dates, Julian/Hebrew/French Republican calendar dates, and dual-year dates are preserved as raw strings instead of being dropped
+- **TITL with DATE/PLAC sub-records** - Title properties with dates and places are stored as temporal list items and roundtrip correctly
 - **Empty OCCU with PLAC fallback** - OCCU records with empty values but PLAC sub-records now extract the place text as the occupation value
-- **HEAD-level NOTE preservation** - Notes on GEDCOM HEAD records are now imported and exported, fixing NOTE loss in ~10 files
+- **HEAD-level NOTE preservation** - Notes on GEDCOM HEAD records are now imported and exported
 - **Family-level RESI import** - RESI records under FAM are now distributed to both spouses as residence properties
 - **Family-level NOTE import/export** - NOTE records on FAM are now stored on the relationship's Notes field and roundtrip correctly
-- **Single-value RESI export** - RESI stored as scalar (not list) now exports correctly instead of being silently dropped
-- **Fixed SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N x N duplication when a person has multiple values for TITL, OCCU, etc. (~1,348 phantom SOURs eliminated in habsburg)
-- **Marriage TYPE export** - Marriage `marriage_type` property (e.g., "civil", "religious", "marriage") now exported as TYPE sub-record on MARR. Previously imported but silently dropped on export (~65 TYPE tags recovered in british-royalty)
+
+#### GEDCOM Export
+- **Inline SOUR citations on individual events** - Birth, death, burial, and other individual events now preserve SOUR citations during export
+- **Single-spouse family marriages** - FAM records with only HUSB or WIFE now export marriage relationships and events instead of being silently dropped
+- **Multiple MARR events per family** - Families with multiple MARR records now preserve all marriage events
+- **Marriage TYPE export** - Marriage `marriage_type` property now exported as TYPE sub-record on MARR
 - **Family event TYPE/properties export** - Family events (EVEN, ENGA, etc.) now export event_subtype and other event properties (TYPE, CAUS, AGE) that were previously lost
 - **HEAD metadata roundtrip** - LANG, FILE, COPR sub-records from the original GEDCOM HEAD are now preserved through import/export
+- **Single-value RESI export** - RESI stored as scalar (not list) now exports correctly instead of being silently dropped
+- **Multi-family children placed in all matching families** - Children belonging to multiple FAM records (e.g., birth family + step-family) are now placed in all matching families instead of only the first match
 
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
+
+#### Documentation
+- **Added [Westeros example archive](/examples/westeros/)** - Large-scale example featuring 790+ characters from *A Song of Ice and Fire* with full evidence chains, 200+ custom vocabulary types, and temporal properties. Hosted at [github.com/genealogix/glx-archive-westeros](https://github.com/genealogix/glx-archive-westeros)
+- **Added [Hands-On CLI Guide](/guides/hands-on-cli-guide)** - Step-by-step walkthrough of every `glx` command using the Westeros demo archive, with real output examples
+
+### Fixed
+- **SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N×N duplication when a person has multiple values for TITL, OCCU, etc.
 
 ---
 
@@ -65,9 +81,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added event types** - `legal_separation`, `taxation`, `voter_registration` for legal/administrative events; `military_service`, `stillborn`, `affiliation` for service periods, stillbirths, and memberships
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
-
-#### Event Entity
-- **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Lane Household"). Useful for census enumerations, passenger lists, and other shared events where the type/date/place combination alone is not descriptive enough
 
 #### Participant Object
 - **Added `properties` to participants** - Participants across events, relationships, and assertions can now carry per-participant properties like `age_at_event`, enabling shared events (census, passenger lists) to record individual data without creating separate events per person
