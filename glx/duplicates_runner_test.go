@@ -95,6 +95,16 @@ func TestFindDuplicates_Integration_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFindDuplicates_Integration_InvalidThreshold(t *testing.T) {
+	err := findDuplicates(".", 1.5, "", false)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--threshold must be between 0.0 and 1.0")
+
+	err = findDuplicates(".", -0.1, "", false)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--threshold must be between 0.0 and 1.0")
+}
+
 func writeTestPerson(t *testing.T, dir, id, name, born string) {
 	t.Helper()
 	yaml := "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n      born_on: \"" + born + "\"\n"

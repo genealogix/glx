@@ -69,9 +69,14 @@ type duplicateIndex struct {
 }
 
 // FindDuplicates scans an archive for potential duplicate persons.
-func FindDuplicates(archive *GLXFile, opts DuplicateOptions) *DuplicateResult {
+// Threshold must be between 0.0 and 1.0 inclusive.
+func FindDuplicates(archive *GLXFile, opts DuplicateOptions) (*DuplicateResult, error) {
+	if opts.Threshold < 0.0 || opts.Threshold > 1.0 {
+		return nil, fmt.Errorf("threshold must be between 0.0 and 1.0, got %f", opts.Threshold)
+	}
+
 	if archive == nil || len(archive.Persons) < 2 {
-		return &DuplicateResult{Threshold: opts.Threshold, Pairs: []DuplicatePair{}}
+		return &DuplicateResult{Threshold: opts.Threshold, Pairs: []DuplicatePair{}}, nil
 	}
 
 	idx := buildDuplicateIndex(archive)
@@ -104,7 +109,7 @@ func FindDuplicates(archive *GLXFile, opts DuplicateOptions) *DuplicateResult {
 	return &DuplicateResult{
 		Pairs:     results,
 		Threshold: opts.Threshold,
-	}
+	}, nil
 }
 
 // buildDuplicateIndex creates lookup maps from the archive.

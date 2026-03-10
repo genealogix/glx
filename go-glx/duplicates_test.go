@@ -220,7 +220,8 @@ func TestScoreSharedEvents_CommonEvent(t *testing.T) {
 
 func TestFindDuplicates_EmptyArchive(t *testing.T) {
 	archive := &GLXFile{}
-	result := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
 	assert.Empty(t, result.Pairs)
 }
 
@@ -230,7 +231,8 @@ func TestFindDuplicates_SinglePerson(t *testing.T) {
 			"person-john": {Properties: map[string]any{"name": "John Smith"}},
 		},
 	}
-	result := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
 	assert.Empty(t, result.Pairs)
 }
 
@@ -245,7 +247,8 @@ func TestFindDuplicates_ObviousDuplicate(t *testing.T) {
 			}},
 		},
 	}
-	result := FindDuplicates(archive, DuplicateOptions{Threshold: 0.5})
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.5})
+	require.NoError(t, err)
 	require.Len(t, result.Pairs, 1)
 	assert.True(t, result.Pairs[0].Score >= 0.5)
 }
@@ -266,7 +269,8 @@ func TestFindDuplicates_RelatedPersonsSkipped(t *testing.T) {
 			},
 		},
 	}
-	result := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	require.NoError(t, err)
 	assert.Empty(t, result.Pairs, "parent-child pairs should be skipped")
 }
 
@@ -278,7 +282,8 @@ func TestFindDuplicates_ThresholdFiltering(t *testing.T) {
 		},
 	}
 	// With high threshold, no matches expected
-	result := FindDuplicates(archive, DuplicateOptions{Threshold: 0.99})
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.99})
+	require.NoError(t, err)
 	assert.Empty(t, result.Pairs)
 }
 
@@ -290,7 +295,8 @@ func TestFindDuplicates_PersonFilter(t *testing.T) {
 			"person-c": {Properties: map[string]any{"name": "John Smith", "born_on": "1850"}},
 		},
 	}
-	result := FindDuplicates(archive, DuplicateOptions{Threshold: 0.5, PersonFilter: "person-a"})
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.5, PersonFilter: "person-a"})
+	require.NoError(t, err)
 	// All pairs should include person-a
 	for _, pair := range result.Pairs {
 		assert.True(t, pair.PersonA == "person-a" || pair.PersonB == "person-a",
@@ -306,7 +312,8 @@ func TestFindDuplicates_SortedByScoreDescending(t *testing.T) {
 			"person-john-3": {Properties: map[string]any{"name": "Jon Smyth", "born_on": "1855"}},
 		},
 	}
-	result := FindDuplicates(archive, DuplicateOptions{Threshold: 0.3})
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.3})
+	require.NoError(t, err)
 	if len(result.Pairs) > 1 {
 		for i := 1; i < len(result.Pairs); i++ {
 			assert.True(t, result.Pairs[i-1].Score >= result.Pairs[i].Score,
@@ -345,4 +352,44 @@ func TestSplitFullName(t *testing.T) {
 	given, surname = splitFullName("Madonna")
 	assert.Equal(t, "Madonna", given)
 	assert.Equal(t, "", surname)
+}
+
+// --- Threshold validation tests ---
+
+func TestFindDuplicates_ThresholdTooHigh(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "John Smith"}},
+			"person-b": {Properties: map[string]any{"name": "Jane Doe"}},
+		},
+	}
+	_, err := FindDuplicates(archive, DuplicateOptions{Threshold: 1.5})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "threshold must be between 0.0 and 1.0")
+}
+
+func TestFindDuplicates_ThresholdNegative(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "John Smith"}},
+			"person-b": {Properties: map[string]any{"name": "Jane Doe"}},
+		},
+	}
+	_, err := FindDuplicates(archive, DuplicateOptions{Threshold: -0.1})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "threshold must be between 0.0 and 1.0")
+}
+
+func TestFindDuplicates_ThresholdBoundary(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "John Smith"}},
+			"person-b": {Properties: map[string]any{"name": "Jane Doe"}},
+		},
+	}
+	// 0.0 and 1.0 are valid
+	_, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	assert.NoError(t, err)
+	_, err = FindDuplicates(archive, DuplicateOptions{Threshold: 1.0})
+	assert.NoError(t, err)
 }

@@ -24,6 +24,10 @@ import (
 
 // findDuplicates loads an archive and scans for potential duplicate persons.
 func findDuplicates(archivePath string, threshold float64, personFilter string, jsonOutput bool) error {
+	if threshold < 0.0 || threshold > 1.0 {
+		return fmt.Errorf("--threshold must be between 0.0 and 1.0, got %.2f", threshold)
+	}
+
 	archive, err := loadArchiveForDuplicates(archivePath)
 	if err != nil {
 		return err
@@ -40,7 +44,10 @@ func findDuplicates(archivePath string, threshold float64, personFilter string, 
 		PersonFilter: personFilter,
 	}
 
-	result := glxlib.FindDuplicates(archive, opts)
+	result, err2 := glxlib.FindDuplicates(archive, opts)
+	if err2 != nil {
+		return err2
+	}
 
 	if jsonOutput {
 		return printDuplicatesJSON(result)
