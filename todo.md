@@ -10,7 +10,6 @@ Known data loss during GED → GLX → GED roundtrip. Steps to reproduce any: `g
 
 ### Family Reconstruction
 
-- **Multi-family children placed in only one family** (bullinger CHIL 628→617, -11): Children in two FAM records (e.g., birth + step-family) are placed in only one on export. Parent-child relationships are all preserved in GLX — only the second CHIL back-reference is lost in the re-exported GEDCOM.
 - **Extra FAMS references** (queen FAMS +124→-124, british-royalty FAMS +22): Synthetic single-parent families created during reconstruction generate FAMS references that didn't exist in the original.
 
 ### Notes

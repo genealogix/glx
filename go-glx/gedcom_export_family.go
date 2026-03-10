@@ -184,22 +184,26 @@ func reconstructFamilies(expCtx *ExportContext) {
 			}
 		}
 
-		familyIdx := -1
+		// Find ALL matching families for this child.
+		// A child may belong to multiple families (e.g., birth family + step-family).
+		matchedFamilies := make(map[int]bool)
 
-		// If child has two known parents, look up the family by parent pair
-		if len(parentIDs) == 2 {
-			pids := make([]string, 0, 2)
-			for pid := range parentIDs {
-				pids = append(pids, pid)
-			}
-			pairKey := makeParentPairKey(pids[0], pids[1])
-			if idx, ok := parentPairToFamily[pairKey]; ok {
-				familyIdx = idx
+		// Try all parent pairs against known families
+		parentList := make([]string, 0, len(parentIDs))
+		for pid := range parentIDs {
+			parentList = append(parentList, pid)
+		}
+		for i := 0; i < len(parentList); i++ {
+			for j := i + 1; j < len(parentList); j++ {
+				pairKey := makeParentPairKey(parentList[i], parentList[j])
+				if idx, ok := parentPairToFamily[pairKey]; ok {
+					matchedFamilies[idx] = true
+				}
 			}
 		}
 
-		// Fallback: use the first parent's family
-		if familyIdx < 0 {
+		// Fallback: if no pair matches, use the first parent's family
+		if len(matchedFamilies) == 0 {
 			for _, cp := range parents {
 				familyIndices := parentToFamilies[cp.parentID]
 				for _, idx := range familyIndices {
@@ -209,32 +213,34 @@ func reconstructFamilies(expCtx *ExportContext) {
 					if len(parentIDs) == 1 && familiesWithPairedChildren[idx] {
 						continue
 					}
-					familyIdx = idx
+					matchedFamilies[idx] = true
 					break
 				}
-				if familyIdx >= 0 {
+				if len(matchedFamilies) > 0 {
 					break
 				}
 			}
 		}
 
 		// Still no family: create a synthetic single-parent FAM
-		if familyIdx < 0 && len(parents) > 0 {
-			familyIdx = createSyntheticFamily(parents[0].parentID, expCtx, parentToFamilies)
+		if len(matchedFamilies) == 0 && len(parents) > 0 {
+			idx := createSyntheticFamily(parents[0].parentID, expCtx, parentToFamilies)
+			if idx >= 0 {
+				matchedFamilies[idx] = true
+			}
 		}
 
-		if familyIdx < 0 {
-			continue
-		}
+		// Place child in all matched families
+		for familyIdx := range matchedFamilies {
+			family := expCtx.Families[familyIdx]
 
-		family := expCtx.Families[familyIdx]
+			if !containsString(family.ChildIDs, childID) {
+				family.ChildIDs = append(family.ChildIDs, childID)
+			}
 
-		if !containsString(family.ChildIDs, childID) {
-			family.ChildIDs = append(family.ChildIDs, childID)
-		}
-
-		if bestPedi != "" {
-			family.ChildPedigrees[childID] = bestPedi
+			if bestPedi != "" {
+				family.ChildPedigrees[childID] = bestPedi
+			}
 		}
 	}
 

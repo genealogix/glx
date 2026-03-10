@@ -850,10 +850,10 @@ func TestRoundtrip_DanglingChildRefsIgnored(t *testing.T) {
 	assert.Equal(t, 1, chilCount, "only real child should appear as CHIL")
 }
 
-// TestRoundtrip_MultiFamilyChild documents that a child in two families (e.g., birth
-// family + step-family) only appears as CHIL in one family after roundtrip. This
-// reproduces the bullinger.ged pattern where 11 children in 2 FAMs each lose their
-// second CHIL listing. The parent-child relationships are all preserved in GLX.
+// TestRoundtrip_MultiFamilyChild tests that a child in two families (e.g., birth
+// family + step-family) appears as CHIL in both families after roundtrip.
+// Reproduces the bullinger.ged pattern where 11 children in 2 FAMs each lose their
+// second CHIL listing.
 func TestRoundtrip_MultiFamilyChild(t *testing.T) {
 	// Child has FAMC to both F1 (birth family) and F2 (step-family).
 	// Both FAMs list the child as CHIL.
@@ -872,6 +872,7 @@ func TestRoundtrip_MultiFamilyChild(t *testing.T) {
 1 NAME Mother /Jones/
 1 SEX F
 1 FAMS @F1@
+1 FAMS @F2@
 0 @I3@ INDI
 1 NAME StepFather /Brown/
 1 SEX M
@@ -899,14 +900,14 @@ func TestRoundtrip_MultiFamilyChild(t *testing.T) {
 	require.NoError(t, err)
 
 	// Child should have parent-child relationships to all 3 parents
+	// Father + Mother from F1, StepFather + Mother from F2 = 4
+	// (Mother appears twice since child has FAMC to both families)
 	parentChildCount := 0
 	for _, rel := range glx1.Relationships {
 		if isParentChildType(rel.Type) {
 			parentChildCount++
 		}
 	}
-	// Father + Mother from F1, StepFather + Mother from F2 = 4
-	// (Mother appears twice since child has FAMC to both families)
 	assert.Equal(t, 4, parentChildCount,
 		"child should have parent-child rels to all parents from both families")
 
@@ -915,19 +916,12 @@ func TestRoundtrip_MultiFamilyChild(t *testing.T) {
 	require.NoError(t, err)
 	exportedStr := string(exported)
 
-	// Known limitation: child appears as CHIL in only one family on export,
-	// even though they were in two families originally.
+	// Child should appear as CHIL in both families
 	chilCount := strings.Count(exportedStr, "\n1 CHIL ")
-	// Ideally this would be 2 (child in both families), but currently it's 1.
-	// Document the current behavior:
-	if chilCount == 2 {
-		t.Log("Multi-family child correctly placed in both families — gap is fixed!")
-	} else {
-		assert.Equal(t, 1, chilCount,
-			"known gap: multi-family child only appears as CHIL in one family; got %d", chilCount)
-	}
+	assert.Equal(t, 2, chilCount,
+		"child should appear as CHIL in both families")
 
-	// But all parent-child relationships should survive in the reimported GLX
+	// Re-import: all 4 parent-child relationships should survive
 	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
 	require.NoError(t, err)
 
@@ -937,12 +931,6 @@ func TestRoundtrip_MultiFamilyChild(t *testing.T) {
 			parentChildCount2++
 		}
 	}
-	// After roundtrip, child is only in one family, so only 2 parent-child rels
-	// (instead of the original 4). This is real data loss — two parent links vanish.
-	if parentChildCount2 == 4 {
-		t.Log("All parent-child relationships preserved — gap is fixed!")
-	} else {
-		assert.Equal(t, 2, parentChildCount2,
-			"known gap: child loses parent-child rels from second family; got %d", parentChildCount2)
-	}
+	assert.Equal(t, 4, parentChildCount2,
+		"all 4 parent-child relationships should survive roundtrip")
 }
