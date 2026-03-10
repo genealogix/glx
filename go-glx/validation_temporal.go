@@ -36,8 +36,8 @@ func (glx *GLXFile) validateTemporalConsistency(result *ValidationResult) {
 // their birth date.
 func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
 	for id, person := range glx.Persons {
-		birthYear := extractPropertyYear(person.Properties, PersonPropertyBornOn)
-		deathYear := extractPropertyYear(person.Properties, PersonPropertyDiedOn)
+		birthYear := ExtractPropertyYear(person.Properties, PersonPropertyBornOn)
+		deathYear := ExtractPropertyYear(person.Properties, PersonPropertyDiedOn)
 
 		if birthYear == 0 || deathYear == 0 {
 			continue
@@ -77,7 +77,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 			if !ok {
 				continue
 			}
-			parentBirth := extractPropertyYear(parent.Properties, PersonPropertyBornOn)
+			parentBirth := ExtractPropertyYear(parent.Properties, PersonPropertyBornOn)
 			if parentBirth == 0 {
 				continue
 			}
@@ -87,7 +87,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 				if !ok {
 					continue
 				}
-				childBirth := extractPropertyYear(child.Properties, PersonPropertyBornOn)
+				childBirth := ExtractPropertyYear(child.Properties, PersonPropertyBornOn)
 				if childBirth == 0 {
 					continue
 				}
@@ -114,7 +114,7 @@ func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 			continue
 		}
 
-		eventYear := extractFirstYear(string(event.Date))
+		eventYear := ExtractFirstYear(string(event.Date))
 		if eventYear == 0 {
 			continue
 		}
@@ -125,7 +125,7 @@ func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 				continue
 			}
 
-			birthYear := extractPropertyYear(person.Properties, PersonPropertyBornOn)
+			birthYear := ExtractPropertyYear(person.Properties, PersonPropertyBornOn)
 			if birthYear == 0 {
 				continue
 			}
@@ -155,10 +155,10 @@ func isParentChildRelType(relType string) bool {
 	return false
 }
 
-// extractPropertyYear extracts the first 4-digit year from a person property.
+// ExtractPropertyYear extracts the first 4-digit year from a person property.
 // Handles simple string values, structured maps with a "value" key, and
 // temporal lists where each entry has a "value" key.
-func extractPropertyYear(props map[string]any, key string) int {
+func ExtractPropertyYear(props map[string]any, key string) int {
 	raw, ok := props[key]
 	if !ok {
 		return 0
@@ -183,12 +183,12 @@ func extractPropertyYear(props map[string]any, key string) int {
 		}
 	}
 
-	return extractFirstYear(dateStr)
+	return ExtractFirstYear(dateStr)
 }
 
-// extractFirstYear extracts the first 4-digit year from a date string.
+// ExtractFirstYear extracts the first 4-digit year from a date string.
 // Returns 0 if no year is found.
-func extractFirstYear(dateStr string) int {
+func ExtractFirstYear(dateStr string) int {
 	if dateStr == "" {
 		return 0
 	}

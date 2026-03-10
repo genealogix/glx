@@ -63,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
+	rootCmd.AddCommand(analyzeCmd)
 }
 
 // ============================================================================
@@ -806,4 +807,63 @@ func init() {
 
 func runVitals(_ *cobra.Command, args []string) error {
 	return showVitals(vitalsArchive, args[0])
+}
+
+// ============================================================================
+// Analyze Command
+// ============================================================================
+
+var (
+	analyzeArchive string
+	analyzeCheck   string
+	analyzeFormat  string
+	analyzePerson  string
+)
+
+var analyzeCmd = &cobra.Command{
+	Use:   "analyze [person]",
+	Short: "Analyze archive for research gaps, evidence quality, and consistency",
+	Long: `Run automated analysis on a GENEALOGIX archive to surface research gaps,
+unsupported claims, chronological inconsistencies, and suggested next steps.
+
+Analysis categories:
+  gaps          Missing data that should be findable (no birth, no parents, etc.)
+  evidence      Unsupported or weakly supported claims (no citations, single source)
+  consistency   Chronological cross-checks (death before birth, implausible lifespan)
+  suggestions   Research recommendations (census years to search, vital records)
+
+Use --check to run a single category. By default, all categories are analyzed.
+
+Use --format json for machine-readable output.`,
+	Example: `  # Full analysis of current directory
+  glx analyze
+
+  # Focus on one person
+  glx analyze person-mary-lane
+
+  # Run only gap analysis
+  glx analyze --check gaps
+
+  # JSON output for tooling
+  glx analyze --format json
+
+  # Analyze a specific archive
+  glx analyze --archive my-archive`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runAnalyze,
+}
+
+func init() {
+	analyzeCmd.Flags().StringVarP(&analyzeArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	analyzeCmd.Flags().StringVarP(&analyzeCheck, "check", "c", "", "Run a single analysis category (gaps, evidence, consistency, suggestions)")
+	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "", "Output format (json for machine-readable)")
+	analyzeCmd.Flags().StringVarP(&analyzePerson, "person", "p", "", "Filter results to a specific person (ID or name)")
+}
+
+func runAnalyze(_ *cobra.Command, args []string) error {
+	person := analyzePerson
+	if len(args) == 1 {
+		person = args[0]
+	}
+	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
 }
