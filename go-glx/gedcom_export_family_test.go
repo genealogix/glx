@@ -211,6 +211,119 @@ func TestReconstructFamilies_SingleParent(t *testing.T) {
 	assert.Equal(t, "", family.RelationshipID) // synthetic family has no marriage relationship
 }
 
+// TestReconstructFamilies_SingleParentWithExistingFamily verifies that when a parent
+// appears in both a marriage family AND has children from another relationship (no spouse),
+// a separate synthetic family is created for the spouse-less children instead of merging
+// them into the marriage family.
+func TestReconstructFamilies_SingleParentWithExistingFamily(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-father": {
+					Properties: map[string]any{
+						PersonPropertyGender: "male",
+					},
+				},
+				"person-mother": {
+					Properties: map[string]any{
+						PersonPropertyGender: "female",
+					},
+				},
+				"person-child-married": {
+					Properties: map[string]any{},
+				},
+				"person-child-other1": {
+					Properties: map[string]any{},
+				},
+				"person-child-other2": {
+					Properties: map[string]any{},
+				},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-marriage": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleSpouse},
+						{Person: "person-mother", Role: ParticipantRoleSpouse},
+					},
+				},
+				// Child from the marriage
+				"rel-pc-married-f": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-married", Role: ParticipantRoleChild},
+					},
+				},
+				"rel-pc-married-m": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-mother", Role: ParticipantRoleParent},
+						{Person: "person-child-married", Role: ParticipantRoleChild},
+					},
+				},
+				// Children from another relationship (father only, no mother)
+				"rel-pc-other1": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-other1", Role: ParticipantRoleChild},
+					},
+				},
+				"rel-pc-other2": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-other2", Role: ParticipantRoleChild},
+					},
+				},
+			},
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-father":        "@I1@",
+			"person-mother":        "@I2@",
+			"person-child-married": "@I3@",
+			"person-child-other1":  "@I4@",
+			"person-child-other2":  "@I5@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
+	}
+
+	reconstructFamilies(expCtx)
+
+	// Should create TWO families: one for the marriage, one synthetic for father-only children
+	require.Len(t, expCtx.Families, 2, "expected 2 families: 1 marriage + 1 synthetic single-parent")
+
+	// Find the marriage family and the synthetic family
+	var marriageFamily, syntheticFamily *ExportFamily
+	for _, f := range expCtx.Families {
+		if f.HusbandID != "" && f.WifeID != "" {
+			marriageFamily = f
+		} else if f.WifeID == "" && f.HusbandID == "person-father" {
+			syntheticFamily = f
+		}
+	}
+
+	require.NotNil(t, marriageFamily, "marriage family not found")
+	require.NotNil(t, syntheticFamily, "synthetic single-parent family not found")
+
+	// Marriage family should have the child from the marriage
+	assert.Contains(t, marriageFamily.ChildIDs, "person-child-married")
+	assert.NotContains(t, marriageFamily.ChildIDs, "person-child-other1")
+	assert.NotContains(t, marriageFamily.ChildIDs, "person-child-other2")
+
+	// Synthetic family should have the father-only children
+	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other1")
+	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other2")
+	assert.Equal(t, "", syntheticFamily.RelationshipID)
+}
+
 func TestReconstructFamilies_PedigreeTypes(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
@@ -981,4 +1094,306 @@ func TestIsParentChildType(t *testing.T) {
 	assert.True(t, isParentChildType(RelationshipTypeFosterParentChild))
 	assert.False(t, isParentChildType(RelationshipTypeMarriage))
 	assert.False(t, isParentChildType(RelationshipTypeSibling))
+}
+
+func TestExportFamily_MarriageWithoutStartEvent_NoMarr(t *testing.T) {
+	// A marriage relationship without a StartEvent should NOT emit MARR,
+	// because we can't distinguish "FAM without MARR" from "FAM with empty MARR"
+	// after import. The conservative choice avoids inflating MARR counts.
+	glxFile := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"gender": "male", "name": map[string]any{"value": "John"}}},
+			"person-2": {Properties: map[string]any{"gender": "female", "name": map[string]any{"value": "Jane"}}},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeMarriage,
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRoleSpouse},
+					{Person: "person-2", Role: ParticipantRoleSpouse},
+				},
+			},
+		},
+		Events:            make(map[string]*Event),
+		EventTypes:        make(map[string]*EventType),
+		PersonProperties:  make(map[string]*PropertyDefinition),
+		RelationshipTypes: make(map[string]*RelationshipType),
+		Sources:           make(map[string]*Source),
+		Citations:         make(map[string]*Citation),
+		Repositories:      make(map[string]*Repository),
+		Media:             make(map[string]*Media),
+		Assertions:        make(map[string]*Assertion),
+	}
+
+	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
+		t.Fatal(err)
+	}
+
+	expCtx := &ExportContext{
+		GLX:                      glxFile,
+		Version:                  GEDCOM551,
+		Logger:                   NewImportLogger(nil),
+		ExportIndex:              buildExportIndex(glxFile),
+		PersonXRefMap:            map[string]string{"person-1": "@I1@", "person-2": "@I2@"},
+		SourceXRefMap:            make(map[string]string),
+		RepositoryXRefMap:        make(map[string]string),
+		MediaXRefMap:             make(map[string]string),
+		PlaceStrings:             make(map[string]string),
+		PersonEvents:             make(map[string][]string),
+		PersonSpouseFamilies:     make(map[string][]string),
+		PersonChildFamilies:      make(map[string][]childFamilyRef),
+		PersonPropertyAssertions: make(map[string]map[string][]*Assertion),
+		Families:                 []*ExportFamily{},
+		FamilyXRefMap:            make(map[string]string),
+	}
+
+	reconstructFamilies(expCtx)
+	require.Len(t, expCtx.Families, 1)
+
+	record := exportFamily(expCtx.Families[0], expCtx)
+
+	for _, sub := range record.SubRecords {
+		assert.NotEqual(t, GedcomTagMarr, sub.Tag,
+			"Should NOT emit MARR for marriage relationship without StartEvent")
+	}
+}
+
+// ============================================================================
+// Marriage TYPE export tests
+// ============================================================================
+
+func TestExportFamilyEvent_MarriageType(t *testing.T) {
+	// marriage_type property should be exported as TYPE sub-record on MARR
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-marr": {
+					Type: EventTypeMarriage,
+					Date: "1950-06-15",
+					Properties: map[string]any{
+						PropertyMarriageType: "civil",
+					},
+				},
+			},
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:      make(map[string]string),
+			EventProperties: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+	}
+
+	record := exportFamilyEvent("event-marr", GedcomTagMarr, expCtx)
+	require.NotNil(t, record)
+
+	var foundType bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagType {
+			foundType = true
+			assert.Equal(t, "civil", sub.Value)
+		}
+	}
+	assert.True(t, foundType, "MARR should have TYPE sub-record from marriage_type property")
+}
+
+func TestExportFamilyEvent_EventSubtype(t *testing.T) {
+	// event_subtype property should be exported as TYPE via exportEventPropertySubrecords
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-even": {
+					Type: EventTypeGeneric,
+					Date: "2019",
+					Properties: map[string]any{
+						"event_subtype": "separation",
+					},
+				},
+			},
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: make(map[string]string),
+			EventProperties: map[string]string{
+				"event_subtype": GedcomTagType,
+			},
+		},
+		PlaceStrings: make(map[string]string),
+	}
+
+	record := exportFamilyEvent("event-even", GedcomTagEven, expCtx)
+	require.NotNil(t, record)
+
+	var foundType bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagType {
+			foundType = true
+			assert.Equal(t, "separation", sub.Value)
+		}
+	}
+	assert.True(t, foundType, "family event should have TYPE sub-record from event_subtype")
+}
+
+func TestExportFamily_FamilyEventsPreserveEventProperties(t *testing.T) {
+	// findFamilyEvents should include event properties (TYPE, CAUS, etc.)
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-h": {Properties: map[string]any{PersonPropertyGender: "male"}},
+				"person-w": {Properties: map[string]any{PersonPropertyGender: "female"}},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-1": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-h", Role: ParticipantRoleSpouse},
+						{Person: "person-w", Role: ParticipantRoleSpouse},
+					},
+					StartEvent: "event-marr",
+				},
+			},
+			Events: map[string]*Event{
+				"event-marr": {
+					Type: EventTypeMarriage,
+					Date: "1950-06-15",
+				},
+				"event-separation": {
+					Type: EventTypeGeneric,
+					Date: "1965",
+					Properties: map[string]any{
+						"event_subtype": "separation",
+					},
+					Participants: []Participant{
+						{Person: "person-h", Role: ParticipantRoleSpouse},
+						{Person: "person-w", Role: ParticipantRoleSpouse},
+					},
+				},
+			},
+			Places: make(map[string]*Place),
+		},
+		PersonXRefMap: map[string]string{
+			"person-h": "@I1@",
+			"person-w": "@I2@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes: map[string]string{
+				EventTypeMarriage: GedcomTagMarr,
+				EventTypeGeneric:  GedcomTagEven,
+			},
+			EventProperties: map[string]string{
+				"event_subtype": GedcomTagType,
+			},
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
+	}
+
+	family := &ExportFamily{
+		FamilyXRef:     "@F1@",
+		HusbandID:      "person-h",
+		WifeID:         "person-w",
+		ChildPedigrees: make(map[string]string),
+		RelationshipID: "rel-1",
+	}
+
+	record := exportFamily(family, expCtx)
+
+	var foundEven bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagEven {
+			foundEven = true
+			var foundType bool
+			for _, evenSub := range sub.SubRecords {
+				if evenSub.Tag == GedcomTagType {
+					foundType = true
+					assert.Equal(t, "separation", evenSub.Value)
+				}
+			}
+			assert.True(t, foundType, "EVEN family event should have TYPE sub-record")
+		}
+	}
+	assert.True(t, foundEven, "family should have EVEN event for separation")
+}
+
+func TestReconstructFamilies_MultipleSingleSpouseMarriages(t *testing.T) {
+	// A person has two separate single-spouse marriages, each with a child.
+	// Both families should be created and children should be in the correct family.
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-father": {
+					Properties: map[string]any{
+						PersonPropertyGender: "male",
+					},
+				},
+				"person-child-a": {
+					Properties: map[string]any{},
+				},
+				"person-child-b": {
+					Properties: map[string]any{},
+				},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-marriage-1": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleSpouse},
+					},
+				},
+				"rel-marriage-2": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleSpouse},
+					},
+				},
+				"rel-parent-child-a": {
+					Type: RelationshipTypeBiologicalParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-a", Role: ParticipantRoleChild},
+					},
+				},
+				"rel-parent-child-b": {
+					Type: RelationshipTypeBiologicalParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-b", Role: ParticipantRoleChild},
+					},
+				},
+			},
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-father":  "@I1@",
+			"person-child-a": "@I2@",
+			"person-child-b": "@I3@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
+	}
+
+	reconstructFamilies(expCtx)
+
+	require.Len(t, expCtx.Families, 2, "should create two separate families")
+
+	// Both families should have the father as husband
+	for _, fam := range expCtx.Families {
+		assert.Equal(t, "person-father", fam.HusbandID)
+		assert.Empty(t, fam.WifeID)
+	}
+
+	// Each child should be in some family (not lost due to pair-key overwrite)
+	allChildren := make(map[string]bool)
+	for _, fam := range expCtx.Families {
+		for _, cid := range fam.ChildIDs {
+			allChildren[cid] = true
+		}
+	}
+	assert.True(t, allChildren["person-child-a"],
+		"child-a should be placed in a family")
+	assert.True(t, allChildren["person-child-b"],
+		"child-b should be placed in a family")
 }
