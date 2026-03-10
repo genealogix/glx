@@ -20,8 +20,13 @@ import (
 	"strconv"
 )
 
-// temporalYearRegexp matches the first 4-digit year in a date string.
-var temporalYearRegexp = regexp.MustCompile(`\b(\d{4})\b`)
+// dayMonthRegexp matches day-of-month followed by a month abbreviation
+// (e.g., "15 MAR"). Used to strip day values before year extraction so that
+// 1–2 digit days are not mistaken for 1–2 digit years.
+var dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b`)
+
+// temporalYearRegexp matches the first 1–4 digit year in a date string.
+var temporalYearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
 
 // validateTemporalConsistency checks for logical inconsistencies in dates
 // across persons, events, and relationships. All issues are reported as
@@ -155,7 +160,7 @@ func isParentChildRelType(relType string) bool {
 	return false
 }
 
-// extractPropertyYear extracts the first 4-digit year from a person property.
+// extractPropertyYear extracts the first year (1–4 digits) from a person property.
 // Handles simple string values, structured maps with a "value" key, and
 // temporal lists where each entry has a "value" key.
 func extractPropertyYear(props map[string]any, key string) int {
@@ -186,14 +191,17 @@ func extractPropertyYear(props map[string]any, key string) int {
 	return extractFirstYear(dateStr)
 }
 
-// extractFirstYear extracts the first 4-digit year from a date string.
-// Returns 0 if no year is found.
+// extractFirstYear extracts the first year (1–4 digits) from a date string.
+// Day-of-month values (e.g., the "15" in "15 MAR 1850") are stripped first
+// so they are not mistaken for years. Returns 0 if no year is found.
 func extractFirstYear(dateStr string) int {
 	if dateStr == "" {
 		return 0
 	}
 
-	match := temporalYearRegexp.FindStringSubmatch(dateStr)
+	cleaned := dayMonthRegexp.ReplaceAllString(dateStr, "")
+
+	match := temporalYearRegexp.FindStringSubmatch(cleaned)
 	if len(match) < 2 {
 		return 0
 	}
