@@ -146,28 +146,23 @@ func filterNonEmpty(ss []string) []string {
 	return result
 }
 
-// extractYear pulls a 4-digit year from a DateString.
-// Handles formats like "1850", "ABT 1850", "BEF 1920", "BET 1850 AND 1860", "15 MAR 1850".
+// extractYear pulls a 1–4 digit year from a DateString.
+// Handles formats like "1850", "ABT 1850", "BEF 1920", "BET 1850 AND 1860",
+// "15 MAR 1850", "800", "ABT 476".
+// Day-of-month values (e.g., the "15" in "15 MAR 1850") are stripped first
+// so they are not mistaken for years.
 func extractYear(date DateString) string {
 	s := string(date)
 	if s == "" {
 		return ""
 	}
-	// Find the first 4-digit number in the string
-	for i := 0; i <= len(s)-4; i++ {
-		if s[i] >= '0' && s[i] <= '9' &&
-			s[i+1] >= '0' && s[i+1] <= '9' &&
-			s[i+2] >= '0' && s[i+2] <= '9' &&
-			s[i+3] >= '0' && s[i+3] <= '9' {
-			// Make sure it's not part of a longer number
-			if i > 0 && s[i-1] >= '0' && s[i-1] <= '9' {
-				continue
-			}
-			if i+4 < len(s) && s[i+4] >= '0' && s[i+4] <= '9' {
-				continue
-			}
-			return s[i : i+4]
-		}
+
+	cleaned := dayMonthRegexp.ReplaceAllString(s, "")
+
+	match := temporalYearRegexp.FindStringSubmatch(cleaned)
+	if len(match) < 2 {
+		return ""
 	}
-	return ""
+
+	return match[1]
 }

@@ -540,13 +540,21 @@ func extractPropertyYear(props map[string]any, key string) int {
 	return extractDateYear(s)
 }
 
-// yearRegexp matches the first 4-digit year in a date string.
-var yearRegexp = regexp.MustCompile(`\b(\d{4})\b`)
+// queryDayMonthRegexp matches day-of-month followed by a month abbreviation
+// (e.g., "15 MAR"). Used to strip day values before year extraction so that
+// 1–2 digit days are not mistaken for 1–2 digit years.
+var queryDayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b`)
 
-// extractDateYear extracts the first 4-digit year from a date string.
-// Handles formats like "1850", "1850-01-15", "ABT 1850", "BET 1880 AND 1890".
+// yearRegexp matches the first 1–4 digit year in a date string.
+var yearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
+
+// extractDateYear extracts the first year (1–4 digits) from a date string.
+// Handles formats like "1850", "1850-01-15", "ABT 1850", "BET 1880 AND 1890",
+// "800", "ABT 476". Day-of-month values are stripped first.
 func extractDateYear(dateStr string) int {
-	match := yearRegexp.FindStringSubmatch(dateStr)
+	cleaned := queryDayMonthRegexp.ReplaceAllString(dateStr, "")
+
+	match := yearRegexp.FindStringSubmatch(cleaned)
 	if len(match) < 2 {
 		return 0
 	}
