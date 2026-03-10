@@ -155,6 +155,7 @@ func isParentChildRelType(relType string) bool {
 	return false
 }
 
+
 // ExtractPropertyYear extracts the first 4-digit year from a person property.
 // Handles simple string values, structured maps with a "value" key, and
 // temporal lists where each entry has a "value" key.
