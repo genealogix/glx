@@ -480,6 +480,49 @@ func TestSummarizeModified_MultipleFields(t *testing.T) {
 	assert.Contains(t, s, "2 fields changed")
 }
 
+func TestDiffArchives_PersonFilter_StatsReflectFilteredSet(t *testing.T) {
+	old := &GLXFile{
+		Persons: map[string]*Person{},
+	}
+	new := &GLXFile{
+		Persons: map[string]*Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary"}},
+			"person-john": {Properties: map[string]any{"name": "John"}},
+			"person-jane": {Properties: map[string]any{"name": "Jane"}},
+		},
+	}
+
+	result := DiffArchives(old, new, "person-mary")
+	require.Len(t, result.Changes, 1)
+	assert.Equal(t, 1, result.Stats.Added, "stats should reflect filtered set, not full archive")
+}
+
+func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
+	old := &GLXFile{
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "born_on",
+				Value:      "1832",
+				Confidence: "custom_level",
+			},
+		},
+	}
+	new := &GLXFile{
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "born_on",
+				Value:      "1832",
+				Confidence: ConfidenceLevelHigh,
+			},
+		},
+	}
+
+	result := DiffArchives(old, new, "")
+	assert.Equal(t, 0, result.Stats.ConfidenceUpgrades, "unknown old confidence should not count as upgrade")
+}
+
 func TestDiffArchives_EventWithTitle(t *testing.T) {
 	old := &GLXFile{Events: map[string]*Event{}}
 	new := &GLXFile{

@@ -87,32 +87,13 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 	diffEntityMap(result, EntityTypeAssertions, oldArchive.Assertions, newArchive.Assertions)
 	diffEntityMap(result, EntityTypeMedia, oldArchive.Media, newArchive.Media)
 
-	// Compute stats
-	for i := range result.Changes {
-		c := &result.Changes[i]
-		switch c.Kind {
-		case ChangeAdded:
-			result.Stats.Added++
-			if c.EntityType == EntityTypeSources {
-				result.Stats.NewSources++
-			}
-			if c.EntityType == EntityTypeCitations {
-				result.Stats.NewCitations++
-			}
-		case ChangeModified:
-			result.Stats.Modified++
-		case ChangeRemoved:
-			result.Stats.Removed++
-		}
-	}
-
-	// Detect confidence upgrades/downgrades in assertion changes
-	computeConfidenceStats(result)
-
-	// Filter by person if requested
+	// Filter by person if requested (before computing stats)
 	if personFilter != "" {
 		filterByPerson(result, personFilter, oldArchive, newArchive)
 	}
+
+	// Compute stats on the (possibly filtered) change set
+	computeStats(result)
 
 	// Sort changes by entity type then ID
 	sort.SliceStable(result.Changes, func(i, j int) bool {
@@ -146,11 +127,6 @@ func entityTypeOrder(t string) int {
 
 // diffEntityMap compares two entity maps and appends changes to the result.
 func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap map[string]*T) {
-	oldIDs := make(map[string]bool)
-	for id := range oldMap {
-		oldIDs[id] = true
-	}
-
 	// Check for added and modified entities
 	for id, newEntity := range newMap {
 		if oldEntity, exists := oldMap[id]; exists {
@@ -187,8 +163,6 @@ func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap 
 			})
 		}
 	}
-
-	_ = oldIDs // used for tracking
 }
 
 // compareEntity compares two entities via YAML round-trip and returns field changes.
@@ -449,7 +423,30 @@ func summarizeModified(entityType, id string, fields []FieldChange) string {
 	return fmt.Sprintf("%d fields changed", len(fields))
 }
 
+// computeStats populates the DiffStats from the current change set.
+func computeStats(result *DiffResult) {
+	result.Stats = DiffStats{}
+	for _, c := range result.Changes {
+		switch c.Kind {
+		case ChangeAdded:
+			result.Stats.Added++
+			if c.EntityType == EntityTypeSources {
+				result.Stats.NewSources++
+			}
+			if c.EntityType == EntityTypeCitations {
+				result.Stats.NewCitations++
+			}
+		case ChangeModified:
+			result.Stats.Modified++
+		case ChangeRemoved:
+			result.Stats.Removed++
+		}
+	}
+	computeConfidenceStats(result)
+}
+
 // computeConfidenceStats counts confidence upgrades and downgrades.
+// Only counts changes where both old and new values are recognized confidence levels.
 func computeConfidenceStats(result *DiffResult) {
 	for _, c := range result.Changes {
 		if c.EntityType != EntityTypeAssertions || c.Kind != ChangeModified {
@@ -459,8 +456,11 @@ func computeConfidenceStats(result *DiffResult) {
 			if f.Path != "confidence" {
 				continue
 			}
-			oldRank := confidenceRank[strings.Trim(f.OldValue, "\"")]
-			newRank := confidenceRank[strings.Trim(f.NewValue, "\"")]
+			oldRank, oldOK := confidenceRank[strings.Trim(f.OldValue, "\"")]
+			newRank, newOK := confidenceRank[strings.Trim(f.NewValue, "\"")]
+			if !oldOK || !newOK {
+				continue
+			}
 			if newRank > oldRank {
 				result.Stats.ConfidenceUpgrades++
 			} else if newRank < oldRank {
@@ -488,28 +488,28 @@ func entityReferencePerson(c EntityChange, personID string, oldArchive, newArchi
 	}
 
 	if c.EntityType == EntityTypeEvents {
-		if ev, ok := newArchive.Events[c.ID]; ok && eventHasParticipant(ev, personID) {
+		if ev, ok := newArchive.Events[c.ID]; ok && ev != nil && eventHasParticipant(ev, personID) {
 			return true
 		}
-		if ev, ok := oldArchive.Events[c.ID]; ok && eventHasParticipant(ev, personID) {
+		if ev, ok := oldArchive.Events[c.ID]; ok && ev != nil && eventHasParticipant(ev, personID) {
 			return true
 		}
 	}
 
 	if c.EntityType == EntityTypeRelationships {
-		if rel, ok := newArchive.Relationships[c.ID]; ok && relationshipHasParticipant(rel, personID) {
+		if rel, ok := newArchive.Relationships[c.ID]; ok && rel != nil && relationshipHasParticipant(rel, personID) {
 			return true
 		}
-		if rel, ok := oldArchive.Relationships[c.ID]; ok && relationshipHasParticipant(rel, personID) {
+		if rel, ok := oldArchive.Relationships[c.ID]; ok && rel != nil && relationshipHasParticipant(rel, personID) {
 			return true
 		}
 	}
 
 	if c.EntityType == EntityTypeAssertions {
-		if a, ok := newArchive.Assertions[c.ID]; ok && a.Subject.Person == personID {
+		if a, ok := newArchive.Assertions[c.ID]; ok && a != nil && a.Subject.Person == personID {
 			return true
 		}
-		if a, ok := oldArchive.Assertions[c.ID]; ok && a.Subject.Person == personID {
+		if a, ok := oldArchive.Assertions[c.ID]; ok && a != nil && a.Subject.Person == personID {
 			return true
 		}
 	}
