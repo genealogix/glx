@@ -57,16 +57,27 @@ func reconstructFamilies(expCtx *ExportContext) {
 			continue
 		}
 
-		// Extract the two spouse person IDs from participants
+		// Extract spouse person IDs from participants
 		spouseIDs := extractSpouseIDs(rel)
-		if len(spouseIDs) < 2 {
+		if len(spouseIDs) == 0 {
 			expCtx.addExportWarning(EntityTypeRelationships, relID,
-				"marriage relationship has fewer than 2 spouse participants")
+				"marriage relationship has no spouse participants")
 			continue
 		}
 
 		// Determine HUSB/WIFE by gender
-		husbandID, wifeID := assignHusbandWife(spouseIDs[0], spouseIDs[1], expCtx)
+		var husbandID, wifeID string
+		if len(spouseIDs) >= 2 {
+			husbandID, wifeID = assignHusbandWife(spouseIDs[0], spouseIDs[1], expCtx)
+		} else {
+			// Single-spouse marriage — assign by gender
+			gender := getPersonGender(spouseIDs[0], expCtx)
+			if gender == GenderFemale {
+				wifeID = spouseIDs[0]
+			} else {
+				husbandID = spouseIDs[0]
+			}
+		}
 
 		familyIdx := len(expCtx.Families)
 		family := &ExportFamily{
@@ -77,13 +88,20 @@ func reconstructFamilies(expCtx *ExportContext) {
 		}
 		expCtx.Families = append(expCtx.Families, family)
 
-		// Map parent pair to family
-		pairKey := makeParentPairKey(husbandID, wifeID)
-		parentPairToFamily[pairKey] = familyIdx
+		// Map parent pair to family (only when both spouses are known;
+		// single-spouse families use the parentToFamilies fallback)
+		if husbandID != "" && wifeID != "" {
+			pairKey := makeParentPairKey(husbandID, wifeID)
+			parentPairToFamily[pairKey] = familyIdx
+		}
 
 		// Map each parent to this family
-		parentToFamilies[husbandID] = append(parentToFamilies[husbandID], familyIdx)
-		parentToFamilies[wifeID] = append(parentToFamilies[wifeID], familyIdx)
+		if husbandID != "" {
+			parentToFamilies[husbandID] = append(parentToFamilies[husbandID], familyIdx)
+		}
+		if wifeID != "" {
+			parentToFamilies[wifeID] = append(parentToFamilies[wifeID], familyIdx)
+		}
 	}
 
 	// Step 2: Collect all parent-child relationships per child.
@@ -131,6 +149,28 @@ func reconstructFamilies(expCtx *ExportContext) {
 	}
 	sort.Strings(childIDs)
 
+	// Pre-scan: identify families that will have pair-matched children (both parents known).
+	// This lets us avoid merging single-parent children into a two-parent family that
+	// already has properly paired children from a different family unit.
+	familiesWithPairedChildren := make(map[int]bool)
+	for _, cID := range childIDs {
+		cParents := childParents[cID]
+		cParentIDs := make(map[string]bool)
+		for _, cp := range cParents {
+			cParentIDs[cp.parentID] = true
+		}
+		if len(cParentIDs) == 2 {
+			pids := make([]string, 0, 2)
+			for pid := range cParentIDs {
+				pids = append(pids, pid)
+			}
+			pairKey := makeParentPairKey(pids[0], pids[1])
+			if idx, ok := parentPairToFamily[pairKey]; ok {
+				familiesWithPairedChildren[idx] = true
+			}
+		}
+	}
+
 	for _, childID := range childIDs {
 		parents := childParents[childID]
 
@@ -151,47 +191,63 @@ func reconstructFamilies(expCtx *ExportContext) {
 			}
 		}
 
-		familyIdx := -1
+		// Find ALL matching families for this child.
+		// A child may belong to multiple families (e.g., birth family + step-family).
+		matchedFamilies := make(map[int]bool)
 
-		// If child has two known parents, look up the family by parent pair
-		if len(parentIDs) == 2 {
-			pids := make([]string, 0, 2)
-			for pid := range parentIDs {
-				pids = append(pids, pid)
-			}
-			pairKey := makeParentPairKey(pids[0], pids[1])
-			if idx, ok := parentPairToFamily[pairKey]; ok {
-				familyIdx = idx
+		// Try all parent pairs against known families
+		parentList := make([]string, 0, len(parentIDs))
+		for pid := range parentIDs {
+			parentList = append(parentList, pid)
+		}
+		for i := 0; i < len(parentList); i++ {
+			for j := i + 1; j < len(parentList); j++ {
+				pairKey := makeParentPairKey(parentList[i], parentList[j])
+				if idx, ok := parentPairToFamily[pairKey]; ok {
+					matchedFamilies[idx] = true
+				}
 			}
 		}
 
-		// Fallback: use the first parent's family
-		if familyIdx < 0 {
+		// Fallback: if no pair matches, use the first parent's family
+		if len(matchedFamilies) == 0 {
 			for _, cp := range parents {
-				familyIdx = findFamilyForParent(cp.parentID, parentToFamilies)
-				if familyIdx >= 0 {
+				familyIndices := parentToFamilies[cp.parentID]
+				for _, idx := range familyIndices {
+					// If child has only one parent and the family already has
+					// pair-matched children, this child belongs to a different
+					// family unit — don't merge it in.
+					if len(parentIDs) == 1 && familiesWithPairedChildren[idx] {
+						continue
+					}
+					matchedFamilies[idx] = true
+					break
+				}
+				if len(matchedFamilies) > 0 {
 					break
 				}
 			}
 		}
 
 		// Still no family: create a synthetic single-parent FAM
-		if familyIdx < 0 && len(parents) > 0 {
-			familyIdx = createSyntheticFamily(parents[0].parentID, expCtx, parentToFamilies)
+		if len(matchedFamilies) == 0 && len(parents) > 0 {
+			idx := createSyntheticFamily(parents[0].parentID, expCtx, parentToFamilies)
+			if idx >= 0 {
+				matchedFamilies[idx] = true
+			}
 		}
 
-		if familyIdx < 0 {
-			continue
-		}
+		// Place child in all matched families
+		for familyIdx := range matchedFamilies {
+			family := expCtx.Families[familyIdx]
 
-		family := expCtx.Families[familyIdx]
+			if !containsString(family.ChildIDs, childID) {
+				family.ChildIDs = append(family.ChildIDs, childID)
+			}
 
-		if !containsString(family.ChildIDs, childID) {
-			family.ChildIDs = append(family.ChildIDs, childID)
-		}
-
-		if bestPedi != "" {
-			family.ChildPedigrees[childID] = bestPedi
+			if bestPedi != "" {
+				family.ChildPedigrees[childID] = bestPedi
+			}
 		}
 	}
 
@@ -330,11 +386,47 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
 
+	// NOTE - check both struct field and Properties map
+	famEventNoteText := event.Notes
+	if famEventNoteText == "" {
+		if propNotes, ok := event.Properties[PropertyNotes].(string); ok {
+			famEventNoteText = propNotes
+		}
+	}
+	if famEventNoteText != "" {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagNote,
+			Value: famEventNoteText,
+		})
+	}
+
+	// TYPE (marriage_type property takes precedence, then event_subtype via exportEventPropertySubrecords)
+	hasExplicitType := false
+	if marriageType, ok := event.Properties[PropertyMarriageType].(string); ok && marriageType != "" {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagType,
+			Value: marriageType,
+		})
+		hasExplicitType = true
+	}
+
+	// Other event properties (event_subtype, cause, age_at_event, etc.)
+	for _, propRec := range exportEventPropertySubrecords(event, expCtx) {
+		if hasExplicitType && propRec.Tag == GedcomTagType {
+			continue // Skip duplicate TYPE
+		}
+		record.SubRecords = append(record.SubRecords, propRec)
+	}
+
+	// SOUR references from event sources and citations
+	exportEventSourceRefs(event, expCtx, record)
+
 	return record
 }
 
-// findFamilyEvents finds events where both spouses participate with role "spouse",
+// findFamilyEvents finds events where the family's spouses participate with role "spouse",
 // excluding the start and end events (already exported as MARR/DIV).
+// For single-spouse families, only the known spouse needs to participate.
 func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx *ExportContext) []*GEDCOMRecord {
 	var records []*GEDCOMRecord
 
@@ -347,7 +439,8 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 
 		event := expCtx.GLX.Events[eventID]
 
-		// Check if both spouses participate as "spouse"
+		// Check if the family's spouses participate as "spouse".
+		// For single-spouse families, only require the known spouse.
 		var hasHusband, hasWife bool
 		for _, p := range event.Participants {
 			if p.Role == ParticipantRoleSpouse {
@@ -360,7 +453,12 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 			}
 		}
 
-		if !hasHusband || !hasWife {
+		needHusband := husbandID != ""
+		needWife := wifeID != ""
+		if (needHusband && !hasHusband) || (needWife && !hasWife) {
+			continue
+		}
+		if !hasHusband && !hasWife {
 			continue
 		}
 
@@ -370,27 +468,11 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 			continue
 		}
 
-		famEventRecord := &GEDCOMRecord{
-			Tag:        gedcomTag,
-			SubRecords: []*GEDCOMRecord{},
+		// Reuse exportFamilyEvent to get full sub-record export (DATE, PLAC, NOTE, SOUR, properties)
+		famEventRecord := exportFamilyEvent(eventID, gedcomTag, expCtx)
+		if famEventRecord != nil {
+			records = append(records, famEventRecord)
 		}
-
-		if event.Date != "" {
-			gedcomDate := formatGEDCOMDate(event.Date)
-			if gedcomDate != "" {
-				famEventRecord.SubRecords = append(famEventRecord.SubRecords, &GEDCOMRecord{
-					Tag:   GedcomTagDate,
-					Value: gedcomDate,
-				})
-			}
-		}
-
-		placRecords := exportPlaceSubrecords(event.PlaceID, expCtx)
-		if placRecords != nil {
-			famEventRecord.SubRecords = append(famEventRecord.SubRecords, placRecords...)
-		}
-
-		records = append(records, famEventRecord)
 	}
 
 	return records
@@ -493,16 +575,6 @@ func extractParentChildIDs(rel *Relationship) (parentID, childID string) {
 		}
 	}
 	return parentID, childID
-}
-
-// findFamilyForParent finds the family index for a parent, preferring the first marriage family.
-func findFamilyForParent(parentID string, parentToFamilies map[string][]int) int {
-	familyIndices, ok := parentToFamilies[parentID]
-	if !ok || len(familyIndices) == 0 {
-		return -1
-	}
-
-	return familyIndices[0]
 }
 
 // createSyntheticFamily creates a single-parent FAM for a parent without a marriage.
