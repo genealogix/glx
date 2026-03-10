@@ -91,8 +91,9 @@ func printDiffSummary(result *glxlib.DiffResult) {
 			prefix := changePrefix(c.Kind)
 			fmt.Printf("  %s %-38s  %s\n", prefix, c.ID, c.Summary)
 
-			// For modified entities, show field changes inline (up to 3)
-			if c.Kind == glxlib.ChangeModified && len(c.Fields) > 0 {
+			// For modified entities, show field changes inline (up to 3).
+			// Skip when only 1 field changed — the summary already shows it.
+			if c.Kind == glxlib.ChangeModified && len(c.Fields) > 1 {
 				limit := 3
 				if len(c.Fields) < limit {
 					limit = len(c.Fields)

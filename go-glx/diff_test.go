@@ -23,8 +23,8 @@ import (
 
 func TestDiffArchives_EmptyArchives(t *testing.T) {
 	old := &GLXFile{}
-	new := &GLXFile{}
-	result := DiffArchives(old, new, "")
+	newArchive := &GLXFile{}
+	result := DiffArchives(old, newArchive,"")
 	assert.Empty(t, result.Changes)
 	assert.Equal(t, 0, result.Stats.Added)
 	assert.Equal(t, 0, result.Stats.Modified)
@@ -35,7 +35,7 @@ func TestDiffArchives_AddedPerson(t *testing.T) {
 	old := &GLXFile{
 		Persons: map[string]*Person{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-john": {
 				Properties: map[string]any{
@@ -46,7 +46,7 @@ func TestDiffArchives_AddedPerson(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeAdded, result.Changes[0].Kind)
@@ -64,11 +64,11 @@ func TestDiffArchives_RemovedPerson(t *testing.T) {
 			},
 		},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeRemoved, result.Changes[0].Kind)
@@ -87,7 +87,7 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 			},
 		},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-mary": {
 				Properties: map[string]any{
@@ -99,7 +99,7 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	require.Len(t, result.Changes, 1)
 	c := result.Changes[0]
@@ -123,7 +123,7 @@ func TestDiffArchives_UnchangedEntity(t *testing.T) {
 	old := &GLXFile{
 		Persons: map[string]*Person{"person-john": person},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-john": {
 				Properties: map[string]any{"name": "John Smith"},
@@ -131,7 +131,7 @@ func TestDiffArchives_UnchangedEntity(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 	assert.Empty(t, result.Changes)
 }
 
@@ -140,7 +140,7 @@ func TestDiffArchives_MultipleEntityTypes(t *testing.T) {
 		Persons: map[string]*Person{},
 		Sources: map[string]*Source{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-john": {Properties: map[string]any{"name": "John"}},
 		},
@@ -152,7 +152,7 @@ func TestDiffArchives_MultipleEntityTypes(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	assert.Equal(t, 3, result.Stats.Added)
 	assert.Equal(t, 1, result.Stats.NewSources)
@@ -170,7 +170,7 @@ func TestDiffArchives_ConfidenceUpgrade(t *testing.T) {
 			},
 		},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-birth": {
 				Subject:    EntityRef{Person: "person-mary"},
@@ -181,7 +181,7 @@ func TestDiffArchives_ConfidenceUpgrade(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	assert.Equal(t, 1, result.Stats.ConfidenceUpgrades)
 	assert.Equal(t, 0, result.Stats.ConfidenceDowngrades)
@@ -198,7 +198,7 @@ func TestDiffArchives_ConfidenceDowngrade(t *testing.T) {
 			},
 		},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-birth": {
 				Subject:    EntityRef{Person: "person-mary"},
@@ -209,7 +209,7 @@ func TestDiffArchives_ConfidenceDowngrade(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	assert.Equal(t, 0, result.Stats.ConfidenceUpgrades)
 	assert.Equal(t, 1, result.Stats.ConfidenceDowngrades)
@@ -222,14 +222,14 @@ func TestDiffArchives_PersonFilter(t *testing.T) {
 			"person-john": {Properties: map[string]any{"name": "John Smith"}},
 		},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-mary": {Properties: map[string]any{"name": "Mary Lane", "died_on": "1905"}},
 			"person-john": {Properties: map[string]any{"name": "John Smith", "died_on": "1900"}},
 		},
 	}
 
-	result := DiffArchives(old, new, "person-mary")
+	result := DiffArchives(old, newArchive,"person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "person-mary", result.Changes[0].ID)
 }
@@ -238,7 +238,7 @@ func TestDiffArchives_PersonFilter_IncludesAssertions(t *testing.T) {
 	old := &GLXFile{
 		Assertions: map[string]*Assertion{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
 				Subject:  EntityRef{Person: "person-mary"},
@@ -253,7 +253,7 @@ func TestDiffArchives_PersonFilter_IncludesAssertions(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "person-mary")
+	result := DiffArchives(old, newArchive,"person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "assertion-1", result.Changes[0].ID)
 }
@@ -262,7 +262,7 @@ func TestDiffArchives_PersonFilter_IncludesEvents(t *testing.T) {
 	old := &GLXFile{
 		Events: map[string]*Event{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Events: map[string]*Event{
 			"event-1": {
 				Type:         "census",
@@ -275,14 +275,14 @@ func TestDiffArchives_PersonFilter_IncludesEvents(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "person-mary")
+	result := DiffArchives(old, newArchive,"person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "event-1", result.Changes[0].ID)
 }
 
 func TestDiffArchives_SortOrder(t *testing.T) {
 	old := &GLXFile{}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-b": {Properties: map[string]any{"name": "B"}},
 			"person-a": {Properties: map[string]any{"name": "A"}},
@@ -292,7 +292,7 @@ func TestDiffArchives_SortOrder(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	require.Len(t, result.Changes, 3)
 	// Persons should come before sources
@@ -306,17 +306,17 @@ func TestDiffArchives_SortOrder(t *testing.T) {
 
 func TestCompareEntity_NoChanges(t *testing.T) {
 	old := &Person{Properties: map[string]any{"name": "John"}}
-	new := &Person{Properties: map[string]any{"name": "John"}}
+	newPerson := &Person{Properties: map[string]any{"name": "John"}}
 
-	fields := compareEntity(old, new)
+	fields := compareEntity(old, newPerson)
 	assert.Empty(t, fields)
 }
 
 func TestCompareEntity_FieldAdded(t *testing.T) {
 	old := &Person{Properties: map[string]any{"name": "John"}}
-	new := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
+	newPerson := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
 
-	fields := compareEntity(old, new)
+	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
 	assert.Equal(t, "properties.born_on", fields[0].Path)
 	assert.Equal(t, "(none)", fields[0].OldValue)
@@ -325,9 +325,9 @@ func TestCompareEntity_FieldAdded(t *testing.T) {
 
 func TestCompareEntity_FieldRemoved(t *testing.T) {
 	old := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
-	new := &Person{Properties: map[string]any{"name": "John"}}
+	newPerson := &Person{Properties: map[string]any{"name": "John"}}
 
-	fields := compareEntity(old, new)
+	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
 	assert.Equal(t, "properties.born_on", fields[0].Path)
 	assert.Contains(t, fields[0].OldValue, "1850")
@@ -336,9 +336,9 @@ func TestCompareEntity_FieldRemoved(t *testing.T) {
 
 func TestCompareEntity_FieldChanged(t *testing.T) {
 	old := &Person{Properties: map[string]any{"name": "John", "born_on": "ABT 1850"}}
-	new := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
+	newPerson := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
 
-	fields := compareEntity(old, new)
+	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
 	assert.Equal(t, "properties.born_on", fields[0].Path)
 	assert.Contains(t, fields[0].OldValue, "ABT 1850")
@@ -347,9 +347,9 @@ func TestCompareEntity_FieldChanged(t *testing.T) {
 
 func TestCompareEntity_NotesChanged(t *testing.T) {
 	old := &Person{Properties: map[string]any{"name": "John"}, Notes: "old notes"}
-	new := &Person{Properties: map[string]any{"name": "John"}, Notes: "new notes"}
+	newPerson := &Person{Properties: map[string]any{"name": "John"}, Notes: "new notes"}
 
-	fields := compareEntity(old, new)
+	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
 	assert.Equal(t, "notes", fields[0].Path)
 }
@@ -373,7 +373,7 @@ func TestDiffArchives_AddedEvent(t *testing.T) {
 	old := &GLXFile{
 		Events: map[string]*Event{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Events: map[string]*Event{
 			"event-1860-census": {
 				Type: "census",
@@ -382,7 +382,7 @@ func TestDiffArchives_AddedEvent(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeAdded, result.Changes[0].Kind)
@@ -396,13 +396,13 @@ func TestDiffArchives_ModifiedEvent_NotesChange(t *testing.T) {
 			"event-1": {Type: "census", Notes: "old"},
 		},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Events: map[string]*Event{
 			"event-1": {Type: "census", Notes: "new"},
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeModified, result.Changes[0].Kind)
@@ -414,7 +414,7 @@ func TestDiffArchives_AddedRelationship(t *testing.T) {
 	old := &GLXFile{
 		Relationships: map[string]*Relationship{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Relationships: map[string]*Relationship{
 			"rel-1": {
 				Type: "parent_child",
@@ -426,7 +426,7 @@ func TestDiffArchives_AddedRelationship(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, ChangeAdded, result.Changes[0].Kind)
@@ -438,7 +438,7 @@ func TestDiffArchives_PersonFilter_IncludesRelationships(t *testing.T) {
 	old := &GLXFile{
 		Relationships: map[string]*Relationship{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Relationships: map[string]*Relationship{
 			"rel-1": {
 				Type: "parent_child",
@@ -457,7 +457,7 @@ func TestDiffArchives_PersonFilter_IncludesRelationships(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "person-mary")
+	result := DiffArchives(old, newArchive,"person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "rel-1", result.Changes[0].ID)
 }
@@ -484,7 +484,7 @@ func TestDiffArchives_PersonFilter_StatsReflectFilteredSet(t *testing.T) {
 	old := &GLXFile{
 		Persons: map[string]*Person{},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-mary": {Properties: map[string]any{"name": "Mary"}},
 			"person-john": {Properties: map[string]any{"name": "John"}},
@@ -492,7 +492,7 @@ func TestDiffArchives_PersonFilter_StatsReflectFilteredSet(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "person-mary")
+	result := DiffArchives(old, newArchive,"person-mary")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, 1, result.Stats.Added, "stats should reflect filtered set, not full archive")
 }
@@ -508,7 +508,7 @@ func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
 			},
 		},
 	}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
 				Subject:    EntityRef{Person: "person-mary"},
@@ -519,13 +519,13 @@ func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 	assert.Equal(t, 0, result.Stats.ConfidenceUpgrades, "unknown old confidence should not count as upgrade")
 }
 
 func TestDiffArchives_EventWithTitle(t *testing.T) {
 	old := &GLXFile{Events: map[string]*Event{}}
-	new := &GLXFile{
+	newArchive := &GLXFile{
 		Events: map[string]*Event{
 			"event-census": {
 				Title: "1860 Census — Lane Household",
@@ -535,7 +535,7 @@ func TestDiffArchives_EventWithTitle(t *testing.T) {
 		},
 	}
 
-	result := DiffArchives(old, new, "")
+	result := DiffArchives(old, newArchive,"")
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "1860 Census — Lane Household", result.Changes[0].Summary)
 }

@@ -167,22 +167,42 @@ func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap 
 
 // compareEntity compares two entities via YAML round-trip and returns field changes.
 func compareEntity[T any](oldEntity, newEntity *T) []FieldChange {
-	oldMap := toYAMLMap(oldEntity)
-	newMap := toYAMLMap(newEntity)
+	oldMap, oldErr := toYAMLMap(oldEntity)
+	newMap, newErr := toYAMLMap(newEntity)
+
+	if oldErr != nil || newErr != nil {
+		return []FieldChange{
+			{
+				Path:     "",
+				OldValue: formatSerializationStatus(oldErr),
+				NewValue: formatSerializationStatus(newErr),
+			},
+		}
+	}
+
 	return diffMaps("", oldMap, newMap)
 }
 
+// formatSerializationStatus returns a human-readable description of the
+// serialization status for use in FieldChange values.
+func formatSerializationStatus(err error) string {
+	if err == nil {
+		return "(serializable)"
+	}
+	return fmt.Sprintf("(unserializable: %v)", err)
+}
+
 // toYAMLMap converts a struct to a map[string]any via YAML round-trip.
-func toYAMLMap(v any) map[string]any {
+func toYAMLMap(v any) (map[string]any, error) {
 	data, err := yaml.Marshal(v)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("yaml marshal: %w", err)
 	}
 	var m map[string]any
 	if err := yaml.Unmarshal(data, &m); err != nil {
-		return nil
+		return nil, fmt.Errorf("yaml unmarshal: %w", err)
 	}
-	return m
+	return m, nil
 }
 
 // diffMaps recursively compares two maps and returns field changes.
@@ -280,8 +300,8 @@ func formatValue(v any) string {
 
 // summarizeEntity generates a human-readable one-liner for an entity.
 func summarizeEntity[T any](entityType, id string, entity *T) string {
-	m := toYAMLMap(entity)
-	if m == nil {
+	m, err := toYAMLMap(entity)
+	if err != nil || m == nil {
 		return id
 	}
 
@@ -418,9 +438,9 @@ func summarizePlace(m map[string]any) string {
 func summarizeModified(entityType, id string, fields []FieldChange) string {
 	if len(fields) == 1 {
 		f := fields[0]
-		return f.Path + ": " + f.OldValue + " → " + f.NewValue
+		return fmt.Sprintf("%s %s: %s: %s → %s", entityType, id, f.Path, f.OldValue, f.NewValue)
 	}
-	return fmt.Sprintf("%d fields changed", len(fields))
+	return fmt.Sprintf("%s %s: %d fields changed", entityType, id, len(fields))
 }
 
 // computeStats populates the DiffStats from the current change set.
@@ -518,6 +538,9 @@ func entityReferencePerson(c EntityChange, personID string, oldArchive, newArchi
 }
 
 func eventHasParticipant(ev *Event, personID string) bool {
+	if ev == nil {
+		return false
+	}
 	for _, p := range ev.Participants {
 		if p.Person == personID {
 			return true
@@ -527,6 +550,9 @@ func eventHasParticipant(ev *Event, personID string) bool {
 }
 
 func relationshipHasParticipant(rel *Relationship, personID string) bool {
+	if rel == nil {
+		return false
+	}
 	for _, p := range rel.Participants {
 		if p.Person == personID {
 			return true
