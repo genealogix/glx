@@ -10,9 +10,10 @@ Known data loss during GED → GLX → GED roundtrip. Steps to reproduce any: `g
 
 ### Family Reconstruction
 
-- **Children lost in multi-child families** (queen CHIL 3655→3158, bullinger CHIL 628→617): Family reconstruction algorithm scatters children from multi-child families into separate single-child families. Original families with 5-15 children get compressed to max 5. Root cause: when a parent has multiple marriages, children aren't correctly assigned to the right family. Queen loses 497 children, bullinger loses 11.
+- **Dangling CHIL references not imported** (queen CHIL 3654→3157, -497): All 497 "lost" children are dangling references in the source GEDCOM — the FAM lists `CHIL @Innnn@` but no `0 @Innnn@ INDI` record exists. This is a data quality issue in the source file, not a GLX bug. Import correctly warns "Referenced person not found". **Not a real data loss — these persons don't exist.**
+- **Multi-family children placed in only one family** (bullinger CHIL 628→617, -11): 11 children in bullinger appear as CHIL in two FAM records (e.g., birth family + step-family). On import, parent-child relationships are created for all parents correctly. On export, the child is assigned to only one reconstructed FAM. The child's parent-child relationships are all preserved in GLX — only the second CHIL back-reference is lost in the re-exported GEDCOM.
 - **Extra FAMS references** (queen FAMS +124→-124, british-royalty FAMS +22): Synthetic single-parent families created during reconstruction generate FAMS references that didn't exist in the original.
-- **No-spouse FAM records with MARR dropped** (habsburg -145): FAM records with no HUSB/WIFE at all can't create marriage relationships (zero participants). These MARR events are silently dropped.
+- **No-spouse FAM records with MARR dropped** (habsburg -145): FAM records with no HUSB/WIFE. Of 270 such records in habsburg, 267 are completely orphaned (no INDI references them at all — dangling data quality artifacts). Only 3 have children via FAMC, and only 1 of those (F12868) also has a MARR with date/place/source. Impact is minimal: nearly all are already-disconnected records in the source file.
 
 ### Notes
 

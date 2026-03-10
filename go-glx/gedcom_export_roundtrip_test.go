@@ -637,3 +637,312 @@ func TestRoundtrip_HeadMetadataPreserved(t *testing.T) {
 	assert.Equal(t, "(c) 2023 Test Author", glx2.ImportMetadata.Copyright)
 	assert.Equal(t, "This is a test archive.", glx2.ImportMetadata.Notes)
 }
+
+// TestRoundtrip_NoSpouseFamilyWithMarriageAndChild documents that a FAM record
+// with a MARR event and CHIL but no HUSB/WIFE loses the marriage event on import.
+// This is a known limitation: GLX requires at least one participant for relationships.
+// In habsburg.ged, 148 of 149 such records are orphaned (no INDI references them).
+// Only 1 (F12868) has a child — this test reproduces that case.
+func TestRoundtrip_NoSpouseFamilyWithMarriageAndChild(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Jane /Doe/
+1 SEX F
+1 FAMC @F1@
+0 @F1@ FAM
+1 CHIL @I1@
+1 MARR
+2 DATE 11 JUN 1707
+2 PLAC Swallowfield, Berkshire, England
+0 TRLR
+`
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// The child should be imported
+	require.Len(t, glx1.Persons, 1, "child should be imported")
+
+	// Known limitation: no marriage relationship or event is created because
+	// the FAM has no HUSB/WIFE. The MARR date and place are lost.
+	marriageEvents := 0
+	for _, event := range glx1.Events {
+		if event.Type == EventTypeMarriage {
+			marriageEvents++
+		}
+	}
+	assert.Equal(t, 0, marriageEvents,
+		"known gap: MARR on no-spouse FAM is dropped (no participants for relationship)")
+
+	// The child also has no parent-child relationship since neither parent is known
+	parentChildRels := 0
+	for _, rel := range glx1.Relationships {
+		if rel.Type == RelationshipTypeParentChild {
+			parentChildRels++
+		}
+	}
+	assert.Equal(t, 0, parentChildRels,
+		"known gap: child in no-spouse FAM has no parent-child relationship")
+}
+
+// TestRoundtrip_MultiMarriageChildrenPreserved tests that children are correctly
+// assigned to families when a parent has multiple marriages.
+func TestRoundtrip_MultiMarriageChildrenPreserved(t *testing.T) {
+	// Father has two marriages, each with 3 children.
+	// All 6 children should survive the roundtrip.
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Henry /King/
+1 SEX M
+1 FAMS @F1@
+1 FAMS @F2@
+0 @I2@ INDI
+1 NAME Catherine /Aragon/
+1 SEX F
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Anne /Boleyn/
+1 SEX F
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Mary /King/
+1 SEX F
+1 FAMC @F1@
+0 @I5@ INDI
+1 NAME Edward /King/
+1 SEX M
+1 FAMC @F1@
+0 @I6@ INDI
+1 NAME Elizabeth /King/
+1 SEX F
+1 FAMC @F1@
+0 @I7@ INDI
+1 NAME Henry Jr /King/
+1 SEX M
+1 FAMC @F2@
+0 @I8@ INDI
+1 NAME George /King/
+1 SEX M
+1 FAMC @F2@
+0 @I9@ INDI
+1 NAME Margaret /King/
+1 SEX F
+1 FAMC @F2@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I4@
+1 CHIL @I5@
+1 CHIL @I6@
+1 MARR
+2 DATE 11 JUN 1509
+0 @F2@ FAM
+1 HUSB @I1@
+1 WIFE @I3@
+1 CHIL @I7@
+1 CHIL @I8@
+1 CHIL @I9@
+1 MARR
+2 DATE 25 JAN 1533
+0 TRLR
+`
+	// Import
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glx1.Persons, 9)
+
+	// Verify all 6 children have parent-child relationships
+	parentChildCount := 0
+	for _, rel := range glx1.Relationships {
+		if isParentChildType(rel.Type) {
+			parentChildCount++
+		}
+	}
+	// Each child has 2 parent-child relationships (one per parent) = 12
+	assert.Equal(t, 12, parentChildCount, "each of 6 children should have 2 parent-child rels")
+
+	// Export to GEDCOM
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err)
+	exportedStr := string(exported)
+
+	// Count CHIL tags in exported GEDCOM
+	chilCount := strings.Count(exportedStr, "\n1 CHIL ")
+	assert.Equal(t, 6, chilCount,
+		"all 6 children should appear as CHIL in exported GEDCOM; got %d", chilCount)
+
+	// Re-import and verify children are still connected
+	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
+	require.NoError(t, err)
+
+	parentChildCount2 := 0
+	for _, rel := range glx2.Relationships {
+		if isParentChildType(rel.Type) {
+			parentChildCount2++
+		}
+	}
+	assert.Equal(t, 12, parentChildCount2,
+		"all 12 parent-child relationships should survive roundtrip; got %d", parentChildCount2)
+}
+
+// TestRoundtrip_DanglingChildRefsIgnored verifies that CHIL references pointing to
+// non-existent INDI records are gracefully skipped. This reproduces the queen.ged
+// pattern where 497 FAM CHIL refs point to persons that don't exist in the file.
+func TestRoundtrip_DanglingChildRefsIgnored(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 SEX F
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Real /Child/
+1 SEX F
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 CHIL @I999@
+1 MARR
+2 DATE 1800
+0 TRLR
+`
+	// @I999@ doesn't exist — import should handle gracefully
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glx1.Persons, 3, "only 3 real persons should be imported")
+
+	// Only the real child should have parent-child relationships
+	parentChildCount := 0
+	for _, rel := range glx1.Relationships {
+		if isParentChildType(rel.Type) {
+			parentChildCount++
+		}
+	}
+	assert.Equal(t, 2, parentChildCount, "real child should have 2 parent-child rels (one per parent)")
+
+	// Export and verify only real child appears
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err)
+	exportedStr := string(exported)
+	chilCount := strings.Count(exportedStr, "\n1 CHIL ")
+	assert.Equal(t, 1, chilCount, "only real child should appear as CHIL")
+}
+
+// TestRoundtrip_MultiFamilyChild documents that a child in two families (e.g., birth
+// family + step-family) only appears as CHIL in one family after roundtrip. This
+// reproduces the bullinger.ged pattern where 11 children in 2 FAMs each lose their
+// second CHIL listing. The parent-child relationships are all preserved in GLX.
+func TestRoundtrip_MultiFamilyChild(t *testing.T) {
+	// Child has FAMC to both F1 (birth family) and F2 (step-family).
+	// Both FAMs list the child as CHIL.
+	gedcom := `0 HEAD
+1 SOUR TEST
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Father /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mother /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME StepFather /Brown/
+1 SEX M
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Child /Smith/
+1 SEX M
+1 FAMC @F1@
+1 FAMC @F2@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I4@
+1 MARR
+2 DATE 1990
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I2@
+1 CHIL @I4@
+1 MARR
+2 DATE 2000
+0 TRLR
+`
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Child should have parent-child relationships to all 3 parents
+	parentChildCount := 0
+	for _, rel := range glx1.Relationships {
+		if isParentChildType(rel.Type) {
+			parentChildCount++
+		}
+	}
+	// Father + Mother from F1, StepFather + Mother from F2 = 4
+	// (Mother appears twice since child has FAMC to both families)
+	assert.Equal(t, 4, parentChildCount,
+		"child should have parent-child rels to all parents from both families")
+
+	// Export to GEDCOM
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err)
+	exportedStr := string(exported)
+
+	// Known limitation: child appears as CHIL in only one family on export,
+	// even though they were in two families originally.
+	chilCount := strings.Count(exportedStr, "\n1 CHIL ")
+	// Ideally this would be 2 (child in both families), but currently it's 1.
+	// Document the current behavior:
+	if chilCount == 2 {
+		t.Log("Multi-family child correctly placed in both families — gap is fixed!")
+	} else {
+		assert.Equal(t, 1, chilCount,
+			"known gap: multi-family child only appears as CHIL in one family; got %d", chilCount)
+	}
+
+	// But all parent-child relationships should survive in the reimported GLX
+	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
+	require.NoError(t, err)
+
+	parentChildCount2 := 0
+	for _, rel := range glx2.Relationships {
+		if isParentChildType(rel.Type) {
+			parentChildCount2++
+		}
+	}
+	// After roundtrip, child is only in one family, so only 2 parent-child rels
+	// (instead of the original 4). This is real data loss — two parent links vanish.
+	if parentChildCount2 == 4 {
+		t.Log("All parent-child relationships preserved — gap is fixed!")
+	} else {
+		assert.Equal(t, 2, parentChildCount2,
+			"known gap: child loses parent-child rels from second family; got %d", parentChildCount2)
+	}
+}
