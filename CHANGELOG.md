@@ -15,6 +15,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+- **Added `glx analyze` command** - Automated research gap analysis engine that cross-references all entities in a GLX archive to surface evidence gaps (missing dates, no parents, no events), evidence quality issues (unsupported assertions, single-source persons, orphaned citations/sources), chronological inconsistencies (death before birth, parent younger than child, implausible lifespan), and research suggestions (census years to search, vital records to locate). Supports `--check` to run a single category, `--format json` for machine-readable output, and person filtering by ID or name
+- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
+
+#### Validation
+- **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
+
+### Fixed
+- **Date year extraction now handles 1–3 digit years** - Year extraction previously hardcoded a 4-digit assumption (`\d{4}`), silently ignoring dates like `800`, `476`, or `ABT 476`. All four extraction sites (query filtering, timeline sorting, temporal validation, event titles) now support 1–4 digit years. Day-of-month values (e.g., `15` in `15 MAR 1850`) are correctly disambiguated. Timeline sort keys are zero-padded to 4 digits for proper chronological ordering. Fixes #108
+
+---
+
+## [0.0.0-beta.7] - 2026-03-10
+
+### Added
+
+#### CLI
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
 - **Added `glx timeline` command** - Display chronological events for a person, including direct events and family events (spouse/child births, parent deaths) via relationship traversal. Supports `--no-family` flag to exclude family events; undated events shown in a separate section
 - **Added `glx summary` command** - Comprehensive person profile showing identity, vital events, life events, family (spouses, parents, siblings), other relationships, and an auto-generated life history narrative
@@ -23,7 +39,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
-- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
 
 #### Event Entity
 - **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import (e.g., "Birth of Daniel Lane (1815)", "Marriage of John Smith and Jane Doe (1850)")
@@ -55,7 +70,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 - **SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N×N duplication when a person has multiple values for TITL, OCCU, etc.
-- **Date year extraction now handles 1–3 digit years** - Year extraction previously hardcoded a 4-digit assumption (`\d{4}`), silently ignoring dates like `800`, `476`, or `ABT 476`. All four extraction sites (query filtering, timeline sorting, temporal validation, event titles) now support 1–4 digit years. Day-of-month values (e.g., `15` in `15 MAR 1850`) are correctly disambiguated. Timeline sort keys are zero-padded to 4 digits for proper chronological ordering. Fixes #108
 
 ---
 
