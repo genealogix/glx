@@ -659,6 +659,73 @@ func TestHasEventLinkAtPlace(t *testing.T) {
 	assert.False(t, hasEventLinkAtPlace("person-jane", "place-ironton", linkMap))
 }
 
+func TestFilterYears(t *testing.T) {
+	years := []int{1840, 1850, 1860, 1870}
+
+	// No filter
+	assert.Equal(t, years, filterYears(years, 0, 0))
+
+	// Before only
+	assert.Equal(t, []int{1840, 1850}, filterYears(years, 1860, 0))
+
+	// After only
+	assert.Equal(t, []int{1860, 1870}, filterYears(years, 0, 1850))
+
+	// Both
+	assert.Equal(t, []int{1850, 1860}, filterYears(years, 1870, 1840))
+
+	// All filtered out
+	assert.Empty(t, filterYears(years, 1840, 0))
+}
+
+func TestBuildCluster_PlaceOverlapTargetYearsFiltered(t *testing.T) {
+	// Target person appears at place-a in years 1840 and 1870.
+	// Other person appears at place-a in year 1868.
+	// With --after 1860, target's 1840 year should be excluded, but 1870
+	// still overlaps with 1868 (within 10-year window).
+	// With --after 1875, neither target year qualifies → no overlap.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-target": {Properties: map[string]any{"name": "Target"}},
+			"person-other":  {Properties: map[string]any{"name": "Other"}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-1": {
+				Type:    "residence",
+				Date:    "1840",
+				PlaceID: "place-a",
+				Participants: []glxlib.Participant{
+					{Person: "person-target"},
+				},
+			},
+			"event-2": {
+				Type:    "residence",
+				Date:    "1870",
+				PlaceID: "place-a",
+				Participants: []glxlib.Participant{
+					{Person: "person-target"},
+				},
+			},
+			"event-3": {
+				Type:    "residence",
+				Date:    "1868",
+				PlaceID: "place-a",
+				Participants: []glxlib.Participant{
+					{Person: "person-other"},
+				},
+			},
+		},
+	}
+
+	// after=1860: target's 1870 overlaps with other's 1868
+	result := buildCluster("person-target", archive, "", 0, 1860)
+	assert.Len(t, result.Associates, 1, "should find overlap when target has in-range years")
+
+	// after=1875: target's years (1840, 1870) are both excluded
+	result = buildCluster("person-target", archive, "", 0, 1875)
+	assert.Empty(t, result.Associates, "should not find overlap when all target years filtered out")
+}
+
 func writeTestArchive(t *testing.T, path string, archive *glxlib.GLXFile) {
 	t.Helper()
 	if err := writeSingleFileArchive(path, archive, false); err != nil {

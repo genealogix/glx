@@ -267,16 +267,19 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 		return
 	}
 
+	// Filter target years to the requested range so overlaps outside the
+	// window are not considered.
+	filteredTargetPlaces := filterPlaceYears(targetPlaces, beforeYear, afterYear)
+	if len(filteredTargetPlaces) == 0 {
+		return
+	}
+
+	// Precompute place-year index for all persons to avoid O(P×E) rescanning.
+	placeIndex := buildPlaceYearIndex(personID, archive)
+
 	// For each other person, check place overlap
-	personIDs := sortedKeys(archive.Persons)
-	for _, otherID := range personIDs {
-		if otherID == personID {
-			continue
-		}
-
-		otherPlaces := personPlaceYears(otherID, archive)
-
-		for placeID, targetYears := range targetPlaces {
+	for otherID, otherPlaces := range placeIndex {
+		for placeID, targetYears := range filteredTargetPlaces {
 			if filterPlace != "" && placeID != filterPlace {
 				if !placeIsDescendant(placeID, filterPlace, archive) {
 					continue
@@ -288,19 +291,21 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 				continue
 			}
 
+			// Filter other years to the requested range as well
+			filteredOtherYears := filterYears(otherYears, beforeYear, afterYear)
+			if len(filteredOtherYears) == 0 {
+				continue
+			}
+
 			// Check for temporal overlap (within 10-year window)
-			if yearsOverlap(targetYears, otherYears) {
+			if yearsOverlap(targetYears, filteredOtherYears) {
 				// Skip if already linked via a census or event at this specific place
 				if hasEventLinkAtPlace(otherID, placeID, linkMap) {
 					continue
 				}
 
 				placeName := clusterResolvePlaceName(placeID, archive)
-				yearRange := formatYearRange(otherYears)
-
-				if !yearRangeInFilter(otherYears, beforeYear, afterYear) {
-					continue
-				}
+				yearRange := formatYearRange(filteredOtherYears)
 
 				linkMap[otherID] = append(linkMap[otherID], associateLink{
 					Type:  "place_overlap",
@@ -309,6 +314,59 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 			}
 		}
 	}
+}
+
+// buildPlaceYearIndex precomputes place-year sets for all persons except the target.
+func buildPlaceYearIndex(excludeID string, archive *glxlib.GLXFile) map[string]placeYearSet {
+	index := make(map[string]placeYearSet)
+	for _, event := range archive.Events {
+		if event == nil || event.PlaceID == "" {
+			continue
+		}
+		year := extractDateYear(string(event.Date))
+		if year <= 0 {
+			continue
+		}
+		for _, p := range event.Participants {
+			if p.Person == "" || p.Person == excludeID {
+				continue
+			}
+			if index[p.Person] == nil {
+				index[p.Person] = make(placeYearSet)
+			}
+			index[p.Person][event.PlaceID] = append(index[p.Person][event.PlaceID], year)
+		}
+	}
+	return index
+}
+
+// filterPlaceYears returns a copy of the placeYearSet with only years in range.
+func filterPlaceYears(pys placeYearSet, beforeYear, afterYear int) placeYearSet {
+	if beforeYear == 0 && afterYear == 0 {
+		return pys
+	}
+	filtered := make(placeYearSet)
+	for placeID, years := range pys {
+		fy := filterYears(years, beforeYear, afterYear)
+		if len(fy) > 0 {
+			filtered[placeID] = fy
+		}
+	}
+	return filtered
+}
+
+// filterYears returns only years that pass the before/after filter.
+func filterYears(years []int, beforeYear, afterYear int) []int {
+	if beforeYear == 0 && afterYear == 0 {
+		return years
+	}
+	var filtered []int
+	for _, y := range years {
+		if yearInRange(y, beforeYear, afterYear) {
+			filtered = append(filtered, y)
+		}
+	}
+	return filtered
 }
 
 // placeYearSet maps place IDs to the years a person was associated with them.

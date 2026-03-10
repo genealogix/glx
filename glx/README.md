@@ -904,13 +904,13 @@ glx cluster <person> [flags]
 ```
 
 **Arguments:**
-- `<person>` - Person ID (e.g., `person-mary-lane`)
+- `<person>` - Person identifier or name query. Accepts either an exact person ID (e.g., `person-mary-lane`) or a case-insensitive name substring (e.g., `"Mary Lane"`).
 
 **Options:**
 - `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
-- `--place <id>` - Limit analysis to a specific place
-- `--before <year>` - Only consider events before this year
-- `--after <year>` - Only consider events after this year
+- `--place <id>` - Limit analysis to events occurring in the specified place or any of its descendant places
+- `--before <year>` - Only consider dated events before this year (undated events are still included)
+- `--after <year>` - Only consider dated events after this year (undated events are still included)
 - `--json` - Output results as JSON
 
 **Scoring:**
