@@ -1,0 +1,173 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package glx
+
+import (
+	"fmt"
+	"strings"
+)
+
+// eventTypeLabels maps GLX event types to human-readable labels for title generation.
+var eventTypeLabels = map[string]string{
+	EventTypeBirth:              "Birth",
+	EventTypeDeath:              "Death",
+	EventTypeBurial:             "Burial",
+	EventTypeChristening:        "Christening",
+	EventTypeAdultChristening:   "Adult Christening",
+	EventTypeBaptism:            "Baptism",
+	EventTypeConfirmation:       "Confirmation",
+	EventTypeGraduation:         "Graduation",
+	EventTypeRetirement:         "Retirement",
+	EventTypeCremation:          "Cremation",
+	EventTypeAdoption:           "Adoption",
+	EventTypeProbate:            "Probate",
+	EventTypeWill:               "Will",
+	EventTypeImmigration:        "Immigration",
+	EventTypeEmigration:         "Emigration",
+	EventTypeNaturalization:     "Naturalization",
+	EventTypeCensus:             "Census",
+	EventTypeResidence:          "Residence",
+	EventTypeOccupation:         "Occupation",
+	EventTypeEducation:          "Education",
+	EventTypeMarriage:           "Marriage",
+	EventTypeDivorce:            "Divorce",
+	EventTypeAnnulment:          "Annulment",
+	EventTypeEngagement:         "Engagement",
+	EventTypeDivorceFiled:       "Divorce Filed",
+	EventTypeMarriageBanns:      "Marriage Banns",
+	EventTypeMarriageContract:   "Marriage Contract",
+	EventTypeMarriageLicense:    "Marriage License",
+	EventTypeMarriageSettlement: "Marriage Settlement",
+	EventTypeLegalSeparation:    "Legal Separation",
+	EventTypeBarMitzvah:         "Bar Mitzvah",
+	EventTypeBatMitzvah:         "Bat Mitzvah",
+	EventTypeBlessing:           "Blessing",
+	EventTypeFirstCommunion:     "First Communion",
+	EventTypeOrdination:         "Ordination",
+	EventTypeTaxation:           "Taxation",
+	EventTypeVoterRegistration:  "Voter Registration",
+	EventTypeGeneric:            "Event",
+}
+
+// GenerateEventTitle builds a human-readable title for an event.
+// For individual events: "Birth of John Smith (1850)"
+// For couple events: "Marriage of John Smith and Jane Doe (1850)"
+// Falls back to just the event type label if no names are available.
+func GenerateEventTitle(eventType string, personNames []string, date DateString) string {
+	label := eventTypeLabel(eventType)
+	names := filterNonEmpty(personNames)
+	dateYear := extractYear(date)
+
+	switch {
+	case len(names) == 0 && dateYear != "":
+		return fmt.Sprintf("%s (%s)", label, dateYear)
+	case len(names) == 0:
+		return label
+	case len(names) == 1 && dateYear != "":
+		return fmt.Sprintf("%s of %s (%s)", label, names[0], dateYear)
+	case len(names) == 1:
+		return fmt.Sprintf("%s of %s", label, names[0])
+	case dateYear != "":
+		return fmt.Sprintf("%s of %s and %s (%s)", label, names[0], names[1], dateYear)
+	default:
+		return fmt.Sprintf("%s of %s and %s", label, names[0], names[1])
+	}
+}
+
+// PersonDisplayName extracts a display name from a Person's properties.
+// Returns an empty string if no name is found.
+func PersonDisplayName(person *Person) string {
+	if person == nil || person.Properties == nil {
+		return ""
+	}
+	raw, ok := person.Properties[PersonPropertyName]
+	if !ok {
+		raw, ok = person.Properties["primary_name"]
+	}
+	if !ok {
+		return ""
+	}
+
+	if s, ok := raw.(string); ok {
+		return s
+	}
+	if m, ok := raw.(map[string]any); ok {
+		if v, ok := m["value"]; ok {
+			if s, ok := v.(string); ok {
+				return s
+			}
+		}
+	}
+	if list, ok := raw.([]any); ok && len(list) > 0 {
+		if m, ok := list[0].(map[string]any); ok {
+			if v, ok := m["value"]; ok {
+				if s, ok := v.(string); ok {
+					return s
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func eventTypeLabel(eventType string) string {
+	if label, ok := eventTypeLabels[eventType]; ok {
+		return label
+	}
+	// Convert snake_case to Title Case as fallback
+	words := strings.Split(eventType, "_")
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func filterNonEmpty(ss []string) []string {
+	var result []string
+	for _, s := range ss {
+		if s != "" {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
+// extractYear pulls a 4-digit year from a DateString.
+// Handles formats like "1850", "ABT 1850", "BEF 1920", "BET 1850 AND 1860", "15 MAR 1850".
+func extractYear(date DateString) string {
+	s := string(date)
+	if s == "" {
+		return ""
+	}
+	// Find the first 4-digit number in the string
+	for i := 0; i <= len(s)-4; i++ {
+		if s[i] >= '0' && s[i] <= '9' &&
+			s[i+1] >= '0' && s[i+1] <= '9' &&
+			s[i+2] >= '0' && s[i+2] <= '9' &&
+			s[i+3] >= '0' && s[i+3] <= '9' {
+			// Make sure it's not part of a longer number
+			if i > 0 && s[i-1] >= '0' && s[i-1] <= '9' {
+				continue
+			}
+			if i+4 < len(s) && s[i+4] >= '0' && s[i+4] <= '9' {
+				continue
+			}
+			return s[i : i+4]
+		}
+	}
+	return ""
+}
