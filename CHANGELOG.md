@@ -21,7 +21,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Validation
 - **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
 
+#### Standard Vocabularies
+- **Added `marriage_type` event property** - Classification of marriage (civil, religious, common-law). Was used in GEDCOM import/export but missing from standard vocabulary
+- **Added `primary_name` person property** - Simple display name fallback when structured name property is not available. Was used in event titles and data generation but missing from standard vocabulary
+- **Added `blob_size` media property** - Size in bytes of inline binary data from GEDCOM 5.5.1 BLOB records. Was used in GEDCOM media import but missing from standard vocabulary
+
 ### Fixed
+- **GEDCOM date import mangled when day-of-month matches level number** - Dates like `2 AUG 1944` (day 2) were imported as `2 DATE 2 AUG 1944` because the parser's value extraction matched the level number instead of the actual value. Fixed by walking past tokens positionally instead of using string search
 - **Date year extraction now handles 1–3 digit years** - Year extraction previously hardcoded a 4-digit assumption (`\d{4}`), silently ignoring dates like `800`, `476`, or `ABT 476`. All four extraction sites (query filtering, timeline sorting, temporal validation, event titles) now support 1–4 digit years. Day-of-month values (e.g., `15` in `15 MAR 1850`) are correctly disambiguated. Timeline sort keys are zero-padded to 4 digits for proper chronological ordering. Fixes #108
 
 ---

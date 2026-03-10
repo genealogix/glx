@@ -69,3 +69,8 @@ media_properties:
     label: "Location"
     description: "Place where the media was created"
     reference_type: places
+
+  blob_size:
+    label: "BLOB Size"
+    description: "Size in bytes of inline binary data imported from GEDCOM 5.5.1 BLOB records"
+    value_type: integer
