@@ -382,6 +382,14 @@ func buildHEADRecord(expCtx *ExportContext) *GEDCOMRecord {
 		})
 	}
 
+	// HEAD-level NOTE (roundtrip preservation)
+	if expCtx.GLX.ImportMetadata != nil && expCtx.GLX.ImportMetadata.Notes != "" {
+		head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagNote,
+			Value: expCtx.GLX.ImportMetadata.Notes,
+		})
+	}
+
 	return head
 }
 

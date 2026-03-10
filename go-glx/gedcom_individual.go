@@ -516,7 +516,6 @@ func appendResidence(person *Person, value any) {
 
 // convertResidence converts RESI to residence temporal property on person
 func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord, conv *ConversionContext) {
-	// Extract place and date from RESI record
 	var placeID string
 	var dateStr string
 
@@ -532,7 +531,6 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		}
 	}
 
-	// If we have a place, create temporal property
 	if placeID != "" {
 		if dateStr != "" {
 			appendResidence(person, map[string]any{
@@ -543,7 +541,6 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 			appendResidence(person, placeID)
 		}
 
-		// Create assertion for the residence
 		createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
 	}
 }

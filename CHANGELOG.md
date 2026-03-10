@@ -26,6 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **TITL with DATE/PLAC sub-records** - Title properties with dates and places are stored as temporal list items and roundtrip correctly (~2,900 tags recovered)
 - **Multiple MARR events per family** - Families with multiple MARR records now preserve all marriage events
 - **Empty OCCU with PLAC fallback** - OCCU records with empty values but PLAC sub-records now extract the place text as the occupation value
+- **HEAD-level NOTE preservation** - Notes on GEDCOM HEAD records are now imported and exported, fixing NOTE loss in ~10 files
+- **Family-level RESI import** - RESI records under FAM are now distributed to both spouses as residence properties
+- **Family-level NOTE import/export** - NOTE records on FAM are now stored on the relationship's Notes field and roundtrip correctly
+- **Single-value RESI export** - RESI stored as scalar (not list) now exports correctly instead of being silently dropped
+- **Fixed SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N x N duplication when a person has multiple values for TITL, OCCU, etc. (~1,348 phantom SOURs eliminated in habsburg)
 
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates

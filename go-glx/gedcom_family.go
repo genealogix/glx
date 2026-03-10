@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"strings"
 )
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
@@ -36,10 +37,17 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	var divorceRecord *GEDCOMRecord
 	var censusRecords []*GEDCOMRecord
 	var familyEventRecords []*GEDCOMRecord
+	var familyResiRecords []*GEDCOMRecord
 	var objeRecords []*GEDCOMRecord
+	var noteTexts []string
 
 	for _, sub := range famRecord.SubRecords {
 		switch sub.Tag {
+		case GedcomTagNote:
+			noteText := extractNoteText(sub, conv)
+			if noteText != "" {
+				noteTexts = append(noteTexts, noteText)
+			}
 		case GedcomTagHusb:
 			husbandID = conv.PersonIDMap[sub.Value]
 			if husbandID == "" {
@@ -64,6 +72,8 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			divorceRecord = sub
 		case GedcomTagCens:
 			censusRecords = append(censusRecords, sub)
+		case GedcomTagResi:
+			familyResiRecords = append(familyResiRecords, sub)
 		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagEven:
 			familyEventRecords = append(familyEventRecords, sub)
 		case GedcomTagObje:
@@ -80,6 +90,9 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if husbandID != "" || wifeID != "" {
 		for _, censRec := range censusRecords {
 			convertFamilyCensus(husbandID, wifeID, censRec, conv)
+		}
+		for _, resiRec := range familyResiRecords {
+			convertFamilyResidence(husbandID, wifeID, resiRec, conv)
 		}
 		for _, eventRec := range familyEventRecords {
 			convertFamilyEvent(husbandID, wifeID, eventRec, conv)
@@ -111,6 +124,11 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 		if len(refs.CitationIDs) > 0 {
 			relationship.Properties[PropertyCitations] = refs.CitationIDs
+		}
+
+		// Attach FAM-level NOTEs to the relationship
+		if len(noteTexts) > 0 {
+			relationship.Notes = strings.Join(noteTexts, "\n\n")
 		}
 
 		// Resolve FAM-level OBJE references
@@ -272,6 +290,20 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Store event
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
+}
+
+// convertFamilyResidence applies a family-level RESI record to both spouses.
+func convertFamilyResidence(husbandID, wifeID string, resiRecord *GEDCOMRecord, conv *ConversionContext) {
+	for _, spouseID := range []string{husbandID, wifeID} {
+		if spouseID == "" {
+			continue
+		}
+		person, ok := conv.GLX.Persons[spouseID]
+		if !ok {
+			continue
+		}
+		convertResidence(spouseID, person, resiRecord, conv)
+	}
 }
 
 // convertFamilyCensus applies a family-level CENS record to both spouses.

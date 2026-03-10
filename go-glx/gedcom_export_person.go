@@ -490,8 +490,15 @@ func exportResidenceRecords(personID string, person *Person, expCtx *ExportConte
 		return nil
 	}
 
-	resiList, ok := resiVal.([]any)
-	if !ok {
+	var resiList []any
+	switch v := resiVal.(type) {
+	case []any:
+		resiList = v
+	case string:
+		resiList = []any{v}
+	case map[string]any:
+		resiList = []any{v}
+	default:
 		return nil
 	}
 
@@ -545,6 +552,9 @@ func exportResidenceRecords(personID string, person *Person, expCtx *ExportConte
 			placRecords := exportPlaceSubrecords(placeID, expCtx)
 			if placRecords != nil {
 				record.SubRecords = append(record.SubRecords, placRecords...)
+			} else {
+				// Not a known place ID — emit as RESI value text
+				record.Value = placeID
 			}
 
 			// Add SOUR from assertions matching this place
@@ -656,10 +666,18 @@ func exportMappedPersonProperties(personID string, person *Person, expCtx *Expor
 				})
 			}
 
-			// Add SOUR from assertions for this property
+			// Add SOUR from assertions matching this specific value
 			if personAssertions, ok := expCtx.PersonPropertyAssertions[personID]; ok {
 				if assertions, ok := personAssertions[key]; ok {
-					exportAssertionSourceRefs(assertions, expCtx, propRecord)
+					var matching []*Assertion
+					for _, a := range assertions {
+						if a.Value == item.value {
+							matching = append(matching, a)
+						}
+					}
+					if len(matching) > 0 {
+						exportAssertionSourceRefs(matching, expCtx, propRecord)
+					}
 				}
 			}
 

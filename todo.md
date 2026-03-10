@@ -9,13 +9,12 @@
 Known data loss during GED → GLX → GED roundtrip. See `fix/export-event-citations-and-family-reconstruction` branch for fixes already applied.
 
 - **~7 person notes lost in queen roundtrip**: Queen shows 1321→1314. NOTEs shift between INDI and FAM contexts during family reconstruction. Steps to reproduce: `glx import queen.ged -o q.glx && glx export q.glx -o q-rt.ged`, compare `grep -c "^1 NOTE"`.
-- **Relationship notes stored in Properties, not Notes field**: Import for relationship/family-level NOTEs may still use `Properties["notes"]` while export checks `rel.Notes` (struct field).
-- **RESI partially lost** (bullinger 26→13, assess 2→0): Some RESI formats not handled by `exportResidenceRecords` — likely date-only RESI entries or RESI without temporal list format.
+- **Multi-NOTE merging on import** (queen -7): Multiple NOTE records on a person are concatenated into one `person.Notes` string. On export, they become a single NOTE with CONT lines instead of separate NOTE records. Content is preserved but record boundaries are lost.
+- **RESI with no PLAC lost** (bullinger 26→19): RESI records with only DATE/TYPE/value but no PLAC sub-record cannot be stored in the place-reference residence model. 7 such records in bullinger are bare markers like `RESI Y` or `RESI\n2 TYPE married`.
 - **No-spouse FAM records with MARR dropped** (habsburg -145): FAM records with no HUSB/WIFE at all can't create marriage relationships (zero participants). These MARR events are silently dropped.
-- **SOUR duplication via assertions** (habsburg +1348): Assertion-based SOUR refs on TITL properties duplicate when a person has multiple titles — all assertion SOURs get emitted on each TITL record.
+- **Minor SOUR surplus** (bullinger +7, habsburg -108): Small SOUR count differences from assertions on dropped structures (e.g., RESI without PLAC) or citation deduplication during import.
 - **CONT line wrapping differences** (queen -167): Multiline text roundtrips with different CONT/CONC splitting than the original. Content is preserved, formatting differs.
 - **CHAN dates not exported**: GEDCOM CHAN (change timestamp) records aren't preserved through GLX. Design decision — change metadata, not genealogical data.
-- **Head-level NOTE not roundtripped**: Notes on HEAD records (metadata-level) are not preserved.
 
 ## 🟡 Import Gaps
 
