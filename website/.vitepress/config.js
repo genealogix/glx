@@ -64,6 +64,7 @@ export default defineConfig({
     'docs/examples/temporal-properties/README.md': 'examples/temporal-properties/index.md',
     'docs/examples/participant-assertions/README.md': 'examples/participant-assertions/index.md',
     'docs/examples/assertion-workflow/README.md': 'examples/assertion-workflow/index.md',
+    'docs/examples/westeros/README.md': 'examples/westeros/index.md',
     'docs/guides/:page*': 'guides/:page*',
     'docs/examples/:page*': 'examples/:page*',
 
@@ -101,6 +102,7 @@ export default defineConfig({
       {
         text: 'Guides',
         items: [
+          { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
           { text: 'Best Practices', link: '/guides/best-practices' },
           { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
         ]
@@ -251,10 +253,54 @@ export default defineConfig({
           items: [{ text: 'JSON Schemas', link: '/specification/schema/' }]
         }
       ],
+      '/cli': [
+        {
+          text: 'CLI Tool',
+          items: [
+            { text: 'Overview', link: '/cli' }
+          ]
+        },
+        {
+          text: 'Archive Management',
+          items: [
+            { text: 'glx init', link: '/cli#glx-init' },
+            { text: 'glx validate', link: '/cli#glx-validate' },
+            { text: 'glx split', link: '/cli#glx-split' },
+            { text: 'glx join', link: '/cli#glx-join' }
+          ]
+        },
+        {
+          text: 'Import & Export',
+          items: [
+            { text: 'glx import', link: '/cli#glx-import' },
+            { text: 'glx export', link: '/cli#glx-export' }
+          ]
+        },
+        {
+          text: 'Exploration',
+          items: [
+            { text: 'glx query', link: '/cli#glx-query' },
+            { text: 'glx vitals', link: '/cli#glx-vitals' },
+            { text: 'glx timeline', link: '/cli#glx-timeline' },
+            { text: 'glx summary', link: '/cli#glx-summary' },
+            { text: 'glx ancestors', link: '/cli#glx-ancestors' },
+            { text: 'glx descendants', link: '/cli#glx-descendants' },
+            { text: 'glx cite', link: '/cli#glx-cite' }
+          ]
+        },
+        {
+          text: 'Analysis',
+          items: [
+            { text: 'glx stats', link: '/cli#glx-stats' },
+            { text: 'glx places', link: '/cli#glx-places' }
+          ]
+        }
+      ],
       '/guides/': [
         {
           text: 'User Guides',
           items: [
+            { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
             { text: 'Best Practices', link: '/guides/best-practices' },
             { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
           ]
@@ -280,6 +326,12 @@ export default defineConfig({
             { text: 'Minimal', link: '/examples/minimal/' },
             { text: 'Basic Family', link: '/examples/basic-family/' },
             { text: 'Complete Family ⭐', link: '/examples/complete-family/' }
+          ]
+        },
+        {
+          text: 'Real-World Scale',
+          items: [
+            { text: 'Westeros (ASOIAF)', link: '/examples/westeros/' }
           ]
         },
         {

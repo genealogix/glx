@@ -61,7 +61,7 @@ Domain-specific events can be added via vocabularies:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `title` | string | Short label for the event (e.g., "1860 Census — Lane Household"). Distinct from `properties.description`, which is a longer narrative |
+| `title` | string | Short label for the event (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import from participant names and date (e.g., "Birth of Daniel Lane (1815)"). Distinct from `properties.description`, which is a longer narrative |
 | `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
