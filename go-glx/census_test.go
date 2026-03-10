@@ -447,6 +447,45 @@ func TestBuildCensusEntities_NameMatchExisting(t *testing.T) {
 	assert.Equal(t, []string{"person-daniel-lane"}, result.MatchedIDs)
 }
 
+func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
+	// The existing person ID ("person-abc123") differs from what Slugify would
+	// produce ("person-daniel-lane"). Assertions must use the resolved ID.
+	existing := &GLXFile{
+		Persons: map[string]*Person{
+			"person-abc123": {
+				Properties: map[string]any{
+					PersonPropertyName: "Daniel Lane",
+				},
+			},
+		},
+	}
+
+	tpl := &CensusTemplate{
+		Census: CensusData{
+			Year:     1860,
+			Location: CensusLocation{Place: "Marion County"},
+			Household: CensusHousehold{
+				Members: []CensusHouseholdMember{
+					{Name: "Daniel Lane", PersonID: "person-abc123", Age: intPtr(30)},
+				},
+			},
+		},
+	}
+
+	result, err := BuildCensusEntities(tpl, existing)
+	require.NoError(t, err)
+
+	// Assertions must reference the actual resolved ID, not the slugified name
+	birthAssertion := result.Assertions["assertion-daniel-lane-birth-year-1860"]
+	require.NotNil(t, birthAssertion)
+	assert.Equal(t, "person-abc123", birthAssertion.Subject.Person,
+		"assertion should use resolved person ID, not Slugify(name)")
+
+	resAssertion := result.Assertions["assertion-daniel-lane-residence-1860"]
+	require.NotNil(t, resAssertion)
+	assert.Equal(t, "person-abc123", resAssertion.Subject.Person)
+}
+
 func TestBuildCensusEntities_ParticipantAge(t *testing.T) {
 	tpl := &CensusTemplate{
 		Census: CensusData{

@@ -146,7 +146,7 @@ func BuildCensusEntities(template *CensusTemplate, existing *GLXFile) (*CensusRe
 	result.Citation[citationID] = buildCensusCitation(census, sourceID)
 
 	// 4. Resolve persons and build participants
-	participants, err := resolveCensusPersons(census, existing, result)
+	participants, resolvedIDs, err := resolveCensusPersons(census, existing, result)
 	if err != nil {
 		return nil, err
 	}
@@ -156,8 +156,8 @@ func BuildCensusEntities(template *CensusTemplate, existing *GLXFile) (*CensusRe
 	result.EventID = eventID
 	result.Event[eventID] = buildCensusEvent(census, placeID, participants)
 
-	// 6. Generate assertions for each member
-	generateCensusAssertions(census, placeID, citationID, result)
+	// 6. Generate assertions for each member (using resolved IDs, not re-derived)
+	generateCensusAssertions(census, resolvedIDs, placeID, citationID, result)
 
 	return result, nil
 }
@@ -288,14 +288,19 @@ func buildCensusCitation(census *CensusData, sourceID string) *Citation {
 }
 
 // resolveCensusPersons resolves each household member to an existing or new person.
-func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusResult) ([]Participant, error) {
+// Returns participants for the event, and a parallel slice of resolved person IDs
+// (one per member, in the same order as census.Household.Members).
+func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusResult) ([]Participant, []string, error) {
 	var participants []Participant
+	var resolvedIDs []string
 
 	for _, member := range census.Household.Members {
 		personID, isNew, err := resolveCensusPerson(member, existing, result)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+
+		resolvedIDs = append(resolvedIDs, personID)
 
 		if isNew {
 			result.NewPersonIDs = append(result.NewPersonIDs, personID)
@@ -322,7 +327,7 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 		participants = append(participants, p)
 	}
 
-	return participants, nil
+	return participants, resolvedIDs, nil
 }
 
 // resolveCensusPerson resolves a single household member.
@@ -428,14 +433,13 @@ func buildCensusEvent(census *CensusData, placeID string, participants []Partici
 }
 
 // generateCensusAssertions creates assertions for each household member.
-func generateCensusAssertions(census *CensusData, placeID, citationID string, result *CensusResult) {
+// resolvedIDs contains the actual person ID for each member (resolved during
+// person resolution), avoiding re-derivation that could mismatch existing IDs.
+func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID, citationID string, result *CensusResult) {
 	yearStr := fmt.Sprintf("%d", census.Year)
 
-	for _, member := range census.Household.Members {
-		personID := member.PersonID
-		if personID == "" {
-			personID = Slugify("person", member.Name)
-		}
+	for i, member := range census.Household.Members {
+		personID := resolvedIDs[i]
 
 		slug := Slugify("", member.Name)
 

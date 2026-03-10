@@ -15,12 +15,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
-- **Added `glx census add` command** - Bulk census import helper that generates GLX entities from a structured YAML template. Reads census year, location, household members, and citation details to produce person records, a census event with participants, source/citation entities, and evidence-based assertions (birth year, birthplace, gender, occupation, residence). Supports matching members to existing archive persons by ID or name, `--dry-run` preview, and FAN (Friends, Associates, Neighbors) notes
 - **Added `glx vitals` command** - Display vital records (name, sex, birth, christening, death, burial) for a person by ID or name search, plus any other life events they participated in
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
+- **Added `glx census add` command** - Bulk census import helper that generates GLX entities from a structured YAML template. Reads census year, location, household members, and citation details to produce person records, a census event with participants, source/citation entities, and evidence-based assertions (birth year, birthplace, gender, occupation, residence). Supports matching members to existing archive persons by ID or name, `--dry-run` preview, and FAN (Friends, Associates, Neighbors) notes
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
+- **Added `glx ancestors` command** - Display ancestor tree for a person by traversing parent-child relationships, with optional `--generations` limit
+- **Added `glx descendants` command** - Display descendant tree for a person by traversing parent-child relationships, with optional `--generations` limit
+- **Added `glx summary` command** - Comprehensive person profile showing identity (name, sex, alternate names), vital events, life events, family (spouses with marriage info, parents, siblings), other relationships, and an auto-generated life history narrative. Supports lookup by person ID or name substring
+- **Added `glx timeline` command** - Chronological timeline of all events in a person's life, including family events (spouse births/deaths, children's births/deaths, parent deaths) discovered through relationship traversal. Supports lookup by person ID or name substring, with `--no-family` to show only direct events
+
+#### Import
+- **Auto-generate event titles on GEDCOM import** - Events now receive human-readable titles like "Birth of Daniel Lane (1815)" or "Marriage of John Smith and Jane Doe (1850)". Titles are generated from the event type, participant names, and date
 
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
@@ -35,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx places` command** - Analyze places for ambiguity and completeness: flags duplicate names, missing coordinates, missing types, hierarchy gaps, and unreferenced places with canonical hierarchy paths
 - **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
 - **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
+- **Added `glx timeline` command** - Chronological timeline of all events in a person's life, including family events (spouse births/deaths, children's births/deaths, parent deaths) discovered through relationship traversal. Supports lookup by person ID or name substring, with `--no-family` to show only direct events
+- **Added `glx validate --report`** - Generates a confidence summary report showing assertion breakdown by confidence level, assertions without citations, and entities with no assertion coverage
 
 #### Build & Release
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
@@ -641,4 +650,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - GitHub issue and discussion templates
 - Development container configuration for consistent environments
 - Pre-configured VitePress documentation site
+
 
