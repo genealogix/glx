@@ -67,6 +67,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	// Build person events index (person ID -> event IDs where person is principal)
 	buildPersonEventsIndex(expCtx)
 
+	// Build assertion lookup index (person ID + property -> assertions)
+	buildPersonPropertyAssertionsIndex(expCtx)
+
 	// Reconstruct families from relationships (before building records)
 	reconstructFamilies(expCtx)
 
@@ -117,6 +120,11 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 		record := exportFamily(family, expCtx)
 		records = append(records, record)
 		expCtx.Stats.FamiliesExported++
+	}
+
+	// SUBM record (required by GEDCOM 5.5.1)
+	if expCtx.Version == GEDCOM551 {
+		records = append(records, buildSUBMRecord(expCtx))
 	}
 
 	// TRLR record
@@ -170,6 +178,10 @@ type ExportContext struct {
 	// Person-to-family reverse maps for FAMS/FAMC back-references
 	PersonSpouseFamilies map[string][]string          // person ID -> family XRefs where spouse
 	PersonChildFamilies  map[string][]childFamilyRef  // person ID -> family refs where child
+
+	// PersonPropertyAssertions maps personID -> property -> assertions
+	// Used to export SOUR on NAME, OCCU, RESI, etc. from assertion evidence
+	PersonPropertyAssertions map[string]map[string][]*Assertion
 
 	Stats ExportStatistics
 }
@@ -362,7 +374,63 @@ func buildHEADRecord(expCtx *ExportContext) *GEDCOMRecord {
 		})
 	}
 
+	// Submitter reference (GEDCOM 5.5.1 requires SUBM)
+	if expCtx.Version == GEDCOM551 {
+		head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagSubm,
+			Value: "@SUBM@",
+		})
+	}
+
+	// Import metadata roundtrip preservation
+	if meta := expCtx.GLX.ImportMetadata; meta != nil {
+		if meta.Language != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagLang,
+				Value: meta.Language,
+			})
+		}
+		if meta.SourceFile != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagFile,
+				Value: meta.SourceFile,
+			})
+		}
+		if meta.Copyright != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagCopr,
+				Value: meta.Copyright,
+			})
+		}
+		if meta.Notes != "" {
+			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNote,
+				Value: meta.Notes,
+			})
+		}
+	}
+
 	return head
+}
+
+// buildSUBMRecord constructs the GEDCOM SUBM (submitter) record from GLX metadata.
+func buildSUBMRecord(expCtx *ExportContext) *GEDCOMRecord {
+	subm := &GEDCOMRecord{
+		XRef:       "@SUBM@",
+		Tag:        GedcomTagSubm,
+		SubRecords: []*GEDCOMRecord{},
+	}
+
+	name := "GLX Export"
+	if expCtx.GLX.ImportMetadata != nil && expCtx.GLX.ImportMetadata.Submitter != nil && expCtx.GLX.ImportMetadata.Submitter.Name != "" {
+		name = expCtx.GLX.ImportMetadata.Submitter.Name
+	}
+	subm.SubRecords = append(subm.SubRecords, &GEDCOMRecord{
+		Tag:   GedcomTagName,
+		Value: name,
+	})
+
+	return subm
 }
 
 // sortedKeys returns the keys of a map in sorted order.

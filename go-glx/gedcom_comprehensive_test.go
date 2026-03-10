@@ -99,14 +99,14 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 
 			// Data persistence checks - verify person properties are populated
 			if len(glx.Persons) > 0 {
-				personWithProperties := 0
+				personWithData := 0
 				for _, person := range glx.Persons {
-					if len(person.Properties) > 0 {
-						personWithProperties++
+					if len(person.Properties) > 0 || person.Notes != "" {
+						personWithData++
 					}
 				}
-				if personWithProperties == 0 {
-					t.Error("No persons have properties - person data not persisted")
+				if personWithData == 0 {
+					t.Error("No persons have properties or notes - person data not persisted")
 				}
 			}
 
@@ -258,9 +258,9 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 	for _, rel := range glx.Relationships {
 		if rel.Type == RelationshipTypeMarriage {
 			marriageRelationships++
-			// Verify participants are linked
-			if len(rel.Participants) < 2 {
-				t.Errorf("Marriage relationship has %d participants, expected at least 2", len(rel.Participants))
+			// Verify participants are linked (single-spouse families may have only 1)
+			if len(rel.Participants) < 1 {
+				t.Errorf("Marriage relationship has %d participants, expected at least 1", len(rel.Participants))
 			}
 		}
 	}

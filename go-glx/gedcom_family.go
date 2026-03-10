@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"strings"
 )
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
@@ -32,13 +33,21 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// GEDCOM does not guarantee tag order, so event tags may appear before
 	// HUSB/WIFE tags. Collecting everything first prevents empty spouse IDs.
 	var husbandID, wifeID string
-	var marriageRecord, divorceRecord *GEDCOMRecord
+	var marriageRecords []*GEDCOMRecord
+	var divorceRecord *GEDCOMRecord
 	var censusRecords []*GEDCOMRecord
 	var familyEventRecords []*GEDCOMRecord
+	var familyResiRecords []*GEDCOMRecord
 	var objeRecords []*GEDCOMRecord
+	var noteTexts []string
 
 	for _, sub := range famRecord.SubRecords {
 		switch sub.Tag {
+		case GedcomTagNote:
+			noteText := extractNoteText(sub, conv)
+			if noteText != "" {
+				noteTexts = append(noteTexts, noteText)
+			}
 		case GedcomTagHusb:
 			husbandID = conv.PersonIDMap[sub.Value]
 			if husbandID == "" {
@@ -58,11 +67,13 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			}
 
 		case GedcomTagMarr:
-			marriageRecord = sub
+			marriageRecords = append(marriageRecords, sub)
 		case GedcomTagDiv:
 			divorceRecord = sub
 		case GedcomTagCens:
 			censusRecords = append(censusRecords, sub)
+		case GedcomTagResi:
+			familyResiRecords = append(familyResiRecords, sub)
 		case GedcomTagEnga, GedcomTagMarb, GedcomTagMarc, GedcomTagMarl, GedcomTagMars, GedcomTagAnul, GedcomTagDivf, GedcomTagEven:
 			familyEventRecords = append(familyEventRecords, sub)
 		case GedcomTagObje:
@@ -80,22 +91,30 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		for _, censRec := range censusRecords {
 			convertFamilyCensus(husbandID, wifeID, censRec, conv)
 		}
+		for _, resiRec := range familyResiRecords {
+			convertFamilyResidence(husbandID, wifeID, resiRec, conv)
+		}
 		for _, eventRec := range familyEventRecords {
 			convertFamilyEvent(husbandID, wifeID, eventRec, conv)
 		}
 	}
 
-	// Create spousal relationship if both spouses exist
-	if husbandID != "" && wifeID != "" {
+	// Create spousal relationship if at least one spouse exists
+	if husbandID != "" || wifeID != "" {
 		relationshipID := generateRelationshipID(conv)
 
+		var participants []Participant
+		if husbandID != "" {
+			participants = append(participants, Participant{Person: husbandID, Role: ParticipantRoleSpouse})
+		}
+		if wifeID != "" {
+			participants = append(participants, Participant{Person: wifeID, Role: ParticipantRoleSpouse})
+		}
+
 		relationship := &Relationship{
-			Type: RelationshipTypeMarriage,
-			Participants: []Participant{
-				{Person: husbandID, Role: ParticipantRoleSpouse},
-				{Person: wifeID, Role: ParticipantRoleSpouse},
-			},
-			Properties: make(map[string]any),
+			Type:         RelationshipTypeMarriage,
+			Participants: participants,
+			Properties:   make(map[string]any),
 		}
 
 		// Extract evidence from FAM record itself
@@ -107,6 +126,11 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			relationship.Properties[PropertyCitations] = refs.CitationIDs
 		}
 
+		// Attach FAM-level NOTEs to the relationship
+		if len(noteTexts) > 0 {
+			relationship.Notes = strings.Join(noteTexts, "\n\n")
+		}
+
 		// Resolve FAM-level OBJE references
 		for _, obje := range objeRecords {
 			handleOBJE(obje, relationship.Properties, conv)
@@ -115,9 +139,13 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		conv.GLX.Relationships[relationshipID] = relationship
 		conv.Stats.RelationshipsCreated++
 
-		// Process marriage event if exists
-		if marriageRecord != nil {
-			convertMarriageEvent(husbandID, wifeID, relationshipID, marriageRecord, conv)
+		// Process marriage events — first becomes StartEvent, rest become family events
+		for i, marrRec := range marriageRecords {
+			if i == 0 {
+				convertMarriageEvent(husbandID, wifeID, relationshipID, marrRec, conv)
+			} else {
+				convertFamilyEvent(husbandID, wifeID, marrRec, conv)
+			}
 		}
 
 		// Process divorce event if exists
@@ -263,6 +291,16 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Extract common event details (DATE, PLAC, NOTE, ADDR, SOUR)
 	extractEventDetails(eventID, eventRecord, event, conv, true)
 
+	// Extract TYPE as event_subtype (same as individual events)
+	for _, sub := range eventRecord.SubRecords {
+		if sub.Tag == GedcomTagType {
+			if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+				event.Properties[propertyKey] = sub.Value
+			}
+			break
+		}
+	}
+
 	// Add participants for both spouses
 	var participants []Participant
 	if husbandID != "" {
@@ -292,6 +330,54 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	// Store event
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
+}
+
+// convertFamilyResidence applies a family-level RESI record to both spouses.
+// Evidence is extracted once to avoid creating duplicate citations.
+func convertFamilyResidence(husbandID, wifeID string, resiRecord *GEDCOMRecord, conv *ConversionContext) {
+	// Extract residence data and evidence once
+	var placeID string
+	var dateStr string
+
+	for _, sub := range resiRecord.SubRecords {
+		switch sub.Tag {
+		case GedcomTagPlac:
+			hierarchy := parseGEDCOMPlace(sub.Value)
+			if hierarchy != nil {
+				placeID = buildPlaceHierarchy(hierarchy, conv)
+			}
+		case GedcomTagDate:
+			dateStr = string(parseGEDCOMDate(sub.Value))
+		}
+	}
+
+	if placeID == "" {
+		return
+	}
+
+	refs := extractEvidence(resiRecord, conv)
+
+	// Apply to each spouse
+	for _, spouseID := range []string{husbandID, wifeID} {
+		if spouseID == "" {
+			continue
+		}
+		person, ok := conv.GLX.Persons[spouseID]
+		if !ok {
+			continue
+		}
+
+		if dateStr != "" {
+			appendResidence(person, map[string]any{
+				"value": placeID,
+				"date":  dateStr,
+			})
+		} else {
+			appendResidence(person, placeID)
+		}
+
+		createPropertyAssertionWithEvidence(spouseID, PersonPropertyResidence, placeID, refs, conv)
+	}
 }
 
 // convertFamilyCensus applies a family-level CENS record to both spouses.
