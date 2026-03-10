@@ -377,6 +377,36 @@ glx cite
 
 This assembles each citation from its source title, source type, repository name, access date, and locator — saving you from writing `citation_text` by hand for each of 247 citations.
 
+## FAN Club Analysis
+
+### `glx cluster` — Find associates for brickwall research
+
+When you hit a brickwall, the FAN (Friends, Associates, Neighbors) club technique can uncover new leads. The `cluster` command identifies people connected to a person through census households, shared events, and place overlap, ranked by connection strength:
+
+```bash
+glx cluster person-eddard-stark
+```
+
+Associates are scored by how they connect: census co-residence is worth 3 points, shared event participation 2 points, and place overlap 1 point. The stronger the connection, the higher the score.
+
+Narrow the results to a specific place and time period:
+
+```bash
+glx cluster person-eddard-stark --place place-winterfell --before 290
+```
+
+This filters to only associates connected through events at Winterfell before the year 290 — useful for isolating a specific community at a specific time.
+
+Use `--json` for scripting or piping into other tools:
+
+```bash
+glx cluster person-eddard-stark --json
+```
+
+::: tip
+The FAN club technique is most powerful when combined with `glx timeline` and `glx query assertions`. Find the associates, then check the timeline and evidence chains to understand _how_ they were connected.
+:::
+
 ## Format Conversion
 
 ### `glx split` and `glx join` — Convert between formats
