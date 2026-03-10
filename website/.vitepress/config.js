@@ -293,7 +293,8 @@ export default defineConfig({
           items: [
             { text: 'glx stats', link: '/cli#glx-stats' },
             { text: 'glx places', link: '/cli#glx-places' },
-            { text: 'glx cluster', link: '/cli#glx-cluster' }
+            { text: 'glx cluster', link: '/cli#glx-cluster' },
+            { text: 'glx analyze', link: '/cli#glx-analyze' }
           ]
         }
       ],

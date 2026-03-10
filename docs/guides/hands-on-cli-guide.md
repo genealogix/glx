@@ -23,7 +23,7 @@ If you haven't installed the CLI yet, see the [installation instructions](/cli#i
 
 ### `glx validate` — Check data integrity
 
-Start by validating the archive. This checks YAML syntax, required fields, cross-references between entities, vocabulary types, and temporal consistency.
+Start by validating the archive. This checks YAML syntax, required fields, cross-references between entities, and vocabulary types.
 
 ```bash
 glx validate
@@ -42,7 +42,7 @@ validation failed
 ```
 
 ::: tip
-Temporal consistency warnings flag dates that may be off — like a death year before a birth year. These are warnings (not errors) because genealogical dates are often estimates.
+Use `glx analyze` to check for temporal consistency issues (death before birth, parent younger than child) and other research gaps. Validation focuses on structural correctness.
 :::
 
 ### `glx stats` — Dashboard overview
@@ -102,6 +102,51 @@ Missing coordinates (108 of 108):
 ```
 
 Each place is shown with its canonical hierarchy path (e.g., "Winterfell, The North, Westeros"). The duplicate "Red Keep" flags an ID inconsistency to clean up.
+
+### `glx analyze` — Research gap analysis
+
+Run automated analysis to surface evidence gaps, quality issues, chronological inconsistencies, and research suggestions:
+
+```bash
+glx analyze
+```
+
+```
+=== Research Gap Analysis: 847 issues found ===
+
+EVIDENCE GAPS (312)
+  HIGH person-aegon-i-targaryen       No birth date
+  HIGH person-aegon-ii-targaryen      No birth date
+  HIGH person-aegon-iii-targaryen     No birth date
+  ...
+
+EVIDENCE QUALITY (198)
+  HIGH person-aegon-i-targaryen       No assertions backed by citations
+  HIGH person-aegon-ii-targaryen      No assertions backed by citations
+  ...
+
+CONSISTENCY (5)
+  HIGH person-aegon-v-targaryen       Death year (259) before birth year (c. 200)
+  ...
+
+SUGGESTIONS (332)
+  →   person-arya-stark               Search for vital records
+  →   person-benjen-stark             Search for vital records
+  ...
+```
+
+Focus on a single person or category:
+
+```bash
+# Analyze one person
+glx analyze "Eddard Stark"
+
+# Run only consistency checks
+glx analyze --check consistency
+
+# JSON output for tooling
+glx analyze --format json
+```
 
 ## Querying Entities
 

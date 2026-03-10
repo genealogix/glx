@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
+- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
 - **Added `glx cluster` command** - FAN (Friends, Associates, Neighbors) club analysis for brickwall research. Cross-references census households, shared events, and place overlap to identify associates of a target person. Ranks associates by connection strength with compound scoring. Supports `--place`, `--before`, `--after` filters and `--json` output
 
 #### Event Entity
