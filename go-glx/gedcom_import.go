@@ -524,11 +524,23 @@ func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
 	line.Tag = parts[idx]
 	idx++
 
-	// Parse value (rest of line)
+	// Parse value (rest of line after the tag)
 	if idx < len(parts) {
-		// Rejoin the rest as value
-		valueStart := strings.Index(text, parts[idx])
-		line.Value = strings.TrimSpace(text[valueStart:])
+		// Walk past exactly idx whitespace-separated tokens (level, optional xref,
+		// tag) to find where the value begins. Using strings.Index is unsafe because
+		// a value token may appear earlier in the line (e.g., "2 DATE 2 AUG 1944"
+		// where the day "2" matches the level number, or a tag name appearing inside
+		// an xref like "@NOTE1@").
+		pos := 0
+		for i := 0; i < idx; i++ {
+			for pos < len(text) && text[pos] == ' ' {
+				pos++
+			}
+			for pos < len(text) && text[pos] != ' ' {
+				pos++
+			}
+		}
+		line.Value = strings.TrimSpace(text[pos:])
 	}
 
 	return line, nil
