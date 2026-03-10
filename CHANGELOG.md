@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Documentation
 - **Rewrote Migration from GEDCOM guide** - Expanded from a skeleton to a comprehensive guide covering all supported GEDCOM tags, CLI flags, field mapping tables, common challenges, troubleshooting, and GEDCOM 5.5.1 vs 7.0 differences
 
+
 ---
 
 ## [0.0.0-beta.7] - 2026-03-10
