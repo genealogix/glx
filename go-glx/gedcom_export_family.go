@@ -88,9 +88,12 @@ func reconstructFamilies(expCtx *ExportContext) {
 		}
 		expCtx.Families = append(expCtx.Families, family)
 
-		// Map parent pair to family
-		pairKey := makeParentPairKey(husbandID, wifeID)
-		parentPairToFamily[pairKey] = familyIdx
+		// Map parent pair to family (only when both spouses are known;
+		// single-spouse families use the parentToFamilies fallback)
+		if husbandID != "" && wifeID != "" {
+			pairKey := makeParentPairKey(husbandID, wifeID)
+			parentPairToFamily[pairKey] = familyIdx
+		}
 
 		// Map each parent to this family
 		if husbandID != "" {

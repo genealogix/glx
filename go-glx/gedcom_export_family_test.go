@@ -1313,3 +1313,85 @@ func TestExportFamily_FamilyEventsPreserveEventProperties(t *testing.T) {
 	}
 	assert.True(t, foundEven, "family should have EVEN event for separation")
 }
+
+func TestReconstructFamilies_MultipleSingleSpouseMarriages(t *testing.T) {
+	// A person has two separate single-spouse marriages, each with a child.
+	// Both families should be created and children should be in the correct family.
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-father": {
+					Properties: map[string]any{
+						PersonPropertyGender: "male",
+					},
+				},
+				"person-child-a": {
+					Properties: map[string]any{},
+				},
+				"person-child-b": {
+					Properties: map[string]any{},
+				},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-marriage-1": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleSpouse},
+					},
+				},
+				"rel-marriage-2": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleSpouse},
+					},
+				},
+				"rel-parent-child-a": {
+					Type: RelationshipTypeBiologicalParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-a", Role: ParticipantRoleChild},
+					},
+				},
+				"rel-parent-child-b": {
+					Type: RelationshipTypeBiologicalParentChild,
+					Participants: []Participant{
+						{Person: "person-father", Role: ParticipantRoleParent},
+						{Person: "person-child-b", Role: ParticipantRoleChild},
+					},
+				},
+			},
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-father":  "@I1@",
+			"person-child-a": "@I2@",
+			"person-child-b": "@I3@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
+	}
+
+	reconstructFamilies(expCtx)
+
+	require.Len(t, expCtx.Families, 2, "should create two separate families")
+
+	// Both families should have the father as husband
+	for _, fam := range expCtx.Families {
+		assert.Equal(t, "person-father", fam.HusbandID)
+		assert.Empty(t, fam.WifeID)
+	}
+
+	// Each child should be in some family (not lost due to pair-key overwrite)
+	allChildren := make(map[string]bool)
+	for _, fam := range expCtx.Families {
+		for _, cid := range fam.ChildIDs {
+			allChildren[cid] = true
+		}
+	}
+	assert.True(t, allChildren["person-child-a"] || allChildren["person-child-b"],
+		"at least one child should be placed in a family")
+}
