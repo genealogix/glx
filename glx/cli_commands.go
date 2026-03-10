@@ -57,6 +57,7 @@ func init() {
 	rootCmd.AddCommand(placesCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
+	rootCmd.AddCommand(citeCmd)
 	rootCmd.AddCommand(ancestorsCmd)
 	rootCmd.AddCommand(descendantsCmd)
 	rootCmd.AddCommand(summaryCmd)
@@ -558,6 +559,46 @@ func runStats(_ *cobra.Command, args []string) error {
 }
 
 // ============================================================================
+// Cite Command
+// ============================================================================
+
+var citeArchive string
+
+var citeCmd = &cobra.Command{
+	Use:   "cite [citation-id]",
+	Short: "Generate formatted citation text from structured fields",
+	Long: `Generate a formatted citation string from structured citation data.
+
+Assembles citations from the source title, source type, repository name,
+URL, and accessed date already stored in the archive. This eliminates
+repetitive manual writing of the citation_text property.
+
+If a citation ID is given, prints that single citation. If no ID is given,
+prints all citations in the archive.`,
+	Example: `  # Format a specific citation
+  glx cite citation-1860-census-lane-household
+
+  # Format all citations in the archive
+  glx cite
+
+  # Use a specific archive
+  glx cite --archive my-archive`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runCite,
+}
+
+func init() {
+	citeCmd.Flags().StringVarP(&citeArchive, "archive", "a", ".", "Archive path (directory or single file)")
+}
+
+func runCite(_ *cobra.Command, args []string) error {
+	if len(args) == 1 {
+		return showCitation(citeArchive, args[0])
+	}
+
+	return showAllCitations(citeArchive)
+}
+
 // Ancestors Command
 // ============================================================================
 
