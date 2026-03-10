@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx ancestors` and `glx descendants` commands** - Display ancestor/descendant trees using box-drawing characters. Traverses parent-child relationships with `--generations` flag to limit depth. Handles biological, adoptive, foster, and step-parent types with cycle detection
 - **Added `glx vitals` command** - Display vital records (name, sex, birth, christening, death, burial) for a person by ID or name search, plus any other life events they participated in
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
+- **Added `glx path` command** - Find the shortest relationship path between two persons using BFS. Traverses all relationship types (parent-child, marriage, sibling, neighbor, etc.). Supports `--max-hops`, `--json`, and name-based lookup
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
 
