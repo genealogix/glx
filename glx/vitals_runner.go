@@ -165,25 +165,6 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	return vitals
 }
 
-// formatPropertyDatePlace combines a date property and a place property into a display string.
-func formatPropertyDatePlace(props map[string]any, dateKey, placeKey string, archive *glxlib.GLXFile) string {
-	date := propertyString(props, dateKey)
-	placeID := propertyString(props, placeKey)
-
-	placeName := resolvePlaceName(placeID, archive)
-
-	switch {
-	case date != "" && placeName != "":
-		return date + ", " + placeName
-	case date != "":
-		return date
-	case placeName != "":
-		return placeName
-	default:
-		return ""
-	}
-}
-
 // findEventByType finds the first event of a given type where the person is a participant.
 // Accepts pre-sorted event IDs to avoid repeated sorting across multiple calls.
 func findEventByType(personID, eventType string, eventIDs []string, archive *glxlib.GLXFile) string {
@@ -270,27 +251,6 @@ func formatEventDatePlace(event *glxlib.Event, archive *glxlib.GLXFile) string {
 	default:
 		return ""
 	}
-}
-
-// resolvePlaceName looks up a place ID and returns its display name.
-func resolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
-	if placeID == "" {
-		return ""
-	}
-	if place, ok := archive.Places[placeID]; ok && place != nil {
-		return place.Name
-	}
-
-	return placeID
-}
-
-// displayOrDash returns the value, or "—" if empty.
-func displayOrDash(s string) string {
-	if s == "" {
-		return "\u2014"
-	}
-
-	return s
 }
 
 // printVitals prints the vitals in a formatted table.

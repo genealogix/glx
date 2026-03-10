@@ -57,6 +57,11 @@ func init() {
 	rootCmd.AddCommand(placesCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statsCmd)
+	rootCmd.AddCommand(citeCmd)
+	rootCmd.AddCommand(ancestorsCmd)
+	rootCmd.AddCommand(descendantsCmd)
+	rootCmd.AddCommand(summaryCmd)
+	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
 }
 
@@ -551,6 +556,219 @@ func runStats(_ *cobra.Command, args []string) error {
 	}
 
 	return showStats(path)
+}
+
+// ============================================================================
+// Cite Command
+// ============================================================================
+
+var citeArchive string
+
+var citeCmd = &cobra.Command{
+	Use:   "cite [citation-id]",
+	Short: "Generate formatted citation text from structured fields",
+	Long: `Generate a formatted citation string from structured citation data.
+
+Assembles citations from the source title, source type, repository name,
+URL, and accessed date already stored in the archive. This eliminates
+repetitive manual writing of the citation_text property.
+
+If a citation ID is given, prints that single citation. If no ID is given,
+prints all citations in the archive.`,
+	Example: `  # Format a specific citation
+  glx cite citation-1860-census-lane-household
+
+  # Format all citations in the archive
+  glx cite
+
+  # Use a specific archive
+  glx cite --archive my-archive`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runCite,
+}
+
+func init() {
+	citeCmd.Flags().StringVarP(&citeArchive, "archive", "a", ".", "Archive path (directory or single file)")
+}
+
+func runCite(_ *cobra.Command, args []string) error {
+	if len(args) == 1 {
+		return showCitation(citeArchive, args[0])
+	}
+
+	return showAllCitations(citeArchive)
+}
+
+// Ancestors Command
+// ============================================================================
+
+var (
+	ancestorsArchive string
+	ancestorsMaxGen  int
+)
+
+var ancestorsCmd = &cobra.Command{
+	Use:   "ancestors <person-id>",
+	Short: "Show ancestor tree for a person",
+	Long: `Display the ancestor tree for a person by traversing parent-child relationships.
+
+Walks up parent-child relationships, including biological, adoptive,
+foster, and step-parent variants, to build and display the full
+ancestor tree.
+
+Non-default parent/child relationship types (biological, adoptive, foster, step)
+are annotated in the output when the relationship type is not parent_child.`,
+	Example: `  # Show ancestors
+  glx ancestors person-abc123
+
+  # Limit to 3 generations
+  glx ancestors person-abc123 --generations 3
+
+  # Use a specific archive
+  glx ancestors person-abc123 --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runAncestors,
+}
+
+func init() {
+	ancestorsCmd.Flags().StringVarP(&ancestorsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	ancestorsCmd.Flags().IntVarP(&ancestorsMaxGen, "generations", "g", 0, "Maximum number of generations (0 for unlimited)")
+}
+
+func runAncestors(_ *cobra.Command, args []string) error {
+	return showAncestors(ancestorsArchive, args[0], ancestorsMaxGen)
+}
+
+// ============================================================================
+// Descendants Command
+// ============================================================================
+
+var (
+	descendantsArchive string
+	descendantsMaxGen  int
+)
+
+var descendantsCmd = &cobra.Command{
+	Use:   "descendants <person-id>",
+	Short: "Show descendant tree for a person",
+	Long: `Display the descendant tree for a person by traversing parent-child relationships.
+
+Walks down parent-child relationships, including biological, adoptive,
+foster, and step-parent variants, to build and display the full
+descendant tree.
+
+Non-default parent/child relationship types (biological, adoptive, foster, step)
+are annotated in the output when the relationship type is not parent_child.`,
+	Example: `  # Show descendants
+  glx descendants person-abc123
+
+  # Limit to 3 generations
+  glx descendants person-abc123 --generations 3
+
+  # Use a specific archive
+  glx descendants person-abc123 --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runDescendants,
+}
+
+func init() {
+	descendantsCmd.Flags().StringVarP(&descendantsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	descendantsCmd.Flags().IntVarP(&descendantsMaxGen, "generations", "g", 0, "Maximum number of generations (0 for unlimited)")
+}
+
+func runDescendants(_ *cobra.Command, args []string) error {
+	return showDescendants(descendantsArchive, args[0], descendantsMaxGen)
+}
+
+// ============================================================================
+// Summary Command
+// ============================================================================
+
+var summaryArchive string
+
+var summaryCmd = &cobra.Command{
+	Use:   "summary <person>",
+	Short: "Show a comprehensive profile for a person",
+	Long: `Display a full summary of a person including identity, vital events,
+life events, family relationships, other relationships, and an
+auto-generated life history narrative.
+
+The person can be specified by exact ID (e.g., "person-abc123") or by
+name substring (case-insensitive). If multiple persons match, all
+matches are listed for disambiguation.
+
+Sections displayed:
+  - Identity: name, sex, alternate names (birth, married, maiden, AKA, etc.)
+  - Vital Events: birth, christening, death, burial
+  - Life Events: census, immigration, naturalization, military service, etc.
+  - Family: spouse(s) with marriage info, parents, siblings
+  - Relationships: godparent, neighbor, household, employment, etc.
+  - Life History: auto-generated biographical narrative`,
+	Example: `  # Summary by person ID
+  glx summary person-abc123
+
+  # Summary by name search
+  glx summary "Mary Lane"
+
+  # Summary in a specific archive
+  glx summary "John Smith" --archive my-family-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runSummary,
+}
+
+func init() {
+	summaryCmd.Flags().StringVarP(&summaryArchive, "archive", "a", ".", "Archive path (directory or single file)")
+}
+
+func runSummary(_ *cobra.Command, args []string) error {
+	return showSummary(summaryArchive, args[0])
+}
+
+// ============================================================================
+// Timeline Command
+// ============================================================================
+
+var (
+	timelineArchive  string
+	timelineNoFamily bool
+)
+
+var timelineCmd = &cobra.Command{
+	Use:   "timeline <person>",
+	Short: "Show chronological timeline of events for a person",
+	Long: `Display a chronological timeline of all events in a person's life.
+
+Shows direct events (where the person is a participant) and family events
+(spouse births/deaths, children's births/deaths, parent deaths) discovered
+through relationship traversal.
+
+The person argument can be an exact entity ID (e.g., person-john-smith)
+or a name to search for (e.g., "John Smith"). If the name matches
+multiple persons, all matches are listed for disambiguation.
+
+Use --no-family to exclude family events and show only direct events.`,
+	Example: `  # Timeline by person ID
+  glx timeline person-john-smith
+
+  # Timeline by name
+  glx timeline "John Smith"
+
+  # Direct events only (no family events)
+  glx timeline "John Smith" --no-family
+
+  # Specify archive path
+  glx timeline "John Smith" --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runTimeline,
+}
+
+func init() {
+	timelineCmd.Flags().StringVarP(&timelineArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	timelineCmd.Flags().BoolVar(&timelineNoFamily, "no-family", false, "Exclude family events (show only direct events)")
+}
+
+func runTimeline(_ *cobra.Command, args []string) error {
+	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
 }
 
 // ============================================================================

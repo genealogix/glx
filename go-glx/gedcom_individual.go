@@ -285,6 +285,9 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		},
 	}
 
+	// Generate event title
+	event.Title = GenerateEventTitle(eventType, []string{PersonDisplayName(person)}, event.Date)
+
 	// Store event
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
