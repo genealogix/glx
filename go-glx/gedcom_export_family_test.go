@@ -1392,6 +1392,8 @@ func TestReconstructFamilies_MultipleSingleSpouseMarriages(t *testing.T) {
 			allChildren[cid] = true
 		}
 	}
-	assert.True(t, allChildren["person-child-a"] || allChildren["person-child-b"],
-		"at least one child should be placed in a family")
+	assert.True(t, allChildren["person-child-a"],
+		"child-a should be placed in a family")
+	assert.True(t, allChildren["person-child-b"],
+		"child-b should be placed in a family")
 }
