@@ -39,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **HEAD metadata roundtrip** - LANG, FILE, COPR sub-records from the original GEDCOM HEAD are now preserved through import/export
 
 #### Validation
-- **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
+- **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
 
 ---
 
@@ -705,7 +705,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Multi-family children placed in all matching families** - Children belonging to multiple FAM records (e.g., birth family + step-family) are now placed in all matching families instead of only the first match
 
 #### Validation
-- **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
+- **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
 
 #### Documentation
 - **Added [Westeros example archive](/examples/westeros/)** - Large-scale example featuring 790+ characters from *A Song of Ice and Fire* with full evidence chains, 200+ custom vocabulary types, and temporal properties. Hosted at [github.com/genealogix/glx-archive-westeros](https://github.com/genealogix/glx-archive-westeros)
