@@ -853,23 +853,20 @@ func (glx *GLXFile) validateDateFormat(entityType, entityID, field, dateStr stri
 	// If keywords present, assume valid (detailed parsing is complex and deferred)
 }
 
-// isValidSimpleDate checks if a string matches a year (1-4 digits), YYYY-MM, or YYYY-MM-DD format.
-// Years may be 1-4 digits to support historical dates (e.g., 850 AD).
+// isValidSimpleDate checks if a string matches a simple date with a 1-4 digit year:
+// year only (Y to YYYY), year-month (Y-MM to YYYY-MM), or year-month-day (Y-MM-DD to YYYY-MM-DD).
 func isValidSimpleDate(s string) bool {
-	// Year only: 1-4 digits
-	if len(s) >= 1 && len(s) <= 4 { //nolint:mnd // year is 1-4 digits
-		return isDigits(s)
-	}
-
-	// Find the separator position for YYYY-MM and YYYY-MM-DD forms.
+	// Find the separator position for year-month and year-month-day forms.
 	// The year portion is everything before the first '-'.
-	dashIdx := -1
-	for i, c := range s {
-		if c == '-' {
-			dashIdx = i
+	dashIdx := strings.Index(s, "-")
 
-			break
+	// Year only: 1-4 digits with no dash present.
+	if dashIdx == -1 {
+		if len(s) >= 1 && len(s) <= 4 { //nolint:mnd // year is 1-4 digits
+			return isDigits(s)
 		}
+
+		return false
 	}
 
 	if dashIdx < 1 || dashIdx > 4 { //nolint:mnd // year portion is 1-4 digits

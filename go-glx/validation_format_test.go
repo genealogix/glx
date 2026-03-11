@@ -139,6 +139,8 @@ func TestIsValidSimpleDate(t *testing.T) {
 		{"5", true},
 		{"85", true},
 		{"850", true},
+		{"5-03", true},
+		{"85-03", true},
 		{"850-03", true},
 		{"850-03-15", true},
 
