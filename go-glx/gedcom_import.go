@@ -461,8 +461,8 @@ func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCO
 
 		if level == 0 {
 			records = append(records, record)
-			stack = stack[:1]
-			stack[0] = record
+			stack = stack[:0]
+			stack = append(stack, record)
 		} else {
 			for len(stack) > level {
 				stack = stack[:len(stack)-1]
@@ -674,8 +674,8 @@ func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
 		// Level 0 records are top-level
 		if line.Level == 0 {
 			records = append(records, record)
-			stack = stack[:1]
-			stack[0] = record
+			stack = stack[:0]
+			stack = append(stack, record)
 
 			continue
 		}
