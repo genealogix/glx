@@ -853,27 +853,44 @@ func (glx *GLXFile) validateDateFormat(entityType, entityID, field, dateStr stri
 	// If keywords present, assume valid (detailed parsing is complex and deferred)
 }
 
-// isValidSimpleDate checks if a string matches YYYY, YYYY-MM, or YYYY-MM-DD format
+// isValidSimpleDate checks if a string matches a year (1-4 digits), YYYY-MM, or YYYY-MM-DD format.
+// Years may be 1-4 digits to support historical dates (e.g., 850 AD).
 func isValidSimpleDate(s string) bool {
-	// YYYY (4 digits)
-	if len(s) == 4 { //nolint:mnd // standard date format length: YYYY
-		for _, c := range s {
-			if c < '0' || c > '9' {
-				return false
-			}
+	// Year only: 1-4 digits
+	if len(s) >= 1 && len(s) <= 4 { //nolint:mnd // year is 1-4 digits
+		return isDigits(s)
+	}
+
+	// Find the separator position for YYYY-MM and YYYY-MM-DD forms.
+	// The year portion is everything before the first '-'.
+	dashIdx := -1
+	for i, c := range s {
+		if c == '-' {
+			dashIdx = i
+
+			break
 		}
-
-		return true
 	}
 
-	// YYYY-MM (7 characters)
-	if len(s) == 7 { //nolint:mnd // standard date format length: YYYY-MM
-		return s[4] == '-' && isDigits(s[0:4]) && isDigits(s[5:7])
+	if dashIdx < 1 || dashIdx > 4 { //nolint:mnd // year portion is 1-4 digits
+		return false
 	}
 
-	// YYYY-MM-DD (10 characters)
-	if len(s) == 10 { //nolint:mnd // standard date format length: YYYY-MM-DD
-		return s[4] == '-' && s[7] == '-' && isDigits(s[0:4]) && isDigits(s[5:7]) && isDigits(s[8:10])
+	yearPart := s[:dashIdx]
+	rest := s[dashIdx+1:]
+
+	if !isDigits(yearPart) {
+		return false
+	}
+
+	// YYYY-MM: rest is exactly 2 digits
+	if len(rest) == 2 { //nolint:mnd // MM is 2 digits
+		return isDigits(rest)
+	}
+
+	// YYYY-MM-DD: rest is MM-DD (5 characters)
+	if len(rest) == 5 { //nolint:mnd // MM-DD is 5 characters
+		return rest[2] == '-' && isDigits(rest[0:2]) && isDigits(rest[3:5])
 	}
 
 	return false
