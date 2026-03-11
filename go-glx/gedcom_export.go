@@ -130,8 +130,8 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	// TRLR record
 	records = append(records, &GEDCOMRecord{Tag: GedcomTagTrlr})
 
-	logger.LogInfo(fmt.Sprintf("Export completed: %d persons, %d families, %d repositories, %d sources, %d media",
-		expCtx.Stats.PersonsExported, expCtx.Stats.FamiliesExported, expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported))
+	logger.LogInfof("Export completed: %d persons, %d families, %d repositories, %d sources, %d media",
+		expCtx.Stats.PersonsExported, expCtx.Stats.FamiliesExported, expCtx.Stats.RepositoriesExported, expCtx.Stats.SourcesExported, expCtx.Stats.MediaExported)
 
 	// Serialize to bytes
 	data := serializeGEDCOMRecords(records)

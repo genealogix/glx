@@ -31,7 +31,7 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	mediaID := generateMediaID(conv)
 	conv.MediaIDMap[objeRecord.XRef] = mediaID
 
-	conv.Logger.LogInfo(fmt.Sprintf("Converting OBJE %s -> %s", objeRecord.XRef, mediaID))
+	conv.Logger.LogInfof("Converting OBJE %s -> %s", objeRecord.XRef, mediaID)
 
 	// Convert using common logic
 	media := convertMediaCommon(objeRecord, mediaID, conv)

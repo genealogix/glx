@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"io"
 	"log"
 )
@@ -62,6 +63,17 @@ func (il *ImportLogger) LogInfo(message string) {
 	}
 
 	il.logger.Printf("INFO: %s", message)
+}
+
+// LogInfof logs a formatted informational message. Formatting is deferred
+// until the message is actually written, so callers pay no allocation cost
+// when logging is disabled.
+func (il *ImportLogger) LogInfof(format string, args ...any) {
+	if il.logger == nil {
+		return
+	}
+
+	il.logger.Printf("INFO: %s", fmt.Sprintf(format, args...))
 }
 
 // LogException logs an exception with full context
