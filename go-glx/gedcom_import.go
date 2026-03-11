@@ -633,83 +633,21 @@ func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
 
-// parseGEDCOMLine parses a single GEDCOM line without allocating intermediate
-// slices. GEDCOM format: LEVEL [XREF] TAG [VALUE]
+// parseGEDCOMLine parses a single GEDCOM line into a GEDCOMLine struct.
+// Delegates to parseGEDCOMFields for the actual field extraction.
 func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
-	n := len(text)
-	if n == 0 {
-		return nil, ErrInvalidGEDCOMLine
-	}
-
-	// Skip leading whitespace
-	pos := 0
-	for pos < n && text[pos] == ' ' {
-		pos++
-	}
-
-	// Parse level (digits)
-	levelStart := pos
-	for pos < n && text[pos] >= '0' && text[pos] <= '9' {
-		pos++
-	}
-	if pos == levelStart {
-		return nil, ErrInvalidGEDCOMLine
-	}
-	level, err := strconv.Atoi(text[levelStart:pos])
+	level, xref, tag, value, err := parseGEDCOMFields(text)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrInvalidLevel, text[levelStart:pos])
+		return nil, err
 	}
 
-	// Skip whitespace after level
-	for pos < n && text[pos] == ' ' {
-		pos++
-	}
-	if pos == n {
-		return nil, ErrInvalidGEDCOMLine
-	}
-
-	line := &GEDCOMLine{Line: lineNum, Level: level}
-
-	// Check for XRef (starts with @)
-	tokenStart := pos
-	for pos < n && text[pos] != ' ' {
-		pos++
-	}
-	token := text[tokenStart:pos]
-
-	if len(token) >= 2 && token[0] == '@' && token[len(token)-1] == '@' {
-		line.XRef = token
-
-		// Skip whitespace, read tag
-		for pos < n && text[pos] == ' ' {
-			pos++
-		}
-		if pos == n {
-			return nil, ErrMissingTagAfterXRef
-		}
-		tagStart := pos
-		for pos < n && text[pos] != ' ' {
-			pos++
-		}
-		line.Tag = text[tagStart:pos]
-	} else {
-		line.Tag = token
-	}
-
-	// Parse value (rest of line after whitespace)
-	for pos < n && text[pos] == ' ' {
-		pos++
-	}
-	if pos < n {
-		// Trim trailing whitespace
-		end := n
-		for end > pos && text[end-1] == ' ' {
-			end--
-		}
-		line.Value = text[pos:end]
-	}
-
-	return line, nil
+	return &GEDCOMLine{
+		Line:  lineNum,
+		Level: level,
+		XRef:  xref,
+		Tag:   tag,
+		Value: value,
+	}, nil
 }
 
 // buildRecords builds hierarchical records from flat lines.

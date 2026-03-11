@@ -231,18 +231,14 @@ func convertANSELToUTF8(data []byte) []byte {
 				i++
 			}
 			for _, r := range combiningRunes {
-				var runeBytes [4]byte
-				n := utf8.EncodeRune(runeBytes[:], r)
-				buf.Write(runeBytes[:n])
+				buf.WriteRune(r)
 			}
 			continue
 		}
 
 		// Non-combining ANSEL character
 		if r, ok := anselToUTF8[b]; ok {
-			var runeBytes [4]byte
-			n := utf8.EncodeRune(runeBytes[:], r)
-			buf.Write(runeBytes[:n])
+			buf.WriteRune(r)
 			i++
 			continue
 		}

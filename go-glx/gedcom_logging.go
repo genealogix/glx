@@ -15,7 +15,6 @@
 package glx
 
 import (
-	"fmt"
 	"io"
 	"log"
 )
@@ -73,7 +72,7 @@ func (il *ImportLogger) LogInfof(format string, args ...any) {
 		return
 	}
 
-	il.logger.Printf("INFO: %s", fmt.Sprintf(format, args...))
+	il.logger.Printf("INFO: "+format, args...)
 }
 
 // LogException logs an exception with full context
