@@ -497,6 +497,27 @@ func (glx *GLXFile) validateProperties(
 
 			continue
 		}
+		// Check for conflicting type definitions
+		typeCount := 0
+		if propDef.VocabularyType != "" {
+			typeCount++
+		}
+		if propDef.ReferenceType != "" {
+			typeCount++
+		}
+		if propDef.ValueType != "" {
+			typeCount++
+		}
+		if typeCount > 1 {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      "properties." + propName,
+				Message: fmt.Sprintf("%s[%s].properties.%s: property definition has conflicting type fields (only one of value_type, reference_type, vocabulary_type should be set)",
+					entityType, entityID, propName),
+			})
+		}
+
 		if propDef.VocabularyType != "" {
 			glx.validatePropertyVocabularyValue(entityType, entityID, propName, propValue, propDef, result)
 		} else if propDef.ReferenceType != "" {
@@ -584,10 +605,14 @@ func (glx *GLXFile) validatePropertyVocabularyValue(
 			glx.checkVocabValue(entityType, entityID, "properties."+propName+".value", propDef.VocabularyType, val, vocabSet, result)
 		}
 	case []any:
-		// Temporal list: [{value: ..., date: ...}, ...]
+		// List of values: strings, temporal objects, or mixed
 		for i, item := range v {
-			if itemMap, ok := item.(map[string]any); ok {
-				if val, ok := itemMap["value"].(string); ok {
+			switch typedItem := item.(type) {
+			case string:
+				fieldPath := fmt.Sprintf("properties.%s[%d]", propName, i)
+				glx.checkVocabValue(entityType, entityID, fieldPath, propDef.VocabularyType, typedItem, vocabSet, result)
+			case map[string]any:
+				if val, ok := typedItem["value"].(string); ok {
 					fieldPath := fmt.Sprintf("properties.%s[%d].value", propName, i)
 					glx.checkVocabValue(entityType, entityID, fieldPath, propDef.VocabularyType, val, vocabSet, result)
 				}

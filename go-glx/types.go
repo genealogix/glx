@@ -369,7 +369,7 @@ type GenderType struct {
 }
 
 // PropertyDefinition defines a property that can be used on entities.
-// value_type and reference_type are mutually exclusive.
+// value_type, reference_type, and vocabulary_type are mutually exclusive.
 type PropertyDefinition struct {
 	Label         string                      `yaml:"label"`
 	Description   string                      `yaml:"description,omitempty"`

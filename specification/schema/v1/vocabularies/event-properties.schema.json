@@ -64,9 +64,23 @@
           }
         }
       },
-      "not": {
-        "required": ["value_type", "reference_type"]
-      }
+      "allOf": [
+        {
+          "not": {
+            "required": ["value_type", "reference_type"]
+          }
+        },
+        {
+          "not": {
+            "required": ["value_type", "vocabulary_type"]
+          }
+        },
+        {
+          "not": {
+            "required": ["reference_type", "vocabulary_type"]
+          }
+        }
+      ]
     },
     "FieldDefinition": {
       "type": "object",
