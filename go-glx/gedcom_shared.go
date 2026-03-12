@@ -33,7 +33,7 @@ func convertSharedNote551(noteRecord *GEDCOMRecord, conv *ConversionContext) err
 	// Store in shared notes map (same map as GEDCOM 7.0 SNOTE)
 	conv.SharedNotes[noteRecord.XRef] = noteText
 
-	conv.Logger.LogInfo(fmt.Sprintf("Stored shared note (5.5.1) %s (%d chars)", noteRecord.XRef, len(noteText)))
+	conv.Logger.LogInfof("Stored shared note (5.5.1) %s (%d chars)", noteRecord.XRef, len(noteText))
 
 	return nil
 }
@@ -53,7 +53,7 @@ func convertSharedNote(snoteRecord *GEDCOMRecord, conv *ConversionContext) error
 	// Store in shared notes map
 	conv.SharedNotes[snoteRecord.XRef] = noteText
 
-	conv.Logger.LogInfo(fmt.Sprintf("Stored shared note %s (%d chars)", snoteRecord.XRef, len(noteText)))
+	conv.Logger.LogInfof("Stored shared note %s (%d chars)", snoteRecord.XRef, len(noteText))
 
 	return nil
 }

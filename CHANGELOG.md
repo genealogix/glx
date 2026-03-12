@@ -10,7 +10,34 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.7] - Unreleased
+## [0.0.0-beta.8] - Unreleased
+
+### Added
+
+#### CLI
+- **Added `glx analyze` command** - Automated research gap analysis engine that cross-references all entities in a GLX archive to surface evidence gaps (missing dates, no parents, no events), evidence quality issues (unsupported assertions, single-source persons, orphaned citations/sources), chronological inconsistencies (death before birth, parent younger than child, implausible lifespan), and research suggestions (census years to search, vital records to locate). Supports `--check` to run a single category, `--format json` for machine-readable output, and person filtering by ID or name
+- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
+
+#### Validation
+- **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
+
+#### Standard Vocabularies
+- **Added `marriage_type` event property** - Classification of marriage (civil, religious, common-law). Was used in GEDCOM import/export but missing from standard vocabulary
+- **Added `primary_name` person property** - Simple display name fallback when structured name property is not available. Was used in event titles and data generation but missing from standard vocabulary
+- **Added `blob_size` media property** - Size in bytes of inline binary data from GEDCOM 5.5.1 BLOB records. Was used in GEDCOM media import but missing from standard vocabulary
+
+### Changed
+- **GEDCOM encoding conversion now streams for charmap encodings** - CP1252/ISO-8859-1 decoding uses `transform.NewReader` instead of reading the entire file into memory. Only ANSEL (which requires combining-mark reordering) buffers the full file. UTF-8 files pass through with near-zero overhead
+- **ANSEL converter handles multiple combining diacriticals** - Consecutive combining marks preceding a base letter are now all buffered and emitted after the base letter in Unicode order, instead of only handling a single combining mark
+
+### Fixed
+- **GEDCOM import now converts non-UTF-8 encodings** - Files with `CHAR ANSI` (Windows-1252), `CHAR cp1252`, `CHAR ANSEL`, or `CHAR ISO-8859-1` are now automatically converted to UTF-8 during import. Previously, non-ASCII characters (German umlauts, accented letters, copyright symbols) were stored as raw bytes, producing `!!binary` YAML tags, garbled event titles, and `{"type":"Buffer"}` place names in the web UI
+- **GEDCOM date import mangled when day-of-month matches level number** - Dates like `2 AUG 1944` (day 2) were imported as `2 DATE 2 AUG 1944` because the parser's value extraction matched the level number instead of the actual value. Fixed by walking past tokens positionally instead of using string search
+- **Date year extraction now handles 1–3 digit years** - Year extraction previously hardcoded a 4-digit assumption (`\d{4}`), silently ignoring dates like `800`, `476`, or `ABT 476`. All four extraction sites (query filtering, timeline sorting, temporal validation, event titles) now support 1–4 digit years. Day-of-month values (e.g., `15` in `15 MAR 1850`) are correctly disambiguated. Timeline sort keys are zero-padded to 4 digits for proper chronological ordering. Fixes #108
+
+---
+
+## [0.0.0-beta.7] - 2026-03-10
 
 ### Added
 
@@ -24,7 +51,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx coverage` command** - Show source coverage matrix for a person, listing expected records (US census, vital, probate, land, military, church) and which are present vs missing. Flags high-priority gaps like the 1880 census. Supports `--json` output
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
-- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
 
 #### Event Entity
 - **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import (e.g., "Birth of Daniel Lane (1815)", "Marriage of John Smith and Jane Doe (1850)")
