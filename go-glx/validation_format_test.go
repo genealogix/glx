@@ -31,10 +31,18 @@ func TestValidateDateFormat(t *testing.T) {
 		{"year-month-day", "1850-03-15", false},
 		{"full date", "2020-12-31", false},
 
+		// Valid short years (1-3 digits for historical dates)
+		{"single digit year", "5", false},
+		{"two digit year", "85", false},
+		{"three digit year", "850", false},
+		{"short year with month", "850-03", false},
+		{"short year with month-day", "850-03-15", false},
+
 		// Valid keyword dates
 		{"FROM TO range", "FROM 1850 TO 1900", false},
 		{"FROM only", "FROM 1850", false},
 		{"ABT date", "ABT 1850", false},
+		{"ABT short year", "ABT 850", false},
 		{"BEF date", "BEF 1920", false},
 		{"AFT date", "AFT 1880", false},
 		{"BET AND range", "BET 1880 AND 1890", false},
@@ -43,7 +51,6 @@ func TestValidateDateFormat(t *testing.T) {
 
 		// Invalid dates
 		{"invalid format", "March 15, 1850", true},
-		{"partial year", "185", true},
 		{"wrong separator", "1850/03/15", true},
 		{"wrong order", "15-03-1850", true},
 		{"text only", "sometime in 1850", true},
@@ -120,7 +127,7 @@ func TestIsValidSimpleDate(t *testing.T) {
 		date  string
 		valid bool
 	}{
-		// Valid
+		// Valid — 4-digit years
 		{"1850", true},
 		{"2020", true},
 		{"1850-03", true},
@@ -128,8 +135,16 @@ func TestIsValidSimpleDate(t *testing.T) {
 		{"1850-03-15", true},
 		{"2020-12-31", true},
 
+		// Valid — short years (1-3 digits for historical dates)
+		{"5", true},
+		{"85", true},
+		{"850", true},
+		{"5-03", true},
+		{"85-03", true},
+		{"850-03", true},
+		{"850-03-15", true},
+
 		// Invalid
-		{"185", false},
 		{"18500", false},
 		{"1850-3", false},
 		{"1850-003", false},
