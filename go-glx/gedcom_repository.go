@@ -122,7 +122,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	if existingID, ok := conv.RepositoryNameMap[dedupeKey]; ok {
 		// Reuse existing repository - just map the XRef to the existing ID
 		conv.RepositoryIDMap[repoRecord.XRef] = existingID
-		conv.Logger.LogInfo(fmt.Sprintf("Reusing existing repository %s for REPO %s (name: %s)", existingID, repoRecord.XRef, repository.Name))
+		conv.Logger.LogInfof("Reusing existing repository %s for REPO %s (name: %s)", existingID, repoRecord.XRef, repository.Name)
 		conv.Stats.RepositoriesDeduplicated++
 
 		return nil
@@ -133,7 +133,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 	conv.RepositoryIDMap[repoRecord.XRef] = repositoryID
 	conv.RepositoryNameMap[dedupeKey] = repositoryID
 
-	conv.Logger.LogInfo(fmt.Sprintf("Converting REPO %s -> %s", repoRecord.XRef, repositoryID))
+	conv.Logger.LogInfof("Converting REPO %s -> %s", repoRecord.XRef, repositoryID)
 
 	// Store repository
 	conv.GLX.Repositories[repositoryID] = repository

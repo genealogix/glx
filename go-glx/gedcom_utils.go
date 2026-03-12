@@ -15,68 +15,68 @@
 package glx
 
 import (
-	"fmt"
+	"strconv"
 )
 
 // generatePersonID generates an auto-incremented person ID
 func generatePersonID(conv *ConversionContext) string {
 	conv.PersonCounter++
 
-	return fmt.Sprintf("person-%d", conv.PersonCounter)
+	return "person-" + strconv.Itoa(conv.PersonCounter)
 }
 
 // generateEventID generates an auto-incremented event ID
 func generateEventID(conv *ConversionContext) string {
 	conv.EventCounter++
 
-	return fmt.Sprintf("event-%d", conv.EventCounter)
+	return "event-" + strconv.Itoa(conv.EventCounter)
 }
 
 // generateRelationshipID generates an auto-incremented relationship ID
 func generateRelationshipID(conv *ConversionContext) string {
 	conv.RelationshipCounter++
 
-	return fmt.Sprintf("relationship-%d", conv.RelationshipCounter)
+	return "relationship-" + strconv.Itoa(conv.RelationshipCounter)
 }
 
 // generatePlaceID generates an auto-incremented place ID
 func generatePlaceID(conv *ConversionContext) string {
 	conv.PlaceCounter++
 
-	return fmt.Sprintf("place-%d", conv.PlaceCounter)
+	return "place-" + strconv.Itoa(conv.PlaceCounter)
 }
 
 // generateSourceID generates an auto-incremented source ID
 func generateSourceID(conv *ConversionContext) string {
 	conv.SourceCounter++
 
-	return fmt.Sprintf("source-%d", conv.SourceCounter)
+	return "source-" + strconv.Itoa(conv.SourceCounter)
 }
 
 // generateRepositoryID generates an auto-incremented repository ID
 func generateRepositoryID(conv *ConversionContext) string {
 	conv.RepositoryCounter++
 
-	return fmt.Sprintf("repository-%d", conv.RepositoryCounter)
+	return "repository-" + strconv.Itoa(conv.RepositoryCounter)
 }
 
 // generateMediaID generates an auto-incremented media ID
 func generateMediaID(conv *ConversionContext) string {
 	conv.MediaCounter++
 
-	return fmt.Sprintf("media-%d", conv.MediaCounter)
+	return "media-" + strconv.Itoa(conv.MediaCounter)
 }
 
 // generateCitationID generates an auto-incremented citation ID
 func generateCitationID(conv *ConversionContext) string {
 	conv.CitationCounter++
 
-	return fmt.Sprintf("citation-%d", conv.CitationCounter)
+	return "citation-" + strconv.Itoa(conv.CitationCounter)
 }
 
 // generateAssertionID generates an auto-incremented assertion ID
 func generateAssertionID(conv *ConversionContext) string {
 	conv.AssertionCounter++
 
-	return fmt.Sprintf("assertion-%d", conv.AssertionCounter)
+	return "assertion-" + strconv.Itoa(conv.AssertionCounter)
 }

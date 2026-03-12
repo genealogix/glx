@@ -152,6 +152,26 @@ make clean
 
 ## Key Design Decisions
 
+### Performance Profiling
+
+**Memory profiling workflow:**
+```bash
+# Generate allocation profile
+go test -bench='BenchmarkName' -benchtime=1x -memprofile=/tmp/prof.out ./go-glx/
+# Top allocators by flat bytes (direct allocators)
+go tool pprof -top -flat /tmp/prof.out
+# Top allocators by cumulative bytes (call tree)
+go tool pprof -top -cum /tmp/prof.out
+# Filter to package only
+go tool pprof -top -flat -focus='glx' /tmp/prof.out
+```
+
+**Common allocation pitfalls:**
+- Map literals inside function bodies allocate on every call — move to package-level vars
+- `LogInfo(fmt.Sprintf(...))` allocates even when logging is disabled — use `LogInfof` instead
+- `append`-based backing arrays increase `TotalAlloc` from doubling copies — only use `make([]T, exactSize)` when size is known
+- Standard vocabularies are cached via `sync.Once` in `vocabularies.go` — don't add a second load path
+
 ### Critical Architectural Rule: go-glx Package Must Never Do I/O
 
 **The `go-glx` library package (package glx) is a pure library and must NEVER perform filesystem I/O.**

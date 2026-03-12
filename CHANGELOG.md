@@ -21,7 +21,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Validation
 - **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
 
+#### Standard Vocabularies
+- **Added `marriage_type` event property** - Classification of marriage (civil, religious, common-law). Was used in GEDCOM import/export but missing from standard vocabulary
+- **Added `primary_name` person property** - Simple display name fallback when structured name property is not available. Was used in event titles and data generation but missing from standard vocabulary
+- **Added `blob_size` media property** - Size in bytes of inline binary data from GEDCOM 5.5.1 BLOB records. Was used in GEDCOM media import but missing from standard vocabulary
+
+### Changed
+- **GEDCOM encoding conversion now streams for charmap encodings** - CP1252/ISO-8859-1 decoding uses `transform.NewReader` instead of reading the entire file into memory. Only ANSEL (which requires combining-mark reordering) buffers the full file. UTF-8 files pass through with near-zero overhead
+- **ANSEL converter handles multiple combining diacriticals** - Consecutive combining marks preceding a base letter are now all buffered and emitted after the base letter in Unicode order, instead of only handling a single combining mark
+
 ### Fixed
+- **GEDCOM import now converts non-UTF-8 encodings** - Files with `CHAR ANSI` (Windows-1252), `CHAR cp1252`, `CHAR ANSEL`, or `CHAR ISO-8859-1` are now automatically converted to UTF-8 during import. Previously, non-ASCII characters (German umlauts, accented letters, copyright symbols) were stored as raw bytes, producing `!!binary` YAML tags, garbled event titles, and `{"type":"Buffer"}` place names in the web UI
+- **GEDCOM date import mangled when day-of-month matches level number** - Dates like `2 AUG 1944` (day 2) were imported as `2 DATE 2 AUG 1944` because the parser's value extraction matched the level number instead of the actual value. Fixed by walking past tokens positionally instead of using string search
 - **Date year extraction now handles 1–3 digit years** - Year extraction previously hardcoded a 4-digit assumption (`\d{4}`), silently ignoring dates like `800`, `476`, or `ABT 476`. All four extraction sites (query filtering, timeline sorting, temporal validation, event titles) now support 1–4 digit years. Day-of-month values (e.g., `15` in `15 MAR 1850`) are correctly disambiguated. Timeline sort keys are zero-padded to 4 digits for proper chronological ordering. Fixes #108
 
 ---

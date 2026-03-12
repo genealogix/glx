@@ -405,7 +405,7 @@ func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *C
 	conv.GLX.Sources[sourceID] = source
 	conv.Stats.SourcesCreated++
 
-	conv.Logger.LogInfo(fmt.Sprintf("Line %d: Created synthetic source from embedded citation: %s", sourRecord.Line, title))
+	conv.Logger.LogInfof("Line %d: Created synthetic source from embedded citation: %s", sourRecord.Line, title)
 
 	return sourceID
 }

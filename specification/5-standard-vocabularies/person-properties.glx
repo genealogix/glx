@@ -124,6 +124,11 @@ person_properties:
     value_type: string
     gedcom: "SSN"
 
+  primary_name:
+    label: "Primary Name"
+    description: "Simple display name for the person, used as a fallback when the structured name property is not available"
+    value_type: string
+
   external_ids:
     label: "External Identifiers"
     description: "Identifiers from external systems (e.g., FamilySearch, WikiTree)"

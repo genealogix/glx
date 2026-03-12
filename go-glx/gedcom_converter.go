@@ -15,7 +15,6 @@
 package glx
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -64,7 +63,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 		}
 	}
 
-	conv.Logger.LogInfo(fmt.Sprintf("Pass 1 complete: %d notes, %d repositories", len(conv.SharedNotes), len(conv.RepositoryIDMap)))
+	conv.Logger.LogInfof("Pass 1 complete: %d notes, %d repositories", len(conv.SharedNotes), len(conv.RepositoryIDMap))
 
 	// Pass 2: Process records that depend on pass 1
 	// Sources (depend on repositories)
@@ -83,7 +82,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 		}
 	}
 
-	conv.Logger.LogInfo(fmt.Sprintf("Pass 2 complete: %d sources, %d media", conv.Stats.SourcesCreated, conv.Stats.MediaCreated))
+	conv.Logger.LogInfof("Pass 2 complete: %d sources, %d media", conv.Stats.SourcesCreated, conv.Stats.MediaCreated)
 
 	// Pass 3: Process individuals (depend on sources, media, notes for citations)
 	for _, record := range grouped[GedcomTagIndi] {
@@ -107,7 +106,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	for _, record := range grouped["_EXT"] {
 		extData := convertExtensionData(record.Tag, record.Value, record.SubRecords)
 		if len(extData) > 0 {
-			conv.Logger.LogInfo(fmt.Sprintf("Processed extension tag %s: %+v", record.Tag, extData))
+			conv.Logger.LogInfof("Processed extension tag %s: %+v", record.Tag, extData)
 		}
 	}
 
@@ -119,20 +118,20 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	// Store families for pass 4
 	conv.DeferredFamilies = grouped[GedcomTagFam]
 
-	conv.Logger.LogInfo(fmt.Sprintf("Pass 3 complete: %d persons", conv.Stats.PersonsCreated))
+	conv.Logger.LogInfof("Pass 3 complete: %d persons", conv.Stats.PersonsCreated)
 
 	// Second pass: Process families now that all individuals exist
-	conv.Logger.LogInfo(fmt.Sprintf("Processing %d deferred families", len(conv.DeferredFamilies)))
+	conv.Logger.LogInfof("Processing %d deferred families", len(conv.DeferredFamilies))
 	for _, famRecord := range conv.DeferredFamilies {
 		if err := convertFamily(famRecord, conv); err != nil {
 			conv.addError(famRecord.Line, GedcomTagFam, err.Error())
 		}
 	}
 
-	conv.Logger.LogInfo(fmt.Sprintf("Second pass complete: %d relationships created", conv.Stats.RelationshipsCreated))
+	conv.Logger.LogInfof("Second pass complete: %d relationships created", conv.Stats.RelationshipsCreated)
 
 	// Third pass: Create parent-child relationships with PEDI-based types
-	conv.Logger.LogInfo(fmt.Sprintf("Processing %d deferred family links (FAMC)", len(conv.DeferredFamilyLinks)))
+	conv.Logger.LogInfof("Processing %d deferred family links (FAMC)", len(conv.DeferredFamilyLinks))
 	for _, link := range conv.DeferredFamilyLinks {
 		if link.LinkType == ParticipantRoleChild {
 			// Look up parents from family
@@ -165,7 +164,7 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 		}
 	}
 
-	conv.Logger.LogInfo(fmt.Sprintf("Third pass complete: total %d relationships", conv.Stats.RelationshipsCreated))
+	conv.Logger.LogInfof("Third pass complete: total %d relationships", conv.Stats.RelationshipsCreated)
 
 	return nil
 }
