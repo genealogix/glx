@@ -90,6 +90,7 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabMediaTypes] = buildIDSet(glx.MediaTypes)
 	result.Vocabularies[VocabConfidenceLevels] = buildIDSet(glx.ConfidenceLevels)
 	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
+	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
 }
 
 // buildPropertyVocabMaps builds maps of property vocabularies.
@@ -496,7 +497,9 @@ func (glx *GLXFile) validateProperties(
 
 			continue
 		}
-		if propDef.ReferenceType != "" {
+		if propDef.VocabularyType != "" {
+			glx.validatePropertyVocabularyValue(entityType, entityID, propName, propValue, propDef, result)
+		} else if propDef.ReferenceType != "" {
 			glx.validatePropertyReference(entityType, entityID, propName, propValue, propDef.ReferenceType, result)
 		} else if propDef.ValueType != "" {
 			glx.validatePropertyValue(entityType, entityID, propName, propValue, propDef, result)
@@ -548,6 +551,64 @@ func (glx *GLXFile) checkPropertyRef(entityType, entityID, field, referenceType,
 			TargetID:    refID,
 			Message: fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
 				entityType, entityID, field, referenceType, refID),
+		})
+	}
+}
+
+// validatePropertyVocabularyValue validates that a property value exists in the
+// referenced vocabulary. Handles simple strings, temporal objects, and temporal lists.
+func (glx *GLXFile) validatePropertyVocabularyValue(
+	entityType, entityID, propName string,
+	propValue any,
+	propDef *PropertyDefinition,
+	result *ValidationResult,
+) {
+	vocabSet, vocabLoaded := result.Vocabularies[propDef.VocabularyType]
+	if !vocabLoaded || vocabSet == nil {
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      "properties." + propName,
+			Message: fmt.Sprintf("%s[%s].properties.%s: vocabulary '%s' not loaded, cannot validate value",
+				entityType, entityID, propName, propDef.VocabularyType),
+		})
+		return
+	}
+
+	switch v := propValue.(type) {
+	case string:
+		glx.checkVocabValue(entityType, entityID, "properties."+propName, propDef.VocabularyType, v, vocabSet, result)
+	case map[string]any:
+		// Single temporal object: {value: ..., date: ...}
+		if val, ok := v["value"].(string); ok {
+			glx.checkVocabValue(entityType, entityID, "properties."+propName+".value", propDef.VocabularyType, val, vocabSet, result)
+		}
+	case []any:
+		// Temporal list: [{value: ..., date: ...}, ...]
+		for i, item := range v {
+			if itemMap, ok := item.(map[string]any); ok {
+				if val, ok := itemMap["value"].(string); ok {
+					fieldPath := fmt.Sprintf("properties.%s[%d].value", propName, i)
+					glx.checkVocabValue(entityType, entityID, fieldPath, propDef.VocabularyType, val, vocabSet, result)
+				}
+			}
+		}
+	}
+}
+
+// checkVocabValue checks that a single value exists in the given vocabulary.
+func (glx *GLXFile) checkVocabValue(
+	entityType, entityID, field, vocabType, value string,
+	vocabSet map[string]struct{},
+	result *ValidationResult,
+) {
+	if _, exists := vocabSet[value]; !exists {
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      field,
+			Message: fmt.Sprintf("%s[%s].%s: value '%s' not found in %s vocabulary",
+				entityType, entityID, field, value, vocabType),
 		})
 	}
 }

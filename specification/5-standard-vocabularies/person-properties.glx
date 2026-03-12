@@ -35,7 +35,7 @@ person_properties:
   gender:
     label: "Gender"
     description: "Gender identity"
-    value_type: string
+    vocabulary_type: gender_types
     temporal: true
   
   born_on:

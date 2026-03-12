@@ -373,6 +373,7 @@ const (
 	VocabMediaTypes        = "media_types"
 	VocabConfidenceLevels  = "confidence_levels"
 	VocabSourceTypes       = "source_types"
+	VocabGenderTypes       = "gender_types"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile

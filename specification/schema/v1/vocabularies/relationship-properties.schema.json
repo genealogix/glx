@@ -40,6 +40,10 @@
           "enum": ["persons", "places", "events", "relationships", "sources", "citations", "repositories", "media"],
           "description": "Entity type for reference properties"
         },
+        "vocabulary_type": {
+          "type": "string",
+          "description": "Vocabulary type that constrains allowed values (e.g., gender_types)"
+        },
         "temporal": {
           "type": "boolean",
           "description": "Whether this property can vary over time"
