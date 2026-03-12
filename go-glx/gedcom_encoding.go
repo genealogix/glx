@@ -216,7 +216,7 @@ func convertANSELToUTF8(data []byte) []byte {
 		// Combining diacritical (precedes base letter in ANSEL) — buffer all
 		// consecutive combining marks, then emit base + marks in Unicode order.
 		if _, ok := anselCombining[b]; ok {
-			var combiningRunes []rune
+			combiningRunes := make([]rune, 0, 4)
 			for i < len(data) {
 				if r, isCombining := anselCombining[data[i]]; isCombining {
 					combiningRunes = append(combiningRunes, r)
