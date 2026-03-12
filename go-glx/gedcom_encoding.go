@@ -16,6 +16,7 @@ package glx
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"unicode/utf8"
 
@@ -50,6 +51,49 @@ func convertToUTF8(data []byte) []byte {
 	}
 
 	return result
+}
+
+// decodingReader returns a reader that converts the GEDCOM data to UTF-8 based
+// on the CHAR header. It reads only a small prefix to detect the charset, then
+// wraps the full reader in a streaming decoder — avoiding reading the entire
+// file into memory for charmap-based encodings (CP1252, ISO-8859-1).
+//
+// ANSEL requires byte-level reordering of combining diacriticals, so it falls
+// back to a buffered conversion.
+func decodingReader(reader io.Reader) (io.Reader, error) {
+	// Read a small prefix to detect charset (CHAR is always near the top)
+	prefix := make([]byte, 2048)
+	n, err := io.ReadFull(reader, prefix)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return nil, err
+	}
+	prefix = prefix[:n]
+
+	charset := detectGEDCOMCharset(prefix)
+
+	// Reassemble full reader: prefix + remainder
+	full := io.MultiReader(bytes.NewReader(prefix), reader)
+
+	var enc encoding.Encoding
+
+	switch strings.ToUpper(charset) {
+	case "ANSI", "CP1252", "WINDOWS-1252":
+		enc = charmap.Windows1252
+	case "ISO-8859-1", "ISO8859-1", "LATIN1":
+		enc = charmap.ISO8859_1
+	case "ANSEL":
+		// ANSEL requires byte-level reordering — must buffer
+		data, readErr := io.ReadAll(full)
+		if readErr != nil {
+			return nil, readErr
+		}
+		return bytes.NewReader(convertANSELToUTF8(data)), nil
+	default:
+		// UTF-8, ASCII, or unknown — stream as-is
+		return full, nil
+	}
+
+	return transform.NewReader(full, enc.NewDecoder()), nil
 }
 
 // detectGEDCOMCharset scans the first ~20 lines for "1 CHAR <value>" and
@@ -120,8 +164,8 @@ var anselToUTF8 = map[byte]rune{
 // combining characters. In ANSEL, the diacritical precedes the base letter;
 // in Unicode, combining characters follow the base letter.
 var anselCombining = map[byte]rune{
-	0xE0: 0x0309, // combining hook above
-	0xE1: 0x0300, // combining grave accent
+	0xE0: 0x0309, // combining hook above (e.g., 0xE0 + 'A' → A + U+0309)
+	0xE1: 0x0300, // combining grave accent (e.g., 0xE1 + 'A' → À)
 	0xE2: 0x0301, // combining acute accent
 	0xE3: 0x0302, // combining circumflex
 	0xE4: 0x0303, // combining tilde
@@ -151,7 +195,9 @@ var anselCombining = map[byte]rune{
 
 // convertANSELToUTF8 converts ANSEL-encoded bytes to UTF-8. ANSEL uses
 // combining diacriticals (0xE0–0xFE) that precede the base letter, so the
-// converter reorders them to follow the base letter (Unicode order).
+// converter buffers consecutive combining marks, then emits the base letter
+// followed by all combining marks (Unicode order). Multiple combining marks
+// can precede a single base letter (e.g., acute + cedilla + C).
 func convertANSELToUTF8(data []byte) []byte {
 	var buf bytes.Buffer
 	buf.Grow(len(data))
@@ -167,34 +213,32 @@ func convertANSELToUTF8(data []byte) []byte {
 			continue
 		}
 
-		// Combining diacritical (precedes base letter in ANSEL)
-		if combiningRune, ok := anselCombining[b]; ok {
-			// Next byte should be the base letter
-			if i+1 < len(data) {
-				base := data[i+1]
-				if base < 0x80 {
-					// Write base letter first, then combining mark (Unicode order)
-					buf.WriteByte(base)
-					var runeBytes [4]byte
-					n := utf8.EncodeRune(runeBytes[:], combiningRune)
-					buf.Write(runeBytes[:n])
-					i += 2
-					continue
+		// Combining diacritical (precedes base letter in ANSEL) — buffer all
+		// consecutive combining marks, then emit base + marks in Unicode order.
+		if _, ok := anselCombining[b]; ok {
+			combiningRunes := make([]rune, 0, 4)
+			for i < len(data) {
+				if r, isCombining := anselCombining[data[i]]; isCombining {
+					combiningRunes = append(combiningRunes, r)
+					i++
+				} else {
+					break
 				}
 			}
-			// No valid base letter follows — write the combining mark alone
-			var runeBytes [4]byte
-			n := utf8.EncodeRune(runeBytes[:], combiningRune)
-			buf.Write(runeBytes[:n])
-			i++
+			// Emit base letter (if present) before combining marks
+			if i < len(data) && data[i] < 0x80 {
+				buf.WriteByte(data[i])
+				i++
+			}
+			for _, r := range combiningRunes {
+				buf.WriteRune(r)
+			}
 			continue
 		}
 
 		// Non-combining ANSEL character
 		if r, ok := anselToUTF8[b]; ok {
-			var runeBytes [4]byte
-			n := utf8.EncodeRune(runeBytes[:], r)
-			buf.Write(runeBytes[:n])
+			buf.WriteRune(r)
 			i++
 			continue
 		}

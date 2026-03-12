@@ -19,10 +19,30 @@ import (
 	"strings"
 )
 
-// Package-level compiled regexes for name parsing (compiled once, not on every call)
+// Package-level compiled regexes and lookup maps for name parsing
+// (allocated once, not on every call)
 var (
 	surnameRegex  = regexp.MustCompile(`/([^/]+)/`)
 	nicknameRegex = regexp.MustCompile(`"([^"]+)"`)
+
+	namePrefixes = map[string]bool{
+		"Mr.": true, "Mrs.": true, "Ms.": true, "Miss": true, "Dr.": true,
+		"Prof.": true, "Rev.": true, "Hon.": true, "Sir": true, "Lady": true,
+		"Lord": true, "Count": true, "Duke": true, "Baron": true,
+	}
+
+	nameSuffixes = map[string]bool{
+		"Jr.": true, "Jr": true, "Sr.": true, "Sr": true,
+		"II": true, "III": true, "IV": true, "V": true,
+		"2nd": true, "3rd": true, "4th": true,
+		"Esq.": true, "Esq": true, "PhD": true, "MD": true,
+	}
+
+	surnamePrefixMap = map[string]bool{
+		"von": true, "van": true, "de": true, "der": true, "den": true,
+		"del": true, "della": true, "di": true, "da": true, "le": true,
+		"la": true, "du": true, "des": true, "af": true, "av": true,
+	}
 )
 
 // PersonName represents parsed name components
@@ -128,36 +148,17 @@ func parseGEDCOMName(nameValue string, substructure *NameSubstructure) PersonNam
 
 // isSurnamePrefix checks if a word is a surname prefix
 func isSurnamePrefix(word string) bool {
-	prefixes := map[string]bool{
-		"von": true, "van": true, "de": true, "der": true, "den": true,
-		"del": true, "della": true, "di": true, "da": true, "le": true,
-		"la": true, "du": true, "des": true, "af": true, "av": true,
-	}
-
-	return prefixes[strings.ToLower(word)]
+	return surnamePrefixMap[strings.ToLower(word)]
 }
 
 // isNamePrefix checks if a word is a name prefix
 func isNamePrefix(word string) bool {
-	prefixes := map[string]bool{
-		"Mr.": true, "Mrs.": true, "Ms.": true, "Miss": true, "Dr.": true,
-		"Prof.": true, "Rev.": true, "Hon.": true, "Sir": true, "Lady": true,
-		"Lord": true, "Count": true, "Duke": true, "Baron": true,
-	}
-
-	return prefixes[word]
+	return namePrefixes[word]
 }
 
 // isNameSuffix checks if a word is a name suffix
 func isNameSuffix(word string) bool {
-	suffixes := map[string]bool{
-		"Jr.": true, "Jr": true, "Sr.": true, "Sr": true,
-		"II": true, "III": true, "IV": true, "V": true,
-		"2nd": true, "3rd": true, "4th": true,
-		"Esq.": true, "Esq": true, "PhD": true, "MD": true,
-	}
-
-	return suffixes[word]
+	return nameSuffixes[word]
 }
 
 // FormatFullName constructs a display string from the PersonName components.

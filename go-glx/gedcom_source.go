@@ -31,7 +31,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	sourceID := generateSourceID(conv)
 	conv.SourceIDMap[sourRecord.XRef] = sourceID
 
-	conv.Logger.LogInfo(fmt.Sprintf("Converting SOUR %s -> %s", sourRecord.XRef, sourceID))
+	conv.Logger.LogInfof("Converting SOUR %s -> %s", sourRecord.XRef, sourceID)
 
 	// Create source entity with properties map
 	source := &Source{

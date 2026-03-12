@@ -31,7 +31,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 	personID := generatePersonID(conv)
 	conv.PersonIDMap[indiRecord.XRef] = personID
 
-	conv.Logger.LogInfo(fmt.Sprintf("Converting INDI %s -> %s", indiRecord.XRef, personID))
+	conv.Logger.LogInfof("Converting INDI %s -> %s", indiRecord.XRef, personID)
 
 	// Create person entity
 	person := &Person{

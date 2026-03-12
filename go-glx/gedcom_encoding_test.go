@@ -54,13 +54,27 @@ func TestConvertToUTF8_ANSEL(t *testing.T) {
 
 func TestConvertToUTF8_ANSELCombiningDiacritics(t *testing.T) {
 	// ANSEL combining hook above (0xE0) precedes base letter
-	// 0xE0 + 'A' = À (A with hook above / grave accent)
+	// 0xE0 + 'A' = A followed by U+0309 (combining hook above)
 	input := []byte("0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME \xe0A\n")
 
 	got := convertToUTF8(input)
 
 	// The combining diacritical should produce a valid UTF-8 character
 	assert.True(t, isValidUTF8(got), "output should be valid UTF-8")
+	// Base letter should come before the combining mark (Unicode order)
+	assert.Contains(t, string(got), "A\u0309")
+}
+
+func TestConvertToUTF8_ANSELMultipleCombining(t *testing.T) {
+	// ANSEL can have multiple combining marks before a base letter:
+	// 0xE2 (acute) + 0xF0 (cedilla) + 'C' should produce C + acute + cedilla
+	input := []byte("0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME \xe2\xf0C\n")
+
+	got := convertToUTF8(input)
+
+	assert.True(t, isValidUTF8(got), "output should be valid UTF-8")
+	// Base letter C followed by both combining marks in order
+	assert.Contains(t, string(got), "C\u0301\u0327", "base letter should precede all combining marks")
 }
 
 func TestConvertToUTF8_UTF8Passthrough(t *testing.T) {
