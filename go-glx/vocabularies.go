@@ -16,10 +16,20 @@ package glx
 
 import (
 	"fmt"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 
 	vocabularies "github.com/genealogix/glx/specification/5-standard-vocabularies"
+)
+
+// cachedVocabs holds pre-parsed standard vocabularies. Parsed once on first use
+// via sync.Once, then vocabulary map pointers are shared across all GLXFiles.
+// This is safe because vocabularies are read-only after loading.
+var (
+	cachedVocabs     *GLXFile
+	cachedVocabsOnce sync.Once
+	cachedVocabsErr  error
 )
 
 // StandardVocabularies returns a map of vocabulary filename to content bytes.
@@ -55,9 +65,35 @@ func GetStandardVocabulary(name string) ([]byte, error) {
 // LoadStandardVocabulariesIntoGLX loads all standard vocabularies into a GLXFile.
 // This populates the vocabulary maps (EventTypes, RelationshipTypes, etc.) so that
 // validation can check references against the standard vocabulary values.
-// Returns error if vocabulary parsing fails.
+// Vocabularies are parsed once and cached; subsequent calls share the same map
+// pointers (safe because vocabularies are read-only after loading).
 func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
-	return LoadVocabulariesFromMap(vocabularies.Files, glx)
+	cachedVocabsOnce.Do(func() {
+		cachedVocabs = &GLXFile{}
+		cachedVocabsErr = LoadVocabulariesFromMap(vocabularies.Files, cachedVocabs)
+	})
+	if cachedVocabsErr != nil {
+		return cachedVocabsErr
+	}
+
+	glx.EventTypes = cachedVocabs.EventTypes
+	glx.RelationshipTypes = cachedVocabs.RelationshipTypes
+	glx.PlaceTypes = cachedVocabs.PlaceTypes
+	glx.SourceTypes = cachedVocabs.SourceTypes
+	glx.RepositoryTypes = cachedVocabs.RepositoryTypes
+	glx.ParticipantRoles = cachedVocabs.ParticipantRoles
+	glx.MediaTypes = cachedVocabs.MediaTypes
+	glx.ConfidenceLevels = cachedVocabs.ConfidenceLevels
+	glx.PersonProperties = cachedVocabs.PersonProperties
+	glx.EventProperties = cachedVocabs.EventProperties
+	glx.RelationshipProperties = cachedVocabs.RelationshipProperties
+	glx.PlaceProperties = cachedVocabs.PlaceProperties
+	glx.MediaProperties = cachedVocabs.MediaProperties
+	glx.RepositoryProperties = cachedVocabs.RepositoryProperties
+	glx.CitationProperties = cachedVocabs.CitationProperties
+	glx.SourceProperties = cachedVocabs.SourceProperties
+
+	return nil
 }
 
 // LoadVocabulariesFromMap loads vocabularies from a map of filenames to content into a GLXFile.

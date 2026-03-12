@@ -16,7 +16,6 @@ package glx
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -393,8 +392,8 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 		return nil, nil, fmt.Errorf("conversion error: %w", err)
 	}
 
-	logger.LogInfo(fmt.Sprintf("Import completed: %d persons, %d events, %d relationships, %d sources",
-		conv.Stats.PersonsCreated, conv.Stats.EventsCreated, conv.Stats.RelationshipsCreated, conv.Stats.SourcesCreated))
+	logger.LogInfof("Import completed: %d persons, %d events, %d relationships, %d sources",
+		conv.Stats.PersonsCreated, conv.Stats.EventsCreated, conv.Stats.RelationshipsCreated, conv.Stats.SourcesCreated)
 
 	// Build result
 	result := &ImportResult{
@@ -406,41 +405,172 @@ func ImportGEDCOM(reader io.Reader, logWriter io.Writer) (*GLXFile, *ImportResul
 	return glx, result, nil
 }
 
-// parseGEDCOM parses a GEDCOM file into hierarchical records
+// parseGEDCOM parses a GEDCOM file into hierarchical records in a single pass,
+// scanning lines and building the record tree simultaneously to avoid
+// materializing an intermediate []*GEDCOMLine slice.
 func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCOMVersion, string, error) {
-	// Parse lines
-	lines, err := parseGEDCOMLines(reader)
+	decoded, err := decodingReader(reader)
 	if err != nil {
-		return nil, GEDCOMUnknown, "", err
+		return nil, GEDCOMUnknown, "", fmt.Errorf("decoding input: %w", err)
 	}
 
-	logger.LogInfo(fmt.Sprintf("Parsed %d lines", len(lines)))
+	scanner := bufio.NewScanner(decoded)
+	scanner.Split(scanLinesAllEndings)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 
-	// Build records
-	records := buildRecords(lines)
+	records := make([]*GEDCOMRecord, 0, 256)
+	stack := make([]*GEDCOMRecord, 0, 16)
 
-	logger.LogInfo(fmt.Sprintf("Built %d top-level records", len(records)))
+	lineNum := 0
+	var lastRecord *GEDCOMRecord
 
-	// Detect version
+	for scanner.Scan() {
+		lineNum++
+		text := scanner.Text()
+
+		if lineNum == 1 && len(text) >= 3 {
+			if text[0] == 0xEF && text[1] == 0xBB && text[2] == 0xBF {
+				text = text[3:]
+			}
+		}
+
+		if strings.TrimSpace(text) == "" {
+			continue
+		}
+
+		level, xref, tag, value, parseErr := parseGEDCOMFields(text)
+		if parseErr != nil {
+			if lastRecord != nil && len(text) > 0 && !isDigit(text[0]) {
+				if lastRecord.Value == "" {
+					lastRecord.Value = text
+				} else {
+					lastRecord.Value += "\n" + text
+				}
+				continue
+			}
+			return nil, GEDCOMUnknown, "", fmt.Errorf("line %d: %w", lineNum, parseErr)
+		}
+
+		record := &GEDCOMRecord{
+			XRef:  xref,
+			Tag:   tag,
+			Value: value,
+			Line:  lineNum,
+		}
+
+		if level == 0 {
+			records = append(records, record)
+			stack = stack[:0]
+			stack = append(stack, record)
+		} else {
+			for len(stack) > level {
+				stack = stack[:len(stack)-1]
+			}
+			if len(stack) > 0 {
+				parent := stack[len(stack)-1]
+				parent.SubRecords = append(parent.SubRecords, record)
+			}
+			stack = append(stack, record)
+		}
+
+		lastRecord = record
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, GEDCOMUnknown, "", fmt.Errorf("scanner error: %w", err)
+	}
+
 	version, versionString := detectGEDCOMVersion(records)
 
 	return records, version, versionString, nil
 }
 
-// parseGEDCOMLines parses GEDCOM file line by line
-func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
-	// Read all bytes so we can detect the CHAR encoding header and convert
-	// non-UTF-8 encodings (ANSI/CP1252, ANSEL, ISO-8859-1) before parsing.
-	rawBytes, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("reading input: %w", err)
+// parseGEDCOMFields extracts level, xref, tag, and value from a GEDCOM line
+// without allocating intermediate slices or a GEDCOMLine struct.
+func parseGEDCOMFields(text string) (level int, xref, tag, value string, err error) {
+	n := len(text)
+	if n == 0 {
+		return 0, "", "", "", ErrInvalidGEDCOMLine
 	}
 
-	rawBytes = convertToUTF8(rawBytes)
+	pos := 0
+	for pos < n && text[pos] == ' ' {
+		pos++
+	}
 
-	var lines []*GEDCOMLine
+	levelStart := pos
+	for pos < n && text[pos] >= '0' && text[pos] <= '9' {
+		pos++
+	}
+	if pos == levelStart {
+		return 0, "", "", "", ErrInvalidGEDCOMLine
+	}
 
-	scanner := bufio.NewScanner(bytes.NewReader(rawBytes))
+	level, atoiErr := strconv.Atoi(text[levelStart:pos])
+	if atoiErr != nil {
+		return 0, "", "", "", fmt.Errorf("%w: %s", ErrInvalidLevel, text[levelStart:pos])
+	}
+
+	for pos < n && text[pos] == ' ' {
+		pos++
+	}
+	if pos == n {
+		return 0, "", "", "", ErrInvalidGEDCOMLine
+	}
+
+	tokenStart := pos
+	for pos < n && text[pos] != ' ' {
+		pos++
+	}
+	token := text[tokenStart:pos]
+
+	if len(token) >= 2 && token[0] == '@' && token[len(token)-1] == '@' {
+		xref = token
+		for pos < n && text[pos] == ' ' {
+			pos++
+		}
+		if pos == n {
+			return 0, "", "", "", ErrMissingTagAfterXRef
+		}
+		tagStart := pos
+		for pos < n && text[pos] != ' ' {
+			pos++
+		}
+		tag = text[tagStart:pos]
+	} else {
+		tag = token
+	}
+
+	for pos < n && text[pos] == ' ' {
+		pos++
+	}
+	if pos < n {
+		end := n
+		for end > pos && text[end-1] == ' ' {
+			end--
+		}
+		value = text[pos:end]
+	}
+
+	return level, xref, tag, value, nil
+}
+
+// parseGEDCOMLines parses GEDCOM file line by line
+func parseGEDCOMLines(reader io.Reader) ([]*GEDCOMLine, error) {
+	// Detect character encoding from CHAR header and wrap the reader in a
+	// streaming decoder. For charmap encodings (CP1252, ISO-8859-1) this
+	// streams without buffering the whole file. ANSEL requires full buffering
+	// due to combining-mark reordering.
+	decoded, err := decodingReader(reader)
+	if err != nil {
+		return nil, fmt.Errorf("decoding input: %w", err)
+	}
+
+	// Pre-allocate with reasonable capacity to avoid repeated slice growth.
+	lines := make([]*GEDCOMLine, 0, 8192)
+
+	scanner := bufio.NewScanner(decoded)
 	// Handle all line ending formats: LF, CRLF, and CR (old Mac Classic)
 	scanner.Split(scanLinesAllEndings)
 
@@ -503,77 +633,49 @@ func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
 
-// parseGEDCOMLine parses a single GEDCOM line
+// parseGEDCOMLine parses a single GEDCOM line into a GEDCOMLine struct.
+// Delegates to parseGEDCOMFields for the actual field extraction.
 func parseGEDCOMLine(text string, lineNum int) (*GEDCOMLine, error) {
-	// GEDCOM line format: LEVEL [XREF] TAG [VALUE]
-	parts := strings.Fields(text)
-	if len(parts) < 2 {
-		return nil, ErrInvalidGEDCOMLine
-	}
-
-	line := &GEDCOMLine{Line: lineNum}
-
-	// Parse level
-	level, err := strconv.Atoi(parts[0])
+	level, xref, tag, value, err := parseGEDCOMFields(text)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrInvalidLevel, parts[0])
-	}
-	line.Level = level
-
-	// Check for XRef (starts with @)
-	idx := 1
-	if strings.HasPrefix(parts[1], "@") && strings.HasSuffix(parts[1], "@") {
-		line.XRef = parts[1]
-		idx = 2
-		if len(parts) < 3 { //nolint:mnd // GEDCOM line: LEVEL XREF TAG [VALUE] requires at least 3 parts
-			return nil, ErrMissingTagAfterXRef
-		}
+		return nil, err
 	}
 
-	// Parse tag
-	line.Tag = parts[idx]
-	idx++
-
-	// Parse value (rest of line after the tag)
-	if idx < len(parts) {
-		// Walk past exactly idx whitespace-separated tokens (level, optional xref,
-		// tag) to find where the value begins. Using strings.Index is unsafe because
-		// a value token may appear earlier in the line (e.g., "2 DATE 2 AUG 1944"
-		// where the day "2" matches the level number, or a tag name appearing inside
-		// an xref like "@NOTE1@").
-		pos := 0
-		for i := 0; i < idx; i++ {
-			for pos < len(text) && text[pos] == ' ' {
-				pos++
-			}
-			for pos < len(text) && text[pos] != ' ' {
-				pos++
-			}
-		}
-		line.Value = strings.TrimSpace(text[pos:])
-	}
-
-	return line, nil
+	return &GEDCOMLine{
+		Line:  lineNum,
+		Level: level,
+		XRef:  xref,
+		Tag:   tag,
+		Value: value,
+	}, nil
 }
 
-// buildRecords builds hierarchical records from flat lines
+// buildRecords builds hierarchical records from flat lines.
+// Uses a single pre-allocated backing array to reduce per-record allocations.
 func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
-	var records []*GEDCOMRecord
-	var stack []*GEDCOMRecord
+	if len(lines) == 0 {
+		return nil
+	}
 
-	for _, line := range lines {
-		record := &GEDCOMRecord{
-			XRef:       line.XRef,
-			Tag:        line.Tag,
-			Value:      line.Value,
-			SubRecords: []*GEDCOMRecord{},
-			Line:       line.Line,
-		}
+	// Pre-allocate all records in a contiguous block to reduce GC pressure
+	allRecords := make([]GEDCOMRecord, len(lines))
+
+	records := make([]*GEDCOMRecord, 0, len(lines)/10)
+	stack := make([]*GEDCOMRecord, 0, 16) // GEDCOM nesting rarely exceeds 10 levels
+
+	for i, line := range lines {
+		record := &allRecords[i]
+		record.XRef = line.XRef
+		record.Tag = line.Tag
+		record.Value = line.Value
+		record.Line = line.Line
+		// SubRecords left nil — append will allocate on first use
 
 		// Level 0 records are top-level
 		if line.Level == 0 {
 			records = append(records, record)
-			stack = []*GEDCOMRecord{record}
+			stack = stack[:0]
+			stack = append(stack, record)
 
 			continue
 		}
