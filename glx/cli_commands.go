@@ -63,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
+	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(diffCmd)
 }
@@ -808,6 +809,56 @@ func init() {
 
 func runVitals(_ *cobra.Command, args []string) error {
 	return showVitals(vitalsArchive, args[0])
+}
+
+// ============================================================================
+// Coverage Command
+// ============================================================================
+
+var (
+	coverageArchive string
+	coverageJSON    bool
+)
+
+var coverageCmd = &cobra.Command{
+	Use:   "coverage <person>",
+	Short: "Show source coverage matrix for a person",
+	Long: `Display a checklist of expected records for a person and which ones are present.
+
+Generates a source coverage matrix based on the person's birth and death years,
+showing which census records, vital records, and other documents have been found
+versus which are still missing.
+
+Record categories:
+  - Census: US federal census records the person should appear in
+  - Vital: Birth, death, and marriage records
+  - Other: Probate, land, military, and church records
+
+Missing high-priority records are flagged to guide research efforts.
+
+The person argument can be an exact entity ID or a name substring.`,
+	Example: `  # Coverage by person ID
+  glx coverage person-abc123
+
+  # Coverage by name
+  glx coverage "Mary Green"
+
+  # JSON output
+  glx coverage "Mary Green" --json
+
+  # Specify archive path
+  glx coverage "Mary Green" --archive my-archive`,
+	Args: cobra.ExactArgs(1),
+	RunE: runCoverage,
+}
+
+func init() {
+	coverageCmd.Flags().StringVarP(&coverageArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	coverageCmd.Flags().BoolVar(&coverageJSON, "json", false, "Output as JSON")
+}
+
+func runCoverage(_ *cobra.Command, args []string) error {
+	return showCoverage(coverageArchive, args[0], coverageJSON)
 }
 
 // ============================================================================
