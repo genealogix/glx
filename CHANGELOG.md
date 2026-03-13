@@ -51,6 +51,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx coverage` command** - Show source coverage matrix for a person, listing expected records (US census, vital, probate, land, military, church) and which are present vs missing. Flags high-priority gaps like the 1880 census. Supports `--json` output
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
+- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
+- **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
 
 #### Event Entity
 - **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import (e.g., "Birth of Daniel Lane (1815)", "Marriage of John Smith and Jane Doe (1850)")

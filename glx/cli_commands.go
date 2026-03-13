@@ -63,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
+	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(diffCmd)
@@ -809,6 +810,64 @@ func init() {
 
 func runVitals(_ *cobra.Command, args []string) error {
 	return showVitals(vitalsArchive, args[0])
+}
+
+// ============================================================================
+// Duplicates Command
+// ============================================================================
+
+var (
+	duplicatesArchive   string
+	duplicatesThreshold float64
+	duplicatesJSON      bool
+)
+
+var duplicatesCmd = &cobra.Command{
+	Use:   "duplicates [person]",
+	Short: "Detect potential duplicate persons in a GLX archive",
+	Long: `Scan a GLX archive for potential duplicate person records.
+
+Compares all persons using a weighted scoring model based on:
+  - Name similarity (Levenshtein distance, nickname matching, initials)
+  - Birth/death year proximity
+  - Birth/death place match
+  - Shared relationships and events
+
+Persons already linked by a direct relationship (parent-child, spouse, etc.)
+are automatically skipped since they are known to be distinct individuals.
+
+Use --threshold to adjust sensitivity (0.0-1.0, default 0.60).
+Higher values = fewer, higher-confidence matches.`,
+	Example: `  # Scan for duplicates in current directory
+  glx duplicates
+
+  # Scan with higher confidence threshold
+  glx duplicates --threshold 0.8
+
+  # Check a specific person for duplicates
+  glx duplicates person-d-lane
+
+  # JSON output for tooling
+  glx duplicates --json
+
+  # Scan a specific archive
+  glx duplicates --archive my-family-archive`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runDuplicates,
+}
+
+func init() {
+	duplicatesCmd.Flags().StringVarP(&duplicatesArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	duplicatesCmd.Flags().Float64Var(&duplicatesThreshold, "threshold", 0.60, "Minimum similarity score (0.0-1.0)")
+	duplicatesCmd.Flags().BoolVar(&duplicatesJSON, "json", false, "JSON output")
+}
+
+func runDuplicates(_ *cobra.Command, args []string) error {
+	personFilter := ""
+	if len(args) == 1 {
+		personFilter = args[0]
+	}
+	return findDuplicates(duplicatesArchive, duplicatesThreshold, personFilter, duplicatesJSON)
 }
 
 // ============================================================================
