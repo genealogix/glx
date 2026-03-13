@@ -208,8 +208,8 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 		}
 	}
 
-	// Create new place
-	placeID := truncateID(Slugify("place", loc.Place))
+	// Create new place with collision check
+	placeID := uniquePlaceID(Slugify("place", loc.Place), existing, result)
 	result.Place[placeID] = &Place{Name: loc.Place}
 	return placeID, nil
 }
@@ -537,7 +537,8 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 }
 
 // resolveBirthplace attempts to match a birthplace name to a place ID
-// in the existing archive and current batch, or returns the name as-is.
+// in the existing archive and current batch. If no match is found, creates
+// a new Place entity so the assertion value is a valid place reference.
 func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) string {
 	// Check existing archive places
 	if existing != nil && existing.Places != nil {
@@ -553,7 +554,10 @@ func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) str
 			return id
 		}
 	}
-	return name
+	// Create a new place entity for the unresolved birthplace
+	placeID := uniquePlaceID(Slugify("place", name), existing, result)
+	result.Place[placeID] = &Place{Name: name}
+	return placeID
 }
 
 // censusSlugID generates a deterministic entity ID from census data.
@@ -590,18 +594,40 @@ func truncateID(id string) string {
 func uniquePersonID(baseID string, existing *GLXFile, result *CensusResult) string {
 	candidate := truncateID(baseID)
 	for suffix := 2; ; suffix++ {
-		if existing != nil && existing.Persons != nil {
-			if _, ok := existing.Persons[candidate]; ok {
-				candidate = truncateID(fmt.Sprintf("%s-%d", baseID, suffix))
-				continue
-			}
+		existsInArchive := existing != nil && existing.Persons != nil && existing.Persons[candidate] != nil
+		_, existsInBatch := result.Persons[candidate]
+		if !existsInArchive && !existsInBatch {
+			return candidate
 		}
-		if _, ok := result.Persons[candidate]; ok {
-			candidate = truncateID(fmt.Sprintf("%s-%d", baseID, suffix))
-			continue
-		}
-		return candidate
+		candidate = truncateIDWithSuffix(baseID, suffix)
 	}
+}
+
+// uniquePlaceID returns a place ID that doesn't collide with existing archive
+// or current batch entries.
+func uniquePlaceID(baseID string, existing *GLXFile, result *CensusResult) string {
+	candidate := truncateID(baseID)
+	for suffix := 2; ; suffix++ {
+		existsInArchive := existing != nil && existing.Places != nil && existing.Places[candidate] != nil
+		_, existsInBatch := result.Place[candidate]
+		if !existsInArchive && !existsInBatch {
+			return candidate
+		}
+		candidate = truncateIDWithSuffix(baseID, suffix)
+	}
+}
+
+// truncateIDWithSuffix appends a numeric suffix and truncates the base portion
+// to keep the total within 64 characters, preventing infinite loops when the
+// base ID is already at or near the maximum length.
+func truncateIDWithSuffix(baseID string, suffix int) string {
+	suffixStr := fmt.Sprintf("-%d", suffix)
+	maxBase := 64 - len(suffixStr)
+	base := baseID
+	if len(base) > maxBase {
+		base = strings.TrimRight(base[:maxBase], "-")
+	}
+	return base + suffixStr
 }
 
 // Slugify generates a deterministic entity ID from a prefix and name.

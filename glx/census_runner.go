@@ -45,6 +45,11 @@ func censusAdd(templatePath, archivePath string, dryRun, verbose bool) error {
 		return fmt.Errorf("failed to generate census entities: %w", err)
 	}
 
+	// Validate cross-references before writing
+	if err := validateCensusRefs(result, archive); err != nil {
+		return fmt.Errorf("generated entities have invalid references: %w", err)
+	}
+
 	if verbose || dryRun {
 		printCensusSummary(result)
 	}
@@ -145,6 +150,38 @@ func writeCensusEntities(archivePath string, result *glxlib.CensusResult) (int, 
 	}
 
 	return len(entityFiles), nil
+}
+
+// validateCensusRefs checks that generated entity cross-references point to
+// either newly created entities or entities in the existing archive.
+func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) error {
+	for id, cit := range result.Citation {
+		if _, ok := result.Source[cit.SourceID]; !ok {
+			if existing.Sources == nil || existing.Sources[cit.SourceID] == nil {
+				return fmt.Errorf("citation %s references unknown source %s", id, cit.SourceID)
+			}
+		}
+	}
+	for id, evt := range result.Event {
+		if evt.PlaceID == "" {
+			continue
+		}
+		if _, ok := result.Place[evt.PlaceID]; !ok {
+			if existing.Places == nil || existing.Places[evt.PlaceID] == nil {
+				return fmt.Errorf("event %s references unknown place %s", id, evt.PlaceID)
+			}
+		}
+	}
+	for id, a := range result.Assertions {
+		if a.Subject.Person != "" {
+			if _, ok := result.Persons[a.Subject.Person]; !ok {
+				if existing.Persons == nil || existing.Persons[a.Subject.Person] == nil {
+					return fmt.Errorf("assertion %s references unknown person %s", id, a.Subject.Person)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // printCensusSummary prints a summary of what was generated.

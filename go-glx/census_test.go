@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -474,7 +475,8 @@ func TestBuildCensusEntities_NameMatchExisting(t *testing.T) {
 
 func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
 	// The existing person ID ("person-abc123") differs from what Slugify would
-	// produce ("person-daniel-lane"). Assertions must use the resolved ID.
+	// produce ("person-daniel-lane"). Name matching should find this person,
+	// and assertions must use the resolved ID, not the slugified name.
 	existing := &GLXFile{
 		Persons: map[string]*Person{
 			"person-abc123": {
@@ -491,7 +493,7 @@ func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
 			Location: CensusLocation{Place: "Marion County"},
 			Household: CensusHousehold{
 				Members: []CensusHouseholdMember{
-					{Name: "Daniel Lane", PersonID: "person-abc123", Age: intPtr(30)},
+					{Name: "Daniel Lane", Age: intPtr(30)},
 				},
 			},
 		},
@@ -499,6 +501,10 @@ func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
 
 	result, err := BuildCensusEntities(tpl, existing)
 	require.NoError(t, err)
+
+	// Should match existing person by name, not create a new one
+	assert.Empty(t, result.Persons, "should not create new person when name matches")
+	assert.Equal(t, []string{"person-abc123"}, result.MatchedIDs)
 
 	// Assertions must reference the actual resolved ID, not the slugified name.
 	// Assertion IDs also use the resolved personID slug for uniqueness.
@@ -792,6 +798,25 @@ func TestTruncateID(t *testing.T) {
 	result := truncateID(long)
 	assert.LessOrEqual(t, len(result), 64)
 	assert.False(t, result[len(result)-1] == '-', "truncated ID should not end with hyphen")
+}
+
+func TestUniquePersonID_LongBaseID(t *testing.T) {
+	// When baseID > 64 chars and truncated candidate collides, the suffix must
+	// be preserved to avoid an infinite loop.
+	longBase := "person-" + strings.Repeat("a", 60) // 67 chars total
+	existing := &GLXFile{
+		Persons: map[string]*Person{
+			truncateID(longBase): {Properties: map[string]any{PersonPropertyName: "Collider"}},
+		},
+	}
+	result := &CensusResult{
+		Persons: make(map[string]*Person),
+	}
+
+	id := uniquePersonID(longBase, existing, result)
+	assert.NotEqual(t, truncateID(longBase), id, "should disambiguate from colliding ID")
+	assert.LessOrEqual(t, len(id), 64, "result must be within 64-char limit")
+	assert.Contains(t, id, "-2", "should have suffix")
 }
 
 func TestCensusSlugIDWithHousehold(t *testing.T) {
