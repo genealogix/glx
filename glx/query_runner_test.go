@@ -305,13 +305,13 @@ func TestExtractAllNames_StructuredMap(t *testing.T) {
 func TestExtractAllNames_TemporalList(t *testing.T) {
 	person := &glxlib.Person{Properties: map[string]any{
 		"name": []any{
-			map[string]any{"value": "Mary Green", "fields": map[string]any{"type": "maiden"}},
-			map[string]any{"value": "Mary Lane", "fields": map[string]any{"type": "married"}},
-			map[string]any{"value": "Mary Laine", "fields": map[string]any{"type": "as_recorded"}},
+			map[string]any{"value": "Jane Miller", "fields": map[string]any{"type": "maiden"}},
+			map[string]any{"value": "Jane Webb", "fields": map[string]any{"type": "married"}},
+			map[string]any{"value": "Jane Webbe", "fields": map[string]any{"type": "as_recorded"}},
 		},
 	}}
 	names := extractAllNames(person)
-	assert.Equal(t, []string{"Mary Green", "Mary Lane", "Mary Laine"}, names)
+	assert.Equal(t, []string{"Jane Miller", "Jane Webb", "Jane Webbe"}, names)
 }
 
 func TestExtractAllNames_NoName(t *testing.T) {

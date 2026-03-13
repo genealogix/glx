@@ -60,7 +60,7 @@ func TestDiffArchives_RemovedPerson(t *testing.T) {
 	old := &GLXFile{
 		Persons: map[string]*Person{
 			"person-mary": {
-				Properties: map[string]any{"name": "Mary Lane"},
+				Properties: map[string]any{"name": "Jane Webb"},
 			},
 		},
 	}
@@ -81,7 +81,7 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-mary": {
 				Properties: map[string]any{
-					"name":    "Mary Lane",
+					"name":    "Jane Webb",
 					"born_on": "ABT 1832",
 				},
 			},
@@ -91,7 +91,7 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-mary": {
 				Properties: map[string]any{
-					"name":    "Mary Lane",
+					"name":    "Jane Webb",
 					"born_on": "1832",
 					"died_on": "1905",
 				},
@@ -218,13 +218,13 @@ func TestDiffArchives_ConfidenceDowngrade(t *testing.T) {
 func TestDiffArchives_PersonFilter(t *testing.T) {
 	old := &GLXFile{
 		Persons: map[string]*Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary Lane"}},
+			"person-mary": {Properties: map[string]any{"name": "Jane Webb"}},
 			"person-john": {Properties: map[string]any{"name": "John Smith"}},
 		},
 	}
 	newArchive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary Lane", "died_on": "1905"}},
+			"person-mary": {Properties: map[string]any{"name": "Jane Webb", "died_on": "1905"}},
 			"person-john": {Properties: map[string]any{"name": "John Smith", "died_on": "1900"}},
 		},
 	}
@@ -528,7 +528,7 @@ func TestDiffArchives_EventWithTitle(t *testing.T) {
 	newArchive := &GLXFile{
 		Events: map[string]*Event{
 			"event-census": {
-				Title: "1860 Census — Lane Household",
+				Title: "1860 Census — Webb Household",
 				Type:  "census",
 				Date:  "1860",
 			},
@@ -537,5 +537,5 @@ func TestDiffArchives_EventWithTitle(t *testing.T) {
 
 	result := DiffArchives(old, newArchive,"")
 	require.Len(t, result.Changes, 1)
-	assert.Equal(t, "1860 Census — Lane Household", result.Changes[0].Summary)
+	assert.Equal(t, "1860 Census — Webb Household", result.Changes[0].Summary)
 }

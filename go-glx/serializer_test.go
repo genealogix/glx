@@ -614,13 +614,13 @@ func TestEventTitleRoundTrip(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-001": {
 				Properties: map[string]any{
-					"name": map[string]any{"value": "D. Lane"},
+					"name": map[string]any{"value": "R. Webb"},
 				},
 			},
 		},
 		Events: map[string]*Event{
 			"event-census-1860": {
-				Title: "1860 Census — Lane Household",
+				Title: "1860 Census — Webb Household",
 				Type:  "census",
 				Date:  "1860",
 				Participants: []Participant{
@@ -662,8 +662,8 @@ func TestEventTitleRoundTrip(t *testing.T) {
 	if census == nil {
 		t.Fatal("event-census-1860 not found after round-trip")
 	}
-	if census.Title != "1860 Census — Lane Household" {
-		t.Errorf("Title mismatch: expected %q, got %q", "1860 Census — Lane Household", census.Title)
+	if census.Title != "1860 Census — Webb Household" {
+		t.Errorf("Title mismatch: expected %q, got %q", "1860 Census — Webb Household", census.Title)
 	}
 
 	// Event without title should have empty string
