@@ -657,14 +657,18 @@ func coveragePercent(found, expected int) int {
 }
 
 // inferDeathYearFromEvents returns a death year inferred from burial events.
+// When multiple burial events exist, returns the earliest year.
 // Returns 0 if no burial event with a date is found.
 func inferDeathYearFromEvents(events []personSourceInfo) int {
+	earliest := 0
 	for _, e := range events {
 		if e.EventType == glxlib.EventTypeBurial && e.Year > 0 {
-			return e.Year
+			if earliest == 0 || e.Year < earliest {
+				earliest = e.Year
+			}
 		}
 	}
-	return 0
+	return earliest
 }
 
 // printCoverageJSON outputs the result as JSON.

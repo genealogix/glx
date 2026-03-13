@@ -120,7 +120,8 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 	return issues
 }
 
-// buildBurialYearIndex returns a map of person ID to burial event year.
+// buildBurialYearIndex returns a map of person ID to the earliest burial event year.
+// Only principal participants are considered (witnesses/officiants are excluded).
 func buildBurialYearIndex(archive *glxlib.GLXFile) map[string]int {
 	index := make(map[string]int)
 	for _, event := range archive.Events {
@@ -132,7 +133,13 @@ func buildBurialYearIndex(archive *glxlib.GLXFile) map[string]int {
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person != "" {
+			if p.Person == "" {
+				continue
+			}
+			if p.Role != "" && p.Role != "principal" && p.Role != "subject" {
+				continue
+			}
+			if existing, ok := index[p.Person]; !ok || year < existing {
 				index[p.Person] = year
 			}
 		}

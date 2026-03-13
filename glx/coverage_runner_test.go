@@ -15,6 +15,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -349,7 +350,7 @@ func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
 	// 1930 should still appear (1932 > 1930)
 	found1930 := false
 	for _, label := range censusYears {
-		if assert.ObjectsAreEqual(true, len(label) > 0) && len(label) > 4 && label[:4] == "1930" {
+		if strings.HasPrefix(label, "1930") {
 			found1930 = true
 		}
 	}
