@@ -209,7 +209,7 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 	}
 
 	// Create new place
-	placeID := Slugify("place", loc.Place)
+	placeID := truncateID(Slugify("place", loc.Place))
 	result.Place[placeID] = &Place{Name: loc.Place}
 	return placeID, nil
 }
@@ -229,7 +229,15 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 
 	title := src.Title
 	if title == "" {
-		title = fmt.Sprintf("%d U.S. Federal Census — %s", census.Year, census.Location.Place)
+		locDisplay := strings.TrimSpace(census.Location.Place)
+		if locDisplay == "" {
+			locDisplay = census.Location.PlaceID
+		}
+		if locDisplay != "" {
+			title = fmt.Sprintf("%d U.S. Federal Census — %s", census.Year, locDisplay)
+		} else {
+			title = fmt.Sprintf("%d U.S. Federal Census", census.Year)
+		}
 	}
 
 	// Search existing sources by title
@@ -353,8 +361,9 @@ func resolveCensusPerson(member CensusHouseholdMember, existing *GLXFile, result
 		return "", false, fmt.Errorf("person_id %q not found in archive", member.PersonID)
 	}
 
-	// Search by exact name in existing archive (substring matches are
-	// treated as ambiguous — require explicit person_id to disambiguate)
+	// Search by exact (case-insensitive) name in existing archive. If
+	// multiple exact matches are found, treat as ambiguous and require
+	// explicit person_id to disambiguate.
 	if existing.Persons != nil {
 		var exactMatches []string
 		for id, person := range existing.Persons {
@@ -434,12 +443,14 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 	for i, member := range census.Household.Members {
 		personID := resolvedIDs[i]
 
-		slug := Slugify("", member.Name)
+		// Use personID slug (not name slug) for assertion IDs to avoid
+		// collisions when multiple members share the same name.
+		pidSlug := Slugify("", personID)
 
 		// Birth year from age
 		if member.Age != nil {
 			birthYear := census.Year - *member.Age
-			assertionID := fmt.Sprintf("assertion-%s-birth-year-%s", slug, yearStr)
+			assertionID := truncateID(fmt.Sprintf("assertion-%s-birth-year-%s", pidSlug, yearStr))
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
 				Property:   PersonPropertyBornOn,
@@ -457,7 +468,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 			birthplaceRef = resolveBirthplace(member.Birthplace, existing, result)
 		}
 		if birthplaceRef != "" {
-			assertionID := fmt.Sprintf("assertion-%s-birthplace-%s", slug, yearStr)
+			assertionID := truncateID(fmt.Sprintf("assertion-%s-birthplace-%s", pidSlug, yearStr))
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
 				Property:   PersonPropertyBornAt,
@@ -470,7 +481,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 
 		// Gender
 		if member.Sex != "" {
-			assertionID := fmt.Sprintf("assertion-%s-gender-%s", slug, yearStr)
+			assertionID := truncateID(fmt.Sprintf("assertion-%s-gender-%s", pidSlug, yearStr))
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
 				Property:   PersonPropertyGender,
@@ -483,7 +494,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 
 		// Occupation
 		if member.Occupation != "" {
-			assertionID := fmt.Sprintf("assertion-%s-occupation-%s", slug, yearStr)
+			assertionID := truncateID(fmt.Sprintf("assertion-%s-occupation-%s", pidSlug, yearStr))
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
 				Property:   "occupation",
@@ -496,7 +507,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 		}
 
 		// Residence
-		assertionID := fmt.Sprintf("assertion-%s-residence-%s", slug, yearStr)
+		assertionID := truncateID(fmt.Sprintf("assertion-%s-residence-%s", pidSlug, yearStr))
 		result.Assertions[assertionID] = &Assertion{
 			Subject:    EntityRef{Person: personID},
 			Property:   PersonPropertyResidence,
@@ -511,7 +522,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 		for prop, val := range member.Properties {
 			valStr := fmt.Sprint(val)
 			propSlug := Slugify("", prop)
-			assertionID := fmt.Sprintf("assertion-%s-%s-%s", slug, propSlug, yearStr)
+			assertionID := truncateID(fmt.Sprintf("assertion-%s-%s-%s", pidSlug, propSlug, yearStr))
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
 				Property:   prop,
@@ -574,21 +585,22 @@ func truncateID(id string) string {
 
 // uniquePersonID returns a person ID that doesn't collide with existing archive
 // or current batch entries. If baseID already exists, appends an incrementing suffix.
+// Truncation is applied before collision checks to avoid false negatives where the
+// un-truncated candidate passes but the truncated result collides.
 func uniquePersonID(baseID string, existing *GLXFile, result *CensusResult) string {
-	candidate := baseID
+	candidate := truncateID(baseID)
 	for suffix := 2; ; suffix++ {
-		existsInArchive := existing != nil && existing.Persons != nil
-		if existsInArchive {
+		if existing != nil && existing.Persons != nil {
 			if _, ok := existing.Persons[candidate]; ok {
-				candidate = fmt.Sprintf("%s-%d", baseID, suffix)
+				candidate = truncateID(fmt.Sprintf("%s-%d", baseID, suffix))
 				continue
 			}
 		}
 		if _, ok := result.Persons[candidate]; ok {
-			candidate = fmt.Sprintf("%s-%d", baseID, suffix)
+			candidate = truncateID(fmt.Sprintf("%s-%d", baseID, suffix))
 			continue
 		}
-		return truncateID(candidate)
+		return candidate
 	}
 }
 

@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -133,7 +134,7 @@ func writeCensusEntities(archivePath string, result *glxlib.CensusResult) (int, 
 
 	// Warn about any existing files that will be overwritten
 	for relPath := range entityFiles {
-		absPath := archivePath + "/" + relPath
+		absPath := filepath.Join(archivePath, relPath)
 		if _, err := os.Stat(absPath); err == nil {
 			fmt.Fprintf(os.Stderr, "Warning: overwriting existing file %s\n", relPath)
 		}

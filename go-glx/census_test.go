@@ -355,7 +355,7 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result.Assertions), 6)
 
 	// Check birth year assertion
-	birthAssertion := result.Assertions["assertion-daniel-lane-birth-year-1860"]
+	birthAssertion := result.Assertions["assertion-person-daniel-lane-birth-year-1860"]
 	require.NotNil(t, birthAssertion, "should have birth year assertion")
 	assert.Equal(t, PersonPropertyBornOn, birthAssertion.Property)
 	assert.Equal(t, "ABT 1830", birthAssertion.Value)
@@ -363,14 +363,14 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	assert.Contains(t, birthAssertion.Notes, "age 30")
 
 	// Check gender assertion
-	genderAssertion := result.Assertions["assertion-daniel-lane-gender-1860"]
+	genderAssertion := result.Assertions["assertion-person-daniel-lane-gender-1860"]
 	require.NotNil(t, genderAssertion, "should have gender assertion")
 	assert.Equal(t, PersonPropertyGender, genderAssertion.Property)
 	assert.Equal(t, "male", genderAssertion.Value)
 	assert.Equal(t, ConfidenceLevelHigh, genderAssertion.Confidence)
 
 	// Check occupation assertion
-	occAssertion := result.Assertions["assertion-daniel-lane-occupation-1860"]
+	occAssertion := result.Assertions["assertion-person-daniel-lane-occupation-1860"]
 	require.NotNil(t, occAssertion, "should have occupation assertion")
 	assert.Equal(t, "occupation", occAssertion.Property)
 	assert.Equal(t, "Farmer", occAssertion.Value)
@@ -378,13 +378,13 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	assert.Equal(t, DateString("1860"), occAssertion.Date)
 
 	// Check residence assertion
-	resAssertion := result.Assertions["assertion-daniel-lane-residence-1860"]
+	resAssertion := result.Assertions["assertion-person-daniel-lane-residence-1860"]
 	require.NotNil(t, resAssertion, "should have residence assertion")
 	assert.Equal(t, PersonPropertyResidence, resAssertion.Property)
 	assert.Equal(t, ConfidenceLevelHigh, resAssertion.Confidence)
 
 	// Check custom property (race) assertion
-	raceAssertion := result.Assertions["assertion-daniel-lane-race-1860"]
+	raceAssertion := result.Assertions["assertion-person-daniel-lane-race-1860"]
 	require.NotNil(t, raceAssertion, "should have race assertion")
 	assert.Equal(t, "race", raceAssertion.Property)
 	assert.Equal(t, "white", raceAssertion.Value)
@@ -417,8 +417,9 @@ func TestBuildCensusEntities_MemberWithExplicitPersonID(t *testing.T) {
 	result, err := BuildCensusEntities(tpl, existing)
 	require.NoError(t, err)
 
-	// Assertions should reference the explicit person_id
-	birthAssertion := result.Assertions["assertion-daniel-lane-birth-year-1860"]
+	// Assertions should reference the explicit person_id, and assertion ID
+	// should use the resolved personID slug, not the name slug
+	birthAssertion := result.Assertions["assertion-person-d-lane-birth-year-1860"]
 	require.NotNil(t, birthAssertion)
 	assert.Equal(t, "person-d-lane", birthAssertion.Subject.Person)
 }
@@ -499,13 +500,14 @@ func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
 	result, err := BuildCensusEntities(tpl, existing)
 	require.NoError(t, err)
 
-	// Assertions must reference the actual resolved ID, not the slugified name
-	birthAssertion := result.Assertions["assertion-daniel-lane-birth-year-1860"]
+	// Assertions must reference the actual resolved ID, not the slugified name.
+	// Assertion IDs also use the resolved personID slug for uniqueness.
+	birthAssertion := result.Assertions["assertion-person-abc123-birth-year-1860"]
 	require.NotNil(t, birthAssertion)
 	assert.Equal(t, "person-abc123", birthAssertion.Subject.Person,
 		"assertion should use resolved person ID, not Slugify(name)")
 
-	resAssertion := result.Assertions["assertion-daniel-lane-residence-1860"]
+	resAssertion := result.Assertions["assertion-person-abc123-residence-1860"]
 	require.NotNil(t, resAssertion)
 	assert.Equal(t, "person-abc123", resAssertion.Subject.Person)
 }
@@ -682,11 +684,11 @@ func TestBuildCensusEntities_NoAgeSkipsBirthYearAssertion(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should NOT have a birth year assertion
-	_, hasBirth := result.Assertions["assertion-daniel-lane-birth-year-1860"]
+	_, hasBirth := result.Assertions["assertion-person-daniel-lane-birth-year-1860"]
 	assert.False(t, hasBirth, "should not have birth year assertion without age")
 
 	// Should still have residence assertion
-	_, hasResidence := result.Assertions["assertion-daniel-lane-residence-1860"]
+	_, hasResidence := result.Assertions["assertion-person-daniel-lane-residence-1860"]
 	assert.True(t, hasResidence, "should have residence assertion regardless")
 }
 
@@ -778,7 +780,7 @@ func TestBuildCensusEntities_ResolveBirthplaceFromExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Birthplace assertion should reference the existing place ID
-	bpAssertion := result.Assertions["assertion-daniel-lane-birthplace-1860"]
+	bpAssertion := result.Assertions["assertion-person-daniel-lane-birthplace-1860"]
 	require.NotNil(t, bpAssertion)
 	assert.Equal(t, "place-virginia", bpAssertion.Value,
 		"should resolve birthplace against existing archive places")
