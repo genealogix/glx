@@ -147,6 +147,8 @@ func resolvePersonForPath(archive *glxlib.GLXFile, query string) (string, error)
 
 // buildPathAdjacency builds an adjacency list from all relationships.
 // Each person maps to a list of edges representing who they're connected to.
+// Uses O(k²) pairwise edges per relationship, which is efficient for genealogy
+// archives where relationships typically have 2-3 participants.
 func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
 	adj := make(map[string][]pathEdge)
 
@@ -196,10 +198,12 @@ func bfsPath(startID, goalID string, adj map[string][]pathEdge, maxHops int) []*
 
 	visited := map[string]bool{startID: true}
 	queue := []*bfsNode{{PersonID: startID}}
+	head := 0
 
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
+	for head < len(queue) {
+		current := queue[head]
+		queue[head] = nil // allow GC of dequeued nodes
+		head++
 
 		if current.Depth >= maxHops {
 			continue
@@ -281,11 +285,13 @@ func pathPersonName(archive *glxlib.GLXFile, personID string) string {
 	if !ok || person == nil {
 		return personID
 	}
-	name := extractPersonName(person)
-	if name == "" {
+	// extractPersonName returns "(unnamed)" when no name property exists,
+	// so fall back to the person ID for a cleaner display.
+	names := extractAllNames(person)
+	if len(names) == 0 {
 		return personID
 	}
-	return name
+	return names[0]
 }
 
 // printPathText prints the path in a human-readable format.
