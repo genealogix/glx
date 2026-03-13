@@ -308,7 +308,8 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 				yearRange := formatYearRange(filteredOtherYears)
 
 				linkMap[otherID] = append(linkMap[otherID], associateLink{
-					Type:  "place_overlap",
+					Type:    "place_overlap",
+					PlaceID: placeID,
 					Label: fmt.Sprintf("Same place: %s (%s)", placeName, yearRange),
 				})
 			}
@@ -340,7 +341,8 @@ func buildPlaceYearIndex(excludeID string, archive *glxlib.GLXFile) map[string]p
 	return index
 }
 
-// filterPlaceYears returns a copy of the placeYearSet with only years in range.
+// filterPlaceYears returns a placeYearSet with only years in range.
+// When no filters are active, returns the original set unchanged.
 func filterPlaceYears(pys placeYearSet, beforeYear, afterYear int) placeYearSet {
 	if beforeYear == 0 && afterYear == 0 {
 		return pys
