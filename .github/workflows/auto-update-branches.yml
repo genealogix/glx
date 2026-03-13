@@ -53,13 +53,11 @@ jobs:
             ENCODED_BRANCH=$(printf '%s' "$BRANCH" | jq -sRr @uri)
 
             # Check if branch is behind main using compare API
-            COMPARE_OUTPUT=$(gh api "repos/$REPO/compare/$ENCODED_BRANCH...$MAIN_SHA" \
-              --jq '.ahead_by' 2>&1)
-            if [ $? -ne 0 ]; then
-              echo "PR #$PR_NUMBER ($BRANCH): failed to compare with main: $COMPARE_OUTPUT"
+            if ! COMMITS_BEHIND=$(gh api "repos/$REPO/compare/$ENCODED_BRANCH...$MAIN_SHA" \
+              --jq '.ahead_by' 2>&1); then
+              echo "PR #$PR_NUMBER ($BRANCH): failed to compare with main: $COMMITS_BEHIND"
               continue
             fi
-            COMMITS_BEHIND="$COMPARE_OUTPUT"
 
             if [ "$COMMITS_BEHIND" = "0" ] || [ -z "$COMMITS_BEHIND" ]; then
               echo "PR #$PR_NUMBER ($BRANCH): up to date"
@@ -69,18 +67,15 @@ jobs:
             echo "PR #$PR_NUMBER ($BRANCH): $COMMITS_BEHIND commits behind main, updating..."
 
             # Use the merge endpoint to merge main into the branch
-            RESULT=$(gh api repos/$REPO/merges \
+            if ! RESULT=$(gh api repos/$REPO/merges \
               -f base="$BRANCH" \
               -f head="main" \
               -f commit_message="Merge main into $BRANCH" \
-              2>&1)
-            MERGE_EXIT=$?
-
-            if [ $MERGE_EXIT -ne 0 ]; then
+              2>&1); then
               if echo "$RESULT" | grep -q 'Merge conflict'; then
                 echo "  Merge conflict — skipping (needs manual resolution)"
               else
-                echo "  Error merging main into $BRANCH (exit $MERGE_EXIT): $RESULT"
+                echo "  Error merging main into $BRANCH: $RESULT"
               fi
               continue
             fi

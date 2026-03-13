@@ -52,6 +52,10 @@ type pathEdge struct {
 
 // showPath loads an archive and finds the shortest path between two persons.
 func showPath(archivePath, fromQuery, toQuery string, maxHops int, jsonOutput bool) error {
+	if maxHops < 1 {
+		return fmt.Errorf("--max-hops must be at least 1, got %d", maxHops)
+	}
+
 	archive, err := loadArchiveForPath(archivePath)
 	if err != nil {
 		return err

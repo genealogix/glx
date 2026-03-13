@@ -15,6 +15,9 @@
 package main
 
 import (
+	"bytes"
+	"os"
+	"strings"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -286,20 +289,38 @@ func TestPathPersonName(t *testing.T) {
 
 func TestShowPath_CompleteFamily(t *testing.T) {
 	// Jane is child of John; should find 1-hop path
-	err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-john-smith-1850", 10, false)
-	require.NoError(t, err)
+	output := capturePathStdout(t, func() {
+		err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-john-smith-1850", 10, false)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "1 hop(s)")
+	assert.Contains(t, output, "Jane Smith")
+	assert.Contains(t, output, "John Smith")
 }
 
 func TestShowPath_CompleteFamily_JSON(t *testing.T) {
-	err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-mary-brown-1852", 10, true)
-	require.NoError(t, err)
+	output := capturePathStdout(t, func() {
+		err := showPath("../docs/examples/complete-family", "person-jane-smith-1876", "person-mary-brown-1852", 10, true)
+		require.NoError(t, err)
+	})
+
+	assert.True(t, strings.HasPrefix(strings.TrimSpace(output), "{"), "JSON output should start with {")
+	assert.Contains(t, output, `"from"`)
+	assert.Contains(t, output, `"to"`)
+	assert.Contains(t, output, `"hops"`)
+	assert.Contains(t, output, `"path"`)
 }
 
 func TestShowPath_CompleteFamily_ViaMarriage(t *testing.T) {
-	// Jane to Mary: 1 hop (direct parent-child)
-	// John to Mary: 1 hop (marriage)
-	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-mary-brown-1852", 10, false)
-	require.NoError(t, err)
+	output := capturePathStdout(t, func() {
+		err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-mary-brown-1852", 10, false)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "1 hop(s)")
+	assert.Contains(t, output, "John Smith")
+	assert.Contains(t, output, "Mary Brown")
 }
 
 func TestShowPath_PersonNotFound(t *testing.T) {
@@ -318,4 +339,44 @@ func TestShowPath_SamePerson(t *testing.T) {
 	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-john-smith-1850", 10, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "same person")
+}
+
+func TestShowPath_InvalidMaxHops(t *testing.T) {
+	err := showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-jane-smith-1876", 0, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--max-hops must be at least 1")
+
+	err = showPath("../docs/examples/complete-family", "person-john-smith-1850", "person-jane-smith-1876", -5, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--max-hops must be at least 1")
+}
+
+// capturePathStdout redirects os.Stdout during fn execution and returns what was written.
+func capturePathStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	origStdout := os.Stdout
+	os.Stdout = w
+
+	wClosed := false
+	defer func() {
+		if !wClosed {
+			_ = w.Close()
+		}
+		os.Stdout = origStdout
+	}()
+
+	fn()
+
+	require.NoError(t, w.Close())
+	wClosed = true
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	require.NoError(t, err)
+
+	return buf.String()
 }

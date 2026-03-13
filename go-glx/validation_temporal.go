@@ -28,6 +28,7 @@ var dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|
 // temporalYearRegexp matches the first 1–4 digit year in a date string.
 var temporalYearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
 
+
 // validateTemporalConsistency checks for logical inconsistencies in dates
 // across persons, events, and relationships. All issues are reported as
 // warnings since dates are often estimates (ABT, BEF, etc.).
@@ -41,6 +42,9 @@ func (glx *GLXFile) validateTemporalConsistency(result *ValidationResult) {
 // their birth date.
 func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
 	for id, person := range glx.Persons {
+		if person == nil {
+			continue
+		}
 		birthYear := ExtractPropertyYear(person.Properties, PersonPropertyBornOn)
 		deathYear := ExtractPropertyYear(person.Properties, PersonPropertyDiedOn)
 
@@ -63,6 +67,9 @@ func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
 // validateParentChildAges checks that parents are born before their children.
 func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 	for relID, rel := range glx.Relationships {
+		if rel == nil {
+			continue
+		}
 		if !isParentChildRelType(rel.Type) {
 			continue
 		}
@@ -79,7 +86,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 
 		for _, parentID := range parentIDs {
 			parent, ok := glx.Persons[parentID]
-			if !ok {
+			if !ok || parent == nil {
 				continue
 			}
 			parentBirth := ExtractPropertyYear(parent.Properties, PersonPropertyBornOn)
@@ -89,7 +96,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 
 			for _, childID := range childIDs {
 				child, ok := glx.Persons[childID]
-				if !ok {
+				if !ok || child == nil {
 					continue
 				}
 				childBirth := ExtractPropertyYear(child.Properties, PersonPropertyBornOn)
@@ -115,6 +122,9 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 // any participant's birth.
 func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 	for eventID, event := range glx.Events {
+		if event == nil {
+			continue
+		}
 		if event.Type != EventTypeMarriage {
 			continue
 		}
@@ -126,7 +136,7 @@ func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 
 		for _, p := range event.Participants {
 			person, ok := glx.Persons[p.Person]
-			if !ok {
+			if !ok || person == nil {
 				continue
 			}
 
