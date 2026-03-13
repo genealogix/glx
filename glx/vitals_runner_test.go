@@ -55,7 +55,7 @@ func TestFindPersonByName(t *testing.T) {
 					},
 				},
 			},
-			"person-mary": {
+			"person-jane": {
 				Properties: map[string]any{
 					"name": map[string]any{
 						"value": "Jane Miller",
@@ -65,12 +65,12 @@ func TestFindPersonByName(t *testing.T) {
 		},
 	}
 
-	id, _, err := findPerson(archive, "Mary")
+	id, _, err := findPerson(archive, "Jane")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if id != "person-mary" {
-		t.Errorf("expected id person-mary, got %s", id)
+	if id != "person-jane" {
+		t.Errorf("expected id person-jane, got %s", id)
 	}
 }
 
