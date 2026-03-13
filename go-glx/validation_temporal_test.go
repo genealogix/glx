@@ -260,3 +260,154 @@ func TestValidatePropertyValue_TemporalValidList(t *testing.T) {
 		t.Errorf("Expected 0 warnings, got %d: %v", len(result.Warnings), result.Warnings)
 	}
 }
+
+// --- Temporal consistency tests ---
+
+func TestValidateDeathBeforeBirth(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"born_on": "1850", "died_on": "1820"}},
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateDeathBeforeBirth(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d", len(result.Warnings))
+	}
+	if !strings.Contains(result.Warnings[0].Message, "death year (1820) is before birth year (1850)") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateDeathBeforeBirth_NoWarningWhenValid(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"born_on": "1850", "died_on": "1920"}},
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateDeathBeforeBirth(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings, got %d", len(result.Warnings))
+	}
+}
+
+func TestValidateDeathBeforeBirth_NilPerson(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": nil,
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateDeathBeforeBirth(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for nil person, got %d", len(result.Warnings))
+	}
+}
+
+func TestValidateParentChildAges(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"parent": {Properties: map[string]any{"born_on": "1880"}},
+			"child":  {Properties: map[string]any{"born_on": "1850"}},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeParentChild,
+				Participants: []Participant{
+					{Person: "parent", Role: ParticipantRoleParent},
+					{Person: "child", Role: ParticipantRoleChild},
+				},
+			},
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateParentChildAges(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d", len(result.Warnings))
+	}
+	if !strings.Contains(result.Warnings[0].Message, "parent parent (born 1880) is born after child child (born 1850)") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateParentChildAges_NilRelationship(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"parent": {Properties: map[string]any{"born_on": "1850"}},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": nil,
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateParentChildAges(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for nil relationship, got %d", len(result.Warnings))
+	}
+}
+
+func TestValidateMarriageBeforeBirth(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"born_on": "1850"}},
+		},
+		Events: map[string]*Event{
+			"event-1": {
+				Type: EventTypeMarriage,
+				Date: "1840",
+				Participants: []Participant{
+					{Person: "person-1", Role: "spouse"},
+				},
+			},
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateMarriageBeforeBirth(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d", len(result.Warnings))
+	}
+	if !strings.Contains(result.Warnings[0].Message, "marriage year (1840) is before participant person-1 birth year (1850)") {
+		t.Errorf("Unexpected message: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestValidateMarriageBeforeBirth_NilEvent(t *testing.T) {
+	glx := &GLXFile{
+		Events: map[string]*Event{
+			"event-1": nil,
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateMarriageBeforeBirth(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for nil event, got %d", len(result.Warnings))
+	}
+}
+
+func TestValidateTemporalConsistency_WiredIntoValidate(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"born_on": "1850", "died_on": "1820"}},
+		},
+	}
+	result := glx.Validate()
+
+	hasTemporalWarning := false
+	for _, w := range result.Warnings {
+		if strings.Contains(w.Message, "death year") {
+			hasTemporalWarning = true
+			break
+		}
+	}
+	if !hasTemporalWarning {
+		t.Error("Validate() should produce temporal consistency warnings")
+	}
+}

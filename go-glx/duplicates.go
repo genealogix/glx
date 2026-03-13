@@ -568,19 +568,12 @@ func levenshteinDistance(a, b string) int {
 			ins := prev[j] + 1
 			del := curr[j-1] + 1
 			sub := prev[j-1] + cost
-			curr[j] = minInt(ins, minInt(del, sub))
+			curr[j] = min(ins, min(del, sub))
 		}
 		prev = curr
 	}
 
 	return prev[lenB]
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // normalizedLevenshtein returns a similarity score between 0.0 and 1.0.
