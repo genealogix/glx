@@ -586,21 +586,13 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 		}
 	}
 
-	// Sort spouses chronologically: dated marriages first (earliest first),
-	// then undated marriages last.
+	// Sort spouses chronologically by full date (not just year).
+	// Uses dateSortKey which handles ISO dates, prefixed dates, and
+	// sorts undated ("\xff") after all dated entries.
 	sort.SliceStable(spouses, func(i, j int) bool {
-		yi := glxlib.ExtractFirstYear(spouses[i].MarriageDate)
-		yj := glxlib.ExtractFirstYear(spouses[j].MarriageDate)
-		if yi == 0 && yj == 0 {
-			return false // both undated, preserve order
-		}
-		if yi == 0 {
-			return false // undated sorts after dated
-		}
-		if yj == 0 {
-			return true // dated sorts before undated
-		}
-		return yi < yj
+		ki := dateSortKey(spouses[i].MarriageDate)
+		kj := dateSortKey(spouses[j].MarriageDate)
+		return ki < kj
 	})
 
 	return spouses
@@ -1015,8 +1007,11 @@ func isFullDate(s string) bool {
 	return len(s) == 10 && s[4] == '-' && s[7] == '-'
 }
 
-// formatReadableDate converts "1863-06-18" to "June 18, 1863".
-// Returns the input unchanged if it's not an ISO date.
+// formatReadableDate converts ISO dates to readable text:
+//   - "1863-06-18" → "June 18, 1863"
+//   - "1850-03"    → "March 1850"
+//
+// Returns the input unchanged for other formats.
 func formatReadableDate(s string) string {
 	s = strings.TrimSpace(s)
 	// Full date: YYYY-MM-DD

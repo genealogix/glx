@@ -445,6 +445,59 @@ func TestFindSpouses_ChronologicalOrder(t *testing.T) {
 	assert.Equal(t, "person-john", spouses[1].PersonID, "second spouse should be John Babcock (married 1863)")
 }
 
+func TestFindSpouses_SameYearDifferentMonths(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary", "gender": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "gender": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "gender": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-b": {
+				Type:       "marriage",
+				StartEvent: "event-marriage-b",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-b", Role: "spouse"},
+				},
+			},
+			"rel-a": {
+				Type:       "marriage",
+				StartEvent: "event-marriage-a",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-a", Role: "spouse"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-marriage-a": {
+				Type: "marriage",
+				Date: "1863-01-15",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-a", Role: "spouse"},
+				},
+			},
+			"event-marriage-b": {
+				Type: "marriage",
+				Date: "1863-12-25",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-b", Role: "spouse"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-mary", archive)
+	require.Len(t, spouses, 2)
+	// Jan 1863 should come before Dec 1863
+	assert.Equal(t, "person-a", spouses[0].PersonID, "Jan marriage should come first")
+	assert.Equal(t, "person-b", spouses[1].PersonID, "Dec marriage should come second")
+}
+
 func TestFindSpouses_UndatedLast(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
