@@ -705,7 +705,7 @@ glx vitals <person> [flags]
 ```
 
 **Arguments:**
-- `<person>` - Person ID (e.g., `person-d-lane`) or name to search for (case-insensitive substring match)
+- `<person>` - Person ID (e.g., `person-robert-webb`) or name to search for (case-insensitive substring match)
 
 **Options:**
 - `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
@@ -720,13 +720,13 @@ If the name matches multiple persons, all matches are listed for disambiguation.
 
 ```bash
 # Look up by person ID
-glx vitals person-d-lane
+glx vitals person-robert-webb
 
 # Look up by name
-glx vitals "Mary Green"
+glx vitals "Jane Miller"
 
 # Specify archive path
-glx vitals "Mary Green" --archive my-archive
+glx vitals "Jane Miller" --archive my-archive
 ```
 
 ### `glx timeline`
@@ -796,7 +796,7 @@ glx summary <person> [flags]
 glx summary person-abc123
 
 # Summary by name search
-glx summary "Mary Lane"
+glx summary "Jane Webb"
 
 # Summary in a specific archive
 glx summary "John Smith" --archive my-family-archive
@@ -885,7 +885,7 @@ Assembles citations from the source title, source type, repository name, URL, an
 
 ```bash
 # Format a specific citation
-glx cite citation-1860-census-lane-household
+glx cite citation-1860-census-webb-household
 
 # Format all citations in the archive
 glx cite
@@ -978,7 +978,7 @@ glx analyze [person] [flags]
 glx analyze
 
 # Focus on one person
-glx analyze person-mary-lane
+glx analyze person-jane-webb
 
 # Run only gap analysis
 glx analyze --check gaps

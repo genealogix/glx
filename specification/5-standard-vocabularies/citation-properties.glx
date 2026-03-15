@@ -34,7 +34,7 @@ citation_properties:
 
   original_place_name:
     label: "Original Place Name"
-    description: "Place name exactly as recorded in the source, before normalization to a place entity (e.g., 'The Town Of Marston, Sauk, Wisconsin, United States' vs the normalized place reference)"
+    description: "Place name exactly as recorded in the source, before normalization to a place entity (e.g., 'The Town Of Oakdale, Hartford, Wisconsin, United States' vs the normalized place reference)"
     value_type: string
 
   external_ids:

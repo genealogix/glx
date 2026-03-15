@@ -21,13 +21,13 @@ import (
 )
 
 func TestGenerateEventTitle_IndividualWithDateAndName(t *testing.T) {
-	title := GenerateEventTitle("birth", []string{"Daniel Lane"}, "1815")
-	assert.Equal(t, "Birth of Daniel Lane (1815)", title)
+	title := GenerateEventTitle("birth", []string{"Robert Webb"}, "1815")
+	assert.Equal(t, "Birth of Robert Webb (1815)", title)
 }
 
 func TestGenerateEventTitle_IndividualWithNameOnly(t *testing.T) {
-	title := GenerateEventTitle("death", []string{"Mary Green"}, "")
-	assert.Equal(t, "Death of Mary Green", title)
+	title := GenerateEventTitle("death", []string{"Jane Miller"}, "")
+	assert.Equal(t, "Death of Jane Miller", title)
 }
 
 func TestGenerateEventTitle_IndividualWithDateOnly(t *testing.T) {
@@ -41,8 +41,8 @@ func TestGenerateEventTitle_IndividualNoInfo(t *testing.T) {
 }
 
 func TestGenerateEventTitle_CoupleWithDate(t *testing.T) {
-	title := GenerateEventTitle("marriage", []string{"Daniel Lane", "Mary Green"}, "ABT 1850")
-	assert.Equal(t, "Marriage of Daniel Lane and Mary Green (1850)", title)
+	title := GenerateEventTitle("marriage", []string{"Robert Webb", "Jane Miller"}, "ABT 1850")
+	assert.Equal(t, "Marriage of Robert Webb and Jane Miller (1850)", title)
 }
 
 func TestGenerateEventTitle_CoupleNoDate(t *testing.T) {
@@ -51,13 +51,13 @@ func TestGenerateEventTitle_CoupleNoDate(t *testing.T) {
 }
 
 func TestGenerateEventTitle_CoupleOneSpouseEmpty(t *testing.T) {
-	title := GenerateEventTitle("marriage", []string{"Daniel Lane", ""}, "1850")
-	assert.Equal(t, "Marriage of Daniel Lane (1850)", title)
+	title := GenerateEventTitle("marriage", []string{"Robert Webb", ""}, "1850")
+	assert.Equal(t, "Marriage of Robert Webb (1850)", title)
 }
 
 func TestGenerateEventTitle_SnakeCaseFallback(t *testing.T) {
-	title := GenerateEventTitle("military_service", []string{"Daniel Lane"}, "1862")
-	assert.Equal(t, "Military Service of Daniel Lane (1862)", title)
+	title := GenerateEventTitle("military_service", []string{"Robert Webb"}, "1862")
+	assert.Equal(t, "Military Service of Robert Webb (1862)", title)
 }
 
 func TestGenerateEventTitle_AllEventTypes(t *testing.T) {
@@ -143,19 +143,19 @@ func TestPersonDisplayName(t *testing.T) {
 		{
 			name: "structured map name",
 			person: &Person{Properties: map[string]any{
-				"name": map[string]any{"value": "Mary Green"},
+				"name": map[string]any{"value": "Jane Miller"},
 			}},
-			want: "Mary Green",
+			want: "Jane Miller",
 		},
 		{
 			name: "temporal list name",
 			person: &Person{Properties: map[string]any{
 				"name": []any{
-					map[string]any{"value": "Mary Lane"},
-					map[string]any{"value": "Mary Green"},
+					map[string]any{"value": "Jane Webb"},
+					map[string]any{"value": "Jane Miller"},
 				},
 			}},
-			want: "Mary Lane",
+			want: "Jane Webb",
 		},
 		{
 			name:   "primary_name fallback",

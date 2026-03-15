@@ -69,7 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
 
 #### Event Entity
-- **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import (e.g., "Birth of Daniel Lane (1815)", "Marriage of John Smith and Jane Doe (1850)")
+- **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Webb Household"). Auto-generated on GEDCOM import (e.g., "Birth of Robert Webb (1815)", "Marriage of John Smith and Jane Doe (1850)")
 
 #### GEDCOM Import
 - **Non-standard date preservation** - BCE dates, Julian/Hebrew/French Republican calendar dates, and dual-year dates are preserved as raw strings instead of being dropped
@@ -115,10 +115,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Updated release workflow to latest action versions** - `actions/checkout@v4` (with `fetch-depth: 0` for proper changelog), `actions/setup-go@v5`, `goreleaser/goreleaser-action@v6`
 
 #### Person Entity
-- **Added name variation tracking** - Expanded the `name.fields.type` classification field with standard values for alternate spellings, abbreviations, and as-recorded forms (`aka`, `maiden`, `anglicized`, `professional`, `as_recorded`). Added documentation and examples for representing name variations like "D. Lane" vs. "Daniel Lane"
+- **Added name variation tracking** - Expanded the `name.fields.type` classification field with standard values for alternate spellings, abbreviations, and as-recorded forms (`aka`, `maiden`, `anglicized`, `professional`, `as_recorded`). Added documentation and examples for representing name variations like "R. Webb" vs. "Robert Webb"
 
 #### Standard Vocabularies
-- **Added `original_place_name` citation property** - Records the verbatim place name from a source before normalization to a place entity (e.g., "The Town Of Marston" vs the normalized place reference)
+- **Added `original_place_name` citation property** - Records the verbatim place name from a source before normalization to a place entity (e.g., "The Town Of Oakdale" vs the normalized place reference)
 - **Added relationship types** - `neighbor`, `coworker`, `housemate` for census/social records; `apprenticeship`, `employment`, `enslavement`, `relative` for occupational and generic kinship relationships
 - **Added event types** - `legal_separation`, `taxation`, `voter_registration` for legal/administrative events; `military_service`, `stillborn`, `affiliation` for service periods, stillbirths, and memberships
 - **Added source types `population_register`, `tax_record`, `notarial_record`** - Common European and colonial record types

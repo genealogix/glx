@@ -89,7 +89,7 @@ func TestDiffArchives_Integration_VerboseOutput(t *testing.T) {
 	oldYAML := `persons:
   person-mary:
     properties:
-      name: Mary Lane
+      name: Jane Webb
       born_on: "ABT 1832"
 `
 	require.NoError(t, os.WriteFile(filepath.Join(oldDir, "persons", "person-mary.glx"), []byte(oldYAML), 0o644))
@@ -99,7 +99,7 @@ func TestDiffArchives_Integration_VerboseOutput(t *testing.T) {
 	newYAML := `persons:
   person-mary:
     properties:
-      name: Mary Lane
+      name: Jane Webb
       born_on: "1832"
       died_on: "1905"
 `

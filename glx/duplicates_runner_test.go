@@ -29,8 +29,8 @@ func TestFindDuplicates_Integration_TextOutput(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
 
-	writeTestPersonFull(t, dir, "person-d-lane", "D Lane", "1815", "place-va")
-	writeTestPersonFull(t, dir, "person-daniel-lane", "Daniel Lane", "1815", "place-va")
+	writeTestPersonFull(t, dir, "person-r-webb", "R Webb", "1815", "place-va")
+	writeTestPersonFull(t, dir, "person-robert-webb", "Robert Webb", "1815", "place-va")
 
 	output := captureStdout(t, func() {
 		err := findDuplicates(dir, 0.4, "", false)
@@ -46,8 +46,8 @@ func TestFindDuplicates_Integration_JSONOutput(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
 
-	writeTestPersonFull(t, dir, "person-d-lane", "D Lane", "1815", "place-va")
-	writeTestPersonFull(t, dir, "person-daniel-lane", "Daniel Lane", "1815", "place-va")
+	writeTestPersonFull(t, dir, "person-r-webb", "R Webb", "1815", "place-va")
+	writeTestPersonFull(t, dir, "person-robert-webb", "Robert Webb", "1815", "place-va")
 
 	output := captureStdout(t, func() {
 		err := findDuplicates(dir, 0.4, "", true)
@@ -63,11 +63,11 @@ func TestFindDuplicates_Integration_PersonFilter(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
 
-	writeTestPersonFull(t, dir, "person-d-lane", "D Lane", "1815", "place-va")
-	writeTestPersonFull(t, dir, "person-daniel-lane", "Daniel Lane", "1815", "place-va")
+	writeTestPersonFull(t, dir, "person-r-webb", "R Webb", "1815", "place-va")
+	writeTestPersonFull(t, dir, "person-robert-webb", "Robert Webb", "1815", "place-va")
 	writeTestPerson(t, dir, "person-john-smith", "John Smith", "1830")
 
-	err := findDuplicates(dir, 0.4, "person-d-lane", false)
+	err := findDuplicates(dir, 0.4, "person-r-webb", false)
 	assert.NoError(t, err)
 }
 
