@@ -207,38 +207,41 @@ func addCensusYearFromSources(archive *glxlib.GLXFile, personCensusYears map[str
 			if cit == nil {
 				continue
 			}
-			src := archive.Sources[cit.SourceID]
-			if src == nil || src.Type != glxlib.SourceTypeCensus {
-				continue
-			}
-			year := glxlib.ExtractFirstYear(string(src.Date))
-			if year == 0 {
-				year = glxlib.ExtractFirstYear(src.Title)
-			}
-			if year > 0 {
-				if personCensusYears[personID] == nil {
-					personCensusYears[personID] = make(map[int]bool)
-				}
-				personCensusYears[personID][year] = true
-			}
+			indexCensusSource(archive.Sources[cit.SourceID], personID, personCensusYears)
 		}
 
 		// Check direct sources
 		for _, srcID := range assertion.Sources {
-			src := archive.Sources[srcID]
-			if src == nil || src.Type != glxlib.SourceTypeCensus {
-				continue
+			indexCensusSource(archive.Sources[srcID], personID, personCensusYears)
+		}
+	}
+}
+
+// indexCensusSource indexes census years from a source for a person.
+// Checks the source date first, then matches any census year mentioned
+// in the title (aligning with findCensusMatch in coverage_runner.go).
+func indexCensusSource(src *glxlib.Source, personID string, personCensusYears map[string]map[int]bool) {
+	if src == nil || src.Type != glxlib.SourceTypeCensus {
+		return
+	}
+
+	// Try source date first
+	year := glxlib.ExtractFirstYear(string(src.Date))
+	if year > 0 {
+		if personCensusYears[personID] == nil {
+			personCensusYears[personID] = make(map[int]bool)
+		}
+		personCensusYears[personID][year] = true
+		return
+	}
+
+	// Fall back to matching any census year in the title
+	for _, censusYear := range usFederalCensusYears {
+		if strings.Contains(src.Title, fmt.Sprintf("%d", censusYear)) {
+			if personCensusYears[personID] == nil {
+				personCensusYears[personID] = make(map[int]bool)
 			}
-			year := glxlib.ExtractFirstYear(string(src.Date))
-			if year == 0 {
-				year = glxlib.ExtractFirstYear(src.Title)
-			}
-			if year > 0 {
-				if personCensusYears[personID] == nil {
-					personCensusYears[personID] = make(map[int]bool)
-				}
-				personCensusYears[personID][year] = true
-			}
+			personCensusYears[personID][censusYear] = true
 		}
 	}
 }
