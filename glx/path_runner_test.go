@@ -273,8 +273,8 @@ func TestResolvePersonForPath_Ambiguous(t *testing.T) {
 }
 
 func TestFormatRelLabel(t *testing.T) {
-	assert.Equal(t, "parent child [child]", formatRelLabel("parent_child", "child"))
-	assert.Equal(t, "marriage [spouse]", formatRelLabel("marriage", "spouse"))
+	assert.Equal(t, "child in parent child", formatRelLabel("parent_child", "child"))
+	assert.Equal(t, "spouse in marriage", formatRelLabel("marriage", "spouse"))
 	assert.Equal(t, "neighbor", formatRelLabel("neighbor", ""))
 }
 

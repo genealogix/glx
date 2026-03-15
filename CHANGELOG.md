@@ -10,6 +10,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.0-beta.9]
+
+### Added
+
+#### CLI
+- **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
+
+---
+
 ## [0.0.0-beta.8] - 2026-03-15
 
 ### Added
@@ -49,7 +58,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
-- **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
 - **Added `glx timeline` command** - Display chronological events for a person, including direct events and family events (spouse/child births, parent deaths) via relationship traversal. Supports `--no-family` flag to exclude family events; undated events shown in a separate section
 - **Added `glx summary` command** - Comprehensive person profile showing identity, vital events, life events, family (spouses, parents, siblings), other relationships, and an auto-generated life history narrative

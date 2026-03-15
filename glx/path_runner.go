@@ -47,7 +47,7 @@ type pathEdge struct {
 	PersonID       string
 	RelationshipID string
 	RelType        string
-	Role           string // role of the destination person in the relationship
+	Role           string // role of the source person in the relationship
 }
 
 // showPath loads an archive and finds the shortest path between two persons.
@@ -172,7 +172,7 @@ func buildPathAdjacency(archive *glxlib.GLXFile) map[string][]pathEdge {
 					PersonID:       pj.Person,
 					RelationshipID: relID,
 					RelType:        rel.Type,
-					Role:           pj.Role,
+					Role:           pi.Role,
 				})
 			}
 		}
@@ -264,15 +264,17 @@ func buildPathResult(fromID, toID string, path []*bfsNode, archive *glxlib.GLXFi
 
 	result.Hops = len(path) - 1
 
-	for _, node := range path {
+	// Build hops with relationship info on the source person, not the destination.
+	for i, node := range path {
 		hop := pathHop{
 			PersonID:   node.PersonID,
 			PersonName: pathPersonName(archive, node.PersonID),
 		}
-		if node.Edge != nil {
-			hop.RelationshipID = node.Edge.RelationshipID
-			hop.RelType = node.Edge.RelType
-			hop.Role = node.Edge.Role
+		// Attach the next node's edge info to this hop (the source of that edge).
+		if i+1 < len(path) && path[i+1].Edge != nil {
+			hop.RelationshipID = path[i+1].Edge.RelationshipID
+			hop.RelType = path[i+1].Edge.RelType
+			hop.Role = path[i+1].Edge.Role
 		}
 		result.Path = append(result.Path, hop)
 	}
@@ -303,15 +305,12 @@ func printPathText(result *pathResult) {
 
 	fmt.Printf("\nPath from %s to %s (%d hop(s)):\n\n", result.From, result.To, result.Hops)
 
-	for i, hop := range result.Path {
-		if i == 0 {
-			fmt.Printf("  %s (%s)\n", hop.PersonName, hop.PersonID)
-			continue
-		}
-
-		relLabel := formatRelLabel(hop.RelType, hop.Role)
-		fmt.Printf("    ── %s ──>\n", relLabel)
+	for _, hop := range result.Path {
 		fmt.Printf("  %s (%s)\n", hop.PersonName, hop.PersonID)
+		if hop.RelType != "" {
+			relLabel := formatRelLabel(hop.RelType, hop.Role)
+			fmt.Printf("    - %s ->\n", relLabel)
+		}
 	}
 
 	fmt.Println()
@@ -319,11 +318,11 @@ func printPathText(result *pathResult) {
 
 // formatRelLabel creates a display label from relationship type and role.
 func formatRelLabel(relType, role string) string {
-	label := strings.ReplaceAll(relType, "_", " ")
+	relType = strings.ReplaceAll(relType, "_", " ")
 	if role != "" {
-		label += " [" + role + "]"
+		return role + " in " + relType
 	}
-	return label
+	return relType
 }
 
 // printPathJSON outputs the result as JSON.
