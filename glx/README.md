@@ -912,8 +912,8 @@ glx cluster <person> [flags]
 **Options:**
 - `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
 - `--place <id>` - Limit analysis to events occurring in the specified place or any of its descendant places
-- `--before <year>` - Only consider dated events before this year (undated events are still included)
-- `--after <year>` - Only consider dated events after this year (undated events are still included)
+- `--before <year>` - Only consider dated events before this year. Undated events are still included for census/shared-event links; place overlap requires dated events
+- `--after <year>` - Only consider dated events after this year. Undated events are still included for census/shared-event links; place overlap requires dated events
 - `--json` - Output results as JSON
 
 **Scoring:**
@@ -921,6 +921,7 @@ Associates are ranked by connection strength:
 - Census household co-residence: 3 points
 - Shared event participation: 2 points
 - Place overlap: 1 point
+
 ### `glx path`
 
 Find the shortest relationship path between two people using breadth-first search.

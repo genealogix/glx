@@ -515,19 +515,6 @@ func yearInRange(year, beforeYear, afterYear int) bool {
 	return true
 }
 
-// yearRangeInFilter checks if any year in the set is within the filter range.
-func yearRangeInFilter(years []int, beforeYear, afterYear int) bool {
-	if beforeYear == 0 && afterYear == 0 {
-		return true
-	}
-	for _, y := range years {
-		if yearInRange(y, beforeYear, afterYear) {
-			return true
-		}
-	}
-	return false
-}
-
 func formatYearRange(years []int) string {
 	if len(years) == 0 {
 		return "?"

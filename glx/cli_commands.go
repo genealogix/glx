@@ -865,8 +865,8 @@ persons, all matches are listed for disambiguation.`,
 func init() {
 	clusterCmd.Flags().StringVarP(&clusterArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	clusterCmd.Flags().StringVar(&clusterPlace, "place", "", "Filter by place ID (includes descendant places)")
-	clusterCmd.Flags().IntVar(&clusterBefore, "before", 0, "Include only events before this year")
-	clusterCmd.Flags().IntVar(&clusterAfter, "after", 0, "Include only events after this year")
+	clusterCmd.Flags().IntVar(&clusterBefore, "before", 0, "Only consider dated events before this year (undated events are still included)")
+	clusterCmd.Flags().IntVar(&clusterAfter, "after", 0, "Only consider dated events after this year (undated events are still included)")
 	clusterCmd.Flags().BoolVar(&clusterJSON, "json", false, "Output as JSON")
 }
 
