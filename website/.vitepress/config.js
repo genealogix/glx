@@ -285,7 +285,8 @@ export default defineConfig({
             { text: 'glx summary', link: '/cli#glx-summary' },
             { text: 'glx ancestors', link: '/cli#glx-ancestors' },
             { text: 'glx descendants', link: '/cli#glx-descendants' },
-            { text: 'glx cite', link: '/cli#glx-cite' }
+            { text: 'glx cite', link: '/cli#glx-cite' },
+            { text: 'glx path', link: '/cli#glx-path' }
           ]
         },
         {
