@@ -211,7 +211,7 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 	}
 
 	// Create new place with collision check
-	placeID := uniquePlaceID(Slugify("place", loc.Place), existing, result)
+	placeID := uniquePlaceID(slugify("place", loc.Place), existing, result)
 	result.Place[placeID] = &Place{Name: loc.Place}
 	return placeID, nil
 }
@@ -350,7 +350,7 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 
 		// Add age as participant property
 		if member.Age != nil {
-			p.Properties = map[string]any{"age_at_event": fmt.Sprintf("%d", *member.Age)}
+			p.Properties = map[string]any{"age_at_event": *member.Age}
 		}
 
 		participants = append(participants, p)
@@ -399,7 +399,7 @@ func resolveCensusPerson(member CensusHouseholdMember, existing *GLXFile, result
 	}
 
 	// Create new person with unique ID
-	personID := uniquePersonID(Slugify("person", member.Name), existing, result)
+	personID := uniquePersonID(slugify("person", member.Name), existing, result)
 
 	person := &Person{
 		Properties: map[string]any{
@@ -459,7 +459,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 
 		// Use personID slug (not name slug) for assertion IDs to avoid
 		// collisions when multiple members share the same name.
-		pidSlug := Slugify("", personID)
+		pidSlug := slugify("", personID)
 
 		// Birth year from age
 		if member.Age != nil {
@@ -500,7 +500,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 				Value:      birthplaceRef,
 				Citations:  []string{citationID},
 				Confidence: ConfidenceLevelMedium,
-				Notes:      fmt.Sprintf("%d census lists birthplace as %q.", census.Year, member.Birthplace),
+				Notes:      birthplaceNote(census.Year, member.Birthplace, member.BirthplaceID),
 			}
 		}
 
@@ -546,7 +546,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 		// Custom properties
 		for prop, val := range member.Properties {
 			valStr := fmt.Sprint(val)
-			propSlug := Slugify("", prop)
+			propSlug := slugify("", prop)
 			assertionID := uniqueAssertionID(fmt.Sprintf("assertion-%s-%s-%s", pidSlug, propSlug, yearStr), existing, result)
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
@@ -565,6 +565,16 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 // resolveBirthplace attempts to match a birthplace name to a place ID
 // in the existing archive and current batch. If no match is found, creates
 // a new Place entity so the assertion value is a valid place reference.
+// birthplaceNote generates the assertion note for a birthplace, using the
+// free-text name when available and falling back to the ID.
+func birthplaceNote(censusYear int, birthplace, birthplaceID string) string {
+	display := birthplace
+	if display == "" {
+		display = birthplaceID
+	}
+	return fmt.Sprintf("%d census lists birthplace as %q.", censusYear, display)
+}
+
 func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) string {
 	// Check existing archive places
 	if existing != nil && existing.Places != nil {
@@ -581,7 +591,7 @@ func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) str
 		}
 	}
 	// Create a new place entity for the unresolved birthplace
-	placeID := uniquePlaceID(Slugify("place", name), existing, result)
+	placeID := uniquePlaceID(slugify("place", name), existing, result)
 	result.Place[placeID] = &Place{Name: name}
 	return placeID
 }
@@ -731,7 +741,7 @@ func truncateIDWithSuffix(baseID string, suffix int) string {
 }
 
 // Slugify generates a deterministic entity ID from a prefix and name.
-func Slugify(prefix, name string) string {
+func slugify(prefix, name string) string {
 	slug := slugifyString(name)
 	if prefix == "" {
 		return slug

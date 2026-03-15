@@ -511,7 +511,7 @@ func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
 	birthAssertion := result.Assertions["assertion-person-abc123-birth-year-1860"]
 	require.NotNil(t, birthAssertion)
 	assert.Equal(t, "person-abc123", birthAssertion.Subject.Person,
-		"assertion should use resolved person ID, not Slugify(name)")
+		"assertion should use resolved person ID, not slugify(name)")
 
 	resAssertion := result.Assertions["assertion-person-abc123-residence-1860"]
 	require.NotNil(t, resAssertion)
@@ -536,7 +536,7 @@ func TestBuildCensusEntities_ParticipantAge(t *testing.T) {
 
 	event := result.Event[result.EventID]
 	require.Len(t, event.Participants, 1)
-	assert.Equal(t, "30", event.Participants[0].Properties["age_at_event"])
+	assert.Equal(t, 30, event.Participants[0].Properties["age_at_event"])
 }
 
 func TestValidateCensusTemplate_MissingYear(t *testing.T) {
@@ -604,7 +604,7 @@ func TestValidateCensusTemplate_MemberMissingName(t *testing.T) {
 	assert.Contains(t, err.Error(), "name")
 }
 
-func TestSlugify(t *testing.T) {
+func Test_slugify(t *testing.T) {
 	tests := []struct {
 		prefix string
 		name   string
@@ -619,8 +619,8 @@ func TestSlugify(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := Slugify(tt.prefix, tt.name)
-		assert.Equal(t, tt.want, got, "Slugify(%q, %q)", tt.prefix, tt.name)
+		got := slugify(tt.prefix, tt.name)
+		assert.Equal(t, tt.want, got, "slugify(%q, %q)", tt.prefix, tt.name)
 	}
 }
 

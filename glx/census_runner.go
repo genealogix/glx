@@ -200,38 +200,40 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 		}
 	}
 
-	// Check for ID collisions with existing archive entities
+	// Check for ID collisions with existing archive entities.
+	// Only non-nil values are treated as collisions — nil entries from
+	// partially-loaded archives are not considered real entities.
 	for id := range result.Persons {
 		if existing.Persons != nil {
-			if _, ok := existing.Persons[id]; ok {
+			if v, ok := existing.Persons[id]; ok && v != nil {
 				return fmt.Errorf("generated person ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Event {
 		if existing.Events != nil {
-			if _, ok := existing.Events[id]; ok {
+			if v, ok := existing.Events[id]; ok && v != nil {
 				return fmt.Errorf("generated event ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Place {
 		if existing.Places != nil {
-			if _, ok := existing.Places[id]; ok {
+			if v, ok := existing.Places[id]; ok && v != nil {
 				return fmt.Errorf("generated place ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Source {
 		if existing.Sources != nil {
-			if _, ok := existing.Sources[id]; ok {
+			if v, ok := existing.Sources[id]; ok && v != nil {
 				return fmt.Errorf("generated source ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Citation {
 		if existing.Citations != nil {
-			if _, ok := existing.Citations[id]; ok {
+			if v, ok := existing.Citations[id]; ok && v != nil {
 				return fmt.Errorf("generated citation ID %s collides with existing archive entity", id)
 			}
 		}
