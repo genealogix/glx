@@ -64,6 +64,11 @@
           }
         }
       },
+      "anyOf": [
+        { "required": ["value_type"] },
+        { "required": ["reference_type"] },
+        { "required": ["vocabulary_type"] }
+      ],
       "allOf": [
         {
           "not": {
