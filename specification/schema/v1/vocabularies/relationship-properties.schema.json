@@ -40,6 +40,10 @@
           "enum": ["persons", "places", "events", "relationships", "sources", "citations", "repositories", "media"],
           "description": "Entity type for reference properties"
         },
+        "vocabulary_type": {
+          "type": "string",
+          "description": "Vocabulary type that constrains allowed values (e.g., gender_types)"
+        },
         "temporal": {
           "type": "boolean",
           "description": "Whether this property can vary over time"
@@ -60,9 +64,28 @@
           }
         }
       },
-      "not": {
-        "required": ["value_type", "reference_type"]
-      }
+      "anyOf": [
+        { "required": ["value_type"] },
+        { "required": ["reference_type"] },
+        { "required": ["vocabulary_type"] }
+      ],
+      "allOf": [
+        {
+          "not": {
+            "required": ["value_type", "reference_type"]
+          }
+        },
+        {
+          "not": {
+            "required": ["value_type", "vocabulary_type"]
+          }
+        },
+        {
+          "not": {
+            "required": ["reference_type", "vocabulary_type"]
+          }
+        }
+      ]
     },
     "FieldDefinition": {
       "type": "object",
