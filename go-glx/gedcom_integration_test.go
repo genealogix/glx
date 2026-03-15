@@ -196,12 +196,12 @@ func TestNameSubstructureToFieldsWithType(t *testing.T) {
 	}{
 		{
 			name:     "birth type",
-			ns:       &NameSubstructure{TYPE: "birth", GIVN: "Mary", SURN: "Green"},
+			ns:       &NameSubstructure{TYPE: "birth", GIVN: "Mary", SURN: "Miller"},
 			wantType: "birth",
 		},
 		{
 			name:     "married type",
-			ns:       &NameSubstructure{TYPE: "married", GIVN: "Mary", SURN: "Lane"},
+			ns:       &NameSubstructure{TYPE: "married", GIVN: "Mary", SURN: "Webb"},
 			wantType: "married",
 		},
 		{
@@ -251,8 +251,8 @@ func TestNameSubstructureToFieldsWithType(t *testing.T) {
 
 func TestNameTypeExtraction(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" +
-		"0 @I1@ INDI\n1 NAME Mary /Green/\n2 TYPE BIRTH\n2 GIVN Mary\n2 SURN Green\n" +
-		"1 NAME Mary /Lane/\n2 TYPE MARRIED\n2 GIVN Mary\n2 SURN Lane\n" +
+		"0 @I1@ INDI\n1 NAME Mary /Miller/\n2 TYPE BIRTH\n2 GIVN Mary\n2 SURN Miller\n" +
+		"1 NAME Mary /Webb/\n2 TYPE MARRIED\n2 GIVN Mary\n2 SURN Webb\n" +
 		"0 TRLR\n"
 
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
@@ -305,8 +305,8 @@ func TestNameTypeExtraction(t *testing.T) {
 
 	// ExtractNameFields should return the first (primary) name's fields
 	given, surname := ExtractNameFields(nameProp)
-	if given != "Mary" || surname != "Green" {
-		t.Errorf("ExtractNameFields = (%q, %q), want (\"Mary\", \"Green\")", given, surname)
+	if given != "Mary" || surname != "Miller" {
+		t.Errorf("ExtractNameFields = (%q, %q), want (\"Mary\", \"Miller\")", given, surname)
 	}
 }
 
