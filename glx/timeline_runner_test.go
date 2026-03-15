@@ -74,6 +74,9 @@ func TestFormatEventTypeLabel(t *testing.T) {
 
 func TestCollectDirectEvents(t *testing.T) {
 	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-john": {Properties: map[string]any{"name": "John Smith"}},
+		},
 		Events: map[string]*glxlib.Event{
 			"event-birth": {
 				Type: "birth",
@@ -111,6 +114,86 @@ func TestCollectDirectEvents(t *testing.T) {
 		if e.IsFamily {
 			t.Errorf("direct event %q should not be marked as family", e.Label)
 		}
+	}
+}
+
+func TestCollectDirectEvents_SynthesizesFromProperties(t *testing.T) {
+	// Person has born_on/died_on properties but no birth/death event entities
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-robert": {Properties: map[string]any{
+				"name":    "Robert Webb",
+				"born_on": "ABT 1815",
+				"born_at": "place-virginia",
+				"died_on": "10 FEB 1863",
+				"died_at": "place-tn",
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-census-1860": {
+				Type: "census",
+				Date: "1860",
+				Participants: []glxlib.Participant{
+					{Person: "person-robert", Role: "subject"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-virginia": {Name: "Virginia"},
+			"place-tn":       {Name: "Riverside, TN"},
+		},
+	}
+
+	entries := collectDirectEvents("person-robert", archive)
+
+	// Should have 3 entries: census + synthesized birth + synthesized death
+	if len(entries) != 3 {
+		t.Fatalf("expected 3 entries (census + birth + death), got %d", len(entries))
+	}
+
+	labels := map[string]bool{}
+	for _, e := range entries {
+		labels[e.Label] = true
+	}
+	if !labels["Birth"] {
+		t.Error("expected synthesized Birth entry from born_on property")
+	}
+	if !labels["Death"] {
+		t.Error("expected synthesized Death entry from died_on property")
+	}
+	if !labels["Census"] {
+		t.Error("expected Census event entry")
+	}
+}
+
+func TestCollectDirectEvents_NoDuplicateWhenEventExists(t *testing.T) {
+	// Person has both a birth event AND born_on property — should not duplicate
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-john": {Properties: map[string]any{
+				"name":    "John Smith",
+				"born_on": "1850-01-15",
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth": {
+				Type: "birth",
+				Date: "1850-01-15",
+				Participants: []glxlib.Participant{
+					{Person: "person-john", Role: "subject"},
+				},
+			},
+		},
+	}
+
+	entries := collectDirectEvents("person-john", archive)
+
+	// Should have exactly 1 entry (the event), not a duplicate from properties
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry (no duplicate), got %d", len(entries))
+	}
+	if entries[0].Label != "Birth" {
+		t.Errorf("expected Birth, got %s", entries[0].Label)
 	}
 }
 
