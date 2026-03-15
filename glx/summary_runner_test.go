@@ -372,12 +372,174 @@ func TestNarrativeDate(t *testing.T) {
 		{"BEF 1920", "before 1920"},
 		{"AFT 1880", "after 1880"},
 		{"BET 1880 AND 1890", "between 1880 and 1890"},
+		{"1863-06-18", "on June 18, 1863"},
+		{"1850-03-15", "on March 15, 1850"},
+		{"ABT 1863-06-18", "about June 18, 1863"},
+		{"BEF 1920-01-01", "before January 1, 1920"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			assert.Equal(t, tt.want, narrativeDate(tt.input))
 		})
 	}
+}
+
+func TestFormatReadableDate(t *testing.T) {
+	assert.Equal(t, "June 18, 1863", formatReadableDate("1863-06-18"))
+	assert.Equal(t, "January 1, 1920", formatReadableDate("1920-01-01"))
+	assert.Equal(t, "December 25, 1900", formatReadableDate("1900-12-25"))
+	assert.Equal(t, "March 1850", formatReadableDate("1850-03"))
+	assert.Equal(t, "1850", formatReadableDate("1850"))
+	assert.Equal(t, "ABT 1850", formatReadableDate("ABT 1850"))
+}
+
+func TestFindSpouses_ChronologicalOrder(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary Green", "gender": "female"}},
+			"person-dan":  {Properties: map[string]any{"name": "Daniel Lane", "gender": "male"}},
+			"person-john": {Properties: map[string]any{"name": "John Babcock", "gender": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-marriage-babcock": {
+				Type:       "marriage",
+				StartEvent: "event-marriage-babcock",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-john", Role: "spouse"},
+				},
+			},
+			"rel-marriage-lane": {
+				Type: "marriage",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-dan", Role: "spouse"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-marriage-babcock": {
+				Type: "marriage",
+				Date: "1863-06-18",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-john", Role: "spouse"},
+				},
+			},
+			"event-marriage-lane": {
+				Type: "marriage",
+				Date: "1850",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-dan", Role: "spouse"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-mary", archive)
+	require.Len(t, spouses, 2)
+	// Daniel Lane (1850) should come before John Babcock (1863)
+	assert.Equal(t, "person-dan", spouses[0].PersonID, "first spouse should be Daniel Lane (married ~1850)")
+	assert.Equal(t, "person-john", spouses[1].PersonID, "second spouse should be John Babcock (married 1863)")
+}
+
+func TestFindSpouses_SameYearDifferentMonths(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary", "gender": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "gender": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "gender": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-b": {
+				Type:       "marriage",
+				StartEvent: "event-marriage-b",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-b", Role: "spouse"},
+				},
+			},
+			"rel-a": {
+				Type:       "marriage",
+				StartEvent: "event-marriage-a",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-a", Role: "spouse"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-marriage-a": {
+				Type: "marriage",
+				Date: "1863-01-15",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-a", Role: "spouse"},
+				},
+			},
+			"event-marriage-b": {
+				Type: "marriage",
+				Date: "1863-12-25",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-b", Role: "spouse"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-mary", archive)
+	require.Len(t, spouses, 2)
+	// Jan 1863 should come before Dec 1863
+	assert.Equal(t, "person-a", spouses[0].PersonID, "Jan marriage should come first")
+	assert.Equal(t, "person-b", spouses[1].PersonID, "Dec marriage should come second")
+}
+
+func TestFindSpouses_UndatedLast(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary", "gender": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "gender": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "gender": "male"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-a": {
+				Type: "marriage",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-a", Role: "spouse"},
+				},
+			},
+			"rel-b": {
+				Type:       "marriage",
+				StartEvent: "event-marriage-b",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-b", Role: "spouse"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-marriage-b": {
+				Type: "marriage",
+				Date: "1870",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-b", Role: "spouse"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	spouses := findSpouses("person-mary", archive)
+	require.Len(t, spouses, 2)
+	// Dated (Spouse B, 1870) should come before undated (Spouse A)
+	assert.Equal(t, "person-b", spouses[0].PersonID, "dated spouse should come first")
+	assert.Equal(t, "person-a", spouses[1].PersonID, "undated spouse should come last")
 }
 
 func TestPronounFor(t *testing.T) {
