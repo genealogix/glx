@@ -83,6 +83,14 @@ type placeAnalysis struct {
 	Unreferenced       []string            // placeIDs not referenced by any event, assertion, or parent
 }
 
+// placeRefPropertyKeys are person/assertion properties that reference places.
+var placeRefPropertyKeys = []string{"born_at", "died_at", "buried_at", "residence"}
+
+// placeRefProperties is the set form of placeRefPropertyKeys for quick lookup.
+var placeRefProperties = map[string]bool{
+	"born_at": true, "died_at": true, "buried_at": true, "residence": true,
+}
+
 // topLevelTypes are place types that don't require a parent.
 var topLevelTypes = map[string]bool{
 	"country": true,
@@ -206,33 +214,26 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 		}
 	}
 
-	// Places referenced as assertion subjects
-	for _, a := range archive.Assertions {
-		if a != nil && a.Subject.Place != "" {
-			referenced[a.Subject.Place] = struct{}{}
-		}
-	}
-
 	// Places referenced in person properties (born_at, died_at, residence, etc.)
-	placePropertyKeys := []string{"born_at", "died_at", "buried_at", "residence"}
 	for _, person := range archive.Persons {
 		if person == nil || person.Properties == nil {
 			continue
 		}
-		for _, key := range placePropertyKeys {
+		for _, key := range placeRefPropertyKeys {
 			collectPlaceRefsFromProperty(person.Properties[key], referenced)
 		}
 	}
 
-	// Places referenced as assertion values for place-reference properties
+	// Places referenced in assertions: as subjects or as values of place-reference properties
 	for _, a := range archive.Assertions {
 		if a == nil {
 			continue
 		}
-		if a.Property == "born_at" || a.Property == "died_at" || a.Property == "buried_at" || a.Property == "residence" {
-			if a.Value != "" {
-				referenced[a.Value] = struct{}{}
-			}
+		if a.Subject.Place != "" {
+			referenced[a.Subject.Place] = struct{}{}
+		}
+		if placeRefProperties[a.Property] && a.Value != "" {
+			referenced[a.Value] = struct{}{}
 		}
 	}
 
@@ -340,7 +341,7 @@ func printPlaceAnalysis(a *placeAnalysis) {
 	// Unreferenced
 	if len(a.Unreferenced) > 0 {
 		issues += len(a.Unreferenced)
-		fmt.Printf("\nUnreferenced (not used by any event, assertion, or as parent):\n")
+		fmt.Printf("\nUnreferenced (not used by any event, person property, assertion, or as parent):\n")
 		for _, id := range a.Unreferenced {
 			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
 		}
