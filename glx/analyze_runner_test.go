@@ -181,9 +181,65 @@ func TestAnalyzeGaps_NoMarriageEvent(t *testing.T) {
 	}
 
 	issues := analyzeGaps(archive)
-	found := findIssueByMessage(issues, "person-a", "no marriage event")
+	found := findIssueByMessage(issues, "person-a", "no marriage event for")
 	if found == nil {
 		t.Fatal("expected no-marriage-event issue")
+	}
+	if !containsSubstring(found.Message, "person-b") {
+		t.Error("expected spouse ID in message")
+	}
+}
+
+func TestAnalyzeGaps_PerSpouseMarriageCheck(t *testing.T) {
+	// Person with two spouses: one has marriage event, one doesn't
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary":   {Properties: map[string]any{"name": "Mary", "born_on": "1832"}},
+			"person-dan":    {Properties: map[string]any{"name": "Daniel Lane", "born_on": "1830"}},
+			"person-john":   {Properties: map[string]any{"name": "John Babcock", "born_on": "1825"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-lane": {
+				Type: "marriage",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-dan", Role: "spouse"},
+				},
+			},
+			"rel-babcock": {
+				Type:       "marriage",
+				StartEvent: "event-marriage-babcock",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-john", Role: "spouse"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-marriage-babcock": {
+				Type: "marriage",
+				Date: "1863-06-18",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "spouse"},
+					{Person: "person-john", Role: "spouse"},
+				},
+			},
+		},
+	}
+
+	issues := analyzeGaps(archive)
+
+	// Should flag missing marriage event for Daniel Lane
+	danIssue := findIssueByMessage(issues, "person-mary", "Daniel Lane")
+	if danIssue == nil {
+		t.Error("expected gap for missing Daniel Lane marriage event")
+	}
+
+	// Should NOT flag John Babcock (has marriage event)
+	for _, issue := range issues {
+		if issue.Person == "person-mary" && containsSubstring(issue.Message, "John Babcock") && containsSubstring(issue.Message, "no marriage event") {
+			t.Error("should NOT flag John Babcock — marriage event exists")
+		}
 	}
 }
 
