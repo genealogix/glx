@@ -57,6 +57,9 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 	}
 
+	// Build index of burial event years per person for death inference
+	personBurialYear := buildBurialYearIndex(archive)
+
 	var issues []AnalysisIssue
 
 	for _, id := range sortedPersonIDs(archive.Persons) {
@@ -72,6 +75,17 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 
 		deathYear := glxlib.ExtractPropertyYear(person.Properties, "died_on")
 
+		// Infer death from burial event if died_on is not set
+		if deathYear == 0 {
+			deathYear = personBurialYear[id]
+		}
+
+		// Cap at max lifespan when no death year is known
+		upperBound := deathYear
+		if upperBound == 0 {
+			upperBound = birthYear + maxLifespan
+		}
+
 		name := personName(archive, id)
 		existing := personCensusYears[id]
 
@@ -80,7 +94,7 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 			if censusYear < birthYear {
 				continue
 			}
-			if deathYear > 0 && censusYear > deathYear {
+			if censusYear > upperBound {
 				continue
 			}
 			if existing[censusYear] {
@@ -90,16 +104,47 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 
 		for _, year := range missing {
+			note := fmt.Sprintf("%s — search %d census (alive, no census event)", name, year)
+			if year == 1890 {
+				note += " — mostly destroyed (1921 fire)"
+			}
 			issues = append(issues, AnalysisIssue{
 				Category: "suggestion",
 				Severity: "info",
 				Person:   id,
-				Message:  fmt.Sprintf("%s — search %d census (alive, no census event)", name, year),
+				Message:  note,
 			})
 		}
 	}
 
 	return issues
+}
+
+// buildBurialYearIndex returns a map of person ID to the earliest burial event year.
+// Only principal participants are considered (witnesses/officiants are excluded).
+func buildBurialYearIndex(archive *glxlib.GLXFile) map[string]int {
+	index := make(map[string]int)
+	for _, event := range archive.Events {
+		if event == nil || event.Type != glxlib.EventTypeBurial {
+			continue
+		}
+		year := glxlib.ExtractFirstYear(string(event.Date))
+		if year == 0 {
+			continue
+		}
+		for _, p := range event.Participants {
+			if p.Person == "" {
+				continue
+			}
+			if p.Role != "" && p.Role != "principal" && p.Role != "subject" {
+				continue
+			}
+			if existing, ok := index[p.Person]; !ok || year < existing {
+				index[p.Person] = year
+			}
+		}
+	}
+	return index
 }
 
 // suggestVitalRecords recommends searching for vital records when a person has
