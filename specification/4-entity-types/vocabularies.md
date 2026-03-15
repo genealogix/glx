@@ -40,6 +40,7 @@ The standard vocabulary files are:
 - `repository-properties.glx`
 - `source-properties.glx`
 - `citation-properties.glx`
+- `gender-types.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
@@ -817,12 +818,13 @@ person_properties:
 | `description` | No | Detailed description of the property |
 | `value_type` | No* | Data type: `string`, `date`, `integer`, or `boolean` |
 | `reference_type` | No* | Entity type for references: `persons`, `places`, `events`, `relationships`, `sources`, `citations`, `repositories`, `media` |
+| `vocabulary_type` | No* | Vocabulary that constrains allowed values (e.g., `gender_types`). Values not found in the vocabulary produce a **warning**, not an error — archives may use values before adding them to their vocabulary |
 | `temporal` | No | Whether property can change over time (default: false) |
 | `multi_value` | No | Whether property can have multiple values as an array (default: false) |
 | `gedcom` | No | Corresponding GEDCOM tag for import/export mapping (e.g., `OCCU`, `PAGE`) |
 | `fields` | No | Sub-schema for structured property components (see below) |
 
-***Exactly one of `value_type` or `reference_type` must be specified** (there is no implicit default)
+***Exactly one of `value_type`, `reference_type`, or `vocabulary_type` must be specified** (there is no implicit default)
 
 ### Multi-Value Properties
 
@@ -1240,6 +1242,15 @@ The following issues generate warnings but don't fail validation:
          person: person-john
        property: custom_property  # WARNING: unknown property
        value: "some value"
+   ```
+
+3. **Out-of-vocabulary values**: Property values not found in the vocabulary referenced by `vocabulary_type`. This is a warning (not an error) because archives may use a value before adding it to their vocabulary file
+   ```yaml
+   # Warning: 'two-spirit' not found in gender_types vocabulary
+   persons:
+     person-jane:
+       properties:
+         gender: two-spirit  # WARNING: not in gender_types vocabulary
    ```
 
 Warnings allow flexibility for emerging properties and rapid data entry while still notifying researchers of potential issues.

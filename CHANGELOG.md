@@ -10,18 +10,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.8] - Unreleased
+## [0.0.0-beta.8] - 2026-03-15
 
 ### Added
 
 #### CLI
 - **Added `glx analyze` command** - Automated research gap analysis engine that cross-references all entities in a GLX archive to surface evidence gaps (missing dates, no parents, no events), evidence quality issues (unsupported assertions, single-source persons, orphaned citations/sources), chronological inconsistencies (death before birth, parent younger than child, implausible lifespan), and research suggestions (census years to search, vital records to locate). Supports `--check` to run a single category, `--format json` for machine-readable output, and person filtering by ID or name
 - **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
+- **Added `glx coverage` command** - Show source coverage matrix for a person, listing expected records (US census, vital, probate, land, military, church) and which are present vs missing. Flags high-priority gaps like the 1880 census. Supports `--json` output
+- **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
+
+#### Library
+- **Exported `ExtractFirstYear` and `ExtractPropertyYear`** - Year-extraction utilities are now public API for use by CLI commands and external consumers
 
 #### Validation
 - **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
 
 #### Standard Vocabularies
+- **Added `vocabulary_type` to property definitions** - Properties can now reference a controlled vocabulary (e.g., `vocabulary_type: gender_types`) instead of a free-form `value_type`. Validation warns on out-of-vocabulary values. Mutually exclusive with `value_type` and `reference_type`
+- **Added `gender_types` vocabulary** - First vocabulary-constrained property type. Standard entries: male, female, unknown, other — with GEDCOM SEX mappings. GEDCOM export now looks up gender→SEX via the vocabulary before falling back to hardcoded mappings
 - **Added `marriage_type` event property** - Classification of marriage (civil, religious, common-law). Was used in GEDCOM import/export but missing from standard vocabulary
 - **Added `primary_name` person property** - Simple display name fallback when structured name property is not available. Was used in event titles and data generation but missing from standard vocabulary
 - **Added `blob_size` media property** - Size in bytes of inline binary data from GEDCOM 5.5.1 BLOB records. Was used in GEDCOM media import but missing from standard vocabulary
@@ -49,11 +56,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx ancestors` and `glx descendants` commands** - Display ancestor/descendant trees using box-drawing characters. Traverses parent-child relationships with `--generations` flag to limit depth. Handles biological, adoptive, foster, and step-parent types with cycle detection
 - **Added `glx vitals` command** - Display vital records (name, sex, birth, christening, death, burial) for a person by ID or name search, plus any other life events they participated in
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
-- **Added `glx coverage` command** - Show source coverage matrix for a person, listing expected records (US census, vital, probate, land, military, church) and which are present vs missing. Flags high-priority gaps like the 1880 census. Supports `--json` output
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
-- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
-- **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
 
 #### Event Entity
 - **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import (e.g., "Birth of Daniel Lane (1815)", "Marriage of John Smith and Jane Doe (1850)")
@@ -78,9 +82,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Validation
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
-
-#### Library
-- **Exported `ExtractFirstYear` and `ExtractPropertyYear`** - Year-extraction utilities are now public API for use by CLI commands and external consumers
 
 #### Documentation
 - **Added [Westeros example archive](/examples/westeros/)** - Large-scale example featuring 790+ characters from *A Song of Ice and Fire* with full evidence chains, 200+ custom vocabulary types, and temporal properties. Hosted at [github.com/genealogix/glx-archive-westeros](https://github.com/genealogix/glx-archive-westeros)

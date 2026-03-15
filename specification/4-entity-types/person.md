@@ -110,7 +110,7 @@ properties:
 
 #### Gender Property
 
-The `gender` property is a free-form string. GLX does not enforce a controlled vocabulary for gender because terminology varies across historical periods, cultures, and personal preferences. Recommended values imported from GEDCOM are `male`, `female`, `unknown`, and `other`, but archives may use any value appropriate to the context. The property is temporal, allowing changes to be recorded over time.
+The `gender` property is constrained by the `gender_types` vocabulary via `vocabulary_type: gender_types`. The standard vocabulary includes `male`, `female`, `unknown`, and `other` (with GEDCOM SEX mappings), but archives may extend it with additional entries. Values not found in the vocabulary produce a **warning**, not an error — this allows archives to use custom values before adding them to the vocabulary. The property is temporal, allowing changes to be recorded over time.
 
 #### Temporal Property Examples
 
