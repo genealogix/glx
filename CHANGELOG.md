@@ -46,7 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **ANSEL converter handles multiple combining diacriticals** - Consecutive combining marks preceding a base letter are now all buffered and emitted after the base letter in Unicode order, instead of only handling a single combining mark
 
 ### Changed
-- **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by first name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary Ellen."). Fixes #153
+- **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by given name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary."). Fixes #153
 
 ### Fixed
 - **BEF date prefix respected in census suggestions** - `glx analyze` and `glx coverage` now treat `BEF <year>` death dates as exclusive upper bounds. A person with `died_on: "BEF 1870"` no longer gets 1870 census suggestions. Fixes #165

@@ -665,7 +665,7 @@ func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
 		rel := archive.Relationships[relID]
-		if !parentChildRelTypes[strings.ToLower(rel.Type)] {
+		if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] {
 			continue
 		}
 
@@ -975,7 +975,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	if len(childIDs) > 0 {
 		var childNames []string
 		for _, cid := range childIDs {
-			if child, ok := archive.Persons[cid]; ok {
+			if child, ok := archive.Persons[cid]; ok && child != nil {
 				name := extractPersonName(child)
 				// Use given name only for brevity
 				if parts := strings.Fields(name); len(parts) > 0 {
@@ -1147,7 +1147,6 @@ func pronounFor(person *glxlib.Person) (subject, possessive string) {
 	}
 }
 
-// joinNames joins names with commas and "and" before the last.
 // numberWord returns the English word for small numbers, or the numeral for larger ones.
 func numberWord(n int) string {
 	words := []string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"}
@@ -1157,6 +1156,7 @@ func numberWord(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
+// joinNames joins names with commas and "and" before the last.
 func joinNames(names []string) string {
 	switch len(names) {
 	case 0:
