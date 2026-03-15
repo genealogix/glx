@@ -19,6 +19,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
+- 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
@@ -156,6 +157,8 @@ glx descendants person-abc123 --generations 3
 # Generate formatted citation text
 glx cite citation-abc123
 
+# FAN club analysis for brickwall research
+glx cluster person-mary-lane --place place-ironton-sauk-wi --before 1860
 # Find the relationship path between two people
 glx path "Mary Lane" "John Smith"
 
@@ -893,6 +896,31 @@ glx cite
 # Use a specific archive
 glx cite --archive my-archive
 ```
+
+### `glx cluster`
+
+Identify associates for a person using FAN (Friends, Associates, Neighbors) club analysis. Useful for brickwall research — finds people connected through census households, shared events, and place overlap, ranked by connection strength.
+
+**Usage:**
+```bash
+glx cluster <person> [flags]
+```
+
+**Arguments:**
+- `<person>` - Person identifier or name query. Accepts either an exact person ID (e.g., `person-mary-lane`) or a case-insensitive name substring (e.g., `"Mary Lane"`).
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `--place <id>` - Limit analysis to events occurring in the specified place or any of its descendant places
+- `--before <year>` - Only consider dated events before this year. Undated events are still included for census/shared-event links; place overlap requires dated events
+- `--after <year>` - Only consider dated events after this year. Undated events are still included for census/shared-event links; place overlap requires dated events
+- `--json` - Output results as JSON
+
+**Scoring:**
+Associates are ranked by connection strength:
+- Census household co-residence: 3 points
+- Shared event participation: 2 points
+- Place overlap: 1 point
 
 ### `glx path`
 
