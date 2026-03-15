@@ -29,6 +29,10 @@ var usCensusYears = []int{
 	1890, 1900, 1910, 1920, 1930, 1940, 1950,
 }
 
+// maxLifespan is the assumed maximum lifespan for capping census suggestions
+// when no death date is known.
+const maxLifespan = 100
+
 // coverageRecord represents one expected record in the coverage checklist.
 type coverageRecord struct {
 	Category    string `json:"category"`
@@ -144,6 +148,11 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	// Build indexes: what sources/citations/events reference this person
 	personSources := collectPersonSources(personID, archive)
 	personEvents := collectPersonEvents(personID, archive)
+
+	// Infer death year from burial event if died_on is not set
+	if deathYear == 0 {
+		deathYear = inferDeathYearFromEvents(personEvents)
+	}
 
 	var records []coverageRecord
 
@@ -268,13 +277,19 @@ func buildCensusRecords(birthYear, deathYear int, sources []personSourceInfo, ev
 		return nil
 	}
 
+	// Cap at max lifespan when no death year is known
+	upperBound := deathYear
+	if upperBound == 0 {
+		upperBound = birthYear + maxLifespan
+	}
+
 	var records []coverageRecord
 
 	for _, year := range usCensusYears {
 		if year < birthYear {
 			continue
 		}
-		if deathYear > 0 && year > deathYear {
+		if year > upperBound {
 			break
 		}
 		// Approximate age at this census year (may be 0 if census year == birth year)
@@ -285,6 +300,11 @@ func buildCensusRecords(birthYear, deathYear int, sources []personSourceInfo, ev
 		rec := coverageRecord{
 			Category: "census",
 			Label:    label,
+		}
+
+		// 1890 census was mostly destroyed in a 1921 fire
+		if year == 1890 {
+			rec.Description = "mostly destroyed (1921 fire)"
 		}
 
 		// Check if we have this census
@@ -298,7 +318,11 @@ func buildCensusRecords(birthYear, deathYear int, sources []personSourceInfo, ev
 		if !rec.Found {
 			if year == 1880 {
 				rec.Priority = "high"
-				rec.Description = "lists parents' birthplaces"
+				if rec.Description != "" {
+					rec.Description += "; lists parents' birthplaces"
+				} else {
+					rec.Description = "lists parents' birthplaces"
+				}
 			} else if age >= 14 && age <= 25 {
 				rec.Priority = "high"
 				rec.Description = "may show in parents' household"
@@ -630,6 +654,21 @@ func coveragePercent(found, expected int) int {
 		return 0
 	}
 	return (found * 100) / expected
+}
+
+// inferDeathYearFromEvents returns a death year inferred from burial events.
+// When multiple burial events exist, returns the earliest year.
+// Returns 0 if no burial event with a date is found.
+func inferDeathYearFromEvents(events []personSourceInfo) int {
+	earliest := 0
+	for _, e := range events {
+		if e.EventType == glxlib.EventTypeBurial && e.Year > 0 {
+			if earliest == 0 || e.Year < earliest {
+				earliest = e.Year
+			}
+		}
+	}
+	return earliest
 }
 
 // printCoverageJSON outputs the result as JSON.
