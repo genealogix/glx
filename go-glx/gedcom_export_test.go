@@ -1964,9 +1964,10 @@ func TestMapGenderToSex(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
 			GenderTypes: map[string]*GenderType{
-				"male":   {Label: "Male", GEDCOM: "M"},
-				"female": {Label: "Female", GEDCOM: "F"},
-				"custom": {Label: "Custom", GEDCOM: "X"},
+				"male":       {Label: "Male", GEDCOM: "M"},
+				"female":     {Label: "Female", GEDCOM: "F"},
+				"custom":     {Label: "Custom", GEDCOM: "X"},
+				"no_mapping": {Label: "No Mapping", GEDCOM: ""},
 			},
 		},
 	}
@@ -1975,6 +1976,13 @@ func TestMapGenderToSex(t *testing.T) {
 	assert.Equal(t, "X", mapGenderToSex("custom", expCtx))
 	// Falls back to default for values not in vocab
 	assert.Equal(t, "U", mapGenderToSex("nonexistent", expCtx))
+	// Falls back to default when vocab entry has empty GEDCOM field
+	assert.Equal(t, "U", mapGenderToSex("no_mapping", expCtx))
+
+	// Test with non-nil context but nil GLX
+	expCtxNilGLX := &ExportContext{GLX: nil}
+	assert.Equal(t, "M", mapGenderToSex("male", expCtxNilGLX))
+	assert.Equal(t, "U", mapGenderToSex("unknown", expCtxNilGLX))
 }
 
 func TestBuildPersonEventsIndex(t *testing.T) {

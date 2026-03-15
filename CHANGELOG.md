@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
 
 #### Standard Vocabularies
+- **Added `vocabulary_type` to property definitions** - Properties can now reference a controlled vocabulary (e.g., `vocabulary_type: gender_types`) instead of a free-form `value_type`. Validation warns on out-of-vocabulary values. Mutually exclusive with `value_type` and `reference_type`
+- **Added `gender_types` vocabulary** - First vocabulary-constrained property type. Standard entries: male, female, unknown, other — with GEDCOM SEX mappings. GEDCOM export now looks up gender→SEX via the vocabulary before falling back to hardcoded mappings
 - **Added `marriage_type` event property** - Classification of marriage (civil, religious, common-law). Was used in GEDCOM import/export but missing from standard vocabulary
 - **Added `primary_name` person property** - Simple display name fallback when structured name property is not available. Was used in event titles and data generation but missing from standard vocabulary
 - **Added `blob_size` media property** - Size in bytes of inline binary data from GEDCOM 5.5.1 BLOB records. Was used in GEDCOM media import but missing from standard vocabulary

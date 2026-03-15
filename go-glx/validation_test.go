@@ -1289,8 +1289,32 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 				"female": {Label: "Female"},
 			},
 			PersonProperties: map[string]*PropertyDefinition{
-				// Conflicting: both vocabulary_type and value_type are set
+				// Conflicting: both vocabulary_type and value_type are set.
+				// Value "male" is valid in the vocabulary, so only the conflict warning fires.
 				"gender": {Label: "Gender", VocabularyType: "gender_types", ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		warn := result.Warnings[0]
+		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, "person-1", warn.SourceID)
+		assert.Equal(t, "properties.gender", warn.Field)
+		assert.Contains(t, warn.Message, "conflicting type fields")
+	})
+
+	t.Run("conflicting property definition vocabulary_type and reference_type", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{"gender": "male"}},
+			},
+			GenderTypes: map[string]*GenderType{
+				"male":   {Label: "Male"},
+				"female": {Label: "Female"},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"gender": {Label: "Gender", VocabularyType: "gender_types", ReferenceType: "persons"},
 			},
 		}
 		result := archive.Validate()

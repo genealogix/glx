@@ -389,7 +389,7 @@ func parseValueToGEDCOMName(value string) string {
 func mapGenderToSex(gender string, expCtx *ExportContext) string {
 	// Try vocabulary lookup first
 	if expCtx != nil && expCtx.GLX != nil && expCtx.GLX.GenderTypes != nil {
-		if genderType, ok := expCtx.GLX.GenderTypes[gender]; ok && genderType.GEDCOM != "" {
+		if genderType, ok := expCtx.GLX.GenderTypes[gender]; ok && genderType != nil && genderType.GEDCOM != "" {
 			return genderType.GEDCOM
 		}
 	}

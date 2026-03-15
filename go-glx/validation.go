@@ -601,8 +601,25 @@ func (glx *GLXFile) validatePropertyVocabularyValue(
 		glx.checkVocabValue(entityType, entityID, "properties."+propName, propDef.VocabularyType, v, vocabSet, result)
 	case map[string]any:
 		// Single temporal object: {value: ..., date: ...}
-		if val, ok := v["value"].(string); ok {
+		rawVal, hasValue := v["value"]
+		if !hasValue {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      "properties." + propName,
+				Message: fmt.Sprintf("%s[%s].properties.%s: vocabulary-constrained temporal object missing 'value' field",
+					entityType, entityID, propName),
+			})
+		} else if val, ok := rawVal.(string); ok {
 			glx.checkVocabValue(entityType, entityID, "properties."+propName+".value", propDef.VocabularyType, val, vocabSet, result)
+		} else {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      "properties." + propName + ".value",
+				Message: fmt.Sprintf("%s[%s].properties.%s.value: expected string for vocabulary lookup, got %T",
+					entityType, entityID, propName, rawVal),
+			})
 		}
 	case []any:
 		// List of values: strings, temporal objects, or mixed
@@ -612,12 +629,45 @@ func (glx *GLXFile) validatePropertyVocabularyValue(
 				fieldPath := fmt.Sprintf("properties.%s[%d]", propName, i)
 				glx.checkVocabValue(entityType, entityID, fieldPath, propDef.VocabularyType, typedItem, vocabSet, result)
 			case map[string]any:
-				if val, ok := typedItem["value"].(string); ok {
+				rawVal, hasValue := typedItem["value"]
+				if !hasValue {
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: entityType,
+						SourceID:   entityID,
+						Field:      fmt.Sprintf("properties.%s[%d]", propName, i),
+						Message: fmt.Sprintf("%s[%s].properties.%s[%d]: vocabulary-constrained temporal object missing 'value' field",
+							entityType, entityID, propName, i),
+					})
+				} else if val, ok := rawVal.(string); ok {
 					fieldPath := fmt.Sprintf("properties.%s[%d].value", propName, i)
 					glx.checkVocabValue(entityType, entityID, fieldPath, propDef.VocabularyType, val, vocabSet, result)
+				} else {
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: entityType,
+						SourceID:   entityID,
+						Field:      fmt.Sprintf("properties.%s[%d].value", propName, i),
+						Message: fmt.Sprintf("%s[%s].properties.%s[%d].value: expected string for vocabulary lookup, got %T",
+							entityType, entityID, propName, i, rawVal),
+					})
 				}
+			default:
+				result.Warnings = append(result.Warnings, ValidationWarning{
+					SourceType: entityType,
+					SourceID:   entityID,
+					Field:      fmt.Sprintf("properties.%s[%d]", propName, i),
+					Message: fmt.Sprintf("%s[%s].properties.%s[%d]: expected string or temporal object in vocabulary-constrained list, got %T",
+						entityType, entityID, propName, i, item),
+				})
 			}
 		}
+	default:
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      "properties." + propName,
+			Message: fmt.Sprintf("%s[%s].properties.%s: expected string value for vocabulary lookup, got %T",
+				entityType, entityID, propName, propValue),
+		})
 	}
 }
 
