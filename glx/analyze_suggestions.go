@@ -74,9 +74,9 @@ func analyzeSuggestions(archive *glxlib.GLXFile) []AnalysisIssue {
 }
 
 // suggestCensusSearches recommends census years to search for persons who were
-// alive during a census year but have no census event for that year.
+// alive during a census year but have no census event or citation for that year.
 func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
-	// Build index of census years each person already has
+	// Build index of census years each person already has — from events
 	personCensusYears := make(map[string]map[int]bool)
 	for _, event := range archive.Events {
 		if event == nil || event.Type != glxlib.EventTypeCensus {
@@ -93,6 +93,10 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 			personCensusYears[p.Person][year] = true
 		}
 	}
+
+	// Also index census years from citations/sources via assertions,
+	// matching the detection logic used by `glx coverage`.
+	addCensusYearFromSources(archive, personCensusYears)
 
 	// Build index of burial event years per person for death inference
 	personBurialYear := buildBurialYearIndex(archive)
@@ -182,6 +186,61 @@ func buildBurialYearIndex(archive *glxlib.GLXFile) map[string]int {
 		}
 	}
 	return index
+}
+
+// addCensusYearFromSources indexes census years from citations and sources
+// referenced by assertions, so that persons documented only via citations
+// (not full census events) are not flagged as missing.
+func addCensusYearFromSources(archive *glxlib.GLXFile, personCensusYears map[string]map[int]bool) {
+	for _, assertion := range archive.Assertions {
+		if assertion == nil {
+			continue
+		}
+		personID := assertion.Subject.Person
+		if personID == "" {
+			continue
+		}
+
+		// Check citations → sources
+		for _, citID := range assertion.Citations {
+			cit := archive.Citations[citID]
+			if cit == nil {
+				continue
+			}
+			src := archive.Sources[cit.SourceID]
+			if src == nil || src.Type != glxlib.SourceTypeCensus {
+				continue
+			}
+			year := glxlib.ExtractFirstYear(string(src.Date))
+			if year == 0 {
+				year = glxlib.ExtractFirstYear(src.Title)
+			}
+			if year > 0 {
+				if personCensusYears[personID] == nil {
+					personCensusYears[personID] = make(map[int]bool)
+				}
+				personCensusYears[personID][year] = true
+			}
+		}
+
+		// Check direct sources
+		for _, srcID := range assertion.Sources {
+			src := archive.Sources[srcID]
+			if src == nil || src.Type != glxlib.SourceTypeCensus {
+				continue
+			}
+			year := glxlib.ExtractFirstYear(string(src.Date))
+			if year == 0 {
+				year = glxlib.ExtractFirstYear(src.Title)
+			}
+			if year > 0 {
+				if personCensusYears[personID] == nil {
+					personCensusYears[personID] = make(map[int]bool)
+				}
+				personCensusYears[personID][year] = true
+			}
+		}
+	}
 }
 
 // suggestVitalRecords recommends searching for vital records when a person has
