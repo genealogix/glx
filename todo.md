@@ -64,6 +64,7 @@ Design decisions to resolve before 1.0.
 - **`copyFile` discards `dstFile.Close()` error**: Write errors on NFS/network mounts surface at `Close()`. [media_copy.go:119-132](https://github.com/genealogix/glx/blob/main/glx/media_copy.go#L119-L132)
 - **`decodeGEDCOMBlob` no input validation**: Characters outside valid range produce garbage silently. BLOB is deprecated and rare. [media_copy.go:143-155](https://github.com/genealogix/glx/blob/main/glx/media_copy.go#L143-L155)
 - **No path traversal check on GEDCOM FILE references**: Impact limited since destination uses basename only. [media_copy.go:102-114](https://github.com/genealogix/glx/blob/main/glx/media_copy.go#L102-L114)
+- **Unify vocabulary entry structs into a generic `VocabularyEntry`**: 9 separate structs (`EventType`, `RelationshipType`, `GenderType`, `PlaceType`, etc.) share `Label`+`Description` and diverge only on optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). A single union struct would eliminate per-vocab boilerplate and make adding new `vocabulary_type` vocabs zero-new-types. Mostly mechanical (~20 files, type name substitutions, no logic changes). See [PR #129 discussion](https://github.com/genealogix/glx/pull/129#issuecomment) for context. ([types.go](https://github.com/genealogix/glx/blob/main/go-glx/types.go))
 - **Add validator tags to GLX structs**: Use struct tags for validation.
 - **Move Loggers to their own package**: Better separation of concerns.
 
