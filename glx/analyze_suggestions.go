@@ -16,9 +16,21 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+// deathYearUpperBound returns the effective upper bound year for census
+// suggestions from a death date string. For "BEF <year>" dates, the year
+// is decremented by 1 since the person died before that year.
+func deathYearUpperBound(diedOn string) int {
+	year := glxlib.ExtractFirstYear(diedOn)
+	if year > 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(diedOn)), "BEF ") {
+		year--
+	}
+	return year
+}
 
 // usFederalCensusYears lists U.S. Federal Census years.
 var usFederalCensusYears = []int{
@@ -70,7 +82,8 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		deathYear := glxlib.ExtractPropertyYear(person.Properties, "died_on")
+		diedOn := propertyString(person.Properties, "died_on")
+		deathYear := deathYearUpperBound(diedOn)
 
 		name := personName(archive, id)
 		existing := personCensusYears[id]
