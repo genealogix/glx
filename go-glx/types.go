@@ -81,6 +81,7 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	SourceTypes       map[string]*SourceType       `yaml:"source_types,omitempty"`
 	RepositoryTypes   map[string]*RepositoryType   `yaml:"repository_types,omitempty"`
 	MediaTypes        map[string]*MediaType        `yaml:"media_types,omitempty"`
+	GenderTypes       map[string]*GenderType       `yaml:"gender_types,omitempty"`
 
 	// Property vocabularies
 	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
@@ -360,17 +361,25 @@ type MediaType struct {
 	MimeType    string `yaml:"mime_type,omitempty"`
 }
 
+// GenderType represents a standard gender type vocabulary entry.
+type GenderType struct {
+	Label       string `yaml:"label"`
+	Description string `yaml:"description,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
+}
+
 // PropertyDefinition defines a property that can be used on entities.
-// value_type and reference_type are mutually exclusive.
+// value_type, reference_type, and vocabulary_type are mutually exclusive.
 type PropertyDefinition struct {
 	Label         string                      `yaml:"label"`
 	Description   string                      `yaml:"description,omitempty"`
 	GEDCOM        string                      `yaml:"gedcom,omitempty"`
-	ValueType     string                      `yaml:"value_type,omitempty"`     // string, date, integer, boolean
-	ReferenceType string                      `yaml:"reference_type,omitempty"` // persons, places, events, relationships, etc.
-	Temporal      *bool                       `yaml:"temporal,omitempty"`       // Can this property change over time?
-	MultiValue    *bool                       `yaml:"multi_value,omitempty"`    // Can this property have multiple values (stored as array)?
-	Fields        map[string]*FieldDefinition `yaml:"fields,omitempty"`         // Optional structured breakdown of the value
+	ValueType      string                      `yaml:"value_type,omitempty"`      // string, date, integer, boolean
+	ReferenceType  string                      `yaml:"reference_type,omitempty"`  // persons, places, events, relationships, etc.
+	VocabularyType string                      `yaml:"vocabulary_type,omitempty"` // Value must exist in this vocabulary (e.g., gender_types)
+	Temporal       *bool                       `yaml:"temporal,omitempty"`        // Can this property change over time?
+	MultiValue     *bool                       `yaml:"multi_value,omitempty"`     // Can this property have multiple values (stored as array)?
+	Fields         map[string]*FieldDefinition `yaml:"fields,omitempty"`          // Optional structured breakdown of the value
 }
 
 // FieldDefinition defines a field within a structured property value.
@@ -419,6 +428,7 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates = append(duplicates, mergeMap("source_types", g.SourceTypes, other.SourceTypes)...)
 	duplicates = append(duplicates, mergeMap("repository_types", g.RepositoryTypes, other.RepositoryTypes)...)
 	duplicates = append(duplicates, mergeMap("media_types", g.MediaTypes, other.MediaTypes)...)
+	duplicates = append(duplicates, mergeMap("gender_types", g.GenderTypes, other.GenderTypes)...)
 	duplicates = append(duplicates, mergeMap("participant_roles", g.ParticipantRoles, other.ParticipantRoles)...)
 	duplicates = append(duplicates, mergeMap("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels)...)
 

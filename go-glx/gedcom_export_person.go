@@ -124,7 +124,7 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagSex,
-			Value: mapGenderToSex(gender),
+			Value: mapGenderToSex(gender, expCtx),
 		})
 	}
 
@@ -384,7 +384,17 @@ func parseValueToGEDCOMName(value string) string {
 }
 
 // mapGenderToSex converts a GLX gender value to a GEDCOM SEX value.
-func mapGenderToSex(gender string) string {
+// Uses the gender_types vocabulary for lookup; falls back to hardcoded
+// mapping for standard values when the vocabulary is not loaded.
+func mapGenderToSex(gender string, expCtx *ExportContext) string {
+	// Try vocabulary lookup first
+	if expCtx != nil && expCtx.GLX != nil && expCtx.GLX.GenderTypes != nil {
+		if genderType, ok := expCtx.GLX.GenderTypes[gender]; ok && genderType != nil && genderType.GEDCOM != "" {
+			return genderType.GEDCOM
+		}
+	}
+
+	// Fallback for standard values
 	switch gender {
 	case GenderMale:
 		return "M"

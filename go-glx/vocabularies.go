@@ -84,6 +84,7 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 	glx.ParticipantRoles = cachedVocabs.ParticipantRoles
 	glx.MediaTypes = cachedVocabs.MediaTypes
 	glx.ConfidenceLevels = cachedVocabs.ConfidenceLevels
+	glx.GenderTypes = cachedVocabs.GenderTypes
 	glx.PersonProperties = cachedVocabs.PersonProperties
 	glx.EventProperties = cachedVocabs.EventProperties
 	glx.RelationshipProperties = cachedVocabs.RelationshipProperties
@@ -131,6 +132,8 @@ func loadVocabulary(filename string, data []byte, glx *GLXFile) error {
 		return unmarshalVocab(filename, data, "media_types", &glx.MediaTypes)
 	case "confidence-levels.glx":
 		return unmarshalVocab(filename, data, "confidence_levels", &glx.ConfidenceLevels)
+	case "gender-types.glx":
+		return unmarshalVocab(filename, data, "gender_types", &glx.GenderTypes)
 	case "person-properties.glx":
 		return unmarshalVocab(filename, data, "person_properties", &glx.PersonProperties)
 	case "event-properties.glx":

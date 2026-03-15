@@ -373,6 +373,7 @@ const (
 	VocabMediaTypes        = "media_types"
 	VocabConfidenceLevels  = "confidence_levels"
 	VocabSourceTypes       = "source_types"
+	VocabGenderTypes       = "gender_types"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile
@@ -536,9 +537,9 @@ const (
 	GEDCOMVersion70  = "7.0"
 )
 
-// Gender values for GEDCOM import mapping.
+// Gender values for GEDCOM import/export mapping.
 // GEDCOM SEX tag: M→male, F→female, U→unknown, X→other.
-// GLX does not enforce these - gender is a free-form string property.
+// Gender is vocabulary-constrained via vocabulary_type: gender_types.
 const (
 	GenderMale    = "male"
 	GenderFemale  = "female"

@@ -175,6 +175,7 @@ func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 		MediaTypes:        map[string]*MediaType{"type-1": {}},
 		ParticipantRoles:  map[string]*ParticipantRole{"role-1": {}},
 		ConfidenceLevels:  map[string]*ConfidenceLevel{"level-1": {}},
+		GenderTypes:       map[string]*GenderType{"gender-1": {}},
 	}
 
 	g2 := &GLXFile{
@@ -186,6 +187,7 @@ func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 		MediaTypes:        map[string]*MediaType{"type-2": {}},
 		ParticipantRoles:  map[string]*ParticipantRole{"role-2": {}},
 		ConfidenceLevels:  map[string]*ConfidenceLevel{"level-2": {}},
+		GenderTypes:       map[string]*GenderType{"gender-2": {}},
 	}
 
 	duplicates := g1.Merge(g2)
@@ -200,6 +202,7 @@ func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 	require.Len(t, g1.MediaTypes, 2)
 	require.Len(t, g1.ParticipantRoles, 2)
 	require.Len(t, g1.ConfidenceLevels, 2)
+	require.Len(t, g1.GenderTypes, 2)
 }
 
 func TestGLXFile_Merge_PropertyVocabularies_NoDuplicates(t *testing.T) {
