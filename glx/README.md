@@ -19,6 +19,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
+- 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
@@ -154,6 +155,9 @@ glx descendants person-abc123 --generations 3
 
 # Generate formatted citation text
 glx cite citation-abc123
+
+# Find the relationship path between two people
+glx path "Mary Lane" "John Smith"
 
 # Query persons born before 1850
 glx query persons --born-before 1850
@@ -888,6 +892,56 @@ glx cite
 
 # Use a specific archive
 glx cite --archive my-archive
+```
+
+### `glx path`
+
+Find the shortest relationship path between two people using breadth-first search.
+
+**Usage:**
+```bash
+glx path <person-a> <person-b> [flags]
+```
+
+**Arguments:**
+- `<person-a>` - First person (ID or name substring)
+- `<person-b>` - Second person (ID or name substring)
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `--max-hops <n>` - Maximum number of hops to search (default: 10)
+- `--json` - Output as JSON
+
+Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.) to find the shortest connection between two persons. Person arguments can be exact entity IDs or name substrings (case-insensitive). If a name matches multiple persons, all matches are listed for disambiguation.
+
+**Examples:**
+
+```bash
+# Find path between two persons by name
+glx path "Mary Lane" "Louenza Mortimer"
+
+# Find path by person ID
+glx path person-mary-lane person-louenza-mortimer
+
+# Limit search depth
+glx path "Mary Lane" "John Smith" --max-hops 5
+
+# JSON output
+glx path "Mary Lane" "John Smith" --json
+
+# Specify archive path
+glx path "Mary Lane" "John Smith" --archive my-archive
+```
+
+**Output:**
+```
+Path from person-arya-stark to person-jon-snow (2 hop(s)):
+
+  Arya Stark (person-arya-stark)
+    - child in parent child ->
+  Eddard Stark (person-eddard-stark)
+    - parent in parent child ->
+  Jon Snow (person-jon-snow)
 ```
 
 ### `glx analyze`

@@ -63,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
+	rootCmd.AddCommand(pathCmd)
 	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
@@ -810,6 +811,57 @@ func init() {
 
 func runVitals(_ *cobra.Command, args []string) error {
 	return showVitals(vitalsArchive, args[0])
+}
+
+// ============================================================================
+// Path Command
+// ============================================================================
+
+var (
+	pathArchive string
+	pathMaxHops int
+	pathJSON    bool
+)
+
+var pathCmd = &cobra.Command{
+	Use:   "path <person-a> <person-b>",
+	Short: "Find the shortest relationship path between two people",
+	Long: `Find and display the shortest relationship path between two persons
+in the archive using breadth-first search.
+
+Traverses all relationship types (parent-child, marriage, sibling,
+godparent, neighbor, etc.) to find the shortest connection.
+
+Each hop shows the relationship type and the destination person's role.
+Use --max-hops to limit search depth (default 10).
+
+Person arguments can be exact entity IDs or name substrings.`,
+	Example: `  # Find path between two persons by ID
+  glx path person-mary-lane person-louenza-mortimer
+
+  # Find path by name
+  glx path "Mary Lane" "Louenza Mortimer"
+
+  # Limit search depth
+  glx path "Mary Lane" "John Smith" --max-hops 5
+
+  # JSON output
+  glx path "Mary Lane" "John Smith" --json
+
+  # Specify archive path
+  glx path "Mary Lane" "John Smith" --archive my-archive`,
+	Args: cobra.ExactArgs(2),
+	RunE: runPath,
+}
+
+func init() {
+	pathCmd.Flags().StringVarP(&pathArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	pathCmd.Flags().IntVar(&pathMaxHops, "max-hops", 10, "Maximum number of hops to search")
+	pathCmd.Flags().BoolVar(&pathJSON, "json", false, "Output as JSON")
+}
+
+func runPath(_ *cobra.Command, args []string) error {
+	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathJSON)
 }
 
 // ============================================================================
