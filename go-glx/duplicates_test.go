@@ -95,18 +95,18 @@ func TestScoreNameSimilarity_NoName(t *testing.T) {
 func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
 	a := &Person{Properties: map[string]any{
 		"name": map[string]any{
-			"value":  "Daniel Lane",
-			"fields": map[string]any{"given": "Daniel", "surname": "Lane"},
+			"value":  "Robert Webb",
+			"fields": map[string]any{"given": "Robert", "surname": "Webb"},
 		},
 	}}
 	b := &Person{Properties: map[string]any{
 		"name": map[string]any{
-			"value":  "Dan Lane",
-			"fields": map[string]any{"given": "Dan", "surname": "Lane"},
+			"value":  "Rob Webb",
+			"fields": map[string]any{"given": "Rob", "surname": "Webb"},
 		},
 	}}
 	score, detail := scoreNameSimilarity(a, b)
-	assert.True(t, score > 0.8, "Dan/Daniel Lane should match well, got %f", score)
+	assert.True(t, score > 0.8, "Rob/Robert Webb should match well, got %f", score)
 	assert.Contains(t, detail, "surname exact")
 }
 
@@ -239,11 +239,11 @@ func TestFindDuplicates_SinglePerson(t *testing.T) {
 func TestFindDuplicates_ObviousDuplicate(t *testing.T) {
 	archive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-d-lane": {Properties: map[string]any{
-				"name": "D Lane", "born_on": "1815", "born_at": "place-va",
+			"person-r-webb": {Properties: map[string]any{
+				"name": "R Webb", "born_on": "1815", "born_at": "place-va",
 			}},
-			"person-daniel-lane": {Properties: map[string]any{
-				"name": "Daniel Lane", "born_on": "1815", "born_at": "place-va",
+			"person-robert-webb": {Properties: map[string]any{
+				"name": "Robert Webb", "born_on": "1815", "born_at": "place-va",
 			}},
 		},
 	}

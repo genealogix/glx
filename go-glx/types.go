@@ -170,7 +170,7 @@ type Relationship struct {
 
 // Event represents a genealogical event.
 type Event struct {
-	Title        string         `yaml:"title,omitempty"` // Optional human-readable label (e.g., "1860 Census — Lane Household")
+	Title        string         `yaml:"title,omitempty"` // Optional human-readable label (e.g., "1860 Census — Webb Household")
 	Type         string         `refType:"event_types"       yaml:"type"`
 	PlaceID      string         `refType:"places"            yaml:"place,omitempty"`
 	Date         DateString     `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"

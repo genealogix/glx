@@ -64,6 +64,7 @@ func init() {
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
 	rootCmd.AddCommand(censusCmd)
+	rootCmd.AddCommand(pathCmd)
 	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
@@ -581,7 +582,7 @@ repetitive manual writing of the citation_text property.
 If a citation ID is given, prints that single citation. If no ID is given,
 prints all citations in the archive.`,
 	Example: `  # Format a specific citation
-  glx cite citation-1860-census-lane-household
+  glx cite citation-1860-census-webb-household
 
   # Format all citations in the archive
   glx cite
@@ -713,7 +714,7 @@ Sections displayed:
   glx summary person-abc123
 
   # Summary by name search
-  glx summary "Mary Lane"
+  glx summary "Jane Webb"
 
   # Summary in a specific archive
   glx summary "John Smith" --archive my-family-archive`,
@@ -790,17 +791,17 @@ var vitalsCmd = &cobra.Command{
 Shows: Name, Sex, Birth, Christening, Death, Burial, plus any other
 life events the person participated in (marriages, census records, etc.).
 
-The person argument can be an exact entity ID (e.g., person-d-lane) or
-a name to search for (e.g., "Mary Green"). If the name matches multiple
+The person argument can be an exact entity ID (e.g., person-robert-webb) or
+a name to search for (e.g., "Jane Miller"). If the name matches multiple
 persons, all matches are listed for disambiguation.`,
 	Example: `  # Look up by person ID
-  glx vitals person-d-lane
+  glx vitals person-robert-webb
 
   # Look up by name
-  glx vitals "Mary Green"
+  glx vitals "Jane Miller"
 
   # Specify archive path
-  glx vitals "Mary Green" --archive my-archive`,
+  glx vitals "Jane Miller" --archive my-archive`,
 	Args: cobra.ExactArgs(1),
 	RunE: runVitals,
 }
@@ -877,6 +878,57 @@ func runCensusAdd(_ *cobra.Command, _ []string) error {
 }
 
 // ============================================================================
+// Path Command
+// ============================================================================
+
+var (
+	pathArchive string
+	pathMaxHops int
+	pathJSON    bool
+)
+
+var pathCmd = &cobra.Command{
+	Use:   "path <person-a> <person-b>",
+	Short: "Find the shortest relationship path between two people",
+	Long: `Find and display the shortest relationship path between two persons
+in the archive using breadth-first search.
+
+Traverses all relationship types (parent-child, marriage, sibling,
+godparent, neighbor, etc.) to find the shortest connection.
+
+Each hop shows the relationship type and the destination person's role.
+Use --max-hops to limit search depth (default 10).
+
+Person arguments can be exact entity IDs or name substrings.`,
+	Example: `  # Find path between two persons by ID
+  glx path person-mary-lane person-louenza-mortimer
+
+  # Find path by name
+  glx path "Mary Lane" "Louenza Mortimer"
+
+  # Limit search depth
+  glx path "Mary Lane" "John Smith" --max-hops 5
+
+  # JSON output
+  glx path "Mary Lane" "John Smith" --json
+
+  # Specify archive path
+  glx path "Mary Lane" "John Smith" --archive my-archive`,
+	Args: cobra.ExactArgs(2),
+	RunE: runPath,
+}
+
+func init() {
+	pathCmd.Flags().StringVarP(&pathArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	pathCmd.Flags().IntVar(&pathMaxHops, "max-hops", 10, "Maximum number of hops to search")
+	pathCmd.Flags().BoolVar(&pathJSON, "json", false, "Output as JSON")
+}
+
+func runPath(_ *cobra.Command, args []string) error {
+	return showPath(pathArchive, args[0], args[1], pathMaxHops, pathJSON)
+}
+
+// ============================================================================
 // Duplicates Command
 // ============================================================================
 
@@ -909,7 +961,7 @@ Higher values = fewer, higher-confidence matches.`,
   glx duplicates --threshold 0.8
 
   # Check a specific person for duplicates
-  glx duplicates person-d-lane
+  glx duplicates person-robert-webb
 
   # JSON output for tooling
   glx duplicates --json
@@ -964,13 +1016,13 @@ The person argument can be an exact entity ID or a name substring.`,
   glx coverage person-abc123
 
   # Coverage by name
-  glx coverage "Mary Green"
+  glx coverage "Jane Miller"
 
   # JSON output
-  glx coverage "Mary Green" --json
+  glx coverage "Jane Miller" --json
 
   # Specify archive path
-  glx coverage "Mary Green" --archive my-archive`,
+  glx coverage "Jane Miller" --archive my-archive`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCoverage,
 }
@@ -1014,7 +1066,7 @@ Use --format json for machine-readable output.`,
   glx analyze
 
   # Focus on one person
-  glx analyze person-mary-lane
+  glx analyze person-jane-webb
 
   # Run only gap analysis
   glx analyze --check gaps
@@ -1083,7 +1135,7 @@ Use --person to filter changes relevant to a specific person.`,
   glx diff ./old ./new --json
 
   # Filter changes for a specific person
-  glx diff ./old ./new --person person-mary-lane`,
+  glx diff ./old ./new --person person-jane-webb`,
 	Args: cobra.ExactArgs(2),
 	RunE: runDiff,
 }
