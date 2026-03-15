@@ -183,7 +183,7 @@ func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 			entries = append(entries, timelineEntry{
 				Date:    date,
 				SortKey: dateSortKey(date),
-				Label:   "Birth",
+				Label:   formatEventTypeLabel("birth"),
 				Detail:  detail,
 			})
 		}
@@ -197,7 +197,7 @@ func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 			entries = append(entries, timelineEntry{
 				Date:    date,
 				SortKey: dateSortKey(date),
-				Label:   "Death",
+				Label:   formatEventTypeLabel("death"),
 				Detail:  detail,
 			})
 		}
