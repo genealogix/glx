@@ -392,13 +392,13 @@ An assertion with neither `property` nor `participant` is an **existential asser
 
 ```yaml
 assertions:
-  assertion-lane-family:
+  assertion-webb-family:
     subject:
-      relationship: rel-lane-parent-child
+      relationship: rel-webb-parent-child
     citations:
-      - citation-1860-census-lane
+      - citation-1860-census-webb
     confidence: high
-    notes: "Census shows D. Lane (45) as head of household with these children"
+    notes: "Census shows R. Webb (45) as head of household with these children"
 ```
 
 ### Temporal Existential Assertion
@@ -407,12 +407,12 @@ When a `date` is present without `property`, the assertion reads as "the subject
 
 ```yaml
 assertions:
-  assertion-lane-1860:
+  assertion-webb-1860:
     subject:
-      relationship: rel-lane-parent-child
+      relationship: rel-webb-parent-child
     date: "1860"
     citations:
-      - citation-1860-census-lane
+      - citation-1860-census-webb
     confidence: high
 ```
 

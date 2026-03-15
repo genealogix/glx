@@ -181,16 +181,16 @@ The authoritative list of name `type` values is defined in the [person propertie
 ```yaml
 properties:
   name:
-    - value: "Daniel Lane"
+    - value: "Robert Webb"
       fields:
         type: "birth"
-        given: "Daniel"
-        surname: "Lane"
-    - value: "D. Lane"
+        given: "Robert"
+        surname: "Webb"
+    - value: "R. Webb"
       fields:
         type: "as_recorded"
-        given: "D."
-        surname: "Lane"
+        given: "R."
+        surname: "Webb"
 ```
 
 **Anglicized Name:**
