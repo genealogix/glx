@@ -483,22 +483,26 @@ func TestAnalyzeSuggestions_BEFDeathExcludesYear(t *testing.T) {
 
 func TestDeathYearUpperBound(t *testing.T) {
 	tests := []struct {
-		input string
+		name  string
+		input any
 		want  int
 	}{
-		{"1870", 1870},
-		{"BEF 1870", 1869},
-		{"bef 1870", 1869},
-		{"ABT 1870", 1870},
-		{"AFT 1860", 1860},
-		{"", 0},
-		{"BEF", 0},
+		{"plain year", "1870", 1870},
+		{"BEF prefix", "BEF 1870", 1869},
+		{"bef lowercase", "bef 1870", 1869},
+		{"ABT prefix", "ABT 1870", 1870},
+		{"AFT prefix", "AFT 1860", 1860},
+		{"empty string", "", 0},
+		{"nil", nil, 0},
+		{"structured map", map[string]any{"value": "BEF 1870"}, 1869},
+		{"structured map plain", map[string]any{"value": "1870"}, 1870},
+		{"temporal list", []any{map[string]any{"value": "BEF 1870"}}, 1869},
 	}
 	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			got := deathYearUpperBound(tt.input)
 			if got != tt.want {
-				t.Errorf("deathYearUpperBound(%q) = %d, want %d", tt.input, got, tt.want)
+				t.Errorf("deathYearUpperBound(%v) = %d, want %d", tt.input, got, tt.want)
 			}
 		})
 	}

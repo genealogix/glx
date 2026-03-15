@@ -139,7 +139,7 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	diedAt := propertyString(props, glxlib.PersonPropertyDiedAt)
 
 	birthYear := glxlib.ExtractFirstYear(bornOn)
-	deathYear := deathYearUpperBound(diedOn)
+	deathYear := deathYearUpperBound(props[glxlib.PersonPropertyDiedOn])
 
 	// Build indexes: what sources/citations/events reference this person
 	personSources := collectPersonSources(personID, archive)

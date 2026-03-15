@@ -22,14 +22,39 @@ import (
 )
 
 // deathYearUpperBound returns the effective upper bound year for census
-// suggestions from a death date string. For "BEF <year>" dates, the year
-// is decremented by 1 since the person died before that year.
-func deathYearUpperBound(diedOn string) int {
-	year := glxlib.ExtractFirstYear(diedOn)
-	if year > 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(diedOn)), "BEF ") {
+// suggestions from a death date property value. Handles string, structured
+// map ({value: "BEF 1870"}), and temporal list ([{value: "BEF 1870"}]) shapes.
+// For "BEF <year>" dates, the year is decremented by 1 since the person
+// died before that year.
+func deathYearUpperBound(raw any) int {
+	dateStr := extractDateString(raw)
+	year := glxlib.ExtractFirstYear(dateStr)
+	if year > 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(dateStr)), "BEF ") {
 		year--
 	}
 	return year
+}
+
+// extractDateString extracts the date string from a property value,
+// handling string, structured map, and temporal list shapes.
+func extractDateString(raw any) string {
+	switch v := raw.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if val, ok := v["value"]; ok {
+			return fmt.Sprint(val)
+		}
+	case []any:
+		if len(v) > 0 {
+			if m, ok := v[0].(map[string]any); ok {
+				if val, ok := m["value"]; ok {
+					return fmt.Sprint(val)
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // usFederalCensusYears lists U.S. Federal Census years.
@@ -82,8 +107,7 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		diedOn := propertyString(person.Properties, "died_on")
-		deathYear := deathYearUpperBound(diedOn)
+		deathYear := deathYearUpperBound(person.Properties["died_on"])
 
 		name := personName(archive, id)
 		existing := personCensusYears[id]
