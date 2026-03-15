@@ -196,7 +196,7 @@ func buildCanonicalPath(placeID string, places map[string]*glxlib.Place) string 
 }
 
 // collectReferencedPlaces returns the set of place IDs referenced by events,
-// assertions, or as parents.
+// person properties (born_at, died_at, etc.), assertions, or as parents.
 func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	referenced := make(map[string]struct{})
 
@@ -213,6 +213,29 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 		}
 	}
 
+	// Places referenced in person properties (born_at, died_at, residence, etc.)
+	placePropertyKeys := []string{"born_at", "died_at", "buried_at", "residence"}
+	for _, person := range archive.Persons {
+		if person == nil || person.Properties == nil {
+			continue
+		}
+		for _, key := range placePropertyKeys {
+			collectPlaceRefsFromProperty(person.Properties[key], referenced)
+		}
+	}
+
+	// Places referenced as assertion values for place-reference properties
+	for _, a := range archive.Assertions {
+		if a == nil {
+			continue
+		}
+		if a.Property == "born_at" || a.Property == "died_at" || a.Property == "buried_at" || a.Property == "residence" {
+			if a.Value != "" {
+				referenced[a.Value] = struct{}{}
+			}
+		}
+	}
+
 	// Places referenced as parents (only if the parent exists and is non-nil)
 	for _, place := range archive.Places {
 		if place != nil && place.ParentID != "" {
@@ -223,6 +246,31 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	}
 
 	return referenced
+}
+
+// collectPlaceRefsFromProperty extracts place IDs from a property value,
+// handling string, structured map ({value: ...}), and temporal list shapes.
+func collectPlaceRefsFromProperty(raw any, referenced map[string]struct{}) {
+	switch v := raw.(type) {
+	case string:
+		if v != "" {
+			referenced[v] = struct{}{}
+		}
+	case map[string]any:
+		if val, ok := v["value"].(string); ok && val != "" {
+			referenced[val] = struct{}{}
+		}
+	case []any:
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok && val != "" {
+					referenced[val] = struct{}{}
+				}
+			} else if s, ok := item.(string); ok && s != "" {
+				referenced[s] = struct{}{}
+			}
+		}
+	}
 }
 
 // printPlaceAnalysis prints the analysis results.
