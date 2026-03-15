@@ -658,6 +658,67 @@ func findParentIDs(personID string, archive *glxlib.GLXFile) []string {
 	return parents
 }
 
+// findChildIDs finds child person IDs for a given person, sorted by birth year.
+func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
+	children := map[string]bool{}
+
+	ids := sortedKeys(archive.Relationships)
+	for _, relID := range ids {
+		rel := archive.Relationships[relID]
+		if !parentChildRelTypes[strings.ToLower(rel.Type)] {
+			continue
+		}
+
+		isParent := false
+		for _, p := range rel.Participants {
+			if p.Person == personID && strings.EqualFold(p.Role, "parent") {
+				isParent = true
+				break
+			}
+		}
+		if !isParent {
+			continue
+		}
+
+		for _, p := range rel.Participants {
+			if strings.EqualFold(p.Role, "child") && !children[p.Person] {
+				children[p.Person] = true
+			}
+		}
+	}
+
+	result := make([]string, 0, len(children))
+	for id := range children {
+		result = append(result, id)
+	}
+
+	// Sort by birth year, then by ID for stability
+	sort.Slice(result, func(i, j int) bool {
+		yi := glxlib.ExtractPropertyYear(personProps(archive, result[i]), "born_on")
+		yj := glxlib.ExtractPropertyYear(personProps(archive, result[j]), "born_on")
+		if yi != yj {
+			if yi == 0 {
+				return false
+			}
+			if yj == 0 {
+				return true
+			}
+			return yi < yj
+		}
+		return result[i] < result[j]
+	})
+
+	return result
+}
+
+// personProps returns the properties map for a person, or nil.
+func personProps(archive *glxlib.GLXFile, personID string) map[string]any {
+	if p, ok := archive.Persons[personID]; ok && p != nil {
+		return p.Properties
+	}
+	return nil
+}
+
 // findSiblingIDs finds siblings by looking for other children of the same parents.
 func findSiblingIDs(personID string, parentIDs []string, archive *glxlib.GLXFile) []string {
 	siblings := map[string]bool{}
@@ -909,6 +970,32 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 		sentences = append(sentences, s+".")
 	}
 
+	// Children
+	childIDs := findChildIDs(personID, archive)
+	if len(childIDs) > 0 {
+		var childNames []string
+		for _, cid := range childIDs {
+			if child, ok := archive.Persons[cid]; ok {
+				name := extractPersonName(child)
+				// Use given name only for brevity
+				if parts := strings.Fields(name); len(parts) > 0 {
+					childNames = append(childNames, parts[0])
+				} else {
+					childNames = append(childNames, name)
+				}
+			}
+		}
+		if len(childNames) > 0 {
+			count := numberWord(len(childNames))
+			childWord := "children"
+			if len(childNames) == 1 {
+				childWord = "child"
+			}
+			s := fmt.Sprintf("%s had %s %s: %s", subject, count, childWord, joinNames(childNames))
+			sentences = append(sentences, s+".")
+		}
+	}
+
 	// Notable events (first of each type)
 	notableTypes := []string{"immigration", "naturalization", "military_service"}
 	for _, evType := range notableTypes {
@@ -1061,6 +1148,15 @@ func pronounFor(person *glxlib.Person) (subject, possessive string) {
 }
 
 // joinNames joins names with commas and "and" before the last.
+// numberWord returns the English word for small numbers, or the numeral for larger ones.
+func numberWord(n int) string {
+	words := []string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"}
+	if n >= 0 && n < len(words) {
+		return words[n]
+	}
+	return fmt.Sprintf("%d", n)
+}
+
 func joinNames(names []string) string {
 	switch len(names) {
 	case 0:
