@@ -27,6 +27,9 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	personEvents := buildPersonEventIndex(archive)
 	childHasParents := buildChildHasParentsIndex(archive)
+	spouseRels := buildSpouseRelIndex(archive)
+	marriagePairs := buildMarriagePairIndex(archive)
+
 	for _, id := range sortedPersonIDs(archive.Persons) {
 		person := archive.Persons[id]
 		if person == nil {
@@ -46,7 +49,20 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 			})
 		}
 		issues = append(issues, checkNoEvents(id, name, personEvents)...)
-		issues = append(issues, checkMissingMarriageEvents(id, name, archive)...)
+
+		// Check each spouse relationship for a corresponding marriage event
+		for _, sp := range spouseRels[id] {
+			pairKey := marriagePairKey(id, sp.spouseID)
+			if !marriagePairs[pairKey] {
+				spouseName := personName(archive, sp.spouseID)
+				issues = append(issues, AnalysisIssue{
+					Category: "gap",
+					Severity: "medium",
+					Person:   id,
+					Message:  fmt.Sprintf("%s — no marriage event for %s (spouse relationship exists but no date/place)", name, spouseName),
+				})
+			}
+		}
 	}
 
 	return issues
@@ -69,11 +85,16 @@ func buildChildHasParentsIndex(archive *glxlib.GLXFile) map[string]bool {
 	return index
 }
 
-// checkMissingMarriageEvents checks each spouse relationship for a person and
-// reports any that lack a corresponding marriage event with a date or place.
-func checkMissingMarriageEvents(personID, name string, archive *glxlib.GLXFile) []AnalysisIssue {
-	var issues []AnalysisIssue
+// spouseRef pairs a spouse person ID with the relationship that connects them.
+type spouseRef struct {
+	spouseID string
+	relID    string
+}
 
+// buildSpouseRelIndex returns a map from person ID to their spouse relationships.
+// Entries are sorted by relationship ID for deterministic output.
+func buildSpouseRelIndex(archive *glxlib.GLXFile) map[string][]spouseRef {
+	index := make(map[string][]spouseRef)
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
 		rel := archive.Relationships[relID]
@@ -83,64 +104,72 @@ func checkMissingMarriageEvents(personID, name string, archive *glxlib.GLXFile) 
 		if rel.Type != glxlib.RelationshipTypeMarriage && rel.Type != glxlib.RelationshipTypePartner {
 			continue
 		}
-
-		var spouseID string
-		isParticipant := false
-		for _, p := range rel.Participants {
-			if p.Person == personID {
-				isParticipant = true
-			} else if p.Person != "" {
-				spouseID = p.Person
+		for i, p := range rel.Participants {
+			for j, q := range rel.Participants {
+				if i != j && p.Person != "" && q.Person != "" {
+					index[p.Person] = append(index[p.Person], spouseRef{spouseID: q.Person, relID: relID})
+				}
 			}
 		}
-		if !isParticipant {
+	}
+	return index
+}
+
+// buildMarriagePairIndex returns a set of (personA, personB) pairs that share a
+// marriage event with a date or place. Also checks relationship start_event refs.
+func buildMarriagePairIndex(archive *glxlib.GLXFile) map[string]bool {
+	index := make(map[string]bool)
+
+	// From marriage events
+	for _, event := range archive.Events {
+		if event == nil || event.Type != glxlib.EventTypeMarriage {
 			continue
 		}
-
-		hasEvent := false
-		if rel.StartEvent != "" {
-			if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil {
-				if ev.Type == glxlib.EventTypeMarriage && (ev.Date != "" || ev.PlaceID != "") {
-					hasEvent = true
+		if event.Date == "" && event.PlaceID == "" {
+			continue
+		}
+		for i, p := range event.Participants {
+			for j, q := range event.Participants {
+				if i != j && p.Person != "" && q.Person != "" {
+					index[marriagePairKey(p.Person, q.Person)] = true
 				}
 			}
-		}
-		if !hasEvent {
-			for _, ev := range archive.Events {
-				if ev == nil || ev.Type != glxlib.EventTypeMarriage {
-					continue
-				}
-				if ev.Date == "" && ev.PlaceID == "" {
-					continue
-				}
-				hasPerson, hasSpouse := false, false
-				for _, p := range ev.Participants {
-					if p.Person == personID {
-						hasPerson = true
-					}
-					if p.Person == spouseID {
-						hasSpouse = true
-					}
-				}
-				if hasPerson && hasSpouse {
-					hasEvent = true
-					break
-				}
-			}
-		}
-
-		if !hasEvent {
-			spouseName := personName(archive, spouseID)
-			issues = append(issues, AnalysisIssue{
-				Category: "gap",
-				Severity: "medium",
-				Person:   personID,
-				Message:  fmt.Sprintf("%s — no marriage event for %s (spouse relationship exists but no date/place)", name, spouseName),
-			})
 		}
 	}
 
-	return issues
+	// From relationship start_event refs
+	for _, rel := range archive.Relationships {
+		if rel == nil || rel.StartEvent == "" {
+			continue
+		}
+		if rel.Type != glxlib.RelationshipTypeMarriage && rel.Type != glxlib.RelationshipTypePartner {
+			continue
+		}
+		ev, ok := archive.Events[rel.StartEvent]
+		if !ok || ev == nil || ev.Type != glxlib.EventTypeMarriage {
+			continue
+		}
+		if ev.Date == "" && ev.PlaceID == "" {
+			continue
+		}
+		for i, p := range rel.Participants {
+			for j, q := range rel.Participants {
+				if i != j && p.Person != "" && q.Person != "" {
+					index[marriagePairKey(p.Person, q.Person)] = true
+				}
+			}
+		}
+	}
+
+	return index
+}
+
+// marriagePairKey returns a canonical key for a pair of person IDs.
+func marriagePairKey(a, b string) string {
+	if a < b {
+		return a + "|" + b
+	}
+	return b + "|" + a
 }
 
 // checkMissingBirth reports persons with no birth date or place.
