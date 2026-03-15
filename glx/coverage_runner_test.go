@@ -15,6 +15,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -311,6 +312,145 @@ func TestFindPersonForCoverage(t *testing.T) {
 	_, _, err = findPersonForCoverage(archive, "NonExistent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no person found")
+}
+
+func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
+	// Person born 1832, no death date — should cap census records at birth+100
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-old": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName:   "Old Person",
+					glxlib.PersonPropertyBornOn: "ABT 1832",
+				},
+			},
+		},
+		Events:         map[string]*glxlib.Event{},
+		Relationships:  map[string]*glxlib.Relationship{},
+		Sources:        map[string]*glxlib.Source{},
+		Citations:      map[string]*glxlib.Citation{},
+		Assertions:     map[string]*glxlib.Assertion{},
+		Places:         map[string]*glxlib.Place{},
+	}
+
+	result := buildCoverage("person-old", archive.Persons["person-old"], archive)
+
+	var censusYears []string
+	for _, r := range result.Records {
+		if r.Category == "census" {
+			censusYears = append(censusYears, r.Label)
+		}
+	}
+
+	// 1832+100=1932, so 1940 and 1950 should not appear
+	for _, label := range censusYears {
+		assert.NotContains(t, label, "1940", "should not suggest 1940 census")
+		assert.NotContains(t, label, "1950", "should not suggest 1950 census")
+	}
+	// 1930 should still appear (1932 > 1930)
+	found1930 := false
+	for _, label := range censusYears {
+		if strings.HasPrefix(label, "1930") {
+			found1930 = true
+		}
+	}
+	assert.True(t, found1930, "should include 1930 census")
+}
+
+func TestBuildCoverage_BurialInfersDeath(t *testing.T) {
+	// Person born 1832, no died_on, but has burial in 1863
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-soldier": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName:   "Soldier",
+					glxlib.PersonPropertyBornOn: "1832",
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-burial": {
+				Type: glxlib.EventTypeBurial,
+				Date: "1863",
+				Participants: []glxlib.Participant{
+					{Person: "person-soldier", Role: "principal"},
+				},
+			},
+		},
+		Relationships:  map[string]*glxlib.Relationship{},
+		Sources:        map[string]*glxlib.Source{},
+		Citations:      map[string]*glxlib.Citation{},
+		Assertions:     map[string]*glxlib.Assertion{},
+		Places:         map[string]*glxlib.Place{},
+	}
+
+	result := buildCoverage("person-soldier", archive.Persons["person-soldier"], archive)
+
+	var censusYears []string
+	for _, r := range result.Records {
+		if r.Category == "census" {
+			censusYears = append(censusYears, r.Label)
+		}
+	}
+
+	// Should include 1840-1860 but NOT 1870+
+	has1860 := false
+	has1870 := false
+	for _, label := range censusYears {
+		if len(label) >= 4 {
+			if label[:4] == "1860" {
+				has1860 = true
+			}
+			if label[:4] == "1870" {
+				has1870 = true
+			}
+		}
+	}
+	assert.True(t, has1860, "should include 1860 census (before burial)")
+	assert.False(t, has1870, "should NOT include 1870 census (after burial)")
+}
+
+func TestBuildCoverage_1890Note(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1890": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName:   "Person Alive 1890",
+					glxlib.PersonPropertyBornOn: "1850",
+					glxlib.PersonPropertyDiedOn: "1920",
+				},
+			},
+		},
+		Events:         map[string]*glxlib.Event{},
+		Relationships:  map[string]*glxlib.Relationship{},
+		Sources:        map[string]*glxlib.Source{},
+		Citations:      map[string]*glxlib.Citation{},
+		Assertions:     map[string]*glxlib.Assertion{},
+		Places:         map[string]*glxlib.Place{},
+	}
+
+	result := buildCoverage("person-1890", archive.Persons["person-1890"], archive)
+
+	for _, r := range result.Records {
+		if r.Category == "census" && len(r.Label) >= 4 && r.Label[:4] == "1890" {
+			assert.Contains(t, r.Description, "destroyed", "1890 census should note destruction")
+			return
+		}
+	}
+	t.Fatal("did not find 1890 census record")
+}
+
+func TestInferDeathYearFromEvents(t *testing.T) {
+	events := []personSourceInfo{
+		{EventType: glxlib.EventTypeBirth, Year: 1832},
+		{EventType: glxlib.EventTypeBurial, Year: 1863},
+	}
+	assert.Equal(t, 1863, inferDeathYearFromEvents(events))
+
+	eventsNoBurial := []personSourceInfo{
+		{EventType: glxlib.EventTypeBirth, Year: 1832},
+	}
+	assert.Equal(t, 0, inferDeathYearFromEvents(eventsNoBurial))
 }
 
 func TestCoverageResolvePlaceName(t *testing.T) {

@@ -501,6 +501,81 @@ func TestAnalyzeSuggestions_VitalRecords(t *testing.T) {
 	}
 }
 
+func TestAnalyzeSuggestions_MaxLifespanCap(t *testing.T) {
+	// Person born 1832, no death date — should NOT suggest 1940+ census
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_on": "ABT 1832",
+			}},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	// Should suggest 1840-1930 (birth+100=1932, so 1930 is last valid)
+	if found := findIssueByMessage(issues, "person-a", "1930 census"); found == nil {
+		t.Error("expected suggestion for 1930 census")
+	}
+	if found := findIssueByMessage(issues, "person-a", "1940 census"); found != nil {
+		t.Error("should NOT suggest 1940 census (beyond max lifespan)")
+	}
+	if found := findIssueByMessage(issues, "person-a", "1950 census"); found != nil {
+		t.Error("should NOT suggest 1950 census (beyond max lifespan)")
+	}
+}
+
+func TestAnalyzeSuggestions_BurialInfersDeath(t *testing.T) {
+	// Person born 1832, no died_on, but has burial event in 1863
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_on": "1832",
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-burial": {
+				Type:         "burial",
+				Date:         "1863",
+				Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}},
+			},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	// Should suggest 1840-1860 but NOT 1870+
+	if found := findIssueByMessage(issues, "person-a", "1860 census"); found == nil {
+		t.Error("expected suggestion for 1860 census (before burial)")
+	}
+	if found := findIssueByMessage(issues, "person-a", "1870 census"); found != nil {
+		t.Error("should NOT suggest 1870 census (after burial/inferred death)")
+	}
+}
+
+func TestAnalyzeSuggestions_1890Note(t *testing.T) {
+	// Person alive during 1890 should get a note about the destroyed census
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_on": "1850",
+				"died_on": "1920",
+			}},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := analyzeSuggestions(archive)
+	found := findIssueByMessage(issues, "person-a", "1890 census")
+	if found == nil {
+		t.Fatal("expected 1890 census suggestion")
+	}
+	if !containsSubstring(found.Message, "destroyed") {
+		t.Error("1890 census suggestion should note it was destroyed")
+	}
+}
+
 // --- Runner ---
 
 func TestBuildSummary(t *testing.T) {
