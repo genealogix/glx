@@ -61,7 +61,7 @@ Domain-specific events can be added via vocabularies:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `title` | string | Short label for the event (e.g., "1860 Census — Lane Household"). Auto-generated on GEDCOM import from participant names and date (e.g., "Birth of Daniel Lane (1815)"). Distinct from `properties.description`, which is a longer narrative |
+| `title` | string | Short label for the event (e.g., "1860 Census — Webb Household"). Auto-generated on GEDCOM import from participant names and date (e.g., "Birth of Robert Webb (1815)"). Distinct from `properties.description`, which is a longer narrative |
 | `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
@@ -158,21 +158,21 @@ Census events and similar multi-person events can record per-participant data us
 
 ```yaml
 events:
-  event-1860-census-lane:
-    title: "1860 Census — Lane Household"
+  event-1860-census-webb:
+    title: "1860 Census — Webb Household"
     type: census
     date: "1860"
-    place: place-marston-sauk-wi
+    place: place-oakdale-hartford-wi
     participants:
-      - person: person-d-lane
+      - person: person-robert-webb
         role: subject
         properties:
           age_at_event: "45"
-      - person: person-mary-lane
+      - person: person-jane-webb
         role: subject
         properties:
           age_at_event: "28"
-      - person: person-harriett-lane
+      - person: person-harriett-webb
         role: subject
         properties:
           age_at_event: "8"

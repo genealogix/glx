@@ -117,10 +117,10 @@ The importer processes records in dependency order across multiple passes, handl
 **Individuals**: Names (with parsed components), gender, 20+ event types, 8+ property types, external IDs, notes, media references
 
 **Events**: Each imported event receives an auto-generated `title` field for human readability. The format varies by event type:
-- Individual events: "Birth of Daniel Lane (1815)"
+- Individual events: "Birth of Robert Webb (1815)"
 - Couple events: "Marriage of John Smith and Jane Doe (1850)"
 - Date-only: "Census (1860)"
-- Name-only: "Death of Mary Green"
+- Name-only: "Death of Jane Miller"
 
 Unknown event types fall back to Title Case of the snake_case type (e.g., `military_service` → "Military Service"). Titles are generated from participant names and the event date — they are not extracted from the GEDCOM source.
 
