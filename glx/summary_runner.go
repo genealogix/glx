@@ -984,7 +984,13 @@ func narrativeDate(date string) string {
 	case strings.HasPrefix(upper, "AFT "):
 		return "after " + formatReadableDate(trimmed[4:])
 	case strings.HasPrefix(upper, "BET "):
-		return "between " + strings.Replace(trimmed[4:], " AND ", " and ", 1)
+		rest := trimmed[4:]
+		if idx := strings.Index(strings.ToUpper(rest), " AND "); idx >= 0 {
+			from := formatReadableDate(strings.TrimSpace(rest[:idx]))
+			to := formatReadableDate(strings.TrimSpace(rest[idx+5:]))
+			return "between " + from + " and " + to
+		}
+		return "between " + rest
 	default:
 		readable := formatReadableDate(trimmed)
 		if isFullDate(trimmed) {
@@ -1021,6 +1027,9 @@ func formatReadableDate(s string) string {
 			return s
 		}
 		day := strings.TrimLeft(s[8:10], "0")
+		if day == "" {
+			day = "0"
+		}
 		return month + " " + day + ", " + s[:4]
 	}
 	// Year-month: YYYY-MM
