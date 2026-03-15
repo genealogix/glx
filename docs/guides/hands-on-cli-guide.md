@@ -399,6 +399,48 @@ Rickard Stark  person-rickard-stark
 
 Notice Jon Snow appears under both Eddard Stark and Lyanna Stark — the tree correctly traverses all parent-child relationships, revealing R+L=J through the data structure itself.
 
+## Relationship Paths
+
+### `glx path` — Shortest path between two people
+
+Find how two people are connected through the relationship graph:
+
+```bash
+glx path "Arya Stark" "Jon Snow"
+```
+
+```
+Path from person-arya-stark to person-jon-snow (2 hop(s)):
+
+  Arya Stark (person-arya-stark)
+    - child in parent child ->
+  Eddard Stark (person-eddard-stark)
+    - parent in parent child ->
+  Jon Snow (person-jon-snow)
+```
+
+The command uses breadth-first search across all relationship types — parent-child, marriage, sibling, betrothal, ward, and any other relationship in the archive. Try a path that crosses family boundaries:
+
+```bash
+glx path "Robb Stark" person-lysa-tully
+```
+
+```
+Path from person-robb-stark to person-lysa-tully (2 hop(s)):
+
+  Robb Stark (person-robb-stark)
+    - child in parent child ->
+  Catelyn Tully (person-catelyn-tully)
+    - sibling in sibling ->
+  Lysa Tully (person-lysa-tully)
+```
+
+Use `--max-hops` to limit the search depth, and `--json` for machine-readable output:
+
+```bash
+glx path "Sansa Stark" "Joffrey Baratheon" --max-hops 5 --json
+```
+
 ## Citations
 
 ### `glx cite` — Generate citation text

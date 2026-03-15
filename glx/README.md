@@ -20,6 +20,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
 - 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
+- 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
@@ -158,6 +159,8 @@ glx cite citation-abc123
 
 # FAN club analysis for brickwall research
 glx cluster person-mary-lane --place place-ironton-sauk-wi --before 1860
+# Find the relationship path between two people
+glx path "Mary Lane" "John Smith"
 
 # Query persons born before 1850
 glx query persons --born-before 1850
@@ -705,7 +708,7 @@ glx vitals <person> [flags]
 ```
 
 **Arguments:**
-- `<person>` - Person ID (e.g., `person-d-lane`) or name to search for (case-insensitive substring match)
+- `<person>` - Person ID (e.g., `person-robert-webb`) or name to search for (case-insensitive substring match)
 
 **Options:**
 - `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
@@ -720,13 +723,13 @@ If the name matches multiple persons, all matches are listed for disambiguation.
 
 ```bash
 # Look up by person ID
-glx vitals person-d-lane
+glx vitals person-robert-webb
 
 # Look up by name
-glx vitals "Mary Green"
+glx vitals "Jane Miller"
 
 # Specify archive path
-glx vitals "Mary Green" --archive my-archive
+glx vitals "Jane Miller" --archive my-archive
 ```
 
 ### `glx timeline`
@@ -796,7 +799,7 @@ glx summary <person> [flags]
 glx summary person-abc123
 
 # Summary by name search
-glx summary "Mary Lane"
+glx summary "Jane Webb"
 
 # Summary in a specific archive
 glx summary "John Smith" --archive my-family-archive
@@ -885,7 +888,7 @@ Assembles citations from the source title, source type, repository name, URL, an
 
 ```bash
 # Format a specific citation
-glx cite citation-1860-census-lane-household
+glx cite citation-1860-census-webb-household
 
 # Format all citations in the archive
 glx cite
@@ -918,6 +921,25 @@ Associates are ranked by connection strength:
 - Census household co-residence: 3 points
 - Shared event participation: 2 points
 - Place overlap: 1 point
+### `glx path`
+
+Find the shortest relationship path between two people using breadth-first search.
+
+**Usage:**
+```bash
+glx path <person-a> <person-b> [flags]
+```
+
+**Arguments:**
+- `<person-a>` - First person (ID or name substring)
+- `<person-b>` - Second person (ID or name substring)
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `--max-hops <n>` - Maximum number of hops to search (default: 10)
+- `--json` - Output as JSON
+
+Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.) to find the shortest connection between two persons. Person arguments can be exact entity IDs or name substrings (case-insensitive). If a name matches multiple persons, all matches are listed for disambiguation.
 
 **Examples:**
 
@@ -936,6 +958,20 @@ glx cluster person-mary-lane --json
 
 # Use a specific archive
 glx cluster person-mary-lane --archive my-archive
+# Find path between two persons by name
+glx path "Mary Lane" "Louenza Mortimer"
+
+# Find path by person ID
+glx path person-mary-lane person-louenza-mortimer
+
+# Limit search depth
+glx path "Mary Lane" "John Smith" --max-hops 5
+
+# JSON output
+glx path "Mary Lane" "John Smith" --json
+
+# Specify archive path
+glx path "Mary Lane" "John Smith" --archive my-archive
 ```
 
 **Output:**
@@ -954,6 +990,13 @@ Associates of Mary Lane (person-mary-lane):
     Sarah Clark (person-sarah-clark)  [Same place: Ironton, Sauk Co., WI (1850–1860)]  (score: 1)
 
   5 associate(s) found
+Path from person-arya-stark to person-jon-snow (2 hop(s)):
+
+  Arya Stark (person-arya-stark)
+    - child in parent child ->
+  Eddard Stark (person-eddard-stark)
+    - parent in parent child ->
+  Jon Snow (person-jon-snow)
 ```
 
 ### `glx analyze`
@@ -990,7 +1033,7 @@ glx analyze [person] [flags]
 glx analyze
 
 # Focus on one person
-glx analyze person-mary-lane
+glx analyze person-jane-webb
 
 # Run only gap analysis
 glx analyze --check gaps

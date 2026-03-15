@@ -55,22 +55,22 @@ func TestFindPersonByName(t *testing.T) {
 					},
 				},
 			},
-			"person-mary": {
+			"person-jane": {
 				Properties: map[string]any{
 					"name": map[string]any{
-						"value": "Mary Green",
+						"value": "Jane Miller",
 					},
 				},
 			},
 		},
 	}
 
-	id, _, err := findPerson(archive, "Mary")
+	id, _, err := findPerson(archive, "Jane")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if id != "person-mary" {
-		t.Errorf("expected id person-mary, got %s", id)
+	if id != "person-jane" {
+		t.Errorf("expected id person-jane, got %s", id)
 	}
 }
 
@@ -94,24 +94,24 @@ func TestFindPersonNotFound(t *testing.T) {
 func TestFindPersonAmbiguous(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary-lane": {
+			"person-jane-webb": {
 				Properties: map[string]any{
 					"name": map[string]any{
-						"value": "Mary Lane",
+						"value": "Jane Webb",
 					},
 				},
 			},
-			"person-mary-green": {
+			"person-jane-miller": {
 				Properties: map[string]any{
 					"name": map[string]any{
-						"value": "Mary Green",
+						"value": "Jane Miller",
 					},
 				},
 			},
 		},
 	}
 
-	_, _, err := findPerson(archive, "Mary")
+	_, _, err := findPerson(archive, "Jane")
 	if err == nil {
 		t.Fatal("expected error for ambiguous match")
 	}

@@ -55,7 +55,7 @@ func TestBuildConfidenceReport_ConfidenceBreakdown(t *testing.T) {
 			"a3": {
 				Subject:    glxlib.EntityRef{Person: "person-b"},
 				Property:   "name",
-				Value:      "Mary Lane",
+				Value:      "Jane Webb",
 				Confidence: "low",
 				Citations:  []string{"c2"},
 			},

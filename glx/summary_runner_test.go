@@ -213,17 +213,17 @@ func TestExtractAllNameVariants_TemporalList(t *testing.T) {
 	person := &glxlib.Person{
 		Properties: map[string]any{
 			"name": []any{
-				map[string]any{"value": "Mary Green", "fields": map[string]any{"type": "birth"}},
-				map[string]any{"value": "Mary Lane", "fields": map[string]any{"type": "married"}},
+				map[string]any{"value": "Jane Miller", "fields": map[string]any{"type": "birth"}},
+				map[string]any{"value": "Jane Webb", "fields": map[string]any{"type": "married"}},
 			},
 		},
 	}
 
 	variants := extractAllNameVariants(person)
 	require.Len(t, variants, 2)
-	assert.Equal(t, "Mary Green", variants[0].Value)
+	assert.Equal(t, "Jane Miller", variants[0].Value)
 	assert.Equal(t, "birth", variants[0].NameType)
-	assert.Equal(t, "Mary Lane", variants[1].Value)
+	assert.Equal(t, "Jane Webb", variants[1].Value)
 	assert.Equal(t, "married", variants[1].NameType)
 }
 
