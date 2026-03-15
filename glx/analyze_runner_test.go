@@ -460,6 +460,54 @@ func TestAnalyzeSuggestions_MissingCensus(t *testing.T) {
 	}
 }
 
+func TestAnalyzeSuggestions_BEFDeathExcludesYear(t *testing.T) {
+	// "BEF 1870" means died before 1870 — should NOT suggest 1870 census
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_on": "1840",
+				"died_on": "BEF 1870",
+			}},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := analyzeSuggestions(archive)
+	if found := findIssueByMessage(issues, "person-a", "1860 census"); found == nil {
+		t.Error("expected suggestion for 1860 census (before BEF year)")
+	}
+	if found := findIssueByMessage(issues, "person-a", "1870 census"); found != nil {
+		t.Error("should NOT suggest 1870 census (died BEF 1870)")
+	}
+}
+
+func TestDeathYearUpperBound(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  int
+	}{
+		{"plain year", "1870", 1870},
+		{"BEF prefix", "BEF 1870", 1869},
+		{"bef lowercase", "bef 1870", 1869},
+		{"ABT prefix", "ABT 1870", 1870},
+		{"AFT prefix", "AFT 1860", 1860},
+		{"empty string", "", 0},
+		{"nil", nil, 0},
+		{"structured map", map[string]any{"value": "BEF 1870"}, 1869},
+		{"structured map plain", map[string]any{"value": "1870"}, 1870},
+		{"temporal list", []any{map[string]any{"value": "BEF 1870"}}, 1869},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := deathYearUpperBound(tt.input)
+			if got != tt.want {
+				t.Errorf("deathYearUpperBound(%v) = %d, want %d", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAnalyzeSuggestions_HasCensus(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{

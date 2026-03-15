@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **ANSEL converter handles multiple combining diacriticals** - Consecutive combining marks preceding a base letter are now all buffered and emitted after the base letter in Unicode order, instead of only handling a single combining mark
 
 ### Fixed
+- **BEF date prefix respected in census suggestions** - `glx analyze` and `glx coverage` now treat `BEF <year>` death dates as exclusive upper bounds. A person with `died_on: "BEF 1870"` no longer gets 1870 census suggestions. Fixes #165
 - **Summary shows marriages in chronological order** - `glx summary` now sorts spouses by full marriage date (earliest first, using the same date sort key as `glx timeline`) instead of relationship ID order. Correctly orders marriages within the same year. Undated marriages sort after dated ones. The Life History narrative also reflects the correct order. Fixes #136
 - **Life History narrative formats ISO dates as readable text** - Dates like `1863-06-18` now render as "on June 18, 1863" instead of "in 1863-06-18". Handles full dates, year-month, and prefixed dates (ABT, BEF, AFT)
 - **Census suggestions capped at plausible lifespan** - `glx analyze` and `glx coverage` no longer suggest census years beyond `birth_year + 100` when no death date is known. Previously, a person born ~1832 would get suggestions for 1940 and 1950 censuses. Fixes #130
