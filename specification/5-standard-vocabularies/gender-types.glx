@@ -1,0 +1,25 @@
+# Standard Gender Types
+# This file defines the standard gender types for GENEALOGIX archives.
+# Archives can extend this with custom types by adding additional entries.
+# Each entry includes a GEDCOM SEX mapping for interoperability.
+
+gender_types:
+  male:
+    label: "Male"
+    description: "Male gender identity"
+    gedcom: "M"
+
+  female:
+    label: "Female"
+    description: "Female gender identity"
+    gedcom: "F"
+
+  unknown:
+    label: "Unknown"
+    description: "Gender is unknown or not recorded"
+    gedcom: "U"
+
+  other:
+    label: "Other"
+    description: "Gender not covered by other categories"
+    gedcom: "X"

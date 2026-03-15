@@ -65,6 +65,20 @@ confidence_levels:
     label: "High Confidence"
     description: "Strong evidence with minimal doubt"
 
+gender_types:
+  male:
+    label: "Male"
+    gedcom: "M"
+  female:
+    label: "Female"
+    gedcom: "F"
+  unknown:
+    label: "Unknown"
+    gedcom: "U"
+  other:
+    label: "Other"
+    gedcom: "X"
+
 # Property Definitions
 person_properties:
   name:
@@ -108,7 +122,7 @@ person_properties:
   gender:
     label: "Gender"
     description: "Gender identity"
-    value_type: string
+    vocabulary_type: gender_types
 
 source_properties:
   url:
