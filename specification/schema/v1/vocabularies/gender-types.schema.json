@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/gender-types.schema.json",
+  "title": "Gender Types Vocabulary",
+  "description": "Defines the standard and custom gender types available for person entities",
+  "type": "object",
+  "required": ["gender_types"],
+  "properties": {
+    "gender_types": {
+      "type": "object",
+      "description": "Map of gender type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/GenderTypeDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "GenderTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single gender type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the gender type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the gender type"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM SEX value for interoperability"
+        }
+      }
+    }
+  }
+}

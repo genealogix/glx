@@ -90,6 +90,7 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabMediaTypes] = buildIDSet(glx.MediaTypes)
 	result.Vocabularies[VocabConfidenceLevels] = buildIDSet(glx.ConfidenceLevels)
 	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
+	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
 }
 
 // buildPropertyVocabMaps builds maps of property vocabularies.
@@ -496,7 +497,30 @@ func (glx *GLXFile) validateProperties(
 
 			continue
 		}
+		// Check for conflicting type definitions
+		typeCount := 0
+		if propDef.VocabularyType != "" {
+			typeCount++
+		}
 		if propDef.ReferenceType != "" {
+			typeCount++
+		}
+		if propDef.ValueType != "" {
+			typeCount++
+		}
+		if typeCount > 1 {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      "properties." + propName,
+				Message: fmt.Sprintf("%s[%s].properties.%s: property definition has conflicting type fields (only one of value_type, reference_type, vocabulary_type should be set)",
+					entityType, entityID, propName),
+			})
+		}
+
+		if propDef.VocabularyType != "" {
+			glx.validatePropertyVocabularyValue(entityType, entityID, propName, propValue, propDef, result)
+		} else if propDef.ReferenceType != "" {
 			glx.validatePropertyReference(entityType, entityID, propName, propValue, propDef.ReferenceType, result)
 		} else if propDef.ValueType != "" {
 			glx.validatePropertyValue(entityType, entityID, propName, propValue, propDef, result)
@@ -548,6 +572,118 @@ func (glx *GLXFile) checkPropertyRef(entityType, entityID, field, referenceType,
 			TargetID:    refID,
 			Message: fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
 				entityType, entityID, field, referenceType, refID),
+		})
+	}
+}
+
+// validatePropertyVocabularyValue validates that a property value exists in the
+// referenced vocabulary. Handles simple strings, temporal objects, and temporal lists.
+func (glx *GLXFile) validatePropertyVocabularyValue(
+	entityType, entityID, propName string,
+	propValue any,
+	propDef *PropertyDefinition,
+	result *ValidationResult,
+) {
+	vocabSet, vocabLoaded := result.Vocabularies[propDef.VocabularyType]
+	if !vocabLoaded || vocabSet == nil {
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      "properties." + propName,
+			Message: fmt.Sprintf("%s[%s].properties.%s: vocabulary '%s' not loaded, cannot validate value",
+				entityType, entityID, propName, propDef.VocabularyType),
+		})
+		return
+	}
+
+	switch v := propValue.(type) {
+	case string:
+		glx.checkVocabValue(entityType, entityID, "properties."+propName, propDef.VocabularyType, v, vocabSet, result)
+	case map[string]any:
+		// Single temporal object: {value: ..., date: ...}
+		rawVal, hasValue := v["value"]
+		if !hasValue {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      "properties." + propName,
+				Message: fmt.Sprintf("%s[%s].properties.%s: vocabulary-constrained temporal object missing 'value' field",
+					entityType, entityID, propName),
+			})
+		} else if val, ok := rawVal.(string); ok {
+			glx.checkVocabValue(entityType, entityID, "properties."+propName+".value", propDef.VocabularyType, val, vocabSet, result)
+		} else {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: entityType,
+				SourceID:   entityID,
+				Field:      "properties." + propName + ".value",
+				Message: fmt.Sprintf("%s[%s].properties.%s.value: expected string for vocabulary lookup, got %T",
+					entityType, entityID, propName, rawVal),
+			})
+		}
+	case []any:
+		// List of values: strings, temporal objects, or mixed
+		for i, item := range v {
+			switch typedItem := item.(type) {
+			case string:
+				fieldPath := fmt.Sprintf("properties.%s[%d]", propName, i)
+				glx.checkVocabValue(entityType, entityID, fieldPath, propDef.VocabularyType, typedItem, vocabSet, result)
+			case map[string]any:
+				rawVal, hasValue := typedItem["value"]
+				if !hasValue {
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: entityType,
+						SourceID:   entityID,
+						Field:      fmt.Sprintf("properties.%s[%d]", propName, i),
+						Message: fmt.Sprintf("%s[%s].properties.%s[%d]: vocabulary-constrained temporal object missing 'value' field",
+							entityType, entityID, propName, i),
+					})
+				} else if val, ok := rawVal.(string); ok {
+					fieldPath := fmt.Sprintf("properties.%s[%d].value", propName, i)
+					glx.checkVocabValue(entityType, entityID, fieldPath, propDef.VocabularyType, val, vocabSet, result)
+				} else {
+					result.Warnings = append(result.Warnings, ValidationWarning{
+						SourceType: entityType,
+						SourceID:   entityID,
+						Field:      fmt.Sprintf("properties.%s[%d].value", propName, i),
+						Message: fmt.Sprintf("%s[%s].properties.%s[%d].value: expected string for vocabulary lookup, got %T",
+							entityType, entityID, propName, i, rawVal),
+					})
+				}
+			default:
+				result.Warnings = append(result.Warnings, ValidationWarning{
+					SourceType: entityType,
+					SourceID:   entityID,
+					Field:      fmt.Sprintf("properties.%s[%d]", propName, i),
+					Message: fmt.Sprintf("%s[%s].properties.%s[%d]: expected string or temporal object in vocabulary-constrained list, got %T",
+						entityType, entityID, propName, i, item),
+				})
+			}
+		}
+	default:
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      "properties." + propName,
+			Message: fmt.Sprintf("%s[%s].properties.%s: expected string value for vocabulary lookup, got %T",
+				entityType, entityID, propName, propValue),
+		})
+	}
+}
+
+// checkVocabValue checks that a single value exists in the given vocabulary.
+func (glx *GLXFile) checkVocabValue(
+	entityType, entityID, field, vocabType, value string,
+	vocabSet map[string]struct{},
+	result *ValidationResult,
+) {
+	if _, exists := vocabSet[value]; !exists {
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      field,
+			Message: fmt.Sprintf("%s[%s].%s: value '%s' not found in %s vocabulary",
+				entityType, entityID, field, value, vocabType),
 		})
 	}
 }

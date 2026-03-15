@@ -59,6 +59,11 @@ var MediaTypes []byte
 //go:embed confidence-levels.glx
 var ConfidenceLevels []byte
 
+// GenderTypes contains the embedded gender-types.glx vocabulary file.
+//
+//go:embed gender-types.glx
+var GenderTypes []byte
+
 // PersonProperties contains the embedded person-properties.glx vocabulary file.
 //
 //go:embed person-properties.glx
@@ -109,6 +114,7 @@ var Files = map[string][]byte{
 	"participant-roles.glx":       ParticipantRoles,
 	"media-types.glx":             MediaTypes,
 	"confidence-levels.glx":       ConfidenceLevels,
+	"gender-types.glx":            GenderTypes,
 	"person-properties.glx":       PersonProperties,
 	"event-properties.glx":        EventProperties,
 	"relationship-properties.glx": RelationshipProperties,
