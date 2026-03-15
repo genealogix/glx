@@ -19,6 +19,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
+- 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
@@ -154,6 +155,9 @@ glx descendants person-abc123 --generations 3
 
 # Generate formatted citation text
 glx cite citation-abc123
+
+# FAN club analysis for brickwall research
+glx cluster person-mary-lane --place place-ironton-sauk-wi --before 1860
 
 # Query persons born before 1850
 glx query persons --born-before 1850
@@ -888,6 +892,68 @@ glx cite
 
 # Use a specific archive
 glx cite --archive my-archive
+```
+
+### `glx cluster`
+
+Identify associates for a person using FAN (Friends, Associates, Neighbors) club analysis. Useful for brickwall research — finds people connected through census households, shared events, and place overlap, ranked by connection strength.
+
+**Usage:**
+```bash
+glx cluster <person> [flags]
+```
+
+**Arguments:**
+- `<person>` - Person identifier or name query. Accepts either an exact person ID (e.g., `person-mary-lane`) or a case-insensitive name substring (e.g., `"Mary Lane"`).
+
+**Options:**
+- `-a, --archive <path>` - Archive path (directory or single file; defaults to current directory)
+- `--place <id>` - Limit analysis to events occurring in the specified place or any of its descendant places
+- `--before <year>` - Only consider dated events before this year (undated events are still included)
+- `--after <year>` - Only consider dated events after this year (undated events are still included)
+- `--json` - Output results as JSON
+
+**Scoring:**
+Associates are ranked by connection strength:
+- Census household co-residence: 3 points
+- Shared event participation: 2 points
+- Place overlap: 1 point
+
+**Examples:**
+
+```bash
+# Find associates of a person
+glx cluster person-mary-lane
+
+# Restrict to a specific place and time period
+glx cluster person-mary-lane --place place-ironton-sauk-wi --before 1860
+
+# Include only events after a given year
+glx cluster person-mary-lane --after 1840
+
+# Output as JSON for scripting
+glx cluster person-mary-lane --json
+
+# Use a specific archive
+glx cluster person-mary-lane --archive my-archive
+```
+
+**Output:**
+```
+Associates of Mary Lane (person-mary-lane):
+
+  Census Households:
+    John Doe (person-john-doe) — boarder  [1850 Census]  (score: 8)
+    Jane Smith (person-jane-smith) — neighbor  [1850 Census]  (score: 5)
+    William Green (person-william-green) — head  [1855 Census]  (score: 3)
+
+  Shared Events:
+    Henry Brown (person-henry-brown) — witness  [Land Sale (1852)]  (score: 2)
+
+  Same Place, Same Period:
+    Sarah Clark (person-sarah-clark)  [Same place: Ironton, Sauk Co., WI (1850–1860)]  (score: 1)
+
+  5 associate(s) found
 ```
 
 ### `glx analyze`

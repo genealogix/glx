@@ -18,29 +18,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// clusterYearRegexp extracts the first 4-digit year from a date string.
-var clusterYearRegexp = regexp.MustCompile(`\b(\d{4})\b`)
-
 // associate represents a person connected to the target through shared context.
 type associate struct {
-	PersonID   string            `json:"person_id"`
-	PersonName string            `json:"person_name"`
-	Score      int               `json:"score"`
-	Links      []associateLink   `json:"links"`
+	PersonID   string          `json:"person_id"`
+	PersonName string          `json:"person_name"`
+	Score      int             `json:"score"`
+	Links      []associateLink `json:"links"`
 }
 
 // associateLink describes one connection between the target and an associate.
 type associateLink struct {
-	Type    string `json:"type"`              // "census_household", "event_coparticipant", "place_overlap"
+	Type    string `json:"type"`               // "census_household", "event_coparticipant", "place_overlap"
 	EventID string `json:"event_id,omitempty"`
+	PlaceID string `json:"place_id,omitempty"`
 	Label   string `json:"label"`
 	Role    string `json:"role,omitempty"`
 	Year    int    `json:"year,omitempty"`
@@ -171,11 +167,11 @@ func collectCensusLinks(personID string, archive *glxlib.GLXFile, linkMap map[st
 			continue
 		}
 
-		if !eventHasParticipant(personID, event) {
+		if !clusterEventHasParticipant(personID, event) {
 			continue
 		}
 
-		year := clusterExtractYear(string(event.Date))
+		year := extractDateYear(string(event.Date))
 		if !yearInRange(year, beforeYear, afterYear) {
 			continue
 		}
@@ -201,6 +197,7 @@ func collectCensusLinks(personID string, archive *glxlib.GLXFile, linkMap map[st
 			linkMap[p.Person] = append(linkMap[p.Person], associateLink{
 				Type:    "census_household",
 				EventID: eventID,
+				PlaceID: event.PlaceID,
 				Label:   label,
 				Role:    p.Role,
 				Year:    year,
@@ -218,11 +215,11 @@ func collectEventLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 			continue
 		}
 
-		if !eventHasParticipant(personID, event) {
+		if !clusterEventHasParticipant(personID, event) {
 			continue
 		}
 
-		year := clusterExtractYear(string(event.Date))
+		year := extractDateYear(string(event.Date))
 		if !yearInRange(year, beforeYear, afterYear) {
 			continue
 		}
@@ -253,6 +250,7 @@ func collectEventLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 			linkMap[p.Person] = append(linkMap[p.Person], associateLink{
 				Type:    "event_coparticipant",
 				EventID: eventID,
+				PlaceID: event.PlaceID,
 				Label:   label,
 				Role:    p.Role,
 				Year:    year,
@@ -269,16 +267,19 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 		return
 	}
 
+	// Filter target years to the requested range so overlaps outside the
+	// window are not considered.
+	filteredTargetPlaces := filterPlaceYears(targetPlaces, beforeYear, afterYear)
+	if len(filteredTargetPlaces) == 0 {
+		return
+	}
+
+	// Precompute place-year index for all persons to avoid O(P×E) rescanning.
+	placeIndex := buildPlaceYearIndex(personID, archive)
+
 	// For each other person, check place overlap
-	personIDs := sortedKeys(archive.Persons)
-	for _, otherID := range personIDs {
-		if otherID == personID {
-			continue
-		}
-
-		otherPlaces := personPlaceYears(otherID, archive)
-
-		for placeID, targetYears := range targetPlaces {
+	for otherID, otherPlaces := range placeIndex {
+		for placeID, targetYears := range filteredTargetPlaces {
 			if filterPlace != "" && placeID != filterPlace {
 				if !placeIsDescendant(placeID, filterPlace, archive) {
 					continue
@@ -290,27 +291,84 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 				continue
 			}
 
+			// Filter other years to the requested range as well
+			filteredOtherYears := filterYears(otherYears, beforeYear, afterYear)
+			if len(filteredOtherYears) == 0 {
+				continue
+			}
+
 			// Check for temporal overlap (within 10-year window)
-			if yearsOverlap(targetYears, otherYears) {
-				// Skip if already linked via a census or event at this place
+			if yearsOverlap(targetYears, filteredOtherYears) {
+				// Skip if already linked via a census or event at this specific place
 				if hasEventLinkAtPlace(otherID, placeID, linkMap) {
 					continue
 				}
 
 				placeName := clusterResolvePlaceName(placeID, archive)
-				yearRange := formatYearRange(otherYears)
-
-				if !yearRangeInFilter(otherYears, beforeYear, afterYear) {
-					continue
-				}
+				yearRange := formatYearRange(filteredOtherYears)
 
 				linkMap[otherID] = append(linkMap[otherID], associateLink{
-					Type:  "place_overlap",
+					Type:    "place_overlap",
+					PlaceID: placeID,
 					Label: fmt.Sprintf("Same place: %s (%s)", placeName, yearRange),
 				})
 			}
 		}
 	}
+}
+
+// buildPlaceYearIndex precomputes place-year sets for all persons except the target.
+func buildPlaceYearIndex(excludeID string, archive *glxlib.GLXFile) map[string]placeYearSet {
+	index := make(map[string]placeYearSet)
+	for _, event := range archive.Events {
+		if event == nil || event.PlaceID == "" {
+			continue
+		}
+		year := extractDateYear(string(event.Date))
+		if year <= 0 {
+			continue
+		}
+		for _, p := range event.Participants {
+			if p.Person == "" || p.Person == excludeID {
+				continue
+			}
+			if index[p.Person] == nil {
+				index[p.Person] = make(placeYearSet)
+			}
+			index[p.Person][event.PlaceID] = append(index[p.Person][event.PlaceID], year)
+		}
+	}
+	return index
+}
+
+// filterPlaceYears returns a placeYearSet with only years in range.
+// When no filters are active, returns the original set unchanged.
+func filterPlaceYears(pys placeYearSet, beforeYear, afterYear int) placeYearSet {
+	if beforeYear == 0 && afterYear == 0 {
+		return pys
+	}
+	filtered := make(placeYearSet)
+	for placeID, years := range pys {
+		fy := filterYears(years, beforeYear, afterYear)
+		if len(fy) > 0 {
+			filtered[placeID] = fy
+		}
+	}
+	return filtered
+}
+
+// filterYears returns only years that pass the before/after filter.
+func filterYears(years []int, beforeYear, afterYear int) []int {
+	if beforeYear == 0 && afterYear == 0 {
+		return years
+	}
+	var filtered []int
+	for _, y := range years {
+		if yearInRange(y, beforeYear, afterYear) {
+			filtered = append(filtered, y)
+		}
+	}
+	return filtered
 }
 
 // placeYearSet maps place IDs to the years a person was associated with them.
@@ -324,11 +382,11 @@ func personPlaceYears(personID string, archive *glxlib.GLXFile) placeYearSet {
 		if event == nil || event.PlaceID == "" {
 			continue
 		}
-		if !eventHasParticipant(personID, event) {
+		if !clusterEventHasParticipant(personID, event) {
 			continue
 		}
 
-		year := clusterExtractYear(string(event.Date))
+		year := extractDateYear(string(event.Date))
 		if year > 0 {
 			result[event.PlaceID] = append(result[event.PlaceID], year)
 		}
@@ -353,11 +411,11 @@ func yearsOverlap(a, b []int) bool {
 	return false
 }
 
-// hasEventLinkAtPlace checks if an associate already has a census/event link,
-// to avoid redundant place_overlap entries.
+// hasEventLinkAtPlace checks if an associate already has a census/event link
+// at the given place, to avoid redundant place_overlap entries.
 func hasEventLinkAtPlace(personID, placeID string, linkMap map[string][]associateLink) bool {
 	for _, link := range linkMap[personID] {
-		if link.Type == "census_household" || link.Type == "event_coparticipant" {
+		if (link.Type == "census_household" || link.Type == "event_coparticipant") && link.PlaceID == placeID {
 			return true
 		}
 	}
@@ -411,8 +469,11 @@ func computeScore(links []associateLink) int {
 	return score
 }
 
-// eventHasParticipant checks if a person participates in an event.
-func eventHasParticipant(personID string, event *glxlib.Event) bool {
+// clusterEventHasParticipant checks if a person participates in an event.
+func clusterEventHasParticipant(personID string, event *glxlib.Event) bool {
+	if event == nil {
+		return false
+	}
 	for _, p := range event.Participants {
 		if p.Person == personID {
 			return true
@@ -437,22 +498,6 @@ func placeIsDescendant(placeID, ancestorID string, archive *glxlib.GLXFile) bool
 		current = place.ParentID
 	}
 	return false
-}
-
-// clusterExtractYear extracts the first 4-digit year from a date string.
-func clusterExtractYear(dateStr string) int {
-	if dateStr == "" {
-		return 0
-	}
-	match := clusterYearRegexp.FindStringSubmatch(dateStr)
-	if len(match) < 2 {
-		return 0
-	}
-	year, err := strconv.Atoi(match[1])
-	if err != nil {
-		return 0
-	}
-	return year
 }
 
 // yearInRange checks if a year falls within the filter range.
@@ -533,7 +578,7 @@ func printClusterText(result *clusterResult) {
 						line += fmt.Sprintf(" — %s", link.Role)
 					}
 					line += fmt.Sprintf("  [%s]", link.Label)
-					if link.Type != "place_overlap" && assoc.Score > 0 {
+					if assoc.Score > 0 {
 						line += fmt.Sprintf("  (score: %d)", assoc.Score)
 					}
 					entries = append(entries, line)
