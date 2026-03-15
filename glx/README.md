@@ -945,20 +945,6 @@ Traverses all relationship types (parent-child, marriage, sibling, godparent, et
 **Examples:**
 
 ```bash
-# Find associates of a person
-glx cluster person-mary-lane
-
-# Restrict to a specific place and time period
-glx cluster person-mary-lane --place place-ironton-sauk-wi --before 1860
-
-# Include only events after a given year
-glx cluster person-mary-lane --after 1840
-
-# Output as JSON for scripting
-glx cluster person-mary-lane --json
-
-# Use a specific archive
-glx cluster person-mary-lane --archive my-archive
 # Find path between two persons by name
 glx path "Mary Lane" "Louenza Mortimer"
 
@@ -977,20 +963,6 @@ glx path "Mary Lane" "John Smith" --archive my-archive
 
 **Output:**
 ```
-Associates of Mary Lane (person-mary-lane):
-
-  Census Households:
-    John Doe (person-john-doe) — boarder  [1850 Census]  (score: 8)
-    Jane Smith (person-jane-smith) — neighbor  [1850 Census]  (score: 5)
-    William Green (person-william-green) — head  [1855 Census]  (score: 3)
-
-  Shared Events:
-    Henry Brown (person-henry-brown) — witness  [Land Sale (1852)]  (score: 2)
-
-  Same Place, Same Period:
-    Sarah Clark (person-sarah-clark)  [Same place: Ironton, Sauk Co., WI (1850–1860)]  (score: 1)
-
-  5 associate(s) found
 Path from person-arya-stark to person-jon-snow (2 hop(s)):
 
   Arya Stark (person-arya-stark)

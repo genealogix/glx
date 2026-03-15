@@ -277,9 +277,22 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 	// Precompute place-year index for all persons to avoid O(P×E) rescanning.
 	placeIndex := buildPlaceYearIndex(personID, archive)
 
-	// For each other person, check place overlap
-	for otherID, otherPlaces := range placeIndex {
-		for placeID, targetYears := range filteredTargetPlaces {
+	// Iterate in sorted order for deterministic output
+	sortedOtherIDs := make([]string, 0, len(placeIndex))
+	for id := range placeIndex {
+		sortedOtherIDs = append(sortedOtherIDs, id)
+	}
+	sort.Strings(sortedOtherIDs)
+	sortedPlaceIDs := make([]string, 0, len(filteredTargetPlaces))
+	for pid := range filteredTargetPlaces {
+		sortedPlaceIDs = append(sortedPlaceIDs, pid)
+	}
+	sort.Strings(sortedPlaceIDs)
+
+	for _, otherID := range sortedOtherIDs {
+		otherPlaces := placeIndex[otherID]
+		for _, placeID := range sortedPlaceIDs {
+			targetYears := filteredTargetPlaces[placeID]
 			if filterPlace != "" && placeID != filterPlace {
 				if !placeIsDescendant(placeID, filterPlace, archive) {
 					continue
