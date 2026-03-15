@@ -4,6 +4,28 @@ description: Compact the latest changelog entry by merging duplicates, removing 
 
 Compact the latest version entry in `CHANGELOG.md`. Read the file, identify the latest `## [version]` section (everything from the first `## [` to the next `## [` or end of file), and apply the following compaction rules:
 
+## Pre-Flight Checks
+
+Before compacting, verify changelog integrity:
+
+### 1. Ensure Latest Version Is Unreleased
+
+Run `git tag --sort=-v:refname | head -1` to get the most recent release tag. Compare the tag version against the latest `## [version]` header in the changelog (tags use `v` prefix, changelog doesn't — e.g., tag `v0.0.0-beta.7` matches changelog `0.0.0-beta.7`).
+
+**If the latest changelog version already has a matching tag, STOP.** The latest section has already been released — there should be a newer unreleased section above it. If there isn't, warn the user that a new section needs to be created before adding entries.
+
+### 2. Fix Entries Added to Released Sections
+
+Identify the second `## [version]` section (the one immediately after the latest). This should correspond to the most recent release tag.
+
+Run `git show <tag>:CHANGELOG.md` (e.g., `git show v0.0.0-beta.7:CHANGELOG.md`) to get the changelog as it existed at that release. Extract the matching version section from both the tagged version and the current file. Diff them (ignoring the date-line change from `Unreleased` to a date, which is expected).
+
+**If the previous section has new entries that weren't in the tagged release, move them to the latest (unreleased) section.** Then restore the released section to match the tagged version exactly (except the date). This is a common issue when agentic editing adds entries to the wrong section. After moving, merge the relocated entries into the appropriate subsections (Added/Changed/Fixed/Removed) of the latest version, following the same deduplication and ordering rules.
+
+### 3. Update the Date on the Latest Version
+
+If the latest section header says `- Unreleased` (e.g., `## [0.0.0-beta.8] - Unreleased`), update it to today's date (e.g., `## [0.0.0-beta.8] - 2026-03-15`). This keeps the date current as work progresses.
+
 ## Rules
 
 ### 1. Merge Duplicate Sections
@@ -43,11 +65,13 @@ The result should read as if the feature was implemented correctly the first tim
 
 ## Process
 
-1. Read `CHANGELOG.md`
-2. Extract ONLY the latest version section
-3. Apply rules 1-4 to that section
-4. Write the compacted changelog back
-5. Show a summary of what changed:
+1. Run pre-flight checks (1-3 above). Stop if any check fails.
+2. Read `CHANGELOG.md`
+3. Extract ONLY the latest version section
+4. Apply rules 1-5 to that section
+5. Write the compacted changelog back
+6. Show a summary of what changed:
+   - Pre-flight check results (tag verified, previous section status, date updated)
    - Sections merged
    - Entries removed (self-cancelling)
    - Entries consolidated

@@ -170,6 +170,14 @@
       },
       "additionalProperties": false
     },
+    "gender_types": {
+      "type": "object",
+      "description": "Gender type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
     "person_properties": {
       "type": "object",
       "description": "Person property vocabulary",
