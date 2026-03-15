@@ -142,7 +142,7 @@ func BuildCensusEntities(template *CensusTemplate, existing *GLXFile) (*CensusRe
 
 	// 3. Create citation (include household surname for uniqueness)
 	surname := lastWord(census.Household.Members[0].Name)
-	citationID := censusSlugIDWithHousehold("citation", census.Year, census.Location, surname)
+	citationID := uniqueCitationID(censusSlugIDWithHousehold("citation", census.Year, census.Location, surname), existing, result)
 	result.CitationID = citationID
 	result.Citation[citationID] = buildCensusCitation(census, sourceID)
 
@@ -153,7 +153,7 @@ func BuildCensusEntities(template *CensusTemplate, existing *GLXFile) (*CensusRe
 	}
 
 	// 5. Create census event (include household surname for uniqueness)
-	eventID := censusSlugIDWithHousehold("event", census.Year, census.Location, surname)
+	eventID := uniqueEventID(censusSlugIDWithHousehold("event", census.Year, census.Location, surname), existing, result)
 	result.EventID = eventID
 	result.Event[eventID] = buildCensusEvent(census, placeID, participants)
 
@@ -249,8 +249,8 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 		}
 	}
 
-	// Create new source
-	sourceID := censusSlugID("source", census.Year, census.Location)
+	// Create new source with collision check
+	sourceID := uniqueSourceID(censusSlugID("source", census.Year, census.Location), existing, result)
 	newSource := &Source{
 		Title: title,
 		Type:  SourceTypeCensus,
@@ -463,6 +463,17 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 
 		// Birthplace
 		birthplaceRef := member.BirthplaceID
+		if birthplaceRef != "" {
+			// Validate that the explicit birthplace ID exists
+			inArchive := existing != nil && existing.Places != nil
+			if inArchive {
+				_, inArchive = existing.Places[birthplaceRef]
+			}
+			_, inBatch := result.Place[birthplaceRef]
+			if !inArchive && !inBatch {
+				birthplaceRef = "" // ignore invalid reference
+			}
+		}
 		if birthplaceRef == "" && member.Birthplace != "" {
 			// Try to find matching place in existing archive and current batch
 			birthplaceRef = resolveBirthplace(member.Birthplace, existing, result)
@@ -497,7 +508,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 			assertionID := truncateID(fmt.Sprintf("assertion-%s-occupation-%s", pidSlug, yearStr))
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
-				Property:   "occupation",
+				Property:   PersonPropertyOccupation,
 				Value:      member.Occupation,
 				Date:       DateString(yearStr),
 				Citations:  []string{citationID},
@@ -594,8 +605,62 @@ func truncateID(id string) string {
 func uniquePersonID(baseID string, existing *GLXFile, result *CensusResult) string {
 	candidate := truncateID(baseID)
 	for suffix := 2; ; suffix++ {
-		existsInArchive := existing != nil && existing.Persons != nil && existing.Persons[candidate] != nil
+		var existsInArchive bool
+		if existing != nil && existing.Persons != nil {
+			_, existsInArchive = existing.Persons[candidate]
+		}
 		_, existsInBatch := result.Persons[candidate]
+		if !existsInArchive && !existsInBatch {
+			return candidate
+		}
+		candidate = truncateIDWithSuffix(baseID, suffix)
+	}
+}
+
+// uniqueSourceID returns a source ID that doesn't collide with existing archive
+// or current batch entries.
+func uniqueSourceID(baseID string, existing *GLXFile, result *CensusResult) string {
+	candidate := truncateID(baseID)
+	for suffix := 2; ; suffix++ {
+		var existsInArchive bool
+		if existing != nil && existing.Sources != nil {
+			_, existsInArchive = existing.Sources[candidate]
+		}
+		_, existsInBatch := result.Source[candidate]
+		if !existsInArchive && !existsInBatch {
+			return candidate
+		}
+		candidate = truncateIDWithSuffix(baseID, suffix)
+	}
+}
+
+// uniqueCitationID returns a citation ID that doesn't collide with existing archive
+// or current batch entries.
+func uniqueCitationID(baseID string, existing *GLXFile, result *CensusResult) string {
+	candidate := truncateID(baseID)
+	for suffix := 2; ; suffix++ {
+		var existsInArchive bool
+		if existing != nil && existing.Citations != nil {
+			_, existsInArchive = existing.Citations[candidate]
+		}
+		_, existsInBatch := result.Citation[candidate]
+		if !existsInArchive && !existsInBatch {
+			return candidate
+		}
+		candidate = truncateIDWithSuffix(baseID, suffix)
+	}
+}
+
+// uniqueEventID returns an event ID that doesn't collide with existing archive
+// or current batch entries.
+func uniqueEventID(baseID string, existing *GLXFile, result *CensusResult) string {
+	candidate := truncateID(baseID)
+	for suffix := 2; ; suffix++ {
+		var existsInArchive bool
+		if existing != nil && existing.Events != nil {
+			_, existsInArchive = existing.Events[candidate]
+		}
+		_, existsInBatch := result.Event[candidate]
 		if !existsInArchive && !existsInBatch {
 			return candidate
 		}
@@ -608,7 +673,10 @@ func uniquePersonID(baseID string, existing *GLXFile, result *CensusResult) stri
 func uniquePlaceID(baseID string, existing *GLXFile, result *CensusResult) string {
 	candidate := truncateID(baseID)
 	for suffix := 2; ; suffix++ {
-		existsInArchive := existing != nil && existing.Places != nil && existing.Places[candidate] != nil
+		var existsInArchive bool
+		if existing != nil && existing.Places != nil {
+			_, existsInArchive = existing.Places[candidate]
+		}
 		_, existsInBatch := result.Place[candidate]
 		if !existsInArchive && !existsInBatch {
 			return candidate
