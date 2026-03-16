@@ -83,6 +83,14 @@ type placeAnalysis struct {
 	Unreferenced       []string            // placeIDs not referenced by any event, assertion, or parent
 }
 
+// placeRefPropertyKeys are person/assertion properties that reference places.
+var placeRefPropertyKeys = []string{"born_at", "died_at", "buried_at", "residence"}
+
+// placeRefProperties is the set form of placeRefPropertyKeys for quick lookup.
+var placeRefProperties = map[string]bool{
+	"born_at": true, "died_at": true, "buried_at": true, "residence": true,
+}
+
 // topLevelTypes are place types that don't require a parent.
 var topLevelTypes = map[string]bool{
 	"country": true,
@@ -196,7 +204,7 @@ func buildCanonicalPath(placeID string, places map[string]*glxlib.Place) string 
 }
 
 // collectReferencedPlaces returns the set of place IDs referenced by events,
-// assertions, or as parents.
+// person properties (born_at, died_at, etc.), assertions, or as parents.
 func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	referenced := make(map[string]struct{})
 
@@ -206,10 +214,26 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 		}
 	}
 
-	// Places referenced as assertion subjects
+	// Places referenced in person properties (born_at, died_at, residence, etc.)
+	for _, person := range archive.Persons {
+		if person == nil || person.Properties == nil {
+			continue
+		}
+		for _, key := range placeRefPropertyKeys {
+			collectPlaceRefsFromProperty(person.Properties[key], referenced)
+		}
+	}
+
+	// Places referenced in assertions: as subjects or as values of place-reference properties
 	for _, a := range archive.Assertions {
-		if a != nil && a.Subject.Place != "" {
+		if a == nil {
+			continue
+		}
+		if a.Subject.Place != "" {
 			referenced[a.Subject.Place] = struct{}{}
+		}
+		if placeRefProperties[a.Property] && a.Value != "" {
+			referenced[a.Value] = struct{}{}
 		}
 	}
 
@@ -223,6 +247,31 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	}
 
 	return referenced
+}
+
+// collectPlaceRefsFromProperty extracts place IDs from a property value,
+// handling string, structured map ({value: ...}), and temporal list shapes.
+func collectPlaceRefsFromProperty(raw any, referenced map[string]struct{}) {
+	switch v := raw.(type) {
+	case string:
+		if v != "" {
+			referenced[v] = struct{}{}
+		}
+	case map[string]any:
+		if val, ok := v["value"].(string); ok && val != "" {
+			referenced[val] = struct{}{}
+		}
+	case []any:
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok && val != "" {
+					referenced[val] = struct{}{}
+				}
+			} else if s, ok := item.(string); ok && s != "" {
+				referenced[s] = struct{}{}
+			}
+		}
+	}
 }
 
 // printPlaceAnalysis prints the analysis results.
@@ -292,7 +341,7 @@ func printPlaceAnalysis(a *placeAnalysis) {
 	// Unreferenced
 	if len(a.Unreferenced) > 0 {
 		issues += len(a.Unreferenced)
-		fmt.Printf("\nUnreferenced (not used by any event, assertion, or as parent):\n")
+		fmt.Printf("\nUnreferenced (not used by any event, person property, assertion, or as parent):\n")
 		for _, id := range a.Unreferenced {
 			fmt.Printf("  %s  %s\n", id, a.Canonical[id])
 		}
