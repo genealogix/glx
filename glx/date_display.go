@@ -26,8 +26,9 @@ var isoDateMonths = map[string]string{
 
 // displayDate normalizes a date string for tabular display.
 // Converts ISO dates to readable form; passes other formats through unchanged.
-// Returns "(no date)" for empty strings.
+// Returns "(no date)" for empty or whitespace-only strings.
 func displayDate(date string) string {
+	date = strings.TrimSpace(date)
 	if date == "" {
 		return "(no date)"
 	}

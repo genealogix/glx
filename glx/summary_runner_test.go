@@ -395,6 +395,7 @@ func TestFormatReadableDate(t *testing.T) {
 
 func TestDisplayDate(t *testing.T) {
 	assert.Equal(t, "(no date)", displayDate(""))
+	assert.Equal(t, "(no date)", displayDate("   "))
 	assert.Equal(t, "June 18, 1863", displayDate("1863-06-18"))
 	assert.Equal(t, "ABT 1850", displayDate("ABT 1850"))
 	assert.Equal(t, "1850", displayDate("1850"))
