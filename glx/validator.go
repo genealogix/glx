@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"maps"
 	"strings"
+	"sync"
 
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
@@ -31,6 +32,15 @@ const (
 	// ID validation constants
 	MinEntityIDLength = 1
 	MaxEntityIDLength = 64
+)
+
+// cachedSchema holds the pre-resolved GLX file schema. Resolved once on first use
+// via sync.Once, then reused for all subsequent validations. This is safe because
+// the schema is embedded at build time and is read-only.
+var (
+	cachedSchema     map[string]any
+	cachedSchemaOnce sync.Once
+	cachedSchemaErr  error
 )
 
 // ParseYAMLFile parses YAML content into a map
@@ -311,14 +321,16 @@ func resolveJSONPointer(root map[string]any, pointer string) (map[string]any, er
 func ValidateGLXFileStructure(doc map[string]any) []string {
 	var issues []string
 
-	// Load and resolve master schema
-	resolvedSchema, err := loadAndResolveSchema("glx-file.schema.json")
-	if err != nil {
-		return []string{fmt.Sprintf("failed to load schema: %v", err)}
+	// Load and resolve master schema (cached after first call)
+	cachedSchemaOnce.Do(func() {
+		cachedSchema, cachedSchemaErr = loadAndResolveSchema("glx-file.schema.json")
+	})
+	if cachedSchemaErr != nil {
+		return []string{fmt.Sprintf("failed to load schema: %v", cachedSchemaErr)}
 	}
 
 	// Convert resolved schema to bytes
-	schemaBytes, err := json.Marshal(resolvedSchema)
+	schemaBytes, err := json.Marshal(cachedSchema)
 	if err != nil {
 		return []string{fmt.Sprintf("failed to marshal resolved schema: %v", err)}
 	}
