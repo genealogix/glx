@@ -494,6 +494,80 @@ glx cluster person-eddard-stark --json
 The FAN club technique is most powerful when combined with `glx timeline` and `glx query assertions`. Find the associates, then check the timeline and evidence chains to understand _how_ they were connected.
 :::
 
+## Adding Census Records
+
+### `glx census add` — Bulk census import from a template
+
+When you find a household on a census, `census add` lets you transcribe it once in a simple YAML template and generate all the GLX entities — persons, events, sources, citations, places, and assertions — in one step.
+
+Create a census template file (e.g., `1860-census-stark.yaml`):
+
+```yaml
+census:
+  year: 260
+  location:
+    place: "Winterfell"
+  source:
+    title: "260 Census of the North"
+  citation:
+    locator: "Roll 3, Page 12"
+  household:
+    members:
+      - name: "Rickard Stark"
+        age: 35
+        sex: male
+        occupation: Lord
+        birthplace: Winterfell
+      - name: "Lyarra Stark"
+        age: 30
+        sex: female
+        birthplace: Winterfell
+```
+
+Preview what would be generated:
+
+```bash
+glx census add --from 1860-census-stark.yaml --archive . --dry-run
+```
+
+```
+Census Import Summary
+=====================
+  Event:      event-260-census-winterfell-stark
+  Source:     source-260-census-winterfell
+  Citation:   citation-260-census-winterfell-stark
+  Place:      place-winterfell
+
+  Matched existing persons (2):
+    = person-rickard-stark
+    = person-lyarra-stark
+
+  New places:     0
+  New sources:    1
+  Assertions:     10
+
+(dry run — no files written)
+```
+
+Notice it matched Rickard and Lyarra Stark to existing archive persons by name — no `person_id` needed. When you're satisfied, run without `--dry-run`:
+
+```bash
+glx census add --from 1860-census-stark.yaml --archive .
+```
+
+The generated assertions include:
+- **Birth year** (ABT, low confidence) — estimated from age
+- **Birthplace** (medium confidence) — resolved against existing places
+- **Gender** (high confidence) — directly stated
+- **Occupation** (high confidence, dated) — directly stated
+- **Residence** (high confidence, dated) — enumerated at this place
+
+Each assertion cites the census citation, building a proper evidence chain from source to conclusion.
+
+::: tip
+Use the `fan.notes` field to record neighbors — the FAN (Friends, Associates, Neighbors) club technique pairs well with `glx cluster` for brickwall research.
+:::
+
 ## Format Conversion
 
 ### `glx split` and `glx join` — Convert between formats

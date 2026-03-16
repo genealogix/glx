@@ -181,7 +181,7 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 		}
 	}
 
-	// Assertion -> Person references
+	// Assertion -> Person, Citation, and Place references
 	for id, a := range result.Assertions {
 		if a.Subject.Person != "" {
 			if _, ok := result.Persons[a.Subject.Person]; !ok {
@@ -198,49 +198,58 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 				}
 			}
 		}
+		// Assertion -> Place references (birthplace, residence values are place IDs)
+		if a.Property == glxlib.PersonPropertyBornAt || a.Property == glxlib.PersonPropertyResidence {
+			placeID := a.Value
+			if _, ok := result.Place[placeID]; !ok {
+				if existing.Places == nil || existing.Places[placeID] == nil {
+					return fmt.Errorf("assertion %s references unknown place %s", id, placeID)
+				}
+			}
+		}
 	}
 
 	// Check for ID collisions with existing archive entities.
-	// Only non-nil values are treated as collisions — nil entries from
-	// partially-loaded archives are not considered real entities.
+	// Any existing key is treated as a collision, consistent with the
+	// unique*ID functions in the library that use the same semantics.
 	for id := range result.Persons {
 		if existing.Persons != nil {
-			if v, ok := existing.Persons[id]; ok && v != nil {
+			if _, ok := existing.Persons[id]; ok {
 				return fmt.Errorf("generated person ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Event {
 		if existing.Events != nil {
-			if v, ok := existing.Events[id]; ok && v != nil {
+			if _, ok := existing.Events[id]; ok {
 				return fmt.Errorf("generated event ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Place {
 		if existing.Places != nil {
-			if v, ok := existing.Places[id]; ok && v != nil {
+			if _, ok := existing.Places[id]; ok {
 				return fmt.Errorf("generated place ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Source {
 		if existing.Sources != nil {
-			if v, ok := existing.Sources[id]; ok && v != nil {
+			if _, ok := existing.Sources[id]; ok {
 				return fmt.Errorf("generated source ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Citation {
 		if existing.Citations != nil {
-			if v, ok := existing.Citations[id]; ok && v != nil {
+			if _, ok := existing.Citations[id]; ok {
 				return fmt.Errorf("generated citation ID %s collides with existing archive entity", id)
 			}
 		}
 	}
 	for id := range result.Assertions {
 		if existing.Assertions != nil {
-			if v, ok := existing.Assertions[id]; ok && v != nil {
+			if _, ok := existing.Assertions[id]; ok {
 				return fmt.Errorf("generated assertion ID %s collides with existing archive entity", id)
 			}
 		}

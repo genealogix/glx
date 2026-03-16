@@ -22,6 +22,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
+- 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -159,6 +160,12 @@ glx cite citation-abc123
 
 # FAN club analysis for brickwall research
 glx cluster person-mary-lane --place place-ironton-sauk-wi --before 1860
+# Import a census template into an archive
+glx census add --from 1860-census-lane.yaml --archive my-archive
+
+# Preview without writing files
+glx census add --from 1860-census-lane.yaml --archive my-archive --dry-run
+
 # Find the relationship path between two people
 glx path "Mary Lane" "John Smith"
 
@@ -1038,6 +1045,92 @@ SUGGESTIONS (10)
   →   person-john-smith              Search 1850 census (born ~1842)
   →   person-mary-brown              Look for vital records in Leeds
 ```
+
+### `glx census add`
+
+Import a structured census template into a GLX archive. Generates persons, a census event, source, citation, places, and evidence-based assertions from a YAML template file.
+
+**Usage:**
+```bash
+glx census add --from <template.yaml> [flags]
+```
+
+**Options:**
+- `--from <path>` - Path to census template YAML file (required)
+- `-a, --archive <path>` - Archive path (directory; defaults to current directory)
+- `--dry-run` - Preview generated entities without writing files
+- `-v, --verbose` - Show detailed summary of generated entities
+
+**Generated entities:**
+- **Persons** — new records or matched to existing by ID or name
+- **Census event** — with participants, roles, ages, auto-generated title
+- **Source** — new or reused by title match
+- **Citation** — with locator, text_from_source, URL, accessed date
+- **Place** — new or reused by name match
+- **Assertions** — birth year (ABT, low confidence), birthplace (medium), gender (high), occupation (high, dated), residence (high, dated), custom properties
+
+**Template format:**
+```yaml
+census:
+  year: 1860
+  location:
+    place: "Marion County, Florida"
+  source:
+    title: "1860 U.S. Federal Census"
+  citation:
+    locator: "Page 42, Line 12"
+    url: "https://example.com/census"
+    accessed: "2025-01-15"
+  household:
+    members:
+      - name: "Daniel Lane"
+        person_id: person-d-lane  # optional: match existing
+        age: 30
+        sex: male
+        occupation: Farmer
+        birthplace: Virginia
+      - name: "Mary Lane"
+        age: 25
+        sex: female
+        birthplace: Florida
+  fan:
+    notes: "Previous page: John Smith. Next page: Robert Brown."
+```
+
+**Examples:**
+
+```bash
+# Import a census template
+glx census add --from 1860-census-lane.yaml --archive my-archive
+
+# Preview without writing files
+glx census add --from 1860-census-lane.yaml --archive my-archive --dry-run
+
+# Verbose output showing all generated entities
+glx census add --from 1860-census-lane.yaml --archive my-archive --verbose
+```
+
+**Output:**
+```
+Census Import Summary
+=====================
+  Event:      event-1860-census-marion-county-florida-lane
+  Source:     source-1860-census-marion-county-florida
+  Citation:   citation-1860-census-marion-county-florida-lane
+  Place:      place-marion-county-florida
+
+  New persons (2):
+    + person-daniel-lane
+    + person-mary-lane
+
+  New places:     1
+  New sources:    1
+  Assertions:     10
+
+Wrote 16 entity files to my-archive
+```
+
+> **Note:** Census import requires a multi-file archive directory. Members can be matched to existing archive persons by explicit `person_id` or by exact name match (case-insensitive). If a name matches multiple existing persons, the import requires `person_id` for disambiguation.
 
 ## File Format
 
