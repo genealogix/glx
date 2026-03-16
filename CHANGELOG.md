@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
 
 - **Analyze flags duplicate given names among siblings** - `glx analyze` now detects when a parent's children share the same given name, which may indicate incorrect family reconstruction, a "replacement child" pattern, or a middle-name situation. Skips the pattern when earlier child died before the later was born. Fixes #164
+- **Added `--birthplace` filter to `glx query persons`** - Filter persons by birthplace using place ID or name substring (case-insensitive). Matches against both `born_at` value and resolved place name. Fixes #141
 
 ### Fixed
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
