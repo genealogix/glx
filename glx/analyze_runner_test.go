@@ -500,6 +500,11 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-mary": {Properties: map[string]any{"name": "Mary Green"}},
 		},
+		Places: map[string]*glxlib.Place{
+			"place-florida":  {Name: "Florida"},
+			"place-virginia": {Name: "Virginia"},
+			"place-new-york": {Name: "New York"},
+		},
 		Assertions: map[string]*glxlib.Assertion{
 			"a-1": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-florida", Confidence: "medium"},
 			"a-2": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-virginia", Confidence: "medium"},
@@ -517,6 +522,10 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 	}
 	if !containsSubstring(found.Message, "3 conflicting values") {
 		t.Errorf("expected 3 conflicting values in message: %s", found.Message)
+	}
+	// Place IDs should be resolved to names
+	if !containsSubstring(found.Message, "Florida") {
+		t.Errorf("expected resolved place name 'Florida' in message: %s", found.Message)
 	}
 }
 

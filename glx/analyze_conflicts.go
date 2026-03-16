@@ -69,7 +69,7 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 		name := personName(archive, key.personID)
 		var parts []string
 		for _, d := range distinct {
-			entry := d.value
+			entry := resolveConflictValue(d.value, key.property, archive)
 			if d.confidence != "" {
 				entry += " [" + d.confidence + "]"
 			}
@@ -88,6 +88,18 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	sortIssues(issues)
 	return issues
+}
+
+// resolveConflictValue converts entity IDs to display names for place-reference
+// properties. For other properties, returns the raw value.
+func resolveConflictValue(value, property string, archive *glxlib.GLXFile) string {
+	switch property {
+	case "born_at", "died_at", "buried_at", "residence":
+		if place, ok := archive.Places[value]; ok && place != nil {
+			return place.Name
+		}
+	}
+	return value
 }
 
 // distinctValues returns unique values from a list, preserving the highest
