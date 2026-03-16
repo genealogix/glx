@@ -370,9 +370,9 @@ func resolveCensusPerson(member CensusHouseholdMember, existing *GLXFile, result
 				return member.PersonID, false, nil
 			}
 		}
-		// Also check newly created persons in this batch
+		// Also check newly created persons in this batch (still "new", not archive match)
 		if v, ok := result.Persons[member.PersonID]; ok && v != nil {
-			return member.PersonID, false, nil
+			return member.PersonID, true, nil
 		}
 		return "", false, fmt.Errorf("person_id %q not found in archive", member.PersonID)
 	}
