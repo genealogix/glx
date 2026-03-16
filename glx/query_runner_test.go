@@ -55,6 +55,41 @@ func TestQueryPersons_BornAfter(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestQueryPersons_BirthplaceFilter(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-jane": {Properties: map[string]any{"name": "Jane", "born_at": "place-virginia"}},
+			"person-john": {Properties: map[string]any{"name": "John", "born_at": "place-ohio"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary"}}, // no birthplace
+		},
+		Places: map[string]*glxlib.Place{
+			"place-virginia": {Name: "Virginia"},
+			"place-ohio":     {Name: "Ohio"},
+		},
+	}
+
+	old := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	require.NoError(t, pipeErr)
+	t.Cleanup(func() { r.Close() })
+	os.Stdout = w
+
+	err := queryPersons(archive, queryOpts{Birthplace: "Virginia"})
+
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
+	output := buf.String()
+
+	require.NoError(t, err)
+	assert.Contains(t, output, "person-jane")
+	assert.NotContains(t, output, "person-john")
+	assert.NotContains(t, output, "person-mary")
+	assert.Contains(t, output, "1 person(s) found")
+}
+
 func TestQueryEvents_TypeFilter(t *testing.T) {
 	err := queryEntities("events", queryOpts{
 		Archive: "../docs/examples/complete-family",

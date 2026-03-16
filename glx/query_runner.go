@@ -39,6 +39,7 @@ type queryOpts struct {
 	Status     string
 	Source     string
 	Citation   string
+	Birthplace string
 }
 
 // queryEntityTypes lists the entity types supported by the query command.
@@ -67,11 +68,12 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 		{"--status", opts.Status != ""},
 		{"--source", opts.Source != ""},
 		{"--citation", opts.Citation != ""},
+		{"--birthplace", opts.Birthplace != ""},
 	}
 
 	// Map each entity type to its supported flags.
 	supported := map[string]map[string]bool{
-		"persons":       {"--name": true, "--born-before": true, "--born-after": true},
+		"persons":       {"--name": true, "--born-before": true, "--born-after": true, "--birthplace": true},
 		"events":        {"--type": true, "--before": true, "--after": true},
 		"assertions":    {"--confidence": true, "--status": true, "--source": true, "--citation": true},
 		"sources":       {"--name": true, "--type": true},
@@ -178,6 +180,12 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 				}
 			}
 			if !matched {
+				continue
+			}
+		}
+		if opts.Birthplace != "" {
+			bornAt := propertyString(person.Properties, "born_at")
+			if !matchesBirthplace(bornAt, opts.Birthplace, archive) {
 				continue
 			}
 		}
@@ -569,6 +577,26 @@ func extractDateYear(dateStr string) int {
 
 // containsFold checks if s contains lowerSubstr (case-insensitive).
 // lowerSubstr must already be in lowercase; callers should pre-lowercase the needle.
+// matchesBirthplace checks if a born_at value matches a birthplace query.
+// Matches against both the raw place ID and the resolved place name (case-insensitive substring).
+func matchesBirthplace(bornAt, query string, archive *glxlib.GLXFile) bool {
+	if bornAt == "" {
+		return false
+	}
+	lowerQuery := strings.ToLower(query)
+	// Match against place ID
+	if containsFold(bornAt, lowerQuery) {
+		return true
+	}
+	// Match against resolved place name
+	if place, ok := archive.Places[bornAt]; ok && place != nil {
+		if containsFold(place.Name, lowerQuery) {
+			return true
+		}
+	}
+	return false
+}
+
 func containsFold(s, lowerSubstr string) bool {
 	return strings.Contains(strings.ToLower(s), lowerSubstr)
 }
