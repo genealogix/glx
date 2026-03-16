@@ -39,6 +39,7 @@ type queryOpts struct {
 	Status     string
 	Source     string
 	Citation   string
+	Subject    string
 }
 
 // queryEntityTypes lists the entity types supported by the query command.
@@ -270,6 +271,9 @@ func queryAssertions(archive *glxlib.GLXFile, opts queryOpts) error {
 	for _, id := range ids {
 		a := archive.Assertions[id]
 
+		if opts.Subject != "" && !assertionMatchesSubject(a, opts.Subject, archive) {
+			continue
+		}
 		if opts.Confidence != "" && !strings.EqualFold(a.Confidence, opts.Confidence) {
 			continue
 		}
@@ -432,6 +436,25 @@ func queryMedia(archive *glxlib.GLXFile) error {
 
 // assertionReferencesSource checks if an assertion references a source, either
 // directly via its Sources list or indirectly via a citation whose SourceID matches.
+// assertionMatchesSubject checks if an assertion's subject matches the query.
+// Matches by exact entity ID or by person name substring (case-insensitive).
+func assertionMatchesSubject(a *glxlib.Assertion, query string, archive *glxlib.GLXFile) bool {
+	subjectID := a.Subject.ID()
+	if subjectID == query {
+		return true
+	}
+	// Try name match for person subjects
+	if a.Subject.Person != "" {
+		if person, ok := archive.Persons[a.Subject.Person]; ok && person != nil {
+			name := glxlib.PersonDisplayName(person)
+			if containsFold(name, strings.ToLower(query)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sourceID string) bool {
 	// Check direct source references
 	if slices.Contains(a.Sources, sourceID) {

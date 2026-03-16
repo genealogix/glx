@@ -454,6 +454,7 @@ var (
 	queryStatus     string
 	querySource     string
 	queryCitation   string
+	querySubject    string
 )
 
 var queryCmd = &cobra.Command{
@@ -511,6 +512,7 @@ func init() {
 	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
+	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions by subject person (ID or name substring)")
 }
 
 func runQuery(_ *cobra.Command, args []string) error {
@@ -526,6 +528,7 @@ func runQuery(_ *cobra.Command, args []string) error {
 		Status:     queryStatus,
 		Source:     querySource,
 		Citation:   queryCitation,
+		Subject:    querySubject,
 	})
 }
 
