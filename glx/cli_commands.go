@@ -468,7 +468,7 @@ relationships, places, citations, repositories, media.
 Filters vary by entity type:
   persons:       --name, --born-before, --born-after
   events:        --type, --before, --after
-  assertions:    --confidence, --status, --source, --citation
+  assertions:    --confidence, --status, --source, --citation, --subject
   sources:       --name, --type
   relationships: --type
   places:        --name

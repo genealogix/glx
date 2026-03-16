@@ -68,13 +68,14 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 		{"--status", opts.Status != ""},
 		{"--source", opts.Source != ""},
 		{"--citation", opts.Citation != ""},
+		{"--subject", opts.Subject != ""},
 	}
 
 	// Map each entity type to its supported flags.
 	supported := map[string]map[string]bool{
 		"persons":       {"--name": true, "--born-before": true, "--born-after": true},
 		"events":        {"--type": true, "--before": true, "--after": true},
-		"assertions":    {"--confidence": true, "--status": true, "--source": true, "--citation": true},
+		"assertions":    {"--confidence": true, "--status": true, "--source": true, "--citation": true, "--subject": true},
 		"sources":       {"--name": true, "--type": true},
 		"relationships": {"--type": true},
 		"places":        {"--name": true},
@@ -267,11 +268,12 @@ func queryEvents(archive *glxlib.GLXFile, opts queryOpts) error {
 func queryAssertions(archive *glxlib.GLXFile, opts queryOpts) error {
 	ids := sortedKeys(archive.Assertions)
 	var count int
+	lowerSubject := strings.ToLower(opts.Subject)
 
 	for _, id := range ids {
 		a := archive.Assertions[id]
 
-		if opts.Subject != "" && !assertionMatchesSubject(a, opts.Subject, archive) {
+		if lowerSubject != "" && !assertionMatchesSubject(a, lowerSubject, archive) {
 			continue
 		}
 		if opts.Confidence != "" && !strings.EqualFold(a.Confidence, opts.Confidence) {
@@ -434,20 +436,18 @@ func queryMedia(archive *glxlib.GLXFile) error {
 	return nil
 }
 
-// assertionReferencesSource checks if an assertion references a source, either
-// directly via its Sources list or indirectly via a citation whose SourceID matches.
 // assertionMatchesSubject checks if an assertion's subject matches the query.
 // Matches by exact entity ID or by person name substring (case-insensitive).
-func assertionMatchesSubject(a *glxlib.Assertion, query string, archive *glxlib.GLXFile) bool {
+func assertionMatchesSubject(a *glxlib.Assertion, lowerQuery string, archive *glxlib.GLXFile) bool {
 	subjectID := a.Subject.ID()
-	if subjectID == query {
+	if subjectID == lowerQuery || strings.EqualFold(subjectID, lowerQuery) {
 		return true
 	}
 	// Try name match for person subjects
 	if a.Subject.Person != "" {
 		if person, ok := archive.Persons[a.Subject.Person]; ok && person != nil {
 			name := glxlib.PersonDisplayName(person)
-			if containsFold(name, strings.ToLower(query)) {
+			if containsFold(name, lowerQuery) {
 				return true
 			}
 		}
@@ -455,6 +455,8 @@ func assertionMatchesSubject(a *glxlib.Assertion, query string, archive *glxlib.
 	return false
 }
 
+// assertionReferencesSource checks if an assertion references a source, either
+// directly via its Sources list or indirectly via a citation whose SourceID matches.
 func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sourceID string) bool {
 	// Check direct source references
 	if slices.Contains(a.Sources, sourceID) {
