@@ -168,6 +168,61 @@ func TestBuildPlaceAnalysis_Unreferenced(t *testing.T) {
 	assert.NotContains(t, a.Unreferenced, "place-used")
 }
 
+func TestBuildPlaceAnalysis_PersonPropertyRefs(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_at": "place-virginia",
+				"died_at": "place-tennessee",
+			}},
+			"person-b": {Properties: map[string]any{
+				"residence": "place-wisconsin",
+			}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-virginia":  {Name: "Virginia", Type: "state"},
+			"place-tennessee": {Name: "Tennessee", Type: "state"},
+			"place-wisconsin": {Name: "Wisconsin", Type: "state"},
+			"place-orphan":    {Name: "Orphan Place", Type: "city"},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	a := buildPlaceAnalysis(archive)
+	// Places referenced via person properties should NOT be unreferenced
+	assert.NotContains(t, a.Unreferenced, "place-virginia")
+	assert.NotContains(t, a.Unreferenced, "place-tennessee")
+	assert.NotContains(t, a.Unreferenced, "place-wisconsin")
+	// Place with no references should be unreferenced
+	assert.Contains(t, a.Unreferenced, "place-orphan")
+}
+
+func TestBuildPlaceAnalysis_StructuredPropertyRefs(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_at": map[string]any{"value": "place-structured"},
+			}},
+			"person-b": {Properties: map[string]any{
+				"residence": []any{
+					map[string]any{"value": "place-temporal", "date": "FROM 1850"},
+				},
+			}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-structured": {Name: "Structured", Type: "state"},
+			"place-temporal":   {Name: "Temporal", Type: "city"},
+			"place-unused":     {Name: "Unused", Type: "city"},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	a := buildPlaceAnalysis(archive)
+	assert.NotContains(t, a.Unreferenced, "place-structured")
+	assert.NotContains(t, a.Unreferenced, "place-temporal")
+	assert.Contains(t, a.Unreferenced, "place-unused")
+}
+
 func TestBuildPlaceAnalysis_MissingType(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Places: map[string]*glxlib.Place{
