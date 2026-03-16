@@ -85,10 +85,9 @@ func buildChildHasParentsIndex(archive *glxlib.GLXFile) map[string]bool {
 	return index
 }
 
-// spouseRef pairs a spouse person ID with the relationship that connects them.
+// spouseRef holds a spouse person ID for gap analysis.
 type spouseRef struct {
 	spouseID string
-	relID    string
 }
 
 // buildSpouseRelIndex returns a map from person ID to their spouse relationships.
@@ -106,8 +105,8 @@ func buildSpouseRelIndex(archive *glxlib.GLXFile) map[string][]spouseRef {
 		}
 		for i, p := range rel.Participants {
 			for j, q := range rel.Participants {
-				if i != j && p.Person != "" && q.Person != "" {
-					index[p.Person] = append(index[p.Person], spouseRef{spouseID: q.Person, relID: relID})
+				if i != j && p.Person != "" && q.Person != "" && p.Person != q.Person {
+					index[p.Person] = append(index[p.Person], spouseRef{spouseID: q.Person})
 				}
 			}
 		}
