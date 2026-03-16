@@ -184,8 +184,7 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 			}
 		}
 		if opts.Birthplace != "" {
-			bornAt := propertyString(person.Properties, "born_at")
-			if !matchesBirthplace(bornAt, opts.Birthplace, archive) {
+			if !personMatchesBirthplace(person, opts.Birthplace, archive) {
 				continue
 			}
 		}
@@ -577,26 +576,57 @@ func extractDateYear(dateStr string) int {
 
 // containsFold checks if s contains lowerSubstr (case-insensitive).
 // lowerSubstr must already be in lowercase; callers should pre-lowercase the needle.
-// matchesBirthplace checks if a born_at value matches a birthplace query.
-// Matches against both the raw place ID and the resolved place name (case-insensitive substring).
-func matchesBirthplace(bornAt, query string, archive *glxlib.GLXFile) bool {
-	if bornAt == "" {
+// personMatchesBirthplace checks if a person's born_at property matches the query.
+// Handles string, structured map ({value: ...}), and temporal list property shapes.
+// Matches against both the place ID and resolved place name (case-insensitive substring).
+func personMatchesBirthplace(person *glxlib.Person, query string, archive *glxlib.GLXFile) bool {
+	if person == nil || person.Properties == nil {
+		return false
+	}
+	raw := person.Properties["born_at"]
+	if raw == nil {
 		return false
 	}
 	lowerQuery := strings.ToLower(query)
-	// Match against place ID
-	if containsFold(bornAt, lowerQuery) {
-		return true
+
+	// Extract place ref(s) from the property value
+	var refs []string
+	switch v := raw.(type) {
+	case string:
+		refs = append(refs, v)
+	case map[string]any:
+		if val, ok := v["value"].(string); ok {
+			refs = append(refs, val)
+		}
+	case []any:
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok {
+					refs = append(refs, val)
+				}
+			} else if s, ok := item.(string); ok {
+				refs = append(refs, s)
+			}
+		}
 	}
-	// Match against resolved place name
-	if place, ok := archive.Places[bornAt]; ok && place != nil {
-		if containsFold(place.Name, lowerQuery) {
+
+	for _, ref := range refs {
+		if ref == "" {
+			continue
+		}
+		if containsFold(ref, lowerQuery) {
 			return true
+		}
+		if place, ok := archive.Places[ref]; ok && place != nil {
+			if containsFold(place.Name, lowerQuery) {
+				return true
+			}
 		}
 	}
 	return false
 }
 
+// containsFold returns true if s contains lowerSubstr (case-insensitive).
 func containsFold(s, lowerSubstr string) bool {
 	return strings.Contains(strings.ToLower(s), lowerSubstr)
 }
