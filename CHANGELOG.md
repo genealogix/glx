@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Analyze flags duplicate given names among siblings** - `glx analyze` now detects when a parent's children share the same given name, which may indicate incorrect family reconstruction, a "replacement child" pattern, or a middle-name situation. Skips the pattern when earlier child died before the later was born. Fixes #164
 - **Added `--birthplace` filter to `glx query persons`** - Filter persons by birthplace using place ID or name substring (case-insensitive). Matches against both `born_at` value and resolved place name. Fixes #141
+- **Analyze flags uncited claims in notes** - `glx analyze` evidence checks now detect assertion notes that reference sources (e.g., "per county history," "census shows") without a corresponding citation. Fixes #162
 
 ### Fixed
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177

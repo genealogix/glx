@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -29,6 +30,7 @@ func analyzeEvidence(archive *glxlib.GLXFile) []AnalysisIssue {
 	issues = append(issues, checkSingleSourcePersons(archive)...)
 	issues = append(issues, checkOrphanedCitations(archive)...)
 	issues = append(issues, checkOrphanedSources(archive)...)
+	issues = append(issues, checkUncitedNotes(archive)...)
 
 	return issues
 }
@@ -233,4 +235,64 @@ func sortedSourceIDs(sources map[string]*glxlib.Source) []string {
 	}
 	sort.Strings(ids)
 	return ids
+}
+
+// attributionPhrases are substrings that suggest a note references a source.
+var attributionPhrases = []string{
+	"per ", "according to", " noted ", " noted,", " stated ", " stated,",
+	"recorded as", "biography", "census shows", "census lists", "census record",
+	"death certificate", "birth certificate", "marriage record",
+	"church record", "county history", "city directory",
+	"newspaper", "obituary", "probate", "will ",
+	"deed ", "land record", "military record",
+}
+
+// checkUncitedNotes flags assertions whose notes reference sources but have no citations.
+func checkUncitedNotes(archive *glxlib.GLXFile) []AnalysisIssue {
+	var issues []AnalysisIssue
+
+	ids := sortedAssertionIDs(archive.Assertions)
+	for _, id := range ids {
+		a := archive.Assertions[id]
+		if a == nil || a.Notes == "" {
+			continue
+		}
+		// Skip if assertion already has citations or sources
+		if len(a.Citations) > 0 || len(a.Sources) > 0 {
+			continue
+		}
+
+		phrase := findAttributionPhrase(a.Notes)
+		if phrase == "" {
+			continue
+		}
+
+		personID := a.Subject.Person
+		name := personID
+		if personID != "" {
+			name = personName(archive, personID)
+		}
+
+		issues = append(issues, AnalysisIssue{
+			Category: "evidence",
+			Severity: "medium",
+			Person:   personID,
+			Entity:   id,
+			Message:  fmt.Sprintf("%s — notes reference a source (%q) but no citation supports this claim", name, phrase),
+		})
+	}
+
+	return issues
+}
+
+// findAttributionPhrase returns the first attribution phrase found in a notes string.
+func findAttributionPhrase(notes string) string {
+	// Pad with space so word-boundary phrases like " noted " match at start of string
+	lower := " " + strings.ToLower(notes)
+	for _, phrase := range attributionPhrases {
+		if strings.Contains(lower, phrase) {
+			return phrase
+		}
+	}
+	return ""
 }
