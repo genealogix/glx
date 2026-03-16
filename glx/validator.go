@@ -34,13 +34,13 @@ const (
 	MaxEntityIDLength = 64
 )
 
-// cachedSchema holds the pre-resolved GLX file schema. Resolved once on first use
-// via sync.Once, then reused for all subsequent validations. This is safe because
-// the schema is embedded at build time and is read-only.
+// compiledSchema holds the fully compiled JSON schema. Compiled once on first use
+// via sync.Once, then reused for all subsequent validations. This avoids re-parsing
+// the schema and re-compiling regexp patterns (~2 MB of regexp allocs) per file.
 var (
-	cachedSchema     map[string]any
-	cachedSchemaOnce sync.Once
-	cachedSchemaErr  error
+	compiledSchema     *gojsonschema.Schema
+	compiledSchemaOnce sync.Once
+	compiledSchemaErr  error
 )
 
 // ParseYAMLFile parses YAML content into a map
@@ -321,33 +321,33 @@ func resolveJSONPointer(root map[string]any, pointer string) (map[string]any, er
 func ValidateGLXFileStructure(doc map[string]any) []string {
 	var issues []string
 
-	// Load and resolve master schema (cached after first call)
-	cachedSchemaOnce.Do(func() {
-		cachedSchema, cachedSchemaErr = loadAndResolveSchema("glx-file.schema.json")
+	// Compile the schema once (resolves $ref, compiles regexps) and reuse it.
+	compiledSchemaOnce.Do(func() {
+		resolved, err := loadAndResolveSchema("glx-file.schema.json")
+		if err != nil {
+			compiledSchemaErr = err
+			return
+		}
+		schemaBytes, err := json.Marshal(resolved)
+		if err != nil {
+			compiledSchemaErr = fmt.Errorf("failed to marshal resolved schema: %w", err)
+			return
+		}
+		compiledSchema, compiledSchemaErr = gojsonschema.NewSchema(
+			gojsonschema.NewBytesLoader(schemaBytes))
 	})
-	if cachedSchemaErr != nil {
-		return []string{fmt.Sprintf("failed to load schema: %v", cachedSchemaErr)}
+	if compiledSchemaErr != nil {
+		return []string{fmt.Sprintf("failed to load schema: %v", compiledSchemaErr)}
 	}
 
-	// Convert resolved schema to bytes for gojsonschema
-	// Note: We cache the resolved schema map (expensive), but still marshal it per
-	// validation because gojsonschema.Validate() requires a fresh loader each time.
-	// The marshaling is cheap compared to schema resolution + regexp compilation.
-	schemaBytes, err := json.Marshal(cachedSchema)
-	if err != nil {
-		return []string{fmt.Sprintf("failed to marshal resolved schema: %v", err)}
-	}
-	schemaLoader := gojsonschema.NewBytesLoader(schemaBytes)
-
-	// Validate against JSON schema
+	// Validate against the pre-compiled schema
 	entityJSON, err := json.Marshal(doc)
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("failed to marshal entity: %v", err))
 
 		return issues
 	}
-	documentLoader := gojsonschema.NewBytesLoader(entityJSON)
-	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	result, err := compiledSchema.Validate(gojsonschema.NewBytesLoader(entityJSON))
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("schema validation failed: %v", err))
 	} else if !result.Valid() {
