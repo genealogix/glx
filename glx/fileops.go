@@ -25,9 +25,7 @@ import (
 
 // File extension constants
 const (
-	FileExtGLX  = ".glx"
-	FileExtYAML = ".yaml"
-	FileExtYML  = ".yml"
+	FileExtGLX = ".glx"
 )
 
 // File permission constants
