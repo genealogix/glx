@@ -295,10 +295,7 @@ func buildCensusCitation(census *CensusData, sourceID string) *Citation {
 		props["text_from_source"] = census.Citation.TextFromSource
 	}
 	if census.Citation.CitationText != "" {
-		// Map citation_text to text_from_source (standard property) as a fallback
-		if census.Citation.TextFromSource == "" {
-			props["text_from_source"] = census.Citation.CitationText
-		}
+		props["citation_text"] = census.Citation.CitationText
 	}
 	if census.Citation.URL != "" {
 		props["url"] = census.Citation.URL

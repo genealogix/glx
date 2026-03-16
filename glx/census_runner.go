@@ -240,7 +240,7 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 	}
 	for id := range result.Assertions {
 		if existing.Assertions != nil {
-			if _, ok := existing.Assertions[id]; ok {
+			if v, ok := existing.Assertions[id]; ok && v != nil {
 				return fmt.Errorf("generated assertion ID %s collides with existing archive entity", id)
 			}
 		}
