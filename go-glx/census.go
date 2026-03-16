@@ -174,14 +174,14 @@ func validateCensusTemplate(template *CensusTemplate) error {
 	if c.Year == 0 {
 		return fmt.Errorf("census.year is required")
 	}
-	if c.Location.Place == "" && c.Location.PlaceID == "" {
+	if strings.TrimSpace(c.Location.Place) == "" && c.Location.PlaceID == "" {
 		return fmt.Errorf("census.location.place or census.location.place_id is required")
 	}
 	if len(c.Household.Members) == 0 {
 		return fmt.Errorf("census.household.members is required (at least one member)")
 	}
 	for i, m := range c.Household.Members {
-		if m.Name == "" {
+		if strings.TrimSpace(m.Name) == "" {
 			return fmt.Errorf("census.household.members[%d].name is required", i)
 		}
 	}
@@ -195,7 +195,7 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 
 	if loc.PlaceID != "" {
 		if existing.Places != nil {
-			if _, ok := existing.Places[loc.PlaceID]; ok {
+			if v, ok := existing.Places[loc.PlaceID]; ok && v != nil {
 				return loc.PlaceID, nil
 			}
 		}
@@ -223,7 +223,7 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 
 	if src.SourceID != "" {
 		if existing.Sources != nil {
-			if _, ok := existing.Sources[src.SourceID]; ok {
+			if v, ok := existing.Sources[src.SourceID]; ok && v != nil {
 				return src.SourceID, nil
 			}
 		}
@@ -362,12 +362,12 @@ func resolveCensusPerson(member CensusHouseholdMember, existing *GLXFile, result
 	// Explicit person ID
 	if member.PersonID != "" {
 		if existing.Persons != nil {
-			if _, ok := existing.Persons[member.PersonID]; ok {
+			if v, ok := existing.Persons[member.PersonID]; ok && v != nil {
 				return member.PersonID, false, nil
 			}
 		}
 		// Also check newly created persons in this batch
-		if _, ok := result.Persons[member.PersonID]; ok {
+		if v, ok := result.Persons[member.PersonID]; ok && v != nil {
 			return member.PersonID, false, nil
 		}
 		return "", false, fmt.Errorf("person_id %q not found in archive", member.PersonID)
@@ -712,8 +712,6 @@ func uniquePlaceID(baseID string, existing *GLXFile, result *CensusResult) strin
 	}
 }
 
-// uniqueAssertionID returns an assertion ID that doesn't collide with existing archive
-// or current batch assertion IDs.
 // uniqueAssertionID returns an assertion ID that doesn't collide with existing
 // archive or current batch entries. Any existing key is treated as a collision
 // (even nil values) to avoid generating duplicate IDs during import.
