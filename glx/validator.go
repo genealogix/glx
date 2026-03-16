@@ -329,7 +329,10 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 		return []string{fmt.Sprintf("failed to load schema: %v", cachedSchemaErr)}
 	}
 
-	// Convert resolved schema to bytes
+	// Convert resolved schema to bytes for gojsonschema
+	// Note: We cache the resolved schema map (expensive), but still marshal it per
+	// validation because gojsonschema.Validate() requires a fresh loader each time.
+	// The marshaling is cheap compared to schema resolution + regexp compilation.
 	schemaBytes, err := json.Marshal(cachedSchema)
 	if err != nil {
 		return []string{fmt.Sprintf("failed to marshal resolved schema: %v", err)}
