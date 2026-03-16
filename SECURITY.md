@@ -11,7 +11,7 @@
 If you discover a security vulnerability in GLX, please report it responsibly:
 
 1. **Do not** open a public GitHub issue for security vulnerabilities
-2. Email security concerns to the maintainers via [GitHub Security Advisories](https://github.com/genealogix/glx/security/advisories/new)
+2. Report via [GitHub Security Advisories](https://github.com/genealogix/glx/security/advisories/new)
 3. Include a description of the vulnerability, steps to reproduce, and potential impact
 
 ## What to expect
