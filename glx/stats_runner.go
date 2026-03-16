@@ -54,7 +54,10 @@ func loadArchiveForStats(path string) (*glxlib.GLXFile, error) {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
 		}
 		if len(duplicates) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found\n", len(duplicates))
+			fmt.Fprintf(os.Stderr, "Warning: %d duplicate entity IDs found:\n", len(duplicates))
+			for _, d := range duplicates {
+				fmt.Fprintf(os.Stderr, "  - %s\n", d)
+			}
 		}
 
 		return archive, nil
