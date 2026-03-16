@@ -54,6 +54,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by given name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary."). Fixes #153
 
 ### Fixed
+- **Analyze flags missing marriage events per spouse** - `glx analyze` now checks each spouse relationship independently instead of checking for any marriage event. Persons with multiple spouses where one has an event and another doesn't are now correctly flagged with the specific spouse name. Fixes #166
 - **Places command detects person property references** - `glx places` no longer reports places as "Unreferenced" when they are used in person properties (`born_at`, `died_at`, `buried_at`, `residence`). Also checks assertion values for place-reference properties. Handles string, structured map, and temporal list property shapes. Fixes #145
 - **Analyze checks citations for census coverage** - `glx analyze` now checks assertions' citations and sources (not just census event entities) when determining whether a census year is covered. Previously, census records documented only via citations were still suggested as missing, contradicting `glx coverage` output. Fixes #140
 - **BEF date prefix respected in census suggestions** - `glx analyze` and `glx coverage` now treat `BEF <year>` death dates as exclusive upper bounds. A person with `died_on: "BEF 1870"` no longer gets 1870 census suggestions. Fixes #165
