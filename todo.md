@@ -52,7 +52,7 @@ Design decisions to resolve before 1.0.
 
 ## 🟡 Tooling & Infrastructure
 
-- **Validate source type matches title**: `glx validate` should warn when a source title contains "census" (case-insensitive) but its `type` is not `census`. This catches misclassified sources that silently cause duplicate creation during `glx census add` (which matches by title + type). See [census.go source matching comment](go-glx/census.go).
+- **Validate source type matches title**: `glx validate` should warn when a source title contains "census" (case-insensitive) but its `type` is not `census`. This catches misclassified sources that silently cause duplicate creation during `glx census add` (which matches by title + type).
 - **Vocabulary audit**: Review all standard vocabulary files in [5-standard-vocabularies/](specification/5-standard-vocabularies/) for consistency and completeness.
 - **Validate participant role `applies_to`**: Roles with `applies_to: [event]` should error when used on relationships, and vice versa. Currently `applies_to` is deserialized but never checked.
 
