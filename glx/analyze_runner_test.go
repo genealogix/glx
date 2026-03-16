@@ -367,6 +367,62 @@ func TestAnalyzeEvidence_SingleSourcePerson(t *testing.T) {
 
 // --- Consistency Analysis ---
 
+func TestAnalyzeEvidence_UncitedNotes(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-uncited": {
+				Subject:  glxlib.EntityRef{Person: "person-a"},
+				Property: "notes_claim",
+				Value:    "some value",
+				Notes:    "County history biography noted 'one daughter married a Mr. Babcock'",
+			},
+			"a-cited": {
+				Subject:   glxlib.EntityRef{Person: "person-a"},
+				Property:  "born_on",
+				Value:     "1832",
+				Notes:     "Per 1880 census",
+				Citations: []string{"cit-1"},
+			},
+		},
+	}
+
+	issues := analyzeEvidence(archive)
+	found := findIssueByMessage(issues, "person-a", "notes reference a source")
+	if found == nil {
+		t.Fatal("expected uncited notes issue")
+	}
+	if found.Entity != "a-uncited" {
+		t.Errorf("expected entity a-uncited, got %s", found.Entity)
+	}
+}
+
+func TestAnalyzeEvidence_UncitedNotes_NoCitedFalsePositive(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {
+				Subject:   glxlib.EntityRef{Person: "person-a"},
+				Property:  "born_on",
+				Value:     "1832",
+				Notes:     "Per 1880 census record",
+				Citations: []string{"cit-1"},
+			},
+		},
+	}
+
+	issues := analyzeEvidence(archive)
+	for _, issue := range issues {
+		if containsSubstring(issue.Message, "notes reference a source") {
+			t.Error("should not flag notes when citations exist")
+		}
+	}
+}
+
 func TestAnalyzeConsistency_BirthAfterDeath(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
