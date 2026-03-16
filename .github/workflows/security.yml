@@ -44,4 +44,6 @@ jobs:
         run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
 
       - name: Run gosec
-        run: gosec -quiet ./...
+        # Exclude G304 (file inclusion via variable) — expected for a CLI tool
+        # that reads user-specified file paths by design.
+        run: gosec -exclude=G304 -quiet ./...
