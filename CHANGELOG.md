@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
+- **Validate and archive loading skip non-.glx files** - `glx validate` and archive loading now only process files with the `.glx` extension. Previously, `.yaml` and `.yml` files in the archive directory were also parsed, causing spurious validation errors on non-GLX files like `.wikitree.yml`. Fixes #178
 
 ---
 
