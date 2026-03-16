@@ -49,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by given name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary."). Fixes #153
 
 ### Fixed
+- **Analyze checks citations for census coverage** - `glx analyze` now checks assertions' citations and sources (not just census event entities) when determining whether a census year is covered. Previously, census records documented only via citations were still suggested as missing, contradicting `glx coverage` output. Fixes #140
 - **BEF date prefix respected in census suggestions** - `glx analyze` and `glx coverage` now treat `BEF <year>` death dates as exclusive upper bounds. A person with `died_on: "BEF 1870"` no longer gets 1870 census suggestions. Fixes #165
 - **Summary shows marriages in chronological order** - `glx summary` now sorts spouses by full marriage date (earliest first, using the same date sort key as `glx timeline`) instead of relationship ID order. Correctly orders marriages within the same year. Undated marriages sort after dated ones. The Life History narrative also reflects the correct order. Fixes #136
 - **Life History narrative formats ISO dates as readable text** - Dates like `1863-06-18` now render as "on June 18, 1863" instead of "in 1863-06-18". Handles full dates, year-month, and prefixed dates (ABT, BEF, AFT)
