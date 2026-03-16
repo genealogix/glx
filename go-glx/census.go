@@ -255,7 +255,11 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 		}
 	}
 
-	// Search existing sources by title
+	// Search existing sources by title AND type. A source with the same
+	// title but a different type (e.g., "government_record" from GEDCOM
+	// import) will not match, resulting in a duplicate source. This is
+	// intentional — census-specific metadata may differ — but could
+	// surprise users who have the same census indexed under another type.
 	if existing.Sources != nil {
 		for id, source := range existing.Sources {
 			if source != nil && strings.EqualFold(source.Title, title) && source.Type == SourceTypeCensus {
@@ -592,7 +596,10 @@ func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) str
 			return id
 		}
 	}
-	// Create a new place entity for the unresolved birthplace
+	// Create a minimal place entity for the unresolved birthplace so the
+	// assertion value is a valid place reference. These auto-created places
+	// have only a name — no type, coordinates, or parent hierarchy. Over
+	// many census imports this can accumulate bare-bones place stubs.
 	placeID := uniquePlaceID(slugify("place", name), existing, result)
 	result.Place[placeID] = &Place{Name: name}
 	return placeID
