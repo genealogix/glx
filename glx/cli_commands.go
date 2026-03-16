@@ -455,6 +455,7 @@ var (
 	queryStatus     string
 	querySource     string
 	queryCitation   string
+	queryBirthplace string
 )
 
 var queryCmd = &cobra.Command{
@@ -466,7 +467,7 @@ Supported entity types: persons, events, assertions, sources,
 relationships, places, citations, repositories, media.
 
 Filters vary by entity type:
-  persons:       --name, --born-before, --born-after
+  persons:       --name, --born-before, --born-after, --birthplace
   events:        --type, --before, --after
   assertions:    --confidence, --status, --source, --citation
   sources:       --name, --type
@@ -512,6 +513,7 @@ func init() {
 	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
+	queryCmd.Flags().StringVar(&queryBirthplace, "birthplace", "", "Filter persons by birthplace (place ID or name substring)")
 }
 
 func runQuery(_ *cobra.Command, args []string) error {
@@ -527,6 +529,7 @@ func runQuery(_ *cobra.Command, args []string) error {
 		Status:     queryStatus,
 		Source:     querySource,
 		Citation:   queryCitation,
+		Birthplace: queryBirthplace,
 	})
 }
 
