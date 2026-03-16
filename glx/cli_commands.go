@@ -514,7 +514,7 @@ func init() {
 	queryCmd.Flags().StringVar(&queryStatus, "status", "", "Filter assertions by status")
 	queryCmd.Flags().StringVar(&querySource, "source", "", "Filter assertions by source ID (direct or via citation)")
 	queryCmd.Flags().StringVar(&queryCitation, "citation", "", "Filter assertions by citation ID")
-	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions by subject person (ID or name substring)")
+	queryCmd.Flags().StringVar(&querySubject, "subject", "", "Filter assertions by subject entity ID or person name substring")
 	queryCmd.Flags().StringVar(&queryBirthplace, "birthplace", "", "Filter persons by birthplace (place ID or name substring)")
 }
 

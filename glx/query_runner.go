@@ -279,6 +279,9 @@ func queryAssertions(archive *glxlib.GLXFile, opts queryOpts) error {
 
 	for _, id := range ids {
 		a := archive.Assertions[id]
+		if a == nil {
+			continue
+		}
 
 		if lowerSubject != "" && !assertionMatchesSubject(a, lowerSubject, archive) {
 			continue

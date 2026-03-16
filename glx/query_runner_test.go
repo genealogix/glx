@@ -311,22 +311,11 @@ func TestQueryAssertions_SubjectFilter(t *testing.T) {
 		},
 	}
 
-	old := os.Stdout
-	r, w, pipeErr := os.Pipe()
-	require.NoError(t, pipeErr)
-	t.Cleanup(func() { r.Close() })
-	os.Stdout = w
+	output := captureStdout(t, func() {
+		err := queryAssertions(archive, queryOpts{Subject: "person-jane"})
+		require.NoError(t, err)
+	})
 
-	err := queryAssertions(archive, queryOpts{Subject: "person-jane"})
-
-	w.Close()
-	os.Stdout = old
-	var buf bytes.Buffer
-	_, copyErr := io.Copy(&buf, r)
-	require.NoError(t, copyErr)
-	output := buf.String()
-
-	require.NoError(t, err)
 	assert.Contains(t, output, "2 assertion(s) found")
 	assert.Contains(t, output, "a-1")
 	assert.Contains(t, output, "a-2")
@@ -344,22 +333,11 @@ func TestQueryAssertions_SubjectByName(t *testing.T) {
 		},
 	}
 
-	old := os.Stdout
-	r, w, pipeErr := os.Pipe()
-	require.NoError(t, pipeErr)
-	t.Cleanup(func() { r.Close() })
-	os.Stdout = w
+	output := captureStdout(t, func() {
+		err := queryAssertions(archive, queryOpts{Subject: "Jane"})
+		require.NoError(t, err)
+	})
 
-	err := queryAssertions(archive, queryOpts{Subject: "Jane"})
-
-	w.Close()
-	os.Stdout = old
-	var buf bytes.Buffer
-	_, copyErr := io.Copy(&buf, r)
-	require.NoError(t, copyErr)
-	output := buf.String()
-
-	require.NoError(t, err)
 	assert.Contains(t, output, "1 assertion(s) found")
 }
 
