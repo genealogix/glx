@@ -46,4 +46,6 @@ jobs:
       - name: Run gosec
         # Exclude G304 (file inclusion via variable) — expected for a CLI tool
         # that reads user-specified file paths by design.
-        run: gosec -exclude=G304 -quiet ./...
+        # Exclude G404 (weak RNG) — only used in test data generation (datagen.go),
+        # not for security-sensitive purposes.
+        run: gosec -exclude=G304,G404 -quiet ./...
