@@ -33,85 +33,21 @@ func validatePaths(args []string) error {
 		paths = []string{"."}
 	}
 
-	var allErrors, allWarnings []string
-	var fileCount int
-
-	// First pass: structural validation of all files
-	for _, path := range paths {
-		err := filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				return nil
-			}
-
-			if !isGLXFile(d.Name()) {
-				return nil
-			}
-
-			fileCount++
-			data, err := os.ReadFile(filePath)
-			if err != nil {
-				allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, err))
-
-				return nil // Continue to next file
-			}
-
-			doc, err := ParseYAMLFile(data)
-			if err != nil {
-				allErrors = append(allErrors, fmt.Sprintf("Error parsing YAML in %s: %v", filePath, err))
-
-				return nil // Continue
-			}
-
-			issues := ValidateGLXFileStructure(doc)
-			if len(issues) > 0 {
-				for _, issue := range issues {
-					allErrors = append(allErrors, fmt.Sprintf("Error in %s: %s", filePath, issue))
-				}
-			}
-
-			return nil
-		})
-		if err != nil {
-			// This would be an error from WalkDir itself, not a validation error
-			fmt.Fprintf(os.Stderr, "Error walking directory %s: %v\n", path, err)
-		}
-	}
-
-	if len(allErrors) > 0 {
-		fmt.Fprintf(os.Stderr, "Found %d structural errors in %d files:\n", len(allErrors), fileCount)
-		for _, err := range allErrors {
-			fmt.Fprintf(os.Stderr, "- %s\n", err)
-		}
-
-		return ErrStructuralValidationFailed
-	}
-
-	// Second pass: load and cross-reference validation
-	// Determine if we should do cross-reference validation
+	// Determine archive root and validation mode
 	var archiveRoot string
 	var shouldValidateCrossRefs bool
 
 	if len(paths) == 1 {
 		if info, err := os.Stat(paths[0]); err == nil {
 			if info.IsDir() {
-				// Directory: validate with cross-references
 				archiveRoot = paths[0]
 				shouldValidateCrossRefs = true
-			} else {
-				// Single file: skip cross-reference validation
-				shouldValidateCrossRefs = false
 			}
 		}
 	} else if len(paths) == 0 {
-		// No paths specified, validate current directory
 		archiveRoot = "."
 		shouldValidateCrossRefs = true
 	} else {
-		// Multiple paths: use first path's directory or current dir
-		// This case is less common but we'll try to make it work
 		if info, err := os.Stat(paths[0]); err == nil {
 			if info.IsDir() {
 				archiveRoot = paths[0]
@@ -122,7 +58,18 @@ func validatePaths(args []string) error {
 		}
 	}
 
+	// Single file: structural validation only (no cross-references)
 	if !shouldValidateCrossRefs {
+		fileCount, structErrors := validateSingleFilePaths(paths)
+		if len(structErrors) > 0 {
+			fmt.Fprintf(os.Stderr, "Found %d structural errors in %d files:\n", len(structErrors), fileCount)
+			for _, err := range structErrors {
+				fmt.Fprintf(os.Stderr, "- %s\n", err)
+			}
+
+			return ErrStructuralValidationFailed
+		}
+
 		fmt.Println("⚠️  Cross-reference validation skipped (single file specified).")
 		fmt.Printf("Validated %d file.\n", fileCount)
 		fmt.Println("✅ File structure is valid.")
@@ -130,13 +77,19 @@ func validatePaths(args []string) error {
 		return nil
 	}
 
-	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, false)
+	// Directory: single-pass load with schema validation + cross-reference checks.
+	// LoadArchiveWithOptions(true) reads each file once, runs JSON schema validation,
+	// then deserializes into Go structs — avoiding the previous double file-read.
+	fileCount := countGLXFiles(archiveRoot)
+
+	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, true)
 	if err != nil {
-		// This error comes from LoadArchive if a file fails validation during load
 		fmt.Fprintf(os.Stderr, "Error loading archive: %v\n", err)
 
-		return err
+		return ErrStructuralValidationFailed
 	}
+
+	var allErrors, allWarnings []string
 
 	if len(duplicates) > 0 {
 		allErrors = append(allErrors, duplicates...)
@@ -151,7 +104,7 @@ func validatePaths(args []string) error {
 		allErrors = append(allErrors, err.Message)
 	}
 
-	// Third pass: check media file existence on disk
+	// Check media file existence on disk
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
 	fmt.Printf("Validated %d files.\n", fileCount)
@@ -174,6 +127,65 @@ func validatePaths(args []string) error {
 	fmt.Println("✅ Archive is valid.")
 
 	return nil
+}
+
+// validateSingleFilePaths runs structural validation on individual files
+// (used when a single file is specified, not a directory).
+func validateSingleFilePaths(paths []string) (int, []string) {
+	var allErrors []string
+	var fileCount int
+
+	for _, path := range paths {
+		_ = filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() || !isGLXFile(d.Name()) {
+				return nil
+			}
+
+			fileCount++
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, err))
+
+				return nil
+			}
+
+			doc, err := ParseYAMLFile(data)
+			if err != nil {
+				allErrors = append(allErrors, fmt.Sprintf("Error parsing YAML in %s: %v", filePath, err))
+
+				return nil
+			}
+
+			issues := ValidateGLXFileStructure(doc)
+			for _, issue := range issues {
+				allErrors = append(allErrors, fmt.Sprintf("Error in %s: %s", filePath, issue))
+			}
+
+			return nil
+		})
+	}
+
+	return fileCount, allErrors
+}
+
+// countGLXFiles counts .glx files in a directory without reading them.
+func countGLXFiles(root string) int {
+	var count int
+	_ = filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && isGLXFile(d.Name()) {
+			count++
+		}
+
+		return nil
+	})
+
+	return count
 }
 
 // validateMediaFileExistence checks that media entities with local relative URIs
