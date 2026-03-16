@@ -576,6 +576,10 @@ func birthplaceNote(censusYear int, birthplace, birthplaceID string) string {
 }
 
 func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
 	// Check existing archive places
 	if existing != nil && existing.Places != nil {
 		for id, place := range existing.Places {
