@@ -45,6 +45,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **GEDCOM encoding conversion now streams for charmap encodings** - CP1252/ISO-8859-1 decoding uses `transform.NewReader` instead of reading the entire file into memory. Only ANSEL (which requires combining-mark reordering) buffers the full file. UTF-8 files pass through with near-zero overhead
 - **ANSEL converter handles multiple combining diacriticals** - Consecutive combining marks preceding a base letter are now all buffered and emitted after the base letter in Unicode order, instead of only handling a single combining mark
 
+### Changed
+- **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by given name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary."). Fixes #153
+
 ### Fixed
 - **Analyze checks citations for census coverage** - `glx analyze` now checks assertions' citations and sources (not just census event entities) when determining whether a census year is covered. Previously, census records documented only via citations were still suggested as missing, contradicting `glx coverage` output. Fixes #140
 - **BEF date prefix respected in census suggestions** - `glx analyze` and `glx coverage` now treat `BEF <year>` death dates as exclusive upper bounds. A person with `died_on: "BEF 1870"` no longer gets 1870 census suggestions. Fixes #165
