@@ -332,7 +332,7 @@ func TestFindEventForPerson(t *testing.T) {
 	archive := newTestArchive()
 
 	result := findEventForPerson("person-john", "birth", archive)
-	assert.Equal(t, "1850-03-15, New York, New York", result)
+	assert.Equal(t, "March 15, 1850, New York, New York", result)
 }
 
 func TestFindEventForPerson_NotFound(t *testing.T) {

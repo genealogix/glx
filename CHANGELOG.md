@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
 
 ### Fixed
+- **Consistent date display across timeline and summary** - ISO dates like `1860-07-17` now render as `July 17, 1860` in timeline tabular output, summary vital events, and life events. Previously, dates appeared in whichever format they were stored (GEDCOM or ISO), creating inconsistent mixed output. Fixes #139
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
 - **Validate and archive loading skip non-.glx files** - `glx validate` and archive loading now only process files with the `.glx` extension. Previously, `.yaml` and `.yml` files in the archive directory were also parsed, causing spurious validation errors on non-GLX files like `.wikitree.yml`. Fixes #178
 

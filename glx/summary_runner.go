@@ -863,7 +863,7 @@ func hasParticipant(personID string, participants []glxlib.Participant) bool {
 
 // formatSummaryEventDatePlace formats an event's date and place for display.
 func formatSummaryEventDatePlace(event *glxlib.Event, archive *glxlib.GLXFile) string {
-	date := string(event.Date)
+	date := formatReadableDate(string(event.Date))
 	place := resolvePlaceName(event.PlaceID, archive)
 
 	switch {
@@ -880,7 +880,7 @@ func formatSummaryEventDatePlace(event *glxlib.Event, archive *glxlib.GLXFile) s
 
 // formatPropertyDatePlace combines a date property and a place property.
 func formatPropertyDatePlace(props map[string]any, dateKey, placeKey string, archive *glxlib.GLXFile) string {
-	date := propertyString(props, dateKey)
+	date := formatReadableDate(propertyString(props, dateKey))
 	placeID := propertyString(props, placeKey)
 	place := resolvePlaceName(placeID, archive)
 
@@ -1098,6 +1098,15 @@ var isoDateMonths = map[string]string{
 // isFullDate checks if a date string is a full YYYY-MM-DD date.
 func isFullDate(s string) bool {
 	return len(s) == 10 && s[4] == '-' && s[7] == '-'
+}
+
+// displayDate normalizes a date string for tabular display.
+// Converts ISO dates to readable form; passes other formats through unchanged.
+func displayDate(date string) string {
+	if date == "" {
+		return "(no date)"
+	}
+	return formatReadableDate(date)
 }
 
 // formatReadableDate converts ISO dates to readable text:
