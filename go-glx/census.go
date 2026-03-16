@@ -191,6 +191,7 @@ func validateCensusTemplate(template *CensusTemplate) error {
 // resolveCensusPlace resolves an existing place or creates a new one.
 func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusResult) (string, error) {
 	loc := census.Location
+	loc.Place = strings.TrimSpace(loc.Place)
 
 	if loc.PlaceID != "" {
 		if existing.Places != nil {
@@ -562,9 +563,6 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 	return nil
 }
 
-// resolveBirthplace attempts to match a birthplace name to a place ID
-// in the existing archive and current batch. If no match is found, creates
-// a new Place entity so the assertion value is a valid place reference.
 // birthplaceNote generates the assertion note for a birthplace, using the
 // free-text name when available and falling back to the ID.
 func birthplaceNote(censusYear int, birthplace, birthplaceID string) string {
@@ -575,6 +573,9 @@ func birthplaceNote(censusYear int, birthplace, birthplaceID string) string {
 	return fmt.Sprintf("%d census lists birthplace as %q.", censusYear, display)
 }
 
+// resolveBirthplace attempts to match a birthplace name to a place ID
+// in the existing archive and current batch. If no match is found, creates
+// a new Place entity so the assertion value is a valid place reference.
 func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -716,6 +717,9 @@ func uniquePlaceID(baseID string, existing *GLXFile, result *CensusResult) strin
 
 // uniqueAssertionID returns an assertion ID that doesn't collide with existing archive
 // or current batch assertion IDs.
+// uniqueAssertionID returns an assertion ID that doesn't collide with existing
+// archive or current batch entries. Any existing key is treated as a collision
+// (even nil values) to avoid generating duplicate IDs during import.
 func uniqueAssertionID(baseID string, existing *GLXFile, result *CensusResult) string {
 	candidate := truncateID(baseID)
 	for suffix := 2; ; suffix++ {
@@ -744,7 +748,7 @@ func truncateIDWithSuffix(baseID string, suffix int) string {
 	return base + suffixStr
 }
 
-// Slugify generates a deterministic entity ID from a prefix and name.
+// slugify generates a deterministic entity ID from a prefix and name.
 func slugify(prefix, name string) string {
 	slug := slugifyString(name)
 	if prefix == "" {
