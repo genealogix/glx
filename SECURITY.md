@@ -25,8 +25,8 @@ If you discover a security vulnerability in GLX, please report it responsibly:
 
 ## Security Measures
 
-- **govulncheck** runs in CI on every push and PR to detect known vulnerabilities in dependencies
-- **gosec** performs static security analysis on every push and PR
+- **govulncheck** runs in CI on pushes to main, pull requests, and weekly to detect known vulnerabilities in dependencies
+- **gosec** performs static security analysis on pushes to main, pull requests, and weekly
 - Weekly scheduled scans catch newly disclosed vulnerabilities in existing dependencies
 
 ## Scope

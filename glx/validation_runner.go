@@ -51,6 +51,7 @@ func validatePaths(args []string) error {
 			}
 
 			fileCount++
+			filePath = filepath.Clean(filePath)
 			data, err := os.ReadFile(filePath)
 			if err != nil {
 				allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, err))
