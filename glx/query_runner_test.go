@@ -55,6 +55,51 @@ func TestQueryPersons_BornAfter(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestQueryPersons_BirthplaceFilter(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-jane": {Properties: map[string]any{"name": "Jane", "born_at": "place-virginia"}},
+			"person-john": {Properties: map[string]any{"name": "John", "born_at": "place-ohio"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary"}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-virginia": {Name: "Virginia"},
+			"place-ohio":     {Name: "Ohio"},
+		},
+	}
+
+	output := captureStdout(t, func() {
+		err := queryPersons(archive, queryOpts{Birthplace: "Virginia"})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "person-jane")
+	assert.NotContains(t, output, "person-john")
+	assert.NotContains(t, output, "person-mary")
+	assert.Contains(t, output, "1 person(s) found")
+}
+
+func TestQueryPersons_BirthplaceStructuredProperty(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A", "born_at": map[string]any{"value": "place-va"}}},
+			"person-b": {Properties: map[string]any{"name": "Person B", "born_at": "place-oh"}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-va": {Name: "Virginia"},
+			"place-oh": {Name: "Ohio"},
+		},
+	}
+
+	output := captureStdout(t, func() {
+		err := queryPersons(archive, queryOpts{Birthplace: "Virginia"})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "person-a")
+	assert.NotContains(t, output, "person-b")
+}
+
 func TestQueryEvents_TypeFilter(t *testing.T) {
 	err := queryEntities("events", queryOpts{
 		Archive: "../docs/examples/complete-family",

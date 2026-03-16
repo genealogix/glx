@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
 
 - **Added `--subject` filter to `glx query assertions`** - Filter assertions by subject person ID or name substring. Supports exact ID match and case-insensitive name search. Fixes #150
+- **Added `--birthplace` filter to `glx query persons`** - Filter persons by birthplace using place ID or name substring (case-insensitive). Matches against both `born_at` value and resolved place name. Fixes #141
 
 ### Fixed
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
