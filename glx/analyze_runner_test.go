@@ -588,6 +588,115 @@ func TestAnalyzeSuggestions_HasCensus(t *testing.T) {
 	}
 }
 
+func TestAnalyzeSuggestions_CitationCoversCensus(t *testing.T) {
+	// Census year covered via citation/source (no census event entity).
+	// Analyze should NOT suggest searching for it.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_on": "1832",
+				"died_on": "1910",
+			}},
+		},
+		Events:  map[string]*glxlib.Event{},
+		Sources: map[string]*glxlib.Source{
+			"source-1880-census": {
+				Type:  glxlib.SourceTypeCensus,
+				Title: "1880 United States Federal Census",
+				Date:  "1880",
+			},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"citation-1880": {SourceID: "source-1880-census"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-1": {
+				Subject:   glxlib.EntityRef{Person: "person-a"},
+				Property:  "residence",
+				Value:     "some-place",
+				Citations: []string{"citation-1880"},
+			},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+	if found := findIssueByMessage(issues, "person-a", "1880 census"); found != nil {
+		t.Error("should NOT suggest 1880 census when covered by citation/source")
+	}
+	// But 1870 (not covered) should still be suggested
+	if found := findIssueByMessage(issues, "person-a", "1870 census"); found == nil {
+		t.Error("expected suggestion for 1870 census (not covered)")
+	}
+}
+
+func TestAnalyzeSuggestions_CitationCoversViaTitleFallback(t *testing.T) {
+	// Source.Date is empty; year is only in the title
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_on": "1832",
+				"died_on": "1910",
+			}},
+		},
+		Events: map[string]*glxlib.Event{},
+		Sources: map[string]*glxlib.Source{
+			"source-census": {
+				Type:  glxlib.SourceTypeCensus,
+				Title: "1880 United States Federal Census",
+			},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"cit-1": {SourceID: "source-census"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {
+				Subject:   glxlib.EntityRef{Person: "person-a"},
+				Property:  "residence",
+				Value:     "place-x",
+				Citations: []string{"cit-1"},
+			},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+	if found := findIssueByMessage(issues, "person-a", "1880 census"); found != nil {
+		t.Error("should NOT suggest 1880 census when title mentions the year")
+	}
+}
+
+func TestAnalyzeSuggestions_DirectSourceCoversCensus(t *testing.T) {
+	// Census covered via direct source on assertion (no citation)
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"born_on": "1840",
+				"died_on": "1900",
+			}},
+		},
+		Events: map[string]*glxlib.Event{},
+		Sources: map[string]*glxlib.Source{
+			"src-1860": {
+				Type: glxlib.SourceTypeCensus,
+				Date: "1860",
+			},
+		},
+		Citations:  map[string]*glxlib.Citation{},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {
+				Subject:  glxlib.EntityRef{Person: "person-a"},
+				Property: "residence",
+				Value:    "place-x",
+				Sources:  []string{"src-1860"},
+			},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+	if found := findIssueByMessage(issues, "person-a", "1860 census"); found != nil {
+		t.Error("should NOT suggest 1860 census when covered by direct source")
+	}
+}
+
 func TestAnalyzeSuggestions_VitalRecords(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{

@@ -577,6 +577,66 @@ func TestGenerateLifeHistory(t *testing.T) {
 	assert.Contains(t, history, "died")
 }
 
+func TestGenerateLifeHistory_IncludesChildren(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-jane": {Properties: map[string]any{
+				"name": "Jane Miller", "gender": "female",
+				"born_on": "ABT 1832",
+				"died_on": "1941-04-17",
+			}},
+			"person-harriett": {Properties: map[string]any{"name": "Harriett Webb", "born_on": "1852"}},
+			"person-elijah":   {Properties: map[string]any{"name": "Elijah Webb", "born_on": "1856"}},
+			"person-mary":     {Properties: map[string]any{"name": "Mary Ellen Webb", "born_on": "1858"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-child-1": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-jane", Role: "parent"},
+					{Person: "person-harriett", Role: "child"},
+				},
+			},
+			"rel-child-2": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-jane", Role: "parent"},
+					{Person: "person-elijah", Role: "child"},
+				},
+			},
+			"rel-child-3": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-jane", Role: "parent"},
+					{Person: "person-mary", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	history := generateLifeHistory("person-jane", archive.Persons["person-jane"], archive)
+	assert.Contains(t, history, "three children")
+	assert.Contains(t, history, "Harriett")
+	assert.Contains(t, history, "Elijah")
+	assert.Contains(t, history, "Mary")
+}
+
+func TestFindChildIDs(t *testing.T) {
+	archive := newTestArchive()
+	children := findChildIDs("person-john", archive)
+	assert.Contains(t, children, "person-child")
+	assert.Contains(t, children, "person-child2")
+}
+
+func TestNumberWord(t *testing.T) {
+	assert.Equal(t, "one", numberWord(1))
+	assert.Equal(t, "five", numberWord(5))
+	assert.Equal(t, "twelve", numberWord(12))
+	assert.Equal(t, "13", numberWord(13))
+}
+
 // ============================================================================
 // Display helpers tests
 // ============================================================================
