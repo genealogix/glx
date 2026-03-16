@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `--subject` filter to `glx query assertions`** - Filter assertions by subject person ID or name substring. Supports exact ID match and case-insensitive name search. Fixes #150
 
 ### Fixed
+- **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
 - **Validate and archive loading skip non-.glx files** - `glx validate` and archive loading now only process files with the `.glx` extension. Previously, `.yaml` and `.yml` files in the archive directory were also parsed, causing spurious validation errors on non-GLX files like `.wikitree.yml`. Fixes #178
 
 ---
