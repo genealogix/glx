@@ -290,6 +290,12 @@ export default defineConfig({
           ]
         },
         {
+          text: 'Data Entry',
+          items: [
+            { text: 'glx census add', link: '/cli#glx-census-add' }
+          ]
+        },
+        {
           text: 'Analysis',
           items: [
             { text: 'glx stats', link: '/cli#glx-stats' },
