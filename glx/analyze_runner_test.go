@@ -534,8 +534,31 @@ func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
 	if found == nil {
 		t.Fatal("expected duplicate sibling name issue")
 	}
-	if !containsSubstring(found.Message, "mary") {
-		t.Errorf("expected 'mary' in message: %s", found.Message)
+	if !containsSubstring(found.Message, "Mary") {
+		t.Errorf("expected capitalized 'Mary' in message: %s", found.Message)
+	}
+}
+
+func TestAnalyzeConsistency_ReplacementChildNotFlagged(t *testing.T) {
+	// First Mary died before second Mary was born — replacement pattern
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Parent"}},
+			"person-mary-1": {Properties: map[string]any{"name": "Mary", "born_on": "1850", "died_on": "1851"}},
+			"person-mary-2": {Properties: map[string]any{"name": "Mary", "born_on": "1853"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-parent", Role: "parent"}, {Person: "person-mary-1", Role: "child"}}},
+			"rel-2": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-parent", Role: "parent"}, {Person: "person-mary-2", Role: "child"}}},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := analyzeConsistency(archive)
+	for _, issue := range issues {
+		if containsSubstring(issue.Message, "share given name") {
+			t.Error("should not flag replacement child pattern")
+		}
 	}
 }
 

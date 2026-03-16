@@ -287,34 +287,39 @@ func checkDuplicateSiblingNames(archive *glxlib.GLXFile) []AnalysisIssue {
 	}
 
 	var issues []AnalysisIssue
-	seen := make(map[string]bool)
 
 	for _, parentID := range sortedPersonIDs(archive.Persons) {
 		childIDs := parentChildren[parentID]
-		if len(childIDs) < 2 || seen[parentID] {
+		if len(childIDs) < 2 {
 			continue
 		}
-		seen[parentID] = true
 
 		uniqueChildren := dedupeStrings(childIDs)
 
+		// Map lowercase given name → siblings with that name
 		givenNames := make(map[string][]siblingInfo)
+		// Track original capitalization for display
+		givenDisplay := make(map[string]string)
+
 		for _, cid := range uniqueChildren {
 			person, ok := archive.Persons[cid]
 			if !ok || person == nil {
 				continue
 			}
 			fullName := glxlib.PersonDisplayName(person)
-			given := strings.Fields(fullName)
-			if len(given) == 0 {
+			given := extractGivenName(person)
+			if given == "" {
 				continue
 			}
-			key := strings.ToLower(given[0])
+			key := strings.ToLower(given)
 			givenNames[key] = append(givenNames[key], siblingInfo{id: cid, fullName: fullName})
+			if _, exists := givenDisplay[key]; !exists {
+				givenDisplay[key] = given
+			}
 		}
 
 		parentName := personName(archive, parentID)
-		for givenName, siblings := range givenNames {
+		for key, siblings := range givenNames {
 			if len(siblings) < 2 {
 				continue
 			}
@@ -334,7 +339,7 @@ func checkDuplicateSiblingNames(archive *glxlib.GLXFile) []AnalysisIssue {
 				Severity: "medium",
 				Person:   parentID,
 				Message: fmt.Sprintf("%s — children share given name %q: %s",
-					parentName, givenName, strings.Join(names, " and ")),
+					parentName, givenDisplay[key], strings.Join(names, " and ")),
 			})
 		}
 	}
@@ -342,8 +347,36 @@ func checkDuplicateSiblingNames(archive *glxlib.GLXFile) []AnalysisIssue {
 	return issues
 }
 
+// extractGivenName returns the given (first) name from a person's name property.
+// Uses the "given" field if available in structured name data; otherwise splits
+// the display name and takes the first token.
+func extractGivenName(person *glxlib.Person) string {
+	if person == nil || person.Properties == nil {
+		return ""
+	}
+	// Try structured name fields first
+	raw, ok := person.Properties["name"]
+	if ok {
+		if m, ok := raw.(map[string]any); ok {
+			if fields, ok := m["fields"].(map[string]any); ok {
+				if given, ok := fields["given"].(string); ok && given != "" {
+					return strings.Fields(given)[0]
+				}
+			}
+		}
+	}
+	// Fall back to first token of display name
+	fullName := glxlib.PersonDisplayName(person)
+	parts := strings.Fields(fullName)
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return ""
+}
+
 // allReplacementPattern returns true if all duplicate-named siblings follow the
-// "replacement" pattern: each earlier child died before the next was born.
+// "replacement" pattern: each earlier child died before or in the same year the
+// next was born.
 func allReplacementPattern(siblings []siblingInfo, archive *glxlib.GLXFile) bool {
 	type yearPair struct {
 		birth int
@@ -366,6 +399,10 @@ func allReplacementPattern(siblings []siblingInfo, archive *glxlib.GLXFile) bool
 		if pairs[i].death == 0 || pairs[i+1].birth == 0 {
 			return false
 		}
+		// If the earlier child died strictly after the next was born,
+		// they overlapped — not a replacement. Same year (death == birth)
+		// is allowed since infant death + replacement in the same year
+		// was a common historical pattern.
 		if pairs[i].death > pairs[i+1].birth {
 			return false
 		}
