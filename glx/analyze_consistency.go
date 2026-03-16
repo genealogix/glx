@@ -16,6 +16,8 @@ package main
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -29,6 +31,7 @@ func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	issues = append(issues, checkEventAfterDeath(archive)...)
 	issues = append(issues, checkImplausibleLifespan(archive)...)
 	issues = append(issues, checkMarriageBeforeBirth(archive)...)
+	issues = append(issues, checkDuplicateSiblingNames(archive)...)
 
 	return issues
 }
@@ -254,4 +257,131 @@ func checkMarriageBeforeBirth(archive *glxlib.GLXFile) []AnalysisIssue {
 	}
 
 	return issues
+}
+
+// checkDuplicateSiblingNames flags parents whose children share the same given name.
+// siblingInfo holds an ID and display name for duplicate-name detection.
+type siblingInfo struct {
+	id       string
+	fullName string
+}
+
+func checkDuplicateSiblingNames(archive *glxlib.GLXFile) []AnalysisIssue {
+	// Build parent → children index
+	parentChildren := make(map[string][]string)
+	for _, rel := range archive.Relationships {
+		if rel == nil || !isParentChildType(rel.Type) {
+			continue
+		}
+		var parents, children []string
+		for _, p := range rel.Participants {
+			if p.Role == glxlib.ParticipantRoleParent {
+				parents = append(parents, p.Person)
+			} else if p.Role == glxlib.ParticipantRoleChild {
+				children = append(children, p.Person)
+			}
+		}
+		for _, parentID := range parents {
+			parentChildren[parentID] = append(parentChildren[parentID], children...)
+		}
+	}
+
+	var issues []AnalysisIssue
+	seen := make(map[string]bool)
+
+	for _, parentID := range sortedPersonIDs(archive.Persons) {
+		childIDs := parentChildren[parentID]
+		if len(childIDs) < 2 || seen[parentID] {
+			continue
+		}
+		seen[parentID] = true
+
+		uniqueChildren := dedupeStrings(childIDs)
+
+		givenNames := make(map[string][]siblingInfo)
+		for _, cid := range uniqueChildren {
+			person, ok := archive.Persons[cid]
+			if !ok || person == nil {
+				continue
+			}
+			fullName := glxlib.PersonDisplayName(person)
+			given := strings.Fields(fullName)
+			if len(given) == 0 {
+				continue
+			}
+			key := strings.ToLower(given[0])
+			givenNames[key] = append(givenNames[key], siblingInfo{id: cid, fullName: fullName})
+		}
+
+		parentName := personName(archive, parentID)
+		for givenName, siblings := range givenNames {
+			if len(siblings) < 2 {
+				continue
+			}
+
+			if allReplacementPattern(siblings, archive) {
+				continue
+			}
+
+			var names []string
+			for _, c := range siblings {
+				names = append(names, fmt.Sprintf("%s (%s)", c.id, c.fullName))
+			}
+			sort.Strings(names)
+
+			issues = append(issues, AnalysisIssue{
+				Category: "consistency",
+				Severity: "medium",
+				Person:   parentID,
+				Message: fmt.Sprintf("%s — children share given name %q: %s",
+					parentName, givenName, strings.Join(names, " and ")),
+			})
+		}
+	}
+
+	return issues
+}
+
+// allReplacementPattern returns true if all duplicate-named siblings follow the
+// "replacement" pattern: each earlier child died before the next was born.
+func allReplacementPattern(siblings []siblingInfo, archive *glxlib.GLXFile) bool {
+	type yearPair struct {
+		birth int
+		death int
+	}
+	var pairs []yearPair
+	for _, c := range siblings {
+		p, ok := archive.Persons[c.id]
+		if !ok || p == nil {
+			return false
+		}
+		birth := glxlib.ExtractPropertyYear(p.Properties, "born_on")
+		death := glxlib.ExtractPropertyYear(p.Properties, "died_on")
+		pairs = append(pairs, yearPair{birth: birth, death: death})
+	}
+
+	sort.Slice(pairs, func(i, j int) bool { return pairs[i].birth < pairs[j].birth })
+
+	for i := 0; i < len(pairs)-1; i++ {
+		if pairs[i].death == 0 || pairs[i+1].birth == 0 {
+			return false
+		}
+		if pairs[i].death > pairs[i+1].birth {
+			return false
+		}
+	}
+	return true
+}
+
+// dedupeStrings returns unique strings preserving order.
+func dedupeStrings(ss []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, s := range ss {
+		if !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
+	}
+	return result
 }
