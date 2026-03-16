@@ -239,8 +239,8 @@ func sortedSourceIDs(sources map[string]*glxlib.Source) []string {
 
 // attributionPhrases are substrings that suggest a note references a source.
 var attributionPhrases = []string{
-	"per ", "according to", "noted", "stated", "recorded as",
-	"biography", "census shows", "census lists", "census record",
+	"per ", "according to", " noted ", " noted,", " stated ", " stated,",
+	"recorded as", "biography", "census shows", "census lists", "census record",
 	"death certificate", "birth certificate", "marriage record",
 	"church record", "county history", "city directory",
 	"newspaper", "obituary", "probate", "will ",
@@ -251,7 +251,7 @@ var attributionPhrases = []string{
 func checkUncitedNotes(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
 
-	ids := sortedKeys(archive.Assertions)
+	ids := sortedAssertionIDs(archive.Assertions)
 	for _, id := range ids {
 		a := archive.Assertions[id]
 		if a == nil || a.Notes == "" {
@@ -287,7 +287,8 @@ func checkUncitedNotes(archive *glxlib.GLXFile) []AnalysisIssue {
 
 // findAttributionPhrase returns the first attribution phrase found in a notes string.
 func findAttributionPhrase(notes string) string {
-	lower := strings.ToLower(notes)
+	// Pad with space so word-boundary phrases like " noted " match at start of string
+	lower := " " + strings.ToLower(notes)
 	for _, phrase := range attributionPhrases {
 		if strings.Contains(lower, phrase) {
 			return phrase
