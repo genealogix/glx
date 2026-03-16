@@ -45,11 +45,10 @@ func ensureGLXExtension(path string) string {
 	return path
 }
 
-// isGLXFile checks if a file has a GLX-related extension
+// isGLXFile checks if a file has the .glx extension.
+// Only .glx files are recognized when scanning archive directories.
 func isGLXFile(filename string) bool {
-	ext := filepath.Ext(filename)
-
-	return ext == FileExtGLX || ext == FileExtYAML || ext == FileExtYML
+	return filepath.Ext(filename) == FileExtGLX
 }
 
 // fileExists checks if a file exists
@@ -102,9 +101,8 @@ func isDirectoryEmpty(path string) error {
 	return fmt.Errorf("%w (found: %s)", ErrNonEmptyDirectory, listing)
 }
 
-// collectGLXFilesFromDir recursively collects all GLX/YAML files from a directory
+// collectGLXFilesFromDir recursively collects all .glx files from a directory
 // into a map with relative paths as keys and file contents as values.
-// Only files with .glx, .yaml, or .yml extensions are included.
 func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 

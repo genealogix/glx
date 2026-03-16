@@ -138,8 +138,8 @@ func TestLoadArchive(t *testing.T) {
 			setupFunc: func() (string, func()) {
 				tmpDir := t.TempDir()
 
-				// Create invalid YAML file
-				os.WriteFile(filepath.Join(tmpDir, "invalid.yaml"), []byte("invalid: yaml: content:"), 0o644)
+				// Create invalid YAML file with .glx extension
+				os.WriteFile(filepath.Join(tmpDir, "invalid.glx"), []byte("invalid: yaml: content:"), 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -298,7 +298,7 @@ persons:
 			setupFunc: func() (string, func()) {
 				tmpDir := t.TempDir()
 
-				// Create various file types
+				// Create various file types — only .glx should be loaded
 				glxFile := &glxlib.GLXFile{
 					Persons: map[string]*glxlib.Person{
 						"person-1": {Properties: make(map[string]any)},
@@ -306,10 +306,10 @@ persons:
 				}
 				data, _ := yaml.Marshal(glxFile)
 				os.WriteFile(filepath.Join(tmpDir, "valid.glx"), data, 0o644)
+
+				// These should all be ignored (non-.glx extensions)
 				os.WriteFile(filepath.Join(tmpDir, "valid.yaml"), data, 0o644)
 				os.WriteFile(filepath.Join(tmpDir, "valid.yml"), data, 0o644)
-
-				// These should be ignored
 				os.WriteFile(filepath.Join(tmpDir, "readme.txt"), []byte("text"), 0o644)
 				os.WriteFile(filepath.Join(tmpDir, "data.json"), []byte("{}"), 0o644)
 
@@ -319,12 +319,12 @@ persons:
 			},
 			wantErr: false,
 			checkFunc: func(glx *glxlib.GLXFile, duplicates []string) error {
-				// Should load 3 files (glx, yaml, yml) each with same person, resulting in duplicates
+				// Only the .glx file should be loaded — no duplicates
 				if len(glx.Persons) != 1 {
-					return &testError{"expected 1 person", nil}
+					return &testError{"expected 1 person, got %d", []any{len(glx.Persons)}}
 				}
-				if len(duplicates) != 2 { // 2 duplicates since 3 files have same person ID
-					return &testError{"expected 2 duplicates, got %d", []any{len(duplicates)}}
+				if len(duplicates) != 0 {
+					return &testError{"expected 0 duplicates, got %d", []any{len(duplicates)}}
 				}
 
 				return nil

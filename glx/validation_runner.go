@@ -38,6 +38,12 @@ func validatePaths(args []string) error {
 
 	// First pass: structural validation of all files
 	for _, path := range paths {
+		// Check if the user explicitly specified a file (vs a directory).
+		// Explicit files are validated regardless of extension; directory
+		// walks only process .glx files (fixes #178).
+		pathInfo, statErr := os.Stat(path)
+		isExplicitFile := statErr == nil && !pathInfo.IsDir()
+
 		err := filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -46,7 +52,7 @@ func validatePaths(args []string) error {
 				return nil
 			}
 
-			if !isGLXFile(d.Name()) {
+			if !isExplicitFile && !isGLXFile(d.Name()) {
 				return nil
 			}
 

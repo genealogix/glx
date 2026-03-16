@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.9]
 
+### Fixed
+
+#### CLI
+- **`glx validate` no longer reports errors on non-`.glx` files** - When scanning an archive directory, only `.glx` files are now processed. Non-GLX YAML files (e.g., `.wikitree.yml`) are silently skipped instead of causing spurious validation errors. Explicitly passing a `.yaml` or `.yml` file path still works (#178)
+
 ### Added
 
 #### CLI

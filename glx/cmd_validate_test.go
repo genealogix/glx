@@ -275,8 +275,8 @@ func TestRunValidate_MediaExternalURLSkipped(t *testing.T) {
 	require.NoError(t, err, "external URL should not trigger file existence check")
 }
 
-func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
-	// Test that both .yaml and .yml extensions are recognized
+func TestRunValidate_YAMLAndYMLSkippedInDirectory(t *testing.T) {
+	// .yaml and .yml files should be skipped when scanning a directory (#178)
 	tmpDir := t.TempDir()
 
 	yamlFile := filepath.Join(tmpDir, "test.yaml")
@@ -296,5 +296,46 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 	require.NoError(t, err)
 
 	err = validatePaths([]string{tmpDir})
-	require.NoError(t, err, "should successfully validate .yaml and .yml files")
+	// Should succeed with 0 files validated (both skipped)
+	require.NoError(t, err, ".yaml and .yml files should be skipped in directory scan")
+}
+
+func TestRunValidate_NonGLXYAMLInDirectory(t *testing.T) {
+	// Non-GLX YAML files in an archive directory must not cause errors (#178)
+	tmpDir := t.TempDir()
+
+	// Valid .glx file
+	glxFile := filepath.Join(tmpDir, "person.glx")
+	err := os.WriteFile(glxFile, []byte(`persons:
+  person-test:
+    properties:
+      primary_name: "Test Person"
+`), 0o644)
+	require.NoError(t, err)
+
+	// Non-GLX YAML file that would fail schema validation
+	ymlFile := filepath.Join(tmpDir, ".wikitree.yml")
+	err = os.WriteFile(ymlFile, []byte(`person-mary-lane:
+  wikitree_id: "Lane-12345"
+`), 0o644)
+	require.NoError(t, err)
+
+	err = validatePaths([]string{tmpDir})
+	require.NoError(t, err, "non-GLX .yml files must not cause validation errors")
+}
+
+func TestRunValidate_ExplicitYAMLFile(t *testing.T) {
+	// When the user explicitly passes a .yaml file, it should be validated
+	tmpDir := t.TempDir()
+
+	yamlFile := filepath.Join(tmpDir, "archive.yaml")
+	err := os.WriteFile(yamlFile, []byte(`persons:
+  person-explicit:
+    properties:
+      primary_name: "Explicit Person"
+`), 0o644)
+	require.NoError(t, err)
+
+	err = validatePaths([]string{yamlFile})
+	require.NoError(t, err, "explicitly specified .yaml file should be validated")
 }
