@@ -45,11 +45,9 @@ func ensureGLXExtension(path string) string {
 	return path
 }
 
-// isGLXFile checks if a file has a GLX-related extension
+// isGLXFile checks if a file has the .glx extension.
 func isGLXFile(filename string) bool {
-	ext := filepath.Ext(filename)
-
-	return ext == FileExtGLX || ext == FileExtYAML || ext == FileExtYML
+	return filepath.Ext(filename) == FileExtGLX
 }
 
 // fileExists checks if a file exists

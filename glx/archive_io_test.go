@@ -139,7 +139,7 @@ func TestLoadArchive(t *testing.T) {
 				tmpDir := t.TempDir()
 
 				// Create invalid YAML file
-				os.WriteFile(filepath.Join(tmpDir, "invalid.yaml"), []byte("invalid: yaml: content:"), 0o644)
+				os.WriteFile(filepath.Join(tmpDir, "invalid.glx"), []byte("invalid: yaml: content:"), 0o644)
 
 				return tmpDir, func() {
 					os.RemoveAll(tmpDir)
@@ -306,10 +306,10 @@ persons:
 				}
 				data, _ := yaml.Marshal(glxFile)
 				os.WriteFile(filepath.Join(tmpDir, "valid.glx"), data, 0o644)
+
+				// These should all be ignored (non-.glx extensions)
 				os.WriteFile(filepath.Join(tmpDir, "valid.yaml"), data, 0o644)
 				os.WriteFile(filepath.Join(tmpDir, "valid.yml"), data, 0o644)
-
-				// These should be ignored
 				os.WriteFile(filepath.Join(tmpDir, "readme.txt"), []byte("text"), 0o644)
 				os.WriteFile(filepath.Join(tmpDir, "data.json"), []byte("{}"), 0o644)
 
@@ -319,12 +319,12 @@ persons:
 			},
 			wantErr: false,
 			checkFunc: func(glx *glxlib.GLXFile, duplicates []string) error {
-				// Should load 3 files (glx, yaml, yml) each with same person, resulting in duplicates
+				// Should load only the .glx file, no duplicates
 				if len(glx.Persons) != 1 {
 					return &testError{"expected 1 person", nil}
 				}
-				if len(duplicates) != 2 { // 2 duplicates since 3 files have same person ID
-					return &testError{"expected 2 duplicates, got %d", []any{len(duplicates)}}
+				if len(duplicates) != 0 {
+					return &testError{"expected 0 duplicates, got %d", []any{len(duplicates)}}
 				}
 
 				return nil
