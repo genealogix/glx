@@ -24,6 +24,6 @@
     "eslint-plugin-vue": "^10.8.0",
     "globals": "^17.4.0",
     "prettier": "^3.2.4",
-    "vitepress": "^2.0.0-alpha.13"
+    "vitepress": "^2.0.0-alpha.17"
   }
 }
