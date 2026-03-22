@@ -40,6 +40,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 	}
 
 	// Open GEDCOM file
+	gedcomPath = filepath.Clean(gedcomPath)
 	gedcomFile, err := os.Open(gedcomPath)
 	if err != nil {
 		return fmt.Errorf("failed to open GEDCOM file: %w", err)
