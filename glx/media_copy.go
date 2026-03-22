@@ -124,12 +124,14 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 
 // copyFile copies a single file from src to dst using streaming I/O.
 func copyFile(src, dst string) error {
+	src = filepath.Clean(src)
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = srcFile.Close() }()
 
+	dst = filepath.Clean(dst)
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err

@@ -18,12 +18,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	fp "path/filepath"
 )
 
 // importGEDCOMFromFile is a test helper that imports a GEDCOM file from a file path.
 // This function is only used in tests and handles file I/O for convenience.
 // Production code should use ImportGEDCOM with an io.Reader instead.
 func importGEDCOMFromFile(filepath, logPath string) (*GLXFile, *ImportResult, error) {
+	filepath = fp.Clean(filepath)
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open file: %w", err)
@@ -33,7 +35,7 @@ func importGEDCOMFromFile(filepath, logPath string) (*GLXFile, *ImportResult, er
 	// Create log writer if logPath is specified
 	var logWriter io.Writer
 	if logPath != "" {
-		logFile, err := os.Create(logPath)
+		logFile, err := os.Create(fp.Clean(logPath))
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create log file: %w", err)
 		}

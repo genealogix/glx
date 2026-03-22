@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -70,6 +71,7 @@ func censusAdd(templatePath, archivePath string, dryRun, verbose bool) error {
 
 // readCensusTemplate reads and parses a census template YAML file.
 func readCensusTemplate(path string) (*glxlib.CensusTemplate, error) {
+	path = filepath.Clean(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
