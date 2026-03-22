@@ -83,6 +83,7 @@ func createSerializer(validate, pretty bool, indent string) *glxlib.DefaultSeria
 
 // readSingleFileArchive reads and deserializes a single-file GLX archive
 func readSingleFileArchive(path string, validate bool) (*glxlib.GLXFile, error) {
+	path = filepath.Clean(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
