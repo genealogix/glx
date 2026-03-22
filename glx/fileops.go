@@ -64,6 +64,7 @@ func dirExists(path string) bool {
 
 // isDirectoryEmpty checks if a directory is empty
 func isDirectoryEmpty(path string) error {
+	path = filepath.Clean(path)
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("could not check directory: %w", err)
@@ -115,6 +116,7 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 			return nil
 		}
 
+		path = filepath.Clean(path)
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", path, err)
