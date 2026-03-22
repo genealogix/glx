@@ -15,12 +15,19 @@
 package glx
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
 )
+
+// secureIntn returns a cryptographically random int in [0, n).
+func secureIntn(n int) int {
+	r, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
+	return int(r.Int64())
+}
 
 // GenerateTestData creates a complete GLXFile structure with plausible test data
 // for a specified number of people.
@@ -74,8 +81,8 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 		// Add parents to birth event if we have other people
 		if i > 1 {
-			parent1 := personIDs[rand.Intn(i)]
-			parent2 := personIDs[rand.Intn(i)]
+			parent1 := personIDs[secureIntn(i)]
+			parent2 := personIDs[secureIntn(i)]
 			if parent1 != parent2 {
 				participants = append(participants, Participant{Person: parent1, Role: "parent"})
 				participants = append(participants, Participant{Person: parent2, Role: "parent"})
@@ -97,14 +104,14 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 	if numPeople > 1 {
 		relationshipTypes := []string{"marriage", "sibling", "partner", "friend"}
 		for range numPeople / 2 {
-			p1 := personIDs[rand.Intn(len(personIDs))]
-			p2 := personIDs[rand.Intn(len(personIDs))]
+			p1 := personIDs[secureIntn(len(personIDs))]
+			p2 := personIDs[secureIntn(len(personIDs))]
 			if p1 == p2 {
 				continue // Don't create a relationship with oneself
 			}
 
 			relID := "rel-" + gofakeit.UUID()
-			relType := relationshipTypes[rand.Intn(len(relationshipTypes))]
+			relType := relationshipTypes[secureIntn(len(relationshipTypes))]
 
 			var roles []string
 			switch relType {
