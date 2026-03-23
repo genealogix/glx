@@ -298,6 +298,49 @@ func TestQueryAssertions_CitationFilter(t *testing.T) {
 	assert.Contains(t, output, "1 assertion(s) found")
 }
 
+func TestQueryAssertions_SubjectFilter(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-jane": {Properties: map[string]any{"name": "Jane Webb"}},
+			"person-john": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "born_on", Value: "1832"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "born_at", Value: "place-va"},
+			"a-3": {Subject: glxlib.EntityRef{Person: "person-john"}, Property: "born_on", Value: "1840"},
+		},
+	}
+
+	output := captureStdout(t, func() {
+		err := queryAssertions(archive, queryOpts{Subject: "person-jane"})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "2 assertion(s) found")
+	assert.Contains(t, output, "a-1")
+	assert.Contains(t, output, "a-2")
+	assert.NotContains(t, output, "a-3")
+}
+
+func TestQueryAssertions_SubjectByName(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-jane": {Properties: map[string]any{"name": "Jane Webb"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "born_on", Value: "1832"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-other"}, Property: "born_on", Value: "1840"},
+		},
+	}
+
+	output := captureStdout(t, func() {
+		err := queryAssertions(archive, queryOpts{Subject: "Jane"})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "1 assertion(s) found")
+}
+
 func TestQueryUnsupportedFlag_SourceOnPersons(t *testing.T) {
 	err := queryEntities("persons", queryOpts{
 		Archive: "../docs/examples/basic-family",
