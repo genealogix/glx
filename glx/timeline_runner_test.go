@@ -15,9 +15,15 @@
 package main
 
 import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDateSortKey(t *testing.T) {
@@ -543,4 +549,34 @@ func TestTimelineResolvePlaceName(t *testing.T) {
 	if got := timelineResolvePlaceName("place-unknown", archive); got != "place-unknown" {
 		t.Errorf("expected raw ID for missing place, got %q", got)
 	}
+}
+
+func TestPrintTimeline_FormatsISODates(t *testing.T) {
+	entries := []timelineEntry{
+		{Date: "1860-07-17", SortKey: "1860-07-17", Label: "Census", Detail: "Oakdale"},
+		{Date: "ABT 1815", SortKey: "1815", Label: "Birth", Detail: "Virginia"},
+		{Date: "", SortKey: "\xff", Label: "Undated Event"},
+	}
+
+	old := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	require.NoError(t, pipeErr)
+	t.Cleanup(func() { r.Close() })
+	os.Stdout = w
+
+	printTimeline("person-test", "Test Person", entries)
+
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
+	output := buf.String()
+
+	// ISO date should be formatted as readable
+	assert.True(t, strings.Contains(output, "July 17, 1860"), "ISO date should render as readable: %s", output)
+	// GEDCOM date should pass through
+	assert.Contains(t, output, "ABT 1815")
+	// Undated should show (no date)
+	assert.Contains(t, output, "(no date)")
 }
