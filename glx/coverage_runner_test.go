@@ -460,3 +460,218 @@ func TestCoverageResolvePlaceName(t *testing.T) {
 	assert.Equal(t, "unknown-place", coverageResolvePlaceName("unknown-place", archive))
 	assert.Equal(t, "", coverageResolvePlaceName("", archive))
 }
+
+// --- State census tests ---
+
+func TestResolveStateFromPlace_DirectState(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		},
+	}
+	assert.Equal(t, "Wisconsin", resolveStateFromPlace("place-wi", archive))
+}
+
+func TestResolveStateFromPlace_CityWithStateParent(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-madison": {Name: "Madison", Type: glxlib.PlaceTypeCity, ParentID: "place-dane-county"},
+			"place-dane-county": {Name: "Dane County", Type: glxlib.PlaceTypeCounty, ParentID: "place-wi"},
+			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		},
+	}
+	assert.Equal(t, "Wisconsin", resolveStateFromPlace("place-madison", archive))
+}
+
+func TestResolveStateFromPlace_EmptyRef(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{},
+	}
+	assert.Equal(t, "", resolveStateFromPlace("", archive))
+}
+
+func TestResolveStateFromPlace_NoState(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-county": {Name: "Dane County", Type: glxlib.PlaceTypeCounty},
+		},
+	}
+	assert.Equal(t, "", resolveStateFromPlace("place-county", archive))
+}
+
+func TestCollectPersonStates_FromBirthplace(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-wi": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName:   "WI Person",
+					glxlib.PersonPropertyBornOn: "1850",
+					glxlib.PersonPropertyBornAt: "place-wi",
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		},
+		Events:        map[string]*glxlib.Event{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+	}
+
+	states := collectPersonStates("person-wi", archive.Persons["person-wi"], archive, nil)
+	assert.Contains(t, states, "Wisconsin")
+}
+
+func TestCollectPersonStates_FromEventPlace(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName:   "Test Person",
+					glxlib.PersonPropertyBornOn: "1850",
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-milwaukee": {Name: "Milwaukee", Type: glxlib.PlaceTypeCity, ParentID: "place-wi"},
+			"place-wi":        {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-census": {
+				Type:    glxlib.EventTypeCensus,
+				Date:    "1855",
+				PlaceID: "place-milwaukee",
+				Participants: []glxlib.Participant{
+					{Person: "person-1", Role: "subject"},
+				},
+			},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+	}
+
+	events := collectPersonEvents("person-1", archive)
+	states := collectPersonStates("person-1", archive.Persons["person-1"], archive, events)
+	assert.Contains(t, states, "Wisconsin")
+}
+
+func TestBuildStateCensusRecords_Wisconsin(t *testing.T) {
+	// Person born 1850, died 1920, connected to Wisconsin
+	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, nil)
+
+	var labels []string
+	for _, r := range records {
+		labels = append(labels, r.Label)
+	}
+
+	// Wisconsin had state censuses in 1855, 1865, 1875, 1885, 1895, 1905
+	// Person born 1850, died 1920 — should suggest 1855, 1865, 1875, 1885, 1895, 1905
+	assert.Contains(t, labels, "1855 Wisconsin State Census (age ~5)")
+	assert.Contains(t, labels, "1875 Wisconsin State Census (age ~25)")
+	assert.Contains(t, labels, "1905 Wisconsin State Census (age ~55)")
+
+	for _, r := range records {
+		assert.Equal(t, "census", r.Category)
+	}
+}
+
+func TestBuildStateCensusRecords_NoStateMatch(t *testing.T) {
+	// Person in a state with no state censuses
+	records := buildStateCensusRecords(1850, 1920, []string{"Virginia"}, nil, nil)
+	assert.Empty(t, records)
+}
+
+func TestBuildStateCensusRecords_MatchesExistingEvent(t *testing.T) {
+	events := []personSourceInfo{
+		{Ref: "event-1855-census", EventType: glxlib.EventTypeCensus, Year: 1855},
+	}
+	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, events)
+
+	for _, r := range records {
+		if strings.Contains(r.Label, "1855") {
+			assert.True(t, r.Found, "1855 state census should be marked found")
+			assert.Equal(t, "event-1855-census", r.SourceRef)
+			return
+		}
+	}
+	t.Fatal("did not find 1855 state census record")
+}
+
+func TestBuildCoverage_IncludesStateCensus(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-wi": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName:   "WI Person",
+					glxlib.PersonPropertyBornOn: "1850",
+					glxlib.PersonPropertyDiedOn: "1920",
+					glxlib.PersonPropertyBornAt: "place-wi",
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		},
+		Events:        map[string]*glxlib.Event{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+	}
+
+	result := buildCoverage("person-wi", archive.Persons["person-wi"], archive)
+
+	hasStateCensus := false
+	for _, r := range result.Records {
+		if r.Category == "census" && strings.Contains(r.Label, "State Census") {
+			hasStateCensus = true
+			break
+		}
+	}
+	assert.True(t, hasStateCensus, "coverage should include state census records for Wisconsin")
+}
+
+func TestBuildCensusRecords_EnhancedAnnotations(t *testing.T) {
+	// Person born 1830 — check 1850 and 1880 annotations
+	records := buildCensusRecords(1830, 1920, nil, nil)
+
+	for _, r := range records {
+		if strings.HasPrefix(r.Label, "1850") && !r.Found {
+			assert.Contains(t, r.Description, "first census to list individual names",
+				"1850 census should note it was first to list individuals")
+		}
+		if strings.HasPrefix(r.Label, "1880") && !r.Found {
+			assert.Contains(t, r.Description, "first census to list parents' birthplaces",
+				"1880 census should note parent birthplace columns")
+		}
+	}
+}
+
+func TestBuildCensusRecords_1850InParentsHousehold(t *testing.T) {
+	// Person born 1840 — at 1850 census they're age ~10, should note "likely in parents' household"
+	records := buildCensusRecords(1840, 1920, nil, nil)
+
+	for _, r := range records {
+		if strings.HasPrefix(r.Label, "1850") && !r.Found {
+			assert.Contains(t, r.Description, "likely in parents' household",
+				"1850 census for child age ~10 should note parents' household")
+		}
+	}
+}
+
+func TestStateCensusYears(t *testing.T) {
+	// Verify known state census data
+	wiYears, ok := stateCensusYears["Wisconsin"]
+	assert.True(t, ok, "Wisconsin should be in state census data")
+	assert.Contains(t, wiYears, 1855)
+	assert.Contains(t, wiYears, 1905)
+
+	nyYears, ok := stateCensusYears["New York"]
+	assert.True(t, ok, "New York should be in state census data")
+	assert.Contains(t, nyYears, 1855)
+	assert.Contains(t, nyYears, 1925)
+}

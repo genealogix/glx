@@ -156,8 +156,12 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	var records []coverageRecord
 
-	// Census records
+	// Federal census records
 	records = append(records, buildCensusRecords(birthYear, deathYear, personSources, personEvents)...)
+
+	// State census records
+	states := collectPersonStates(personID, person, archive, personEvents)
+	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents)...)
 
 	// Vital records
 	records = append(records, buildVitalRecords(personID, person, archive, personSources, personEvents)...)
@@ -314,18 +318,16 @@ func buildCensusRecords(birthYear, deathYear int, sources []personSourceInfo, ev
 			rec.SourceRef = ref
 		}
 
-		// Priority annotations
+		// Census-specific annotations (always added, even when found)
+		rec.Description = appendCensusAnnotation(rec.Description, year, age)
+
+		// Priority annotations for missing records
 		if !rec.Found {
 			if year == 1880 {
 				rec.Priority = "high"
-				if rec.Description != "" {
-					rec.Description += "; lists parents' birthplaces"
-				} else {
-					rec.Description = "lists parents' birthplaces"
-				}
 			} else if age >= 14 && age <= 25 {
 				rec.Priority = "high"
-				rec.Description = "may show in parents' household"
+				rec.Description = appendDescription(rec.Description, "may show in parents' household")
 			}
 		}
 
@@ -669,6 +671,28 @@ func inferDeathYearFromEvents(events []personSourceInfo) int {
 		}
 	}
 	return earliest
+}
+
+// appendDescription appends text to an existing description, using "; " as separator.
+func appendDescription(existing, addition string) string {
+	if existing == "" {
+		return addition
+	}
+	return existing + "; " + addition
+}
+
+// appendCensusAnnotation adds research-relevant notes for specific census years.
+func appendCensusAnnotation(desc string, year, age int) string {
+	switch year {
+	case 1850:
+		desc = appendDescription(desc, "first census to list individual names")
+		if age < 18 {
+			desc = appendDescription(desc, "likely in parents' household")
+		}
+	case 1880:
+		desc = appendDescription(desc, "first census to list parents' birthplaces")
+	}
+	return desc
 }
 
 // printCoverageJSON outputs the result as JSON.
