@@ -198,6 +198,7 @@ type personSourceInfo struct {
 	Type      string // source type
 	Title     string
 	EventType string // if found via an event
+	PlaceID   string // place reference (events only)
 	Year      int
 }
 
@@ -266,6 +267,7 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile) []personSourc
 					EventType: event.Type,
 					Year:      glxlib.ExtractFirstYear(string(event.Date)),
 					Title:     event.Title,
+					PlaceID:   event.PlaceID,
 				})
 				break
 			}
@@ -327,7 +329,10 @@ func buildCensusRecords(birthYear, deathYear int, sources []personSourceInfo, ev
 				rec.Priority = "high"
 			} else if age >= 14 && age <= 25 {
 				rec.Priority = "high"
-				rec.Description = appendDescription(rec.Description, "may show in parents' household")
+				// Avoid duplicating parents-household note when 1850 minor annotation already applies
+				if !(year == 1850 && age < 18) {
+					rec.Description = appendDescription(rec.Description, "may show in parents' household")
+				}
 			}
 		}
 

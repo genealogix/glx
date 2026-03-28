@@ -23,6 +23,9 @@ import (
 )
 
 // stateCensusYears maps US state names to their known state census years.
+// Note: some state census years overlap with federal census years (e.g.,
+// Mississippi 1860). The matching logic requires a state-specific signal
+// to avoid confusing state and federal censuses.
 var stateCensusYears = map[string][]int{
 	"Wisconsin":    {1855, 1865, 1875, 1885, 1895, 1905},
 	"New York":     {1825, 1835, 1845, 1855, 1865, 1875, 1892, 1905, 1915, 1925},
@@ -66,32 +69,78 @@ func resolveStateFromPlace(placeRef string, archive *glxlib.GLXFile) string {
 	return ""
 }
 
+// extractPlaceRefs extracts place reference IDs from a property value,
+// handling the same shapes used for place references throughout GLX:
+//   - string: treated as the place ID
+//   - map[string]any{"value": <string>}: structured single value
+//   - []any of map[string]any with "value": temporal list of values
+func extractPlaceRefs(v any) []string {
+	if v == nil {
+		return nil
+	}
+
+	switch t := v.(type) {
+	case string:
+		if t != "" {
+			return []string{t}
+		}
+	case map[string]any:
+		if raw, ok := t["value"]; ok {
+			if s, ok := raw.(string); ok && s != "" {
+				return []string{s}
+			}
+		}
+	case []any:
+		var ids []string
+		for _, elem := range t {
+			m, ok := elem.(map[string]any)
+			if !ok {
+				continue
+			}
+			raw, ok := m["value"]
+			if !ok {
+				continue
+			}
+			s, ok := raw.(string)
+			if !ok || s == "" {
+				continue
+			}
+			ids = append(ids, s)
+		}
+		if len(ids) > 0 {
+			return ids
+		}
+	}
+
+	return nil
+}
+
 // collectPersonStates returns the unique US state names associated with a person
 // via birthplace, death place, and event places.
 func collectPersonStates(personID string, person *glxlib.Person, archive *glxlib.GLXFile, events []personSourceInfo) []string {
 	stateSet := make(map[string]bool)
 
-	if person != nil {
-		bornAt := propertyString(person.Properties, glxlib.PersonPropertyBornAt)
-		if s := resolveStateFromPlace(bornAt, archive); s != "" {
-			stateSet[s] = true
+	if person != nil && person.Properties != nil {
+		// Birthplace — handle string, structured, and temporal property shapes
+		for _, ref := range extractPlaceRefs(person.Properties[glxlib.PersonPropertyBornAt]) {
+			if s := resolveStateFromPlace(ref, archive); s != "" {
+				stateSet[s] = true
+			}
 		}
-		diedAt := propertyString(person.Properties, glxlib.PersonPropertyDiedAt)
-		if s := resolveStateFromPlace(diedAt, archive); s != "" {
-			stateSet[s] = true
+		// Death place
+		for _, ref := range extractPlaceRefs(person.Properties[glxlib.PersonPropertyDiedAt]) {
+			if s := resolveStateFromPlace(ref, archive); s != "" {
+				stateSet[s] = true
+			}
 		}
 	}
 
 	// Check event places
 	for _, ev := range events {
-		if ev.Ref == "" {
+		if ev.PlaceID == "" {
 			continue
 		}
-		event, ok := archive.Events[ev.Ref]
-		if !ok || event == nil || event.PlaceID == "" {
-			continue
-		}
-		if s := resolveStateFromPlace(event.PlaceID, archive); s != "" {
+		if s := resolveStateFromPlace(ev.PlaceID, archive); s != "" {
 			stateSet[s] = true
 		}
 	}
@@ -148,30 +197,38 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources 
 	return records
 }
 
-// findStateCensusMatch checks if a state census for a given year exists.
-// State censuses can appear as census events or sources with matching years.
-// Since state census years don't overlap with federal census years, a census
-// event matching the year is a strong indicator.
+// findStateCensusMatch checks if a state census for a given year and state
+// exists in events or sources. To avoid confusing state and federal censuses
+// (some years overlap, e.g., Mississippi 1860), matching requires a
+// state-specific signal: the event/source title must mention the state name
+// or "state census", or the event's place must resolve to the target state.
 func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo) string {
 	lowerState := strings.ToLower(state)
 
-	// Check events first — a census event at this year is likely the state census
+	// Check events — require census type + year + state signal
 	for _, e := range events {
-		if e.EventType == glxlib.EventTypeCensus && e.Year == year {
+		if e.EventType != glxlib.EventTypeCensus || e.Year != year {
+			continue
+		}
+		titleLower := strings.ToLower(e.Title)
+		if strings.Contains(titleLower, lowerState) || strings.Contains(titleLower, "state census") {
 			return e.Ref
 		}
 	}
 
-	// Check sources — look for census source with matching year or state name
+	// Check sources — require census type + year + state signal
 	for _, s := range sources {
-		if s.Type == glxlib.SourceTypeCensus {
-			if s.Year == year {
-				return s.Ref
-			}
-			if strings.Contains(strings.ToLower(s.Title), lowerState) &&
-				strings.Contains(s.Title, fmt.Sprintf("%d", year)) {
-				return s.Ref
-			}
+		if s.Type != glxlib.SourceTypeCensus {
+			continue
+		}
+		titleLower := strings.ToLower(s.Title)
+
+		if s.Year == year && (strings.Contains(titleLower, lowerState) || strings.Contains(titleLower, "state census")) {
+			return s.Ref
+		}
+		// Fallback: title explicitly mentions both state and year
+		if strings.Contains(titleLower, lowerState) && strings.Contains(titleLower, fmt.Sprintf("%d", year)) {
+			return s.Ref
 		}
 	}
 

@@ -587,7 +587,7 @@ func TestBuildStateCensusRecords_NoStateMatch(t *testing.T) {
 
 func TestBuildStateCensusRecords_MatchesExistingEvent(t *testing.T) {
 	events := []personSourceInfo{
-		{Ref: "event-1855-census", EventType: glxlib.EventTypeCensus, Year: 1855},
+		{Ref: "event-1855-census", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Wisconsin State Census"},
 	}
 	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, events)
 
@@ -599,6 +599,73 @@ func TestBuildStateCensusRecords_MatchesExistingEvent(t *testing.T) {
 		}
 	}
 	t.Fatal("did not find 1855 state census record")
+}
+
+func TestBuildStateCensusRecords_FederalNotConfusedWithState(t *testing.T) {
+	// A federal 1860 census event should NOT match Mississippi's 1860 state census
+	events := []personSourceInfo{
+		{Ref: "event-1860-federal", EventType: glxlib.EventTypeCensus, Year: 1860, Title: "1860 US Federal Census"},
+	}
+	records := buildStateCensusRecords(1850, 1920, []string{"Mississippi"}, nil, events)
+
+	for _, r := range records {
+		if strings.Contains(r.Label, "1860") {
+			assert.False(t, r.Found, "federal 1860 census should NOT match Mississippi state census")
+			return
+		}
+	}
+	t.Fatal("did not find 1860 Mississippi state census record")
+}
+
+func TestExtractPlaceRefs_String(t *testing.T) {
+	refs := extractPlaceRefs("place-wi")
+	assert.Equal(t, []string{"place-wi"}, refs)
+}
+
+func TestExtractPlaceRefs_StructuredMap(t *testing.T) {
+	refs := extractPlaceRefs(map[string]any{"value": "place-wi"})
+	assert.Equal(t, []string{"place-wi"}, refs)
+}
+
+func TestExtractPlaceRefs_TemporalList(t *testing.T) {
+	refs := extractPlaceRefs([]any{
+		map[string]any{"value": "place-wi"},
+		map[string]any{"value": "place-ny"},
+	})
+	assert.Equal(t, []string{"place-wi", "place-ny"}, refs)
+}
+
+func TestExtractPlaceRefs_Nil(t *testing.T) {
+	assert.Nil(t, extractPlaceRefs(nil))
+}
+
+func TestExtractPlaceRefs_EmptyString(t *testing.T) {
+	assert.Nil(t, extractPlaceRefs(""))
+}
+
+func TestCollectPersonStates_StructuredProperty(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.PersonPropertyName:   "Test Person",
+					glxlib.PersonPropertyBornOn: "1850",
+					glxlib.PersonPropertyBornAt: map[string]any{"value": "place-wi"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		},
+		Events:        map[string]*glxlib.Event{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+	}
+
+	states := collectPersonStates("person-1", archive.Persons["person-1"], archive, nil)
+	assert.Contains(t, states, "Wisconsin")
 }
 
 func TestBuildCoverage_IncludesStateCensus(t *testing.T) {
@@ -659,6 +726,9 @@ func TestBuildCensusRecords_1850InParentsHousehold(t *testing.T) {
 		if strings.HasPrefix(r.Label, "1850") && !r.Found {
 			assert.Contains(t, r.Description, "likely in parents' household",
 				"1850 census for child age ~10 should note parents' household")
+			// Should NOT have duplicate household notes
+			count := strings.Count(r.Description, "household")
+			assert.Equal(t, 1, count, "should only have one household mention, got: %s", r.Description)
 		}
 	}
 }
