@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -124,7 +125,9 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 
 		// On Windows, Git stores symlinks as text files containing the
 		// target path. Detect these and read the actual target file.
-		data = resolveSymlinkPlaceholder(path, data)
+		if runtime.GOOS == "windows" {
+			data = resolveSymlinkPlaceholder(path, data)
+		}
 
 		relPath, err := filepath.Rel(rootDir, path)
 		if err != nil {
@@ -150,6 +153,11 @@ func resolveSymlinkPlaceholder(filePath string, data []byte) []byte {
 		return data
 	}
 	if !strings.Contains(content, "/") && !strings.Contains(content, "\\") {
+		return data
+	}
+	// Git symlink targets are always relative; reject absolute paths
+	// to prevent reading arbitrary files.
+	if filepath.IsAbs(filepath.FromSlash(content)) || filepath.VolumeName(filepath.FromSlash(content)) != "" {
 		return data
 	}
 
