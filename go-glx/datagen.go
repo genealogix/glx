@@ -20,7 +20,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/brianvoe/gofakeit/v6"
+	"github.com/brianvoe/gofakeit/v7"
 )
 
 // secureIntn returns a cryptographically random int in [0, n).
@@ -32,7 +32,7 @@ func secureIntn(n int) int {
 // GenerateTestData creates a complete GLXFile structure with plausible test data
 // for a specified number of people.
 func GenerateTestData(numPeople int) (*GLXFile, error) {
-	gofakeit.Seed(0)
+	gofakeit.GlobalFaker = gofakeit.New(0)
 
 	glxFile := &GLXFile{
 		Persons:       make(map[string]*Person),
