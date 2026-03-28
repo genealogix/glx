@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -427,6 +428,9 @@ func TestSplitArchive_LargeArchive(t *testing.T) {
 }
 
 func TestSplitArchive_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions are not supported on Windows")
+	}
 	tmpDir := t.TempDir()
 	inputPath := createTestSingleFileArchive(t, tmpDir)
 	outputDir := filepath.Join(tmpDir, "output")
