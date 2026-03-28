@@ -62,7 +62,7 @@ test-coverage: ## Run tests with coverage report
 	@go tool cover -func=coverage/coverage.out | tail -n 1
 
 ## Specification
-AJV := npx --yes --package=ajv-cli --package=ajv-formats ajv
+AJV := npx --prefix specification ajv
 
 check-schemas: ## Validate JSON schema files
 	@echo "Validating schemas against meta-schema..."
