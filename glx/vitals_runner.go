@@ -149,8 +149,11 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	}
 	vitals = append(vitals, vitalRecord{"Death", displayOrDash(death)})
 
-	// Burial — from events
-	burial := findEventByType(personID, "burial", eventIDs, archive)
+	// Burial — check person properties first, then events
+	burial := formatPropertyPlace(person.Properties, "buried_at", archive)
+	if burial == "" {
+		burial = findEventByType(personID, "burial", eventIDs, archive)
+	}
 	if burial == "" {
 		burial = findEventByType(personID, "cremation", eventIDs, archive)
 	}
