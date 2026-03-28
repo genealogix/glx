@@ -2,8 +2,9 @@
   "name": "glx-specification",
   "private": true,
   "description": "Schema validation tooling for the GLX specification",
+  "type": "module",
   "devDependencies": {
-    "ajv-cli": "^5.0.0",
+    "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1"
   }
 }
