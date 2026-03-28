@@ -897,8 +897,21 @@ func formatPropertyDatePlace(props map[string]any, dateKey, placeKey string, arc
 }
 
 // formatPropertyPlace returns a resolved place name from a person property.
+// Handles plain string values ("place-id") and map values ({"value": "place-id"}).
 func formatPropertyPlace(props map[string]any, placeKey string, archive *glxlib.GLXFile) string {
-	placeID := propertyString(props, placeKey)
+	raw, ok := props[placeKey]
+	if !ok {
+		return ""
+	}
+	var placeID string
+	switch v := raw.(type) {
+	case string:
+		placeID = v
+	case map[string]any:
+		if val, ok := v["value"].(string); ok {
+			placeID = val
+		}
+	}
 
 	return resolvePlaceName(placeID, archive)
 }
