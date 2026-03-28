@@ -77,13 +77,15 @@ func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
 		"gaps":        analyzeGaps,
 		"evidence":    analyzeEvidence,
 		"consistency": analyzeConsistency,
+		"conflicts":   analyzeConflicts,
 		"suggestions": analyzeSuggestions,
 	}
 
-	// Accept singular aliases ("gap" → "gaps", "suggestion" → "suggestions")
+	// Accept singular aliases ("gap" → "gaps", "conflict" → "conflicts", "suggestion" → "suggestions")
 	singularToPlural := map[string]string{
 		"gap":        "gaps",
 		"suggestion": "suggestions",
+		"conflict":   "conflicts",
 	}
 
 	if checkFilter != "" {
@@ -92,11 +94,11 @@ func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
 		}
 		fn, ok := checks[checkFilter]
 		if !ok {
-			return fmt.Errorf("unknown check category: %q (valid: gaps, evidence, consistency, suggestions)", checkFilter)
+			return fmt.Errorf("unknown check category: %q (valid: gaps, evidence, consistency, conflicts, suggestions)", checkFilter)
 		}
 		issues = fn(archive)
 	} else {
-		for _, category := range []string{"gaps", "evidence", "consistency", "suggestions"} {
+		for _, category := range []string{"gaps", "evidence", "consistency", "conflicts", "suggestions"} {
 			issues = append(issues, checks[category](archive)...)
 		}
 	}
@@ -163,6 +165,7 @@ func buildSummary(issues []AnalysisIssue) map[string]int {
 		"gap":         0,
 		"evidence":    0,
 		"consistency": 0,
+		"conflict":    0,
 		"suggestion":  0,
 	}
 	for _, issue := range issues {
@@ -198,6 +201,7 @@ func printAnalysisTerminal(result AnalysisResult) {
 		{"gap", "EVIDENCE GAPS"},
 		{"evidence", "EVIDENCE QUALITY"},
 		{"consistency", "CONSISTENCY"},
+		{"conflict", "CONFLICTS"},
 		{"suggestion", "SUGGESTIONS"},
 	}
 

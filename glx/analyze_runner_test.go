@@ -549,6 +549,59 @@ func TestAnalyzeConsistency_BurialAfterDeath_OK(t *testing.T) {
 	}
 }
 
+// --- Conflict Analysis ---
+
+func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary Green"}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-florida":  {Name: "Florida"},
+			"place-virginia": {Name: "Virginia"},
+			"place-new-york": {Name: "New York"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-florida", Confidence: "medium"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-virginia", Confidence: "medium"},
+			"a-3": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-new-york", Confidence: "medium-high"},
+		},
+	}
+
+	issues := analyzeConflicts(archive)
+	found := findIssueByMessage(issues, "person-mary", "conflicting values")
+	if found == nil {
+		t.Fatal("expected conflict issue for born_at")
+	}
+	if found.Severity != "high" {
+		t.Errorf("expected high severity, got %s", found.Severity)
+	}
+	if !containsSubstring(found.Message, "3 conflicting values") {
+		t.Errorf("expected 3 conflicting values in message: %s", found.Message)
+	}
+	// Place IDs should be resolved to names
+	if !containsSubstring(found.Message, "Florida") {
+		t.Errorf("expected resolved place name 'Florida' in message: %s", found.Message)
+	}
+}
+
+func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "born_at", Value: "place-florida", Confidence: "medium"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "born_at", Value: "place-florida", Confidence: "high"},
+		},
+	}
+
+	issues := analyzeConflicts(archive)
+	if len(issues) != 0 {
+		t.Errorf("expected no conflicts when all values are the same, got %d", len(issues))
+	}
+}
+
 // --- Duplicate Sibling Names ---
 
 func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
@@ -636,6 +689,196 @@ func TestAnalyzeConsistency_NoFalsePositiveOnUniqueNames(t *testing.T) {
 	for _, issue := range issues {
 		if containsSubstring(issue.Message, "share given name") {
 			t.Error("should not flag unique sibling names")
+		}
+	}
+}
+
+// --- Child Census Suggestions (brickwall research) ---
+
+func TestSuggestChildCensus_PersonWithParentsNotBrickwall(t *testing.T) {
+	// Mary has parents — should not be flagged as brickwall
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "ABT 1832"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+			"person-parent": {Properties: map[string]any{"name": "James Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-parent-joseph": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-parent", Role: "parent"},
+					{Person: "person-joseph", Role: "child"},
+				},
+			},
+			"rel-parent-mary": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-parent", Role: "parent"},
+					{Person: "person-mary", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestChildCensusRecords(archive)
+	for _, issue := range issues {
+		if issue.Person == "person-mary" {
+			t.Error("should not suggest child census for person who has parents")
+		}
+	}
+}
+
+func TestSuggestChildCensus_OrphanWithNoChildren(t *testing.T) {
+	// Mary has no parents and no children — no suggestions possible
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "ABT 1832"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+			"person-parent": {Properties: map[string]any{"name": "James Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-parent-joseph": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-parent", Role: "parent"},
+					{Person: "person-joseph", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestChildCensusRecords(archive)
+	for _, issue := range issues {
+		if issue.Person == "person-mary" && containsSubstring(issue.Message, "Joseph") {
+			t.Error("should not suggest child census when person has no children")
+		}
+	}
+}
+
+func TestSuggestChildCensus_BrickwallWithChildren(t *testing.T) {
+	// James has no parents (brickwall) but has children Mary and Joseph
+	// Should suggest searching children's 1880+ census records
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-james":  {Properties: map[string]any{"name": "James Green", "born_on": "1810"}},
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "1832"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-james", Role: "parent"},
+					{Person: "person-mary", Role: "child"},
+				},
+			},
+			"rel-2": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-james", Role: "parent"},
+					{Person: "person-joseph", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestChildCensusRecords(archive)
+
+	found1880 := false
+	for _, issue := range issues {
+		if issue.Person == "person-james" && containsSubstring(issue.Message, "1880") {
+			found1880 = true
+		}
+	}
+	if !found1880 {
+		t.Error("should suggest 1880 census for child of brickwall person")
+	}
+}
+
+func TestSuggestChildCensus_PersonWithParentsNotFlagged(t *testing.T) {
+	// person-child has parents — should never appear as the Person in suggestions
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-father": {Properties: map[string]any{"name": "Father", "born_on": "1830"}},
+			"person-child":  {Properties: map[string]any{"name": "Child", "born_on": "1860"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-father", Role: "parent"}, {Person: "person-child", Role: "child"}}},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestChildCensusRecords(archive)
+	for _, issue := range issues {
+		if issue.Person == "person-child" {
+			t.Error("should not flag person who has parents")
+		}
+	}
+}
+
+func TestSuggestChildCensus_ExistingCensusNotSuggested(t *testing.T) {
+	// James is a brickwall with child Mary. Mary already has an 1880 census event.
+	// Should NOT suggest 1880 for Mary.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-james": {Properties: map[string]any{"name": "James Green", "born_on": "1810"}},
+			"person-mary":  {Properties: map[string]any{"name": "Mary Green", "born_on": "1850"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-james", Role: "parent"},
+					{Person: "person-mary", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-1880-census": {
+				Type: glxlib.EventTypeCensus,
+				Date: "1880",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "subject"},
+				},
+			},
+		},
+	}
+
+	issues := suggestChildCensusRecords(archive)
+	for _, issue := range issues {
+		if issue.Person == "person-james" && containsSubstring(issue.Message, "1880") && containsSubstring(issue.Message, "Mary") {
+			t.Error("should NOT suggest 1880 census for Mary when event already exists")
+		}
+	}
+}
+
+func TestSuggestChildCensus_DeadChildNotSuggested(t *testing.T) {
+	// James is brickwall, child Mary died in 1875 — should not suggest 1880+ for her
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-james": {Properties: map[string]any{"name": "James Green", "born_on": "1810"}},
+			"person-mary":  {Properties: map[string]any{"name": "Mary Green", "born_on": "1850", "died_on": "1875"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-james", Role: "parent"},
+					{Person: "person-mary", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestChildCensusRecords(archive)
+	for _, issue := range issues {
+		if issue.Person == "person-james" && containsSubstring(issue.Message, "Mary") {
+			t.Errorf("should not suggest census for child who died before 1880: %s", issue.Message)
 		}
 	}
 }
