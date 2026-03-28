@@ -159,3 +159,41 @@ func TestSearchArchive_MatchesEntityID(t *testing.T) {
 
 	require.NotEmpty(t, results, "should match entity IDs")
 }
+
+func TestShowSearch_EmptyQuery(t *testing.T) {
+	err := showSearch(".", "", false, "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "empty")
+}
+
+func TestShowSearch_InvalidType(t *testing.T) {
+	err := showSearch(".", "test", false, "invalid_type")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown type")
+}
+
+func TestSearchArchive_TypeFilter(t *testing.T) {
+	archive := newTestArchiveForSearch()
+
+	// "Millbrook" appears in persons, events, places, sources, assertions
+	allResults := searchArchive(archive, "Millbrook", false)
+	require.NotEmpty(t, allResults)
+
+	// Filter to just places
+	var placesOnly []searchResult
+	for _, r := range allResults {
+		if r.EntityType == "places" {
+			placesOnly = append(placesOnly, r)
+		}
+	}
+	require.NotEmpty(t, placesOnly, "should have place matches")
+
+	// Non-place results should exist in unfiltered
+	hasNonPlace := false
+	for _, r := range allResults {
+		if r.EntityType != "places" {
+			hasNonPlace = true
+		}
+	}
+	assert.True(t, hasNonPlace, "unfiltered results should include non-place entities")
+}
