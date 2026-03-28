@@ -78,6 +78,9 @@ func loadArchiveForVitals(path string) (*glxlib.GLXFile, error) {
 func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
 	// Try exact ID match first
 	if person, ok := archive.Persons[query]; ok {
+		if person == nil {
+			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
+		}
 		return query, person, nil
 	}
 
@@ -88,6 +91,9 @@ func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, 
 	ids := sortedKeys(archive.Persons)
 	for _, id := range ids {
 		person := archive.Persons[id]
+		if person == nil {
+			continue
+		}
 		name := extractPersonName(person)
 		if strings.Contains(strings.ToLower(name), lowerQuery) {
 			matches = append(matches, id)

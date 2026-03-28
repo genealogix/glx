@@ -501,6 +501,22 @@ func TestFindPersonForTimeline_Ambiguous(t *testing.T) {
 	}
 }
 
+func TestFindPersonForTimeline_NilEntry(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-nil": nil,
+		},
+	}
+
+	_, _, err := findPersonForTimeline(archive, "person-nil")
+	if err == nil {
+		t.Fatal("expected error for nil person entry")
+	}
+	if !strings.Contains(err.Error(), "no data") {
+		t.Errorf("expected 'no data' error, got: %s", err.Error())
+	}
+}
+
 func TestInferRelation(t *testing.T) {
 	tests := []struct {
 		relType    string
