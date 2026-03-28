@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["after 9pm on sunday"],
+    "automerge": true,
+    "commitMessageAction": "refresh"
+  },
+  "packageRules": [
+    {
+      "description": "Group all lockfile maintenance into a single PR",
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "groupName": "lockfile maintenance"
+    }
+  ]
+}
