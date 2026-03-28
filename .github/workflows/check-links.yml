@@ -13,6 +13,9 @@ on:
       - 'docs/**/*.md'
       - '*.md'
 
+permissions:
+  contents: read
+
 jobs:
   check-relative-links:
     name: Check Relative Links
