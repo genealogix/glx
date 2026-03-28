@@ -1,15 +1,27 @@
-name: 💡 Feature Request
+name: Feature Request
 description: Suggest a new feature or enhancement
-title: "[Feature] "
-labels: ["enhancement", "needs-triage"]
+type: Feature
 body:
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of the project does this affect?
+      options:
+        - cli
+        - spec
+        - go-glx
+        - import-export
+        - ui
+        - tooling
+    validations:
+      required: true
+
   - type: textarea
     attributes:
       label: Problem
       description: What limitation or pain point are you trying to address?
       placeholder: |
         I'm trying to do X, but I can't because Y.
-        When I do Z, it would be helpful if W happened instead.
     validations:
       required: true
 
@@ -19,7 +31,6 @@ body:
       description: What should change?
       placeholder: |
         I propose adding a new command `glx migrate` that...
-        The validation should support checking for...
     validations:
       required: true
 
@@ -27,9 +38,5 @@ body:
     attributes:
       label: Context
       description: Use cases, workarounds, or implementation notes.
-      placeholder: |
-        - When migrating from GEDCOM files
-        - When collaborating with other researchers
-        - When validating large family trees
     validations:
       required: false
