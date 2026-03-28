@@ -24,7 +24,7 @@ import (
 func TestGenerateRandomID(t *testing.T) {
 	// Generate IDs to test format and basic uniqueness.
 	// Using 1,000 iterations keeps P(collision) at ~0.01% in a 32-bit space,
-	// making the test deterministically stable in CI.
+	// making collisions extremely unlikely (but not impossible) in CI.
 	ids := make(map[string]bool)
 	iterations := 1000
 	hexPattern := regexp.MustCompile("^[a-f0-9]{8}$")
