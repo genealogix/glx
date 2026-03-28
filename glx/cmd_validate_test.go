@@ -126,16 +126,20 @@ func TestRunValidate_BrokenPropertyReference(t *testing.T) {
 	require.NoError(t, err)
 
 	// Capture stderr to verify error message
+	r, w, errPipe := os.Pipe()
+	require.NoError(t, errPipe)
+	defer func() { _ = r.Close() }()
+
 	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
 	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
 
 	err = validatePaths([]string{tmpDir})
 
-	w.Close()
-	os.Stderr = oldStderr
+	require.NoError(t, w.Close())
 	var buf strings.Builder
-	io.Copy(&buf, r)
+	_, errCopy := io.Copy(&buf, r)
+	require.NoError(t, errCopy)
 	output := buf.String()
 
 	require.Error(t, err, "should fail when born_at references non-existent place")
