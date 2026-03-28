@@ -17,4 +17,7 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
+          # PR comments require write access; on forked PRs the token is
+          # read-only so the comment is silently skipped. The check still
+          # blocks the PR regardless.
           comment-summary-in-pr: on-failure
