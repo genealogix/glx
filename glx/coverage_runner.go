@@ -421,7 +421,7 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 		}
 
 		spouseName := ""
-		if spouse, ok := archive.Persons[spouseID]; ok {
+		if spouse, ok := archive.Persons[spouseID]; ok && spouse != nil {
 			spouseName = glxlib.PersonDisplayName(spouse)
 		}
 		if spouseName == "" {
