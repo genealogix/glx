@@ -59,8 +59,21 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	var issues []AnalysisIssue
 
+	// Collect and sort keys for deterministic output order
+	var keys []conflictPropKey
+	for key := range propValues {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].personID != keys[j].personID {
+			return keys[i].personID < keys[j].personID
+		}
+		return keys[i].property < keys[j].property
+	})
+
 	// Find properties with multiple distinct values
-	for key, values := range propValues {
+	for _, key := range keys {
+		values := propValues[key]
 		distinct := distinctValues(values)
 		if len(distinct) < 2 {
 			continue
@@ -91,10 +104,10 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 }
 
 // resolveConflictValue converts entity IDs to display names for place-reference
-// properties. For other properties, returns the raw value.
+// properties. For other properties, returns the raw value. Uses the shared
+// placeRefProperties set from places_runner.go to stay in sync.
 func resolveConflictValue(value, property string, archive *glxlib.GLXFile) string {
-	switch property {
-	case "born_at", "died_at", "buried_at", "residence":
+	if placeRefProperties[property] {
 		if place, ok := archive.Places[value]; ok && place != nil {
 			return place.Name
 		}

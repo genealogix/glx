@@ -81,7 +81,7 @@ func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
 		"suggestions": analyzeSuggestions,
 	}
 
-	// Accept singular aliases ("gap" → "gaps", "suggestion" → "suggestions")
+	// Accept singular aliases ("gap" → "gaps", "conflict" → "conflicts", "suggestion" → "suggestions")
 	singularToPlural := map[string]string{
 		"gap":        "gaps",
 		"suggestion": "suggestions",
