@@ -165,12 +165,9 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources 
 }
 
 // findStateCensusMatch checks if a state census for a given year and state
-// exists in events or sources. To avoid confusing state and federal censuses
-// (some years overlap, e.g., Mississippi 1860), matching requires a
-// state-specific signal: the event/source title must mention the state name
-// or "state census", or the event's place must resolve to the target state.
 // titleMatchesState checks if a title contains the state name as a distinct
 // word/phrase, avoiding substring false positives (e.g., "Kansas" in "Arkansas").
+// Scans all occurrences and returns true if any is at a word boundary.
 func titleMatchesState(title, state string) bool {
 	lowerTitle := strings.ToLower(title)
 	lowerState := strings.ToLower(state)
@@ -197,6 +194,10 @@ func isAlpha(b byte) bool {
 	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
 }
 
+// findStateCensusMatch checks if a state census for a given year and state
+// exists in events or sources. Requires a state-specific signal to avoid
+// confusing state and federal censuses on overlapping years: the title must
+// mention the state name, or the event's place must resolve to the target state.
 func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) string {
 	// Check events — require census type + year + state-specific signal
 	for _, e := range events {
