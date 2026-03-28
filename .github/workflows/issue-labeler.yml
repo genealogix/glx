@@ -1,0 +1,30 @@
+name: Auto-label issues from template
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  label-area:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply area label from template dropdown
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY=$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json body --jq '.body')
+
+          # Extract area from form dropdown (renders as "### Area\n\n<value>")
+          AREA=$(echo "$BODY" | awk '/^### Area/{getline; getline; print; exit}' | tr -d '[:space:]')
+
+          VALID_LABELS="cli spec go-glx import-export ui tooling"
+
+          if echo "$VALID_LABELS" | grep -wq "$AREA"; then
+            echo "Applying label: $AREA"
+            gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label "$AREA"
+          else
+            echo "No valid area found in body (got: '$AREA')"
+          fi
