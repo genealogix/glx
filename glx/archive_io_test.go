@@ -175,7 +175,7 @@ persons:
 				return "/nonexistent/directory", func() {}
 			},
 			wantErr:       true,
-			errorContains: "no such file or directory",
+			errorContains: "nonexistent", // error message differs between Unix and Windows
 		},
 		{
 			name: "load archive with all entity types",
@@ -587,8 +587,8 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 						"person-1": {Properties: make(map[string]any)},
 					},
 				}
-
-				return "/root/invalid/dir", glx, func() {}
+				// Use NUL device path which is invalid as a directory on all platforms
+				return filepath.Join(os.DevNull, "invalid", "dir"), glx, func() {}
 			},
 			validate:     false,
 			wantWriteErr: true,
