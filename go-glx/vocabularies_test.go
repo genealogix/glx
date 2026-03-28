@@ -176,6 +176,46 @@ func keysOf(m map[string]any) []string {
 	return keys
 }
 
+func TestLoadStandardVocabulariesIntoGLX_ClonedMaps(t *testing.T) {
+	// Regression test: verify that mutating one GLXFile's vocabulary map
+	// does not affect another GLXFile that loaded the same vocabularies.
+	glx1 := &GLXFile{}
+	glx2 := &GLXFile{}
+
+	if err := LoadStandardVocabulariesIntoGLX(glx1); err != nil {
+		t.Fatalf("LoadStandardVocabulariesIntoGLX(glx1): %v", err)
+	}
+	if err := LoadStandardVocabulariesIntoGLX(glx2); err != nil {
+		t.Fatalf("LoadStandardVocabulariesIntoGLX(glx2): %v", err)
+	}
+
+	if len(glx1.EventTypes) != len(glx2.EventTypes) {
+		t.Fatalf("expected same EventTypes length, got %d vs %d", len(glx1.EventTypes), len(glx2.EventTypes))
+	}
+
+	// Add a key to glx1
+	glx1.EventTypes["test-mutation"] = &EventType{Label: "Test"}
+
+	// glx2 should NOT have the new key
+	if _, exists := glx2.EventTypes["test-mutation"]; exists {
+		t.Error("mutating glx1's EventTypes should not affect glx2")
+	}
+
+	// Delete a key from glx2
+	var firstKey string
+	for k := range glx2.PlaceTypes {
+		firstKey = k
+
+		break
+	}
+	delete(glx2.PlaceTypes, firstKey)
+
+	// glx1 should still have the deleted key
+	if _, exists := glx1.PlaceTypes[firstKey]; !exists {
+		t.Errorf("deleting from glx2's PlaceTypes should not affect glx1 (missing key %q)", firstKey)
+	}
+}
+
 // These tests were removed because WriteStandardVocabularies and WriteVocabulariesToFile
 // were removed from lib (they violated the no-I/O rule). Vocabulary writing is now
 // handled by the CLI commands, and vocabulary serialization is tested in roundtrip tests.
