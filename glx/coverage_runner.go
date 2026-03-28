@@ -162,8 +162,9 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	// Vital records
 	records = append(records, buildVitalRecords(personID, person, archive, personSources, personEvents)...)
 
-	// Other record types — probate is high priority when person died with known family
-	probateHighPriority := deathYear > 0 && hasFamily(personID, archive)
+	// Other record types — probate is high priority when person has an explicit death
+	// date (not just inferred from burial) and known family
+	probateHighPriority := diedOn != "" && hasFamily(personID, archive)
 	records = append(records, buildOtherRecords(personSources, personEvents, probateHighPriority)...)
 
 	found := 0
@@ -697,9 +698,14 @@ func hasFamily(personID string, archive *glxlib.GLXFile) bool {
 			continue
 		}
 
-		// Check for spouse/partner relationship
+		// Check for spouse/partner relationship — require spouse role to avoid
+		// counting witnesses/officiants as family
 		if rel.Type == glxlib.RelationshipTypeMarriage || rel.Type == glxlib.RelationshipTypePartner {
-			return true
+			for _, p := range rel.Participants {
+				if p.Person == personID && p.Role == glxlib.ParticipantRoleSpouse {
+					return true
+				}
+			}
 		}
 
 		// Check for parent-child where this person is the parent

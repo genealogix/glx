@@ -503,6 +503,7 @@ func TestBuildOtherRecords_ProbateNoPriority_NoDeath(t *testing.T) {
 			return
 		}
 	}
+	t.Fatal("did not find Probate/will record in coverage output")
 }
 
 func TestBuildOtherRecords_ProbateNoPriority_NoFamily(t *testing.T) {
@@ -531,4 +532,5 @@ func TestBuildOtherRecords_ProbateNoPriority_NoFamily(t *testing.T) {
 			return
 		}
 	}
+	t.Fatal("did not find Probate/will record in coverage output")
 }
