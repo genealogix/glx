@@ -1,8 +1,21 @@
-name: 🐛 Bug Report
+name: Bug Report
 description: Report a bug or unexpected behavior
-title: "[Bug] "
-labels: ["bug", "needs-triage"]
+type: Bug
 body:
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of the project is affected?
+      options:
+        - cli
+        - spec
+        - go-glx
+        - import-export
+        - ui
+        - tooling
+    validations:
+      required: true
+
   - type: textarea
     attributes:
       label: Summary
@@ -16,10 +29,8 @@ body:
       label: Reproduction
       description: How can we reproduce it?
       placeholder: |
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See error
+        1. Run `glx validate ...`
+        2. See error
     validations:
       required: true
 
@@ -31,6 +42,5 @@ body:
         - OS:
         - GLX version:
         - Go version:
-        - Anything else relevant:
     validations:
       required: false
