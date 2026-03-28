@@ -5,11 +5,16 @@
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import { readFileSync, readdirSync } from "fs";
-import { join, basename } from "path";
+import { join, basename, dirname } from "path";
+import { fileURLToPath } from "url";
 
-const SCHEMA_DIR = "specification/schema/v1";
+// Resolve paths relative to the repo root (script lives in specification/)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, "..");
+
+const SCHEMA_DIR = join(ROOT, "specification/schema/v1");
 const VOCAB_DIR = join(SCHEMA_DIR, "vocabularies");
-const META_SCHEMA = "specification/schema/meta/schema.schema.json";
+const META_SCHEMA = join(ROOT, "specification/schema/meta/schema.schema.json");
 
 function loadJSON(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -21,12 +26,16 @@ function globSchemas(dir) {
     .map((f) => join(dir, f));
 }
 
+function formatError(e) {
+  return e instanceof Error ? e.message : String(e);
+}
+
 let errors = 0;
 
 // --- Step 1: Validate schemas against meta-schema ---
 console.log("Validating schemas against meta-schema...");
 
-const metaAjv = new Ajv({ strict: false, allErrors: true });
+const metaAjv = new Ajv({ strict: "log", allErrors: true });
 addFormats(metaAjv);
 const metaSchema = loadJSON(META_SCHEMA);
 const validateMeta = metaAjv.compile(metaSchema);
@@ -46,7 +55,7 @@ for (const file of [...globSchemas(SCHEMA_DIR), ...globSchemas(VOCAB_DIR)]) {
 // --- Step 2: Compile each schema individually ---
 console.log("\nCompiling schemas...");
 
-const compileAjv = new Ajv({ strict: false, allErrors: true });
+const compileAjv = new Ajv({ strict: "log", allErrors: true });
 addFormats(compileAjv);
 
 // Add meta-schema
@@ -64,13 +73,13 @@ for (const file of [...entitySchemas, ...vocabSchemas]) {
     compileAjv.compile(loadJSON(file));
     console.log(`schema ${file} is valid`);
   } catch (e) {
-    console.error(`schema ${file} FAILED: ${e.message}`);
+    console.error(`schema ${file} FAILED: ${formatError(e)}`);
     errors++;
   }
 }
 
 // --- Step 3: Compile glx-file.schema.json with all references ---
-const refAjv = new Ajv({ strict: false, allErrors: true });
+const refAjv = new Ajv({ strict: "log", allErrors: true });
 addFormats(refAjv);
 
 // Add all entity and vocabulary schemas as references
@@ -83,7 +92,7 @@ try {
   refAjv.compile(loadJSON(glxFileSchema));
   console.log(`schema ${glxFileSchema} is valid`);
 } catch (e) {
-  console.error(`schema glx-file.schema.json FAILED: ${e.message}`);
+  console.error(`schema glx-file.schema.json FAILED: ${formatError(e)}`);
   errors++;
 }
 
