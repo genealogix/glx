@@ -351,6 +351,9 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
 		if summarySkippedEventTypes[strings.ToLower(event.Type)] {
 			continue
 		}
@@ -603,6 +606,9 @@ func findMarriageEvent(personA, personB string, archive *glxlib.GLXFile) (date, 
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		ev := archive.Events[id]
+		if ev == nil {
+			continue
+		}
 		if !strings.EqualFold(ev.Type, "marriage") {
 			continue
 		}
@@ -828,6 +834,9 @@ func findEventForPerson(personID, eventType string, archive *glxlib.GLXFile) str
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
 		}
@@ -1067,6 +1076,9 @@ func findEventDatePlace(personID, eventType string, archive *glxlib.GLXFile) (st
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
 		}
