@@ -174,19 +174,23 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources 
 func titleMatchesState(title, state string) bool {
 	lowerTitle := strings.ToLower(title)
 	lowerState := strings.ToLower(state)
-	idx := strings.Index(lowerTitle, lowerState)
-	if idx < 0 {
-		return false
+
+	// Scan all occurrences — return true if any is at a word boundary
+	start := 0
+	for {
+		idx := strings.Index(lowerTitle[start:], lowerState)
+		if idx < 0 {
+			return false
+		}
+		idx += start
+		end := idx + len(lowerState)
+		atStart := idx == 0 || !isAlpha(lowerTitle[idx-1])
+		atEnd := end >= len(lowerTitle) || !isAlpha(lowerTitle[end])
+		if atStart && atEnd {
+			return true
+		}
+		start = idx + 1
 	}
-	// Check that the match is at a word boundary (not a substring of a longer word)
-	end := idx + len(lowerState)
-	if idx > 0 && isAlpha(lowerTitle[idx-1]) {
-		return false
-	}
-	if end < len(lowerTitle) && isAlpha(lowerTitle[end]) {
-		return false
-	}
-	return true
 }
 
 func isAlpha(b byte) bool {
@@ -194,15 +198,16 @@ func isAlpha(b byte) bool {
 }
 
 func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) string {
-	// Check events — require census type + year + state signal (title or place)
+	// Check events — require census type + year + state-specific signal
 	for _, e := range events {
 		if e.EventType != glxlib.EventTypeCensus || e.Year != year {
 			continue
 		}
-		if titleMatchesState(e.Title, state) || strings.Contains(strings.ToLower(e.Title), "state census") {
+		// Title must mention this specific state
+		if titleMatchesState(e.Title, state) {
 			return e.Ref
 		}
-		// Place-based matching: resolve event place to state
+		// Place-based matching: resolve event place to this state
 		if archive != nil && e.PlaceID != "" {
 			if resolveStateFromPlace(e.PlaceID, archive) == state {
 				return e.Ref
@@ -210,13 +215,13 @@ func findStateCensusMatch(year int, state string, sources []personSourceInfo, ev
 		}
 	}
 
-	// Check sources — require census type + year + state signal
+	// Check sources — require census type + year + state-specific signal
 	for _, s := range sources {
 		if s.Type != glxlib.SourceTypeCensus {
 			continue
 		}
-
-		if s.Year == year && (titleMatchesState(s.Title, state) || strings.Contains(strings.ToLower(s.Title), "state census")) {
+		// Title must mention this specific state (not just generic "state census")
+		if s.Year == year && titleMatchesState(s.Title, state) {
 			return s.Ref
 		}
 		// Fallback: title explicitly mentions both state and year
