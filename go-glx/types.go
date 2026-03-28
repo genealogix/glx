@@ -399,6 +399,8 @@ type TemporalValue struct {
 // Messages may report duplicate entity or vocabulary IDs ("duplicate <type> ID: <id>")
 // or metadata conflicts ("duplicate metadata: ...").
 func (g *GLXFile) Merge(other *GLXFile) []string {
+	g.initMaps()
+	g.validation = nil // invalidate cached validation since maps are being mutated
 	duplicates := make([]string, 0, 10)
 
 	// Merge metadata (first one wins; report duplicate if both have content)
@@ -443,6 +445,91 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 	duplicates = append(duplicates, mergeMap("source_properties", g.SourceProperties, other.SourceProperties)...)
 
 	return duplicates
+}
+
+// initMaps ensures all entity and vocabulary maps are initialized (non-nil).
+// Called by Merge to prevent silent data loss when destination maps are nil.
+// NOTE: serializer.go also initializes some of these maps — consider migrating
+// those call sites to use initMaps() to keep initialization centralized.
+func (g *GLXFile) initMaps() {
+	if g.Persons == nil {
+		g.Persons = make(map[string]*Person)
+	}
+	if g.Relationships == nil {
+		g.Relationships = make(map[string]*Relationship)
+	}
+	if g.Events == nil {
+		g.Events = make(map[string]*Event)
+	}
+	if g.Places == nil {
+		g.Places = make(map[string]*Place)
+	}
+	if g.Sources == nil {
+		g.Sources = make(map[string]*Source)
+	}
+	if g.Citations == nil {
+		g.Citations = make(map[string]*Citation)
+	}
+	if g.Repositories == nil {
+		g.Repositories = make(map[string]*Repository)
+	}
+	if g.Assertions == nil {
+		g.Assertions = make(map[string]*Assertion)
+	}
+	if g.Media == nil {
+		g.Media = make(map[string]*Media)
+	}
+	if g.EventTypes == nil {
+		g.EventTypes = make(map[string]*EventType)
+	}
+	if g.RelationshipTypes == nil {
+		g.RelationshipTypes = make(map[string]*RelationshipType)
+	}
+	if g.PlaceTypes == nil {
+		g.PlaceTypes = make(map[string]*PlaceType)
+	}
+	if g.SourceTypes == nil {
+		g.SourceTypes = make(map[string]*SourceType)
+	}
+	if g.RepositoryTypes == nil {
+		g.RepositoryTypes = make(map[string]*RepositoryType)
+	}
+	if g.MediaTypes == nil {
+		g.MediaTypes = make(map[string]*MediaType)
+	}
+	if g.GenderTypes == nil {
+		g.GenderTypes = make(map[string]*GenderType)
+	}
+	if g.ParticipantRoles == nil {
+		g.ParticipantRoles = make(map[string]*ParticipantRole)
+	}
+	if g.ConfidenceLevels == nil {
+		g.ConfidenceLevels = make(map[string]*ConfidenceLevel)
+	}
+	if g.PersonProperties == nil {
+		g.PersonProperties = make(map[string]*PropertyDefinition)
+	}
+	if g.EventProperties == nil {
+		g.EventProperties = make(map[string]*PropertyDefinition)
+	}
+	if g.RelationshipProperties == nil {
+		g.RelationshipProperties = make(map[string]*PropertyDefinition)
+	}
+	if g.PlaceProperties == nil {
+		g.PlaceProperties = make(map[string]*PropertyDefinition)
+	}
+	if g.MediaProperties == nil {
+		g.MediaProperties = make(map[string]*PropertyDefinition)
+	}
+	if g.RepositoryProperties == nil {
+		g.RepositoryProperties = make(map[string]*PropertyDefinition)
+	}
+	if g.CitationProperties == nil {
+		g.CitationProperties = make(map[string]*PropertyDefinition)
+	}
+	if g.SourceProperties == nil {
+		g.SourceProperties = make(map[string]*PropertyDefinition)
+	}
 }
 
 // mergeMap is used for BOTH entities and vocabularies - duplicates are always errors
