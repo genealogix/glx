@@ -491,6 +491,9 @@ func assertionReferencesSource(a *glxlib.Assertion, archive *glxlib.GLXFile, sou
 // Handles simple strings, structured maps, and temporal lists.
 // Delegates to extractAllNames and returns the first entry.
 func extractPersonName(person *glxlib.Person) string {
+	if person == nil {
+		return "(unnamed)"
+	}
 	names := extractAllNames(person)
 	if len(names) == 0 {
 		return "(unnamed)"
