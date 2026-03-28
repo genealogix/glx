@@ -47,7 +47,7 @@ var stateCensusYears = map[string][]int{
 // resolveStateFromPlace walks the place hierarchy to find the US state name.
 // Returns the empty string if no state-type ancestor is found.
 func resolveStateFromPlace(placeRef string, archive *glxlib.GLXFile) string {
-	if placeRef == "" {
+	if placeRef == "" || archive == nil {
 		return ""
 	}
 
@@ -69,70 +69,32 @@ func resolveStateFromPlace(placeRef string, archive *glxlib.GLXFile) string {
 	return ""
 }
 
-// extractPlaceRefs extracts place reference IDs from a property value,
-// handling the same shapes used for place references throughout GLX:
-//   - string: treated as the place ID
-//   - map[string]any{"value": <string>}: structured single value
-//   - []any of map[string]any with "value": temporal list of values
-func extractPlaceRefs(v any) []string {
-	if v == nil {
-		return nil
+// placeRefsFromProperty extracts place reference IDs from a property value
+// using the shared collectPlaceRefsFromProperty helper from places_runner.go.
+func placeRefsFromProperty(v any) []string {
+	refs := make(map[string]struct{})
+	collectPlaceRefsFromProperty(v, refs)
+	var result []string
+	for ref := range refs {
+		result = append(result, ref)
 	}
-
-	switch t := v.(type) {
-	case string:
-		if t != "" {
-			return []string{t}
-		}
-	case map[string]any:
-		if raw, ok := t["value"]; ok {
-			if s, ok := raw.(string); ok && s != "" {
-				return []string{s}
-			}
-		}
-	case []any:
-		var ids []string
-		for _, elem := range t {
-			switch e := elem.(type) {
-			case map[string]any:
-				raw, ok := e["value"]
-				if !ok {
-					continue
-				}
-				s, ok := raw.(string)
-				if !ok || s == "" {
-					continue
-				}
-				ids = append(ids, s)
-			case string:
-				if e == "" {
-					continue
-				}
-				ids = append(ids, e)
-			}
-		}
-		if len(ids) > 0 {
-			return ids
-		}
-	}
-
-	return nil
+	return result
 }
 
 // collectPersonStates returns the unique US state names associated with a person
 // via birthplace, death place, and event places.
-func collectPersonStates(personID string, person *glxlib.Person, archive *glxlib.GLXFile, events []personSourceInfo) []string {
+func collectPersonStates(person *glxlib.Person, archive *glxlib.GLXFile, events []personSourceInfo) []string {
 	stateSet := make(map[string]bool)
 
 	if person != nil && person.Properties != nil {
 		// Birthplace — handle string, structured, and temporal property shapes
-		for _, ref := range extractPlaceRefs(person.Properties[glxlib.PersonPropertyBornAt]) {
+		for _, ref := range placeRefsFromProperty(person.Properties[glxlib.PersonPropertyBornAt]) {
 			if s := resolveStateFromPlace(ref, archive); s != "" {
 				stateSet[s] = true
 			}
 		}
 		// Death place
-		for _, ref := range extractPlaceRefs(person.Properties[glxlib.PersonPropertyDiedAt]) {
+		for _, ref := range placeRefsFromProperty(person.Properties[glxlib.PersonPropertyDiedAt]) {
 			if s := resolveStateFromPlace(ref, archive); s != "" {
 				stateSet[s] = true
 			}
@@ -207,16 +169,37 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources 
 // (some years overlap, e.g., Mississippi 1860), matching requires a
 // state-specific signal: the event/source title must mention the state name
 // or "state census", or the event's place must resolve to the target state.
-func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) string {
+// titleMatchesState checks if a title contains the state name as a distinct
+// word/phrase, avoiding substring false positives (e.g., "Kansas" in "Arkansas").
+func titleMatchesState(title, state string) bool {
+	lowerTitle := strings.ToLower(title)
 	lowerState := strings.ToLower(state)
+	idx := strings.Index(lowerTitle, lowerState)
+	if idx < 0 {
+		return false
+	}
+	// Check that the match is at a word boundary (not a substring of a longer word)
+	end := idx + len(lowerState)
+	if idx > 0 && isAlpha(lowerTitle[idx-1]) {
+		return false
+	}
+	if end < len(lowerTitle) && isAlpha(lowerTitle[end]) {
+		return false
+	}
+	return true
+}
 
+func isAlpha(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
+}
+
+func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) string {
 	// Check events — require census type + year + state signal (title or place)
 	for _, e := range events {
 		if e.EventType != glxlib.EventTypeCensus || e.Year != year {
 			continue
 		}
-		titleLower := strings.ToLower(e.Title)
-		if strings.Contains(titleLower, lowerState) || strings.Contains(titleLower, "state census") {
+		if titleMatchesState(e.Title, state) || strings.Contains(strings.ToLower(e.Title), "state census") {
 			return e.Ref
 		}
 		// Place-based matching: resolve event place to state
@@ -232,13 +215,12 @@ func findStateCensusMatch(year int, state string, sources []personSourceInfo, ev
 		if s.Type != glxlib.SourceTypeCensus {
 			continue
 		}
-		titleLower := strings.ToLower(s.Title)
 
-		if s.Year == year && (strings.Contains(titleLower, lowerState) || strings.Contains(titleLower, "state census")) {
+		if s.Year == year && (titleMatchesState(s.Title, state) || strings.Contains(strings.ToLower(s.Title), "state census")) {
 			return s.Ref
 		}
 		// Fallback: title explicitly mentions both state and year
-		if strings.Contains(titleLower, lowerState) && strings.Contains(titleLower, fmt.Sprintf("%d", year)) {
+		if titleMatchesState(s.Title, state) && strings.Contains(s.Title, fmt.Sprintf("%d", year)) {
 			return s.Ref
 		}
 	}

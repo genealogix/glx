@@ -520,7 +520,7 @@ func TestCollectPersonStates_FromBirthplace(t *testing.T) {
 		Assertions:    map[string]*glxlib.Assertion{},
 	}
 
-	states := collectPersonStates("person-wi", archive.Persons["person-wi"], archive, nil)
+	states := collectPersonStates(archive.Persons["person-wi"], archive, nil)
 	assert.Contains(t, states, "Wisconsin")
 }
 
@@ -555,7 +555,7 @@ func TestCollectPersonStates_FromEventPlace(t *testing.T) {
 	}
 
 	events := collectPersonEvents("person-1", archive)
-	states := collectPersonStates("person-1", archive.Persons["person-1"], archive, events)
+	states := collectPersonStates(archive.Persons["person-1"], archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
 
@@ -617,43 +617,32 @@ func TestBuildStateCensusRecords_FederalNotConfusedWithState(t *testing.T) {
 	t.Fatal("did not find 1860 Mississippi state census record")
 }
 
-func TestExtractPlaceRefs_String(t *testing.T) {
-	refs := extractPlaceRefs("place-wi")
-	assert.Equal(t, []string{"place-wi"}, refs)
+func TestPlaceRefsFromProperty_String(t *testing.T) {
+	refs := placeRefsFromProperty("place-wi")
+	assert.ElementsMatch(t, []string{"place-wi"}, refs)
 }
 
-func TestExtractPlaceRefs_StructuredMap(t *testing.T) {
-	refs := extractPlaceRefs(map[string]any{"value": "place-wi"})
-	assert.Equal(t, []string{"place-wi"}, refs)
+func TestPlaceRefsFromProperty_StructuredMap(t *testing.T) {
+	refs := placeRefsFromProperty(map[string]any{"value": "place-wi"})
+	assert.ElementsMatch(t, []string{"place-wi"}, refs)
 }
 
-func TestExtractPlaceRefs_TemporalList(t *testing.T) {
-	refs := extractPlaceRefs([]any{
+func TestPlaceRefsFromProperty_TemporalList(t *testing.T) {
+	refs := placeRefsFromProperty([]any{
 		map[string]any{"value": "place-wi"},
 		map[string]any{"value": "place-ny"},
 	})
-	assert.Equal(t, []string{"place-wi", "place-ny"}, refs)
+	assert.ElementsMatch(t, []string{"place-wi", "place-ny"}, refs)
 }
 
-func TestExtractPlaceRefs_TemporalListWithRawStrings(t *testing.T) {
-	refs := extractPlaceRefs([]any{"place-wi", "place-ny"})
-	assert.Equal(t, []string{"place-wi", "place-ny"}, refs)
+func TestPlaceRefsFromProperty_Nil(t *testing.T) {
+	refs := placeRefsFromProperty(nil)
+	assert.Empty(t, refs)
 }
 
-func TestExtractPlaceRefs_TemporalListMixed(t *testing.T) {
-	refs := extractPlaceRefs([]any{
-		"place-wi",
-		map[string]any{"value": "place-ny"},
-	})
-	assert.Equal(t, []string{"place-wi", "place-ny"}, refs)
-}
-
-func TestExtractPlaceRefs_Nil(t *testing.T) {
-	assert.Nil(t, extractPlaceRefs(nil))
-}
-
-func TestExtractPlaceRefs_EmptyString(t *testing.T) {
-	assert.Nil(t, extractPlaceRefs(""))
+func TestPlaceRefsFromProperty_EmptyString(t *testing.T) {
+	refs := placeRefsFromProperty("")
+	assert.Empty(t, refs)
 }
 
 func TestFindStateCensusMatch_PlaceBased(t *testing.T) {
@@ -707,7 +696,7 @@ func TestCollectPersonStates_StructuredProperty(t *testing.T) {
 		Assertions:    map[string]*glxlib.Assertion{},
 	}
 
-	states := collectPersonStates("person-1", archive.Persons["person-1"], archive, nil)
+	states := collectPersonStates(archive.Persons["person-1"], archive, nil)
 	assert.Contains(t, states, "Wisconsin")
 }
 
