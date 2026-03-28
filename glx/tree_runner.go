@@ -189,11 +189,12 @@ func showAncestors(archivePath, personID string, maxGen int) error {
 	root := buildAncestorTree(tc, personID, maxGen, 0, make(map[string]bool))
 	printTree(root, "", true)
 
-	// Show research suggestions when any ancestors are missing
-	if hasMissingAncestors(root) {
-		suggestions := buildAncestorSuggestions(tc, personID, archive)
-		printAncestorSuggestions(suggestions)
-	}
+	// Show research suggestions for ancestors with missing parents.
+	// buildAncestorSuggestions checks the actual parent index (not the tree)
+	// so it correctly distinguishes maxGen limits from truly unknown parents.
+	// printAncestorSuggestions no-ops when there are no suggestions.
+	suggestions := buildAncestorSuggestions(tc, personID, archive)
+	printAncestorSuggestions(suggestions)
 
 	return nil
 }

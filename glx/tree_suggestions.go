@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -33,18 +32,48 @@ type ancestorSuggestion struct {
 // buildAncestorSuggestions generates research suggestions for persons in the
 // ancestor tree who are missing parents. It walks up to 3 generations and
 // flags gaps and key census records that could reveal parent information.
+// A census year index is precomputed once to avoid repeated archive scans.
 func buildAncestorSuggestions(tc *treeContext, rootPersonID string, archive *glxlib.GLXFile) []ancestorSuggestion {
+	censusIndex := buildPersonCensusIndex(archive)
+
 	var suggestions []ancestorSuggestion
 	visited := make(map[string]bool)
 
-	collectAncestorSuggestions(tc, rootPersonID, archive, 0, 3, visited, &suggestions)
+	collectAncestorSuggestions(tc, rootPersonID, archive, censusIndex, 0, 3, visited, &suggestions)
 
 	return suggestions
 }
 
+// personCensusIndex maps person IDs to their known census years.
+type personCensusIndex map[string]map[int]bool
+
+// buildPersonCensusIndex scans all events once to build a map of person → census years.
+func buildPersonCensusIndex(archive *glxlib.GLXFile) personCensusIndex {
+	index := make(personCensusIndex)
+	for _, event := range archive.Events {
+		if event == nil || event.Type != glxlib.EventTypeCensus {
+			continue
+		}
+		year := glxlib.ExtractFirstYear(string(event.Date))
+		if year == 0 {
+			continue
+		}
+		for _, p := range event.Participants {
+			if p.Person == "" {
+				continue
+			}
+			if index[p.Person] == nil {
+				index[p.Person] = make(map[int]bool)
+			}
+			index[p.Person][year] = true
+		}
+	}
+	return index
+}
+
 // collectAncestorSuggestions recursively collects suggestions for persons
 // missing parents in the ancestor tree.
-func collectAncestorSuggestions(tc *treeContext, personID string, archive *glxlib.GLXFile, depth, maxDepth int, visited map[string]bool, suggestions *[]ancestorSuggestion) {
+func collectAncestorSuggestions(tc *treeContext, personID string, archive *glxlib.GLXFile, censusIndex personCensusIndex, depth, maxDepth int, visited map[string]bool, suggestions *[]ancestorSuggestion) {
 	if visited[personID] || depth > maxDepth {
 		return
 	}
@@ -69,50 +98,33 @@ func collectAncestorSuggestions(tc *treeContext, personID string, archive *glxli
 
 		// Suggest census records that could reveal parents
 		if person != nil {
-			censusSuggestions := suggestParentCensusRecords(personID, person, archive)
+			censusSuggestions := suggestParentCensusRecords(personID, person, archive, censusIndex)
 			*suggestions = append(*suggestions, censusSuggestions...)
 		}
 	} else {
 		// Has parents — recurse into them to find gaps further up
 		for _, p := range parents {
-			collectAncestorSuggestions(tc, p.personID, archive, depth+1, maxDepth, visited, suggestions)
+			collectAncestorSuggestions(tc, p.personID, archive, censusIndex, depth+1, maxDepth, visited, suggestions)
 		}
 	}
 }
 
 // suggestParentCensusRecords suggests census records that are particularly
-// useful for finding a person's parents.
-func suggestParentCensusRecords(personID string, person *glxlib.Person, archive *glxlib.GLXFile) []ancestorSuggestion {
-	birthYear := glxlib.ExtractFirstYear(propertyString(person.Properties, glxlib.PersonPropertyBornOn))
+// useful for finding a person's parents. Uses ExtractPropertyYear for robust
+// handling of structured/temporal property shapes, and collectPlaceRefsFromProperty
+// for place reference extraction.
+func suggestParentCensusRecords(personID string, person *glxlib.Person, archive *glxlib.GLXFile, censusIndex personCensusIndex) []ancestorSuggestion {
+	birthYear := glxlib.ExtractPropertyYear(person.Properties, glxlib.PersonPropertyBornOn)
 	if birthYear == 0 {
 		return nil
 	}
 
 	name := glxlib.PersonDisplayName(person)
-	bornAt := propertyString(person.Properties, glxlib.PersonPropertyBornAt)
-	placeName := ""
-	if bornAt != "" {
-		if place, ok := archive.Places[bornAt]; ok && place != nil {
-			placeName = place.Name
-		}
-	}
 
-	// Collect existing census years from events
-	existingCensus := make(map[int]bool)
-	for _, event := range archive.Events {
-		if event == nil || event.Type != glxlib.EventTypeCensus {
-			continue
-		}
-		for _, p := range event.Participants {
-			if p.Person == personID {
-				year := glxlib.ExtractFirstYear(string(event.Date))
-				if year > 0 {
-					existingCensus[year] = true
-				}
-				break
-			}
-		}
-	}
+	// Resolve birthplace using collectPlaceRefsFromProperty for structured/temporal shapes
+	placeName := resolveFirstPlaceName(person.Properties, glxlib.PersonPropertyBornAt, archive)
+
+	existingCensus := censusIndex[personID]
 
 	var suggestions []ancestorSuggestion
 
@@ -163,6 +175,26 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 	return suggestions
 }
 
+// resolveFirstPlaceName extracts the first place reference from a property and
+// returns the resolved place name. Handles string, structured map, and temporal
+// list property shapes via collectPlaceRefsFromProperty.
+func resolveFirstPlaceName(props map[string]any, key string, archive *glxlib.GLXFile) string {
+	raw, ok := props[key]
+	if !ok {
+		return ""
+	}
+
+	refs := make(map[string]struct{})
+	collectPlaceRefsFromProperty(raw, refs)
+
+	for ref := range refs {
+		if place, ok := archive.Places[ref]; ok && place != nil {
+			return place.Name
+		}
+	}
+	return ""
+}
+
 // printAncestorSuggestions prints research suggestions below the ancestor tree.
 func printAncestorSuggestions(suggestions []ancestorSuggestion) {
 	if len(suggestions) == 0 {
@@ -180,28 +212,4 @@ func printAncestorSuggestions(suggestions []ancestorSuggestion) {
 
 		fmt.Printf("  %s %s\n", marker, s.Message)
 	}
-}
-
-// hasMissingAncestors checks whether the ancestor tree has any dead ends
-// (persons with no parents) within the given generations.
-func hasMissingAncestors(node *treeNode) bool {
-	if len(node.Children) == 0 {
-		return true
-	}
-	for _, child := range node.Children {
-		if hasMissingAncestors(child) {
-			return true
-		}
-	}
-	return false
-}
-
-// formatSuggestionMessage formats a suggestion for display, resolving place names.
-func formatSuggestionMessage(s ancestorSuggestion) string {
-	var parts []string
-	if s.Priority == "high" {
-		parts = append(parts, "HIGH PRIORITY")
-	}
-	parts = append(parts, s.Message)
-	return strings.Join(parts, " — ")
 }

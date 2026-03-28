@@ -409,6 +409,46 @@ func TestAncestorSuggestions_Highlights1880(t *testing.T) {
 	assert.True(t, has1880, "should highlight 1880 census as high priority for parent research")
 }
 
+func TestAncestorSuggestions_StructuredProperties(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-orphan": {Properties: map[string]any{
+				"name":    "Jane Miller",
+				"born_on": map[string]any{"value": "ABT 1832"},
+				"born_at": map[string]any{"value": "place-va"},
+			}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+		Places: map[string]*glxlib.Place{
+			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState},
+		},
+		Sources:    map[string]*glxlib.Source{},
+		Citations:  map[string]*glxlib.Citation{},
+		Assertions: map[string]*glxlib.Assertion{},
+	}
+
+	tc := newTreeContext(archive)
+	suggestions := buildAncestorSuggestions(tc, "person-orphan", archive)
+
+	require.NotEmpty(t, suggestions, "should work with structured property shapes")
+
+	hasCensus := false
+	hasLocation := false
+	for _, s := range suggestions {
+		if s.Category == "census" {
+			hasCensus = true
+			if s.Year == 1850 {
+				// Should include Virginia in the message
+				assert.Contains(t, s.Message, "Virginia")
+				hasLocation = true
+			}
+		}
+	}
+	assert.True(t, hasCensus, "should suggest census with structured born_on")
+	assert.True(t, hasLocation, "should resolve place name from structured born_at")
+}
+
 func TestAncestorSuggestions_PersonWithAllAncestors(t *testing.T) {
 	// person-father has parents (grandpa, grandma) — no gap for father
 	archive := threeGenArchive()
