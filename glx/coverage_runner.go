@@ -162,8 +162,9 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	// Vital records
 	records = append(records, buildVitalRecords(personID, person, archive, personSources, personEvents)...)
 
-	// Other record types
-	records = append(records, buildOtherRecords(personSources, personEvents)...)
+	// Other record types — probate is high priority when person died with known family
+	probateHighPriority := deathYear > 0 && hasFamily(personID, archive)
+	records = append(records, buildOtherRecords(personSources, personEvents, probateHighPriority)...)
 
 	found := 0
 	for _, r := range records {
@@ -468,18 +469,25 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 }
 
 // buildOtherRecords generates records for probate, land, military, church.
-func buildOtherRecords(sources []personSourceInfo, events []personSourceInfo) []coverageRecord {
+// When probateHighPriority is true (person died with known family), probate
+// is elevated to HIGH priority because probate records name heirs.
+func buildOtherRecords(sources []personSourceInfo, events []personSourceInfo, probateHighPriority bool) []coverageRecord {
 	var records []coverageRecord
 
 	// Probate/will
 	probateFound := hasEventType(events, glxlib.EventTypeProbate) || hasEventType(events, glxlib.EventTypeWill) ||
 		hasSourceType(sources, glxlib.SourceTypeProbate, "")
-	records = append(records, coverageRecord{
+	rec := coverageRecord{
 		Category:  "other",
 		Label:     "Probate/will",
 		Found:     probateFound,
 		SourceRef: findEventRef(events, glxlib.EventTypeProbate),
-	})
+	}
+	if !probateFound && probateHighPriority {
+		rec.Priority = "high"
+		rec.Description = "often names heirs (children) and surviving spouse"
+	}
+	records = append(records, rec)
 
 	// Land records
 	landFound := hasSourceType(sources, glxlib.SourceTypeLand, "")
@@ -669,6 +677,41 @@ func inferDeathYearFromEvents(events []personSourceInfo) int {
 		}
 	}
 	return earliest
+}
+
+// hasFamily returns true if the person has any spouse or child relationships.
+func hasFamily(personID string, archive *glxlib.GLXFile) bool {
+	for _, rel := range archive.Relationships {
+		if rel == nil {
+			continue
+		}
+
+		isParticipant := false
+		for _, p := range rel.Participants {
+			if p.Person == personID {
+				isParticipant = true
+				break
+			}
+		}
+		if !isParticipant {
+			continue
+		}
+
+		// Check for spouse/partner relationship
+		if rel.Type == glxlib.RelationshipTypeMarriage || rel.Type == glxlib.RelationshipTypePartner {
+			return true
+		}
+
+		// Check for parent-child where this person is the parent
+		if isParentChildType(rel.Type) {
+			for _, p := range rel.Participants {
+				if p.Person == personID && p.Role == glxlib.ParticipantRoleParent {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // printCoverageJSON outputs the result as JSON.
