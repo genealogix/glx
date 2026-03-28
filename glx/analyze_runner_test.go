@@ -549,6 +549,59 @@ func TestAnalyzeConsistency_BurialAfterDeath_OK(t *testing.T) {
 	}
 }
 
+// --- Conflict Analysis ---
+
+func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary": {Properties: map[string]any{"name": "Mary Green"}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-florida":  {Name: "Florida"},
+			"place-virginia": {Name: "Virginia"},
+			"place-new-york": {Name: "New York"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-florida", Confidence: "medium"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-virginia", Confidence: "medium"},
+			"a-3": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-new-york", Confidence: "medium-high"},
+		},
+	}
+
+	issues := analyzeConflicts(archive)
+	found := findIssueByMessage(issues, "person-mary", "conflicting values")
+	if found == nil {
+		t.Fatal("expected conflict issue for born_at")
+	}
+	if found.Severity != "high" {
+		t.Errorf("expected high severity, got %s", found.Severity)
+	}
+	if !containsSubstring(found.Message, "3 conflicting values") {
+		t.Errorf("expected 3 conflicting values in message: %s", found.Message)
+	}
+	// Place IDs should be resolved to names
+	if !containsSubstring(found.Message, "Florida") {
+		t.Errorf("expected resolved place name 'Florida' in message: %s", found.Message)
+	}
+}
+
+func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "born_at", Value: "place-florida", Confidence: "medium"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "born_at", Value: "place-florida", Confidence: "high"},
+		},
+	}
+
+	issues := analyzeConflicts(archive)
+	if len(issues) != 0 {
+		t.Errorf("expected no conflicts when all values are the same, got %d", len(issues))
+	}
+}
+
 // --- Duplicate Sibling Names ---
 
 func TestAnalyzeConsistency_DuplicateSiblingNames(t *testing.T) {
