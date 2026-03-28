@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -122,6 +123,12 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 			return fmt.Errorf("failed to read %s: %w", path, err)
 		}
 
+		// On Windows, Git stores symlinks as text files containing the
+		// target path. Detect these and read the actual target file.
+		if runtime.GOOS == "windows" {
+			data = resolveSymlinkPlaceholder(path, data)
+		}
+
 		relPath, err := filepath.Rel(rootDir, path)
 		if err != nil {
 			return fmt.Errorf("failed to get relative path: %w", err)
@@ -133,6 +140,37 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 	})
 
 	return files, err
+}
+
+// resolveSymlinkPlaceholder detects Git symlink placeholders on Windows.
+// Git stores symlinks as small text files containing the target path when
+// core.symlinks is false (the default on Windows). This function detects
+// such files and reads the actual target content.
+func resolveSymlinkPlaceholder(filePath string, data []byte) []byte {
+	content := strings.TrimSpace(string(data))
+	// Symlink placeholders are short, single-line, and look like relative paths
+	if len(content) > 200 || strings.ContainsAny(content, "\n\r{[") {
+		return data
+	}
+	if !strings.Contains(content, "/") && !strings.Contains(content, "\\") {
+		return data
+	}
+	// Git symlink targets are always relative; reject absolute paths
+	// to prevent reading arbitrary files.
+	if filepath.IsAbs(filepath.FromSlash(content)) || filepath.VolumeName(filepath.FromSlash(content)) != "" {
+		return data
+	}
+
+	// Resolve the target path relative to the file's directory
+	dir := filepath.Dir(filePath)
+	targetPath := filepath.Join(dir, filepath.FromSlash(content))
+	targetPath = filepath.Clean(targetPath)
+	targetData, err := os.ReadFile(targetPath) //nolint:gosec // path is relative to archive, not user input
+	if err != nil {
+		return data // Not a valid symlink placeholder; return original content
+	}
+
+	return targetData
 }
 
 // writeFilesToDir writes a map of files (relative path -> content) to a directory

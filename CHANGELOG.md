@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Consistent date display across timeline and summary** - ISO dates like `1860-07-17` now render as `July 17, 1860` in timeline tabular output, summary vital events, and life events. Previously, dates appeared in whichever format they were stored (GEDCOM or ISO), creating inconsistent mixed output. Fixes #139
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
 - **Validate and archive loading skip non-.glx files** - `glx validate` and archive loading now only process files with the `.glx` extension. Previously, `.yaml` and `.yml` files in the archive directory were also parsed, causing spurious validation errors on non-GLX files like `.wikitree.yml`. Fixes #178
+- **Windows compatibility for symlinked vocabulary files** - Archive loading now resolves Git symlink placeholders on Windows, where symlinks are stored as text files containing the target path. Previously, ~35 tests failed on Windows because example archives contain symlinked vocabulary files. Fixes #206
 
 ---
 
