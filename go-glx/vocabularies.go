@@ -25,8 +25,10 @@ import (
 )
 
 // cachedVocabs holds pre-parsed standard vocabularies. Parsed once on first use
-// via sync.Once, then vocabulary map pointers are shared across all GLXFiles.
-// This is safe because vocabularies are read-only after loading.
+// via sync.Once. LoadStandardVocabulariesIntoGLX shallow-clones each map so
+// callers can safely add or remove keys without affecting other GLXFiles.
+// The map values (struct pointers) are still shared — callers must not mutate
+// the pointed-to structs (e.g., EventType fields).
 var (
 	cachedVocabs     *GLXFile
 	cachedVocabsOnce sync.Once
@@ -66,8 +68,9 @@ func GetStandardVocabulary(name string) ([]byte, error) {
 // LoadStandardVocabulariesIntoGLX loads all standard vocabularies into a GLXFile.
 // This populates the vocabulary maps (EventTypes, RelationshipTypes, etc.) so that
 // validation can check references against the standard vocabulary values.
-// Vocabularies are parsed once and cached; each call clones the cached maps so
-// callers get independent copies that are safe to mutate.
+// Vocabularies are parsed once and cached; each call shallow-clones the cached
+// maps so callers can safely add or remove keys without affecting other GLXFiles.
+// The map values (struct pointers) are still shared and must not be mutated.
 func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 	cachedVocabsOnce.Do(func() {
 		cachedVocabs = &GLXFile{}
