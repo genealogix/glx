@@ -156,7 +156,8 @@ func resolveSymlinkPlaceholder(filePath string, data []byte) []byte {
 	// Resolve the target path relative to the file's directory
 	dir := filepath.Dir(filePath)
 	targetPath := filepath.Join(dir, filepath.FromSlash(content))
-	targetData, err := os.ReadFile(targetPath)
+	targetPath = filepath.Clean(targetPath)
+	targetData, err := os.ReadFile(targetPath) //nolint:gosec // path is relative to archive, not user input
 	if err != nil {
 		return data // Not a valid symlink placeholder; return original content
 	}
