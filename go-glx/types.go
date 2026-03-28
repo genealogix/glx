@@ -146,8 +146,25 @@ type ValidationWarning struct {
 
 // Person represents an individual in the family archive.
 type Person struct {
-	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes      string         `yaml:"notes,omitempty"`
+	Properties map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
+	Notes      string                    `yaml:"notes,omitempty"`
+	Research   map[string]*ResearchTopic `yaml:"research,omitempty"` // Open research questions (e.g., unknown parents)
+}
+
+// ResearchTopic tracks the status of an open research question about a person.
+type ResearchTopic struct {
+	Status            string          `yaml:"status,omitempty"`             // open, closed, blocked
+	Summary           string          `yaml:"summary,omitempty"`            // Brief current state
+	Leads             []*ResearchLead `yaml:"leads,omitempty"`              // Active and eliminated leads
+	CompletedResearch []string        `yaml:"completed_research,omitempty"` // Searches done, including null results
+}
+
+// ResearchLead represents a single research lead or hypothesis.
+type ResearchLead struct {
+	Description string   `yaml:"description"`            // Brief description
+	Details     string   `yaml:"details,omitempty"`       // Detailed findings
+	Confidence  string   `yaml:"confidence,omitempty"`    // eliminated, speculative, low, medium, medium-high, high, confirmed
+	NextSteps   []string `yaml:"next_steps,omitempty"`    // Actionable next steps
 }
 
 // Participant defines a person's role in an event, relationship, or assertion.

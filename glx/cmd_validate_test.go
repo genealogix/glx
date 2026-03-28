@@ -192,6 +192,37 @@ func TestRunValidate_NestedDirectories(t *testing.T) {
 	require.NoError(t, err, "should successfully validate nested directory structures")
 }
 
+func TestRunValidate_PersonWithResearchBlock(t *testing.T) {
+	// Test that a person with a research block passes validation (fixes #137)
+	tmpDir := t.TempDir()
+
+	personFile := filepath.Join(tmpDir, "person.glx")
+	err := os.WriteFile(personFile, []byte(`persons:
+  person-test:
+    properties:
+      name:
+        value: "Mary Green"
+    research:
+      parents:
+        status: "open"
+        summary: "Parents unknown."
+        leads:
+          - description: "Candidate family in Brooke County"
+            confidence: medium-high
+            next_steps:
+              - "Browse census images"
+          - description: "Other family eliminated"
+            confidence: eliminated
+            next_steps: []
+        completed_research:
+          - "Pension file reviewed — no parents named"
+`), 0o644)
+	require.NoError(t, err)
+
+	err = validatePaths([]string{tmpDir})
+	require.NoError(t, err, "person with research block should pass validation")
+}
+
 func TestRunValidate_WithVocabularies(t *testing.T) {
 	// Test validation of files that define and use vocabularies
 	err := validatePaths([]string{"../docs/examples/complete-family"})

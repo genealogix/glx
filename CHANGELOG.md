@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Specification
+- **Research block on person entity** — persons can now include a `research` block for tracking open questions (unknown parents, unconfirmed identity), hypotheses with confidence levels, and completed searches including null results. Enables multi-session brickwall research without repeating searches. Fixes #137
+
 #### CLI
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
 

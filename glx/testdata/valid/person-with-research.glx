@@ -1,0 +1,27 @@
+persons:
+  person-brickwall:
+    properties:
+      name:
+        value: "Mary Green"
+        fields:
+          given: "Mary"
+          surname: "Green"
+      gender: "female"
+      born_on: "ABT 1832"
+    research:
+      parents:
+        status: "open"
+        summary: "Parents unknown. Maiden name Green confirmed."
+        leads:
+          - description: "William Evans Green family, Brooke County, VA"
+            details: "5-year gap in children matches. DNA cluster 8 points to Northern Panhandle."
+            confidence: medium-high
+            next_steps:
+              - "Browse 1850 Brooke County census images"
+              - "Check church records"
+          - description: "Harrison County Jesse P. Green household"
+            confidence: eliminated
+            next_steps: []
+        completed_research:
+          - "1880 census searched — found children but no parents listed"
+          - "Pension file reviewed — no parents named"

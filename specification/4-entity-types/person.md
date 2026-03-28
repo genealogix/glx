@@ -46,6 +46,7 @@ persons:
 |-------|------|-------------|
 | `properties` | object | Vocabulary-defined properties (name, gender, dates, etc.) |
 | `notes` | string | Free-form notes about the person |
+| `research` | object | Open research questions keyed by topic (e.g., `parents`, `identity`) |
 
 > **Note:** While no properties are technically required, the `name` property is recommended for most person records as it enables meaningful identification and display.
 
@@ -261,6 +262,49 @@ properties:
 - Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts#temporal-properties)
 - Custom properties can be added by extending the vocabulary
 - Whether a person is living or deceased is implied by the presence/absence of `died_on`
+
+### `research`
+
+- Type: Object (map of topic → research status)
+- Required: No
+- Description: Tracks open research questions about this person, such as unknown parents or unconfirmed identity. Each key names a research topic (e.g., `parents`, `identity`, `death`).
+
+Structure:
+```yaml
+research:
+  parents:                        # Research topic key
+    status: "open"                # open, closed, or blocked
+    summary: "Parents unknown."   # Brief current state
+    leads:                        # Active and eliminated hypotheses
+      - description: "Candidate family in Brooke County"
+        details: "5-year gap in children matches birth year."
+        confidence: medium-high   # eliminated, speculative, low, medium, medium-high, high, confirmed
+        next_steps:
+          - "Browse 1850 census images"
+      - description: "Harrison County family"
+        confidence: eliminated
+        next_steps: []
+    completed_research:           # Searches done, including null results
+      - "Pension file reviewed — no parents named"
+      - "1880 census checked — found children but no parents listed"
+```
+
+**Lead confidence levels:**
+
+| Level | Meaning |
+|-------|---------|
+| `eliminated` | Definitively ruled out |
+| `speculative` | Unverified hypothesis with minimal evidence |
+| `low` | Some supporting evidence but significant gaps |
+| `medium` | Multiple pieces of circumstantial evidence |
+| `medium-high` | Strong circumstantial evidence, not yet confirmed |
+| `high` | Very strong evidence, near-certain |
+| `confirmed` | Proven with direct documentation |
+
+**Key Points:**
+- Record null results in `completed_research` to prevent repeating searches across sessions
+- Mark eliminated leads with `confidence: eliminated` rather than deleting them
+- The `status` field enables filtering for open brickwalls across an archive
 
 ## Usage Patterns
 

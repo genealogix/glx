@@ -14,9 +14,64 @@
     "notes": {
       "type": "string",
       "description": "Free-form notes"
+    },
+    "research": {
+      "type": "object",
+      "description": "Research status for open questions about this person (e.g., unknown parents, unconfirmed identity). Each key is a research topic.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Current status of this research topic.",
+            "enum": ["open", "closed", "blocked"]
+          },
+          "summary": {
+            "type": "string",
+            "description": "Brief summary of the current state of research."
+          },
+          "leads": {
+            "type": "array",
+            "description": "Research leads, both active and eliminated.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "description": "Brief description of the lead."
+                },
+                "details": {
+                  "type": "string",
+                  "description": "Detailed findings and analysis."
+                },
+                "confidence": {
+                  "type": "string",
+                  "description": "Confidence level for this lead.",
+                  "enum": ["eliminated", "speculative", "low", "medium", "medium-high", "high", "confirmed"]
+                },
+                "next_steps": {
+                  "type": "array",
+                  "description": "Actionable next steps for this lead.",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": ["description"],
+              "additionalProperties": false
+            }
+          },
+          "completed_research": {
+            "type": "array",
+            "description": "Searches and lookups that have been completed, including null results.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false
 }
-
-
