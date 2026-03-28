@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Analyze flags uncited claims in notes** - `glx analyze` evidence checks now detect assertion notes that reference sources (e.g., "per county history," "census shows") without a corresponding citation. Fixes #162
 
 ### Fixed
+- **Consistent date display across timeline and summary** - ISO dates like `1860-07-17` now render as `July 17, 1860` in timeline tabular output, summary vital events, and life events. Previously, dates appeared in whichever format they were stored (GEDCOM or ISO), creating inconsistent mixed output. Fixes #139
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
 - **Validate and archive loading skip non-.glx files** - `glx validate` and archive loading now only process files with the `.glx` extension. Previously, `.yaml` and `.yml` files in the archive directory were also parsed, causing spurious validation errors on non-GLX files like `.wikitree.yml`. Fixes #178
 

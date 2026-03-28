@@ -332,7 +332,7 @@ func TestFindEventForPerson(t *testing.T) {
 	archive := newTestArchive()
 
 	result := findEventForPerson("person-john", "birth", archive)
-	assert.Equal(t, "1850-03-15, New York, New York", result)
+	assert.Equal(t, "March 15, 1850, New York, New York", result)
 }
 
 func TestFindEventForPerson_NotFound(t *testing.T) {
@@ -391,6 +391,14 @@ func TestFormatReadableDate(t *testing.T) {
 	assert.Equal(t, "March 1850", formatReadableDate("1850-03"))
 	assert.Equal(t, "1850", formatReadableDate("1850"))
 	assert.Equal(t, "ABT 1850", formatReadableDate("ABT 1850"))
+}
+
+func TestDisplayDate(t *testing.T) {
+	assert.Equal(t, "(no date)", displayDate(""))
+	assert.Equal(t, "(no date)", displayDate("   "))
+	assert.Equal(t, "June 18, 1863", displayDate("1863-06-18"))
+	assert.Equal(t, "ABT 1850", displayDate("ABT 1850"))
+	assert.Equal(t, "1850", displayDate("1850"))
 }
 
 func TestFindSpouses_ChronologicalOrder(t *testing.T) {

@@ -238,7 +238,7 @@ func isParticipant(personID string, event *glxlib.Event) bool {
 
 // formatEventDatePlace formats an event's date and place for display.
 func formatEventDatePlace(event *glxlib.Event, archive *glxlib.GLXFile) string {
-	date := string(event.Date)
+	date := formatReadableDate(string(event.Date))
 	placeName := resolvePlaceName(event.PlaceID, archive)
 
 	switch {

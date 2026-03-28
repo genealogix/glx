@@ -172,12 +172,12 @@ func TestCollectVitals(t *testing.T) {
 	}
 
 	// Verify Birth
-	if vitals[2].Label != "Birth" || vitals[2].Value != "1850-01-15, Leeds, Yorkshire, England" {
+	if vitals[2].Label != "Birth" || vitals[2].Value != "January 15, 1850, Leeds, Yorkshire, England" {
 		t.Errorf("unexpected Birth: %+v", vitals[2])
 	}
 
 	// Verify Death
-	if vitals[4].Label != "Death" || vitals[4].Value != "1920-03-10, London, England" {
+	if vitals[4].Label != "Death" || vitals[4].Value != "March 10, 1920, London, England" {
 		t.Errorf("unexpected Death: %+v", vitals[4])
 	}
 }
