@@ -15,6 +15,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -114,6 +115,22 @@ func TestFindPersonAmbiguous(t *testing.T) {
 	_, _, err := findPerson(archive, "Jane")
 	if err == nil {
 		t.Fatal("expected error for ambiguous match")
+	}
+}
+
+func TestFindPersonNilEntry(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-nil": nil,
+		},
+	}
+
+	_, _, err := findPerson(archive, "person-nil")
+	if err == nil {
+		t.Fatal("expected error for nil person entry")
+	}
+	if !strings.Contains(err.Error(), "no data") {
+		t.Errorf("expected 'no data' error, got: %s", err.Error())
 	}
 }
 
