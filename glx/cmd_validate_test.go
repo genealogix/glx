@@ -112,6 +112,37 @@ func TestRunValidate_BrokenReferences(t *testing.T) {
 	require.Error(t, err, "should fail when cross-references are broken")
 }
 
+func TestRunValidate_BrokenPropertyReference(t *testing.T) {
+	// Regression test for #147: born_at referencing a non-existent place
+	// should produce a validation error, not be silently ignored.
+	tmpDir := t.TempDir()
+
+	personFile := filepath.Join(tmpDir, "person.glx")
+	err := os.WriteFile(personFile, []byte(`persons:
+  person-test:
+    properties:
+      born_at: "place-nonexistent"
+`), 0o644)
+	require.NoError(t, err)
+
+	// Capture stderr to verify error message
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	err = validatePaths([]string{tmpDir})
+
+	w.Close()
+	os.Stderr = oldStderr
+	var buf strings.Builder
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	require.Error(t, err, "should fail when born_at references non-existent place")
+	require.Contains(t, output, "place-nonexistent",
+		"error should mention the non-existent place ID")
+}
+
 func TestRunValidate_NonExistentPath(t *testing.T) {
 	// Test with a path that doesn't exist in a clean directory
 	tmpDir := t.TempDir()
