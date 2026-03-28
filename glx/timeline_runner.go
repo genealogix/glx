@@ -563,15 +563,12 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 			continue
 		}
 
-		date := e.Date
-		if date == "" {
-			date = "(no date)"
-		}
+		date := displayDate(e.Date)
 
 		if e.Detail != "" {
-			fmt.Printf("  %-12s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
+			fmt.Printf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
 		} else {
-			fmt.Printf("  %-12s  %-*s\n", date, maxLabel, e.Label)
+			fmt.Printf("  %-18s  %-*s\n", date, maxLabel, e.Label)
 		}
 	}
 
@@ -579,14 +576,11 @@ func printTimeline(personID, personName string, entries []timelineEntry) {
 		fmt.Println()
 		fmt.Println("  Undated:")
 		for _, e := range undated {
-			date := e.Date
-			if date == "" {
-				date = "(no date)"
-			}
+			date := displayDate(e.Date)
 			if e.Detail != "" {
-				fmt.Printf("  %-12s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
+				fmt.Printf("  %-18s  %-*s  %s\n", date, maxLabel, e.Label, e.Detail)
 			} else {
-				fmt.Printf("  %-12s  %-*s\n", date, maxLabel, e.Label)
+				fmt.Printf("  %-18s  %-*s\n", date, maxLabel, e.Label)
 			}
 		}
 	}

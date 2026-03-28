@@ -863,7 +863,7 @@ func hasParticipant(personID string, participants []glxlib.Participant) bool {
 
 // formatSummaryEventDatePlace formats an event's date and place for display.
 func formatSummaryEventDatePlace(event *glxlib.Event, archive *glxlib.GLXFile) string {
-	date := string(event.Date)
+	date := formatReadableDate(string(event.Date))
 	place := resolvePlaceName(event.PlaceID, archive)
 
 	switch {
@@ -880,7 +880,7 @@ func formatSummaryEventDatePlace(event *glxlib.Event, archive *glxlib.GLXFile) s
 
 // formatPropertyDatePlace combines a date property and a place property.
 func formatPropertyDatePlace(props map[string]any, dateKey, placeKey string, archive *glxlib.GLXFile) string {
-	date := propertyString(props, dateKey)
+	date := formatReadableDate(propertyString(props, dateKey))
 	placeID := propertyString(props, placeKey)
 	place := resolvePlaceName(placeID, archive)
 
@@ -1085,48 +1085,6 @@ func narrativeDate(date string) string {
 		}
 		return "in " + readable
 	}
-}
-
-// isoDateMonths maps month numbers to names.
-var isoDateMonths = map[string]string{
-	"01": "January", "02": "February", "03": "March",
-	"04": "April", "05": "May", "06": "June",
-	"07": "July", "08": "August", "09": "September",
-	"10": "October", "11": "November", "12": "December",
-}
-
-// isFullDate checks if a date string is a full YYYY-MM-DD date.
-func isFullDate(s string) bool {
-	return len(s) == 10 && s[4] == '-' && s[7] == '-'
-}
-
-// formatReadableDate converts ISO dates to readable text:
-//   - "1863-06-18" → "June 18, 1863"
-//   - "1850-03"    → "March 1850"
-//
-// Returns the input unchanged for other formats.
-func formatReadableDate(s string) string {
-	s = strings.TrimSpace(s)
-	// Full date: YYYY-MM-DD
-	if isFullDate(s) {
-		month := isoDateMonths[s[5:7]]
-		if month == "" {
-			return s
-		}
-		day := strings.TrimLeft(s[8:10], "0")
-		if day == "" {
-			day = "0"
-		}
-		return month + " " + day + ", " + s[:4]
-	}
-	// Year-month: YYYY-MM
-	if len(s) == 7 && s[4] == '-' {
-		month := isoDateMonths[s[5:7]]
-		if month != "" {
-			return month + " " + s[:4]
-		}
-	}
-	return s
 }
 
 // pronounFor returns subject ("He"/"She"/"They") and possessive ("his"/"her"/"their")
