@@ -129,7 +129,7 @@ func showSummary(archivePath, personQuery string) error {
 
 // findPersonByQuery looks up a person by exact ID or by name substring match.
 func findPersonByQuery(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
-	if person, ok := archive.Persons[query]; ok {
+	if person, ok := archive.Persons[query]; ok && person != nil {
 		return query, person, nil
 	}
 

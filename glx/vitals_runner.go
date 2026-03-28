@@ -77,7 +77,7 @@ func loadArchiveForVitals(path string) (*glxlib.GLXFile, error) {
 // Returns the person ID, the Person, or an error.
 func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
 	// Try exact ID match first
-	if person, ok := archive.Persons[query]; ok {
+	if person, ok := archive.Persons[query]; ok && person != nil {
 		return query, person, nil
 	}
 

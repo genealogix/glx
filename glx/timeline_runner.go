@@ -90,7 +90,7 @@ func loadArchiveForTimeline(path string) (*glxlib.GLXFile, error) {
 // findPersonForTimeline looks up a person by exact ID or name substring.
 func findPersonForTimeline(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
 	// Exact ID match
-	if person, ok := archive.Persons[query]; ok {
+	if person, ok := archive.Persons[query]; ok && person != nil {
 		return query, person, nil
 	}
 
