@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -24,8 +25,10 @@ import (
 )
 
 // cachedVocabs holds pre-parsed standard vocabularies. Parsed once on first use
-// via sync.Once, then vocabulary map pointers are shared across all GLXFiles.
-// This is safe because vocabularies are read-only after loading.
+// via sync.Once. LoadStandardVocabulariesIntoGLX shallow-clones each map so
+// callers can safely add or remove keys without affecting other GLXFiles.
+// The map values (struct pointers) are still shared — callers must not mutate
+// the pointed-to structs (e.g., EventType fields).
 var (
 	cachedVocabs     *GLXFile
 	cachedVocabsOnce sync.Once
@@ -65,8 +68,9 @@ func GetStandardVocabulary(name string) ([]byte, error) {
 // LoadStandardVocabulariesIntoGLX loads all standard vocabularies into a GLXFile.
 // This populates the vocabulary maps (EventTypes, RelationshipTypes, etc.) so that
 // validation can check references against the standard vocabulary values.
-// Vocabularies are parsed once and cached; subsequent calls share the same map
-// pointers (safe because vocabularies are read-only after loading).
+// Vocabularies are parsed once and cached; each call shallow-clones the cached
+// maps so callers can safely add or remove keys without affecting other GLXFiles.
+// The map values (struct pointers) are still shared and must not be mutated.
 func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 	cachedVocabsOnce.Do(func() {
 		cachedVocabs = &GLXFile{}
@@ -76,23 +80,23 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 		return cachedVocabsErr
 	}
 
-	glx.EventTypes = cachedVocabs.EventTypes
-	glx.RelationshipTypes = cachedVocabs.RelationshipTypes
-	glx.PlaceTypes = cachedVocabs.PlaceTypes
-	glx.SourceTypes = cachedVocabs.SourceTypes
-	glx.RepositoryTypes = cachedVocabs.RepositoryTypes
-	glx.ParticipantRoles = cachedVocabs.ParticipantRoles
-	glx.MediaTypes = cachedVocabs.MediaTypes
-	glx.ConfidenceLevels = cachedVocabs.ConfidenceLevels
-	glx.GenderTypes = cachedVocabs.GenderTypes
-	glx.PersonProperties = cachedVocabs.PersonProperties
-	glx.EventProperties = cachedVocabs.EventProperties
-	glx.RelationshipProperties = cachedVocabs.RelationshipProperties
-	glx.PlaceProperties = cachedVocabs.PlaceProperties
-	glx.MediaProperties = cachedVocabs.MediaProperties
-	glx.RepositoryProperties = cachedVocabs.RepositoryProperties
-	glx.CitationProperties = cachedVocabs.CitationProperties
-	glx.SourceProperties = cachedVocabs.SourceProperties
+	glx.EventTypes = maps.Clone(cachedVocabs.EventTypes)
+	glx.RelationshipTypes = maps.Clone(cachedVocabs.RelationshipTypes)
+	glx.PlaceTypes = maps.Clone(cachedVocabs.PlaceTypes)
+	glx.SourceTypes = maps.Clone(cachedVocabs.SourceTypes)
+	glx.RepositoryTypes = maps.Clone(cachedVocabs.RepositoryTypes)
+	glx.ParticipantRoles = maps.Clone(cachedVocabs.ParticipantRoles)
+	glx.MediaTypes = maps.Clone(cachedVocabs.MediaTypes)
+	glx.ConfidenceLevels = maps.Clone(cachedVocabs.ConfidenceLevels)
+	glx.GenderTypes = maps.Clone(cachedVocabs.GenderTypes)
+	glx.PersonProperties = maps.Clone(cachedVocabs.PersonProperties)
+	glx.EventProperties = maps.Clone(cachedVocabs.EventProperties)
+	glx.RelationshipProperties = maps.Clone(cachedVocabs.RelationshipProperties)
+	glx.PlaceProperties = maps.Clone(cachedVocabs.PlaceProperties)
+	glx.MediaProperties = maps.Clone(cachedVocabs.MediaProperties)
+	glx.RepositoryProperties = maps.Clone(cachedVocabs.RepositoryProperties)
+	glx.CitationProperties = maps.Clone(cachedVocabs.CitationProperties)
+	glx.SourceProperties = maps.Clone(cachedVocabs.SourceProperties)
 
 	return nil
 }
