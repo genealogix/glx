@@ -93,19 +93,23 @@ func extractPlaceRefs(v any) []string {
 	case []any:
 		var ids []string
 		for _, elem := range t {
-			m, ok := elem.(map[string]any)
-			if !ok {
-				continue
+			switch e := elem.(type) {
+			case map[string]any:
+				raw, ok := e["value"]
+				if !ok {
+					continue
+				}
+				s, ok := raw.(string)
+				if !ok || s == "" {
+					continue
+				}
+				ids = append(ids, s)
+			case string:
+				if e == "" {
+					continue
+				}
+				ids = append(ids, e)
 			}
-			raw, ok := m["value"]
-			if !ok {
-				continue
-			}
-			s, ok := raw.(string)
-			if !ok || s == "" {
-				continue
-			}
-			ids = append(ids, s)
 		}
 		if len(ids) > 0 {
 			return ids
@@ -154,8 +158,9 @@ func collectPersonStates(personID string, person *glxlib.Person, archive *glxlib
 }
 
 // buildStateCensusRecords generates expected state census records based on
-// the person's associated states and birth/death years.
-func buildStateCensusRecords(birthYear, deathYear int, states []string, sources []personSourceInfo, events []personSourceInfo) []coverageRecord {
+// the person's associated states and birth/death years. The archive parameter
+// is used for place-based matching of events; pass nil if not available.
+func buildStateCensusRecords(birthYear, deathYear int, states []string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) []coverageRecord {
 	if birthYear == 0 {
 		return nil
 	}
@@ -184,7 +189,7 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources 
 				Label:    label,
 			}
 
-			ref := findStateCensusMatch(year, state, sources, events)
+			ref := findStateCensusMatch(year, state, sources, events, archive)
 			if ref != "" {
 				rec.Found = true
 				rec.SourceRef = ref
@@ -202,10 +207,10 @@ func buildStateCensusRecords(birthYear, deathYear int, states []string, sources 
 // (some years overlap, e.g., Mississippi 1860), matching requires a
 // state-specific signal: the event/source title must mention the state name
 // or "state census", or the event's place must resolve to the target state.
-func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo) string {
+func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) string {
 	lowerState := strings.ToLower(state)
 
-	// Check events — require census type + year + state signal
+	// Check events — require census type + year + state signal (title or place)
 	for _, e := range events {
 		if e.EventType != glxlib.EventTypeCensus || e.Year != year {
 			continue
@@ -213,6 +218,12 @@ func findStateCensusMatch(year int, state string, sources []personSourceInfo, ev
 		titleLower := strings.ToLower(e.Title)
 		if strings.Contains(titleLower, lowerState) || strings.Contains(titleLower, "state census") {
 			return e.Ref
+		}
+		// Place-based matching: resolve event place to state
+		if archive != nil && e.PlaceID != "" {
+			if resolveStateFromPlace(e.PlaceID, archive) == state {
+				return e.Ref
+			}
 		}
 	}
 

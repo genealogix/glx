@@ -161,7 +161,7 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	// State census records
 	states := collectPersonStates(personID, person, archive, personEvents)
-	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents)...)
+	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents, archive)...)
 
 	// Vital records
 	records = append(records, buildVitalRecords(personID, person, archive, personSources, personEvents)...)

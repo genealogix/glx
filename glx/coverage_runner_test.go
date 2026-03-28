@@ -561,7 +561,7 @@ func TestCollectPersonStates_FromEventPlace(t *testing.T) {
 
 func TestBuildStateCensusRecords_Wisconsin(t *testing.T) {
 	// Person born 1850, died 1920, connected to Wisconsin
-	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, nil)
+	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, nil, nil)
 
 	var labels []string
 	for _, r := range records {
@@ -581,7 +581,7 @@ func TestBuildStateCensusRecords_Wisconsin(t *testing.T) {
 
 func TestBuildStateCensusRecords_NoStateMatch(t *testing.T) {
 	// Person in a state with no state censuses
-	records := buildStateCensusRecords(1850, 1920, []string{"Virginia"}, nil, nil)
+	records := buildStateCensusRecords(1850, 1920, []string{"Virginia"}, nil, nil, nil)
 	assert.Empty(t, records)
 }
 
@@ -589,7 +589,7 @@ func TestBuildStateCensusRecords_MatchesExistingEvent(t *testing.T) {
 	events := []personSourceInfo{
 		{Ref: "event-1855-census", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Wisconsin State Census"},
 	}
-	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, events)
+	records := buildStateCensusRecords(1850, 1920, []string{"Wisconsin"}, nil, events, nil)
 
 	for _, r := range records {
 		if strings.Contains(r.Label, "1855") {
@@ -606,7 +606,7 @@ func TestBuildStateCensusRecords_FederalNotConfusedWithState(t *testing.T) {
 	events := []personSourceInfo{
 		{Ref: "event-1860-federal", EventType: glxlib.EventTypeCensus, Year: 1860, Title: "1860 US Federal Census"},
 	}
-	records := buildStateCensusRecords(1850, 1920, []string{"Mississippi"}, nil, events)
+	records := buildStateCensusRecords(1850, 1920, []string{"Mississippi"}, nil, events, nil)
 
 	for _, r := range records {
 		if strings.Contains(r.Label, "1860") {
@@ -635,12 +635,55 @@ func TestExtractPlaceRefs_TemporalList(t *testing.T) {
 	assert.Equal(t, []string{"place-wi", "place-ny"}, refs)
 }
 
+func TestExtractPlaceRefs_TemporalListWithRawStrings(t *testing.T) {
+	refs := extractPlaceRefs([]any{"place-wi", "place-ny"})
+	assert.Equal(t, []string{"place-wi", "place-ny"}, refs)
+}
+
+func TestExtractPlaceRefs_TemporalListMixed(t *testing.T) {
+	refs := extractPlaceRefs([]any{
+		"place-wi",
+		map[string]any{"value": "place-ny"},
+	})
+	assert.Equal(t, []string{"place-wi", "place-ny"}, refs)
+}
+
 func TestExtractPlaceRefs_Nil(t *testing.T) {
 	assert.Nil(t, extractPlaceRefs(nil))
 }
 
 func TestExtractPlaceRefs_EmptyString(t *testing.T) {
 	assert.Nil(t, extractPlaceRefs(""))
+}
+
+func TestFindStateCensusMatch_PlaceBased(t *testing.T) {
+	// Event has no state name in title but place resolves to Wisconsin
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-milwaukee": {Name: "Milwaukee", Type: glxlib.PlaceTypeCity, ParentID: "place-wi"},
+			"place-wi":        {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+		},
+	}
+	events := []personSourceInfo{
+		{Ref: "event-1855", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Census", PlaceID: "place-milwaukee"},
+	}
+	ref := findStateCensusMatch(1855, "Wisconsin", nil, events, archive)
+	assert.Equal(t, "event-1855", ref, "should match via place resolution")
+}
+
+func TestFindStateCensusMatch_PlaceWrongState(t *testing.T) {
+	// Event place resolves to New York, not Wisconsin
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-nyc": {Name: "New York City", Type: glxlib.PlaceTypeCity, ParentID: "place-ny"},
+			"place-ny":  {Name: "New York", Type: glxlib.PlaceTypeState},
+		},
+	}
+	events := []personSourceInfo{
+		{Ref: "event-1855", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Census", PlaceID: "place-nyc"},
+	}
+	ref := findStateCensusMatch(1855, "Wisconsin", nil, events, archive)
+	assert.Equal(t, "", ref, "should not match when place resolves to wrong state")
 }
 
 func TestCollectPersonStates_StructuredProperty(t *testing.T) {
