@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Specification
 - **Research block on person entity** — persons can now include a `research` block for tracking open questions (unknown parents, unconfirmed identity), hypotheses with confidence levels, and completed searches including null results. Enables multi-session brickwall research without repeating searches. Fixes #137
+#### Supply Chain Security
+- **Dependency review on PRs** — `dependency-review-action` blocks PRs that introduce dependencies with moderate+ vulnerabilities
+- **Renovate lockfile maintenance** — weekly lockfile refresh keeps transitive dependencies at latest allowed versions
+- **govulncheck SARIF integration** — vulnerability results now upload to GitHub Code Scanning for richer triage
+- **npm audit in CI** — website dependencies are audited for known vulnerabilities on every push and PR
 
 #### CLI
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
