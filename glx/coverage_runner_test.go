@@ -460,3 +460,77 @@ func TestCoverageResolvePlaceName(t *testing.T) {
 	assert.Equal(t, "unknown-place", coverageResolvePlaceName("unknown-place", archive))
 	assert.Equal(t, "", coverageResolvePlaceName("", archive))
 }
+
+// --- Probate priority tests ---
+
+func TestBuildOtherRecords_ProbateHighPriority_WithFamilyAndDeath(t *testing.T) {
+	// Person died with known family — probate should be HIGH priority
+	archive := newTestArchiveForCoverage()
+	result := buildCoverage("person-john", archive.Persons["person-john"], archive)
+
+	for _, r := range result.Records {
+		if r.Label == "Probate/will" && !r.Found {
+			assert.Equal(t, "high", r.Priority, "probate should be high priority when person died with family")
+			assert.Contains(t, r.Description, "heirs", "should note probate names heirs")
+			return
+		}
+	}
+	t.Fatal("did not find unfound Probate/will record")
+}
+
+func TestBuildOtherRecords_ProbateNoPriority_NoDeath(t *testing.T) {
+	// Person with no death date — probate should NOT be high priority
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-alive": {Properties: map[string]any{
+				glxlib.PersonPropertyName:   "Living Person",
+				glxlib.PersonPropertyBornOn: "1980",
+			}},
+		},
+		Events:        map[string]*glxlib.Event{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+		Places:        map[string]*glxlib.Place{},
+	}
+
+	result := buildCoverage("person-alive", archive.Persons["person-alive"], archive)
+
+	for _, r := range result.Records {
+		if r.Label == "Probate/will" {
+			assert.NotEqual(t, "high", r.Priority, "probate should not be high priority without death date")
+			return
+		}
+	}
+	t.Fatal("did not find Probate/will record in coverage output")
+}
+
+func TestBuildOtherRecords_ProbateNoPriority_NoFamily(t *testing.T) {
+	// Person died but has no known family — probate not elevated
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-loner": {Properties: map[string]any{
+				glxlib.PersonPropertyName:   "Loner Person",
+				glxlib.PersonPropertyBornOn: "1800",
+				glxlib.PersonPropertyDiedOn: "1870",
+			}},
+		},
+		Events:        map[string]*glxlib.Event{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+		Places:        map[string]*glxlib.Place{},
+	}
+
+	result := buildCoverage("person-loner", archive.Persons["person-loner"], archive)
+
+	for _, r := range result.Records {
+		if r.Label == "Probate/will" {
+			assert.NotEqual(t, "high", r.Priority, "probate should not be high priority without family")
+			return
+		}
+	}
+	t.Fatal("did not find Probate/will record in coverage output")
+}
