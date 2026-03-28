@@ -268,7 +268,7 @@ func findRelatedPersons(personID string, archive *glxlib.GLXFile) []relatedPerso
 			}
 
 			name := "(unknown)"
-			if person, ok := archive.Persons[p.Person]; ok {
+			if person, ok := archive.Persons[p.Person]; ok && person != nil {
 				name = extractPersonName(person)
 			}
 

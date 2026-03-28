@@ -88,6 +88,9 @@ func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, 
 	ids := sortedKeys(archive.Persons)
 	for _, id := range ids {
 		person := archive.Persons[id]
+		if person == nil {
+			continue
+		}
 		name := extractPersonName(person)
 		if strings.Contains(strings.ToLower(name), lowerQuery) {
 			matches = append(matches, id)

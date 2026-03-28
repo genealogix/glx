@@ -496,7 +496,7 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 	} else {
 		var sibNames []string
 		for _, sid := range siblingIDs {
-			if sib, ok := archive.Persons[sid]; ok {
+			if sib, ok := archive.Persons[sid]; ok && sib != nil {
 				sibNames = append(sibNames, extractPersonName(sib))
 			} else {
 				sibNames = append(sibNames, sid)
@@ -563,7 +563,7 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 				RelType:  rel.Type,
 			}
 
-			if sp, ok := archive.Persons[p.Person]; ok {
+			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
 				info.PersonName = extractPersonName(sp)
 			} else {
 				info.PersonName = p.Person
@@ -571,7 +571,7 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 
 			// Get marriage date/place from start_event
 			if rel.StartEvent != "" {
-				if ev, ok := archive.Events[rel.StartEvent]; ok {
+				if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil {
 					info.MarriageDate = string(ev.Date)
 					info.MarriagePlace = resolvePlaceName(ev.PlaceID, archive)
 				}
@@ -805,7 +805,7 @@ func findOtherRelationships(personID string, archive *glxlib.GLXFile) []otherRel
 				continue
 			}
 			name := p.Person
-			if sp, ok := archive.Persons[p.Person]; ok {
+			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
 				name = extractPersonName(sp)
 			}
 			rels = append(rels, otherRelInfo{
@@ -967,7 +967,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	if len(parentIDs) > 0 {
 		var parentNames []string
 		for _, pid := range parentIDs {
-			if p, ok := archive.Persons[pid]; ok {
+			if p, ok := archive.Persons[pid]; ok && p != nil {
 				parentNames = append(parentNames, extractPersonName(p))
 			}
 		}
