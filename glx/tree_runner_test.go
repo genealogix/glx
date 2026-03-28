@@ -301,3 +301,166 @@ func TestFormatNodeLabel(t *testing.T) {
 	node.Dates = ""
 	assert.Equal(t, "John Smith  person-abc", formatNodeLabel(node))
 }
+
+// --- Ancestor research suggestions ---
+
+func TestAncestorSuggestions_NoParents(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-orphan": {Properties: map[string]any{
+				"name":    "Jane Miller",
+				"born_on": "ABT 1832",
+				"born_at": "place-va",
+			}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+		Places: map[string]*glxlib.Place{
+			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState},
+		},
+		Sources:    map[string]*glxlib.Source{},
+		Citations:  map[string]*glxlib.Citation{},
+		Assertions: map[string]*glxlib.Assertion{},
+	}
+
+	tc := newTreeContext(archive)
+	suggestions := buildAncestorSuggestions(tc, "person-orphan", archive)
+
+	require.NotEmpty(t, suggestions, "should suggest research when no parents found")
+
+	hasParentGap := false
+	for _, s := range suggestions {
+		if s.Category == "gap" {
+			hasParentGap = true
+		}
+	}
+	assert.True(t, hasParentGap, "should flag missing parents as a gap")
+}
+
+func TestAncestorSuggestions_SuggestsCensus(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-orphan": {Properties: map[string]any{
+				"name":    "Jane Miller",
+				"born_on": "ABT 1832",
+			}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+		Places:        map[string]*glxlib.Place{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+	}
+
+	tc := newTreeContext(archive)
+	suggestions := buildAncestorSuggestions(tc, "person-orphan", archive)
+
+	hasCensus := false
+	for _, s := range suggestions {
+		if s.Category == "census" {
+			hasCensus = true
+		}
+	}
+	assert.True(t, hasCensus, "should suggest census searches")
+}
+
+func TestAncestorSuggestions_WithParents_FlagsGrandparents(t *testing.T) {
+	archive := threeGenArchive()
+	tc := newTreeContext(archive)
+
+	// person-mother has no parents in the archive
+	suggestions := buildAncestorSuggestions(tc, "person-child", archive)
+
+	hasMotherGap := false
+	for _, s := range suggestions {
+		if s.Category == "gap" && s.PersonID == "person-mother" {
+			hasMotherGap = true
+		}
+	}
+	assert.True(t, hasMotherGap, "should flag missing parents for mother (grandparent gap)")
+}
+
+func TestAncestorSuggestions_Highlights1880(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{
+				"name":    "Person A",
+				"born_on": "1850",
+			}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+		Places:        map[string]*glxlib.Place{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+	}
+
+	tc := newTreeContext(archive)
+	suggestions := buildAncestorSuggestions(tc, "person-a", archive)
+
+	has1880 := false
+	for _, s := range suggestions {
+		if s.Category == "census" && s.Priority == "high" && s.Year == 1880 {
+			has1880 = true
+		}
+	}
+	assert.True(t, has1880, "should highlight 1880 census as high priority for parent research")
+}
+
+func TestAncestorSuggestions_StructuredProperties(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-orphan": {Properties: map[string]any{
+				"name":    "Jane Miller",
+				"born_on": map[string]any{"value": "ABT 1832"},
+				"born_at": map[string]any{"value": "place-va"},
+			}},
+		},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+		Places: map[string]*glxlib.Place{
+			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState},
+		},
+		Sources:    map[string]*glxlib.Source{},
+		Citations:  map[string]*glxlib.Citation{},
+		Assertions: map[string]*glxlib.Assertion{},
+	}
+
+	tc := newTreeContext(archive)
+	suggestions := buildAncestorSuggestions(tc, "person-orphan", archive)
+
+	require.NotEmpty(t, suggestions, "should work with structured property shapes")
+
+	hasCensus := false
+	hasLocation := false
+	for _, s := range suggestions {
+		if s.Category == "census" {
+			hasCensus = true
+			if s.Year == 1850 {
+				// Should include Virginia in the message
+				assert.Contains(t, s.Message, "Virginia")
+				hasLocation = true
+			}
+		}
+	}
+	assert.True(t, hasCensus, "should suggest census with structured born_on")
+	assert.True(t, hasLocation, "should resolve place name from structured born_at")
+}
+
+func TestAncestorSuggestions_PersonWithAllAncestors(t *testing.T) {
+	// person-father has parents (grandpa, grandma) — no gap for father
+	archive := threeGenArchive()
+	tc := newTreeContext(archive)
+
+	suggestions := buildAncestorSuggestions(tc, "person-father", archive)
+
+	hasFatherGap := false
+	for _, s := range suggestions {
+		if s.Category == "gap" && s.PersonID == "person-father" {
+			hasFatherGap = true
+		}
+	}
+	assert.False(t, hasFatherGap, "should not flag gap for person who has parents")
+}
