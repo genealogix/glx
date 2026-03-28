@@ -19,6 +19,11 @@ jobs:
         with:
           go-version: '1.26'
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install schema validation deps
         run: npm ci --prefix specification
 
