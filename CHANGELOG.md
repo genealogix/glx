@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Supply Chain Security
+- **Dependency review on PRs** — `dependency-review-action` blocks PRs that introduce dependencies with moderate+ vulnerabilities
+- **Renovate lockfile maintenance** — weekly lockfile refresh keeps transitive dependencies at latest allowed versions
+- **govulncheck SARIF integration** — vulnerability results now upload to GitHub Code Scanning for richer triage
+- **npm audit in CI** — website dependencies are audited for known vulnerabilities on every push and PR
+
 #### CLI
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
 - **Added `conflicts` analysis category to `glx analyze`** - Detects assertions with conflicting values for the same person/property combination (e.g., multiple conflicting birthplaces). Reports the number of distinct values and their confidence levels. Use `--check conflicts` to run independently. Fixes #156

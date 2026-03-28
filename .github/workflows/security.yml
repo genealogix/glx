@@ -15,6 +15,9 @@ jobs:
   govulncheck:
     name: Go Vulnerability Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v6
 
@@ -23,11 +26,20 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
-
       - name: Run govulncheck
-        run: govulncheck ./...
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
+        with:
+          repo-checkout: false
+          go-version-input: '1.25'
+          output-format: sarif
+          output-file: govulncheck.sarif
+
+      - name: Upload SARIF to Code Scanning
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: govulncheck.sarif
+          category: govulncheck
 
   gosec:
     name: Go Security Analysis
@@ -45,3 +57,22 @@ jobs:
 
       - name: Run gosec
         run: gosec -quiet ./...
+
+  npm-audit:
+    name: npm Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
