@@ -30,6 +30,29 @@ func TestGLXFile_Merge_EmptyFiles(t *testing.T) {
 	require.Empty(t, duplicates, "merging empty files should have no duplicates")
 }
 
+func TestGLXFile_Merge_NilDestMaps(t *testing.T) {
+	// Destination has nil maps — source data must not be silently dropped
+	g1 := &GLXFile{} // all maps nil
+	g2 := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"name": "Test Person"}},
+		},
+		Events: map[string]*Event{
+			"event-1": {Type: "birth", Date: "1850"},
+		},
+		Places: map[string]*Place{
+			"place-1": {Name: "Test Place"},
+		},
+	}
+
+	duplicates := g1.Merge(g2)
+	require.Empty(t, duplicates, "should have no duplicates")
+	require.Len(t, g1.Persons, 1, "persons should be merged into initialized map")
+	require.Len(t, g1.Events, 1, "events should be merged into initialized map")
+	require.Len(t, g1.Places, 1, "places should be merged into initialized map")
+	require.Contains(t, g1.Persons, "person-1")
+}
+
 func TestGLXFile_Merge_Persons_NoDuplicates(t *testing.T) {
 	// Test merging persons without duplicates
 	g1 := &GLXFile{
@@ -349,9 +372,11 @@ func TestGLXFile_Merge_NilMaps(t *testing.T) {
 	duplicates := g1.Merge(g2)
 	require.Empty(t, duplicates, "should have no duplicates")
 
-	// nil maps should not be populated (mergeMap returns early if dest is nil)
-	require.Nil(t, g1.Persons)
-	require.Nil(t, g1.Events)
+	// nil dest maps should be initialized and populated with source data
+	require.NotNil(t, g1.Persons)
+	require.Len(t, g1.Persons, 1, "persons from source should be merged")
+	require.NotNil(t, g1.Events)
+	require.Len(t, g1.Events, 1, "events from source should be merged")
 }
 
 func TestGLXFile_Merge_SourceNilMaps(t *testing.T) {
