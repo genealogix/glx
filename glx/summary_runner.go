@@ -130,6 +130,9 @@ func showSummary(archivePath, personQuery string) error {
 // findPersonByQuery looks up a person by exact ID or by name substring match.
 func findPersonByQuery(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
 	if person, ok := archive.Persons[query]; ok {
+		if person == nil {
+			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
+		}
 		return query, person, nil
 	}
 
@@ -351,6 +354,9 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
 		if summarySkippedEventTypes[strings.ToLower(event.Type)] {
 			continue
 		}
@@ -496,7 +502,7 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 	} else {
 		var sibNames []string
 		for _, sid := range siblingIDs {
-			if sib, ok := archive.Persons[sid]; ok {
+			if sib, ok := archive.Persons[sid]; ok && sib != nil {
 				sibNames = append(sibNames, extractPersonName(sib))
 			} else {
 				sibNames = append(sibNames, sid)
@@ -563,7 +569,7 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 				RelType:  rel.Type,
 			}
 
-			if sp, ok := archive.Persons[p.Person]; ok {
+			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
 				info.PersonName = extractPersonName(sp)
 			} else {
 				info.PersonName = p.Person
@@ -571,7 +577,7 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 
 			// Get marriage date/place from start_event
 			if rel.StartEvent != "" {
-				if ev, ok := archive.Events[rel.StartEvent]; ok {
+				if ev, ok := archive.Events[rel.StartEvent]; ok && ev != nil {
 					info.MarriageDate = string(ev.Date)
 					info.MarriagePlace = resolvePlaceName(ev.PlaceID, archive)
 				}
@@ -603,6 +609,9 @@ func findMarriageEvent(personA, personB string, archive *glxlib.GLXFile) (date, 
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		ev := archive.Events[id]
+		if ev == nil {
+			continue
+		}
 		if !strings.EqualFold(ev.Type, "marriage") {
 			continue
 		}
@@ -805,7 +814,7 @@ func findOtherRelationships(personID string, archive *glxlib.GLXFile) []otherRel
 				continue
 			}
 			name := p.Person
-			if sp, ok := archive.Persons[p.Person]; ok {
+			if sp, ok := archive.Persons[p.Person]; ok && sp != nil {
 				name = extractPersonName(sp)
 			}
 			rels = append(rels, otherRelInfo{
@@ -828,6 +837,9 @@ func findEventForPerson(personID, eventType string, archive *glxlib.GLXFile) str
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
 		}
@@ -967,7 +979,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	if len(parentIDs) > 0 {
 		var parentNames []string
 		for _, pid := range parentIDs {
-			if p, ok := archive.Persons[pid]; ok {
+			if p, ok := archive.Persons[pid]; ok && p != nil {
 				parentNames = append(parentNames, extractPersonName(p))
 			}
 		}
@@ -1067,6 +1079,9 @@ func findEventDatePlace(personID, eventType string, archive *glxlib.GLXFile) (st
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
+		if event == nil {
+			continue
+		}
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
 		}

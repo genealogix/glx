@@ -462,3 +462,7 @@ func TestExtractPersonName(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractPersonName_NilPerson(t *testing.T) {
+	assert.Equal(t, "(unnamed)", extractPersonName(nil))
+}

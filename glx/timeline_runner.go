@@ -91,6 +91,9 @@ func loadArchiveForTimeline(path string) (*glxlib.GLXFile, error) {
 func findPersonForTimeline(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
 	// Exact ID match
 	if person, ok := archive.Persons[query]; ok {
+		if person == nil {
+			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
+		}
 		return query, person, nil
 	}
 
@@ -268,7 +271,7 @@ func findRelatedPersons(personID string, archive *glxlib.GLXFile) []relatedPerso
 			}
 
 			name := "(unknown)"
-			if person, ok := archive.Persons[p.Person]; ok {
+			if person, ok := archive.Persons[p.Person]; ok && person != nil {
 				name = extractPersonName(person)
 			}
 
