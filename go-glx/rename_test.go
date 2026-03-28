@@ -252,3 +252,43 @@ func TestRenameEntity_MediaRefs(t *testing.T) {
 	assert.Equal(t, "media-new", glx.Citations["cit-1"].Media[0])
 	assert.Equal(t, "media-new", glx.Assertions["a-1"].Media[0])
 }
+
+func TestRenameEntity_PropertyBasedRefs(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{
+				"name":    "Jane",
+				"born_at": "place-old",
+				"died_at": map[string]any{"value": "place-old"},
+			}},
+		},
+		Places: map[string]*Place{
+			"place-old": {Name: "Old Place"},
+		},
+	}
+
+	_, err := RenameEntity(glx, "place-old", "place-new")
+	require.NoError(t, err)
+	assert.Equal(t, "place-new", glx.Persons["person-1"].Properties["born_at"])
+	diedAt := glx.Persons["person-1"].Properties["died_at"].(map[string]any)
+	assert.Equal(t, "place-new", diedAt["value"])
+}
+
+func TestRenameEntity_AssertionValue(t *testing.T) {
+	glx := &GLXFile{
+		Places: map[string]*Place{
+			"place-old": {Name: "Old Place"},
+		},
+		Assertions: map[string]*Assertion{
+			"a-1": {
+				Subject:  EntityRef{Person: "person-1"},
+				Property: "born_at",
+				Value:    "place-old",
+			},
+		},
+	}
+
+	_, err := RenameEntity(glx, "place-old", "place-new")
+	require.NoError(t, err)
+	assert.Equal(t, "place-new", glx.Assertions["a-1"].Value)
+}

@@ -24,7 +24,7 @@ type RenameResult struct {
 
 // RenameEntity renames an entity ID throughout the archive, updating all
 // cross-references. Returns an error if the old ID is not found or the
-// new ID already exists.
+// new ID already exists. Invalidates the validation cache after mutation.
 func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 	entityType, err := findEntityType(glx, oldID)
 	if err != nil {
@@ -41,6 +41,9 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 	// Update all references
 	refs := updateAllRefs(glx, oldID, newID)
 
+	// Invalidate cached validation since maps have been mutated
+	glx.validation = nil
+
 	return &RenameResult{
 		EntityType:  entityType,
 		RefsUpdated: refs + 1, // +1 for the map key itself
@@ -49,32 +52,32 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 
 // findEntityType returns which entity map contains the given ID.
 func findEntityType(glx *GLXFile, id string) (string, error) {
-	if _, ok := glx.Persons[id]; ok {
-		return "persons", nil
+	if v, ok := glx.Persons[id]; ok && v != nil {
+		return EntityTypePersons, nil
 	}
-	if _, ok := glx.Events[id]; ok {
-		return "events", nil
+	if v, ok := glx.Events[id]; ok && v != nil {
+		return EntityTypeEvents, nil
 	}
-	if _, ok := glx.Relationships[id]; ok {
-		return "relationships", nil
+	if v, ok := glx.Relationships[id]; ok && v != nil {
+		return EntityTypeRelationships, nil
 	}
-	if _, ok := glx.Places[id]; ok {
-		return "places", nil
+	if v, ok := glx.Places[id]; ok && v != nil {
+		return EntityTypePlaces, nil
 	}
-	if _, ok := glx.Sources[id]; ok {
-		return "sources", nil
+	if v, ok := glx.Sources[id]; ok && v != nil {
+		return EntityTypeSources, nil
 	}
-	if _, ok := glx.Citations[id]; ok {
-		return "citations", nil
+	if v, ok := glx.Citations[id]; ok && v != nil {
+		return EntityTypeCitations, nil
 	}
-	if _, ok := glx.Repositories[id]; ok {
-		return "repositories", nil
+	if v, ok := glx.Repositories[id]; ok && v != nil {
+		return EntityTypeRepositories, nil
 	}
-	if _, ok := glx.Assertions[id]; ok {
-		return "assertions", nil
+	if v, ok := glx.Assertions[id]; ok && v != nil {
+		return EntityTypeAssertions, nil
 	}
-	if _, ok := glx.Media[id]; ok {
-		return "media", nil
+	if v, ok := glx.Media[id]; ok && v != nil {
+		return EntityTypeMedia, nil
 	}
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
@@ -90,38 +93,39 @@ func checkTargetFree(glx *GLXFile, id string) error {
 // moveMapKey moves an entity from oldID to newID in its entity map.
 func moveMapKey(glx *GLXFile, entityType, oldID, newID string) {
 	switch entityType {
-	case "persons":
+	case EntityTypePersons:
 		glx.Persons[newID] = glx.Persons[oldID]
 		delete(glx.Persons, oldID)
-	case "events":
+	case EntityTypeEvents:
 		glx.Events[newID] = glx.Events[oldID]
 		delete(glx.Events, oldID)
-	case "relationships":
+	case EntityTypeRelationships:
 		glx.Relationships[newID] = glx.Relationships[oldID]
 		delete(glx.Relationships, oldID)
-	case "places":
+	case EntityTypePlaces:
 		glx.Places[newID] = glx.Places[oldID]
 		delete(glx.Places, oldID)
-	case "sources":
+	case EntityTypeSources:
 		glx.Sources[newID] = glx.Sources[oldID]
 		delete(glx.Sources, oldID)
-	case "citations":
+	case EntityTypeCitations:
 		glx.Citations[newID] = glx.Citations[oldID]
 		delete(glx.Citations, oldID)
-	case "repositories":
+	case EntityTypeRepositories:
 		glx.Repositories[newID] = glx.Repositories[oldID]
 		delete(glx.Repositories, oldID)
-	case "assertions":
+	case EntityTypeAssertions:
 		glx.Assertions[newID] = glx.Assertions[oldID]
 		delete(glx.Assertions, oldID)
-	case "media":
+	case EntityTypeMedia:
 		glx.Media[newID] = glx.Media[oldID]
 		delete(glx.Media, oldID)
 	}
 }
 
 // updateAllRefs scans every entity in the archive and replaces oldID with
-// newID in all reference fields. Returns the count of fields updated.
+// newID in all reference fields, including Properties maps and Assertion.Value.
+// Returns the count of fields updated.
 func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 	count := 0
 
@@ -135,11 +139,13 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 				ev.Participants[i].Person = newID
 				count++
 			}
+			count += replaceInProperties(ev.Participants[i].Properties, oldID, newID)
 		}
 		if ev.PlaceID == oldID {
 			ev.PlaceID = newID
 			count++
 		}
+		count += replaceInProperties(ev.Properties, oldID, newID)
 	}
 
 	// Participants and event refs in relationships
@@ -152,6 +158,7 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 				rel.Participants[i].Person = newID
 				count++
 			}
+			count += replaceInProperties(rel.Participants[i].Properties, oldID, newID)
 		}
 		if rel.StartEvent == oldID {
 			rel.StartEvent = newID
@@ -172,6 +179,15 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 			place.ParentID = newID
 			count++
 		}
+		count += replaceInProperties(place.Properties, oldID, newID)
+	}
+
+	// Person properties (born_at, died_at, etc. can contain place IDs)
+	for _, person := range glx.Persons {
+		if person == nil {
+			continue
+		}
+		count += replaceInProperties(person.Properties, oldID, newID)
 	}
 
 	// Source refs
@@ -184,6 +200,7 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 			count++
 		}
 		count += replaceInSlice(src.Media, oldID, newID)
+		count += replaceInProperties(src.Properties, oldID, newID)
 	}
 
 	// Citation refs
@@ -200,6 +217,7 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 			count++
 		}
 		count += replaceInSlice(cit.Media, oldID, newID)
+		count += replaceInProperties(cit.Properties, oldID, newID)
 	}
 
 	// Assertion refs
@@ -223,12 +241,20 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 			a.Subject.Place = newID
 			count++
 		}
+		// Assertion.Value can contain entity IDs for reference-type properties
+		if a.Value == oldID {
+			a.Value = newID
+			count++
+		}
 		count += replaceInSlice(a.Sources, oldID, newID)
 		count += replaceInSlice(a.Citations, oldID, newID)
 		count += replaceInSlice(a.Media, oldID, newID)
-		if a.Participant != nil && a.Participant.Person == oldID {
-			a.Participant.Person = newID
-			count++
+		if a.Participant != nil {
+			if a.Participant.Person == oldID {
+				a.Participant.Person = newID
+				count++
+			}
+			count += replaceInProperties(a.Participant.Properties, oldID, newID)
 		}
 	}
 
@@ -241,6 +267,7 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 			m.Source = newID
 			count++
 		}
+		count += replaceInProperties(m.Properties, oldID, newID)
 	}
 
 	return count
@@ -254,6 +281,37 @@ func replaceInSlice(s []string, oldID, newID string) int {
 		if s[i] == oldID {
 			s[i] = newID
 			count++
+		}
+	}
+	return count
+}
+
+// replaceInProperties scans a properties map for string values matching oldID
+// and replaces them with newID. Handles simple strings, structured maps with
+// "value" keys, and temporal lists.
+func replaceInProperties(props map[string]any, oldID, newID string) int {
+	count := 0
+	for key, val := range props {
+		switch v := val.(type) {
+		case string:
+			if v == oldID {
+				props[key] = newID
+				count++
+			}
+		case map[string]any:
+			if s, ok := v["value"].(string); ok && s == oldID {
+				v["value"] = newID
+				count++
+			}
+		case []any:
+			for _, elem := range v {
+				if m, ok := elem.(map[string]any); ok {
+					if s, ok := m["value"].(string); ok && s == oldID {
+						m["value"] = newID
+						count++
+					}
+				}
+			}
 		}
 	}
 	return count

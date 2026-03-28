@@ -24,6 +24,8 @@ import (
 var renameDryRun bool
 
 // renameEntities performs the rename operation: load archive, rename, save.
+// For multi-file archives, the entire archive is re-serialized to ensure
+// filenames and entity IDs stay consistent (old entity files are replaced).
 func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	info, err := os.Stat(archivePath)
 	if err != nil {
@@ -64,7 +66,40 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 	}
 
 	if isDir {
+		// Multi-file rename requires clearing old entity files and re-serializing
+		// to avoid duplicate entries (serializer generates new random filenames).
+		if err := clearEntityFiles(archivePath); err != nil {
+			return fmt.Errorf("failed to clear old entity files: %w", err)
+		}
 		return writeMultiFileArchive(archivePath, archive, false)
 	}
 	return writeSingleFileArchive(archivePath, archive, false)
+}
+
+// clearEntityFiles removes all .glx entity files from entity subdirectories
+// in a multi-file archive, preserving the directory structure and vocabulary files.
+func clearEntityFiles(dirPath string) error {
+	entityDirs := []string{
+		"persons", "events", "relationships", "places", "sources",
+		"citations", "repositories", "assertions", "media",
+	}
+	for _, subdir := range entityDirs {
+		path := dirPath + "/" + subdir
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			if err := os.Remove(path + "/" + entry.Name()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
