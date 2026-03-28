@@ -3,7 +3,7 @@
 // Provides JSON schemas, validation tools, and examples for genealogical data.
 module github.com/genealogix/glx
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/xeipuuv/gojsonschema v1.2.0
@@ -22,7 +22,7 @@ require (
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.28.0
-	golang.org/x/text v0.34.0
+	golang.org/x/text v0.35.0
 )
 
 require (
