@@ -400,6 +400,7 @@ type TemporalValue struct {
 // or metadata conflicts ("duplicate metadata: ...").
 func (g *GLXFile) Merge(other *GLXFile) []string {
 	g.initMaps()
+	g.validation = nil // invalidate cached validation since maps are being mutated
 	duplicates := make([]string, 0, 10)
 
 	// Merge metadata (first one wins; report duplicate if both have content)
@@ -448,6 +449,8 @@ func (g *GLXFile) Merge(other *GLXFile) []string {
 
 // initMaps ensures all entity and vocabulary maps are initialized (non-nil).
 // Called by Merge to prevent silent data loss when destination maps are nil.
+// NOTE: serializer.go also initializes some of these maps — consider migrating
+// those call sites to use initMaps() to keep initialization centralized.
 func (g *GLXFile) initMaps() {
 	if g.Persons == nil {
 		g.Persons = make(map[string]*Person)
