@@ -640,6 +640,145 @@ func TestAnalyzeConsistency_NoFalsePositiveOnUniqueNames(t *testing.T) {
 	}
 }
 
+// --- Sibling Research Suggestions ---
+
+func TestSuggestSiblingRecords_BrickwallWithSibling(t *testing.T) {
+	// Mary has no parents, but shares a parent (via Joseph) — Joseph is a sibling
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "ABT 1832"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+			"person-parent": {Properties: map[string]any{"name": "James Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-parent-joseph": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-parent", Role: "parent"},
+					{Person: "person-joseph", Role: "child"},
+				},
+			},
+			"rel-parent-mary": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-parent", Role: "parent"},
+					{Person: "person-mary", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestSiblingRecords(archive)
+	// Mary has parents (via rel-parent-mary), so she's NOT a brickwall
+	// person-parent has no parents — that's the brickwall
+	// But person-parent likely has no birth year, so no census suggestions
+	// Let's verify no false positives for Mary
+	for _, issue := range issues {
+		if issue.Person == "person-mary" {
+			t.Error("should not suggest sibling records for person who has parents")
+		}
+	}
+}
+
+func TestSuggestSiblingRecords_OrphanWithKnownSibling(t *testing.T) {
+	// Mary has NO parents, Joseph has a parent — they share no parent,
+	// but if we make them siblings through a shared parent where Mary is also a child...
+	// Actually, let's test the real case: Mary has no parent_child rel at all
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "ABT 1832"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+			"person-parent": {Properties: map[string]any{"name": "James Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			// Only Joseph has a parent — Mary does NOT
+			"rel-parent-joseph": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-parent", Role: "parent"},
+					{Person: "person-joseph", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestSiblingRecords(archive)
+	// Mary has no parents at all, so she's a brickwall — but she has no siblings either
+	// (no shared parent). Should not crash or produce false results.
+	for _, issue := range issues {
+		if issue.Person == "person-mary" && containsSubstring(issue.Message, "Joseph") {
+			t.Error("should not suggest sibling when they don't share a parent")
+		}
+	}
+}
+
+func TestSuggestSiblingRecords_SharedParent(t *testing.T) {
+	// parent-james has two children: Mary and Joseph
+	// parent-james has NO parents → brickwall
+	// Should suggest searching Joseph's 1880 census to find James's parents' birthplaces
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-james":  {Properties: map[string]any{"name": "James Green", "born_on": "1810"}},
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "1832"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-james", Role: "parent"},
+					{Person: "person-mary", Role: "child"},
+				},
+			},
+			"rel-2": {
+				Type: "parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-james", Role: "parent"},
+					{Person: "person-joseph", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestSiblingRecords(archive)
+
+	// person-james has no parents → brickwall. His children Mary and Joseph are siblings.
+	// Should suggest searching Mary's and Joseph's 1880 census (lists parents' birthplaces)
+	found1880 := false
+	for _, issue := range issues {
+		if issue.Person == "person-james" && containsSubstring(issue.Message, "1880") {
+			found1880 = true
+		}
+	}
+	if !found1880 {
+		t.Error("should suggest 1880 census for child of brickwall person")
+	}
+}
+
+func TestSuggestSiblingRecords_PersonWithParentsNotFlagged(t *testing.T) {
+	// person-child has parents — should never appear as the Person in suggestions
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-father": {Properties: map[string]any{"name": "Father", "born_on": "1830"}},
+			"person-child":  {Properties: map[string]any{"name": "Child", "born_on": "1860"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-father", Role: "parent"}, {Person: "person-child", Role: "child"}}},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	issues := suggestSiblingRecords(archive)
+	for _, issue := range issues {
+		if issue.Person == "person-child" {
+			t.Error("should not suggest sibling records for person who has parents")
+		}
+	}
+}
+
 // --- Suggestion Analysis ---
 
 func TestAnalyzeSuggestions_MissingCensus(t *testing.T) {
