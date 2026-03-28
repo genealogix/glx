@@ -69,6 +69,7 @@ func analyzeSuggestions(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	issues = append(issues, suggestCensusSearches(archive)...)
 	issues = append(issues, suggestVitalRecords(archive)...)
+	issues = append(issues, suggestChildCensusRecords(archive)...)
 
 	return issues
 }
