@@ -174,6 +174,7 @@ func loadArchiveForTree(path string) (*glxlib.GLXFile, error) {
 }
 
 // showAncestors loads the archive and prints the ancestor tree for a person.
+// When ancestors are missing, it appends research suggestions.
 func showAncestors(archivePath, personID string, maxGen int) error {
 	archive, err := loadArchiveForTree(archivePath)
 	if err != nil {
@@ -187,6 +188,13 @@ func showAncestors(archivePath, personID string, maxGen int) error {
 	tc := newTreeContext(archive)
 	root := buildAncestorTree(tc, personID, maxGen, 0, make(map[string]bool))
 	printTree(root, "", true)
+
+	// Show research suggestions for ancestors with missing parents.
+	// buildAncestorSuggestions checks the actual parent index (not the tree)
+	// so it correctly distinguishes maxGen limits from truly unknown parents.
+	// printAncestorSuggestions no-ops when there are no suggestions.
+	suggestions := buildAncestorSuggestions(tc, personID, archive)
+	printAncestorSuggestions(suggestions)
 
 	return nil
 }
