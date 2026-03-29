@@ -16,9 +16,7 @@
             "sources"
           ],
           "properties": {
-            "sources": {
-              "type": "array"
-            }
+            "sources": {}
           }
         },
         {
@@ -26,9 +24,7 @@
             "citations"
           ],
           "properties": {
-            "citations": {
-              "type": "array"
-            }
+            "citations": {}
           }
         },
         {
@@ -36,9 +32,7 @@
             "media"
           ],
           "properties": {
-            "media": {
-              "type": "array"
-            }
+            "media": {}
           }
         }
       ]
@@ -51,12 +45,8 @@
           "participant"
         ],
         "properties": {
-          "property": {
-            "type": "string"
-          },
-          "participant": {
-            "type": "object"
-          }
+          "property": {},
+          "participant": {}
         }
       }
     },
@@ -68,12 +58,8 @@
           "participant"
         ],
         "properties": {
-          "value": {
-            "type": "string"
-          },
-          "participant": {
-            "type": "object"
-          }
+          "value": {},
+          "participant": {}
         }
       }
     },
@@ -84,9 +70,7 @@
           "property"
         ],
         "properties": {
-          "property": {
-            "type": "string"
-          }
+          "property": {}
         }
       },
       "then": {
@@ -94,9 +78,7 @@
           "value"
         ],
         "properties": {
-          "value": {
-            "type": "string"
-          }
+          "value": {}
         }
       },
       "else": {
@@ -105,9 +87,7 @@
             "value"
           ],
           "properties": {
-            "value": {
-              "type": "string"
-            }
+            "value": {}
           }
         }
       }

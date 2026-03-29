@@ -88,9 +88,7 @@
             "value_type"
           ],
           "properties": {
-            "value_type": {
-              "type": "string"
-            }
+            "value_type": {}
           }
         },
         {
@@ -98,9 +96,7 @@
             "reference_type"
           ],
           "properties": {
-            "reference_type": {
-              "type": "string"
-            }
+            "reference_type": {}
           }
         },
         {
@@ -108,9 +104,7 @@
             "vocabulary_type"
           ],
           "properties": {
-            "vocabulary_type": {
-              "type": "string"
-            }
+            "vocabulary_type": {}
           }
         }
       ],
@@ -122,12 +116,8 @@
               "reference_type"
             ],
             "properties": {
-              "value_type": {
-                "type": "string"
-              },
-              "reference_type": {
-                "type": "string"
-              }
+              "value_type": {},
+              "reference_type": {}
             }
           }
         },
@@ -138,12 +128,8 @@
               "vocabulary_type"
             ],
             "properties": {
-              "value_type": {
-                "type": "string"
-              },
-              "vocabulary_type": {
-                "type": "string"
-              }
+              "value_type": {},
+              "vocabulary_type": {}
             }
           }
         },
@@ -154,12 +140,8 @@
               "vocabulary_type"
             ],
             "properties": {
-              "reference_type": {
-                "type": "string"
-              },
-              "vocabulary_type": {
-                "type": "string"
-              }
+              "reference_type": {},
+              "vocabulary_type": {}
             }
           }
         }
