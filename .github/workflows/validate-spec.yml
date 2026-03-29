@@ -70,5 +70,7 @@ jobs:
           go test ./glx/... ./go-glx/... -v -timeout 15m
       
       - name: Build glx CLI
-        run: go build -o bin/glx ./glx
+        run: |
+          mkdir -p bin
+          go build -o bin/glx ./glx
 
