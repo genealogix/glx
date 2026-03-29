@@ -1393,6 +1393,9 @@ func TestImport_PropertiesMapsNeverNil(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
+	require.Len(t, glxFile.Sources, 1, "expected 1 source entity from GEDCOM")
+	require.Len(t, glxFile.Media, 1, "expected 1 media entity from GEDCOM")
+
 	for sourceID, source := range glxFile.Sources {
 		assert.NotNil(t, source.Properties,
 			"Source %s Properties should be empty map, not nil", sourceID)
