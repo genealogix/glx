@@ -45,6 +45,9 @@ func buildPersonEventsIndex(expCtx *ExportContext) {
 	eventIDs := sortedKeys(expCtx.GLX.Events)
 	for _, eventID := range eventIDs {
 		event := expCtx.GLX.Events[eventID]
+		if event == nil {
+			continue
+		}
 		for _, participant := range event.Participants {
 			if participant.Role == ParticipantRolePrincipal && participant.Person != "" {
 				expCtx.PersonEvents[participant.Person] = append(
@@ -132,6 +135,9 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	if eventIDs, ok := expCtx.PersonEvents[personID]; ok {
 		for _, eventID := range eventIDs {
 			event := expCtx.GLX.Events[eventID]
+			if event == nil {
+				continue
+			}
 			eventRecord := exportPersonEvent(event, expCtx)
 			if eventRecord != nil {
 				record.SubRecords = append(record.SubRecords, eventRecord)
