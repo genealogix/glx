@@ -422,21 +422,24 @@ When adding a new CLI command, update all four documentation locations:
 - ✓ Good: `[Person Entity](4-entity-types/person)`
 - ✗ Bad: `[Person Entity](4-entity-types/person.md)`
 
-### Commit Messages
+### Commit Messages and PR Titles
 
+- Use conventional commits format: `type: Subject starting with uppercase` (see `.github/workflows/lint-pr-title.yml` for valid types: feat, fix, docs, chore, refactor, test, perf, ci)
 - Keep messages brief - prefer single-line messages when possible
 - Do NOT include "Generated with Claude Code", Co-Authored-By footers, or any AI attribution in commits, PRs, or any other output
-- Use conventional commits format
 - Examples:
   - `feat: Add GEDCOM 7.0 EXID support`
   - `fix: Handle family events ANUL, DIVF, CENS, EVEN`
   - `docs: Update serializer implementation plan`
-  - `Remove alternative_names from Place entity`
+
+### Pull Requests
+
+- **Always read and follow `.github/PULL_REQUEST_TEMPLATE.md`** when creating PRs
 
 ### Changelog
 
 - Always update `CHANGELOG.md` when making user-facing changes
-- Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.9]`)
+- Add entries to the **latest unreleased version section** at the top. Verify which section is unreleased by checking `git tag --sort=-v:refname | head -1` — the latest tag's version has already been released, so add entries to the section above it
 - Use appropriate subsections: Added, Changed, Fixed, Removed
 - Group related changes under descriptive headers (e.g., `#### Citation Entity`)
 - **Feature branch changelog hygiene**: Feature branches often have stale/mangled changelogs. To fix: `git checkout main -- CHANGELOG.md`, then add the branch's entries to the current unreleased section. Never try to merge a diverged changelog — restore and re-add.

@@ -10,7 +10,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.9]
+## [0.0.0-beta.10]
+
+---
+
+## [0.0.0-beta.9] - 2026-03-29
 
 ### Added
 
@@ -22,12 +26,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
+- **Added `glx cluster` command** - FAN (Friends, Associates, Neighbors) club analysis for brickwall research. Cross-references census households, shared events, and place overlap to identify associates of a target person. Ranks associates by connection strength with compound scoring. Supports `--place`, `--before`, `--after` filters and `--json` output
+- **Added `glx census add` command** - Bulk census import helper that generates GLX entities from a structured YAML template. Reads census year, location, household members, and citation details to produce person records, a census event with participants, source/citation entities, and evidence-based assertions. Supports matching members to existing archive persons by ID or name, `--dry-run` preview, and FAN notes
 - **Added `conflicts` analysis category to `glx analyze`** - Detects assertions with conflicting values for the same person/property combination (e.g., multiple conflicting birthplaces). Reports the number of distinct values and their confidence levels. Use `--check conflicts` to run independently. Fixes #156
-
 - **Analyze flags duplicate given names among siblings** - `glx analyze` now detects when a parent's children share the same given name, which may indicate incorrect family reconstruction, a "replacement child" pattern, or a middle-name situation. Skips the pattern when earlier child died before the later was born. Fixes #164
 - **Added `--subject` filter to `glx query assertions`** - Filter assertions by subject entity ID or person name substring. Matches any subject type by exact ID; for person subjects, also matches by case-insensitive name search. Fixes #150
 - **Added `--birthplace` filter to `glx query persons`** - Filter persons by birthplace using place ID or name substring (case-insensitive). Matches against both `born_at` value and resolved place name. Fixes #141
 - **Analyze flags uncited claims in notes** - `glx analyze` evidence checks now detect assertion notes that reference sources (e.g., "per county history," "census shows") without a corresponding citation. Fixes #162
+
+### Changed
+- **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by given name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary."). Fixes #153
 
 ### Fixed
 - **Validate catches dangling property references** - `glx validate` now detects when property values like `born_at`, `died_at`, or `residence` reference non-existent entities. Previously, standard vocabularies were not loaded during validation, so property reference checks were silently skipped. Fixes #147
@@ -35,6 +43,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
 - **Validate and archive loading skip non-.glx files** - `glx validate` and archive loading now only process files with the `.glx` extension. Previously, `.yaml` and `.yml` files in the archive directory were also parsed, causing spurious validation errors on non-GLX files like `.wikitree.yml`. Fixes #178
 - **Windows compatibility for symlinked vocabulary files** - Archive loading now resolves Git symlink placeholders on Windows, where symlinks are stored as text files containing the target path. Previously, ~35 tests failed on Windows because example archives contain symlinked vocabulary files. Fixes #206
+- **Analyze flags missing marriage events per spouse** - `glx analyze` now checks each spouse relationship independently instead of checking for any marriage event. Persons with multiple spouses where one has an event and another doesn't are now correctly flagged with the specific spouse name. Fixes #166
+- **Places command detects person property references** - `glx places` no longer reports places as "Unreferenced" when they are used in person properties (`born_at`, `died_at`, `buried_at`, `residence`). Also checks assertion values for place-reference properties. Handles string, structured map, and temporal list property shapes. Fixes #145
+- **Analyze checks citations for census coverage** - `glx analyze` now checks assertions' citations and sources (not just census event entities) when determining whether a census year is covered. Previously, census records documented only via citations were still suggested as missing, contradicting `glx coverage` output. Fixes #140
+- **BEF date prefix respected in census suggestions** - `glx analyze` and `glx coverage` now treat `BEF <year>` death dates as exclusive upper bounds. A person with `died_on: "BEF 1870"` no longer gets 1870 census suggestions. Fixes #165
+- **Summary shows marriages in chronological order** - `glx summary` now sorts spouses by full marriage date (earliest first, using the same date sort key as `glx timeline`) instead of relationship ID order. Correctly orders marriages within the same year. Undated marriages sort after dated ones. The Life History narrative also reflects the correct order. Fixes #136
+- **Life History narrative formats ISO dates as readable text** - Dates like `1863-06-18` now render as "on June 18, 1863" instead of "in 1863-06-18". Handles full dates, year-month, and prefixed dates (ABT, BEF, AFT)
+- **Census suggestions capped at plausible lifespan** - `glx analyze` and `glx coverage` no longer suggest census years beyond `birth_year + 100` when no death date is known. Previously, a person born ~1832 would get suggestions for 1940 and 1950 censuses. Fixes #130
+- **Burial events infer death for census suggestions** - When `died_on` is not set but a burial event exists, the burial date is used as the death upper bound for census suggestions. Prevents suggesting post-death censuses for persons with burial records but no explicit death date. Fixes #134
+- **1890 census annotated as mostly destroyed** - `glx coverage` and `glx analyze` now note that the 1890 US Census was mostly destroyed in a 1921 fire, so researchers don't waste time searching for non-existent records. Fixes #131
+- **Timeline includes person's own birth and death** - `glx timeline` now synthesizes birth/death entries from `born_on`/`died_on` person properties when no corresponding event entity exists. Previously these were omitted, making the person's own vital events the only events missing from their timeline. Fixes #142
 
 ---
 
@@ -44,8 +62,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 - **Added `glx analyze` command** - Automated research gap analysis engine that cross-references all entities in a GLX archive to surface evidence gaps (missing dates, no parents, no events), evidence quality issues (unsupported assertions, single-source persons, orphaned citations/sources), chronological inconsistencies (death before birth, parent younger than child, implausible lifespan), and research suggestions (census years to search, vital records to locate). Supports `--check` to run a single category, `--format json` for machine-readable output, and person filtering by ID or name
+- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
 - **Added `glx coverage` command** - Show source coverage matrix for a person, listing expected records (US census, vital, probate, land, military, church) and which are present vs missing. Flags high-priority gaps like the 1880 census. Supports `--json` output
-- **Added `glx census add` command** - Bulk census import helper that generates GLX entities from a structured YAML template. Reads census year, location, household members, and citation details to produce person records, a census event with participants, source/citation entities, and evidence-based assertions. Supports matching members to existing archive persons by ID or name, `--dry-run` preview, and FAN notes
+- **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
 
 #### Library
 - **Exported `ExtractFirstYear` and `ExtractPropertyYear`** - Year-extraction utilities are now public API for use by CLI commands and external consumers
@@ -64,20 +83,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **GEDCOM encoding conversion now streams for charmap encodings** - CP1252/ISO-8859-1 decoding uses `transform.NewReader` instead of reading the entire file into memory. Only ANSEL (which requires combining-mark reordering) buffers the full file. UTF-8 files pass through with near-zero overhead
 - **ANSEL converter handles multiple combining diacriticals** - Consecutive combining marks preceding a base letter are now all buffered and emitted after the base letter in Unicode order, instead of only handling a single combining mark
 
-### Changed
-- **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by given name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary."). Fixes #153
-
 ### Fixed
-- **Analyze flags missing marriage events per spouse** - `glx analyze` now checks each spouse relationship independently instead of checking for any marriage event. Persons with multiple spouses where one has an event and another doesn't are now correctly flagged with the specific spouse name. Fixes #166
-- **Places command detects person property references** - `glx places` no longer reports places as "Unreferenced" when they are used in person properties (`born_at`, `died_at`, `buried_at`, `residence`). Also checks assertion values for place-reference properties. Handles string, structured map, and temporal list property shapes. Fixes #145
-- **Analyze checks citations for census coverage** - `glx analyze` now checks assertions' citations and sources (not just census event entities) when determining whether a census year is covered. Previously, census records documented only via citations were still suggested as missing, contradicting `glx coverage` output. Fixes #140
-- **BEF date prefix respected in census suggestions** - `glx analyze` and `glx coverage` now treat `BEF <year>` death dates as exclusive upper bounds. A person with `died_on: "BEF 1870"` no longer gets 1870 census suggestions. Fixes #165
-- **Summary shows marriages in chronological order** - `glx summary` now sorts spouses by full marriage date (earliest first, using the same date sort key as `glx timeline`) instead of relationship ID order. Correctly orders marriages within the same year. Undated marriages sort after dated ones. The Life History narrative also reflects the correct order. Fixes #136
-- **Life History narrative formats ISO dates as readable text** - Dates like `1863-06-18` now render as "on June 18, 1863" instead of "in 1863-06-18". Handles full dates, year-month, and prefixed dates (ABT, BEF, AFT)
-- **Census suggestions capped at plausible lifespan** - `glx analyze` and `glx coverage` no longer suggest census years beyond `birth_year + 100` when no death date is known. Previously, a person born ~1832 would get suggestions for 1940 and 1950 censuses. Fixes #130
-- **Burial events infer death for census suggestions** - When `died_on` is not set but a burial event exists, the burial date is used as the death upper bound for census suggestions. Prevents suggesting post-death censuses for persons with burial records but no explicit death date. Fixes #134
-- **1890 census annotated as mostly destroyed** - `glx coverage` and `glx analyze` now note that the 1890 US Census was mostly destroyed in a 1921 fire, so researchers don't waste time searching for non-existent records. Fixes #131
-- **Timeline includes person's own birth and death** - `glx timeline` now synthesizes birth/death entries from `born_on`/`died_on` person properties when no corresponding event entity exists. Previously these were omitted, making the person's own vital events the only events missing from their timeline. Fixes #142
 - **GEDCOM import now converts non-UTF-8 encodings** - Files with `CHAR ANSI` (Windows-1252), `CHAR cp1252`, `CHAR ANSEL`, or `CHAR ISO-8859-1` are now automatically converted to UTF-8 during import. Previously, non-ASCII characters (German umlauts, accented letters, copyright symbols) were stored as raw bytes, producing `!!binary` YAML tags, garbled event titles, and `{"type":"Buffer"}` place names in the web UI
 - **GEDCOM date import mangled when day-of-month matches level number** - Dates like `2 AUG 1944` (day 2) were imported as `2 DATE 2 AUG 1944` because the parser's value extraction matched the level number instead of the actual value. Fixed by walking past tokens positionally instead of using string search
 - **Date year extraction now handles 1–3 digit years** - Year extraction previously hardcoded a 4-digit assumption (`\d{4}`), silently ignoring dates like `800`, `476`, or `ABT 476`. All four extraction sites (query filtering, timeline sorting, temporal validation, event titles) now support 1–4 digit years. Day-of-month values (e.g., `15` in `15 MAR 1850`) are correctly disambiguated. Timeline sort keys are zero-padded to 4 digits for proper chronological ordering. Fixes #108
@@ -97,9 +103,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx cite` command** - Generate formatted citation text from structured fields (source title, type, repository, URL, accessed date, locator), eliminating repetitive manual `citation_text` writing
 - **Added `--source` and `--citation` filters to `glx query assertions`** - Filter assertions by source or citation ID to find all claims derived from a specific source
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
-- **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
-- **Added `glx cluster` command** - FAN (Friends, Associates, Neighbors) club analysis for brickwall research. Cross-references census households, shared events, and place overlap to identify associates of a target person. Ranks associates by connection strength with compound scoring. Supports `--place`, `--before`, `--after` filters and `--json` output
-- **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
 
 #### Event Entity
 - **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Webb Household"). Auto-generated on GEDCOM import (e.g., "Birth of Robert Webb (1815)", "Marriage of John Smith and Jane Doe (1850)")

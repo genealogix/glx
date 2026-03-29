@@ -184,7 +184,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 ### 💬 Discussion & Q&A
 - [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Community conversations
-- [Discord Community](https://discord.gg/genealogix) - Real-time chat and support
+- [Discord Community](https://genealogix.io/discord) - Real-time chat and support
 - [Mailing List](https://groups.google.com/g/genealogix) - Email discussions
 
 ### 📚 Documentation & Learning
