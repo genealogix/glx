@@ -129,18 +129,21 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = srcFile.Close() }()
+	defer srcFile.Close()
 
 	dst = filepath.Clean(dst)
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = dstFile.Close() }()
 
-	_, err = io.Copy(dstFile, srcFile)
+	_, copyErr := io.Copy(dstFile, srcFile)
+	closeErr := dstFile.Close()
 
-	return err
+	if copyErr != nil {
+		return copyErr
+	}
+	return closeErr
 }
 
 // decodeGEDCOMBlob decodes GEDCOM 5.5.1 BLOB-encoded text to raw bytes.
