@@ -16,15 +16,17 @@ Run `git tag --sort=-v:refname | head -1` to get the most recent release tag. Co
 
 ### 2. Fix Entries Added to Released Sections
 
-Identify the second `## [version]` section (the one immediately after the latest). This should correspond to the most recent release tag.
+Find the changelog section that matches the latest release tag. Do NOT assume it is the second section — there may be intermediate unreleased versions between the latest section and the tagged one. Search all `## [version]` headers to find the one whose version matches the latest tag.
 
-Run `git show <tag>:CHANGELOG.md` (e.g., `git show v0.0.0-beta.7:CHANGELOG.md`) to get the changelog as it existed at that release. Extract the matching version section from both the tagged version and the current file. Diff them (ignoring the date-line change from `Unreleased` to a date, which is expected).
+Run `git show <tag>:CHANGELOG.md` (e.g., `git show v0.0.0-beta.8:CHANGELOG.md`) to get the changelog as it existed at that release. Extract the matching version section from both the tagged version and the current file. Diff them (ignoring the date-line change from `Unreleased` to a date, which is expected).
 
-**If the previous section has new entries that weren't in the tagged release, move them to the latest (unreleased) section.** Then restore the released section to match the tagged version exactly (except the date). This is a common issue when agentic editing adds entries to the wrong section. After moving, merge the relocated entries into the appropriate subsections (Added/Changed/Fixed/Removed) of the latest version, following the same deduplication and ordering rules.
+**If the released section has new entries that weren't in the tagged release, move them to the latest (unreleased) section.** Then restore the released section to match the tagged version exactly (except the date). This is a common issue when agentic editing adds entries to the wrong section. After moving, merge the relocated entries into the appropriate subsections (Added/Changed/Fixed/Removed) of the latest version, following the same deduplication and ordering rules.
+
+If there are sections between the latest and the tagged section that have no corresponding tag, flag this for the user — they may need to be consolidated or tagged.
 
 ### 3. Update the Date on the Latest Version
 
-If the latest section header says `- Unreleased` (e.g., `## [0.0.0-beta.8] - Unreleased`), update it to today's date (e.g., `## [0.0.0-beta.8] - 2026-03-15`). This keeps the date current as work progresses.
+If the latest section header does not already have a date in `YYYY-MM-DD` format (e.g., `## [0.0.0-beta.9]` or `## [0.0.0-beta.9] - Unreleased`), update it to today's date (e.g., `## [0.0.0-beta.9] - 2026-03-29`). This keeps the date current as work progresses.
 
 ## Rules
 
