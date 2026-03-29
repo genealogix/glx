@@ -163,7 +163,7 @@ Verify examples would serialize/deserialize correctly with the Go code:
 
 ### 4.1 Read Type Definitions
 
-Read `glx/lib/types.go` and check that example entities would map correctly to Go structs:
+Read `go-glx/types.go` and check that example entities would map correctly to Go structs:
 
 - Field names match YAML tags in Go structs
 - Field types are compatible
@@ -248,10 +248,10 @@ Look for potential unmarshaling issues:
 ```
 ## Code Alignment
 
-### Person struct (lib/types.go)
+### Person struct (go-glx/types.go)
 ✅ Examples would deserialize correctly
 
-### Event struct (lib/types.go)
+### Event struct (go-glx/types.go)
 ⚠️ Example field `location` doesn't exist in Go struct (yaml:"place")
 ```
 
