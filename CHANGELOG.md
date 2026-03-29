@@ -749,8 +749,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Development container configuration for consistent environments
 - Pre-configured VitePress documentation site
 
-[0.0.0-beta.9]: https://github.com/genealogix/glx/compare/v0.0.0-beta.7...HEAD
-[0.0.0-beta.8]: https://github.com/genealogix/glx/compare/v0.0.0-beta.7...HEAD
+[0.0.0-beta.9]: https://github.com/genealogix/glx/compare/v0.0.0-beta.8...HEAD
+[0.0.0-beta.8]: https://github.com/genealogix/glx/compare/v0.0.0-beta.7...v0.0.0-beta.8
 [0.0.0-beta.7]: https://github.com/genealogix/glx/compare/v0.0.0-beta.6...v0.0.0-beta.7
 [0.0.0-beta.6]: https://github.com/genealogix/glx/compare/v0.0.0-beta.5...v0.0.0-beta.6
 [0.0.0-beta.5]: https://github.com/genealogix/glx/compare/v0.0.0-beta.4...v0.0.0-beta.5
