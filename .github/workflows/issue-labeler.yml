@@ -10,6 +10,7 @@ permissions:
 jobs:
   label-area:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Apply area label from template dropdown
         env:
