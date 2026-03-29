@@ -141,9 +141,14 @@ func copyFile(src, dst string) error {
 	closeErr := dstFile.Close()
 
 	if copyErr != nil {
+		os.Remove(dst) // clean up corrupted file
 		return copyErr
 	}
-	return closeErr
+	if closeErr != nil {
+		os.Remove(dst) // clean up potentially truncated file
+		return closeErr
+	}
+	return nil
 }
 
 // decodeGEDCOMBlob decodes GEDCOM 5.5.1 BLOB-encoded text to raw bytes.
