@@ -35,7 +35,7 @@ let errors = 0;
 // --- Step 1: Validate schemas against meta-schema ---
 console.log("Validating schemas against meta-schema...");
 
-const metaAjv = new Ajv({ strict: "log", allErrors: true });
+const metaAjv = new Ajv({ strict: true, allErrors: true });
 addFormats(metaAjv);
 const metaSchema = loadJSON(META_SCHEMA);
 const validateMeta = metaAjv.compile(metaSchema);
@@ -55,7 +55,7 @@ for (const file of [...globSchemas(SCHEMA_DIR), ...globSchemas(VOCAB_DIR)]) {
 // --- Step 2: Compile each schema individually ---
 console.log("\nCompiling schemas...");
 
-const compileAjv = new Ajv({ strict: "log", allErrors: true });
+const compileAjv = new Ajv({ strict: true, allErrors: true });
 addFormats(compileAjv);
 
 // Add meta-schema
@@ -79,7 +79,7 @@ for (const file of [...entitySchemas, ...vocabSchemas]) {
 }
 
 // --- Step 3: Compile glx-file.schema.json with all references ---
-const refAjv = new Ajv({ strict: "log", allErrors: true });
+const refAjv = new Ajv({ strict: true, allErrors: true });
 addFormats(refAjv);
 
 // Add all entity and vocabulary schemas as references
