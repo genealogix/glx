@@ -141,11 +141,11 @@ func copyFile(src, dst string) error {
 	closeErr := dstFile.Close()
 
 	if copyErr != nil {
-		os.Remove(dst) // clean up corrupted file
+		_ = os.Remove(dst) // best-effort cleanup of corrupted file
 		return copyErr
 	}
 	if closeErr != nil {
-		os.Remove(dst) // clean up potentially truncated file
+		_ = os.Remove(dst) // best-effort cleanup of truncated file
 		return closeErr
 	}
 	return nil
