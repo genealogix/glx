@@ -59,7 +59,7 @@ Compare `specification/4-entity-types/vocabularies.md` and `specification/5-stan
 For each vocabulary schema, verify:
 - Schema structure matches the vocabulary format documented in `vocabularies.md` (label, description, gedcom, fields, etc.)
 - Required fields in the schema match what the spec says is required for vocabulary entries
-- Property definition schemas enforce `value_type`/`reference_type`/`vocabulary_type` mutual exclusivity per spec
+- For property vocabulary schemas specifically, property definition schemas enforce `value_type`/`reference_type`/`vocabulary_type` mutual exclusivity per spec
 - All vocabulary `.glx` template files validate against their corresponding schema
 
 ## What to Check
