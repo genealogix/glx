@@ -47,6 +47,21 @@ Analyze all entity types and compare:
   - Entity ID pattern (`^[a-zA-Z0-9-]{1,64}$`) matches spec
   - Vocabulary key pattern matches spec
 
+### Vocabulary Schemas
+Compare `specification/4-entity-types/vocabularies.md` and `specification/5-standard-vocabularies/*.glx` against `specification/schema/v1/vocabularies/*.schema.json`:
+
+**Type vocabularies** (9 schemas):
+- event-types, relationship-types, place-types, source-types, media-types, repository-types, confidence-levels, participant-roles, gender-types
+
+**Property vocabularies** (8 schemas):
+- person-properties, event-properties, relationship-properties, place-properties, media-properties, repository-properties, source-properties, citation-properties
+
+For each vocabulary schema, verify:
+- Schema structure matches the vocabulary format documented in `vocabularies.md` (label, description, gedcom, fields, etc.)
+- Required fields in the schema match what the spec says is required for vocabulary entries
+- For property vocabulary schemas specifically, property definition schemas enforce `value_type`/`reference_type`/`vocabulary_type` mutual exclusivity per spec
+- All vocabulary `.glx` template files validate against their corresponding schema
+
 ## What to Check
 
 For each entity type, verify:
@@ -83,6 +98,30 @@ For each entity type, verify:
 All top-level entity schemas and the archive root in `glx-file.schema.json` set `additionalProperties: false` on the entity objects. Some nested map fields (e.g., properties maps) intentionally use `additionalProperties: true` to allow arbitrary keys. For fields covered by `additionalProperties: false`, drift direction is critical:
 - **Spec documents a field, schema missing it** → **CRITICAL** — `glx validate` will reject valid archives using that field (data loss risk)
 - **Schema has a field, spec doesn't document it** → **MAJOR** — undocumented but functional, no data loss
+
+### 8. `$ref` Resolution
+- Verify all `$ref` values in schemas point to files that actually exist (e.g., `"$ref": "person.schema.json"`, `"$ref": "vocabularies/event-types.schema.json"`)
+- Check for orphaned schemas — schema files with no `$ref` pointing to them and no corresponding spec section
+
+### 9. File-Level Existence
+- Every entity type documented in the spec should have a corresponding schema file
+- Every schema file should have a corresponding spec section
+- Every vocabulary `.glx` file should have a corresponding vocabulary schema
+- Flag any mismatches in either direction
+
+### 10. Special Focus Areas
+These patterns are known to be complex and drift-prone:
+- **Assertion mutual exclusivity** — `allOf`/`anyOf`/`not` constraints enforcing that `property`/`value` and `participant` are mutually exclusive
+- **Participant object** — shared nested structure used by Event, Relationship, and Assertion; must stay consistent across all three schemas
+- **Temporal property structure** — `value`/`date` object pattern for properties that change over time
+- **Evidence requirement** — at least one of `citations`, `sources`, or `media` required on assertions
+- **Generic `properties` field** — `additionalProperties: true` on entity properties maps (intentional, not drift)
+
+## Cross-References
+
+- If drift is found in a schema, it likely also affects Go code — see `/check-code-drift` for downstream impact
+- For specification-internal issues (contradictions, ambiguity), use `/check-spec` instead
+- Schema-related issues found by `/check-spec` should be redirected here
 
 ## Output Format
 
@@ -130,7 +169,7 @@ At the end, provide:
 ## Notes
 
 - **Specification is the source of truth** - schemas should be updated to match it
-- Be thorough but practical - minor wording differences in descriptions are acceptable
-- Focus on structural and semantic differences that could cause confusion or validation issues
+- Be thorough but practical - focus on structural and semantic differences that could cause confusion or validation issues
 - If a field is marked as "required" but has a complex `anyOf` constraint, document this clearly
 - Check both directions: specification → schema (missing in schema) AND schema → specification (undocumented in spec)
+- **Description comparison guidance**: Acceptable differences include minor rewording, added examples, or extra detail in the schema. Flag differences where the schema description contradicts the spec, omits a key constraint, or describes different behavior
