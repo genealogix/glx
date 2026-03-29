@@ -184,7 +184,7 @@ Or more commonly, citations are referenced by ID from assertions.
 ## Validation Rules
 
 - Source ID must reference an existing Source entity
-- Properties should follow the [citation_properties vocabulary](../5-standard-vocabularies/README#citation-properties)
+- Properties should follow the [citation properties vocabulary](vocabularies#citation-properties-vocabulary)
 - Text transcriptions should accurately represent source material
 - Repository, if specified, must exist
 

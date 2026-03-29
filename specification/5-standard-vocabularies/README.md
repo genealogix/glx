@@ -140,7 +140,7 @@ Defines controlled values for the `gender` person property (male, female, unknow
   title="vocabularies/gender-types.glx"
 />
 
-**View Source:** [gender-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/gender-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person) | [Vocabularies Specification](../4-entity-types/vocabularies#vocabulary-constrained-properties)
+**View Source:** [gender-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/gender-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person) | [Vocabularies Specification](../4-entity-types/vocabularies#property-definition-structure)
 
 ---
 

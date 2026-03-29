@@ -260,7 +260,7 @@ properties:
 **Key Points:**
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
-- The `gender` property is constrained by the [gender types vocabulary](vocabularies#vocabulary-constrained-properties) — out-of-vocabulary values produce a warning
+- The `gender` property is constrained by the [gender types vocabulary](vocabularies#property-definition-structure) — out-of-vocabulary values produce a warning
 - Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts#temporal-properties)
 - Custom properties can be added by extending the vocabulary
 - Whether a person is living or deceased is implied by the presence/absence of `died_on`
