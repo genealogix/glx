@@ -30,7 +30,3 @@ jobs:
             perf
             ci
           requireScope: false
-          subjectPattern: ^[A-Z].+$
-          subjectPatternError: |
-            The subject "{subject}" must start with an uppercase letter.
-            Example: "feat: Add person search command"
