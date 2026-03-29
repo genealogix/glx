@@ -49,19 +49,23 @@ General unknown properties remain warnings (no change to existing behavior for o
 
 ### 3. Constants
 
-**Remove from `go-glx/constants.go`:**
-- `PersonPropertyBornOn`
-- `PersonPropertyBornAt`
-- `PersonPropertyDiedOn`
-- `PersonPropertyDiedAt`
+**Rename in `go-glx/constants.go`** (not remove — validation needs them):
+- `PersonPropertyBornOn` → `DeprecatedPropertyBornOn`
+- `PersonPropertyBornAt` → `DeprecatedPropertyBornAt`
+- `PersonPropertyDiedOn` → `DeprecatedPropertyDiedOn`
+- `PersonPropertyDiedAt` → `DeprecatedPropertyDiedAt`
+
+These are used by the validation banned-property check (section 2) and the migration tool (section 8). No magic strings.
 
 ### 4. GEDCOM Importer
 
 **File**: `go-glx/gedcom_individual.go`
 
-Remove the block (~lines 297-311) that sets person properties and creates property assertions for birth/death. The importer already creates full Event entities with date, place, and participants — that's sufficient.
+Remove the block (~lines 297-311) that sets person properties for birth/death.
 
-**Assertions**: The importer currently creates property assertions for `born_on`/`born_at`/`died_on`/`died_at`. These will no longer be created. Event-level assertions (if they exist) are unaffected.
+**Evidence chain**: The importer currently creates property assertions with `Subject: {Person: personID}` and `Property: "born_on"` etc. These must be converted to event assertions instead — `Subject: {Event: eventID}` pointing at the birth/death event's `date` or `place` property. The same source/citation evidence is preserved, just attached to the event rather than the removed person property.
+
+This is not optional — the evidence chain must not be lost.
 
 ### 5. CLI Tool Updates
 
@@ -113,13 +117,14 @@ Assertions that reference `born_on`/`born_at` as the `property` field need to be
 
 **New CLI command**: `glx migrate`
 
-Reads an archive, performs the following for each person:
+Reads an archive, performs the following for each person. **This must be zero data loss — removing redundancy, not discarding information.**
 
-1. If `born_on` or `born_at` exists and no birth event exists for this person: create a birth Event entity with the date and/or place from the properties, with the person as principal participant
-2. If `died_on` or `died_at` exists and no death event exists for this person: same for death
-3. If birth/death events already exist (the common case from GEDCOM import): just remove the properties — the data is already in the events
-4. Remove `born_on`, `born_at`, `died_on`, `died_at` from the person's properties
-5. Remove or update any assertions that reference these properties
+For each person with `born_on`/`born_at`/`died_on`/`died_at` properties:
+
+1. **No existing birth/death event**: Create a birth/death Event entity with the date and/or place from the properties, with the person as principal participant
+2. **Existing birth/death event**: Merge property data into the event — if the event is missing a date or place that the property has, add it to the event. Do not overwrite existing event data.
+3. Remove `born_on`, `born_at`, `died_on`, `died_at` from the person's properties
+4. Convert property assertions (`Subject: {Person: id}, Property: "born_on"` etc.) to event assertions (`Subject: {Event: id}`) pointing at the corresponding event property. Preserve all source/citation references.
 
 **Output**: Writes the migrated archive. Reports what was changed.
 
