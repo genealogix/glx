@@ -188,8 +188,12 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 		return nil
 	}
 
-	// Save
+	// Save — for multi-file, clear old entity files first to avoid stale
+	// duplicates (serializer generates new random filenames)
 	if destIsDir {
+		if err := clearEntityFiles(destPath); err != nil {
+			return fmt.Errorf("failed to clear old entity files: %w", err)
+		}
 		return writeMultiFileArchive(destPath, dest, false)
 	}
 	return writeSingleFileArchive(destPath, dest, false)

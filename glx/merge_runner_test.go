@@ -92,3 +92,44 @@ func TestMergeArchives_EmptySource(t *testing.T) {
 	assert.Equal(t, 0, result.TotalNew())
 	assert.Len(t, dest.Persons, 1)
 }
+
+func TestMergeArchives_DiskRoundTrip(t *testing.T) {
+	// Create temp directories for source and destination archives
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	// Initialize dest with one person
+	destSerializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := destSerializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	// Initialize src with a different person
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-b": {Properties: map[string]any{"name": "Person B"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := destSerializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	// Merge via CLI function
+	err = mergeArchives(srcDir, destDir, false)
+	require.NoError(t, err)
+
+	// Reload and verify no duplicates
+	reloaded, dupes, err := LoadArchiveWithOptions(destDir, false)
+	require.NoError(t, err)
+	assert.Empty(t, dupes, "reloaded archive should have no duplicates")
+	assert.Len(t, reloaded.Persons, 2, "should have both persons after merge")
+	assert.Contains(t, reloaded.Persons, "person-a")
+	assert.Contains(t, reloaded.Persons, "person-b")
+}
