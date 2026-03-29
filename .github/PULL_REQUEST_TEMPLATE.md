@@ -1,5 +1,6 @@
 <!--
   PR title must follow conventional commits: type: Description
+  Description must start with an uppercase letter.
   Examples: feat: Add person search, fix: Handle nil map in merge
   Valid types: feat, fix, docs, chore, refactor, test, perf, ci
 -->
