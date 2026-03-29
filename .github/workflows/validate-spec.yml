@@ -65,17 +65,12 @@ jobs:
       
       - name: Run Go Tests
         run: |
-          # Run all tests including slow/large file tests
-          # (TestGEDCOM_ImportLargeFiles tests habsburg.ged with 34,020 persons)
-          # Use -timeout to prevent hanging tests (default 10m)
-          go test ./glx/... -v -timeout 15m
+          # Run all tests for both CLI and core library packages
+          # Includes slow/large file tests (habsburg.ged with 34,020 persons)
+          go test ./glx/... ./go-glx/... -v -timeout 15m
       
       - name: Build glx CLI
         run: |
+          mkdir -p bin
           go build -o bin/glx ./glx
-      
-      - name: Run Conformance Tests
-        run: |
-          # Conformance tests moved to Go tests - glx/tests directory removed
-          echo "Conformance tests now in go test ./glx/..."
 
