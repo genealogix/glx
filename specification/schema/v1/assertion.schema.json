@@ -4,34 +4,112 @@
   "title": "Assertion",
   "description": "A source-backed conclusion about an entity. ID comes from the map key in the parent structure.",
   "type": "object",
-  "required": ["subject"],
+  "required": [
+    "subject"
+  ],
   "allOf": [
     {
       "description": "Must have evidence - at least one of sources, citations, or media",
       "anyOf": [
-        { "required": ["sources"] },
-        { "required": ["citations"] },
-        { "required": ["media"] }
+        {
+          "required": [
+            "sources"
+          ],
+          "properties": {
+            "sources": {
+              "type": "array"
+            }
+          }
+        },
+        {
+          "required": [
+            "citations"
+          ],
+          "properties": {
+            "citations": {
+              "type": "array"
+            }
+          }
+        },
+        {
+          "required": [
+            "media"
+          ],
+          "properties": {
+            "media": {
+              "type": "array"
+            }
+          }
+        }
       ]
     },
     {
       "description": "Cannot have both property and participant",
       "not": {
-        "required": ["property", "participant"]
+        "required": [
+          "property",
+          "participant"
+        ],
+        "properties": {
+          "property": {
+            "type": "string"
+          },
+          "participant": {
+            "type": "object"
+          }
+        }
       }
     },
     {
       "description": "Cannot have both value and participant",
       "not": {
-        "required": ["value", "participant"]
+        "required": [
+          "value",
+          "participant"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "participant": {
+            "type": "object"
+          }
+        }
       }
     },
     {
       "description": "value is required when property is present, and vice versa",
-      "if": { "required": ["property"] },
-      "then": { "required": ["value"] },
+      "if": {
+        "required": [
+          "property"
+        ],
+        "properties": {
+          "property": {
+            "type": "string"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
       "else": {
-        "not": { "required": ["value"] }
+        "not": {
+          "required": [
+            "value"
+          ],
+          "properties": {
+            "value": {
+              "type": "string"
+            }
+          }
+        }
       }
     }
   ],
@@ -48,7 +126,9 @@
               "description": "Reference to a Person entity"
             }
           },
-          "required": ["person"],
+          "required": [
+            "person"
+          ],
           "additionalProperties": false
         },
         {
@@ -60,7 +140,9 @@
               "description": "Reference to an Event entity"
             }
           },
-          "required": ["event"],
+          "required": [
+            "event"
+          ],
           "additionalProperties": false
         },
         {
@@ -72,7 +154,9 @@
               "description": "Reference to a Relationship entity"
             }
           },
-          "required": ["relationship"],
+          "required": [
+            "relationship"
+          ],
           "additionalProperties": false
         },
         {
@@ -84,7 +168,9 @@
               "description": "Reference to a Place entity"
             }
           },
-          "required": ["place"],
+          "required": [
+            "place"
+          ],
           "additionalProperties": false
         }
       ]
@@ -105,7 +191,9 @@
     "participant": {
       "type": "object",
       "description": "Participant in an event or relationship (mutually exclusive with property/value)",
-      "required": ["person"],
+      "required": [
+        "person"
+      ],
       "properties": {
         "person": {
           "type": "string",
