@@ -436,7 +436,7 @@ When adding a new CLI command, update all four documentation locations:
 ### Changelog
 
 - Always update `CHANGELOG.md` when making user-facing changes
-- Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.6]`)
+- Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.9]`)
 - Use appropriate subsections: Added, Changed, Fixed, Removed
 - Group related changes under descriptive headers (e.g., `#### Citation Entity`)
 - **Feature branch changelog hygiene**: Feature branches often have stale/mangled changelogs. To fix: `git checkout main -- CHANGELOG.md`, then add the branch's entries to the current unreleased section. Never try to merge a diverged changelog — restore and re-add.
