@@ -224,6 +224,8 @@ media:
         height: 200
 ```
 
+**See [Vocabularies - Media Properties](vocabularies#media-properties-vocabulary) for the full vocabulary definition.**
+
 ## Usage Patterns
 
 ### Scanned Document

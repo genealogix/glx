@@ -71,7 +71,7 @@ The following are standard properties from the default vocabulary; archives can 
 | `original_place_name` | string | Verbatim place name from the source before normalization to a place entity (e.g., "The Town Of Oakdale" vs the normalized place reference) |
 | `external_ids` | string (multi) | Identifiers from external systems for the specific cited record (e.g., FamilySearch ARK, Ancestry record ID) |
 
-**See Also:** [Citation Properties Vocabulary](../5-standard-vocabularies/README#citation-properties)
+**See [Vocabularies - Citation Properties](vocabularies#citation-properties-vocabulary) for the full vocabulary definition.**
 
 ## Usage Patterns
 
