@@ -1,14 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)",
+      "Bash(go build:*)",
       "Bash(go test:*)",
-      "Bash(tree:*)",
+      "Bash(go vet:*)",
       "Bash(golangci-lint config verify:*)",
       "Bash(golangci-lint run:*)",
-      "Bash(./workspaces/glx/bin/glx validate:*)",
+      "Bash(./bin/glx:*)",
+      "Bash(make build:*)",
+      "Bash(make test:*)",
+      "Bash(make test-verbose:*)",
+      "Bash(make lint:*)",
       "Bash(make check-schemas:*)",
-      "Bash(make:*)"
+      "Bash(tree:*)"
     ]
   }
 }
