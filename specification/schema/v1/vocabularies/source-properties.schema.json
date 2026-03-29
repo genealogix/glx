@@ -4,7 +4,9 @@
   "title": "Source Properties Vocabulary",
   "description": "Defines the standard and custom properties available for source entities",
   "type": "object",
-  "required": ["source_properties"],
+  "required": [
+    "source_properties"
+  ],
   "properties": {
     "source_properties": {
       "type": "object",
@@ -19,7 +21,9 @@
     "PropertyDefinition": {
       "type": "object",
       "description": "Definition of a single property",
-      "required": ["label"],
+      "required": [
+        "label"
+      ],
       "properties": {
         "label": {
           "type": "string",
@@ -32,12 +36,26 @@
         },
         "value_type": {
           "type": "string",
-          "enum": ["string", "date", "integer", "boolean"],
+          "enum": [
+            "string",
+            "date",
+            "integer",
+            "boolean"
+          ],
           "description": "Data type for non-reference properties"
         },
         "reference_type": {
           "type": "string",
-          "enum": ["persons", "places", "events", "relationships", "sources", "citations", "repositories", "media"],
+          "enum": [
+            "persons",
+            "places",
+            "events",
+            "relationships",
+            "sources",
+            "citations",
+            "repositories",
+            "media"
+          ],
           "description": "Entity type for reference properties"
         },
         "vocabulary_type": {
@@ -65,24 +83,66 @@
         }
       },
       "anyOf": [
-        { "required": ["value_type"] },
-        { "required": ["reference_type"] },
-        { "required": ["vocabulary_type"] }
+        {
+          "required": [
+            "value_type"
+          ],
+          "properties": {
+            "value_type": {}
+          }
+        },
+        {
+          "required": [
+            "reference_type"
+          ],
+          "properties": {
+            "reference_type": {}
+          }
+        },
+        {
+          "required": [
+            "vocabulary_type"
+          ],
+          "properties": {
+            "vocabulary_type": {}
+          }
+        }
       ],
       "allOf": [
         {
           "not": {
-            "required": ["value_type", "reference_type"]
+            "required": [
+              "value_type",
+              "reference_type"
+            ],
+            "properties": {
+              "value_type": {},
+              "reference_type": {}
+            }
           }
         },
         {
           "not": {
-            "required": ["value_type", "vocabulary_type"]
+            "required": [
+              "value_type",
+              "vocabulary_type"
+            ],
+            "properties": {
+              "value_type": {},
+              "vocabulary_type": {}
+            }
           }
         },
         {
           "not": {
-            "required": ["reference_type", "vocabulary_type"]
+            "required": [
+              "reference_type",
+              "vocabulary_type"
+            ],
+            "properties": {
+              "reference_type": {},
+              "vocabulary_type": {}
+            }
           }
         }
       ]
@@ -90,7 +150,9 @@
     "FieldDefinition": {
       "type": "object",
       "description": "Definition of a field within a structured property",
-      "required": ["label"],
+      "required": [
+        "label"
+      ],
       "properties": {
         "label": {
           "type": "string",
