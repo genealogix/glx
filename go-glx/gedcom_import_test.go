@@ -1375,3 +1375,34 @@ func TestImportHeadNote_StoredInMetadata(t *testing.T) {
 	assert.Equal(t, "This file was exported from MyApp.", glxFile.ImportMetadata.Notes,
 		"HEAD-level NOTE should be stored in ImportMetadata.Notes")
 }
+
+// TestImport_PropertiesMapsNeverNil verifies that empty Properties maps are
+// initialized (not nil) after import, preventing nil map panics on write.
+func TestImport_PropertiesMapsNeverNil(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL A Source With No Properties
+0 @O1@ OBJE
+1 FILE photo.jpg
+2 FORM JPEG
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	require.Len(t, glxFile.Sources, 1, "expected 1 source entity from GEDCOM")
+	require.Len(t, glxFile.Media, 1, "expected 1 media entity from GEDCOM")
+
+	for sourceID, source := range glxFile.Sources {
+		assert.NotNil(t, source.Properties,
+			"Source %s Properties should be empty map, not nil", sourceID)
+	}
+
+	for mediaID, media := range glxFile.Media {
+		assert.NotNil(t, media.Properties,
+			"Media %s Properties should be empty map, not nil", mediaID)
+	}
+}
