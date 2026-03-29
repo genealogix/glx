@@ -80,7 +80,7 @@ For each entity type, verify:
 - Check that the pattern `^[a-zA-Z0-9-]{1,64}$` is consistently applied where needed
 
 ### 7. additionalProperties Severity
-All entity schemas and `glx-file.schema.json` use `additionalProperties: false`. This makes drift direction critical:
+All top-level entity schemas and the archive root in `glx-file.schema.json` set `additionalProperties: false` on the entity objects. Some nested map fields (e.g., properties maps) intentionally use `additionalProperties: true` to allow arbitrary keys. For fields covered by `additionalProperties: false`, drift direction is critical:
 - **Spec documents a field, schema missing it** → **CRITICAL** — `glx validate` will reject valid archives using that field (data loss risk)
 - **Schema has a field, spec doesn't document it** → **MAJOR** — undocumented but functional, no data loss
 
