@@ -49,7 +49,7 @@ Core entities:
 
 In addition to **go-glx/types.go**, also check:
 - **go-glx/validation.go** - Contains validation logic and constraint checking
-- Any other lib files with validation functions
+- Any other `go-glx/*.go` files with validation functions (e.g., `validation_temporal.go`)
 
 ## What to Check
 
