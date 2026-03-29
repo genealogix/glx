@@ -131,6 +131,19 @@ Defines categories of institutions that hold genealogical sources (archives, lib
 
 ---
 
+### Gender Types
+
+Defines controlled values for the `gender` person property (male, female, unknown, other). Gender values are constrained by this vocabulary via the `vocabulary_type` mechanism — out-of-vocabulary values produce a validation warning.
+
+<YamlFile
+  :content="vocabularies['gender-types']"
+  title="vocabularies/gender-types.glx"
+/>
+
+**View Source:** [gender-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/gender-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person) | [Vocabularies Specification](../4-entity-types/vocabularies#property-definition-structure)
+
+---
+
 ## Property Vocabularies
 
 Property vocabularies define the custom properties available for each entity type. These enable flexible, extensible data modeling for person, event, relationship, and place entities.

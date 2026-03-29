@@ -53,6 +53,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `media-types.glx` | Photo, document, audio, etc. |
 | `participant-roles.glx` | Subject, witness, godparent, etc. |
 | `confidence-levels.glx` | High, medium, low, disputed |
+| `gender-types.glx` | Male, female, unknown, other |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
 | `relationship-properties.glx` | Relationship properties |

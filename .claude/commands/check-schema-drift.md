@@ -26,8 +26,9 @@ Analyze all entity types and compare:
 1. **specification/4-entity-types/*.md** - The source of truth (human-readable specification)
 2. **specification/schema/v1/*.schema.json** - Derived schemas (machine-readable)
 
-## Entity Types to Check
+## Schemas to Check
 
+### Entity Schemas
 - assertion
 - citation
 - event
@@ -37,6 +38,14 @@ Analyze all entity types and compare:
 - relationship
 - repository
 - source
+
+### Top-Level Archive Schema
+- `glx-file.schema.json` — the root schema defining overall GLX file structure, compare against `specification/3-archive-organization.md`:
+  - `metadata` object fields match spec
+  - All 9 entity map sections are present with correct `patternProperties` references
+  - All vocabulary map sections are present
+  - Entity ID pattern (`^[a-zA-Z0-9-]{1,64}$`) matches spec
+  - Vocabulary key pattern matches spec
 
 ## What to Check
 
@@ -69,6 +78,11 @@ For each entity type, verify:
 ### 6. Entity ID Patterns
 - Verify entity ID pattern constraints match between docs and schemas
 - Check that the pattern `^[a-zA-Z0-9-]{1,64}$` is consistently applied where needed
+
+### 7. additionalProperties Severity
+All top-level entity schemas and the archive root in `glx-file.schema.json` set `additionalProperties: false` on the entity objects. Some nested map fields (e.g., properties maps) intentionally use `additionalProperties: true` to allow arbitrary keys. For fields covered by `additionalProperties: false`, drift direction is critical:
+- **Spec documents a field, schema missing it** → **CRITICAL** — `glx validate` will reject valid archives using that field (data loss risk)
+- **Schema has a field, spec doesn't document it** → **MAJOR** — undocumented but functional, no data loss
 
 ## Output Format
 

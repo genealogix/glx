@@ -12,6 +12,7 @@ Analyze all specification files in the `specification/` directory:
 - `1-introduction.md` - Project overview and purpose
 - `2-core-concepts.md` - Core GLX concepts
 - `3-archive-organization.md` - How GLX archives are structured
+- `6-glossary.md` - Key terms and definitions with cross-references
 - `README.md` - Specification index
 
 ### Entity Type Specifications
@@ -20,7 +21,7 @@ Analyze all specification files in the `specification/` directory:
 
 ### Standard Vocabularies
 - `5-standard-vocabularies/` - Controlled vocabulary definitions (.glx files)
-  - confidence-levels.glx, event-types.glx, event-properties.glx, media-types.glx, participant-roles.glx, person-properties.glx, place-types.glx, place-properties.glx, relationship-types.glx, relationship-properties.glx, repository-types.glx, source-types.glx
+  - citation-properties.glx, confidence-levels.glx, event-properties.glx, event-types.glx, gender-types.glx, media-properties.glx, media-types.glx, participant-roles.glx, person-properties.glx, place-properties.glx, place-types.glx, relationship-properties.glx, relationship-types.glx, repository-properties.glx, repository-types.glx, source-properties.glx, source-types.glx
 
 **Note**: Schema validation is handled by `/check-schema-drift` - this command focuses on internal specification consistency only.
 
@@ -92,7 +93,15 @@ Review standard vocabularies for problems:
 - Vocabulary structure inconsistent with documented format
 - Terms in examples not in standard vocabularies
 
-### 9. Version Consistency
+### 9. Glossary Consistency
+
+For each term defined in `6-glossary.md`:
+- Definition matches how the term is actually used in entity type specs
+- "See Also" cross-references point to existing sections/anchors
+- All key terms used in entity specs have glossary entries
+- No stale definitions referencing removed or renamed features
+
+### 10. Version Consistency
 
 Check version-related issues:
 - Version numbers inconsistent across files
@@ -169,13 +178,14 @@ At the end, provide:
 - If examples use vocabulary terms, verify those terms exist in vocabulary files
 - Schema-related issues should be reported via `/check-schema-drift` instead
 
-## Cross-Reference with todo.md
+## Cross-Reference with Known Issues
 
-**IMPORTANT**: Before finalizing your report, read `todo.md` and exclude any issues that are already tracked there. The todo.md file is the canonical list of known issues.
+**IMPORTANT**: Before finalizing your report, check both `todo.md` and GitHub issues to exclude anything already tracked.
 
 When you find an issue:
-1. Check if it's already in todo.md under any section (Documentation, Type System, GEDCOM Import, Validation, etc.)
-2. If already tracked: Do NOT include it in your report
-3. If NOT tracked: Include it in your report with full details
+1. Check if it's already in `todo.md` under any section
+2. Run `gh issue list --state open --limit 100 --json number,title` and check for title overlap
+3. If already tracked in either location: Do NOT include it in your report
+4. If NOT tracked: Include it in your report with full details
 
 This prevents duplicate tracking and keeps the audit focused on newly discovered issues.
