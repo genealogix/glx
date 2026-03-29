@@ -62,27 +62,8 @@ test-coverage: ## Run tests with coverage report
 	@go tool cover -func=coverage/coverage.out | tail -n 1
 
 ## Specification
-AJV := npx --prefix specification ajv
-
 check-schemas: ## Validate JSON schema files
-	@echo "Validating schemas against meta-schema..."
-	@$(AJV) validate -s specification/schema/meta/schema.schema.json -d "specification/schema/v1/*.schema.json" -c ajv-formats
-	@$(AJV) validate -s specification/schema/meta/schema.schema.json -d "specification/schema/v1/vocabularies/*.schema.json" -c ajv-formats
-	@echo "Compiling schemas..."
-	@$(AJV) compile -s specification/schema/meta/schema.schema.json -c ajv-formats
-	@find specification/schema/v1 -name "*.schema.json" ! -name "glx-file.schema.json" -exec $(AJV) compile -s {} -c ajv-formats \;
-	@$(AJV) compile -s specification/schema/v1/glx-file.schema.json \
-		-r "specification/schema/v1/person.schema.json" \
-		-r "specification/schema/v1/event.schema.json" \
-		-r "specification/schema/v1/relationship.schema.json" \
-		-r "specification/schema/v1/place.schema.json" \
-		-r "specification/schema/v1/source.schema.json" \
-		-r "specification/schema/v1/citation.schema.json" \
-		-r "specification/schema/v1/repository.schema.json" \
-		-r "specification/schema/v1/assertion.schema.json" \
-		-r "specification/schema/v1/media.schema.json" \
-		-r "specification/schema/v1/vocabularies/*.schema.json" \
-		-c ajv-formats
+	@node specification/validate-schemas.mjs
 
 ## Release
 release-snapshot: ## Build cross-platform binaries locally (no publish)
