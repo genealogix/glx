@@ -749,3 +749,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Development container configuration for consistent environments
 - Pre-configured VitePress documentation site
 
+[0.0.0-beta.10]: https://github.com/genealogix/glx/compare/v0.0.0-beta.9...HEAD
+[0.0.0-beta.9]: https://github.com/genealogix/glx/compare/v0.0.0-beta.8...v0.0.0-beta.9
+[0.0.0-beta.8]: https://github.com/genealogix/glx/compare/v0.0.0-beta.7...v0.0.0-beta.8
+[0.0.0-beta.7]: https://github.com/genealogix/glx/compare/v0.0.0-beta.6...v0.0.0-beta.7
+[0.0.0-beta.6]: https://github.com/genealogix/glx/compare/v0.0.0-beta.5...v0.0.0-beta.6
+[0.0.0-beta.5]: https://github.com/genealogix/glx/compare/v0.0.0-beta.4...v0.0.0-beta.5
+[0.0.0-beta.4]: https://github.com/genealogix/glx/compare/v0.0.0-beta.3...v0.0.0-beta.4
+[0.0.0-beta.3]: https://github.com/genealogix/glx/compare/v0.0.0-beta.2...v0.0.0-beta.3
+[0.0.0-beta.2]: https://github.com/genealogix/glx/compare/v0.0.0-beta.1...v0.0.0-beta.2
+[0.0.0-beta.1]: https://github.com/genealogix/glx/compare/v0.0.0-beta.0...v0.0.0-beta.1
+[0.0.0-beta.0]: https://github.com/genealogix/glx/releases/tag/v0.0.0-beta.0
