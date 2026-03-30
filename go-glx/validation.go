@@ -484,15 +484,18 @@ func (glx *GLXFile) validateProperties(
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
-	// Always check for removed properties first, regardless of vocabulary presence.
-	for propName := range properties {
-		if msg, removed := removedProperties[propName]; removed {
-			result.Errors = append(result.Errors, ValidationError{
-				SourceType:  entityType,
-				SourceID:    entityID,
-				SourceField: "properties." + propName,
-				Message:     fmt.Sprintf("%s[%s]: property '%s' has been removed — %s. Run 'glx migrate' to convert.", entityType, entityID, propName, msg),
-			})
+	// Check for removed person properties first, regardless of vocabulary presence.
+	// Scoped to person entities — other entity types may legitimately use these names.
+	if entityType == EntityTypePersons {
+		for propName := range properties {
+			if msg, removed := removedProperties[propName]; removed {
+				result.Errors = append(result.Errors, ValidationError{
+					SourceType:  entityType,
+					SourceID:    entityID,
+					SourceField: "properties." + propName,
+					Message:     fmt.Sprintf("%s[%s]: property '%s' has been removed — %s. Run 'glx migrate' to convert.", entityType, entityID, propName, msg),
+				})
+			}
 		}
 	}
 	if len(properties) > 0 && len(propVocab) == 0 {

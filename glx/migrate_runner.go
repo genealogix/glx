@@ -200,10 +200,15 @@ func extractPropertyString(val any) string {
 		}
 	case []any:
 		if len(v) > 0 {
+			// List of maps: [{value: "1850"}]
 			if m, ok := v[0].(map[string]any); ok {
 				if s, ok := m["value"].(string); ok {
 					return s
 				}
+			}
+			// List of plain strings: ["1850"]
+			if s, ok := v[0].(string); ok {
+				return s
 			}
 		}
 	}
@@ -268,7 +273,11 @@ func migrateEventProperties(
 		return eventID, transferred, nil
 	}
 
-	// Create a new event.
+	// Only create a new event if at least one value was extracted.
+	if dateStr == "" && placeStr == "" {
+		return "", transferred, nil
+	}
+
 	newID, err := glxlib.GenerateRandomID()
 	if err != nil {
 		return "", transferred, fmt.Errorf("generating event ID: %w", err)
