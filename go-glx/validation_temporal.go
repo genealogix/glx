@@ -66,7 +66,7 @@ func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: EntityTypePersons,
 				SourceID:   id,
-				Field:      "death",
+				Field:      "death_event",
 				Message: fmt.Sprintf("%s[%s]: death year (%d) is before birth year (%d)",
 					EntityTypePersons, id, deathYear, birthYear),
 			})
