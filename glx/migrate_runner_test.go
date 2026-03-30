@@ -377,3 +377,65 @@ func TestMigrate_UnrecognizedShapePreservesProperty(t *testing.T) {
 	_, exists := archive.Persons["person-1"].Properties[glxlib.DeprecatedPropertyBornOn]
 	assert.True(t, exists, "unrecognized shape should be preserved")
 }
+
+func TestMigrate_UnrecognizedShapeWithExistingEvent(t *testing.T) {
+	// Edge case: person has an unrecognized property shape AND an existing
+	// event with an empty date. The property must NOT be deleted since the
+	// value couldn't be extracted and the event doesn't carry it either.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.DeprecatedPropertyBornOn: 12345,
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-1": {
+				Type: glxlib.EventTypeBirth,
+				// Date is empty — value would be lost if property is deleted
+				Participants: []glxlib.Participant{
+					{Person: "person-1", Role: glxlib.ParticipantRolePrincipal},
+				},
+			},
+		},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 0, report.PropertiesRemoved)
+	_, exists := archive.Persons["person-1"].Properties[glxlib.DeprecatedPropertyBornOn]
+	assert.True(t, exists, "unrecognized shape should be preserved when event date is empty")
+}
+
+func TestMigrate_UnrecognizedShapeWithPopulatedEvent(t *testing.T) {
+	// When an existing event already has a date, the property is safe to
+	// remove even if its shape is unrecognized — no data loss since the
+	// event already carries the value.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.DeprecatedPropertyBornOn: 12345,
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-1": {
+				Type: glxlib.EventTypeBirth,
+				Date: "1850-03-15",
+				Participants: []glxlib.Participant{
+					{Person: "person-1", Role: glxlib.ParticipantRolePrincipal},
+				},
+			},
+		},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, report.PropertiesRemoved)
+	_, exists := archive.Persons["person-1"].Properties[glxlib.DeprecatedPropertyBornOn]
+	assert.False(t, exists, "property safe to remove when event already has date")
+}

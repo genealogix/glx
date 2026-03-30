@@ -252,10 +252,17 @@ func migrateEventProperties(
 		if merged {
 			report.EventsMerged++
 		}
-		// Even if we didn't merge (event already had date/place), the data
-		// is already on the event so the property is safe to remove.
-		transferred.date = hasDate
-		transferred.place = hasPlace
+		// Safe to remove the property if either: the value was extracted and
+		// written, or the event already had data for that field. If the value
+		// had an unrecognized shape (extractPropertyString returned ""), only
+		// remove if the event already carries data — otherwise preserve the
+		// property to avoid silent data loss.
+		if hasDate {
+			transferred.date = dateStr != "" || existing.Date != ""
+		}
+		if hasPlace {
+			transferred.place = placeStr != "" || existing.PlaceID != ""
+		}
 		return eventID, transferred, nil
 	}
 
