@@ -170,6 +170,40 @@ func TestValidatePropertyWarnings(t *testing.T) {
 		assert.Contains(t, ve.Message, "has been removed")
 		assert.Contains(t, ve.Message, "use death events instead")
 	})
+
+	t.Run("removed property born_at", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{DeprecatedPropertyBornAt: "place-london"}},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"occupation": {ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		ve := result.Errors[0]
+		assert.Equal(t, "properties.born_at", ve.SourceField)
+		assert.Contains(t, ve.Message, "has been removed")
+		assert.Contains(t, ve.Message, "use birth events instead")
+	})
+
+	t.Run("removed property died_at", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{DeprecatedPropertyDiedAt: "place-london"}},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"occupation": {ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		ve := result.Errors[0]
+		assert.Equal(t, "properties.died_at", ve.SourceField)
+		assert.Contains(t, ve.Message, "has been removed")
+		assert.Contains(t, ve.Message, "use death events instead")
+	})
 }
 
 func TestValidateNestedStructReferences(t *testing.T) {

@@ -80,7 +80,7 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 
 		// Handle birth properties.
 		if hasBornOn || hasBornAt {
-			birthEventID, err := migrateEventProperties(
+			birthEventID, transferred, err := migrateEventProperties(
 				archive, personID, glxlib.EventTypeBirth,
 				bornOn, hasBornOn, bornAt, hasBornAt, report,
 			)
@@ -89,11 +89,20 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 			}
 			migrateAssertions(archive, personID, birthEventID,
 				glxlib.DeprecatedPropertyBornOn, glxlib.DeprecatedPropertyBornAt, report)
+			// Only delete properties whose values were successfully transferred.
+			if transferred.date {
+				delete(person.Properties, glxlib.DeprecatedPropertyBornOn)
+				report.PropertiesRemoved++
+			}
+			if transferred.place {
+				delete(person.Properties, glxlib.DeprecatedPropertyBornAt)
+				report.PropertiesRemoved++
+			}
 		}
 
 		// Handle death properties.
 		if hasDiedOn || hasDiedAt {
-			deathEventID, err := migrateEventProperties(
+			deathEventID, transferred, err := migrateEventProperties(
 				archive, personID, glxlib.EventTypeDeath,
 				diedOn, hasDiedOn, diedAt, hasDiedAt, report,
 			)
@@ -102,12 +111,12 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 			}
 			migrateAssertions(archive, personID, deathEventID,
 				glxlib.DeprecatedPropertyDiedOn, glxlib.DeprecatedPropertyDiedAt, report)
-		}
-
-		// Remove deprecated properties from the person.
-		for _, prop := range deprecatedProps {
-			if _, exists := person.Properties[prop]; exists {
-				delete(person.Properties, prop)
+			if transferred.date {
+				delete(person.Properties, glxlib.DeprecatedPropertyDiedOn)
+				report.PropertiesRemoved++
+			}
+			if transferred.place {
+				delete(person.Properties, glxlib.DeprecatedPropertyDiedAt)
 				report.PropertiesRemoved++
 			}
 		}
@@ -143,21 +152,30 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 			continue
 		}
 
-		eventID, _ := glxlib.FindPersonEvent(archive, personID, eventType)
+		eventID, event := glxlib.FindPersonEvent(archive, personID, eventType)
 		if eventID == "" {
-			// Create a minimal event so the assertion has a valid target.
+			// Create an event so the assertion has a valid target,
+			// populating date/place from the assertion value.
 			newID, err := glxlib.GenerateRandomID()
 			if err != nil {
 				return nil, fmt.Errorf("generating event ID for orphaned assertion: %w", err)
 			}
 			eventID = "event-" + newID
-			archive.Events[eventID] = &glxlib.Event{
+			event = &glxlib.Event{
 				Type: eventType,
 				Participants: []glxlib.Participant{
 					{Person: personID, Role: glxlib.ParticipantRolePrincipal},
 				},
 			}
+			archive.Events[eventID] = event
 			report.EventsCreated++
+		}
+		// Populate event fields from assertion value if empty.
+		if newProp == "date" && event.Date == "" && assertion.Value != "" {
+			event.Date = glxlib.DateString(assertion.Value)
+		}
+		if newProp == "place" && event.PlaceID == "" && assertion.Value != "" {
+			event.PlaceID = assertion.Value
 		}
 		assertion.Subject = glxlib.EntityRef{Event: eventID}
 		assertion.Property = newProp
@@ -167,42 +185,84 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 	return report, nil
 }
 
+// extractPropertyString extracts a string value from a property that may be
+// a plain string, a structured map with a "value" key, or a temporal list
+// where the first entry has a "value" key.
+func extractPropertyString(val any) string {
+	switch v := val.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if s, ok := v["value"].(string); ok {
+			return s
+		}
+	case []any:
+		if len(v) > 0 {
+			if m, ok := v[0].(map[string]any); ok {
+				if s, ok := m["value"].(string); ok {
+					return s
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// transferResult tracks which property values were successfully transferred.
+type transferResult struct {
+	date  bool
+	place bool
+}
+
 // migrateEventProperties creates or merges a birth/death event for a person.
-// Returns the event ID (existing or newly created).
+// Returns the event ID, which values were transferred, and any error.
 func migrateEventProperties(
 	archive *glxlib.GLXFile,
 	personID, eventType string,
 	dateVal any, hasDate bool,
 	placeVal any, hasPlace bool,
 	report *MigrateReport,
-) (string, error) {
+) (string, transferResult, error) {
+	var transferred transferResult
+
+	dateStr := ""
+	if hasDate {
+		dateStr = extractPropertyString(dateVal)
+		transferred.date = dateStr != ""
+	}
+	placeStr := ""
+	if hasPlace {
+		placeStr = extractPropertyString(placeVal)
+		transferred.place = placeStr != ""
+	}
+
 	eventID, existing := glxlib.FindPersonEvent(archive, personID, eventType)
 
 	if existing != nil {
 		// Merge: fill in missing fields only.
 		merged := false
-		if hasDate && existing.Date == "" {
-			if dateStr, ok := dateVal.(string); ok && dateStr != "" {
-				existing.Date = glxlib.DateString(dateStr)
-				merged = true
-			}
+		if dateStr != "" && existing.Date == "" {
+			existing.Date = glxlib.DateString(dateStr)
+			merged = true
 		}
-		if hasPlace && existing.PlaceID == "" {
-			if placeStr, ok := placeVal.(string); ok && placeStr != "" {
-				existing.PlaceID = placeStr
-				merged = true
-			}
+		if placeStr != "" && existing.PlaceID == "" {
+			existing.PlaceID = placeStr
+			merged = true
 		}
 		if merged {
 			report.EventsMerged++
 		}
-		return eventID, nil
+		// Even if we didn't merge (event already had date/place), the data
+		// is already on the event so the property is safe to remove.
+		transferred.date = hasDate
+		transferred.place = hasPlace
+		return eventID, transferred, nil
 	}
 
 	// Create a new event.
 	newID, err := glxlib.GenerateRandomID()
 	if err != nil {
-		return "", fmt.Errorf("generating event ID: %w", err)
+		return "", transferred, fmt.Errorf("generating event ID: %w", err)
 	}
 	eventID = "event-" + newID
 
@@ -212,22 +272,17 @@ func migrateEventProperties(
 			{Person: personID, Role: glxlib.ParticipantRolePrincipal},
 		},
 	}
-
-	if hasDate {
-		if dateStr, ok := dateVal.(string); ok && dateStr != "" {
-			event.Date = glxlib.DateString(dateStr)
-		}
+	if dateStr != "" {
+		event.Date = glxlib.DateString(dateStr)
 	}
-	if hasPlace {
-		if placeStr, ok := placeVal.(string); ok && placeStr != "" {
-			event.PlaceID = placeStr
-		}
+	if placeStr != "" {
+		event.PlaceID = placeStr
 	}
 
 	archive.Events[eventID] = event
 	report.EventsCreated++
 
-	return eventID, nil
+	return eventID, transferred, nil
 }
 
 // migrateAssertions converts assertions that reference deprecated person properties

@@ -319,3 +319,61 @@ func TestMigrate_BothBirthAndDeathProperties(t *testing.T) {
 	assert.True(t, birthFound, "birth event should exist")
 	assert.True(t, deathFound, "death event should exist")
 }
+
+func TestMigrate_StructuredPropertyShapes(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					// Map shape: {value: "..."}
+					glxlib.DeprecatedPropertyBornOn: map[string]any{"value": "1850-03-15"},
+					// List shape: [{value: "..."}]
+					glxlib.DeprecatedPropertyDiedOn: []any{map[string]any{"value": "1920-06-01"}},
+					// Map shape for place
+					glxlib.DeprecatedPropertyBornAt: map[string]any{"value": "place-leeds"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, report.EventsCreated)
+	assert.Equal(t, 3, report.PropertiesRemoved)
+
+	_, birthEvent := glxlib.FindPersonEvent(archive, "person-1", glxlib.EventTypeBirth)
+	require.NotNil(t, birthEvent)
+	assert.Equal(t, glxlib.DateString("1850-03-15"), birthEvent.Date)
+	assert.Equal(t, "place-leeds", birthEvent.PlaceID)
+
+	_, deathEvent := glxlib.FindPersonEvent(archive, "person-1", glxlib.EventTypeDeath)
+	require.NotNil(t, deathEvent)
+	assert.Equal(t, glxlib.DateString("1920-06-01"), deathEvent.Date)
+
+	// Properties should be removed
+	assert.Empty(t, archive.Persons["person-1"].Properties)
+}
+
+func TestMigrate_UnrecognizedShapePreservesProperty(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					// Unrecognized shape — not a string, map, or list
+					glxlib.DeprecatedPropertyBornOn: 12345,
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	// Property should NOT be removed since the value couldn't be transferred
+	assert.Equal(t, 0, report.PropertiesRemoved)
+	_, exists := archive.Persons["person-1"].Properties[glxlib.DeprecatedPropertyBornOn]
+	assert.True(t, exists, "unrecognized shape should be preserved")
+}

@@ -4,6 +4,9 @@ package glx
 // person is a principal participant (not a witness, informant, or other role).
 // Returns the event ID and the event, or ("", nil) if not found.
 func FindPersonEvent(archive *GLXFile, personID, eventType string) (string, *Event) {
+	if archive == nil {
+		return "", nil
+	}
 	for id, event := range archive.Events {
 		if event == nil || event.Type != eventType {
 			continue
