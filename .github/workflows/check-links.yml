@@ -20,6 +20,7 @@ jobs:
   check-relative-links:
     name: Check Relative Links
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
 
