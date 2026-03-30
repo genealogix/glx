@@ -854,15 +854,19 @@ func TestBuildOtherRecords_ProbateHighPriority_WithFamilyAndDeath(t *testing.T) 
 }
 
 func TestBuildOtherRecords_ProbateNoPriority_NoDeath(t *testing.T) {
-	// Person with no death date — probate should NOT be high priority
+	// Person with birth event but no death event — probate should NOT be high priority
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-alive": {Properties: map[string]any{
-				glxlib.PersonPropertyName:   "Living Person",
-				glxlib.DeprecatedPropertyBornOn: "1980",
+				glxlib.PersonPropertyName: "Living Person",
 			}},
 		},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-alive": {
+				Type: glxlib.EventTypeBirth, Date: "1980",
+				Participants: []glxlib.Participant{{Person: "person-alive", Role: glxlib.ParticipantRolePrincipal}},
+			},
+		},
 		Relationships: map[string]*glxlib.Relationship{},
 		Sources:       map[string]*glxlib.Source{},
 		Citations:     map[string]*glxlib.Citation{},
@@ -886,12 +890,19 @@ func TestBuildOtherRecords_ProbateNoPriority_NoFamily(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-loner": {Properties: map[string]any{
-				glxlib.PersonPropertyName:   "Loner Person",
-				glxlib.DeprecatedPropertyBornOn: "1800",
-				glxlib.DeprecatedPropertyDiedOn: "1870",
+				glxlib.PersonPropertyName: "Loner Person",
 			}},
 		},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-loner": {
+				Type: glxlib.EventTypeBirth, Date: "1800",
+				Participants: []glxlib.Participant{{Person: "person-loner", Role: glxlib.ParticipantRolePrincipal}},
+			},
+			"event-death-loner": {
+				Type: glxlib.EventTypeDeath, Date: "1870",
+				Participants: []glxlib.Participant{{Person: "person-loner", Role: glxlib.ParticipantRolePrincipal}},
+			},
+		},
 		Relationships: map[string]*glxlib.Relationship{},
 		Sources:       map[string]*glxlib.Source{},
 		Citations:     map[string]*glxlib.Citation{},
