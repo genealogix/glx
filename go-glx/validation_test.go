@@ -204,6 +204,29 @@ func TestValidatePropertyWarnings(t *testing.T) {
 		assert.Contains(t, ve.Message, "has been removed")
 		assert.Contains(t, ve.Message, "use death events instead")
 	})
+
+	t.Run("removed property caught without vocabulary", func(t *testing.T) {
+		// Archives with no PersonProperties vocabulary should still error
+		// on deprecated properties, not just warn about missing vocabulary.
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{
+					DeprecatedPropertyBornOn: "1850",
+					"occupation":             "blacksmith",
+				}},
+			},
+			// No PersonProperties vocabulary at all
+		}
+		result := archive.Validate()
+		foundRemovedError := false
+		for _, e := range result.Errors {
+			if e.SourceField == "properties.born_on" {
+				foundRemovedError = true
+				assert.Contains(t, e.Message, "has been removed")
+			}
+		}
+		assert.True(t, foundRemovedError, "should error on deprecated property even without vocabulary")
+	})
 }
 
 func TestValidateNestedStructReferences(t *testing.T) {
