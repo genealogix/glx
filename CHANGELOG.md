@@ -12,6 +12,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.10]
 
+### Added
+
+#### CLI
+- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
+
+### Removed
+
+#### Person Properties
+- **BREAKING**: Removed `born_on`, `born_at`, `died_on`, `died_at` person properties. Birth and death information now lives exclusively on Event entities of type `birth`/`death`. Use `glx migrate` to convert existing archives
+
 ---
 
 ## [0.0.0-beta.9] - 2026-03-29

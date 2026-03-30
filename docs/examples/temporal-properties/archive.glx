@@ -17,10 +17,6 @@ places:
 persons:
   person-john-smith-1850:
     properties:
-      # Non-temporal properties (single values)
-      born_on: "1850-01-15"
-      died_on: "1920-06-20"
-
       # Unified name as temporal property (with optional fields)
       name:
         - value: "John Smith"

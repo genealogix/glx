@@ -38,26 +38,6 @@ person_properties:
     vocabulary_type: gender_types
     temporal: true
   
-  born_on:
-    label: "Birth Date"
-    description: "Date of birth"
-    value_type: date
-  
-  born_at:
-    label: "Birth Place"
-    description: "Place of birth"
-    reference_type: places
-  
-  died_on:
-    label: "Death Date"
-    description: "Date of death"
-    value_type: date
-  
-  died_at:
-    label: "Death Place"
-    description: "Place of death"
-    reference_type: places
-  
   occupation:
     label: "Occupation"
     description: "Profession or trade"

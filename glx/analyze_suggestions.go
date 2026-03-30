@@ -35,6 +35,21 @@ func deathYearUpperBound(raw any) int {
 	return year
 }
 
+// deathYearFromEvent returns the death year upper bound from a person's death
+// event. For "BEF <year>" dates the year is decremented by 1.
+func deathYearFromEvent(archive *glxlib.GLXFile, personID string) int {
+	_, event := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath)
+	if event == nil || event.Date == "" {
+		return 0
+	}
+	dateStr := string(event.Date)
+	year := glxlib.ExtractFirstYear(dateStr)
+	if year > 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(dateStr)), "BEF ") {
+		year--
+	}
+	return year
+}
+
 // extractDateString extracts the date string from a property value,
 // handling string, structured map, and temporal list shapes.
 func extractDateString(raw any) string {
@@ -110,14 +125,14 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		birthYear := glxlib.ExtractPropertyYear(person.Properties, "born_on")
+		birthYear := extractEventYear(archive, id, glxlib.EventTypeBirth)
 		if birthYear == 0 {
 			continue
 		}
 
-		deathYear := deathYearUpperBound(person.Properties["died_on"])
+		deathYear := deathYearFromEvent(archive, id)
 
-		// Infer death from burial event if died_on is not set
+		// Infer death from burial event if no death event
 		if deathYear == 0 {
 			deathYear = personBurialYear[id]
 		}
@@ -303,9 +318,11 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		bornOn := propertyString(person.Properties, "born_on")
-		diedOn := propertyString(person.Properties, "died_on")
-		if bornOn == "" && diedOn == "" {
+		_, birthEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeBirth)
+		_, deathEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeDeath)
+		hasBirthDate := birthEvent != nil && birthEvent.Date != ""
+		hasDeathDate := deathEvent != nil && deathEvent.Date != ""
+		if !hasBirthDate && !hasDeathDate {
 			continue
 		}
 

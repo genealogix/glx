@@ -134,11 +134,8 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	}
 	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(gender)})
 
-	// Birth — check person properties first, then events
-	birth := formatPropertyDatePlace(person.Properties, "born_on", "born_at", archive)
-	if birth == "" {
-		birth = findEventByType(personID, "birth", eventIDs, archive)
-	}
+	// Birth — from events
+	birth := findEventByType(personID, "birth", eventIDs, archive)
 	vitals = append(vitals, vitalRecord{"Birth", displayOrDash(birth)})
 
 	// Christening/Baptism — from events
@@ -148,11 +145,8 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	}
 	vitals = append(vitals, vitalRecord{"Christening", displayOrDash(christening)})
 
-	// Death — check person properties first, then events
-	death := formatPropertyDatePlace(person.Properties, "died_on", "died_at", archive)
-	if death == "" {
-		death = findEventByType(personID, "death", eventIDs, archive)
-	}
+	// Death — from events
+	death := findEventByType(personID, "death", eventIDs, archive)
 	vitals = append(vitals, vitalRecord{"Death", displayOrDash(death)})
 
 	// Burial — check person properties first, then events

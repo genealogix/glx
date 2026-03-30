@@ -468,6 +468,15 @@ func (glx *GLXFile) validateEntityProperties(
 	}
 }
 
+// removedProperties maps property names that have been removed from the spec
+// to human-readable migration guidance. These generate validation errors.
+var removedProperties = map[string]string{
+	DeprecatedPropertyBornOn: "use birth events instead",
+	DeprecatedPropertyBornAt: "use birth events instead",
+	DeprecatedPropertyDiedOn: "use death events instead",
+	DeprecatedPropertyDiedAt: "use death events instead",
+}
+
 // validateProperties validates a single `properties` map against its vocabulary.
 func (glx *GLXFile) validateProperties(
 	entityType, entityID, propVocabKey string,
@@ -475,6 +484,20 @@ func (glx *GLXFile) validateProperties(
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
 ) {
+	// Check for removed person properties first, regardless of vocabulary presence.
+	// Scoped to person entities — other entity types may legitimately use these names.
+	if entityType == EntityTypePersons {
+		for propName := range properties {
+			if msg, removed := removedProperties[propName]; removed {
+				result.Errors = append(result.Errors, ValidationError{
+					SourceType:  entityType,
+					SourceID:    entityID,
+					SourceField: "properties." + propName,
+					Message:     fmt.Sprintf("%s[%s]: property '%s' has been removed — %s. Run 'glx migrate' to convert.", entityType, entityID, propName, msg),
+				})
+			}
+		}
+	}
 	if len(properties) > 0 && len(propVocab) == 0 {
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			SourceType: entityType,
@@ -486,6 +509,10 @@ func (glx *GLXFile) validateProperties(
 		return
 	}
 	for propName, propValue := range properties {
+		// Skip removed properties — already handled above.
+		if _, removed := removedProperties[propName]; removed {
+			continue
+		}
 		propDef, exists := propVocab[propName]
 		if !exists {
 			result.Warnings = append(result.Warnings, ValidationWarning{

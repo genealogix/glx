@@ -27,8 +27,8 @@ All GENEALOGIX files use entity type keys at the top level:
 assertions:
   assertion-john-birth-date:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-birth-john
+    property: date
     value: "1850-01-15"
     citations:
       - citation-birth-certificate
@@ -126,15 +126,14 @@ subject:
 - Required: No — both are optional and mutually exclusive. When neither is present, the assertion is an [existential assertion](#existential-assertions).
 - Description: Either a property name being asserted, or a participant object for event/relationship participation
 
-> **Note:** The `property` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `property: born_on` references the `born_on` property from the person properties vocabulary. Unknown properties generate validation warnings.
+> **Note:** The `property` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `property: occupation` references the `occupation` property from the person properties vocabulary, or `property: date` references the `date` field on an event. Unknown properties generate validation warnings.
 
 Common property types:
-- `born_on` - Birth date
-- `died_on` - Death date
-- `born_at` - Birth place
-- `occupation` - Occupation/profession
-- `residence` - Residence location
-- `name` - Name form
+- `date` - Event date (on event subjects)
+- `place` - Event place (on event subjects)
+- `occupation` - Occupation/profession (on person subjects)
+- `residence` - Residence location (on person subjects)
+- `name` - Name form (on person subjects)
 
 Example:
 ```yaml
@@ -429,8 +428,8 @@ Existential assertions are particularly useful for:
 assertions:
   assertion-john-birth-date:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-birth-john
+    property: date
     value: "1850-01-15"
     citations:
       - citation-birth-certificate
@@ -459,8 +458,8 @@ assertions:
 assertions:
   assertion-mary-birth-disputed:
     subject:
-      person: person-mary-jones
-    property: born_on
+      event: event-birth-mary
+    property: date
     value: "1852-03-10"
     citations:
       - citation-birth-cert       # Says March 10
@@ -511,8 +510,8 @@ assertions:
 assertions:
   assertion-john-death-date:
     subject:
-      person: person-john-smith
-    property: died_on
+      event: event-death-john
+    property: date
     value: "1920-06-20"
     media:
       - media-gravestone-photo
@@ -526,8 +525,8 @@ Media can also be combined with citations and sources:
 assertions:
   assertion-john-death-confirmed:
     subject:
-      person: person-john-smith
-    property: died_on
+      event: event-death-john
+    property: date
     value: "1920-06-20"
     citations:
       - citation-death-cert
@@ -543,8 +542,8 @@ assertions:
 assertions:
   assertion-thomas-birth-estimated:
     subject:
-      person: person-thomas-brown
-    property: born_on
+      event: event-birth-thomas
+    property: date
     value: "ABT 1825"
     citations:
       - citation-death-cert-age
@@ -678,11 +677,19 @@ persons:
           given: "John"
           surname: "Smith"
 
+events:
+  event-birth-john:
+    type: birth
+    date: "1850-01-15"
+    participants:
+      - person: person-john-smith
+        role: subject
+
 assertions:
   assertion-john-birth:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-birth-john
+    property: date
     value: "1850-01-15"
     citations:
       - citation-birth-cert

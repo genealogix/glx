@@ -38,6 +38,16 @@ func (glx *GLXFile) validateTemporalConsistency(result *ValidationResult) {
 	glx.validateMarriageBeforeBirth(result)
 }
 
+// extractEventYear finds a person's event of the given type and returns the
+// year from its date, or 0 if no event is found.
+func extractEventYear(archive *GLXFile, personID, eventType string) int {
+	_, event := FindPersonEvent(archive, personID, eventType)
+	if event == nil {
+		return 0
+	}
+	return ExtractFirstYear(string(event.Date))
+}
+
 // validateDeathBeforeBirth checks that no person has a death date earlier than
 // their birth date.
 func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
@@ -45,8 +55,8 @@ func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
 		if person == nil {
 			continue
 		}
-		birthYear := ExtractPropertyYear(person.Properties, PersonPropertyBornOn)
-		deathYear := ExtractPropertyYear(person.Properties, PersonPropertyDiedOn)
+		birthYear := extractEventYear(glx, id, EventTypeBirth)
+		deathYear := extractEventYear(glx, id, EventTypeDeath)
 
 		if birthYear == 0 || deathYear == 0 {
 			continue
@@ -56,7 +66,7 @@ func (glx *GLXFile) validateDeathBeforeBirth(result *ValidationResult) {
 			result.Warnings = append(result.Warnings, ValidationWarning{
 				SourceType: EntityTypePersons,
 				SourceID:   id,
-				Field:      PersonPropertyDiedOn,
+				Field:      "death_event",
 				Message: fmt.Sprintf("%s[%s]: death year (%d) is before birth year (%d)",
 					EntityTypePersons, id, deathYear, birthYear),
 			})
@@ -89,7 +99,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 			if !ok || parent == nil {
 				continue
 			}
-			parentBirth := ExtractPropertyYear(parent.Properties, PersonPropertyBornOn)
+			parentBirth := extractEventYear(glx, parentID, EventTypeBirth)
 			if parentBirth == 0 {
 				continue
 			}
@@ -99,7 +109,7 @@ func (glx *GLXFile) validateParentChildAges(result *ValidationResult) {
 				if !ok || child == nil {
 					continue
 				}
-				childBirth := ExtractPropertyYear(child.Properties, PersonPropertyBornOn)
+				childBirth := extractEventYear(glx, childID, EventTypeBirth)
 				if childBirth == 0 {
 					continue
 				}
@@ -140,7 +150,7 @@ func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 				continue
 			}
 
-			birthYear := ExtractPropertyYear(person.Properties, PersonPropertyBornOn)
+			birthYear := extractEventYear(glx, p.Person, EventTypeBirth)
 			if birthYear == 0 {
 				continue
 			}

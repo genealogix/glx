@@ -266,7 +266,17 @@ func TestValidatePropertyValue_TemporalValidList(t *testing.T) {
 func TestValidateDeathBeforeBirth(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"person-1": {Properties: map[string]any{"born_on": "1850", "died_on": "1820"}},
+			"person-1": {Properties: map[string]any{}},
+		},
+		Events: map[string]*Event{
+			"event-birth-1": {
+				Type: EventTypeBirth, Date: "1850",
+				Participants: []Participant{{Person: "person-1", Role: ParticipantRolePrincipal}},
+			},
+			"event-death-1": {
+				Type: EventTypeDeath, Date: "1820",
+				Participants: []Participant{{Person: "person-1", Role: ParticipantRolePrincipal}},
+			},
 		},
 	}
 	result := &ValidationResult{}
@@ -283,7 +293,17 @@ func TestValidateDeathBeforeBirth(t *testing.T) {
 func TestValidateDeathBeforeBirth_NoWarningWhenValid(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"person-1": {Properties: map[string]any{"born_on": "1850", "died_on": "1920"}},
+			"person-1": {Properties: map[string]any{}},
+		},
+		Events: map[string]*Event{
+			"event-birth-1": {
+				Type: EventTypeBirth, Date: "1850",
+				Participants: []Participant{{Person: "person-1", Role: ParticipantRolePrincipal}},
+			},
+			"event-death-1": {
+				Type: EventTypeDeath, Date: "1920",
+				Participants: []Participant{{Person: "person-1", Role: ParticipantRolePrincipal}},
+			},
 		},
 	}
 	result := &ValidationResult{}
@@ -311,8 +331,18 @@ func TestValidateDeathBeforeBirth_NilPerson(t *testing.T) {
 func TestValidateParentChildAges(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"parent": {Properties: map[string]any{"born_on": "1880"}},
-			"child":  {Properties: map[string]any{"born_on": "1850"}},
+			"parent": {Properties: map[string]any{}},
+			"child":  {Properties: map[string]any{}},
+		},
+		Events: map[string]*Event{
+			"event-birth-parent": {
+				Type: EventTypeBirth, Date: "1880",
+				Participants: []Participant{{Person: "parent", Role: ParticipantRolePrincipal}},
+			},
+			"event-birth-child": {
+				Type: EventTypeBirth, Date: "1850",
+				Participants: []Participant{{Person: "child", Role: ParticipantRolePrincipal}},
+			},
 		},
 		Relationships: map[string]*Relationship{
 			"rel-1": {
@@ -338,7 +368,7 @@ func TestValidateParentChildAges(t *testing.T) {
 func TestValidateParentChildAges_NilRelationship(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"parent": {Properties: map[string]any{"born_on": "1850"}},
+			"parent": {Properties: map[string]any{}},
 		},
 		Relationships: map[string]*Relationship{
 			"rel-1": nil,
@@ -355,9 +385,13 @@ func TestValidateParentChildAges_NilRelationship(t *testing.T) {
 func TestValidateMarriageBeforeBirth(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"person-1": {Properties: map[string]any{"born_on": "1850"}},
+			"person-1": {Properties: map[string]any{}},
 		},
 		Events: map[string]*Event{
+			"event-birth-1": {
+				Type: EventTypeBirth, Date: "1850",
+				Participants: []Participant{{Person: "person-1", Role: ParticipantRolePrincipal}},
+			},
 			"event-1": {
 				Type: EventTypeMarriage,
 				Date: "1840",
@@ -395,7 +429,17 @@ func TestValidateMarriageBeforeBirth_NilEvent(t *testing.T) {
 func TestValidateTemporalConsistency_WiredIntoValidate(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"person-1": {Properties: map[string]any{"born_on": "1850", "died_on": "1820"}},
+			"person-1": {Properties: map[string]any{}},
+		},
+		Events: map[string]*Event{
+			"event-birth-1": {
+				Type: EventTypeBirth, Date: "1850",
+				Participants: []Participant{{Person: "person-1", Role: ParticipantRolePrincipal}},
+			},
+			"event-death-1": {
+				Type: EventTypeDeath, Date: "1820",
+				Participants: []Participant{{Person: "person-1", Role: ParticipantRolePrincipal}},
+			},
 		},
 	}
 	result := glx.Validate()

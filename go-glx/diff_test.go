@@ -39,8 +39,8 @@ func TestDiffArchives_AddedPerson(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-john": {
 				Properties: map[string]any{
-					"name":    "John Smith",
-					"born_on": "1850",
+					"name":       "John Smith",
+					"occupation": "blacksmith",
 				},
 			},
 		},
@@ -81,8 +81,8 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-mary": {
 				Properties: map[string]any{
-					"name":    "Jane Webb",
-					"born_on": "ABT 1832",
+					"name":       "Jane Webb",
+					"occupation": "weaver",
 				},
 			},
 		},
@@ -91,9 +91,9 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-mary": {
 				Properties: map[string]any{
-					"name":    "Jane Webb",
-					"born_on": "1832",
-					"died_on": "1905",
+					"name":       "Jane Webb",
+					"occupation": "teacher",
+					"residence":  "place-london",
 				},
 			},
 		},
@@ -107,13 +107,13 @@ func TestDiffArchives_ModifiedPerson(t *testing.T) {
 	assert.Equal(t, "person-mary", c.ID)
 	assert.Equal(t, 1, result.Stats.Modified)
 
-	// Should have field changes for born_on and died_on
+	// Should have field changes for occupation and residence
 	fieldPaths := make(map[string]bool)
 	for _, f := range c.Fields {
 		fieldPaths[f.Path] = true
 	}
-	assert.True(t, fieldPaths["properties.born_on"], "should detect born_on change")
-	assert.True(t, fieldPaths["properties.died_on"], "should detect died_on addition")
+	assert.True(t, fieldPaths["properties.occupation"], "should detect occupation change")
+	assert.True(t, fieldPaths["properties.residence"], "should detect residence addition")
 }
 
 func TestDiffArchives_UnchangedEntity(t *testing.T) {
@@ -163,8 +163,8 @@ func TestDiffArchives_ConfidenceUpgrade(t *testing.T) {
 	old := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-birth": {
-				Subject:    EntityRef{Person: "person-mary"},
-				Property:   "born_on",
+				Subject:    EntityRef{Event: "event-birth-mary"},
+				Property:   "date",
 				Value:      "1832",
 				Confidence: ConfidenceLevelLow,
 			},
@@ -173,8 +173,8 @@ func TestDiffArchives_ConfidenceUpgrade(t *testing.T) {
 	newArchive := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-birth": {
-				Subject:    EntityRef{Person: "person-mary"},
-				Property:   "born_on",
+				Subject:    EntityRef{Event: "event-birth-mary"},
+				Property:   "date",
 				Value:      "1832",
 				Confidence: ConfidenceLevelHigh,
 			},
@@ -191,8 +191,8 @@ func TestDiffArchives_ConfidenceDowngrade(t *testing.T) {
 	old := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-birth": {
-				Subject:    EntityRef{Person: "person-mary"},
-				Property:   "born_on",
+				Subject:    EntityRef{Event: "event-birth-mary"},
+				Property:   "date",
 				Value:      "1832",
 				Confidence: ConfidenceLevelHigh,
 			},
@@ -201,8 +201,8 @@ func TestDiffArchives_ConfidenceDowngrade(t *testing.T) {
 	newArchive := &GLXFile{
 		Assertions: map[string]*Assertion{
 			"assertion-birth": {
-				Subject:    EntityRef{Person: "person-mary"},
-				Property:   "born_on",
+				Subject:    EntityRef{Event: "event-birth-mary"},
+				Property:   "date",
 				Value:      "1832",
 				Confidence: ConfidenceLevelMedium,
 			},
@@ -224,8 +224,8 @@ func TestDiffArchives_PersonFilter(t *testing.T) {
 	}
 	newArchive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-mary": {Properties: map[string]any{"name": "Jane Webb", "died_on": "1905"}},
-			"person-john": {Properties: map[string]any{"name": "John Smith", "died_on": "1900"}},
+			"person-mary": {Properties: map[string]any{"name": "Jane Webb", "occupation": "weaver"}},
+			"person-john": {Properties: map[string]any{"name": "John Smith", "occupation": "farmer"}},
 		},
 	}
 
@@ -242,13 +242,13 @@ func TestDiffArchives_PersonFilter_IncludesAssertions(t *testing.T) {
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
 				Subject:  EntityRef{Person: "person-mary"},
-				Property: "born_on",
-				Value:    "1832",
+				Property: "occupation",
+				Value:    "weaver",
 			},
 			"assertion-2": {
 				Subject:  EntityRef{Person: "person-john"},
-				Property: "born_on",
-				Value:    "1840",
+				Property: "occupation",
+				Value:    "farmer",
 			},
 		},
 	}
@@ -314,35 +314,35 @@ func TestCompareEntity_NoChanges(t *testing.T) {
 
 func TestCompareEntity_FieldAdded(t *testing.T) {
 	old := &Person{Properties: map[string]any{"name": "John"}}
-	newPerson := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
+	newPerson := &Person{Properties: map[string]any{"name": "John", "occupation": "blacksmith"}}
 
 	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
-	assert.Equal(t, "properties.born_on", fields[0].Path)
+	assert.Equal(t, "properties.occupation", fields[0].Path)
 	assert.Equal(t, "(none)", fields[0].OldValue)
-	assert.Contains(t, fields[0].NewValue, "1850")
+	assert.Contains(t, fields[0].NewValue, "blacksmith")
 }
 
 func TestCompareEntity_FieldRemoved(t *testing.T) {
-	old := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
+	old := &Person{Properties: map[string]any{"name": "John", "occupation": "blacksmith"}}
 	newPerson := &Person{Properties: map[string]any{"name": "John"}}
 
 	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
-	assert.Equal(t, "properties.born_on", fields[0].Path)
-	assert.Contains(t, fields[0].OldValue, "1850")
+	assert.Equal(t, "properties.occupation", fields[0].Path)
+	assert.Contains(t, fields[0].OldValue, "blacksmith")
 	assert.Equal(t, "(none)", fields[0].NewValue)
 }
 
 func TestCompareEntity_FieldChanged(t *testing.T) {
-	old := &Person{Properties: map[string]any{"name": "John", "born_on": "ABT 1850"}}
-	newPerson := &Person{Properties: map[string]any{"name": "John", "born_on": "1850"}}
+	old := &Person{Properties: map[string]any{"name": "John", "occupation": "apprentice"}}
+	newPerson := &Person{Properties: map[string]any{"name": "John", "occupation": "blacksmith"}}
 
 	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
-	assert.Equal(t, "properties.born_on", fields[0].Path)
-	assert.Contains(t, fields[0].OldValue, "ABT 1850")
-	assert.Contains(t, fields[0].NewValue, "1850")
+	assert.Equal(t, "properties.occupation", fields[0].Path)
+	assert.Contains(t, fields[0].OldValue, "apprentice")
+	assert.Contains(t, fields[0].NewValue, "blacksmith")
 }
 
 func TestCompareEntity_NotesChanged(t *testing.T) {
@@ -502,8 +502,8 @@ func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
 				Subject:    EntityRef{Person: "person-mary"},
-				Property:   "born_on",
-				Value:      "1832",
+				Property:   "occupation",
+				Value:      "weaver",
 				Confidence: "custom_level",
 			},
 		},
@@ -512,8 +512,8 @@ func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
 				Subject:    EntityRef{Person: "person-mary"},
-				Property:   "born_on",
-				Value:      "1832",
+				Property:   "occupation",
+				Value:      "weaver",
 				Confidence: ConfidenceLevelHigh,
 			},
 		},

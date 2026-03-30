@@ -78,6 +78,7 @@ func init() {
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(renameCmd)
+	rootCmd.AddCommand(migrateCmd)
 }
 
 // ============================================================================
