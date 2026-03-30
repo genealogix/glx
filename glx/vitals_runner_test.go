@@ -142,13 +142,19 @@ func TestCollectVitals(t *testing.T) {
 					"name": map[string]any{
 						"value": "John Smith",
 					},
-					"gender":  "male",
-					"born_on": "1850-01-15",
-					"born_at": "place-leeds",
+					"gender": "male",
 				},
 			},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-john": {
+				Type:    "birth",
+				Date:    "1850-01-15",
+				PlaceID: "place-leeds",
+				Participants: []glxlib.Participant{
+					{Person: "person-john", Role: "principal"},
+				},
+			},
 			"event-death-john": {
 				Type:    "death",
 				Date:    "1920-03-10",

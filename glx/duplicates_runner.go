@@ -117,9 +117,8 @@ func personLabel(archive *glxlib.GLXFile, personID string) string {
 		return personID
 	}
 
-	born := propertyString(person.Properties, glxlib.PersonPropertyBornOn)
-	if born != "" {
-		return fmt.Sprintf("%s (b. %s)", name, born)
+	if _, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth); birthEvent != nil && birthEvent.Date != "" {
+		return fmt.Sprintf("%s (b. %s)", name, string(birthEvent.Date))
 	}
 	return name
 }

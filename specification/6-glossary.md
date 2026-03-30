@@ -228,7 +228,7 @@ Classification of geographic locations including country, county, city, parish, 
 Information created at the time of the event by someone with direct knowledge (birth certificates, contemporary letters).
 
 ### Property
-A vocabulary-defined attribute of an entity (e.g., `born_on`, `occupation`, `residence`). Properties are defined in property vocabularies and used in the `properties` field of entities.
+A vocabulary-defined attribute of an entity (e.g., `occupation`, `residence`, `gender`). Properties are defined in property vocabularies and used in the `properties` field of entities.
 
 > **See Also:** [Property Vocabularies](4-entity-types/vocabularies#property-vocabularies)
 

@@ -45,7 +45,7 @@ For example, Robb Stark's death is documented as:
 - **Source**: *A Storm of Swords*
 - **Citation**: Catelyn VII chapter, with direct text quotes from the Red Wedding
 - **Assertion**: `status: proven`, `confidence: high`
-- **Person property**: `died_on: "299"`, `cause_of_death: "Murdered at the Red Wedding"`
+- **Death event**: date `"299"`, with person property `cause_of_death: "Murdered at the Red Wedding"`
 
 ### Custom Vocabularies
 

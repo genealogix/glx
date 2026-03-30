@@ -186,12 +186,15 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 			}
 		}
 		if opts.Birthplace != "" {
-			if !personMatchesBirthplace(person, opts.Birthplace, archive) {
+			if !personMatchesBirthplace(id, opts.Birthplace, archive) {
 				continue
 			}
 		}
 		if opts.BornBefore > 0 || opts.BornAfter > 0 {
-			year := extractPropertyYear(person.Properties, "born_on")
+			var year int
+			if _, birthEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeBirth); birthEvent != nil {
+				year = extractDateYear(string(birthEvent.Date))
+			}
 			if opts.BornBefore > 0 && (year == 0 || year >= opts.BornBefore) {
 				continue
 			}
@@ -204,8 +207,13 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		if len(allNames) > 0 {
 			name = allNames[0]
 		}
-		bornOn := propertyString(person.Properties, "born_on")
-		diedOn := propertyString(person.Properties, "died_on")
+		var bornOn, diedOn string
+		if _, birthEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeBirth); birthEvent != nil {
+			bornOn = string(birthEvent.Date)
+		}
+		if _, deathEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeDeath); deathEvent != nil {
+			diedOn = string(deathEvent.Date)
+		}
 
 		detail := name
 		switch {
@@ -568,16 +576,6 @@ func propertyString(props map[string]any, key string) string {
 	return fmt.Sprint(raw)
 }
 
-// extractPropertyYear extracts the year from a date-valued property.
-func extractPropertyYear(props map[string]any, key string) int {
-	s := propertyString(props, key)
-	if s == "" {
-		return 0
-	}
-
-	return extractDateYear(s)
-}
-
 // queryDayMonthRegexp matches day-of-month followed by a month abbreviation
 // (e.g., "15 MAR"). Used to strip day values before year extraction so that
 // 1–2 digit days are not mistaken for 1–2 digit years.
@@ -607,51 +605,22 @@ func extractDateYear(dateStr string) int {
 
 // containsFold checks if s contains lowerSubstr (case-insensitive).
 // lowerSubstr must already be in lowercase; callers should pre-lowercase the needle.
-// personMatchesBirthplace checks if a person's born_at property matches the query.
-// Handles string, structured map ({value: ...}), and temporal list property shapes.
+// personMatchesBirthplace checks if a person's birth event place matches the query.
 // Matches against both the place ID and resolved place name (case-insensitive substring).
-func personMatchesBirthplace(person *glxlib.Person, query string, archive *glxlib.GLXFile) bool {
-	if person == nil || person.Properties == nil {
+func personMatchesBirthplace(personID, query string, archive *glxlib.GLXFile) bool {
+	_, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth)
+	if birthEvent == nil || birthEvent.PlaceID == "" {
 		return false
 	}
-	raw := person.Properties["born_at"]
-	if raw == nil {
-		return false
-	}
+
 	lowerQuery := strings.ToLower(query)
 
-	// Extract place ref(s) from the property value
-	var refs []string
-	switch v := raw.(type) {
-	case string:
-		refs = append(refs, v)
-	case map[string]any:
-		if val, ok := v["value"].(string); ok {
-			refs = append(refs, val)
-		}
-	case []any:
-		for _, item := range v {
-			if m, ok := item.(map[string]any); ok {
-				if val, ok := m["value"].(string); ok {
-					refs = append(refs, val)
-				}
-			} else if s, ok := item.(string); ok {
-				refs = append(refs, s)
-			}
-		}
+	if containsFold(birthEvent.PlaceID, lowerQuery) {
+		return true
 	}
-
-	for _, ref := range refs {
-		if ref == "" {
-			continue
-		}
-		if containsFold(ref, lowerQuery) {
+	if place, ok := archive.Places[birthEvent.PlaceID]; ok && place != nil {
+		if containsFold(place.Name, lowerQuery) {
 			return true
-		}
-		if place, ok := archive.Places[ref]; ok && place != nil {
-			if containsFold(place.Name, lowerQuery) {
-				return true
-			}
 		}
 	}
 	return false

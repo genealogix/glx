@@ -77,15 +77,15 @@ var confidenceRank = map[string]int{
 func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffResult {
 	result := &DiffResult{}
 
-	diffEntityMap(result, EntityTypePersons, oldArchive.Persons, newArchive.Persons)
-	diffEntityMap(result, EntityTypeEvents, oldArchive.Events, newArchive.Events)
-	diffEntityMap(result, EntityTypeRelationships, oldArchive.Relationships, newArchive.Relationships)
-	diffEntityMap(result, EntityTypePlaces, oldArchive.Places, newArchive.Places)
-	diffEntityMap(result, EntityTypeSources, oldArchive.Sources, newArchive.Sources)
-	diffEntityMap(result, EntityTypeCitations, oldArchive.Citations, newArchive.Citations)
-	diffEntityMap(result, EntityTypeRepositories, oldArchive.Repositories, newArchive.Repositories)
-	diffEntityMap(result, EntityTypeAssertions, oldArchive.Assertions, newArchive.Assertions)
-	diffEntityMap(result, EntityTypeMedia, oldArchive.Media, newArchive.Media)
+	diffEntityMap(result, EntityTypePersons, oldArchive.Persons, newArchive.Persons, oldArchive, newArchive)
+	diffEntityMap(result, EntityTypeEvents, oldArchive.Events, newArchive.Events, nil, nil)
+	diffEntityMap(result, EntityTypeRelationships, oldArchive.Relationships, newArchive.Relationships, nil, nil)
+	diffEntityMap(result, EntityTypePlaces, oldArchive.Places, newArchive.Places, nil, nil)
+	diffEntityMap(result, EntityTypeSources, oldArchive.Sources, newArchive.Sources, nil, nil)
+	diffEntityMap(result, EntityTypeCitations, oldArchive.Citations, newArchive.Citations, nil, nil)
+	diffEntityMap(result, EntityTypeRepositories, oldArchive.Repositories, newArchive.Repositories, nil, nil)
+	diffEntityMap(result, EntityTypeAssertions, oldArchive.Assertions, newArchive.Assertions, nil, nil)
+	diffEntityMap(result, EntityTypeMedia, oldArchive.Media, newArchive.Media, nil, nil)
 
 	// Filter by person if requested (before computing stats)
 	if personFilter != "" {
@@ -126,7 +126,9 @@ func entityTypeOrder(t string) int {
 }
 
 // diffEntityMap compares two entity maps and appends changes to the result.
-func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap map[string]*T) {
+// oldArchive/newArchive are optional context for richer person summaries
+// (birth/death dates from events). Removed entities use oldArchive, added use newArchive.
+func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap map[string]*T, oldArchive, newArchive *GLXFile) {
 	// Check for added and modified entities
 	for id, newEntity := range newMap {
 		if oldEntity, exists := oldMap[id]; exists {
@@ -147,7 +149,7 @@ func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap 
 				Kind:       ChangeAdded,
 				EntityType: entityType,
 				ID:         id,
-				Summary:    summarizeEntity(entityType, id, newEntity),
+				Summary:    summarizeEntity(entityType, id, newEntity, newArchive),
 			})
 		}
 	}
@@ -159,7 +161,7 @@ func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap 
 				Kind:       ChangeRemoved,
 				EntityType: entityType,
 				ID:         id,
-				Summary:    summarizeEntity(entityType, id, oldMap[id]),
+				Summary:    summarizeEntity(entityType, id, oldMap[id], oldArchive),
 			})
 		}
 	}
@@ -299,7 +301,8 @@ func formatValue(v any) string {
 }
 
 // summarizeEntity generates a human-readable one-liner for an entity.
-func summarizeEntity[T any](entityType, id string, entity *T) string {
+// archive is optional context used for richer person summaries (birth/death dates).
+func summarizeEntity[T any](entityType, id string, entity *T, archive *GLXFile) string {
 	m, err := toYAMLMap(entity)
 	if err != nil || m == nil {
 		return id
@@ -307,7 +310,7 @@ func summarizeEntity[T any](entityType, id string, entity *T) string {
 
 	switch entityType {
 	case EntityTypePersons:
-		return summarizePerson(id, m)
+		return summarizePerson(id, m, archive)
 	case EntityTypeEvents:
 		return summarizeEvent(m)
 	case EntityTypeAssertions:
@@ -325,7 +328,7 @@ func summarizeEntity[T any](entityType, id string, entity *T) string {
 	}
 }
 
-func summarizePerson(id string, m map[string]any) string {
+func summarizePerson(id string, m map[string]any, archive *GLXFile) string {
 	props, _ := m["properties"].(map[string]any)
 	if props == nil {
 		return id
@@ -336,12 +339,16 @@ func summarizePerson(id string, m map[string]any) string {
 		return id
 	}
 
-	var parts []string
-	if born, ok := props["born_on"].(string); ok && born != "" {
-		parts = append(parts, "b. "+born)
+	if archive == nil {
+		return name
 	}
-	if died, ok := props["died_on"].(string); ok && died != "" {
-		parts = append(parts, "d. "+died)
+
+	var parts []string
+	if _, birthEvent := FindPersonEvent(archive, id, EventTypeBirth); birthEvent != nil && birthEvent.Date != "" {
+		parts = append(parts, "b. "+string(birthEvent.Date))
+	}
+	if _, deathEvent := FindPersonEvent(archive, id, EventTypeDeath); deathEvent != nil && deathEvent.Date != "" {
+		parts = append(parts, "d. "+string(deathEvent.Date))
 	}
 	if len(parts) > 0 {
 		return name + " (" + strings.Join(parts, "; ") + ")"

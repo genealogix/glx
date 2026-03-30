@@ -86,14 +86,19 @@ const (
 
 // Standard Person Property Names - commonly used properties on Person entities
 const (
-	PersonPropertyName      = "name"
-	PersonPropertyGender    = "gender"
-	PersonPropertyBornOn    = "born_on"
-	PersonPropertyBornAt    = "born_at"
-	PersonPropertyDiedOn    = "died_on"
-	PersonPropertyDiedAt    = "died_at"
+	PersonPropertyName       = "name"
+	PersonPropertyGender     = "gender"
 	PersonPropertyResidence  = "residence"
 	PersonPropertyOccupation = "occupation"
+)
+
+// Deprecated property constants - these properties have been removed from the spec.
+// Use birth/death events instead. Kept for validation error messages and migration tooling.
+const (
+	DeprecatedPropertyBornOn = "born_on"
+	DeprecatedPropertyBornAt = "born_at"
+	DeprecatedPropertyDiedOn = "died_on"
+	DeprecatedPropertyDiedAt = "died_at"
 )
 
 // Name Field Constants - used in the name property's fields structure

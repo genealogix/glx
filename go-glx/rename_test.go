@@ -89,8 +89,8 @@ func TestRenameEntity_PersonRefsInAssertions(t *testing.T) {
 		Assertions: map[string]*Assertion{
 			"a-1": {
 				Subject:  EntityRef{Person: "person-old"},
-				Property: "born_on",
-				Value:    "1850",
+				Property: "occupation",
+				Value:    "blacksmith",
 			},
 			"a-2": {
 				Participant: &Participant{Person: "person-old", Role: "witness"},
@@ -257,9 +257,9 @@ func TestRenameEntity_PropertyBasedRefs(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
 			"person-1": {Properties: map[string]any{
-				"name":    "Jane",
-				"born_at": "place-old",
-				"died_at": map[string]any{"value": "place-old"},
+				"name":      "Jane",
+				"residence": "place-old",
+				"workplace": map[string]any{"value": "place-old"},
 			}},
 		},
 		Places: map[string]*Place{
@@ -269,9 +269,9 @@ func TestRenameEntity_PropertyBasedRefs(t *testing.T) {
 
 	_, err := RenameEntity(glx, "place-old", "place-new")
 	require.NoError(t, err)
-	assert.Equal(t, "place-new", glx.Persons["person-1"].Properties["born_at"])
-	diedAt := glx.Persons["person-1"].Properties["died_at"].(map[string]any)
-	assert.Equal(t, "place-new", diedAt["value"])
+	assert.Equal(t, "place-new", glx.Persons["person-1"].Properties["residence"])
+	workplace := glx.Persons["person-1"].Properties["workplace"].(map[string]any)
+	assert.Equal(t, "place-new", workplace["value"])
 }
 
 func TestRenameEntity_AssertionValue(t *testing.T) {
@@ -282,7 +282,7 @@ func TestRenameEntity_AssertionValue(t *testing.T) {
 		Assertions: map[string]*Assertion{
 			"a-1": {
 				Subject:  EntityRef{Person: "person-1"},
-				Property: "born_at",
+				Property: "residence",
 				Value:    "place-old",
 			},
 		},

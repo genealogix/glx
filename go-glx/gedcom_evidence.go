@@ -225,6 +225,62 @@ func createPropertyAssertionWithEvidence(subjectID, property string, value any, 
 	conv.Stats.AssertionsCreated++
 }
 
+// createEventAssertion creates an assertion for an event property, but only if there is evidence.
+// Assertions without evidence are not meaningful - the value is already stored on the event entity.
+func createEventAssertion(eventID, property string, value any, sourceRecord *GEDCOMRecord, conv *ConversionContext) {
+	if property == "" || value == nil {
+		return
+	}
+
+	// Extract evidence from SOUR subrecords
+	refs := extractEvidence(sourceRecord, conv)
+
+	createEventAssertionWithEvidence(eventID, property, value, refs, conv)
+}
+
+// createEventAssertionWithEvidence creates an assertion for an event property using pre-extracted evidence.
+// This is used when evidence has already been extracted or synthetically created.
+func createEventAssertionWithEvidence(eventID, property string, value any, refs evidenceRefs, conv *ConversionContext) {
+	if property == "" || value == nil {
+		return
+	}
+
+	// Only create assertion if there is evidence to back it up
+	// The property value is already stored on the entity; assertions add evidence
+	if !refs.hasEvidence() {
+		return
+	}
+
+	// Generate assertion ID
+	assertionID := generateAssertionID(conv)
+
+	// Convert value to string
+	var valueStr string
+	switch v := value.(type) {
+	case string:
+		valueStr = v
+	case int:
+		valueStr = strconv.Itoa(v)
+	case float64:
+		valueStr = fmt.Sprintf("%f", v)
+	default:
+		valueStr = fmt.Sprintf("%v", v)
+	}
+
+	// Create assertion
+	assertion := &Assertion{
+		Subject:   EntityRef{Event: eventID},
+		Property:  property,
+		Value:     valueStr,
+		Sources:   refs.SourceIDs,
+		Citations: refs.CitationIDs,
+	}
+
+	// Store assertion
+	conv.GLX.Assertions[assertionID] = assertion
+	conv.Stats.AssertionsCreated++
+}
+
 // evidenceRefs holds citation IDs and bare source IDs extracted from SOUR subrecords.
 type evidenceRefs struct {
 	CitationIDs []string

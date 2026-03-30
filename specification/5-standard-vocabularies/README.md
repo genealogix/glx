@@ -150,17 +150,13 @@ Property vocabularies define the custom properties available for each entity typ
 
 ### Person Properties
 
-Defines standard and custom properties for person entities (birth date, occupation, residence, etc.). Supports temporal properties that change over time.
+Defines standard and custom properties for person entities (name, gender, occupation, residence, etc.). Supports temporal properties that change over time.
 
 **View Source:** [person-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/person-properties.glx)
 
 **Standard Properties Include:**
 - `name` - Unified name property with optional structured fields (type, given, surname, prefix, suffix, etc.) (temporal)
 - `gender` - Gender identity (temporal)
-- `born_on` - Date of birth
-- `born_at` - Place of birth (reference)
-- `died_on` - Date of death
-- `died_at` - Place of death (reference)
 - `occupation` - Profession (temporal, GEDCOM: OCCU)
 - `title` - Nobility or honorific title (temporal, GEDCOM: TITL)
 - `residence` - Place of residence (temporal, reference)

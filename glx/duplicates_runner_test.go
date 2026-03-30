@@ -107,14 +107,26 @@ func TestFindDuplicates_Integration_InvalidThreshold(t *testing.T) {
 
 func writeTestPerson(t *testing.T, dir, id, name, born string) {
 	t.Helper()
-	yaml := "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n      born_on: \"" + born + "\"\n"
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", id+".glx"), []byte(yaml), 0o644))
+	personYAML := "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", id+".glx"), []byte(personYAML), 0o644))
+
+	// Write birth event in events directory
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "events"), 0o755))
+	eventID := "event-birth-" + id
+	eventYAML := "events:\n  " + eventID + ":\n    type: birth\n    date: \"" + born + "\"\n    participants:\n      - person: " + id + "\n        role: principal\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "events", eventID+".glx"), []byte(eventYAML), 0o644))
 }
 
 func writeTestPersonFull(t *testing.T, dir, id, name, born, bornAt string) {
 	t.Helper()
-	yaml := "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n      born_on: \"" + born + "\"\n      born_at: \"" + bornAt + "\"\n"
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", id+".glx"), []byte(yaml), 0o644))
+	personYAML := "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", id+".glx"), []byte(personYAML), 0o644))
+
+	// Write birth event in events directory
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "events"), 0o755))
+	eventID := "event-birth-" + id
+	eventYAML := "events:\n  " + eventID + ":\n    type: birth\n    date: \"" + born + "\"\n    place: \"" + bornAt + "\"\n    participants:\n      - person: " + id + "\n        role: principal\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "events", eventID+".glx"), []byte(eventYAML), 0o644))
 }
 
 // captureStdout redirects os.Stdout during fn execution and returns what was written.

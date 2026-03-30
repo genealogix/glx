@@ -30,7 +30,7 @@ func TestAnalyzeGaps_MissingBirth(t *testing.T) {
 	}
 
 	issues := analyzeGaps(archive)
-	found := findIssue(issues, "person-a", "born_on")
+	found := findIssue(issues, "person-a", "birth_event")
 	if found == nil {
 		t.Fatal("expected missing birth issue for person-a")
 	}
@@ -42,26 +42,32 @@ func TestAnalyzeGaps_MissingBirth(t *testing.T) {
 func TestAnalyzeGaps_HasBirth(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 	}
 
 	issues := analyzeGaps(archive)
-	found := findIssue(issues, "person-a", "born_on")
+	found := findIssue(issues, "person-a", "birth_event")
 	if found != nil {
-		t.Error("should not flag missing birth when born_on is set")
+		t.Error("should not flag missing birth when birth event exists")
 	}
 }
 
 func TestAnalyzeGaps_MissingDeath(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 	}
 
 	issues := analyzeGaps(archive)
-	found := findIssue(issues, "person-a", "died_on")
+	found := findIssue(issues, "person-a", "death_event")
 	if found == nil {
 		t.Fatal("expected missing death issue for person born in 1850")
 	}
@@ -70,12 +76,15 @@ func TestAnalyzeGaps_MissingDeath(t *testing.T) {
 func TestAnalyzeGaps_MissingDeath_RecentBirth(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1990"}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1990", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 	}
 
 	issues := analyzeGaps(archive)
-	found := findIssue(issues, "person-a", "died_on")
+	found := findIssue(issues, "person-a", "death_event")
 	if found != nil {
 		t.Error("should not flag missing death for person born in 1990")
 	}
@@ -426,10 +435,11 @@ func TestAnalyzeEvidence_UncitedNotes_NoCitedFalsePositive(t *testing.T) {
 func TestAnalyzeConsistency_BirthAfterDeath(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1920",
-				"died_on": "1850",
-			}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1920", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1850", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 	}
 
@@ -446,10 +456,11 @@ func TestAnalyzeConsistency_BirthAfterDeath(t *testing.T) {
 func TestAnalyzeConsistency_ValidDates(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1850",
-				"died_on": "1920",
-			}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1920", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 	}
 
@@ -463,10 +474,11 @@ func TestAnalyzeConsistency_ValidDates(t *testing.T) {
 func TestAnalyzeConsistency_ImplausibleLifespan(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1800",
-				"died_on": "1920",
-			}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1920", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 	}
 
@@ -480,8 +492,8 @@ func TestAnalyzeConsistency_ImplausibleLifespan(t *testing.T) {
 func TestAnalyzeConsistency_ParentYoungerThanChild(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-parent": {Properties: map[string]any{"born_on": "1880"}},
-			"person-child":  {Properties: map[string]any{"born_on": "1850"}},
+			"person-parent": {Properties: map[string]any{}},
+			"person-child":  {Properties: map[string]any{}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {
@@ -491,6 +503,10 @@ func TestAnalyzeConsistency_ParentYoungerThanChild(t *testing.T) {
 					{Person: "person-child", Role: "child"},
 				},
 			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-parent": {Type: glxlib.EventTypeBirth, Date: "1880", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
 		},
 	}
 
@@ -504,12 +520,11 @@ func TestAnalyzeConsistency_ParentYoungerThanChild(t *testing.T) {
 func TestAnalyzeConsistency_EventAfterDeath(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1800",
-				"died_on": "1860",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 			"event-census": {
 				Type:         "census",
 				Date:         "1870",
@@ -528,12 +543,11 @@ func TestAnalyzeConsistency_EventAfterDeath(t *testing.T) {
 func TestAnalyzeConsistency_BurialAfterDeath_OK(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1800",
-				"died_on": "1860",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 			"event-burial": {
 				Type:         "burial",
 				Date:         "1860",
@@ -579,9 +593,9 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 	if !containsSubstring(found.Message, "3 conflicting values") {
 		t.Errorf("expected 3 conflicting values in message: %s", found.Message)
 	}
-	// Place IDs should be resolved to names
-	if !containsSubstring(found.Message, "Florida") {
-		t.Errorf("expected resolved place name 'Florida' in message: %s", found.Message)
+	// born_at is no longer in placeRefProperties so values show as IDs
+	if !containsSubstring(found.Message, "place-florida") {
+		t.Errorf("expected place ID 'place-florida' in message: %s", found.Message)
 	}
 }
 
@@ -653,14 +667,18 @@ func TestAnalyzeConsistency_ReplacementChildNotFlagged(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-parent": {Properties: map[string]any{"name": "Parent"}},
-			"person-mary-1": {Properties: map[string]any{"name": "Mary", "born_on": "1850", "died_on": "1851"}},
-			"person-mary-2": {Properties: map[string]any{"name": "Mary", "born_on": "1853"}},
+			"person-mary-1": {Properties: map[string]any{"name": "Mary"}},
+			"person-mary-2": {Properties: map[string]any{"name": "Mary"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-parent", Role: "parent"}, {Person: "person-mary-1", Role: "child"}}},
 			"rel-2": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-parent", Role: "parent"}, {Person: "person-mary-2", Role: "child"}}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-mary1": {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-mary-1", Role: "principal"}}},
+			"event-death-mary1": {Type: glxlib.EventTypeDeath, Date: "1851", Participants: []glxlib.Participant{{Person: "person-mary-1", Role: "principal"}}},
+			"event-birth-mary2": {Type: glxlib.EventTypeBirth, Date: "1853", Participants: []glxlib.Participant{{Person: "person-mary-2", Role: "principal"}}},
+		},
 	}
 
 	issues := analyzeConsistency(archive)
@@ -763,9 +781,9 @@ func TestSuggestChildCensus_BrickwallWithChildren(t *testing.T) {
 	// Should suggest searching children's 1880+ census records
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-james":  {Properties: map[string]any{"name": "James Green", "born_on": "1810"}},
-			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "1832"}},
-			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+			"person-james":  {Properties: map[string]any{"name": "James Green"}},
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {
@@ -783,7 +801,11 @@ func TestSuggestChildCensus_BrickwallWithChildren(t *testing.T) {
 				},
 			},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-james":  {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-james", Role: "principal"}}},
+			"event-birth-mary":   {Type: glxlib.EventTypeBirth, Date: "1832", Participants: []glxlib.Participant{{Person: "person-mary", Role: "principal"}}},
+			"event-birth-joseph": {Type: glxlib.EventTypeBirth, Date: "1835", Participants: []glxlib.Participant{{Person: "person-joseph", Role: "principal"}}},
+		},
 	}
 
 	issues := suggestChildCensusRecords(archive)
@@ -803,13 +825,16 @@ func TestSuggestChildCensus_PersonWithParentsNotFlagged(t *testing.T) {
 	// person-child has parents — should never appear as the Person in suggestions
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-father": {Properties: map[string]any{"name": "Father", "born_on": "1830"}},
-			"person-child":  {Properties: map[string]any{"name": "Child", "born_on": "1860"}},
+			"person-father": {Properties: map[string]any{"name": "Father"}},
+			"person-child":  {Properties: map[string]any{"name": "Child"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-father", Role: "parent"}, {Person: "person-child", Role: "child"}}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-father": {Type: glxlib.EventTypeBirth, Date: "1830", Participants: []glxlib.Participant{{Person: "person-father", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
 	}
 
 	issues := suggestChildCensusRecords(archive)
@@ -825,8 +850,8 @@ func TestSuggestChildCensus_ExistingCensusNotSuggested(t *testing.T) {
 	// Should NOT suggest 1880 for Mary.
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-james": {Properties: map[string]any{"name": "James Green", "born_on": "1810"}},
-			"person-mary":  {Properties: map[string]any{"name": "Mary Green", "born_on": "1850"}},
+			"person-james": {Properties: map[string]any{"name": "James Green"}},
+			"person-mary":  {Properties: map[string]any{"name": "Mary Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {
@@ -838,6 +863,8 @@ func TestSuggestChildCensus_ExistingCensusNotSuggested(t *testing.T) {
 			},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-james": {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-james", Role: "principal"}}},
+			"event-birth-mary":  {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-mary", Role: "principal"}}},
 			"event-1880-census": {
 				Type: glxlib.EventTypeCensus,
 				Date: "1880",
@@ -860,8 +887,8 @@ func TestSuggestChildCensus_DeadChildNotSuggested(t *testing.T) {
 	// James is brickwall, child Mary died in 1875 — should not suggest 1880+ for her
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-james": {Properties: map[string]any{"name": "James Green", "born_on": "1810"}},
-			"person-mary":  {Properties: map[string]any{"name": "Mary Green", "born_on": "1850", "died_on": "1875"}},
+			"person-james": {Properties: map[string]any{"name": "James Green"}},
+			"person-mary":  {Properties: map[string]any{"name": "Mary Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {
@@ -872,7 +899,11 @@ func TestSuggestChildCensus_DeadChildNotSuggested(t *testing.T) {
 				},
 			},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-james": {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-james", Role: "principal"}}},
+			"event-birth-mary":  {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-mary", Role: "principal"}}},
+			"event-death-mary":  {Type: glxlib.EventTypeDeath, Date: "1875", Participants: []glxlib.Participant{{Person: "person-mary", Role: "principal"}}},
+		},
 	}
 
 	issues := suggestChildCensusRecords(archive)
@@ -888,12 +919,12 @@ func TestSuggestChildCensus_DeadChildNotSuggested(t *testing.T) {
 func TestAnalyzeSuggestions_MissingCensus(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1840",
-				"died_on": "1890",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1890", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 	}
 
 	issues := analyzeSuggestions(archive)
@@ -910,12 +941,12 @@ func TestAnalyzeSuggestions_BEFDeathExcludesYear(t *testing.T) {
 	// "BEF 1870" means died before 1870 — should NOT suggest 1870 census
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1840",
-				"died_on": "BEF 1870",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "BEF 1870", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 	}
 
 	issues := analyzeSuggestions(archive)
@@ -957,12 +988,11 @@ func TestDeathYearUpperBound(t *testing.T) {
 func TestAnalyzeSuggestions_HasCensus(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1840",
-				"died_on": "1860",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 			"event-census-1850": {
 				Type:         "census",
 				Date:         "1850",
@@ -983,12 +1013,12 @@ func TestAnalyzeSuggestions_CitationCoversCensus(t *testing.T) {
 	// Analyze should NOT suggest searching for it.
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1832",
-				"died_on": "1910",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
-		Events:  map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1832", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1910", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 		Sources: map[string]*glxlib.Source{
 			"source-1880-census": {
 				Type:  glxlib.SourceTypeCensus,
@@ -1023,12 +1053,12 @@ func TestAnalyzeSuggestions_CitationCoversViaTitleFallback(t *testing.T) {
 	// Source.Date is empty; year is only in the title
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1832",
-				"died_on": "1910",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1832", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1910", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 		Sources: map[string]*glxlib.Source{
 			"source-census": {
 				Type:  glxlib.SourceTypeCensus,
@@ -1058,12 +1088,12 @@ func TestAnalyzeSuggestions_DirectSourceCoversCensus(t *testing.T) {
 	// Census covered via direct source on assertion (no citation)
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1840",
-				"died_on": "1900",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 		Sources: map[string]*glxlib.Source{
 			"src-1860": {
 				Type: glxlib.SourceTypeCensus,
@@ -1090,7 +1120,10 @@ func TestAnalyzeSuggestions_DirectSourceCoversCensus(t *testing.T) {
 func TestAnalyzeSuggestions_VitalRecords(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 		Sources:    map[string]*glxlib.Source{},
 		Citations:  map[string]*glxlib.Citation{},
@@ -1108,11 +1141,11 @@ func TestAnalyzeSuggestions_MaxLifespanCap(t *testing.T) {
 	// Person born 1832, no death date — should NOT suggest 1940+ census
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "ABT 1832",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "ABT 1832", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 	}
 
 	issues := analyzeSuggestions(archive)
@@ -1130,14 +1163,13 @@ func TestAnalyzeSuggestions_MaxLifespanCap(t *testing.T) {
 }
 
 func TestAnalyzeSuggestions_BurialInfersDeath(t *testing.T) {
-	// Person born 1832, no died_on, but has burial event in 1863
+	// Person born 1832, no death event, but has burial event in 1863
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1832",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1832", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 			"event-burial": {
 				Type:         "burial",
 				Date:         "1863",
@@ -1161,12 +1193,12 @@ func TestAnalyzeSuggestions_1890Note(t *testing.T) {
 	// Person alive during 1890 should get a note about the destroyed census
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_on": "1850",
-				"died_on": "1920",
-			}},
+			"person-a": {Properties: map[string]any{}},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: glxlib.EventTypeDeath, Date: "1920", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 	}
 
 	issues := analyzeSuggestions(archive)

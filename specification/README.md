@@ -74,7 +74,7 @@ persons:
           given: "John"
           surname: "Smith"
       gender: "male"
-      born_on: "1850-01-15"
+      occupation: "blacksmith"
     notes: "Blacksmith in Leeds, Yorkshire"
 
 # events/event-birth.glx

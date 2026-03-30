@@ -464,8 +464,8 @@ citations:
 assertions:
   assertion-john-death:
     subject:
-      person: person-john-smith
-    property: died_on
+      event: event-death-john
+    property: date
     value: "1920-06-20"
     media:
       - media-gravestone-photo

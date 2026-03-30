@@ -79,6 +79,7 @@ func init() {
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(renameCmd)
+	rootCmd.AddCommand(migrateCmd)
 }
 
 // ============================================================================

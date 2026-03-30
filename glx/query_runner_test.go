@@ -58,9 +58,13 @@ func TestQueryPersons_BornAfter(t *testing.T) {
 func TestQueryPersons_BirthplaceFilter(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-jane": {Properties: map[string]any{"name": "Jane", "born_at": "place-virginia"}},
-			"person-john": {Properties: map[string]any{"name": "John", "born_at": "place-ohio"}},
+			"person-jane": {Properties: map[string]any{"name": "Jane"}},
+			"person-john": {Properties: map[string]any{"name": "John"}},
 			"person-mary": {Properties: map[string]any{"name": "Mary"}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-jane": {Type: "birth", PlaceID: "place-virginia", Participants: []glxlib.Participant{{Person: "person-jane", Role: "principal"}}},
+			"event-birth-john": {Type: "birth", PlaceID: "place-ohio", Participants: []glxlib.Participant{{Person: "person-john", Role: "principal"}}},
 		},
 		Places: map[string]*glxlib.Place{
 			"place-virginia": {Name: "Virginia"},
@@ -79,11 +83,15 @@ func TestQueryPersons_BirthplaceFilter(t *testing.T) {
 	assert.Contains(t, output, "1 person(s) found")
 }
 
-func TestQueryPersons_BirthplaceStructuredProperty(t *testing.T) {
+func TestQueryPersons_BirthplaceViaEvent(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"name": "Person A", "born_at": map[string]any{"value": "place-va"}}},
-			"person-b": {Properties: map[string]any{"name": "Person B", "born_at": "place-oh"}},
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+			"person-b": {Properties: map[string]any{"name": "Person B"}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: "birth", PlaceID: "place-va", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-birth-b": {Type: "birth", PlaceID: "place-oh", Participants: []glxlib.Participant{{Person: "person-b", Role: "principal"}}},
 		},
 		Places: map[string]*glxlib.Place{
 			"place-va": {Name: "Virginia"},
