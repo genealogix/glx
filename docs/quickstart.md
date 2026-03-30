@@ -180,13 +180,13 @@ You've documented *where* the information comes from (source and citation). Now 
 assertions:
   assertion-john-birth:
     subject:
-      person: person-john-smith          # Who this is about
-    property: born_on                    # What fact you're asserting
-    value: "1850-01-15"                  # Your conclusion
+      event: event-john-birth             # The birth event you created
+    property: date                        # What fact you're asserting
+    value: "1850-01-15"                   # Your conclusion
     citations:
-      - citation-birth-entry             # The evidence supporting it
-    confidence: high                     # How confident you are
-    status: proven                       # Research verification state
+      - citation-birth-entry              # The evidence supporting it
+    confidence: high                      # How confident you are
+    status: proven                        # Research verification state
 ```
 
 This is the complete **evidence chain**: Source → Citation → Assertion. It traces your conclusion all the way back to the original document. See [Evidence Chain](/specification/2-core-concepts#evidence-chain) in the specification for more on this model.
