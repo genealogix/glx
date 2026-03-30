@@ -101,6 +101,9 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 		// Try to parse the remainder as a standard date.
 		parsed := parseGEDCOMDateBody(remainder)
 		if calendar != "" {
+			if parsed == "" {
+				return DateString(calendar)
+			}
 			return DateString(calendar + " " + string(parsed))
 		}
 		return parsed

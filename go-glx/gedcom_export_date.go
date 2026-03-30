@@ -41,10 +41,14 @@ func formatGEDCOMDate(date DateString) string {
 	}
 
 	// Extract calendar prefix (e.g., "JULIAN 1731-03-15" → calendar="JULIAN", body="1731-03-15")
-	calendar, body := ExtractCalendarPrefix(date)
+	calendar, body := ExtractCalendarPrefix(DateString(s))
 	if calendar != "" {
 		escape := calendarToGEDCOMEscape(calendar)
-		gedcomBody := formatGEDCOMDateBody(string(body))
+		bodyStr := strings.TrimSpace(string(body))
+		gedcomBody := formatGEDCOMDateBody(bodyStr)
+		if gedcomBody == "" {
+			return escape
+		}
 		return escape + " " + gedcomBody
 	}
 

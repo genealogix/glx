@@ -75,6 +75,18 @@ func TestExtractCalendar(t *testing.T) {
 			wantCalendar:  "ROMAN",
 			wantRemainder: "15 MAR 1731",
 		},
+		{
+			name:          "unknown calendar with spaces normalized to underscores",
+			input:         "@#DNEW CAL@ 15 MAR 1731",
+			wantCalendar:  "NEW_CAL",
+			wantRemainder: "15 MAR 1731",
+		},
+		{
+			name:          "escape with empty remainder",
+			input:         "@#DJULIAN@",
+			wantCalendar:  CalendarJulian,
+			wantRemainder: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -253,6 +265,24 @@ func TestExtractGLXCalendarPrefix(t *testing.T) {
 			wantCalendar:  "",
 			wantRemainder: "",
 		},
+		{
+			name:          "GREGORIAN not treated as calendar prefix",
+			input:         "GREGORIAN 1731-03-15",
+			wantCalendar:  "",
+			wantRemainder: "GREGORIAN 1731-03-15",
+		},
+		{
+			name:          "EST not treated as calendar prefix",
+			input:         "EST 1900",
+			wantCalendar:  "",
+			wantRemainder: "EST 1900",
+		},
+		{
+			name:          "unknown calendar with underscores roundtrips",
+			input:         "NEW_CAL 15 MAR 1731",
+			wantCalendar:  "NEW_CAL",
+			wantRemainder: "15 MAR 1731",
+		},
 	}
 
 	for _, tt := range tests {
@@ -270,4 +300,5 @@ func TestCalendarToGEDCOMEscape(t *testing.T) {
 	assert.Equal(t, "@#DFRENCH R@", calendarToGEDCOMEscape(CalendarFrenchR))
 	assert.Equal(t, "", calendarToGEDCOMEscape(""))
 	assert.Equal(t, "@#DROMAN@", calendarToGEDCOMEscape("ROMAN"))
+	assert.Equal(t, "@#DNEW CAL@", calendarToGEDCOMEscape("NEW_CAL"))
 }

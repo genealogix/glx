@@ -64,8 +64,9 @@ func extractCalendar(date string) (string, string) {
 
 	calendar, known := gedcomEscapeToCalendar[escapeName]
 	if !known {
-		// Unknown calendar — preserve the escape name as the prefix.
-		calendar = escapeName
+		// Unknown calendar — normalize spaces to underscores for a single-token prefix
+		// so ExtractCalendarPrefix can roundtrip it. calendarToGEDCOMEscape reverses this.
+		calendar = strings.ReplaceAll(escapeName, " ", "_")
 	}
 
 	return calendar, remainder
@@ -107,11 +108,13 @@ func ExtractCalendarPrefix(date DateString) (string, DateString) {
 }
 
 // isCalendarPrefix returns true if the token looks like a calendar prefix
-// (all uppercase letters/underscores, not a date qualifier or range keyword).
+// (all uppercase letters/underscores, not a date qualifier, range keyword,
+// or other token that could appear at the start of a raw date string).
 func isCalendarPrefix(token string) bool {
-	// Reject known date qualifiers and range keywords.
+	// Reject known date qualifiers, range keywords, and Gregorian (which is the default).
 	switch token {
-	case "ABT", "BEF", "AFT", "CAL", "BET", "FROM", "INT", "TO", "AND":
+	case "ABT", "BEF", "AFT", "CAL", "BET", "FROM", "INT", "TO", "AND",
+		"GREGORIAN", "EST", "SPRING", "SUMMER", "FALL", "WINTER":
 		return false
 	}
 
@@ -136,6 +139,6 @@ func calendarToGEDCOMEscape(calendar string) string {
 		return escape
 	}
 
-	// Unknown calendar — construct a GEDCOM-style escape.
-	return "@#D" + calendar + "@"
+	// Unknown calendar — reverse underscore normalization and construct escape.
+	return "@#D" + strings.ReplaceAll(calendar, "_", " ") + "@"
 }
