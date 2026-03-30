@@ -1139,11 +1139,11 @@ Migrate a GLX archive by converting deprecated person properties to birth/death 
 
 **Usage:**
 ```bash
-glx migrate [path] [flags]
+glx migrate <path>
 ```
 
 **Arguments:**
-- `[path]` - Path to a multi-file archive directory or a single-file `.glx` archive (defaults to current directory)
+- `<path>` - Path to a multi-file archive directory or a single-file `.glx` archive
 
 **What it does:**
 - Converts `born_on`/`born_at` person properties to birth Event entities
@@ -1151,26 +1151,26 @@ glx migrate [path] [flags]
 - Merges date/place into existing birth/death events when they already exist
 - Converts property assertions (`property: born_on`) to event assertions (`property: date`)
 - Removes the deprecated properties from person entities
+- Strips deprecated entries from archive vocabulary files
 
 **Examples:**
 
 ```bash
-# Migrate the current directory
-glx migrate
-
-# Migrate a specific archive
+# Migrate a multi-file archive
 glx migrate my-family-archive
+
+# Migrate a single-file archive
+glx migrate archive.glx
 ```
 
 **Output:**
 ```
-Migration Summary
-=================
-  Persons scanned:  31
-  Events created:   12
-  Events updated:   8
-  Assertions updated: 20
-  Properties removed: 40
+Migration complete:
+  Events created:       12
+  Events merged:        8
+  Properties removed:   40
+  Assertions migrated:  20
+  Vocab entries removed: 4
 ```
 
 ## File Format
