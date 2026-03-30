@@ -267,7 +267,8 @@ export default defineConfig({
             { text: 'glx init', link: '/cli#glx-init' },
             { text: 'glx validate', link: '/cli#glx-validate' },
             { text: 'glx split', link: '/cli#glx-split' },
-            { text: 'glx join', link: '/cli#glx-join' }
+            { text: 'glx join', link: '/cli#glx-join' },
+            { text: 'glx migrate', link: '/cli#glx-migrate' }
           ]
         },
         {

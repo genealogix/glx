@@ -286,8 +286,14 @@ func makeTreeNode(archive *glxlib.GLXFile, personID string) *treeNode {
 	dates := ""
 	if person != nil {
 		name = extractPersonName(person)
-		bornOn := propertyString(person.Properties, "born_on")
-		diedOn := propertyString(person.Properties, "died_on")
+
+		var bornOn, diedOn string
+		if _, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth); birthEvent != nil {
+			bornOn = string(birthEvent.Date)
+		}
+		if _, deathEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath); deathEvent != nil {
+			diedOn = string(deathEvent.Date)
+		}
 
 		switch {
 		case bornOn != "" && diedOn != "":

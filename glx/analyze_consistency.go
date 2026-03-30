@@ -22,6 +22,16 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// extractEventYear looks up a person's event (e.g. birth or death) and returns
+// the first year from its date, or 0 if no matching event exists.
+func extractEventYear(archive *glxlib.GLXFile, personID, eventType string) int {
+	_, event := glxlib.FindPersonEvent(archive, personID, eventType)
+	if event == nil {
+		return 0
+	}
+	return glxlib.ExtractFirstYear(string(event.Date))
+}
+
 // analyzeConsistency checks for chronological inconsistencies across the archive.
 func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
@@ -46,8 +56,8 @@ func checkBirthAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		birthYear := glxlib.ExtractPropertyYear(person.Properties, "born_on")
-		deathYear := glxlib.ExtractPropertyYear(person.Properties, "died_on")
+		birthYear := extractEventYear(archive, id, glxlib.EventTypeBirth)
+		deathYear := extractEventYear(archive, id, glxlib.EventTypeDeath)
 		if birthYear == 0 || deathYear == 0 {
 			continue
 		}
@@ -94,7 +104,7 @@ func checkParentYoungerThanChild(archive *glxlib.GLXFile) []AnalysisIssue {
 			if parent == nil {
 				continue
 			}
-			parentBirth := glxlib.ExtractPropertyYear(parent.Properties, "born_on")
+			parentBirth := extractEventYear(archive, parentID, glxlib.EventTypeBirth)
 			if parentBirth == 0 {
 				continue
 			}
@@ -104,7 +114,7 @@ func checkParentYoungerThanChild(archive *glxlib.GLXFile) []AnalysisIssue {
 				if child == nil {
 					continue
 				}
-				childBirth := glxlib.ExtractPropertyYear(child.Properties, "born_on")
+				childBirth := extractEventYear(archive, childID, glxlib.EventTypeBirth)
 				if childBirth == 0 {
 					continue
 				}
@@ -136,7 +146,7 @@ func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 		if person == nil {
 			continue
 		}
-		year := glxlib.ExtractPropertyYear(person.Properties, "died_on")
+		year := extractEventYear(archive, id, glxlib.EventTypeDeath)
 		if year > 0 {
 			deathYears[id] = year
 		}
@@ -197,8 +207,8 @@ func checkImplausibleLifespan(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		birthYear := glxlib.ExtractPropertyYear(person.Properties, "born_on")
-		deathYear := glxlib.ExtractPropertyYear(person.Properties, "died_on")
+		birthYear := extractEventYear(archive, id, glxlib.EventTypeBirth)
+		deathYear := extractEventYear(archive, id, glxlib.EventTypeDeath)
 		if birthYear == 0 || deathYear == 0 {
 			continue
 		}
@@ -239,7 +249,7 @@ func checkMarriageBeforeBirth(archive *glxlib.GLXFile) []AnalysisIssue {
 				continue
 			}
 
-			birthYear := glxlib.ExtractPropertyYear(person.Properties, "born_on")
+			birthYear := extractEventYear(archive, p.Person, glxlib.EventTypeBirth)
 			if birthYear == 0 {
 				continue
 			}
@@ -384,12 +394,12 @@ func allReplacementPattern(siblings []siblingInfo, archive *glxlib.GLXFile) bool
 	}
 	var pairs []yearPair
 	for _, c := range siblings {
-		p, ok := archive.Persons[c.id]
-		if !ok || p == nil {
+		_, ok := archive.Persons[c.id]
+		if !ok {
 			return false
 		}
-		birth := glxlib.ExtractPropertyYear(p.Properties, "born_on")
-		death := glxlib.ExtractPropertyYear(p.Properties, "died_on")
+		birth := extractEventYear(archive, c.id, glxlib.EventTypeBirth)
+		death := extractEventYear(archive, c.id, glxlib.EventTypeDeath)
 		pairs = append(pairs, yearPair{birth: birth, death: death})
 	}
 

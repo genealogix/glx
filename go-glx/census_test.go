@@ -40,11 +40,11 @@ func TestBuildCensusEntities_Minimal(t *testing.T) {
 	result, err := BuildCensusEntities(tpl, nil)
 	require.NoError(t, err)
 
-	// Should create: 1 place, 1 source, 1 citation, 1 event, 1 person
+	// Should create: 1 place, 1 source, 1 citation, 2 events (census + birth), 1 person
 	assert.Len(t, result.Place, 1)
 	assert.Len(t, result.Source, 1)
 	assert.Len(t, result.Citation, 1)
-	assert.Len(t, result.Event, 1)
+	assert.Len(t, result.Event, 2)
 	assert.Len(t, result.Persons, 1)
 	assert.Len(t, result.NewPersonIDs, 1)
 	assert.Empty(t, result.MatchedIDs)
@@ -358,7 +358,7 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	// Check birth year assertion
 	birthAssertion := result.Assertions["assertion-person-daniel-lane-birth-year-1860"]
 	require.NotNil(t, birthAssertion, "should have birth year assertion")
-	assert.Equal(t, PersonPropertyBornOn, birthAssertion.Property)
+	assert.Equal(t, "date", birthAssertion.Property)
 	assert.Equal(t, "ABT 1830", birthAssertion.Value)
 	assert.Equal(t, ConfidenceLevelLow, birthAssertion.Confidence)
 	assert.Contains(t, birthAssertion.Notes, "age 30")
@@ -418,11 +418,13 @@ func TestBuildCensusEntities_MemberWithExplicitPersonID(t *testing.T) {
 	result, err := BuildCensusEntities(tpl, existing)
 	require.NoError(t, err)
 
-	// Assertions should reference the explicit person_id, and assertion ID
-	// should use the resolved personID slug, not the name slug
+	// Birth assertion should target a birth event, not a person property.
+	// Assertion ID uses the resolved personID slug.
 	birthAssertion := result.Assertions["assertion-person-d-lane-birth-year-1860"]
 	require.NotNil(t, birthAssertion)
-	assert.Equal(t, "person-d-lane", birthAssertion.Subject.Person)
+	assert.NotEmpty(t, birthAssertion.Subject.Event,
+		"birth assertion should target a birth event")
+	assert.Equal(t, "date", birthAssertion.Property)
 }
 
 func TestBuildCensusEntities_PersonIDNotFound(t *testing.T) {
@@ -506,12 +508,15 @@ func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
 	assert.Empty(t, result.Persons, "should not create new person when name matches")
 	assert.Equal(t, []string{"person-abc123"}, result.MatchedIDs)
 
-	// Assertions must reference the actual resolved ID, not the slugified name.
-	// Assertion IDs also use the resolved personID slug for uniqueness.
+	// Birth assertion should target a birth event (created by census), not a person property.
+	// Assertion IDs use the resolved personID slug for uniqueness.
 	birthAssertion := result.Assertions["assertion-person-abc123-birth-year-1860"]
 	require.NotNil(t, birthAssertion)
-	assert.Equal(t, "person-abc123", birthAssertion.Subject.Person,
-		"assertion should use resolved person ID, not slugify(name)")
+	assert.NotEmpty(t, birthAssertion.Subject.Event,
+		"birth assertion should target a birth event")
+	assert.Empty(t, birthAssertion.Subject.Person,
+		"birth assertion should not target person directly")
+	assert.Equal(t, "date", birthAssertion.Property)
 
 	resAssertion := result.Assertions["assertion-person-abc123-residence-1860"]
 	require.NotNil(t, resAssertion)

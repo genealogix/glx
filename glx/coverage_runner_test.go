@@ -29,16 +29,16 @@ func newTestArchiveForCoverage() *glxlib.GLXFile {
 			"person-john": {
 				Properties: map[string]any{
 					glxlib.PersonPropertyName:   "John Smith",
-					glxlib.PersonPropertyBornOn: "1840",
-					glxlib.PersonPropertyBornAt: "place-ny",
-					glxlib.PersonPropertyDiedOn: "1910",
-					glxlib.PersonPropertyDiedAt: "place-ny",
+					glxlib.DeprecatedPropertyBornOn: "1840",
+					glxlib.DeprecatedPropertyBornAt: "place-ny",
+					glxlib.DeprecatedPropertyDiedOn: "1910",
+					glxlib.DeprecatedPropertyDiedAt: "place-ny",
 				},
 			},
 			"person-jane": {
 				Properties: map[string]any{
 					glxlib.PersonPropertyName:   "Jane Doe",
-					glxlib.PersonPropertyBornOn: "1845",
+					glxlib.DeprecatedPropertyBornOn: "1845",
 				},
 			},
 			"person-no-dates": {
@@ -49,15 +49,17 @@ func newTestArchiveForCoverage() *glxlib.GLXFile {
 		},
 		Events: map[string]*glxlib.Event{
 			"event-birth": {
-				Type: glxlib.EventTypeBirth,
-				Date: "1840",
+				Type:    glxlib.EventTypeBirth,
+				Date:    "1840",
+				PlaceID: "place-ny",
 				Participants: []glxlib.Participant{
 					{Person: "person-john", Role: "subject"},
 				},
 			},
 			"event-death": {
-				Type: glxlib.EventTypeDeath,
-				Date: "1910",
+				Type:    glxlib.EventTypeDeath,
+				Date:    "1910",
+				PlaceID: "place-ny",
 				Participants: []glxlib.Participant{
 					{Person: "person-john", Role: "subject"},
 				},
@@ -320,12 +322,19 @@ func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-old": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "Old Person",
-					glxlib.PersonPropertyBornOn: "ABT 1832",
+					glxlib.PersonPropertyName: "Old Person",
 				},
 			},
 		},
-		Events:         map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-old": {
+				Type: glxlib.EventTypeBirth,
+				Date: "ABT 1832",
+				Participants: []glxlib.Participant{
+					{Person: "person-old", Role: "principal"},
+				},
+			},
+		},
 		Relationships:  map[string]*glxlib.Relationship{},
 		Sources:        map[string]*glxlib.Source{},
 		Citations:      map[string]*glxlib.Citation{},
@@ -358,17 +367,23 @@ func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
 }
 
 func TestBuildCoverage_BurialInfersDeath(t *testing.T) {
-	// Person born 1832, no died_on, but has burial in 1863
+	// Person born 1832, no death event, but has burial in 1863
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-soldier": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "Soldier",
-					glxlib.PersonPropertyBornOn: "1832",
+					glxlib.PersonPropertyName: "Soldier",
 				},
 			},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-soldier": {
+				Type: glxlib.EventTypeBirth,
+				Date: "1832",
+				Participants: []glxlib.Participant{
+					{Person: "person-soldier", Role: "principal"},
+				},
+			},
 			"event-burial": {
 				Type: glxlib.EventTypeBurial,
 				Date: "1863",
@@ -415,13 +430,26 @@ func TestBuildCoverage_1890Note(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-1890": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "Person Alive 1890",
-					glxlib.PersonPropertyBornOn: "1850",
-					glxlib.PersonPropertyDiedOn: "1920",
+					glxlib.PersonPropertyName: "Person Alive 1890",
 				},
 			},
 		},
-		Events:         map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-1890": {
+				Type: glxlib.EventTypeBirth,
+				Date: "1850",
+				Participants: []glxlib.Participant{
+					{Person: "person-1890", Role: "principal"},
+				},
+			},
+			"event-death-1890": {
+				Type: glxlib.EventTypeDeath,
+				Date: "1920",
+				Participants: []glxlib.Participant{
+					{Person: "person-1890", Role: "principal"},
+				},
+			},
+		},
 		Relationships:  map[string]*glxlib.Relationship{},
 		Sources:        map[string]*glxlib.Source{},
 		Citations:      map[string]*glxlib.Citation{},
@@ -504,23 +532,32 @@ func TestCollectPersonStates_FromBirthplace(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-wi": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "WI Person",
-					glxlib.PersonPropertyBornOn: "1850",
-					glxlib.PersonPropertyBornAt: "place-wi",
+					glxlib.PersonPropertyName: "WI Person",
 				},
 			},
 		},
 		Places: map[string]*glxlib.Place{
 			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
 		},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-wi": {
+				Type:    glxlib.EventTypeBirth,
+				Date:    "1850",
+				PlaceID: "place-wi",
+				Participants: []glxlib.Participant{
+					{Person: "person-wi", Role: "principal"},
+				},
+			},
+		},
 		Relationships: map[string]*glxlib.Relationship{},
 		Sources:       map[string]*glxlib.Source{},
 		Citations:     map[string]*glxlib.Citation{},
 		Assertions:    map[string]*glxlib.Assertion{},
 	}
 
-	states := collectPersonStates(archive.Persons["person-wi"], archive, nil)
+	// Pass the birth event info so collectPersonStates can find the state
+	events := collectPersonEvents("person-wi", archive)
+	states := collectPersonStates(archive.Persons["person-wi"], archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
 
@@ -530,7 +567,7 @@ func TestCollectPersonStates_FromEventPlace(t *testing.T) {
 			"person-1": {
 				Properties: map[string]any{
 					glxlib.PersonPropertyName:   "Test Person",
-					glxlib.PersonPropertyBornOn: "1850",
+					glxlib.DeprecatedPropertyBornOn: "1850",
 				},
 			},
 		},
@@ -675,28 +712,36 @@ func TestFindStateCensusMatch_PlaceWrongState(t *testing.T) {
 	assert.Equal(t, "", ref, "should not match when place resolves to wrong state")
 }
 
-func TestCollectPersonStates_StructuredProperty(t *testing.T) {
+func TestCollectPersonStates_FromBirthEvent(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-1": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "Test Person",
-					glxlib.PersonPropertyBornOn: "1850",
-					glxlib.PersonPropertyBornAt: map[string]any{"value": "place-wi"},
+					glxlib.PersonPropertyName: "Test Person",
 				},
 			},
 		},
 		Places: map[string]*glxlib.Place{
 			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
 		},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-1": {
+				Type:    glxlib.EventTypeBirth,
+				Date:    "1850",
+				PlaceID: "place-wi",
+				Participants: []glxlib.Participant{
+					{Person: "person-1", Role: "principal"},
+				},
+			},
+		},
 		Relationships: map[string]*glxlib.Relationship{},
 		Sources:       map[string]*glxlib.Source{},
 		Citations:     map[string]*glxlib.Citation{},
 		Assertions:    map[string]*glxlib.Assertion{},
 	}
 
-	states := collectPersonStates(archive.Persons["person-1"], archive, nil)
+	events := collectPersonEvents("person-1", archive)
+	states := collectPersonStates(archive.Persons["person-1"], archive, events)
 	assert.Contains(t, states, "Wisconsin")
 }
 
@@ -705,17 +750,30 @@ func TestBuildCoverage_IncludesStateCensus(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-wi": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "WI Person",
-					glxlib.PersonPropertyBornOn: "1850",
-					glxlib.PersonPropertyDiedOn: "1920",
-					glxlib.PersonPropertyBornAt: "place-wi",
+					glxlib.PersonPropertyName: "WI Person",
 				},
 			},
 		},
 		Places: map[string]*glxlib.Place{
 			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
 		},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-wi": {
+				Type:    glxlib.EventTypeBirth,
+				Date:    "1850",
+				PlaceID: "place-wi",
+				Participants: []glxlib.Participant{
+					{Person: "person-wi", Role: "principal"},
+				},
+			},
+			"event-death-wi": {
+				Type: glxlib.EventTypeDeath,
+				Date: "1920",
+				Participants: []glxlib.Participant{
+					{Person: "person-wi", Role: "principal"},
+				},
+			},
+		},
 		Relationships: map[string]*glxlib.Relationship{},
 		Sources:       map[string]*glxlib.Source{},
 		Citations:     map[string]*glxlib.Citation{},
@@ -796,15 +854,19 @@ func TestBuildOtherRecords_ProbateHighPriority_WithFamilyAndDeath(t *testing.T) 
 }
 
 func TestBuildOtherRecords_ProbateNoPriority_NoDeath(t *testing.T) {
-	// Person with no death date — probate should NOT be high priority
+	// Person with birth event but no death event — probate should NOT be high priority
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-alive": {Properties: map[string]any{
-				glxlib.PersonPropertyName:   "Living Person",
-				glxlib.PersonPropertyBornOn: "1980",
+				glxlib.PersonPropertyName: "Living Person",
 			}},
 		},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-alive": {
+				Type: glxlib.EventTypeBirth, Date: "1980",
+				Participants: []glxlib.Participant{{Person: "person-alive", Role: glxlib.ParticipantRolePrincipal}},
+			},
+		},
 		Relationships: map[string]*glxlib.Relationship{},
 		Sources:       map[string]*glxlib.Source{},
 		Citations:     map[string]*glxlib.Citation{},
@@ -828,12 +890,19 @@ func TestBuildOtherRecords_ProbateNoPriority_NoFamily(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-loner": {Properties: map[string]any{
-				glxlib.PersonPropertyName:   "Loner Person",
-				glxlib.PersonPropertyBornOn: "1800",
-				glxlib.PersonPropertyDiedOn: "1870",
+				glxlib.PersonPropertyName: "Loner Person",
 			}},
 		},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-loner": {
+				Type: glxlib.EventTypeBirth, Date: "1800",
+				Participants: []glxlib.Participant{{Person: "person-loner", Role: glxlib.ParticipantRolePrincipal}},
+			},
+			"event-death-loner": {
+				Type: glxlib.EventTypeDeath, Date: "1870",
+				Participants: []glxlib.Participant{{Person: "person-loner", Role: glxlib.ParticipantRolePrincipal}},
+			},
+		},
 		Relationships: map[string]*glxlib.Relationship{},
 		Sources:       map[string]*glxlib.Source{},
 		Citations:     map[string]*glxlib.Citation{},

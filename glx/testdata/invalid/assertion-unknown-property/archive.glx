@@ -44,8 +44,3 @@ person_properties:
       surname:
         label: "Surname"
         description: "Family name"
-
-  born_on:
-    label: "Birth Date"
-    description: "Date of birth"
-    value_type: date

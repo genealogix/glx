@@ -6,8 +6,6 @@ persons:
         fields:
           given: "Jane"
           surname: "Smith"
-      born_on: "1876-09-05"
-      died_on: "1955-12-10"
       gender: "female"
     notes: "Daughter of John Smith and Mary Brown."
     tags:

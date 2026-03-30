@@ -124,18 +124,30 @@ func TestCollectDirectEvents(t *testing.T) {
 }
 
 func TestCollectDirectEvents_SynthesizesFromProperties(t *testing.T) {
-	// Person has born_on/died_on properties but no birth/death event entities
+	// Person has birth/death event entities plus a census event
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-robert": {Properties: map[string]any{
-				"name":    "Robert Webb",
-				"born_on": "ABT 1815",
-				"born_at": "place-virginia",
-				"died_on": "10 FEB 1863",
-				"died_at": "place-tn",
+				"name": "Robert Webb",
 			}},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-robert": {
+				Type:    "birth",
+				Date:    "ABT 1815",
+				PlaceID: "place-virginia",
+				Participants: []glxlib.Participant{
+					{Person: "person-robert", Role: "principal"},
+				},
+			},
+			"event-death-robert": {
+				Type:    "death",
+				Date:    "10 FEB 1863",
+				PlaceID: "place-tn",
+				Participants: []glxlib.Participant{
+					{Person: "person-robert", Role: "principal"},
+				},
+			},
 			"event-census-1860": {
 				Type: "census",
 				Date: "1860",
@@ -152,9 +164,9 @@ func TestCollectDirectEvents_SynthesizesFromProperties(t *testing.T) {
 
 	entries := collectDirectEvents("person-robert", archive)
 
-	// Should have 3 entries: census + synthesized birth + synthesized death
+	// Should have 3 entries: birth + death + census
 	if len(entries) != 3 {
-		t.Fatalf("expected 3 entries (census + birth + death), got %d", len(entries))
+		t.Fatalf("expected 3 entries (birth + death + census), got %d", len(entries))
 	}
 
 	labels := map[string]bool{}
@@ -162,10 +174,10 @@ func TestCollectDirectEvents_SynthesizesFromProperties(t *testing.T) {
 		labels[e.Label] = true
 	}
 	if !labels["Birth"] {
-		t.Error("expected synthesized Birth entry from born_on property")
+		t.Error("expected Birth entry from birth event")
 	}
 	if !labels["Death"] {
-		t.Error("expected synthesized Death entry from died_on property")
+		t.Error("expected Death entry from death event")
 	}
 	if !labels["Census"] {
 		t.Error("expected Census event entry")
@@ -207,7 +219,7 @@ func TestCollectFamilyEvents_Spouse(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-john": {Properties: map[string]any{"name": "John Smith"}},
-			"person-mary": {Properties: map[string]any{"name": "Mary Brown", "born_on": "1855"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary Brown"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-marriage": {
@@ -219,6 +231,13 @@ func TestCollectFamilyEvents_Spouse(t *testing.T) {
 			},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-mary-birth": {
+				Type: "birth",
+				Date: "1855",
+				Participants: []glxlib.Participant{
+					{Person: "person-mary", Role: "principal"},
+				},
+			},
 			"event-mary-death": {
 				Type: "death",
 				Date: "1930-05-20",
@@ -232,7 +251,7 @@ func TestCollectFamilyEvents_Spouse(t *testing.T) {
 
 	entries := collectFamilyEvents("person-john", archive)
 
-	// Should find Mary's birth (from property) and death (from event)
+	// Should find Mary's birth and death (from events)
 	if len(entries) != 2 {
 		t.Fatalf("expected 2 family events, got %d", len(entries))
 	}

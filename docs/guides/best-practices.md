@@ -20,8 +20,8 @@ Practical recommendations for maintaining GENEALOGIX archives.
 assertions:
   assertion-john-birth:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-john-birth
+    property: date
     value: "1850-01-15"
     citations: [citation-birth-cert]  # ✓ Always include citations
     confidence: high
@@ -36,8 +36,8 @@ assertions:
 assertions:
   assertion-birth-date:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-john-birth
+    property: date
     value: "1850-01-15"
     confidence: high  # high, medium, low, or disputed
     citations: [citation-birth-cert, citation-baptism]
@@ -176,8 +176,8 @@ Document resolution when sources conflict:
 assertions:
   assertion-birth-date:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-john-birth
+    property: date
     value: "1850-01-15"
     confidence: medium
     status: speculative

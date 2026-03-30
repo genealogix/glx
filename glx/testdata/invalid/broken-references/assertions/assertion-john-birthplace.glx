@@ -1,8 +1,8 @@
 assertions:
   assertion-john-birth-place:
     subject:
-      person: person-john-smith-1850
-    property: born_at
+      event: event-birth-john
+    property: place
     value: place-leeds
     citations:
       - citation-john-birth

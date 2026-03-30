@@ -109,16 +109,6 @@ person_properties:
         label: "Suffix"
         description: "Generational suffix (Jr., Sr., III)"
 
-  born_on:
-    label: "Birth Date"
-    description: "Date of birth"
-    value_type: date
-  
-  died_on:
-    label: "Death Date"
-    description: "Date of death"
-    value_type: date
-  
   gender:
     label: "Gender"
     description: "Gender identity"
@@ -153,8 +143,6 @@ persons:
           type: "birth"
           given: "John"
           surname: "Smith"
-      born_on: "1850-01-15"
-      died_on: "1920-06-20"
       gender: "male"
 
   person-b2c3d4e5:
@@ -165,7 +153,6 @@ persons:
           type: "birth"
           given: "Mary"
           surname: "Brown"
-      born_on: "1852-03-20"
       gender: "female"
 
 relationships:
@@ -235,8 +222,8 @@ repositories:
 assertions:
   assertion-1a2b3c4d:
     subject:
-      person: person-a1b2c3d4
-    property: born_on
+      event: event-a1a2a3a4
+    property: date
     value: "1850-01-15"
     citations:
       - citation-abcdef12

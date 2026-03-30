@@ -132,18 +132,18 @@ func findPersonForCoverage(archive *glxlib.GLXFile, query string) (string, *glxl
 
 // buildCoverage generates the coverage checklist for a person.
 func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFile) *coverageResult {
-	var props map[string]any
-	if person != nil {
-		props = person.Properties
+	var bornOn, bornAt, diedOn, diedAt string
+	if _, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth); birthEvent != nil {
+		bornOn = string(birthEvent.Date)
+		bornAt = birthEvent.PlaceID
+	}
+	if _, deathEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath); deathEvent != nil {
+		diedOn = string(deathEvent.Date)
+		diedAt = deathEvent.PlaceID
 	}
 
-	bornOn := propertyString(props, glxlib.PersonPropertyBornOn)
-	bornAt := propertyString(props, glxlib.PersonPropertyBornAt)
-	diedOn := propertyString(props, glxlib.PersonPropertyDiedOn)
-	diedAt := propertyString(props, glxlib.PersonPropertyDiedAt)
-
 	birthYear := glxlib.ExtractFirstYear(bornOn)
-	deathYear := deathYearUpperBound(props[glxlib.PersonPropertyDiedOn])
+	deathYear := deathYearUpperBound(diedOn)
 
 	// Build indexes: what sources/citations/events reference this person
 	personSources := collectPersonSources(personID, archive)

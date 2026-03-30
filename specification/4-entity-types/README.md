@@ -13,7 +13,7 @@ This section defines the core entity types in GENEALOGIX. Each entity represents
 ### [Person](person)
 Represents an individual in the family archive. Contains personal identity information, names, events, and relationships.
 
-- **Key Properties**: Names, gender, birth/death dates, occupation, residence
+- **Key Properties**: Names, gender, occupation, residence
 - **GEDCOM Equivalent**: INDI (Individual Record)
 
 ### [Relationship](relationship)

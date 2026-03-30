@@ -409,8 +409,8 @@ citations:
 assertions:
   assertion-1:
     subject:
-      person: person-1
-    property: born_on
+      event: event-person-1-birth
+    property: date
     value: "1850-01-15"
     citations: [citation-1]
 ```

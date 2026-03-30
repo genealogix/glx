@@ -171,10 +171,7 @@ func TestBuildPlaceAnalysis_Unreferenced(t *testing.T) {
 func TestBuildPlaceAnalysis_PersonPropertyRefs(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_at": "place-virginia",
-				"died_at": "place-tennessee",
-			}},
+			"person-a": {Properties: map[string]any{}},
 			"person-b": {Properties: map[string]any{
 				"residence": "place-wisconsin",
 			}},
@@ -185,11 +182,14 @@ func TestBuildPlaceAnalysis_PersonPropertyRefs(t *testing.T) {
 			"place-wisconsin": {Name: "Wisconsin", Type: "state"},
 			"place-orphan":    {Name: "Orphan Place", Type: "city"},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: "birth", PlaceID: "place-virginia", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+			"event-death-a": {Type: "death", PlaceID: "place-tennessee", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 	}
 
 	a := buildPlaceAnalysis(archive)
-	// Places referenced via person properties should NOT be unreferenced
+	// Places referenced via events or person properties should NOT be unreferenced
 	assert.NotContains(t, a.Unreferenced, "place-virginia")
 	assert.NotContains(t, a.Unreferenced, "place-tennessee")
 	assert.NotContains(t, a.Unreferenced, "place-wisconsin")
@@ -200,9 +200,7 @@ func TestBuildPlaceAnalysis_PersonPropertyRefs(t *testing.T) {
 func TestBuildPlaceAnalysis_StructuredPropertyRefs(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{
-				"born_at": map[string]any{"value": "place-structured"},
-			}},
+			"person-a": {Properties: map[string]any{}},
 			"person-b": {Properties: map[string]any{
 				"residence": []any{
 					map[string]any{"value": "place-temporal", "date": "FROM 1850"},
@@ -214,7 +212,9 @@ func TestBuildPlaceAnalysis_StructuredPropertyRefs(t *testing.T) {
 			"place-temporal":   {Name: "Temporal", Type: "city"},
 			"place-unused":     {Name: "Unused", Type: "city"},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: "birth", PlaceID: "place-structured", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
+		},
 	}
 
 	a := buildPlaceAnalysis(archive)

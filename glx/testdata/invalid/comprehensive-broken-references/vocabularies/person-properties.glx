@@ -11,12 +11,6 @@ person_properties:
       surname:
         label: "Surname"
         description: "Family name"
-  born_on:
-    label: "Born On"
-    value_type: date
-  died_on:
-    label: "Died On"
-    value_type: date
   birth_place:
     label: "Birth Place"
     value_type: reference

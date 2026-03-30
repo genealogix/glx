@@ -48,8 +48,6 @@ persons:
           given: "Alice"
           surname: "Chen"
       gender: "female"
-      born_on: "1985-06-15"
-      born_at: "place-boston"
       occupation: "software engineer"
       residence: "place-cambridge"
     notes: |
@@ -68,8 +66,6 @@ persons:
           given: "Robert"
           surname: "Chen"
       gender: "male"
-      born_on: "1955-03-22"
-      born_at: "place-new-york"
       # Temporal occupation (changed over time)
       occupation:
         - value: "accountant"
@@ -87,6 +83,23 @@ persons:
     notes: |
       Father of Alice Chen.
       All properties backed by assertions with full evidence chain.
+
+events:
+  event-alice-birth:
+    type: birth
+    date: "1985-06-15"
+    place: place-boston
+    participants:
+      - person: person-alice-chen
+        role: subject
+
+  event-robert-birth:
+    type: birth
+    date: "1955-03-22"
+    place: place-new-york
+    participants:
+      - person: person-robert-chen
+        role: subject
 
 relationships:
   # Parent-child relationship between Robert and Alice
@@ -198,8 +211,8 @@ assertions:
   # --- Robert's birth date supported by primary evidence ---
   assertion-robert-birth:
     subject:
-      person: person-robert-chen
-    property: born_on
+      event: event-robert-birth
+    property: date
     value: "1955-03-22"
     citations:
       - citation-robert-birth-cert
@@ -243,11 +256,11 @@ assertions:
     status: speculative
     notes: "Census records confirm Boston residence from at least 1990, but earlier records not yet checked"
 
-  # --- Alice's birth supported by primary evidence ---
+  # --- Alice's birth date supported by primary evidence ---
   assertion-alice-birth:
     subject:
-      person: person-alice-chen
-    property: born_on
+      event: event-alice-birth
+    property: date
     value: "1985-06-15"
     citations:
       - citation-alice-birth-cert
@@ -258,8 +271,8 @@ assertions:
   # --- Alice's birth place from same source ---
   assertion-alice-birthplace:
     subject:
-      person: person-alice-chen
-    property: born_at
+      event: event-alice-birth
+    property: place
     value: "place-boston"
     citations:
       - citation-alice-birth-cert
