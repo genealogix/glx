@@ -77,15 +77,15 @@ var confidenceRank = map[string]int{
 func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffResult {
 	result := &DiffResult{}
 
-	diffEntityMap(result, EntityTypePersons, oldArchive.Persons, newArchive.Persons, newArchive)
-	diffEntityMap(result, EntityTypeEvents, oldArchive.Events, newArchive.Events, nil)
-	diffEntityMap(result, EntityTypeRelationships, oldArchive.Relationships, newArchive.Relationships, nil)
-	diffEntityMap(result, EntityTypePlaces, oldArchive.Places, newArchive.Places, nil)
-	diffEntityMap(result, EntityTypeSources, oldArchive.Sources, newArchive.Sources, nil)
-	diffEntityMap(result, EntityTypeCitations, oldArchive.Citations, newArchive.Citations, nil)
-	diffEntityMap(result, EntityTypeRepositories, oldArchive.Repositories, newArchive.Repositories, nil)
-	diffEntityMap(result, EntityTypeAssertions, oldArchive.Assertions, newArchive.Assertions, nil)
-	diffEntityMap(result, EntityTypeMedia, oldArchive.Media, newArchive.Media, nil)
+	diffEntityMap(result, EntityTypePersons, oldArchive.Persons, newArchive.Persons, oldArchive, newArchive)
+	diffEntityMap(result, EntityTypeEvents, oldArchive.Events, newArchive.Events, nil, nil)
+	diffEntityMap(result, EntityTypeRelationships, oldArchive.Relationships, newArchive.Relationships, nil, nil)
+	diffEntityMap(result, EntityTypePlaces, oldArchive.Places, newArchive.Places, nil, nil)
+	diffEntityMap(result, EntityTypeSources, oldArchive.Sources, newArchive.Sources, nil, nil)
+	diffEntityMap(result, EntityTypeCitations, oldArchive.Citations, newArchive.Citations, nil, nil)
+	diffEntityMap(result, EntityTypeRepositories, oldArchive.Repositories, newArchive.Repositories, nil, nil)
+	diffEntityMap(result, EntityTypeAssertions, oldArchive.Assertions, newArchive.Assertions, nil, nil)
+	diffEntityMap(result, EntityTypeMedia, oldArchive.Media, newArchive.Media, nil, nil)
 
 	// Filter by person if requested (before computing stats)
 	if personFilter != "" {
@@ -126,8 +126,9 @@ func entityTypeOrder(t string) int {
 }
 
 // diffEntityMap compares two entity maps and appends changes to the result.
-// archive is optional context used for richer person summaries (birth/death dates).
-func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap map[string]*T, archive *GLXFile) {
+// oldArchive/newArchive are optional context for richer person summaries
+// (birth/death dates from events). Removed entities use oldArchive, added use newArchive.
+func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap map[string]*T, oldArchive, newArchive *GLXFile) {
 	// Check for added and modified entities
 	for id, newEntity := range newMap {
 		if oldEntity, exists := oldMap[id]; exists {
@@ -148,7 +149,7 @@ func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap 
 				Kind:       ChangeAdded,
 				EntityType: entityType,
 				ID:         id,
-				Summary:    summarizeEntity(entityType, id, newEntity, archive),
+				Summary:    summarizeEntity(entityType, id, newEntity, newArchive),
 			})
 		}
 	}
@@ -160,7 +161,7 @@ func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap 
 				Kind:       ChangeRemoved,
 				EntityType: entityType,
 				ID:         id,
-				Summary:    summarizeEntity(entityType, id, oldMap[id], archive),
+				Summary:    summarizeEntity(entityType, id, oldMap[id], oldArchive),
 			})
 		}
 	}

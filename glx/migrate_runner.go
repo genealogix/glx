@@ -311,6 +311,9 @@ func migrateAssertions(
 	dateProperty, placeProperty string,
 	report *MigrateReport,
 ) {
+	if eventID == "" {
+		return
+	}
 	for _, assertion := range archive.Assertions {
 		if assertion == nil || assertion.Subject.Person != personID {
 			continue
