@@ -84,11 +84,12 @@ type placeAnalysis struct {
 }
 
 // placeRefPropertyKeys are person/assertion properties that reference places.
-var placeRefPropertyKeys = []string{"born_at", "died_at", "buried_at", "residence"}
+// Note: born_at and died_at are tracked via event PlaceID fields, not person properties.
+var placeRefPropertyKeys = []string{"buried_at", "residence"}
 
 // placeRefProperties is the set form of placeRefPropertyKeys for quick lookup.
 var placeRefProperties = map[string]bool{
-	"born_at": true, "died_at": true, "buried_at": true, "residence": true,
+	"buried_at": true, "residence": true,
 }
 
 // topLevelTypes are place types that don't require a parent.
@@ -204,7 +205,7 @@ func buildCanonicalPath(placeID string, places map[string]*glxlib.Place) string 
 }
 
 // collectReferencedPlaces returns the set of place IDs referenced by events,
-// person properties (born_at, died_at, etc.), assertions, or as parents.
+// person properties (buried_at, residence, etc.), assertions, or as parents.
 func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 	referenced := make(map[string]struct{})
 
@@ -214,7 +215,7 @@ func collectReferencedPlaces(archive *glxlib.GLXFile) map[string]struct{} {
 		}
 	}
 
-	// Places referenced in person properties (born_at, died_at, residence, etc.)
+	// Places referenced in person properties (buried_at, residence, etc.)
 	for _, person := range archive.Persons {
 		if person == nil || person.Properties == nil {
 			continue

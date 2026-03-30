@@ -142,11 +142,8 @@ func collectTimelineEntries(personID string, archive *glxlib.GLXFile, includeFam
 }
 
 // collectDirectEvents finds all events where the person is a participant.
-// Also synthesizes birth/death entries from person properties when no
-// corresponding event entity exists.
 func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEntry {
 	var entries []timelineEntry
-	foundEventTypes := make(map[string]bool)
 
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
@@ -160,8 +157,6 @@ func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 		label := formatEventTypeLabel(event.Type)
 		detail := timelineResolvePlaceName(event.PlaceID, archive)
 
-		foundEventTypes[strings.ToLower(event.Type)] = true
-
 		entries = append(entries, timelineEntry{
 			Date:     date,
 			SortKey:  dateSortKey(date),
@@ -170,40 +165,6 @@ func collectDirectEvents(personID string, archive *glxlib.GLXFile) []timelineEnt
 			EventID:  id,
 			IsFamily: false,
 		})
-	}
-
-	// Synthesize birth/death from person properties if no event entity exists
-	person, ok := archive.Persons[personID]
-	if !ok || person == nil {
-		return entries
-	}
-
-	if !foundEventTypes["birth"] {
-		date := propertyString(person.Properties, "born_on")
-		if date != "" {
-			placeID := propertyString(person.Properties, "born_at")
-			detail := timelineResolvePlaceName(placeID, archive)
-			entries = append(entries, timelineEntry{
-				Date:    date,
-				SortKey: dateSortKey(date),
-				Label:   formatEventTypeLabel("birth"),
-				Detail:  detail,
-			})
-		}
-	}
-
-	if !foundEventTypes["death"] {
-		date := propertyString(person.Properties, "died_on")
-		if date != "" {
-			placeID := propertyString(person.Properties, "died_at")
-			detail := timelineResolvePlaceName(placeID, archive)
-			entries = append(entries, timelineEntry{
-				Date:    date,
-				SortKey: dateSortKey(date),
-				Label:   formatEventTypeLabel("death"),
-				Detail:  detail,
-			})
-		}
 	}
 
 	return entries
@@ -357,8 +318,6 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 		return nil
 	}
 
-	foundEventTypes := make(map[string]bool)
-
 	ids := sortedKeys(archive.Events)
 	for _, id := range ids {
 		event := archive.Events[id]
@@ -372,8 +331,6 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 			continue
 		}
 
-		foundEventTypes[eventType] = true
-
 		date := string(event.Date)
 		label := fmt.Sprintf(labelTemplate, rel.Name)
 		detail := timelineResolvePlaceName(event.PlaceID, archive)
@@ -386,44 +343,6 @@ func relatedPersonTimelineEvents(rel relatedPerson, archive *glxlib.GLXFile) []t
 			EventID:  id,
 			IsFamily: true,
 		})
-	}
-
-	// Also check person properties for birth/death if no event was found
-	person, ok := archive.Persons[rel.PersonID]
-	if !ok {
-		return entries
-	}
-
-	if _, want := includeTypes["birth"]; want && !foundEventTypes["birth"] {
-		date := propertyString(person.Properties, "born_on")
-		if date != "" {
-			placeID := propertyString(person.Properties, "born_at")
-			detail := timelineResolvePlaceName(placeID, archive)
-			label := fmt.Sprintf(includeTypes["birth"], rel.Name)
-			entries = append(entries, timelineEntry{
-				Date:     date,
-				SortKey:  dateSortKey(date),
-				Label:    label,
-				Detail:   detail,
-				IsFamily: true,
-			})
-		}
-	}
-
-	if _, want := includeTypes["death"]; want && !foundEventTypes["death"] {
-		date := propertyString(person.Properties, "died_on")
-		if date != "" {
-			placeID := propertyString(person.Properties, "died_at")
-			detail := timelineResolvePlaceName(placeID, archive)
-			label := fmt.Sprintf(includeTypes["death"], rel.Name)
-			entries = append(entries, timelineEntry{
-				Date:     date,
-				SortKey:  dateSortKey(date),
-				Label:    label,
-				Detail:   detail,
-				IsFamily: true,
-			})
-		}
 	}
 
 	return entries

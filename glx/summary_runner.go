@@ -73,8 +73,6 @@ var summarySkippedEventTypes = map[string]bool{
 var summarySkippedProperties = map[string]bool{
 	"name": true, "primary_name": true,
 	"gender": true, "sex": true,
-	"born_on": true, "born_at": true,
-	"died_on": true, "died_at": true,
 }
 
 // loadArchiveForSummary loads an archive from a path (directory or single file).
@@ -313,25 +311,19 @@ func printIdentitySection(person *glxlib.Person) {
 func printVitalEventsSection(personID string, person *glxlib.Person, archive *glxlib.GLXFile) {
 	fmt.Println(sectionHeader("Vital Events"))
 
-	// Birth: person properties first, then events
-	birth := formatPropertyDatePlace(person.Properties, "born_on", "born_at", archive)
-	if birth == "" {
-		birth = findEventForPerson(personID, "birth", archive)
-	}
+	// Birth: from events
+	birth := findEventForPerson(personID, "birth", archive)
 	fmt.Printf("  %-18s%s\n", "Birth:", displayOrDash(birth))
 
-	// Christening/Baptism: events only
+	// Christening/Baptism: from events
 	christening := findEventForPerson(personID, "christening", archive)
 	if christening == "" {
 		christening = findEventForPerson(personID, "baptism", archive)
 	}
 	fmt.Printf("  %-18s%s\n", "Christening:", displayOrDash(christening))
 
-	// Death: person properties first, then events
-	death := formatPropertyDatePlace(person.Properties, "died_on", "died_at", archive)
-	if death == "" {
-		death = findEventForPerson(personID, "death", archive)
-	}
+	// Death: from events
+	death := findEventForPerson(personID, "death", archive)
 	fmt.Printf("  %-18s%s\n", "Death:", displayOrDash(death))
 
 	// Burial/Cremation: events only
@@ -703,8 +695,8 @@ func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 
 	// Sort by birth year, then by ID for stability
 	sort.Slice(result, func(i, j int) bool {
-		yi := glxlib.ExtractPropertyYear(personProps(archive, result[i]), "born_on")
-		yj := glxlib.ExtractPropertyYear(personProps(archive, result[j]), "born_on")
+		yi := birthYear(archive, result[i])
+		yj := birthYear(archive, result[j])
 		if yi != yj {
 			if yi == 0 {
 				return false
@@ -720,12 +712,14 @@ func findChildIDs(personID string, archive *glxlib.GLXFile) []string {
 	return result
 }
 
-// personProps returns the properties map for a person, or nil.
-func personProps(archive *glxlib.GLXFile, personID string) map[string]any {
-	if p, ok := archive.Persons[personID]; ok && p != nil {
-		return p.Properties
+// birthYear returns the birth year for a person by looking up their birth event.
+// Returns 0 if no birth event is found.
+func birthYear(archive *glxlib.GLXFile, personID string) int {
+	_, event := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth)
+	if event == nil {
+		return 0
 	}
-	return nil
+	return glxlib.ExtractFirstYear(string(event.Date))
 }
 
 // findSiblingIDs finds siblings by looking for other children of the same parents.
@@ -952,17 +946,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	subject, possessive := pronounFor(person)
 
 	// Birth
-	birthDate := propertyString(person.Properties, "born_on")
-	birthPlace := resolvePlaceName(propertyString(person.Properties, "born_at"), archive)
-	if birthDate == "" || birthPlace == "" {
-		evDate, evPlace := findEventDatePlace(personID, "birth", archive)
-		if birthDate == "" {
-			birthDate = evDate
-		}
-		if birthPlace == "" {
-			birthPlace = evPlace
-		}
-	}
+	birthDate, birthPlace := findEventDatePlace(personID, "birth", archive)
 	if birthDate != "" || birthPlace != "" {
 		s := name + " was born"
 		if birthDate != "" {
@@ -1049,17 +1033,7 @@ func generateLifeHistory(personID string, person *glxlib.Person, archive *glxlib
 	}
 
 	// Death
-	deathDate := propertyString(person.Properties, "died_on")
-	deathPlace := resolvePlaceName(propertyString(person.Properties, "died_at"), archive)
-	if deathDate == "" || deathPlace == "" {
-		evDate, evPlace := findEventDatePlace(personID, "death", archive)
-		if deathDate == "" {
-			deathDate = evDate
-		}
-		if deathPlace == "" {
-			deathPlace = evPlace
-		}
-	}
+	deathDate, deathPlace := findEventDatePlace(personID, "death", archive)
 	if deathDate != "" || deathPlace != "" {
 		s := subject + " died"
 		if deathDate != "" {

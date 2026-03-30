@@ -23,6 +23,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
+- 🔄 **Migrate** - Convert deprecated person properties to birth/death events
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -1131,6 +1132,46 @@ Wrote 16 entity files to my-archive
 ```
 
 > **Note:** Census import requires a multi-file archive directory. Members can be matched to existing archive persons by explicit `person_id` or by exact name match (case-insensitive). If a name matches multiple existing persons, the import requires `person_id` for disambiguation.
+
+### `glx migrate`
+
+Migrate a GLX archive by converting deprecated person properties to birth/death events.
+
+**Usage:**
+```bash
+glx migrate <path>
+```
+
+**Arguments:**
+- `<path>` - Path to a multi-file archive directory or a single-file `.glx` archive
+
+**What it does:**
+- Converts `born_on`/`born_at` person properties to birth Event entities
+- Converts `died_on`/`died_at` person properties to death Event entities
+- Merges date/place into existing birth/death events when they already exist
+- Converts property assertions (`property: born_on`) to event assertions (`property: date`)
+- Removes the deprecated properties from person entities
+- Strips deprecated entries from archive vocabulary files
+
+**Examples:**
+
+```bash
+# Migrate a multi-file archive
+glx migrate my-family-archive
+
+# Migrate a single-file archive
+glx migrate archive.glx
+```
+
+**Output:**
+```
+Migration complete:
+  Events created:       12
+  Events merged:        8
+  Properties removed:   40
+  Assertions migrated:  20
+  Vocab entries removed: 4
+```
 
 ## File Format
 

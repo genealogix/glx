@@ -110,19 +110,27 @@ func collectAncestorSuggestions(tc *treeContext, personID string, archive *glxli
 }
 
 // suggestParentCensusRecords suggests census records that are particularly
-// useful for finding a person's parents. Uses ExtractPropertyYear for robust
-// handling of structured/temporal property shapes, and collectPlaceRefsFromProperty
-// for place reference extraction.
+// useful for finding a person's parents. Uses the person's birth event to
+// determine birth year and birthplace.
 func suggestParentCensusRecords(personID string, person *glxlib.Person, archive *glxlib.GLXFile, censusIndex personCensusIndex) []ancestorSuggestion {
-	birthYear := glxlib.ExtractPropertyYear(person.Properties, glxlib.PersonPropertyBornOn)
+	_, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth)
+	if birthEvent == nil || birthEvent.Date == "" {
+		return nil
+	}
+	birthYear := glxlib.ExtractFirstYear(string(birthEvent.Date))
 	if birthYear == 0 {
 		return nil
 	}
 
 	name := glxlib.PersonDisplayName(person)
 
-	// Resolve birthplace using collectPlaceRefsFromProperty for structured/temporal shapes
-	placeName := resolveFirstPlaceName(person.Properties, glxlib.PersonPropertyBornAt, archive)
+	// Resolve birthplace from event PlaceID
+	var placeName string
+	if birthEvent.PlaceID != "" {
+		if place, ok := archive.Places[birthEvent.PlaceID]; ok && place != nil {
+			placeName = place.Name
+		}
+	}
 
 	existingCensus := censusIndex[personID]
 
@@ -173,26 +181,6 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 	}
 
 	return suggestions
-}
-
-// resolveFirstPlaceName extracts the first place reference from a property and
-// returns the resolved place name. Handles string, structured map, and temporal
-// list property shapes via collectPlaceRefsFromProperty.
-func resolveFirstPlaceName(props map[string]any, key string, archive *glxlib.GLXFile) string {
-	raw, ok := props[key]
-	if !ok {
-		return ""
-	}
-
-	refs := make(map[string]struct{})
-	collectPlaceRefsFromProperty(raw, refs)
-
-	for ref := range refs {
-		if place, ok := archive.Places[ref]; ok && place != nil {
-			return place.Name
-		}
-	}
-	return ""
 }
 
 // printAncestorSuggestions prints research suggestions below the ancestor tree.

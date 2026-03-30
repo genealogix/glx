@@ -182,7 +182,7 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 		count += replaceInProperties(place.Properties, oldID, newID)
 	}
 
-	// Person properties (born_at, died_at, etc. can contain place IDs)
+	// Person properties (can contain place IDs)
 	for _, person := range glx.Persons {
 		if person == nil {
 			continue

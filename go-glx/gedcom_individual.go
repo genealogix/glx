@@ -292,21 +292,11 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	conv.GLX.Events[eventID] = event
 	conv.Stats.EventsCreated++
 
-	// Create property assertions for born_on, died_on, etc.
-	// ALSO set person properties directly for quick access
-	if eventType == EventTypeBirth && eventDate != "" {
-		person.Properties[PersonPropertyBornOn] = eventDate
-		createPropertyAssertion(personID, PersonPropertyBornOn, eventDate, eventRecord, conv)
+	// Create event assertions for birth/death date and place
+	if (eventType == EventTypeBirth || eventType == EventTypeDeath) && eventDate != "" {
+		createEventAssertion(eventID, "date", eventDate, eventRecord, conv)
 		if eventPlace != "" {
-			person.Properties[PersonPropertyBornAt] = eventPlace
-			createPropertyAssertion(personID, PersonPropertyBornAt, eventPlace, eventRecord, conv)
-		}
-	} else if eventType == EventTypeDeath && eventDate != "" {
-		person.Properties[PersonPropertyDiedOn] = eventDate
-		createPropertyAssertion(personID, PersonPropertyDiedOn, eventDate, eventRecord, conv)
-		if eventPlace != "" {
-			person.Properties[PersonPropertyDiedAt] = eventPlace
-			createPropertyAssertion(personID, PersonPropertyDiedAt, eventPlace, eventRecord, conv)
+			createEventAssertion(eventID, "place", eventPlace, eventRecord, conv)
 		}
 	}
 

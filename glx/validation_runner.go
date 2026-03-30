@@ -84,7 +84,8 @@ func validatePaths(args []string) error {
 
 	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading archive: %v\n", err)
+		formatted := formatValidationError(err, defaultShowFirstErrors)
+		fmt.Fprintf(os.Stderr, "Error loading archive: %v\n", formatted)
 
 		return ErrStructuralValidationFailed
 	}

@@ -108,7 +108,7 @@ type ValidationResult struct {
 	Vocabularies map[string]map[string]struct{}
 
 	// PropertyVocabs contains the definitions for custom properties, keyed by entity type.
-	// Example: "persons" -> {"born_at" -> PropertyDefinition{...}}
+	// Example: "persons" -> {"occupation" -> PropertyDefinition{...}}
 	PropertyVocabs map[string]map[string]*PropertyDefinition
 
 	// Errors is a slice of hard validation failures.

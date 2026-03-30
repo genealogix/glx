@@ -30,21 +30,6 @@ person_properties:
     description: "Gender identity"
     value_type: string
 
-  born_on:
-    label: "Birth Date"
-    description: "Date of birth"
-    value_type: date
-
-  born_at:
-    label: "Birth Place"
-    description: "Place of birth"
-    reference_type: places
-
-  died_on:
-    label: "Death Date"
-    description: "Date of death"
-    value_type: date
-
   occupation:
     label: "Occupation"
     description: "Profession or trade"
@@ -67,9 +52,6 @@ persons:
           given: "John"
           surname: "Smith"
       gender: "male"
-      born_on: "1850-01-15"
-      born_at: "place-leeds"
-      died_on: "1920-06-20"
       occupation:
         - value: "blacksmith"
           date: "1870"
@@ -93,9 +75,29 @@ persons:
           given: "Jane"
           surname: "Doe"
       gender: "female"
-      born_on: "1855-03-20"
-      born_at: "place-london"
-      # No died_on — person is implied to be living
     notes: "Additional research needed"
 
+# Life events for persons
+events:
+  event-birth-john:
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
+    participants:
+      - person: person-john
+        role: principal
 
+  event-death-john:
+    type: death
+    date: "1920-06-20"
+    participants:
+      - person: person-john
+        role: principal
+
+  event-birth-jane:
+    type: birth
+    date: "1855-03-20"
+    place: place-london
+    participants:
+      - person: person-jane
+        role: principal

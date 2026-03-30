@@ -298,16 +298,16 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
 #### Date Examples
 
 ```yaml
-# Precise dates
-born_on: "1850-03-15"      # Full date
-born_on: "1850-03"          # Year and month
-born_on: "1850"             # Year only
-born_on: "0047"             # Year 47 AD (zero-padded)
+# Precise dates on an event
+date: "1850-03-15"          # Full date
+date: "1850-03"             # Year and month
+date: "1850"                # Year only
+date: "0047"                # Year 47 AD (zero-padded)
 
 # Approximate dates
-born_on: "ABT 1850"         # About 1850
-died_on: "BEF 1920"         # Before 1920
-born_on: "AFT 1880-06"      # After June 1880
+date: "ABT 1850"            # About 1850
+date: "BEF 1920"            # Before 1920
+date: "AFT 1880-06"         # After June 1880
 
 # Date ranges
 residence:
@@ -317,13 +317,13 @@ residence:
     date: "FROM 1950"           # Lived in London from 1950 onward
 
 # Fuzzy dates
-born_on: "BET 1880 AND 1890"   # Born between 1880 and 1890
+date: "BET 1880 AND 1890"     # Between 1880 and 1890
 
 # Calculated dates
-born_on: "CAL 1850"             # Birth year calculated from other evidence
+date: "CAL 1850"               # Calculated from other evidence
 
 # Interpreted dates
-born_on: "INT 1850-03-15 (15th March 1850)"  # Original text preserved
+date: "INT 1850-03-15 (15th March 1850)"  # Original text preserved
 ```
 
 #### Date Validation
@@ -349,11 +349,17 @@ Reference types indicate that a property value is a string identifier that must 
 - **repositories** - Reference to a repository entity
 - **media** - Reference to a media entity
 
-**Example:**
+**Examples:**
 ```yaml
+# Simple reference to a place
 properties:
-  born_at: "place-leeds"  # Reference to a place
-  residence:              # Temporal reference to a place
+  residence: "place-leeds"
+```
+
+```yaml
+# Temporal reference to a place (changed over time)
+properties:
+  residence:
     - value: "place-london"
       date: "FROM 1900 TO 1920"
 ```
@@ -375,8 +381,6 @@ persons:
           given: "John"
           surname: "Smith"
       gender: "male"
-      born_on: "1850-01-15"
-      born_at: "place-leeds"
       occupation: "blacksmith"
       residence: "place-leeds"  # Single-value shorthand; see Temporal Properties for list format
 ```
@@ -384,7 +388,7 @@ persons:
 ### Defined by Property Vocabularies
 
 All properties are defined in property vocabularies (see Archive-Owned Vocabularies above). The `person-properties.glx` vocabulary defines:
-- What properties exist (`name`, `gender`, `born_on`, `occupation`, etc.)
+- What properties exist (`name`, `gender`, `occupation`, etc.)
 - Their data types (string, date, place reference)
 - Whether they can change over time (temporal)
 - Whether they have structured fields
@@ -401,7 +405,7 @@ Properties marked as `temporal: true` in vocabularies can hold multiple values â
 ```yaml
 properties:
   gender: "male"
-  born_on: "1850-01-15"
+  occupation: "blacksmith"
 ```
 
 **Dated List** (for values that change over time):
@@ -532,8 +536,8 @@ GENEALOGIX separates evidence from conclusions using **assertions**. An assertio
 assertions:
   assertion-john-birth:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-birth-john
+    property: date
     value: "1850-01-15"
     citations:
       - citation-birth-certificate
@@ -554,16 +558,16 @@ assertions:
 **The `property` field references property vocabularies:**
 
 ```yaml
-# The property "born_on" must be defined in person-properties.glx
-assertion-john-birth:
+# The property "occupation" must be defined in person-properties.glx
+assertion-john-occupation:
   subject:
     person: person-john-smith
-  property: born_on  # Validated against person_properties vocabulary
-  value: "1850-01-15"
-  citations: [citation-birth-cert]
+  property: occupation  # Validated against person_properties vocabulary
+  value: "blacksmith"
+  citations: [citation-trade-directory]
 ```
 
-The validator checks that `born_on` is defined in `person-properties.glx`. This ensures consistency between properties and assertions.
+The validator checks that `occupation` is defined in `person-properties.glx`. This ensures consistency between properties and assertions.
 
 ### Evidence-Based Claims
 
@@ -590,8 +594,8 @@ assertions:
   # Assertion based on birth certificate
   assertion-mary-birth-cert:
     subject:
-      person: person-mary-jones
-    property: born_on
+      event: event-birth-mary
+    property: date
     value: "1852-03-10"
     citations: [citation-birth-cert]
     confidence: high
@@ -600,8 +604,8 @@ assertions:
   # Assertion based on family Bible
   assertion-mary-birth-bible:
     subject:
-      person: person-mary-jones
-    property: born_on
+      event: event-birth-mary
+    property: date
     value: "1852-03-12"
     citations: [citation-family-bible]
     confidence: medium
@@ -649,19 +653,11 @@ Confidence levels are defined in `confidence-levels.glx` and can be customized p
 persons:
   person-john:
     properties:
-      born_on: "1850-01-15"
       occupation: "blacksmith"
+      residence: "place-leeds"
 
 # 2. Later: Add assertions documenting the evidence
 assertions:
-  assertion-john-birth:
-    subject:
-      person: person-john
-    property: born_on
-    value: "1850-01-15"
-    citations: [citation-birth-cert]
-    confidence: high
-
   assertion-john-occupation:
     subject:
       person: person-john
@@ -752,17 +748,21 @@ citations:
 assertions:
   assertion-john-born:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-birth-john
+    property: date
     value: "1850-01-15"
     citations: [citation-john-birth]
     confidence: high
 
-# 5. Property - Concluded value
-persons:
-  person-john-smith:
-    properties:
-      born_on: "1850-01-15"
+# 5. Event - Birth event with concluded date
+events:
+  event-birth-john:
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
+    participants:
+      - person: person-john-smith
+        role: subject
 ```
 
 ### Multiple Citations and Corroboration
@@ -791,8 +791,8 @@ Use the `notes` field to document research decisions, conflicting evidence, and 
 assertions:
   assertion-disputed-birth:
     subject:
-      person: person-john-smith
-    property: born_on
+      event: event-birth-john
+    property: date
     value: "1850-01-15"
     confidence: medium
     notes: |

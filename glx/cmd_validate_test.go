@@ -112,9 +112,9 @@ func TestRunValidate_BrokenReferences(t *testing.T) {
 	require.Error(t, err, "should fail when cross-references are broken")
 }
 
-func TestRunValidate_BrokenPropertyReference(t *testing.T) {
-	// Regression test for #147: born_at referencing a non-existent place
-	// should produce a validation error, not be silently ignored.
+func TestRunValidate_RemovedProperty(t *testing.T) {
+	// born_at is a removed property and should produce a validation error
+	// telling the user to use birth events instead.
 	tmpDir := t.TempDir()
 
 	personFile := filepath.Join(tmpDir, "person.glx")
@@ -142,9 +142,11 @@ func TestRunValidate_BrokenPropertyReference(t *testing.T) {
 	require.NoError(t, errCopy)
 	output := buf.String()
 
-	require.Error(t, err, "should fail when born_at references non-existent place")
-	require.Contains(t, output, "place-nonexistent",
-		"error should mention the non-existent place ID")
+	require.Error(t, err, "should fail when person has removed born_at property")
+	require.Contains(t, output, "has been removed",
+		"error should mention that property has been removed")
+	require.Contains(t, output, "use birth events instead",
+		"error should mention the migration path")
 }
 
 func TestRunValidate_NonExistentPath(t *testing.T) {

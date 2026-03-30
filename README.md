@@ -64,12 +64,22 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      born_on: "1850-01-15"
+      gender: "male"
+
+events:
+  event-birth-john:
+    type: birth
+    date: "1850-01-15"
+    place: place-leeds
+    participants:
+      - person: person-john-smith
+        role: subject
 
 assertions:
   assertion-john-birth:
-    subject: person-john-smith
-    claim: born_on
+    subject:
+      event: event-birth-john
+    property: date
     value: "1850-01-15"
     citations: [citation-birth-cert]
     confidence: high
@@ -153,7 +163,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      born_on: "1850-01-15"
+      gender: "male"
 
 sources:
   source-12345678:
