@@ -12,12 +12,14 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 
 - [How Can I Contribute?](#how-can-i-contribute)
 - [Development Environment Setup](#development-environment-setup)
-- [Code Organization](#code-organization)
-- [Testing Requirements](#testing-requirements)
+- [Development Workflow](#development-workflow)
+- [Testing](#testing)
 - [Documentation Standards](#documentation-standards)
 - [Submitting Changes](#submitting-changes)
-- [Good First Issues](#good-first-issues)
+- [Proposing Major Changes](#proposing-major-changes)
+- [AI-Generated Contributions](#ai-generated-contributions)
 - [Code of Conduct](#code-of-conduct)
+- [Security](#security)
 
 ## How Can I Contribute?
 
@@ -31,405 +33,270 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 ### For Developers
 
 - **Bug Fixes**: Fix issues in the CLI tool or validation logic
-- **New Features**: Implement accepted proposals from GitHub issues/discussions
+- **New Features**: Implement accepted proposals from GitHub issues
 - **Performance**: Optimize validation speed and memory usage
 - **Tooling**: Build integrations, converters, or utilities
 
 ### For Everyone
 
-- **Bug Reports**: Use our [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml)
-- **Feature Requests**: Use our [feature request template](.github/ISSUE_TEMPLATE/feature_request.yml)
+- **Bug Reports**: Use our [bug report template](https://github.com/genealogix/glx/issues/new?template=bug_report.yml)
+- **Feature Requests**: Use our [feature request template](https://github.com/genealogix/glx/issues/new?template=feature_request.yml)
 - **Documentation**: Fix typos, improve clarity, add examples
 - **Community Support**: Help others in [Discussions](https://github.com/genealogix/glx/discussions)
+
+Looking for where to start? Check issues labeled [`good first issue`](https://github.com/genealogix/glx/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ## Development Environment Setup
 
 ### Prerequisites
 
-**Required:**
-- **Go 1.25+** - [Install Go](https://golang.org/doc/install)
-- **Git** - [Install Git](https://git-scm.com/downloads)
+- **Go 1.26+** ([install](https://golang.org/doc/install)) — the project uses Go 1.26 in go.mod
+- **Git** ([install](https://git-scm.com/downloads))
+- **Node.js** — for website builds (`npm install` in `website/`) and schema validation (`npm ci --prefix specification`)
 
-**Optional but Recommended:**
-- **VS Code** with Go extension
-- **ajv-cli** for schema validation: `npm install -g ajv-cli`
-- **yamllint** for YAML validation: `pip install yamllint`
+### Dev Container
 
-### Initial Setup
+The easiest way to get started is with the included [Dev Container](https://containers.dev/):
 
 ```bash
-# 1. Fork the repository on GitHub
-# 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/spec.git
-cd spec
+# VS Code: Install the "Dev Containers" extension, then:
+# Ctrl+Shift+P → "Dev Containers: Reopen in Container"
 
-# 3. Add upstream remote
-git remote add upstream https://github.com/genealogix/glx.git
-
-# 4. Install CLI tool for testing
-go install ./glx
-
-# 5. Verify installation
-glx --help
-
-# 6. Run validation tests
-glx validate glx/tests/valid/
+# GitHub Codespaces: Click "Code" → "Codespaces" → "Create codespace on main"
 ```
 
-### Development Workflow
+The container includes Go, Node.js, golangci-lint, and all other tooling pre-configured.
+
+### Manual Setup
 
 ```bash
-# 1. Sync with upstream
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/glx.git
+cd glx
+git remote add upstream https://github.com/genealogix/glx.git
+
+# Install dependencies
+make install-deps
+
+# Build and verify
+make build
+./bin/glx --help
+
+# Run tests
+make test
+
+# (Optional) Install schema validation tooling
+npm ci --prefix specification
+make check-schemas
+```
+
+### Makefile Reference
+
+| Target | Description |
+|--------|-------------|
+| `make install-deps` | Install Go modules and npm packages |
+| `make test` | Run all tests |
+| `make test-verbose` | Run tests with verbose output |
+| `make test-coverage` | Run tests with coverage report |
+| `make lint` | Run Go and website linters |
+| `make lint-fix` | Run linters with auto-fix |
+| `make fmt` | Format Go and website code |
+| `make build` | Build CLI and website |
+| `make build-cli` | Build just the `glx` binary to `bin/` |
+| `make check-schemas` | Validate JSON schema files |
+| `make check-links` | Validate internal markdown links |
+| `make release-snapshot` | Build cross-platform binaries locally |
+| `make clean` | Remove build artifacts |
+
+## Development Workflow
+
+### Fork and Direct-Push
+
+**External contributors** use the fork workflow:
+
+```bash
 git fetch upstream
 git checkout main
 git merge upstream/main
-
-# 2. Create feature branch
-git checkout -b feature/my-contribution
-
-# 3. Make changes and test
-# ... edit files ...
-glx validate
-go test ./...
-
-# 4. Commit changes
-git add .
-git commit -m "Add feature X
-
-Detailed explanation of changes and why they're needed."
-
-# 5. Push and create PR
-git push origin feature/my-contribution
-# Open pull request on GitHub
+git checkout -b feat/my-feature
+# ... make changes ...
+git push origin feat/my-feature
+# Open PR from your fork
 ```
 
-## Code Organization
-
-### Repository Structure
-
-```
-genealogix/glx/
-├── specification/       # Specification documents (markdown)
-│   ├── 1-introduction.md
-│   ├── 2-core-concepts.md
-│   ├── 3-archive-organization.md
-│   ├── 4-entity-types/  # Per-entity specifications
-│   ├── schema/          # JSON Schema definitions
-│   │   ├── v1/          # Version 1 schemas
-│   │   └── meta/        # Schema validation schemas
-├── docs/                # User and developer documentation
-│   ├── quickstart.md
-│   ├── guides/          # User guides
-│   ├── development/     # Developer guides
-│   ├── diagrams/        # Architecture diagrams
-│   └── examples/        # Working example archives
-│       └── complete-family/ # Best starting point
-└── glx/                 # CLI tool source code
-    ├── main.go
-    └── tests/           # Validation test cases
-        ├── valid/       # Should pass validation
-        └── invalid/     # Should fail validation
-```
-
-### Understanding the Architecture
-
-**Key Concepts:**
-1. **Specification Documents** (`specification/`) define behavior and requirements
-2. **JSON Schemas** (`specification/schema/`) enforce structure and validation rules
-3. **Examples** (`docs/examples/`) demonstrate practical usage
-4. **Test Suite** (`glx/tests/`) ensures conformance
-
-**Entity Types:**
-- 9 core entity types: Person, Relationship, Event, Place, Source, Citation, Repository, Assertion, Media
-- Each has: specification doc, JSON schema, examples, tests
-
-**Evidence Hierarchy:**
-- Repository → Source → Citation → Assertion
-- All genealogical claims must be backed by evidence
-
-## Testing Requirements
-
-### Running Tests
+**Org members** can push branches directly:
 
 ```bash
-# Run all tests (preferred - use Makefile)
-make test
-
-# Run Go tests directly
-go test ./...
-
-# Run benchmarks
-go test -bench=. -benchmem ./glx/...
-
-# Validate examples
-cd glx && ./glx validate ../docs/examples/
+git checkout main
+git pull
+git checkout -b feat/my-feature
+# ... make changes ...
+git push -u origin feat/my-feature
+# Open PR
 ```
 
-### Writing New Tests
+### Branch Naming
 
-**Valid Test Cases** (`glx/tests/valid/`):
-- Should pass validation
-- Test happy paths and optional fields
-- Include comments explaining what's being tested
+Use conventional prefixes:
 
-```yaml
-# glx/tests/valid/person-with-multiple-names.glx
-persons:
-  person-12345678:
-    properties:
-      name:
-        - value: "John Smith"
-          date: "1850"
-          fields:
-            given: "John"
-            surname: "Smith"
-        - value: "Juan Hernandez"  # Testing multilingual names
-          date: "1880"
-          fields:
-            given: "Juan"
-            surname: "Hernandez"
+```
+feat/short-description
+fix/short-description
+docs/short-description
+chore/short-description
 ```
 
-**Invalid Test Cases** (`glx/tests/invalid/`):
-- Should fail validation with specific error
-- Test boundary conditions and error handling
-- Document expected error message
+### Commit Messages
 
-```yaml
-# glx/tests/invalid/person-invalid-id-format.glx
-# Expected error: ID must match pattern person-[a-f0-9]{8}
-persons:
-  invalid-id:
-    properties:
-      name:
-        value: "Test Person"
+Follow [Conventional Commits](https://www.conventionalcommits.org/). Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `ci`.
+
+```
+feat: Add GEDCOM 7.0 EXID support
+fix: Handle nil map in merge
+docs: Update quickstart guide
 ```
 
-### Test Coverage Requirements
+## Testing
 
-- **Minimum**: 3 test cases per entity type (27 total for 9 entities)
-- **Recommended**: Cover all optional fields, edge cases, and error conditions
-- **Invalid tests**: At least 1 per common error type
+Prefer using the Makefile to run tests for consistency. `go test` directly is fine for targeted runs.
+
+```bash
+make test              # Run all tests
+make test-verbose      # Verbose output
+make test-coverage     # Coverage report
+make check-schemas     # Validate JSON schemas
+```
+
+### Writing Tests
+
+- Unit tests for all new functions
+- Integration tests for full conversion paths
+- E2E tests for CLI commands
+- Test files live alongside source: `foo.go` → `foo_test.go`
+- GEDCOM test files: `glx/testdata/gedcom/`
+- Validation test fixtures: `glx/testdata/valid/` and `glx/testdata/invalid/`
+
+### CI Checks
+
+Every PR runs these checks automatically:
+
+| Check | What it does |
+|-------|--------------|
+| **Validate Specification / test-conformance** | Go tests for `glx/` and `go-glx/` packages |
+| **Validate Specification / validate-schemas** | JSON schema validation |
+| **Validate Specification / validate-examples** | All example archives pass `glx validate` |
+| **Security** | gosec, govulncheck, and npm audit |
+| **lint-pr-title** | PR title follows conventional commits format |
+| **dependency-review** | Blocks PRs introducing vulnerable dependencies |
+
+All checks must pass before merge.
 
 ## Documentation Standards
 
 ### Writing Style
 
-**For Specification Documents:**
-- Clear, precise, professional language
-- Define technical terms on first use
-- Include examples for complex concepts
-- Use consistent terminology throughout
+- **Specification docs**: Clear, precise, professional language. Define technical terms on first use.
+- **User docs**: Friendly, step-by-step instructions with real-world examples.
 
-**For User Documentation:**
-- Friendly, helpful tone
-- Step-by-step instructions
-- Real-world examples
-- Anticipate common questions
+### Internal Links
 
-### Markdown Conventions
-
-```markdown
-# Top-level title (only one per document)
-
-## Major sections
-
-### Subsections
-
-**Bold** for emphasis and UI elements
-*Italic* for terms and file names
-`code` for commands, file names, and code elements
-
-Code blocks with language:
-\`\`\`bash
-command here
-\`\`\`
-
-Tables for structured comparisons
-Links with descriptive text: [see the guide](link)
-```
-
-**Internal Links (Specification Documents):**
-
-Internal links in specification documents omit the `.md` file extension for VitePress compatibility:
-- ✓ Good: `[Person Entity](4-entity-types/person)`
-- ✗ Bad: `[Person Entity](4-entity-types/person.md)`
-
-This works correctly in both VitePress-generated site and raw markdown viewers.
+Specification documents omit the `.md` file extension for VitePress compatibility:
+- Good: `[Person Entity](4-entity-types/person)`
+- Bad: `[Person Entity](4-entity-types/person.md)`
 
 ### Genealogical Standards
 
-When documenting genealogical concepts:
-
-- **Use Standard Terminology**: Follow [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) where applicable
-- **Evidence Quality**: Explain primary/secondary and direct/indirect evidence
-- **Citation Standards**: Follow [Evidence Explained](https://www.evidenceexplained.com/) principles
-- **Date Formats**: Use ISO 8601 (YYYY-MM-DD) or historical variations documented
-- **Place Names**: Use historical names with modern equivalents
-
-## Proposing Major Changes
-
-Major changes to the specification are discussed through GitHub issues and discussions.
-
-### When to Create a Proposal
-
-**Proposal Required (via GitHub Issue):**
-- Changes to core data model or entity types
-- New required fields or breaking changes
-- Changes to validation rules or file format
-- Git workflow convention changes
-
-**Proposal Not Required:**
-- Bug fixes
-- Documentation improvements
-- New examples
-- Minor clarifications
-
-### Proposal Workflow
-
-1. **Create Issue**: Open a GitHub issue describing your proposed change
-2. **Discussion**: Use GitHub Discussions for extended community discussion
-3. **Community Review**: Community reviews and comments (minimum 7 days)
-4. **Decision**: Maintainers accept, reject, or request changes
-5. **Implementation**: After acceptance, implement the change via pull request
-6. **Documentation**: Update relevant documentation as part of the implementation
-
-For questions or to start a discussion, use [GitHub Discussions](https://github.com/genealogix/glx/discussions).
+- Follow [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) terminology
+- Citation standards per [Evidence Explained](https://www.evidenceexplained.com/)
+- Dates in ISO 8601 (YYYY-MM-DD) or documented historical variations
+- Use historical place names with modern equivalents
 
 ## Submitting Changes
 
 ### Pull Request Process
 
-1. **Create Issue First**: For non-trivial changes, create an issue to discuss
-2. **Branch Naming**: Use descriptive names like `feature/add-xyz` or `fix/issue-123`
-3. **Commit Messages**: Follow [Conventional Commits](https://www.conventionalcommits.org/)
-   ```
-   type(scope): brief description
-   
-   Longer explanation if needed.
-   
-   Fixes #123
-   ```
-4. **PR Description**: Use the [PR template](https://github.com/genealogix/glx/blob/main/.github/PULL_REQUEST_TEMPLATE.md)
-5. **Testing**: Ensure all tests pass and add new tests for new features
-6. **Documentation**: Update relevant documentation
+1. Create an issue first for non-trivial changes
+2. Follow the [PR template](https://github.com/genealogix/glx/blob/main/.github/PULL_REQUEST_TEMPLATE.md)
+3. Ensure all CI checks pass
+4. Add tests for new features and bug fixes
+5. Update documentation if behavior changes
+6. Update `CHANGELOG.md` for user-facing changes (add to the unreleased section)
 
 ### Review Process
 
 - Maintainers will review PRs within 3-5 business days
 - Address review comments promptly
 - Be open to feedback and iteration
-- Squash commits if requested before merge
 
-### What Makes a Good PR
+## Proposing Major Changes
 
-✅ **Good PR:**
-- Focused on a single issue or feature
-- Includes tests and documentation
-- Passes all CI checks
-- Has clear commit messages
-- References related issues
+**Proposal required** (via GitHub Issue) for:
+- Changes to core data model or entity types
+- New required fields or breaking changes
+- Changes to validation rules or file format
 
-❌ **Needs Improvement:**
-- Multiple unrelated changes
-- No tests or documentation updates
-- Fails validation or tests
-- Unclear purpose or description
+**No proposal needed** for:
+- Bug fixes, documentation improvements, new examples, minor clarifications
 
-## Good First Issues
+### Proposal Workflow
 
-Looking for where to start? Check issues labeled `good-first-issue`:
+1. **Create Issue**: Describe the proposed change
+2. **Discussion**: Community reviews and comments (minimum 7 days for spec changes)
+3. **Decision**: Maintainers accept, reject, or request changes
+4. **Implementation**: After acceptance, submit a PR
 
-**Documentation:**
-- Fix typos or improve clarity
-- Add examples to specification docs
-- Write migration guides from other formats
+## AI-Generated Contributions
 
-**Testing:**
-- Add test cases for edge cases
-- Improve test coverage for entity types
-- Document expected validation errors
+**AI is welcome. Humans are accountable.**
 
-**Examples:**
-- Create examples for specific scenarios
-- Add README files to examples
-- Improve example documentation
+GLX is a small project with limited maintainer capacity. Every issue, PR, and comment costs human time to triage. These guidelines exist to protect that time.
 
-**Tooling:**
-- Add helpful error messages to CLI
-- Improve validation output formatting
-- Add progress indicators for large archives
+All contributions must reflect genuine understanding of the GLX spec and codebase. Contributors are fully responsible for everything they submit, regardless of how it was produced. If you cannot explain your change and respond to feedback about it, do not submit it.
 
-## Community Guidelines
+### Autonomous Agents and Bots
 
-### Communication Channels
+Autonomous AI agents (OpenClaw, bounty bots, or similar) are **not permitted** to open issues, submit PRs, or post comments on any repository in the `genealogix` org. This includes agents acting on behalf of a human who is not actively supervising and reviewing each interaction.
 
-- **GitHub Issues**: Bug reports, feature requests
-- **GitHub Discussions**: Questions, ideas, show-and-tell
-- **Pull Requests**: Code and documentation contributions
+Contributions that appear to be bot-generated will be closed without review and the account may be blocked.
 
-### Getting Help
+### PRs and Issues
 
-- Check existing issues and discussions first
-- Provide complete information when asking questions
-- Be patient and respectful
-- Help others when you can
+- Contributors are limited to **3 open PRs** at a time across all `genealogix` repositories
+- Address all review comments on existing PRs before opening new ones
 
-### Recognition
+### AI-Assisted Development
 
-Contributors are recognized in:
-- GitHub contributor graph
-- Release notes
-- Acknowledgments in major documentation updates
+Using AI tools (Copilot, Claude, ChatGPT, etc.) as part of your workflow is fine. The bar is the same as any contribution: you understand the problem, you've tested the change, and you can engage with review feedback.
+
+Contributors SHOULD disclose substantial AI assistance via a commit trailer:
+
+```
+Assisted-by: Claude <noreply@anthropic.com>
+```
+
+`Co-authored-by` trailers added automatically by AI coding tools are also acceptable.
+
+### Enforcement
+
+Maintainers will close low-quality or bot-generated contributions without detailed explanation. Repeated violations will result in the account being blocked from the org.
+
+We follow the [Linux Foundation Generative AI Policy](https://www.linuxfoundation.org/legal/generative-ai). Contributors must ensure AI tool terms do not conflict with the project's license.
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](/development/code-of-conduct).
+We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](https://github.com/genealogix/glx/blob/main/CODE_OF_CONDUCT.md).
 
-### Expected Behavior
+## Security
 
-- Be respectful and constructive
-- Welcome newcomers
-- Focus on what's best for the community
-- Show empathy and kindness
-
-### Unacceptable Behavior
-
-- Harassment or discrimination
-- Trolling or insulting comments
-- Publishing others' private information
-- Any conduct inappropriate in a professional setting
+To report a vulnerability, see our [Security Policy](https://github.com/genealogix/glx/blob/main/SECURITY.md).
 
 ## Building for Release
 
-Releases use GoReleaser (automated in CI):
+Releases use [GoReleaser](https://goreleaser.com/install/) (automated in CI on tag push):
 
 ```bash
-# Install GoReleaser
-go install github.com/goreleaser/goreleaser@latest
-
-# Test release build locally
-goreleaser build --snapshot --clean
-```
-
-Releases are automated via GitHub Actions on tag push.
-
-## Troubleshooting
-
-### Go Module Issues
-
-```bash
-go clean -modcache    # Clear cache
-go mod download       # Re-download dependencies
-go mod verify         # Verify module
-```
-
-### Build Issues
-
-```bash
-go clean              # Clean build artifacts
-go build -v           # Rebuild with verbose output
-go mod tidy           # Check for missing dependencies
+# Test release build locally (requires goreleaser CLI)
+make release-snapshot
 ```
 
 ## Questions?
@@ -439,5 +306,4 @@ go mod tidy           # Check for missing dependencies
 
 ---
 
-Thank you for contributing to GENEALOGIX! Together we're building a better future for genealogical research.
-
+Thank you for contributing to GENEALOGIX!
