@@ -1290,9 +1290,10 @@ var (
 var mergeCmd = &cobra.Command{
 	Use:   "merge <source>",
 	Short: "Merge another archive into the destination archive",
-	Long: `Combine two GLX archives by merging all entities from the source
-into the destination. Duplicate entity IDs are reported and skipped
-(destination version is kept).`,
+	Long: `Combine two GLX archives by merging all content from the source
+into the destination. Duplicate or conflicting items (entities,
+vocabularies, property definitions, and metadata) are reported and skipped
+(the destination version is kept).`,
 	Example: `  # Merge another archive into the current one
   glx merge ./other-archive/ --into ./my-archive/
 
