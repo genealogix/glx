@@ -374,6 +374,10 @@ GEDCOM dates are converted to ISO 8601 format where possible. Qualified and rang
 | `CAL 1850` | `CAL 1850` | Calculated |
 | `BET 1849 AND 1851` | `BET 1849 AND 1851` | Between range |
 | `FROM 1900 TO 1950` | `FROM 1900 TO 1950` | Period range |
+| `@#DJULIAN@ 15 MAR 1731` | `JULIAN 1731-03-15` | Julian calendar date |
+| `@#DHEBREW@ 15 TSH 5765` | `HEBREW 15 TSH 5765` | Hebrew calendar (raw preserved) |
+| `@#DFRENCH R@ 1 VEND 0012` | `FRENCH_R 1 VEND 0012` | French Republican (raw preserved) |
+| `@#DGREGORIAN@ 15 MAR 1731` | `1731-03-15` | Gregorian (default, no prefix) |
 
 See [Core Concepts - Data Types](/specification/2-core-concepts#data-types) for the complete date format specification.
 
