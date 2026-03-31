@@ -490,7 +490,7 @@ glx join family-archive family.glx --verbose
 
 ### `glx merge`
 
-Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept).
+Combine two GLX archives by merging all content from a source into a destination. Duplicate items (entities, vocabularies, and property definitions) are reported and skipped (destination version kept).
 
 ```
 glx merge <source> --into <destination> [flags]

@@ -189,8 +189,9 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 		return nil
 	}
 
-	// Save with crash safety: write to a temp location first, then swap.
-	// This prevents archive destruction if the write fails partway through.
+	// Save — multi-file archives use crash-safe temp+swap to prevent destruction
+	// if the write fails. Single-file archives are written directly (atomic rename
+	// of a single file is handled by the OS).
 	if destIsDir {
 		return safeWriteMultiFileArchive(destPath, dest)
 	}
@@ -201,6 +202,10 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 // first, then swaps it into place. This prevents archive destruction if the write
 // fails partway through (e.g., power loss, disk full, signal).
 func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
+	// Normalize path to remove trailing separators (e.g., "archive/" → "archive")
+	// so filepath.Dir and string concatenation work correctly.
+	destPath = filepath.Clean(destPath)
+
 	// Create temp dir next to the destination (same filesystem for rename)
 	tmpDir, err := os.MkdirTemp(filepath.Dir(destPath), ".glx-merge-tmp-")
 	if err != nil {
