@@ -1,6 +1,7 @@
 {
   "name": "glx-specification",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Schema validation tooling for the GLX specification",
   "type": "module",
   "devDependencies": {
