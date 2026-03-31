@@ -83,13 +83,35 @@ func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedc
 	return nil
 }
 
+// isPathWithin checks whether child is contained within the parent directory.
+// Uses filepath.Rel to handle edge cases like parent being "." or "/".
+func isPathWithin(child, parent string) bool {
+	absChild, err := filepath.Abs(filepath.Clean(child))
+	if err != nil {
+		return false
+	}
+	absParent, err := filepath.Abs(filepath.Clean(parent))
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absParent, absChild)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..") && rel != "."
+}
+
 // copyMediaFile copies a single media file from the GEDCOM source directory.
 // It tries the path as-is first, then URL-decoded (for GEDCOM 7.0 percent-encoded paths).
 func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	// Normalize backslashes to forward slashes for cross-platform compatibility
 	normalized := strings.ReplaceAll(relativePath, "\\", "/")
 
+	// Prevent path traversal attacks from GEDCOM FILE references
 	srcPath := filepath.Join(gedcomDir, normalized)
+	if !isPathWithin(srcPath, gedcomDir) {
+		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+	}
 	err := copyFile(srcPath, destPath)
 	if err == nil {
 		return nil
@@ -111,6 +133,9 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	}
 
 	decodedPath := filepath.Join(gedcomDir, decoded)
+	if !isPathWithin(decodedPath, gedcomDir) {
+		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+	}
 	err = copyFile(decodedPath, destPath)
 	if err == nil {
 		return nil

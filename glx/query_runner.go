@@ -603,8 +603,6 @@ func extractDateYear(dateStr string) int {
 	return year
 }
 
-// containsFold checks if s contains lowerSubstr (case-insensitive).
-// lowerSubstr must already be in lowercase; callers should pre-lowercase the needle.
 // personMatchesBirthplace checks if a person's birth event place matches the query.
 // Matches against both the place ID and resolved place name (case-insensitive substring).
 func personMatchesBirthplace(personID, query string, archive *glxlib.GLXFile) bool {

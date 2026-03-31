@@ -7,6 +7,10 @@ event_types:
     label: "Birth"
     description: "Birth of a person"
     category: lifecycle
+  death:
+    label: "Death"
+    description: "Death of a person"
+    category: lifecycle
   marriage:
     label: "Marriage"
     description: "Marriage ceremony"
@@ -184,6 +188,22 @@ events:
         role: groom
       - person: person-b2c3d4e5
         role: bride
+
+  event-d1d2d3d4:
+    type: death
+    date: "1910-12-03"
+    place: place-c3d4e5f6
+    participants:
+      - person: person-a1b2c3d4
+        role: subject
+
+  event-d5d6d7d8:
+    type: death
+    date: "1915-08-17"
+    place: place-c3d4e5f6
+    participants:
+      - person: person-b2c3d4e5
+        role: subject
 
 places:
   place-a1a1a1a1:

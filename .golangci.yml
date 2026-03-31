@@ -77,7 +77,7 @@ linters:
     # Common mistakes
     - misspell # Spell checking
     - gocritic # Provides diagnostics for bugs, performance and style issues
-    - godox # Detect TODO/FIXME/BUG comments (all TODOs should be in todo.md)
+    - godox # Detect TODO/FIXME/BUG comments (all TODOs should be in GitHub Issues)
 
     # Magic numbers and strings
     - goconst # Find repeated strings that could be constants

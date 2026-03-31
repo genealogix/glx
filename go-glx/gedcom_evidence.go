@@ -241,7 +241,7 @@ func createEventAssertion(eventID, property string, value any, sourceRecord *GED
 // createEventAssertionWithEvidence creates an assertion for an event property using pre-extracted evidence.
 // This is used when evidence has already been extracted or synthetically created.
 func createEventAssertionWithEvidence(eventID, property string, value any, refs evidenceRefs, conv *ConversionContext) {
-	if property == "" || value == nil {
+	if eventID == "" || property == "" || value == nil {
 		return
 	}
 

@@ -824,6 +824,48 @@ func TestUniquePersonID_LongBaseID(t *testing.T) {
 	assert.Contains(t, id, "-2", "should have suffix")
 }
 
+func TestFindOrCreateBirthEvent_DeduplicatesAcrossBatch(t *testing.T) {
+	existing := &GLXFile{Events: map[string]*Event{}}
+	result := &CensusResult{
+		Event:      map[string]*Event{},
+		Assertions: map[string]*Assertion{},
+		Persons:    map[string]*Person{},
+	}
+
+	// First call creates a birth event.
+	id1 := findOrCreateBirthEvent("person-dan", "dan", existing, result)
+	assert.NotEmpty(t, id1)
+	assert.Len(t, result.Event, 1)
+
+	// Second call for the same person reuses the existing batch event.
+	id2 := findOrCreateBirthEvent("person-dan", "dan", existing, result)
+	assert.Equal(t, id1, id2, "should reuse birth event from current batch")
+	assert.Len(t, result.Event, 1, "should not create a duplicate birth event")
+}
+
+func TestFindOrCreateBirthEvent_ReusesExistingArchiveEvent(t *testing.T) {
+	existing := &GLXFile{
+		Events: map[string]*Event{
+			"event-birth-dan": {
+				Type: EventTypeBirth,
+				Date: "1830",
+				Participants: []Participant{
+					{Person: "person-dan", Role: ParticipantRolePrincipal},
+				},
+			},
+		},
+	}
+	result := &CensusResult{
+		Event:      map[string]*Event{},
+		Assertions: map[string]*Assertion{},
+		Persons:    map[string]*Person{},
+	}
+
+	id := findOrCreateBirthEvent("person-dan", "dan", existing, result)
+	assert.Equal(t, "event-birth-dan", id, "should reuse archive birth event")
+	assert.Empty(t, result.Event, "should not create new event when archive has one")
+}
+
 func TestCensusSlugIDWithHousehold(t *testing.T) {
 	loc := CensusLocation{Place: "Marion County, Florida"}
 	id := censusSlugIDWithHousehold("event", 1860, loc, "Lane")

@@ -341,7 +341,7 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 
 		role := member.Role
 		if role == "" {
-			role = "subject"
+			role = ParticipantRoleSubject
 		}
 
 		p := Participant{
