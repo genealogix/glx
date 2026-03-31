@@ -729,6 +729,46 @@ func TestImportASSOEvent_WitnessAdded(t *testing.T) {
 	assert.True(t, hasWitness, "birth event should have a witness participant from ASSO")
 }
 
+// TestImportASSOEvent_OfficiantRole tests that ASSO with ROLE OFFICIATOR maps to officiant.
+// This verifies ROLE parsing actually works (not just default witness).
+func TestImportASSOEvent_OfficiantRole(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 15 JAN 1850
+2 ASSO @I2@
+3 ROLE OFFICIATOR
+0 @I2@ INDI
+1 NAME Rev. Thomas /Brown/
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var birthEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeBirth {
+			birthEvent = event
+			break
+		}
+	}
+	require.NotNil(t, birthEvent)
+	require.Len(t, birthEvent.Participants, 2)
+
+	// Verify the ASSO participant has officiant role, not default witness
+	var assoRole string
+	for _, p := range birthEvent.Participants {
+		if p.Role != ParticipantRolePrincipal {
+			assoRole = p.Role
+		}
+	}
+	assert.Equal(t, ParticipantRoleOfficiant, assoRole, "ASSO with ROLE OFFICIATOR should map to officiant, not default witness")
+}
+
 // TestImportASSOEvent_VoidSkipped tests that ASSO @VOID@ (unknown person) is skipped.
 func TestImportASSOEvent_VoidSkipped(t *testing.T) {
 	gedcom := `0 HEAD

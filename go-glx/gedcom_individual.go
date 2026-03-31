@@ -810,7 +810,8 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 
 	personID, ok := conv.PersonIDMap[personRef]
 	if !ok {
-		return nil // Referenced person not imported
+		conv.Logger.LogInfof("ASSO references unknown person %s — skipping participant", personRef)
+		return nil
 	}
 
 	// Extract ROLE
