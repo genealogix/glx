@@ -6,7 +6,9 @@ layout: doc
 
 # GENEALOGIX Specification
 
-[![Version](https://img.shields.io/badge/version-0.0.0--beta.6-blue.svg)](https://github.com/genealogix/glx/releases)
+[![Version](https://img.shields.io/github/v/release/genealogix/glx?include_prereleases&label=version)](https://github.com/genealogix/glx/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/genealogix/glx.svg)](https://pkg.go.dev/github.com/genealogix/glx)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/genealogix/glx)](https://github.com/genealogix/glx/blob/main/go.mod)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/genealogix/glx/blob/main/LICENSE)
 [![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
@@ -144,9 +146,6 @@ glx init my-family-archive --single-file
 # Validate .glx files (checks cross-references and vocabularies)
 cd my-family-archive
 glx validate
-
-# Validate schema files
-glx check-schemas
 ```
 
 ## File Format
@@ -261,66 +260,5 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-## Repository Structure
-
-```
-genealogix/glx/
-├── README.md
-├── LICENSE
-├── CONTRIBUTING.md
-├── CHANGELOG.md
-├── specification/
-│   ├── README.md
-│   ├── 1-introduction.md
-│   ├── 2-core-concepts.md
-│   ├── 3-archive-organization.md
-│   ├── 4-entity-types/
-│   ├── schema/                     # JSON Schemas
-│   │   ├── README.md
-│   │   ├── v1/
-│   │   │   ├── person.schema.json
-│   │   │   ├── relationship.schema.json
-│   │   │   ├── event.schema.json
-│   │   │   └── vocabularies/      # Vocabulary schemas
-│   │   │       ├── relationship-types.schema.json
-│   │   │       ├── event-types.schema.json
-│   │   │       └── ...
-│   │   └── meta/
-├── docs/
-│   ├── quickstart.md
-│   ├── guides/
-│   │   ├── best-practices.md
-│   │   ├── glossary.md
-│   │   └── migration-from-gedcom.md
-│   ├── development/
-│   │   ├── architecture.md
-│   │   ├── setup.md
-│   │   ├── testing-guide.md
-│   │   └── schema-development.md
-│   └── examples/                   # Example archives
-│       ├── README.md
-│       ├── basic-family/
-│       │   ├── persons/
-│       │   ├── relationships/
-│       │   └── vocabularies/      # Example vocabularies
-│       └── complete-family/
-│           └── vocabularies/
-├── glx/                            # Go CLI implementation
-│   ├── main.go
-│   ├── validator.go
-│   ├── validate.go
-│   └── tests/                      # Test fixtures
-│       ├── README.md
-│       ├── run-tests.sh
-│       ├── valid/
-│       └── invalid/
-├── website/                        # VitePress documentation site
-│   ├── package.json
-│   └── .vitepress/
-│       └── config.js
-└── .devcontainer/
-    └── devcontainer.json
-```
 
 

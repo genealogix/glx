@@ -89,7 +89,11 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	// Normalize backslashes to forward slashes for cross-platform compatibility
 	normalized := strings.ReplaceAll(relativePath, "\\", "/")
 
+	// Prevent path traversal attacks from GEDCOM FILE references
 	srcPath := filepath.Join(gedcomDir, normalized)
+	if !strings.HasPrefix(filepath.Clean(srcPath), filepath.Clean(gedcomDir)+string(filepath.Separator)) {
+		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+	}
 	err := copyFile(srcPath, destPath)
 	if err == nil {
 		return nil
@@ -111,6 +115,9 @@ func copyMediaFile(gedcomDir, relativePath, destPath string) error {
 	}
 
 	decodedPath := filepath.Join(gedcomDir, decoded)
+	if !strings.HasPrefix(filepath.Clean(decodedPath), filepath.Clean(gedcomDir)+string(filepath.Separator)) {
+		return fmt.Errorf("path traversal detected in media reference: %s", relativePath)
+	}
 	err = copyFile(decodedPath, destPath)
 	if err == nil {
 		return nil
