@@ -44,7 +44,7 @@ persons:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `properties` | object | Vocabulary-defined properties (name, gender, dates, etc.) |
+| `properties` | object | Vocabulary-defined properties (name, gender, occupation, etc.) |
 | `notes` | string | Free-form notes about the person |
 | `research` | object | Open research questions keyed by topic (e.g., `parents`, `identity`) |
 
@@ -80,10 +80,6 @@ properties:
       surname: String
       suffix: String
   gender: String            # From person_properties vocabulary
-  born_on: Date            # From person_properties vocabulary
-  born_at: "place-id"      # From person_properties vocabulary (reference)
-  died_on: Date            # From person_properties vocabulary
-  died_at: "place-id"      # From person_properties vocabulary (reference)
   occupation: String        # From person_properties vocabulary
   residence: "place-id"    # From person_properties vocabulary (reference)
 ```
@@ -97,10 +93,6 @@ properties:
       given: "John"
       surname: "Smith"
   gender: "male"
-  born_on: "1850-01-15"
-  born_at: "place-leeds"
-  died_on: "1920-06-20"
-  died_at: "place-london"
   occupation: "blacksmith"
   residence:
     - value: "place-leeds"
@@ -256,12 +248,15 @@ properties:
 
 > **See Also:** [Temporal Properties Example](/examples/temporal-properties/) for a complete working archive demonstrating temporal values with assertions and evidence chains.
 
+**See [Vocabularies - Person Properties](vocabularies#person-properties-vocabulary) for the full vocabulary definition.**
+
 **Key Points:**
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
+- The `gender` property is constrained by the [gender types vocabulary](vocabularies#property-definition-structure) — out-of-vocabulary values produce a warning
 - Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts#temporal-properties)
 - Custom properties can be added by extending the vocabulary
-- Whether a person is living or deceased is implied by the presence/absence of `died_on`
+- Birth and death information is stored on [Event entities](event) of type `birth` and `death`, not as person properties
 
 ### `research`
 
@@ -336,8 +331,6 @@ persons:
           given: "Margaret Eleanor"
           surname: "Smith"
       gender: "female"
-      born_on: "1825-04-10"
-      died_on: "1890-11-22"
     notes: |
       Family tradition says she was named after her grandmother.
       Need to verify with census records.
@@ -366,15 +359,11 @@ persons/
 | `properties.name.fields.given` | `INDI.NAME.GIVN` | Given name |
 | `properties.name.fields.surname` | `INDI.NAME.SURN` | Surname |
 | `properties.gender` | `INDI.SEX` | M/F mapped to male/female |
-| `properties.born_on` | `INDI.BIRT.DATE` | Birth date |
-| `properties.born_at` | `INDI.BIRT.PLAC` | Birth place (reference) |
-| `properties.died_on` | `INDI.DEAT.DATE` | Death date |
-| `properties.died_at` | `INDI.DEAT.PLAC` | Death place (reference) |
 | `properties.occupation` | `INDI.OCCU` | Occupation |
 | `properties.residence` | `INDI.RESI` | Residence |
 | `notes` | `INDI.NOTE` | Notes |
 
-**Note:** GEDCOM stores birth/death as events with dates and places. GLX imports these as person properties for convenience, while the full event details are preserved in Event entities.
+**Note:** GEDCOM birth/death events (`INDI.BIRT`, `INDI.DEAT`) are imported as [Event entities](event) of type `birth` and `death`, not as person properties.
 
 ## Validation Rules
 

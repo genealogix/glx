@@ -250,6 +250,8 @@ sources:
       coverage: "Leeds, Yorkshire, 1840-1860"
 ```
 
+**See [Vocabularies - Source Properties](vocabularies#source-properties-vocabulary) for the full vocabulary definition.**
+
 ## Usage Patterns
 
 ### Vital Record

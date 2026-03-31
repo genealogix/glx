@@ -132,18 +132,18 @@ func findPersonForCoverage(archive *glxlib.GLXFile, query string) (string, *glxl
 
 // buildCoverage generates the coverage checklist for a person.
 func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFile) *coverageResult {
-	var props map[string]any
-	if person != nil {
-		props = person.Properties
+	var bornOn, bornAt, diedOn, diedAt string
+	if _, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth); birthEvent != nil {
+		bornOn = string(birthEvent.Date)
+		bornAt = birthEvent.PlaceID
+	}
+	if _, deathEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath); deathEvent != nil {
+		diedOn = string(deathEvent.Date)
+		diedAt = deathEvent.PlaceID
 	}
 
-	bornOn := propertyString(props, glxlib.PersonPropertyBornOn)
-	bornAt := propertyString(props, glxlib.PersonPropertyBornAt)
-	diedOn := propertyString(props, glxlib.PersonPropertyDiedOn)
-	diedAt := propertyString(props, glxlib.PersonPropertyDiedAt)
-
 	birthYear := glxlib.ExtractFirstYear(bornOn)
-	deathYear := deathYearUpperBound(props[glxlib.PersonPropertyDiedOn])
+	deathYear := deathYearUpperBound(diedOn)
 
 	// Build indexes: what sources/citations/events reference this person
 	personSources := collectPersonSources(personID, archive)
@@ -156,14 +156,20 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	var records []coverageRecord
 
-	// Census records
+	// Federal census records
 	records = append(records, buildCensusRecords(birthYear, deathYear, personSources, personEvents)...)
+
+	// State census records
+	states := collectPersonStates(person, archive, personEvents)
+	records = append(records, buildStateCensusRecords(birthYear, deathYear, states, personSources, personEvents, archive)...)
 
 	// Vital records
 	records = append(records, buildVitalRecords(personID, person, archive, personSources, personEvents)...)
 
-	// Other record types
-	records = append(records, buildOtherRecords(personSources, personEvents)...)
+	// Other record types — probate is high priority when person has an explicit death
+	// date (not just inferred from burial) and known family
+	probateHighPriority := diedOn != "" && hasFamily(personID, archive)
+	records = append(records, buildOtherRecords(personSources, personEvents, probateHighPriority)...)
 
 	found := 0
 	for _, r := range records {
@@ -194,6 +200,7 @@ type personSourceInfo struct {
 	Type      string // source type
 	Title     string
 	EventType string // if found via an event
+	PlaceID   string // place reference (events only)
 	Year      int
 }
 
@@ -262,6 +269,7 @@ func collectPersonEvents(personID string, archive *glxlib.GLXFile) []personSourc
 					EventType: event.Type,
 					Year:      glxlib.ExtractFirstYear(string(event.Date)),
 					Title:     event.Title,
+					PlaceID:   event.PlaceID,
 				})
 				break
 			}
@@ -314,18 +322,19 @@ func buildCensusRecords(birthYear, deathYear int, sources []personSourceInfo, ev
 			rec.SourceRef = ref
 		}
 
-		// Priority annotations
+		// Census-specific annotations (always added, even when found)
+		rec.Description = appendCensusAnnotation(rec.Description, year, age)
+
+		// Priority annotations for missing records
 		if !rec.Found {
 			if year == 1880 {
 				rec.Priority = "high"
-				if rec.Description != "" {
-					rec.Description += "; lists parents' birthplaces"
-				} else {
-					rec.Description = "lists parents' birthplaces"
-				}
 			} else if age >= 14 && age <= 25 {
 				rec.Priority = "high"
-				rec.Description = "may show in parents' household"
+				// Avoid duplicating parents-household note when 1850 minor annotation already applies
+				if !(year == 1850 && age < 18) {
+					rec.Description = appendDescription(rec.Description, "may show in parents' household")
+				}
 			}
 		}
 
@@ -412,7 +421,7 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 		}
 
 		spouseName := ""
-		if spouse, ok := archive.Persons[spouseID]; ok {
+		if spouse, ok := archive.Persons[spouseID]; ok && spouse != nil {
 			spouseName = glxlib.PersonDisplayName(spouse)
 		}
 		if spouseName == "" {
@@ -468,18 +477,25 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 }
 
 // buildOtherRecords generates records for probate, land, military, church.
-func buildOtherRecords(sources []personSourceInfo, events []personSourceInfo) []coverageRecord {
+// When probateHighPriority is true (person died with known family), probate
+// is elevated to HIGH priority because probate records name heirs.
+func buildOtherRecords(sources []personSourceInfo, events []personSourceInfo, probateHighPriority bool) []coverageRecord {
 	var records []coverageRecord
 
 	// Probate/will
 	probateFound := hasEventType(events, glxlib.EventTypeProbate) || hasEventType(events, glxlib.EventTypeWill) ||
 		hasSourceType(sources, glxlib.SourceTypeProbate, "")
-	records = append(records, coverageRecord{
+	rec := coverageRecord{
 		Category:  "other",
 		Label:     "Probate/will",
 		Found:     probateFound,
 		SourceRef: findEventRef(events, glxlib.EventTypeProbate),
-	})
+	}
+	if !probateFound && probateHighPriority {
+		rec.Priority = "high"
+		rec.Description = "often names heirs (children) and surviving spouse"
+	}
+	records = append(records, rec)
 
 	// Land records
 	landFound := hasSourceType(sources, glxlib.SourceTypeLand, "")
@@ -669,6 +685,68 @@ func inferDeathYearFromEvents(events []personSourceInfo) int {
 		}
 	}
 	return earliest
+}
+
+// appendDescription appends text to an existing description, using "; " as separator.
+func appendDescription(existing, addition string) string {
+	if existing == "" {
+		return addition
+	}
+	return existing + "; " + addition
+}
+
+// appendCensusAnnotation adds research-relevant notes for specific census years.
+func appendCensusAnnotation(desc string, year, age int) string {
+	switch year {
+	case 1850:
+		desc = appendDescription(desc, "first census to list individual names")
+		if age < 18 {
+			desc = appendDescription(desc, "likely in parents' household")
+		}
+	case 1880:
+		desc = appendDescription(desc, "first census to list parents' birthplaces")
+	}
+	return desc
+}
+
+// hasFamily returns true if the person has any spouse or child relationships.
+func hasFamily(personID string, archive *glxlib.GLXFile) bool {
+	for _, rel := range archive.Relationships {
+		if rel == nil {
+			continue
+		}
+
+		isParticipant := false
+		for _, p := range rel.Participants {
+			if p.Person == personID {
+				isParticipant = true
+				break
+			}
+		}
+		if !isParticipant {
+			continue
+		}
+
+		// Check for spouse/partner relationship — require spouse role to avoid
+		// counting witnesses/officiants as family
+		if rel.Type == glxlib.RelationshipTypeMarriage || rel.Type == glxlib.RelationshipTypePartner {
+			for _, p := range rel.Participants {
+				if p.Person == personID && p.Role == glxlib.ParticipantRoleSpouse {
+					return true
+				}
+			}
+		}
+
+		// Check for parent-child where this person is the parent
+		if isParentChildType(rel.Type) {
+			for _, p := range rel.Participants {
+				if p.Person == personID && p.Role == glxlib.ParticipantRoleParent {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // printCoverageJSON outputs the result as JSON.

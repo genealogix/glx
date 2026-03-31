@@ -13,6 +13,7 @@ jobs:
   release:
     name: Build and Release
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -22,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
@@ -31,3 +32,24 @@ jobs:
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Announce release on Discord
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG}"
+          curl -s -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"GLX ${TAG}\",
+                \"url\": \"${RELEASE_URL}\",
+                \"description\": \"A new version of the GLX CLI has been released.\",
+                \"color\": 5814783,
+                \"fields\": [
+                  {\"name\": \"Release Notes & Downloads\", \"value\": \"[View on GitHub](${RELEASE_URL})\"}
+                ]
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"

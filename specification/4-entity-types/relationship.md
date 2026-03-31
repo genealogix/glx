@@ -236,7 +236,29 @@ participants:
     notes: "Bride"
 ```
 
-Each participant object supports: `person` (required), `role`, `properties`, and `notes`. The `properties` field allows per-participant data and is validated against the relationship_properties vocabulary.
+Each participant object supports: `person` (required), `role`, `properties`, and `notes`. The `properties` field allows per-participant data and is validated against the `relationship_properties` vocabulary.
+
+### Per-Participant Properties
+
+When participants in a relationship need individual data (e.g., age at marriage, legal status), use the `properties` field on each participant entry:
+
+```yaml
+relationships:
+  rel-marriage-john-mary:
+    type: marriage
+    participants:
+      - person: person-john-smith
+        role: spouse
+        properties:
+          description: "Widower at time of marriage"
+      - person: person-mary-jones
+        role: spouse
+        properties:
+          description: "First marriage"
+    start_event: event-marriage-1875
+```
+
+Per-participant properties use the same vocabulary as relationship properties (`relationship-properties.glx`) and are validated against it. This is the same pattern used for [event participant properties](event#census-event-with-per-participant-properties).
 
 ## Participant Roles
 

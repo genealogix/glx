@@ -15,6 +15,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -117,6 +118,22 @@ func TestFindPersonAmbiguous(t *testing.T) {
 	}
 }
 
+func TestFindPersonNilEntry(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-nil": nil,
+		},
+	}
+
+	_, _, err := findPerson(archive, "person-nil")
+	if err == nil {
+		t.Fatal("expected error for nil person entry")
+	}
+	if !strings.Contains(err.Error(), "no data") {
+		t.Errorf("expected 'no data' error, got: %s", err.Error())
+	}
+}
+
 func TestCollectVitals(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
@@ -125,13 +142,19 @@ func TestCollectVitals(t *testing.T) {
 					"name": map[string]any{
 						"value": "John Smith",
 					},
-					"gender":  "male",
-					"born_on": "1850-01-15",
-					"born_at": "place-leeds",
+					"gender": "male",
 				},
 			},
 		},
 		Events: map[string]*glxlib.Event{
+			"event-birth-john": {
+				Type:    "birth",
+				Date:    "1850-01-15",
+				PlaceID: "place-leeds",
+				Participants: []glxlib.Participant{
+					{Person: "person-john", Role: "principal"},
+				},
+			},
 			"event-death-john": {
 				Type:    "death",
 				Date:    "1920-03-10",

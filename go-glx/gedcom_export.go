@@ -110,6 +110,9 @@ func ExportGEDCOM(glx *GLXFile, version GEDCOMVersion, logWriter io.Writer) ([]b
 	personIDs := sortedKeys(glx.Persons)
 	for _, personID := range personIDs {
 		person := glx.Persons[personID]
+		if person == nil {
+			continue
+		}
 		record := exportPerson(personID, person, expCtx)
 		records = append(records, record)
 		expCtx.Stats.PersonsExported++

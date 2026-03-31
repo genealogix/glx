@@ -21,6 +21,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// version is set at build time via ldflags:
+//
+//	go build -ldflags "-X main.version=1.2.3" ./glx
+//
+// GoReleaser sets this automatically. For local builds it defaults to "dev".
+var version = "dev"
+
 // Root command
 var rootCmd = &cobra.Command{
 	Use:   "glx",
@@ -29,7 +36,7 @@ var rootCmd = &cobra.Command{
 
 GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
-	Version:       "0.0.0-beta.6",
+	Version:       version,
 	SilenceErrors: true,
 	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
 	// arg-count errors still show usage but runtime errors from RunE do not.
@@ -70,6 +77,8 @@ func init() {
 	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(diffCmd)
+	rootCmd.AddCommand(renameCmd)
+	rootCmd.AddCommand(migrateCmd)
 }
 
 // ============================================================================
@@ -1216,4 +1225,39 @@ func init() {
 
 func runDiff(_ *cobra.Command, args []string) error {
 	return diffArchives(args[0], args[1], diffPerson, diffVerbose, diffShort, diffJSON)
+}
+
+// ============================================================================
+// Rename Command
+// ============================================================================
+
+var renameArchive string
+
+var renameCmd = &cobra.Command{
+	Use:   "rename <old-id> <new-id>",
+	Short: "Rename an entity ID and update all references",
+	Long: `Rename an entity ID throughout the archive, atomically updating all
+cross-references in events, relationships, assertions, citations, and other entities.
+
+Works with any entity type: persons, events, relationships, places, sources,
+citations, repositories, assertions, and media.`,
+	Example: `  # Rename a person
+  glx rename person-a3f8d2c1 person-jane-miller --archive ./archive
+
+  # Rename a place
+  glx rename place-b7e2f1a0 place-millbrook-hartford --archive ./archive
+
+  # Preview changes without writing
+  glx rename person-old person-new --archive ./archive --dry-run`,
+	Args: cobra.ExactArgs(2),
+	RunE: runRename,
+}
+
+func init() {
+	renameCmd.Flags().StringVarP(&renameArchive, "archive", "a", ".", "Path to GLX archive")
+	renameCmd.Flags().BoolVar(&renameDryRun, "dry-run", false, "Show what would change without writing")
+}
+
+func runRename(_ *cobra.Command, args []string) error {
+	return renameEntities(renameArchive, args[0], args[1], renameDryRun)
 }

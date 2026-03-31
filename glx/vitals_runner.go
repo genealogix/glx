@@ -78,6 +78,9 @@ func loadArchiveForVitals(path string) (*glxlib.GLXFile, error) {
 func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, error) {
 	// Try exact ID match first
 	if person, ok := archive.Persons[query]; ok {
+		if person == nil {
+			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
+		}
 		return query, person, nil
 	}
 
@@ -88,6 +91,9 @@ func findPerson(archive *glxlib.GLXFile, query string) (string, *glxlib.Person, 
 	ids := sortedKeys(archive.Persons)
 	for _, id := range ids {
 		person := archive.Persons[id]
+		if person == nil {
+			continue
+		}
 		name := extractPersonName(person)
 		if strings.Contains(strings.ToLower(name), lowerQuery) {
 			matches = append(matches, id)
@@ -128,11 +134,8 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	}
 	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(gender)})
 
-	// Birth — check person properties first, then events
-	birth := formatPropertyDatePlace(person.Properties, "born_on", "born_at", archive)
-	if birth == "" {
-		birth = findEventByType(personID, "birth", eventIDs, archive)
-	}
+	// Birth — from events
+	birth := findEventByType(personID, "birth", eventIDs, archive)
 	vitals = append(vitals, vitalRecord{"Birth", displayOrDash(birth)})
 
 	// Christening/Baptism — from events
@@ -142,15 +145,15 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	}
 	vitals = append(vitals, vitalRecord{"Christening", displayOrDash(christening)})
 
-	// Death — check person properties first, then events
-	death := formatPropertyDatePlace(person.Properties, "died_on", "died_at", archive)
-	if death == "" {
-		death = findEventByType(personID, "death", eventIDs, archive)
-	}
+	// Death — from events
+	death := findEventByType(personID, "death", eventIDs, archive)
 	vitals = append(vitals, vitalRecord{"Death", displayOrDash(death)})
 
-	// Burial — from events
-	burial := findEventByType(personID, "burial", eventIDs, archive)
+	// Burial — check person properties first, then events
+	burial := formatPropertyPlace(person.Properties, "buried_at", archive)
+	if burial == "" {
+		burial = findEventByType(personID, "burial", eventIDs, archive)
+	}
 	if burial == "" {
 		burial = findEventByType(personID, "cremation", eventIDs, archive)
 	}

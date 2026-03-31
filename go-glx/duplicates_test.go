@@ -110,72 +110,141 @@ func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
 	assert.Contains(t, detail, "surname exact")
 }
 
-// --- Year scoring tests ---
+// --- Scoring boundary tests ---
 
-func TestScoreYearSimilarity_ExactMatch(t *testing.T) {
-	propsA := map[string]any{"born_on": "1850"}
-	propsB := map[string]any{"born_on": "1850"}
-	score, detail := scoreYearSimilarity(propsA, propsB, "born_on")
-	assert.Equal(t, 1.0, score)
-	assert.Equal(t, "exact match", detail)
-}
-
-func TestScoreYearSimilarity_WithinOneYear(t *testing.T) {
-	propsA := map[string]any{"born_on": "1850"}
-	propsB := map[string]any{"born_on": "1851"}
-	score, _ := scoreYearSimilarity(propsA, propsB, "born_on")
-	assert.Equal(t, 0.75, score)
-}
-
-func TestScoreYearSimilarity_WithinTwoYears(t *testing.T) {
-	propsA := map[string]any{"born_on": "1850"}
-	propsB := map[string]any{"born_on": "1852"}
-	score, _ := scoreYearSimilarity(propsA, propsB, "born_on")
-	assert.Equal(t, 0.5, score)
-}
-
-func TestScoreYearSimilarity_FarApart(t *testing.T) {
-	propsA := map[string]any{"born_on": "1850"}
-	propsB := map[string]any{"born_on": "1870"}
-	score, _ := scoreYearSimilarity(propsA, propsB, "born_on")
+func TestScoreNameSimilarity_BothEmpty(t *testing.T) {
+	a := &Person{Properties: map[string]any{}}
+	b := &Person{Properties: map[string]any{}}
+	score, detail := scoreNameSimilarity(a, b)
 	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no name", detail)
 }
 
-func TestScoreYearSimilarity_MissingYear(t *testing.T) {
-	propsA := map[string]any{"born_on": "1850"}
-	propsB := map[string]any{}
-	score, detail := scoreYearSimilarity(propsA, propsB, "born_on")
+func TestScoreNameSimilarity_NilProperties(t *testing.T) {
+	a := &Person{}
+	b := &Person{Properties: map[string]any{"name": "John Smith"}}
+	score, detail := scoreNameSimilarity(a, b)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no name", detail)
+}
+
+func TestCompareSurnames_BothEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareSurnames("", ""))
+}
+
+func TestCompareSurnames_OneEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareSurnames("Smith", ""))
+	assert.Equal(t, 0.0, compareSurnames("", "Smith"))
+}
+
+func TestCompareGivenNames_BothEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareGivenNames("", ""))
+}
+
+func TestCompareGivenNames_OneEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareGivenNames("John", ""))
+	assert.Equal(t, 0.0, compareGivenNames("", "John"))
+}
+
+func TestScoreEventYearSimilarity_NilEvents(t *testing.T) {
+	score, detail := scoreEventYearSimilarity(nil, nil)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no data", detail)
 }
 
-func TestScoreYearSimilarity_DateQualifiers(t *testing.T) {
-	propsA := map[string]any{"born_on": "ABT 1850"}
-	propsB := map[string]any{"born_on": "1850"}
-	score, _ := scoreYearSimilarity(propsA, propsB, "born_on")
-	assert.Equal(t, 1.0, score, "ABT qualifier should still match year")
+func TestScoreEventYearSimilarity_OneNil(t *testing.T) {
+	e := &Event{Date: "1850"}
+	score, detail := scoreEventYearSimilarity(e, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
 }
 
-// --- Place scoring tests ---
+func TestScoreEventYearSimilarity_EmptyDates(t *testing.T) {
+	a := &Event{Date: ""}
+	b := &Event{Date: "1850"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
 
-func TestScorePlaceSimilarity_SamePlaceID(t *testing.T) {
-	propsA := map[string]any{"born_at": "place-madison-wi"}
-	propsB := map[string]any{"born_at": "place-madison-wi"}
-	score, _ := scorePlaceSimilarity(propsA, propsB, "born_at", nil)
+func TestScoreEventYearSimilarity_ExactYear(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1850"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 1.0, score)
+	assert.Equal(t, "exact match", detail)
+}
+
+func TestScoreEventYearSimilarity_Within1Year(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1851"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.75, score)
+	assert.Equal(t, "within 1 year", detail)
+}
+
+func TestScoreEventYearSimilarity_Within2Years(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1852"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.5, score)
+	assert.Equal(t, "within 2 years", detail)
+}
+
+func TestScoreEventYearSimilarity_FarApart(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1900"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "different", detail)
+}
+
+func TestScoreEventPlaceSimilarity_NilEvents(t *testing.T) {
+	score, detail := scoreEventPlaceSimilarity(nil, nil, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
+
+func TestScoreEventPlaceSimilarity_EmptyPlaces(t *testing.T) {
+	a := &Event{PlaceID: ""}
+	b := &Event{PlaceID: "place-x"}
+	score, detail := scoreEventPlaceSimilarity(a, b, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
+
+func TestScoreEventPlaceSimilarity_SamePlace(t *testing.T) {
+	a := &Event{PlaceID: "place-london"}
+	b := &Event{PlaceID: "place-london"}
+	score, _ := scoreEventPlaceSimilarity(a, b, nil)
 	assert.Equal(t, 1.0, score)
 }
 
-func TestScorePlaceSimilarity_DifferentPlaceID(t *testing.T) {
-	propsA := map[string]any{"born_at": "place-madison-wi"}
-	propsB := map[string]any{"born_at": "place-milwaukee-wi"}
-	score, _ := scorePlaceSimilarity(propsA, propsB, "born_at", nil)
+func TestScoreEventPlaceSimilarity_DifferentPlaces(t *testing.T) {
+	a := &Event{PlaceID: "place-london"}
+	b := &Event{PlaceID: "place-paris"}
+	score, detail := scoreEventPlaceSimilarity(a, b, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "different", detail)
+}
+
+func TestScoreSharedRelationships_MissingPerson(t *testing.T) {
+	idx := &duplicateIndex{
+		personRelPeers: map[string]map[string]bool{
+			"person-a": {"person-x": true},
+		},
+	}
+	score, _ := scoreSharedRelationships("person-a", "person-missing", idx)
 	assert.Equal(t, 0.0, score)
 }
 
-func TestScorePlaceSimilarity_MissingPlace(t *testing.T) {
-	propsA := map[string]any{"born_at": "place-madison-wi"}
-	propsB := map[string]any{}
-	score, _ := scorePlaceSimilarity(propsA, propsB, "born_at", nil)
+func TestScoreSharedEvents_MissingPerson(t *testing.T) {
+	idx := &duplicateIndex{
+		personEvents: map[string][]string{
+			"person-a": {"event-1"},
+		},
+	}
+	score, _ := scoreSharedEvents("person-a", "person-missing", idx)
 	assert.Equal(t, 0.0, score)
 }
 
@@ -239,12 +308,18 @@ func TestFindDuplicates_SinglePerson(t *testing.T) {
 func TestFindDuplicates_ObviousDuplicate(t *testing.T) {
 	archive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-r-webb": {Properties: map[string]any{
-				"name": "R Webb", "born_on": "1815", "born_at": "place-va",
-			}},
-			"person-robert-webb": {Properties: map[string]any{
-				"name": "Robert Webb", "born_on": "1815", "born_at": "place-va",
-			}},
+			"person-r-webb":      {Properties: map[string]any{"name": "R Webb"}},
+			"person-robert-webb": {Properties: map[string]any{"name": "Robert Webb"}},
+		},
+		Events: map[string]*Event{
+			"event-birth-r-webb": {
+				Type: EventTypeBirth, Date: "1815", PlaceID: "place-va",
+				Participants: []Participant{{Person: "person-r-webb", Role: ParticipantRolePrincipal}},
+			},
+			"event-birth-robert-webb": {
+				Type: EventTypeBirth, Date: "1815", PlaceID: "place-va",
+				Participants: []Participant{{Person: "person-robert-webb", Role: ParticipantRolePrincipal}},
+			},
 		},
 	}
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.5})
@@ -256,8 +331,18 @@ func TestFindDuplicates_ObviousDuplicate(t *testing.T) {
 func TestFindDuplicates_RelatedPersonsSkipped(t *testing.T) {
 	archive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-john": {Properties: map[string]any{"name": "John Smith", "born_on": "1850"}},
-			"person-john-jr": {Properties: map[string]any{"name": "John Smith", "born_on": "1875"}},
+			"person-john":    {Properties: map[string]any{"name": "John Smith"}},
+			"person-john-jr": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: map[string]*Event{
+			"event-birth-john": {
+				Type: EventTypeBirth, Date: "1850",
+				Participants: []Participant{{Person: "person-john", Role: ParticipantRolePrincipal}},
+			},
+			"event-birth-john-jr": {
+				Type: EventTypeBirth, Date: "1875",
+				Participants: []Participant{{Person: "person-john-jr", Role: ParticipantRolePrincipal}},
+			},
 		},
 		Relationships: map[string]*Relationship{
 			"rel-1": {
@@ -290,9 +375,9 @@ func TestFindDuplicates_ThresholdFiltering(t *testing.T) {
 func TestFindDuplicates_PersonFilter(t *testing.T) {
 	archive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-a": {Properties: map[string]any{"name": "John Smith", "born_on": "1850"}},
-			"person-b": {Properties: map[string]any{"name": "John Smith", "born_on": "1850"}},
-			"person-c": {Properties: map[string]any{"name": "John Smith", "born_on": "1850"}},
+			"person-a": {Properties: map[string]any{"name": "John Smith"}},
+			"person-b": {Properties: map[string]any{"name": "John Smith"}},
+			"person-c": {Properties: map[string]any{"name": "John Smith"}},
 		},
 	}
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.5, PersonFilter: "person-a"})
@@ -307,9 +392,9 @@ func TestFindDuplicates_PersonFilter(t *testing.T) {
 func TestFindDuplicates_SortedByScoreDescending(t *testing.T) {
 	archive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-john-1": {Properties: map[string]any{"name": "John Smith", "born_on": "1850"}},
-			"person-john-2": {Properties: map[string]any{"name": "John Smith", "born_on": "1850"}},
-			"person-john-3": {Properties: map[string]any{"name": "Jon Smyth", "born_on": "1855"}},
+			"person-john-1": {Properties: map[string]any{"name": "John Smith"}},
+			"person-john-2": {Properties: map[string]any{"name": "John Smith"}},
+			"person-john-3": {Properties: map[string]any{"name": "Jon Smyth"}},
 		},
 	}
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.3})

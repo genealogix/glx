@@ -5,29 +5,42 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   validate-schemas:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
-      
+          go-version: '1.26'
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install schema validation deps
+        run: npm ci --prefix specification
+
       - name: Validate JSON Schemas
         run: make check-schemas
   
   validate-examples:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
       
       - name: Build glx CLI
         run: |
@@ -44,27 +57,23 @@ jobs:
   
   test-conformance:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
       
       - name: Run Go Tests
         run: |
-          # Run all tests including slow/large file tests
-          # (TestGEDCOM_ImportLargeFiles tests habsburg.ged with 34,020 persons)
-          # Use -timeout to prevent hanging tests (default 10m)
-          go test ./glx/... -v -timeout 15m
+          # Run all tests for both CLI and core library packages
+          # Includes slow/large file tests (habsburg.ged with 34,020 persons)
+          go test ./glx/... ./go-glx/... -v -timeout 15m
       
       - name: Build glx CLI
         run: |
+          mkdir -p bin
           go build -o bin/glx ./glx
-      
-      - name: Run Conformance Tests
-        run: |
-          # Conformance tests moved to Go tests - glx/tests directory removed
-          echo "Conformance tests now in go test ./glx/..."
 

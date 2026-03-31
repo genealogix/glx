@@ -200,8 +200,8 @@ func validateCensusRefs(result *glxlib.CensusResult, existing *glxlib.GLXFile) e
 				}
 			}
 		}
-		// Assertion -> Place references (birthplace, residence values are place IDs)
-		if a.Property == glxlib.PersonPropertyBornAt || a.Property == glxlib.PersonPropertyResidence {
+		// Assertion -> Place references (place, residence values are place IDs)
+		if a.Property == "place" || a.Property == glxlib.PersonPropertyResidence {
 			placeID := a.Value
 			if _, ok := result.Place[placeID]; !ok {
 				if existing.Places == nil || existing.Places[placeID] == nil {

@@ -16,9 +16,21 @@ package main
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+// extractEventYear looks up a person's event (e.g. birth or death) and returns
+// the first year from its date, or 0 if no matching event exists.
+func extractEventYear(archive *glxlib.GLXFile, personID, eventType string) int {
+	_, event := glxlib.FindPersonEvent(archive, personID, eventType)
+	if event == nil {
+		return 0
+	}
+	return glxlib.ExtractFirstYear(string(event.Date))
+}
 
 // analyzeConsistency checks for chronological inconsistencies across the archive.
 func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
@@ -29,6 +41,7 @@ func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	issues = append(issues, checkEventAfterDeath(archive)...)
 	issues = append(issues, checkImplausibleLifespan(archive)...)
 	issues = append(issues, checkMarriageBeforeBirth(archive)...)
+	issues = append(issues, checkDuplicateSiblingNames(archive)...)
 
 	return issues
 }
@@ -43,8 +56,8 @@ func checkBirthAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		birthYear := glxlib.ExtractPropertyYear(person.Properties, "born_on")
-		deathYear := glxlib.ExtractPropertyYear(person.Properties, "died_on")
+		birthYear := extractEventYear(archive, id, glxlib.EventTypeBirth)
+		deathYear := extractEventYear(archive, id, glxlib.EventTypeDeath)
 		if birthYear == 0 || deathYear == 0 {
 			continue
 		}
@@ -91,7 +104,7 @@ func checkParentYoungerThanChild(archive *glxlib.GLXFile) []AnalysisIssue {
 			if parent == nil {
 				continue
 			}
-			parentBirth := glxlib.ExtractPropertyYear(parent.Properties, "born_on")
+			parentBirth := extractEventYear(archive, parentID, glxlib.EventTypeBirth)
 			if parentBirth == 0 {
 				continue
 			}
@@ -101,7 +114,7 @@ func checkParentYoungerThanChild(archive *glxlib.GLXFile) []AnalysisIssue {
 				if child == nil {
 					continue
 				}
-				childBirth := glxlib.ExtractPropertyYear(child.Properties, "born_on")
+				childBirth := extractEventYear(archive, childID, glxlib.EventTypeBirth)
 				if childBirth == 0 {
 					continue
 				}
@@ -133,7 +146,7 @@ func checkEventAfterDeath(archive *glxlib.GLXFile) []AnalysisIssue {
 		if person == nil {
 			continue
 		}
-		year := glxlib.ExtractPropertyYear(person.Properties, "died_on")
+		year := extractEventYear(archive, id, glxlib.EventTypeDeath)
 		if year > 0 {
 			deathYears[id] = year
 		}
@@ -194,8 +207,8 @@ func checkImplausibleLifespan(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		birthYear := glxlib.ExtractPropertyYear(person.Properties, "born_on")
-		deathYear := glxlib.ExtractPropertyYear(person.Properties, "died_on")
+		birthYear := extractEventYear(archive, id, glxlib.EventTypeBirth)
+		deathYear := extractEventYear(archive, id, glxlib.EventTypeDeath)
 		if birthYear == 0 || deathYear == 0 {
 			continue
 		}
@@ -236,7 +249,7 @@ func checkMarriageBeforeBirth(archive *glxlib.GLXFile) []AnalysisIssue {
 				continue
 			}
 
-			birthYear := glxlib.ExtractPropertyYear(person.Properties, "born_on")
+			birthYear := extractEventYear(archive, p.Person, glxlib.EventTypeBirth)
 			if birthYear == 0 {
 				continue
 			}
@@ -254,4 +267,168 @@ func checkMarriageBeforeBirth(archive *glxlib.GLXFile) []AnalysisIssue {
 	}
 
 	return issues
+}
+
+// checkDuplicateSiblingNames flags parents whose children share the same given name.
+// siblingInfo holds an ID and display name for duplicate-name detection.
+type siblingInfo struct {
+	id       string
+	fullName string
+}
+
+func checkDuplicateSiblingNames(archive *glxlib.GLXFile) []AnalysisIssue {
+	// Build parent → children index
+	parentChildren := make(map[string][]string)
+	for _, rel := range archive.Relationships {
+		if rel == nil || !isParentChildType(rel.Type) {
+			continue
+		}
+		var parents, children []string
+		for _, p := range rel.Participants {
+			if p.Role == glxlib.ParticipantRoleParent {
+				parents = append(parents, p.Person)
+			} else if p.Role == glxlib.ParticipantRoleChild {
+				children = append(children, p.Person)
+			}
+		}
+		for _, parentID := range parents {
+			parentChildren[parentID] = append(parentChildren[parentID], children...)
+		}
+	}
+
+	var issues []AnalysisIssue
+
+	for _, parentID := range sortedPersonIDs(archive.Persons) {
+		childIDs := parentChildren[parentID]
+		if len(childIDs) < 2 {
+			continue
+		}
+
+		uniqueChildren := dedupeStrings(childIDs)
+
+		// Map lowercase given name → siblings with that name
+		givenNames := make(map[string][]siblingInfo)
+		// Track original capitalization for display
+		givenDisplay := make(map[string]string)
+
+		for _, cid := range uniqueChildren {
+			person, ok := archive.Persons[cid]
+			if !ok || person == nil {
+				continue
+			}
+			fullName := glxlib.PersonDisplayName(person)
+			given := extractGivenName(person)
+			if given == "" {
+				continue
+			}
+			key := strings.ToLower(given)
+			givenNames[key] = append(givenNames[key], siblingInfo{id: cid, fullName: fullName})
+			if _, exists := givenDisplay[key]; !exists {
+				givenDisplay[key] = given
+			}
+		}
+
+		parentName := personName(archive, parentID)
+		for key, siblings := range givenNames {
+			if len(siblings) < 2 {
+				continue
+			}
+
+			if allReplacementPattern(siblings, archive) {
+				continue
+			}
+
+			var names []string
+			for _, c := range siblings {
+				names = append(names, fmt.Sprintf("%s (%s)", c.id, c.fullName))
+			}
+			sort.Strings(names)
+
+			issues = append(issues, AnalysisIssue{
+				Category: "consistency",
+				Severity: "medium",
+				Person:   parentID,
+				Message: fmt.Sprintf("%s — children share given name %q: %s",
+					parentName, givenDisplay[key], strings.Join(names, " and ")),
+			})
+		}
+	}
+
+	return issues
+}
+
+// extractGivenName returns the given (first) name from a person's name property.
+// Uses the "given" field if available in structured name data; otherwise splits
+// the display name and takes the first token.
+func extractGivenName(person *glxlib.Person) string {
+	if person == nil || person.Properties == nil {
+		return ""
+	}
+	// Try structured name fields first
+	raw, ok := person.Properties["name"]
+	if ok {
+		if m, ok := raw.(map[string]any); ok {
+			if fields, ok := m["fields"].(map[string]any); ok {
+				if given, ok := fields["given"].(string); ok && given != "" {
+					return strings.Fields(given)[0]
+				}
+			}
+		}
+	}
+	// Fall back to first token of display name
+	fullName := glxlib.PersonDisplayName(person)
+	parts := strings.Fields(fullName)
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return ""
+}
+
+// allReplacementPattern returns true if all duplicate-named siblings follow the
+// "replacement" pattern: each earlier child died before or in the same year the
+// next was born.
+func allReplacementPattern(siblings []siblingInfo, archive *glxlib.GLXFile) bool {
+	type yearPair struct {
+		birth int
+		death int
+	}
+	var pairs []yearPair
+	for _, c := range siblings {
+		_, ok := archive.Persons[c.id]
+		if !ok {
+			return false
+		}
+		birth := extractEventYear(archive, c.id, glxlib.EventTypeBirth)
+		death := extractEventYear(archive, c.id, glxlib.EventTypeDeath)
+		pairs = append(pairs, yearPair{birth: birth, death: death})
+	}
+
+	sort.Slice(pairs, func(i, j int) bool { return pairs[i].birth < pairs[j].birth })
+
+	for i := 0; i < len(pairs)-1; i++ {
+		if pairs[i].death == 0 || pairs[i+1].birth == 0 {
+			return false
+		}
+		// If the earlier child died strictly after the next was born,
+		// they overlapped — not a replacement. Same year (death == birth)
+		// is allowed since infant death + replacement in the same year
+		// was a common historical pattern.
+		if pairs[i].death > pairs[i+1].birth {
+			return false
+		}
+	}
+	return true
+}
+
+// dedupeStrings returns unique strings preserving order.
+func dedupeStrings(ss []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, s := range ss {
+		if !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
+	}
+	return result
 }

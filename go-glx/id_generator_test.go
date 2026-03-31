@@ -22,9 +22,11 @@ import (
 )
 
 func TestGenerateRandomID(t *testing.T) {
-	// Generate many IDs to test uniqueness
+	// Generate IDs to test format and basic uniqueness.
+	// Using 1,000 iterations keeps P(collision) at ~0.01% in a 32-bit space,
+	// making collisions extremely unlikely (but not impossible) in CI.
 	ids := make(map[string]bool)
-	iterations := 10000
+	iterations := 1000
 	hexPattern := regexp.MustCompile("^[a-f0-9]{8}$")
 
 	for i := range iterations {
@@ -50,8 +52,6 @@ func TestGenerateRandomID(t *testing.T) {
 		ids[id] = true
 	}
 
-	// With 10,000 IDs and 4.3 billion possible values,
-	// we should have very high probability of no collisions
 	t.Logf("Generated %d unique IDs successfully", len(ids))
 }
 

@@ -285,7 +285,7 @@ Examples of instructions that should be documented:
 **When a pre-existing bug or issue is discovered during implementation, ALWAYS document it.**
 
 If you discover a bug or architectural issue that exists in the codebase but is outside the scope of your current task:
-1. **Add it to `todo.md`** under the appropriate category with priority marker
+1. **File a GitHub Issue** with appropriate labels and type
 2. **Mention it in your summary** to the user so they're aware
 
 This ensures issues don't get lost and can be prioritized appropriately.
@@ -422,21 +422,24 @@ When adding a new CLI command, update all four documentation locations:
 - ✓ Good: `[Person Entity](4-entity-types/person)`
 - ✗ Bad: `[Person Entity](4-entity-types/person.md)`
 
-### Commit Messages
+### Commit Messages and PR Titles
 
+- Use conventional commits format: `type: Subject starting with uppercase` (see `.github/workflows/lint-pr-title.yml` for valid types: feat, fix, docs, chore, refactor, test, perf, ci)
 - Keep messages brief - prefer single-line messages when possible
 - Do NOT include "Generated with Claude Code", Co-Authored-By footers, or any AI attribution in commits, PRs, or any other output
-- Use conventional commits format
 - Examples:
   - `feat: Add GEDCOM 7.0 EXID support`
   - `fix: Handle family events ANUL, DIVF, CENS, EVEN`
   - `docs: Update serializer implementation plan`
-  - `Remove alternative_names from Place entity`
+
+### Pull Requests
+
+- **Always read and follow `.github/PULL_REQUEST_TEMPLATE.md`** when creating PRs
 
 ### Changelog
 
 - Always update `CHANGELOG.md` when making user-facing changes
-- Add entries to the **latest version section** at the top (e.g., `## [0.0.0-beta.6]`)
+- Add entries to the **latest unreleased version section** at the top. Verify which section is unreleased by checking `git tag --sort=-v:refname | head -1` — the latest tag's version has already been released, so add entries to the section above it
 - Use appropriate subsections: Added, Changed, Fixed, Removed
 - Group related changes under descriptive headers (e.g., `#### Citation Entity`)
 - **Feature branch changelog hygiene**: Feature branches often have stale/mangled changelogs. To fix: `git checkout main -- CHANGELOG.md`, then add the branch's entries to the current unreleased section. Never try to merge a diverged changelog — restore and re-add.

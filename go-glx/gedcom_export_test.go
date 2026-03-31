@@ -546,6 +546,40 @@ func TestExportGEDCOM_NilFile(t *testing.T) {
 	assert.ErrorIs(t, err, ErrGLXFileNil)
 }
 
+func TestExportGEDCOM_NilMapEntries(t *testing.T) {
+	// Regression test: archives with nil map entries should not panic
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-valid": {Properties: map[string]any{"name": "Test Person"}},
+			"person-nil":   nil, // nil entry
+		},
+		Events: map[string]*Event{
+			"event-valid": {Type: "birth", Date: "1850", Participants: []Participant{
+				{Person: "person-valid", Role: ParticipantRolePrincipal},
+			}},
+			"event-nil": nil, // nil entry
+		},
+		Relationships: map[string]*Relationship{
+			"rel-valid": {Type: RelationshipTypeMarriage, Participants: []Participant{
+				{Person: "person-valid", Role: ParticipantRoleSpouse},
+			}},
+			"rel-nil": nil, // nil entry
+		},
+		Places:       make(map[string]*Place),
+		Sources:      make(map[string]*Source),
+		Repositories: make(map[string]*Repository),
+		Media:        make(map[string]*Media),
+		Citations:    make(map[string]*Citation),
+		Assertions:   make(map[string]*Assertion),
+	}
+
+	data, result, err := ExportGEDCOM(glx, GEDCOM551, nil)
+	require.NoError(t, err, "export should not panic on nil map entries")
+	require.NotNil(t, result)
+	assert.NotEmpty(t, data)
+	assert.Equal(t, 1, result.Statistics.PersonsExported, "should export valid person, skip nil")
+}
+
 func TestExportGEDCOM_EmptyArchive(t *testing.T) {
 	glx := &GLXFile{
 		Persons:       make(map[string]*Person),

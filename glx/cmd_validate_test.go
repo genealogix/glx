@@ -112,6 +112,43 @@ func TestRunValidate_BrokenReferences(t *testing.T) {
 	require.Error(t, err, "should fail when cross-references are broken")
 }
 
+func TestRunValidate_RemovedProperty(t *testing.T) {
+	// born_at is a removed property and should produce a validation error
+	// telling the user to use birth events instead.
+	tmpDir := t.TempDir()
+
+	personFile := filepath.Join(tmpDir, "person.glx")
+	err := os.WriteFile(personFile, []byte(`persons:
+  person-test:
+    properties:
+      born_at: "place-nonexistent"
+`), 0o644)
+	require.NoError(t, err)
+
+	// Capture stderr to verify error message
+	r, w, errPipe := os.Pipe()
+	require.NoError(t, errPipe)
+	defer func() { _ = r.Close() }()
+
+	oldStderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
+
+	err = validatePaths([]string{tmpDir})
+
+	require.NoError(t, w.Close())
+	var buf strings.Builder
+	_, errCopy := io.Copy(&buf, r)
+	require.NoError(t, errCopy)
+	output := buf.String()
+
+	require.Error(t, err, "should fail when person has removed born_at property")
+	require.Contains(t, output, "has been removed",
+		"error should mention that property has been removed")
+	require.Contains(t, output, "use birth events instead",
+		"error should mention the migration path")
+}
+
 func TestRunValidate_NonExistentPath(t *testing.T) {
 	// Test with a path that doesn't exist in a clean directory
 	tmpDir := t.TempDir()

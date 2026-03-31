@@ -8,7 +8,7 @@
   "properties": {
     "properties": {
       "type": "object",
-      "description": "Vocabulary-defined properties of the person (birth date, gender, etc.)",
+      "description": "Vocabulary-defined properties of the person (name, gender, occupation, etc.)",
       "additionalProperties": true
     },
     "notes": {

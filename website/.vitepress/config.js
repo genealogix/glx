@@ -119,6 +119,7 @@ export default defineConfig({
         text: 'Links',
         items: [
           { text: 'GitHub', link: 'https://github.com/genealogix/glx' },
+          { text: 'Discord', link: 'https://genealogix.io/discord' },
           { text: 'Discussions', link: 'https://github.com/genealogix/glx/discussions' },
           { text: 'Issues', link: 'https://github.com/genealogix/glx/issues' }
         ]
@@ -266,7 +267,8 @@ export default defineConfig({
             { text: 'glx init', link: '/cli#glx-init' },
             { text: 'glx validate', link: '/cli#glx-validate' },
             { text: 'glx split', link: '/cli#glx-split' },
-            { text: 'glx join', link: '/cli#glx-join' }
+            { text: 'glx join', link: '/cli#glx-join' },
+            { text: 'glx migrate', link: '/cli#glx-migrate' }
           ]
         },
         {
@@ -356,7 +358,10 @@ export default defineConfig({
     },
 
     // Social links
-    socialLinks: [{ icon: 'github', link: 'https://github.com/genealogix/glx' }],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/genealogix/glx' },
+      { icon: 'discord', link: 'https://genealogix.io/discord' }
+    ],
 
     // Footer
     footer: {

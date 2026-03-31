@@ -1,0 +1,24 @@
+name: Dependency Review
+
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          # PR comments require write access; on forked PRs the token is
+          # read-only so the comment is silently skipped. The check still
+          # blocks the PR regardless.
+          comment-summary-in-pr: on-failure

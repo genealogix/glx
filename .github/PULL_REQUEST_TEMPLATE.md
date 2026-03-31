@@ -1,23 +1,22 @@
-# Pull Request
+<!--
+  PR title must follow conventional commits: type: Description
+  Description must start with an uppercase letter.
+  Examples: feat: Add person search, fix: Handle nil map in merge
+  Valid types: feat, fix, docs, chore, refactor, test, perf, ci
+-->
 
-## Summary
+## What and why
 
-<!-- What changed, and why? -->
+<!-- What changed and why? Link to design discussion if relevant. -->
+
+## Related issues
+
+<!-- Fixes #123 — or "None" if no linked issue. -->
 
 ## Testing
 
 <!-- What did you run or verify? -->
 
-## Checklist
+## Breaking changes
 
-- [ ] Tests added or updated when needed
-- [ ] Docs updated when needed
-- [ ] Breaking changes called out below
-
-## Related Issues
-
-<!-- Fixes #123 -->
-
-## Breaking Changes
-
-<!-- None, or describe the migration path -->
+<!-- None, or describe the migration path. -->

@@ -20,13 +20,13 @@ place_types:
 
   city:
     label: "City"
-    description: "City or town"
-    category: "geographic"
+    description: "Incorporated city or large municipality"
+    category: "administrative"
 
   town:
     label: "Town"
-    description: "Town or village"
-    category: "geographic"
+    description: "Town, village, or small municipality"
+    category: "administrative"
 
   township:
     label: "Township"
@@ -60,7 +60,7 @@ place_types:
 
   neighborhood:
     label: "Neighborhood"
-    description: "Neighborhood"
+    description: "Residential area or subdivision within a city or town"
     category: "geographic"
   
   street:
