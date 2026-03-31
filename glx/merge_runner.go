@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -188,13 +189,53 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 		return nil
 	}
 
-	// Save — for multi-file, clear old entity files first to avoid stale
-	// duplicates (serializer generates new random filenames)
+	// Save with crash safety: write to a temp location first, then swap.
+	// This prevents archive destruction if the write fails partway through.
 	if destIsDir {
-		if err := clearEntityFiles(destPath); err != nil {
-			return fmt.Errorf("failed to clear old entity files: %w", err)
-		}
-		return writeMultiFileArchive(destPath, dest, false)
+		return safeWriteMultiFileArchive(destPath, dest)
 	}
 	return writeSingleFileArchive(destPath, dest, false)
+}
+
+// safeWriteMultiFileArchive writes a multi-file archive to a temporary directory
+// first, then swaps it into place. This prevents archive destruction if the write
+// fails partway through (e.g., power loss, disk full, signal).
+func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
+	// Create temp dir next to the destination (same filesystem for rename)
+	tmpDir, err := os.MkdirTemp(filepath.Dir(destPath), ".glx-merge-tmp-")
+	if err != nil {
+		return fmt.Errorf("creating temp directory: %w", err)
+	}
+
+	// Clean up temp dir on failure
+	success := false
+	defer func() {
+		if !success {
+			os.RemoveAll(tmpDir)
+		}
+	}()
+
+	// Write the merged archive to temp
+	if err := writeMultiFileArchive(tmpDir, archive, false); err != nil {
+		return fmt.Errorf("writing to temp directory: %w", err)
+	}
+
+	// Create backup of the original
+	backupDir := destPath + ".bak"
+	os.RemoveAll(backupDir) // remove any stale backup
+	if err := os.Rename(destPath, backupDir); err != nil {
+		return fmt.Errorf("backing up original: %w", err)
+	}
+
+	// Move temp into place
+	if err := os.Rename(tmpDir, destPath); err != nil {
+		// Restore backup on failure
+		os.Rename(backupDir, destPath) //nolint:errcheck // best-effort restore
+		return fmt.Errorf("moving merged archive into place: %w", err)
+	}
+
+	// Clean up backup
+	os.RemoveAll(backupDir)
+	success = true
+	return nil
 }
