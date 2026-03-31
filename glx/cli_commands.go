@@ -23,10 +23,25 @@ import (
 
 // version is set at build time via ldflags:
 //
-//	go build -ldflags "-X main.version=1.2.3" ./glx
+//	go build -ldflags "-X main.version=1.2.3 -X main.commit=abc123 -X main.date=2025-01-01" ./glx
 //
-// GoReleaser sets this automatically. For local builds it defaults to "dev".
-var version = "dev"
+// GoReleaser sets these automatically. For local builds they default to "dev"/""/"".
+var (
+	version = "dev"
+	commit  = ""
+	date    = ""
+)
+
+func versionString() string {
+	v := version
+	if commit != "" {
+		v += " (" + commit[:min(len(commit), 7)] + ")"
+	}
+	if date != "" {
+		v += " " + date
+	}
+	return v
+}
 
 // Root command
 var rootCmd = &cobra.Command{
@@ -36,7 +51,7 @@ var rootCmd = &cobra.Command{
 
 GENEALOGIX is a modern, evidence-first, Git-native genealogy data standard.
 Use GLX to initialize new archives, validate files, and ensure data quality.`,
-	Version:       version,
+	Version:       versionString(),
 	SilenceErrors: true,
 	// SilenceUsage is set in PersistentPreRun (after arg validation) so that
 	// arg-count errors still show usage but runtime errors from RunE do not.
