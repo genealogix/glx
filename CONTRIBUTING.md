@@ -52,7 +52,7 @@ Looking for where to start? Check issues labeled [`good first issue`](https://gi
 
 - **Go 1.26+** ([install](https://golang.org/doc/install)) — the project uses Go 1.26 in go.mod
 - **Git** ([install](https://git-scm.com/downloads))
-- **Node.js** — for website builds and schema validation (`npm install` in repo root)
+- **Node.js** — for website builds (`npm install` in `website/`) and schema validation (`npm ci --prefix specification`)
 
 ### Dev Container
 
@@ -84,6 +84,10 @@ make build
 
 # Run tests
 make test
+
+# (Optional) Install schema validation tooling
+npm ci --prefix specification
+make check-schemas
 ```
 
 ### Makefile Reference
@@ -177,12 +181,12 @@ Every PR runs these checks automatically:
 
 | Check | What it does |
 |-------|--------------|
-| **test-conformance** | Go tests for `glx/` and `go-glx/` packages |
-| **validate-spec** | JSON schema validation and VitePress build |
-| **validate-examples** | All example archives pass `glx validate` |
+| **Validate Specification / test-conformance** | Go tests for `glx/` and `go-glx/` packages |
+| **Validate Specification / validate-schemas** | JSON schema validation |
+| **Validate Specification / validate-examples** | All example archives pass `glx validate` |
+| **Security** | gosec, govulncheck, and npm audit |
 | **lint-pr-title** | PR title follows conventional commits format |
 | **dependency-review** | Blocks PRs introducing vulnerable dependencies |
-| **security** | govulncheck and npm audit |
 
 All checks must pass before merge.
 
@@ -256,7 +260,6 @@ Contributions that appear to be bot-generated will be closed without review and 
 
 ### PRs and Issues
 
-- PRs may only target issues in the **Ready** state
 - Contributors are limited to **3 open PRs** at a time across all `genealogix` repositories
 - Address all review comments on existing PRs before opening new ones
 
@@ -288,10 +291,10 @@ To report a vulnerability, see our [Security Policy](SECURITY.md).
 
 ## Building for Release
 
-Releases use GoReleaser (automated in CI on tag push):
+Releases use [GoReleaser](https://goreleaser.com/install/) (automated in CI on tag push):
 
 ```bash
-# Test release build locally
+# Test release build locally (requires goreleaser CLI)
 make release-snapshot
 ```
 
