@@ -285,7 +285,7 @@ Examples of instructions that should be documented:
 **When a pre-existing bug or issue is discovered during implementation, ALWAYS document it.**
 
 If you discover a bug or architectural issue that exists in the codebase but is outside the scope of your current task:
-1. **Add it to `todo.md`** under the appropriate category with priority marker
+1. **File a GitHub Issue** with appropriate labels and type
 2. **Mention it in your summary** to the user so they're aware
 
 This ensures issues don't get lost and can be prioritized appropriately.

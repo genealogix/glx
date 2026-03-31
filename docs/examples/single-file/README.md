@@ -23,7 +23,7 @@ single-file/
 The archive.glx file contains all entity types:
 - persons (2): John Smith, Mary Brown
 - relationships (1): Marriage
-- events (2): John's birth, marriage event
+- events (4): John's birth, marriage, two deaths
 - places (3): England, Yorkshire, Leeds (hierarchical)
 - sources (1): Parish register
 - citations (1): Birth certificate citation

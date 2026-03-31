@@ -92,7 +92,8 @@ participant_roles:
 
   godchild:
     label: "Godchild"
-    description: "Person sponsored by a godparent (in godparent relationships)"
+    description: "Person sponsored by a godparent (in baptism/christening events, or in godparent relationships)"
     applies_to:
+      - event
       - relationship
 

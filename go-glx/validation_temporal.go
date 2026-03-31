@@ -180,37 +180,6 @@ func isParentChildRelType(relType string) bool {
 	return false
 }
 
-// ExtractPropertyYear extracts the first year (1–4 digits) from a person property.
-// Handles simple string values, structured maps with a "value" key, and
-// temporal lists where each entry has a "value" key.
-func ExtractPropertyYear(props map[string]any, key string) int {
-	raw, ok := props[key]
-	if !ok {
-		return 0
-	}
-
-	var dateStr string
-
-	switch v := raw.(type) {
-	case string:
-		dateStr = v
-	case map[string]any:
-		if val, ok := v["value"]; ok {
-			dateStr = fmt.Sprint(val)
-		}
-	case []any:
-		if len(v) > 0 {
-			if m, ok := v[0].(map[string]any); ok {
-				if val, ok := m["value"]; ok {
-					dateStr = fmt.Sprint(val)
-				}
-			}
-		}
-	}
-
-	return ExtractFirstYear(dateStr)
-}
-
 // ExtractFirstYear extracts the first year (1–4 digits) from a date string.
 // Day-of-month values (e.g., the "15" in "15 MAR 1850") are stripped first
 // so they are not mistaken for years. Returns 0 if no year is found.

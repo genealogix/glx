@@ -1,0 +1,30 @@
+events:
+  event-death-john:
+    type: death
+    date: "1920-06-20"
+    place: place-leeds
+    participants:
+      - person: person-john-smith-1850
+        role: subject
+    properties:
+      description: "Death of John Smith in Leeds"
+
+  event-death-mary:
+    type: death
+    date: "1930-08-15"
+    place: place-leeds
+    participants:
+      - person: person-mary-brown-1852
+        role: subject
+    properties:
+      description: "Death of Mary Brown in Leeds"
+
+  event-death-jane:
+    type: death
+    date: "1955-12-10"
+    place: place-leeds
+    participants:
+      - person: person-jane-smith-1876
+        role: subject
+    properties:
+      description: "Death of Jane Smith in Leeds"
