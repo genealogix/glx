@@ -814,7 +814,7 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 	}
 
 	// Extract ROLE
-	role := ""
+	role := ParticipantRoleWitness // default for ASSO without ROLE (most common case)
 	var notes []string
 	for _, sub := range assoRecord.SubRecords {
 		switch sub.Tag {
@@ -823,8 +823,10 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 			if mapped {
 				role = glxRole
 			} else if sub.Value != "" {
-				// Unknown role — preserve as lowercase
-				role = strings.ToLower(sub.Value)
+				// Unknown role — don't set as Role (would fail vocab validation).
+				// Use witness as default and preserve original in notes.
+				role = ParticipantRoleWitness
+				notes = append(notes, "GEDCOM ROLE: "+sub.Value)
 			}
 			// Check for PHRASE sub-sub-record (GEDCOM 7.0)
 			for _, roleSub := range sub.SubRecords {

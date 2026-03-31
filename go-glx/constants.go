@@ -210,20 +210,21 @@ const (
 )
 
 // gedcomRoleToGLX maps GEDCOM ROLE enumeration values to GLX participant roles.
+// Only maps to roles that exist in the standard participant-roles vocabulary.
+// Roles without a vocabulary match (NGHBR, FRIEND, MULTIPLE) are stored in
+// participant notes instead of the role field to avoid validation errors.
 var gedcomRoleToGLX = map[string]string{
 	"WITN":       ParticipantRoleWitness,
 	"OFFICIATOR": ParticipantRoleOfficiant,
 	"CLERGY":     ParticipantRoleOfficiant,
-	"GODP":       "godparent",
+	"GODP":       ParticipantRoleGodparent,
 	"CHIL":       ParticipantRoleChild,
-	"FATH":       "parent",
-	"MOTH":       "parent",
+	"FATH":       ParticipantRoleParent,
+	"MOTH":       ParticipantRoleParent,
 	"HUSB":       ParticipantRoleSpouse,
 	"WIFE":       ParticipantRoleSpouse,
-	"PARENT":     "parent",
+	"PARENT":     ParticipantRoleParent,
 	"SPOU":       ParticipantRoleSpouse,
-	"NGHBR":      "neighbor",
-	"FRIEND":     "friend",
 }
 
 // GEDCOM Tags - Family Events
