@@ -211,7 +211,7 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	success := false
 	defer func() {
 		if !success {
-			os.RemoveAll(tmpDir)
+			_ = os.RemoveAll(tmpDir)
 		}
 	}()
 
@@ -222,7 +222,7 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 
 	// Create backup of the original
 	backupDir := destPath + ".bak"
-	os.RemoveAll(backupDir) // remove any stale backup
+	_ = os.RemoveAll(backupDir) // remove any stale backup
 	if err := os.Rename(destPath, backupDir); err != nil {
 		return fmt.Errorf("backing up original: %w", err)
 	}
@@ -230,12 +230,12 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// Move temp into place
 	if err := os.Rename(tmpDir, destPath); err != nil {
 		// Restore backup on failure
-		os.Rename(backupDir, destPath) //nolint:errcheck // best-effort restore
+		_ = os.Rename(backupDir, destPath) // best-effort restore
 		return fmt.Errorf("moving merged archive into place: %w", err)
 	}
 
 	// Clean up backup
-	os.RemoveAll(backupDir)
+	_ = os.RemoveAll(backupDir)
 	success = true
 	return nil
 }
