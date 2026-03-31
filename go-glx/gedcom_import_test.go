@@ -561,7 +561,9 @@ func TestConvertResidence_NoPlacCreatesEvent(t *testing.T) {
 	require.NotNil(t, residenceEvent, "RESI without PLAC should create a residence event, not be dropped")
 	assert.Equal(t, DateString("1580"), residenceEvent.Date)
 	assert.Len(t, residenceEvent.Participants, 1)
-	assert.Equal(t, "person", residenceEvent.Participants[0].Person[:6]) // starts with person ID prefix
+	assert.True(t, strings.HasPrefix(residenceEvent.Participants[0].Person, "person-"),
+		"participant should reference a person entity, got %q", residenceEvent.Participants[0].Person)
+	assert.NotEmpty(t, residenceEvent.Title, "residence event should have a generated title")
 }
 
 // TestConvertResidence_BareRESIYCreatesEvent tests that a bare "RESI Y" marker

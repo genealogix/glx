@@ -539,32 +539,29 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 	} else {
 		// RESI without PLAC → create a residence event to preserve
 		// date/type/notes that would otherwise be lost. Fixes #488.
-		eventID, err := GenerateRandomID()
-		if err != nil {
-			conv.Logger.LogInfof("failed to generate event ID for RESI: %v", err)
-			return
-		}
-		eventID = "event-" + eventID
+		eventID := generateEventID(conv)
 
 		event := &Event{
 			Type: EventTypeResidence,
+			Date: DateString(dateStr),
 			Participants: []Participant{
 				{Person: personID, Role: ParticipantRolePrincipal},
 			},
 		}
-		if dateStr != "" {
-			event.Date = DateString(dateStr)
-		}
+
+		// Generate a title for consistency with other imported events
+		event.Title = GenerateEventTitle(EventTypeResidence, []string{PersonDisplayName(person)}, event.Date)
+
 		// Preserve RESI value (e.g., "Y") and TYPE in notes
 		var notes []string
 		if resiRecord.Value != "" && resiRecord.Value != "Y" {
 			notes = append(notes, "GEDCOM RESI value: "+resiRecord.Value)
 		}
 		for _, sub := range resiRecord.SubRecords {
-			if sub.Tag == GedcomTagType {
+			switch sub.Tag {
+			case GedcomTagType:
 				notes = append(notes, "GEDCOM RESI TYPE: "+sub.Value)
-			}
-			if sub.Tag == GedcomTagNote {
+			case GedcomTagNote:
 				noteText := extractNoteText(sub, conv)
 				if noteText != "" {
 					notes = append(notes, noteText)
@@ -573,6 +570,12 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		}
 		if len(notes) > 0 {
 			event.Notes = strings.Join(notes, "\n")
+		}
+
+		// Extract evidence from SOUR subrecords
+		refs := extractEvidence(resiRecord, conv)
+		if refs.hasEvidence() {
+			createEventAssertionWithEvidence(eventID, "date", event.Date, refs, conv)
 		}
 
 		conv.GLX.Events[eventID] = event
