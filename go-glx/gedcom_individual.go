@@ -315,7 +315,9 @@ func mapGEDCOMSex(sex string) string {
 	case "X":
 		return GenderOther
 	default:
-		return GenderUnknown
+		// Preserve unrecognized values as lowercase so they survive roundtrip.
+		// Validation will warn about unknown gender types. Fixes #520.
+		return strings.ToLower(strings.TrimSpace(sex))
 	}
 }
 
