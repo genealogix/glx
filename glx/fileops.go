@@ -215,8 +215,8 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	success := false
 	defer func() {
 		if !success {
-			tmp.Close()
-			os.Remove(tmpPath)
+			_ = tmp.Close()
+			_ = os.Remove(tmpPath)
 		}
 	}()
 
