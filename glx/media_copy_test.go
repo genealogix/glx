@@ -201,6 +201,36 @@ func TestCopyMediaFile_ValidPathNotRejected(t *testing.T) {
 	}
 }
 
+func TestCopyMediaFile_DotGedcomDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "photo.jpg"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldwd) })
+
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	// Valid path with gedcomDir "." must not be rejected.
+	err = copyMediaFile(".", "photo.jpg", destPath)
+	if err != nil {
+		t.Errorf("valid path with gedcomDir '.' should succeed, got: %v", err)
+	}
+
+	// Traversal with gedcomDir "." must still be caught.
+	err = copyMediaFile(".", "../etc/passwd", destPath)
+	if err == nil || !strings.Contains(err.Error(), "path traversal") {
+		t.Errorf("expected path traversal error, got: %v", err)
+	}
+}
+
 func TestCopyMediaFiles_EmptyList(t *testing.T) {
 	destDir := t.TempDir()
 
