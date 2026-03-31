@@ -217,25 +217,18 @@ func reconstructFamilies(expCtx *ExportContext) {
 			for _, cp := range parents {
 				familyIndices := parentToFamilies[cp.parentID]
 				for _, idx := range familyIndices {
-					// If child has only one parent and the family already has
-					// pair-matched children, this child may belong to a different
-					// family unit — skip unless this is the parent's only family.
-					if len(parentIDs) == 1 && familiesWithPairedChildren[idx] {
+					// If child has only one parent and the parent has multiple
+					// families, skip families that already have pair-matched
+					// children (the child likely belongs to a different family
+					// unit). When the parent has only one family, always place
+					// the child there — the missing second-parent link is more
+					// likely a data gap than a different union. Fixes #486.
+					if len(parentIDs) == 1 && len(familyIndices) > 1 && familiesWithPairedChildren[idx] {
 						continue
 					}
 					matchedFamilies[idx] = true
 					break
 				}
-
-				// If all of this parent's families were skipped (all had paired
-				// children), use the first family as a best-effort placement rather
-				// than creating a synthetic single-parent FAM. This fixes #486
-				// where children whose second-parent relationship was not imported
-				// were getting spurious synthetic families.
-				if len(matchedFamilies) == 0 && len(familyIndices) > 0 && len(parentIDs) == 1 {
-					matchedFamilies[familyIndices[0]] = true
-				}
-
 				if len(matchedFamilies) > 0 {
 					break
 				}
