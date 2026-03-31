@@ -28,6 +28,9 @@ var dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|
 // temporalYearRegexp matches the first 1–4 digit year in a date string.
 var temporalYearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
 
+// lastYearRegexp matches ALL digit sequences (1-5 digits for Hebrew years like 5765).
+var lastYearRegexp = regexp.MustCompile(`\b(\d{1,5})\b`)
+
 
 // validateTemporalConsistency checks for logical inconsistencies in dates
 // across persons, events, and relationships. All issues are reported as
@@ -188,7 +191,19 @@ func ExtractFirstYear(dateStr string) int {
 		return 0
 	}
 
-	cleaned := dayMonthRegexp.ReplaceAllString(dateStr, "")
+	// Strip calendar prefix and use calendar-specific extraction.
+	cal, body := ExtractCalendarPrefix(DateString(dateStr))
+	bodyStr := string(body)
+
+	// For non-Gregorian calendars where the year is the LAST token
+	// (e.g., "15 TSH 5765" for Hebrew, "1 VEND 0012" for French Republican),
+	// extract the last number instead of the first. Fixes #565.
+	if cal == CalendarHebrew || cal == CalendarFrenchR {
+		return extractLastYear(bodyStr)
+	}
+
+	// For Gregorian/Julian: strip DD MMM patterns, then find first number.
+	cleaned := dayMonthRegexp.ReplaceAllString(bodyStr, "")
 
 	match := temporalYearRegexp.FindStringSubmatch(cleaned)
 	if len(match) < 2 {
@@ -196,6 +211,25 @@ func ExtractFirstYear(dateStr string) int {
 	}
 
 	year, err := strconv.Atoi(match[1])
+	if err != nil {
+		return 0
+	}
+
+	return year
+}
+
+// extractLastYear finds the last digit sequence in a date string.
+// Used for non-Gregorian calendars where the year appears after day and month.
+func extractLastYear(dateStr string) int {
+	// Strip keywords (ABT, BEF, etc.) — they don't contain digits so won't affect result
+	matches := lastYearRegexp.FindAllStringSubmatch(dateStr, -1)
+	if len(matches) == 0 {
+		return 0
+	}
+
+	// Take the last match
+	lastMatch := matches[len(matches)-1]
+	year, err := strconv.Atoi(lastMatch[1])
 	if err != nil {
 		return 0
 	}

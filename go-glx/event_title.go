@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -157,12 +158,10 @@ func extractYear(date DateString) string {
 		return ""
 	}
 
-	cleaned := dayMonthRegexp.ReplaceAllString(s, "")
-
-	match := temporalYearRegexp.FindStringSubmatch(cleaned)
-	if len(match) < 2 {
+	// Use calendar-aware extraction (delegates to ExtractFirstYear logic)
+	year := ExtractFirstYear(s)
+	if year == 0 {
 		return ""
 	}
-
-	return match[1]
+	return strconv.Itoa(year)
 }
