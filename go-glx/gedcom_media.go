@@ -36,6 +36,13 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Convert using common logic
 	media := convertMediaCommon(objeRecord, mediaID, conv)
 
+	// Skip media entities with empty URI — happens when OBJE has no FILE
+	// tag or an empty FILE value and no BLOB data. Fixes #492.
+	if media.URI == "" {
+		conv.Logger.LogInfof("Skipping OBJE %s: no FILE reference or BLOB data", objeRecord.XRef)
+		return nil
+	}
+
 	// Handle SOUR subrecords (only for top-level OBJE records)
 	for _, sub := range objeRecord.SubRecords {
 		if sub.Tag == GedcomTagSour {
@@ -75,6 +82,12 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) str
 
 	// Convert using common logic
 	media := convertMediaCommon(objeRecord, mediaID, conv)
+
+	// Skip if no URI (empty FILE, no BLOB). Fixes #492.
+	if media.URI == "" {
+		conv.Logger.LogInfo("Skipping embedded OBJE: no FILE reference or BLOB data")
+		return ""
+	}
 
 	// Store media
 	conv.GLX.Media[mediaID] = media

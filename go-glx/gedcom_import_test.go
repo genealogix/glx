@@ -1257,6 +1257,46 @@ func TestImportCensus_WithMedia(t *testing.T) {
 	assert.True(t, mediaLinked, "census OBJE should be linked to source or citation")
 }
 
+// TestImportMedia_EmptyFileSkipped tests that OBJE records with empty FILE
+// values do not create media entities with empty URIs. Fixes #492.
+func TestImportMedia_EmptyFileSkipped(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @O1@ OBJE
+1 FILE
+1 TITL Empty file reference
+0 @I1@ INDI
+1 NAME Test /Person/
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should NOT create a media entity with empty URI
+	for id, media := range glxFile.Media {
+		assert.NotEmpty(t, media.URI, "media %s should not have empty URI", id)
+	}
+}
+
+// TestImportMedia_NoFileTagSkipped tests that OBJE records with no FILE tag
+// at all do not create media entities.
+func TestImportMedia_NoFileTagSkipped(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @O1@ OBJE
+1 TITL Photo with no file reference
+0 @I1@ INDI
+1 NAME Test /Person/
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	assert.Empty(t, glxFile.Media, "OBJE with no FILE tag should not create a media entity")
+}
+
 // TestImportFamilyCensus_SingleSpouse tests family census with only one spouse.
 func TestImportFamilyCensus_SingleSpouse(t *testing.T) {
 	gedcom := `0 HEAD
