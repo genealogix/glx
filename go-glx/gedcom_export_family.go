@@ -347,10 +347,10 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 			}
 
 			// NOTE from relationship
-			if !rel.Notes.IsEmpty() {
+			for _, note := range rel.Notes {
 				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 					Tag:   GedcomTagNote,
-					Value: rel.Notes.String(),
+					Value: note,
 				})
 			}
 		}

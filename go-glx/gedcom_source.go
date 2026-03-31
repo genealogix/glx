@@ -139,7 +139,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 	}
 
-	// Combine notes
+	// Collect notes
 	if len(notes) > 0 {
 		source.Notes = NoteList(notes)
 	}

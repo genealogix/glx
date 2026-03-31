@@ -266,7 +266,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		}
 	}
 
-	// Combine notes
+	// Collect notes
 	if len(notes) > 0 {
 		media.Notes = NoteList(notes)
 	}

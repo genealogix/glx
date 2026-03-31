@@ -107,7 +107,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 		}
 	}
 
-	// Combine notes
+	// Collect notes
 	if len(notes) > 0 {
 		repository.Notes = NoteList(notes)
 	}

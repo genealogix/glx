@@ -34,6 +34,8 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 	case yaml.ScalarNode:
 		if node.Value != "" {
 			*n = NoteList{node.Value}
+		} else {
+			*n = nil
 		}
 		return nil
 	case yaml.SequenceNode:

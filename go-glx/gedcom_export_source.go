@@ -115,10 +115,10 @@ func exportSource(sourceID string, source *Source, expCtx *ExportContext) *GEDCO
 	}
 
 	// NOTE
-	if !source.Notes.IsEmpty() {
+	for _, note := range source.Notes {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: source.Notes.String(),
+			Value: note,
 		})
 	}
 
