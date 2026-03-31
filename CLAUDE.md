@@ -16,21 +16,18 @@ This document provides context for Claude AI instances working on the GLX projec
 
 ## Quick Start for New Claude Instances
 
-1. **Read the plans**: Check `.claude/plans/README.md` for current work
+1. **Check open issues**: `gh issue list --state open` for current work
 2. **Check the branch**: Development happens on feature branches (e.g., `feat/name-type-implementation`)
 3. **Review recent commits**: `git log --oneline -10` to see what's been done
 4. **Check test status**: `make test` to ensure everything passes
-5. **Review todo list**: Active tasks are tracked in `.claude/plans/README.md`
 
 ---
 
 ## Project Structure
 
 ```
-spec/
 ├── .claude/
-│   ├── plans/              # Active planning documents
-│   └── plans/old/          # Archived historical plans
+│   └── commands/           # Custom slash commands
 ├── go-glx/                 # Core library (package glx) — importable by external apps
 │   │                       # import glxlib "github.com/genealogix/glx/go-glx"
 │   ├── types.go           # Core GLX entity types
@@ -400,15 +397,6 @@ When adding a new CLI command, update all four documentation locations:
 ---
 
 ## Documentation Standards
-
-### Planning Documents
-
-- Store in `.claude/plans/`
-- Include date, status, and purpose at top
-- Use markdown with clear sections
-- Update `.claude/plans/README.md` when adding new plans
-- **DO NOT include time estimates** - They waste tokens and are meaningless
-- Focus on task breakdown and dependencies, not hours/days estimates
 
 ### Code Comments
 
