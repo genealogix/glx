@@ -19,11 +19,14 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
+          cache: true
 
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: specification/package-lock.json
 
       - name: Install schema validation deps
         run: npm ci --prefix specification
@@ -41,7 +44,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
-      
+          cache: true
+
       - name: Build glx CLI
         run: |
           # Build Go-based CLI tool
@@ -65,7 +69,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
-      
+          cache: true
+
       - name: Run Go Tests
         run: |
           # Run all tests for both CLI and core library packages
