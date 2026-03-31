@@ -84,7 +84,7 @@ func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedc
 }
 
 // isPathWithin checks whether child is contained within the parent directory.
-// Uses absolute paths to handle cases where parent is "." or "/".
+// Uses filepath.Rel to handle edge cases like parent being "." or "/".
 func isPathWithin(child, parent string) bool {
 	absChild, err := filepath.Abs(filepath.Clean(child))
 	if err != nil {
@@ -94,7 +94,11 @@ func isPathWithin(child, parent string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.HasPrefix(absChild, absParent+string(filepath.Separator))
+	rel, err := filepath.Rel(absParent, absChild)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..") && rel != "."
 }
 
 // copyMediaFile copies a single media file from the GEDCOM source directory.
