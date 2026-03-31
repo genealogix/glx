@@ -203,6 +203,29 @@ const (
 	GedcomTagChil = "CHIL" // Child reference
 )
 
+// GEDCOM Tags - Associations
+const (
+	GedcomTagAsso = "ASSO" // Association (links person to event/individual with role)
+	GedcomTagRole = "ROLE" // Role in association
+)
+
+// gedcomRoleToGLX maps GEDCOM ROLE enumeration values to GLX participant roles.
+var gedcomRoleToGLX = map[string]string{
+	"WITN":       ParticipantRoleWitness,
+	"OFFICIATOR": ParticipantRoleOfficiant,
+	"CLERGY":     ParticipantRoleOfficiant,
+	"GODP":       "godparent",
+	"CHIL":       ParticipantRoleChild,
+	"FATH":       "parent",
+	"MOTH":       "parent",
+	"HUSB":       ParticipantRoleSpouse,
+	"WIFE":       ParticipantRoleSpouse,
+	"PARENT":     "parent",
+	"SPOU":       ParticipantRoleSpouse,
+	"NGHBR":      "neighbor",
+	"FRIEND":     "friend",
+}
+
 // GEDCOM Tags - Family Events
 const (
 	GedcomTagMarr = "MARR" // Marriage event

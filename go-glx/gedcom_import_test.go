@@ -686,6 +686,79 @@ func TestImportTITL_WithDatePreserved(t *testing.T) {
 	}
 }
 
+// TestImportASSOEvent_WitnessAdded tests that ASSO subrecords on events
+// create additional participants with the correct role. Fixes #527.
+func TestImportASSOEvent_WitnessAdded(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 15 JAN 1850
+2 PLAC Leeds, Yorkshire, England
+2 ASSO @I2@
+3 ROLE WITN
+0 @I2@ INDI
+1 NAME Jane /Doe/
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Find the birth event
+	var birthEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeBirth {
+			birthEvent = event
+			break
+		}
+	}
+	require.NotNil(t, birthEvent, "birth event should exist")
+
+	// Should have 2 participants: principal (John) + witness (Jane)
+	assert.Len(t, birthEvent.Participants, 2, "birth event should have principal + witness")
+
+	var hasWitness bool
+	for _, p := range birthEvent.Participants {
+		if p.Role == ParticipantRoleWitness {
+			hasWitness = true
+		}
+	}
+	assert.True(t, hasWitness, "birth event should have a witness participant from ASSO")
+}
+
+// TestImportASSOEvent_VoidSkipped tests that ASSO @VOID@ (unknown person) is skipped.
+func TestImportASSOEvent_VoidSkipped(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 15 JAN 1850
+2 ASSO @VOID@
+3 ROLE OFFICIATOR
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var birthEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeBirth {
+			birthEvent = event
+			break
+		}
+	}
+	require.NotNil(t, birthEvent)
+
+	// @VOID@ ASSO should be skipped — only principal participant
+	assert.Len(t, birthEvent.Participants, 1, "VOID ASSO should not create a participant")
+}
+
 func TestImportDate_CalendarEscapePreserved(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +

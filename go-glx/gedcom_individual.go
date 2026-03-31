@@ -27,9 +27,12 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRecordType, GedcomTagIndi, indiRecord.Tag)
 	}
 
-	// Generate person ID
-	personID := generatePersonID(conv)
-	conv.PersonIDMap[indiRecord.XRef] = personID
+	// Use pre-assigned person ID (from ASSO pre-pass) or generate a new one
+	personID, exists := conv.PersonIDMap[indiRecord.XRef]
+	if !exists {
+		personID = generatePersonID(conv)
+		conv.PersonIDMap[indiRecord.XRef] = personID
+	}
 
 	conv.Logger.LogInfof("Converting INDI %s -> %s", indiRecord.XRef, personID)
 
@@ -277,12 +280,22 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 		}
 	}
 
-	// Add participant to event
+	// Add principal participant
 	event.Participants = []Participant{
 		{
 			Person: personID,
 			Role:   ParticipantRolePrincipal,
 		},
+	}
+
+	// Add ASSO participants (witnesses, officiants, etc.). Fixes #527.
+	for _, sub := range eventRecord.SubRecords {
+		if sub.Tag == GedcomTagAsso {
+			assoParticipant := convertASSOToParticipant(sub, conv)
+			if assoParticipant != nil {
+				event.Participants = append(event.Participants, *assoParticipant)
+			}
+		}
 	}
 
 	// Generate event title
@@ -784,4 +797,56 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 		Citations: refs.CitationIDs,
 	}
 	conv.Stats.AssertionsCreated++
+}
+
+// convertASSOToParticipant converts a GEDCOM ASSO subrecord to a GLX Participant.
+// Returns nil if the ASSO references @VOID@ or an unresolvable person.
+func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext) *Participant {
+	// Resolve person reference
+	personRef := assoRecord.Value
+	if personRef == "" || personRef == "@VOID@" {
+		return nil // Unknown person — skip
+	}
+
+	personID, ok := conv.PersonIDMap[personRef]
+	if !ok {
+		return nil // Referenced person not imported
+	}
+
+	// Extract ROLE
+	role := ""
+	var notes []string
+	for _, sub := range assoRecord.SubRecords {
+		switch sub.Tag {
+		case GedcomTagRole:
+			glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(sub.Value)]
+			if mapped {
+				role = glxRole
+			} else if sub.Value != "" {
+				// Unknown role — preserve as lowercase
+				role = strings.ToLower(sub.Value)
+			}
+			// Check for PHRASE sub-sub-record (GEDCOM 7.0)
+			for _, roleSub := range sub.SubRecords {
+				if roleSub.Tag == "PHRASE" && roleSub.Value != "" {
+					notes = append(notes, "Role: "+roleSub.Value)
+				}
+			}
+		case GedcomTagNote:
+			noteText := extractNoteText(sub, conv)
+			if noteText != "" {
+				notes = append(notes, noteText)
+			}
+		}
+	}
+
+	participant := &Participant{
+		Person: personID,
+		Role:   role,
+	}
+	if len(notes) > 0 {
+		participant.Notes = strings.Join(notes, "\n")
+	}
+
+	return participant
 }
