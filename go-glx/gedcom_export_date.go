@@ -40,6 +40,25 @@ func formatGEDCOMDate(date DateString) string {
 		return ""
 	}
 
+	// Extract calendar prefix (e.g., "JULIAN 1731-03-15" → calendar="JULIAN", body="1731-03-15")
+	calendar, body := ExtractCalendarPrefix(DateString(s))
+	if calendar != "" {
+		escape := calendarToGEDCOMEscape(calendar)
+		bodyStr := strings.TrimSpace(string(body))
+		gedcomBody := formatGEDCOMDateBody(bodyStr)
+		return escape + " " + gedcomBody
+	}
+
+	// No calendar prefix — format as Gregorian
+	return formatGEDCOMDateBody(s)
+}
+
+// formatGEDCOMDateBody formats a date body (without calendar prefix) to GEDCOM format.
+func formatGEDCOMDateBody(s string) string {
+	if s == "" {
+		return ""
+	}
+
 	// Handle range: BET ... AND ...
 	if strings.HasPrefix(s, "BET ") && strings.Contains(s, " AND ") {
 		parts := strings.SplitN(s, " AND ", 2)

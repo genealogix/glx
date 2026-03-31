@@ -94,38 +94,90 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 		return DateString(result)
 	}
 
-	// If standard parsing failed, try stripping calendar escapes
-	// GEDCOM uses @#DJULIAN@, @#DHEBREW@, @#DFRENCH R@, @#DGREGORIAN@ prefixes
-	calendarStripped := stripCalendarEscape(date)
-	if calendarStripped != date {
-		if result := parseExactDate(calendarStripped); result != "" {
-			return DateString(result)
+	// Extract calendar escape sequences (@#DJULIAN@, @#DHEBREW@, @#DFRENCH R@, @#DGREGORIAN@)
+	// and preserve the calendar system as a GLX prefix on the DateString.
+	calendar, remainder := extractCalendar(date)
+	if remainder != date {
+		// Try to parse the remainder as a standard date.
+		parsed := parseGEDCOMDateBody(remainder)
+		if parsed == "" {
+			// Calendar escape with no date body (e.g., "@#DJULIAN@" or "@#DGREGORIAN@").
+			// Preserve the original raw GEDCOM string so roundtrip
+			// can re-emit the same value.
+			return DateString(gedcomDate)
 		}
+		if calendar != "" {
+			return DateString(calendar + " " + string(parsed))
+		}
+		return parsed
 	}
 
 	// Preserve the raw GEDCOM date string for non-standard formats
-	// (BCE dates, non-Gregorian calendars, dual dates like 1731/32)
+	// (BCE dates, dual dates like 1731/32)
 	// so they survive roundtrip rather than being silently dropped
 	return DateString(date)
 }
 
-// stripCalendarEscape removes GEDCOM calendar escape sequences like @#DJULIAN@, @#DHEBREW@, etc.
-func stripCalendarEscape(date string) string {
-	if idx := strings.Index(date, "@#D"); idx != -1 {
-		endIdx := strings.Index(date[idx:], "@ ")
-		if endIdx != -1 {
-			return strings.TrimSpace(date[idx+endIdx+2:])
-		}
-		// Handle case where @ is at end with no trailing space
-		endIdx = strings.LastIndex(date[idx:], "@")
-		if endIdx > 3 {
-			remainder := strings.TrimSpace(date[idx+endIdx+1:])
-			if remainder != "" {
-				return remainder
+// parseGEDCOMDateBody parses a GEDCOM date string that has already had any
+// calendar escape stripped. It handles qualifiers, ranges, and exact dates.
+func parseGEDCOMDateBody(dateStr string) DateString {
+	date := strings.TrimSpace(dateStr)
+	if date == "" {
+		return ""
+	}
+
+	// Handle qualifiers: ABT, BEF, AFT, CAL
+	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
+	for _, qual := range qualifiers {
+		if after, ok := strings.CutPrefix(date, qual); ok {
+			exactDate := parseExactDate(strings.TrimSpace(after))
+			if exactDate != "" {
+				return DateString(qual + exactDate)
 			}
 		}
 	}
-	return date
+
+	// Handle ranges: BET ... AND ..., FROM ... TO ..., FROM ...
+	if strings.Contains(date, "BET ") && strings.Contains(date, " AND ") {
+		parts := strings.Split(date, " AND ")
+		if len(parts) == 2 {
+			start := strings.TrimPrefix(parts[0], "BET ")
+			end := parts[1]
+			startDate := parseExactDate(strings.TrimSpace(start))
+			endDate := parseExactDate(strings.TrimSpace(end))
+			if startDate != "" && endDate != "" {
+				return DateString("BET " + startDate + " AND " + endDate)
+			}
+		}
+	}
+
+	if after, ok := strings.CutPrefix(date, "FROM "); ok {
+		if strings.Contains(date, " TO ") {
+			parts := strings.Split(date, " TO ")
+			if len(parts) == 2 {
+				start := strings.TrimPrefix(parts[0], "FROM ")
+				end := parts[1]
+				startDate := parseExactDate(strings.TrimSpace(start))
+				endDate := parseExactDate(strings.TrimSpace(end))
+				if startDate != "" && endDate != "" {
+					return DateString("FROM " + startDate + " TO " + endDate)
+				}
+			}
+		} else {
+			startDate := parseExactDate(strings.TrimSpace(after))
+			if startDate != "" {
+				return DateString("FROM " + startDate)
+			}
+		}
+	}
+
+	// Try exact date
+	if result := parseExactDate(date); result != "" {
+		return DateString(result)
+	}
+
+	// Preserve raw (non-Gregorian month names, dual dates, etc.)
+	return DateString(date)
 }
 
 // parseExactDate parses an exact GEDCOM date to YYYY-MM-DD format

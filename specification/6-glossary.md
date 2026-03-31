@@ -5,7 +5,7 @@ This glossary defines key terms used in the GENEALOGIX specification.
 ## A
 
 ### Approximate Date
-A date with uncertainty or imprecision, expressed using keywords like ABT (about), BEF (before), AFT (after), or BET (between). Part of GENEALOGIX's fuzzy date support.
+A date with uncertainty or imprecision, expressed using keywords like ABT (about), BEF (before), AFT (after), or BET (between). Part of GENEALOGIX's fuzzy date support. Can be combined with calendar prefixes (e.g., `JULIAN ABT 1731`).
 
 > **See Also:** [Date Format Standard](2-core-concepts#date-format-standard)
 
@@ -54,8 +54,13 @@ A reference from one entity to another entity in the archive (e.g., event refere
 
 ## D
 
+### Calendar Prefix
+An optional prefix on a DateString indicating the calendar system: JULIAN, HEBREW, or FRENCH_R. Gregorian is the default (no prefix). Imported from GEDCOM calendar escape sequences (e.g., `@#DJULIAN@`).
+
+> **See Also:** [Non-Gregorian Calendar Dates](2-core-concepts#non-gregorian-calendar-dates)
+
 ### Date Keywords
-Keywords used in GENEALOGIX date formats to express uncertainty or ranges: ABT (about), BEF (before), AFT (after), BET (between), FROM, TO, CAL (calculated), INT (interpreted).
+Keywords used in GENEALOGIX date formats to express uncertainty or ranges: ABT (about), BEF (before), AFT (after), BET (between), FROM, TO, CAL (calculated), INT (interpreted). Can be combined with calendar prefixes (e.g., `JULIAN ABT 1731`).
 
 > **See Also:** [Date Format Standard](2-core-concepts#date-format-standard)
 

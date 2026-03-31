@@ -253,7 +253,7 @@ primary_source: false
 
 #### Date
 
-A calendar date or fuzzy date specification. GENEALOGIX uses YYYY-MM-DD format for precise dates combined with FamilySearch-inspired keywords for fuzzy dates.
+A calendar date or fuzzy date specification. GENEALOGIX uses YYYY-MM-DD format for precise dates combined with FamilySearch-inspired keywords for fuzzy dates. Dates may include an optional [calendar prefix](#non-gregorian-calendar-dates) for non-Gregorian calendar systems (e.g., `JULIAN 1731-03-15`).
 
 ### Date Format Standard
 
@@ -326,11 +326,51 @@ date: "CAL 1850"               # Calculated from other evidence
 date: "INT 1850-03-15 (15th March 1850)"  # Original text preserved
 ```
 
+#### Non-Gregorian Calendar Dates
+
+Dates from non-Gregorian calendar systems use a calendar prefix before the date body. Gregorian is the default — no prefix is needed for the vast majority of dates.
+
+**Supported calendars:**
+
+| Prefix | Calendar | GEDCOM Equivalent |
+|--------|----------|-------------------|
+| *(none)* | Gregorian (default) | `@#DGREGORIAN@` |
+| `JULIAN` | Julian calendar | `@#DJULIAN@` |
+| `HEBREW` | Hebrew calendar | `@#DHEBREW@` |
+| `FRENCH_R` | French Republican calendar | `@#DFRENCH R@` |
+
+**Format:** `CALENDAR date-body` where `date-body` is any valid date format (simple, keyword, or range).
+
+```yaml
+# Gregorian dates (default — no prefix)
+date: "1731-03-15"
+
+# Julian calendar dates
+date: "JULIAN 1731-03-15"       # Julian March 15, 1731 (≠ Gregorian March 15)
+date: "JULIAN ABT 1731"         # About 1731, Julian calendar
+date: "JULIAN 1731-03"          # Julian March 1731
+
+# Hebrew calendar dates (raw month names preserved)
+date: "HEBREW 15 TSH 5765"      # 15 Tishrei 5765
+
+# French Republican calendar dates (raw month names preserved)
+date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
+```
+
+**Design notes:**
+
+1. **No calendar conversion is performed.** Dates are preserved exactly as the source recorded them, consistent with the evidence-first methodology. A Julian date is stored as Julian, not converted to Gregorian.
+2. **Gregorian is the default.** Dates without a prefix are Gregorian. The `GREGORIAN` prefix is never written.
+3. **Hebrew and French Republican dates preserve raw month names** (e.g., `TSH`, `VEND`) because GENEALOGIX does not parse non-Gregorian month names into structured dates.
+4. **Unknown calendars are preserved.** If a GEDCOM file uses a non-standard calendar escape, the calendar name is preserved as a prefix (with spaces normalized to underscores).
+5. **Calendar prefixes align with [GEDCOM 7.0 calendar names](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html).** GEDCOM 5.5.1 escape sequences (e.g., `@#DJULIAN@`) are converted to the equivalent prefix on import.
+
 #### Date Validation
 
 GENEALOGIX validates date formats at two levels:
 1. **Structure:** Dates must follow the format specifications above
 2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT) are recognized
+3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Unknown prefixes are accepted without warning to allow extensibility
 
 Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.
 
