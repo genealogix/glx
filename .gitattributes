@@ -1,0 +1,31 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Go source
+*.go text diff=golang
+
+# Documentation
+*.md text diff=markdown
+*.yaml text diff=yaml
+*.yml text diff=yaml
+*.json text
+*.glx text diff=yaml
+
+# Shell scripts
+*.sh text eol=lf
+
+# Binary files
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.tif binary
+*.tiff binary
+*.pdf binary
+*.ged text
+
+# GoReleaser archives
+dist/ export-ignore
+
+# Vendor and generated
+go.sum text linguist-generated
