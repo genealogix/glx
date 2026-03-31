@@ -1,19 +1,24 @@
 # GENEALOGIX Repository
-# Ignore temporary files and build artifacts
-test-import/
-*.tmp
-*.bak
 
 # Go build artifacts
 bin/
+dist/
 *.exe
 *.test
 
-# Go coverage reports
+# Go profiling and coverage
 coverage/
 coverage.out
 coverage*.html
 coverage*.out
+*.prof
+*.pprof
+/cpu.out
+/mem.out
+
+# Go module cache artifacts
+*.tmp
+*.bak
 
 # Node.js
 node_modules/
@@ -31,17 +36,19 @@ website/.vitepress/cache
 *.swp
 *.swo
 
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
 # Claude Code local settings (user-specific overrides)
 .claude/settings.local.json
 
 # Internal working files
 docs/superpowers/
+test-import/
 
 # OS generated files
 .DS_Store
-.DS_Store?
 ._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
