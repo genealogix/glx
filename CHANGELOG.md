@@ -14,9 +14,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
-#### Specification
-- **Research block on person entity** — persons can now include a `research` block for tracking open questions (unknown parents, unconfirmed identity), hypotheses with confidence levels, and completed searches including null results. Enables multi-session brickwall research without repeating searches. Fixes #137
-
 #### CLI
 - **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
 
