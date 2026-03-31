@@ -94,6 +94,7 @@ make check-schemas
 
 | Target | Description |
 |--------|-------------|
+| `make install-deps` | Install Go modules and npm packages |
 | `make test` | Run all tests |
 | `make test-verbose` | Run tests with verbose output |
 | `make test-coverage` | Run tests with coverage report |
@@ -157,7 +158,7 @@ docs: Update quickstart guide
 
 ## Testing
 
-**Always use the Makefile to run tests** — never `go test` directly.
+Prefer using the Makefile to run tests for consistency. `go test` directly is fine for targeted runs.
 
 ```bash
 make test              # Run all tests
