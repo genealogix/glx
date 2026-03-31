@@ -297,31 +297,114 @@ func TestReconstructFamilies_SingleParentWithExistingFamily(t *testing.T) {
 
 	reconstructFamilies(expCtx)
 
-	// Should create TWO families: one for the marriage, one synthetic for father-only children
-	require.Len(t, expCtx.Families, 2, "expected 2 families: 1 marriage + 1 synthetic single-parent")
+	// After fixing #486: single-parent children whose parent is in an existing
+	// family should join that family rather than getting a synthetic one.
+	// This trades accuracy for children from explicitly different unions
+	// (which can't be distinguished algorithmically from missing parent-links)
+	// in exchange for fixing the +124 FAMS surplus in roundtrip scenarios.
+	require.Len(t, expCtx.Families, 1, "expected 1 family: all children join the marriage family (#486 fix)")
 
-	// Find the marriage family and the synthetic family
-	var marriageFamily, syntheticFamily *ExportFamily
-	for _, f := range expCtx.Families {
-		if f.HusbandID != "" && f.WifeID != "" {
-			marriageFamily = f
-		} else if f.WifeID == "" && f.HusbandID == "person-father" {
-			syntheticFamily = f
-		}
+	family := expCtx.Families[0]
+	assert.Equal(t, "person-father", family.HusbandID)
+	assert.Equal(t, "person-mother", family.WifeID)
+	assert.Contains(t, family.ChildIDs, "person-child-married")
+	assert.Contains(t, family.ChildIDs, "person-child-other1")
+	assert.Contains(t, family.ChildIDs, "person-child-other2")
+}
+
+// TestReconstructFamilies_SingleParentChildJoinsExistingFamily tests that a child
+// with only one parent-child relationship (e.g., only mother linked) is placed
+// into the existing marriage family rather than a synthetic single-parent family.
+// This is the bug reported in #486: the queen test file has children where only
+// one parent-child relationship was imported, but the parent is in an existing
+// marriage FAM. The child should join that FAM, not get a new synthetic one.
+func TestReconstructFamilies_SingleParentChildJoinsExistingFamily(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"person-king": {
+					Properties: map[string]any{
+						PersonPropertyGender: GenderMale,
+					},
+				},
+				"person-queen": {
+					Properties: map[string]any{
+						PersonPropertyGender: GenderFemale,
+					},
+				},
+				// Child with BOTH parents linked
+				"person-prince": {
+					Properties: map[string]any{},
+				},
+				// Child with ONLY mother linked (father relationship missing)
+				"person-princess": {
+					Properties: map[string]any{},
+				},
+			},
+			Relationships: map[string]*Relationship{
+				"rel-marriage": {
+					Type: RelationshipTypeMarriage,
+					Participants: []Participant{
+						{Person: "person-king", Role: ParticipantRoleSpouse},
+						{Person: "person-queen", Role: ParticipantRoleSpouse},
+					},
+				},
+				// Prince has both parents
+				"rel-pc-prince-father": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-king", Role: ParticipantRoleParent},
+						{Person: "person-prince", Role: ParticipantRoleChild},
+					},
+				},
+				"rel-pc-prince-mother": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-queen", Role: ParticipantRoleParent},
+						{Person: "person-prince", Role: ParticipantRoleChild},
+					},
+				},
+				// Princess has ONLY mother linked (father relationship not imported)
+				"rel-pc-princess-mother": {
+					Type: RelationshipTypeParentChild,
+					Participants: []Participant{
+						{Person: "person-queen", Role: ParticipantRoleParent},
+						{Person: "person-princess", Role: ParticipantRoleChild},
+					},
+				},
+			},
+			Events: make(map[string]*Event),
+		},
+		PersonXRefMap: map[string]string{
+			"person-king":     "@I1@",
+			"person-queen":    "@I2@",
+			"person-prince":   "@I3@",
+			"person-princess": "@I4@",
+		},
+		ExportIndex: &ExportIndex{
+			EventTypes:        make(map[string]string),
+			RelationshipTypes: make(map[string]string),
+		},
+		PlaceStrings: make(map[string]string),
+		Stats:        ExportStatistics{},
 	}
 
-	require.NotNil(t, marriageFamily, "marriage family not found")
-	require.NotNil(t, syntheticFamily, "synthetic single-parent family not found")
+	reconstructFamilies(expCtx)
 
-	// Marriage family should have the child from the marriage
-	assert.Contains(t, marriageFamily.ChildIDs, "person-child-married")
-	assert.NotContains(t, marriageFamily.ChildIDs, "person-child-other1")
-	assert.NotContains(t, marriageFamily.ChildIDs, "person-child-other2")
+	// Should create only ONE family (the marriage), not a synthetic second one.
+	// The princess should be placed in the marriage family since her mother
+	// (person-queen) is in exactly one family.
+	require.Len(t, expCtx.Families, 1, "expected 1 family: princess should join the marriage family, not get a synthetic one")
 
-	// Synthetic family should have the father-only children
-	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other1")
-	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other2")
-	assert.Equal(t, "", syntheticFamily.RelationshipID)
+	family := expCtx.Families[0]
+	assert.Equal(t, "person-king", family.HusbandID)
+	assert.Equal(t, "person-queen", family.WifeID)
+	assert.Contains(t, family.ChildIDs, "person-prince", "paired child should be in family")
+	assert.Contains(t, family.ChildIDs, "person-princess", "single-parent child should join existing family")
+
+	// Verify no extra FAMS: queen should be in exactly one family
+	queenFamilies := expCtx.PersonSpouseFamilies["person-queen"]
+	assert.Len(t, queenFamilies, 1, "queen should have exactly one FAMS reference")
 }
 
 func TestReconstructFamilies_PedigreeTypes(t *testing.T) {
