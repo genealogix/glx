@@ -11,6 +11,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
 - 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
+- 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
 - 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
 - 🔎 **Query** - Filter and list entities from an archive by name, date, type, source, and more
@@ -485,6 +486,31 @@ glx join family-archive family.glx --no-validate
 
 # Verbose output
 glx join family-archive family.glx --verbose
+```
+
+### `glx merge`
+
+Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept).
+
+```
+glx merge <source> <destination> [flags]
+```
+
+**Flags:**
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview what would be merged without modifying files |
+
+**Examples:**
+```bash
+# Merge research-trip findings into main archive
+glx merge research-trip/ main-archive/
+
+# Preview merge without writing
+glx merge research-trip/ main-archive/ --dry-run
+
+# Merge single-file archives
+glx merge cousin-data.glx family.glx
 ```
 
 ### `glx stats`
