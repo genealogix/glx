@@ -416,7 +416,7 @@ func TestExportRepository_Basic(t *testing.T) {
 		PostalCode: "20408",
 		Country:    "USA",
 		Website:    "https://www.archives.gov",
-		Notes:      "Main facility",
+		Notes:      NoteList{"Main facility"},
 		Properties: make(map[string]any),
 	}
 
@@ -1007,7 +1007,7 @@ func TestExportSource_WithNotes(t *testing.T) {
 	source := &Source{
 		Title:       "Family Bible",
 		Description: "Entries in the family Bible of John Smith",
-		Notes:       "Handwritten entries, some water damage",
+		Notes:       NoteList{"Handwritten entries, some water damage"},
 		Properties:  make(map[string]any),
 	}
 
@@ -1356,7 +1356,7 @@ func TestExportMedia_WithNotes(t *testing.T) {
 	media := &Media{
 		URI:        "media/files/photo.jpg",
 		MimeType:   MimeTypeJPEG,
-		Notes:      "Taken at the family reunion",
+		Notes:      NoteList{"Taken at the family reunion"},
 		Properties: make(map[string]any),
 	}
 
@@ -2098,7 +2098,7 @@ func TestExportPerson_WithNotes(t *testing.T) {
 				},
 			},
 		},
-		Notes: "Prominent local farmer",
+		Notes: NoteList{"Prominent local farmer"},
 	}
 
 	record := exportPerson("person-1", person, expCtx)
@@ -2897,7 +2897,7 @@ func TestBuildHEADRecord_ImportMetadataPreserved(t *testing.T) {
 				Language:   "English",
 				SourceFile: "my-family.ged",
 				Copyright:  "© 2023 Test Author",
-				Notes:      "This is a test archive.",
+				Notes:      NoteList{"This is a test archive."},
 			},
 		},
 		Version: GEDCOM551,

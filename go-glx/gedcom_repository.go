@@ -109,7 +109,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 	// Combine notes
 	if len(notes) > 0 {
-		repository.Notes = strings.Join(notes, "\n")
+		repository.Notes = NoteList(notes)
 	}
 
 	// Default type if not set

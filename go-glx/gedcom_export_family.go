@@ -347,10 +347,10 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 			}
 
 			// NOTE from relationship
-			if rel.Notes != "" {
+			if !rel.Notes.IsEmpty() {
 				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 					Tag:   GedcomTagNote,
-					Value: rel.Notes,
+					Value: rel.Notes.String(),
 				})
 			}
 		}
@@ -390,7 +390,7 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 	}
 
 	// NOTE - check both struct field and Properties map
-	famEventNoteText := event.Notes
+	famEventNoteText := event.Notes.String()
 	if famEventNoteText == "" {
 		if propNotes, ok := event.Properties[PropertyNotes].(string); ok {
 			famEventNoteText = propNotes

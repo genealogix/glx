@@ -227,11 +227,7 @@ func convertHeader(headRecord *GEDCOMRecord, conv *ConversionContext) {
 		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if meta.Notes == "" {
-					meta.Notes = noteText
-				} else {
-					meta.Notes = meta.Notes + "\n" + noteText
-				}
+				meta.Notes = append(meta.Notes, noteText)
 			}
 		}
 	}

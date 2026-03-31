@@ -268,7 +268,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 
 	// Combine notes
 	if len(notes) > 0 {
-		media.Notes = strings.Join(notes, "\n")
+		media.Notes = NoteList(notes)
 	}
 
 	return media

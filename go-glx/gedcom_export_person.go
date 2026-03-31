@@ -153,7 +153,7 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	record.SubRecords = append(record.SubRecords, exportMappedPersonProperties(personID, person, expCtx)...)
 
 	// NOTE - check both struct field and Properties map
-	noteText := person.Notes
+	noteText := person.Notes.String()
 	if noteText == "" {
 		if propNotes, ok := person.Properties[PropertyNotes].(string); ok {
 			noteText = propNotes
@@ -447,7 +447,7 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
 
 	// NOTE - check both struct field and Properties map
-	eventNoteText := event.Notes
+	eventNoteText := event.Notes.String()
 	if eventNoteText == "" {
 		if propNotes, ok := event.Properties[PropertyNotes].(string); ok {
 			eventNoteText = propNotes
@@ -851,10 +851,10 @@ func exportCitationAsSOUR(citation *Citation, sourceXRef string, expCtx *ExportC
 	}
 
 	// NOTE
-	if citation.Notes != "" {
+	if !citation.Notes.IsEmpty() {
 		sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: citation.Notes,
+			Value: citation.Notes.String(),
 		})
 	}
 

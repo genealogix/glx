@@ -405,10 +405,10 @@ func buildHEADRecord(expCtx *ExportContext) *GEDCOMRecord {
 				Value: meta.Copyright,
 			})
 		}
-		if meta.Notes != "" {
+		if !meta.Notes.IsEmpty() {
 			head.SubRecords = append(head.SubRecords, &GEDCOMRecord{
 				Tag:   GedcomTagNote,
-				Value: meta.Notes,
+				Value: meta.Notes.String(),
 			})
 		}
 	}

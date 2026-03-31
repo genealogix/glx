@@ -614,7 +614,7 @@ func TestRoundtrip_HeadMetadataPreserved(t *testing.T) {
 	assert.Equal(t, "English", glx1.ImportMetadata.Language)
 	assert.Equal(t, "my-tree.ged", glx1.ImportMetadata.SourceFile)
 	assert.Equal(t, "(c) 2023 Test Author", glx1.ImportMetadata.Copyright)
-	assert.Equal(t, "This is a test archive.", glx1.ImportMetadata.Notes)
+	assert.Equal(t, NoteList{"This is a test archive."}, glx1.ImportMetadata.Notes)
 
 	// Export
 	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
@@ -635,7 +635,7 @@ func TestRoundtrip_HeadMetadataPreserved(t *testing.T) {
 	assert.Equal(t, "English", glx2.ImportMetadata.Language)
 	assert.Equal(t, "my-tree.ged", glx2.ImportMetadata.SourceFile)
 	assert.Equal(t, "(c) 2023 Test Author", glx2.ImportMetadata.Copyright)
-	assert.Equal(t, "This is a test archive.", glx2.ImportMetadata.Notes)
+	assert.Equal(t, NoteList{"This is a test archive."}, glx2.ImportMetadata.Notes)
 }
 
 // TestRoundtrip_NoSpouseFamilyWithMarriageAndChild documents that a FAM record

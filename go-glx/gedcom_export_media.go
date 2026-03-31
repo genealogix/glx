@@ -129,10 +129,10 @@ func exportMedia(mediaID string, media *Media, expCtx *ExportContext) *GEDCOMRec
 	}
 
 	// NOTE
-	if media.Notes != "" {
+	if !media.Notes.IsEmpty() {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: media.Notes,
+			Value: media.Notes.String(),
 		})
 	}
 

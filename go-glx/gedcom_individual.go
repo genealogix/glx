@@ -117,11 +117,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			// Notes — store in struct field, not Properties
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if person.Notes != "" {
-					person.Notes += "\n\n" + noteText
-				} else {
-					person.Notes = noteText
-				}
+				person.Notes = append(person.Notes, noteText)
 			}
 
 		case GedcomTagSour:
@@ -624,21 +620,13 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		if len(refs.CitationIDs) > 0 {
 			for _, citID := range refs.CitationIDs {
 				if cit, ok := conv.GLX.Citations[citID]; ok {
-					if cit.Notes == "" {
-						cit.Notes = noteText
-					} else {
-						cit.Notes += "\n\n" + noteText
-					}
+					cit.Notes = append(cit.Notes, noteText)
 				}
 			}
 		} else if len(refs.SourceIDs) > 0 {
 			for _, srcID := range refs.SourceIDs {
 				if src, ok := conv.GLX.Sources[srcID]; ok {
-					if src.Notes == "" {
-						src.Notes = noteText
-					} else {
-						src.Notes += "\n\n" + noteText
-					}
+					src.Notes = append(src.Notes, noteText)
 				}
 			}
 		}
@@ -672,7 +660,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 			citationID := generateCitationID(conv)
 			citation := &Citation{
 				SourceID: sourceID,
-				Notes:    noteText,
+				Notes:    NoteList{noteText},
 			}
 			conv.GLX.Citations[citationID] = citation
 			conv.Stats.CitationsCreated++
