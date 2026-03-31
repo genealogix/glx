@@ -71,17 +71,29 @@ const (
 	RelationshipTypeNeighbor              = "neighbor"
 	RelationshipTypeCoworker              = "coworker"
 	RelationshipTypeHousemate             = "housemate"
+	RelationshipTypeApprenticeship        = "apprenticeship"
+	RelationshipTypeEmployment            = "employment"
+	RelationshipTypeEnslavement           = "enslavement"
+	RelationshipTypeRelative              = "relative"
 )
 
 // Standard Participant Roles - from participant-roles.glx vocabulary
 const (
-	ParticipantRolePrincipal = "principal"
-	ParticipantRoleSpouse    = "spouse"
-	ParticipantRoleParent    = "parent"
-	ParticipantRoleChild     = "child"
-	ParticipantRoleWitness   = "witness"
-	ParticipantRoleOfficiant = "officiant"
-	ParticipantRoleInformant = "informant"
+	ParticipantRolePrincipal     = "principal"
+	ParticipantRoleSubject       = "subject"
+	ParticipantRoleWitness       = "witness"
+	ParticipantRoleOfficiant     = "officiant"
+	ParticipantRoleInformant     = "informant"
+	ParticipantRoleGroom         = "groom"
+	ParticipantRoleBride         = "bride"
+	ParticipantRoleSpouse        = "spouse"
+	ParticipantRoleParent        = "parent"
+	ParticipantRoleChild         = "child"
+	ParticipantRoleAdoptiveParent = "adoptive_parent"
+	ParticipantRoleAdoptedChild  = "adopted_child"
+	ParticipantRoleSibling       = "sibling"
+	ParticipantRoleGodparent     = "godparent"
+	ParticipantRoleGodchild      = "godchild"
 )
 
 // Standard Person Property Names - commonly used properties on Person entities
@@ -414,21 +426,23 @@ const (
 	RepositoryTypeUniversity        = "university"
 	RepositoryTypeHistoricalSociety = "historical_society"
 	RepositoryTypeDatabase          = "database"
+	RepositoryTypeRegistry          = "registry"
+	RepositoryTypeGovernmentAgency  = "government_agency"
 	RepositoryTypeOther             = "other"
 )
 
 // gedcomRepositoryTypeMapping maps GEDCOM repository type values to GLX repository types.
 // Package-level to avoid allocation on every call.
 var gedcomRepositoryTypeMapping = map[string]string{
-	"archive":    "archive",
-	"library":    "library",
-	"church":     "church",
-	"government": "government_agency",
-	"museum":     "museum",
-	"online":     "database",
-	"registry":   "registry",
-	"society":    "historical_society",
-	"university": "university",
+	"archive":    RepositoryTypeArchive,
+	"library":    RepositoryTypeLibrary,
+	"church":     RepositoryTypeChurch,
+	"government": RepositoryTypeGovernmentAgency,
+	"museum":     RepositoryTypeMuseum,
+	"online":     RepositoryTypeDatabase,
+	"registry":   RepositoryTypeRegistry,
+	"society":    RepositoryTypeHistoricalSociety,
+	"university": RepositoryTypeUniversity,
 }
 
 // MIME Types - Common media types

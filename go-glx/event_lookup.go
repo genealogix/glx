@@ -37,7 +37,7 @@ func FindPersonEvent(archive *GLXFile, personID, eventType string) (string, *Eve
 // a witness, informant, or other auxiliary role.
 func isSubjectRole(role string) bool {
 	switch role {
-	case ParticipantRolePrincipal, "subject", "":
+	case ParticipantRolePrincipal, ParticipantRoleSubject, "":
 		return true
 	default:
 		return false

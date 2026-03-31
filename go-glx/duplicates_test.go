@@ -110,6 +110,143 @@ func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
 	assert.Contains(t, detail, "surname exact")
 }
 
+// --- Scoring boundary tests ---
+
+func TestScoreNameSimilarity_BothEmpty(t *testing.T) {
+	a := &Person{Properties: map[string]any{}}
+	b := &Person{Properties: map[string]any{}}
+	score, detail := scoreNameSimilarity(a, b)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no name", detail)
+}
+
+func TestScoreNameSimilarity_NilProperties(t *testing.T) {
+	a := &Person{}
+	b := &Person{Properties: map[string]any{"name": "John Smith"}}
+	score, detail := scoreNameSimilarity(a, b)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no name", detail)
+}
+
+func TestCompareSurnames_BothEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareSurnames("", ""))
+}
+
+func TestCompareSurnames_OneEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareSurnames("Smith", ""))
+	assert.Equal(t, 0.0, compareSurnames("", "Smith"))
+}
+
+func TestCompareGivenNames_BothEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareGivenNames("", ""))
+}
+
+func TestCompareGivenNames_OneEmpty(t *testing.T) {
+	assert.Equal(t, 0.0, compareGivenNames("John", ""))
+	assert.Equal(t, 0.0, compareGivenNames("", "John"))
+}
+
+func TestScoreEventYearSimilarity_NilEvents(t *testing.T) {
+	score, detail := scoreEventYearSimilarity(nil, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
+
+func TestScoreEventYearSimilarity_OneNil(t *testing.T) {
+	e := &Event{Date: "1850"}
+	score, detail := scoreEventYearSimilarity(e, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
+
+func TestScoreEventYearSimilarity_EmptyDates(t *testing.T) {
+	a := &Event{Date: ""}
+	b := &Event{Date: "1850"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
+
+func TestScoreEventYearSimilarity_ExactYear(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1850"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 1.0, score)
+	assert.Equal(t, "exact match", detail)
+}
+
+func TestScoreEventYearSimilarity_Within1Year(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1851"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.75, score)
+	assert.Equal(t, "within 1 year", detail)
+}
+
+func TestScoreEventYearSimilarity_Within2Years(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1852"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.5, score)
+	assert.Equal(t, "within 2 years", detail)
+}
+
+func TestScoreEventYearSimilarity_FarApart(t *testing.T) {
+	a := &Event{Date: "1850"}
+	b := &Event{Date: "1900"}
+	score, detail := scoreEventYearSimilarity(a, b)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "different", detail)
+}
+
+func TestScoreEventPlaceSimilarity_NilEvents(t *testing.T) {
+	score, detail := scoreEventPlaceSimilarity(nil, nil, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
+
+func TestScoreEventPlaceSimilarity_EmptyPlaces(t *testing.T) {
+	a := &Event{PlaceID: ""}
+	b := &Event{PlaceID: "place-x"}
+	score, detail := scoreEventPlaceSimilarity(a, b, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no data", detail)
+}
+
+func TestScoreEventPlaceSimilarity_SamePlace(t *testing.T) {
+	a := &Event{PlaceID: "place-london"}
+	b := &Event{PlaceID: "place-london"}
+	score, _ := scoreEventPlaceSimilarity(a, b, nil)
+	assert.Equal(t, 1.0, score)
+}
+
+func TestScoreEventPlaceSimilarity_DifferentPlaces(t *testing.T) {
+	a := &Event{PlaceID: "place-london"}
+	b := &Event{PlaceID: "place-paris"}
+	score, detail := scoreEventPlaceSimilarity(a, b, nil)
+	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "different", detail)
+}
+
+func TestScoreSharedRelationships_MissingPerson(t *testing.T) {
+	idx := &duplicateIndex{
+		personRelPeers: map[string]map[string]bool{
+			"person-a": {"person-x": true},
+		},
+	}
+	score, _ := scoreSharedRelationships("person-a", "person-missing", idx)
+	assert.Equal(t, 0.0, score)
+}
+
+func TestScoreSharedEvents_MissingPerson(t *testing.T) {
+	idx := &duplicateIndex{
+		personEvents: map[string][]string{
+			"person-a": {"event-1"},
+		},
+	}
+	score, _ := scoreSharedEvents("person-a", "person-missing", idx)
+	assert.Equal(t, 0.0, score)
+}
 
 // --- Relationship/event scoring tests ---
 
