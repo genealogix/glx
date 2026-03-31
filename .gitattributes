@@ -6,10 +6,10 @@
 
 # Documentation
 *.md text diff=markdown
-*.yaml text
-*.yml text
+*.yaml text diff=yaml
+*.yml text diff=yaml
 *.json text
-*.glx text
+*.glx text diff=yaml
 
 # Shell scripts
 *.sh text eol=lf
