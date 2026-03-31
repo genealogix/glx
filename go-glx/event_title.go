@@ -147,11 +147,9 @@ func filterNonEmpty(ss []string) []string {
 	return result
 }
 
-// extractYear pulls a 1–4 digit year from a DateString.
-// Handles formats like "1850", "ABT 1850", "BEF 1920", "BET 1850 AND 1860",
-// "15 MAR 1850", "800", "ABT 476".
-// Day-of-month values (e.g., the "15" in "15 MAR 1850") are stripped first
-// so they are not mistaken for years.
+// extractYear extracts the start year from a DateString as a string.
+// Calendar-aware: handles Gregorian, Julian, Hebrew, and French Republican formats.
+// Delegates to ExtractFirstYear for the actual extraction logic.
 func extractYear(date DateString) string {
 	s := string(date)
 	if s == "" {

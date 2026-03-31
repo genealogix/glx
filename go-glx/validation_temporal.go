@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // dayMonthRegexp matches day-of-month followed by a month abbreviation
@@ -28,7 +29,7 @@ var dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|
 // temporalYearRegexp matches the first 1–4 digit year in a date string.
 var temporalYearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
 
-// lastYearRegexp matches ALL digit sequences (1-5 digits for Hebrew years like 5765).
+// lastYearRegexp matches 1–5 digit sequences (supports Hebrew years like 5765).
 var lastYearRegexp = regexp.MustCompile(`\b(\d{1,5})\b`)
 
 
@@ -183,9 +184,12 @@ func isParentChildRelType(relType string) bool {
 	return false
 }
 
-// ExtractFirstYear extracts the first year (1–4 digits) from a date string.
-// Day-of-month values (e.g., the "15" in "15 MAR 1850") are stripped first
-// so they are not mistaken for years. Returns 0 if no year is found.
+// ExtractFirstYear extracts the first (or start) year from a date string.
+// Calendar-aware: for Gregorian/Julian dates, strips DD MMM and finds the first
+// number. For Hebrew/French Republican dates, finds the last number in the first
+// date component (year appears after day and month in non-Gregorian formats).
+// For ranges (BET...AND, FROM...TO), only the start date is considered.
+// Returns 0 if no year is found.
 func ExtractFirstYear(dateStr string) int {
 	if dateStr == "" {
 		return 0
@@ -195,11 +199,14 @@ func ExtractFirstYear(dateStr string) int {
 	cal, body := ExtractCalendarPrefix(DateString(dateStr))
 	bodyStr := string(body)
 
+	// For ranges, only consider the first date (start of range).
+	bodyStr = extractFirstDateComponent(bodyStr)
+
 	// For non-Gregorian calendars where the year is the LAST token
 	// (e.g., "15 TSH 5765" for Hebrew, "1 VEND 0012" for French Republican),
 	// extract the last number instead of the first. Fixes #565.
 	if cal == CalendarHebrew || cal == CalendarFrenchR {
-		return extractLastYear(bodyStr)
+		return extractLastNumber(bodyStr)
 	}
 
 	// For Gregorian/Julian: strip DD MMM patterns, then find first number.
@@ -218,16 +225,29 @@ func ExtractFirstYear(dateStr string) int {
 	return year
 }
 
-// extractLastYear finds the last digit sequence in a date string.
+// extractFirstDateComponent returns the first date in a range expression.
+// "BET 15 TSH 5765 AND 15 TSH 5766" → "BET 15 TSH 5765"
+// "FROM 1900 TO 1950" → "FROM 1900"
+// "ABT 1850" → "ABT 1850" (unchanged)
+func extractFirstDateComponent(dateStr string) string {
+	if idx := strings.Index(dateStr, " AND "); idx != -1 {
+		return dateStr[:idx]
+	}
+	if idx := strings.Index(dateStr, " TO "); idx != -1 {
+		return dateStr[:idx]
+	}
+	return dateStr
+}
+
+// extractLastNumber finds the last 1–5 digit sequence in a date string.
 // Used for non-Gregorian calendars where the year appears after day and month.
-func extractLastYear(dateStr string) int {
-	// Strip keywords (ABT, BEF, etc.) — they don't contain digits so won't affect result
+// Supports Hebrew years >4 digits (e.g., 5765).
+func extractLastNumber(dateStr string) int {
 	matches := lastYearRegexp.FindAllStringSubmatch(dateStr, -1)
 	if len(matches) == 0 {
 		return 0
 	}
 
-	// Take the last match
 	lastMatch := matches[len(matches)-1]
 	year, err := strconv.Atoi(lastMatch[1])
 	if err != nil {

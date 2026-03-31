@@ -43,6 +43,9 @@ func TestExtractFirstYear(t *testing.T) {
 		{"HEBREW ABT 5765", 5765},
 		{"JULIAN 1731-03-15", 1731},
 		{"JULIAN ABT 1731", 1731},
+		// Range formats — should return start year, not end year
+		{"HEBREW BET 15 TSH 5765 AND 15 TSH 5766", 5765},
+		{"FRENCH_R FROM 1 VEND 0010 TO 1 VEND 0012", 10},
 	}
 
 	for _, tt := range tests {
