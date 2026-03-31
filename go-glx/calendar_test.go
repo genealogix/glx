@@ -154,6 +154,11 @@ func TestParseGEDCOMDate_CalendarPreservation(t *testing.T) {
 			input:    "@#DJULIAN@",
 			expected: "@#DJULIAN@",
 		},
+		{
+			name:     "Gregorian escape with no date body preserves raw",
+			input:    "@#DGREGORIAN@",
+			expected: "@#DGREGORIAN@",
+		},
 	}
 
 	for _, tt := range tests {

@@ -111,21 +111,26 @@ func ExtractCalendarPrefix(date DateString) (string, DateString) {
 // (all uppercase letters/underscores, not a date qualifier, range keyword,
 // or other token that could appear at the start of a raw date string).
 func isCalendarPrefix(token string) bool {
-	// Reject known date qualifiers, range keywords, and Gregorian (which is the default).
+	// Reject known date qualifiers, range keywords, Gregorian (default),
+	// GEDCOM month abbreviations, and seasonal terms.
 	switch token {
 	case "ABT", "BEF", "AFT", "CAL", "BET", "FROM", "INT", "TO", "AND",
-		"GREGORIAN", "EST", "SPRING", "SUMMER", "FALL", "WINTER":
+		"GREGORIAN", "EST", "SPRING", "SUMMER", "FALL", "WINTER",
+		"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+		"JUL", "AUG", "SEP", "OCT", "NOV", "DEC":
 		return false
 	}
 
-	// Calendar prefixes are all uppercase letters and underscores.
+	// Calendar prefixes are all uppercase letters and underscores, minimum 5 chars.
+	// 5-char minimum excludes 3-letter month abbreviations and short keywords
+	// while accepting all known calendar names (JULIAN=6, HEBREW=6, FRENCH_R=8).
 	for _, r := range token {
 		if r != '_' && (r < 'A' || r > 'Z') {
 			return false
 		}
 	}
 
-	return len(token) >= 3
+	return len(token) >= 5
 }
 
 // calendarToGEDCOMEscape converts a GLX calendar prefix to a GEDCOM escape sequence.
