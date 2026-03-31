@@ -109,7 +109,7 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 	} else {
 		loaded, loadErr := readSingleFileArchive(destPath, false)
 		if loadErr != nil {
-			return loadErr
+			return fmt.Errorf("failed to load destination archive: %w", loadErr)
 		}
 		dest = loaded
 	}
@@ -133,7 +133,7 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 	} else {
 		loaded, loadErr := readSingleFileArchive(srcPath, false)
 		if loadErr != nil {
-			return loadErr
+			return fmt.Errorf("failed to load source archive: %w", loadErr)
 		}
 		src = loaded
 	}

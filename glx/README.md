@@ -493,24 +493,25 @@ glx join family-archive family.glx --verbose
 Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept).
 
 ```
-glx merge <source> <destination> [flags]
+glx merge <source> --into <destination> [flags]
 ```
 
 **Flags:**
 | Flag | Description |
 |------|-------------|
+| `--into` | Destination archive path (default: current directory) |
 | `--dry-run` | Preview what would be merged without modifying files |
 
 **Examples:**
 ```bash
 # Merge research-trip findings into main archive
-glx merge research-trip/ main-archive/
+glx merge research-trip/ --into main-archive/
 
 # Preview merge without writing
-glx merge research-trip/ main-archive/ --dry-run
+glx merge research-trip/ --into main-archive/ --dry-run
 
-# Merge single-file archives
-glx merge cousin-data.glx family.glx
+# Merge single-file archive into current directory
+glx merge cousin-data.glx
 ```
 
 ### `glx stats`

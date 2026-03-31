@@ -608,16 +608,16 @@ When collaborating with other researchers or consolidating separate research bra
 
 ```bash
 # Merge cousin's research into your main archive
-glx merge cousin-research/ my-family-archive/
+glx merge cousin-research/ --into my-family-archive/
 
 # Preview what would be merged without writing
-glx merge cousin-research/ my-family-archive/ --dry-run
+glx merge cousin-research/ --into my-family-archive/ --dry-run
 ```
 
 The command copies all entities from the source into the destination. Duplicate entity IDs are reported and skipped (the destination version is kept). Both single-file and multi-file archives are supported.
 
 ::: tip
-Run `glx merge --dry-run` first to see what would change. Then `glx validate` after merging to verify the combined archive is clean.
+Run `glx merge <source> --into <dest> --dry-run` first to see what would change. Then `glx validate` after merging to verify the combined archive is clean.
 :::
 
 ## Migration
