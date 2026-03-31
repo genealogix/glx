@@ -988,9 +988,6 @@ func (glx *GLXFile) validateDateFormat(entityType, entityID, field, dateStr stri
 	// Calendar-prefixed dates are valid — only the date body needs format checking.
 	if cal, body := ExtractCalendarPrefix(DateString(dateStr)); cal != "" {
 		dateStr = strings.TrimSpace(string(body))
-		if dateStr == "" {
-			return // Calendar-only (no date body) is acceptable
-		}
 	}
 
 	// Valid patterns:

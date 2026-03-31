@@ -46,9 +46,6 @@ func formatGEDCOMDate(date DateString) string {
 		escape := calendarToGEDCOMEscape(calendar)
 		bodyStr := strings.TrimSpace(string(body))
 		gedcomBody := formatGEDCOMDateBody(bodyStr)
-		if gedcomBody == "" {
-			return escape
-		}
 		return escape + " " + gedcomBody
 	}
 

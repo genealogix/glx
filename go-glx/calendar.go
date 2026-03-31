@@ -47,13 +47,15 @@ func extractCalendar(date string) (string, string) {
 		return "", ""
 	}
 
-	idx := strings.Index(date, "@#D")
-	if idx == -1 {
+	// Calendar escapes must appear at the start of the date string.
+	// A mid-string escape (e.g., "ABT @#DJULIAN@...") is not a calendar prefix.
+	trimmed := strings.TrimSpace(date)
+	if !strings.HasPrefix(trimmed, "@#D") {
 		return "", date
 	}
 
 	// Find the closing @. Search from after "@#D" (3 chars).
-	rest := date[idx+3:]
+	rest := trimmed[3:]
 	endIdx := strings.Index(rest, "@")
 	if endIdx == -1 {
 		return "", date
