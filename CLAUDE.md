@@ -19,7 +19,7 @@ This document provides context for Claude AI instances working on the GLX projec
 1. **Read the plans**: Check `.claude/plans/README.md` for current work
 2. **Check the branch**: Development happens on feature branches (e.g., `feat/name-type-implementation`)
 3. **Review recent commits**: `git log --oneline -10` to see what's been done
-4. **Check test status**: `go test ./...` to ensure everything passes
+4. **Check test status**: `make test` to ensure everything passes
 5. **Review todo list**: Active tasks are tracked in `.claude/plans/README.md`
 
 ---

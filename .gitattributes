@@ -28,4 +28,4 @@
 dist/ export-ignore
 
 # Vendor and generated
-go.sum text -diff
+go.sum text linguist-generated
