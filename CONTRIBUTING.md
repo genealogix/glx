@@ -283,11 +283,11 @@ We follow the [Linux Foundation Generative AI Policy](https://www.linuxfoundatio
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](https://github.com/genealogix/glx/blob/main/CODE_OF_CONDUCT.md).
 
 ## Security
 
-To report a vulnerability, see our [Security Policy](SECURITY.md).
+To report a vulnerability, see our [Security Policy](https://github.com/genealogix/glx/blob/main/SECURITY.md).
 
 ## Building for Release
 
