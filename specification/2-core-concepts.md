@@ -253,7 +253,7 @@ primary_source: false
 
 #### Date
 
-A calendar date or fuzzy date specification. GENEALOGIX uses YYYY-MM-DD format for precise dates combined with FamilySearch-inspired keywords for fuzzy dates.
+A calendar date or fuzzy date specification. GENEALOGIX uses YYYY-MM-DD format for precise dates combined with FamilySearch-inspired keywords for fuzzy dates. Dates may include an optional [calendar prefix](#non-gregorian-calendar-dates) for non-Gregorian calendar systems (e.g., `JULIAN 1731-03-15`).
 
 ### Date Format Standard
 
@@ -370,7 +370,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 GENEALOGIX validates date formats at two levels:
 1. **Structure:** Dates must follow the format specifications above
 2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT) are recognized
-3. **Calendar prefixes:** Calendar prefixes (JULIAN, HEBREW, FRENCH_R) are preserved in stored values. The validator does not currently strip calendar prefixes before validating the date body, so prefixed dates may generate structural warnings. This will be improved in a future release
+3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Unknown prefixes are accepted without warning to allow extensibility
 
 Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.
 
