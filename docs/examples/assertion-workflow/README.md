@@ -23,9 +23,16 @@ persons:
         fields:
           given: "Alice"
           surname: "Chen"
-      born_on: "1985-06-15"
-      born_at: "place-boston"
       occupation: "software engineer"
+
+events:
+  event-alice-birth:
+    type: birth
+    date: "1985-06-15"
+    place: place-boston
+    participants:
+      - person: person-alice-chen
+        role: subject
 ```
 
 **Best for:**
@@ -44,18 +51,22 @@ persons:
 Create assertions that document evidence for each property value:
 
 ```yaml
-# First, set the property on the person
-persons:
-  person-robert-chen:
-    properties:
-      born_on: "1955-03-22"
+# First, create a birth event for the person
+events:
+  event-robert-birth:
+    type: birth
+    date: "1955-03-22"
+    place: place-new-york
+    participants:
+      - person: person-robert-chen
+        role: subject
 
 # Then, create an assertion documenting the evidence
 assertions:
   assertion-robert-birth:
     subject:
-      person: person-robert-chen
-    property: born_on
+      event: event-robert-birth
+    property: date
     value: "1955-03-22"
     citations:
       - citation-robert-birth-cert
@@ -87,7 +98,7 @@ Repository → Source → Citation → Assertion → Property
 2. **Source**: `source-nyc-birth-records` (NYC Birth Certificates)
 3. **Citation**: `citation-robert-birth-cert` (specific certificate reference)
 4. **Assertion**: `assertion-robert-birth` (claim that Robert was born March 22, 1955)
-5. **Property**: `person-robert-chen.properties.born_on: "1955-03-22"`
+5. **Event**: `event-robert-birth` with date `"1955-03-22"` and place `place-new-york`
 
 ## Recommended Workflow
 
@@ -98,10 +109,14 @@ Repository → Source → Citation → Assertion → Property
 3. Return later to add assertions with evidence
 
 ```yaml
-persons:
-  person-alice-chen:
-    properties:
-      born_on: "1985-06-15"
+events:
+  event-alice-birth:
+    type: birth
+    date: "1985-06-15"
+    place: place-boston
+    participants:
+      - person: person-alice-chen
+        role: subject
     notes: |
       Quick entry from family records.
       TODO: Add source citations when time permits.

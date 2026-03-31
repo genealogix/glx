@@ -156,6 +156,81 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 	}
 }
 
+func TestCopyMediaFile_PathTraversal(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	destPath := filepath.Join(destDir, "output.jpg")
+
+	traversalPaths := []string{
+		"../../etc/passwd",
+		"../../../secret.txt",
+		"photos/../../outside.jpg",
+		`..\..\windows\system32\config`,
+	}
+
+	for _, p := range traversalPaths {
+		err := copyMediaFile(srcDir, p, destPath)
+		if err == nil {
+			t.Errorf("expected error for traversal path %q, got nil", p)
+			continue
+		}
+		if !strings.Contains(err.Error(), "path traversal") {
+			t.Errorf("expected path traversal error for %q, got: %v", p, err)
+		}
+	}
+}
+
+func TestCopyMediaFile_ValidPathNotRejected(t *testing.T) {
+	srcDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(srcDir, "photo.jpg"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	// Valid child path must not be rejected as traversal.
+	err := copyMediaFile(srcDir, "photo.jpg", destPath)
+	if err != nil {
+		t.Errorf("valid path should succeed, got: %v", err)
+	}
+
+	// Traversal must still be caught.
+	err = copyMediaFile(srcDir, "../etc/passwd", destPath)
+	if err == nil || !strings.Contains(err.Error(), "path traversal") {
+		t.Errorf("expected path traversal error, got: %v", err)
+	}
+}
+
+func TestCopyMediaFile_DotGedcomDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "photo.jpg"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldwd) })
+
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	// Valid path with gedcomDir "." must not be rejected.
+	err = copyMediaFile(".", "photo.jpg", destPath)
+	if err != nil {
+		t.Errorf("valid path with gedcomDir '.' should succeed, got: %v", err)
+	}
+
+	// Traversal with gedcomDir "." must still be caught.
+	err = copyMediaFile(".", "../etc/passwd", destPath)
+	if err == nil || !strings.Contains(err.Error(), "path traversal") {
+		t.Errorf("expected path traversal error, got: %v", err)
+	}
+}
+
 func TestCopyMediaFiles_EmptyList(t *testing.T) {
 	destDir := t.TempDir()
 

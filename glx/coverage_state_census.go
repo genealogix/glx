@@ -86,22 +86,7 @@ func placeRefsFromProperty(v any) []string {
 func collectPersonStates(person *glxlib.Person, archive *glxlib.GLXFile, events []personSourceInfo) []string {
 	stateSet := make(map[string]bool)
 
-	if person != nil && person.Properties != nil {
-		// Birthplace — handle string, structured, and temporal property shapes
-		for _, ref := range placeRefsFromProperty(person.Properties[glxlib.PersonPropertyBornAt]) {
-			if s := resolveStateFromPlace(ref, archive); s != "" {
-				stateSet[s] = true
-			}
-		}
-		// Death place
-		for _, ref := range placeRefsFromProperty(person.Properties[glxlib.PersonPropertyDiedAt]) {
-			if s := resolveStateFromPlace(ref, archive); s != "" {
-				stateSet[s] = true
-			}
-		}
-	}
-
-	// Check event places
+	// Check event places (includes birth and death events)
 	for _, ev := range events {
 		if ev.PlaceID == "" {
 			continue

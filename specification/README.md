@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-Version 0.0.0-beta.6
+Version 0.0.0-beta.9
 
 ## Table of Contents
 
@@ -50,7 +50,7 @@ Version 0.0.0-beta.6
 
 This specification is under active development.
 
-- **Version**: 0.0.0-beta.6
+- **Version**: 0.0.0-beta.9
 - **Status**: Beta
 - **Stability**: Unstable API (breaking changes possible)
 
@@ -74,7 +74,7 @@ persons:
           given: "John"
           surname: "Smith"
       gender: "male"
-      born_on: "1850-01-15"
+      occupation: "blacksmith"
     notes: "Blacksmith in Leeds, Yorkshire"
 
 # events/event-birth.glx

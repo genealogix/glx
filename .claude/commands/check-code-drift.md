@@ -1,5 +1,5 @@
 ---
-description: Identify drift between Go code (lib/types.go) and JSON schemas/specification
+description: Identify drift between Go code (go-glx/types.go) and JSON schemas/specification
 ---
 
 You are tasked with identifying any drift between the GLX Go code implementation and the JSON schemas/specification.
@@ -15,7 +15,7 @@ Specification (*.md) → Schema (*.schema.json) → Go Code (types.go)
 
 **This means:**
 - The **JSON schemas (and ultimately the specification) are the source of truth**
-- Go code in `lib/types.go` is **derived from** the schemas
+- Go code in `go-glx/types.go` is **derived from** the schemas
 - Any drift detected means the **Go code needs to be updated** to match the schema
 - When reporting drift, frame it as "Go code X needs to be updated because schema says Y"
 
@@ -27,7 +27,7 @@ Validation logic and constraints must be synchronized between specification and 
 
 ## Task
 
-Analyze the Go type definitions in **glx/lib/types.go** and compare them with:
+Analyze the Go type definitions in **go-glx/types.go** and compare them with:
 
 1. **specification/schema/v1/*.schema.json** - The source schemas (machine-readable)
 2. **specification/4-entity-types/*.md** - The ultimate source specification (for context)
@@ -47,9 +47,9 @@ Core entities:
 
 ## Code Files to Check
 
-In addition to **glx/lib/types.go**, also check:
-- **glx/lib/validator.go** - Contains validation logic and constraint checking
-- Any other lib files with validation functions
+In addition to **go-glx/types.go**, also check:
+- **go-glx/validation.go** - Contains validation logic and constraint checking
+- Any other `go-glx/*.go` files with validation functions (e.g., `validation_temporal.go`)
 
 ## What to Check
 
@@ -91,7 +91,7 @@ Compare Go types with JSON schema types:
 ### 7. Special Cases
 
 #### Assertion Entity
-- Verify mutually exclusive fields: `claim`/`participant`, `value`/`participant`
+- Verify mutually exclusive fields: `property`/`participant`, `value`/`participant`
 - Check that required constraint `anyOf: [sources, citations, media]` is handled
 - Verify `subject` field allows multiple entity types
 
@@ -192,12 +192,12 @@ OR
 - Fix: Add appropriate refType tag
 
 ### Validation Drift (Code → Specification)
-- Validation logic in lib/validator.go:123 not documented in specification
+- Validation logic in go-glx/validation.go:123 not documented in specification
 - Fix: Document validation requirement in specification/4-entity-types/[entity].md
 
 ### Validation Drift (Specification → Code)
 - Validation requirement in specification/4-entity-types/[entity].md:45 not implemented
-- Fix: Implement validation in lib/validator.go
+- Fix: Implement validation in go-glx/validation.go
 
 ### Documentation
 - Go field `FieldName` comment doesn't match schema description

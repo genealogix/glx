@@ -75,13 +75,13 @@ func suggestChildCensusRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 			}
 
 			childName := personName(archive, childID)
-			childBirthYear := glxlib.ExtractPropertyYear(childPerson.Properties, glxlib.PersonPropertyBornOn)
+			childBirthYear := extractEventYear(archive, childID, glxlib.EventTypeBirth)
 			if childBirthYear == 0 {
 				continue
 			}
 
 			// Compute death year upper bound for the child
-			childDeathYear := deathYearUpperBound(childPerson.Properties[glxlib.PersonPropertyDiedOn])
+			childDeathYear := deathYearFromEvent(archive, childID)
 			if childDeathYear == 0 {
 				childDeathYear = burialYears[childID]
 			}

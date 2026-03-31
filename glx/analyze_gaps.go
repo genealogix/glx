@@ -38,8 +38,8 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 
 		name := personName(archive, id)
 
-		issues = append(issues, checkMissingBirth(id, name, person)...)
-		issues = append(issues, checkMissingDeath(id, name, person)...)
+		issues = append(issues, checkMissingBirth(archive, id, name)...)
+		issues = append(issues, checkMissingDeath(archive, id, name)...)
 		if !childHasParents[id] {
 			issues = append(issues, AnalysisIssue{
 				Category: "gap",
@@ -171,11 +171,10 @@ func marriagePairKey(a, b string) string {
 	return b + "|" + a
 }
 
-// checkMissingBirth reports persons with no birth date or place.
-func checkMissingBirth(id, name string, person *glxlib.Person) []AnalysisIssue {
-	bornOn := propertyString(person.Properties, "born_on")
-	bornAt := propertyString(person.Properties, "born_at")
-	if bornOn != "" || bornAt != "" {
+// checkMissingBirth reports persons with no birth event (no date or place).
+func checkMissingBirth(archive *glxlib.GLXFile, id, name string) []AnalysisIssue {
+	_, birthEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeBirth)
+	if birthEvent != nil && (birthEvent.Date != "" || birthEvent.PlaceID != "") {
 		return nil
 	}
 
@@ -184,25 +183,24 @@ func checkMissingBirth(id, name string, person *glxlib.Person) []AnalysisIssue {
 		Severity: "high",
 		Person:   id,
 		Message:  fmt.Sprintf("%s — no birth date or place", name),
-		Property: "born_on",
+		Property: "birth_event",
 	}}
 }
 
 // checkMissingDeath reports persons with a birth but no death info who are
 // unlikely to still be alive (born more than 110 years ago).
-func checkMissingDeath(id, name string, person *glxlib.Person) []AnalysisIssue {
-	diedOn := propertyString(person.Properties, "died_on")
-	diedAt := propertyString(person.Properties, "died_at")
-	if diedOn != "" || diedAt != "" {
+func checkMissingDeath(archive *glxlib.GLXFile, id, name string) []AnalysisIssue {
+	_, deathEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeDeath)
+	if deathEvent != nil && (deathEvent.Date != "" || deathEvent.PlaceID != "") {
 		return nil
 	}
 
-	bornOn := propertyString(person.Properties, "born_on")
-	if bornOn == "" {
+	_, birthEvent := glxlib.FindPersonEvent(archive, id, glxlib.EventTypeBirth)
+	if birthEvent == nil || birthEvent.Date == "" {
 		return nil
 	}
 
-	birthYear := glxlib.ExtractFirstYear(bornOn)
+	birthYear := glxlib.ExtractFirstYear(string(birthEvent.Date))
 	cutoff := time.Now().Year() - 110
 	if birthYear == 0 || birthYear > cutoff {
 		// Unknown birth year or could still be alive — skip.
@@ -214,7 +212,7 @@ func checkMissingDeath(id, name string, person *glxlib.Person) []AnalysisIssue {
 		Severity: "high",
 		Person:   id,
 		Message:  fmt.Sprintf("%s — no death date or place", name),
-		Property: "died_on",
+		Property: "death_event",
 	}}
 }
 

@@ -271,11 +271,6 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		media.Notes = strings.Join(notes, "\n")
 	}
 
-	// Clean up empty Properties map so it doesn't appear in YAML
-	if len(media.Properties) == 0 {
-		media.Properties = nil
-	}
-
 	return media
 }
 

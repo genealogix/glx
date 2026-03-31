@@ -1,8 +1,8 @@
 assertions:
   assertion-john-birth-date:
     subject:
-      person: person-nonexistent
-    property: born_on
+      event: event-nonexistent
+    property: date
     value: "1850-01-15"
     citations:
       - citation-nonexistent

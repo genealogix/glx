@@ -139,11 +139,6 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 	}
 
-	// Clear empty properties map
-	if len(source.Properties) == 0 {
-		source.Properties = nil
-	}
-
 	// Combine notes
 	if len(notes) > 0 {
 		source.Notes = strings.Join(notes, "\n")

@@ -634,7 +634,7 @@ vocabularies/
 
 **Used By**: [Person Entity](person#properties)
 
-**Purpose**: Defines properties that can be set on person entities (birth date, occupation, residence, etc.)
+**Purpose**: Defines properties that can be set on person entities (name, gender, occupation, residence, etc.)
 
 ### Standard Properties
 
@@ -644,10 +644,6 @@ GENEALOGIX provides standard person properties:
 |----------|------|----------|--------|-------------|
 | `name` | string (with fields) | Yes | | Person's name as recorded, with optional structured fields (type, given, surname, prefix, suffix, etc.) |
 | `gender` | string | Yes | | Gender identity |
-| `born_on` | date | No | | Date of birth |
-| `born_at` | places | No | | Place of birth |
-| `died_on` | date | No | | Date of death |
-| `died_at` | places | No | | Place of death |
 | `occupation` | string | Yes | OCCU | Profession or trade |
 | `title` | string | Yes | TITL | Nobility or honorific title |
 | `residence` | places | Yes | | Place of residence |
@@ -792,11 +788,11 @@ Each property in a property vocabulary is defined with the following fields:
 
 ```yaml
 person_properties:
-  born_on:
-    label: "Birth Date"
-    description: "Date of birth"
-    value_type: date
-    temporal: false
+  gender:
+    label: "Gender"
+    description: "Gender identity"
+    vocabulary_type: gender_types
+    temporal: true
 
   occupation:
     label: "Occupation"
@@ -1170,12 +1166,12 @@ Assertions use property vocabularies for context-aware property validation:
 
 ```yaml
 assertions:
-  assertion-john-birth:
+  assertion-john-occupation:
     subject:
       person: person-john
-    property: born_on  # Validated against person_properties
-    value: "1850-01-15"
-    citations: [citation-birth]
+    property: occupation  # Validated against person_properties
+    value: "blacksmith"
+    citations: [citation-trade-directory]
     confidence: high
 ```
 
@@ -1215,7 +1211,7 @@ The following issues cause validation to fail:
    persons:
      person-john:
        properties:
-         born_at: place-nonexistent  # ERROR if born_at has reference_type: places
+         residence: place-nonexistent  # ERROR if residence has reference_type: places
    ```
 
 4. **Structural validation**: Files must follow proper YAML/JSON structure and schema

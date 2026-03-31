@@ -49,8 +49,9 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 - `relationships/rel-marriage.glx` - Marriage relationship
 - `relationships/rel-parent-child.glx` - Parent-child relationships (2 relationships in one file)
 
-### Events (2 files)
+### Events (3 files)
 - `events/event-births.glx` - 3 birth events (all in one file)
+- `events/event-deaths.glx` - 3 death events
 - `events/event-marriage.glx` - 1 marriage event
 
 ### Places (3 files)
@@ -100,7 +101,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      born_on: "1850-01-15"
+      gender: "male"
 ```
 
 **Key Points:**

@@ -224,6 +224,8 @@ media:
         height: 200
 ```
 
+**See [Vocabularies - Media Properties](vocabularies#media-properties-vocabulary) for the full vocabulary definition.**
+
 ## Usage Patterns
 
 ### Scanned Document
@@ -462,8 +464,8 @@ citations:
 assertions:
   assertion-john-death:
     subject:
-      person: person-john-smith
-    property: died_on
+      event: event-death-john
+    property: date
     value: "1920-06-20"
     media:
       - media-gravestone-photo

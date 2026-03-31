@@ -53,7 +53,7 @@ func reconstructFamilies(expCtx *ExportContext) {
 	relIDs := sortedKeys(expCtx.GLX.Relationships)
 	for _, relID := range relIDs {
 		rel := expCtx.GLX.Relationships[relID]
-		if rel.Type != RelationshipTypeMarriage {
+		if rel == nil || rel.Type != RelationshipTypeMarriage {
 			continue
 		}
 
@@ -120,6 +120,9 @@ func reconstructFamilies(expCtx *ExportContext) {
 
 	for _, relID := range relIDs {
 		rel := expCtx.GLX.Relationships[relID]
+		if rel == nil {
+			continue
+		}
 		pediValue := relationshipTypeToPedi(rel.Type)
 		if pediValue == "" && !isParentChildType(rel.Type) {
 			continue
@@ -438,6 +441,9 @@ func findFamilyEvents(husbandID, wifeID, startEventID, endEventID string, expCtx
 		}
 
 		event := expCtx.GLX.Events[eventID]
+		if event == nil {
+			continue
+		}
 
 		// Check if the family's spouses participate as "spouse".
 		// For single-spouse families, only require the known spouse.
