@@ -50,7 +50,7 @@ Looking for where to start? Check issues labeled [`good first issue`](https://gi
 
 ### Prerequisites
 
-- **Go 1.25+** ([install](https://golang.org/doc/install)) — the project uses Go 1.25 in go.mod
+- **Go 1.26+** ([install](https://golang.org/doc/install)) — the project uses Go 1.26 in go.mod
 - **Git** ([install](https://git-scm.com/downloads))
 - **Node.js** — for website builds and schema validation (`npm install` in repo root)
 
