@@ -110,7 +110,6 @@ func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
 	assert.Contains(t, detail, "surname exact")
 }
 
-
 // --- Scoring boundary tests ---
 
 func TestScoreNameSimilarity_BothEmpty(t *testing.T) {

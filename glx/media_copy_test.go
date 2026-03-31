@@ -156,6 +156,30 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 	}
 }
 
+func TestCopyMediaFile_PathTraversal(t *testing.T) {
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	destPath := filepath.Join(destDir, "output.jpg")
+
+	traversalPaths := []string{
+		"../../etc/passwd",
+		"../../../secret.txt",
+		"photos/../../outside.jpg",
+		`..\..\windows\system32\config`,
+	}
+
+	for _, p := range traversalPaths {
+		err := copyMediaFile(srcDir, p, destPath)
+		if err == nil {
+			t.Errorf("expected error for traversal path %q, got nil", p)
+			continue
+		}
+		if !strings.Contains(err.Error(), "path traversal") {
+			t.Errorf("expected path traversal error for %q, got: %v", p, err)
+		}
+	}
+}
+
 func TestCopyMediaFiles_EmptyList(t *testing.T) {
 	destDir := t.TempDir()
 
