@@ -24,10 +24,10 @@ website/             # VitePress documentation site
 
 ## Build, Test, Lint
 
-Always use the Makefile. Never run `go test` directly.
+Use the Makefile for standard workflows. Run `go test` directly only for targeted benches/profiling.
 
 ```bash
-make build           # Build CLI to bin/glx
+make build           # Build CLI (bin/glx) and website
 make test            # Run all tests
 make test-verbose    # Verbose test output
 make lint            # golangci-lint + website lint

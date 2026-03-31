@@ -51,9 +51,9 @@ Common pitfalls:
 ## Serializer Architecture
 
 - Vocabulary embedding: `go:embed` in binary
-- Entity IDs: random 8-char hex (e.g., `person-a3f8d2c1.glx`)
+- Entity filenames: random 8-char hex (e.g., `person-a3f8d2c1.glx`), mapped from entity IDs via the serializer
 - Write strategy: sequential (no parallelization)
-- Validation: default on, `--no-validate` to override
+- Validation: default on via `SerializerOptions.Validate` (CLI exposes `--no-validate` flag)
 
 ## GEDCOM Import
 

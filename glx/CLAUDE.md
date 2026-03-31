@@ -19,6 +19,8 @@ func validatePaths(args []string) error {
 // INCORRECT — logic in function with _ parameter
 func runValidate(_ *cobra.Command, args []string) error {
     paths := args  // NO — move this to a separate function
+    _ = paths
+    return nil
 }
 ```
 
@@ -35,6 +37,5 @@ func runValidate(_ *cobra.Command, args []string) error {
 
 ## Serialization Gotchas
 
-- Entity IDs are random — filenames are not deterministic
-- Must embed `_id` field in YAML for multi-file format
-- Vocabularies must be written to multi-file archives
+- Multi-file archives use random filenames; entity IDs are preserved as YAML map keys
+- Vocabularies are serialized as part of multi-file archives automatically
