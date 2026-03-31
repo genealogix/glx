@@ -17,7 +17,7 @@ This document provides context for Claude AI instances working on the GLX projec
 ## Quick Start for New Claude Instances
 
 1. **Read the plans**: Check `.claude/plans/README.md` for current work
-2. **Check the branch**: Development happens on feature branches (e.g., `claude/gedcom-import-function-*`)
+2. **Check the branch**: Development happens on feature branches (e.g., `feat/name-type-implementation`)
 3. **Review recent commits**: `git log --oneline -10` to see what's been done
 4. **Check test status**: `go test ./...` to ensure everything passes
 5. **Review todo list**: Active tasks are tracked in `.claude/plans/README.md`
@@ -39,7 +39,7 @@ spec/
 │   ├── id_generator.go    # Entity ID generation
 │   └── vocabularies.go    # Vocabulary embedding
 ├── glx/                    # Main CLI application
-│   ├── cmd_*.go           # CLI command implementations (import, split, join, validate)
+│   ├── *_runner.go        # CLI command implementations (analyze, coverage, import, etc.)
 │   └── testdata/
 │       └── gedcom/        # GEDCOM test files (180+ files)
 ├── specification/
@@ -71,7 +71,7 @@ spec/
 ### GLX File Formats
 
 1. **Single-file**: All entities in one YAML file
-2. **Multi-file**: Entity-per-file in directory structure (IMPLEMENTATION IN PROGRESS)
+2. **Multi-file**: Entity-per-file in directory structure
 
 ### Vocabularies
 
@@ -89,11 +89,11 @@ Vocabularies are defined in `.glx` files and will be embedded in the binary usin
 
 ### Before Starting Work
 
-3. **`go-glx/types.go`** - Core GLX entity type definitions
+- **`go-glx/types.go`** - Core GLX entity type definitions
 
 ### For GEDCOM Work
 
-3. **`go-glx/gedcom_converter.go`** - Main GEDCOM conversion orchestrator
+- **`go-glx/gedcom_converter.go`** - Main GEDCOM conversion orchestrator
 
 ## Development Workflow
 
@@ -377,10 +377,10 @@ When adding a new CLI command, update all four documentation locations:
 
 ### Debug GEDCOM Import
 
-1. Enable verbose logging: `ctx.Logger.LogInfo(...)`
+1. Enable verbose logging: `conv.Logger.LogInfo(...)`
 2. Check `ConversionContext` for entity maps
 3. Run specific test: `make test` (always use Makefile)
-4. Check error accumulation in `ctx.Errors`
+4. Check error accumulation in `conv.Errors`
 
 ---
 
@@ -512,8 +512,8 @@ Also available:
 
 **Repository**: genealogix/glx
 **Branch Pattern**: `feat/short-description`, `fix/short-description`, `docs/short-description`
-**Workflow**: Feature branches → Push → (PR created manually by user)
+**Workflow**: Feature branches → Push → Create PR
 
 ---
 
-Last Updated: 2026-02-11
+Last Updated: 2026-03-30
