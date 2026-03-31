@@ -370,7 +370,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 GENEALOGIX validates date formats at two levels:
 1. **Structure:** Dates must follow the format specifications above
 2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT) are recognized
-3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are recognized; unknown prefixes generate warnings
+3. **Calendar prefixes:** Calendar prefixes (JULIAN, HEBREW, FRENCH_R) are preserved in stored values. The validator does not currently strip calendar prefixes before validating the date body, so prefixed dates may generate structural warnings. This will be improved in a future release
 
 Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.
 

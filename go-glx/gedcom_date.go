@@ -102,7 +102,10 @@ func parseGEDCOMDate(gedcomDate string) DateString {
 		parsed := parseGEDCOMDateBody(remainder)
 		if calendar != "" {
 			if parsed == "" {
-				return DateString(calendar)
+				// Calendar escape with no date body (e.g., "@#DJULIAN@").
+				// Preserve the original raw GEDCOM string so roundtrip
+				// can re-emit the same value.
+				return DateString(gedcomDate)
 			}
 			return DateString(calendar + " " + string(parsed))
 		}
