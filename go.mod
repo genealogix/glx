@@ -5,6 +5,8 @@ module github.com/genealogix/glx
 
 go 1.26.0
 
+toolchain go1.26.1
+
 require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	// YAML parsing for CLI tool
