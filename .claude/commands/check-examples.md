@@ -306,7 +306,6 @@ Concrete action items:
 ## Cross-Reference with Known Issues
 
 Before finalizing your report, check if issues are already tracked in:
-- `todo.md` - Project-wide known issues
-- GitHub issues (if accessible)
+- GitHub issues
 
 Exclude already-tracked issues from the report to avoid duplicates.

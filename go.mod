@@ -20,10 +20,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 )
 
-require (
-	github.com/brianvoe/gofakeit/v7 v7.14.1
-	golang.org/x/text v0.35.0
-)
+require golang.org/x/text v0.35.0
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -32,5 +29,4 @@ require (
 )
 
 // CLI tool for GENEALOGIX archives
-// Provides: glx init, glx validate, glx check-schemas
 // See: ./glx/main.go

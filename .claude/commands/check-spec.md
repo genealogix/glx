@@ -180,12 +180,11 @@ At the end, provide:
 
 ## Cross-Reference with Known Issues
 
-**IMPORTANT**: Before finalizing your report, check both `todo.md` and GitHub issues to exclude anything already tracked.
+**IMPORTANT**: Before finalizing your report, check GitHub issues to exclude anything already tracked.
 
 When you find an issue:
-1. Check if it's already in `todo.md` under any section
-2. Run `gh issue list --state open --limit 100 --json number,title` and check for title overlap
-3. If already tracked in either location: Do NOT include it in your report
-4. If NOT tracked: Include it in your report with full details
+1. Run `gh issue list --state open --limit 100 --json number,title` and check for title overlap
+2. If already tracked: Do NOT include it in your report
+3. If NOT tracked: Include it in your report with full details
 
 This prevents duplicate tracking and keeps the audit focused on newly discovered issues.
