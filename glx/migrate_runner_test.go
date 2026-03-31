@@ -356,6 +356,62 @@ func TestMigrate_StructuredPropertyShapes(t *testing.T) {
 	assert.Empty(t, archive.Persons["person-1"].Properties)
 }
 
+func TestMigrate_OrphanedAssertionCreatesEvent(t *testing.T) {
+	// Second pass: person has no deprecated properties, but assertions
+	// still reference deprecated property names. The migration should
+	// create events and retarget the assertions.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					"name": "Jane Doe",
+				},
+			},
+		},
+		Events:     map[string]*glxlib.Event{},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-orphan-born": {
+				Subject:  glxlib.EntityRef{Person: "person-1"},
+				Property: glxlib.DeprecatedPropertyBornOn,
+				Value:    "1860-07-04",
+			},
+			"assertion-orphan-died": {
+				Subject:  glxlib.EntityRef{Person: "person-1"},
+				Property: glxlib.DeprecatedPropertyDiedAt,
+				Value:    "place-boston",
+			},
+		},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, report.EventsCreated, "should create birth and death events")
+	assert.Equal(t, 2, report.AssertionsMigrated)
+	assert.Equal(t, 0, report.PropertiesRemoved, "no deprecated properties to remove")
+
+	// Birth assertion should now point to a birth event.
+	a1 := archive.Assertions["assertion-orphan-born"]
+	assert.NotEmpty(t, a1.Subject.Event)
+	assert.Empty(t, a1.Subject.Person)
+	assert.Equal(t, "date", a1.Property)
+
+	birthEvent := archive.Events[a1.Subject.Event]
+	require.NotNil(t, birthEvent)
+	assert.Equal(t, glxlib.EventTypeBirth, birthEvent.Type)
+	assert.Equal(t, glxlib.DateString("1860-07-04"), birthEvent.Date)
+
+	// Death assertion should now point to a death event.
+	a2 := archive.Assertions["assertion-orphan-died"]
+	assert.NotEmpty(t, a2.Subject.Event)
+	assert.Equal(t, "place", a2.Property)
+
+	deathEvent := archive.Events[a2.Subject.Event]
+	require.NotNil(t, deathEvent)
+	assert.Equal(t, glxlib.EventTypeDeath, deathEvent.Type)
+	assert.Equal(t, "place-boston", deathEvent.PlaceID)
+}
+
 func TestMigrate_UnrecognizedShapePreservesProperty(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
