@@ -36,7 +36,7 @@ func TestDiffArchives_Integration_AddedEntities(t *testing.T) {
   person-john:
     properties:
       name: John Smith
-      born_on: "1850"
+      occupation: Blacksmith
 `
 	require.NoError(t, os.WriteFile(filepath.Join(newDir, "persons", "person-john.glx"), []byte(personYAML), 0o644))
 
@@ -90,7 +90,7 @@ func TestDiffArchives_Integration_VerboseOutput(t *testing.T) {
   person-mary:
     properties:
       name: Jane Webb
-      born_on: "ABT 1832"
+      occupation: Seamstress
 `
 	require.NoError(t, os.WriteFile(filepath.Join(oldDir, "persons", "person-mary.glx"), []byte(oldYAML), 0o644))
 
@@ -100,8 +100,8 @@ func TestDiffArchives_Integration_VerboseOutput(t *testing.T) {
   person-mary:
     properties:
       name: Jane Webb
-      born_on: "1832"
-      died_on: "1905"
+      occupation: Dressmaker
+      religion: Methodist
 `
 	require.NoError(t, os.WriteFile(filepath.Join(newDir, "persons", "person-mary.glx"), []byte(newYAML), 0o644))
 
