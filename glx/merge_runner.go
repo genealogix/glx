@@ -88,6 +88,19 @@ func entityCounts(g *glxlib.GLXFile) counts {
 
 // mergeArchives loads two archives, merges src into dest, and saves.
 func mergeArchives(srcPath, destPath string, dryRun bool) error {
+	// Resolve to absolute paths so "." becomes a real path that os.Rename can
+	// operate on. POSIX forbids renaming "." (EINVAL) and Windows rejects it
+	// with ERROR_SHARING_VIOLATION.
+	var err error
+	destPath, err = filepath.Abs(destPath)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
+	srcPath, err = filepath.Abs(srcPath)
+	if err != nil {
+		return fmt.Errorf("resolving source path: %w", err)
+	}
+
 	// Load destination
 	destInfo, err := os.Stat(destPath)
 	if err != nil {
@@ -189,9 +202,8 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 		return nil
 	}
 
-	// Save — multi-file archives use crash-safe temp+swap to prevent destruction
-	// if the write fails. Single-file archives are written directly (atomic rename
-	// of a single file is handled by the OS).
+	// Save — multi-file archives use crash-safe temp+swap to prevent partial writes.
+	// Single-file archives use os.WriteFile directly (not atomic; see #595).
 	if destIsDir {
 		return safeWriteMultiFileArchive(destPath, dest)
 	}
@@ -206,8 +218,19 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// so filepath.Dir and string concatenation work correctly.
 	destPath = filepath.Clean(destPath)
 
+	// On Windows, a directory cannot be renamed while it is any process's cwd.
+	// If our cwd is inside destPath, temporarily move to the parent directory
+	// so the rename operations succeed.
+	parentDir := filepath.Dir(destPath)
+	if cwd, err := os.Getwd(); err == nil && cwd == destPath {
+		if err := os.Chdir(parentDir); err != nil {
+			return fmt.Errorf("changing to parent directory: %w", err)
+		}
+		defer os.Chdir(destPath) //nolint:errcheck // best-effort restore
+	}
+
 	// Create temp dir next to the destination (same filesystem for rename)
-	tmpDir, err := os.MkdirTemp(filepath.Dir(destPath), ".glx-merge-tmp-")
+	tmpDir, err := os.MkdirTemp(parentDir, ".glx-merge-tmp-")
 	if err != nil {
 		return fmt.Errorf("creating temp directory: %w", err)
 	}

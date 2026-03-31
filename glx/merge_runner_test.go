@@ -15,6 +15,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -126,6 +127,51 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// Reload and verify no duplicates
+	reloaded, dupes, err := LoadArchiveWithOptions(destDir, false)
+	require.NoError(t, err)
+	assert.Empty(t, dupes, "reloaded archive should have no duplicates")
+	assert.Len(t, reloaded.Persons, 2, "should have both persons after merge")
+	assert.Contains(t, reloaded.Persons, "person-a")
+	assert.Contains(t, reloaded.Persons, "person-b")
+}
+
+func TestMergeArchives_DotDestination(t *testing.T) {
+	// Create dest archive in temp dir
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := serializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-b": {Properties: map[string]any{"name": "Person B"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := serializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	// Save original cwd, chdir into dest, merge with "."
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Chdir(origDir) })
+
+	require.NoError(t, os.Chdir(destDir))
+	err = mergeArchives(srcDir, ".", false)
+	require.NoError(t, err)
+
+	// Verify merge result (use absolute destDir since cwd may have changed)
 	reloaded, dupes, err := LoadArchiveWithOptions(destDir, false)
 	require.NoError(t, err)
 	assert.Empty(t, dupes, "reloaded archive should have no duplicates")
