@@ -700,6 +700,7 @@ func TestImportSex_UnrecognizedValuePreserved(t *testing.T) {
 
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
 
 	for _, person := range glxFile.Persons {
 		gender, ok := person.Properties[PersonPropertyGender].(string)

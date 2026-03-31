@@ -315,9 +315,15 @@ func mapGEDCOMSex(sex string) string {
 	case "X":
 		return GenderOther
 	default:
-		// Preserve unrecognized values as lowercase so they survive roundtrip.
+		// Preserve unrecognized values as lowercase so the data is not lost.
 		// Validation will warn about unknown gender types. Fixes #520.
-		return strings.ToLower(strings.TrimSpace(sex))
+		// Note: GEDCOM export maps unknown values to SEX U; true roundtrip
+		// requires a custom gender_types vocabulary entry with a gedcom: field.
+		trimmed := strings.ToLower(strings.TrimSpace(sex))
+		if trimmed == "" {
+			return GenderUnknown
+		}
+		return trimmed
 	}
 }
 
