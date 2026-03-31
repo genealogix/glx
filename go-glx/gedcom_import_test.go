@@ -1273,10 +1273,8 @@ func TestImportMedia_EmptyFileSkipped(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
-	// Should NOT create a media entity with empty URI
-	for id, media := range glxFile.Media {
-		assert.NotEmpty(t, media.URI, "media %s should not have empty URI", id)
-	}
+	// Should NOT create a media entity with empty URI — the OBJE should be skipped entirely
+	assert.Empty(t, glxFile.Media, "OBJE with empty FILE should not create any media entity")
 }
 
 // TestImportMedia_NoFileTagSkipped tests that OBJE records with no FILE tag
