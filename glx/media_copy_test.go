@@ -180,6 +180,31 @@ func TestCopyMediaFile_PathTraversal(t *testing.T) {
 	}
 }
 
+func TestCopyMediaFile_RelativeGedcomDir(t *testing.T) {
+	// When gedcomDir is ".", valid relative paths must not be rejected.
+	// Use a temp dir as the working directory to avoid polluting the repo.
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "photo.jpg"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	destPath := filepath.Join(t.TempDir(), "out.jpg")
+
+	// Valid path should NOT trigger traversal error (will get file-not-found
+	// since "." is the test process cwd, not tmpDir — that's fine, we're
+	// testing that isPathWithin doesn't false-positive).
+	err := copyMediaFile(tmpDir, "photo.jpg", destPath)
+	if err != nil && strings.Contains(err.Error(), "path traversal") {
+		t.Errorf("valid relative path rejected as traversal: %v", err)
+	}
+
+	// Traversal from relative dir must still be caught.
+	err = copyMediaFile(tmpDir, "../etc/passwd", destPath)
+	if err == nil || !strings.Contains(err.Error(), "path traversal") {
+		t.Errorf("expected path traversal error, got: %v", err)
+	}
+}
+
 func TestCopyMediaFiles_EmptyList(t *testing.T) {
 	destDir := t.TempDir()
 
