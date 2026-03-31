@@ -525,6 +525,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 	}
 
 	if placeID != "" {
+		// RESI with PLAC → store as residence property (place reference)
 		if dateStr != "" {
 			appendResidence(person, map[string]any{
 				"value": placeID,
@@ -535,6 +536,47 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		}
 
 		createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
+	} else {
+		// RESI without PLAC → create a residence event to preserve
+		// date/type/notes that would otherwise be lost. Fixes #488.
+		eventID, err := GenerateRandomID()
+		if err != nil {
+			conv.Logger.LogInfof("failed to generate event ID for RESI: %v", err)
+			return
+		}
+		eventID = "event-" + eventID
+
+		event := &Event{
+			Type: EventTypeResidence,
+			Participants: []Participant{
+				{Person: personID, Role: ParticipantRolePrincipal},
+			},
+		}
+		if dateStr != "" {
+			event.Date = DateString(dateStr)
+		}
+		// Preserve RESI value (e.g., "Y") and TYPE in notes
+		var notes []string
+		if resiRecord.Value != "" && resiRecord.Value != "Y" {
+			notes = append(notes, "GEDCOM RESI value: "+resiRecord.Value)
+		}
+		for _, sub := range resiRecord.SubRecords {
+			if sub.Tag == GedcomTagType {
+				notes = append(notes, "GEDCOM RESI TYPE: "+sub.Value)
+			}
+			if sub.Tag == GedcomTagNote {
+				noteText := extractNoteText(sub, conv)
+				if noteText != "" {
+					notes = append(notes, noteText)
+				}
+			}
+		}
+		if len(notes) > 0 {
+			event.Notes = strings.Join(notes, "\n")
+		}
+
+		conv.GLX.Events[eventID] = event
+		conv.Stats.EventsCreated++
 	}
 }
 
