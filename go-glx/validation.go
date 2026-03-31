@@ -984,6 +984,12 @@ func (glx *GLXFile) validateDateFormat(entityType, entityID, field, dateStr stri
 	// Check for FamilySearch-style keywords
 	dateStr = strings.TrimSpace(dateStr)
 
+	// Strip calendar prefix (e.g., "JULIAN 1731-03-15" → "1731-03-15") before validation.
+	// Calendar-prefixed dates are valid — only the date body needs format checking.
+	if cal, body := ExtractCalendarPrefix(DateString(dateStr)); cal != "" {
+		dateStr = strings.TrimSpace(string(body))
+	}
+
 	// Valid patterns:
 	// - Simple: YYYY, YYYY-MM, YYYY-MM-DD
 	// - FROM YYYY TO YYYY
