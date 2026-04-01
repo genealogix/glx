@@ -43,13 +43,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Announce release on Discord
-        if: success()
+        if: success() && env.DISCORD_WEBHOOK != ''
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
         run: |
           TAG="${GITHUB_REF_NAME}"
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG}"
-          curl -s -H "Content-Type: application/json" \
+          curl -sSf -H "Content-Type: application/json" \
             -d "{
               \"embeds\": [{
                 \"title\": \"GLX ${TAG}\",
