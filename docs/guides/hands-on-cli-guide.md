@@ -600,6 +600,26 @@ The exporter reconstructs GEDCOM FAM records from GLX relationships, converts da
 GEDCOM is a simpler format than GLX. Custom vocabularies (like `battle`, `coronation`, `ward`) will be exported as generic event/relationship types. Evidence chains are preserved as SOUR citations but lose the structured assertion model.
 :::
 
+## Archive Merging
+
+### `glx merge` — Combine two archives
+
+When collaborating with other researchers or consolidating separate research branches, `glx merge` combines a source archive into a destination:
+
+```bash
+# Merge cousin's research into your main archive
+glx merge cousin-research/ --into my-family-archive/
+
+# Preview what would be merged without writing
+glx merge cousin-research/ --into my-family-archive/ --dry-run
+```
+
+The command copies all entities from the source into the destination. Duplicate entity IDs are reported and skipped (the destination version is kept). Both single-file and multi-file archives are supported.
+
+::: tip
+Run `glx merge <source> --into <dest> --dry-run` first to see what would change. Then `glx validate` after merging to verify the combined archive is clean.
+:::
+
 ## Migration
 
 ### `glx migrate` — Convert deprecated properties to events
