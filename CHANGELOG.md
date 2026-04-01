@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CI
 - **auto-resolve and auto-update workflows can no longer race** — Both workflows now share a `branch-maintenance` concurrency group. Auto-resolve triggers on `workflow_run` after auto-update succeeds instead of independently on push to main. Auto-update cron reduced from every 30min to daily; auto-resolve cron removed (runs only after auto-update) (#332)
+- **release workflow no longer fails when Discord webhook is unconfigured** — Guard the Discord announcement step with an empty-check on the webhook secret so missing secrets skip the step instead of failing the release job. Also switch to `curl -sf` for proper HTTP error handling (#342)
 
 ### Added
 
