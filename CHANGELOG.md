@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export.
 
 #### CLI
+- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
 - **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
 
 ### Removed
