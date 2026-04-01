@@ -96,6 +96,27 @@ jobs:
             # Resolve by keeping both sides (remove conflict markers)
             sed -i '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' CHANGELOG.md
 
+            # Deduplicate section headers produced by keep-both-sides merge.
+            # When both sides add entries under the same ### or #### heading,
+            # the resolved file contains duplicate headers. This awk pass
+            # removes the second occurrence within each release section,
+            # resetting at each ## [...] boundary to avoid cross-release
+            # collapsing.
+            awk '
+              /^## \[/ { delete seen }
+              /^#{3,4} / {
+                if (seen[$0]) { blank_pending = 0; next }
+                seen[$0] = 1
+              }
+              /^$/ { blank_pending++; next }
+              {
+                for (i = 0; i < blank_pending; i++) print ""
+                blank_pending = 0
+                print
+              }
+              END { if (blank_pending) print "" }
+            ' CHANGELOG.md > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md
+
             # Verify no conflict markers remain
             if grep -qE '^(<<<<<<< |=======$|>>>>>>> )' CHANGELOG.md; then
               echo "  Conflict markers still present after resolution — skipping"
