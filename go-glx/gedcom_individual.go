@@ -289,14 +289,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	}
 
 	// Add ASSO participants (witnesses, officiants, etc.). Fixes #527.
-	for _, sub := range eventRecord.SubRecords {
-		if sub.Tag == GedcomTagAsso {
-			assoParticipant := convertASSOToParticipant(sub, conv)
-			if assoParticipant != nil {
-				event.Participants = append(event.Participants, *assoParticipant)
-			}
-		}
-	}
+	appendASSOParticipants(event, eventRecord, conv)
 
 	// Generate event title
 	event.Title = GenerateEventTitle(eventType, []string{PersonDisplayName(person)}, event.Date)
@@ -818,12 +811,15 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 
 	personID, ok := conv.PersonIDMap[personRef]
 	if !ok {
-		conv.Logger.LogInfof("ASSO references unknown person %s — skipping participant", personRef)
+		conv.addWarning(0, GedcomTagAsso,
+			fmt.Sprintf("ASSO references unknown person %s — skipping participant", personRef))
 		return nil
 	}
 
-	// Extract ROLE
-	role := ParticipantRoleWitness // default for ASSO without ROLE (most common case)
+	// Extract ROLE or RELA
+	// GEDCOM 7.0 uses ROLE; GEDCOM 5.5.1 uses RELA for the relationship
+	// to the principal. Both are mapped through gedcomRoleToGLX when possible.
+	role := ParticipantRoleWitness // default for ASSO without ROLE/RELA (most common case)
 	var notes []string
 	for _, sub := range assoRecord.SubRecords {
 		switch sub.Tag {
@@ -843,6 +839,14 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 					notes = append(notes, "Role: "+roleSub.Value)
 				}
 			}
+		case "RELA":
+			// GEDCOM 5.5.1 RELA tag — try to map, otherwise preserve in notes
+			glxRole, mapped := gedcomRoleToGLX[strings.ToUpper(sub.Value)]
+			if mapped {
+				role = glxRole
+			} else if sub.Value != "" {
+				notes = append(notes, "GEDCOM RELA: "+sub.Value)
+			}
 		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
@@ -860,4 +864,18 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 	}
 
 	return participant
+}
+
+// appendASSOParticipants scans an event record's sub-records for ASSO tags
+// and appends the resulting participants to the event. Used by both individual
+// and family event converters.
+func appendASSOParticipants(event *Event, eventRecord *GEDCOMRecord, conv *ConversionContext) {
+	for _, sub := range eventRecord.SubRecords {
+		if sub.Tag == GedcomTagAsso {
+			p := convertASSOToParticipant(sub, conv)
+			if p != nil {
+				event.Participants = append(event.Participants, *p)
+			}
+		}
+	}
 }
