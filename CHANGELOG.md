@@ -21,6 +21,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
 - **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
 
+### Fixed
+
+#### CLI
+- **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
+
 ### Removed
 
 #### Person Properties
