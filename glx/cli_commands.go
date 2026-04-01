@@ -93,6 +93,7 @@ func init() {
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(renameCmd)
+	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(migrateCmd)
 }
 
@@ -1275,4 +1276,38 @@ func init() {
 
 func runRename(_ *cobra.Command, args []string) error {
 	return renameEntities(renameArchive, args[0], args[1], renameDryRun)
+}
+
+// ============================================================================
+// Merge Command
+// ============================================================================
+
+var (
+	mergeInto   string
+	mergeDryRun bool
+)
+
+var mergeCmd = &cobra.Command{
+	Use:   "merge <source>",
+	Short: "Merge another archive into the destination archive",
+	Long: `Combine two GLX archives by merging all content from the source
+into the destination. Duplicate or conflicting items (entities,
+vocabularies, property definitions, and metadata) are reported and skipped
+(the destination version is kept).`,
+	Example: `  # Merge another archive into the current one
+  glx merge ./other-archive/ --into ./my-archive/
+
+  # Dry run to preview what would be merged
+  glx merge ./other-archive/ --into ./my-archive/ --dry-run`,
+	Args: cobra.ExactArgs(1),
+	RunE: runMerge,
+}
+
+func init() {
+	mergeCmd.Flags().StringVar(&mergeInto, "into", ".", "Destination archive path")
+	mergeCmd.Flags().BoolVar(&mergeDryRun, "dry-run", false, "Preview merge without writing")
+}
+
+func runMerge(_ *cobra.Command, args []string) error {
+	return mergeArchives(args[0], mergeInto, mergeDryRun)
 }
