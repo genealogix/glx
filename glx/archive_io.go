@@ -27,19 +27,30 @@ import (
 // first, then swaps it into place. This prevents archive destruction if the write
 // fails partway through (e.g., power loss, disk full, signal).
 func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
-	// Normalize path to remove trailing separators (e.g., "archive/" → "archive")
-	// so filepath.Dir and string concatenation work correctly.
-	destPath = filepath.Clean(destPath)
+	// Resolve to absolute path so rename and cwd containment checks work
+	// reliably for relative paths like ".". mergeArchives does the same.
+	absPath, err := filepath.Abs(destPath)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
+	destPath = absPath
 
 	// On Windows, a directory cannot be renamed while it is any process's cwd.
-	// If our cwd is inside destPath, temporarily move to the parent directory
-	// so the rename operations succeed.
+	// If our cwd is inside (or equal to) destPath, temporarily move to the
+	// parent directory so the rename operations succeed.
 	parentDir := filepath.Dir(destPath)
-	if cwd, err := os.Getwd(); err == nil && cwd == destPath {
-		if err := os.Chdir(parentDir); err != nil {
-			return fmt.Errorf("changing to parent directory: %w", err)
+	if cwd, err := os.Getwd(); err == nil {
+		if absCwd, err2 := filepath.Abs(cwd); err2 == nil {
+			if rel, err3 := filepath.Rel(destPath, absCwd); err3 == nil {
+				// cwd is inside destPath if rel is "." or does not start with "..".
+				if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))) {
+					if err := os.Chdir(parentDir); err != nil {
+						return fmt.Errorf("changing to parent directory: %w", err)
+					}
+					defer os.Chdir(cwd) //nolint:errcheck // best-effort restore
+				}
+			}
 		}
-		defer os.Chdir(destPath) //nolint:errcheck // best-effort restore
 	}
 
 	// Create temp dir next to the destination (same filesystem for rename)
@@ -63,7 +74,9 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 
 	// Create backup of the original
 	backupDir := destPath + ".bak"
-	_ = os.RemoveAll(backupDir) // remove any stale backup
+	if err := os.RemoveAll(backupDir); err != nil {
+		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
+	}
 	if err := os.Rename(destPath, backupDir); err != nil {
 		return fmt.Errorf("backing up original: %w", err)
 	}

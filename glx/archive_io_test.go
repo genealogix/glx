@@ -866,3 +866,129 @@ func (e *testError) Error() string {
 
 	return e.msg
 }
+
+// TestSafeWriteMultiFileArchive tests the crash-safe multi-file write path.
+func TestSafeWriteMultiFileArchive(t *testing.T) {
+	makeArchive := func() *glxlib.GLXFile {
+		return &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-1": {Properties: map[string]any{"primary_name": "Alice"}},
+				"person-2": {Properties: map[string]any{"primary_name": "Bob"}},
+			},
+			Events: map[string]*glxlib.Event{
+				"event-1": {Type: "birth"},
+			},
+		}
+	}
+
+	t.Run("swaps archive contents atomically", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Seed with initial content
+		initial := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-old": {Properties: map[string]any{"primary_name": "Old"}},
+			},
+		}
+		if err := writeMultiFileArchive(archiveDir, initial, false); err != nil {
+			t.Fatal(err)
+		}
+
+		// Overwrite with new content via safe write
+		updated := makeArchive()
+		if err := safeWriteMultiFileArchive(archiveDir, updated); err != nil {
+			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
+		}
+
+		// Verify new content is in place
+		loaded, _, err := LoadArchiveWithOptions(archiveDir, false)
+		if err != nil {
+			t.Fatalf("LoadArchiveWithOptions() error = %v", err)
+		}
+		if len(loaded.Persons) != 2 {
+			t.Errorf("expected 2 persons, got %d", len(loaded.Persons))
+		}
+		if _, ok := loaded.Persons["person-1"]; !ok {
+			t.Error("missing person-1")
+		}
+
+		// Verify backup was cleaned up
+		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
+			t.Error("backup directory was not cleaned up")
+		}
+	})
+
+	t.Run("handles relative path", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "rel-archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Seed
+		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
+			t.Fatal(err)
+		}
+
+		// Save and restore cwd
+		origCwd, _ := os.Getwd()
+		defer os.Chdir(origCwd) //nolint:errcheck
+
+		// Change into parent so we can use a relative path
+		if err := os.Chdir(tmpDir); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := safeWriteMultiFileArchive("rel-archive", makeArchive()); err != nil {
+			t.Fatalf("safeWriteMultiFileArchive(relative) error = %v", err)
+		}
+
+		loaded, _, err := LoadArchiveWithOptions(archiveDir, false)
+		if err != nil {
+			t.Fatalf("LoadArchiveWithOptions() error = %v", err)
+		}
+		if len(loaded.Persons) != 2 {
+			t.Errorf("expected 2 persons, got %d", len(loaded.Persons))
+		}
+	})
+
+	t.Run("cleans up temp dir on write failure", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "fail-archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Seed with valid content
+		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
+			t.Fatal(err)
+		}
+
+		// Pass nil archive to trigger serialization error
+		err := safeWriteMultiFileArchive(archiveDir, nil)
+		if err == nil {
+			t.Fatal("expected error for nil archive")
+		}
+
+		// Original archive should still be intact
+		loaded, _, loadErr := LoadArchiveWithOptions(archiveDir, false)
+		if loadErr != nil {
+			t.Fatalf("Original archive damaged: %v", loadErr)
+		}
+		if len(loaded.Persons) != 2 {
+			t.Errorf("expected 2 persons in original, got %d", len(loaded.Persons))
+		}
+
+		// No temp dirs should be left behind
+		entries, _ := os.ReadDir(tmpDir)
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), ".glx-tmp-") {
+				t.Errorf("temp directory not cleaned up: %s", e.Name())
+			}
+		}
+	})
+}
