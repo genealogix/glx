@@ -191,7 +191,7 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | `CAST` | `caste` | |
 | `SSN` | `ssn` | |
 | `TITL` | `title` | Handles CONT/CONC for long values |
-| `RESI` | `residence` | Temporal property with date and place |
+| `RESI` | `residence` | With `PLAC` → temporal person property; without `PLAC` → residence Event entity (preserves date/type/notes) |
 | `FACT` | (varies) | Mapped to properties or generic events based on content |
 | `EXID` | `external_ids` | GEDCOM 7.0 external identifiers |
 | `NOTE` | `notes` | Inline or shared note text |

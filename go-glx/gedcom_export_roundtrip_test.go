@@ -934,3 +934,68 @@ func TestRoundtrip_MultiFamilyChild(t *testing.T) {
 	assert.Equal(t, 4, parentChildCount2,
 		"all 4 parent-child relationships should survive roundtrip")
 }
+
+// TestRoundtrip_ResidenceEventNoPlace tests that a RESI record without a PLAC
+// sub-record survives the full import → export → re-import cycle as a residence event.
+func TestRoundtrip_ResidenceEventNoPlace(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Heinrich /Bullinger/
+1 SEX M
+1 RESI
+2 DATE 1580
+2 TYPE married
+1 RESI Y
+0 TRLR
+`
+	// Step 1: Import
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err, "first import failed")
+
+	// Should have 2 residence events (one with DATE+TYPE, one bare RESI Y)
+	var residenceEvents1 int
+	var datedEventDate DateString
+	for _, event := range glx1.Events {
+		if event.Type == EventTypeResidence {
+			residenceEvents1++
+			if event.Date != "" {
+				datedEventDate = event.Date
+			}
+		}
+	}
+	assert.Equal(t, 2, residenceEvents1, "expected 2 residence events after import")
+	assert.Contains(t, string(datedEventDate), "1580", "dated residence should have 1580")
+
+	// Step 2: Export to GEDCOM 5.5.1
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err, "export failed")
+
+	exportedStr := string(exported)
+
+	// Verify RESI records appear in exported GEDCOM
+	resiCount := strings.Count(exportedStr, "\n1 RESI")
+	assert.Equal(t, 2, resiCount,
+		"both residence events should export as RESI records; got %d", resiCount)
+
+	// Verify DATE survived on the dated one
+	assert.Contains(t, exportedStr, "1580",
+		"date should survive export")
+
+	// Step 3: Re-import the exported GEDCOM
+	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
+	require.NoError(t, err, "re-import failed")
+
+	// Should still have 2 residence events
+	var residenceEvents2 int
+	for _, event := range glx2.Events {
+		if event.Type == EventTypeResidence {
+			residenceEvents2++
+		}
+	}
+	assert.Equal(t, 2, residenceEvents2,
+		"both residence events should survive roundtrip; got %d", residenceEvents2)
+}

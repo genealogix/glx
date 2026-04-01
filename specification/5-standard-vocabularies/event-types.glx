@@ -4,8 +4,8 @@
 #
 # Note: Attributes like occupation, religion, etc. are typically represented
 # as temporal properties on Person entities, not as events. Residence can be
-# either a person property (when place is known) or an event (when only
-# date/type information exists without a place reference).
+# either a person property (when a specific place is known) or an event
+# (when only date/type information exists).
 
 event_types:
   # Lifecycle Events
@@ -176,7 +176,7 @@ event_types:
 
   residence:
     label: "Residence"
-    description: "Period of residence (used for GEDCOM RESI records without a specific place reference)"
+    description: "Period of residence at a location (date/type only, no specific place)"
     category: "lifecycle"
     gedcom: "RESI"
 
