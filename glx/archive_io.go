@@ -118,7 +118,7 @@ func writeSingleFileArchive(path string, glx *glxlib.GLXFile, validate bool) err
 		return fmt.Errorf("failed to serialize GLX file: %w", err)
 	}
 
-	if err := os.WriteFile(path, yamlBytes, filePermissions); err != nil {
+	if err := atomicWriteFile(path, yamlBytes, filePermissions); err != nil {
 		return fmt.Errorf("failed to write GLX file: %w", err)
 	}
 
