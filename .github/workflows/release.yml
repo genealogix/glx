@@ -49,7 +49,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG}"
-          curl -sf -H "Content-Type: application/json" \
+          curl -sSf -H "Content-Type: application/json" \
             -d "{
               \"embeds\": [{
                 \"title\": \"GLX ${TAG}\",
