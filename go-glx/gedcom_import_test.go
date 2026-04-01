@@ -686,6 +686,29 @@ func TestImportTITL_WithDatePreserved(t *testing.T) {
 	}
 }
 
+// TestImportSex_UnrecognizedValuePreserved tests that non-standard GEDCOM SEX
+// values are preserved as lowercase instead of being silently mapped to "unknown".
+// Fixes #520.
+func TestImportSex_UnrecognizedValuePreserved(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX N
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
+
+	for _, person := range glxFile.Persons {
+		gender, ok := person.Properties[PersonPropertyGender].(string)
+		require.True(t, ok, "gender property should be a string")
+		assert.Equal(t, "n", gender, "unrecognized SEX value 'N' should be preserved as 'n', not mapped to 'unknown'")
+	}
+}
+
 func TestImportDate_CalendarEscapePreserved(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
