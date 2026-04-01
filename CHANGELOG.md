@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.10]
 
+### Fixed
+
+#### CI
+- **auto-resolve and auto-update workflows can no longer race** — Both workflows now share a `branch-maintenance` concurrency group. Auto-resolve triggers on `workflow_run` after auto-update completes instead of independently on push to main. Cron schedules reduced from every 30min/hourly to daily (#332)
+
 ### Added
 
 #### Date Handling

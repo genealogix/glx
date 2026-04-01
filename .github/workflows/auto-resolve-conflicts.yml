@@ -1,10 +1,11 @@
 name: Auto-resolve CHANGELOG conflicts
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Auto-update PR branches"]
+    types: [completed]
   schedule:
-    - cron: '0 * * * *' # Every hour (fallback)
+    - cron: '47 6 * * *' # Daily at 06:47 UTC (fallback, after auto-update)
 
 env:
   GIT_CONFIG_COUNT: 1
@@ -19,7 +20,7 @@ jobs:
       contents: write
       pull-requests: read
     concurrency:
-      group: auto-resolve-conflicts
+      group: branch-maintenance
       cancel-in-progress: false
     steps:
       - name: Generate GitHub App token
