@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.10]
 
+### Fixed
+
+#### Developer Experience
+- **devcontainer: remove abandoned ajv-cli and install actual npm deps** — Replaced the unused global `ajv-cli` install with parallel `postCreateCommand` that runs `go mod download`, pins `golangci-lint v2.11.4`, and installs `specification/` and `website/` npm dependencies. Removed unused Docker extension, added YAML and markdownlint extensions, added `forwardPorts` for VitePress dev server. Fixes #326, fixes #327
+
 ### Added
 
 #### Date Handling
