@@ -199,6 +199,47 @@ func writeFilesToDir(rootDir string, files map[string][]byte) error {
 	return nil
 }
 
+// atomicWriteFile writes data to a file atomically using a temp file + rename.
+// The target file either has the old content or the new content, never a partial
+// write. The temp file is created in the same directory to ensure same-filesystem
+// rename.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".glx-tmp-*")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+
+	// Clean up temp file on any failure
+	success := false
+	defer func() {
+		if !success {
+			_ = tmp.Close()
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if _, err := tmp.Write(data); err != nil {
+		return fmt.Errorf("writing temp file: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("syncing temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("closing temp file: %w", err)
+	}
+	if err := os.Chmod(tmpPath, perm); err != nil {
+		return fmt.Errorf("setting file permissions: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replacing target file: %w", err)
+	}
+
+	success = true
+	return nil
+}
+
 // createDirectoryStructure creates a list of directories
 func createDirectoryStructure(dirs []string) error {
 	for _, dir := range dirs {
