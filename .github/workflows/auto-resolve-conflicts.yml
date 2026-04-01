@@ -4,8 +4,6 @@ on:
   workflow_run:
     workflows: ["Auto-update PR branches"]
     types: [completed]
-  schedule:
-    - cron: '47 6 * * *' # Daily at 06:47 UTC (fallback, after auto-update)
 
 env:
   GIT_CONFIG_COUNT: 1
@@ -14,6 +12,7 @@ env:
 
 jobs:
   resolve-conflicts:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
