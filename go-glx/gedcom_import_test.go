@@ -544,6 +544,7 @@ func TestConvertResidence_NoPlacCreatesEvent(t *testing.T) {
 1 RESI
 2 DATE 1580
 2 TYPE married
+2 NOTE Lived in Zurich
 0 TRLR`
 
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
@@ -564,6 +565,14 @@ func TestConvertResidence_NoPlacCreatesEvent(t *testing.T) {
 	assert.True(t, strings.HasPrefix(residenceEvent.Participants[0].Person, "person-"),
 		"participant should reference a person entity, got %q", residenceEvent.Participants[0].Person)
 	assert.NotEmpty(t, residenceEvent.Title, "residence event should have a generated title")
+
+	// TYPE should be stored as event_subtype property (not in notes)
+	assert.Equal(t, "married", residenceEvent.Properties["event_subtype"],
+		"RESI TYPE should be stored as event_subtype property")
+
+	// NOTE should be preserved
+	assert.Contains(t, residenceEvent.Notes, "Lived in Zurich",
+		"RESI NOTE should be preserved in event notes")
 }
 
 // TestConvertResidence_BareRESIYCreatesEvent tests that a bare "RESI Y" marker

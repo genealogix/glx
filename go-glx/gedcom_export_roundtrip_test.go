@@ -937,18 +937,25 @@ func TestRoundtrip_MultiFamilyChild(t *testing.T) {
 
 // TestRoundtrip_ResidenceEventNoPlace tests that a RESI record without a PLAC
 // sub-record survives the full import → export → re-import cycle as a residence event.
+// Verifies: event count, DATE, TYPE, notes, SOUR citations, and no double-export
+// with the property-path exportResidenceRecords().
 func TestRoundtrip_ResidenceEventNoPlace(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
 2 FORM LINEAGE-LINKED
 1 CHAR UTF-8
+0 @S1@ SOUR
+1 TITL Parish Register
 0 @I1@ INDI
 1 NAME Heinrich /Bullinger/
 1 SEX M
 1 RESI
 2 DATE 1580
 2 TYPE married
+2 NOTE Moved after wedding
+2 SOUR @S1@
+3 PAGE Entry 42
 1 RESI Y
 0 TRLR
 `
@@ -956,19 +963,32 @@ func TestRoundtrip_ResidenceEventNoPlace(t *testing.T) {
 	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err, "first import failed")
 
-	// Should have 2 residence events (one with DATE+TYPE, one bare RESI Y)
-	var residenceEvents1 int
-	var datedEventDate DateString
+	// Should have 2 residence events (one with DATE+TYPE+NOTE+SOUR, one bare RESI Y)
+	var datedEvent, bareEvent *Event
 	for _, event := range glx1.Events {
 		if event.Type == EventTypeResidence {
-			residenceEvents1++
 			if event.Date != "" {
-				datedEventDate = event.Date
+				datedEvent = event
+			} else {
+				bareEvent = event
 			}
 		}
 	}
-	assert.Equal(t, 2, residenceEvents1, "expected 2 residence events after import")
-	assert.Contains(t, string(datedEventDate), "1580", "dated residence should have 1580")
+	require.NotNil(t, datedEvent, "dated residence event should exist")
+	require.NotNil(t, bareEvent, "bare RESI Y event should exist")
+
+	// Verify dated event preserved TYPE as event_subtype property
+	assert.Equal(t, "married", datedEvent.Properties["event_subtype"],
+		"TYPE should be stored as event_subtype property")
+
+	// Verify notes survived import
+	assert.Contains(t, datedEvent.Notes, "Moved after wedding",
+		"NOTE should be preserved in event notes")
+
+	// Verify SOUR citation was attached to event properties
+	citations, _ := datedEvent.Properties["citations"].([]string)
+	assert.NotEmpty(t, citations,
+		"SOUR should be stored in event.Properties[citations] for export roundtrip")
 
 	// Step 2: Export to GEDCOM 5.5.1
 	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
@@ -976,14 +996,21 @@ func TestRoundtrip_ResidenceEventNoPlace(t *testing.T) {
 
 	exportedStr := string(exported)
 
-	// Verify RESI records appear in exported GEDCOM
+	// Verify RESI records appear — exactly 2, not duplicated by exportResidenceRecords
 	resiCount := strings.Count(exportedStr, "\n1 RESI")
 	assert.Equal(t, 2, resiCount,
-		"both residence events should export as RESI records; got %d", resiCount)
+		"exactly 2 RESI records expected (no double-export); got %d", resiCount)
 
-	// Verify DATE survived on the dated one
-	assert.Contains(t, exportedStr, "1580",
-		"date should survive export")
+	// Verify DATE and TYPE survived export
+	assert.Contains(t, exportedStr, "1580", "date should survive export")
+	assert.Contains(t, exportedStr, "2 TYPE married", "TYPE should survive export")
+
+	// Verify NOTE survived export
+	assert.Contains(t, exportedStr, "NOTE", "NOTE should survive export")
+	assert.Contains(t, exportedStr, "Moved after wedding", "NOTE text should survive export")
+
+	// Verify SOUR survived export
+	assert.Contains(t, exportedStr, "SOUR", "SOUR should survive export")
 
 	// Step 3: Re-import the exported GEDCOM
 	glx2, _, err := ImportGEDCOM(strings.NewReader(exportedStr), nil)
@@ -991,11 +1018,22 @@ func TestRoundtrip_ResidenceEventNoPlace(t *testing.T) {
 
 	// Should still have 2 residence events
 	var residenceEvents2 int
+	var datedEvent2 *Event
 	for _, event := range glx2.Events {
 		if event.Type == EventTypeResidence {
 			residenceEvents2++
+			if event.Date != "" {
+				datedEvent2 = event
+			}
 		}
 	}
 	assert.Equal(t, 2, residenceEvents2,
 		"both residence events should survive roundtrip; got %d", residenceEvents2)
+
+	// Verify the dated event's TYPE and notes survived the full cycle
+	require.NotNil(t, datedEvent2, "dated residence event should survive re-import")
+	assert.Equal(t, "married", datedEvent2.Properties["event_subtype"],
+		"TYPE should survive full roundtrip")
+	assert.Contains(t, datedEvent2.Notes, "Moved after wedding",
+		"NOTE should survive full roundtrip")
 }

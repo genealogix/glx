@@ -26,6 +26,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### GEDCOM Import
 - **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
 
+#### Changelog
+- **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
+
 ### Removed
 
 #### Person Properties

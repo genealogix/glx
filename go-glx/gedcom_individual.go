@@ -550,41 +550,49 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		eventID := generateEventID(conv)
 
 		event := &Event{
-			Type: EventTypeResidence,
-			Date: DateString(dateStr),
-			Participants: []Participant{
-				{Person: personID, Role: ParticipantRolePrincipal},
-			},
+			Type:       EventTypeResidence,
+			Properties: make(map[string]any),
 		}
 
-		// Generate a title for consistency with other imported events
-		event.Title = GenerateEventTitle(EventTypeResidence, []string{PersonDisplayName(person)}, event.Date)
+		// Extract common event details (DATE, NOTE, ADDR, SOUR, OBJE)
+		extractEventDetails(eventID, resiRecord, event, conv, true)
 
-		// Preserve RESI value (e.g., "Y") and TYPE in notes
-		var notes []string
-		if resiRecord.Value != "" && resiRecord.Value != "Y" {
-			notes = append(notes, "GEDCOM RESI value: "+resiRecord.Value)
-		}
+		// Process RESI-specific tags (TYPE, AGE, CAUS)
 		for _, sub := range resiRecord.SubRecords {
 			switch sub.Tag {
 			case GedcomTagType:
-				notes = append(notes, "GEDCOM RESI TYPE: "+sub.Value)
-			case GedcomTagNote:
-				noteText := extractNoteText(sub, conv)
-				if noteText != "" {
-					notes = append(notes, noteText)
+				if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+					event.Properties[propertyKey] = sub.Value
+				}
+			case GedcomTagAge:
+				if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+					event.Properties[propertyKey] = sub.Value
+				}
+			case GedcomTagCaus:
+				if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+					event.Properties[propertyKey] = sub.Value
 				}
 			}
 		}
-		if len(notes) > 0 {
-			event.Notes = strings.Join(notes, "\n")
+
+		// Preserve non-standard RESI line value (e.g., a descriptive string)
+		// in notes. "Y" is a standard GEDCOM marker and is not preserved.
+		if resiRecord.Value != "" && resiRecord.Value != "Y" {
+			note := "GEDCOM RESI value: " + resiRecord.Value
+			if event.Notes != "" {
+				event.Notes += "\n" + note
+			} else {
+				event.Notes = note
+			}
 		}
 
-		// Extract evidence from SOUR subrecords
-		refs := extractEvidence(resiRecord, conv)
-		if refs.hasEvidence() {
-			createEventAssertionWithEvidence(eventID, "date", event.Date, refs, conv)
+		// Add participant
+		event.Participants = []Participant{
+			{Person: personID, Role: ParticipantRolePrincipal},
 		}
+
+		// Generate title for consistency with other imported events
+		event.Title = GenerateEventTitle(EventTypeResidence, []string{PersonDisplayName(person)}, event.Date)
 
 		conv.GLX.Events[eventID] = event
 		conv.Stats.EventsCreated++

@@ -442,6 +442,15 @@ GEDCOM `ADDR` records with subfields (`ADR1`, `ADR2`, `CITY`, `STAE`, `POST`, `C
 1. **Full address text**: Preserved in the entity's address properties
 2. **Place hierarchy fallback**: When no `PLAC` tag is present on an event, `ADDR` subfields (`CITY`, `STAE`, `CTRY`) are used to build a place hierarchy
 
+### Residence Records
+
+GEDCOM `RESI` records follow two import paths depending on whether a `PLAC` sub-record is present:
+
+- **With `PLAC`**: Imported as a temporal `residence` person property (a place reference with optional date). This represents a known location of residence.
+- **Without `PLAC`**: Imported as a `residence` Event entity. Date, `TYPE` sub-record, notes, and source citations are preserved on the event. This handles bare `RESI Y` records and RESI records with only date/type information.
+
+On GEDCOM export, the two paths reverse: residence person properties export as `RESI` with `PLAC`, and residence events export as `RESI` via the standard event export path.
+
 ### Census Records
 
 Census records receive special handling. Instead of creating events, the importer:
