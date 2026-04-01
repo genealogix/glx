@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.10]
 
+### Fixed
+
+#### Developer Experience
+- **CODEOWNERS: activate rules with real usernames and fix stale paths** — All rules were commented out and several paths were stale (`/schema/`, `/test-suite/`, `/examples/`). Activated with individual usernames, updated paths to match current directory structure (#330)
+
 ### Added
 
 #### Date Handling
