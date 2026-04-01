@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.0-beta.10]
 
+### Fixed
+
+#### CI
+- **auto-resolve-conflicts: deduplicate changelog section headers after conflict resolution** — The sed-based "keep both sides" merge produced duplicate `###`/`####` headers when both sides added entries to the same section. Added an awk deduplication pass that merges entries under a single header (#331)
+
 ### Added
 
 #### Date Handling
