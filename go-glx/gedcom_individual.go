@@ -581,10 +581,10 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		// in notes. "Y" is a standard GEDCOM marker and is not preserved.
 		if resiRecord.Value != "" && resiRecord.Value != "Y" {
 			note := "GEDCOM RESI value: " + resiRecord.Value
-			if event.Notes != "" {
-				event.Notes += "\n" + note
+			if !event.Notes.IsEmpty() {
+				event.Notes = append(event.Notes, note)
 			} else {
-				event.Notes = note
+				event.Notes = NoteList{note}
 			}
 		}
 
@@ -901,7 +901,7 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 		Role:   role,
 	}
 	if len(notes) > 0 {
-		participant.Notes = strings.Join(notes, "\n")
+		participant.Notes = NoteList(notes)
 	}
 
 	return participant
