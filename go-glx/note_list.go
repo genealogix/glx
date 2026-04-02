@@ -45,9 +45,20 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 		}
 		*n = NoteList(list)
 		return nil
+	case yaml.AliasNode:
+		if node.Alias != nil {
+			return n.UnmarshalYAML(node.Alias)
+		}
+		*n = nil
+		return nil
 	default:
-		// Tolerate unexpected types — try scalar decode
-		*n = NoteList{node.Value}
+		// Tolerate unexpected types — treat empty value as nil (consistent
+		// with empty scalar handling), otherwise use as a single note.
+		if node.Value == "" {
+			*n = nil
+		} else {
+			*n = NoteList{node.Value}
+		}
 		return nil
 	}
 }
