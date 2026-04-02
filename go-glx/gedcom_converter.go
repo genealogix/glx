@@ -85,6 +85,14 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	conv.Logger.LogInfof("Pass 2 complete: %d sources, %d media", conv.Stats.SourcesCreated, conv.Stats.MediaCreated)
 
 	// Pass 3: Process individuals (depend on sources, media, notes for citations)
+	// Pre-pass: assign person IDs for all individuals first, so ASSO references
+	// between individuals can be resolved regardless of file order. Fixes #527.
+	for _, record := range grouped[GedcomTagIndi] {
+		if _, exists := conv.PersonIDMap[record.XRef]; !exists {
+			conv.PersonIDMap[record.XRef] = generatePersonID(conv)
+		}
+	}
+
 	for _, record := range grouped[GedcomTagIndi] {
 		conv.Logger.LogInfo("Processing INDI " + record.XRef)
 		if err := convertIndividual(record, conv); err != nil {
