@@ -52,7 +52,8 @@ test-verbose: ## Run all tests with verbose output
 	go test -v ./...
 
 bench: ## Run benchmarks
-	go test -bench=. -benchmem -count=6 -run='^$$' -timeout 10m ./glx/... ./go-glx/... | tee bench.txt
+	go test -bench=. -benchmem -count=6 -run='^$$' -timeout 10m ./glx/... ./go-glx/... > bench.txt
+	@cat bench.txt
 
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
