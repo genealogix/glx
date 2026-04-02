@@ -207,6 +207,9 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	}
 	event.Participants = participants
 
+	// Add ASSO participants (witnesses, officiants, etc.)
+	appendASSOParticipants(event, marrRecord, conv)
+
 	// Generate event title from spouse names
 	var marrNames []string
 	if husbandID != "" {
@@ -255,6 +258,9 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 		})
 	}
 	event.Participants = participants
+
+	// Add ASSO participants (witnesses, officiants, etc.)
+	appendASSOParticipants(event, divRecord, conv)
 
 	// Generate event title from spouse names
 	var divNames []string
@@ -316,6 +322,9 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 		})
 	}
 	event.Participants = participants
+
+	// Add ASSO participants (witnesses, officiants, etc.)
+	appendASSOParticipants(event, eventRecord, conv)
 
 	// Generate event title from spouse names
 	var names []string
