@@ -93,7 +93,10 @@ func TestAnalyzeGaps_MissingDeath_RecentBirth(t *testing.T) {
 func TestAnalyzeGaps_NoParents(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
+			"person-a": {Properties: map[string]any{}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-a": {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-a", Role: "principal"}}},
 		},
 		Relationships: map[string]*glxlib.Relationship{},
 	}
@@ -108,8 +111,8 @@ func TestAnalyzeGaps_NoParents(t *testing.T) {
 func TestAnalyzeGaps_HasParents(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
-			"person-b": {Properties: map[string]any{"born_on": "1820"}},
+			"person-a": {Properties: map[string]any{}},
+			"person-b": {Properties: map[string]any{}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {
@@ -132,7 +135,7 @@ func TestAnalyzeGaps_HasParents(t *testing.T) {
 func TestAnalyzeGaps_NoEvents(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
+			"person-a": {Properties: map[string]any{}},
 		},
 		Events: map[string]*glxlib.Event{},
 	}
@@ -147,7 +150,7 @@ func TestAnalyzeGaps_NoEvents(t *testing.T) {
 func TestAnalyzeGaps_HasEvents(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
+			"person-a": {Properties: map[string]any{}},
 		},
 		Events: map[string]*glxlib.Event{
 			"event-1": {
@@ -168,8 +171,8 @@ func TestAnalyzeGaps_HasEvents(t *testing.T) {
 func TestAnalyzeGaps_NoMarriageEvent(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-a": {Properties: map[string]any{"born_on": "1850"}},
-			"person-b": {Properties: map[string]any{"born_on": "1855"}},
+			"person-a": {Properties: map[string]any{}},
+			"person-b": {Properties: map[string]any{}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-1": {
@@ -203,9 +206,9 @@ func TestAnalyzeGaps_PerSpouseMarriageCheck(t *testing.T) {
 	// Person with two spouses: one has marriage event, one doesn't
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary":   {Properties: map[string]any{"name": "Mary", "born_on": "1832"}},
-			"person-dan":    {Properties: map[string]any{"name": "Daniel Lane", "born_on": "1830"}},
-			"person-john":   {Properties: map[string]any{"name": "John Babcock", "born_on": "1825"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary"}},
+			"person-dan":  {Properties: map[string]any{"name": "Daniel Lane"}},
+			"person-john": {Properties: map[string]any{"name": "John Babcock"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-lane": {
@@ -389,8 +392,8 @@ func TestAnalyzeEvidence_UncitedNotes(t *testing.T) {
 				Notes:    "County history biography noted 'one daughter married a Mr. Babcock'",
 			},
 			"a-cited": {
-				Subject:   glxlib.EntityRef{Person: "person-a"},
-				Property:  "born_on",
+				Subject:   glxlib.EntityRef{Event: "event-birth-a"},
+				Property:  "date",
 				Value:     "1832",
 				Notes:     "Per 1880 census",
 				Citations: []string{"cit-1"},
@@ -415,8 +418,8 @@ func TestAnalyzeEvidence_UncitedNotes_NoCitedFalsePositive(t *testing.T) {
 		},
 		Assertions: map[string]*glxlib.Assertion{
 			"a-1": {
-				Subject:   glxlib.EntityRef{Person: "person-a"},
-				Property:  "born_on",
+				Subject:   glxlib.EntityRef{Event: "event-birth-a"},
+				Property:  "date",
 				Value:     "1832",
 				Notes:     "Per 1880 census record",
 				Citations: []string{"cit-1"},
@@ -576,16 +579,16 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 			"place-new-york": {Name: "New York"},
 		},
 		Assertions: map[string]*glxlib.Assertion{
-			"a-1": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-florida", Confidence: "medium"},
-			"a-2": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-virginia", Confidence: "medium"},
-			"a-3": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "born_at", Value: "place-new-york", Confidence: "medium-high"},
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "birthplace", Value: "place-florida", Confidence: "medium"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "birthplace", Value: "place-virginia", Confidence: "medium"},
+			"a-3": {Subject: glxlib.EntityRef{Person: "person-mary"}, Property: "birthplace", Value: "place-new-york", Confidence: "medium-high"},
 		},
 	}
 
 	issues := analyzeConflicts(archive)
 	found := findIssueByMessage(issues, "person-mary", "conflicting values")
 	if found == nil {
-		t.Fatal("expected conflict issue for born_at")
+		t.Fatal("expected conflict issue for birthplace")
 	}
 	if found.Severity != "high" {
 		t.Errorf("expected high severity, got %s", found.Severity)
@@ -593,7 +596,6 @@ func TestAnalyzeConflicts_DetectsConflicting(t *testing.T) {
 	if !containsSubstring(found.Message, "3 conflicting values") {
 		t.Errorf("expected 3 conflicting values in message: %s", found.Message)
 	}
-	// born_at is no longer in placeRefProperties so values show as IDs
 	if !containsSubstring(found.Message, "place-florida") {
 		t.Errorf("expected place ID 'place-florida' in message: %s", found.Message)
 	}
@@ -605,8 +607,8 @@ func TestAnalyzeConflicts_NoConflictWhenSameValue(t *testing.T) {
 			"person-a": {Properties: map[string]any{"name": "Person A"}},
 		},
 		Assertions: map[string]*glxlib.Assertion{
-			"a-1": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "born_at", Value: "place-florida", Confidence: "medium"},
-			"a-2": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "born_at", Value: "place-florida", Confidence: "high"},
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "birthplace", Value: "place-florida", Confidence: "medium"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-a"}, Property: "birthplace", Value: "place-florida", Confidence: "high"},
 		},
 	}
 
@@ -717,8 +719,8 @@ func TestSuggestChildCensus_PersonWithParentsNotBrickwall(t *testing.T) {
 	// Mary has parents — should not be flagged as brickwall
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "ABT 1832"}},
-			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green"}},
 			"person-parent": {Properties: map[string]any{"name": "James Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
@@ -737,7 +739,10 @@ func TestSuggestChildCensus_PersonWithParentsNotBrickwall(t *testing.T) {
 				},
 			},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-mary":   {Type: glxlib.EventTypeBirth, Date: "ABT 1832", Participants: []glxlib.Participant{{Person: "person-mary", Role: "principal"}}},
+			"event-birth-joseph": {Type: glxlib.EventTypeBirth, Date: "1835", Participants: []glxlib.Participant{{Person: "person-joseph", Role: "principal"}}},
+		},
 	}
 
 	issues := suggestChildCensusRecords(archive)
@@ -752,8 +757,8 @@ func TestSuggestChildCensus_OrphanWithNoChildren(t *testing.T) {
 	// Mary has no parents and no children — no suggestions possible
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary":   {Properties: map[string]any{"name": "Mary Green", "born_on": "ABT 1832"}},
-			"person-joseph": {Properties: map[string]any{"name": "Joseph Green", "born_on": "1835"}},
+			"person-mary":   {Properties: map[string]any{"name": "Mary Green"}},
+			"person-joseph": {Properties: map[string]any{"name": "Joseph Green"}},
 			"person-parent": {Properties: map[string]any{"name": "James Green"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
