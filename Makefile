@@ -54,7 +54,7 @@ test-verbose: ## Run all tests with verbose output
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
 	@mkdir -p coverage
-	go test -coverprofile=coverage/coverage.out ./...
+	go test -timeout 10m -coverprofile=coverage/coverage.out ./...
 	@echo "Generating HTML coverage report..."
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 	@echo "Coverage report generated at coverage/coverage.html"
