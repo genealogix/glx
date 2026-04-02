@@ -1,12 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "postUpdateOptions": ["goModTidy"],
+  "enabled": false,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["after 9pm on sunday"],
     "automerge": true,
-    "commitMessageAction": "refresh"
+    "commitMessageAction": "refresh",
+    "postUpdateOptions": ["goModTidy"]
   },
   "packageRules": [
     {
