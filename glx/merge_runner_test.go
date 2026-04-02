@@ -16,6 +16,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -133,6 +134,64 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	assert.Len(t, reloaded.Persons, 2, "should have both persons after merge")
 	assert.Contains(t, reloaded.Persons, "person-a")
 	assert.Contains(t, reloaded.Persons, "person-b")
+}
+
+func TestMergeArchives_DryRun(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := serializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-b": {Properties: map[string]any{"name": "Person B"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := serializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	// Snapshot destination files before dry-run (path → size)
+	before := snapshotDir(t, destDir)
+	require.NotEmpty(t, before, "destination should have files before merge")
+
+	// Merge with dry-run — should not modify destination
+	err = mergeArchives(srcDir, destDir, true)
+	require.NoError(t, err)
+
+	// Verify filesystem is byte-for-byte unchanged (no new files, no modifications)
+	after := snapshotDir(t, destDir)
+	assert.Equal(t, before, after, "dry run should not create, modify, or remove any files")
+}
+
+// snapshotDir returns a map of relative file paths to file sizes for all files
+// under root. Used to detect any filesystem changes after a dry-run merge.
+func snapshotDir(t *testing.T, root string) map[string]int64 {
+	t.Helper()
+	snapshot := make(map[string]int64)
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			rel, _ := filepath.Rel(root, path)
+			snapshot[rel] = info.Size()
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	return snapshot
 }
 
 func TestMergeArchives_DotDestination(t *testing.T) {
