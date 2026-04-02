@@ -46,10 +46,10 @@ lint-fix: ## Run linters with automatic fixes
 
 ## Testing
 test: ## Run all tests
-	go test ./...
+	go test -timeout 10m ./...
 
 test-verbose: ## Run all tests with verbose output
-	go test -v ./...
+	go test -v -timeout 10m ./...
 
 bench: ## Run benchmarks
 	go test -bench=. -benchmem -count=6 -run='^$$' -timeout 10m ./glx/... ./go-glx/... > bench.txt
@@ -58,7 +58,7 @@ bench: ## Run benchmarks
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
 	@mkdir -p coverage
-	go test -coverprofile=coverage/coverage.out ./...
+	go test -timeout 10m -coverprofile=coverage/coverage.out ./...
 	@echo "Generating HTML coverage report..."
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 	@echo "Coverage report generated at coverage/coverage.html"
