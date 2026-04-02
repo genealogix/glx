@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.10]
+## [Unreleased]
 
 ### Fixed
 
@@ -30,11 +30,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### CLI
 - **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
 - **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
-
-### Fixed
-
-#### CLI
 - **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
+#### GEDCOM Import
+- **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
+
+#### Changelog
+- **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
 
 ### Removed
 
@@ -212,8 +213,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Clarified `subject` participant role** - Documented as preferred over `principal`
 
 ### Fixed
-
-#### Specification
 - **Fixed confidence levels example format** - Core concepts example now uses the correct `label`/`description` structure instead of simple key-value strings
 - **Fixed citation GEDCOM mapping** - Corrected invalid `SOUR.CITN.EXID` tag to `SOUR.EXID`
 - **Fixed core-concepts.md formatting** - Property Vocabularies heading was merging with preceding table
@@ -241,8 +240,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Structured EXID import** - GEDCOM EXID.TYPE is now stored in `fields.type` instead of being concatenated into the ID string; applies to all entity types (#32)
 
 ### Fixed
-
-#### GEDCOM Import
 - **Multiple GEDCOM NAME records no longer silently dropped** (#29) - When a person has multiple NAME records (birth name, married name, etc.), all names are now stored as a temporal list instead of only keeping the last one
 - **FAM event processing no longer depends on HUSB/WIFE tag order** (#15) - Family events (CENS, ENGA, MARB, etc.) are now collected in a first pass and processed after spouse IDs are extracted, so GEDCOM tag order no longer matters
 - **Census NOTE no longer discarded when SOUR exists** (#30) - NOTE text on CENS records is now appended to existing citation notes when SOUR sub-records are present, instead of being silently lost
@@ -480,8 +477,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Fixed Event key properties ("description" → "notes") and Media key properties ("file path" → "URI") in entity-types README
 - Fixed place types count from 14 to 15; added missing `locality` to place-types.glx standard vocabulary
 - Fixed vocabulary directory structure example in core-concepts
-
-#### GEDCOM Import
 - **Repository deduplication** - Repositories with the same name and location are now deduplicated during import
 - **Dependency-ordered record processing** - Records now grouped by type and processed in dependency order
 - **Repository-to-source linking** - Sources now correctly link to their repository even when REPO records appear after SOUR records in the file
@@ -501,8 +496,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Archive validation wiring** - `LoadArchiveWithOptions` now correctly passes `schemaValidate` flag to serializer for referential integrity validation
 - **Property vocabulary documentation** - Fixed `value_type` and `reference_type` field requirements (marked "No*" instead of "Yes*" to match "exactly one required" constraint)
 - **Test assertion completeness** - `TestRunValidate_MediaFileMissing` now captures stdout and verifies warning is actually produced
-
-#### CLI
 - **`glx validate` single file behavior** - Validating a single file now only validates that file's structure instead of loading the entire current directory. Cross-reference validation is skipped for single files with a warning message. Directory validation still performs full cross-reference checks.
 
 ### Removed
@@ -511,8 +504,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Citation Entity
 - Removed `data_date`, `page`, `locator`, and `text_from_source` direct fields — consolidated into `properties`
-
-#### Source Entity
 - Removed `citation`, `coverage`, and `creator` direct fields (`creator` consolidated into `authors`)
 
 #### Event Entity
