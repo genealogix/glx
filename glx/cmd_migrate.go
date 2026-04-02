@@ -87,10 +87,7 @@ func migrateArchive(archivePath string) error {
 
 	// Write the migrated archive back.
 	if isDir {
-		if err := clearEntityFiles(archivePath); err != nil {
-			return fmt.Errorf("failed to clear old entity files: %w", err)
-		}
-		if err := writeMultiFileArchive(archivePath, archive, false); err != nil {
+		if err := safeWriteMultiFileArchive(archivePath, archive); err != nil {
 			return fmt.Errorf("failed to write archive: %w", err)
 		}
 	} else {
