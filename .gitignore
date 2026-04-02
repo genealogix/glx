@@ -6,11 +6,12 @@ dist/
 *.exe
 *.test
 
-# Go profiling and coverage
+# Go profiling, coverage, and benchmarks
 coverage/
 coverage.out
 coverage*.html
 coverage*.out
+bench.txt
 *.prof
 *.pprof
 /cpu.out
