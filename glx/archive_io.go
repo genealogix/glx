@@ -23,6 +23,77 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// safeWriteMultiFileArchive writes a multi-file archive to a temporary directory
+// first, then swaps it into place. This prevents archive destruction if the write
+// fails partway through (e.g., power loss, disk full, signal).
+func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
+	// Resolve to absolute path so rename and cwd containment checks work
+	// reliably for relative paths like ".". mergeArchives does the same.
+	absPath, err := filepath.Abs(destPath)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
+	destPath = absPath
+
+	// On Windows, a directory cannot be renamed while it is any process's cwd.
+	// If our cwd is inside (or equal to) destPath, temporarily move to the
+	// parent directory so the rename operations succeed.
+	parentDir := filepath.Dir(destPath)
+	if cwd, err := os.Getwd(); err == nil {
+		if absCwd, err2 := filepath.Abs(cwd); err2 == nil {
+			if rel, err3 := filepath.Rel(destPath, absCwd); err3 == nil {
+				// cwd is inside destPath if rel is "." or does not start with "..".
+				if rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))) {
+					if err := os.Chdir(parentDir); err != nil {
+						return fmt.Errorf("changing to parent directory: %w", err)
+					}
+					defer os.Chdir(cwd) //nolint:errcheck // best-effort restore
+				}
+			}
+		}
+	}
+
+	// Create temp dir next to the destination (same filesystem for rename)
+	tmpDir, err := os.MkdirTemp(parentDir, ".glx-tmp-")
+	if err != nil {
+		return fmt.Errorf("creating temp directory: %w", err)
+	}
+
+	// Clean up temp dir on failure
+	success := false
+	defer func() {
+		if !success {
+			_ = os.RemoveAll(tmpDir)
+		}
+	}()
+
+	// Write the archive to temp
+	if err := writeMultiFileArchive(tmpDir, archive, false); err != nil {
+		return fmt.Errorf("writing to temp directory: %w", err)
+	}
+
+	// Create backup of the original
+	backupDir := destPath + ".bak"
+	if err := os.RemoveAll(backupDir); err != nil {
+		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
+	}
+	if err := os.Rename(destPath, backupDir); err != nil {
+		return fmt.Errorf("backing up original: %w", err)
+	}
+
+	// Move temp into place
+	if err := os.Rename(tmpDir, destPath); err != nil {
+		// Restore backup on failure
+		_ = os.Rename(backupDir, destPath) // best-effort restore
+		return fmt.Errorf("moving archive into place: %w", err)
+	}
+
+	// Clean up backup
+	_ = os.RemoveAll(backupDir)
+	success = true
+	return nil
+}
+
 // LoadArchive loads all GLX files from a directory with schema validation.
 // This is the primary entry point for the validate command.
 func LoadArchive(rootPath string) (*glxlib.GLXFile, []string, error) {
