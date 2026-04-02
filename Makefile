@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage bench clean fmt check-schemas check-links release-snapshot
+.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage bench mod-tidy mod-verify clean fmt check-schemas check-links release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -64,6 +64,14 @@ test-coverage: ## Run tests with coverage report
 	@echo "Coverage report generated at coverage/coverage.html"
 	@echo "Opening coverage report in browser..."
 	@go tool cover -func=coverage/coverage.out | tail -n 1
+
+## Module Management
+mod-tidy: ## Tidy Go module dependencies
+	go mod tidy
+	@echo "go.mod and go.sum are tidy"
+
+mod-verify: ## Verify Go module integrity
+	go mod verify
 
 ## Specification
 check-schemas: ## Validate JSON schema files
