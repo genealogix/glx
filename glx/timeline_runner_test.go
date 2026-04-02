@@ -185,12 +185,11 @@ func TestCollectDirectEvents_SynthesizesFromProperties(t *testing.T) {
 }
 
 func TestCollectDirectEvents_NoDuplicateWhenEventExists(t *testing.T) {
-	// Person has both a birth event AND born_on property — should not duplicate
+	// Person has a birth event — should not duplicate
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-john": {Properties: map[string]any{
-				"name":    "John Smith",
-				"born_on": "1850-01-15",
+				"name": "John Smith",
 			}},
 		},
 		Events: map[string]*glxlib.Event{
@@ -408,7 +407,7 @@ func TestTimelineNoFamily(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-john": {Properties: map[string]any{"name": "John Smith"}},
-			"person-mary": {Properties: map[string]any{"name": "Mary Brown", "born_on": "1855"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary Brown"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-marriage": {

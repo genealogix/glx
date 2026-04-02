@@ -47,10 +47,10 @@ type coverageRecord struct {
 type coverageResult struct {
 	PersonID   string           `json:"person_id"`
 	PersonName string           `json:"person_name"`
-	BornOn     string           `json:"born_on,omitempty"`
-	BornAt     string           `json:"born_at,omitempty"`
-	DiedOn     string           `json:"died_on,omitempty"`
-	DiedAt     string           `json:"died_at,omitempty"`
+	BirthDate  string           `json:"birth_date,omitempty"`
+	BirthPlace string           `json:"birth_place,omitempty"`
+	DeathDate  string           `json:"death_date,omitempty"`
+	DeathPlace string           `json:"death_place,omitempty"`
 	Records    []coverageRecord `json:"records"`
 	Found      int              `json:"found"`
 	Expected   int              `json:"expected"`
@@ -132,24 +132,24 @@ func findPersonForCoverage(archive *glxlib.GLXFile, query string) (string, *glxl
 
 // buildCoverage generates the coverage checklist for a person.
 func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFile) *coverageResult {
-	var bornOn, bornAt, diedOn, diedAt string
+	var birthDate, birthPlace, deathDate, deathPlace string
 	if _, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth); birthEvent != nil {
-		bornOn = string(birthEvent.Date)
-		bornAt = birthEvent.PlaceID
+		birthDate = string(birthEvent.Date)
+		birthPlace = birthEvent.PlaceID
 	}
 	if _, deathEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath); deathEvent != nil {
-		diedOn = string(deathEvent.Date)
-		diedAt = deathEvent.PlaceID
+		deathDate = string(deathEvent.Date)
+		deathPlace = deathEvent.PlaceID
 	}
 
-	birthYear := glxlib.ExtractFirstYear(bornOn)
-	deathYear := deathYearUpperBound(diedOn)
+	birthYear := glxlib.ExtractFirstYear(birthDate)
+	deathYear := deathYearUpperBound(deathDate)
 
 	// Build indexes: what sources/citations/events reference this person
 	personSources := collectPersonSources(personID, archive)
 	personEvents := collectPersonEvents(personID, archive)
 
-	// Infer death year from burial event if died_on is not set
+	// Infer death year from burial event if death_date is not set
 	if deathYear == 0 {
 		deathYear = inferDeathYearFromEvents(personEvents)
 	}
@@ -168,7 +168,7 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	// Other record types — probate is high priority when person has an explicit death
 	// date (not just inferred from burial) and known family
-	probateHighPriority := diedOn != "" && hasFamily(personID, archive)
+	probateHighPriority := deathDate != "" && hasFamily(personID, archive)
 	records = append(records, buildOtherRecords(personSources, personEvents, probateHighPriority)...)
 
 	found := 0
@@ -178,16 +178,16 @@ func buildCoverage(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 		}
 	}
 
-	bornAtName := coverageResolvePlaceName(bornAt, archive)
-	diedAtName := coverageResolvePlaceName(diedAt, archive)
+	birthPlaceName := coverageResolvePlaceName(birthPlace, archive)
+	deathPlaceName := coverageResolvePlaceName(deathPlace, archive)
 
 	return &coverageResult{
 		PersonID:   personID,
 		PersonName: glxlib.PersonDisplayName(person),
-		BornOn:     bornOn,
-		BornAt:     bornAtName,
-		DiedOn:     diedOn,
-		DiedAt:     diedAtName,
+		BirthDate:  birthDate,
+		BirthPlace: birthPlaceName,
+		DeathDate:  deathDate,
+		DeathPlace: deathPlaceName,
 		Records:    records,
 		Found:      found,
 		Expected:   len(records),
@@ -595,17 +595,17 @@ func printCoverageText(result *coverageResult) {
 
 	// Summary line
 	var parts []string
-	if result.BornOn != "" {
-		born := "Born: " + result.BornOn
-		if result.BornAt != "" {
-			born += ", " + result.BornAt
+	if result.BirthDate != "" {
+		born := "Born: " + result.BirthDate
+		if result.BirthPlace != "" {
+			born += ", " + result.BirthPlace
 		}
 		parts = append(parts, born)
 	}
-	if result.DiedOn != "" {
-		died := "Died: " + result.DiedOn
-		if result.DiedAt != "" {
-			died += ", " + result.DiedAt
+	if result.DeathDate != "" {
+		died := "Died: " + result.DeathDate
+		if result.DeathPlace != "" {
+			died += ", " + result.DeathPlace
 		}
 		parts = append(parts, died)
 	} else {
