@@ -539,6 +539,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 	}
 
 	if placeID != "" {
+		// RESI with PLAC → store as residence property (place reference)
 		if dateStr != "" {
 			appendResidence(person, map[string]any{
 				"value": placeID,
@@ -549,6 +550,58 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		}
 
 		createPropertyAssertion(personID, PersonPropertyResidence, placeID, resiRecord, conv)
+	} else {
+		// RESI without PLAC → create a residence event to preserve
+		// date/type/notes that would otherwise be lost. Fixes #488.
+		eventID := generateEventID(conv)
+
+		event := &Event{
+			Type:       EventTypeResidence,
+			Properties: make(map[string]any),
+		}
+
+		// Extract common event details (DATE, NOTE, ADDR, SOUR, OBJE)
+		extractEventDetails(eventID, resiRecord, event, conv, true)
+
+		// Process RESI-specific tags (TYPE, AGE, CAUS)
+		for _, sub := range resiRecord.SubRecords {
+			switch sub.Tag {
+			case GedcomTagType:
+				if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+					event.Properties[propertyKey] = sub.Value
+				}
+			case GedcomTagAge:
+				if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+					event.Properties[propertyKey] = sub.Value
+				}
+			case GedcomTagCaus:
+				if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
+					event.Properties[propertyKey] = sub.Value
+				}
+			}
+		}
+
+		// Preserve non-standard RESI line value (e.g., a descriptive string)
+		// in notes. "Y" is a standard GEDCOM marker and is not preserved.
+		if resiRecord.Value != "" && resiRecord.Value != "Y" {
+			note := "GEDCOM RESI value: " + resiRecord.Value
+			if event.Notes != "" {
+				event.Notes += "\n" + note
+			} else {
+				event.Notes = note
+			}
+		}
+
+		// Add participant
+		event.Participants = []Participant{
+			{Person: personID, Role: ParticipantRolePrincipal},
+		}
+
+		// Generate title for consistency with other imported events
+		event.Title = GenerateEventTitle(EventTypeResidence, []string{PersonDisplayName(person)}, event.Date)
+
+		conv.GLX.Events[eventID] = event
+		conv.Stats.EventsCreated++
 	}
 }
 
