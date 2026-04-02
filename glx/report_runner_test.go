@@ -40,8 +40,8 @@ func TestBuildConfidenceReport_ConfidenceBreakdown(t *testing.T) {
 		Assertions: map[string]*glxlib.Assertion{
 			"a1": {
 				Subject:    glxlib.EntityRef{Person: "person-a"},
-				Property:   "born_on",
-				Value:      "1850",
+				Property:   "occupation",
+				Value:      "Farmer",
 				Confidence: "high",
 				Citations:  []string{"c1"},
 			},
@@ -60,8 +60,8 @@ func TestBuildConfidenceReport_ConfidenceBreakdown(t *testing.T) {
 				Citations:  []string{"c2"},
 			},
 			"a4": {
-				Subject:    glxlib.EntityRef{Person: "person-b"},
-				Property:   "born_on",
+				Subject:    glxlib.EntityRef{Event: "event-birth-b"},
+				Property:   "date",
 				Value:      "1860",
 				Confidence: "disputed",
 				Sources:    []string{"s1"},
@@ -110,8 +110,8 @@ func TestBuildConfidenceReport_NoCitations(t *testing.T) {
 				Citations:  []string{"c1"},
 			},
 			"a-source-only": {
-				Subject:    glxlib.EntityRef{Person: "person-a"},
-				Property:   "born_on",
+				Subject:    glxlib.EntityRef{Event: "event-birth-a"},
+				Property:   "date",
 				Value:      "1850",
 				Confidence: "medium",
 				Sources:    []string{"s1"},

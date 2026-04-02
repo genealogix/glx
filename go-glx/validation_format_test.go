@@ -61,7 +61,7 @@ func TestValidateDateFormat(t *testing.T) {
 			glx := &GLXFile{}
 			result := &ValidationResult{}
 
-			glx.validateDateFormat("persons", "person-1", "properties.born_on", tt.date, result)
+			glx.validateDateFormat("events", "event-1", "date", tt.date, result)
 
 			hasWarning := len(result.Warnings) > 0
 			if hasWarning != tt.expectWarning {
@@ -173,7 +173,7 @@ func TestPropertyValueFormatValidation(t *testing.T) {
 			"person-1": {
 				Properties: map[string]any{
 					"string_prop": "John",       // string - valid
-					"born_on":     "1850-03-15", // date - valid
+					"start_date":  "1850-03-15", // date - valid
 					"age":         30,           // integer - valid
 					"living":      true,         // boolean - valid
 					"bad_date":    "March 1850", // date - invalid format
@@ -185,7 +185,7 @@ func TestPropertyValueFormatValidation(t *testing.T) {
 
 	propVocab := map[string]*PropertyDefinition{
 		"string_prop": {ValueType: "string"},
-		"born_on":     {ValueType: "date"},
+		"start_date":  {ValueType: "date"},
 		"age":         {ValueType: "integer"},
 		"living":      {ValueType: "boolean"},
 		"bad_date":    {ValueType: "date"},
