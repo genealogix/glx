@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify clean fmt check-schemas check-links release-snapshot
+.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify clean fmt check-schemas check-links validate-examples release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -79,6 +79,13 @@ mod-verify: ## Verify Go module integrity
 ## Specification
 check-schemas: ## Validate JSON schema files
 	@node specification/validate-schemas.mjs
+
+## Example Validation
+validate-examples: build-cli ## Validate all example archives
+	@for dir in docs/examples/*/; do \
+	  echo "Validating $$dir..."; \
+	  ./bin/glx validate "$$dir" || exit 1; \
+	done
 
 ## Release
 release-snapshot: ## Build cross-platform binaries locally (no publish)
