@@ -81,9 +81,4 @@ jobs:
           # Run all tests for both CLI and core library packages
           # Includes slow/large file tests (habsburg.ged with 34,020 persons)
           go test ./glx/... ./go-glx/... -v -timeout 15m
-      
-      - name: Build glx CLI
-        run: |
-          mkdir -p bin
-          go build -o bin/glx ./glx
 
