@@ -56,7 +56,7 @@ func TestMergeArchives_NewEntities(t *testing.T) {
 	assert.Contains(t, dest.Persons, "person-b")
 }
 
-func TestMergeArchives_Duplicates(t *testing.T) {
+func TestMergeArchives_Conflicts(t *testing.T) {
 	dest := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-a": {Properties: map[string]any{"name": "Person A"}},
