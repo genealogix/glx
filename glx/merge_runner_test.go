@@ -135,6 +135,45 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	assert.Contains(t, reloaded.Persons, "person-b")
 }
 
+func TestMergeArchives_DryRun(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-a": {Properties: map[string]any{"name": "Person A"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := serializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-b": {Properties: map[string]any{"name": "Person B"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := serializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	// Merge with dry-run — should not modify destination
+	err = mergeArchives(srcDir, destDir, true)
+	require.NoError(t, err)
+
+	// Reload and verify destination is unchanged (only person-a, no person-b)
+	reloaded, dupes, err := LoadArchiveWithOptions(destDir, false)
+	require.NoError(t, err)
+	assert.Empty(t, dupes)
+	assert.Len(t, reloaded.Persons, 1, "dry run should not write any entities")
+	assert.Contains(t, reloaded.Persons, "person-a")
+	assert.NotContains(t, reloaded.Persons, "person-b", "person-b should not appear after dry run")
+}
+
 func TestMergeArchives_DotDestination(t *testing.T) {
 	// Create dest archive in temp dir
 	destDir := t.TempDir()
