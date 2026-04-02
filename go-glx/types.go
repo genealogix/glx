@@ -148,14 +148,14 @@ type ValidationWarning struct {
 type Person struct {
 	Properties map[string]any            `yaml:"properties,omitempty"` // Vocabulary-defined properties
 	Notes      string                    `yaml:"notes,omitempty"`
-	Research   map[string]*ResearchTopic `yaml:"research,omitempty"` // Open research questions (e.g., unknown parents)
+	Research   map[string]ResearchTopic `yaml:"research,omitempty"` // Open research questions (e.g., unknown parents)
 }
 
 // ResearchTopic tracks the status of an open research question about a person.
 type ResearchTopic struct {
 	Status            string          `yaml:"status,omitempty"`             // open, closed, blocked
 	Summary           string          `yaml:"summary,omitempty"`            // Brief current state
-	Leads             []*ResearchLead `yaml:"leads,omitempty"`              // Active and eliminated leads
+	Leads             []ResearchLead `yaml:"leads,omitempty"`              // Active and eliminated leads
 	CompletedResearch []string        `yaml:"completed_research,omitempty"` // Searches done, including null results
 }
 
