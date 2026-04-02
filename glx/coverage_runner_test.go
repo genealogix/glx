@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -920,4 +921,30 @@ func TestBuildOtherRecords_ProbateNoPriority_NoFamily(t *testing.T) {
 		}
 	}
 	t.Fatal("did not find Probate/will record in coverage output")
+}
+
+func TestCoverageResult_JSONKeys(t *testing.T) {
+	// Regression test: ensure JSON output uses the renamed keys, not the
+	// deprecated born_on/born_at/died_on/died_at names.
+	result := coverageResult{
+		PersonID:   "person-1",
+		PersonName: "Test Person",
+		BirthDate:  "1840",
+		BirthPlace: "place-ny",
+		DeathDate:  "1910",
+		DeathPlace: "place-ca",
+	}
+
+	data, err := json.Marshal(result)
+	require.NoError(t, err)
+	jsonStr := string(data)
+
+	assert.Contains(t, jsonStr, `"birth_date"`)
+	assert.Contains(t, jsonStr, `"birth_place"`)
+	assert.Contains(t, jsonStr, `"death_date"`)
+	assert.Contains(t, jsonStr, `"death_place"`)
+	assert.NotContains(t, jsonStr, `"born_on"`)
+	assert.NotContains(t, jsonStr, `"born_at"`)
+	assert.NotContains(t, jsonStr, `"died_on"`)
+	assert.NotContains(t, jsonStr, `"died_at"`)
 }
