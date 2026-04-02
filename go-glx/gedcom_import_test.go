@@ -532,6 +532,74 @@ func TestConvertResidence_TwoUndatedAppendsToList(t *testing.T) {
 	}
 }
 
+// TestConvertResidence_NoPlacCreatesEvent tests that a RESI record without a PLAC
+// sub-record creates a residence event instead of being silently dropped.
+// This is the bug reported in #488.
+func TestConvertResidence_NoPlacCreatesEvent(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Heinrich /Bullinger/
+1 RESI
+2 DATE 1580
+2 TYPE married
+2 NOTE Lived in Zurich
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should create a residence event (not a property, since no PLAC)
+	var residenceEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeResidence {
+			residenceEvent = event
+			break
+		}
+	}
+
+	require.NotNil(t, residenceEvent, "RESI without PLAC should create a residence event, not be dropped")
+	assert.Equal(t, DateString("1580"), residenceEvent.Date)
+	assert.Len(t, residenceEvent.Participants, 1)
+	assert.True(t, strings.HasPrefix(residenceEvent.Participants[0].Person, "person-"),
+		"participant should reference a person entity, got %q", residenceEvent.Participants[0].Person)
+	assert.NotEmpty(t, residenceEvent.Title, "residence event should have a generated title")
+
+	// TYPE should be stored as event_subtype property (not in notes)
+	assert.Equal(t, "married", residenceEvent.Properties["event_subtype"],
+		"RESI TYPE should be stored as event_subtype property")
+
+	// NOTE should be preserved
+	assert.Contains(t, residenceEvent.Notes, "Lived in Zurich",
+		"RESI NOTE should be preserved in event notes")
+}
+
+// TestConvertResidence_BareRESIYCreatesEvent tests that a bare "RESI Y" marker
+// creates a residence event with no date or place.
+func TestConvertResidence_BareRESIYCreatesEvent(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Test /Person/
+1 RESI Y
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var residenceEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeResidence {
+			residenceEvent = event
+			break
+		}
+	}
+
+	require.NotNil(t, residenceEvent, "bare RESI Y should create a residence event, not be dropped")
+}
+
 func TestImportPersonNote_StoredInNotesField(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n1 NOTE This is a person note\n" +
