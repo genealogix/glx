@@ -49,7 +49,7 @@ func TestMergeArchives_NewEntities(t *testing.T) {
 
 	result := mergeArchivesInMemory(dest, src)
 
-	assert.Empty(t, result.Conflicts, "no duplicates expected")
+	assert.Empty(t, result.Conflicts, "no conflicts expected")
 	assert.Equal(t, 1, result.NewPersons)
 	assert.Equal(t, 1, result.NewEvents)
 	assert.Len(t, dest.Persons, 2)
