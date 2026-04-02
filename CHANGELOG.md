@@ -10,7 +10,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.0-beta.10]
+## [Unreleased]
+
+### Fixed
+
+#### Developer Experience
+- **devcontainer: remove abandoned ajv-cli and install actual npm deps** — Replaced the unused global `ajv-cli` install with parallel `postCreateCommand` that runs `go mod download`, pins `golangci-lint v2.11.4`, and installs `specification/` and `website/` npm dependencies. Removed unused Docker extension, added YAML and markdownlint extensions, added `forwardPorts` for VitePress dev server (#326, #327)
+
+#### CI
+- **auto-resolve-conflicts: deduplicate changelog section headers after conflict resolution** — The sed-based "keep both sides" merge produced duplicate `###`/`####` headers when both sides added entries to the same section. Added an awk deduplication pass that merges entries under a single header (#331)
+- **auto-resolve and auto-update workflows can no longer race** — Both workflows now share a `branch-maintenance` concurrency group. Auto-resolve triggers on `workflow_run` after auto-update succeeds instead of independently on push to main. Auto-update cron reduced from every 30min to daily; auto-resolve cron removed (runs only after auto-update) (#332)
+- **release workflow no longer fails when Discord webhook is unconfigured** — Guard the Discord announcement step with an empty-check on the webhook secret so missing secrets skip the step instead of failing the release job. Also switch to `curl -sf` for proper HTTP error handling (#342)
 
 ### Fixed
 
@@ -25,6 +35,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### CLI
 - **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
 - **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
+
+### Fixed
+
+#### GEDCOM Import
+- **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
+
+#### Changelog
+- **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
 
 ### Removed
 

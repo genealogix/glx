@@ -2,7 +2,7 @@
 # This file defines the standard event types for GENEALOGIX archives.
 # Archives can extend this with custom types by adding additional entries.
 #
-# Note: Attributes like occupation, residence, religion, etc. are represented
+# Note: Attributes like occupation, religion, etc. are typically represented
 # as temporal properties on Person entities, not as events.
 
 event_types:
@@ -171,6 +171,12 @@ event_types:
     description: "Retirement from occupation"
     category: "lifecycle"
     gedcom: "RETI"
+
+  residence:
+    label: "Residence"
+    description: "Period of residence at a location"
+    category: "lifecycle"
+    gedcom: "RESI"
 
   # Migration Events
   naturalization:
