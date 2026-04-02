@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify clean fmt check-schemas check-links release-snapshot
+.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -75,6 +75,9 @@ mod-tidy: ## Tidy Go module dependencies
 
 mod-verify: ## Verify Go module integrity
 	go mod verify
+
+tidy-check: ## Verify go.mod and go.sum are tidy
+	go mod tidy -diff
 
 ## Specification
 check-schemas: ## Validate JSON schema files
