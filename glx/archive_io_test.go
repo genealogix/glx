@@ -214,9 +214,9 @@ persons:
 					},
 					Assertions: map[string]*glxlib.Assertion{
 						"assert-1": {
-							Subject:  glxlib.EntityRef{Person: "person-1"},
+							Subject:  glxlib.EntityRef{Event: "event-1"},
 							Sources:  []string{"source-1"},
-							Property: "born_on",
+							Property: "date",
 							Value:    "1850-01-15",
 						},
 					},
