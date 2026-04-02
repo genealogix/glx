@@ -317,13 +317,20 @@ func TestAncestorSuggestions_NoParents(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-orphan": {Properties: map[string]any{
-				"name":    "Jane Miller",
-				"born_on": "ABT 1832",
-				"born_at": "place-va",
+				"name": "Jane Miller",
 			}},
 		},
 		Relationships: map[string]*glxlib.Relationship{},
-		Events:        map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-orphan": {
+				Type:    glxlib.EventTypeBirth,
+				Date:    "ABT 1832",
+				PlaceID: "place-va",
+				Participants: []glxlib.Participant{
+					{Person: "person-orphan", Role: "principal"},
+				},
+			},
+		},
 		Places: map[string]*glxlib.Place{
 			"place-va": {Name: "Virginia", Type: glxlib.PlaceTypeState},
 		},

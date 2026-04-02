@@ -120,8 +120,8 @@ func TestShowStats_OutputContent(t *testing.T) {
   a2:
     subject:
       person: p1
-    property: born_on
-    value: "1900"
+    property: occupation
+    value: "Farmer"
 `), 0o644))
 
 	require.NoError(t, showStats(tmpDir))

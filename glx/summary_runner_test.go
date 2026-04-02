@@ -40,11 +40,7 @@ func newTestArchive() *glxlib.GLXFile {
 							"fields": map[string]any{"type": "nickname"},
 						},
 					},
-					"gender":  "male",
-					"born_on": "1850-03-15",
-					"born_at": "place-ny",
-					"died_on": "1920-06-01",
-					"died_at": "place-boston",
+					"gender": "male",
 				},
 			},
 			"person-jane": {
@@ -588,14 +584,10 @@ func TestGenerateLifeHistory(t *testing.T) {
 func TestGenerateLifeHistory_IncludesChildren(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-jane": {Properties: map[string]any{
-				"name": "Jane Miller", "gender": "female",
-				"born_on": "ABT 1832",
-				"died_on": "1941-04-17",
-			}},
-			"person-harriett": {Properties: map[string]any{"name": "Harriett Webb", "born_on": "1852"}},
-			"person-elijah":   {Properties: map[string]any{"name": "Elijah Webb", "born_on": "1856"}},
-			"person-mary":     {Properties: map[string]any{"name": "Mary Ellen Webb", "born_on": "1858"}},
+			"person-jane":     {Properties: map[string]any{"name": "Jane Miller", "gender": "female"}},
+			"person-harriett": {Properties: map[string]any{"name": "Harriett Webb"}},
+			"person-elijah":   {Properties: map[string]any{"name": "Elijah Webb"}},
+			"person-mary":     {Properties: map[string]any{"name": "Mary Ellen Webb"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-child-1": {
@@ -620,7 +612,13 @@ func TestGenerateLifeHistory_IncludesChildren(t *testing.T) {
 				},
 			},
 		},
-		Events: map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{
+			"event-birth-jane":     {Type: "birth", Date: "ABT 1832", Participants: []glxlib.Participant{{Person: "person-jane", Role: "principal"}}},
+			"event-death-jane":     {Type: "death", Date: "1941-04-17", Participants: []glxlib.Participant{{Person: "person-jane", Role: "principal"}}},
+			"event-birth-harriett": {Type: "birth", Date: "1852", Participants: []glxlib.Participant{{Person: "person-harriett", Role: "principal"}}},
+			"event-birth-elijah":   {Type: "birth", Date: "1856", Participants: []glxlib.Participant{{Person: "person-elijah", Role: "principal"}}},
+			"event-birth-mary":     {Type: "birth", Date: "1858", Participants: []glxlib.Participant{{Person: "person-mary", Role: "principal"}}},
+		},
 		Places: map[string]*glxlib.Place{},
 	}
 
