@@ -120,6 +120,24 @@ func TestNoteList_String(t *testing.T) {
 	assert.Equal(t, "First\n\nSecond\n\nThird", n.String())
 }
 
+func TestNoteList_UnmarshalNull(t *testing.T) {
+	// YAML null values (null, ~, or empty) must not produce a note
+	// containing the literal string "null" or "~".
+	for _, input := range []string{
+		"notes: null",
+		"notes: ~",
+		"notes:",
+	} {
+		t.Run(input, func(t *testing.T) {
+			var out struct {
+				Notes NoteList `yaml:"notes"`
+			}
+			require.NoError(t, yaml.Unmarshal([]byte(input), &out))
+			assert.True(t, out.Notes.IsEmpty(), "YAML null should produce empty NoteList, got %v", out.Notes)
+		})
+	}
+}
+
 func TestNoteList_IsEmpty(t *testing.T) {
 	assert.True(t, NoteList{}.IsEmpty())
 	assert.True(t, NoteList(nil).IsEmpty())

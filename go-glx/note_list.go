@@ -32,10 +32,10 @@ type NoteList []string
 func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 	switch node.Kind {
 	case yaml.ScalarNode:
-		if node.Value != "" {
-			*n = NoteList{node.Value}
-		} else {
+		if node.Tag == "!!null" || node.Value == "" {
 			*n = nil
+		} else {
+			*n = NoteList{node.Value}
 		}
 		return nil
 	case yaml.SequenceNode:
