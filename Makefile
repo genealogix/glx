@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas check-links release-snapshot
+.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage bench clean fmt check-schemas check-links release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -50,6 +50,10 @@ test: ## Run all tests
 
 test-verbose: ## Run all tests with verbose output
 	go test -v -timeout 10m ./...
+
+bench: ## Run benchmarks
+	go test -bench=. -benchmem -count=6 -run='^$$' -timeout 10m ./glx/... ./go-glx/... > bench.txt
+	@cat bench.txt
 
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
