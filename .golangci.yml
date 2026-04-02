@@ -181,6 +181,7 @@ linters:
 
   exclusions:
     generated: lax
+    warn-unused: true
     rules:
       # Exclude some linters for test files
       - path: _test\.go
@@ -188,7 +189,6 @@ linters:
           - gocyclo
           - gocognit
           - errcheck
-          - dupl
           - mnd
           - goconst
 
