@@ -313,9 +313,9 @@ func TestQueryAssertions_SubjectFilter(t *testing.T) {
 			"person-john": {Properties: map[string]any{"name": "John Smith"}},
 		},
 		Assertions: map[string]*glxlib.Assertion{
-			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "born_on", Value: "1832"},
-			"a-2": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "born_at", Value: "place-va"},
-			"a-3": {Subject: glxlib.EntityRef{Person: "person-john"}, Property: "born_on", Value: "1840"},
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "name", Value: "Jane Webb"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "gender", Value: "female"},
+			"a-3": {Subject: glxlib.EntityRef{Person: "person-john"}, Property: "name", Value: "John Smith"},
 		},
 	}
 
@@ -336,8 +336,8 @@ func TestQueryAssertions_SubjectByName(t *testing.T) {
 			"person-jane": {Properties: map[string]any{"name": "Jane Webb"}},
 		},
 		Assertions: map[string]*glxlib.Assertion{
-			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "born_on", Value: "1832"},
-			"a-2": {Subject: glxlib.EntityRef{Person: "person-other"}, Property: "born_on", Value: "1840"},
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "name", Value: "Jane Webb"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-other"}, Property: "name", Value: "Other Person"},
 		},
 	}
 
