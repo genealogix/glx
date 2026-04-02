@@ -28,17 +28,12 @@ func newTestArchiveForCoverage() *glxlib.GLXFile {
 		Persons: map[string]*glxlib.Person{
 			"person-john": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "John Smith",
-					glxlib.DeprecatedPropertyBornOn: "1840",
-					glxlib.DeprecatedPropertyBornAt: "place-ny",
-					glxlib.DeprecatedPropertyDiedOn: "1910",
-					glxlib.DeprecatedPropertyDiedAt: "place-ny",
+					glxlib.PersonPropertyName: "John Smith",
 				},
 			},
 			"person-jane": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "Jane Doe",
-					glxlib.DeprecatedPropertyBornOn: "1845",
+					glxlib.PersonPropertyName: "Jane Doe",
 				},
 			},
 			"person-no-dates": {
@@ -62,6 +57,13 @@ func newTestArchiveForCoverage() *glxlib.GLXFile {
 				PlaceID: "place-ny",
 				Participants: []glxlib.Participant{
 					{Person: "person-john", Role: "subject"},
+				},
+			},
+			"event-birth-jane": {
+				Type: glxlib.EventTypeBirth,
+				Date: "1845",
+				Participants: []glxlib.Participant{
+					{Person: "person-jane", Role: "subject"},
 				},
 			},
 			"event-census-1850": {
@@ -114,9 +116,9 @@ func TestBuildCoverage_BasicPerson(t *testing.T) {
 
 	assert.Equal(t, "person-john", result.PersonID)
 	assert.Equal(t, "John Smith", result.PersonName)
-	assert.Equal(t, "1840", result.BornOn)
-	assert.Equal(t, "New York, NY", result.BornAt)
-	assert.Equal(t, "1910", result.DiedOn)
+	assert.Equal(t, "1840", result.BirthDate)
+	assert.Equal(t, "New York, NY", result.BirthPlace)
+	assert.Equal(t, "1910", result.DeathDate)
 	assert.Greater(t, result.Expected, 0)
 	assert.Greater(t, result.Found, 0)
 	assert.LessOrEqual(t, result.Found, result.Expected)
@@ -233,8 +235,8 @@ func TestCollectPersonSources(t *testing.T) {
 	}
 	archive.Assertions["assertion-1"] = &glxlib.Assertion{
 		Subject:   glxlib.EntityRef{Person: "person-john"},
-		Property:  "born_on",
-		Value:     "1840",
+		Property:  "name",
+		Value:     "John Smith",
 		Citations: []string{"citation-1850"},
 	}
 
@@ -566,8 +568,7 @@ func TestCollectPersonStates_FromEventPlace(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-1": {
 				Properties: map[string]any{
-					glxlib.PersonPropertyName:   "Test Person",
-					glxlib.DeprecatedPropertyBornOn: "1850",
+					glxlib.PersonPropertyName: "Test Person",
 				},
 			},
 		},
