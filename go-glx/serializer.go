@@ -301,7 +301,7 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		if err := yaml.Unmarshal(data, &partial); err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
 		}
-		duplicates := glx.Merge(&partial)
+		duplicates, _ := glx.Merge(&partial)
 		allDuplicates = append(allDuplicates, duplicates...)
 	}
 
