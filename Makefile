@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify clean fmt check-schemas check-links release-snapshot
+.PHONY: help check build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -13,6 +13,10 @@ install-deps: ## Install Go modules and npm packages
 	go mod download
 	@echo "Installing website dependencies..."
 	cd website && npm install
+
+## Verification
+check: tidy-check lint test check-schemas check-links validate-examples ## Run all checks (mirrors CI)
+	@echo "All checks passed."
 
 ## Build
 build-cli: ## Build the glx binary to bin/
@@ -76,9 +80,19 @@ mod-tidy: ## Tidy Go module dependencies
 mod-verify: ## Verify Go module integrity
 	go mod verify
 
+tidy-check: ## Verify go.mod and go.sum are tidy
+	go mod tidy -diff
+
 ## Specification
 check-schemas: ## Validate JSON schema files
 	@node specification/validate-schemas.mjs
+
+## Example Validation
+validate-examples: build-cli ## Validate all example archives
+	@for dir in docs/examples/*/; do \
+	  echo "Validating $$dir..."; \
+	  ./bin/glx validate "$$dir" || exit 1; \
+	done
 
 ## Release
 release-snapshot: ## Build cross-platform binaries locally (no publish)
