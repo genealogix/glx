@@ -21,7 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **auto-resolve-conflicts: deduplicate changelog section headers after conflict resolution** — The sed-based "keep both sides" merge produced duplicate `###`/`####` headers when both sides added entries to the same section. Added an awk deduplication pass that merges entries under a single header (#331)
 - **auto-resolve and auto-update workflows can no longer race** — Both workflows now share a `branch-maintenance` concurrency group. Auto-resolve triggers on `workflow_run` after auto-update succeeds instead of independently on push to main. Auto-update cron reduced from every 30min to daily; auto-resolve cron removed (runs only after auto-update) (#332)
 - **release workflow no longer fails when Discord webhook is unconfigured** — Guard the Discord announcement step with an empty-check on the webhook secret so missing secrets skip the step instead of failing the release job. Also switch to `curl -sf` for proper HTTP error handling (#342)
-
+- **CODEOWNERS: activate rules with real usernames and fix stale paths** — All rules were commented out and several paths were stale (`/schema/`, `/test-suite/`, `/examples/`). Activated with individual usernames, updated paths to match current directory structure (#330)
 ### Changed
 
 #### CLI
@@ -30,9 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### Date Handling
+- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export.
+- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
+- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
 - **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
-
-#### CLI
 - **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview (#264)
 - **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360)
 - **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
