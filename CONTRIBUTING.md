@@ -220,7 +220,7 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 3. Ensure all CI checks pass
 4. Add tests for new features and bug fixes
 5. Update documentation if behavior changes
-6. Update `CHANGELOG.md` for user-facing changes (add to the unreleased section)
+6. Update `CHANGELOG.md` for user-facing changes (add to the unreleased section). Every entry must include an issue or PR reference — e.g. `(#123)`, `Fixes #123`, `Closes #123`, `(PR #456)`
 
 ### Review Process
 
