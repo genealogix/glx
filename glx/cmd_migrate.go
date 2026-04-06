@@ -73,7 +73,7 @@ func migrateArchive(archivePath string) error {
 		archive = loaded
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	if err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}

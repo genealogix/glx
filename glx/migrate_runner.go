@@ -39,9 +39,9 @@ var deprecatedProps = []string{
 	glxlib.DeprecatedPropertyBuriedAt,
 }
 
-// migrateBirthDeathProperties converts deprecated born_on/born_at/died_on/died_at/buried_at
+// migrateVitalEventProperties converts deprecated born_on/born_at/died_on/died_at/buried_on/buried_at
 // person properties into birth/death/burial events. It modifies the archive in place.
-func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error) {
+func migrateVitalEventProperties(archive *glxlib.GLXFile) (*MigrateReport, error) {
 	report := &MigrateReport{}
 
 	if archive.Events == nil {

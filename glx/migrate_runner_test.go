@@ -36,7 +36,7 @@ func TestMigrate_CreatesBirthEventFromProperties(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.EventsCreated)
@@ -78,7 +78,7 @@ func TestMigrate_CreatesDeathEventFromProperties(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.EventsCreated)
@@ -121,7 +121,7 @@ func TestMigrate_MergesIntoExistingEvent(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, report.EventsCreated)
@@ -156,7 +156,7 @@ func TestMigrate_DoesNotOverwriteExistingEventData(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, report.EventsCreated)
@@ -199,7 +199,7 @@ func TestMigrate_ConvertsPropertyAssertionsToEventAssertions(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, report.AssertionsMigrated)
@@ -244,7 +244,7 @@ func TestMigrate_HandlesBornAtWithoutBornOn(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.EventsCreated)
@@ -275,7 +275,7 @@ func TestMigrate_NoDeprecatedProperties(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, report.EventsCreated)
@@ -298,7 +298,7 @@ func TestMigrate_BothBirthAndDeathProperties(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, report.EventsCreated) // one birth, one death
@@ -337,7 +337,7 @@ func TestMigrate_StructuredPropertyShapes(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, report.EventsCreated)
@@ -383,7 +383,7 @@ func TestMigrate_OrphanedAssertionCreatesEvent(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, report.EventsCreated, "should create birth and death events")
@@ -425,7 +425,7 @@ func TestMigrate_UnrecognizedShapePreservesProperty(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	// Property should NOT be removed since the value couldn't be transferred
@@ -457,7 +457,7 @@ func TestMigrate_UnrecognizedShapeWithExistingEvent(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, report.PropertiesRemoved)
@@ -488,7 +488,7 @@ func TestMigrate_UnrecognizedShapeWithPopulatedEvent(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.PropertiesRemoved)
@@ -509,7 +509,7 @@ func TestMigrate_CreatesBurialEventFromBuriedAt(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.EventsCreated)
@@ -550,7 +550,7 @@ func TestMigrate_CreatesBurialEventFromBuriedOnAndAt(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.EventsCreated)
@@ -589,7 +589,7 @@ func TestMigrate_MergesBurialIntoExistingEvent(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, report.EventsCreated)
@@ -619,7 +619,7 @@ func TestMigrate_BuriedAtAssertionMigrated(t *testing.T) {
 		},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.AssertionsMigrated)
@@ -644,7 +644,7 @@ func TestMigrate_BirthDeathAndBurialTogether(t *testing.T) {
 		Events: map[string]*glxlib.Event{},
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	require.NoError(t, err)
 
 	assert.Equal(t, 3, report.EventsCreated)
