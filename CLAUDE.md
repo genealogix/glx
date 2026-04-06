@@ -59,6 +59,7 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - Update `CHANGELOG.md` for user-facing changes
 - Add to the **latest unreleased section** (check with `git tag --sort=-v:refname | head -1`)
 - Subsections: Added, Changed, Fixed, Removed
+- Every entry MUST include an issue or PR reference — e.g. `(#123)`, `Fixes #123`, `Closes #123`, `(PR #456)`
 - **Feature branch hygiene**: `git checkout main -- CHANGELOG.md`, then re-add branch entries
 
 ## Go Conventions

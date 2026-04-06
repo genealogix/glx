@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help build build-cli build-website install-deps lint lint-fix test test-verbose test-coverage clean fmt check-schemas check-links release-snapshot
+.PHONY: help check build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -13,6 +13,10 @@ install-deps: ## Install Go modules and npm packages
 	go mod download
 	@echo "Installing website dependencies..."
 	cd website && npm install
+
+## Verification
+check: tidy-check lint test check-schemas check-links validate-examples ## Run all checks (mirrors CI)
+	@echo "All checks passed."
 
 ## Build
 build-cli: ## Build the glx binary to bin/
@@ -46,24 +50,49 @@ lint-fix: ## Run linters with automatic fixes
 
 ## Testing
 test: ## Run all tests
-	go test ./...
+	go test -timeout 10m ./...
 
 test-verbose: ## Run all tests with verbose output
-	go test -v ./...
+	go test -v -timeout 10m ./...
+
+bench: ## Run benchmarks
+	go test -bench=. -benchmem -count=6 -run='^$$' -timeout 10m ./glx/... ./go-glx/... > bench.txt
+	@cat bench.txt
+
+test-race: ## Run tests with race detector
+	CGO_ENABLED=1 go test -race -timeout 15m ./...
 
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
 	@mkdir -p coverage
-	go test -coverprofile=coverage/coverage.out ./...
+	go test -timeout 10m -coverprofile=coverage/coverage.out ./...
 	@echo "Generating HTML coverage report..."
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 	@echo "Coverage report generated at coverage/coverage.html"
 	@echo "Opening coverage report in browser..."
 	@go tool cover -func=coverage/coverage.out | tail -n 1
 
+## Module Management
+mod-tidy: ## Tidy Go module dependencies
+	go mod tidy
+	@echo "go.mod and go.sum are tidy"
+
+mod-verify: ## Verify Go module integrity
+	go mod verify
+
+tidy-check: ## Verify go.mod and go.sum are tidy
+	go mod tidy -diff
+
 ## Specification
 check-schemas: ## Validate JSON schema files
 	@node specification/validate-schemas.mjs
+
+## Example Validation
+validate-examples: build-cli ## Validate all example archives
+	@for dir in docs/examples/*/; do \
+	  echo "Validating $$dir..."; \
+	  ./bin/glx validate "$$dir" || exit 1; \
+	done
 
 ## Release
 release-snapshot: ## Build cross-platform binaries locally (no publish)

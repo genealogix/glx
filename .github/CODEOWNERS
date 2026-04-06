@@ -1,67 +1,29 @@
 # GENEALOGIX Repository Code Owners
 #
-# This file defines individuals or teams responsible for reviewing
-# specific areas of the codebase. Pull requests will automatically
-# request reviews from the designated code owners.
+# This file defines individuals responsible for reviewing specific areas
+# of the codebase. Pull requests will automatically request reviews from
+# the designated code owners.
 #
 # Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Default owners for everything in the repository
-# These owners will be requested for review when no other owner matches
-# * @genealogix/maintainers
+* @noahbjohnson @isaacschepp
 
 # Core Specification Documents
-# /specification/ @genealogix/specification-team
-# /specification/1-introduction.md @genealogix/spec-leads
-# /specification/2-core-concepts.md @genealogix/spec-leads
-# /specification/3-file-structure.md @genealogix/spec-leads
-# /specification/4-entity-types/ @genealogix/entity-experts
+/specification/ @noahbjohnson
 
-# JSON Schemas - require validation expertise
-# /schema/ @genealogix/schema-team
-# /schema/v1/*.schema.json @genealogix/schema-team
-# /schema/meta/ @genealogix/schema-team
+# JSON Schemas
+/specification/schema/ @noahbjohnson
 
-# CLI Tool - require Go development expertise
-# /glx/ @genealogix/cli-developers
-# /glx/main.go @genealogix/cli-developers
-# /glx/README.md @genealogix/cli-developers @genealogix/documentation-team
+# Go library (pure, no I/O)
+/go-glx/ @noahbjohnson @isaacschepp
 
-# Examples - require genealogical expertise
-# /examples/ @genealogix/genealogy-experts @genealogix/example-maintainers
-# /examples/complete-family/ @genealogix/genealogy-experts
-# /examples/README.md @genealogix/documentation-team
+# CLI Tool
+/glx/ @noahbjohnson @isaacschepp
 
-# Test Suite - require testing expertise
-# /test-suite/ @genealogix/testing-team
-# /test-suite/run-tests.sh @genealogix/testing-team
-# /test-suite/valid/ @genealogix/testing-team
-# /test-suite/invalid/ @genealogix/testing-team
+# Documentation and Examples
+/docs/ @noahbjohnson
+/website/ @noahbjohnson
 
-# Documentation
-# /docs/ @genealogix/documentation-team
-# /docs/quickstart.md @genealogix/documentation-team
-# /docs/guides/ @genealogix/genealogy-experts @genealogix/documentation-team
-# /docs/diagrams/ @genealogix/architects
-
-# GitHub Configuration
-# /.github/ @genealogix/maintainers
-# /.github/workflows/ @genealogix/ci-maintainers
-# /.github/ISSUE_TEMPLATE/ @genealogix/maintainers
-# /.github/PULL_REQUEST_TEMPLATE.md @genealogix/maintainers
-# /.github/CODEOWNERS @genealogix/maintainers
-
-# Community and Governance
-# /CODE_OF_CONDUCT.md @genealogix/maintainers
-# /CONTRIBUTING.md @genealogix/maintainers @genealogix/documentation-team
-# /SECURITY.md @genealogix/security-team
-# /LICENSE @genealogix/legal-team
-
-# Root level configuration and documentation
-# /README.md @genealogix/maintainers @genealogix/documentation-team
-# /CHANGELOG.md @genealogix/maintainers
-# /.gitignore @genealogix/maintainers
-
-# Note: If specific teams don't exist yet, these can be replaced with
-# individual GitHub usernames (e.g., @username) or removed until teams
-# are established. This file serves as a template for proper governance.
+# GitHub Configuration and CI
+/.github/ @noahbjohnson @isaacschepp
