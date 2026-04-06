@@ -368,7 +368,7 @@ func TestMigrate_OrphanedAssertionCreatesEvent(t *testing.T) {
 				},
 			},
 		},
-		Events:     map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{},
 		Assertions: map[string]*glxlib.Assertion{
 			"assertion-orphan-born": {
 				Subject:  glxlib.EntityRef{Person: "person-1"},
@@ -494,4 +494,175 @@ func TestMigrate_UnrecognizedShapeWithPopulatedEvent(t *testing.T) {
 	assert.Equal(t, 1, report.PropertiesRemoved)
 	_, exists := archive.Persons["person-1"].Properties[glxlib.DeprecatedPropertyBornOn]
 	assert.False(t, exists, "property safe to remove when event already has date")
+}
+
+func TestMigrate_CreatesBurialEventFromBuriedAt(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.DeprecatedPropertyBuriedAt: "place-gates-cemetery",
+					"name":                            "John C Young",
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, report.EventsCreated)
+	assert.Equal(t, 1, report.PropertiesRemoved)
+
+	// Verify the deprecated property was removed.
+	person := archive.Persons["person-1"]
+	assert.NotContains(t, person.Properties, glxlib.DeprecatedPropertyBuriedAt)
+	assert.Contains(t, person.Properties, "name")
+
+	// Verify a burial event was created.
+	var burialEvent *glxlib.Event
+	for _, event := range archive.Events {
+		if event.Type == glxlib.EventTypeBurial {
+			burialEvent = event
+
+			break
+		}
+	}
+	require.NotNil(t, burialEvent, "burial event should be created")
+	assert.Empty(t, burialEvent.Date)
+	assert.Equal(t, "place-gates-cemetery", burialEvent.PlaceID)
+	require.Len(t, burialEvent.Participants, 1)
+	assert.Equal(t, "person-1", burialEvent.Participants[0].Person)
+	assert.Equal(t, glxlib.ParticipantRolePrincipal, burialEvent.Participants[0].Role)
+}
+
+func TestMigrate_CreatesBurialEventFromBuriedOnAndAt(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.DeprecatedPropertyBuriedOn: "1920-12-01",
+					glxlib.DeprecatedPropertyBuriedAt: "place-cemetery",
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, report.EventsCreated)
+	assert.Equal(t, 2, report.PropertiesRemoved)
+	assert.Nil(t, archive.Persons["person-1"].Properties)
+
+	var burialEvent *glxlib.Event
+	for _, event := range archive.Events {
+		if event.Type == glxlib.EventTypeBurial {
+			burialEvent = event
+
+			break
+		}
+	}
+	require.NotNil(t, burialEvent)
+	assert.Equal(t, glxlib.DateString("1920-12-01"), burialEvent.Date)
+	assert.Equal(t, "place-cemetery", burialEvent.PlaceID)
+}
+
+func TestMigrate_MergesBurialIntoExistingEvent(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.DeprecatedPropertyBuriedAt: "place-cemetery",
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-existing-burial": {
+				Type: glxlib.EventTypeBurial,
+				Participants: []glxlib.Participant{
+					{Person: "person-1", Role: glxlib.ParticipantRolePrincipal},
+				},
+			},
+		},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 0, report.EventsCreated)
+	assert.Equal(t, 1, report.EventsMerged)
+	assert.Equal(t, 1, report.PropertiesRemoved)
+
+	event := archive.Events["event-existing-burial"]
+	assert.Equal(t, "place-cemetery", event.PlaceID)
+}
+
+func TestMigrate_BuriedAtAssertionMigrated(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.DeprecatedPropertyBuriedAt: "place-cemetery",
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-burial": {
+				Subject:  glxlib.EntityRef{Person: "person-1"},
+				Property: glxlib.DeprecatedPropertyBuriedAt,
+				Value:    "place-cemetery",
+			},
+		},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, report.AssertionsMigrated)
+
+	a := archive.Assertions["assertion-burial"]
+	assert.NotEmpty(t, a.Subject.Event)
+	assert.Empty(t, a.Subject.Person)
+	assert.Equal(t, "place", a.Property)
+}
+
+func TestMigrate_BirthDeathAndBurialTogether(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {
+				Properties: map[string]any{
+					glxlib.DeprecatedPropertyBornOn:   "1850",
+					glxlib.DeprecatedPropertyDiedOn:   "1920",
+					glxlib.DeprecatedPropertyBuriedAt: "place-cemetery",
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{},
+	}
+
+	report, err := migrateBirthDeathProperties(archive)
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, report.EventsCreated)
+	assert.Equal(t, 3, report.PropertiesRemoved)
+
+	birthFound, deathFound, burialFound := false, false, false
+	for _, event := range archive.Events {
+		switch event.Type {
+		case glxlib.EventTypeBirth:
+			birthFound = true
+		case glxlib.EventTypeDeath:
+			deathFound = true
+		case glxlib.EventTypeBurial:
+			burialFound = true
+			assert.Equal(t, "place-cemetery", event.PlaceID)
+		}
+	}
+	assert.True(t, birthFound, "birth event should exist")
+	assert.True(t, deathFound, "death event should exist")
+	assert.True(t, burialFound, "burial event should exist")
 }

@@ -23,10 +23,10 @@ import (
 
 // MigrateReport summarizes the changes made by a migration run.
 type MigrateReport struct {
-	EventsCreated      int
-	EventsMerged       int
-	PropertiesRemoved  int
-	AssertionsMigrated int
+	EventsCreated       int
+	EventsMerged        int
+	PropertiesRemoved   int
+	AssertionsMigrated  int
 	VocabEntriesRemoved int
 }
 
@@ -35,10 +35,12 @@ var deprecatedProps = []string{
 	glxlib.DeprecatedPropertyBornAt,
 	glxlib.DeprecatedPropertyDiedOn,
 	glxlib.DeprecatedPropertyDiedAt,
+	glxlib.DeprecatedPropertyBuriedOn,
+	glxlib.DeprecatedPropertyBuriedAt,
 }
 
-// migrateBirthDeathProperties converts deprecated born_on/born_at/died_on/died_at
-// person properties into birth/death events. It modifies the archive in place.
+// migrateBirthDeathProperties converts deprecated born_on/born_at/died_on/died_at/buried_at
+// person properties into birth/death/burial events. It modifies the archive in place.
 func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error) {
 	report := &MigrateReport{}
 
@@ -73,8 +75,10 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 		bornAt, hasBornAt := person.Properties[glxlib.DeprecatedPropertyBornAt]
 		diedOn, hasDiedOn := person.Properties[glxlib.DeprecatedPropertyDiedOn]
 		diedAt, hasDiedAt := person.Properties[glxlib.DeprecatedPropertyDiedAt]
+		buriedOn, hasBuriedOn := person.Properties[glxlib.DeprecatedPropertyBuriedOn]
+		buriedAt, hasBuriedAt := person.Properties[glxlib.DeprecatedPropertyBuriedAt]
 
-		if !hasBornOn && !hasBornAt && !hasDiedOn && !hasDiedAt {
+		if !hasBornOn && !hasBornAt && !hasDiedOn && !hasDiedAt && !hasBuriedOn && !hasBuriedAt {
 			continue
 		}
 
@@ -120,6 +124,27 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 				report.PropertiesRemoved++
 			}
 		}
+
+		// Handle burial properties.
+		if hasBuriedOn || hasBuriedAt {
+			burialEventID, transferred, err := migrateEventProperties(
+				archive, personID, glxlib.EventTypeBurial,
+				buriedOn, hasBuriedOn, buriedAt, hasBuriedAt, report,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("person %s burial: %w", personID, err)
+			}
+			migrateAssertions(archive, personID, burialEventID,
+				glxlib.DeprecatedPropertyBuriedOn, glxlib.DeprecatedPropertyBuriedAt, report)
+			if transferred.date {
+				delete(person.Properties, glxlib.DeprecatedPropertyBuriedOn)
+				report.PropertiesRemoved++
+			}
+			if transferred.place {
+				delete(person.Properties, glxlib.DeprecatedPropertyBuriedAt)
+				report.PropertiesRemoved++
+			}
+		}
 		if len(person.Properties) == 0 {
 			person.Properties = nil
 		}
@@ -148,6 +173,10 @@ func migrateBirthDeathProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 			eventType, newProp = glxlib.EventTypeDeath, "date"
 		case glxlib.DeprecatedPropertyDiedAt:
 			eventType, newProp = glxlib.EventTypeDeath, "place"
+		case glxlib.DeprecatedPropertyBuriedOn:
+			eventType, newProp = glxlib.EventTypeBurial, "date"
+		case glxlib.DeprecatedPropertyBuriedAt:
+			eventType, newProp = glxlib.EventTypeBurial, "place"
 		default:
 			continue
 		}
