@@ -30,11 +30,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### Date Handling
-- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export.
+- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
 
 #### CLI
-- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
-- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
+- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview (#264)
+- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360)
 - **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
 #### GEDCOM Import
 - **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
@@ -45,7 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Removed
 
 #### Person Properties
-- **BREAKING**: Removed `born_on`, `born_at`, `died_on`, `died_at` person properties. Birth and death information now lives exclusively on Event entities of type `birth`/`death`. Use `glx migrate` to convert existing archives
+- **BREAKING**: Removed `born_on`, `born_at`, `died_on`, `died_at` person properties. Birth and death information now lives exclusively on Event entities of type `birth`/`death`. Use `glx migrate` to convert existing archives (#360)
 
 ---
 
