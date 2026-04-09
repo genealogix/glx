@@ -15,8 +15,10 @@
 package glx
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.
@@ -562,15 +564,16 @@ func mergeMap[T any](mapType string, dest, src map[string]*T) []string {
 
 // mergeMapDedup merges src into dest, silently skipping entries where the key
 // exists and the value is semantically equal. Only reports conflicts where the
-// same key maps to a different value. Uses JSON marshaling for comparison so
-// that nil maps and empty maps are treated as equivalent.
+// same key maps to a different value. Uses YAML marshaling for comparison so
+// that nil maps/slices and empty maps/slices are treated as equivalent (both
+// omitted by omitempty tags).
 func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts []string, skipped int) {
 	if dest == nil || src == nil {
 		return nil, 0
 	}
 	for k, v := range src {
 		if existing, exists := dest[k]; exists {
-			if jsonEqual(existing, v) {
+			if yamlEqual(existing, v) {
 				skipped++
 			} else {
 				conflicts = append(conflicts, fmt.Sprintf("conflict %s ID: %s", mapType, k))
@@ -583,14 +586,14 @@ func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts []
 	return conflicts, skipped
 }
 
-// jsonEqual compares two values by JSON-marshaling both, treating nil maps/slices
-// and empty maps/slices as equivalent.
-func jsonEqual(a, b any) bool {
-	aj, err1 := json.Marshal(a)
-	bj, err2 := json.Marshal(b)
+// yamlEqual compares two values by YAML-marshaling both. This correctly treats
+// nil and empty maps/slices as equivalent because the struct tags use omitempty.
+func yamlEqual(a, b any) bool {
+	ay, err1 := yaml.Marshal(a)
+	by, err2 := yaml.Marshal(b)
 	if err1 != nil || err2 != nil {
 		return false
 	}
 
-	return string(aj) == string(bj)
+	return bytes.Equal(ay, by)
 }

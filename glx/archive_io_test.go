@@ -124,10 +124,10 @@ func TestLoadArchive(t *testing.T) {
 					return &testError{"expected 1 person (after merge), got %d", []any{len(glx.Persons)}}
 				}
 				if len(duplicates) != 1 {
-					return &testError{"expected 1 duplicate, got %d", []any{len(duplicates)}}
+					return &testError{"expected 1 conflict, got %d", []any{len(duplicates)}}
 				}
 				if duplicates[0] != "conflict persons ID: person-1" {
-					return &testError{"expected duplicate to be 'conflict persons ID: person-1', got %s", []any{duplicates[0]}}
+					return &testError{"expected conflict to be 'conflict persons ID: person-1', got %s", []any{duplicates[0]}}
 				}
 
 				return nil
