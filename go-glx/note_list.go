@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -55,15 +56,7 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 
 		return nil
 	default:
-		// Tolerate unexpected types — treat empty value as nil (consistent
-		// with empty scalar handling), otherwise use as a single note.
-		if node.Value == "" {
-			*n = nil
-		} else {
-			*n = NoteList{node.Value}
-		}
-
-		return nil
+		return fmt.Errorf("notes: expected string or list, got YAML node kind %d", node.Kind)
 	}
 }
 
