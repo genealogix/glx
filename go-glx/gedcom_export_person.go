@@ -22,17 +22,19 @@ import (
 
 // Properties that are handled specially and should not be exported as generic tags.
 var skipPersonProperties = map[string]bool{
-	PersonPropertyName:      true,
-	PersonPropertyGender:    true,
-	DeprecatedPropertyBornOn: true,
-	DeprecatedPropertyBornAt: true,
-	DeprecatedPropertyDiedOn: true,
-	DeprecatedPropertyDiedAt: true,
-	PersonPropertyResidence: true,
-	PropertyNotes:           true,
-	PropertyMedia:           true,
-	PropertySources:         true,
-	PropertyCitations:       true,
+	PersonPropertyName:         true,
+	PersonPropertyGender:       true,
+	DeprecatedPropertyBornOn:   true,
+	DeprecatedPropertyBornAt:   true,
+	DeprecatedPropertyDiedOn:   true,
+	DeprecatedPropertyDiedAt:   true,
+	DeprecatedPropertyBuriedOn: true,
+	DeprecatedPropertyBuriedAt: true,
+	PersonPropertyResidence:    true,
+	PropertyNotes:              true,
+	PropertyMedia:              true,
+	PropertySources:            true,
+	PropertyCitations:          true,
 }
 
 // buildPersonEventsIndex scans all events and builds a map from person ID

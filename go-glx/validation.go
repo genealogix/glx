@@ -471,10 +471,12 @@ func (glx *GLXFile) validateEntityProperties(
 // removedProperties maps property names that have been removed from the spec
 // to human-readable migration guidance. These generate validation errors.
 var removedProperties = map[string]string{
-	DeprecatedPropertyBornOn: "use birth events instead",
-	DeprecatedPropertyBornAt: "use birth events instead",
-	DeprecatedPropertyDiedOn: "use death events instead",
-	DeprecatedPropertyDiedAt: "use death events instead",
+	DeprecatedPropertyBornOn:   "use birth events instead",
+	DeprecatedPropertyBornAt:   "use birth events instead",
+	DeprecatedPropertyDiedOn:   "use death events instead",
+	DeprecatedPropertyDiedAt:   "use death events instead",
+	DeprecatedPropertyBuriedOn: "use burial events instead",
+	DeprecatedPropertyBuriedAt: "use burial events instead",
 }
 
 // validateProperties validates a single `properties` map against its vocabulary.
