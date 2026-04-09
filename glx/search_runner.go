@@ -41,9 +41,15 @@ type searchEntityType struct {
 
 // searchEntityTypes is the canonical ordered list of searchable entity types.
 var searchEntityTypes = []searchEntityType{
-	{"persons", "Persons"}, {"events", "Events"}, {"places", "Places"},
-	{"sources", "Sources"}, {"citations", "Citations"}, {"repositories", "Repositories"},
-	{"assertions", "Assertions"}, {"relationships", "Relationships"}, {"media", "Media"},
+	{"persons", "Persons"},
+	{"events", "Events"},
+	{"places", "Places"},
+	{"sources", "Sources"},
+	{"citations", "Citations"},
+	{"repositories", "Repositories"},
+	{"assertions", "Assertions"},
+	{"relationships", "Relationships"},
+	{"media", "Media"},
 }
 
 // searchEntityTypeMap provides O(1) lookup by key.
