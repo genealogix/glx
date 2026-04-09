@@ -26,10 +26,10 @@ import (
 var migrateCmd = &cobra.Command{
 	Use:   "migrate [archive]",
 	Short: "Migrate an archive to the current format",
-	Long: `Converts deprecated person properties (born_on, born_at, died_on, died_at) to birth/death events.
+	Long: `Converts deprecated person properties (born_on, born_at, died_on, died_at, buried_on, buried_at) to birth/death/burial events.
 
 For each person with deprecated properties:
-- Creates a birth or death event if none exists
+- Creates a birth, death, or burial event if none exists
 - Merges date/place into existing events if fields are empty
 - Never overwrites existing event data
 - Converts assertions to reference the event instead of the person property`,
@@ -73,7 +73,7 @@ func migrateArchive(archivePath string) error {
 		archive = loaded
 	}
 
-	report, err := migrateBirthDeathProperties(archive)
+	report, err := migrateVitalEventProperties(archive)
 	if err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
