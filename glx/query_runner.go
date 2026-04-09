@@ -200,7 +200,6 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 							}
 						}
 						if matched {
-
 							break
 						}
 					}
@@ -212,6 +211,7 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 				for _, n := range allNames {
 					if containsFold(n, opts.Name) {
 						matched = true
+
 						break
 					}
 				}
