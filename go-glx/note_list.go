@@ -15,11 +15,15 @@
 package glx
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+// errUnexpectedNoteKind is returned when notes contains an unexpected YAML node type.
+var errUnexpectedNoteKind = errors.New("notes: expected string or list")
 
 // NoteList holds one or more notes. It deserializes from either a YAML scalar
 // string (single note) or a YAML sequence (multiple notes), ensuring backwards
@@ -56,7 +60,7 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 
 		return nil
 	default:
-		return fmt.Errorf("notes: expected string or list, got YAML node kind %d", node.Kind)
+		return fmt.Errorf("%w, got YAML node kind %d", errUnexpectedNoteKind, node.Kind)
 	}
 }
 
