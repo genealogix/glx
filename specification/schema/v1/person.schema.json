@@ -47,8 +47,8 @@
                 },
                 "confidence": {
                   "type": "string",
-                  "description": "Confidence level for this lead.",
-                  "enum": ["eliminated", "speculative", "low", "medium", "medium-high", "high", "confirmed"]
+                  "minLength": 1,
+                  "description": "Confidence level for this lead. Standard values: eliminated, speculative, low, medium, medium-high, high, confirmed."
                 },
                 "next_steps": {
                   "type": "array",
@@ -70,7 +70,7 @@
             }
           }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       }
     }
   },

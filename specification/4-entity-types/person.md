@@ -286,6 +286,8 @@ research:
 
 **Lead confidence levels:**
 
+The following standard levels are recommended, but any non-empty string is accepted to support organization-specific terminology:
+
 | Level | Meaning |
 |-------|---------|
 | `eliminated` | Definitively ruled out |
@@ -296,10 +298,19 @@ research:
 | `high` | Very strong evidence, near-certain |
 | `confirmed` | Proven with direct documentation |
 
+**Status values:**
+
+| Status | Meaning |
+|--------|---------|
+| `open` | Actively being researched |
+| `closed` | Resolved — answer found or deemed unresolvable |
+| `blocked` | Cannot proceed — waiting on records access, DNA results, or another researcher. Use `summary` to describe the blocker and `leads[].next_steps` to capture what to do when unblocked. |
+
 **Key Points:**
 - Record null results in `completed_research` to prevent repeating searches across sessions
 - Mark eliminated leads with `confidence: eliminated` rather than deleting them
 - The `status` field enables filtering for open brickwalls across an archive
+- Research topics allow additional custom fields beyond the standard ones for forward compatibility
 
 ## Usage Patterns
 
