@@ -43,3 +43,4 @@ jobs:
         with:
           version: v2.11
           args: --verbose --timeout=5m
+          only-new-issues: true
