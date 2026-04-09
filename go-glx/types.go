@@ -15,8 +15,8 @@
 package glx
 
 import (
+	"encoding/json"
 	"fmt"
-	"reflect"
 )
 
 // Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.
@@ -410,7 +410,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	// Merge metadata (first one wins; report duplicate if both have content)
 	if other.ImportMetadata != nil && other.ImportMetadata.hasContent() {
 		if g.ImportMetadata != nil && g.ImportMetadata.hasContent() {
-			conflicts = append(conflicts, "duplicate metadata: metadata appears in multiple files")
+			conflicts = append(conflicts, "conflict metadata: metadata appears in multiple files")
 		} else {
 			g.ImportMetadata = other.ImportMetadata
 		}
@@ -542,34 +542,35 @@ func (g *GLXFile) initMaps() {
 	}
 }
 
-// mergeMap merges src into dest, reporting all key collisions as duplicates.
+// mergeMap merges src into dest, reporting all key collisions as conflicts.
 // Used for entity maps where any ID collision is significant.
 func mergeMap[T any](mapType string, dest, src map[string]*T) []string {
-	var duplicates []string
+	var conflicts []string
 	if dest == nil || src == nil {
-		return duplicates
+		return conflicts
 	}
 	for k, v := range src {
 		if _, exists := dest[k]; exists {
-			duplicates = append(duplicates, fmt.Sprintf("duplicate %s ID: %s", mapType, k))
+			conflicts = append(conflicts, fmt.Sprintf("conflict %s ID: %s", mapType, k))
 		} else {
 			dest[k] = v
 		}
 	}
-	return duplicates
+
+	return conflicts
 }
 
 // mergeMapDedup merges src into dest, silently skipping entries where the key
-// exists and the value is deeply equal. Only reports conflicts where the same
-// key maps to a different value. Used for vocabulary/property maps where
-// identical standard vocabularies in both archives should not produce noise.
+// exists and the value is semantically equal. Only reports conflicts where the
+// same key maps to a different value. Uses JSON marshaling for comparison so
+// that nil maps and empty maps are treated as equivalent.
 func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts []string, skipped int) {
 	if dest == nil || src == nil {
 		return nil, 0
 	}
 	for k, v := range src {
 		if existing, exists := dest[k]; exists {
-			if reflect.DeepEqual(existing, v) {
+			if jsonEqual(existing, v) {
 				skipped++
 			} else {
 				conflicts = append(conflicts, fmt.Sprintf("conflict %s ID: %s", mapType, k))
@@ -580,4 +581,16 @@ func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts []
 	}
 
 	return conflicts, skipped
+}
+
+// jsonEqual compares two values by JSON-marshaling both, treating nil maps/slices
+// and empty maps/slices as equivalent.
+func jsonEqual(a, b any) bool {
+	aj, err1 := json.Marshal(a)
+	bj, err2 := json.Marshal(b)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+
+	return string(aj) == string(bj)
 }

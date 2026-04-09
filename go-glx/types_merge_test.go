@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -89,7 +90,7 @@ func TestGLXFile_Merge_Persons_WithDuplicates(t *testing.T) {
 
 	conflicts, _ := g1.Merge(g2)
 	require.Len(t, conflicts, 1, "should detect one duplicate")
-	require.Contains(t, conflicts[0], "duplicate persons ID: person-1")
+	require.Contains(t, conflicts[0], "conflict persons ID: person-1")
 
 	// person-2 should still be merged
 	require.Len(t, g1.Persons, 2, "should merge non-duplicate persons")
@@ -507,15 +508,15 @@ func TestGLXFile_Merge_DuplicateReporting(t *testing.T) {
 	}
 	duplicateStr += duplicateStrSb476.String()
 
-	require.Contains(t, duplicateStr, "duplicate persons ID: person-1")
-	require.Contains(t, duplicateStr, "duplicate events ID: event-1")
-	require.Contains(t, duplicateStr, "duplicate relationships ID: rel-1")
-	require.Contains(t, duplicateStr, "duplicate places ID: place-1")
-	require.Contains(t, duplicateStr, "duplicate sources ID: source-1")
-	require.Contains(t, duplicateStr, "duplicate citations ID: citation-1")
-	require.Contains(t, duplicateStr, "duplicate repositories ID: repo-1")
-	require.Contains(t, duplicateStr, "duplicate assertions ID: assertion-1")
-	require.Contains(t, duplicateStr, "duplicate media ID: media-1")
+	require.Contains(t, duplicateStr, "conflict persons ID: person-1")
+	require.Contains(t, duplicateStr, "conflict events ID: event-1")
+	require.Contains(t, duplicateStr, "conflict relationships ID: rel-1")
+	require.Contains(t, duplicateStr, "conflict places ID: place-1")
+	require.Contains(t, duplicateStr, "conflict sources ID: source-1")
+	require.Contains(t, duplicateStr, "conflict citations ID: citation-1")
+	require.Contains(t, duplicateStr, "conflict repositories ID: repo-1")
+	require.Contains(t, duplicateStr, "conflict assertions ID: assertion-1")
+	require.Contains(t, duplicateStr, "conflict media ID: media-1")
 }
 
 func TestGLXFile_Merge_Metadata_AdoptFromOther(t *testing.T) {
@@ -553,7 +554,7 @@ func TestGLXFile_Merge_Metadata_DuplicateDetected(t *testing.T) {
 
 	conflicts, _ := g1.Merge(g2)
 	require.Len(t, conflicts, 1, "should detect one metadata duplicate")
-	require.Contains(t, conflicts[0], "duplicate metadata")
+	require.Contains(t, conflicts[0], "conflict metadata")
 
 	// Original metadata is preserved (first one wins)
 	require.Equal(t, "AppA", g1.ImportMetadata.SourceSystem)
@@ -660,6 +661,6 @@ func TestGLXFile_Merge_ConflictingVocabsReported(t *testing.T) {
 	conflicts, skipped := g1.Merge(g2)
 	require.Len(t, conflicts, 2, "should report two conflicts")
 	require.Equal(t, 0, skipped, "no identical entries to skip")
-	require.Contains(t, conflicts[0], "conflict")
-	require.Contains(t, conflicts[1], "conflict")
+	assert.Contains(t, conflicts[0], "event_types ID: birth")
+	assert.Contains(t, conflicts[1], "person_properties ID: name")
 }
