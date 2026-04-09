@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+#### CLI
+- **`glx migrate` now converts `buried_on`/`buried_at` to burial events** — Previously, `glx migrate` only converted `born_on`/`born_at`/`died_on`/`died_at` to birth/death events, leaving `buried_at` as an unconverted person property. Now burial properties are also migrated to burial Event entities, with assertions retargeted and the deprecated properties removed. Fixes #645
+
 #### Developer Experience
 - **devcontainer: remove abandoned ajv-cli and install actual npm deps** — Replaced the unused global `ajv-cli` install with parallel `postCreateCommand` that runs `go mod download`, pins `golangci-lint v2.11.4`, and installs `specification/` and `website/` npm dependencies. Removed unused Docker extension, added YAML and markdownlint extensions, added `forwardPorts` for VitePress dev server (#326, #327)
 
