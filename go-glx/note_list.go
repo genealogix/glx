@@ -37,6 +37,7 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 		} else {
 			*n = NoteList{node.Value}
 		}
+
 		return nil
 	case yaml.SequenceNode:
 		var list []string
@@ -44,12 +45,14 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 			return err
 		}
 		*n = NoteList(list)
+
 		return nil
 	case yaml.AliasNode:
 		if node.Alias != nil {
 			return n.UnmarshalYAML(node.Alias)
 		}
 		*n = nil
+
 		return nil
 	default:
 		// Tolerate unexpected types — treat empty value as nil (consistent
@@ -59,6 +62,7 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 		} else {
 			*n = NoteList{node.Value}
 		}
+
 		return nil
 	}
 }
@@ -71,6 +75,7 @@ func (n NoteList) MarshalYAML() (any, error) {
 	if len(n) == 1 {
 		return n[0], nil
 	}
+
 	return []string(n), nil
 }
 
