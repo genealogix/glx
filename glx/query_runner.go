@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -43,6 +44,9 @@ type queryOpts struct {
 	Subject    string
 	Birthplace string
 }
+
+// errPhoneticRequiresName is returned when --phonetic is used without --name.
+var errPhoneticRequiresName = errors.New("--phonetic requires --name to be specified")
 
 // queryEntityTypes lists the entity types supported by the query command.
 var queryEntityTypes = []string{
@@ -97,7 +101,7 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 
 	// --phonetic requires --name
 	if opts.Phonetic && opts.Name == "" {
-		return fmt.Errorf("--phonetic requires --name to be specified")
+		return errPhoneticRequiresName
 	}
 
 	return nil
@@ -187,14 +191,16 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 				// against each query word (supports multi-word queries like "Jane Miller")
 				queryWords := strings.Fields(opts.Name)
 				for _, n := range allNames {
-					for _, nameWord := range strings.Fields(n) {
+					for nameWord := range strings.FieldsSeq(n) {
 						for _, qWord := range queryWords {
 							if glxlib.SoundexMatch(nameWord, qWord) {
 								matched = true
+
 								break
 							}
 						}
 						if matched {
+
 							break
 						}
 					}

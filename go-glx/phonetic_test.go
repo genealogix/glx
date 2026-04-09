@@ -64,10 +64,10 @@ func TestSoundexMatch(t *testing.T) {
 func TestPhoneticPersonSearch(t *testing.T) {
 	archive := &GLXFile{
 		Persons: map[string]*Person{
-			"person-miller": {Properties: map[string]any{"name": "Jane Miller"}},
-			"person-myller": {Properties: map[string]any{"name": "John Myller"}},
+			"person-miller":  {Properties: map[string]any{"name": "Jane Miller"}},
+			"person-myller":  {Properties: map[string]any{"name": "John Myller"}},
 			"person-mueller": {Properties: map[string]any{"name": "Hans Mueller"}},
-			"person-smith":  {Properties: map[string]any{"name": "Robert Smith"}},
+			"person-smith":   {Properties: map[string]any{"name": "Robert Smith"}},
 		},
 	}
 

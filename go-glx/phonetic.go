@@ -14,7 +14,9 @@
 
 package glx
 
-import "strings"
+import (
+	"strings"
+)
 
 // Soundex computes the American Soundex code for a name, following the
 // NARA (National Archives) algorithm used by the US Census Bureau.
@@ -48,6 +50,7 @@ func Soundex(name string) string {
 				letters[i] == 'O' || letters[i] == 'U' || letters[i] == 'Y' {
 				prev = '0'
 			}
+
 			continue
 		}
 		if digit != prev {
@@ -88,6 +91,7 @@ func soundexDigitByte(r byte) byte {
 func SoundexMatch(a, b string) bool {
 	sa := Soundex(a)
 	sb := Soundex(b)
+
 	return sa != "" && sb != "" && sa == sb
 }
 
@@ -125,8 +129,7 @@ func PhoneticPersonSearch(archive *GLXFile, query string) []PhoneticMatch {
 		}
 
 		// Check each word in the name against the query's Soundex code
-		parts := strings.Fields(name)
-		for _, part := range parts {
+		for part := range strings.FieldsSeq(name) {
 			partCode := Soundex(part)
 			if partCode == queryCode {
 				matches = append(matches, PhoneticMatch{
@@ -135,6 +138,7 @@ func PhoneticPersonSearch(archive *GLXFile, query string) []PhoneticMatch {
 					SoundexCode: partCode,
 					MatchedPart: part,
 				})
+
 				break // one match per person is enough
 			}
 		}
