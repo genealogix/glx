@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -22,6 +23,15 @@ import (
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+// Sentinel errors for search validation.
+var (
+	errSearchQueryEmpty  = errors.New("search query cannot be empty")
+	errUnknownSearchType = errors.New("unknown search type")
+)
+
+// searchResultMaxLen is the maximum rune length for truncated display values.
+const searchResultMaxLen = 80
 
 // validSearchTypes is the set of valid --type filter values.
 var validSearchTypes = map[string]bool{
@@ -45,54 +55,58 @@ type searchResult struct {
 	Value      string // the matching value (truncated for display)
 }
 
-// searchArchive searches all entities for the given query string across
-// all string-bearing fields: IDs, names, titles, types, dates, notes,
-// properties, authors, descriptions, participants, and reference IDs.
-func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []searchResult {
+// searchProps searches a properties map (sorted keys for deterministic output)
+// and appends any matches to results.
+func searchProps(entityType, id string, props map[string]any, matchFn func(string) bool) []searchResult {
 	var results []searchResult
-
-	matchFn := containsMatch(query, caseSensitive)
-
-	// Helper to search a properties map (sorted keys for deterministic output)
-	searchProps := func(entityType, id string, props map[string]any) {
-		keys := make([]string, 0, len(props))
-		for k := range props {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			if s := fmt.Sprint(props[key]); matchFn(s) {
-				results = append(results, searchResult{entityType, id, key, truncate(s, 80)})
-			}
+	keys := make([]string, 0, len(props))
+	for k := range props {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if s := fmt.Sprint(props[key]); matchFn(s) {
+			results = append(results, searchResult{entityType, id, key, truncate(s)})
 		}
 	}
 
-	// Helper to search a string slice (ref IDs, authors, etc.)
-	searchSlice := func(entityType, id, field string, items []string) {
-		for _, item := range items {
-			if matchFn(item) {
-				results = append(results, searchResult{entityType, id, field, item})
-			}
+	return results
+}
+
+// searchSlice searches a string slice (ref IDs, authors, etc.) and appends matches.
+func searchSlice(entityType, id, field string, items []string, matchFn func(string) bool) []searchResult {
+	var results []searchResult
+	for _, item := range items {
+		if matchFn(item) {
+			results = append(results, searchResult{entityType, id, field, item})
 		}
 	}
 
-	// Helper to search participants
-	searchParticipants := func(entityType, id string, participants []glxlib.Participant) {
-		for _, p := range participants {
-			if matchFn(p.Person) {
-				results = append(results, searchResult{entityType, id, "participant", p.Person})
-			}
-			if matchFn(p.Role) {
-				results = append(results, searchResult{entityType, id, "participant.role", p.Role})
-			}
-			if matchFn(p.Notes) {
-				results = append(results, searchResult{entityType, id, "participant.notes", truncate(p.Notes, 80)})
-			}
-			searchProps(entityType, id, p.Properties)
+	return results
+}
+
+// searchParticipants searches participants and appends matches.
+func searchParticipants(entityType, id string, participants []glxlib.Participant, matchFn func(string) bool) []searchResult {
+	var results []searchResult
+	for _, p := range participants {
+		if matchFn(p.Person) {
+			results = append(results, searchResult{entityType, id, "participant", p.Person})
 		}
+		if matchFn(p.Role) {
+			results = append(results, searchResult{entityType, id, "participant.role", p.Role})
+		}
+		if matchFn(p.Notes) {
+			results = append(results, searchResult{entityType, id, "participant.notes", truncate(p.Notes)})
+		}
+		results = append(results, searchProps(entityType, id, p.Properties, matchFn)...)
 	}
 
-	// Persons
+	return results
+}
+
+// searchPersons searches all Person entities in the archive.
+func searchPersons(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Persons) {
 		person := archive.Persons[id]
 		if person == nil {
@@ -101,13 +115,18 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 		if matchFn(id) {
 			results = append(results, searchResult{"persons", id, "id", id})
 		}
-		searchProps("persons", id, person.Properties)
+		results = append(results, searchProps("persons", id, person.Properties, matchFn)...)
 		if matchFn(person.Notes) {
-			results = append(results, searchResult{"persons", id, "notes", truncate(person.Notes, 80)})
+			results = append(results, searchResult{"persons", id, "notes", truncate(person.Notes)})
 		}
 	}
 
-	// Events
+	return results
+}
+
+// searchEvents searches all Event entities in the archive.
+func searchEvents(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Events) {
 		ev := archive.Events[id]
 		if ev == nil {
@@ -129,13 +148,18 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"events", id, "place", ev.PlaceID})
 		}
 		if matchFn(ev.Notes) {
-			results = append(results, searchResult{"events", id, "notes", truncate(ev.Notes, 80)})
+			results = append(results, searchResult{"events", id, "notes", truncate(ev.Notes)})
 		}
-		searchProps("events", id, ev.Properties)
-		searchParticipants("events", id, ev.Participants)
+		results = append(results, searchProps("events", id, ev.Properties, matchFn)...)
+		results = append(results, searchParticipants("events", id, ev.Participants, matchFn)...)
 	}
 
-	// Places — includes ParentID, Type
+	return results
+}
+
+// searchPlaces searches all Place entities in the archive.
+func searchPlaces(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Places) {
 		place := archive.Places[id]
 		if place == nil {
@@ -154,12 +178,17 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"places", id, "parent", place.ParentID})
 		}
 		if matchFn(place.Notes) {
-			results = append(results, searchResult{"places", id, "notes", truncate(place.Notes, 80)})
+			results = append(results, searchResult{"places", id, "notes", truncate(place.Notes)})
 		}
-		searchProps("places", id, place.Properties)
+		results = append(results, searchProps("places", id, place.Properties, matchFn)...)
 	}
 
-	// Sources
+	return results
+}
+
+// searchSources searches all Source entities in the archive.
+func searchSources(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Sources) {
 		src := archive.Sources[id]
 		if src == nil {
@@ -175,7 +204,7 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"sources", id, "type", src.Type})
 		}
 		if matchFn(src.Description) {
-			results = append(results, searchResult{"sources", id, "description", truncate(src.Description, 80)})
+			results = append(results, searchResult{"sources", id, "description", truncate(src.Description)})
 		}
 		if matchFn(string(src.Date)) {
 			results = append(results, searchResult{"sources", id, "date", string(src.Date)})
@@ -187,14 +216,19 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"sources", id, "language", src.Language})
 		}
 		if matchFn(src.Notes) {
-			results = append(results, searchResult{"sources", id, "notes", truncate(src.Notes, 80)})
+			results = append(results, searchResult{"sources", id, "notes", truncate(src.Notes)})
 		}
-		searchSlice("sources", id, "author", src.Authors)
-		searchSlice("sources", id, "media", src.Media)
-		searchProps("sources", id, src.Properties)
+		results = append(results, searchSlice("sources", id, "author", src.Authors, matchFn)...)
+		results = append(results, searchSlice("sources", id, "media", src.Media, matchFn)...)
+		results = append(results, searchProps("sources", id, src.Properties, matchFn)...)
 	}
 
-	// Citations
+	return results
+}
+
+// searchCitations searches all Citation entities in the archive.
+func searchCitations(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Citations) {
 		cit := archive.Citations[id]
 		if cit == nil {
@@ -210,13 +244,18 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"citations", id, "repository", cit.RepositoryID})
 		}
 		if matchFn(cit.Notes) {
-			results = append(results, searchResult{"citations", id, "notes", truncate(cit.Notes, 80)})
+			results = append(results, searchResult{"citations", id, "notes", truncate(cit.Notes)})
 		}
-		searchSlice("citations", id, "media", cit.Media)
-		searchProps("citations", id, cit.Properties)
+		results = append(results, searchSlice("citations", id, "media", cit.Media, matchFn)...)
+		results = append(results, searchProps("citations", id, cit.Properties, matchFn)...)
 	}
 
-	// Repositories
+	return results
+}
+
+// searchRepositories searches all Repository entities in the archive.
+func searchRepositories(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Repositories) {
 		repo := archive.Repositories[id]
 		if repo == nil {
@@ -241,12 +280,17 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"repositories", id, "website", repo.Website})
 		}
 		if matchFn(repo.Notes) {
-			results = append(results, searchResult{"repositories", id, "notes", truncate(repo.Notes, 80)})
+			results = append(results, searchResult{"repositories", id, "notes", truncate(repo.Notes)})
 		}
-		searchProps("repositories", id, repo.Properties)
+		results = append(results, searchProps("repositories", id, repo.Properties, matchFn)...)
 	}
 
-	// Assertions
+	return results
+}
+
+// searchAssertions searches all Assertion entities in the archive.
+func searchAssertions(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Assertions) {
 		a := archive.Assertions[id]
 		if a == nil {
@@ -283,17 +327,22 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"assertions", id, "status", a.Status})
 		}
 		if matchFn(a.Notes) {
-			results = append(results, searchResult{"assertions", id, "notes", truncate(a.Notes, 80)})
+			results = append(results, searchResult{"assertions", id, "notes", truncate(a.Notes)})
 		}
-		searchSlice("assertions", id, "source", a.Sources)
-		searchSlice("assertions", id, "citation", a.Citations)
-		searchSlice("assertions", id, "media", a.Media)
+		results = append(results, searchSlice("assertions", id, "source", a.Sources, matchFn)...)
+		results = append(results, searchSlice("assertions", id, "citation", a.Citations, matchFn)...)
+		results = append(results, searchSlice("assertions", id, "media", a.Media, matchFn)...)
 		if a.Participant != nil {
-			searchParticipants("assertions", id, []glxlib.Participant{*a.Participant})
+			results = append(results, searchParticipants("assertions", id, []glxlib.Participant{*a.Participant}, matchFn)...)
 		}
 	}
 
-	// Relationships
+	return results
+}
+
+// searchRelationships searches all Relationship entities in the archive.
+func searchRelationships(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Relationships) {
 		rel := archive.Relationships[id]
 		if rel == nil {
@@ -312,12 +361,17 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"relationships", id, "end_event", rel.EndEvent})
 		}
 		if matchFn(rel.Notes) {
-			results = append(results, searchResult{"relationships", id, "notes", truncate(rel.Notes, 80)})
+			results = append(results, searchResult{"relationships", id, "notes", truncate(rel.Notes)})
 		}
-		searchParticipants("relationships", id, rel.Participants)
+		results = append(results, searchParticipants("relationships", id, rel.Participants, matchFn)...)
 	}
 
-	// Media
+	return results
+}
+
+// searchMedia searches all Media entities in the archive.
+func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
 	for _, id := range sortedKeys(archive.Media) {
 		m := archive.Media[id]
 		if m == nil {
@@ -339,7 +393,7 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"media", id, "mime_type", m.MimeType})
 		}
 		if matchFn(m.Description) {
-			results = append(results, searchResult{"media", id, "description", truncate(m.Description, 80)})
+			results = append(results, searchResult{"media", id, "description", truncate(m.Description)})
 		}
 		if matchFn(string(m.Date)) {
 			results = append(results, searchResult{"media", id, "date", string(m.Date)})
@@ -348,10 +402,30 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []
 			results = append(results, searchResult{"media", id, "source", m.Source})
 		}
 		if matchFn(m.Notes) {
-			results = append(results, searchResult{"media", id, "notes", truncate(m.Notes, 80)})
+			results = append(results, searchResult{"media", id, "notes", truncate(m.Notes)})
 		}
-		searchProps("media", id, m.Properties)
+		results = append(results, searchProps("media", id, m.Properties, matchFn)...)
 	}
+
+	return results
+}
+
+// searchArchive searches all entities for the given query string across
+// all string-bearing fields: IDs, names, titles, types, dates, notes,
+// properties, authors, descriptions, participants, and reference IDs.
+func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []searchResult {
+	matchFn := containsMatch(query, caseSensitive)
+
+	var results []searchResult
+	results = append(results, searchPersons(archive, matchFn)...)
+	results = append(results, searchEvents(archive, matchFn)...)
+	results = append(results, searchPlaces(archive, matchFn)...)
+	results = append(results, searchSources(archive, matchFn)...)
+	results = append(results, searchCitations(archive, matchFn)...)
+	results = append(results, searchRepositories(archive, matchFn)...)
+	results = append(results, searchAssertions(archive, matchFn)...)
+	results = append(results, searchRelationships(archive, matchFn)...)
+	results = append(results, searchMedia(archive, matchFn)...)
 
 	return deduplicateResults(results)
 }
@@ -364,19 +438,21 @@ func containsMatch(query string, caseSensitive bool) func(string) bool {
 		}
 	}
 	lowerQuery := strings.ToLower(query)
+
 	return func(s string) bool {
 		return s != "" && strings.Contains(strings.ToLower(s), lowerQuery)
 	}
 }
 
-// truncate shortens a string to maxLen runes with "..." suffix.
+// truncate shortens a string to searchResultMaxLen runes with "..." suffix.
 // Uses rune slicing to avoid splitting multi-byte UTF-8 characters.
-func truncate(s string, maxLen int) string {
+func truncate(s string) string {
 	runes := []rune(s)
-	if len(runes) <= maxLen {
+	if len(runes) <= searchResultMaxLen {
 		return s
 	}
-	return string(runes[:maxLen-3]) + "..."
+
+	return string(runes[:searchResultMaxLen-3]) + "..."
 }
 
 // deduplicateResults removes duplicate (entityType, entityID) pairs,
@@ -392,6 +468,7 @@ func deduplicateResults(results []searchResult) []searchResult {
 		seen[key] = true
 		deduped = append(deduped, r)
 	}
+
 	return deduped
 }
 
@@ -399,7 +476,7 @@ func deduplicateResults(results []searchResult) []searchResult {
 func showSearch(archivePath, query string, caseSensitive bool, typeFilter string) error {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return fmt.Errorf("search query cannot be empty")
+		return errSearchQueryEmpty
 	}
 
 	// Validate --type filter
@@ -410,7 +487,8 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 			valid = append(valid, k)
 		}
 		sort.Strings(valid)
-		return fmt.Errorf("unknown type %q (valid: %s)", typeFilter, strings.Join(valid, ", "))
+
+		return fmt.Errorf("unknown type %q (valid: %s): %w", typeFilter, strings.Join(valid, ", "), errUnknownSearchType)
 	}
 
 	info, err := os.Stat(archivePath)
@@ -451,6 +529,7 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 
 	if len(results) == 0 {
 		fmt.Printf("No matches found for %q\n", query)
+
 		return nil
 	}
 

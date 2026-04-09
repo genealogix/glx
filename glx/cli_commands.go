@@ -1249,9 +1249,9 @@ func runDiff(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	searchArchivePath  string
+	searchArchivePath   string
 	searchCaseSensitive bool
-	searchTypeFilter   string
+	searchTypeFilter    string
 )
 
 var searchCmd = &cobra.Command{

@@ -162,13 +162,13 @@ func TestSearchArchive_MatchesEntityID(t *testing.T) {
 
 func TestShowSearch_EmptyQuery(t *testing.T) {
 	err := showSearch(".", "", false, "")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty")
 }
 
 func TestShowSearch_InvalidType(t *testing.T) {
 	err := showSearch(".", "test", false, "invalid_type")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown type")
 }
 
