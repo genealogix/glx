@@ -931,7 +931,7 @@ func TestExportSource_WithProperties(t *testing.T) {
 		RepositoryID: "repo-1",
 		Date:         "1850-06",
 		Properties: map[string]any{
-			"publication_info":  "Published by Archives, 2001",
+			"publication_info": "Published by Archives, 2001",
 			"abbreviation":     "PR",
 			"call_number":      "MS-123",
 			"agency":           "Church of England",
@@ -1862,8 +1862,10 @@ func TestExportPerson_WithProperties(t *testing.T) {
 			"education":   "Harvard",
 			"nationality": "American",
 			"title":       "Dr.",
-			"born_on":     "1850-03-15", // should be skipped
-			"died_on":     "1920-11-02", // should be skipped
+			"born_on":     "1850-03-15",         // should be skipped
+			"died_on":     "1920-11-02",         // should be skipped
+			"buried_on":   "1920-11-05",         // should be skipped
+			"buried_at":   "place-old-cemetery", // should be skipped
 		},
 	}
 
@@ -1896,10 +1898,12 @@ func TestExportPerson_WithProperties(t *testing.T) {
 	assert.True(t, foundNati, "missing NATI")
 	assert.True(t, foundTitl, "missing TITL")
 
-	// Verify born_on and died_on are NOT exported as tags
+	// Verify deprecated properties are NOT exported as tags
 	for _, sub := range record.SubRecords {
 		assert.NotEqual(t, "born_on", sub.Tag)
 		assert.NotEqual(t, "died_on", sub.Tag)
+		assert.NotEqual(t, "buried_on", sub.Tag)
+		assert.NotEqual(t, "buried_at", sub.Tag)
 	}
 }
 
@@ -2217,7 +2221,7 @@ func TestExportGEDCOM_WithPersons(t *testing.T) {
 func TestExportPerson_WithMediaAndSources(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
-			Events:   make(map[string]*Event),
+			Events: make(map[string]*Event),
 			Citations: map[string]*Citation{
 				"cit-1": {
 					SourceID: "source-1",
@@ -2487,9 +2491,9 @@ func TestExportPerson_ResidenceExported(t *testing.T) {
 		},
 		SourceXRefMap: make(map[string]string),
 		ExportIndex: &ExportIndex{
-			EventTypes:       make(map[string]string),
-			PersonProperties: map[string]string{},
-			EventProperties:  make(map[string]string),
+			EventTypes:        make(map[string]string),
+			PersonProperties:  map[string]string{},
+			EventProperties:   make(map[string]string),
 			RelationshipTypes: make(map[string]string),
 		},
 		PlaceStrings: map[string]string{
@@ -2734,16 +2738,16 @@ func TestExportPerson_NoteFromProperties(t *testing.T) {
 				},
 			},
 		},
-		EventTypes:         make(map[string]*EventType),
-		PersonProperties:   make(map[string]*PropertyDefinition),
-		RelationshipTypes:  make(map[string]*RelationshipType),
-		Events:             make(map[string]*Event),
-		Relationships:      make(map[string]*Relationship),
-		Sources:            make(map[string]*Source),
-		Citations:          make(map[string]*Citation),
-		Repositories:       make(map[string]*Repository),
-		Media:              make(map[string]*Media),
-		Assertions:         make(map[string]*Assertion),
+		EventTypes:        make(map[string]*EventType),
+		PersonProperties:  make(map[string]*PropertyDefinition),
+		RelationshipTypes: make(map[string]*RelationshipType),
+		Events:            make(map[string]*Event),
+		Relationships:     make(map[string]*Relationship),
+		Sources:           make(map[string]*Source),
+		Citations:         make(map[string]*Citation),
+		Repositories:      make(map[string]*Repository),
+		Media:             make(map[string]*Media),
+		Assertions:        make(map[string]*Assertion),
 	}
 
 	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
@@ -2842,16 +2846,16 @@ func TestExportPerson_MultipleOccupations(t *testing.T) {
 				},
 			},
 		},
-		EventTypes:         make(map[string]*EventType),
-		PersonProperties:   make(map[string]*PropertyDefinition),
-		RelationshipTypes:  make(map[string]*RelationshipType),
-		Events:             make(map[string]*Event),
-		Relationships:      make(map[string]*Relationship),
-		Sources:            make(map[string]*Source),
-		Citations:          make(map[string]*Citation),
-		Repositories:       make(map[string]*Repository),
-		Media:              make(map[string]*Media),
-		Assertions:         make(map[string]*Assertion),
+		EventTypes:        make(map[string]*EventType),
+		PersonProperties:  make(map[string]*PropertyDefinition),
+		RelationshipTypes: make(map[string]*RelationshipType),
+		Events:            make(map[string]*Event),
+		Relationships:     make(map[string]*Relationship),
+		Sources:           make(map[string]*Source),
+		Citations:         make(map[string]*Citation),
+		Repositories:      make(map[string]*Repository),
+		Media:             make(map[string]*Media),
+		Assertions:        make(map[string]*Assertion),
 	}
 
 	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
