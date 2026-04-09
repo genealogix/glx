@@ -190,7 +190,7 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 				// Phonetic matching: precompute Soundex codes for query words,
 				// then compare against each name word's Soundex code.
 				queryCodes := make(map[string]bool)
-				for _, qWord := range strings.Fields(opts.Name) {
+				for qWord := range strings.FieldsSeq(opts.Name) {
 					if code := glxlib.Soundex(qWord); code != "" {
 						queryCodes[code] = true
 					}
