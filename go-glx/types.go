@@ -15,7 +15,10 @@
 package glx
 
 import (
+	"bytes"
 	"fmt"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Metadata holds import metadata extracted from GEDCOM HEAD and SUBM records.
@@ -412,56 +415,65 @@ type TemporalValue struct {
 	Date  DateString `yaml:"date,omitempty"` // FamilySearch normalized date string
 }
 
-// Merge combines another GLXFile into this one, returning duplicate/conflict messages.
-// Messages may report duplicate entity or vocabulary IDs ("duplicate <type> ID: <id>")
-// or metadata conflicts ("duplicate metadata: ...").
-func (g *GLXFile) Merge(other *GLXFile) []string {
+// Merge combines another GLXFile into this one, returning conflict messages and
+// a count of identical items silently skipped. Entity conflicts (same ID,
+// regardless of value) are always reported. Vocabulary/property conflicts
+// are only reported when the values differ; identical vocabulary
+// entries (e.g., standard vocabularies present in both archives) are silently
+// skipped and counted.
+func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped int) {
 	g.initMaps()
 	g.validation = nil // invalidate cached validation since maps are being mutated
-	duplicates := make([]string, 0, 10)
+	conflicts = make([]string, 0, 10)
 
-	// Merge metadata (first one wins; report duplicate if both have content)
+	// Merge metadata (first one wins; report conflict if both have content)
 	if other.ImportMetadata != nil && other.ImportMetadata.hasContent() {
 		if g.ImportMetadata != nil && g.ImportMetadata.hasContent() {
-			duplicates = append(duplicates, "duplicate metadata: metadata appears in multiple files")
+			conflicts = append(conflicts, "conflict metadata: metadata appears in multiple files")
 		} else {
 			g.ImportMetadata = other.ImportMetadata
 		}
 	}
 
-	// Merge entities (fail on duplicates)
-	duplicates = append(duplicates, mergeMap("persons", g.Persons, other.Persons)...)
-	duplicates = append(duplicates, mergeMap("relationships", g.Relationships, other.Relationships)...)
-	duplicates = append(duplicates, mergeMap("events", g.Events, other.Events)...)
-	duplicates = append(duplicates, mergeMap("places", g.Places, other.Places)...)
-	duplicates = append(duplicates, mergeMap("sources", g.Sources, other.Sources)...)
-	duplicates = append(duplicates, mergeMap("citations", g.Citations, other.Citations)...)
-	duplicates = append(duplicates, mergeMap("repositories", g.Repositories, other.Repositories)...)
-	duplicates = append(duplicates, mergeMap("assertions", g.Assertions, other.Assertions)...)
-	duplicates = append(duplicates, mergeMap("media", g.Media, other.Media)...)
+	// Merge entities — always report conflicts (entity ID collisions are significant)
+	conflicts = append(conflicts, mergeMap("persons", g.Persons, other.Persons)...)
+	conflicts = append(conflicts, mergeMap("relationships", g.Relationships, other.Relationships)...)
+	conflicts = append(conflicts, mergeMap("events", g.Events, other.Events)...)
+	conflicts = append(conflicts, mergeMap("places", g.Places, other.Places)...)
+	conflicts = append(conflicts, mergeMap("sources", g.Sources, other.Sources)...)
+	conflicts = append(conflicts, mergeMap("citations", g.Citations, other.Citations)...)
+	conflicts = append(conflicts, mergeMap("repositories", g.Repositories, other.Repositories)...)
+	conflicts = append(conflicts, mergeMap("assertions", g.Assertions, other.Assertions)...)
+	conflicts = append(conflicts, mergeMap("media", g.Media, other.Media)...)
 
-	// Merge vocabularies (ALSO fail on duplicates - treat same as entities)
-	duplicates = append(duplicates, mergeMap("event_types", g.EventTypes, other.EventTypes)...)
-	duplicates = append(duplicates, mergeMap("relationship_types", g.RelationshipTypes, other.RelationshipTypes)...)
-	duplicates = append(duplicates, mergeMap("place_types", g.PlaceTypes, other.PlaceTypes)...)
-	duplicates = append(duplicates, mergeMap("source_types", g.SourceTypes, other.SourceTypes)...)
-	duplicates = append(duplicates, mergeMap("repository_types", g.RepositoryTypes, other.RepositoryTypes)...)
-	duplicates = append(duplicates, mergeMap("media_types", g.MediaTypes, other.MediaTypes)...)
-	duplicates = append(duplicates, mergeMap("gender_types", g.GenderTypes, other.GenderTypes)...)
-	duplicates = append(duplicates, mergeMap("participant_roles", g.ParticipantRoles, other.ParticipantRoles)...)
-	duplicates = append(duplicates, mergeMap("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels)...)
+	// Helper to accumulate mergeMapDedup results
+	addDedup := func(c []string, s int) {
+		conflicts = append(conflicts, c...)
+		identicalSkipped += s
+	}
 
-	// Merge property vocabularies
-	duplicates = append(duplicates, mergeMap("person_properties", g.PersonProperties, other.PersonProperties)...)
-	duplicates = append(duplicates, mergeMap("event_properties", g.EventProperties, other.EventProperties)...)
-	duplicates = append(duplicates, mergeMap("relationship_properties", g.RelationshipProperties, other.RelationshipProperties)...)
-	duplicates = append(duplicates, mergeMap("place_properties", g.PlaceProperties, other.PlaceProperties)...)
-	duplicates = append(duplicates, mergeMap("media_properties", g.MediaProperties, other.MediaProperties)...)
-	duplicates = append(duplicates, mergeMap("repository_properties", g.RepositoryProperties, other.RepositoryProperties)...)
-	duplicates = append(duplicates, mergeMap("citation_properties", g.CitationProperties, other.CitationProperties)...)
-	duplicates = append(duplicates, mergeMap("source_properties", g.SourceProperties, other.SourceProperties)...)
+	// Merge vocabularies — silently skip identical entries, report only true conflicts
+	addDedup(mergeMapDedup("event_types", g.EventTypes, other.EventTypes))
+	addDedup(mergeMapDedup("relationship_types", g.RelationshipTypes, other.RelationshipTypes))
+	addDedup(mergeMapDedup("place_types", g.PlaceTypes, other.PlaceTypes))
+	addDedup(mergeMapDedup("source_types", g.SourceTypes, other.SourceTypes))
+	addDedup(mergeMapDedup("repository_types", g.RepositoryTypes, other.RepositoryTypes))
+	addDedup(mergeMapDedup("media_types", g.MediaTypes, other.MediaTypes))
+	addDedup(mergeMapDedup("gender_types", g.GenderTypes, other.GenderTypes))
+	addDedup(mergeMapDedup("participant_roles", g.ParticipantRoles, other.ParticipantRoles))
+	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
 
-	return duplicates
+	// Merge property vocabularies — same dedup behavior
+	addDedup(mergeMapDedup("person_properties", g.PersonProperties, other.PersonProperties))
+	addDedup(mergeMapDedup("event_properties", g.EventProperties, other.EventProperties))
+	addDedup(mergeMapDedup("relationship_properties", g.RelationshipProperties, other.RelationshipProperties))
+	addDedup(mergeMapDedup("place_properties", g.PlaceProperties, other.PlaceProperties))
+	addDedup(mergeMapDedup("media_properties", g.MediaProperties, other.MediaProperties))
+	addDedup(mergeMapDedup("repository_properties", g.RepositoryProperties, other.RepositoryProperties))
+	addDedup(mergeMapDedup("citation_properties", g.CitationProperties, other.CitationProperties))
+	addDedup(mergeMapDedup("source_properties", g.SourceProperties, other.SourceProperties))
+
+	return conflicts, identicalSkipped
 }
 
 // initMaps ensures all entity and vocabulary maps are initialized (non-nil).
@@ -549,22 +561,56 @@ func (g *GLXFile) initMaps() {
 	}
 }
 
-// mergeMap is used for BOTH entities and vocabularies - duplicates are always errors
+// mergeMap merges src into dest, reporting all key collisions as conflicts.
+// Used for entity maps where any ID collision is significant.
 func mergeMap[T any](mapType string, dest, src map[string]*T) []string {
-	var duplicates []string
-	if dest == nil {
-		return duplicates
-	}
-	if src == nil {
-		return duplicates
+	var conflicts []string
+	if dest == nil || src == nil {
+		return conflicts
 	}
 	for k, v := range src {
 		if _, exists := dest[k]; exists {
-			duplicates = append(duplicates, fmt.Sprintf("duplicate %s ID: %s", mapType, k))
+			conflicts = append(conflicts, fmt.Sprintf("conflict %s ID: %s", mapType, k))
 		} else {
 			dest[k] = v
 		}
 	}
 
-	return duplicates
+	return conflicts
+}
+
+// mergeMapDedup merges src into dest, silently skipping entries where the key
+// exists and the value is semantically equal. Only reports conflicts where the
+// same key maps to a different value. Uses YAML marshaling for comparison so
+// that nil maps/slices and empty maps/slices are treated as equivalent (both
+// omitted by omitempty tags).
+func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts []string, skipped int) {
+	if dest == nil || src == nil {
+		return nil, 0
+	}
+	for k, v := range src {
+		if existing, exists := dest[k]; exists {
+			if yamlEqual(existing, v) {
+				skipped++
+			} else {
+				conflicts = append(conflicts, fmt.Sprintf("conflict %s ID: %s", mapType, k))
+			}
+		} else {
+			dest[k] = v
+		}
+	}
+
+	return conflicts, skipped
+}
+
+// yamlEqual compares two values by YAML-marshaling both. This correctly treats
+// nil and empty maps/slices as equivalent because the struct tags use omitempty.
+func yamlEqual(a, b any) bool {
+	ay, err1 := yaml.Marshal(a)
+	by, err2 := yaml.Marshal(b)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+
+	return bytes.Equal(ay, by)
 }
