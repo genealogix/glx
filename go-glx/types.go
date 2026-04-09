@@ -399,9 +399,9 @@ type TemporalValue struct {
 }
 
 // Merge combines another GLXFile into this one, returning conflict messages and
-// a count of identical items silently skipped. Entity duplicates (same ID,
-// regardless of value) are always reported as conflicts. Vocabulary/property
-// duplicates are only reported when the values differ; identical vocabulary
+// a count of identical items silently skipped. Entity conflicts (same ID,
+// regardless of value) are always reported. Vocabulary/property conflicts
+// are only reported when the values differ; identical vocabulary
 // entries (e.g., standard vocabularies present in both archives) are silently
 // skipped and counted.
 func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped int) {
@@ -409,7 +409,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	g.validation = nil // invalidate cached validation since maps are being mutated
 	conflicts = make([]string, 0, 10)
 
-	// Merge metadata (first one wins; report duplicate if both have content)
+	// Merge metadata (first one wins; report conflict if both have content)
 	if other.ImportMetadata != nil && other.ImportMetadata.hasContent() {
 		if g.ImportMetadata != nil && g.ImportMetadata.hasContent() {
 			conflicts = append(conflicts, "conflict metadata: metadata appears in multiple files")
@@ -418,7 +418,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 		}
 	}
 
-	// Merge entities — always report duplicates (entity ID collisions are significant)
+	// Merge entities — always report conflicts (entity ID collisions are significant)
 	conflicts = append(conflicts, mergeMap("persons", g.Persons, other.Persons)...)
 	conflicts = append(conflicts, mergeMap("relationships", g.Relationships, other.Relationships)...)
 	conflicts = append(conflicts, mergeMap("events", g.Events, other.Events)...)
