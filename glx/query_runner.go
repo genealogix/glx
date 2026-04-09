@@ -176,6 +176,17 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 	ids := sortedKeys(archive.Persons)
 	var count int
 
+	// Precompute Soundex codes for query words once (used only when --phonetic is set).
+	var queryCodes map[string]bool
+	if opts.Phonetic && opts.Name != "" {
+		queryCodes = make(map[string]bool)
+		for qWord := range strings.FieldsSeq(opts.Name) {
+			if code := glxlib.Soundex(qWord); code != "" {
+				queryCodes[code] = true
+			}
+		}
+	}
+
 	for _, id := range ids {
 		person := archive.Persons[id]
 		if person == nil {
@@ -187,14 +198,6 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		if opts.Name != "" {
 			matched := false
 			if opts.Phonetic {
-				// Phonetic matching: precompute Soundex codes for query words,
-				// then compare against each name word's Soundex code.
-				queryCodes := make(map[string]bool)
-				for qWord := range strings.FieldsSeq(opts.Name) {
-					if code := glxlib.Soundex(qWord); code != "" {
-						queryCodes[code] = true
-					}
-				}
 				for _, n := range allNames {
 					for nameWord := range strings.FieldsSeq(n) {
 						if code := glxlib.Soundex(nameWord); code != "" && queryCodes[code] {

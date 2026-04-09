@@ -21,7 +21,8 @@ import (
 
 // Soundex computes the American Soundex code for a name, following the
 // NARA (National Archives) algorithm used by the US Census Bureau.
-// Returns a 4-character code (letter + 3 digits) or empty string for empty input.
+// Returns a 4-character code (letter + 3 digits), or empty string if the
+// input is empty or contains no ASCII letters (A-Z).
 func Soundex(name string) string {
 	if name == "" {
 		return ""
