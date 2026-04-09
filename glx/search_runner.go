@@ -416,7 +416,7 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []searchResult {
 	matchFn := containsMatch(query, caseSensitive)
 
-	var results []searchResult
+	results := make([]searchResult, 0, len(archive.Persons)+len(archive.Events))
 	results = append(results, searchPersons(archive, matchFn)...)
 	results = append(results, searchEvents(archive, matchFn)...)
 	results = append(results, searchPlaces(archive, matchFn)...)
