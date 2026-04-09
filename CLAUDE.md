@@ -71,8 +71,7 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - Document public functions with Go doc comments
 - **ALWAYS run golangci-lint before committing Go changes**:
   ```bash
-  export GOROOT="$HOME/go-sdk" PATH="$HOME/go-sdk/bin:$HOME/go/bin:$PATH"
-  golangci-lint run --new-from-rev=origin/main --timeout=5m
+  golangci-lint run --new-from-rev=$(git merge-base HEAD main) --timeout=5m
   ```
   A PreToolUse hook runs this automatically before `git commit`, but if committing manually, run it first. Fix all issues before pushing — CI will reject the PR otherwise.
 
