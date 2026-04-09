@@ -24,7 +24,8 @@ import (
 
 // mergeResult holds statistics from a merge operation.
 type mergeResult struct {
-	Duplicates       []string
+	Conflicts        []string
+	IdenticalSkipped int
 	NewPersons       int
 	NewEvents        int
 	NewRelationships int
@@ -47,13 +48,14 @@ func mergeArchivesInMemory(dest, src *glxlib.GLXFile) *mergeResult {
 	// Snapshot counts before merge
 	before := entityCounts(dest)
 
-	duplicates := dest.Merge(src)
+	conflicts, identicalSkipped := dest.Merge(src)
 
 	// Compute new entities added
 	after := entityCounts(dest)
 
 	return &mergeResult{
-		Duplicates:       duplicates,
+		Conflicts:        conflicts,
+		IdenticalSkipped: identicalSkipped,
 		NewPersons:       after.persons - before.persons,
 		NewEvents:        after.events - before.events,
 		NewRelationships: after.relationships - before.relationships,
@@ -190,11 +192,15 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 		fmt.Println("  No new entities to merge.")
 	}
 
-	if len(result.Duplicates) > 0 {
-		fmt.Printf("\n  Duplicates (%d — skipped, destination kept):\n", len(result.Duplicates))
-		for _, d := range result.Duplicates {
+	if len(result.Conflicts) > 0 {
+		fmt.Printf("\n  Conflicts (%d — skipped, destination kept):\n", len(result.Conflicts))
+		for _, d := range result.Conflicts {
 			fmt.Printf("    %s\n", d)
 		}
+	}
+
+	if result.IdenticalSkipped > 0 {
+		fmt.Printf("\n  %d identical vocabulary/property entries skipped\n", result.IdenticalSkipped)
 	}
 
 	if dryRun {

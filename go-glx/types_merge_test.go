@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,8 +27,8 @@ func TestGLXFile_Merge_EmptyFiles(t *testing.T) {
 	g1 := &GLXFile{}
 	g2 := &GLXFile{}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "merging empty files should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "merging empty files should have no conflicts")
 }
 
 func TestGLXFile_Merge_NilDestMaps(t *testing.T) {
@@ -45,8 +46,8 @@ func TestGLXFile_Merge_NilDestMaps(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 	require.Len(t, g1.Persons, 1, "persons should be merged into initialized map")
 	require.Len(t, g1.Events, 1, "events should be merged into initialized map")
 	require.Len(t, g1.Places, 1, "places should be merged into initialized map")
@@ -66,8 +67,8 @@ func TestGLXFile_Merge_Persons_NoDuplicates(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 	require.Len(t, g1.Persons, 2, "should have merged both persons")
 	require.Contains(t, g1.Persons, "person-1")
 	require.Contains(t, g1.Persons, "person-2")
@@ -87,12 +88,12 @@ func TestGLXFile_Merge_Persons_WithDuplicates(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Len(t, duplicates, 1, "should detect one duplicate")
-	require.Contains(t, duplicates[0], "duplicate persons ID: person-1")
+	conflicts, _ := g1.Merge(g2)
+	require.Len(t, conflicts, 1, "should detect one conflict")
+	require.Contains(t, conflicts[0], "conflict persons ID: person-1")
 
 	// person-2 should still be merged
-	require.Len(t, g1.Persons, 2, "should merge non-duplicate persons")
+	require.Len(t, g1.Persons, 2, "should merge non-conflicting persons")
 	require.Contains(t, g1.Persons, "person-2")
 }
 
@@ -122,8 +123,8 @@ func TestGLXFile_Merge_AllEntityTypes(t *testing.T) {
 		Media:         map[string]*Media{"media-2": {}},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 
 	// Verify all entity types were merged
 	require.Len(t, g1.Persons, 2)
@@ -157,8 +158,8 @@ func TestGLXFile_Merge_Vocabularies_NoDuplicates(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 	require.Len(t, g1.EventTypes, 2)
 	require.Len(t, g1.ParticipantRoles, 2)
 }
@@ -178,9 +179,9 @@ func TestGLXFile_Merge_Vocabularies_WithDuplicates(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Len(t, duplicates, 1, "should detect one duplicate")
-	require.Contains(t, duplicates[0], "duplicate event_types ID: birth")
+	conflicts, _ := g1.Merge(g2)
+	require.Len(t, conflicts, 1, "should detect one conflict")
+	require.Contains(t, conflicts[0], "conflict event_types ID: birth")
 
 	// death should still be merged
 	require.Len(t, g1.EventTypes, 2)
@@ -213,8 +214,8 @@ func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 		GenderTypes:       map[string]*GenderType{"gender-2": {}},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 
 	// Verify all vocabulary types were merged
 	require.Len(t, g1.EventTypes, 2)
@@ -248,8 +249,8 @@ func TestGLXFile_Merge_PropertyVocabularies_NoDuplicates(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 	require.Len(t, g1.PersonProperties, 2)
 	require.Len(t, g1.EventProperties, 2)
 }
@@ -269,9 +270,9 @@ func TestGLXFile_Merge_PropertyVocabularies_WithDuplicates(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Len(t, duplicates, 1, "should detect one duplicate")
-	require.Contains(t, duplicates[0], "duplicate person_properties ID: prop-1")
+	conflicts, _ := g1.Merge(g2)
+	require.Len(t, conflicts, 1, "should detect one conflict")
+	require.Contains(t, conflicts[0], "conflict person_properties ID: prop-1")
 
 	// prop-2 should still be merged
 	require.Len(t, g1.PersonProperties, 2)
@@ -294,8 +295,8 @@ func TestGLXFile_Merge_AllPropertyVocabularies(t *testing.T) {
 		PlaceProperties:        map[string]*PropertyDefinition{"prop-2": {}},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 
 	// Verify all property vocabulary types were merged
 	require.Len(t, g1.PersonProperties, 2)
@@ -333,19 +334,19 @@ func TestGLXFile_Merge_MultipleDuplicates(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Len(t, duplicates, 3, "should detect three duplicates")
+	conflicts, skipped := g1.Merge(g2)
+	require.Len(t, conflicts, 2, "should detect two entity conflicts")
+	require.Equal(t, 1, skipped, "should silently skip one identical vocab entry")
 
-	// Check that all duplicates are reported
+	// Check that entity duplicates are reported
 	duplicateStr := ""
 	var duplicateStrSb317 strings.Builder
-	for _, d := range duplicates {
+	for _, d := range conflicts {
 		duplicateStrSb317.WriteString(d + " ")
 	}
 	duplicateStr += duplicateStrSb317.String()
 	require.Contains(t, duplicateStr, "person-1")
 	require.Contains(t, duplicateStr, "event-1")
-	require.Contains(t, duplicateStr, "birth")
 
 	// Non-duplicates should still be merged
 	require.Contains(t, g1.Persons, "person-2")
@@ -369,8 +370,8 @@ func TestGLXFile_Merge_NilMaps(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 
 	// nil dest maps should be initialized and populated with source data
 	require.NotNil(t, g1.Persons)
@@ -395,8 +396,8 @@ func TestGLXFile_Merge_SourceNilMaps(t *testing.T) {
 		Events:  nil,
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 
 	// Destination should remain unchanged
 	require.Len(t, g1.Persons, 1)
@@ -437,8 +438,8 @@ func TestGLXFile_Merge_MixedEntitiesAndVocabularies(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 
 	// Verify everything merged correctly
 	require.Len(t, g1.Persons, 2)
@@ -462,8 +463,8 @@ func TestGLXFile_Merge_PreservesExistingData(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates)
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts)
 
 	// Verify original data is preserved
 	require.Equal(t, "Original Name", g1.Persons["person-1"].Properties["primary_name"])
@@ -496,26 +497,26 @@ func TestGLXFile_Merge_DuplicateReporting(t *testing.T) {
 		Media:         map[string]*Media{"media-1": {}},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Len(t, duplicates, 9, "should detect 9 duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Len(t, conflicts, 9, "should detect 9 conflicts")
 
 	// Verify messages include the entity type and ID
 	duplicateStr := ""
 	var duplicateStrSb476 strings.Builder
-	for _, d := range duplicates {
+	for _, d := range conflicts {
 		duplicateStrSb476.WriteString(d + "\n")
 	}
 	duplicateStr += duplicateStrSb476.String()
 
-	require.Contains(t, duplicateStr, "duplicate persons ID: person-1")
-	require.Contains(t, duplicateStr, "duplicate events ID: event-1")
-	require.Contains(t, duplicateStr, "duplicate relationships ID: rel-1")
-	require.Contains(t, duplicateStr, "duplicate places ID: place-1")
-	require.Contains(t, duplicateStr, "duplicate sources ID: source-1")
-	require.Contains(t, duplicateStr, "duplicate citations ID: citation-1")
-	require.Contains(t, duplicateStr, "duplicate repositories ID: repo-1")
-	require.Contains(t, duplicateStr, "duplicate assertions ID: assertion-1")
-	require.Contains(t, duplicateStr, "duplicate media ID: media-1")
+	require.Contains(t, duplicateStr, "conflict persons ID: person-1")
+	require.Contains(t, duplicateStr, "conflict events ID: event-1")
+	require.Contains(t, duplicateStr, "conflict relationships ID: rel-1")
+	require.Contains(t, duplicateStr, "conflict places ID: place-1")
+	require.Contains(t, duplicateStr, "conflict sources ID: source-1")
+	require.Contains(t, duplicateStr, "conflict citations ID: citation-1")
+	require.Contains(t, duplicateStr, "conflict repositories ID: repo-1")
+	require.Contains(t, duplicateStr, "conflict assertions ID: assertion-1")
+	require.Contains(t, duplicateStr, "conflict media ID: media-1")
 }
 
 func TestGLXFile_Merge_Metadata_AdoptFromOther(t *testing.T) {
@@ -530,8 +531,8 @@ func TestGLXFile_Merge_Metadata_AdoptFromOther(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 	require.NotNil(t, g1.ImportMetadata, "metadata should be adopted from other")
 	require.Equal(t, "MyApp", g1.ImportMetadata.SourceSystem)
 	require.Equal(t, DateString("2026-01-15"), g1.ImportMetadata.ExportDate)
@@ -551,9 +552,9 @@ func TestGLXFile_Merge_Metadata_DuplicateDetected(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Len(t, duplicates, 1, "should detect one metadata duplicate")
-	require.Contains(t, duplicates[0], "duplicate metadata")
+	conflicts, _ := g1.Merge(g2)
+	require.Len(t, conflicts, 1, "should detect one metadata conflict")
+	require.Contains(t, conflicts[0], "conflict metadata")
 
 	// Original metadata is preserved (first one wins)
 	require.Equal(t, "AppA", g1.ImportMetadata.SourceSystem)
@@ -568,8 +569,8 @@ func TestGLXFile_Merge_Metadata_EmptyMetadataIgnored(t *testing.T) {
 		ImportMetadata: &Metadata{}, // all fields empty
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts")
 	require.Nil(t, g1.ImportMetadata, "empty metadata should not be adopted")
 }
 
@@ -582,8 +583,8 @@ func TestGLXFile_Merge_Metadata_NilMetadataBothSides(t *testing.T) {
 		Persons: map[string]*Person{},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates)
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts)
 	require.Nil(t, g1.ImportMetadata)
 }
 
@@ -600,8 +601,66 @@ func TestGLXFile_Merge_Metadata_ExistingEmptyDoesNotConflict(t *testing.T) {
 		},
 	}
 
-	duplicates := g1.Merge(g2)
-	require.Empty(t, duplicates, "should have no duplicates since g1 metadata has no content")
+	conflicts, _ := g1.Merge(g2)
+	require.Empty(t, conflicts, "should have no conflicts since g1 metadata has no content")
 	require.NotNil(t, g1.ImportMetadata)
 	require.Equal(t, "NewApp", g1.ImportMetadata.SourceSystem)
+}
+
+func TestGLXFile_Merge_IdenticalVocabsSilentlySkipped(t *testing.T) {
+	g1 := &GLXFile{
+		EventTypes: map[string]*EventType{
+			"birth": {Label: "Birth", Description: "A birth event"},
+			"death": {Label: "Death"},
+		},
+		PersonProperties: map[string]*PropertyDefinition{
+			"name": {ValueType: "string", Label: "Name"},
+		},
+	}
+
+	g2 := &GLXFile{
+		EventTypes: map[string]*EventType{
+			"birth":    {Label: "Birth", Description: "A birth event"},
+			"death":    {Label: "Death"},
+			"marriage": {Label: "Marriage"},
+		},
+		PersonProperties: map[string]*PropertyDefinition{
+			"name": {ValueType: "string", Label: "Name"},
+			"age":  {ValueType: "integer"},
+		},
+	}
+
+	conflicts, skipped := g1.Merge(g2)
+	require.Empty(t, conflicts, "identical entries should not produce conflicts")
+	require.Equal(t, 3, skipped, "should skip 3 identical entries (birth, death, name)")
+	require.Len(t, g1.EventTypes, 3)
+	require.Contains(t, g1.EventTypes, "marriage")
+	require.Len(t, g1.PersonProperties, 2)
+	require.Contains(t, g1.PersonProperties, "age")
+}
+
+func TestGLXFile_Merge_ConflictingVocabsReported(t *testing.T) {
+	g1 := &GLXFile{
+		EventTypes: map[string]*EventType{
+			"birth": {Label: "Birth"},
+		},
+		PersonProperties: map[string]*PropertyDefinition{
+			"name": {ValueType: "string"},
+		},
+	}
+
+	g2 := &GLXFile{
+		EventTypes: map[string]*EventType{
+			"birth": {Label: "Different Birth"},
+		},
+		PersonProperties: map[string]*PropertyDefinition{
+			"name": {ValueType: "integer"},
+		},
+	}
+
+	conflicts, skipped := g1.Merge(g2)
+	require.Len(t, conflicts, 2, "should report two conflicts")
+	require.Equal(t, 0, skipped, "no identical entries to skip")
+	assert.Contains(t, conflicts[0], "event_types ID: birth")
+	assert.Contains(t, conflicts[1], "person_properties ID: name")
 }
