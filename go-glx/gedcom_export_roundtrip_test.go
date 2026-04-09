@@ -1037,3 +1037,68 @@ func TestRoundtrip_ResidenceEventNoPlace(t *testing.T) {
 	assert.Contains(t, datedEvent2.Notes, "Moved after wedding",
 		"NOTE should survive full roundtrip")
 }
+
+// TestRoundtrip_MultiplePersonNotes verifies that multiple NOTE records on a
+// person survive export→re-import as separate NoteList entries.
+func TestRoundtrip_MultiplePersonNotes(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR TEST
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Jane /Doe/
+2 GIVN Jane
+2 SURN Doe
+1 SEX F
+1 NOTE First note about Jane
+1 NOTE Second note about Jane
+1 NOTE Third note about Jane
+0 TRLR
+`
+	// Step 1: Import
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err, "first import failed")
+
+	// Find the person and verify multiple notes imported
+	var person1 *Person
+	for _, p := range glx1.Persons {
+		if p != nil {
+			person1 = p
+
+			break
+		}
+	}
+	require.NotNil(t, person1, "should have at least one person")
+	require.Len(t, person1.Notes, 3, "should import 3 separate notes")
+	assert.Equal(t, "First note about Jane", person1.Notes[0])
+	assert.Equal(t, "Second note about Jane", person1.Notes[1])
+	assert.Equal(t, "Third note about Jane", person1.Notes[2])
+
+	// Step 2: Export back to GEDCOM
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err, "export failed")
+
+	// Verify 3 separate NOTE records in the exported GEDCOM
+	noteCount := strings.Count(string(exported), "\n1 NOTE ")
+	assert.Equal(t, 3, noteCount, "should export 3 separate NOTE records")
+
+	// Step 3: Re-import
+	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+	require.NoError(t, err, "re-import failed")
+
+	var person2 *Person
+	for _, p := range glx2.Persons {
+		if p != nil {
+			person2 = p
+
+			break
+		}
+	}
+	require.NotNil(t, person2, "should have person after re-import")
+	require.Len(t, person2.Notes, 3, "should preserve 3 separate notes through roundtrip")
+	assert.Equal(t, "First note about Jane", person2.Notes[0])
+	assert.Equal(t, "Second note about Jane", person2.Notes[1])
+	assert.Equal(t, "Third note about Jane", person2.Notes[2])
+}

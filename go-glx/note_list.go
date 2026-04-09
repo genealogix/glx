@@ -49,7 +49,11 @@ func (n *NoteList) UnmarshalYAML(node *yaml.Node) error {
 		if err := node.Decode(&list); err != nil {
 			return err
 		}
-		*n = NoteList(list)
+		if len(list) == 0 {
+			*n = nil
+		} else {
+			*n = NoteList(list)
+		}
 
 		return nil
 	case yaml.AliasNode:
