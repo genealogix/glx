@@ -205,6 +205,40 @@ func TestValidatePropertyWarnings(t *testing.T) {
 		assert.Contains(t, ve.Message, "use death events instead")
 	})
 
+	t.Run("removed property buried_on", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{DeprecatedPropertyBuriedOn: "1920-12-01"}},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"occupation": {ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		ve := result.Errors[0]
+		assert.Equal(t, "properties.buried_on", ve.SourceField)
+		assert.Contains(t, ve.Message, "has been removed")
+		assert.Contains(t, ve.Message, "use burial events instead")
+	})
+
+	t.Run("removed property buried_at", func(t *testing.T) {
+		archive := &GLXFile{
+			Persons: map[string]*Person{
+				"person-1": {Properties: map[string]any{DeprecatedPropertyBuriedAt: "place-cemetery"}},
+			},
+			PersonProperties: map[string]*PropertyDefinition{
+				"occupation": {ValueType: "string"},
+			},
+		}
+		result := archive.Validate()
+		require.Len(t, result.Errors, 1)
+		ve := result.Errors[0]
+		assert.Equal(t, "properties.buried_at", ve.SourceField)
+		assert.Contains(t, ve.Message, "has been removed")
+		assert.Contains(t, ve.Message, "use burial events instead")
+	})
+
 	t.Run("removed property caught without vocabulary", func(t *testing.T) {
 		// Archives with no PersonProperties vocabulary should still error
 		// on deprecated properties, not just warn about missing vocabulary.
