@@ -187,19 +187,19 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 		if opts.Name != "" {
 			matched := false
 			if opts.Phonetic {
-				// Phonetic matching: compare Soundex codes of each name word
-				// against each query word (supports multi-word queries like "Jane Miller")
-				queryWords := strings.Fields(opts.Name)
+				// Phonetic matching: precompute Soundex codes for query words,
+				// then compare against each name word's Soundex code.
+				queryCodes := make(map[string]bool)
+				for _, qWord := range strings.Fields(opts.Name) {
+					if code := glxlib.Soundex(qWord); code != "" {
+						queryCodes[code] = true
+					}
+				}
 				for _, n := range allNames {
 					for nameWord := range strings.FieldsSeq(n) {
-						for _, qWord := range queryWords {
-							if glxlib.SoundexMatch(nameWord, qWord) {
-								matched = true
+						if code := glxlib.Soundex(nameWord); code != "" && queryCodes[code] {
+							matched = true
 
-								break
-							}
-						}
-						if matched {
 							break
 						}
 					}

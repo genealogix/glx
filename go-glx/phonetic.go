@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"sort"
 	"strings"
 )
 
@@ -67,7 +68,7 @@ func Soundex(name string) string {
 	return string(code)
 }
 
-// soundexDigitByte returns the Soundex digit for an uppercase ASCII letter, or '0' for vowels/H/W.
+// soundexDigitByte returns the Soundex digit for an uppercase ASCII letter, or '0' for vowels/H/W/Y.
 func soundexDigitByte(r byte) byte {
 	switch rune(r) {
 	case 'B', 'F', 'P', 'V':
@@ -100,7 +101,7 @@ type PhoneticMatch struct {
 	PersonID    string
 	PersonName  string
 	SoundexCode string
-	MatchedPart string // which part of the name matched (given or surname)
+	MatchedPart string // the name word that matched (any part: given, middle, surname, suffix, etc.)
 }
 
 // PhoneticPersonSearch searches all persons in the archive for names that
@@ -118,7 +119,14 @@ func PhoneticPersonSearch(archive *GLXFile, query string) []PhoneticMatch {
 
 	var matches []PhoneticMatch
 
-	for id, person := range archive.Persons {
+	ids := make([]string, 0, len(archive.Persons))
+	for id := range archive.Persons {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	for _, id := range ids {
+		person := archive.Persons[id]
 		if person == nil {
 			continue
 		}
