@@ -287,7 +287,7 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		SourceProperties:       make(map[string]*PropertyDefinition),
 	}
 
-	var allDuplicates []string
+	var allConflicts []string
 
 	// Each file is a GLXFile fragment — the YAML top-level keys (persons:,
 	// events:, event_types:, etc.) determine what entities it contains,
@@ -301,8 +301,8 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		if err := yaml.Unmarshal(data, &partial); err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
 		}
-		duplicates := glx.Merge(&partial)
-		allDuplicates = append(allDuplicates, duplicates...)
+		conflicts, _ := glx.Merge(&partial)
+		allConflicts = append(allConflicts, conflicts...)
 	}
 
 	// Validate if requested
@@ -312,7 +312,7 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		}
 	}
 
-	return glx, allDuplicates, nil
+	return glx, allConflicts, nil
 }
 
 // validateGLXFile validates a GLX archive using the built-in validation system.
