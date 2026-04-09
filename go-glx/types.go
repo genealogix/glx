@@ -372,9 +372,9 @@ type GenderType struct {
 // PropertyDefinition defines a property that can be used on entities.
 // value_type, reference_type, and vocabulary_type are mutually exclusive.
 type PropertyDefinition struct {
-	Label         string                      `yaml:"label"`
-	Description   string                      `yaml:"description,omitempty"`
-	GEDCOM        string                      `yaml:"gedcom,omitempty"`
+	Label          string                      `yaml:"label"`
+	Description    string                      `yaml:"description,omitempty"`
+	GEDCOM         string                      `yaml:"gedcom,omitempty"`
 	ValueType      string                      `yaml:"value_type,omitempty"`      // string, date, integer, boolean
 	ReferenceType  string                      `yaml:"reference_type,omitempty"`  // persons, places, events, relationships, etc.
 	VocabularyType string                      `yaml:"vocabulary_type,omitempty"` // Value must exist in this vocabulary (e.g., gender_types)
@@ -392,7 +392,7 @@ type FieldDefinition struct {
 // TemporalValue represents a single entry in the history of a temporal property.
 // It is used when a temporal property is represented as a list.
 type TemporalValue struct {
-	Value any    `yaml:"value"`
+	Value any        `yaml:"value"`
 	Date  DateString `yaml:"date,omitempty"` // FamilySearch normalized date string
 }
 
@@ -578,5 +578,6 @@ func mergeMapDedup[T any](mapType string, dest, src map[string]*T) (conflicts []
 			dest[k] = v
 		}
 	}
+
 	return conflicts, skipped
 }
