@@ -71,8 +71,9 @@ type searchResult struct {
 }
 
 // searchProps searches a properties map (sorted keys for deterministic output)
-// and appends any matches to results.
-func searchProps(entityType, id string, props map[string]any, matchFn func(string) bool) []searchResult {
+// and appends any matches to results. The prefix distinguishes entity-level
+// properties ("properties.") from participant-level ("participant.properties.").
+func searchProps(entityType, id, prefix string, props map[string]any, matchFn func(string) bool) []searchResult {
 	var results []searchResult
 	keys := make([]string, 0, len(props))
 	for k := range props {
@@ -81,7 +82,7 @@ func searchProps(entityType, id string, props map[string]any, matchFn func(strin
 	sort.Strings(keys)
 	for _, key := range keys {
 		if s := fmt.Sprint(props[key]); matchFn(s) {
-			results = append(results, searchResult{entityType, id, "properties." + key, truncate(s)})
+			results = append(results, searchResult{entityType, id, prefix + key, truncate(s)})
 		}
 	}
 
@@ -113,7 +114,7 @@ func searchParticipants(entityType, id string, participants []glxlib.Participant
 		if matchFn(p.Notes) {
 			results = append(results, searchResult{entityType, id, "participant.notes", truncate(p.Notes)})
 		}
-		results = append(results, searchProps(entityType, id, p.Properties, matchFn)...)
+		results = append(results, searchProps(entityType, id, "participant.properties.", p.Properties, matchFn)...)
 	}
 
 	return results
@@ -130,7 +131,7 @@ func searchPersons(archive *glxlib.GLXFile, matchFn func(string) bool) []searchR
 		if matchFn(id) {
 			results = append(results, searchResult{"persons", id, "id", id})
 		}
-		results = append(results, searchProps("persons", id, person.Properties, matchFn)...)
+		results = append(results, searchProps("persons", id, "properties.", person.Properties, matchFn)...)
 		if matchFn(person.Notes) {
 			results = append(results, searchResult{"persons", id, "notes", truncate(person.Notes)})
 		}
@@ -165,7 +166,7 @@ func searchEvents(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRe
 		if matchFn(ev.Notes) {
 			results = append(results, searchResult{"events", id, "notes", truncate(ev.Notes)})
 		}
-		results = append(results, searchProps("events", id, ev.Properties, matchFn)...)
+		results = append(results, searchProps("events", id, "properties.", ev.Properties, matchFn)...)
 		results = append(results, searchParticipants("events", id, ev.Participants, matchFn)...)
 	}
 
@@ -195,7 +196,7 @@ func searchPlaces(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRe
 		if matchFn(place.Notes) {
 			results = append(results, searchResult{"places", id, "notes", truncate(place.Notes)})
 		}
-		results = append(results, searchProps("places", id, place.Properties, matchFn)...)
+		results = append(results, searchProps("places", id, "properties.", place.Properties, matchFn)...)
 	}
 
 	return results
@@ -235,7 +236,7 @@ func searchSources(archive *glxlib.GLXFile, matchFn func(string) bool) []searchR
 		}
 		results = append(results, searchSlice("sources", id, "author", src.Authors, matchFn)...)
 		results = append(results, searchSlice("sources", id, "media", src.Media, matchFn)...)
-		results = append(results, searchProps("sources", id, src.Properties, matchFn)...)
+		results = append(results, searchProps("sources", id, "properties.", src.Properties, matchFn)...)
 	}
 
 	return results
@@ -262,7 +263,7 @@ func searchCitations(archive *glxlib.GLXFile, matchFn func(string) bool) []searc
 			results = append(results, searchResult{"citations", id, "notes", truncate(cit.Notes)})
 		}
 		results = append(results, searchSlice("citations", id, "media", cit.Media, matchFn)...)
-		results = append(results, searchProps("citations", id, cit.Properties, matchFn)...)
+		results = append(results, searchProps("citations", id, "properties.", cit.Properties, matchFn)...)
 	}
 
 	return results
@@ -306,7 +307,7 @@ func searchRepositories(archive *glxlib.GLXFile, matchFn func(string) bool) []se
 		if matchFn(repo.Notes) {
 			results = append(results, searchResult{"repositories", id, "notes", truncate(repo.Notes)})
 		}
-		results = append(results, searchProps("repositories", id, repo.Properties, matchFn)...)
+		results = append(results, searchProps("repositories", id, "properties.", repo.Properties, matchFn)...)
 	}
 
 	return results
@@ -388,7 +389,7 @@ func searchRelationships(archive *glxlib.GLXFile, matchFn func(string) bool) []s
 			results = append(results, searchResult{"relationships", id, "notes", truncate(rel.Notes)})
 		}
 		results = append(results, searchParticipants("relationships", id, rel.Participants, matchFn)...)
-		results = append(results, searchProps("relationships", id, rel.Properties, matchFn)...)
+		results = append(results, searchProps("relationships", id, "properties.", rel.Properties, matchFn)...)
 	}
 
 	return results
@@ -432,7 +433,7 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 		if matchFn(m.Notes) {
 			results = append(results, searchResult{"media", id, "notes", truncate(m.Notes)})
 		}
-		results = append(results, searchProps("media", id, m.Properties, matchFn)...)
+		results = append(results, searchProps("media", id, "properties.", m.Properties, matchFn)...)
 	}
 
 	return results
@@ -476,6 +477,7 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool, ty
 }
 
 // containsMatch returns a match function for the given query.
+// Reuses containsFold from query_runner.go for case-insensitive matching.
 func containsMatch(query string, caseSensitive bool) func(string) bool {
 	if caseSensitive {
 		return func(s string) bool {
@@ -485,7 +487,7 @@ func containsMatch(query string, caseSensitive bool) func(string) bool {
 	lowerQuery := strings.ToLower(query)
 
 	return func(s string) bool {
-		return s != "" && strings.Contains(strings.ToLower(s), lowerQuery)
+		return s != "" && containsFold(s, lowerQuery)
 	}
 }
 
