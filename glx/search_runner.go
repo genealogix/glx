@@ -66,7 +66,7 @@ func searchProps(entityType, id string, props map[string]any, matchFn func(strin
 	sort.Strings(keys)
 	for _, key := range keys {
 		if s := fmt.Sprint(props[key]); matchFn(s) {
-			results = append(results, searchResult{entityType, id, key, truncate(s)})
+			results = append(results, searchResult{entityType, id, "properties." + key, truncate(s)})
 		}
 	}
 
@@ -276,6 +276,15 @@ func searchRepositories(archive *glxlib.GLXFile, matchFn func(string) bool) []se
 		if matchFn(repo.City) {
 			results = append(results, searchResult{"repositories", id, "city", repo.City})
 		}
+		if matchFn(repo.State) {
+			results = append(results, searchResult{"repositories", id, "state", repo.State})
+		}
+		if matchFn(repo.PostalCode) {
+			results = append(results, searchResult{"repositories", id, "postal_code", repo.PostalCode})
+		}
+		if matchFn(repo.Country) {
+			results = append(results, searchResult{"repositories", id, "country", repo.Country})
+		}
 		if matchFn(repo.Website) {
 			results = append(results, searchResult{"repositories", id, "website", repo.Website})
 		}
@@ -364,6 +373,7 @@ func searchRelationships(archive *glxlib.GLXFile, matchFn func(string) bool) []s
 			results = append(results, searchResult{"relationships", id, "notes", truncate(rel.Notes)})
 		}
 		results = append(results, searchParticipants("relationships", id, rel.Participants, matchFn)...)
+		results = append(results, searchProps("relationships", id, rel.Properties, matchFn)...)
 	}
 
 	return results
@@ -391,6 +401,9 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 		}
 		if matchFn(m.MimeType) {
 			results = append(results, searchResult{"media", id, "mime_type", m.MimeType})
+		}
+		if matchFn(m.Hash) {
+			results = append(results, searchResult{"media", id, "hash", m.Hash})
 		}
 		if matchFn(m.Description) {
 			results = append(results, searchResult{"media", id, "description", truncate(m.Description)})
