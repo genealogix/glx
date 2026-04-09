@@ -50,14 +50,14 @@ func TestMergeArchives_NewEntities(t *testing.T) {
 
 	result := mergeArchivesInMemory(dest, src)
 
-	assert.Empty(t, result.Duplicates, "no duplicates expected")
+	assert.Empty(t, result.Conflicts, "no conflicts expected")
 	assert.Equal(t, 1, result.NewPersons)
 	assert.Equal(t, 1, result.NewEvents)
 	assert.Len(t, dest.Persons, 2)
 	assert.Contains(t, dest.Persons, "person-b")
 }
 
-func TestMergeArchives_Duplicates(t *testing.T) {
+func TestMergeArchives_Conflicts(t *testing.T) {
 	dest := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-a": {Properties: map[string]any{"name": "Person A"}},
@@ -74,8 +74,8 @@ func TestMergeArchives_Duplicates(t *testing.T) {
 
 	result := mergeArchivesInMemory(dest, src)
 
-	require.Len(t, result.Duplicates, 1)
-	assert.Contains(t, result.Duplicates[0], "person-a")
+	require.Len(t, result.Conflicts, 1)
+	assert.Contains(t, result.Conflicts[0], "person-a")
 	assert.Equal(t, 1, result.NewPersons)
 }
 
@@ -90,7 +90,7 @@ func TestMergeArchives_EmptySource(t *testing.T) {
 
 	result := mergeArchivesInMemory(dest, src)
 
-	assert.Empty(t, result.Duplicates)
+	assert.Empty(t, result.Conflicts)
 	assert.Equal(t, 0, result.TotalNew())
 	assert.Len(t, dest.Persons, 1)
 }
