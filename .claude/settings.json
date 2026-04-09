@@ -12,7 +12,21 @@
       "Bash(make test-verbose:*)",
       "Bash(make lint:*)",
       "Bash(make check-schemas:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(gofmt:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'export GOROOT=\"$HOME/go-sdk\" PATH=\"$HOME/go-sdk/bin:$HOME/go/bin:$PATH\" && cd \"$CLAUDE_WORKING_DIRECTORY\" && STAGED_GO=$(git diff --cached --name-only --diff-filter=ACMR -- \"*.go\" | head -1) && if [ -n \"$STAGED_GO\" ]; then golangci-lint run --new-from-rev=origin/main --timeout=5m 2>&1; fi'"
+          }
+        ]
+      }
     ]
   }
 }
