@@ -69,6 +69,13 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - **Never use `ctx` for anything other than `context.Context`** — use `convCtx`, `conversion`, etc.
 - **Avoid `_` parameters** except when required by interfaces (e.g., cobra handlers)
 - Document public functions with Go doc comments
+- **ALWAYS run gofumpt and golangci-lint before committing Go changes**:
+  ```bash
+  export GOROOT="$HOME/go-sdk" PATH="$HOME/go-sdk/bin:$HOME/go/bin:$PATH"
+  gofumpt -w glx/ go-glx/                                    # format first
+  golangci-lint run --new-from-rev=origin/main --timeout=5m   # then lint
+  ```
+  Note: `golangci-lint` locally may show false-positive gofmt/gofumpt errors on Windows due to CRLF line endings. Run `gofumpt -w` first to fix real formatting issues, then verify no non-gofmt lint errors remain. CI runs on Linux with LF and is authoritative.
 
 ## Key Rules
 
