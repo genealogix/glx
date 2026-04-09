@@ -33,19 +33,28 @@ var (
 // searchResultMaxLen is the maximum rune length for truncated display values.
 const searchResultMaxLen = 80
 
-// validSearchTypes is the set of valid --type filter values.
-var validSearchTypes = map[string]bool{
-	"persons": true, "events": true, "places": true, "sources": true,
-	"citations": true, "repositories": true, "assertions": true,
-	"relationships": true, "media": true,
+// searchEntityType pairs an entity type key with its display label.
+type searchEntityType struct {
+	Key         string
+	DisplayName string
 }
 
-// searchTypeDisplayNames maps entity type keys to display labels.
-var searchTypeDisplayNames = map[string]string{
-	"persons": "Persons", "events": "Events", "places": "Places",
-	"sources": "Sources", "citations": "Citations", "repositories": "Repositories",
-	"assertions": "Assertions", "relationships": "Relationships", "media": "Media",
+// searchEntityTypes is the canonical ordered list of searchable entity types.
+var searchEntityTypes = []searchEntityType{
+	{"persons", "Persons"}, {"events", "Events"}, {"places", "Places"},
+	{"sources", "Sources"}, {"citations", "Citations"}, {"repositories", "Repositories"},
+	{"assertions", "Assertions"}, {"relationships", "Relationships"}, {"media", "Media"},
 }
+
+// searchEntityTypeMap provides O(1) lookup by key.
+var searchEntityTypeMap = func() map[string]searchEntityType {
+	m := make(map[string]searchEntityType, len(searchEntityTypes))
+	for _, et := range searchEntityTypes {
+		m[et.Key] = et
+	}
+
+	return m
+}()
 
 // searchResult represents a single search match.
 type searchResult struct {
@@ -78,7 +87,7 @@ func searchSlice(entityType, id, field string, items []string, matchFn func(stri
 	var results []searchResult
 	for _, item := range items {
 		if matchFn(item) {
-			results = append(results, searchResult{entityType, id, field, item})
+			results = append(results, searchResult{entityType, id, field, truncate(item)})
 		}
 	}
 
@@ -423,22 +432,39 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 	return results
 }
 
-// searchArchive searches all entities for the given query string across
-// all string-bearing fields: IDs, names, titles, types, dates, notes,
-// properties, authors, descriptions, participants, and reference IDs.
-func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool) []searchResult {
+// searchFuncs maps entity type keys to their search functions.
+var searchFuncs = map[string]func(*glxlib.GLXFile, func(string) bool) []searchResult{
+	"persons":       searchPersons,
+	"events":        searchEvents,
+	"places":        searchPlaces,
+	"sources":       searchSources,
+	"citations":     searchCitations,
+	"repositories":  searchRepositories,
+	"assertions":    searchAssertions,
+	"relationships": searchRelationships,
+	"media":         searchMedia,
+}
+
+// searchArchive searches entities for the given query string. If typeFilter is
+// non-empty, only that entity type is searched; otherwise all types are searched.
+func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool, typeFilter string) []searchResult {
 	matchFn := containsMatch(query, caseSensitive)
 
+	// Early dispatch: search only the requested type.
+	if typeFilter != "" {
+		if fn, ok := searchFuncs[typeFilter]; ok {
+			return deduplicateResults(fn(archive, matchFn))
+		}
+
+		return nil
+	}
+
 	results := make([]searchResult, 0, len(archive.Persons)+len(archive.Events))
-	results = append(results, searchPersons(archive, matchFn)...)
-	results = append(results, searchEvents(archive, matchFn)...)
-	results = append(results, searchPlaces(archive, matchFn)...)
-	results = append(results, searchSources(archive, matchFn)...)
-	results = append(results, searchCitations(archive, matchFn)...)
-	results = append(results, searchRepositories(archive, matchFn)...)
-	results = append(results, searchAssertions(archive, matchFn)...)
-	results = append(results, searchRelationships(archive, matchFn)...)
-	results = append(results, searchMedia(archive, matchFn)...)
+	for _, et := range searchEntityTypes {
+		if fn, ok := searchFuncs[et.Key]; ok {
+			results = append(results, fn(archive, matchFn)...)
+		}
+	}
 
 	return deduplicateResults(results)
 }
@@ -494,14 +520,15 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 
 	// Validate --type filter
 	typeFilter = strings.ToLower(strings.TrimSpace(typeFilter))
-	if typeFilter != "" && !validSearchTypes[typeFilter] {
-		var valid []string
-		for k := range validSearchTypes {
-			valid = append(valid, k)
-		}
-		sort.Strings(valid)
+	if typeFilter != "" {
+		if _, ok := searchEntityTypeMap[typeFilter]; !ok {
+			var valid []string
+			for _, et := range searchEntityTypes {
+				valid = append(valid, et.Key)
+			}
 
-		return fmt.Errorf("unknown type %q (valid: %s): %w", typeFilter, strings.Join(valid, ", "), errUnknownSearchType)
+			return fmt.Errorf("unknown type %q (valid: %s): %w", typeFilter, strings.Join(valid, ", "), errUnknownSearchType)
+		}
 	}
 
 	info, err := os.Stat(archivePath)
@@ -527,18 +554,7 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 		archive = loaded
 	}
 
-	results := searchArchive(archive, query, caseSensitive)
-
-	// Filter by type if specified
-	if typeFilter != "" {
-		var filtered []searchResult
-		for _, r := range results {
-			if r.EntityType == typeFilter {
-				filtered = append(filtered, r)
-			}
-		}
-		results = filtered
-	}
+	results := searchArchive(archive, query, caseSensitive, typeFilter)
 
 	if len(results) == 0 {
 		fmt.Printf("No matches found for %q\n", query)
@@ -552,12 +568,10 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 		groups[r.EntityType] = append(groups[r.EntityType], r)
 	}
 
-	typeOrder := []string{"persons", "events", "places", "sources", "citations", "repositories", "assertions", "relationships", "media"}
-
 	fmt.Printf("Found %d match(es) for %q:\n", len(results), query)
 
-	for _, typ := range typeOrder {
-		group, ok := groups[typ]
+	for _, et := range searchEntityTypes {
+		group, ok := groups[et.Key]
 		if !ok {
 			continue
 		}
@@ -566,8 +580,7 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 			return group[i].EntityID < group[j].EntityID
 		})
 
-		displayName := searchTypeDisplayNames[typ]
-		fmt.Printf("\n  %s (%d):\n", displayName, len(group))
+		fmt.Printf("\n  %s (%d):\n", et.DisplayName, len(group))
 		for _, r := range group {
 			fmt.Printf("    %s  %s: %s\n", r.EntityID, r.Field, r.Value)
 		}

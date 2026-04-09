@@ -15,6 +15,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,7 +71,7 @@ func newTestArchiveForSearch() *glxlib.GLXFile {
 
 func TestSearchArchive_FindsPersonName(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "Miller", false)
+	results := searchArchive(archive, "Miller", false, "")
 
 	hasPersonMatch := false
 	for _, r := range results {
@@ -82,7 +84,7 @@ func TestSearchArchive_FindsPersonName(t *testing.T) {
 
 func TestSearchArchive_CaseInsensitive(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "millbrook", false)
+	results := searchArchive(archive, "millbrook", false, "")
 
 	require.NotEmpty(t, results, "case-insensitive search should find 'Millbrook'")
 }
@@ -91,13 +93,13 @@ func TestSearchArchive_CaseSensitive(t *testing.T) {
 	archive := newTestArchiveForSearch()
 
 	// "MILLBROOK" (uppercase) should NOT match "Millbrook" in case-sensitive mode
-	results := searchArchive(archive, "MILLBROOK", true)
+	results := searchArchive(archive, "MILLBROOK", true, "")
 	assert.Empty(t, results, "case-sensitive search for 'MILLBROOK' should not match 'Millbrook'")
 }
 
 func TestSearchArchive_FindsPlaceName(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "Hartford", false)
+	results := searchArchive(archive, "Hartford", false, "")
 
 	hasPlaceMatch := false
 	for _, r := range results {
@@ -110,7 +112,7 @@ func TestSearchArchive_FindsPlaceName(t *testing.T) {
 
 func TestSearchArchive_FindsEventTitle(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "1860 Census", false)
+	results := searchArchive(archive, "1860 Census", false, "")
 
 	hasEventMatch := false
 	for _, r := range results {
@@ -123,7 +125,7 @@ func TestSearchArchive_FindsEventTitle(t *testing.T) {
 
 func TestSearchArchive_FindsSourceTitle(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "Federal Census", false)
+	results := searchArchive(archive, "Federal Census", false, "")
 
 	hasSourceMatch := false
 	for _, r := range results {
@@ -136,7 +138,7 @@ func TestSearchArchive_FindsSourceTitle(t *testing.T) {
 
 func TestSearchArchive_FindsAssertionNotes(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "Millbrook area", false)
+	results := searchArchive(archive, "Millbrook area", false, "")
 
 	hasAssertionMatch := false
 	for _, r := range results {
@@ -149,14 +151,14 @@ func TestSearchArchive_FindsAssertionNotes(t *testing.T) {
 
 func TestSearchArchive_NoMatches(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "XYZ_NONEXISTENT", false)
+	results := searchArchive(archive, "XYZ_NONEXISTENT", false, "")
 
 	assert.Empty(t, results, "should return no matches for nonexistent term")
 }
 
 func TestSearchArchive_MatchesEntityID(t *testing.T) {
 	archive := newTestArchiveForSearch()
-	results := searchArchive(archive, "person-jane", false)
+	results := searchArchive(archive, "person-jane", false, "")
 
 	require.NotEmpty(t, results, "should match entity IDs")
 }
@@ -177,17 +179,15 @@ func TestSearchArchive_TypeFilter(t *testing.T) {
 	archive := newTestArchiveForSearch()
 
 	// "Millbrook" appears in persons, events, places, sources, assertions
-	allResults := searchArchive(archive, "Millbrook", false)
+	allResults := searchArchive(archive, "Millbrook", false, "")
 	require.NotEmpty(t, allResults)
 
-	// Filter to just places
-	var placesOnly []searchResult
-	for _, r := range allResults {
-		if r.EntityType == "places" {
-			placesOnly = append(placesOnly, r)
-		}
-	}
+	// Filter to just places via searchArchive typeFilter
+	placesOnly := searchArchive(archive, "Millbrook", false, "places")
 	require.NotEmpty(t, placesOnly, "should have place matches")
+	for _, r := range placesOnly {
+		assert.Equal(t, "places", r.EntityType, "filtered results should only contain places")
+	}
 
 	// Non-place results should exist in unfiltered
 	hasNonPlace := false
@@ -197,4 +197,28 @@ func TestSearchArchive_TypeFilter(t *testing.T) {
 		}
 	}
 	assert.True(t, hasNonPlace, "unfiltered results should include non-place entities")
+}
+
+func TestShowSearch_TypeFilterOutput(t *testing.T) {
+	// Write a temporary single-file archive
+	archiveContent := `persons:
+  person-test:
+    properties:
+      name: "Jane Millbrook"
+places:
+  place-mill:
+    name: "Millbrook"
+`
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(archivePath, []byte(archiveContent), 0o644))
+
+	// Search with --type=places should only show places
+	output := captureStdout(t, func() {
+		err := showSearch(archivePath, "Millbrook", false, "places")
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "Places")
+	assert.NotContains(t, output, "Persons")
 }
