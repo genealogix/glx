@@ -346,8 +346,8 @@ func TestCompareEntity_FieldChanged(t *testing.T) {
 }
 
 func TestCompareEntity_NotesChanged(t *testing.T) {
-	old := &Person{Properties: map[string]any{"name": "John"}, Notes: "old notes"}
-	newPerson := &Person{Properties: map[string]any{"name": "John"}, Notes: "new notes"}
+	old := &Person{Properties: map[string]any{"name": "John"}, Notes: NoteList{"old notes"}}
+	newPerson := &Person{Properties: map[string]any{"name": "John"}, Notes: NoteList{"new notes"}}
 
 	fields := compareEntity(old, newPerson)
 	require.Len(t, fields, 1)
@@ -393,12 +393,12 @@ func TestDiffArchives_AddedEvent(t *testing.T) {
 func TestDiffArchives_ModifiedEvent_NotesChange(t *testing.T) {
 	old := &GLXFile{
 		Events: map[string]*Event{
-			"event-1": {Type: "census", Notes: "old"},
+			"event-1": {Type: "census", Notes: NoteList{"old"}},
 		},
 	}
 	newArchive := &GLXFile{
 		Events: map[string]*Event{
-			"event-1": {Type: "census", Notes: "new"},
+			"event-1": {Type: "census", Notes: NoteList{"new"}},
 		},
 	}
 

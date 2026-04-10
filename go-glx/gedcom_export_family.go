@@ -347,10 +347,10 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 			}
 
 			// NOTE from relationship
-			if rel.Notes != "" {
+			for _, note := range rel.Notes {
 				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 					Tag:   GedcomTagNote,
-					Value: rel.Notes,
+					Value: note,
 				})
 			}
 		}
@@ -389,17 +389,19 @@ func exportFamilyEvent(eventID, gedcomTag string, expCtx *ExportContext) *GEDCOM
 		record.SubRecords = append(record.SubRecords, placRecords...)
 	}
 
-	// NOTE - check both struct field and Properties map
-	famEventNoteText := event.Notes
-	if famEventNoteText == "" {
-		if propNotes, ok := event.Properties[PropertyNotes].(string); ok {
-			famEventNoteText = propNotes
+	// NOTE — emit one NOTE subrecord per note in the NoteList to preserve
+	// note boundaries through roundtrip. Fall back to Properties map.
+	if !event.Notes.IsEmpty() {
+		for _, note := range event.Notes {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNote,
+				Value: note,
+			})
 		}
-	}
-	if famEventNoteText != "" {
+	} else if propNotes, ok := event.Properties[PropertyNotes].(string); ok && propNotes != "" {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: famEventNoteText,
+			Value: propNotes,
 		})
 	}
 
