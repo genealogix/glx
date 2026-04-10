@@ -474,3 +474,32 @@ func TestExtractPersonName(t *testing.T) {
 func TestExtractPersonName_NilPerson(t *testing.T) {
 	assert.Equal(t, "(unnamed)", extractPersonName(nil))
 }
+
+func TestValidateQueryFlags_PhoneticRequiresName(t *testing.T) {
+	err := validateQueryFlags("persons", queryOpts{Phonetic: true, Name: ""})
+	require.ErrorIs(t, err, errPhoneticRequiresName)
+}
+
+func TestValidateQueryFlags_PhoneticWithName(t *testing.T) {
+	err := validateQueryFlags("persons", queryOpts{Phonetic: true, Name: "Miller"})
+	require.NoError(t, err)
+}
+
+func TestQueryPersons_PhoneticMatching(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-miller": {Properties: map[string]any{"name": "Jane Miller"}},
+			"person-myller": {Properties: map[string]any{"name": "John Myller"}},
+			"person-smith":  {Properties: map[string]any{"name": "Robert Smith"}},
+		},
+	}
+
+	output := captureStdout(t, func() {
+		err := queryPersons(archive, queryOpts{Name: "miller", Phonetic: true})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "person-miller")
+	assert.Contains(t, output, "person-myller")
+	assert.NotContains(t, output, "person-smith")
+}
