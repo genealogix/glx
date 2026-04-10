@@ -1255,6 +1255,7 @@ var (
 	searchArchivePath   string
 	searchCaseSensitive bool
 	searchTypeFilter    string
+	searchJSON          bool
 )
 
 var searchCmd = &cobra.Command{
@@ -1279,10 +1280,11 @@ func init() {
 	searchCmd.Flags().StringVarP(&searchArchivePath, "archive", "a", ".", "Path to GLX archive")
 	searchCmd.Flags().BoolVar(&searchCaseSensitive, "case-sensitive", false, "Case-sensitive search")
 	searchCmd.Flags().StringVar(&searchTypeFilter, "type", "", "Filter to entity type (persons, events, places, etc.)")
+	searchCmd.Flags().BoolVar(&searchJSON, "json", false, "Output results as JSON")
 }
 
 func runSearch(_ *cobra.Command, args []string) error {
-	return showSearch(searchArchivePath, args[0], searchCaseSensitive, searchTypeFilter)
+	return showSearch(searchArchivePath, args[0], searchCaseSensitive, searchTypeFilter, searchJSON)
 }
 
 // ============================================================================

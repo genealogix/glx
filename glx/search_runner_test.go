@@ -29,7 +29,7 @@ func newTestArchiveForSearch() *glxlib.GLXFile {
 	return &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-jane": {Properties: map[string]any{
-				"name": "Jane Miller", "born_at": "place-millbrook",
+				"name": "Jane Miller", "occupation": "farmer",
 			}},
 			"person-john": {Properties: map[string]any{
 				"name": "John Smith",
@@ -164,13 +164,13 @@ func TestSearchArchive_MatchesEntityID(t *testing.T) {
 }
 
 func TestShowSearch_EmptyQuery(t *testing.T) {
-	err := showSearch(".", "", false, "")
+	err := showSearch(".", "", false, "", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty")
 }
 
 func TestShowSearch_InvalidType(t *testing.T) {
-	err := showSearch(".", "test", false, "invalid_type")
+	err := showSearch(".", "test", false, "invalid_type", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown type")
 }
@@ -215,7 +215,7 @@ places:
 
 	// Search with --type=places should only show places
 	output := captureStdout(t, func() {
-		err := showSearch(archivePath, "Millbrook", false, "places")
+		err := showSearch(archivePath, "Millbrook", false, "places", false)
 		require.NoError(t, err)
 	})
 

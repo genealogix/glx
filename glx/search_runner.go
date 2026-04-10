@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -81,7 +82,20 @@ func searchProps(entityType, id, prefix string, props map[string]any, matchFn fu
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		if s := fmt.Sprint(props[key]); matchFn(s) {
+		var s string
+		switch v := props[key].(type) {
+		case string:
+			s = v
+		case map[string]any:
+			if val, ok := v["value"]; ok {
+				if str, ok := val.(string); ok {
+					s = str
+				}
+			}
+		default:
+			continue
+		}
+		if matchFn(s) {
 			results = append(results, searchResult{entityType, id, prefix + key, truncate(s)})
 		}
 	}
@@ -460,7 +474,7 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool, ty
 	// Early dispatch: search only the requested type.
 	if typeFilter != "" {
 		if fn, ok := searchFuncs[typeFilter]; ok {
-			return deduplicateResults(fn(archive, matchFn))
+			return fn(archive, matchFn)
 		}
 
 		return nil
@@ -473,7 +487,7 @@ func searchArchive(archive *glxlib.GLXFile, query string, caseSensitive bool, ty
 		}
 	}
 
-	return deduplicateResults(results)
+	return results
 }
 
 // containsMatch returns a match function for the given query.
@@ -520,7 +534,7 @@ func deduplicateResults(results []searchResult) []searchResult {
 }
 
 // showSearch loads an archive and performs a full-text search.
-func showSearch(archivePath, query string, caseSensitive bool, typeFilter string) error {
+func showSearch(archivePath, query string, caseSensitive bool, typeFilter string, jsonOutput bool) error {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return errSearchQueryEmpty
@@ -563,6 +577,27 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 	}
 
 	results := searchArchive(archive, query, caseSensitive, typeFilter)
+	results = deduplicateResults(results)
+
+	if jsonOutput {
+		type jsonResult struct {
+			EntityType string `json:"entity_type"`
+			EntityID   string `json:"entity_id"`
+			Field      string `json:"field"`
+			Value      string `json:"value"`
+		}
+		var out []jsonResult
+		for _, r := range results {
+			out = append(out, jsonResult(r))
+		}
+		data, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal results: %w", err)
+		}
+		fmt.Println(string(data))
+
+		return nil
+	}
 
 	if len(results) == 0 {
 		fmt.Printf("No matches found for %q\n", query)
