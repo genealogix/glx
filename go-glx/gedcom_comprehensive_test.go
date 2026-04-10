@@ -101,7 +101,7 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 			if len(glx.Persons) > 0 {
 				personWithData := 0
 				for _, person := range glx.Persons {
-					if len(person.Properties) > 0 || person.Notes != "" {
+					if len(person.Properties) > 0 || !person.Notes.IsEmpty() {
 						personWithData++
 					}
 				}
