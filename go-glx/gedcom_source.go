@@ -139,9 +139,9 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 		}
 	}
 
-	// Combine notes
+	// Collect notes
 	if len(notes) > 0 {
-		source.Notes = strings.Join(notes, "\n")
+		source.Notes = NoteList(notes)
 	}
 
 	// Default type if not set

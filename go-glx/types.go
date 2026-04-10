@@ -33,7 +33,7 @@ type Metadata struct {
 	GEDCOMVersion     string     `yaml:"gedcom_version,omitempty"`
 	CharacterSet      string     `yaml:"character_set,omitempty"`
 	Submitter         *Submitter `yaml:"submitter,omitempty"`
-	Notes             string     `yaml:"notes,omitempty"`
+	Notes             NoteList   `yaml:"notes,omitempty"`
 }
 
 // hasContent returns true if any metadata field is populated.
@@ -41,7 +41,7 @@ func (m *Metadata) hasContent() bool {
 	return m.ExportDate != "" || m.SourceFile != "" || m.Copyright != "" ||
 		m.Language != "" || m.SourceSystem != "" || m.SourceVersion != "" ||
 		m.SourceCorporation != "" || m.GEDCOMVersion != "" || m.CharacterSet != "" ||
-		m.Notes != "" || (m.Submitter != nil && m.Submitter.hasContent())
+		!m.Notes.IsEmpty() || (m.Submitter != nil && m.Submitter.hasContent())
 }
 
 // hasContent returns true if any submitter field is populated.
@@ -150,7 +150,7 @@ type ValidationWarning struct {
 // Person represents an individual in the family archive.
 type Person struct {
 	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes      string         `yaml:"notes,omitempty"`
+	Notes      NoteList       `yaml:"notes,omitempty"`
 }
 
 // Participant defines a person's role in an event, relationship, or assertion.
@@ -158,7 +158,7 @@ type Participant struct {
 	Person     string         `refType:"persons"           yaml:"person"`
 	Role       string         `refType:"participant_roles" yaml:"role,omitempty"`
 	Properties map[string]any `yaml:"properties,omitempty"`
-	Notes      string         `yaml:"notes,omitempty"`
+	Notes      NoteList       `yaml:"notes,omitempty"`
 }
 
 // Relationship represents a relationship between two or more people.
@@ -168,7 +168,7 @@ type Relationship struct {
 	StartEvent   string         `refType:"events"             yaml:"start_event,omitempty"`
 	EndEvent     string         `refType:"events"             yaml:"end_event,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes        string         `yaml:"notes,omitempty"`
+	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
 // Event represents a genealogical event.
@@ -179,7 +179,7 @@ type Event struct {
 	Date         DateString     `yaml:"date,omitempty"` // Date in GLX format: "1850", "ABT 1850", "BEF 1920-01-15", "BET 1880 AND 1890"
 	Participants []Participant  `yaml:"participants"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes        string         `yaml:"notes,omitempty"`
+	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
 // Place represents a geographical location.
@@ -190,7 +190,7 @@ type Place struct {
 	Latitude   *float64       `yaml:"latitude,omitempty"`
 	Longitude  *float64       `yaml:"longitude,omitempty"`
 	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (jurisdiction, place_format, etc.)
-	Notes      string         `yaml:"notes,omitempty"`
+	Notes      NoteList       `yaml:"notes,omitempty"`
 }
 
 // Source represents a source of information.
@@ -204,7 +204,7 @@ type Source struct {
 	Language     string         `yaml:"language,omitempty"`
 	Media        []string       `refType:"media"              yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (abbreviation, call_number, url, etc.)
-	Notes        string         `yaml:"notes,omitempty"`
+	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
 // Citation represents a citation of a source.
@@ -213,7 +213,7 @@ type Citation struct {
 	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed)
-	Notes        string         `yaml:"notes,omitempty"`
+	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
 // Repository represents a repository where sources are held.
@@ -227,7 +227,7 @@ type Repository struct {
 	Country    string         `yaml:"country,omitempty"`
 	Website    string         `yaml:"website,omitempty"`
 	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (phones, emails, fax, access_hours, access_restrictions, holding_types, external_ids)
-	Notes      string         `yaml:"notes,omitempty"`
+	Notes      NoteList       `yaml:"notes,omitempty"`
 }
 
 // EntityRef is a typed reference to an entity. Exactly one field must be set.
@@ -285,7 +285,7 @@ type Assertion struct {
 	Sources     []string     `refType:"sources"            yaml:"sources,omitempty"`
 	Citations   []string     `refType:"citations"          yaml:"citations,omitempty"`
 	Media       []string     `refType:"media"              yaml:"media,omitempty"`
-	Notes       string       `yaml:"notes,omitempty"`
+	Notes       NoteList     `yaml:"notes,omitempty"`
 }
 
 // Media represents a media object, like a photo or document.
@@ -299,7 +299,7 @@ type Media struct {
 	Date        DateString     `yaml:"date,omitempty"`
 	Source      string         `refType:"sources"            yaml:"source,omitempty"`
 	Properties  map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes       string         `yaml:"notes,omitempty"`
+	Notes       NoteList       `yaml:"notes,omitempty"`
 }
 
 // ============================================================================

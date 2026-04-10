@@ -270,10 +270,14 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 
 	// Create new source with collision check
 	sourceID := uniqueSourceID(censusSlugID("source", census.Year, census.Location), existing, result)
+	var srcNotes NoteList
+	if src.Notes != "" {
+		srcNotes = NoteList{src.Notes}
+	}
 	newSource := &Source{
 		Title: title,
 		Type:  SourceTypeCensus,
-		Notes: src.Notes,
+		Notes: srcNotes,
 	}
 	if src.RepositoryID != "" {
 		newSource.RepositoryID = src.RepositoryID
@@ -344,10 +348,14 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 			role = ParticipantRoleSubject
 		}
 
+		var memberNotes NoteList
+		if member.Notes != "" {
+			memberNotes = NoteList{member.Notes}
+		}
 		p := Participant{
 			Person: personID,
 			Role:   role,
-			Notes:  member.Notes,
+			Notes:  memberNotes,
 		}
 
 		// Add age as participant property
@@ -430,21 +438,22 @@ func buildCensusEvent(census *CensusData, placeID string, participants []Partici
 		date = DateString(fmt.Sprintf("%d", census.Year))
 	}
 
+	var eventNotes NoteList
+	if census.Household.Notes != "" {
+		eventNotes = NoteList{census.Household.Notes}
+	}
 	event := &Event{
 		Title:        title,
 		Type:         EventTypeCensus,
 		Date:         date,
 		PlaceID:      placeID,
 		Participants: participants,
-		Notes:        census.Household.Notes,
+		Notes:        eventNotes,
 	}
 
 	// Append FAN notes
 	if census.FAN != nil && census.FAN.Notes != "" {
-		if event.Notes != "" {
-			event.Notes += "\n\n"
-		}
-		event.Notes += "FAN — " + census.FAN.Notes
+		event.Notes = append(event.Notes, "FAN — "+census.FAN.Notes)
 	}
 
 	return event
@@ -475,7 +484,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 				Value:      dateValue,
 				Citations:  []string{citationID},
 				Confidence: ConfidenceLevelLow,
-				Notes:      fmt.Sprintf("Estimated from age %d in %d census. Census ages are frequently off by 1-2 years.", *member.Age, census.Year),
+				Notes:      NoteList{fmt.Sprintf("Estimated from age %d in %d census. Census ages are frequently off by 1-2 years.", *member.Age, census.Year)},
 			}
 			// Populate event date if empty so CLI tools can read it directly.
 			if evt := result.Event[birthEventID]; evt != nil && evt.Date == "" {
@@ -509,7 +518,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 				Value:      birthplaceRef,
 				Citations:  []string{citationID},
 				Confidence: ConfidenceLevelMedium,
-				Notes:      birthplaceNote(census.Year, member.Birthplace, member.BirthplaceID),
+				Notes:      NoteList{birthplaceNote(census.Year, member.Birthplace, member.BirthplaceID)},
 			}
 			// Populate event place if empty so CLI tools can read it directly.
 			if evt := result.Event[birthEventID]; evt != nil && evt.PlaceID == "" {
@@ -526,7 +535,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 				Value:      strings.ToLower(member.Sex),
 				Citations:  []string{citationID},
 				Confidence: ConfidenceLevelHigh,
-				Notes:      fmt.Sprintf("Directly stated in %d census.", census.Year),
+				Notes:      NoteList{fmt.Sprintf("Directly stated in %d census.", census.Year)},
 			}
 		}
 
@@ -540,7 +549,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 				Date:       DateString(yearStr),
 				Citations:  []string{citationID},
 				Confidence: ConfidenceLevelHigh,
-				Notes:      fmt.Sprintf("Directly stated in %d census.", census.Year),
+				Notes:      NoteList{fmt.Sprintf("Directly stated in %d census.", census.Year)},
 			}
 		}
 
@@ -553,7 +562,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 			Date:       DateString(yearStr),
 			Citations:  []string{citationID},
 			Confidence: ConfidenceLevelHigh,
-			Notes:      fmt.Sprintf("Enumerated in %d census.", census.Year),
+			Notes:      NoteList{fmt.Sprintf("Enumerated in %d census.", census.Year)},
 		}
 
 		// Custom properties
@@ -568,7 +577,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 				Date:       DateString(yearStr),
 				Citations:  []string{citationID},
 				Confidence: ConfidenceLevelHigh,
-				Notes:      fmt.Sprintf("Directly stated in %d census.", census.Year),
+				Notes:      NoteList{fmt.Sprintf("Directly stated in %d census.", census.Year)},
 			}
 		}
 	}

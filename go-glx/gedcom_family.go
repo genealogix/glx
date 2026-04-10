@@ -16,7 +16,6 @@ package glx
 
 import (
 	"fmt"
-	"strings"
 )
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
@@ -128,7 +127,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 		// Attach FAM-level NOTEs to the relationship
 		if len(noteTexts) > 0 {
-			relationship.Notes = strings.Join(noteTexts, "\n\n")
+			relationship.Notes = NoteList(noteTexts)
 		}
 
 		// Resolve FAM-level OBJE references

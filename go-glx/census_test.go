@@ -326,7 +326,7 @@ func TestBuildCensusEntities_FANNotes(t *testing.T) {
 	require.NoError(t, err)
 
 	event := result.Event[result.EventID]
-	assert.Contains(t, event.Notes, "FAN — Previous page: John Smith. Next page: Robert Brown.")
+	assert.Contains(t, event.Notes.String(), "FAN — Previous page: John Smith. Next page: Robert Brown.")
 }
 
 func TestBuildCensusEntities_Assertions(t *testing.T) {
@@ -361,7 +361,7 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	assert.Equal(t, "date", birthAssertion.Property)
 	assert.Equal(t, "ABT 1830", birthAssertion.Value)
 	assert.Equal(t, ConfidenceLevelLow, birthAssertion.Confidence)
-	assert.Contains(t, birthAssertion.Notes, "age 30")
+	assert.Contains(t, birthAssertion.Notes.String(), "age 30")
 
 	// Check gender assertion
 	genderAssertion := result.Assertions["assertion-person-daniel-lane-gender-1860"]

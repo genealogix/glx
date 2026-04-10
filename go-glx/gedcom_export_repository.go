@@ -107,10 +107,10 @@ func exportRepository(repoID string, repo *Repository, expCtx *ExportContext) *G
 	}
 
 	// Notes
-	if repo.Notes != "" {
+	for _, note := range repo.Notes {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: repo.Notes,
+			Value: note,
 		})
 	}
 

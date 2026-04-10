@@ -158,11 +158,7 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 		case GedcomTagNote:
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if event.Notes != "" {
-					event.Notes += "\n\n" + noteText
-				} else {
-					event.Notes = noteText
-				}
+				event.Notes = append(event.Notes, noteText)
 			}
 
 		case GedcomTagAddr:

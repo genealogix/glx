@@ -125,21 +125,13 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 
 		case GedcomTagQuay:
 			// GEDCOM quality assessment (0-3) - preserve in notes
-			if citation.Notes != "" {
-				citation.Notes += "\nGEDCOM QUAY: " + sub.Value
-			} else {
-				citation.Notes = "GEDCOM QUAY: " + sub.Value
-			}
+			citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+sub.Value)
 
 		case GedcomTagNote:
 			// Notes about the citation
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if citation.Notes != "" {
-					citation.Notes += "\n" + noteText
-				} else {
-					citation.Notes = noteText
-				}
+				citation.Notes = append(citation.Notes, noteText)
 			}
 
 		case GedcomTagObje:
@@ -166,7 +158,7 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 
 // citationHasDetail reports whether a citation contains any data beyond its source reference.
 func citationHasDetail(c *Citation) bool {
-	return c.RepositoryID != "" || len(c.Properties) > 0 || c.Notes != "" || len(c.Media) > 0
+	return c.RepositoryID != "" || len(c.Properties) > 0 || !c.Notes.IsEmpty() || len(c.Media) > 0
 }
 
 // createPropertyAssertion creates an assertion for a property, but only if there is evidence.
@@ -440,22 +432,14 @@ func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *C
 			// Notes about the source
 			noteText := extractNoteText(sub, conv)
 			if noteText != "" {
-				if source.Notes != "" {
-					source.Notes += "\n" + noteText
-				} else {
-					source.Notes = noteText
-				}
+				source.Notes = append(source.Notes, noteText)
 			}
 		}
 	}
 
 	// Add note indicating this is a synthetic source from embedded citation
 	syntheticNote := "Source created from embedded GEDCOM citation"
-	if source.Notes != "" {
-		source.Notes = syntheticNote + "\n" + source.Notes
-	} else {
-		source.Notes = syntheticNote
-	}
+	source.Notes = append(NoteList{syntheticNote}, source.Notes...)
 
 	// Store the source
 	conv.GLX.Sources[sourceID] = source
