@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -30,6 +31,7 @@ import (
 type queryOpts struct {
 	Archive    string
 	Name       string
+	Phonetic   bool
 	BornBefore int
 	BornAfter  int
 	Type       string
@@ -42,6 +44,9 @@ type queryOpts struct {
 	Subject    string
 	Birthplace string
 }
+
+// errPhoneticRequiresName is returned when --phonetic is used without --name.
+var errPhoneticRequiresName = errors.New("--phonetic requires --name to be specified")
 
 // queryEntityTypes lists the entity types supported by the query command.
 var queryEntityTypes = []string{
@@ -60,6 +65,7 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 
 	checks := []check{
 		{"--name", opts.Name != ""},
+		{"--phonetic", opts.Phonetic},
 		{"--born-before", opts.BornBefore != 0},
 		{"--born-after", opts.BornAfter != 0},
 		{"--type", opts.Type != ""},
@@ -75,7 +81,7 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 
 	// Map each entity type to its supported flags.
 	supported := map[string]map[string]bool{
-		"persons":       {"--name": true, "--born-before": true, "--born-after": true, "--birthplace": true},
+		"persons":       {"--name": true, "--phonetic": true, "--born-before": true, "--born-after": true, "--birthplace": true},
 		"events":        {"--type": true, "--before": true, "--after": true},
 		"assertions":    {"--confidence": true, "--status": true, "--source": true, "--citation": true, "--subject": true},
 		"sources":       {"--name": true, "--type": true},
@@ -91,6 +97,11 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 		if c.value && !allowed[c.flag] {
 			return fmt.Errorf("flag %s is not supported for entity type %q", c.flag, entityType)
 		}
+	}
+
+	// --phonetic requires --name
+	if opts.Phonetic && opts.Name == "" {
+		return errPhoneticRequiresName
 	}
 
 	return nil
@@ -165,6 +176,17 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 	ids := sortedKeys(archive.Persons)
 	var count int
 
+	// Precompute Soundex codes for query words once (used only when --phonetic is set).
+	var queryCodes map[string]bool
+	if opts.Phonetic && opts.Name != "" {
+		queryCodes = make(map[string]bool)
+		for qWord := range strings.FieldsSeq(opts.Name) {
+			if code := glxlib.Soundex(qWord); code != "" {
+				queryCodes[code] = true
+			}
+		}
+	}
+
 	for _, id := range ids {
 		person := archive.Persons[id]
 		if person == nil {
@@ -175,10 +197,26 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 
 		if opts.Name != "" {
 			matched := false
-			for _, n := range allNames {
-				if containsFold(n, opts.Name) {
-					matched = true
-					break
+			if opts.Phonetic {
+				for _, n := range allNames {
+					for nameWord := range strings.FieldsSeq(n) {
+						if code := glxlib.Soundex(nameWord); code != "" && queryCodes[code] {
+							matched = true
+
+							break
+						}
+					}
+					if matched {
+						break
+					}
+				}
+			} else {
+				for _, n := range allNames {
+					if containsFold(n, opts.Name) {
+						matched = true
+
+						break
+					}
 				}
 			}
 			if !matched {
