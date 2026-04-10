@@ -60,7 +60,7 @@ func newTestArchiveForSearch() *glxlib.GLXFile {
 				Subject:  glxlib.EntityRef{Person: "person-jane"},
 				Property: "born_at",
 				Value:    "place-millbrook",
-				Notes:    "Born in Millbrook area",
+				Notes:    glxlib.NoteList{"Born in Millbrook area"},
 			},
 		},
 		Relationships: map[string]*glxlib.Relationship{},

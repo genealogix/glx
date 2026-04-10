@@ -111,8 +111,8 @@ func searchParticipants(entityType, id string, participants []glxlib.Participant
 		if matchFn(p.Role) {
 			results = append(results, searchResult{entityType, id, "participant.role", p.Role})
 		}
-		if matchFn(p.Notes) {
-			results = append(results, searchResult{entityType, id, "participant.notes", truncate(p.Notes)})
+		if matchFn(p.Notes.String()) {
+			results = append(results, searchResult{entityType, id, "participant.notes", truncate(p.Notes.String())})
 		}
 		results = append(results, searchProps(entityType, id, "participant.properties.", p.Properties, matchFn)...)
 	}
@@ -132,8 +132,8 @@ func searchPersons(archive *glxlib.GLXFile, matchFn func(string) bool) []searchR
 			results = append(results, searchResult{"persons", id, "id", id})
 		}
 		results = append(results, searchProps("persons", id, "properties.", person.Properties, matchFn)...)
-		if matchFn(person.Notes) {
-			results = append(results, searchResult{"persons", id, "notes", truncate(person.Notes)})
+		if matchFn(person.Notes.String()) {
+			results = append(results, searchResult{"persons", id, "notes", truncate(person.Notes.String())})
 		}
 	}
 
@@ -163,8 +163,8 @@ func searchEvents(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRe
 		if matchFn(ev.PlaceID) {
 			results = append(results, searchResult{"events", id, "place", ev.PlaceID})
 		}
-		if matchFn(ev.Notes) {
-			results = append(results, searchResult{"events", id, "notes", truncate(ev.Notes)})
+		if matchFn(ev.Notes.String()) {
+			results = append(results, searchResult{"events", id, "notes", truncate(ev.Notes.String())})
 		}
 		results = append(results, searchProps("events", id, "properties.", ev.Properties, matchFn)...)
 		results = append(results, searchParticipants("events", id, ev.Participants, matchFn)...)
@@ -193,8 +193,8 @@ func searchPlaces(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRe
 		if matchFn(place.ParentID) {
 			results = append(results, searchResult{"places", id, "parent", place.ParentID})
 		}
-		if matchFn(place.Notes) {
-			results = append(results, searchResult{"places", id, "notes", truncate(place.Notes)})
+		if matchFn(place.Notes.String()) {
+			results = append(results, searchResult{"places", id, "notes", truncate(place.Notes.String())})
 		}
 		results = append(results, searchProps("places", id, "properties.", place.Properties, matchFn)...)
 	}
@@ -231,8 +231,8 @@ func searchSources(archive *glxlib.GLXFile, matchFn func(string) bool) []searchR
 		if matchFn(src.Language) {
 			results = append(results, searchResult{"sources", id, "language", src.Language})
 		}
-		if matchFn(src.Notes) {
-			results = append(results, searchResult{"sources", id, "notes", truncate(src.Notes)})
+		if matchFn(src.Notes.String()) {
+			results = append(results, searchResult{"sources", id, "notes", truncate(src.Notes.String())})
 		}
 		results = append(results, searchSlice("sources", id, "author", src.Authors, matchFn)...)
 		results = append(results, searchSlice("sources", id, "media", src.Media, matchFn)...)
@@ -259,8 +259,8 @@ func searchCitations(archive *glxlib.GLXFile, matchFn func(string) bool) []searc
 		if matchFn(cit.RepositoryID) {
 			results = append(results, searchResult{"citations", id, "repository", cit.RepositoryID})
 		}
-		if matchFn(cit.Notes) {
-			results = append(results, searchResult{"citations", id, "notes", truncate(cit.Notes)})
+		if matchFn(cit.Notes.String()) {
+			results = append(results, searchResult{"citations", id, "notes", truncate(cit.Notes.String())})
 		}
 		results = append(results, searchSlice("citations", id, "media", cit.Media, matchFn)...)
 		results = append(results, searchProps("citations", id, "properties.", cit.Properties, matchFn)...)
@@ -304,8 +304,8 @@ func searchRepositories(archive *glxlib.GLXFile, matchFn func(string) bool) []se
 		if matchFn(repo.Website) {
 			results = append(results, searchResult{"repositories", id, "website", repo.Website})
 		}
-		if matchFn(repo.Notes) {
-			results = append(results, searchResult{"repositories", id, "notes", truncate(repo.Notes)})
+		if matchFn(repo.Notes.String()) {
+			results = append(results, searchResult{"repositories", id, "notes", truncate(repo.Notes.String())})
 		}
 		results = append(results, searchProps("repositories", id, "properties.", repo.Properties, matchFn)...)
 	}
@@ -351,8 +351,8 @@ func searchAssertions(archive *glxlib.GLXFile, matchFn func(string) bool) []sear
 		if matchFn(a.Status) {
 			results = append(results, searchResult{"assertions", id, "status", a.Status})
 		}
-		if matchFn(a.Notes) {
-			results = append(results, searchResult{"assertions", id, "notes", truncate(a.Notes)})
+		if matchFn(a.Notes.String()) {
+			results = append(results, searchResult{"assertions", id, "notes", truncate(a.Notes.String())})
 		}
 		results = append(results, searchSlice("assertions", id, "source", a.Sources, matchFn)...)
 		results = append(results, searchSlice("assertions", id, "citation", a.Citations, matchFn)...)
@@ -385,8 +385,8 @@ func searchRelationships(archive *glxlib.GLXFile, matchFn func(string) bool) []s
 		if matchFn(rel.EndEvent) {
 			results = append(results, searchResult{"relationships", id, "end_event", rel.EndEvent})
 		}
-		if matchFn(rel.Notes) {
-			results = append(results, searchResult{"relationships", id, "notes", truncate(rel.Notes)})
+		if matchFn(rel.Notes.String()) {
+			results = append(results, searchResult{"relationships", id, "notes", truncate(rel.Notes.String())})
 		}
 		results = append(results, searchParticipants("relationships", id, rel.Participants, matchFn)...)
 		results = append(results, searchProps("relationships", id, "properties.", rel.Properties, matchFn)...)
@@ -430,8 +430,8 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 		if matchFn(m.Source) {
 			results = append(results, searchResult{"media", id, "source", m.Source})
 		}
-		if matchFn(m.Notes) {
-			results = append(results, searchResult{"media", id, "notes", truncate(m.Notes)})
+		if matchFn(m.Notes.String()) {
+			results = append(results, searchResult{"media", id, "notes", truncate(m.Notes.String())})
 		}
 		results = append(results, searchProps("media", id, "properties.", m.Properties, matchFn)...)
 	}
