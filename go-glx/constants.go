@@ -79,21 +79,21 @@ const (
 
 // Standard Participant Roles - from participant-roles.glx vocabulary
 const (
-	ParticipantRolePrincipal     = "principal"
-	ParticipantRoleSubject       = "subject"
-	ParticipantRoleWitness       = "witness"
-	ParticipantRoleOfficiant     = "officiant"
-	ParticipantRoleInformant     = "informant"
-	ParticipantRoleGroom         = "groom"
-	ParticipantRoleBride         = "bride"
-	ParticipantRoleSpouse        = "spouse"
-	ParticipantRoleParent        = "parent"
-	ParticipantRoleChild         = "child"
+	ParticipantRolePrincipal      = "principal"
+	ParticipantRoleSubject        = "subject"
+	ParticipantRoleWitness        = "witness"
+	ParticipantRoleOfficiant      = "officiant"
+	ParticipantRoleInformant      = "informant"
+	ParticipantRoleGroom          = "groom"
+	ParticipantRoleBride          = "bride"
+	ParticipantRoleSpouse         = "spouse"
+	ParticipantRoleParent         = "parent"
+	ParticipantRoleChild          = "child"
 	ParticipantRoleAdoptiveParent = "adoptive_parent"
-	ParticipantRoleAdoptedChild  = "adopted_child"
-	ParticipantRoleSibling       = "sibling"
-	ParticipantRoleGodparent     = "godparent"
-	ParticipantRoleGodchild      = "godchild"
+	ParticipantRoleAdoptedChild   = "adopted_child"
+	ParticipantRoleSibling        = "sibling"
+	ParticipantRoleGodparent      = "godparent"
+	ParticipantRoleGodchild       = "godchild"
 )
 
 // Standard Person Property Names - commonly used properties on Person entities
@@ -105,12 +105,14 @@ const (
 )
 
 // Deprecated property constants - these properties have been removed from the spec.
-// Use birth/death events instead. Kept for validation error messages and migration tooling.
+// Use birth/death/burial events instead. Kept for validation error messages and migration tooling.
 const (
-	DeprecatedPropertyBornOn = "born_on"
-	DeprecatedPropertyBornAt = "born_at"
-	DeprecatedPropertyDiedOn = "died_on"
-	DeprecatedPropertyDiedAt = "died_at"
+	DeprecatedPropertyBornOn   = "born_on"
+	DeprecatedPropertyBornAt   = "born_at"
+	DeprecatedPropertyDiedOn   = "died_on"
+	DeprecatedPropertyDiedAt   = "died_at"
+	DeprecatedPropertyBuriedOn = "buried_on"
+	DeprecatedPropertyBuriedAt = "buried_at"
 )
 
 // Name Field Constants - used in the name property's fields structure
@@ -348,21 +350,21 @@ const (
 
 // Standard Source Types - from source-types.glx vocabulary
 const (
-	SourceTypeVitalRecord    = "vital_record"    // Birth, marriage, death certificates
-	SourceTypeCensus         = "census"          // Census records and population enumerations
-	SourceTypeChurchRegister = "church_register" // Parish registers of baptisms, marriages, burials
-	SourceTypeMilitary       = "military"        // Military service records, pension files
-	SourceTypeNewspaper      = "newspaper"       // Newspapers, periodicals, gazettes
-	SourceTypeProbate        = "probate"         // Wills, probate records, estate files
-	SourceTypeLand           = "land"            // Deeds, land grants, property records
-	SourceTypeCourt          = "court"           // Court records, legal proceedings
-	SourceTypeImmigration    = "immigration"     // Passenger lists, naturalization records
-	SourceTypeDirectory      = "directory"       // City directories, telephone books
-	SourceTypeBook           = "book"            // Published genealogies, family histories
-	SourceTypeDatabase       = "database"        // Online databases, compiled records
-	SourceTypeOralHistory    = "oral_history"    // Interviews, recorded memories
-	SourceTypeCorrespondence = "correspondence"  // Letters, emails, personal papers
-	SourceTypePhotograph     = "photograph"      // Photograph collections
+	SourceTypeVitalRecord        = "vital_record"        // Birth, marriage, death certificates
+	SourceTypeCensus             = "census"              // Census records and population enumerations
+	SourceTypeChurchRegister     = "church_register"     // Parish registers of baptisms, marriages, burials
+	SourceTypeMilitary           = "military"            // Military service records, pension files
+	SourceTypeNewspaper          = "newspaper"           // Newspapers, periodicals, gazettes
+	SourceTypeProbate            = "probate"             // Wills, probate records, estate files
+	SourceTypeLand               = "land"                // Deeds, land grants, property records
+	SourceTypeCourt              = "court"               // Court records, legal proceedings
+	SourceTypeImmigration        = "immigration"         // Passenger lists, naturalization records
+	SourceTypeDirectory          = "directory"           // City directories, telephone books
+	SourceTypeBook               = "book"                // Published genealogies, family histories
+	SourceTypeDatabase           = "database"            // Online databases, compiled records
+	SourceTypeOralHistory        = "oral_history"        // Interviews, recorded memories
+	SourceTypeCorrespondence     = "correspondence"      // Letters, emails, personal papers
+	SourceTypePhotograph         = "photograph"          // Photograph collections
 	SourceTypePopulationRegister = "population_register" // Civil population registers
 	SourceTypeTaxRecord          = "tax_record"          // Tax rolls, assessments, tithes
 	SourceTypeNotarialRecord     = "notarial_record"     // Notarial acts and contracts

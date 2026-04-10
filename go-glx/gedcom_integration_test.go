@@ -357,7 +357,7 @@ func TestImportNoteReferenceResolution(t *testing.T) {
 		if event.Type != "will" {
 			continue
 		}
-		noteStr := event.Notes
+		noteStr := event.Notes.String()
 		if noteStr == "" {
 			continue
 		}
@@ -688,7 +688,7 @@ func TestEmbeddedCitations(t *testing.T) {
 		if strings.Contains(source.Title, "Family Bible of the Smith Family") {
 			foundFamilyBible = true
 			// Verify it has the note about being synthetic
-			if !strings.Contains(source.Notes, "embedded GEDCOM citation") {
+			if !strings.Contains(source.Notes.String(), "embedded GEDCOM citation") {
 				t.Error("Synthetic source should have note about being from embedded citation")
 			}
 		}

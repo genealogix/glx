@@ -254,7 +254,7 @@ func checkUncitedNotes(archive *glxlib.GLXFile) []AnalysisIssue {
 	ids := sortedAssertionIDs(archive.Assertions)
 	for _, id := range ids {
 		a := archive.Assertions[id]
-		if a == nil || a.Notes == "" {
+		if a == nil || a.Notes.IsEmpty() {
 			continue
 		}
 		// Skip if assertion already has citations or sources
@@ -262,7 +262,7 @@ func checkUncitedNotes(archive *glxlib.GLXFile) []AnalysisIssue {
 			continue
 		}
 
-		phrase := findAttributionPhrase(a.Notes)
+		phrase := findAttributionPhrase(a.Notes.String())
 		if phrase == "" {
 			continue
 		}

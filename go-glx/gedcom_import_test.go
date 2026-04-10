@@ -610,7 +610,7 @@ func TestImportPersonNote_StoredInNotesField(t *testing.T) {
 	require.Len(t, glxFile.Persons, 1)
 
 	for _, person := range glxFile.Persons {
-		assert.Equal(t, "This is a person note", person.Notes,
+		assert.Equal(t, NoteList{"This is a person note"}, person.Notes,
 			"NOTE should be stored in person.Notes struct field")
 		_, inProps := person.Properties[PropertyNotes]
 		assert.False(t, inProps,
@@ -629,8 +629,8 @@ func TestImportEventNote_StoredInNotesField(t *testing.T) {
 
 	var foundNote bool
 	for _, event := range glxFile.Events {
-		if event.Type == "birth" && event.Notes != "" {
-			assert.Equal(t, "Born in a small village", event.Notes)
+		if event.Type == "birth" && !event.Notes.IsEmpty() {
+			assert.Equal(t, NoteList{"Born in a small village"}, event.Notes)
 			_, inProps := event.Properties[PropertyNotes]
 			assert.False(t, inProps,
 				"NOTE should NOT be stored in event Properties['notes']")
@@ -687,7 +687,7 @@ func TestImportGenericEVEN_CreatesEvent(t *testing.T) {
 		if event.Date == "1900" {
 			foundEvent = true
 			assert.NotEmpty(t, event.Type, "Generic EVEN should have a type")
-			assert.Equal(t, "A funny story", event.Notes, "EVEN NOTE should be in Notes field")
+			assert.Equal(t, NoteList{"A funny story"}, event.Notes, "EVEN NOTE should be in Notes field")
 		}
 	}
 	assert.True(t, foundEvent, "Generic EVEN should create an event")
@@ -1195,8 +1195,8 @@ func TestImportFamilyNote_PreservedOnRelationship(t *testing.T) {
 	// Find the marriage relationship and check Notes
 	var foundNote bool
 	for _, rel := range glxFile.Relationships {
-		if rel.Type == RelationshipTypeMarriage && rel.Notes != "" {
-			assert.Equal(t, "Marriage performed at city hall.", rel.Notes)
+		if rel.Type == RelationshipTypeMarriage && !rel.Notes.IsEmpty() {
+			assert.Equal(t, NoteList{"Marriage performed at city hall."}, rel.Notes)
 			foundNote = true
 		}
 	}
@@ -1276,13 +1276,13 @@ func TestImportCensus_SyntheticSource(t *testing.T) {
 	// Note should be on a citation
 	var noteCitation *Citation
 	for _, cit := range glxFile.Citations {
-		if cit.Notes != "" {
+		if !cit.Notes.IsEmpty() {
 			noteCitation = cit
 			break
 		}
 	}
 	require.NotNil(t, noteCitation, "census note should create a citation")
-	assert.Contains(t, noteCitation.Notes, "Household #42")
+	assert.Contains(t, noteCitation.Notes.String(), "Household #42")
 }
 
 // TestImportCensus_WithSOURAndNote tests census records with both SOUR and NOTE
@@ -1314,7 +1314,7 @@ func TestImportCensus_WithSOURAndNote(t *testing.T) {
 	// Note should be attached to the citation from the SOUR reference
 	foundNote := false
 	for _, cit := range glxFile.Citations {
-		if strings.Contains(cit.Notes, "Boarder") {
+		if strings.Contains(cit.Notes.String(), "Boarder") {
 			foundNote = true
 			break
 		}
@@ -1710,7 +1710,7 @@ func TestImportHeadNote_StoredInMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, glxFile.ImportMetadata, "ImportMetadata should be set")
-	assert.Equal(t, "This file was exported from MyApp.", glxFile.ImportMetadata.Notes,
+	assert.Equal(t, NoteList{"This file was exported from MyApp."}, glxFile.ImportMetadata.Notes,
 		"HEAD-level NOTE should be stored in ImportMetadata.Notes")
 }
 

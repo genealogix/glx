@@ -1175,7 +1175,8 @@ glx migrate <path>
 **What it does:**
 - Converts `born_on`/`born_at` person properties to birth Event entities
 - Converts `died_on`/`died_at` person properties to death Event entities
-- Merges date/place into existing birth/death events when they already exist
+- Converts `buried_on`/`buried_at` person properties to burial Event entities
+- Merges date/place into existing birth/death/burial events when they already exist
 - Converts property assertions (`property: born_on`) to event assertions (`property: date`)
 - Removes the deprecated properties from person entities
 - Strips deprecated entries from archive vocabulary files
