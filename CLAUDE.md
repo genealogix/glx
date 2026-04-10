@@ -69,11 +69,6 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - **Never use `ctx` for anything other than `context.Context`** — use `convCtx`, `conversion`, etc.
 - **Avoid `_` parameters** except when required by interfaces (e.g., cobra handlers)
 - Document public functions with Go doc comments
-- **ALWAYS run golangci-lint before committing Go changes**:
-  ```bash
-  golangci-lint run --new-from-rev=$(git merge-base HEAD main 2>/dev/null || echo HEAD~1) --timeout=5m
-  ```
-  Falls back to `HEAD~1` if `main` ref is unavailable (fresh clone, detached HEAD). A PreToolUse hook runs this automatically before `git commit`, but if committing manually, run it first. Fix all issues before pushing — CI will reject the PR otherwise.
 
 ## Key Rules
 
