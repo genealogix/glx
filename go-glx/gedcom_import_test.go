@@ -1633,6 +1633,22 @@ func TestImportMedia_NoFileTagSkipped(t *testing.T) {
 	assert.Empty(t, glxFile.Media, "OBJE with no FILE tag should not create a media entity")
 }
 
+func TestImportMedia_EmbeddedObjeNoFileSkipped(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Test /Person/
+1 OBJE
+2 TITL Embedded photo with no file
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	assert.Empty(t, glxFile.Media, "embedded OBJE with no FILE tag should not create a media entity")
+}
+
 // TestImportFamilyCensus_SingleSpouse tests family census with only one spouse.
 func TestImportFamilyCensus_SingleSpouse(t *testing.T) {
 	gedcom := `0 HEAD

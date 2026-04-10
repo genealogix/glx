@@ -40,6 +40,8 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// tag or an empty FILE value and no BLOB data. Fixes #492.
 	if media.URI == "" {
 		conv.Logger.LogInfof("Skipping OBJE %s: no FILE reference or BLOB data", objeRecord.XRef)
+		conv.addWarning(objeRecord.Line, GedcomTagObje,
+			fmt.Sprintf("skipped OBJE %s: no FILE reference or BLOB data", objeRecord.XRef))
 		delete(conv.MediaIDMap, objeRecord.XRef) // clean up stale mapping
 
 		return nil
@@ -88,6 +90,8 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) str
 	// Skip if no URI (empty FILE, no BLOB). Fixes #492.
 	if media.URI == "" {
 		conv.Logger.LogInfo("Skipping embedded OBJE: no FILE reference or BLOB data")
+		conv.addWarning(objeRecord.Line, GedcomTagObje,
+			"skipped embedded OBJE: no FILE reference or BLOB data")
 
 		return ""
 	}
