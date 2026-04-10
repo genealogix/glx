@@ -930,7 +930,7 @@ func TestExportGEDCOM_FamilyWithNotes(t *testing.T) {
 					{Person: "person-h", Role: ParticipantRoleSpouse},
 					{Person: "person-w", Role: ParticipantRoleSpouse},
 				},
-				Notes: "Married at the local church",
+				Notes: NoteList{"Married at the local church"},
 			},
 		},
 		Events:       make(map[string]*Event),

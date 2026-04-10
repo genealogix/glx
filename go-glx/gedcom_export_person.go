@@ -22,17 +22,19 @@ import (
 
 // Properties that are handled specially and should not be exported as generic tags.
 var skipPersonProperties = map[string]bool{
-	PersonPropertyName:      true,
-	PersonPropertyGender:    true,
-	DeprecatedPropertyBornOn: true,
-	DeprecatedPropertyBornAt: true,
-	DeprecatedPropertyDiedOn: true,
-	DeprecatedPropertyDiedAt: true,
-	PersonPropertyResidence: true,
-	PropertyNotes:           true,
-	PropertyMedia:           true,
-	PropertySources:         true,
-	PropertyCitations:       true,
+	PersonPropertyName:         true,
+	PersonPropertyGender:       true,
+	DeprecatedPropertyBornOn:   true,
+	DeprecatedPropertyBornAt:   true,
+	DeprecatedPropertyDiedOn:   true,
+	DeprecatedPropertyDiedAt:   true,
+	DeprecatedPropertyBuriedOn: true,
+	DeprecatedPropertyBuriedAt: true,
+	PersonPropertyResidence:    true,
+	PropertyNotes:              true,
+	PropertyMedia:              true,
+	PropertySources:            true,
+	PropertyCitations:          true,
 }
 
 // buildPersonEventsIndex scans all events and builds a map from person ID
@@ -152,18 +154,20 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	// Person properties with GEDCOM tag mappings (OCCU, RELI, EDUC, etc.)
 	record.SubRecords = append(record.SubRecords, exportMappedPersonProperties(personID, person, expCtx)...)
 
-	// NOTE - check both struct field and Properties map
-	noteText := person.Notes
-	if noteText == "" {
-		if propNotes, ok := person.Properties[PropertyNotes].(string); ok {
-			noteText = propNotes
-		}
-	}
-	if noteText != "" {
+	// NOTE - emit one NOTE subrecord per note
+	for _, note := range person.Notes {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: noteText,
+			Value: note,
 		})
+	}
+	if person.Notes.IsEmpty() {
+		if propNotes, ok := person.Properties[PropertyNotes].(string); ok && propNotes != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNote,
+				Value: propNotes,
+			})
+		}
 	}
 
 	// OBJE references from media property
@@ -446,18 +450,20 @@ func exportPersonEvent(event *Event, expCtx *ExportContext) *GEDCOMRecord {
 	// Event properties (AGE, CAUS, TYPE)
 	record.SubRecords = append(record.SubRecords, exportEventPropertySubrecords(event, expCtx)...)
 
-	// NOTE - check both struct field and Properties map
-	eventNoteText := event.Notes
-	if eventNoteText == "" {
-		if propNotes, ok := event.Properties[PropertyNotes].(string); ok {
-			eventNoteText = propNotes
-		}
-	}
-	if eventNoteText != "" {
+	// NOTE - emit one NOTE subrecord per note
+	for _, note := range event.Notes {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: eventNoteText,
+			Value: note,
 		})
+	}
+	if event.Notes.IsEmpty() {
+		if propNotes, ok := event.Properties[PropertyNotes].(string); ok && propNotes != "" {
+			record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+				Tag:   GedcomTagNote,
+				Value: propNotes,
+			})
+		}
 	}
 
 	// SOUR references from event sources and citations
@@ -851,10 +857,10 @@ func exportCitationAsSOUR(citation *Citation, sourceXRef string, expCtx *ExportC
 	}
 
 	// NOTE
-	if citation.Notes != "" {
+	for _, note := range citation.Notes {
 		sourRecord.SubRecords = append(sourRecord.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagNote,
-			Value: citation.Notes,
+			Value: note,
 		})
 	}
 

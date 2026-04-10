@@ -12,7 +12,21 @@
       "Bash(make test-verbose:*)",
       "Bash(make lint:*)",
       "Bash(make check-schemas:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(gofmt:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"${CLAUDE_WORKING_DIRECTORY:-.}\" && STAGED_GO=$(git diff --cached --name-only --diff-filter=ACMR -- \"*.go\" | head -1) && if [ -n \"$STAGED_GO\" ]; then UNSTAGED_GO=$(git diff --name-only -- \"*.go\" | head -1) && if [ -n \"$UNSTAGED_GO\" ]; then echo \"Warning: unstaged Go changes detected — lint may flag code not in this commit\" >&2; fi && BASE=$(git merge-base HEAD main 2>/dev/null || echo HEAD~1) && golangci-lint run --new-from-rev=\"$BASE\" --timeout=5m 2>&1; fi'"
+          }
+        ]
+      }
     ]
   }
 }

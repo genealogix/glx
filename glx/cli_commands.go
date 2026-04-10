@@ -471,6 +471,7 @@ func runPlaces(_ *cobra.Command, args []string) error {
 var (
 	queryArchive    string
 	queryName       string
+	queryPhonetic   bool
 	queryBornBefore int
 	queryBornAfter  int
 	queryType       string
@@ -530,6 +531,7 @@ All entity types support --archive to specify the archive path.`,
 func init() {
 	queryCmd.Flags().StringVarP(&queryArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	queryCmd.Flags().StringVar(&queryName, "name", "", "Filter by name (substring match, case-insensitive)")
+	queryCmd.Flags().BoolVar(&queryPhonetic, "phonetic", false, "Use phonetic (Soundex) matching for --name")
 	queryCmd.Flags().IntVar(&queryBornBefore, "born-before", 0, "Filter persons born before this year")
 	queryCmd.Flags().IntVar(&queryBornAfter, "born-after", 0, "Filter persons born after this year")
 	queryCmd.Flags().StringVar(&queryType, "type", "", "Filter by type (event type, relationship type, etc.)")
@@ -547,6 +549,7 @@ func runQuery(_ *cobra.Command, args []string) error {
 	return queryEntities(args[0], queryOpts{
 		Archive:    queryArchive,
 		Name:       queryName,
+		Phonetic:   queryPhonetic,
 		BornBefore: queryBornBefore,
 		BornAfter:  queryBornAfter,
 		Type:       queryType,
