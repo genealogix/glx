@@ -23,6 +23,8 @@
 *.tiff binary
 *.pdf binary
 *.ged text
+# Preserve CRLF in test fixture — disable normalization so the file is stored as-is
+glx/testdata/gedcom/5.5.1/gramps-encoding/cp1252-crlf.ged -text
 
 # GoReleaser archives
 dist/ export-ignore
