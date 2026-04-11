@@ -92,6 +92,7 @@ func init() {
 	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
 	rootCmd.AddCommand(diffCmd)
+	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(renameCmd)
 	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(migrateCmd)
@@ -1244,6 +1245,46 @@ func init() {
 
 func runDiff(_ *cobra.Command, args []string) error {
 	return diffArchives(args[0], args[1], diffPerson, diffVerbose, diffShort, diffJSON)
+}
+
+// ============================================================================
+// Search Command
+// ============================================================================
+
+var (
+	searchArchivePath   string
+	searchCaseSensitive bool
+	searchTypeFilter    string
+	searchJSON          bool
+)
+
+var searchCmd = &cobra.Command{
+	Use:   "search <query>",
+	Short: "Full-text search across all entities",
+	Long: `Search all entity types and fields in the archive for a keyword or phrase.
+Case-insensitive by default. Use --case-sensitive for exact case matching.
+Use --type to restrict results to a specific entity type.`,
+	Example: `  # Search for a name across all entities
+  glx search "Millbrook" --archive ./archive
+
+  # Case-sensitive search
+  glx search "Miller" --archive ./archive --case-sensitive
+
+  # Search only persons
+  glx search "Jane" --archive ./archive --type persons`,
+	Args: cobra.ExactArgs(1),
+	RunE: runSearch,
+}
+
+func init() {
+	searchCmd.Flags().StringVarP(&searchArchivePath, "archive", "a", ".", "Path to GLX archive")
+	searchCmd.Flags().BoolVar(&searchCaseSensitive, "case-sensitive", false, "Case-sensitive search")
+	searchCmd.Flags().StringVar(&searchTypeFilter, "type", "", "Filter to entity type (persons, events, places, etc.)")
+	searchCmd.Flags().BoolVar(&searchJSON, "json", false, "Output results as JSON")
+}
+
+func runSearch(_ *cobra.Command, args []string) error {
+	return showSearch(searchArchivePath, args[0], searchCaseSensitive, searchTypeFilter, searchJSON)
 }
 
 // ============================================================================
