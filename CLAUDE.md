@@ -69,14 +69,6 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 - **Never use `ctx` for anything other than `context.Context`** — use `convCtx`, `conversion`, etc.
 - **Avoid `_` parameters** except when required by interfaces (e.g., cobra handlers)
 - Document public functions with Go doc comments
-- **ALWAYS lint before committing Go changes** (two steps):
-  ```bash
-  export GOROOT="$HOME/go-sdk" PATH="$HOME/go-sdk/bin:$HOME/go/bin:$PATH"
-  gofumpt -w glx/ go-glx/                              # 1. format (fixes real issues)
-  golangci-lint run --new-from-rev=origin/main \        # 2. lint (filter CRLF noise)
-    --timeout=5m 2>&1 | grep -E '\(.*\)$' | grep -v '(gofmt)\|(gofumpt)\|(goimports)'
-  ```
-  On Windows, golangci-lint reports false gofmt/gofumpt/goimports errors due to CRLF. The grep filter shows only real errors. **If grep output is empty, the code is clean.**
 
 ## Key Rules
 
