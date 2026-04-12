@@ -1595,9 +1595,10 @@ func TestImportCensus_WithMedia(t *testing.T) {
 	assert.True(t, mediaLinked, "census OBJE should be linked to source or citation")
 }
 
-// TestImportMedia_EmptyFileSkipped tests that OBJE records with empty FILE
-// values do not create media entities with empty URIs. Fixes #492.
-func TestImportMedia_EmptyFileSkipped(t *testing.T) {
+// TestImportMedia_EmptyFilePreservesMetadata tests that OBJE records with empty
+// FILE values still create media entities preserving metadata (TITL, NOTE, etc.).
+// Validation catches the missing required URI field downstream.
+func TestImportMedia_EmptyFilePreservesMetadata(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -1611,13 +1612,16 @@ func TestImportMedia_EmptyFileSkipped(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
-	// Should NOT create a media entity with empty URI — the OBJE should be skipped entirely
-	assert.Empty(t, glxFile.Media, "OBJE with empty FILE should not create any media entity")
+	require.Len(t, glxFile.Media, 1, "OBJE with empty FILE should still create a media entity")
+	for _, m := range glxFile.Media {
+		assert.Empty(t, m.URI, "URI should be empty")
+		assert.Equal(t, "Empty file reference", m.Title, "metadata should be preserved")
+	}
 }
 
-// TestImportMedia_NoFileTagSkipped tests that OBJE records with no FILE tag
-// at all do not create media entities.
-func TestImportMedia_NoFileTagSkipped(t *testing.T) {
+// TestImportMedia_NoFileTagPreservesMetadata tests that OBJE records with no
+// FILE tag still create media entities preserving metadata.
+func TestImportMedia_NoFileTagPreservesMetadata(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -1630,10 +1634,16 @@ func TestImportMedia_NoFileTagSkipped(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
-	assert.Empty(t, glxFile.Media, "OBJE with no FILE tag should not create a media entity")
+	require.Len(t, glxFile.Media, 1, "OBJE with no FILE tag should still create a media entity")
+	for _, m := range glxFile.Media {
+		assert.Empty(t, m.URI, "URI should be empty")
+		assert.Equal(t, "Photo with no file reference", m.Title, "metadata should be preserved")
+	}
 }
 
-func TestImportMedia_EmbeddedObjeNoFileSkipped(t *testing.T) {
+// TestImportMedia_EmbeddedObjeNoFilePreservesMetadata tests that embedded OBJE
+// without FILE still creates a media entity preserving metadata.
+func TestImportMedia_EmbeddedObjeNoFilePreservesMetadata(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -1646,7 +1656,11 @@ func TestImportMedia_EmbeddedObjeNoFileSkipped(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
-	assert.Empty(t, glxFile.Media, "embedded OBJE with no FILE tag should not create a media entity")
+	require.Len(t, glxFile.Media, 1, "embedded OBJE with no FILE should still create a media entity")
+	for _, m := range glxFile.Media {
+		assert.Empty(t, m.URI, "URI should be empty")
+		assert.Equal(t, "Embedded photo with no file", m.Title, "metadata should be preserved")
+	}
 }
 
 // TestImportFamilyCensus_SingleSpouse tests family census with only one spouse.

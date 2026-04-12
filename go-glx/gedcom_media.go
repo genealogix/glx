@@ -36,15 +36,12 @@ func convertMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) error {
 	// Convert using common logic
 	media := convertMediaCommon(objeRecord, mediaID, conv)
 
-	// Skip media entities with empty URI — happens when OBJE has no FILE
-	// tag or an empty FILE value and no BLOB data. Fixes #492.
+	// Warn about empty URI but preserve the entity — metadata (TITL, NOTE, FORM)
+	// may still be valuable. Validation will catch the missing required URI field.
 	if media.URI == "" {
-		conv.Logger.LogInfof("Skipping OBJE %s: no FILE reference or BLOB data", objeRecord.XRef)
+		conv.Logger.LogInfof("OBJE %s has no FILE reference or BLOB data — URI will be empty", objeRecord.XRef)
 		conv.addWarning(objeRecord.Line, GedcomTagObje,
-			fmt.Sprintf("skipped OBJE %s: no FILE reference or BLOB data", objeRecord.XRef))
-		delete(conv.MediaIDMap, objeRecord.XRef) // clean up stale mapping
-
-		return nil
+			fmt.Sprintf("OBJE %s: no FILE reference or BLOB data, URI will be empty", objeRecord.XRef))
 	}
 
 	// Handle SOUR subrecords (only for top-level OBJE records)
@@ -87,13 +84,11 @@ func convertEmbeddedMedia(objeRecord *GEDCOMRecord, conv *ConversionContext) str
 	// Convert using common logic
 	media := convertMediaCommon(objeRecord, mediaID, conv)
 
-	// Skip if no URI (empty FILE, no BLOB). Fixes #492.
+	// Warn about empty URI but preserve the entity and its metadata.
 	if media.URI == "" {
-		conv.Logger.LogInfo("Skipping embedded OBJE: no FILE reference or BLOB data")
+		conv.Logger.LogInfo("Embedded OBJE has no FILE reference or BLOB data — URI will be empty")
 		conv.addWarning(objeRecord.Line, GedcomTagObje,
-			"skipped embedded OBJE: no FILE reference or BLOB data")
-
-		return ""
+			"embedded OBJE: no FILE reference or BLOB data, URI will be empty")
 	}
 
 	// Store media
