@@ -94,12 +94,12 @@ An assertion with only a `subject` and evidence — no `property`, `value`, or `
 > **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion#existential-assertions), [Core Concepts - Existential Assertions](2-core-concepts#existential-assertions)
 
 ### Event
-A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation and residence are represented as temporal properties on Person entities, not as events.
+A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation are represented as temporal properties on Person entities, not as events. Residence can be either a temporal person property (for simple place references) or a `residence` event (when participants, dates, or detailed evidence are needed).
 
 > **See Also:** [Event Entity](4-entity-types/event)
 
 ### Event Type
-Classification of life events including birth, marriage, death, baptism, burial, military service, immigration, naturalization, etc. Note: attributes like occupation and residence are temporal properties on Person entities, not events.
+Classification of life events including birth, marriage, death, baptism, burial, military service, immigration, naturalization, etc. Note: attributes like occupation are temporal properties on Person entities, not events. Residence can be modeled as either a person property or an event.
 
 > **See Also:** [Event Types Vocabulary](4-entity-types/vocabularies#event-types-vocabulary)
 
