@@ -323,12 +323,14 @@ type ParticipantRole struct {
 	Label       string   `yaml:"label"`
 	Description string   `yaml:"description,omitempty"`
 	AppliesTo   []string `yaml:"applies_to,omitempty"`
+	GEDCOM      string   `yaml:"gedcom,omitempty"`
 }
 
 // ConfidenceLevel represents a standard confidence level vocabulary entry.
 type ConfidenceLevel struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
 }
 
 // RelationshipType represents a standard relationship type vocabulary entry.
@@ -343,18 +345,21 @@ type PlaceType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
 	Category    string `yaml:"category,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
 }
 
 // SourceType represents a standard source type vocabulary entry.
 type SourceType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
 }
 
 // RepositoryType represents a standard repository type vocabulary entry.
 type RepositoryType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
 }
 
 // MediaType represents a standard media type vocabulary entry.
@@ -362,6 +367,7 @@ type MediaType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
 	MimeType    string `yaml:"mime_type,omitempty"`
+	GEDCOM      string `yaml:"gedcom,omitempty"`
 }
 
 // GenderType represents a standard gender type vocabulary entry.
@@ -389,6 +395,7 @@ type PropertyDefinition struct {
 type FieldDefinition struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
+	ValueType   string `yaml:"value_type,omitempty"` // string, date, integer, boolean
 }
 
 // TemporalValue represents a single entry in the history of a temporal property.

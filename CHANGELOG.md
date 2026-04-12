@@ -71,6 +71,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **`participant-roles.schema.json` documents `applies_to` and `gedcom`** — The standard `participant-roles.glx` uses `applies_to: [event | relationship]` on most roles (15+ entries), but the schema did not document the field. Added both `applies_to` (array of enum strings with `uniqueItems`) and `gedcom` (string) to ParticipantRoleDefinition. Related to #499
 - **Added `gedcom` field to 6 vocabulary schemas** — `confidence-levels.schema.json`, `media-types.schema.json`, `place-types.schema.json`, `repository-types.schema.json`, and `source-types.schema.json` now document the optional `gedcom` key that the other 11 vocabulary schemas already support, closing the schema support gap for in-flight work like #524, #555
 
+#### Go Types
+- **Vocabulary structs gain `GEDCOM` field** — `ConfidenceLevel`, `ParticipantRole`, `PlaceType`, `SourceType`, `RepositoryType`, and `MediaType` structs in `go-glx/types.go` now carry `GEDCOM string yaml:"gedcom,omitempty"` matching the schema additions. Previously, a `.glx` file using `gedcom:` on one of these vocabularies would have the value silently dropped on round-trip
+- **`FieldDefinition` gains `ValueType` field** — Added `ValueType string yaml:"value_type,omitempty"` to `FieldDefinition` so structured-property field components (used by `media-properties.glx` crop sub-fields) round-trip correctly through the Go types
+
 ### Removed
 
 #### Person Properties
