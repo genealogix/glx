@@ -29,6 +29,10 @@
         "description": {
           "type": "string",
           "description": "Detailed description of the repository type"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM tag for import/export mapping"
         }
       }
     }

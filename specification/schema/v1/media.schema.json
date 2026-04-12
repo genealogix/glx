@@ -23,7 +23,13 @@
       "additionalProperties": true,
       "description": "Vocabulary-defined properties (validated against media_properties vocabulary)"
     },
-    "notes": { "type": "string", "description": "Free-form notes" }
+    "notes": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "Free-form notes"
+    }
   },
   "additionalProperties": false
 }

@@ -29,6 +29,19 @@
         "description": {
           "type": "string",
           "description": "Detailed description of the participant role"
+        },
+        "applies_to": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["event", "relationship"]
+          },
+          "uniqueItems": true,
+          "description": "Contexts in which this role can be used (event, relationship, or both). When omitted, the role is treated as applicable to all contexts."
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM RELA value for import/export mapping"
         }
       }
     }

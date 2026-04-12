@@ -34,6 +34,10 @@
           "type": "string",
           "enum": ["administrative", "geographic", "religious", "institution", "other"],
           "description": "Functional category of the place type"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM tag for import/export mapping"
         }
       }
     }
