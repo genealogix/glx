@@ -65,7 +65,7 @@ Domain-specific events can be added via vocabularies:
 | `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
-| `notes` | string | Free-form notes |
+| `notes` | string \| string[] | Free-form notes |
 
 ### Participant Object Fields
 
@@ -74,7 +74,7 @@ Domain-specific events can be added via vocabularies:
 | `person` | string | Yes | Reference to Person entity |
 | `role` | string | No | Role of participant |
 | `properties` | object | No | Per-participant properties (e.g., `age_at_event`) |
-| `notes` | string | No | Notes about participant's involvement |
+| `notes` | string \| string[] | No | Notes about participant's involvement |
 
 ### Participant Structure
 

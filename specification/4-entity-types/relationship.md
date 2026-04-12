@@ -48,7 +48,7 @@ relationships:
 | `properties` | object | Vocabulary-defined properties for the relationship |
 | `start_event` | string | Event that started this relationship |
 | `end_event` | string | Event that ended this relationship |
-| `notes` | string | Research notes |
+| `notes` | string \| string[] | Research notes |
 
 ### Properties
 

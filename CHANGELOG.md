@@ -10,12 +10,38 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - 2026-04-11
+
+### Added
+
+#### CLI
+- **Added `glx search` command** — Full-text search across all entity types (persons, events, places, sources, citations, repositories, assertions, relationships, media). Case-insensitive by default with `--case-sensitive` flag, `--type` filter, and results grouped by entity type (#252)
+- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Identical vocabulary entries are silently skipped; true conflicts are reported. Supports both single-file and multi-file archives, with `--dry-run` for preview (#264, #609)
+- **Added `glx migrate` command** — Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`, `buried_on`, `buried_at`) to birth/death/burial Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360, Fixes #645)
+- **Added `--phonetic` flag to `glx query persons --name`** — Soundex phonetic matching finds names that sound alike regardless of spelling (Miller/Myller/Mueller, Smith/Smyth). Supports multi-word queries matching any word against any name word (#262)
+- **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
+
+#### Date Handling
+- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
+
+#### GEDCOM Import
+- **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
+- **ASSO subrecords imported as event participants** — Witnesses, officiants, godparents, and other associated persons from GEDCOM ASSO/RELA records are now imported as event participants with correct roles. Supports both individual and family events. Unknown roles preserved in participant notes (#589)
+- **Separate NOTE records preserved through roundtrip** — Notes changed from a single concatenated string to a list (`NoteList`). Import appends separate notes instead of concatenating; export emits each as a separate GEDCOM NOTE record, preserving original note boundaries. Backwards-compatible with existing archives (#584)
+
+#### Changelog
+- **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
+
+### Changed
+
+#### CLI
+- **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
 
 ### Fixed
 
-#### CLI
-- **`glx migrate` now converts `buried_on`/`buried_at` to burial events** — Previously, `glx migrate` only converted `born_on`/`born_at`/`died_on`/`died_at` to birth/death events, leaving `buried_at` as an unconverted person property. Now burial properties are also migrated to burial Event entities, with assertions retargeted and the deprecated properties removed. Fixes #645
+#### GEDCOM Import
+- **Unrecognized SEX values preserved** — Non-standard GEDCOM SEX values (e.g., `N` for nonbinary from GEDCOM 5.5.5) are now lowercased and preserved as-is instead of being silently mapped to `unknown`. Validation will warn about out-of-vocabulary values (#588)
+- **Correct year extraction from Hebrew and French Republican dates** — `ExtractFirstYear` now uses calendar-aware extraction, finding the last digit sequence for HEBREW and FRENCH_R dates where the year appears last. Previously, `HEBREW 15 TSH 5765` would extract `15` (the day) instead of `5765`. Also handles range dates (`BET...AND`, `FROM...TO`) correctly (#590)
 
 #### Developer Experience
 - **devcontainer: remove abandoned ajv-cli and install actual npm deps** — Replaced the unused global `ajv-cli` install with parallel `postCreateCommand` that runs `go mod download`, pins `golangci-lint v2.11.4`, and installs `specification/` and `website/` npm dependencies. Removed unused Docker extension, added YAML and markdownlint extensions, added `forwardPorts` for VitePress dev server (#326, #327)
@@ -25,26 +51,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **auto-resolve and auto-update workflows can no longer race** — Both workflows now share a `branch-maintenance` concurrency group. Auto-resolve triggers on `workflow_run` after auto-update succeeds instead of independently on push to main. Auto-update cron reduced from every 30min to daily; auto-resolve cron removed (runs only after auto-update) (#332)
 - **release workflow no longer fails when Discord webhook is unconfigured** — Guard the Discord announcement step with an empty-check on the webhook secret so missing secrets skip the step instead of failing the release job. Also switch to `curl -sf` for proper HTTP error handling (#342)
 - **CODEOWNERS: activate rules with real usernames and fix stale paths** — All rules were commented out and several paths were stale (`/schema/`, `/test-suite/`, `/examples/`). Activated with individual usernames, updated paths to match current directory structure (#330)
-### Changed
-
-#### CLI
-- **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
-
-### Added
-
-#### Date Handling
-- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export.
-- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
-- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
-- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
-- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview (#264)
-- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360)
-- **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
-#### GEDCOM Import
-- **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
-
-#### Changelog
-- **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
 
 ### Removed
 

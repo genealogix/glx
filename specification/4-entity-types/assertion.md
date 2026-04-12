@@ -58,7 +58,7 @@ assertions:
 | `value` | string | The concluded value of the property (**required** when `property` is present; not used with `participant`) |
 | `date` | string | Date or date range: when `property` is present, specifies when the value applies; on existential assertions, indicates when the subject existed |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
-| `notes` | string | General notes about the assertion |
+| `notes` | string \| string[] | General notes about the assertion |
 | `status` | string | Research status of this assertion (e.g., proven, disproven, speculative) |
 
 ### Subject Object
@@ -79,7 +79,7 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 | `person` | string | Yes | Reference to the person entity |
 | `role` | string | No | Role of the participant |
 | `properties` | object | No | Per-participant properties (validated against `event_properties` vocabulary for event subjects, `relationship_properties` for relationship subjects) |
-| `notes` | string | No | Notes about this participant |
+| `notes` | string \| string[] | No | Notes about this participant |
 
 ## Required Fields
 

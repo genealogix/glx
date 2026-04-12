@@ -88,6 +88,11 @@ A unique identifier for each entity, used as the YAML map key. Format: 1-64 alph
 
 > **See Also:** [ID (Identifier)](#id-identifier), [ID Format Standards](3-archive-organization#id-format-standards)
 
+### Existential Assertion
+An assertion with only a `subject` and evidence — no `property`, `value`, or `participant`. It asserts that the subject entity exists, backed by the cited sources. Useful during early research phases when evidence establishes an entity's existence but specific property values have not yet been determined.
+
+> **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion#existential-assertions), [Core Concepts - Existential Assertions](2-core-concepts#existential-assertions)
+
 ### Event
 A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation and residence are represented as temporal properties on Person entities, not as events.
 
@@ -342,6 +347,11 @@ In assertions, the typed reference to the entity the assertion is about. The sub
 
 ### Typed Reference
 A reference that specifies both the entity type and entity ID, used in assertion subjects (e.g., `person: person-john-smith` rather than just `person-john-smith`).
+
+### Temporal Consistency
+Validation checks that verify chronological plausibility of dates across related entities — for example, death before birth, parent younger than child, or marriage before birth. Temporal consistency issues generate warnings (not errors) because fuzzy dates and data-entry errors are common in genealogical records.
+
+> **See Also:** [Validation Levels](3-archive-organization#validation-levels)
 
 ### Temporal Property
 A property that can hold multiple values, with or without dates. Temporal properties support dated lists (values that change over time), undated lists (multiple values without known dates, e.g., occupations from an obituary), or a single value.

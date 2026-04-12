@@ -522,10 +522,11 @@ properties:
 
 ### Notes Field
 
-All entities support an optional `notes` field for free-form text:
+All entities support an optional `notes` field. Notes accept either a single string or a YAML sequence of strings — a single string is shorthand for a one-element list:
 
 ```yaml
 persons:
+  # Single note (string shorthand)
   person-john-smith:
     properties:
       name:
@@ -536,6 +537,15 @@ persons:
     notes: |
       Research notes about this person.
       Questions for future investigation.
+
+  # Multiple separate notes (string array)
+  person-jane-doe:
+    properties:
+      name:
+        value: "Jane Doe"
+    notes:
+      - "Identified in 1860 census as head of household"
+      - "Marriage record found at county courthouse"
 ```
 
 Use notes to:
