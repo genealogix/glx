@@ -217,7 +217,7 @@ A person involved in an event with a specific role such as subject, witness, off
 ### Participant Assertion
 An assertion whose `participant` field (instead of `property`/`value`) makes a claim about a specific person's involvement in an event or relationship — e.g., that a witness was present, or that a child belongs to a family. Participant assertions allow evidence to be attached directly to who was involved, independent of other claims about the event or relationship.
 
-> **See Also:** [Assertion Entity - Participant Assertions](4-entity-types/assertion)
+> **See Also:** [Assertion Entity - Participant Assertions](4-entity-types/assertion#participant-assertions)
 
 ### Participant Role
 The specific function or relationship a person has in an event (e.g., bride, groom, witness, officiant).

@@ -12,7 +12,7 @@ layout: doc
 
 An Event entity represents a single occurrence in time, place, and context that is relevant to the family archive. Events are discrete happenings like birth, marriage, death, baptism, etc.
 
-**Note:** Facts and attributes (occupation, residence, nationality, religion, etc.) are represented as temporal properties on Person entities, not as events. See [Person Entity](person) for details on temporal properties.
+**Note:** Facts and attributes such as occupation, nationality, and religion are typically represented as temporal properties on Person entities rather than events. Residence is an exception: it can be modeled as either a person property (for simple place references) or a `residence` event (when participants, dates, or detailed evidence are needed). See [Person Entity](person) for details on temporal properties.
 
 ## File Format
 
@@ -208,7 +208,7 @@ Most events map directly to GEDCOM tags:
 | `baptism` | INDI.BAPM/CHR | Baptism or christening |
 | `burial` | INDI.BURI | Burial |
 
-**Note:** GEDCOM attributes like RESI (residence), OCCU (occupation), RELI (religion) are imported as temporal properties on Person entities, not events.
+**Note:** GEDCOM attributes like OCCU (occupation) and RELI (religion) are imported as temporal properties on Person entities, not events. RESI is imported as either a temporal residence property (when a `PLAC` is present) or as a `residence` event (when no `PLAC` is present, e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`).
 
 ### Multi-Participant Events
 

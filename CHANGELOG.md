@@ -10,7 +10,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-04-11
+## [Unreleased]
+
+## [0.0.0-beta.10] - 2026-04-11
 
 ### Added
 
@@ -795,7 +797,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Development container configuration for consistent environments
 - Pre-configured VitePress documentation site
 
-[0.0.0-beta.10]: https://github.com/genealogix/glx/compare/v0.0.0-beta.9...HEAD
+[Unreleased]: https://github.com/genealogix/glx/compare/v0.0.0-beta.10...HEAD
+[0.0.0-beta.10]: https://github.com/genealogix/glx/compare/v0.0.0-beta.9...v0.0.0-beta.10
 [0.0.0-beta.9]: https://github.com/genealogix/glx/compare/v0.0.0-beta.8...v0.0.0-beta.9
 [0.0.0-beta.8]: https://github.com/genealogix/glx/compare/v0.0.0-beta.7...v0.0.0-beta.8
 [0.0.0-beta.7]: https://github.com/genealogix/glx/compare/v0.0.0-beta.6...v0.0.0-beta.7
