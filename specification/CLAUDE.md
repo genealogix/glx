@@ -12,9 +12,10 @@ Vocabularies are `.glx` YAML files in `5-standard-vocabularies/`. They define co
 
 ## Adding a New Entity Type
 
-1. Define type in `go-glx/types.go`
-2. Add to `GLXFile` struct
-3. Update serializer
-4. Add vocabulary if needed
-5. Add JSON schema in `schema/v1/`
-6. Update documentation
+1. Define the Go type in `go-glx/types.go`
+2. Add the new collection to the `GLXFile` struct in `go-glx/types.go`
+3. Update the YAML serializer (`go-glx/serializer.go`) and any entity-aware helpers
+4. Add a vocabulary file in `specification/5-standard-vocabularies/` if the type needs controlled values (e.g., `<entity>-types.glx`, `<entity>-properties.glx`)
+5. Add the JSON schema in `specification/schema/v1/<entity>.schema.json` and register it in the top-level `glx.schema.json`
+6. Add a new entity spec at `specification/4-entity-types/<entity>.md`, add a card to `specification/4-entity-types/README.md`, and link from `specification/6-glossary.md`
+7. Update `CHANGELOG.md` under the Unreleased → `### Added` section with an issue/PR reference

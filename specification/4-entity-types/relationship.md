@@ -306,8 +306,8 @@ relationships/
 
 Relationships map to GEDCOM family and individual structures:
 
-| GLX Field | GEDCOM Tag | Notes |
-|-----------|------------|-------|
+| GLX Relationship Type | GEDCOM Tag | Notes |
+|-----------------------|------------|-------|
 | `marriage` | FAM record | Family with MARR event |
 | `parent_child` | FAM.CHIL + INDI.FAMC | Child link to family (no PEDI or PEDI unknown) |
 | `biological_parent_child` | FAM.CHIL + INDI.FAMC with PEDI birth | Biological child relationship |

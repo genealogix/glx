@@ -52,6 +52,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **release workflow no longer fails when Discord webhook is unconfigured** — Guard the Discord announcement step with an empty-check on the webhook secret so missing secrets skip the step instead of failing the release job. Also switch to `curl -sf` for proper HTTP error handling (#342)
 - **CODEOWNERS: activate rules with real usernames and fix stale paths** — All rules were commented out and several paths were stale (`/schema/`, `/test-suite/`, `/examples/`). Activated with individual usernames, updated paths to match current directory structure (#330)
 
+#### Specification
+- **Relationship GEDCOM mapping table column header** — The "GLX Field" column actually listed relationship type values; renamed to "GLX Relationship Type" for accuracy (#666, #667)
+- **Calendar Prefix glossary placement** — Moved "Calendar Prefix" entry from the `## D` section to the `## C` section where it belongs alphabetically (#666, #667)
+- **Date keywords list: clarify `AND`** — `AND` is a connector inside `BET YYYY AND YYYY`, not a standalone keyword; updated validation description to reflect this (#666, #667)
+- **Assertion key-properties mention evidence alternatives** — Entity Types index now lists `citations/sources/media` for Assertion key properties instead of `citations` alone (#666, #667)
+- **Assertion required-field table: evidence requirement row** — Simplified the "at least one of citations, sources, or media" row and added a link to the Evidence Requirement section (#666, #667)
+- **`specification/CLAUDE.md` entity-type guide** — "Adding a New Entity Type" steps now include specific file paths (types.go, vocabulary file, JSON schema, entity spec, README card, glossary, CHANGELOG) (#666, #667)
+- **Vocabulary field-definition table: document `value_type`** — Added `value_type` row to the "Field Definition Structure" table in `vocabularies.md` since it's used by standard vocabularies (`crop.fields`, `external_ids.fields`) (#666, #667)
+- **Removed unused `category: "occupation"` from event-type examples** — The `category` field was shown in four custom-event-type examples but no standard vocabulary defines or uses occupation as a category. Removed from `2-core-concepts.md`, `4-entity-types/vocabularies.md`, `5-standard-vocabularies/README.md`, and `website/standard-vocabularies.md` (#666, #667)
+- **Added glossary entries for Participant Assertion, Per-Participant Properties, and Temporal Existential Assertion** — These concepts were used in entity specs but missing from the glossary (#666, #667)
+
 ### Removed
 
 #### Person Properties

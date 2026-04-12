@@ -137,7 +137,6 @@ event_types:
   apprenticeship:
     label: "Apprenticeship"
     description: "Beginning of apprenticeship training"
-    category: "occupation"
 ```
 
 **2. Use the new types in your data**
@@ -369,7 +368,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 
 GENEALOGIX validates date formats at two levels:
 1. **Structure:** Dates must follow the format specifications above
-2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT) are recognized
+2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword.
 3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Unknown prefixes are accepted without warning to allow extensibility
 
 Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.

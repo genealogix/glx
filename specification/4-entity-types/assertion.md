@@ -47,7 +47,7 @@ assertions:
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `subject` | object | Typed reference to the entity this assertion is about |
-| `citations`, `sources`, or `media` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
+| Evidence reference | array | At least one of `citations`, `sources`, or `media` is required (enforced by JSON Schema and CLI validation). See [Evidence Requirement](#evidence-requirement). |
 
 ### Optional Fields
 
