@@ -36,8 +36,9 @@
             "type": "string",
             "enum": ["event", "relationship"]
           },
+          "minItems": 1,
           "uniqueItems": true,
-          "description": "Contexts in which this role can be used (event, relationship, or both). When omitted, the role is treated as applicable to all contexts."
+          "description": "Contexts in which this role can be used (event, relationship, or both). When present, must contain at least one value. When omitted, the role is treated as applicable to all contexts."
         },
         "gedcom": {
           "type": "string",

@@ -32,7 +32,7 @@
         },
         "gedcom": {
           "type": "string",
-          "description": "Corresponding GEDCOM tag for import/export mapping"
+          "description": "Corresponding GEDCOM REPO.TYPE value for import/export mapping (e.g., archive, library, museum)"
         }
       }
     }
