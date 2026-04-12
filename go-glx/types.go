@@ -345,7 +345,6 @@ type PlaceType struct {
 	Label       string `yaml:"label"`
 	Description string `yaml:"description,omitempty"`
 	Category    string `yaml:"category,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
 }
 
 // SourceType represents a standard source type vocabulary entry.
