@@ -42,7 +42,7 @@ func discoverExampleDirs(t *testing.T) []string {
 		}
 		// Check for any .glx file in the directory tree
 		hasGLX := false
-		_ = filepath.WalkDir(filepath.Join(examplesDir, entry.Name()), func(_ string, d os.DirEntry, err error) error {
+		walkErr := filepath.WalkDir(filepath.Join(examplesDir, entry.Name()), func(_ string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -54,6 +54,7 @@ func discoverExampleDirs(t *testing.T) []string {
 
 			return nil
 		})
+		require.NoError(t, walkErr, "walking example directory %s", entry.Name())
 		if hasGLX {
 			examples = append(examples, entry.Name())
 		}
