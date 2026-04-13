@@ -47,7 +47,7 @@ assertions:
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `subject` | object | Typed reference to the entity this assertion is about |
-| `citations`, `sources`, or `media` | array | **At least one required** (enforced by JSON Schema and CLI validation) |
+| Evidence reference | array | At least one of `citations`, `sources`, or `media` is required (enforced by JSON Schema and CLI validation). See [Evidence Requirement](#evidence-requirement). |
 
 ### Optional Fields
 
@@ -58,7 +58,7 @@ assertions:
 | `value` | string | The concluded value of the property (**required** when `property` is present; not used with `participant`) |
 | `date` | string | Date or date range: when `property` is present, specifies when the value applies; on existential assertions, indicates when the subject existed |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
-| `notes` | string | General notes about the assertion |
+| `notes` | string \| string[] | General notes about the assertion |
 | `status` | string | Research status of this assertion (e.g., proven, disproven, speculative) |
 
 ### Subject Object
@@ -79,7 +79,7 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 | `person` | string | Yes | Reference to the person entity |
 | `role` | string | No | Role of the participant |
 | `properties` | object | No | Per-participant properties (validated against `event_properties` vocabulary for event subjects, `relationship_properties` for relationship subjects) |
-| `notes` | string | No | Notes about this participant |
+| `notes` | string \| string[] | No | Notes about this participant |
 
 ## Required Fields
 

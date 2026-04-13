@@ -108,7 +108,6 @@ event_types:
   apprenticeship:
     label: "Apprenticeship"
     description: "Beginning of apprenticeship training"
-    category: "occupation"
 
   land-grant:
     label: "Land Grant"
@@ -962,6 +961,7 @@ Each field in the `fields` map is defined with:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label for the field |
+| `value_type` | No | Data type for the field value (e.g., `string`, `date`, `integer`) |
 | `description` | No | Detailed description of the field |
 
 #### Using Structured Properties in Data

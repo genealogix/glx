@@ -282,6 +282,7 @@ export default defineConfig({
         {
           text: 'Exploration',
           items: [
+            { text: 'glx search', link: '/cli#glx-search' },
             { text: 'glx query', link: '/cli#glx-query' },
             { text: 'glx vitals', link: '/cli#glx-vitals' },
             { text: 'glx timeline', link: '/cli#glx-timeline' },

@@ -254,7 +254,6 @@ event_types:
   apprenticeship:
     label: 'Apprenticeship'
     description: 'Beginning of apprenticeship training'
-    category: 'occupation'
 ```
 
 ### Using Custom Types

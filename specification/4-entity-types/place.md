@@ -70,7 +70,7 @@ places:
 | `type` | string | Place type from `vocabularies/place-types.glx` |
 | `latitude` | number | WGS84 latitude coordinate |
 | `longitude` | number | WGS84 longitude coordinate |
-| `notes` | string | Free-form notes about the place |
+| `notes` | string \| string[] | Free-form notes about the place |
 
 ### Properties
 

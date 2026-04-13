@@ -29,6 +29,10 @@
         "description": {
           "type": "string",
           "description": "Detailed description of the source type"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM SOUR.TYPE value for import/export mapping (e.g., book, database, census)"
         }
       }
     }

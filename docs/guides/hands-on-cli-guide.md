@@ -148,7 +148,45 @@ glx analyze --check consistency
 glx analyze --format json
 ```
 
-## Querying Entities
+## Searching and Querying
+
+### `glx search` — Full-text search
+
+Search across all entity types at once — useful when you don't know which entity holds the information:
+
+```bash
+# Find anything mentioning Winterfell
+glx search "Winterfell"
+```
+
+```
+Found 24 match(es) for "Winterfell":
+
+  Persons (3):
+    person-eddard-stark  properties.residence: Winterfell, The North
+    person-robb-stark  properties.residence: Winterfell, The North
+    person-sansa-stark  properties.residence: Winterfell, The North
+
+  Events (8):
+    event-battle-winterfell  title: Battle of Winterfell
+    ...
+
+  Places (1):
+    place-winterfell  name: Winterfell
+```
+
+Narrow the search to a specific entity type with `--type`, or use `--case-sensitive` for exact matching:
+
+```bash
+# Search only events
+glx search "Winterfell" --type events
+
+# Case-sensitive search
+glx search "Stark" --case-sensitive
+
+# JSON output for scripting
+glx search "Winterfell" --json
+```
 
 ### `glx query persons` — Find people
 

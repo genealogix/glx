@@ -55,7 +55,7 @@ One source can have many citations referencing different pages or sections.
 | `repository` | string | Reference to Repository entity |
 | `media` | array | References to Media entities |
 | `properties` | object | Vocabulary-defined properties (see [Citation Properties](#properties)) |
-| `notes` | string | Free-form notes about the citation |
+| `notes` | string \| string[] | Free-form notes about the citation |
 
 ### Properties
 

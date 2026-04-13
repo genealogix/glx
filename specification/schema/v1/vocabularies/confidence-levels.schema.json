@@ -29,6 +29,10 @@
         "description": {
           "type": "string",
           "description": "Detailed description of the confidence level"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM QUAY value (0-3) for import/export mapping"
         }
       }
     }

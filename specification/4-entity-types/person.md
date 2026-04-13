@@ -45,7 +45,7 @@ persons:
 | Field | Type | Description |
 |-------|------|-------------|
 | `properties` | object | Vocabulary-defined properties (name, gender, occupation, etc.) |
-| `notes` | string | Free-form notes about the person |
+| `notes` | string \| string[] | Free-form notes about the person |
 
 > **Note:** While no properties are technically required, the `name` property is recommended for most person records as it enables meaningful identification and display.
 

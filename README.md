@@ -221,7 +221,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 ### 📊 Project Status
 
-**Current Release:** v0.0.0-beta.9 (Beta)
+**Current Release:** v0.0.0-beta.10 (Beta)
 - ✅ 9 core entity types defined
 - ✅ JSON Schema validation
 - ✅ CLI tool with vocabulary-based validation
