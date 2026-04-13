@@ -162,9 +162,27 @@ func TestRunValidate_SingleFileDeprecatedProperty(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
+	// Capture stderr to verify the error message
+	r, w, errPipe := os.Pipe()
+	require.NoError(t, errPipe)
+	defer func() { _ = r.Close() }()
+
+	oldStderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
+
 	// Validate the single file (not the directory)
 	err = validatePaths([]string{personFile})
-	require.Error(t, err, "single-file validation should catch deprecated born_on property")
+
+	require.NoError(t, w.Close())
+	var buf strings.Builder
+	_, errCopy := io.Copy(&buf, r)
+	require.NoError(t, errCopy)
+	output := buf.String()
+
+	require.ErrorIs(t, err, ErrValidationFailed, "single-file validation should return ErrValidationFailed")
+	require.Contains(t, output, "has been removed",
+		"error should mention that born_on has been removed")
 }
 
 func TestRunValidate_NonExistentPath(t *testing.T) {

@@ -194,9 +194,9 @@ func validateSingleFileSemantics(paths []string) []string {
 	var allErrors []string
 
 	for _, path := range paths {
-		_ = filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
+		_ = filepath.WalkDir(path, func(filePath string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
 			}
 			if d.IsDir() || !isGLXFile(d.Name()) {
 				return nil
@@ -204,25 +204,25 @@ func validateSingleFileSemantics(paths []string) []string {
 
 			archive, loadErr := readSingleFileArchive(filePath, false)
 			if loadErr != nil {
-				// Structural errors already reported by first pass; skip semantic checks
-				return nil //nolint:nilerr
+				allErrors = append(allErrors, fmt.Sprintf("Error loading %s for semantic validation: %v", filePath, loadErr))
+
+				return nil
 			}
 
-			// Load standard vocabularies so property validation works
 			if mergeErr := mergeStandardVocabularies(archive); mergeErr != nil {
-				// Non-critical: vocabulary loading failure shouldn't block validation
-				return nil //nolint:nilerr
+				allErrors = append(allErrors, fmt.Sprintf("Error loading vocabularies for %s: %v", filePath, mergeErr))
+
+				return nil
 			}
 
 			archive.InvalidateCache()
 			result := archive.Validate()
 
 			for _, ve := range result.Errors {
-				// Skip cross-reference errors — we don't have the full archive
-				if isCrossReferenceError(ve.Message) {
-					continue
+				// Keep only errors that work on single files without cross-references
+				if isSingleFileError(ve.Message) {
+					allErrors = append(allErrors, ve.Message)
 				}
-				allErrors = append(allErrors, ve.Message)
 			}
 
 			return nil
@@ -232,11 +232,13 @@ func validateSingleFileSemantics(paths []string) []string {
 	return allErrors
 }
 
-// isCrossReferenceError returns true for validation errors that require the full
-// archive context (entity references, place hierarchy cycles).
-func isCrossReferenceError(msg string) bool {
-	return strings.Contains(msg, "references non-existent") ||
-		strings.Contains(msg, "cycle detected")
+// isSingleFileError returns true for validation errors that can be detected on a
+// single file without the full archive context. This is a whitelist approach —
+// only known single-file-compatible error patterns are included.
+func isSingleFileError(msg string) bool {
+	return strings.Contains(msg, "has been removed") || // deprecated properties
+		strings.Contains(msg, "invalid date format") || // date format errors
+		strings.Contains(msg, "unknown property") // property type errors
 }
 
 // countGLXFiles counts .glx files in a directory without reading them.
