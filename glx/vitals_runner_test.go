@@ -165,7 +165,7 @@ func TestCollectVitals(t *testing.T) {
 			},
 			"event-marriage-john": {
 				Type: "marriage",
-				Date:  "1875-05-10",
+				Date: "1875-05-10",
 				Participants: []glxlib.Participant{
 					{Person: "person-john", Role: "groom"},
 				},
@@ -179,9 +179,10 @@ func TestCollectVitals(t *testing.T) {
 
 	vitals := collectVitals("person-john", archive.Persons["person-john"], archive)
 
-	// Check we have at least the standard 6 vitals + the marriage event
-	if len(vitals) < 7 {
-		t.Errorf("expected at least 7 vitals, got %d", len(vitals))
+	// Check we have exactly the standard 6 vitals (Name, Sex, Birth, Christening, Death, Burial)
+	// Non-vital events like marriage should NOT appear
+	if len(vitals) != 6 {
+		t.Fatalf("expected exactly 6 vitals, got %d", len(vitals))
 	}
 
 	// Verify Name
@@ -204,4 +205,3 @@ func TestCollectVitals(t *testing.T) {
 		t.Errorf("unexpected Death: %+v", vitals[4])
 	}
 }
-
