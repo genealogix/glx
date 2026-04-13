@@ -326,7 +326,7 @@ func runValidate(_ *cobra.Command, args []string) error {
 		return confidenceReport(path)
 	}
 
-	return validatePaths(args)
+	return validatePaths(SystemIOStreams(), args)
 }
 
 // ============================================================================
