@@ -45,9 +45,9 @@ Core entities:
 - Media
 - Assertion (uses Participant)
 
-Supporting types (checked against `glx-file.schema.json`):
-- Metadata (includes Submitter)
-- EntityRef (used by Assertion.Subject)
+Supporting types:
+- Metadata (includes Submitter) — checked against `glx-file.schema.json` property `metadata`
+- EntityRef (used by Assertion.Subject) — checked against `assertion.schema.json` `subject` oneOf
 
 ## Code Files to Check
 
@@ -118,14 +118,14 @@ Compare Go types with JSON schema types:
 - This is documented as "Vocabulary-defined properties"
 
 #### Metadata and Submitter
-- `Metadata` struct has 11 fields — check against `glx-file.schema.json` `import_metadata`
+- `Metadata` struct has 11 fields — check against `glx-file.schema.json` property `metadata`
 - `Submitter` is nested via `*Submitter` pointer — check against schema's submitter object
-- `Metadata.Notes` is `NoteList` — must match the `oneOf` pattern in schema
+- **Note**: `Metadata.Notes` is `NoteList` in Go but `string` in schema — this is a known drift point
 
 #### GLXFile Top-Level
 - Check that GLXFile struct has all entity type maps
 - Verify yaml tags match schema (e.g., `persons`, `events`, etc.)
-- Check `ImportMetadata *Metadata` field against `import_metadata` in schema
+- Check `ImportMetadata *Metadata` field against `metadata` property in schema (Go field name differs from yaml tag)
 - Check all vocabulary definition maps (9 type vocabs + 8 property vocabs)
 
 ### 8. Vocabulary Struct Types
