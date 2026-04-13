@@ -818,9 +818,9 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 }
 
 // convertNegativeAssertion converts GEDCOM 7.0 NO tag (negative assertion).
-// Only creates an assertion if there are citations to back up the property.
+// Creates a placeholder event and a disproven assertion targeting it.
+// Only creates if there is evidence (SOUR sub-records) to back it up.
 func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) {
-	// NO tag indicates something did NOT happen
 	eventType := mapGEDCOMEventType(noRecord.Value, conv.GEDCOMIndex)
 
 	refs := extractEvidence(noRecord, conv)
@@ -830,11 +830,33 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 		return
 	}
 
+	// Extract optional DATE from sub-records
+	var dateStr string
+	for _, sub := range noRecord.SubRecords {
+		if sub.Tag == GedcomTagDate {
+			dateStr = string(parseGEDCOMDate(sub.Value))
+
+			break
+		}
+	}
+
+	// Create a placeholder event for the negated event type
+	eventID := generateEventID(conv)
+	conv.GLX.Events[eventID] = &Event{
+		Type: eventType,
+		Date: DateString(dateStr),
+		Participants: []Participant{
+			{Person: personID, Role: ParticipantRolePrincipal},
+		},
+	}
+	conv.Stats.EventsCreated++
+
+	// Create a disproven assertion targeting the event
 	assertionID := generateAssertionID(conv)
 	conv.GLX.Assertions[assertionID] = &Assertion{
-		Subject:   EntityRef{Person: personID},
-		Property:  "no_" + eventType,
-		Value:     "true", // Negative assertion (NO tag from GEDCOM 7.0)
+		Subject:   EntityRef{Event: eventID},
+		Status:    "disproven",
+		Notes:     NoteList{"Negative assertion: NO " + noRecord.Value + " from GEDCOM import"},
 		Sources:   refs.SourceIDs,
 		Citations: refs.CitationIDs,
 	}
