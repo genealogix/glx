@@ -159,12 +159,6 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	}
 	vitals = append(vitals, vitalRecord{"Burial", displayOrDash(burial)})
 
-	// Other life events (not already covered by vitals)
-	others := findOtherEvents(personID, eventIDs, archive)
-	for _, other := range others {
-		vitals = append(vitals, other)
-	}
-
 	return vitals
 }
 
@@ -184,48 +178,6 @@ func findEventByType(personID, eventType string, eventIDs []string, archive *glx
 	}
 
 	return ""
-}
-
-// findOtherEvents returns events the person participates in that aren't standard vitals.
-// Accepts pre-sorted event IDs to avoid repeated sorting.
-func findOtherEvents(personID string, eventIDs []string, archive *glxlib.GLXFile) []vitalRecord {
-	var others []vitalRecord
-
-	for _, id := range eventIDs {
-		event := archive.Events[id]
-		if !isParticipant(personID, event) {
-			continue
-		}
-
-		// Skip vitals event types (already displayed)
-		eventType := strings.ToLower(event.Type)
-		isVital := false
-		for _, vt := range vitalsEventTypes {
-			if eventType == vt {
-				isVital = true
-
-				break
-			}
-		}
-		if isVital {
-			continue
-		}
-
-		labelSource := event.Type
-		if labelSource == "" {
-			labelSource = id
-		}
-		label := strings.ToUpper(labelSource[:1]) + labelSource[1:]
-
-		value := formatEventDatePlace(event, archive)
-		if value == "" {
-			value = id
-		}
-
-		others = append(others, vitalRecord{label, value})
-	}
-
-	return others
 }
 
 // isParticipant checks if a person is a participant in an event.

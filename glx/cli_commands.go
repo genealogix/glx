@@ -824,8 +824,8 @@ var vitalsCmd = &cobra.Command{
 	Short: "Show vital records for a person",
 	Long: `Display vital records for a person in the archive.
 
-Shows: Name, Sex, Birth, Christening, Death, Burial, plus any other
-life events the person participated in (marriages, census records, etc.).
+Shows: Name, Sex, Birth, Christening, Death, Burial.
+Use "glx summary" for a complete view including all life events.
 
 The person argument can be an exact entity ID (e.g., person-robert-webb) or
 a name to search for (e.g., "Jane Miller"). If the name matches multiple
