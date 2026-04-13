@@ -157,15 +157,16 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	return vitals
 }
 
-// findEventByType finds the first event of a given type where the person is a participant.
-// Accepts pre-sorted event IDs to avoid repeated sorting across multiple calls.
+// findEventByType finds the first event of a given type where the person is a
+// principal/subject participant. Witness and other non-principal roles are excluded
+// so that, e.g., witnessing a christening doesn't appear as the person's own.
 func findEventByType(personID, eventType string, eventIDs []string, archive *glxlib.GLXFile) string {
 	for _, id := range eventIDs {
 		event := archive.Events[id]
 		if !strings.EqualFold(event.Type, eventType) {
 			continue
 		}
-		if !isParticipant(personID, event) {
+		if !isPrincipalParticipant(personID, event) {
 			continue
 		}
 
@@ -175,10 +176,11 @@ func findEventByType(personID, eventType string, eventIDs []string, archive *glx
 	return ""
 }
 
-// isParticipant checks if a person is a participant in an event.
-func isParticipant(personID string, event *glxlib.Event) bool {
+// isPrincipalParticipant checks if a person is a principal/subject participant.
+// Only matches principal, subject, or empty roles — excludes witnesses, informants, etc.
+func isPrincipalParticipant(personID string, event *glxlib.Event) bool {
 	for _, p := range event.Participants {
-		if p.Person == personID {
+		if p.Person == personID && (p.Role == glxlib.ParticipantRolePrincipal || p.Role == glxlib.ParticipantRoleSubject || p.Role == "") {
 			return true
 		}
 	}
