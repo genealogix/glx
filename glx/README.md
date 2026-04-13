@@ -779,9 +779,8 @@ glx vitals <person> [flags]
 
 **Shows:**
 - Name, Sex, Birth, Christening, Death, Burial
-- Any other life events the person participated in (marriages, census records, etc.)
 
-If the name matches multiple persons, all matches are listed for disambiguation.
+Use `glx summary` for a complete view including all life events. If the name matches multiple persons, all matches are listed for disambiguation.
 
 **Examples:**
 
