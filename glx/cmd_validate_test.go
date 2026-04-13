@@ -25,33 +25,33 @@ import (
 func TestRunValidate_SingleValidFile(t *testing.T) {
 	// Test validating a single valid GLX file (structure only, no cross-references)
 	t.Chdir("../docs/examples/basic-family")
-	io, out, _ := TestIOStreams()
+	streams, out, _ := TestIOStreams()
 
-	err := validatePaths(io, []string{"persons/person-father.glx"})
+	err := validatePaths(streams, []string{"persons/person-father.glx"})
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 	require.Contains(t, out.String(), "Cross-reference validation skipped")
 	require.Contains(t, out.String(), "File structure is valid")
 }
 
 func TestRunValidate_ValidDirectory(t *testing.T) {
-	io, _, _ := TestIOStreams()
-	err := validatePaths(io, []string{"../docs/examples/basic-family"})
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"../docs/examples/basic-family"})
 	require.NoError(t, err, "should successfully validate a valid directory")
 }
 
 func TestRunValidate_CurrentDirectory(t *testing.T) {
 	t.Chdir("../docs/examples/basic-family")
-	io, _, _ := TestIOStreams()
+	streams, _, _ := TestIOStreams()
 
-	err := validatePaths(io, []string{})
+	err := validatePaths(streams, []string{})
 	require.NoError(t, err, "should successfully validate current directory when no args provided")
 }
 
 func TestRunValidate_MultiplePaths(t *testing.T) {
 	t.Chdir("../docs/examples/basic-family")
-	io, _, _ := TestIOStreams()
+	streams, _, _ := TestIOStreams()
 
-	err := validatePaths(io, []string{"persons", "relationships"})
+	err := validatePaths(streams, []string{"persons", "relationships"})
 	require.NoError(t, err, "should successfully validate multiple valid paths")
 }
 
@@ -61,8 +61,8 @@ func TestRunValidate_InvalidYAML(t *testing.T) {
 	err := os.WriteFile(invalidFile, []byte("persons:\n  person-1:\n    invalid: [unclosed"), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.Error(t, err, "should fail on invalid YAML syntax")
 }
 
@@ -76,8 +76,8 @@ func TestRunValidate_StructuralErrors(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.Error(t, err, "should fail on structural validation errors")
 }
 
@@ -100,14 +100,14 @@ func TestRunValidate_DuplicateIDs(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.Error(t, err, "should detect duplicate entity IDs across files")
 }
 
 func TestRunValidate_BrokenReferences(t *testing.T) {
-	io, _, _ := TestIOStreams()
-	err := validatePaths(io, []string{"testdata/invalid/broken-references"})
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"testdata/invalid/broken-references"})
 	require.Error(t, err, "should fail when cross-references are broken")
 }
 
@@ -122,8 +122,8 @@ func TestRunValidate_RemovedProperty(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, errOut := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, errOut := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 
 	require.Error(t, err, "should fail when person has removed born_at property")
 	require.Contains(t, errOut.String(), "has been removed",
@@ -136,8 +136,8 @@ func TestRunValidate_NonExistentPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Chdir(tmpDir)
 
-	io, _, _ := TestIOStreams()
-	err := validatePaths(io, []string{"does-not-exist"})
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"does-not-exist"})
 	require.NoError(t, err, "non-existent path results in 0 files validated")
 }
 
@@ -160,16 +160,16 @@ func TestRunValidate_MixedValidAndInvalidFiles(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.Error(t, err, "should fail when any file in directory has errors")
 }
 
 func TestRunValidate_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
-	io, _, _ := TestIOStreams()
+	streams, _, _ := TestIOStreams()
 
-	err := validatePaths(io, []string{tmpDir})
+	err := validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "empty directory should validate successfully")
 }
 
@@ -180,8 +180,8 @@ func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
 	err := os.WriteFile(txtFile, []byte("This is not a GLX file"), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "directory with no GLX files should validate successfully")
 }
 
@@ -200,14 +200,14 @@ func TestRunValidate_NestedDirectories(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "should successfully validate nested directory structures")
 }
 
 func TestRunValidate_WithVocabularies(t *testing.T) {
-	io, _, _ := TestIOStreams()
-	err := validatePaths(io, []string{"../docs/examples/complete-family"})
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"../docs/examples/complete-family"})
 	require.NoError(t, err, "should successfully validate archive with vocabularies")
 }
 
@@ -223,8 +223,8 @@ func TestRunValidate_MediaFileMissing(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, out, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, out, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 
 	require.NoError(t, err, "missing media file should produce warning, not error")
 	require.Contains(t, out.String(), "media[media-photo]: referenced file does not exist: media/files/nonexistent.jpg",
@@ -249,8 +249,8 @@ func TestRunValidate_MediaFileExists(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "existing media file should not produce warnings")
 }
 
@@ -266,8 +266,8 @@ func TestRunValidate_MediaExternalURLSkipped(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "external URL should not trigger file existence check")
 }
 
@@ -290,7 +290,7 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	io, _, _ := TestIOStreams()
-	err = validatePaths(io, []string{tmpDir})
+	streams, _, _ := TestIOStreams()
+	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "should successfully validate .yaml and .yml files")
 }

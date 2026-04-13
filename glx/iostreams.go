@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 )
@@ -39,4 +40,19 @@ func TestIOStreams() (streams *IOStreams, out *bytes.Buffer, errOut *bytes.Buffe
 	streams = &IOStreams{Out: out, ErrOut: errOut}
 
 	return streams, out, errOut
+}
+
+// Printf writes a formatted string to the standard output stream.
+func (s *IOStreams) Printf(format string, args ...any) {
+	fmt.Fprintf(s.Out, format, args...) //nolint:errcheck // CLI output
+}
+
+// Println writes a line to the standard output stream.
+func (s *IOStreams) Println(msg string) {
+	fmt.Fprintln(s.Out, msg) //nolint:errcheck // CLI output
+}
+
+// Errorf writes a formatted string to the error output stream.
+func (s *IOStreams) Errorf(format string, args ...any) {
+	fmt.Fprintf(s.ErrOut, format, args...) //nolint:errcheck // CLI output
 }

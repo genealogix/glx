@@ -27,8 +27,8 @@ import (
 // validatePaths performs comprehensive validation on the specified paths.
 // Output goes to the provided IOStreams (stdout for results, stderr for errors).
 //
-//nolint:gocognit,gocyclo,errcheck // errcheck: CLI output writes to stdout/stderr — errors are ignorable
-func validatePaths(io *IOStreams, args []string) error {
+//nolint:gocognit,gocyclo
+func validatePaths(streams *IOStreams, args []string) error {
 	paths := args
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -63,17 +63,17 @@ func validatePaths(io *IOStreams, args []string) error {
 	if !shouldValidateCrossRefs {
 		fileCount, structErrors := validateSingleFilePaths(paths)
 		if len(structErrors) > 0 {
-			fmt.Fprintf(io.ErrOut, "Found %d structural errors in %d files:\n", len(structErrors), fileCount)
+			streams.Errorf("Found %d structural errors in %d files:\n", len(structErrors), fileCount)
 			for _, err := range structErrors {
-				fmt.Fprintf(io.ErrOut, "- %s\n", err)
+				streams.Errorf("- %s\n", err)
 			}
 
 			return ErrStructuralValidationFailed
 		}
 
-		fmt.Fprintln(io.Out, "⚠️  Cross-reference validation skipped (single file specified).")
-		fmt.Fprintf(io.Out, "Validated %d file.\n", fileCount)
-		fmt.Fprintln(io.Out, "✅ File structure is valid.")
+		streams.Println("⚠️  Cross-reference validation skipped (single file specified).")
+		streams.Printf("Validated %d file(s).\n", fileCount)
+		streams.Println("✅ File structure is valid.")
 
 		return nil
 	}
@@ -86,7 +86,7 @@ func validatePaths(io *IOStreams, args []string) error {
 	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, true)
 	if err != nil {
 		formatted := formatValidationError(err, defaultShowFirstErrors)
-		fmt.Fprintf(io.ErrOut, "Error loading archive: %v\n", formatted)
+		streams.Errorf("Error loading archive: %v\n", formatted)
 
 		return ErrStructuralValidationFailed
 	}
@@ -109,24 +109,24 @@ func validatePaths(io *IOStreams, args []string) error {
 	// Check media file existence on disk
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
-	fmt.Fprintf(io.Out, "Validated %d files.\n", fileCount)
+	streams.Printf("Validated %d files.\n", fileCount)
 	if len(allWarnings) > 0 {
-		fmt.Fprintf(io.Out, "Found %d warnings:\n", len(allWarnings))
+		streams.Printf("Found %d warnings:\n", len(allWarnings))
 		for _, warn := range allWarnings {
-			fmt.Fprintf(io.Out, "- ⚠️  %s\n", warn)
+			streams.Printf("- ⚠️  %s\n", warn)
 		}
 	}
 
 	if len(allErrors) > 0 {
-		fmt.Fprintf(io.ErrOut, "Found %d errors:\n", len(allErrors))
+		streams.Errorf("Found %d errors:\n", len(allErrors))
 		for _, err := range allErrors {
-			fmt.Fprintf(io.ErrOut, "- ❌ %s\n", err)
+			streams.Errorf("- ❌ %s\n", err)
 		}
 
 		return ErrValidationFailed
 	}
 
-	fmt.Fprintln(io.Out, "✅ Archive is valid.")
+	streams.Println("✅ Archive is valid.")
 
 	return nil
 }
