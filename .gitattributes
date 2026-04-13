@@ -29,5 +29,6 @@ glx/testdata/gedcom/5.5.1/gramps-encoding/cp1252-crlf.ged -text
 # GoReleaser archives
 dist/ export-ignore
 
-# Vendor and generated
-go.sum text linguist-generated
+# Go module files — Go tools always write LF (golang/go#31870)
+go.mod text eol=lf
+go.sum text eol=lf linguist-generated
