@@ -826,23 +826,16 @@ func findOtherRelationships(personID string, archive *glxlib.GLXFile) []otherRel
 // Event and place helpers
 // ============================================================================
 
-// findEventForPerson finds the first event of a given type where the person participates.
+// findEventForPerson finds the first event of a given type where the person is a
+// principal/subject participant. Uses glxlib.FindPersonEvent which already filters
+// by role (principal, subject, or empty).
 func findEventForPerson(personID, eventType string, archive *glxlib.GLXFile) string {
-	ids := sortedKeys(archive.Events)
-	for _, id := range ids {
-		event := archive.Events[id]
-		if event == nil {
-			continue
-		}
-		if !strings.EqualFold(event.Type, eventType) {
-			continue
-		}
-		if isPersonParticipant(personID, event) {
-			return formatSummaryEventDatePlace(event, archive)
-		}
+	_, event := glxlib.FindPersonEvent(archive, personID, eventType)
+	if event == nil {
+		return ""
 	}
 
-	return ""
+	return formatSummaryEventDatePlace(event, archive)
 }
 
 // isPersonParticipant checks if a person participates in an event.
