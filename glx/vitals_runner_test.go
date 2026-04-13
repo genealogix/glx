@@ -165,7 +165,7 @@ func TestCollectVitals(t *testing.T) {
 			},
 			"event-marriage-john": {
 				Type: "marriage",
-				Date:  "1875-05-10",
+				Date: "1875-05-10",
 				Participants: []glxlib.Participant{
 					{Person: "person-john", Role: "groom"},
 				},
@@ -205,3 +205,41 @@ func TestCollectVitals(t *testing.T) {
 	}
 }
 
+func TestCollectVitals_WitnessChristeningExcluded(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-grandfather": {Properties: map[string]any{
+				"name":   "Martin Krause",
+				"gender": "male",
+			}},
+			"person-grandchild": {Properties: map[string]any{
+				"name": "Christine Krause",
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-christening": {
+				Type: "christening",
+				Date: "1807-06-21",
+				Participants: []glxlib.Participant{
+					{Person: "person-grandchild", Role: "principal"},
+					{Person: "person-grandfather", Role: "witness"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{},
+	}
+
+	vitals := collectVitals("person-grandfather", archive.Persons["person-grandfather"], archive)
+
+	// Christening should show "—" because grandfather is only a witness, not the principal
+	for _, v := range vitals {
+		if v.Label == "Christening" {
+			if v.Value != "—" {
+				t.Errorf("witness christening should not appear as own christening, got: %s", v.Value)
+			}
+
+			return
+		}
+	}
+	t.Error("Christening vital record not found")
+}
