@@ -1,0 +1,67 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: GLX (Genealogix)
+Upstream-Contact: https://github.com/genealogix/glx
+
+# Go source files have full Apache 2.0 headers enforced by goheader linter.
+# This file covers all other files that cannot have inline SPDX headers.
+
+Files: *.go
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: specification/**
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: docs/**
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: *.md
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: *.json
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: *.glx
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: *.yml *.yaml
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: *.sh
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: *.ged
+Copyright: various
+License: CC0-1.0
+Comment: GEDCOM test data files from public domain genealogy datasets.
+
+Files: go.mod go.sum
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: website/**
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: .github/**
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: .claude/**
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: .gitattributes .gitignore .npmrc .goreleaser.yml renovate.json
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: Makefile
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
