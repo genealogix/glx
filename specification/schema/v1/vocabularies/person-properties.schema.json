@@ -162,6 +162,16 @@
         "description": {
           "type": "string",
           "description": "Detailed description of the field"
+        },
+        "value_type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "date",
+            "integer",
+            "boolean"
+          ],
+          "description": "Data type for the field value"
         }
       }
     }

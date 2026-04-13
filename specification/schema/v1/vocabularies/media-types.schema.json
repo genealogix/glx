@@ -33,6 +33,10 @@
         "mime_type": {
           "type": "string",
           "description": "MIME type associated with this media type"
+        },
+        "gedcom": {
+          "type": "string",
+          "description": "Corresponding GEDCOM MEDI value for import/export mapping"
         }
       }
     }

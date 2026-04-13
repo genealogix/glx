@@ -191,7 +191,10 @@
           "additionalProperties": true
         },
         "notes": {
-          "type": "string",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
           "description": "Notes about this participant"
         }
       },
@@ -202,7 +205,10 @@
       "description": "Confidence level in this assertion"
     },
     "notes": {
-      "type": "string",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
       "description": "General notes about the assertion"
     },
     "status": {

@@ -48,7 +48,7 @@ relationships:
 | `properties` | object | Vocabulary-defined properties for the relationship |
 | `start_event` | string | Event that started this relationship |
 | `end_event` | string | Event that ended this relationship |
-| `notes` | string | Research notes |
+| `notes` | string \| string[] | Research notes |
 
 ### Properties
 
@@ -65,7 +65,7 @@ Example:
 ```yaml
 relationships:
   rel-business-partnership:
-    type: business-partner
+    type: business-partner  # Custom type — define in your archive's vocabulary
     participants:
       - person: person-john-smith
       - person: person-james-brown
@@ -226,6 +226,15 @@ relationships:
 
 The `participants` array defines the people involved in the relationship and their roles:
 
+### Participant Object Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `person` | string | Yes | Reference to Person entity |
+| `role` | string | No | Role from participant-roles vocabulary |
+| `properties` | object | No | Per-participant properties (validated against `relationship_properties` vocabulary) |
+| `notes` | string \| string[] | No | Notes about this participant |
+
 ```yaml
 participants:
   - person: person-john-smith
@@ -235,8 +244,6 @@ participants:
     role: spouse
     notes: "Bride"
 ```
-
-Each participant object supports: `person` (required), `role`, `properties`, and `notes`. The `properties` field allows per-participant data and is validated against the `relationship_properties` vocabulary.
 
 ### Per-Participant Properties
 
@@ -299,8 +306,8 @@ relationships/
 
 Relationships map to GEDCOM family and individual structures:
 
-| GLX Field | GEDCOM Tag | Notes |
-|-----------|------------|-------|
+| GLX Relationship Type | GEDCOM Tag | Notes |
+|-----------------------|------------|-------|
 | `marriage` | FAM record | Family with MARR event |
 | `parent_child` | FAM.CHIL + INDI.FAMC | Child link to family (no PEDI or PEDI unknown) |
 | `biological_parent_child` | FAM.CHIL + INDI.FAMC with PEDI birth | Biological child relationship |

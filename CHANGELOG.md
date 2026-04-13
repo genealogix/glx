@@ -12,10 +12,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
-### Fixed
+## [0.0.0-beta.10] - 2026-04-11
+
+### Added
 
 #### CLI
-- **`glx migrate` now converts `buried_on`/`buried_at` to burial events** — Previously, `glx migrate` only converted `born_on`/`born_at`/`died_on`/`died_at` to birth/death events, leaving `buried_at` as an unconverted person property. Now burial properties are also migrated to burial Event entities, with assertions retargeted and the deprecated properties removed. Fixes #645
+- **Added `glx search` command** — Full-text search across all entity types (persons, events, places, sources, citations, repositories, assertions, relationships, media). Case-insensitive by default with `--case-sensitive` flag, `--type` filter, and results grouped by entity type (#252)
+- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Identical vocabulary entries are silently skipped; true conflicts are reported. Supports both single-file and multi-file archives, with `--dry-run` for preview (#264, #609)
+- **Added `glx migrate` command** — Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`, `buried_on`, `buried_at`) to birth/death/burial Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360, Fixes #645)
+- **Added `--phonetic` flag to `glx query persons --name`** — Soundex phonetic matching finds names that sound alike regardless of spelling (Miller/Myller/Mueller, Smith/Smyth). Supports multi-word queries matching any word against any name word (#262)
+- **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
+
+#### Date Handling
+- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
+
+#### GEDCOM Import
+- **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
+- **ASSO subrecords imported as event participants** — Witnesses, officiants, godparents, and other associated persons from GEDCOM ASSO/RELA records are now imported as event participants with correct roles. Supports both individual and family events. Unknown roles preserved in participant notes (#589)
+- **Separate NOTE records preserved through roundtrip** — Notes changed from a single concatenated string to a list (`NoteList`). Import appends separate notes instead of concatenating; export emits each as a separate GEDCOM NOTE record, preserving original note boundaries. Backwards-compatible with existing archives (#584)
+
+#### Changelog
+- **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
+
+### Changed
+
+#### CLI
+- **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
+
+### Fixed
+
+#### GEDCOM Import
+- **Unrecognized SEX values preserved** — Non-standard or extension GEDCOM SEX values (e.g., custom values, or values such as `N` whose meaning varies between GEDCOM 5.5.5 `Not Recorded` and 7.0 `Nonbinary`) are now lowercased and preserved as-is instead of being silently mapped to `unknown`. Validation will warn about out-of-vocabulary values (#588)
+- **Correct year extraction from Hebrew and French Republican dates** — `ExtractFirstYear` now uses calendar-aware extraction, finding the last digit sequence for HEBREW and FRENCH_R dates where the year appears last. Previously, `HEBREW 15 TSH 5765` would extract `15` (the day) instead of `5765`. Also handles range dates (`BET...AND`, `FROM...TO`) correctly (#590)
 
 #### Import
 - **GEDCOM OBJE without FILE now preserves metadata** — Previously, OBJE records with no FILE reference were silently dropped during import. Now the media entity is created with an empty URI, preserving all metadata (TITL, NOTE, FORM). Validation catches the missing URI downstream. (#492)
@@ -28,26 +56,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **auto-resolve and auto-update workflows can no longer race** — Both workflows now share a `branch-maintenance` concurrency group. Auto-resolve triggers on `workflow_run` after auto-update succeeds instead of independently on push to main. Auto-update cron reduced from every 30min to daily; auto-resolve cron removed (runs only after auto-update) (#332)
 - **release workflow no longer fails when Discord webhook is unconfigured** — Guard the Discord announcement step with an empty-check on the webhook secret so missing secrets skip the step instead of failing the release job. Also switch to `curl -sf` for proper HTTP error handling (#342)
 - **CODEOWNERS: activate rules with real usernames and fix stale paths** — All rules were commented out and several paths were stale (`/schema/`, `/test-suite/`, `/examples/`). Activated with individual usernames, updated paths to match current directory structure (#330)
-### Changed
 
-#### CLI
-- **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
+#### Specification
+- **Relationship GEDCOM mapping table column header** — The "GLX Field" column actually listed relationship type values; renamed to "GLX Relationship Type" for accuracy (PR #670)
+- **Calendar Prefix glossary placement** — Moved "Calendar Prefix" entry from the `## D` section to the `## C` section where it belongs alphabetically (PR #670)
+- **Date keywords list: clarify `AND`** — `AND` is a connector inside `BET YYYY AND YYYY`, not a standalone keyword; updated validation description to reflect this (PR #670)
+- **Assertion key-properties mention evidence alternatives** — Entity Types index now lists `citations/sources/media` for Assertion key properties instead of `citations` alone (PR #670)
+- **Assertion required-field table: evidence requirement row** — Simplified the "at least one of citations, sources, or media" row and added a link to the Evidence Requirement section (PR #670)
+- **`specification/CLAUDE.md` entity-type guide** — "Adding a New Entity Type" steps now include specific file paths (types.go, vocabulary file, JSON schema, entity spec, README card, glossary, CHANGELOG) (PR #670)
+- **Vocabulary field-definition table: document `value_type`** — Added `value_type` row to the "Field Definition Structure" table in `vocabularies.md` since it's used by standard vocabularies (`crop.fields`, `external_ids.fields`) (PR #670)
+- **Removed unused `category: "occupation"` from event-type examples** — The `category` field was shown in four custom-event-type examples but no standard vocabulary defines or uses occupation as a category. Removed from `2-core-concepts.md`, `4-entity-types/vocabularies.md`, `5-standard-vocabularies/README.md`, and `website/standard-vocabularies.md` (PR #670)
+- **Added glossary entries for Participant Assertion, Per-Participant Properties, and Temporal Existential Assertion** — These concepts were used in entity specs but missing from the glossary (PR #670)
 
-### Added
+#### Schema
+- **`notes` field accepts string or array across all 9 entity schemas** — The spec was updated in this release to document `notes: string | string[]` (matching the Go `NoteList` type), but the schemas still enforced `type: "string"`, causing validation failures on any archive using array-form notes. Fixed in `assertion.schema.json`, `citation.schema.json`, `event.schema.json`, `media.schema.json`, `person.schema.json`, `place.schema.json`, `relationship.schema.json`, `repository.schema.json`, and `source.schema.json` (12 occurrences total, including participant sub-objects in assertion/event/relationship)
+- **FieldDefinition supports `value_type` in all 8 property-vocabulary schemas** — The spec documents `value_type` as a valid key on structured field components (used by `media-properties.glx` crop sub-fields with `value_type: integer`), but the schemas only documented `label` and `description`. Added `value_type: string` with the standard enum (`string | date | integer | boolean`) to `citation-properties`, `event-properties`, `media-properties`, `person-properties`, `place-properties`, `relationship-properties`, `repository-properties`, and `source-properties` schemas
+- **`participant-roles.schema.json` documents `applies_to` and `gedcom`** — The standard `participant-roles.glx` uses `applies_to: [event | relationship]` on most roles (15+ entries), but the schema did not document the field. Added both `applies_to` (array of enum strings with `uniqueItems`) and `gedcom` (string) to ParticipantRoleDefinition. Related to #499
+- **Added `gedcom` field to 5 vocabulary schemas** — `confidence-levels.schema.json` (→ QUAY, #515), `media-types.schema.json` (→ MEDI), `participant-roles.schema.json` (→ ASSO.RELA, #524), `repository-types.schema.json` (#555), and `source-types.schema.json` (#561) now document the optional `gedcom` key that the other 11 vocabulary schemas already support, closing the schema support gap for in-flight work on these mappings
 
-#### Date Handling
-- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export.
-- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview
-- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties
-- **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
-- **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Duplicate entities are reported and skipped (destination version kept). Supports both single-file and multi-file archives, with `--dry-run` for preview (#264)
-- **Added `glx migrate` command** - Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`) to birth/death Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360)
-- **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
-#### GEDCOM Import
-- **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
-
-#### Changelog
-- **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
+#### Go Types
+- **Vocabulary structs gain `GEDCOM` field** — `ConfidenceLevel`, `ParticipantRole`, `SourceType`, `RepositoryType`, and `MediaType` structs in `go-glx/types.go` now carry `GEDCOM string yaml:"gedcom,omitempty"` matching the schema additions. Previously, a `.glx` file using `gedcom:` on one of these vocabularies would have the value silently dropped on round-trip. `PlaceType` was evaluated but not updated — there is no natural GEDCOM mapping for place types and no open issue tracking one
+- **`FieldDefinition` gains `ValueType` field** — Added `ValueType string yaml:"value_type,omitempty"` to `FieldDefinition` so structured-property field components (used by `media-properties.glx` crop sub-fields) round-trip correctly through the Go types
 
 ### Removed
 
@@ -781,7 +810,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Development container configuration for consistent environments
 - Pre-configured VitePress documentation site
 
-[0.0.0-beta.10]: https://github.com/genealogix/glx/compare/v0.0.0-beta.9...HEAD
+[Unreleased]: https://github.com/genealogix/glx/compare/v0.0.0-beta.10...HEAD
+[0.0.0-beta.10]: https://github.com/genealogix/glx/compare/v0.0.0-beta.9...v0.0.0-beta.10
 [0.0.0-beta.9]: https://github.com/genealogix/glx/compare/v0.0.0-beta.8...v0.0.0-beta.9
 [0.0.0-beta.8]: https://github.com/genealogix/glx/compare/v0.0.0-beta.7...v0.0.0-beta.8
 [0.0.0-beta.7]: https://github.com/genealogix/glx/compare/v0.0.0-beta.6...v0.0.0-beta.7

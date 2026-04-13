@@ -39,7 +39,10 @@
       "description": "WGS84 longitude coordinate"
     },
     "notes": {
-      "type": "string",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
       "description": "Free-form notes about the place"
     }
   },

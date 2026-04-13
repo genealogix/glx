@@ -17,7 +17,13 @@
       "description": "Reference to Repository where source is held"
     },
     "language": { "type": "string", "description": "Language of the source" },
-    "notes": { "type": "string", "description": "Free-form notes about the source" },
+    "notes": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "Free-form notes about the source"
+    },
     "media": {
       "type": "array",
       "description": "References to Media entities",
