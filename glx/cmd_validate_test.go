@@ -149,6 +149,24 @@ func TestRunValidate_RemovedProperty(t *testing.T) {
 		"error should mention the migration path")
 }
 
+func TestRunValidate_SingleFileDeprecatedProperty(t *testing.T) {
+	// Single-file validation should catch deprecated properties (not just directory mode)
+	tmpDir := t.TempDir()
+	personFile := filepath.Join(tmpDir, "person.glx")
+	err := os.WriteFile(personFile, []byte(`persons:
+  person-test:
+    properties:
+      name:
+        value: "Test Person"
+      born_on: "1850"
+`), 0o644)
+	require.NoError(t, err)
+
+	// Validate the single file (not the directory)
+	err = validatePaths([]string{personFile})
+	require.Error(t, err, "single-file validation should catch deprecated born_on property")
+}
+
 func TestRunValidate_NonExistentPath(t *testing.T) {
 	// Test with a path that doesn't exist in a clean directory
 	tmpDir := t.TempDir()

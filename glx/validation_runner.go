@@ -58,7 +58,7 @@ func validatePaths(args []string) error {
 		}
 	}
 
-	// Single file: structural validation only (no cross-references)
+	// Single file: structural validation + semantic checks (no cross-references)
 	if !shouldValidateCrossRefs {
 		fileCount, structErrors := validateSingleFilePaths(paths)
 		if len(structErrors) > 0 {
@@ -70,8 +70,22 @@ func validatePaths(args []string) error {
 			return ErrStructuralValidationFailed
 		}
 
+		// Run semantic validation (deprecated properties, date formats, etc.)
+		// on the single file, filtering out cross-reference errors.
+		semanticErrors := validateSingleFileSemantics(paths)
+
 		fmt.Println("⚠️  Cross-reference validation skipped (single file specified).")
 		fmt.Printf("Validated %d file.\n", fileCount)
+
+		if len(semanticErrors) > 0 {
+			fmt.Fprintf(os.Stderr, "Found %d errors:\n", len(semanticErrors))
+			for _, err := range semanticErrors {
+				fmt.Fprintf(os.Stderr, "- ❌ %s\n", err)
+			}
+
+			return ErrValidationFailed
+		}
+
 		fmt.Println("✅ File structure is valid.")
 
 		return nil
@@ -171,6 +185,58 @@ func validateSingleFilePaths(paths []string) (int, []string) {
 	}
 
 	return fileCount, allErrors
+}
+
+// validateSingleFileSemantics runs semantic validation (deprecated properties,
+// date formats, property types) on single files. Cross-reference errors are
+// filtered out since we don't have the full archive context.
+func validateSingleFileSemantics(paths []string) []string {
+	var allErrors []string
+
+	for _, path := range paths {
+		_ = filepath.WalkDir(path, func(filePath string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() || !isGLXFile(d.Name()) {
+				return nil
+			}
+
+			archive, loadErr := readSingleFileArchive(filePath, false)
+			if loadErr != nil {
+				// Structural errors already reported by first pass; skip semantic checks
+				return nil //nolint:nilerr
+			}
+
+			// Load standard vocabularies so property validation works
+			if mergeErr := mergeStandardVocabularies(archive); mergeErr != nil {
+				// Non-critical: vocabulary loading failure shouldn't block validation
+				return nil //nolint:nilerr
+			}
+
+			archive.InvalidateCache()
+			result := archive.Validate()
+
+			for _, ve := range result.Errors {
+				// Skip cross-reference errors — we don't have the full archive
+				if isCrossReferenceError(ve.Message) {
+					continue
+				}
+				allErrors = append(allErrors, ve.Message)
+			}
+
+			return nil
+		})
+	}
+
+	return allErrors
+}
+
+// isCrossReferenceError returns true for validation errors that require the full
+// archive context (entity references, place hierarchy cycles).
+func isCrossReferenceError(msg string) bool {
+	return strings.Contains(msg, "references non-existent") ||
+		strings.Contains(msg, "cycle detected")
 }
 
 // countGLXFiles counts .glx files in a directory without reading them.
