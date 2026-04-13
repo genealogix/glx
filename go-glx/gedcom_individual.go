@@ -822,6 +822,9 @@ func convertFact(personID string, person *Person, factRecord *GEDCOMRecord, conv
 // Only creates if there is evidence (SOUR sub-records) to back it up.
 func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *ConversionContext) {
 	eventType := mapGEDCOMEventType(noRecord.Value, conv.GEDCOMIndex)
+	if eventType == "" {
+		return // malformed NO tag (e.g., "1 NO" with no event type)
+	}
 
 	refs := extractEvidence(noRecord, conv)
 
@@ -831,10 +834,10 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 	}
 
 	// Extract optional DATE from sub-records
-	var dateStr string
+	var date DateString
 	for _, sub := range noRecord.SubRecords {
 		if sub.Tag == GedcomTagDate {
-			dateStr = string(parseGEDCOMDate(sub.Value))
+			date = parseGEDCOMDate(sub.Value)
 
 			break
 		}
@@ -844,7 +847,7 @@ func convertNegativeAssertion(personID string, noRecord *GEDCOMRecord, conv *Con
 	eventID := generateEventID(conv)
 	conv.GLX.Events[eventID] = &Event{
 		Type: eventType,
-		Date: DateString(dateStr),
+		Date: date,
 		Participants: []Participant{
 			{Person: personID, Role: ParticipantRolePrincipal},
 		},

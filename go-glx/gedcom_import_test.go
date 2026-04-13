@@ -1833,7 +1833,7 @@ func TestImportNOTag_CreatesDisprovenAssertion(t *testing.T) {
 	var birthEvent *Event
 	var birthEventID string
 	for id, event := range glxFile.Events {
-		if event.Type == "birth" {
+		if event.Type == EventTypeBirth {
 			birthEvent = event
 			birthEventID = id
 
@@ -1842,9 +1842,9 @@ func TestImportNOTag_CreatesDisprovenAssertion(t *testing.T) {
 	}
 	require.NotNil(t, birthEvent, "should create a birth event for NO BIRT")
 	require.Len(t, birthEvent.Participants, 1)
-	assert.Equal(t, "principal", birthEvent.Participants[0].Role)
+	assert.Equal(t, ParticipantRolePrincipal, birthEvent.Participants[0].Role)
 
-	// Should create a disproven assertion targeting the event
+	// Should create a disproven assertion targeting the event with evidence attached
 	var foundAssertion *Assertion
 	for _, a := range glxFile.Assertions {
 		if a.Subject.Event == birthEventID && a.Status == "disproven" {
@@ -1856,6 +1856,8 @@ func TestImportNOTag_CreatesDisprovenAssertion(t *testing.T) {
 	require.NotNil(t, foundAssertion, "should create a disproven assertion for NO BIRT")
 	assert.Equal(t, "disproven", foundAssertion.Status)
 	assert.NotEmpty(t, foundAssertion.Notes, "should have note about NO tag origin")
+	assert.True(t, len(foundAssertion.Sources) > 0 || len(foundAssertion.Citations) > 0,
+		"disproven assertion should have evidence (sources or citations)")
 }
 
 func TestImportNOTag_WithoutEvidenceSkipped(t *testing.T) {
@@ -1870,8 +1872,14 @@ func TestImportNOTag_WithoutEvidenceSkipped(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
-	// Without evidence (no SOUR), NO tag should be skipped
+	// Without evidence (no SOUR), NO tag should create neither assertion nor placeholder event
 	assert.Empty(t, glxFile.Assertions, "NO tag without evidence should not create assertion")
+
+	// Verify no placeholder birth event was created either
+	for _, event := range glxFile.Events {
+		assert.NotEqual(t, EventTypeBirth, event.Type,
+			"NO tag without evidence should not create a placeholder event")
+	}
 }
 
 func TestImportNOTag_WithDate(t *testing.T) {
@@ -1890,15 +1898,18 @@ func TestImportNOTag_WithDate(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
-	// Should create a naturalization event with the date
+	// Should create a naturalization event with the parsed date
 	var natuEvent *Event
 	for _, event := range glxFile.Events {
-		if event.Type == "naturalization" {
+		if event.Type == EventTypeNaturalization {
 			natuEvent = event
 
 			break
 		}
 	}
 	require.NotNil(t, natuEvent, "should create a naturalization event for NO NATU")
-	assert.NotEmpty(t, string(natuEvent.Date), "event should have the date from NO tag")
+	assert.Contains(t, string(natuEvent.Date), "1700",
+		"event date should contain the date range from NO tag")
+	assert.Contains(t, string(natuEvent.Date), "1800",
+		"event date should contain the date range from NO tag")
 }
