@@ -34,12 +34,11 @@ func SystemIOStreams() *IOStreams {
 }
 
 // TestIOStreams returns IOStreams backed by buffers for testing.
-func TestIOStreams() (streams *IOStreams, out *bytes.Buffer, errOut *bytes.Buffer) {
-	out = &bytes.Buffer{}
-	errOut = &bytes.Buffer{}
-	streams = &IOStreams{Out: out, ErrOut: errOut}
+func TestIOStreams() (*IOStreams, *bytes.Buffer, *bytes.Buffer) {
+	out := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
 
-	return streams, out, errOut
+	return &IOStreams{Out: out, ErrOut: errOut}, out, errOut
 }
 
 // Printf writes a formatted string to the standard output stream.
