@@ -45,6 +45,10 @@ Core entities:
 - Media
 - Assertion (uses Participant)
 
+Supporting types:
+- Metadata (includes Submitter) — checked against `glx-file.schema.json` property `metadata`
+- EntityRef (used by Assertion.Subject) — checked against `assertion.schema.json` `subject` oneOf
+
 ## Code Files to Check
 
 In addition to **go-glx/types.go**, also check:
@@ -67,6 +71,9 @@ Compare Go types with JSON schema types:
 - `object` in schema → `struct` or `map[string]any` in Go
 - `number` in schema → `float64` or `*float64` in Go
 - `boolean` in schema → `bool` in Go
+- `oneOf: [string, array]` in schema → `NoteList` in Go (custom YAML marshal/unmarshal)
+- `string` in schema for dates → `DateString` in Go (type alias)
+- nested `object` in schema → `*Submitter` in Go (pointer for optional nested struct)
 
 ### 3. Required vs Optional
 - Required fields in schema should NOT have `omitempty` in yaml tag
@@ -95,16 +102,55 @@ Compare Go types with JSON schema types:
 - Check that required constraint `anyOf: [sources, citations, media]` is handled
 - Verify `subject` field allows multiple entity types
 
+#### EntityRef (Assertion.Subject)
+- Mutually exclusive fields: Person, Event, Relationship, Place
+- Schema enforces via `oneOf` — exactly one field must be set
+- All fields have `omitempty` — Go serialization produces correct YAML
+
+#### NoteList
+- Go type: `NoteList` (alias for `[]string`) with custom YAML marshal/unmarshal
+- Schema: `oneOf: [{type: string}, {type: array, items: {type: string}}]`
+- Single note marshals as plain string; multiple notes marshal as array
+- Present on ALL entity types and Participant — check all 9 entities + Metadata
+
 #### Properties Field
 - All entities have `properties map[string]any` with `omitempty`
 - This is documented as "Vocabulary-defined properties"
 
+#### Metadata and Submitter
+- `Metadata` struct has 11 fields — check against `glx-file.schema.json` property `metadata`
+- `Submitter` is nested via `*Submitter` pointer — check against schema's submitter object
+- **Note**: `Metadata.Notes` is `NoteList` in Go but `string` in schema — this is a known drift point
+
 #### GLXFile Top-Level
 - Check that GLXFile struct has all entity type maps
 - Verify yaml tags match schema (e.g., `persons`, `events`, etc.)
-- Check vocabulary definition fields
+- Check `ImportMetadata *Metadata` field against `metadata` property in schema (Go field name differs from yaml tag)
+- Check all vocabulary definition maps (9 type vocabs + 8 property vocabs)
 
-### 8. Validation Logic and Constraints
+### 8. Vocabulary Struct Types
+
+Check all 9 vocabulary definition structs against their schemas in
+`specification/schema/v1/vocabularies/`:
+
+| Go Struct | Schema File | Key Fields |
+|-----------|-------------|------------|
+| `EventType` | `event-types.schema.json` | Label, Description, GEDCOM, Category |
+| `RelationshipType` | `relationship-types.schema.json` | Label, Description, GEDCOM |
+| `PlaceType` | `place-types.schema.json` | Label, Description, Category |
+| `SourceType` | `source-types.schema.json` | Label, Description, GEDCOM |
+| `RepositoryType` | `repository-types.schema.json` | Label, Description, GEDCOM |
+| `MediaType` | `media-types.schema.json` | Label, Description, MimeType |
+| `GenderType` | `gender-types.schema.json` | Label, Description, GEDCOM |
+| `ConfidenceLevel` | `confidence-levels.schema.json` | Label, Description, GEDCOM |
+| `ParticipantRole` | `participant-roles.schema.json` | Label, Description, GEDCOM, AppliesTo |
+
+Also check:
+- `FieldDefinition` struct (Label, Description, ValueType) against property vocabulary schemas
+- `PropertyDefinition` struct against all 8 property vocabulary schemas
+- `go-glx/constants.go` for vocabulary constant coverage (event types, roles, etc.)
+
+### 9. Validation Logic and Constraints
 
 **IMPORTANT — Two-Layer Validation Architecture:**
 
@@ -146,7 +192,7 @@ Also check the reverse direction — validation logic in Go code that is NOT doc
 - **Custom validation rules** in `go-glx/validation.go` not mentioned in spec
 - **Warning-level checks** that users should know about
 
-### 9. Common Issues to Look For
+### 10. Common Issues to Look For
 
 - Missing `omitempty` on optional fields
 - Wrong yaml tag names (e.g., `state_province` vs `state`)
@@ -212,11 +258,13 @@ OR
 
 ### Check These Known Patterns:
 
-1. **DateString type**: Used for date fields in Event, Source
+1. **DateString type**: Used for date fields in Event, Source, Media, Assertion, Metadata
 2. **PlaceID vs Place**: Event uses `PlaceID string` with yaml tag `place`
 3. **Repository state field**: Go uses `State` field with yaml:`state_province`
 4. **Media arrays**: Check if media references use `[]string` with `refType:"media"`
 5. **Participant type**: Unified Participant struct used by Event, Relationship, and Assertion
+6. **NoteList type**: Used on ALL entity types and Participant — `oneOf` in schema
+7. **Vocabulary GEDCOM fields**: Recently added to 5 vocabulary structs — verify all present
 
 ## Summary
 
