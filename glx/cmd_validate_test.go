@@ -30,7 +30,7 @@ func TestRunValidate_SingleValidFile(t *testing.T) {
 	err := validatePaths(streams, []string{"persons/person-father.glx"})
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 	require.Contains(t, out.String(), "Cross-reference validation skipped")
-	require.Contains(t, out.String(), "File structure is valid")
+	require.Contains(t, out.String(), "passed structural and semantic validation")
 }
 
 func TestRunValidate_ValidDirectory(t *testing.T) {
@@ -153,6 +153,29 @@ func TestRunValidate_SingleFileDeprecatedProperty(t *testing.T) {
 	require.ErrorIs(t, err, ErrValidationFailed, "single-file validation should return ErrValidationFailed")
 	require.Contains(t, errOut.String(), "has been removed",
 		"error should mention that born_on has been removed")
+}
+
+func TestRunValidate_SingleFileInvalidDateFormat(t *testing.T) {
+	// Single-file validation should catch date format warnings
+	tmpDir := t.TempDir()
+	eventFile := filepath.Join(tmpDir, "event.glx")
+	err := os.WriteFile(eventFile, []byte(`events:
+  event-test:
+    type: birth
+    date: "January 15, 1850"
+    participants:
+      - person: person-test
+        role: principal
+`), 0o644)
+	require.NoError(t, err)
+
+	streams, _, errOut := TestIOStreams()
+	err = validatePaths(streams, []string{eventFile})
+
+	require.ErrorIs(t, err, ErrValidationFailed,
+		"single-file validation should fail for invalid date format")
+	require.Contains(t, errOut.String(), "should be in format",
+		"output should mention expected date format")
 }
 
 func TestRunValidate_NonExistentPath(t *testing.T) {

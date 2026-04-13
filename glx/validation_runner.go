@@ -72,22 +72,22 @@ func validatePaths(streams *IOStreams, args []string) error {
 		}
 
 		// Run semantic validation (deprecated properties, date formats, etc.)
-		// on the single file, filtering out cross-reference errors.
-		semanticErrors := validateSingleFileSemantics(paths)
+		// on the single file, filtering out cross-reference issues.
+		semanticIssues := validateSingleFileSemantics(paths)
 
 		streams.Println("⚠️  Cross-reference validation skipped (single file specified).")
 		streams.Printf("Validated %d file(s).\n", fileCount)
 
-		if len(semanticErrors) > 0 {
-			streams.Errorf("Found %d errors:\n", len(semanticErrors))
-			for _, err := range semanticErrors {
-				streams.Errorf("- ❌ %s\n", err)
+		if len(semanticIssues) > 0 {
+			streams.Errorf("Found %d issues:\n", len(semanticIssues))
+			for _, issue := range semanticIssues {
+				streams.Errorf("- ❌ %s\n", issue)
 			}
 
 			return ErrValidationFailed
 		}
 
-		streams.Println("✅ File structure is valid.")
+		streams.Println("✅ File passed structural and semantic validation (cross-references skipped).")
 
 		return nil
 	}
@@ -221,8 +221,14 @@ func validateSingleFileSemantics(paths []string) []string {
 
 			for _, ve := range result.Errors {
 				// Keep only errors that work on single files without cross-references
-				if isSingleFileError(ve.Message) {
+				if isSingleFileIssue(ve.Message) {
 					allErrors = append(allErrors, ve.Message)
+				}
+			}
+
+			for _, warn := range result.Warnings {
+				if isSingleFileIssue(warn.Message) {
+					allErrors = append(allErrors, warn.Message)
 				}
 			}
 
@@ -233,13 +239,15 @@ func validateSingleFileSemantics(paths []string) []string {
 	return allErrors
 }
 
-// isSingleFileError returns true for validation errors that can be detected on a
-// single file without the full archive context. This is a whitelist approach —
-// only known single-file-compatible error patterns are included.
-func isSingleFileError(msg string) bool {
+// isSingleFileIssue returns true for validation errors/warnings that can be
+// detected on a single file without the full archive context. This is a
+// whitelist approach — only known single-file-compatible message patterns are
+// included. Cross-reference errors are excluded.
+func isSingleFileIssue(msg string) bool {
 	return strings.Contains(msg, "has been removed") || // deprecated properties
-		strings.Contains(msg, "invalid date format") || // date format errors
-		strings.Contains(msg, "unknown property") // property type errors
+		strings.Contains(msg, "should be in format") || // date format warnings
+		strings.Contains(msg, "unknown property") || // unrecognized properties
+		strings.Contains(msg, "conflicting type fields") // property definition issues
 }
 
 // countGLXFiles counts .glx files in a directory without reading them.
