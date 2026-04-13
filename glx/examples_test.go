@@ -26,6 +26,42 @@ import (
 
 const examplesDir = "../docs/examples"
 
+// discoverExampleDirs returns subdirectories of examplesDir that contain at
+// least one .glx file (directly or nested). Directories with only non-GLX
+// files (like westeros with just a README) are automatically excluded.
+func discoverExampleDirs(t *testing.T) []string {
+	t.Helper()
+
+	entries, err := os.ReadDir(examplesDir)
+	require.NoError(t, err)
+
+	var examples []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		// Check for any .glx file in the directory tree
+		hasGLX := false
+		_ = filepath.WalkDir(filepath.Join(examplesDir, entry.Name()), func(_ string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !d.IsDir() && isGLXFile(d.Name()) {
+				hasGLX = true
+
+				return filepath.SkipAll
+			}
+
+			return nil
+		})
+		if hasGLX {
+			examples = append(examples, entry.Name())
+		}
+	}
+
+	return examples
+}
+
 // TestExamples validates all example GLX files from docs/examples
 func TestExamples(t *testing.T) {
 	// Check if examples directory exists
@@ -110,7 +146,8 @@ func TestExamplesDirectories(t *testing.T) {
 		return
 	}
 
-	examples := []string{"minimal", "basic-family", "complete-family", "single-file", "participant-assertions", "temporal-properties"}
+	examples := discoverExampleDirs(t)
+	require.NotEmpty(t, examples, "should discover at least one example directory")
 
 	for _, example := range examples {
 		t.Run(example, func(t *testing.T) {
@@ -219,7 +256,8 @@ func TestExamplesValidation(t *testing.T) {
 		return
 	}
 
-	examples := []string{"minimal", "basic-family", "complete-family", "single-file", "participant-assertions", "temporal-properties"}
+	examples := discoverExampleDirs(t)
+	require.NotEmpty(t, examples, "should discover at least one example directory")
 
 	for _, example := range examples {
 		t.Run(example, func(t *testing.T) {
