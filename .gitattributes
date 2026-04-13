@@ -23,8 +23,12 @@
 *.tiff binary
 *.pdf binary
 *.ged text
-# Preserve CRLF in test fixture — disable normalization so the file is stored as-is
-glx/testdata/gedcom/5.5.1/gramps-encoding/cp1252-crlf.ged -text
+
+# Preserve line endings on GEDCOM test fixtures — disable normalization so the
+# files are stored as-is. Test fixtures must be preserved byte-for-byte;
+# `* text=auto` would otherwise want to renormalize CRLF fixtures to LF,
+# putting git into a "dirty" state on checkout and failing GoReleaser.
+glx/testdata/gedcom/**/*.ged -text
 
 # GoReleaser archives
 dist/ export-ignore
