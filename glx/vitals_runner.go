@@ -28,11 +28,6 @@ type vitalRecord struct {
 	Value string
 }
 
-// vitalsEventTypes lists event types that are considered vitals.
-var vitalsEventTypes = []string{
-	"birth", "christening", "baptism", "death", "burial", "cremation",
-}
-
 // showVitals loads an archive and displays vitals for a person.
 func showVitals(archivePath, personQuery string) error {
 	archive, err := loadArchiveForVitals(archivePath)

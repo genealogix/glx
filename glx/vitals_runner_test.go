@@ -182,7 +182,7 @@ func TestCollectVitals(t *testing.T) {
 	// Check we have exactly the standard 6 vitals (Name, Sex, Birth, Christening, Death, Burial)
 	// Non-vital events like marriage should NOT appear
 	if len(vitals) != 6 {
-		t.Errorf("expected exactly 6 vitals, got %d", len(vitals))
+		t.Fatalf("expected exactly 6 vitals, got %d", len(vitals))
 	}
 
 	// Verify Name
