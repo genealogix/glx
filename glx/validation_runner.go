@@ -24,10 +24,11 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// validatePaths performs comprehensive validation on the specified paths
+// validatePaths performs comprehensive validation on the specified paths.
+// Output goes to the provided IOStreams (stdout for results, stderr for errors).
 //
-//nolint:gocognit,gocyclo
-func validatePaths(args []string) error {
+//nolint:gocognit,gocyclo,errcheck // errcheck: CLI output writes to stdout/stderr — errors are ignorable
+func validatePaths(io *IOStreams, args []string) error {
 	paths := args
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -62,17 +63,17 @@ func validatePaths(args []string) error {
 	if !shouldValidateCrossRefs {
 		fileCount, structErrors := validateSingleFilePaths(paths)
 		if len(structErrors) > 0 {
-			fmt.Fprintf(os.Stderr, "Found %d structural errors in %d files:\n", len(structErrors), fileCount)
+			fmt.Fprintf(io.ErrOut, "Found %d structural errors in %d files:\n", len(structErrors), fileCount)
 			for _, err := range structErrors {
-				fmt.Fprintf(os.Stderr, "- %s\n", err)
+				fmt.Fprintf(io.ErrOut, "- %s\n", err)
 			}
 
 			return ErrStructuralValidationFailed
 		}
 
-		fmt.Println("⚠️  Cross-reference validation skipped (single file specified).")
-		fmt.Printf("Validated %d file.\n", fileCount)
-		fmt.Println("✅ File structure is valid.")
+		fmt.Fprintln(io.Out, "⚠️  Cross-reference validation skipped (single file specified).")
+		fmt.Fprintf(io.Out, "Validated %d file.\n", fileCount)
+		fmt.Fprintln(io.Out, "✅ File structure is valid.")
 
 		return nil
 	}
@@ -85,7 +86,7 @@ func validatePaths(args []string) error {
 	archive, duplicates, err := LoadArchiveWithOptions(archiveRoot, true)
 	if err != nil {
 		formatted := formatValidationError(err, defaultShowFirstErrors)
-		fmt.Fprintf(os.Stderr, "Error loading archive: %v\n", formatted)
+		fmt.Fprintf(io.ErrOut, "Error loading archive: %v\n", formatted)
 
 		return ErrStructuralValidationFailed
 	}
@@ -108,24 +109,24 @@ func validatePaths(args []string) error {
 	// Check media file existence on disk
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
-	fmt.Printf("Validated %d files.\n", fileCount)
+	fmt.Fprintf(io.Out, "Validated %d files.\n", fileCount)
 	if len(allWarnings) > 0 {
-		fmt.Printf("Found %d warnings:\n", len(allWarnings))
+		fmt.Fprintf(io.Out, "Found %d warnings:\n", len(allWarnings))
 		for _, warn := range allWarnings {
-			fmt.Printf("- ⚠️  %s\n", warn)
+			fmt.Fprintf(io.Out, "- ⚠️  %s\n", warn)
 		}
 	}
 
 	if len(allErrors) > 0 {
-		fmt.Fprintf(os.Stderr, "Found %d errors:\n", len(allErrors))
+		fmt.Fprintf(io.ErrOut, "Found %d errors:\n", len(allErrors))
 		for _, err := range allErrors {
-			fmt.Fprintf(os.Stderr, "- ❌ %s\n", err)
+			fmt.Fprintf(io.ErrOut, "- ❌ %s\n", err)
 		}
 
 		return ErrValidationFailed
 	}
 
-	fmt.Println("✅ Archive is valid.")
+	fmt.Fprintln(io.Out, "✅ Archive is valid.")
 
 	return nil
 }
