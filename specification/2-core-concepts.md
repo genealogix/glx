@@ -137,7 +137,6 @@ event_types:
   apprenticeship:
     label: "Apprenticeship"
     description: "Beginning of apprenticeship training"
-    category: "occupation"
 ```
 
 **2. Use the new types in your data**
@@ -369,7 +368,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 
 GENEALOGIX validates date formats at two levels:
 1. **Structure:** Dates must follow the format specifications above
-2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT) are recognized
+2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword.
 3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Unknown prefixes are accepted without warning to allow extensibility
 
 Invalid date formats will generate validation warnings (not errors), allowing archives with imperfect dates to still load while alerting researchers to potential data quality issues.
@@ -522,10 +521,11 @@ properties:
 
 ### Notes Field
 
-All entities support an optional `notes` field for free-form text:
+All entities support an optional `notes` field. Notes accept either a single string or a YAML sequence of strings — a single string is shorthand for a one-element list:
 
 ```yaml
 persons:
+  # Single note (string shorthand)
   person-john-smith:
     properties:
       name:
@@ -536,6 +536,15 @@ persons:
     notes: |
       Research notes about this person.
       Questions for future investigation.
+
+  # Multiple separate notes (string array)
+  person-jane-doe:
+    properties:
+      name:
+        value: "Jane Doe"
+    notes:
+      - "Identified in 1860 census as head of household"
+      - "Marriage record found at county courthouse"
 ```
 
 Use notes to:

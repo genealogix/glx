@@ -39,7 +39,10 @@
             "additionalProperties": true
           },
           "notes": {
-            "type": "string",
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } }
+            ],
             "description": "Notes about participant's involvement"
           }
         },
@@ -57,7 +60,10 @@
       "description": "Event that ended this relationship"
     },
     "notes": {
-      "type": "string",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
       "description": "Research notes"
     }
   },

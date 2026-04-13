@@ -14,6 +14,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
 - 📊 **Stats** - Display a summary dashboard of entity counts, assertion confidence, and coverage
 - 📍 **Places** - Analyze places for data quality issues (duplicates, missing coordinates, hierarchy gaps)
+- 🔍 **Search** - Full-text search across all entity types with case-sensitive and type-filter options
 - 🔎 **Query** - Filter and list entities from an archive by name, date, type, source, and more
 - 👤 **Vitals** - Display vital records (birth, death, burial) for a person
 - 📅 **Timeline** - Show chronological events for a person, including family events
@@ -628,6 +629,34 @@ Unreferenced (not used by any event, assertion, or as parent):
 ```
 
 > **Note:** Only sections with issues are shown. If all places have coordinates, parents, and are referenced, those sections are omitted and "No issues found." is printed.
+
+### `glx search`
+
+Full-text search across all entity types in a GLX archive. Searches entity IDs, names, titles, notes, properties, and values. Results are deduplicated per entity and grouped by type.
+
+```
+glx search <query> [flags]
+```
+
+**Flags:**
+| Flag | Description |
+|------|-------------|
+| `--archive`, `-a` | Path to GLX archive (default: current directory) |
+| `--case-sensitive` | Case-sensitive search (default: case-insensitive) |
+| `--type` | Filter to entity type (`persons`, `events`, `places`, `sources`, `citations`, `repositories`, `assertions`, `relationships`, `media`) |
+| `--json` | Output results as JSON |
+
+**Examples:**
+```bash
+# Search for a place name
+glx search "Millbrook" --archive ./archive
+
+# Case-sensitive search
+glx search "Miller" --archive ./archive --case-sensitive
+
+# Search only persons
+glx search "Jane" --archive ./archive --type persons
+```
 
 ### `glx query`
 

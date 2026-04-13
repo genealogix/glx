@@ -47,17 +47,17 @@ An assessment of how certain a conclusion is based on available evidence. Common
 ### Corroboration
 Supporting evidence from multiple independent sources that agree on a conclusion.
 
+### Calendar Prefix
+An optional prefix on a DateString indicating the calendar system: JULIAN, HEBREW, or FRENCH_R. Gregorian is the default (no prefix). Imported from GEDCOM calendar escape sequences (e.g., `@#DJULIAN@`).
+
+> **See Also:** [Non-Gregorian Calendar Dates](2-core-concepts#non-gregorian-calendar-dates)
+
 ### Cross-Reference
 A reference from one entity to another entity in the archive (e.g., event referencing a place, assertion referencing a citation). Cross-references are validated to ensure they point to existing entities.
 
 > **See Also:** [Reference Integrity](#reference-integrity)
 
 ## D
-
-### Calendar Prefix
-An optional prefix on a DateString indicating the calendar system: JULIAN, HEBREW, or FRENCH_R. Gregorian is the default (no prefix). Imported from GEDCOM calendar escape sequences (e.g., `@#DJULIAN@`).
-
-> **See Also:** [Non-Gregorian Calendar Dates](2-core-concepts#non-gregorian-calendar-dates)
 
 ### Date Keywords
 Keywords used in GENEALOGIX date formats to express uncertainty or ranges: ABT (about), BEF (before), AFT (after), BET (between), FROM, TO, CAL (calculated), INT (interpreted). Can be combined with calendar prefixes (e.g., `JULIAN ABT 1731`).
@@ -88,13 +88,18 @@ A unique identifier for each entity, used as the YAML map key. Format: 1-64 alph
 
 > **See Also:** [ID (Identifier)](#id-identifier), [ID Format Standards](3-archive-organization#id-format-standards)
 
+### Existential Assertion
+An assertion with only a `subject` and evidence — no `property`, `value`, or `participant`. It asserts that the subject entity exists, backed by the cited sources. Useful during early research phases when evidence establishes an entity's existence but specific property values have not yet been determined.
+
+> **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion#existential-assertions), [Core Concepts - Existential Assertions](2-core-concepts#existential-assertions)
+
 ### Event
-A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation and residence are represented as temporal properties on Person entities, not as events.
+A discrete occurrence in time and place such as birth, marriage, death, baptism, or burial. Events have participants, dates, places, and descriptions. Note: attributes like occupation are represented as temporal properties on Person entities, not as events. Residence can be either a temporal person property (for simple place references) or a `residence` event (when participants, dates, or detailed evidence are needed).
 
 > **See Also:** [Event Entity](4-entity-types/event)
 
 ### Event Type
-Classification of life events including birth, marriage, death, baptism, burial, military service, immigration, naturalization, etc. Note: attributes like occupation and residence are temporal properties on Person entities, not events.
+Classification of life events including birth, marriage, death, baptism, burial, military service, immigration, naturalization, etc. Note: attributes like occupation are temporal properties on Person entities, not events. Residence can be modeled as either a person property or an event.
 
 > **See Also:** [Event Types Vocabulary](4-entity-types/vocabularies#event-types-vocabulary)
 
@@ -209,10 +214,20 @@ First-hand, eyewitness accounts or documents created at the time of the event.
 ### Participant
 A person involved in an event with a specific role such as subject, witness, officiant, parent, or spouse.
 
+### Participant Assertion
+An assertion whose `participant` field (instead of `property`/`value`) makes a claim about a specific person's involvement in an event or relationship — e.g., that a witness was present, or that a child belongs to a family. Participant assertions allow evidence to be attached directly to who was involved, independent of other claims about the event or relationship.
+
+> **See Also:** [Assertion Entity - Participant Assertions](4-entity-types/assertion#participant-assertions)
+
 ### Participant Role
 The specific function or relationship a person has in an event (e.g., bride, groom, witness, officiant).
 
 > **See Also:** [Participant Roles Vocabulary](4-entity-types/vocabularies#participant-roles-vocabulary)
+
+### Per-Participant Properties
+Properties attached to an individual participant within an event or relationship (rather than to the event/relationship as a whole) — e.g., age at marriage, legal status, or marital state at time of the census. Per-participant properties are validated against the `event_properties` or `relationship_properties` vocabulary depending on context.
+
+> **See Also:** [Relationship Entity - Per-Participant Properties](4-entity-types/relationship#per-participant-properties)
 
 ### Person
 An individual human being with biographical information including name, dates, places, and relationships.
@@ -342,6 +357,16 @@ In assertions, the typed reference to the entity the assertion is about. The sub
 
 ### Typed Reference
 A reference that specifies both the entity type and entity ID, used in assertion subjects (e.g., `person: person-john-smith` rather than just `person-john-smith`).
+
+### Temporal Consistency
+Validation checks that verify chronological plausibility of dates across related entities — for example, death before birth, parent younger than child, or marriage before birth. Temporal consistency issues generate warnings (not errors) because fuzzy dates and data-entry errors are common in genealogical records.
+
+> **See Also:** [Validation Levels](3-archive-organization#validation-levels)
+
+### Temporal Existential Assertion
+An existential assertion (one with no `property`/`value`, asserting only that the subject existed) that carries a `date` field to specify when the subject existed — for example, "this person was alive in 1850." Useful when evidence supports existence at a point in time without establishing any other fact.
+
+> **See Also:** [Assertion Entity - Existential Assertions](4-entity-types/assertion#existential-assertions)
 
 ### Temporal Property
 A property that can hold multiple values, with or without dates. Temporal properties support dated lists (values that change over time), undated lists (multiple values without known dates, e.g., occupations from an obituary), or a single value.

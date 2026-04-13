@@ -37,7 +37,7 @@ Represents geographic locations forming a hierarchical structure. Supports multi
 ### [Assertion](assertion)
 Represents an evidence-based conclusion about a specific genealogical fact. Forms the core of the GENEALOGIX assertion model.
 
-- **Key Properties**: Subject, property, value, citations, confidence, status
+- **Key Properties**: Subject, property, value, citations/sources/media, confidence, status
 - **GEDCOM Equivalent**: Implicit (derived from GEDCOM structure and SOUR references)
 
 ### [Source](source)

@@ -66,7 +66,7 @@ sources:
 | `language` | string | Language of the source |
 | `media` | array | References to Media entities |
 | `properties` | object | Vocabulary-defined properties (see [Properties](#properties)) |
-| `notes` | string | Free-form notes |
+| `notes` | string \| string[] | Free-form notes |
 
 ## Required Fields (Detailed)
 

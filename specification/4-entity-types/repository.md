@@ -72,7 +72,7 @@ GENEALOGIX supports various repository types:
 | `country` | string | Country |
 | `website` | string | URL to repository website |
 | `properties` | object | Vocabulary-defined properties (see below) |
-| `notes` | string | Free-form notes |
+| `notes` | string \| string[] | Free-form notes |
 
 **Design note:** Address fields (`address`, `city`, `state_province`, `postal_code`, `country`) are kept as direct entity fields rather than properties because they are core identifying attributes of a repository, analogous to `name`. They are not expected to change over time or vary by context, unlike contact details (phones, emails) which are in `properties`.
 

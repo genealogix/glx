@@ -59,7 +59,7 @@ media:
 | `date` | string | Date the media was created |
 | `source` | string | Reference to Source entity this media documents |
 | `properties` | object | Vocabulary-defined properties (see Properties section) |
-| `notes` | string | Free-form notes |
+| `notes` | string \| string[] | Free-form notes |
 
 ## Required Fields (Detailed)
 

@@ -39,15 +39,19 @@ media_properties:
       top:
         label: "Top"
         description: "Top edge position in pixels"
+        value_type: integer
       left:
         label: "Left"
         description: "Left edge position in pixels"
+        value_type: integer
       width:
         label: "Width"
         description: "Crop region width in pixels"
+        value_type: integer
       height:
         label: "Height"
         description: "Crop region height in pixels"
+        value_type: integer
 
   medium:
     label: "Medium"
