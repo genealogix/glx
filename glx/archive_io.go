@@ -23,9 +23,30 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// archiveManagedTopLevel is the set of top-level paths written by the multi-file
+// serializer. Anything in an archive directory that isn't in this set is foreign
+// (user docs, .git, dotfiles, etc.) and must be preserved across a safe-write swap.
+// See genealogix/glx#692.
+var archiveManagedTopLevel = map[string]bool{
+	"metadata.glx":  true,
+	"vocabularies":  true,
+	"persons":       true,
+	"events":        true,
+	"relationships": true,
+	"places":        true,
+	"sources":       true,
+	"citations":     true,
+	"repositories":  true,
+	"media":         true,
+	"assertions":    true,
+}
+
 // safeWriteMultiFileArchive writes a multi-file archive to a temporary directory
 // first, then swaps it into place. This prevents archive destruction if the write
 // fails partway through (e.g., power loss, disk full, signal).
+//
+// Non-archive top-level entries in destPath (e.g., .git, README.md, CLAUDE.md,
+// dotfiles) are preserved across the swap; see archiveManagedTopLevel.
 func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// Resolve to absolute path so rename and cwd containment checks work
 	// reliably for relative paths like ".". mergeArchives does the same.
@@ -74,8 +95,8 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 
 	// Create backup of the original
 	backupDir := destPath + ".bak"
-	if err := os.RemoveAll(backupDir); err != nil {
-		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
+	if err := removeStaleBackup(backupDir); err != nil {
+		return err
 	}
 	if err := os.Rename(destPath, backupDir); err != nil {
 		return fmt.Errorf("backing up original: %w", err)
@@ -88,9 +109,74 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		return fmt.Errorf("moving archive into place: %w", err)
 	}
 
-	// Clean up backup
+	// Preserve foreign (non-managed) top-level entries from the backup back into
+	// the newly-written archive. Without this step the swap silently destroys
+	// .git, README.md, and any other user content that sits alongside the
+	// managed entity directories — see genealogix/glx#692.
+	if err := restoreForeignEntries(backupDir, destPath); err != nil {
+		// Leave backupDir in place so the user can recover. Do not mark success.
+		return fmt.Errorf("preserving non-archive files: %w", err)
+	}
+
+	// Clean up backup (now contains only managed entries that have been
+	// superseded by the fresh write).
 	_ = os.RemoveAll(backupDir)
 	success = true
+	return nil
+}
+
+// removeStaleBackup deletes a leftover .bak directory, but only after verifying
+// it contains no foreign (non-managed) entries. If it does, a previous invocation
+// failed mid-restore and those entries are the user's unrecovered data — refuse
+// to proceed rather than silently destroy them.
+func removeStaleBackup(backupDir string) error {
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
+	}
+	for _, entry := range entries {
+		if !archiveManagedTopLevel[entry.Name()] {
+			return fmt.Errorf(
+				"stale backup %s contains non-archive file %q from a previous failed run; "+
+					"move or inspect it before retrying",
+				backupDir, entry.Name(),
+			)
+		}
+	}
+	if err := os.RemoveAll(backupDir); err != nil {
+		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
+	}
+	return nil
+}
+
+// restoreForeignEntries moves every top-level entry from backupDir into destPath
+// unless the entry name is in archiveManagedTopLevel. The source and destination
+// are on the same filesystem (backupDir and destPath share a parent), so each
+// rename is atomic.
+//
+// Preservation runs after the swap rather than before, so at every intermediate
+// state the user's data exists on disk under a predictable name: before the
+// rename it lives in backupDir (still named destPath.bak); after it lives in
+// destPath. If any rename fails the backup is retained so the user can recover.
+func restoreForeignEntries(backupDir, destPath string) error {
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return fmt.Errorf("reading backup directory: %w", err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if archiveManagedTopLevel[name] {
+			continue
+		}
+		src := filepath.Join(backupDir, name)
+		dst := filepath.Join(destPath, name)
+		if err := os.Rename(src, dst); err != nil {
+			return fmt.Errorf("restoring %s: %w", name, err)
+		}
+	}
 	return nil
 }
 
