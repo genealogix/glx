@@ -152,65 +152,74 @@ const crossArchivePairThreshold = 200
 // generateCrossArchivePairs produces person ID pairs where one is from dest and
 // the other from src. Skips pairs that share a relationship in the combined index.
 // Uses surname blocking for large archives to avoid O(N*M) explosion.
+//
+//nolint:gocognit // delegation to helpers keeps each branch simple
 func generateCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFilter string) [][2]string {
-	destIDs := make(map[string]bool, len(dest.Persons))
-	for id := range dest.Persons {
-		destIDs[id] = true
-	}
-	srcIDs := make(map[string]bool, len(src.Persons))
-	for id := range src.Persons {
-		srcIDs[id] = true
-	}
-
-	appendIfEligible := func(pairs *[][2]string, destID, srcID string) {
-		if srcID == destID {
-			return
-		}
-		if personFilter != "" && destID != personFilter && srcID != personFilter {
-			return
-		}
-
-		a, b := destID, srcID
-		if a > b {
-			a, b = b, a
-		}
-		if idx.relatedPairs[[2]string{a, b}] {
-			return
-		}
-
-		*pairs = append(*pairs, [2]string{destID, srcID})
-	}
-
-	// Person filter mode: only pairs involving the filtered person
 	if personFilter != "" {
-		var pairs [][2]string
-		if srcIDs[personFilter] {
-			for id := range destIDs {
-				appendIfEligible(&pairs, id, personFilter)
-			}
-		}
-		if destIDs[personFilter] {
-			for id := range srcIDs {
-				appendIfEligible(&pairs, personFilter, id)
-			}
-		}
-
-		return sortPairs(pairs)
+		return generateFilteredCrossArchivePairs(dest, src, idx, personFilter)
 	}
 
-	// Small archives: full Cartesian product
-	if len(destIDs)+len(srcIDs) < crossArchivePairThreshold {
-		var pairs [][2]string
-		for destID := range destIDs {
-			for srcID := range srcIDs {
-				appendIfEligible(&pairs, destID, srcID)
-			}
-		}
-
-		return sortPairs(pairs)
+	if len(dest.Persons)+len(src.Persons) < crossArchivePairThreshold {
+		return generateAllCrossArchivePairs(dest, src, idx)
 	}
 
-	// Large archives: surname blocking to reduce comparisons
+	return generateBlockedCrossArchivePairs(dest, src, idx)
+}
+
+// isCrossArchivePairEligible checks if a dest+src pair should be included.
+func isCrossArchivePairEligible(destID, srcID string, idx *duplicateIndex) bool {
+	if srcID == destID {
+		return false
+	}
+
+	a, b := destID, srcID
+	if a > b {
+		a, b = b, a
+	}
+
+	return !idx.relatedPairs[[2]string{a, b}]
+}
+
+// generateFilteredCrossArchivePairs returns pairs involving a specific person.
+func generateFilteredCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFilter string) [][2]string {
+	var pairs [][2]string
+
+	if _, ok := src.Persons[personFilter]; ok {
+		for id := range dest.Persons {
+			if isCrossArchivePairEligible(id, personFilter, idx) {
+				pairs = append(pairs, [2]string{id, personFilter})
+			}
+		}
+	}
+
+	if _, ok := dest.Persons[personFilter]; ok {
+		for id := range src.Persons {
+			if isCrossArchivePairEligible(personFilter, id, idx) {
+				pairs = append(pairs, [2]string{personFilter, id})
+			}
+		}
+	}
+
+	return sortPairs(pairs)
+}
+
+// generateAllCrossArchivePairs returns all dest×src pairs for small archives.
+func generateAllCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex) [][2]string {
+	var pairs [][2]string
+
+	for destID := range dest.Persons {
+		for srcID := range src.Persons {
+			if isCrossArchivePairEligible(destID, srcID, idx) {
+				pairs = append(pairs, [2]string{destID, srcID})
+			}
+		}
+	}
+
+	return sortPairs(pairs)
+}
+
+// generateBlockedCrossArchivePairs uses surname blocking for large archives.
+func generateBlockedCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex) [][2]string {
 	destBlocks := buildSurnameBlocks(dest)
 	srcBlocks := buildSurnameBlocks(src)
 
@@ -222,18 +231,24 @@ func generateCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFi
 		if !ok {
 			continue
 		}
+
 		for _, destID := range destBlock {
 			for _, srcID := range srcBlock {
 				a, b := destID, srcID
 				if a > b {
 					a, b = b, a
 				}
+
 				pair := [2]string{a, b}
 				if seen[pair] {
 					continue
 				}
+
 				seen[pair] = true
-				appendIfEligible(&pairs, destID, srcID)
+
+				if isCrossArchivePairEligible(destID, srcID, idx) {
+					pairs = append(pairs, [2]string{destID, srcID})
+				}
 			}
 		}
 	}
