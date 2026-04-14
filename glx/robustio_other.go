@@ -16,7 +16,9 @@
 
 package main
 
-import "os"
+import (
+	"os"
+)
 
 // robustRename is like os.Rename. On non-Windows platforms, rename is atomic
 // and does not suffer from transient file locking, so no retry is needed.

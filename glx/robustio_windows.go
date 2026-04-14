@@ -30,20 +30,24 @@ const errSharingViolation syscall.Errno = 32 //nolint:mnd // Windows error code
 
 const retryTimeout = 2000 * time.Millisecond //nolint:mnd // matches Go toolchain robustio
 
+const maxSleep = 500 * time.Millisecond //nolint:mnd // cap per-retry sleep
+
 // robustRename is like os.Rename but retries on transient Windows errors.
 //
 // Windows Defender, Search Indexer, OneDrive, and other processes can briefly
 // hold file handles without FILE_SHARE_DELETE, causing MoveFileEx to fail with
 // ERROR_ACCESS_DENIED or ERROR_SHARING_VIOLATION. These locks are transient —
-// retrying with backoff resolves them.
+// retrying with exponential backoff resolves them.
+//
+// Backoff: 1ms, 2ms, 4ms, 8ms, ... up to 500ms per sleep, 2s total timeout.
+// Jitter added to each sleep to avoid synchronized retries.
 //
 // Modeled after Go's cmd/internal/robustio (used by cmd/go, gopls, golangci-lint).
 func robustRename(oldpath, newpath string) error {
 	var (
-		bestErr     error
-		lowestErrno syscall.Errno
-		start       time.Time
-		nextSleep   = 1 * time.Millisecond
+		lastErr   error
+		start     time.Time
+		nextSleep = 1 * time.Millisecond
 	)
 
 	for {
@@ -52,12 +56,7 @@ func robustRename(oldpath, newpath string) error {
 			return err
 		}
 
-		if errno, ok := errors.AsType[syscall.Errno](err); ok && (lowestErrno == 0 || errno < lowestErrno) {
-			bestErr = err
-			lowestErrno = errno
-		} else if bestErr == nil {
-			bestErr = err
-		}
+		lastErr = err
 
 		if start.IsZero() {
 			start = time.Now()
@@ -66,10 +65,12 @@ func robustRename(oldpath, newpath string) error {
 		}
 
 		time.Sleep(nextSleep)
-		nextSleep += time.Duration(rand.Int63n(int64(nextSleep))) //nolint:gosec // jitter, not crypto
+
+		// Exponential backoff: double the base, add jitter, cap at maxSleep
+		nextSleep = min(nextSleep*2+time.Duration(rand.Int63n(int64(nextSleep))), maxSleep) //nolint:gosec // jitter, not crypto
 	}
 
-	return bestErr
+	return lastErr
 }
 
 // isEphemeralError returns true if err is a transient Windows filesystem error
