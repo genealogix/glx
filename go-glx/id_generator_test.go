@@ -157,14 +157,39 @@ func TestEntityIDToFilename(t *testing.T) {
 		{"EVENT-001", "event-001.glx"},
 		{"a", "a.glx"},
 		{"person-001", "person-001.glx"},
-		{"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-abcdefghijklmnopqrstuvwxyz01", "abcdefghijklmnopqrstuvwxyz0123456789-abcdefghijklmnopqrstuvwxyz01.glx"},
+		{"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-abcdefghijklmnopqrstuvwxyz0", "abcdefghijklmnopqrstuvwxyz0123456789-abcdefghijklmnopqrstuvwxyz0.glx"}, // 64 chars (spec max)
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.entityID, func(t *testing.T) {
-			got := EntityIDToFilename(tt.entityID)
+			got, err := EntityIDToFilename(tt.entityID)
+			if err != nil {
+				t.Fatalf("EntityIDToFilename(%q) unexpected error: %v", tt.entityID, err)
+			}
 			if got != tt.want {
 				t.Errorf("EntityIDToFilename(%q) = %q, want %q", tt.entityID, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEntityIDToFilename_Unsafe(t *testing.T) {
+	unsafeIDs := []string{
+		"",
+		".",
+		"..",
+		"../etc/passwd",
+		"person/evil",
+		"person\\evil",
+		"person:evil",
+		".hidden",
+	}
+
+	for _, id := range unsafeIDs {
+		t.Run(fmt.Sprintf("%q", id), func(t *testing.T) {
+			_, err := EntityIDToFilename(id)
+			if err == nil {
+				t.Errorf("EntityIDToFilename(%q) should return error for unsafe ID", id)
 			}
 		})
 	}

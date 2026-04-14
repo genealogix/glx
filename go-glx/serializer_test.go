@@ -18,6 +18,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -416,12 +417,13 @@ func TestSerializeMultiFile(t *testing.T) {
 	}
 }
 
-// mapKeys returns sorted keys from a map for test output.
+// mapKeys returns sorted keys from a map for stable test output.
 func mapKeys(m map[string][]byte) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 
 	return keys
 }

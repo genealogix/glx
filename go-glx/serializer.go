@@ -209,7 +209,10 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 	lowercaseToID := make(map[string]string, len(entities))
 
 	for entityID, entity := range entities {
-		filename := EntityIDToFilename(entityID)
+		filename, err := EntityIDToFilename(entityID)
+		if err != nil {
+			return fmt.Errorf("entity %s %s: %w", entityType, entityID, err)
+		}
 
 		// Detect case-insensitive collision
 		if existingID, exists := lowercaseToID[filename]; exists {
