@@ -43,4 +43,5 @@ var (
 	ErrMultipleFilesFailed        = errors.New("multiple files failed validation")
 	ErrInvalidExportFormat        = errors.New("invalid GEDCOM version format")
 	ErrInputNotFound              = errors.New("input path not found")
+	ErrStaleBackupForeignFile     = errors.New("stale backup contains non-archive file from a previous failed run; move or inspect it before retrying")
 )

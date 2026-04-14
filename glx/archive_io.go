@@ -106,6 +106,7 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	if err := os.Rename(tmpDir, destPath); err != nil {
 		// Restore backup on failure
 		_ = os.Rename(backupDir, destPath) // best-effort restore
+
 		return fmt.Errorf("moving archive into place: %w", err)
 	}
 
@@ -122,6 +123,7 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	// superseded by the fresh write).
 	_ = os.RemoveAll(backupDir)
 	success = true
+
 	return nil
 }
 
@@ -135,20 +137,18 @@ func removeStaleBackup(backupDir string) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
+
 		return fmt.Errorf("inspecting stale backup %s: %w", backupDir, err)
 	}
 	for _, entry := range entries {
 		if !archiveManagedTopLevel[entry.Name()] {
-			return fmt.Errorf(
-				"stale backup %s contains non-archive file %q from a previous failed run; "+
-					"move or inspect it before retrying",
-				backupDir, entry.Name(),
-			)
+			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, entry.Name())
 		}
 	}
 	if err := os.RemoveAll(backupDir); err != nil {
 		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
 	}
+
 	return nil
 }
 
@@ -177,6 +177,7 @@ func restoreForeignEntries(backupDir, destPath string) error {
 			return fmt.Errorf("restoring %s: %w", name, err)
 		}
 	}
+
 	return nil
 }
 

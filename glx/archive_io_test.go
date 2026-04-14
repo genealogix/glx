@@ -974,14 +974,14 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 
 		// Seed with foreign files the archive must preserve
 		foreignFiles := map[string][]byte{
-			"README.md":                    []byte("# Archive\n\nUser notes.\n"),
-			"CLAUDE.md":                    []byte("# Claude guide\n"),
-			".gitignore":                   []byte("*.log\n"),
-			".git/HEAD":                    []byte("ref: refs/heads/main\n"),
-			".git/config":                  []byte("[core]\n\trepositoryformatversion = 0\n"),
-			".git/refs/heads/main":         []byte("abc123\n"),
-			".claude/settings.local.json":  []byte(`{"env":{}}`),
-			"notes/research.md":            []byte("Research notes.\n"),
+			"README.md":                   []byte("# Archive\n\nUser notes.\n"),
+			"CLAUDE.md":                   []byte("# Claude guide\n"),
+			".gitignore":                  []byte("*.log\n"),
+			".git/HEAD":                   []byte("ref: refs/heads/main\n"),
+			".git/config":                 []byte("[core]\n\trepositoryformatversion = 0\n"),
+			".git/refs/heads/main":        []byte("abc123\n"),
+			".claude/settings.local.json": []byte(`{"env":{}}`),
+			"notes/research.md":           []byte("Research notes.\n"),
 		}
 		for relPath, content := range foreignFiles {
 			absPath := filepath.Join(archiveDir, relPath)
@@ -1004,6 +1004,7 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 			got, err := os.ReadFile(absPath)
 			if err != nil {
 				t.Errorf("foreign file %s lost: %v", relPath, err)
+
 				continue
 			}
 			if !bytes.Equal(got, want) {
