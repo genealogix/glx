@@ -147,6 +147,29 @@ func TestGenerateUniqueFilenameCollisionRetry(t *testing.T) {
 	}
 }
 
+func TestEntityIDToFilename(t *testing.T) {
+	tests := []struct {
+		entityID string
+		want     string
+	}{
+		{"person-john-smith-1850", "person-john-smith-1850.glx"},
+		{"Person-John-Smith", "person-john-smith.glx"},
+		{"EVENT-001", "event-001.glx"},
+		{"a", "a.glx"},
+		{"person-001", "person-001.glx"},
+		{"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-abcdefghijklmnopqrstuvwxyz01", "abcdefghijklmnopqrstuvwxyz0123456789-abcdefghijklmnopqrstuvwxyz01.glx"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.entityID, func(t *testing.T) {
+			got := EntityIDToFilename(tt.entityID)
+			if got != tt.want {
+				t.Errorf("EntityIDToFilename(%q) = %q, want %q", tt.entityID, got, tt.want)
+			}
+		})
+	}
+}
+
 func BenchmarkGenerateRandomID(b *testing.B) {
 	for b.Loop() {
 		_, err := GenerateRandomID()

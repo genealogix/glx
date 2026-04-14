@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strings"
 )
 
 // GenerateRandomID generates a random 8-character hex ID using crypto/rand.
@@ -77,4 +78,13 @@ func GenerateUniqueFilename(entityType string, usedFilenames map[string]bool, ma
 	}
 
 	return "", ErrUniqueFilenameFailed
+}
+
+// EntityIDToFilename derives a deterministic filename from an entity ID.
+// The entity ID is lowercased to prevent case-insensitive filesystem collisions
+// (e.g., on Windows/macOS where "Person-A.glx" and "person-a.glx" would collide).
+// Entity IDs are validated as [a-zA-Z0-9-]{1,64} per spec, so the result
+// is always a valid filename on all platforms.
+func EntityIDToFilename(entityID string) string {
+	return strings.ToLower(entityID) + ".glx"
 }
