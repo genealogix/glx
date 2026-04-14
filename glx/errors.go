@@ -23,6 +23,7 @@ var (
 	ErrMediaFileNotFound          = errors.New("file not found")
 	ErrEmptyBlobData              = errors.New("empty BLOB data")
 	ErrInvalidBlobLength          = errors.New("invalid BLOB data length")
+	ErrInvalidBlobChar            = errors.New("invalid BLOB character (must be in range '.' to 'm')")
 	ErrValidationWithErrors       = errors.New("validation failed with errors")
 	ErrInvalidFormat              = errors.New("invalid format (must be 'single' or 'multi')")
 	ErrGEDCOMFileNotFound         = errors.New("GEDCOM file not found")

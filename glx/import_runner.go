@@ -80,7 +80,7 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 
 	// Copy media files into sibling media/files/ directory
 	archiveDir := filepath.Dir(outputPath)
-	if err := copyMediaFiles(archiveDir, mediaFiles, gedcomDir, verbose); err != nil {
+	if err := copyMediaFiles(SystemIOStreams(), archiveDir, mediaFiles, gedcomDir, verbose); err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
 	}
 
@@ -102,7 +102,7 @@ func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose
 	}
 
 	// Copy media files into the archive's media/files/ directory
-	if err := copyMediaFiles(outputPath, mediaFiles, gedcomDir, verbose); err != nil {
+	if err := copyMediaFiles(SystemIOStreams(), outputPath, mediaFiles, gedcomDir, verbose); err != nil {
 		return fmt.Errorf("failed to copy media files: %w", err)
 	}
 
