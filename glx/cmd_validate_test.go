@@ -30,7 +30,7 @@ func TestRunValidate_SingleValidFile(t *testing.T) {
 	err := validatePaths(streams, []string{"persons/person-father.glx"})
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 	require.Contains(t, out.String(), "Cross-reference validation skipped")
-	require.Contains(t, out.String(), "File structure is valid")
+	require.Contains(t, out.String(), "passed structural and semantic validation")
 }
 
 func TestRunValidate_ValidDirectory(t *testing.T) {
@@ -130,6 +130,52 @@ func TestRunValidate_RemovedProperty(t *testing.T) {
 		"error should mention that property has been removed")
 	require.Contains(t, errOut.String(), "use birth events instead",
 		"error should mention the migration path")
+}
+
+func TestRunValidate_SingleFileDeprecatedProperty(t *testing.T) {
+	// Single-file validation should catch deprecated properties (not just directory mode)
+	tmpDir := t.TempDir()
+	personFile := filepath.Join(tmpDir, "person.glx")
+	err := os.WriteFile(personFile, []byte(`persons:
+  person-test:
+    properties:
+      name:
+        value: "Test Person"
+      born_on: "1850"
+`), 0o644)
+	require.NoError(t, err)
+
+	streams, _, errOut := TestIOStreams()
+
+	// Validate the single file (not the directory)
+	err = validatePaths(streams, []string{personFile})
+
+	require.ErrorIs(t, err, ErrValidationFailed, "single-file validation should return ErrValidationFailed")
+	require.Contains(t, errOut.String(), "has been removed",
+		"error should mention that born_on has been removed")
+}
+
+func TestRunValidate_SingleFileInvalidDateFormat(t *testing.T) {
+	// Single-file validation should catch date format warnings
+	tmpDir := t.TempDir()
+	eventFile := filepath.Join(tmpDir, "event.glx")
+	err := os.WriteFile(eventFile, []byte(`events:
+  event-test:
+    type: birth
+    date: "January 15, 1850"
+    participants:
+      - person: person-test
+        role: principal
+`), 0o644)
+	require.NoError(t, err)
+
+	streams, out, _ := TestIOStreams()
+	err = validatePaths(streams, []string{eventFile})
+
+	require.NoError(t, err,
+		"invalid date format is a warning, not an error — should not fail validation")
+	require.Contains(t, out.String(), "should be in format",
+		"warning output should mention expected date format")
 }
 
 func TestRunValidate_NonExistentPath(t *testing.T) {
