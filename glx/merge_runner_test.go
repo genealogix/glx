@@ -124,7 +124,7 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
 
 	// Merge via CLI function
-	err = mergeArchives(srcDir, destDir, false)
+	err = mergeArchives(srcDir, destDir, false, 0.6)
 	require.NoError(t, err)
 
 	// Reload and verify no duplicates
@@ -167,7 +167,7 @@ func TestMergeArchives_DryRun(t *testing.T) {
 	require.NotEmpty(t, before, "destination should have files before merge")
 
 	// Merge with dry-run — should not modify destination
-	err = mergeArchives(srcDir, destDir, true)
+	err = mergeArchives(srcDir, destDir, true, 0.6)
 	require.NoError(t, err)
 
 	// Verify filesystem is byte-for-byte unchanged (no new files, no modifications)
@@ -227,7 +227,7 @@ func TestMergeArchives_DotDestination(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	require.NoError(t, os.Chdir(destDir))
-	err = mergeArchives(srcDir, ".", false)
+	err = mergeArchives(srcDir, ".", false, 0.6)
 	require.NoError(t, err)
 
 	// Verify merge result (use absolute destDir since cwd may have changed)
@@ -237,4 +237,69 @@ func TestMergeArchives_DotDestination(t *testing.T) {
 	assert.Len(t, reloaded.Persons, 2, "should have both persons after merge")
 	assert.Contains(t, reloaded.Persons, "person-a")
 	assert.Contains(t, reloaded.Persons, "person-b")
+}
+
+func TestMergeArchives_PreviewShowsDuplicates(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-dest-john": {Properties: map[string]any{"name": "John Smith"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := serializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-src-john": {Properties: map[string]any{"name": "John Smith"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := serializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	before := snapshotDir(t, destDir)
+
+	err = mergeArchives(srcDir, destDir, true, 0.2)
+	require.NoError(t, err)
+
+	after := snapshotDir(t, destDir)
+	assert.Equal(t, before, after, "preview should not modify any files")
+}
+
+func TestMergeArchives_PreviewNoDuplicates(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-alice": {Properties: map[string]any{"name": "Alice Johnson"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := serializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-bob": {Properties: map[string]any{"name": "Bob Williams"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := serializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	err = mergeArchives(srcDir, destDir, true, 0.8)
+	require.NoError(t, err)
 }
