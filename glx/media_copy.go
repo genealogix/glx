@@ -216,6 +216,9 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 
 	// Handle trailing characters (2 chars → 1 byte, 3 chars → 2 bytes)
 	trailing := len(cleaned) - fullGroups
+	if trailing == 1 {
+		return nil, fmt.Errorf("%w: %d (trailing single character cannot encode a full byte)", ErrInvalidBlobLength, len(cleaned))
+	}
 	if trailing >= 2 { //nolint:mnd // trailing group sizes
 		for j := range trailing {
 			char := cleaned[fullGroups+j]

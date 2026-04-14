@@ -89,6 +89,12 @@ func TestDecodeGEDCOMBlob(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for single character")
 	}
+
+	// 5 chars (4 + 1 trailing) is invalid — trailing single char can't encode a byte
+	_, err = decodeGEDCOMBlob(".....")
+	if err == nil {
+		t.Error("Expected error for 5 chars (trailing single character)")
+	}
 }
 
 func TestCopyMediaFiles_FileCopy(t *testing.T) {
@@ -460,6 +466,10 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 	warnings := errOut.String()
 	warnCount := strings.Count(warnings, "Warning:")
 	t.Logf("  Warnings captured: %d", warnCount)
+	// 8 missing-file warnings (ImgFile.BMP referenced 3 times) + 1 blob decode = 9
+	if warnCount != 9 {
+		t.Errorf("Expected 9 warnings, got %d:\n%s", warnCount, warnings)
+	}
 
 	// These files are referenced in the GEDCOM but don't exist on disk
 	expectedMissing := []string{"Document.RTF", "enthist.aif", "suntun.mov", "top.mpg", "ImgFile.BMP", "force.wav"}
