@@ -73,14 +73,21 @@ func validatePaths(streams *IOStreams, args []string) error {
 
 		// Run semantic validation (deprecated properties, date formats, etc.)
 		// on the single file, filtering out cross-reference issues.
-		semanticIssues := validateSingleFileSemantics(paths)
+		semanticErrors, semanticWarnings := validateSingleFileSemantics(paths)
 
 		streams.Println("⚠️  Cross-reference validation skipped (single file specified).")
 		streams.Printf("Validated %d file(s).\n", fileCount)
 
-		if len(semanticIssues) > 0 {
-			streams.Errorf("Found %d issues:\n", len(semanticIssues))
-			for _, issue := range semanticIssues {
+		if len(semanticWarnings) > 0 {
+			streams.Printf("Found %d warnings:\n", len(semanticWarnings))
+			for _, warn := range semanticWarnings {
+				streams.Printf("- ⚠️  %s\n", warn)
+			}
+		}
+
+		if len(semanticErrors) > 0 {
+			streams.Errorf("Found %d errors:\n", len(semanticErrors))
+			for _, issue := range semanticErrors {
 				streams.Errorf("- ❌ %s\n", issue)
 			}
 
@@ -191,8 +198,10 @@ func validateSingleFilePaths(paths []string) (int, []string) {
 // validateSingleFileSemantics runs semantic validation (deprecated properties,
 // date formats, property types) on single files. Cross-reference errors are
 // filtered out since we don't have the full archive context.
-func validateSingleFileSemantics(paths []string) []string {
-	var allErrors []string
+// Returns errors (fatal) and warnings (informational) separately, consistent
+// with directory validation behavior.
+func validateSingleFileSemantics(paths []string) ([]string, []string) {
+	var allErrors, allWarnings []string
 
 	for _, path := range paths {
 		_ = filepath.WalkDir(path, func(filePath string, d fs.DirEntry, walkErr error) error {
@@ -220,7 +229,6 @@ func validateSingleFileSemantics(paths []string) []string {
 			result := archive.Validate()
 
 			for _, ve := range result.Errors {
-				// Keep only errors that work on single files without cross-references
 				if isSingleFileIssue(ve.Message) {
 					allErrors = append(allErrors, ve.Message)
 				}
@@ -228,7 +236,7 @@ func validateSingleFileSemantics(paths []string) []string {
 
 			for _, warn := range result.Warnings {
 				if isSingleFileIssue(warn.Message) {
-					allErrors = append(allErrors, warn.Message)
+					allWarnings = append(allWarnings, warn.Message)
 				}
 			}
 
@@ -236,7 +244,7 @@ func validateSingleFileSemantics(paths []string) []string {
 		})
 	}
 
-	return allErrors
+	return allErrors, allWarnings
 }
 
 // isSingleFileIssue returns true for validation errors/warnings that can be
@@ -247,7 +255,13 @@ func isSingleFileIssue(msg string) bool {
 	return strings.Contains(msg, "has been removed") || // deprecated properties
 		strings.Contains(msg, "should be in format") || // date format warnings
 		strings.Contains(msg, "unknown property") || // unrecognized properties
-		strings.Contains(msg, "conflicting type fields") // property definition issues
+		strings.Contains(msg, "conflicting type fields") || // property definition issues
+		strings.Contains(msg, "expected string value") || // value_type mismatches
+		strings.Contains(msg, "expected integer value") || // value_type mismatches
+		strings.Contains(msg, "expected boolean value") || // value_type mismatches
+		strings.Contains(msg, "expected object") || // structural shape mismatches
+		strings.Contains(msg, "expected string for vocabulary lookup") || // vocab type mismatches
+		strings.Contains(msg, "expected string or temporal object") // vocab list mismatches
 }
 
 // countGLXFiles counts .glx files in a directory without reading them.

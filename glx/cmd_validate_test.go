@@ -169,13 +169,13 @@ func TestRunValidate_SingleFileInvalidDateFormat(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	streams, _, errOut := TestIOStreams()
+	streams, out, _ := TestIOStreams()
 	err = validatePaths(streams, []string{eventFile})
 
-	require.ErrorIs(t, err, ErrValidationFailed,
-		"single-file validation should fail for invalid date format")
-	require.Contains(t, errOut.String(), "should be in format",
-		"output should mention expected date format")
+	require.NoError(t, err,
+		"invalid date format is a warning, not an error — should not fail validation")
+	require.Contains(t, out.String(), "should be in format",
+		"warning output should mention expected date format")
 }
 
 func TestRunValidate_NonExistentPath(t *testing.T) {
