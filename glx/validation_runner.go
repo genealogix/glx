@@ -248,20 +248,24 @@ func validateSingleFileSemantics(paths []string) ([]string, []string) {
 }
 
 // isSingleFileIssue returns true for validation errors/warnings that can be
-// detected on a single file without the full archive context. This is a
-// whitelist approach — only known single-file-compatible message patterns are
-// included. Cross-reference errors are excluded.
+// detected on a single file without the full archive context. Uses a blacklist
+// approach: keep all semantic issues except known cross-archive reference errors
+// and place hierarchy cycles. This ensures new go-glx checks are automatically
+// included without needing whitelist updates.
 func isSingleFileIssue(msg string) bool {
-	return strings.Contains(msg, "has been removed") || // deprecated properties
-		strings.Contains(msg, "should be in format") || // date format warnings
-		strings.Contains(msg, "unknown property") || // unrecognized properties
-		strings.Contains(msg, "conflicting type fields") || // property definition issues
-		strings.Contains(msg, "expected string value") || // value_type mismatches
-		strings.Contains(msg, "expected integer value") || // value_type mismatches
-		strings.Contains(msg, "expected boolean value") || // value_type mismatches
-		strings.Contains(msg, "expected object") || // structural shape mismatches
-		strings.Contains(msg, "expected string for vocabulary lookup") || // vocab type mismatches
-		strings.Contains(msg, "expected string or temporal object") // vocab list mismatches
+	lower := strings.ToLower(msg)
+
+	// Exclude cross-entity reference errors (e.g., "references non-existent person: ...")
+	if strings.Contains(lower, "references non-existent") {
+		return false
+	}
+
+	// Exclude place hierarchy cycle detection (requires full archive)
+	if strings.Contains(lower, "cycle detected") {
+		return false
+	}
+
+	return true
 }
 
 // countGLXFiles counts .glx files in a directory without reading them.
