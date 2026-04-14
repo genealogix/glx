@@ -57,10 +57,37 @@ func TestDecodeGEDCOMBlob(t *testing.T) {
 		t.Error("Expected error for empty blob")
 	}
 
-	// Invalid length (not multiple of 4)
-	_, err = decodeGEDCOMBlob("...")
+	// Trailing 3 chars (valid — produces 2 bytes)
+	decoded3, err := decodeGEDCOMBlob("...")
+	if err != nil {
+		t.Fatalf("Decode of 3 chars failed: %v", err)
+	}
+	if len(decoded3) != 2 {
+		t.Errorf("Expected 2 bytes from 3 chars, got %d", len(decoded3))
+	}
+
+	// Trailing 2 chars (valid — produces 1 byte)
+	decoded4, err := decodeGEDCOMBlob("..")
+	if err != nil {
+		t.Fatalf("Decode of 2 chars failed: %v", err)
+	}
+	if len(decoded4) != 1 {
+		t.Errorf("Expected 1 byte from 2 chars, got %d", len(decoded4))
+	}
+
+	// Mixed: 4 + 2 trailing chars (produces 3 + 1 = 4 bytes)
+	decoded5, err := decodeGEDCOMBlob("......")
+	if err != nil {
+		t.Fatalf("Decode of 6 chars failed: %v", err)
+	}
+	if len(decoded5) != 4 {
+		t.Errorf("Expected 4 bytes from 6 chars, got %d", len(decoded5))
+	}
+
+	// Single char is invalid (not enough bits for a full byte)
+	_, err = decodeGEDCOMBlob(".")
 	if err == nil {
-		t.Error("Expected error for invalid length")
+		t.Error("Expected error for single character")
 	}
 }
 
@@ -87,7 +114,7 @@ func TestCopyMediaFiles_FileCopy(t *testing.T) {
 		},
 	}
 
-	err := copyMediaFiles(destDir, mediaFiles, srcDir, false)
+	err := copyMediaFiles(SystemIOStreams(), destDir, mediaFiles, srcDir, false)
 	if err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
 	}
@@ -115,7 +142,7 @@ func TestCopyMediaFiles_BlobWrite(t *testing.T) {
 		},
 	}
 
-	err := copyMediaFiles(destDir, mediaFiles, "", false)
+	err := copyMediaFiles(SystemIOStreams(), destDir, mediaFiles, "", false)
 	if err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
 	}
@@ -143,8 +170,9 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 		},
 	}
 
-	// Should not return error (warnings on stderr instead)
-	err := copyMediaFiles(destDir, mediaFiles, srcDir, false)
+	streams, _, errOut := TestIOStreams()
+
+	err := copyMediaFiles(streams, destDir, mediaFiles, srcDir, false)
 	if err != nil {
 		t.Fatalf("copyMediaFiles should not fail for missing files: %v", err)
 	}
@@ -153,6 +181,11 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 	_, err = os.Stat(filepath.Join(destDir, "media", "files", "nonexistent.jpg"))
 	if !os.IsNotExist(err) {
 		t.Error("Expected file to not exist")
+	}
+
+	// Verify warning was captured
+	if !strings.Contains(errOut.String(), "Warning: could not copy media file nonexistent.jpg") {
+		t.Errorf("expected warning about missing file, got: %q", errOut.String())
 	}
 }
 
@@ -235,7 +268,7 @@ func TestCopyMediaFiles_EmptyList(t *testing.T) {
 	destDir := t.TempDir()
 
 	// Empty list should be a no-op (no media/files directory created)
-	err := copyMediaFiles(destDir, nil, "", false)
+	err := copyMediaFiles(SystemIOStreams(), destDir, nil, "", false)
 	if err != nil {
 		t.Fatalf("copyMediaFiles should succeed for empty list: %v", err)
 	}
@@ -293,7 +326,8 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 
 	// Step 3: Copy media files (CLI layer)
 	destDir := t.TempDir()
-	err = copyMediaFiles(destDir, result.MediaFiles, gedcomDir, false)
+	streams, _, errOut := TestIOStreams()
+	err = copyMediaFiles(streams, destDir, result.MediaFiles, gedcomDir, false)
 	if err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
 	}
@@ -378,14 +412,18 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 		t.Logf("  Blob source tracked: %s (%d chars of blob data)",
 			blobSources[0].TargetFilename, len(blobSources[0].BlobData))
 	}
-	// Check if any blob files were actually written (may be 0 due to malformed data)
+	// Check blob file count. The torture test blob has invalid characters
+	// (outside the '.' to 'm' range), so decoding fails with a warning.
 	var blobFileCount int
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), "blob-") {
 			blobFileCount++
 		}
 	}
-	t.Logf("  Blob files written: %d (0 expected — torture test blob is malformed)", blobFileCount)
+	if blobFileCount != 0 {
+		t.Errorf("Expected 0 blob files (torture test blob has invalid chars), got %d", blobFileCount)
+	}
+	t.Logf("  Blob files written: %d (0 expected — torture test blob has invalid characters)", blobFileCount)
 
 	// Step 8: Verify missing files did NOT get created
 	// These files are referenced in the GEDCOM but don't exist on disk
@@ -417,4 +455,23 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 
 	// Step 10: Log total file count in media/files/
 	t.Logf("  Total files in media/files/: %d", len(entries))
+
+	// Step 11: Verify warnings were captured and expected
+	warnings := errOut.String()
+	warnCount := strings.Count(warnings, "Warning:")
+	t.Logf("  Warnings captured: %d", warnCount)
+
+	// These files are referenced in the GEDCOM but don't exist on disk
+	expectedMissing := []string{"Document.RTF", "enthist.aif", "suntun.mov", "top.mpg", "ImgFile.BMP", "force.wav"}
+	for _, name := range expectedMissing {
+		if !strings.Contains(warnings, name) {
+			t.Errorf("Expected warning about missing file %q", name)
+		}
+	}
+
+	// BLOB decode warning IS expected — the torture test blob has invalid characters
+	// (chars outside the '.' to 'm' range required by GEDCOM BLOB encoding)
+	if !strings.Contains(warnings, "could not decode BLOB") {
+		t.Error("Expected BLOB decode warning for malformed torture test blob data")
+	}
 }
