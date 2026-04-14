@@ -59,7 +59,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 		}
 	}
 
-	// Single file: structural validation only (no cross-references)
+	// Single file: structural validation + semantic checks (no cross-references)
 	if !shouldValidateCrossRefs {
 		fileCount, structErrors := validateSingleFilePaths(paths)
 		if len(structErrors) > 0 {
@@ -71,9 +71,30 @@ func validatePaths(streams *IOStreams, args []string) error {
 			return ErrStructuralValidationFailed
 		}
 
+		// Run semantic validation (deprecated properties, date formats, etc.)
+		// on the single file, filtering out cross-reference issues.
+		semanticErrors, semanticWarnings := validateSingleFileSemantics(paths)
+
 		streams.Println("⚠️  Cross-reference validation skipped (single file specified).")
 		streams.Printf("Validated %d file(s).\n", fileCount)
-		streams.Println("✅ File structure is valid.")
+
+		if len(semanticWarnings) > 0 {
+			streams.Printf("Found %d warnings:\n", len(semanticWarnings))
+			for _, warn := range semanticWarnings {
+				streams.Printf("- ⚠️  %s\n", warn)
+			}
+		}
+
+		if len(semanticErrors) > 0 {
+			streams.Errorf("Found %d errors:\n", len(semanticErrors))
+			for _, issue := range semanticErrors {
+				streams.Errorf("- ❌ %s\n", issue)
+			}
+
+			return ErrValidationFailed
+		}
+
+		streams.Println("✅ File passed structural and semantic validation (cross-references skipped).")
 
 		return nil
 	}
@@ -172,6 +193,79 @@ func validateSingleFilePaths(paths []string) (int, []string) {
 	}
 
 	return fileCount, allErrors
+}
+
+// validateSingleFileSemantics runs semantic validation (deprecated properties,
+// date formats, property types) on single files. Cross-reference errors are
+// filtered out since we don't have the full archive context.
+// Returns errors (fatal) and warnings (informational) separately, consistent
+// with directory validation behavior.
+func validateSingleFileSemantics(paths []string) ([]string, []string) {
+	var allErrors, allWarnings []string
+
+	for _, path := range paths {
+		_ = filepath.WalkDir(path, func(filePath string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() || !isGLXFile(d.Name()) {
+				return nil
+			}
+
+			archive, loadErr := readSingleFileArchive(filePath, false)
+			if loadErr != nil {
+				allErrors = append(allErrors, fmt.Sprintf("Error loading %s for semantic validation: %v", filePath, loadErr))
+
+				return nil
+			}
+
+			if mergeErr := mergeStandardVocabularies(archive); mergeErr != nil {
+				allErrors = append(allErrors, fmt.Sprintf("Error loading vocabularies for %s: %v", filePath, mergeErr))
+
+				return nil
+			}
+
+			archive.InvalidateCache()
+			result := archive.Validate()
+
+			for _, ve := range result.Errors {
+				if isSingleFileIssue(ve.Message) {
+					allErrors = append(allErrors, ve.Message)
+				}
+			}
+
+			for _, warn := range result.Warnings {
+				if isSingleFileIssue(warn.Message) {
+					allWarnings = append(allWarnings, warn.Message)
+				}
+			}
+
+			return nil
+		})
+	}
+
+	return allErrors, allWarnings
+}
+
+// isSingleFileIssue returns true for validation errors/warnings that can be
+// detected on a single file without the full archive context. Uses a blacklist
+// approach: keep all semantic issues except known cross-archive reference errors
+// and place hierarchy cycles. This ensures new go-glx checks are automatically
+// included without needing whitelist updates.
+func isSingleFileIssue(msg string) bool {
+	lower := strings.ToLower(msg)
+
+	// Exclude cross-entity reference errors (e.g., "references non-existent person: ...")
+	if strings.Contains(lower, "references non-existent") {
+		return false
+	}
+
+	// Exclude place hierarchy cycle detection (requires full archive)
+	if strings.Contains(lower, "cycle detected") {
+		return false
+	}
+
+	return true
 }
 
 // countGLXFiles counts .glx files in a directory without reading them.
