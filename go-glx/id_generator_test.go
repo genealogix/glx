@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -183,6 +184,16 @@ func TestEntityIDToFilename_Unsafe(t *testing.T) {
 		"person\\evil",
 		"person:evil",
 		".hidden",
+		// Windows reserved device names
+		"CON",
+		"con",
+		"PRN",
+		"AUX",
+		"NUL",
+		"COM1",
+		"com9",
+		"LPT1",
+		"lpt9",
 	}
 
 	for _, id := range unsafeIDs {
@@ -190,6 +201,9 @@ func TestEntityIDToFilename_Unsafe(t *testing.T) {
 			_, err := EntityIDToFilename(id)
 			if err == nil {
 				t.Errorf("EntityIDToFilename(%q) should return error for unsafe ID", id)
+			}
+			if !errors.Is(err, ErrUnsafeEntityID) {
+				t.Errorf("EntityIDToFilename(%q) error should wrap ErrUnsafeEntityID, got: %v", id, err)
 			}
 		})
 	}

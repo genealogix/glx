@@ -80,11 +80,21 @@ func GenerateUniqueFilename(entityType string, usedFilenames map[string]bool, ma
 	return "", ErrUniqueFilenameFailed
 }
 
+// windowsReservedNames lists Windows device names that cannot be used as
+// filenames, even with an extension (e.g., "CON.glx" is invalid).
+var windowsReservedNames = map[string]bool{
+	"con": true, "prn": true, "aux": true, "nul": true,
+	"com1": true, "com2": true, "com3": true, "com4": true,
+	"com5": true, "com6": true, "com7": true, "com8": true, "com9": true,
+	"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true,
+	"lpt5": true, "lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
+}
+
 // EntityIDToFilename derives a deterministic filename from an entity ID.
 // The entity ID is lowercased to reduce case-insensitive filesystem collisions
 // (e.g., on Windows/macOS where "Person-A.glx" and "person-a.glx" would collide).
-// Returns an error if the entity ID contains path separators, dot-segments, or
-// other characters unsafe for use as a filename component.
+// Returns an error if the entity ID contains path separators, dot-segments,
+// Windows reserved device names, or other characters unsafe for use as a filename.
 func EntityIDToFilename(entityID string) (string, error) {
 	if entityID == "" ||
 		strings.ContainsAny(entityID, "/\\:") ||
@@ -93,5 +103,10 @@ func EntityIDToFilename(entityID string) (string, error) {
 		return "", fmt.Errorf("%w: %q", ErrUnsafeEntityID, entityID)
 	}
 
-	return strings.ToLower(entityID) + ".glx", nil
+	lower := strings.ToLower(entityID)
+	if windowsReservedNames[lower] {
+		return "", fmt.Errorf("%w: %q (Windows reserved device name)", ErrUnsafeEntityID, entityID)
+	}
+
+	return lower + ".glx", nil
 }
