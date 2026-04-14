@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -953,6 +954,116 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		}
 		if len(loaded.Persons) != 2 {
 			t.Errorf("expected 2 persons, got %d", len(loaded.Persons))
+		}
+	})
+
+	t.Run("preserves non-archive files and directories", func(t *testing.T) {
+		// Archives typically live inside a git repo alongside README.md, CLAUDE.md,
+		// dotfiles, and top-level metadata. The safe-write swap must preserve
+		// everything it doesn't manage. See #692.
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Seed with initial GLX content
+		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
+			t.Fatal(err)
+		}
+
+		// Seed with foreign files the archive must preserve
+		foreignFiles := map[string][]byte{
+			"README.md":                   []byte("# Archive\n\nUser notes.\n"),
+			"CLAUDE.md":                   []byte("# Claude guide\n"),
+			".gitignore":                  []byte("*.log\n"),
+			".git/HEAD":                   []byte("ref: refs/heads/main\n"),
+			".git/config":                 []byte("[core]\n\trepositoryformatversion = 0\n"),
+			".git/refs/heads/main":        []byte("abc123\n"),
+			".claude/settings.local.json": []byte(`{"env":{}}`),
+			"notes/research.md":           []byte("Research notes.\n"),
+		}
+		for relPath, content := range foreignFiles {
+			absPath := filepath.Join(archiveDir, relPath)
+			if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(absPath, content, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		// Run the safe write
+		if err := safeWriteMultiFileArchive(archiveDir, makeArchive()); err != nil {
+			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
+		}
+
+		// Every foreign file must survive byte-identical
+		for relPath, want := range foreignFiles {
+			absPath := filepath.Join(archiveDir, relPath)
+			got, err := os.ReadFile(absPath)
+			if err != nil {
+				t.Errorf("foreign file %s lost: %v", relPath, err)
+
+				continue
+			}
+			if !bytes.Equal(got, want) {
+				t.Errorf("foreign file %s contents differ\nwant: %q\ngot:  %q", relPath, want, got)
+			}
+		}
+
+		// Archive content must also be in place
+		loaded, _, err := LoadArchiveWithOptions(archiveDir, false)
+		if err != nil {
+			t.Fatalf("LoadArchiveWithOptions() error = %v", err)
+		}
+		if len(loaded.Persons) != 2 {
+			t.Errorf("expected 2 persons, got %d", len(loaded.Persons))
+		}
+
+		// No backup directory should remain
+		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
+			t.Error("backup directory was not cleaned up")
+		}
+	})
+
+	t.Run("refuses to wipe stale backup holding unrecovered foreign files", func(t *testing.T) {
+		// Simulates a previous invocation that crashed mid-restore, leaving a
+		// .bak directory with the user's foreign files in it. The next run must
+		// refuse rather than silently wipe that recovery data. See #692.
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
+			t.Fatal(err)
+		}
+
+		// Plant a stale backup containing foreign content
+		staleBackup := archiveDir + ".bak"
+		if err := os.MkdirAll(staleBackup, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(staleBackup, "unrecovered-notes.md"), []byte("user data"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		err := safeWriteMultiFileArchive(archiveDir, makeArchive())
+		if err == nil {
+			t.Fatal("expected error when stale backup contains foreign files")
+		}
+		if !strings.Contains(err.Error(), "unrecovered-notes.md") {
+			t.Errorf("error should mention the foreign file; got: %v", err)
+		}
+
+		// Foreign data must still be on disk
+		got, readErr := os.ReadFile(filepath.Join(staleBackup, "unrecovered-notes.md"))
+		if readErr != nil {
+			t.Fatalf("stale backup contents destroyed: %v", readErr)
+		}
+		if string(got) != "user data" {
+			t.Errorf("stale backup corrupted; got %q", got)
 		}
 	})
 

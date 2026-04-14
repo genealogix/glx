@@ -12,7 +12,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
-## [0.0.0-beta.10] - 2026-04-11
+### Fixed
+
+#### CLI
+- **`glx migrate`, `glx rename`, and `glx merge` no longer delete non-archive files** — The crash-safe write path (`safeWriteMultiFileArchive`, added in #598) swapped a fresh archive directory into place and then unconditionally removed the original via `.bak`, wiping any top-level entry the serializer didn't produce — including `.git/`, `README.md`, `CLAUDE.md`, `.claude/`, and arbitrary user content. Since GLX archives are designed to live inside git repositories, every invocation against a real archive silently destroyed git history and project docs. The swap now preserves every top-level entry that isn't in the managed set (`metadata.glx`, `vocabularies/`, `persons/`, `events/`, `relationships/`, `places/`, `sources/`, `citations/`, `repositories/`, `media/`, `assertions/`). Test coverage added for foreign-file preservation. Fixes #692
+
+## [0.0.0-beta.10] - 2026-04-13
 
 ### Added
 
@@ -22,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `glx migrate` command** — Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`, `buried_on`, `buried_at`) to birth/death/burial Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360, Fixes #645)
 - **Added `--phonetic` flag to `glx query persons --name`** — Soundex phonetic matching finds names that sound alike regardless of spelling (Miller/Myller/Mueller, Smith/Smyth). Supports multi-word queries matching any word against any name word (#262)
 - **Crash-safe writes for `migrate` and `rename` commands** — Multi-file archive writes now use a temp directory + atomic swap, preventing archive corruption on interrupted writes (e.g., power loss, disk full). Closes #597
+- **Added `IOStreams` type for testable CLI output** — New `glx/iostreams.go` introduces `IOStreams{Out, ErrOut io.Writer}` following kubectl's minimal pattern. `validatePaths()` migrated to accept `*IOStreams` instead of writing directly to `os.Stdout`/`os.Stderr`; all 18 validation tests use `TestIOStreams()` with buffer capture instead of `os.Pipe()` hacks. Foundation for incremental migration of remaining runners (#682, Fixes #678)
 
 #### Date Handling
 - **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
@@ -41,6 +47,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+#### CLI
+- **`glx vitals` limited to core vital records only** — Removed non-vital events (census, marriage, residence, etc.) from `glx vitals` output. Vitals now shows exactly Name, Sex, Birth, Christening, Death, Burial; other life events remain available via `glx summary` and `glx timeline` (#685, Fixes #644)
+- **Witness events excluded from vital records display** — `glx vitals` and `glx summary` vital sections now show vital events (birth, christening, death, burial) only where the person is a principal/subject participant. Witnessing a christening (or other vital event) no longer appears as the person's own vital. Non-vital "Life Events" in `glx summary` continue to show all participant roles (#686, Fixes #647)
+
 #### GEDCOM Import
 - **Unrecognized SEX values preserved** — Non-standard or extension GEDCOM SEX values (e.g., custom values, or values such as `N` whose meaning varies between GEDCOM 5.5.5 `Not Recorded` and 7.0 `Nonbinary`) are now lowercased and preserved as-is instead of being silently mapped to `unknown`. Validation will warn about out-of-vocabulary values (#588)
 - **Correct year extraction from Hebrew and French Republican dates** — `ExtractFirstYear` now uses calendar-aware extraction, finding the last digit sequence for HEBREW and FRENCH_R dates where the year appears last. Previously, `HEBREW 15 TSH 5765` would extract `15` (the day) instead of `5765`. Also handles range dates (`BET...AND`, `FROM...TO`) correctly (#590)
@@ -50,6 +60,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Developer Experience
 - **devcontainer: remove abandoned ajv-cli and install actual npm deps** — Replaced the unused global `ajv-cli` install with parallel `postCreateCommand` that runs `go mod download`, pins `golangci-lint v2.11.4`, and installs `specification/` and `website/` npm dependencies. Removed unused Docker extension, added YAML and markdownlint extensions, added `forwardPorts` for VitePress dev server (#326, #327)
+- **`go.mod` / `go.sum` pinned to LF line endings** — Added `eol=lf` for `go.mod` and `go.sum` in `.gitattributes`. Go tools always write LF (see golang/go#31870); without this rule, Windows users got CRLF on checkout, which caused `go mod tidy -diff` false positives in CI (#684, Fixes #638)
+- **`/check-code-drift` slash command covers all type categories** — Expanded the drift-detection checklist to cover Metadata, Submitter, EntityRef, NoteList, all 9 vocabulary structs, and FieldDefinition. Added type-mapping entries for `NoteList` (`oneOf`), `DateString` (alias), `*Submitter` (pointer). New "Vocabulary Struct Types" section enumerates the 9 vocab types and their schemas. Documentation only (#689, Fixes #674)
 
 #### CI
 - **auto-resolve-conflicts: deduplicate changelog section headers after conflict resolution** — The sed-based "keep both sides" merge produced duplicate `###`/`####` headers when both sides added entries to the same section. Added an awk deduplication pass that merges entries under a single header (#331)
