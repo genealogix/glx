@@ -1361,6 +1361,7 @@ func init() {
 	mergeCmd.Flags().BoolVar(&mergeDryRun, "dry-run", false, "Preview merge without writing")
 	mergeCmd.Flags().Float64Var(&mergeThreshold, "threshold", defaultMergeThreshold, "Similarity threshold for duplicate detection in preview (0.0-1.0)")
 	_ = mergeCmd.Flags().MarkDeprecated("dry-run", "use --preview instead")
+	_ = mergeCmd.Flags().MarkHidden("dry-run")
 }
 
 func runMerge(_ *cobra.Command, args []string) error {

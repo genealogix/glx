@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -267,9 +269,30 @@ func TestMergeArchives_PreviewShowsDuplicates(t *testing.T) {
 
 	before := snapshotDir(t, destDir)
 
+	// Capture stdout to verify duplicate detection output
+	oldStdout := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	require.NoError(t, pipeErr)
+	os.Stdout = w
+
 	err = mergeArchives(srcDir, destDir, true, 0.2)
 	require.NoError(t, err)
 
+	_ = w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	_ = r.Close()
+	output := buf.String()
+
+	// Verify duplicate detection output
+	assert.Contains(t, output, "Potential cross-archive duplicates")
+	assert.Contains(t, output, "John Smith")
+	assert.Contains(t, output, "Name similarity")
+	assert.Contains(t, output, "(preview — no files written)")
+
+	// Filesystem unchanged
 	after := snapshotDir(t, destDir)
 	assert.Equal(t, before, after, "preview should not modify any files")
 }

@@ -551,6 +551,17 @@ func TestFindCrossArchiveDuplicates_SameIDSkipped(t *testing.T) {
 	assert.Empty(t, result.Pairs, "same ID should not be reported as duplicate")
 }
 
+func TestFindCrossArchiveDuplicates_InvalidThreshold(t *testing.T) {
+	dest := &GLXFile{Persons: map[string]*Person{"p-1": {}}}
+	src := &GLXFile{Persons: map[string]*Person{"p-2": {}}}
+
+	_, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: -0.1})
+	require.ErrorIs(t, err, ErrInvalidThreshold)
+
+	_, err = FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 1.5})
+	require.ErrorIs(t, err, ErrInvalidThreshold)
+}
+
 func TestFindCrossArchiveDuplicates_ThresholdFiltering(t *testing.T) {
 	dest := &GLXFile{
 		Persons: map[string]*Person{

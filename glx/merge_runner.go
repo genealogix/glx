@@ -163,7 +163,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 			Threshold: threshold,
 		})
 		if dupErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: duplicate detection failed: %v\n", dupErr)
+			return fmt.Errorf("failed to detect cross-archive duplicates: %w", dupErr)
 		}
 	}
 

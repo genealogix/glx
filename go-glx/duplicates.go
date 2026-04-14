@@ -145,8 +145,13 @@ func buildCombinedView(dest, src *GLXFile) *GLXFile {
 	return combined
 }
 
+// crossArchivePairThreshold is the combined person count above which surname
+// blocking is used to reduce the O(N*M) Cartesian product.
+const crossArchivePairThreshold = 200
+
 // generateCrossArchivePairs produces person ID pairs where one is from dest and
 // the other from src. Skips pairs that share a relationship in the combined index.
+// Uses surname blocking for large archives to avoid O(N*M) explosion.
 func generateCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFilter string) [][2]string {
 	destIDs := make(map[string]bool, len(dest.Persons))
 	for id := range dest.Persons {
@@ -157,50 +162,115 @@ func generateCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFi
 		srcIDs[id] = true
 	}
 
+	appendIfEligible := func(pairs *[][2]string, destID, srcID string) {
+		if srcID == destID {
+			return
+		}
+		if personFilter != "" && destID != personFilter && srcID != personFilter {
+			return
+		}
+
+		a, b := destID, srcID
+		if a > b {
+			a, b = b, a
+		}
+		if idx.relatedPairs[[2]string{a, b}] {
+			return
+		}
+
+		*pairs = append(*pairs, [2]string{destID, srcID})
+	}
+
+	// Person filter mode: only pairs involving the filtered person
+	if personFilter != "" {
+		var pairs [][2]string
+		if srcIDs[personFilter] {
+			for id := range destIDs {
+				appendIfEligible(&pairs, id, personFilter)
+			}
+		}
+		if destIDs[personFilter] {
+			for id := range srcIDs {
+				appendIfEligible(&pairs, personFilter, id)
+			}
+		}
+
+		return sortPairs(pairs)
+	}
+
+	// Small archives: full Cartesian product
+	if len(destIDs)+len(srcIDs) < crossArchivePairThreshold {
+		var pairs [][2]string
+		for destID := range destIDs {
+			for srcID := range srcIDs {
+				appendIfEligible(&pairs, destID, srcID)
+			}
+		}
+
+		return sortPairs(pairs)
+	}
+
+	// Large archives: surname blocking to reduce comparisons
+	destBlocks := buildSurnameBlocks(dest)
+	srcBlocks := buildSurnameBlocks(src)
+
+	seen := make(map[[2]string]bool)
 	var pairs [][2]string
 
-	// Sort src IDs for deterministic output
-	sortedSrc := make([]string, 0, len(srcIDs))
-	for id := range srcIDs {
-		sortedSrc = append(sortedSrc, id)
-	}
-	sort.Strings(sortedSrc)
-
-	sortedDest := make([]string, 0, len(destIDs))
-	for id := range destIDs {
-		sortedDest = append(sortedDest, id)
-	}
-	sort.Strings(sortedDest)
-
-	for _, srcID := range sortedSrc {
-		if personFilter != "" && srcID != personFilter {
-			// If filtering and this isn't the target, check if it's the dest side
-			if !destIDs[personFilter] {
-				continue
+	for surname, destBlock := range destBlocks {
+		srcBlock, ok := srcBlocks[surname]
+		if !ok {
+			continue
+		}
+		for _, destID := range destBlock {
+			for _, srcID := range srcBlock {
+				a, b := destID, srcID
+				if a > b {
+					a, b = b, a
+				}
+				pair := [2]string{a, b}
+				if seen[pair] {
+					continue
+				}
+				seen[pair] = true
+				appendIfEligible(&pairs, destID, srcID)
 			}
 		}
-
-		for _, destID := range sortedDest {
-			if personFilter != "" && destID != personFilter && srcID != personFilter {
-				continue
-			}
-
-			// Skip if same ID (would be a merge conflict, not a duplicate)
-			if srcID == destID {
-				continue
-			}
-
-			a, b := destID, srcID
-			if a > b {
-				a, b = b, a
-			}
-			if idx.relatedPairs[[2]string{a, b}] {
-				continue
-			}
-
-			pairs = append(pairs, [2]string{destID, srcID})
-		}
 	}
+
+	return sortPairs(pairs)
+}
+
+// buildSurnameBlocks groups person IDs by normalized surname.
+func buildSurnameBlocks(archive *GLXFile) map[string][]string {
+	blocks := make(map[string][]string)
+	for id, person := range archive.Persons {
+		if person == nil {
+			continue
+		}
+		_, surname := ExtractNameFields(person.Properties[PersonPropertyName])
+		if surname == "" {
+			_, surname = splitFullName(PersonDisplayName(person))
+		}
+		key := strings.ToLower(strings.TrimSpace(surname))
+		if key == "" {
+			key = "_nosurname"
+		}
+		blocks[key] = append(blocks[key], id)
+	}
+
+	return blocks
+}
+
+// sortPairs sorts pairs for deterministic output.
+func sortPairs(pairs [][2]string) [][2]string {
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i][0] != pairs[j][0] {
+			return pairs[i][0] < pairs[j][0]
+		}
+
+		return pairs[i][1] < pairs[j][1]
+	})
 
 	return pairs
 }
