@@ -294,7 +294,7 @@ func sortPairs(pairs [][2]string) [][2]string {
 // Threshold must be between 0.0 and 1.0 inclusive.
 func FindDuplicates(archive *GLXFile, opts DuplicateOptions) (*DuplicateResult, error) {
 	if opts.Threshold < 0.0 || opts.Threshold > 1.0 {
-		return nil, fmt.Errorf("threshold must be between 0.0 and 1.0, got %f", opts.Threshold)
+		return nil, fmt.Errorf("%w: %f", ErrInvalidThreshold, opts.Threshold)
 	}
 
 	if archive == nil || len(archive.Persons) < 2 {

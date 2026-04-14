@@ -274,17 +274,22 @@ func TestMergeArchives_PreviewShowsDuplicates(t *testing.T) {
 	r, w, pipeErr := os.Pipe()
 	require.NoError(t, pipeErr)
 	os.Stdout = w
+	t.Cleanup(func() {
+		os.Stdout = oldStdout
+		_ = w.Close()
+		_ = r.Close()
+	})
 
 	err = mergeArchives(srcDir, destDir, true, 0.2)
-	require.NoError(t, err)
 
 	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, r)
-	_ = r.Close()
 	output := buf.String()
+
+	require.NoError(t, err)
 
 	// Verify duplicate detection output
 	assert.Contains(t, output, "Potential cross-archive duplicates")
