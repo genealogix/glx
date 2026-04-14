@@ -29,7 +29,7 @@ import (
 // gedcomDir is the source directory for resolving relative FILE paths.
 // archiveDir is the root of the output archive.
 // Missing source files produce warnings on stderr, not fatal errors.
-func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) error {
+func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) error {
 	if len(mediaFiles) == 0 {
 		return nil
 	}
@@ -47,7 +47,7 @@ func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedc
 		switch mf.SourceType {
 		case glxlib.MediaSourceFile:
 			if err := copyMediaFile(gedcomDir, mf.RelativePath, destPath); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
+				streams.Errorf("Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
 				warnCount++
 
 				continue
@@ -57,13 +57,13 @@ func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedc
 		case glxlib.MediaSourceBlob:
 			decoded, err := decodeGEDCOMBlob(mf.BlobData)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not decode BLOB for %s: %v\n", mf.MediaID, err)
+				streams.Errorf("Warning: could not decode BLOB for %s: %v\n", mf.MediaID, err)
 				warnCount++
 
 				continue
 			}
 			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not write BLOB file %s: %v\n", destPath, err)
+				streams.Errorf("Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
 				continue
@@ -73,11 +73,11 @@ func copyMediaFiles(archiveDir string, mediaFiles []glxlib.MediaFileSource, gedc
 	}
 
 	if verbose || copyCount > 0 || blobCount > 0 {
-		fmt.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
+		streams.Printf("  Media files: %d copied, %d blobs written", copyCount, blobCount)
 		if warnCount > 0 {
-			fmt.Printf(", %d warnings", warnCount)
+			streams.Printf(", %d warnings", warnCount)
 		}
-		fmt.Println()
+		streams.Println("")
 	}
 
 	return nil
@@ -187,12 +187,14 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 		return nil, ErrEmptyBlobData
 	}
 
-	if len(cleaned)%4 != 0 {
-		return nil, fmt.Errorf("%w: %d (must be multiple of 4)", ErrInvalidBlobLength, len(cleaned))
+	if len(cleaned) == 1 {
+		return nil, fmt.Errorf("%w: 1 (minimum 2 characters required)", ErrInvalidBlobLength)
 	}
 
 	result := make([]byte, 0, len(cleaned)*3/4)
-	for i := 0; i < len(cleaned); i += 4 {
+	fullGroups := (len(cleaned) / 4) * 4 //nolint:mnd // 4 chars per group
+
+	for i := 0; i < fullGroups; i += 4 {
 		// Validate each character is in valid GEDCOM BLOB range (0x2E '.' to 0x6D 'm')
 		// This gives 6-bit values (0-63) after subtracting 0x2E
 		for j := 0; j < 4; j++ {
@@ -210,6 +212,29 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 		result = append(result, (b1<<2)|(b2>>4)) //nolint:mnd // well-known base64 bit shifts
 		result = append(result, (b2<<4)|(b3>>2)) //nolint:mnd // well-known base64 bit shifts
 		result = append(result, (b3<<6)|b4)      //nolint:mnd // well-known base64 bit shifts
+	}
+
+	// Handle trailing characters (2 chars → 1 byte, 3 chars → 2 bytes)
+	trailing := len(cleaned) - fullGroups
+	if trailing == 1 {
+		return nil, fmt.Errorf("%w: %d (trailing single character cannot encode a full byte)", ErrInvalidBlobLength, len(cleaned))
+	}
+	if trailing >= 2 { //nolint:mnd // trailing group sizes
+		for j := range trailing {
+			char := cleaned[fullGroups+j]
+			if char < '.' || char > 'm' {
+				return nil, fmt.Errorf("%w at position %d: %q", ErrInvalidBlobChar, fullGroups+j, char)
+			}
+		}
+
+		b1 := cleaned[fullGroups] - '.'
+		b2 := cleaned[fullGroups+1] - '.'
+		result = append(result, (b1<<2)|(b2>>4)) //nolint:mnd // well-known base64 bit shifts
+
+		if trailing == 3 { //nolint:mnd // 3-char trailing group
+			b3 := cleaned[fullGroups+2] - '.'
+			result = append(result, (b2<<4)|(b3>>2)) //nolint:mnd // well-known base64 bit shifts
+		}
 	}
 
 	return result, nil
