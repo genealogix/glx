@@ -15,10 +15,14 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // initArchiveDir creates a fresh empty multi-file archive for tests. Returns
@@ -322,6 +326,25 @@ func countFiles(t *testing.T, dir string) int {
 	}
 
 	return n
+}
+
+func TestNextUniqueSourceID_CapsAtCollisionLimit(t *testing.T) {
+	// Seed an archive whose source map contains source-x and source-x-2..N
+	// where N exceeds the collision cap. nextUniqueSourceID must return the
+	// ErrLinkSourceIDExhausted sentinel rather than loop forever.
+	archive := &glxlib.GLXFile{Sources: map[string]*glxlib.Source{}}
+	archive.Sources["source-x"] = &glxlib.Source{Title: "X"}
+	for i := 2; i <= maxSourceIDCollisions; i++ {
+		archive.Sources[fmt.Sprintf("source-x-%d", i)] = &glxlib.Source{Title: "X"}
+	}
+
+	_, err := nextUniqueSourceID("X", archive)
+	if err == nil {
+		t.Fatal("expected ErrLinkSourceIDExhausted when every candidate slot is taken")
+	}
+	if !errors.Is(err, ErrLinkSourceIDExhausted) {
+		t.Errorf("expected ErrLinkSourceIDExhausted, got %v", err)
+	}
 }
 
 func TestSlugifyForID(t *testing.T) {

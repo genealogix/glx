@@ -50,4 +50,5 @@ var (
 	ErrLinkSourceRequired         = errors.New("exactly one of --source or --create-source is required")
 	ErrLinkSourceConflict         = errors.New("--source and --create-source are mutually exclusive")
 	ErrLinkSourceNotFound         = errors.New("--source not found in archive")
+	ErrLinkSourceIDExhausted      = errors.New("could not derive a unique source ID within the attempt limit")
 )

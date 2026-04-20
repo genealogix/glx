@@ -29,6 +29,11 @@ const (
 	sourceIDPrefix         = "source-"
 	externalIDsPropertyKey = "external_ids"
 	maxEntityIDLength      = 64
+	// maxSourceIDCollisions bounds the -2, -3, ... suffix search in
+	// nextUniqueSourceID. Realistic archives never need more than a handful,
+	// so anything beyond this signals a pathological input (slug of the
+	// title collides with an adversarially-constructed source namespace).
+	maxSourceIDCollisions = 1000
 )
 
 type linkOptions struct {
@@ -173,7 +178,10 @@ func resolveSource(archive, newEntities *glxlib.GLXFile, opts linkOptions) (stri
 		return existingID, nil
 	}
 
-	sourceID := nextUniqueSourceID(opts.CreateSourceTitle, archive)
+	sourceID, err := nextUniqueSourceID(opts.CreateSourceTitle, archive)
+	if err != nil {
+		return "", err
+	}
 	newEntities.Sources = map[string]*glxlib.Source{
 		sourceID: {
 			Title:        opts.CreateSourceTitle,
@@ -225,19 +233,24 @@ func newOrExisting(isNew bool) string {
 }
 
 // nextUniqueSourceID returns a source ID built from the title slug, avoiding
-// collisions with existing archive sources by appending -2, -3, etc.
-func nextUniqueSourceID(title string, archive *glxlib.GLXFile) string {
+// collisions with existing archive sources by appending -2, -3, etc. Returns
+// ErrLinkSourceIDExhausted if every candidate up through maxSourceIDCollisions
+// is taken — realistically unreachable, but cheap insurance against an
+// adversarially-constructed archive.
+func nextUniqueSourceID(title string, archive *glxlib.GLXFile) (string, error) {
 	base := sourceIDPrefix + slugifyForID(title, maxEntityIDLength-len(sourceIDPrefix))
 	if _, taken := archive.Sources[base]; !taken {
-		return base
+		return base, nil
 	}
-	for i := 2; ; i++ {
+	for i := 2; i <= maxSourceIDCollisions; i++ {
 		suffix := fmt.Sprintf("-%d", i)
 		candidate := trimToMaxLen(base, maxEntityIDLength-len(suffix)) + suffix
 		if _, taken := archive.Sources[candidate]; !taken {
-			return candidate
+			return candidate, nil
 		}
 	}
+
+	return "", fmt.Errorf("%w: %s", ErrLinkSourceIDExhausted, base)
 }
 
 var slugNonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
