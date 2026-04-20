@@ -39,7 +39,7 @@ jobs:
         run: go mod download
 
       - name: Run govulncheck
-        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
+        uses: golang/govulncheck-action@31f7c5463448f83528bd771c2d978d940080c9fd # master 2026-02-26
         with:
           repo-checkout: false
           go-version-input: '1.26'
