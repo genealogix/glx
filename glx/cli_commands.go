@@ -1378,8 +1378,8 @@ from a FamilySearch ARK URL.
 
 This is an offline, URL-parse-only MVP of the FamilySearch linker described in
 issue #87. It performs no network I/O. The citation captures the URL, today's
-date as the accessed date, and the ARK identifier as a structured external_id
-matching the shape produced by GEDCOM 7 EXID import.
+date as the accessed date, and the ARK under the structured external_ids
+property, matching the shape produced by GEDCOM 7 EXID import.
 
 Exactly one of --source or --create-source must be provided. If the target
 archive does not already have a repository-familysearch entity, one is

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -326,6 +327,107 @@ func countFiles(t *testing.T, dir string) int {
 	}
 
 	return n
+}
+
+func TestLink_RejectsWhitespaceOnlyCreateSource(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	err := linkFamilySearchARK(io, linkOptions{
+		ARKInput:          "ark:/61903/1:1:WS-0001",
+		ArchivePath:       dir,
+		CreateSourceTitle: "   \t  \n  ",
+	})
+	if err == nil {
+		t.Fatal("expected error for whitespace-only --create-source")
+	}
+	if !errors.Is(err, ErrLinkSourceRequired) {
+		t.Errorf("expected ErrLinkSourceRequired, got %v", err)
+	}
+}
+
+func TestLink_TrimsSourceIDWhitespace(t *testing.T) {
+	// SourceID with surrounding whitespace should resolve to the trimmed ID,
+	// not be rejected as unknown.
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	// Seed a real source so the trimmed ID resolves.
+	if err := linkFamilySearchARK(io, linkOptions{
+		ARKInput:          "ark:/61903/1:1:SEED-0001",
+		ArchivePath:       dir,
+		CreateSourceTitle: "Trim Test Collection",
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	io2, _, _ := TestIOStreams()
+	err := linkFamilySearchARK(io2, linkOptions{
+		ARKInput:    "ark:/61903/1:1:TRIM-0002",
+		ArchivePath: dir,
+		SourceID:    "  source-trim-test-collection  ",
+	})
+	if err != nil {
+		t.Fatalf("linkFamilySearchARK with padded --source: %v", err)
+	}
+}
+
+func TestCitationIDFor(t *testing.T) {
+	t.Run("short NOID: no truncation", func(t *testing.T) {
+		ark, _ := ParseFamilySearchARK("ark:/61903/1:1:C4H8-2DW2")
+		got := citationIDFor(ark)
+		want := "citation-familysearch-c4h8-2dw2"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+		if len(got) > maxEntityIDLength {
+			t.Errorf("short NOID produced over-long ID: %d > %d", len(got), maxEntityIDLength)
+		}
+	})
+
+	t.Run("long NOID: truncated with hash suffix, stays within cap", func(t *testing.T) {
+		long := "1:1:" + strings.Repeat("ABCD-", 20) + "END"
+		ark, _ := ParseFamilySearchARK("ark:/61903/" + long)
+		got := citationIDFor(ark)
+		if len(got) > maxEntityIDLength {
+			t.Errorf("long NOID produced over-long ID: %d > %d (id=%q)", len(got), maxEntityIDLength, got)
+		}
+		if !strings.HasPrefix(got, citationIDPrefixFS) {
+			t.Errorf("missing prefix: %q", got)
+		}
+		// Must be deterministic.
+		if citationIDFor(ark) != got {
+			t.Errorf("citationIDFor not deterministic for same NOID")
+		}
+	})
+
+	t.Run("long NOIDs with same prefix produce different IDs", func(t *testing.T) {
+		prefix := "1:1:" + strings.Repeat("XY-", 20)
+		a, _ := ParseFamilySearchARK("ark:/61903/" + prefix + "ONE")
+		b, _ := ParseFamilySearchARK("ark:/61903/" + prefix + "TWO")
+		idA := citationIDFor(a)
+		idB := citationIDFor(b)
+		if idA == idB {
+			t.Errorf("distinct NOIDs %q and %q produced same citation ID %q", a.NOID, b.NOID, idA)
+		}
+	})
+
+	t.Run("matches schema pattern", func(t *testing.T) {
+		entityIDPattern := regexp.MustCompile(`^[a-zA-Z0-9-]{1,64}$`)
+		noids := []string{
+			"1:1:C4H8-2DW2",
+			"1:1:" + strings.Repeat("AB-", 30),
+			"FOO",
+			"2:1:abc-def",
+		}
+		for _, n := range noids {
+			ark := &ARK{NOID: n}
+			id := citationIDFor(ark)
+			if !entityIDPattern.MatchString(id) {
+				t.Errorf("citationIDFor(%q) = %q; does not match %s", n, id, entityIDPattern)
+			}
+		}
+	})
 }
 
 func TestNextUniqueSourceID_CapsAtCollisionLimit(t *testing.T) {

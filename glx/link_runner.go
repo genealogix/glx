@@ -15,6 +15,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -29,6 +31,12 @@ const (
 	sourceIDPrefix         = "source-"
 	externalIDsPropertyKey = "external_ids"
 	maxEntityIDLength      = 64
+	// citationIDHashLen is the number of hex characters appended as a
+	// disambiguation suffix when a citation slug is too long to fit within
+	// maxEntityIDLength. 8 hex chars = 32 bits of the SHA-256 of the NOID —
+	// enough to make collisions between different truncated NOIDs vanishingly
+	// unlikely in practice.
+	citationIDHashLen = 8
 	// maxSourceIDCollisions bounds the -2, -3, ... suffix search in
 	// nextUniqueSourceID. Realistic archives never need more than a handful,
 	// so anything beyond this signals a pathological input (slug of the
@@ -49,6 +57,9 @@ type linkOptions struct {
 // linkFamilySearchARK creates a citation (and, when needed, a repository and
 // source) in the archive from a FamilySearch ARK URL. No network I/O.
 func linkFamilySearchARK(io *IOStreams, opts linkOptions) error {
+	opts.SourceID = strings.TrimSpace(opts.SourceID)
+	opts.CreateSourceTitle = strings.TrimSpace(opts.CreateSourceTitle)
+
 	if err := validateLinkOptions(opts); err != nil {
 		return err
 	}
@@ -66,7 +77,7 @@ func linkFamilySearchARK(io *IOStreams, opts linkOptions) error {
 		io.Errorf("Warning: %s\n", d)
 	}
 
-	citationID := citationIDPrefixFS + ark.CitationIDSlug()
+	citationID := citationIDFor(ark)
 
 	// Idempotence: citation with this ID already exists -> treat as no-op.
 	// A finer-grained external_ids match is a follow-up (#87).
@@ -151,10 +162,30 @@ func buildLinkEntities(archive *glxlib.GLXFile, ark *ARK, opts linkOptions) (*gl
 	if opts.Locator != "" {
 		citation.Properties["locator"] = opts.Locator
 	}
-	citationID := citationIDPrefixFS + ark.CitationIDSlug()
-	newEntities.Citations = map[string]*glxlib.Citation{citationID: citation}
+	newEntities.Citations = map[string]*glxlib.Citation{citationIDFor(ark): citation}
 
 	return newEntities, sourceID, nil
+}
+
+// citationIDFor assembles a citation ID for the given ARK, bounded to
+// maxEntityIDLength characters. Short slugs are used as-is; slugs long enough
+// to exceed the limit are truncated and an 8-char SHA-256 hash of the original
+// NOID is appended, so different long NOIDs that share a prefix still produce
+// distinct IDs. The function is deterministic: the same NOID always maps to
+// the same ID.
+func citationIDFor(ark *ARK) string {
+	slug := ark.CitationIDSlug()
+	id := citationIDPrefixFS + slug
+	if len(id) <= maxEntityIDLength {
+		return id
+	}
+
+	sum := sha256.Sum256([]byte(ark.NOID))
+	suffix := "-" + hex.EncodeToString(sum[:])[:citationIDHashLen]
+	budget := maxEntityIDLength - len(citationIDPrefixFS) - len(suffix)
+	truncated := strings.TrimRight(slug[:budget], "-")
+
+	return citationIDPrefixFS + truncated + suffix
 }
 
 // resolveSource picks (or creates) the source to attach the new citation to.
