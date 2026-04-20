@@ -1362,12 +1362,12 @@ func runMerge(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	linkArchive       string
-	linkSource        string
-	linkCreateSource  string
-	linkText          string
-	linkLocator       string
-	linkDryRun        bool
+	linkArchive      string
+	linkSource       string
+	linkCreateSource string
+	linkText         string
+	linkLocator      string
+	linkDryRun       bool
 )
 
 var linkCmd = &cobra.Command{
