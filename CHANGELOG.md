@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Added
+
+#### CLI
+- **Added `glx link` command** — Create a GLX citation, and (when needed) a FamilySearch repository and source, from a FamilySearch ARK URL. Offline URL-parse MVP of #87: no network I/O, no authentication required. The citation captures the canonical URL, today's date as the accessed date, and the ARK identifier as a structured `external_ids` entry whose `fields.type` matches the URI form produced by GEDCOM 7 EXID import (`https://www.familysearch.org/ark:/61903/`), keeping FS-imported GEDCOM files and `glx link`-generated citations format-compatible. Accepts full URLs (`https://www.familysearch.org/ark:/61903/...`), URLs without `www`, and bare ARK identifiers. Requires exactly one of `--source` (attach to existing) or `--create-source <title>` (mint a new source). Supports `--text`, `--locator`, and `--dry-run`. Idempotent — re-running with the same ARK is a no-op once the deterministic citation ID `citation-familysearch-<slug>` exists. Follow-ups for the remaining #87 scope (unauthenticated HTTP fetch, OAuth PKCE, GEDCOM X JSON extraction, person/event/relationship import) are tracked separately (#87)
+
 ### Fixed
 
 #### CLI

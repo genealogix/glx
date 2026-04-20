@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
@@ -108,9 +107,13 @@ func loadArchiveForCensus(path string) (*glxlib.GLXFile, error) {
 }
 
 // writeCensusEntities serializes the generated entities and writes them to
-// the archive directory. Returns the number of files written.
+// the archive directory. Returns the number of entity maps written (count
+// reported in the success message).
+//
+// Entity ID collisions are caught by validateCensusRefs before this function
+// is called. File paths use random names (SerializeMultiFileToMap), so
+// file-level collision checks are not meaningful.
 func writeCensusEntities(archivePath string, result *glxlib.CensusResult) (int, error) {
-	// Build a partial GLXFile from the result
 	partial := &glxlib.GLXFile{
 		Persons:    result.Persons,
 		Events:     result.Event,
@@ -120,33 +123,7 @@ func writeCensusEntities(archivePath string, result *glxlib.CensusResult) (int, 
 		Assertions: result.Assertions,
 	}
 
-	serializer := createSerializer(false, true, "  ")
-	files, err := serializer.SerializeMultiFileToMap(partial)
-	if err != nil {
-		return 0, fmt.Errorf("serialization failed: %w", err)
-	}
-
-	// Filter out vocabulary and metadata files — we only want entity files
-	entityFiles := make(map[string][]byte)
-	for relPath, data := range files {
-		if strings.HasPrefix(relPath, "vocabularies/") || strings.HasPrefix(relPath, "vocabularies\\") {
-			continue
-		}
-		if relPath == "metadata.glx" {
-			continue
-		}
-		entityFiles[relPath] = data
-	}
-
-	// Entity ID collisions are caught by validateCensusRefs before this
-	// function is called. File paths use random names (SerializeMultiFileToMap),
-	// so file-level collision checks are not meaningful.
-
-	if err := writeFilesToDir(archivePath, entityFiles); err != nil {
-		return 0, err
-	}
-
-	return len(entityFiles), nil
+	return writePartialArchive(archivePath, partial)
 }
 
 // validateCensusRefs checks that generated entity cross-references point to

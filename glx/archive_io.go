@@ -299,6 +299,38 @@ func writeMultiFileArchive(dirPath string, glx *glxlib.GLXFile, validate bool) e
 	return nil
 }
 
+// writePartialArchive serializes a partial GLXFile (containing only newly
+// minted entities) and writes just the entity files into an existing archive
+// directory — vocabulary and metadata output from the serializer is dropped so
+// the existing archive's definitions are preserved. Used by commands that
+// append to an archive rather than rewrite it. Returns the number of entity
+// files written.
+func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
+	serializer := createSerializer(false, true, "  ")
+
+	files, err := serializer.SerializeMultiFileToMap(partial)
+	if err != nil {
+		return 0, fmt.Errorf("serializing partial archive: %w", err)
+	}
+
+	entityFiles := make(map[string][]byte, len(files))
+	for relPath, data := range files {
+		if strings.HasPrefix(relPath, "vocabularies/") || strings.HasPrefix(relPath, "vocabularies\\") {
+			continue
+		}
+		if relPath == "metadata.glx" {
+			continue
+		}
+		entityFiles[relPath] = data
+	}
+
+	if err := writeFilesToDir(dirPath, entityFiles); err != nil {
+		return 0, err
+	}
+
+	return len(entityFiles), nil
+}
+
 // mergeStandardVocabularies loads standard vocabularies into a GLXFile,
 // filling only empty maps. User-defined vocabularies are preserved.
 func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
