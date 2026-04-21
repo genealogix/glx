@@ -33,30 +33,33 @@ jobs:
           key: cache-lychee-${{ github.sha }}
           restore-keys: cache-lychee-
 
+      - name: Extract external URLs from markdown
+        # Lychee's own markdown parser errors on VitePress root-relative routes
+        # like `/specification/...` before --include filters apply, so we
+        # pre-extract only https?:// URLs using the same code-block-aware awk
+        # logic as scripts/check-links.sh.
+        run: |
+          chmod +x scripts/extract-external-urls.sh
+          scripts/extract-external-urls.sh > urls.txt
+          echo "Extracted $(wc -l < urls.txt) unique external URLs"
+
       - name: Run lychee
         id: lychee
         uses: lycheeverse/lychee-action@v2
         with:
-          # --include 'https?://' restricts to external URLs; internal links are
-          # handled by scripts/check-links.sh (past lychee attempts failed on
-          # VitePress extensionless links — see commit 589c857).
           # --accept tolerates 403 (anti-scraping) and 429 (rate-limit) to
           # avoid weekly false-positive noise; real dead links return 404/410.
           args: >-
             --no-progress
             --cache
             --max-cache-age 1w
-            --include 'https?://'
             --exclude 'localhost'
             --exclude '127\.0\.0\.1'
             --exclude 'example\.com'
-            --exclude-path 'docs/gedcom-spec'
             --max-retries 3
             --timeout 30
             --accept '200..=299,403,429'
-            'specification/**/*.md'
-            'docs/**/*.md'
-            '*.md'
+            --input urls.txt
           fail: false
           token: ${{ secrets.GITHUB_TOKEN }}
           output: ./lychee-out.md
