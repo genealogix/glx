@@ -98,14 +98,14 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 	if err := removeStaleBackup(backupDir); err != nil {
 		return err
 	}
-	if err := os.Rename(destPath, backupDir); err != nil {
+	if err := robustRename(destPath, backupDir); err != nil {
 		return fmt.Errorf("backing up original: %w", err)
 	}
 
 	// Move temp into place
-	if err := os.Rename(tmpDir, destPath); err != nil {
+	if err := robustRename(tmpDir, destPath); err != nil {
 		// Restore backup on failure
-		_ = os.Rename(backupDir, destPath) // best-effort restore
+		_ = robustRename(backupDir, destPath) // best-effort restore
 
 		return fmt.Errorf("moving archive into place: %w", err)
 	}
@@ -173,7 +173,7 @@ func restoreForeignEntries(backupDir, destPath string) error {
 		}
 		src := filepath.Join(backupDir, name)
 		dst := filepath.Join(destPath, name)
-		if err := os.Rename(src, dst); err != nil {
+		if err := robustRename(src, dst); err != nil {
 			return fmt.Errorf("restoring %s: %w", name, err)
 		}
 	}
