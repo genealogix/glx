@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '17 8 * * 1'
   workflow_dispatch: {}
+  push:
+    branches: [ci/lychee-external-links]
 
 permissions:
   contents: read
