@@ -25,7 +25,7 @@ Version control systems already solve all four problems, and Git in particular h
 
 ## Decision
 
-A GLX archive is a **Git repository** whose contents are YAML files organised by a specified directory layout. The `glx` CLI reads, writes, and validates those files; Git itself provides history, branching, merging, and backup.
+A GLX archive is a **Git repository** whose contents are YAML files organized by a specified directory layout. The `glx` CLI reads, writes, and validates those files; Git itself provides history, branching, merging, and backup.
 
 From the [Introduction](/specification/1-introduction):
 
@@ -37,7 +37,7 @@ An archive is not *required* to be a Git repository — nothing stops a research
 
 **Positive**
 
-- A researcher owns their archive outright. No account is required and no cloud service can take it away. If GLX the project disappeared tomorrow, the `.glx` files in a researcher's folder would still open in any text editor.
+- A researcher owns their archive outright. No account is required and no cloud service can take it away. If the GLX project disappeared tomorrow, the `.glx` files in a researcher's folder would still open in any text editor.
 - Mirroring is a one-line `git remote add`. Collaboration is `git clone`/`git pull`/`git push`.
 - The full audit trail — who changed what and when — is native. Blame, bisect, and diff all work on genealogical data without any GLX-specific tooling.
 - Releases and public-sharing workflows line up with existing open-source practice. GitHub-style PRs work unmodified for archive collaboration.

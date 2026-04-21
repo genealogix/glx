@@ -19,7 +19,7 @@ Traditional genealogical formats — most notably GEDCOM — conflate evidence a
 - attach confidence levels to conclusions,
 - audit where any given fact came from.
 
-Professional genealogy practice has long solved this problem on paper. The [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) and Elizabeth Shown Mills' *Evidence Explained* both centre on a **source-to-citation-to-conclusion chain** — what the archive holds, exactly what part of it you looked at, and what you inferred from it. GLX aims to encode that chain as first-class data rather than prose.
+Professional genealogy practice has long solved this problem on paper. The [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) and Elizabeth Shown Mills' *Evidence Explained* both center on a **source-to-citation-to-conclusion chain** — what the archive holds, exactly what part of it you looked at, and what you inferred from it. GLX aims to encode that chain as first-class data rather than prose.
 
 ## Decision
 

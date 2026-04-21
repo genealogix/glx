@@ -14,7 +14,7 @@ Accepted
 
 The GLX codebase is split into two Go packages:
 
-- **`go-glx/`** — the core library. Types, serialisation, validation, GEDCOM conversion, vocabulary handling.
+- **`go-glx/`** — the core library. Types, serialization, validation, GEDCOM conversion, vocabulary handling.
 - **`glx/`** — the CLI application. Cobra commands, flag parsing, user-facing messages, and — critically — every interaction with the filesystem.
 
 Without an explicit rule, library functions would naturally reach for `os.ReadFile`, `os.WriteFile`, and `os.MkdirAll` — that pattern causes three recurring problems:

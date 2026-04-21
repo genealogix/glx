@@ -19,7 +19,7 @@ Two structural choices were on the table:
 - **Central registry** — a project-maintained list of valid types. Archives reference them. New types require a PR to the central list.
 - **Archive-owned vocabularies** — each archive ships its own vocabulary files. A standard starter set is embedded in the tooling, and archives extend it as needed.
 
-A central registry gives better cross-archive comparability but creates a governance bottleneck: every new use case has to negotiate with a committee. An archive-owned model favours autonomy at the cost of some interoperability for extension types.
+A central registry gives better cross-archive comparability but creates a governance bottleneck: every new use case has to negotiate with a committee. An archive-owned model favors autonomy at the cost of some interoperability for extension types.
 
 ## Decision
 
@@ -35,7 +35,7 @@ The `glx validate` command ensures every type used in an archive is defined in t
 
 **Positive**
 
-- Domain specialisation (colonial-history-specific event types, religious-studies-specific relationship types) does not require project approval. Researchers ship types they need.
+- Domain specialization (colonial-history-specific event types, religious-studies-specific relationship types) does not require project approval. Researchers ship types they need.
 - Vocabulary changes are versioned alongside the data they describe. If you add a new event type in April 2026, that change is in the same commit history as the events that used it.
 - The standard starter set gives new archives a sensible default so they do not have to define vocabularies from scratch.
 - No central governance body has to triage vocabulary additions, which scales.
