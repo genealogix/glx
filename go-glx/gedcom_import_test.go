@@ -1001,10 +1001,10 @@ func TestImportASSOEvent_MissingPersonWarning(t *testing.T) {
 	assert.True(t, foundWarning, "missing ASSO reference should produce a warning")
 }
 
-// TestImportSex_UnrecognizedValuePreserved tests that non-standard GEDCOM SEX
-// values are preserved as lowercase instead of being silently mapped to "unknown".
-// Fixes #520.
-func TestImportSex_UnrecognizedValuePreserved(t *testing.T) {
+// TestImportSex_NRecordedMapsToNotRecorded tests that GEDCOM 5.5.5 `SEX N`
+// (Not Recorded) maps to the GLX `not_recorded` sex value rather than being
+// silently mapped to `unknown` or preserved as raw "n". See #520, #528.
+func TestImportSex_NRecordedMapsToNotRecorded(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 7.0
@@ -1020,7 +1020,7 @@ func TestImportSex_UnrecognizedValuePreserved(t *testing.T) {
 	for _, person := range glxFile.Persons {
 		sex, ok := person.Properties[PersonPropertySex].(string)
 		require.True(t, ok, "sex property should be a string")
-		assert.Equal(t, "n", sex, "unrecognized SEX value 'N' should be preserved as 'n', not mapped to 'unknown'")
+		assert.Equal(t, SexNotRecorded, sex, "GEDCOM 'SEX N' should map to not_recorded")
 	}
 }
 

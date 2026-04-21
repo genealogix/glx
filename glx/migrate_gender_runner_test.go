@@ -18,9 +18,10 @@ import (
 	"bytes"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestMigrateGenderToSex_PersonPropertyRename(t *testing.T) {
@@ -96,6 +97,46 @@ func TestMigrateGenderToSex_PreSplitGenderTypesMovedToSexTypes(t *testing.T) {
 	assert.Nil(t, archive.GenderTypes)
 	require.Contains(t, archive.SexTypes, "unknown")
 	assert.Equal(t, "U", archive.SexTypes["unknown"].GEDCOM)
+}
+
+func TestMigrateGenderToSex_PreSplitMergesIntoExistingSexTypes(t *testing.T) {
+	// Standard sex_types is already loaded (typical multi-file load via
+	// mergeStandardVocabularies). Custom legacy entries in gender_types should
+	// merge into sex_types without overwriting the standard ones.
+	archive := &glxlib.GLXFile{
+		SexTypes: map[string]*glxlib.SexType{
+			"male":   {Label: "Male", GEDCOM: "M"},
+			"female": {Label: "Female", GEDCOM: "F"},
+		},
+		GenderTypes: map[string]*glxlib.GenderType{
+			"male":         {Label: "OVERWRITTEN"},
+			"unknown":      {Label: "Unknown", GEDCOM: "U"},
+			"intersex":     {Label: "Intersex"},
+			"not_recorded": {Label: "Not Recorded"},
+		},
+	}
+
+	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, report.VocabEntriesRenamed)
+	assert.Nil(t, archive.GenderTypes)
+	assert.Equal(t, "Male", archive.SexTypes["male"].Label, "existing sex_types entry should not be overwritten")
+	assert.Equal(t, "Unknown", archive.SexTypes["unknown"].Label)
+	assert.Equal(t, "Intersex", archive.SexTypes["intersex"].Label)
+	assert.Equal(t, "Not Recorded", archive.SexTypes["not_recorded"].Label)
+}
+
+func TestMigrateGenderToSex_NilWriterDoesNotPanic(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {Properties: map[string]any{"gender": "male", "sex": "female"}},
+		},
+	}
+
+	report, err := migrateGenderToSex(archive, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 0, report.PropertiesRenamed)
 }
 
 func TestMigrateGenderToSex_PostSplitGenderTypesUntouched(t *testing.T) {

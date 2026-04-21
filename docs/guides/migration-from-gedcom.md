@@ -114,7 +114,7 @@ Import statistics:
 
 The importer processes records in dependency order across multiple passes, handling all standard GEDCOM record types.
 
-**Individuals**: Names (with parsed components), sex (with optional gender identity), 20+ event types, 8+ property types, external IDs, notes, media references
+**Individuals**: Names (with parsed components), sex, 20+ event types, 8+ property types, external IDs, notes, media references
 
 **Events**: Each imported event receives an auto-generated `title` field for human readability. The format varies by event type:
 - Individual events: "Birth of Robert Webb (1815)"

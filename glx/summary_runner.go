@@ -473,9 +473,9 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 			if ok {
 				name = extractPersonName(parent)
 				switch strings.ToLower(personSex(parent)) {
-				case "male":
+				case glxlib.SexMale:
 					label = "Father"
-				case "female":
+				case glxlib.SexFemale:
 					label = "Mother"
 				}
 			}
@@ -1094,9 +1094,9 @@ func pronounFor(person *glxlib.Person) (subject, possessive string) {
 	}
 
 	switch gender {
-	case "male":
+	case glxlib.GenderMale:
 		return "He", "his"
-	case "female":
+	case glxlib.GenderFemale:
 		return "She", "her"
 	default:
 		return "They", "their"

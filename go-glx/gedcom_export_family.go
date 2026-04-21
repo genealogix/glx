@@ -544,6 +544,7 @@ func getPersonSex(personID string, expCtx *ExportContext) string {
 	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
 		return gender
 	}
+
 	return ""
 }
 

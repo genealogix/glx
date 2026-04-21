@@ -620,6 +620,7 @@ func personSex(person *glxlib.Person) string {
 	if v := propertyString(person.Properties, glxlib.PersonPropertySex); v != "" {
 		return v
 	}
+
 	return propertyString(person.Properties, glxlib.PersonPropertyGender)
 }
 
