@@ -233,7 +233,7 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 
 ## Developer Certificate of Origin (DCO)
 
-GENEALOGIX uses the [Developer Certificate of Origin (DCO) 1.1](https://developercertificate.org/) — the same lightweight attestation used by the Linux kernel, CNCF projects, and most Apache-licensed Go projects. It replaces a heavier Contributor License Agreement: there is no separate document to sign, and no CLA bot to negotiate with. By signing off each commit, you attest that you wrote the change (or have the right to submit it) and that it can be contributed under the project's Apache 2.0 license. The DCO is an attestation of your right to contribute the code — it is **not** a copyright assignment. You retain copyright in your contribution.
+GENEALOGIX uses the [Developer Certificate of Origin (DCO) 1.1](https://developercertificate.org/) — the same lightweight attestation used by the Linux kernel, CNCF projects, and many other open-source projects. It replaces a heavier Contributor License Agreement: there is no separate document to sign, and no CLA bot to negotiate with. By signing off each commit, you attest that you wrote the change (or have the right to submit it) and that it can be contributed under the project's Apache 2.0 license. The DCO is an attestation of your right to contribute the code — it is **not** a copyright assignment. You retain copyright in your contribution. There is no automated DCO check today; sign-offs are trusted and verified manually during review.
 
 ### Signing off
 
@@ -249,18 +249,11 @@ This appends a line to the commit message using the identity from `git config us
 Signed-off-by: Jane Developer <jane@example.com>
 ```
 
-The name and email must match a real identity you can be reached at; pseudonymous sign-offs are not accepted. If `user.name` or `user.email` are wrong for this repository, set them locally before committing:
+Use the same name and email you use for other contributions so maintainers can reach you about your change. If `user.name` or `user.email` are wrong for this repository, set them locally before committing:
 
 ```bash
-git config user.name  "Jane Developer"
-git config user.email "jane@example.com"
-```
-
-**Tip:** alias `commit` to always sign off:
-
-```bash
-git config alias.ci 'commit -s'
-# then use: git ci -m "..."
+git config user.name  "Your Name"
+git config user.email "you@example.com"
 ```
 
 ### Fixing a missing sign-off
@@ -278,10 +271,6 @@ For a range of commits (e.g., the last 3):
 git rebase --signoff HEAD~3
 git push --force-with-lease
 ```
-
-### No enforcement bot (yet)
-
-There is currently no automated DCO check on PRs. Maintainers trust contributors to sign off honestly and will flag unsigned commits during review. An enforcement GitHub App or Action may be added later.
 
 ### The DCO text
 
