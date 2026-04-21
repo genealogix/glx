@@ -27,7 +27,7 @@ import (
 //
 // It is opt-in via `glx migrate --rename-gender-to-sex`. The archive is
 // mutated in place; the returned report counts the renames.
-func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) (*MigrateReport, error) {
+func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateReport {
 	if warnOut == nil {
 		warnOut = io.Discard
 	}
@@ -40,7 +40,7 @@ func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) (*MigrateRep
 
 	archive.InvalidateCache()
 
-	return report, nil
+	return report
 }
 
 // renamePersonGenderProperties moves person.properties["gender"] → ["sex"]

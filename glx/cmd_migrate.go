@@ -93,10 +93,7 @@ func migrateArchive(archivePath string) error {
 	}
 
 	if migrateRenameGenderToSex {
-		genderReport, err := migrateGenderToSex(archive, os.Stderr)
-		if err != nil {
-			return fmt.Errorf("gender→sex migration failed: %w", err)
-		}
+		genderReport := migrateGenderToSex(archive, os.Stderr)
 		report.PropertiesRenamed += genderReport.PropertiesRenamed
 		report.AssertionsRenamed += genderReport.AssertionsRenamed
 		report.VocabEntriesRenamed += genderReport.VocabEntriesRenamed

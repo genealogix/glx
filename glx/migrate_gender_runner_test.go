@@ -32,8 +32,7 @@ func TestMigrateGenderToSex_PersonPropertyRename(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
 
 	assert.Equal(t, 2, report.PropertiesRenamed)
 	assert.Equal(t, "male", archive.Persons["person-1"].Properties["sex"])
@@ -53,8 +52,7 @@ func TestMigrateGenderToSex_AssertionRename(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
 
 	assert.Equal(t, 1, report.AssertionsRenamed)
 	assert.Equal(t, "sex", archive.Assertions["a-1"].Property)
@@ -71,8 +69,7 @@ func TestMigrateGenderToSex_VocabEntryRename(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
 
 	assert.Equal(t, 1, report.VocabEntriesRenamed)
 	require.Contains(t, archive.PersonProperties, "sex")
@@ -90,8 +87,7 @@ func TestMigrateGenderToSex_PreSplitGenderTypesMovedToSexTypes(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
 
 	assert.Equal(t, 1, report.VocabEntriesRenamed)
 	assert.Nil(t, archive.GenderTypes)
@@ -116,8 +112,7 @@ func TestMigrateGenderToSex_PreSplitMergesIntoExistingSexTypes(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
 
 	assert.Equal(t, 1, report.VocabEntriesRenamed)
 	assert.Nil(t, archive.GenderTypes)
@@ -134,8 +129,7 @@ func TestMigrateGenderToSex_NilWriterDoesNotPanic(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, nil)
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, nil)
 	assert.Equal(t, 0, report.PropertiesRenamed)
 }
 
@@ -150,8 +144,7 @@ func TestMigrateGenderToSex_PostSplitGenderTypesUntouched(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
 
 	assert.Equal(t, 0, report.VocabEntriesRenamed)
 	assert.NotNil(t, archive.GenderTypes)
@@ -166,8 +159,7 @@ func TestMigrateGenderToSex_ConflictWarnsAndLeavesGender(t *testing.T) {
 	}
 
 	warn := &bytes.Buffer{}
-	report, err := migrateGenderToSex(archive, warn)
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, warn)
 
 	assert.Equal(t, 0, report.PropertiesRenamed)
 	assert.Equal(t, "male", archive.Persons["person-1"].Properties["gender"])
@@ -182,8 +174,7 @@ func TestMigrateGenderToSex_NoOpOnAlreadyMigratedArchive(t *testing.T) {
 		},
 	}
 
-	report, err := migrateGenderToSex(archive, &bytes.Buffer{})
-	require.NoError(t, err)
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
 
 	assert.Equal(t, 0, report.PropertiesRenamed)
 	assert.Equal(t, 0, report.AssertionsRenamed)
