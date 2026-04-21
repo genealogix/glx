@@ -11,7 +11,7 @@ with two children and basic relationship entries.
 
 ## Structure
 
-```
+```text
 basic-family/
 ├── persons/
 │   ├── person-mother.glx
@@ -35,6 +35,7 @@ basic-family/
 ## Files
 
 ### persons/person-mother.glx
+
 ```yaml
 persons:
   person-mother:
@@ -48,6 +49,7 @@ persons:
 ```
 
 ### persons/person-father.glx
+
 ```yaml
 persons:
   person-father:
@@ -61,6 +63,7 @@ persons:
 ```
 
 ### persons/person-child-alice.glx
+
 ```yaml
 persons:
   person-alice:
@@ -74,6 +77,7 @@ persons:
 ```
 
 ### persons/person-child-bob.glx
+
 ```yaml
 persons:
   person-bob:
@@ -87,6 +91,7 @@ persons:
 ```
 
 ### relationships/rel-marriage.glx
+
 ```yaml
 relationships:
   rel-marriage:
@@ -99,6 +104,7 @@ relationships:
 ```
 
 ### relationships/rel-parent-alice.glx
+
 ```yaml
 relationships:
   rel-parent-alice:
@@ -113,6 +119,7 @@ relationships:
 ```
 
 ### relationships/rel-parent-bob.glx
+
 ```yaml
 relationships:
   rel-parent-bob:

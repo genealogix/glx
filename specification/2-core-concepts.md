@@ -68,6 +68,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 **Property vocabularies** are a special category that define the custom properties available for each entity type. These are critical for the assertion model (see sections below).
 
 Property vocabularies define:
+
 - What properties can exist on entities (name, occupation, residence, etc.)
 - Property value types (string, date, integer, boolean, or references to other entities)
 - Whether properties are temporal (can change over time)
@@ -168,11 +169,13 @@ The validator will confirm that all types are defined and all references are val
 The `glx validate` command enforces vocabulary consistency with different severity levels:
 
 **Errors (must be fixed):**
+
 - Entity references that don't exist (person, place, source, etc.)
 - Vocabulary type references that aren't defined (event_types, relationship_types, etc.)
 - Property references when properties are defined as `reference_type` but the referenced entity doesn't exist
 
 **Warnings (flexible):**
+
 - Unknown properties not defined in property vocabularies
 - Unknown assertion properties not defined in property vocabularies
 - Warnings allow rapid data entry and emerging properties without breaking validation
@@ -187,7 +190,7 @@ GENEALOGIX uses 9 core entity types that form an interconnected web representing
 
 ### Core Entities
 
-```
+```text
 Person ←→ Relationship ←→ Person
 Person ←→ Event ←→ Place
 Source ←→ Citation → Assertion → Person/Event/Place
@@ -222,6 +225,7 @@ GENEALOGIX uses fundamental data types throughout the specification for entity p
 A sequence of Unicode characters. Strings are the default type when no specific type is specified in property definitions.
 
 **Example:**
+
 ```yaml
 name:
   value: "John Smith"
@@ -236,6 +240,7 @@ occupation: "blacksmith"
 A whole number (positive, negative, or zero). Used for numeric values like population counts.
 
 **Example:**
+
 ```yaml
 population: 5000
 ```
@@ -245,6 +250,7 @@ population: 5000
 A true/false value.
 
 **Example:**
+
 ```yaml
 verified: true
 primary_source: false
@@ -257,6 +263,7 @@ A calendar date or fuzzy date specification. GENEALOGIX uses YYYY-MM-DD format f
 ### Date Format Standard
 
 GENEALOGIX uses a **hybrid date format** combining:
+
 - **YYYY-MM-DD dates** for precise calendar dates
 - **FamilySearch-inspired keywords** for approximate, ranged, and calculated dates
 
@@ -265,11 +272,13 @@ This format supports both precise dates and fuzzy/approximate dates commonly enc
 #### Format Specification
 
 **Simple Dates:**
+
 - `YYYY` - Year only (4 digits required, e.g., `1850`, `2020`, `0047`)
 - `YYYY-MM` - Year and month (e.g., `1850-03`, `2020-12`)
 - `YYYY-MM-DD` - Full date (e.g., `1850-03-15`, `2020-12-31`)
 
 **Keyword Modifiers (FamilySearch-inspired):**
+
 - **Approximate Dates:**
   - `ABT YYYY` - About/approximately (e.g., `ABT 1850`)
   - `BEF YYYY` - Before (e.g., `BEF 1920`)
@@ -367,6 +376,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 #### Date Validation
 
 GENEALOGIX validates date formats at two levels:
+
 1. **Structure:** Dates must follow the format specifications above
 2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword.
 3. **Calendar prefixes:** Known calendar prefixes (JULIAN, HEBREW, FRENCH_R) are stripped before validating the date body. Unknown prefixes are accepted without warning to allow extensibility
@@ -389,6 +399,7 @@ Reference types indicate that a property value is a string identifier that must 
 - **media** - Reference to a media entity
 
 **Examples:**
+
 ```yaml
 # Simple reference to a place
 properties:
@@ -427,6 +438,7 @@ persons:
 ### Defined by Property Vocabularies
 
 All properties are defined in property vocabularies (see Archive-Owned Vocabularies above). The `person-properties.glx` vocabulary defines:
+
 - What properties exist (`name`, `gender`, `occupation`, etc.)
 - Their data types (string, date, place reference)
 - Whether they can change over time (temporal)
@@ -441,6 +453,7 @@ Properties can be set without assertions, supporting rapid data entry. You can a
 Properties marked as `temporal: true` in vocabularies can hold multiple values — either dated (for values that change over time) or undated (for multiple values without known dates). They support three formats:
 
 **Single Value** (for properties that don't change or represent a point in time):
+
 ```yaml
 properties:
   gender: "male"
@@ -477,6 +490,7 @@ properties:
 This is common when a source (like an obituary, biographical sketch, or family letter) mentions multiple values but doesn't specify when each applied. The list format captures all known values without forcing artificial dates.
 
 Each list entry includes:
+
 - `value` - The property value, conforming to the property's `value_type` or `reference_type`
 - `date` - Optional date string specifying when the value applied
 
@@ -487,6 +501,7 @@ Dated and undated entries can be mixed in the same list — use dates where you 
 Properties can have structured fields for complex data. There are three usage patterns:
 
 **1. Value only** (simple properties):
+
 ```yaml
 properties:
   occupation: "blacksmith"
@@ -494,6 +509,7 @@ properties:
 ```
 
 **2. Value + Fields** (preserve original while providing structure):
+
 ```yaml
 properties:
   name:
@@ -509,6 +525,7 @@ properties:
 The `value` field preserves the original recorded form, while `fields` provide structured access to components. This is the recommended approach for most structured properties.
 
 **3. Fields only** (when there's no natural single-value representation):
+
 ```yaml
 properties:
   crop:
@@ -548,6 +565,7 @@ persons:
 ```
 
 Use notes to:
+
 - Document research decisions and uncertainties
 - Record questions for future investigation
 - Provide context not captured elsewhere
@@ -568,7 +586,8 @@ Properties can be recorded quickly during initial data entry. Assertions documen
 ### The Problem with Traditional Models
 
 Traditional genealogy software stores conclusions directly:
-```
+
+```text
 Person: John Smith
 Birth: January 15, 1850
 Place: Leeds, Yorkshire
@@ -597,6 +616,7 @@ assertions:
 ### How Assertions Work
 
 **Core fields:**
+
 - `subject`: Typed reference to the entity this assertion is about (person, event, relationship, place)
 - `property`: The property being asserted (references property vocabulary)
 - `value`: The concluded value of the property
@@ -750,6 +770,7 @@ assertions:
 ```
 
 **When to use existential assertions:**
+
 - **Relationships** — evidence that a parent-child or marriage relationship existed, before asserting specific property values
 - **Events** — confirming an event occurred without yet asserting its date or place
 - **Places** — documenting that a place existed at a given time
@@ -762,7 +783,7 @@ GENEALOGIX organizes genealogical evidence in a hierarchical chain from physical
 
 ### Complete Evidence Chain
 
-```
+```text
 Repository → Source → Citation → Assertion → Property
     ↓          ↓         ↓          ↓           ↓
  Physical   Original  Specific  Evidence-   Concluded
@@ -855,7 +876,6 @@ assertions:
       - citation-birth-cert
       - citation-baptism-record
 ```
-
 
 ## Collaboration
 

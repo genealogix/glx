@@ -155,6 +155,7 @@ Defines standard and custom properties for person entities (name, gender, occupa
 **View Source:** [person-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/person-properties.glx)
 
 **Standard Properties Include:**
+
 - `name` - Unified name property with optional structured fields (type, given, surname, prefix, suffix, etc.) (temporal)
 - `gender` - Gender identity (temporal)
 - `occupation` - Profession (temporal, GEDCOM: OCCU)
@@ -180,6 +181,7 @@ Defines standard and custom properties for event entities.
 **View Source:** [event-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/event-properties.glx)
 
 **Standard Properties Include:**
+
 - `age_at_event` - Age of the person at the time of the event (GEDCOM: AGE)
 - `cause` - Cause of the event, e.g., cause of death (GEDCOM: CAUS)
 - `event_subtype` - Further classification of the event type (GEDCOM: TYPE)
@@ -198,6 +200,7 @@ Defines standard and custom properties for relationship entities.
 **View Source:** [relationship-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/relationship-properties.glx)
 
 **Standard Properties Include:**
+
 - `started_on` - When the relationship began
 - `ended_on` - When the relationship ended
 - `location` - Location of the relationship (reference)
@@ -214,6 +217,7 @@ Defines standard and custom properties for place entities.
 **View Source:** [place-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/place-properties.glx)
 
 **Standard Properties Include:**
+
 - `existed_from` - When the place came into existence
 - `existed_to` - When the place ceased to exist
 - `population` - Population count (temporal)
@@ -233,6 +237,7 @@ Defines standard and custom properties for media entities.
 **View Source:** [media-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/media-properties.glx)
 
 **Standard Properties Include:**
+
 - `subjects` - People or entities depicted/recorded (multi-value, reference)
 - `width`, `height` - Dimensions in pixels (for images/video)
 - `duration` - Duration in seconds (for audio/video)
@@ -254,6 +259,7 @@ Defines standard and custom properties for repository entities including contact
 **View Source:** [repository-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/repository-properties.glx)
 
 **Standard Properties Include:**
+
 - `phones` - Phone numbers for the repository (multi-value)
 - `emails` - Email addresses for the repository (multi-value)
 - `fax` - Fax number
@@ -273,6 +279,7 @@ Defines standard and custom properties for source entities including bibliograph
 **View Source:** [source-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-properties.glx)
 
 **Standard Properties Include:**
+
 - `abbreviation` - Short reference name or title (from GEDCOM ABBR)
 - `call_number` - Repository catalog or call number (from GEDCOM CALN)
 - `events_recorded` - Types of events documented (multi-value, from GEDCOM EVEN)
@@ -293,6 +300,7 @@ Defines standard and custom properties for citation entities including location,
 **View Source:** [citation-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/citation-properties.glx)
 
 **Standard Properties Include:**
+
 - `locator` - Location within source where cited material can be found (page number, film number, image number, entry reference, etc.)
 - `text_from_source` - Transcription or excerpt of relevant text from the source
 - `source_date` - Date when the source recorded the information

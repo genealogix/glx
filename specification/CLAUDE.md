@@ -3,6 +3,7 @@
 ## Internal Links
 
 Omit `.md` file extension for VitePress compatibility:
+
 - Good: `[Person Entity](4-entity-types/person)`
 - Bad: `[Person Entity](4-entity-types/person.md)`
 
