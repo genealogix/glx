@@ -6,7 +6,7 @@ layout: doc
 
 # Architecture Decision Records
 
-This directory contains **Architecture Decision Records (ADRs)** — short documents that capture significant architectural decisions, the context in which they were made, and the consequences that followed.
+**Architecture Decision Records (ADRs)** are short documents that capture significant architectural decisions, the context in which they were made, and the consequences that followed.
 
 ## Why ADRs?
 
