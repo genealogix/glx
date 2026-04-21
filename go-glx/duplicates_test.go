@@ -478,3 +478,106 @@ func TestFindDuplicates_ThresholdBoundary(t *testing.T) {
 	_, err = FindDuplicates(archive, DuplicateOptions{Threshold: 1.0})
 	assert.NoError(t, err)
 }
+
+// --- Cross-archive duplicate tests ---
+
+func TestFindCrossArchiveDuplicates_ObviousDuplicate(t *testing.T) {
+	dest := &GLXFile{
+		Persons: map[string]*Person{
+			"person-dest-1": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: make(map[string]*Event),
+	}
+	src := &GLXFile{
+		Persons: map[string]*Person{
+			"person-src-1": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: make(map[string]*Event),
+	}
+
+	result, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 0.2})
+	require.NoError(t, err)
+	require.Len(t, result.Pairs, 1)
+	assert.Equal(t, "person-dest-1", result.Pairs[0].PersonA)
+	assert.Equal(t, "person-src-1", result.Pairs[0].PersonB)
+	assert.Greater(t, result.Pairs[0].Score, 0.2)
+}
+
+func TestFindCrossArchiveDuplicates_NoOverlap(t *testing.T) {
+	dest := &GLXFile{
+		Persons: map[string]*Person{
+			"person-dest-1": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: make(map[string]*Event),
+	}
+	src := &GLXFile{
+		Persons: map[string]*Person{
+			"person-src-1": {Properties: map[string]any{"name": "Jane Doe"}},
+		},
+		Events: make(map[string]*Event),
+	}
+
+	result, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 0.5})
+	require.NoError(t, err)
+	assert.Empty(t, result.Pairs)
+}
+
+func TestFindCrossArchiveDuplicates_EmptyArchive(t *testing.T) {
+	dest := &GLXFile{Persons: map[string]*Person{"p-1": {}}}
+	src := &GLXFile{}
+
+	result, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 0.5})
+	require.NoError(t, err)
+	assert.Empty(t, result.Pairs)
+}
+
+func TestFindCrossArchiveDuplicates_SameIDSkipped(t *testing.T) {
+	// Same ID in both archives is a merge conflict, not a duplicate
+	dest := &GLXFile{
+		Persons: map[string]*Person{
+			"person-same": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: make(map[string]*Event),
+	}
+	src := &GLXFile{
+		Persons: map[string]*Person{
+			"person-same": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: make(map[string]*Event),
+	}
+
+	result, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 0.0})
+	require.NoError(t, err)
+	assert.Empty(t, result.Pairs, "same ID should not be reported as duplicate")
+}
+
+func TestFindCrossArchiveDuplicates_InvalidThreshold(t *testing.T) {
+	dest := &GLXFile{Persons: map[string]*Person{"p-1": {}}}
+	src := &GLXFile{Persons: map[string]*Person{"p-2": {}}}
+
+	_, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: -0.1})
+	require.ErrorIs(t, err, ErrInvalidThreshold)
+
+	_, err = FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 1.5})
+	require.ErrorIs(t, err, ErrInvalidThreshold)
+}
+
+func TestFindCrossArchiveDuplicates_ThresholdFiltering(t *testing.T) {
+	dest := &GLXFile{
+		Persons: map[string]*Person{
+			"person-dest-1": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: make(map[string]*Event),
+	}
+	src := &GLXFile{
+		Persons: map[string]*Person{
+			"person-src-1": {Properties: map[string]any{"name": "John Smith"}},
+		},
+		Events: make(map[string]*Event),
+	}
+
+	// High threshold should filter out weak matches
+	result, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 1.0})
+	require.NoError(t, err)
+	assert.Empty(t, result.Pairs, "threshold 1.0 should filter out all pairs")
+}

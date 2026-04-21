@@ -1328,8 +1328,9 @@ func runRename(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	mergeInto   string
-	mergeDryRun bool
+	mergeInto      string
+	mergePreview   bool
+	mergeThreshold float64
 )
 
 var mergeCmd = &cobra.Command{
@@ -1338,23 +1339,30 @@ var mergeCmd = &cobra.Command{
 	Long: `Combine two GLX archives by merging all content from the source
 into the destination. Duplicate or conflicting items (entities,
 vocabularies, property definitions, and metadata) are reported and skipped
-(the destination version is kept).`,
+(the destination version is kept).
+
+Use --preview to see what would happen without modifying any files,
+including cross-archive duplicate person detection.`,
 	Example: `  # Merge another archive into the current one
   glx merge ./other-archive/ --into ./my-archive/
 
-  # Dry run to preview what would be merged
-  glx merge ./other-archive/ --into ./my-archive/ --dry-run`,
+  # Preview merge with duplicate detection
+  glx merge ./other-archive/ --into ./my-archive/ --preview
+
+  # Preview with custom similarity threshold
+  glx merge ./other-archive/ --into ./my-archive/ --preview --threshold 0.8`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMerge,
 }
 
 func init() {
 	mergeCmd.Flags().StringVar(&mergeInto, "into", ".", "Destination archive path")
-	mergeCmd.Flags().BoolVar(&mergeDryRun, "dry-run", false, "Preview merge without writing")
+	mergeCmd.Flags().BoolVar(&mergePreview, "preview", false, "Show detailed merge preview with duplicate detection")
+	mergeCmd.Flags().Float64Var(&mergeThreshold, "threshold", defaultMergeThreshold, "Similarity threshold for duplicate detection in preview (0.0-1.0)")
 }
 
 func runMerge(_ *cobra.Command, args []string) error {
-	return mergeArchives(args[0], mergeInto, mergeDryRun)
+	return mergeArchives(args[0], mergeInto, mergePreview, mergeThreshold)
 }
 
 // ============================================================================

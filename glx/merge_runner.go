@@ -22,6 +22,8 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+const defaultMergeThreshold = 0.6
+
 // mergeResult holds statistics from a merge operation.
 type mergeResult struct {
 	Conflicts        []string
@@ -69,9 +71,9 @@ func mergeArchivesInMemory(dest, src *glxlib.GLXFile) *mergeResult {
 }
 
 type counts struct {
-	persons, events, relationships, places    int
-	sources, citations, repositories          int
-	assertions, media                         int
+	persons, events, relationships, places int
+	sources, citations, repositories       int
+	assertions, media                      int
 }
 
 func entityCounts(g *glxlib.GLXFile) counts {
@@ -89,7 +91,7 @@ func entityCounts(g *glxlib.GLXFile) counts {
 }
 
 // mergeArchives loads two archives, merges src into dest, and saves.
-func mergeArchives(srcPath, destPath string, dryRun bool) error {
+func mergeArchives(srcPath, destPath string, preview bool, threshold float64) error {
 	// Resolve to absolute paths so "." becomes a real path that os.Rename can
 	// operate on. POSIX forbids renaming "." (EINVAL) and Windows rejects it
 	// with ERROR_SHARING_VIOLATION.
@@ -153,41 +155,65 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 		src = loaded
 	}
 
+	// Run cross-archive duplicate detection before merge (both archives still intact).
+	// Snapshot dest person IDs so labels can attribute each person to the archive
+	// it originated in — post-merge, dest contains src persons too, which would
+	// collapse the dest/src distinction the label needs.
+	var dupResult *glxlib.DuplicateResult
+	var origDestPersonIDs map[string]struct{}
+	if preview {
+		var dupErr error
+		dupResult, dupErr = glxlib.FindCrossArchiveDuplicates(dest, src, glxlib.DuplicateOptions{
+			Threshold: threshold,
+		})
+		if dupErr != nil {
+			return fmt.Errorf("failed to detect cross-archive duplicates: %w", dupErr)
+		}
+		origDestPersonIDs = make(map[string]struct{}, len(dest.Persons))
+		for id := range dest.Persons {
+			origDestPersonIDs[id] = struct{}{}
+		}
+	}
+
 	// Merge
 	result := mergeArchivesInMemory(dest, src)
 
 	// Report
 	fmt.Printf("Merging %s into %s\n\n", srcPath, destPath)
+	printMergeReport(result)
 
+	// Show cross-archive duplicates in preview mode
+	if preview && dupResult != nil {
+		printCrossArchiveDuplicates(dupResult, dest, src, origDestPersonIDs)
+	}
+
+	if preview {
+		fmt.Println("\n(preview — no files written)")
+
+		return nil
+	}
+
+	// Save — multi-file archives use crash-safe temp+swap to prevent partial writes.
+	// Single-file archives use os.WriteFile directly (not atomic; see #595).
+	if destIsDir {
+		return safeWriteMultiFileArchive(destPath, dest)
+	}
+
+	return writeSingleFileArchive(destPath, dest, false)
+}
+
+func printMergeReport(result *mergeResult) {
 	if result.TotalNew() > 0 {
 		fmt.Println("  New entities:")
-		if result.NewPersons > 0 {
-			fmt.Printf("    %d persons\n", result.NewPersons)
-		}
-		if result.NewEvents > 0 {
-			fmt.Printf("    %d events\n", result.NewEvents)
-		}
-		if result.NewRelationships > 0 {
-			fmt.Printf("    %d relationships\n", result.NewRelationships)
-		}
-		if result.NewPlaces > 0 {
-			fmt.Printf("    %d places\n", result.NewPlaces)
-		}
-		if result.NewSources > 0 {
-			fmt.Printf("    %d sources\n", result.NewSources)
-		}
-		if result.NewCitations > 0 {
-			fmt.Printf("    %d citations\n", result.NewCitations)
-		}
-		if result.NewRepositories > 0 {
-			fmt.Printf("    %d repositories\n", result.NewRepositories)
-		}
-		if result.NewAssertions > 0 {
-			fmt.Printf("    %d assertions\n", result.NewAssertions)
-		}
-		if result.NewMedia > 0 {
-			fmt.Printf("    %d media\n", result.NewMedia)
-		}
+		printEntityCount("persons", result.NewPersons)
+		printEntityCount("events", result.NewEvents)
+		printEntityCount("relationships", result.NewRelationships)
+		printEntityCount("places", result.NewPlaces)
+		printEntityCount("sources", result.NewSources)
+		printEntityCount("citations", result.NewCitations)
+		printEntityCount("repositories", result.NewRepositories)
+		printEntityCount("assertions", result.NewAssertions)
+		printEntityCount("media", result.NewMedia)
 	} else {
 		fmt.Println("  No new entities to merge.")
 	}
@@ -202,17 +228,45 @@ func mergeArchives(srcPath, destPath string, dryRun bool) error {
 	if result.IdenticalSkipped > 0 {
 		fmt.Printf("\n  %d identical vocabulary/property entries skipped\n", result.IdenticalSkipped)
 	}
-
-	if dryRun {
-		fmt.Println("\n(dry run — no files written)")
-		return nil
-	}
-
-	// Save — multi-file archives use crash-safe temp+swap to prevent partial writes.
-	// Single-file archives use os.WriteFile directly (not atomic; see #595).
-	if destIsDir {
-		return safeWriteMultiFileArchive(destPath, dest)
-	}
-	return writeSingleFileArchive(destPath, dest, false)
 }
 
+func printEntityCount(name string, count int) {
+	if count > 0 {
+		fmt.Printf("    %d %s\n", count, name)
+	}
+}
+
+// printCrossArchiveDuplicates renders potential duplicates found between two archives.
+// origDestPersonIDs is the set of person IDs that originated in dest (captured
+// before merge mutated it) so each label can be resolved against the person's
+// origin archive.
+func printCrossArchiveDuplicates(result *glxlib.DuplicateResult, dest, src *glxlib.GLXFile, origDestPersonIDs map[string]struct{}) {
+	if len(result.Pairs) == 0 {
+		fmt.Printf("\n  No potential cross-archive duplicates found (threshold: %.2f)\n", result.Threshold)
+
+		return
+	}
+
+	fmt.Printf("\n  Potential cross-archive duplicates (%d, threshold: %.2f):\n", len(result.Pairs), result.Threshold)
+	for _, pair := range result.Pairs {
+		nameA := crossArchivePersonLabel(pair.PersonA, dest, src, origDestPersonIDs)
+		nameB := crossArchivePersonLabel(pair.PersonB, dest, src, origDestPersonIDs)
+		fmt.Printf("    %s ↔ %s  (score: %.2f)\n", nameA, nameB, pair.Score)
+		for _, sig := range pair.Signals {
+			if sig.Score > 0 {
+				fmt.Printf("      %s: %.2f (%s)\n", sig.Name, sig.Score, sig.Detail)
+			}
+		}
+	}
+}
+
+// crossArchivePersonLabel resolves a person to their origin archive for
+// labeling. origDestPersonIDs must be the pre-merge set of dest IDs; post-merge
+// dest would contain src persons too, collapsing the distinction.
+func crossArchivePersonLabel(personID string, dest, src *glxlib.GLXFile, origDestPersonIDs map[string]struct{}) string {
+	if _, ok := origDestPersonIDs[personID]; ok {
+		return personLabel(dest, personID)
+	}
+
+	return personLabel(src, personID)
+}
