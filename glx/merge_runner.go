@@ -155,8 +155,12 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 		src = loaded
 	}
 
-	// Run cross-archive duplicate detection before merge (both archives still intact)
+	// Run cross-archive duplicate detection before merge (both archives still intact).
+	// Snapshot dest person IDs so labels can attribute each person to the archive
+	// it originated in — post-merge, dest contains src persons too, which would
+	// collapse the dest/src distinction the label needs.
 	var dupResult *glxlib.DuplicateResult
+	var origDestPersonIDs map[string]struct{}
 	if preview {
 		var dupErr error
 		dupResult, dupErr = glxlib.FindCrossArchiveDuplicates(dest, src, glxlib.DuplicateOptions{
@@ -164,6 +168,10 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 		})
 		if dupErr != nil {
 			return fmt.Errorf("failed to detect cross-archive duplicates: %w", dupErr)
+		}
+		origDestPersonIDs = make(map[string]struct{}, len(dest.Persons))
+		for id := range dest.Persons {
+			origDestPersonIDs[id] = struct{}{}
 		}
 	}
 
@@ -176,7 +184,7 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 
 	// Show cross-archive duplicates in preview mode
 	if preview && dupResult != nil {
-		printCrossArchiveDuplicates(dupResult, dest, src)
+		printCrossArchiveDuplicates(dupResult, dest, src, origDestPersonIDs)
 	}
 
 	if preview {
@@ -229,7 +237,10 @@ func printEntityCount(name string, count int) {
 }
 
 // printCrossArchiveDuplicates renders potential duplicates found between two archives.
-func printCrossArchiveDuplicates(result *glxlib.DuplicateResult, dest, src *glxlib.GLXFile) {
+// origDestPersonIDs is the set of person IDs that originated in dest (captured
+// before merge mutated it) so each label can be resolved against the person's
+// origin archive.
+func printCrossArchiveDuplicates(result *glxlib.DuplicateResult, dest, src *glxlib.GLXFile, origDestPersonIDs map[string]struct{}) {
 	if len(result.Pairs) == 0 {
 		fmt.Printf("\n  No potential cross-archive duplicates found (threshold: %.2f)\n", result.Threshold)
 
@@ -238,8 +249,8 @@ func printCrossArchiveDuplicates(result *glxlib.DuplicateResult, dest, src *glxl
 
 	fmt.Printf("\n  Potential cross-archive duplicates (%d, threshold: %.2f):\n", len(result.Pairs), result.Threshold)
 	for _, pair := range result.Pairs {
-		nameA := crossArchivePersonLabel(pair.PersonA, dest, src)
-		nameB := crossArchivePersonLabel(pair.PersonB, dest, src)
+		nameA := crossArchivePersonLabel(pair.PersonA, dest, src, origDestPersonIDs)
+		nameB := crossArchivePersonLabel(pair.PersonB, dest, src, origDestPersonIDs)
 		fmt.Printf("    %s ↔ %s  (score: %.2f)\n", nameA, nameB, pair.Score)
 		for _, sig := range pair.Signals {
 			if sig.Score > 0 {
@@ -249,9 +260,11 @@ func printCrossArchiveDuplicates(result *glxlib.DuplicateResult, dest, src *glxl
 	}
 }
 
-// crossArchivePersonLabel looks up a person in dest first, then src.
-func crossArchivePersonLabel(personID string, dest, src *glxlib.GLXFile) string {
-	if _, ok := dest.Persons[personID]; ok {
+// crossArchivePersonLabel resolves a person to their origin archive for
+// labeling. origDestPersonIDs must be the pre-merge set of dest IDs; post-merge
+// dest would contain src persons too, collapsing the distinction.
+func crossArchivePersonLabel(personID string, dest, src *glxlib.GLXFile, origDestPersonIDs map[string]struct{}) string {
+	if _, ok := origDestPersonIDs[personID]; ok {
 		return personLabel(dest, personID)
 	}
 
