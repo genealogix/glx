@@ -233,7 +233,7 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 
 ## Developer Certificate of Origin (DCO)
 
-GENEALOGIX uses the [Developer Certificate of Origin (DCO) 1.1](https://developercertificate.org/) — the same lightweight attestation used by the Linux kernel, CNCF projects, and many other open-source projects. It replaces a heavier Contributor License Agreement: there is no separate document to sign, and no CLA bot to negotiate with. By signing off each commit, you attest that you wrote the change (or have the right to submit it) and that it can be contributed under the project's Apache 2.0 license. The DCO is an attestation of your right to contribute the code — it is **not** a copyright assignment. You retain copyright in your contribution. There is no automated DCO check today; sign-offs are trusted and verified manually during review.
+GENEALOGIX uses the [Developer Certificate of Origin (DCO) 1.1](https://developercertificate.org/) — the same lightweight attestation used by the Linux kernel, CNCF projects, and many other open-source projects. Rather than requiring a heavier Contributor License Agreement, there is no separate document to sign and no CLA bot to negotiate with. By signing off each commit, you attest that you wrote the change (or have the right to submit it) and that it can be contributed under the project's Apache 2.0 license. The DCO is an attestation of your right to contribute the code — it is **not** a copyright assignment. You retain copyright in your contribution. There is no automated DCO check today; sign-offs are trusted and verified manually during review.
 
 ### Signing off
 
@@ -271,6 +271,8 @@ For a range of commits (e.g., the last 3):
 git rebase --signoff HEAD~3
 git push --force-with-lease
 ```
+
+Only force-push branches you own. If others are collaborating on the branch, coordinate with them before rewriting history to avoid disrupting their work.
 
 ### The DCO text
 
