@@ -34,7 +34,10 @@ Concretely:
 ```go
 // Wrong — library doing I/O
 func SerializeSingleFile(glx *GLXFile, outputPath string) error {
-    yamlBytes, _ := yaml.Marshal(glx)
+    yamlBytes, err := yaml.Marshal(glx)
+    if err != nil {
+        return err
+    }
     return os.WriteFile(outputPath, yamlBytes, 0o644)
 }
 
@@ -50,7 +53,7 @@ All `os.*` calls, `filepath.Join` with file operations, and directory walking li
 
 **Positive**
 
-- Library tests run without touching the disk — faster, more deterministic, parallel-safe on every OS.
+- Library APIs let tests avoid disk I/O — faster, more deterministic, parallel-safe on every OS. Some existing serializer and roundtrip tests still use temp dirs as a convenience, but nothing in the library forces them to.
 - The library is embeddable. A hypothetical web service, bulk-processing pipeline, or another CLI can use `go-glx` by piping bytes in and out.
 - Responsibility is obvious. A developer reading a function signature sees `([]byte) → ([]byte, error)` and knows immediately whether it touches the filesystem.
 - Windows-specific filesystem quirks (AV locks, case-insensitive collisions, path length limits) are confined to the CLI layer, where they can be handled once.
@@ -58,5 +61,5 @@ All `os.*` calls, `filepath.Join` with file operations, and directory walking li
 **Negative**
 
 - The CLI layer has more plumbing code — it has to read the file, hand the bytes to the library, take the bytes back, and write the file. That is the right place for that code, but it is not free.
-- Contributors touching `go-glx/` have to resist the reflex of calling `os.ReadFile` to load a test fixture. Test helpers use `go:embed` or explicit byte slices instead.
+- Contributors touching `go-glx/` have to resist the reflex of calling `os.ReadFile` in non-test code to load a fixture or vocabulary. Where fixture data is needed inside the library itself (e.g., the standard vocabularies), the project uses `go:embed` — see `specification/5-standard-vocabularies/embed.go`, which `go-glx/vocabularies.go` imports.
 - Functions that would naturally take a path (e.g., loading vocabularies) have to take a reader or embed the data. The library uses `go:embed` for the standard vocabularies precisely because of this rule.

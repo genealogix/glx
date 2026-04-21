@@ -248,7 +248,7 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 
 ## Architecture Decision Records (ADRs)
 
-Significant architectural decisions are captured as **Architecture Decision Records (ADRs)** in [`docs/decisions/`](/decisions/). An ADR is a short document that records *what* was decided, *why*, and *what follows* from the decision. The goal is to make the reasoning behind load-bearing choices discoverable to new contributors, rather than leaving it buried in old issue threads.
+Significant architectural decisions are captured as **Architecture Decision Records (ADRs)** in [`docs/decisions/`](https://github.com/genealogix/glx/tree/main/docs/decisions) (also rendered on the website under `/decisions/`). An ADR is a short document that records *what* was decided, *why*, and *what follows* from the decision. The goal is to make the reasoning behind load-bearing choices discoverable to new contributors, rather than leaving it buried in old issue threads.
 
 **When to write an ADR:**
 
@@ -259,7 +259,7 @@ Significant architectural decisions are captured as **Architecture Decision Reco
 
 For routine bug fixes, documentation improvements, and minor clarifications, no ADR is needed — a regular issue and PR are sufficient.
 
-**ADR format** (Nygard-style — see the [ADR template](/decisions/0000-adr-template)):
+**ADR format** (Nygard-style — see the [ADR template](https://github.com/genealogix/glx/blob/main/docs/decisions/0000-adr-template.md)):
 
 - **Title**: `ADR-NNNN: Short descriptive name`
 - **Status**: `Proposed` / `Accepted` / `Deprecated` / `Superseded by ADR-XXXX`
