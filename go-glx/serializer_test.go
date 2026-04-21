@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -456,24 +457,88 @@ func TestSerializeMultiFileDeterministic(t *testing.T) {
 		t.Fatalf("Second serialization failed: %v", err)
 	}
 
-	// Same keys both times
 	if len(files1) != len(files2) {
 		t.Fatalf("File count mismatch: %d vs %d", len(files1), len(files2))
 	}
-	for key := range files1 {
-		if _, ok := files2[key]; !ok {
+	for key, content1 := range files1 {
+		content2, ok := files2[key]
+		if !ok {
 			t.Errorf("Key %q present in first but not second serialization", key)
+
+			continue
+		}
+		if !bytes.Equal(content1, content2) {
+			t.Errorf("Content for %q differs between serializations:\n--- first ---\n%s\n--- second ---\n%s", key, content1, content2)
 		}
 	}
 }
 
 func TestSerializeMultiFileCaseCollision(t *testing.T) {
+	tests := []struct {
+		name    string
+		persons map[string]*Person
+		events  map[string]*Event
+	}{
+		{
+			name: "two-way collision in same type",
+			persons: map[string]*Person{
+				"Person-A": {Properties: map[string]any{"primary_name": "Alice"}},
+				"person-a": {Properties: map[string]any{"primary_name": "Bob"}},
+			},
+		},
+		{
+			name: "three-way collision in same type",
+			persons: map[string]*Person{
+				"PERSON-A": {Properties: map[string]any{"primary_name": "Alice"}},
+				"Person-A": {Properties: map[string]any{"primary_name": "Bob"}},
+				"person-a": {Properties: map[string]any{"primary_name": "Carol"}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			glx := &GLXFile{
+				Persons:       tt.persons,
+				Events:        tt.events,
+				Relationships: make(map[string]*Relationship),
+				Places:        make(map[string]*Place),
+				Sources:       make(map[string]*Source),
+				Citations:     make(map[string]*Citation),
+				Repositories:  make(map[string]*Repository),
+				Media:         make(map[string]*Media),
+				Assertions:    make(map[string]*Assertion),
+			}
+			if glx.Persons == nil {
+				glx.Persons = make(map[string]*Person)
+			}
+			if glx.Events == nil {
+				glx.Events = make(map[string]*Event)
+			}
+
+			s := NewSerializer(&SerializerOptions{Validate: false})
+			_, err := s.SerializeMultiFileToMap(glx)
+			if err == nil {
+				t.Fatal("Expected case-insensitive collision error, got nil")
+			}
+			if !errors.Is(err, ErrCaseInsensitiveCollision) {
+				t.Errorf("Expected ErrCaseInsensitiveCollision, got: %v", err)
+			}
+		})
+	}
+}
+
+// Cross-type "collisions" are not collisions at all — entities live in
+// per-type subdirectories (persons/, events/), so two entities of different
+// types may share an ID without conflict.
+func TestSerializeMultiFileCrossTypeNoCollision(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
-			"Person-A": {Properties: map[string]any{"primary_name": "Alice"}},
-			"person-a": {Properties: map[string]any{"primary_name": "Bob"}},
+			"shared-id": {Properties: map[string]any{"primary_name": "Alice"}},
 		},
-		Events:        make(map[string]*Event),
+		Events: map[string]*Event{
+			"shared-id": {Type: "birth", Participants: []Participant{{Person: "shared-id", Role: "principal"}}},
+		},
 		Relationships: make(map[string]*Relationship),
 		Places:        make(map[string]*Place),
 		Sources:       make(map[string]*Source),
@@ -484,12 +549,15 @@ func TestSerializeMultiFileCaseCollision(t *testing.T) {
 	}
 
 	s := NewSerializer(&SerializerOptions{Validate: false})
-	_, err := s.SerializeMultiFileToMap(glx)
-	if err == nil {
-		t.Fatal("Expected case-insensitive collision error, got nil")
+	files, err := s.SerializeMultiFileToMap(glx)
+	if err != nil {
+		t.Fatalf("Cross-type same-ID should not collide: %v", err)
 	}
-	if !errors.Is(err, ErrCaseInsensitiveCollision) {
-		t.Errorf("Expected ErrCaseInsensitiveCollision, got: %v", err)
+	if _, ok := files["persons/shared-id.glx"]; !ok {
+		t.Error("Expected persons/shared-id.glx in output")
+	}
+	if _, ok := files["events/shared-id.glx"]; !ok {
+		t.Error("Expected events/shared-id.glx in output")
 	}
 }
 
