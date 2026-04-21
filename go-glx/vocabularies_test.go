@@ -194,7 +194,7 @@ func TestLoadStandardVocabulariesIntoGLX_ClonedMaps(t *testing.T) {
 	}
 
 	// Add a key to glx1
-	glx1.EventTypes["test-mutation"] = &EventType{Label: "Test"}
+	glx1.EventTypes["test-mutation"] = &VocabularyEntry{Label: "Test"}
 
 	// glx2 should NOT have the new key
 	if _, exists := glx2.EventTypes["test-mutation"]; exists {
@@ -219,3 +219,30 @@ func TestLoadStandardVocabulariesIntoGLX_ClonedMaps(t *testing.T) {
 // These tests were removed because WriteStandardVocabularies and WriteVocabulariesToFile
 // were removed from lib (they violated the no-I/O rule). Vocabulary writing is now
 // handled by the CLI commands, and vocabulary serialization is tested in roundtrip tests.
+
+// TestVocabularyEntryYAMLFieldOrder guards against a silent wire-format regression:
+// the VocabularyEntry struct's field order is load-bearing because on-disk vocabulary
+// files use `label, description, <type-specific>, gedcom` order, and single-file
+// archives re-marshal via yaml.Marshal (which follows struct declaration order).
+// If someone alphabetizes or reorders the struct, single-file archives will shuffle
+// key order on every write. This test catches that.
+func TestVocabularyEntryYAMLFieldOrder(t *testing.T) {
+	// An entry that sets every optional field — proves the full order.
+	entry := &VocabularyEntry{
+		Label:       "L",
+		Description: "D",
+		Category:    "C",
+		AppliesTo:   []string{"A"},
+		MimeType:    "M",
+		GEDCOM:      "G",
+	}
+	out, err := yaml.Marshal(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.TrimSpace(string(out))
+	want := "label: L\ndescription: D\ncategory: C\napplies_to:\n    - A\nmime_type: M\ngedcom: G"
+	if got != want {
+		t.Errorf("VocabularyEntry YAML field order changed — single-file archives would shuffle keys on re-marshal.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
