@@ -152,8 +152,6 @@ const crossArchivePairThreshold = 200
 // generateCrossArchivePairs produces person ID pairs where one is from dest and
 // the other from src. Skips pairs that share a relationship in the combined index.
 // Uses surname blocking for large archives to avoid O(N*M) explosion.
-//
-//nolint:gocognit // delegation to helpers keeps each branch simple
 func generateCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFilter string) [][2]string {
 	if personFilter != "" {
 		return generateFilteredCrossArchivePairs(dest, src, idx, personFilter)
