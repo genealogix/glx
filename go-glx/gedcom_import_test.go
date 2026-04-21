@@ -1812,3 +1812,104 @@ func TestImport_PropertiesMapsNeverNil(t *testing.T) {
 			"Media %s Properties should be empty map, not nil", mediaID)
 	}
 }
+
+func TestImportNOTag_CreatesDisprovenAssertion(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 NO BIRT
+2 SOUR @S1@
+3 PAGE page 42
+0 @S1@ SOUR
+1 TITL Birth Records Search
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should create an event for the negated birth
+	var birthEvent *Event
+	var birthEventID string
+	for id, event := range glxFile.Events {
+		if event.Type == EventTypeBirth {
+			birthEvent = event
+			birthEventID = id
+
+			break
+		}
+	}
+	require.NotNil(t, birthEvent, "should create a birth event for NO BIRT")
+	require.Len(t, birthEvent.Participants, 1)
+	assert.Equal(t, ParticipantRolePrincipal, birthEvent.Participants[0].Role)
+
+	// Should create a disproven assertion targeting the event with evidence attached
+	var foundAssertion *Assertion
+	for _, a := range glxFile.Assertions {
+		if a.Subject.Event == birthEventID && a.Status == "disproven" {
+			foundAssertion = a
+
+			break
+		}
+	}
+	require.NotNil(t, foundAssertion, "should create a disproven assertion for NO BIRT")
+	assert.Equal(t, "disproven", foundAssertion.Status)
+	assert.NotEmpty(t, foundAssertion.Notes, "should have note about NO tag origin")
+	assert.True(t, len(foundAssertion.Sources) > 0 || len(foundAssertion.Citations) > 0,
+		"disproven assertion should have evidence (sources or citations)")
+}
+
+func TestImportNOTag_WithoutEvidenceSkipped(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 NO BIRT
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Without evidence (no SOUR), NO tag should create neither assertion nor placeholder event
+	assert.Empty(t, glxFile.Assertions, "NO tag without evidence should not create assertion")
+
+	// Verify no placeholder birth event was created either
+	for _, event := range glxFile.Events {
+		assert.NotEqual(t, EventTypeBirth, event.Type,
+			"NO tag without evidence should not create a placeholder event")
+	}
+}
+
+func TestImportNOTag_WithDate(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 NO NATU
+2 DATE FROM 1700 TO 1800
+2 SOUR @S1@
+0 @S1@ SOUR
+1 TITL Naturalization Records
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	// Should create a naturalization event with the parsed date
+	var natuEvent *Event
+	for _, event := range glxFile.Events {
+		if event.Type == EventTypeNaturalization {
+			natuEvent = event
+
+			break
+		}
+	}
+	require.NotNil(t, natuEvent, "should create a naturalization event for NO NATU")
+	assert.Contains(t, string(natuEvent.Date), "1700",
+		"event date should contain the date range from NO tag")
+	assert.Contains(t, string(natuEvent.Date), "1800",
+		"event date should contain the date range from NO tag")
+}
