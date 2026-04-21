@@ -142,7 +142,7 @@ func TestCollectVitals(t *testing.T) {
 					"name": map[string]any{
 						"value": "John Smith",
 					},
-					"gender": "male",
+					"sex": "male",
 				},
 			},
 		},
@@ -211,7 +211,7 @@ func TestCollectVitals_WitnessChristeningExcluded(t *testing.T) {
 		Persons: map[string]*glxlib.Person{
 			"person-grandfather": {Properties: map[string]any{
 				"name":   "Martin Krause",
-				"gender": "male",
+				"sex": "male",
 			}},
 			"person-grandchild": {Properties: map[string]any{
 				"name": "Christine Krause",

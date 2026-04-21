@@ -1996,6 +1996,7 @@ func TestMapSexToGEDCOM(t *testing.T) {
 	assert.Equal(t, "F", mapSexToGEDCOM("female", nil))
 	assert.Equal(t, "X", mapSexToGEDCOM("other", nil))
 	assert.Equal(t, "U", mapSexToGEDCOM("unknown", nil))
+	assert.Equal(t, "N", mapSexToGEDCOM("not_recorded", nil))
 	assert.Equal(t, "U", mapSexToGEDCOM("", nil))
 
 	// Test vocabulary lookup path (sex_types preferred)

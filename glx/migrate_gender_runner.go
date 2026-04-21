@@ -27,11 +27,26 @@ import (
 //
 // It is opt-in via `glx migrate --rename-gender-to-sex`. The archive is
 // mutated in place; the returned report counts the renames.
+//
+// Legacy detection: the rename is skipped entirely on archives that already
+// carry post-split schema (a `sex` person-property definition, or inlined
+// `gender_types` with a `nonbinary` entry). In post-split archives `gender`
+// means identity, and treating it as sex would silently corrupt identity
+// data.
 func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateReport {
 	if warnOut == nil {
 		warnOut = io.Discard
 	}
 	report := &MigrateReport{}
+
+	if isPostSplitArchive(archive) {
+		_, _ = fmt.Fprintln(warnOut,
+			"Warning: archive appears to already use the post-split two-field model "+
+				"(sex/gender) — skipping --rename-gender-to-sex. Running this migration "+
+				"on a post-split archive would corrupt gender-identity data.")
+
+		return report
+	}
 
 	report.PropertiesRenamed = renamePersonGenderProperties(archive, warnOut)
 	report.AssertionsRenamed = renameGenderAssertions(archive)
@@ -41,6 +56,76 @@ func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateRepo
 	archive.InvalidateCache()
 
 	return report
+}
+
+// isPostSplitArchive returns true when the archive carries data that is
+// clearly post-#528 (two-field model already in use). Vocabulary presence is
+// NOT a reliable signal — `LoadArchiveWithOptions` merges standard
+// vocabularies at load time, so both `sex_types` and the post-split
+// `person_properties` are always populated by that point. We look at actual
+// person data and assertions instead:
+//
+//   - Any person has a `sex` property set (someone is already using the new
+//     field — treating their `gender` values as sex would corrupt identity
+//     data).
+//   - Any person has a `gender` value of `nonbinary` (only exists in the
+//     post-split gender vocabulary).
+//   - Any assertion targets the `sex` property, or asserts `gender =
+//     nonbinary`.
+func isPostSplitArchive(archive *glxlib.GLXFile) bool {
+	for _, person := range archive.Persons {
+		if person == nil {
+			continue
+		}
+		if _, hasSex := person.Properties[glxlib.PersonPropertySex]; hasSex {
+			return true
+		}
+		if isIdentityOnlyGenderValue(person.Properties[glxlib.PersonPropertyGender]) {
+			return true
+		}
+	}
+	for _, assertion := range archive.Assertions {
+		if assertion == nil {
+			continue
+		}
+		if assertion.Property == glxlib.PersonPropertySex {
+			return true
+		}
+		if assertion.Property == glxlib.PersonPropertyGender &&
+			assertion.Value == glxlib.GenderNonbinary {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isIdentityOnlyGenderValue reports whether a gender property value contains
+// `nonbinary` — the canonical "only exists post-split" marker. Handles the
+// string, single-temporal-object, and temporal-list shapes a property can
+// take.
+func isIdentityOnlyGenderValue(val any) bool {
+	switch v := val.(type) {
+	case string:
+		return v == glxlib.GenderNonbinary
+	case map[string]any:
+		if s, ok := v["value"].(string); ok {
+			return s == glxlib.GenderNonbinary
+		}
+	case []any:
+		for _, item := range v {
+			if s, ok := item.(string); ok && s == glxlib.GenderNonbinary {
+				return true
+			}
+			if m, ok := item.(map[string]any); ok {
+				if s, ok := m["value"].(string); ok && s == glxlib.GenderNonbinary {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 // renamePersonGenderProperties moves person.properties["gender"] → ["sex"]

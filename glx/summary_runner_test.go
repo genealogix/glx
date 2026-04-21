@@ -40,7 +40,7 @@ func newTestArchive() *glxlib.GLXFile {
 							"fields": map[string]any{"type": "nickname"},
 						},
 					},
-					"gender": "male",
+					"sex": "male",
 				},
 			},
 			"person-jane": {
@@ -55,19 +55,19 @@ func newTestArchive() *glxlib.GLXFile {
 							"fields": map[string]any{"type": "married"},
 						},
 					},
-					"gender": "female",
+					"sex": "female",
 				},
 			},
 			"person-child": {
 				Properties: map[string]any{
 					"name":   "Alice Smith",
-					"gender": "female",
+					"sex": "female",
 				},
 			},
 			"person-child2": {
 				Properties: map[string]any{
 					"name":   "Bob Smith",
-					"gender": "male",
+					"sex": "male",
 				},
 			},
 			"person-neighbor": {
@@ -252,7 +252,7 @@ func TestExtractAllNameVariants_StructuredMap(t *testing.T) {
 
 func TestExtractAllNameVariants_NoName(t *testing.T) {
 	person := &glxlib.Person{
-		Properties: map[string]any{"gender": "male"},
+		Properties: map[string]any{"sex": "male"},
 	}
 
 	variants := extractAllNameVariants(person)
@@ -400,9 +400,9 @@ func TestDisplayDate(t *testing.T) {
 func TestFindSpouses_ChronologicalOrder(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary Green", "gender": "female"}},
-			"person-dan":  {Properties: map[string]any{"name": "Daniel Lane", "gender": "male"}},
-			"person-john": {Properties: map[string]any{"name": "John Babcock", "gender": "male"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary Green", "sex": "female"}},
+			"person-dan":  {Properties: map[string]any{"name": "Daniel Lane", "sex": "male"}},
+			"person-john": {Properties: map[string]any{"name": "John Babcock", "sex": "male"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-marriage-babcock": {
@@ -452,9 +452,9 @@ func TestFindSpouses_ChronologicalOrder(t *testing.T) {
 func TestFindSpouses_SameYearDifferentMonths(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary", "gender": "female"}},
-			"person-a":    {Properties: map[string]any{"name": "Spouse A", "gender": "male"}},
-			"person-b":    {Properties: map[string]any{"name": "Spouse B", "gender": "male"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary", "sex": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "sex": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "sex": "male"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-b": {
@@ -505,9 +505,9 @@ func TestFindSpouses_SameYearDifferentMonths(t *testing.T) {
 func TestFindSpouses_UndatedLast(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary", "gender": "female"}},
-			"person-a":    {Properties: map[string]any{"name": "Spouse A", "gender": "male"}},
-			"person-b":    {Properties: map[string]any{"name": "Spouse B", "gender": "male"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary", "sex": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "sex": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "sex": "male"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-a": {
@@ -547,8 +547,8 @@ func TestFindSpouses_UndatedLast(t *testing.T) {
 }
 
 func TestPronounFor(t *testing.T) {
-	male := &glxlib.Person{Properties: map[string]any{"gender": "male"}}
-	female := &glxlib.Person{Properties: map[string]any{"gender": "female"}}
+	male := &glxlib.Person{Properties: map[string]any{"sex": "male"}}
+	female := &glxlib.Person{Properties: map[string]any{"sex": "female"}}
 	unknown := &glxlib.Person{Properties: map[string]any{}}
 
 	subj, poss := pronounFor(male)
@@ -584,7 +584,7 @@ func TestGenerateLifeHistory(t *testing.T) {
 func TestGenerateLifeHistory_IncludesChildren(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-jane":     {Properties: map[string]any{"name": "Jane Miller", "gender": "female"}},
+			"person-jane":     {Properties: map[string]any{"name": "Jane Miller", "sex": "female"}},
 			"person-harriett": {Properties: map[string]any{"name": "Harriett Webb"}},
 			"person-elijah":   {Properties: map[string]any{"name": "Elijah Webb"}},
 			"person-mary":     {Properties: map[string]any{"name": "Mary Ellen Webb"}},

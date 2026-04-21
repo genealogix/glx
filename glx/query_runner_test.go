@@ -411,7 +411,7 @@ func TestExtractAllNames_TemporalList(t *testing.T) {
 }
 
 func TestExtractAllNames_NoName(t *testing.T) {
-	person := &glxlib.Person{Properties: map[string]any{"gender": "male"}}
+	person := &glxlib.Person{Properties: map[string]any{"sex": "male"}}
 	names := extractAllNames(person)
 	assert.Nil(t, names)
 }
@@ -458,7 +458,7 @@ func TestExtractPersonName(t *testing.T) {
 		},
 		{
 			name:  "no name property",
-			props: map[string]any{"gender": "male"},
+			props: map[string]any{"sex": "male"},
 			want:  "(unnamed)",
 		},
 	}

@@ -423,6 +423,8 @@ func mapSexToGEDCOM(value string, expCtx *ExportContext) string {
 		return "F"
 	case SexOther:
 		return "X"
+	case SexNotRecorded:
+		return "N"
 	default:
 		return "U"
 	}

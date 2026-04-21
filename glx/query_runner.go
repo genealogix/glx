@@ -614,14 +614,14 @@ func propertyString(props map[string]any, key string) string {
 	return fmt.Sprint(raw)
 }
 
-// personSex returns the person's recorded sex, falling back to the legacy
-// gender property for archives created before the two-field-model split (#528).
+// personSex returns the person's recorded sex. It intentionally does not
+// fall back to the gender property: post-split (#528), `gender` represents
+// self-identified gender identity, and leaking identity values (e.g.,
+// `nonbinary`) into sex-based inferences (parent role labelling, vitals)
+// is incorrect. Legacy archives should run `glx migrate --rename-gender-to-sex`
+// before using these CLI commands.
 func personSex(person *glxlib.Person) string {
-	if v := propertyString(person.Properties, glxlib.PersonPropertySex); v != "" {
-		return v
-	}
-
-	return propertyString(person.Properties, glxlib.PersonPropertyGender)
+	return propertyString(person.Properties, glxlib.PersonPropertySex)
 }
 
 // queryDayMonthRegexp matches day-of-month followed by a month abbreviation

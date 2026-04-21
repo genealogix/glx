@@ -151,10 +151,36 @@ func TestMigrateGenderToSex_PostSplitGenderTypesUntouched(t *testing.T) {
 	assert.Empty(t, archive.SexTypes)
 }
 
-func TestMigrateGenderToSex_ConflictWarnsAndLeavesGender(t *testing.T) {
+func TestMigrateGenderToSex_SkipsWhenSexAlreadyPresent(t *testing.T) {
+	// Any person with `sex` set signals the archive is post-split. Running the
+	// migration on such an archive must not touch `gender` (identity) values.
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-1": {Properties: map[string]any{"gender": "male", "sex": "female"}},
+			"person-2": {Properties: map[string]any{"gender": "nonbinary"}},
+		},
+	}
+
+	warn := &bytes.Buffer{}
+	report := migrateGenderToSex(archive, warn)
+
+	assert.Equal(t, 0, report.PropertiesRenamed)
+	assert.Equal(t, 0, report.AssertionsRenamed)
+	assert.Equal(t, 0, report.VocabEntriesRenamed)
+	assert.Equal(t, "male", archive.Persons["person-1"].Properties["gender"])
+	assert.Equal(t, "female", archive.Persons["person-1"].Properties["sex"])
+	assert.Equal(t, "nonbinary", archive.Persons["person-2"].Properties["gender"])
+	assert.Contains(t, warn.String(), "post-split")
+}
+
+func TestMigrateGenderToSex_SkipsWhenGenderHasNonbinary(t *testing.T) {
+	// `nonbinary` only appears in the post-split gender_types vocabulary, so
+	// its presence (even without any `sex` values) signals the archive is
+	// using `gender` as identity.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {Properties: map[string]any{"gender": "male"}},
+			"person-2": {Properties: map[string]any{"gender": "nonbinary"}},
 		},
 	}
 
@@ -163,8 +189,26 @@ func TestMigrateGenderToSex_ConflictWarnsAndLeavesGender(t *testing.T) {
 
 	assert.Equal(t, 0, report.PropertiesRenamed)
 	assert.Equal(t, "male", archive.Persons["person-1"].Properties["gender"])
-	assert.Equal(t, "female", archive.Persons["person-1"].Properties["sex"])
-	assert.Contains(t, warn.String(), "person-1")
+	assert.NotContains(t, archive.Persons["person-1"].Properties, "sex")
+	assert.Contains(t, warn.String(), "post-split")
+}
+
+func TestMigrateGenderToSex_SkipsWhenAssertionTargetsSex(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {Properties: map[string]any{"gender": "male"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-1"}, Property: "sex", Value: "male"},
+		},
+	}
+
+	warn := &bytes.Buffer{}
+	report := migrateGenderToSex(archive, warn)
+
+	assert.Equal(t, 0, report.PropertiesRenamed)
+	assert.Equal(t, 0, report.AssertionsRenamed)
+	assert.Contains(t, warn.String(), "post-split")
 }
 
 func TestMigrateGenderToSex_NoOpOnAlreadyMigratedArchive(t *testing.T) {
