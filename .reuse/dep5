@@ -1,0 +1,57 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: GLX (Genealogix)
+Upstream-Contact: https://github.com/genealogix/glx
+
+# Go source files have full Apache 2.0 headers enforced by goheader linter.
+# This file covers all other files that cannot have inline SPDX headers.
+
+Files: glx/*.go go-glx/*.go
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: specification/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: docs/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: *.md
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: go.mod go.sum
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: Makefile .goreleaser.yml renovate.json .gitattributes .gitignore .npmrc
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: .github/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: .claude/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: .devcontainer/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: website/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: glx/testdata/valid/* glx/testdata/invalid/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: glx/testdata/gedcom/*
+Copyright: various
+License: Apache-2.0
+Comment: GEDCOM test data files from various sources. Some files contain
+ third-party copyright notices (e.g., torture-test by H. Eichmann).
+ Files without explicit copyright are treated as project test fixtures.
