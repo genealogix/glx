@@ -226,6 +226,11 @@ func TestLoadStandardVocabulariesIntoGLX_ClonedMaps(t *testing.T) {
 // archives re-marshal via yaml.Marshal (which follows struct declaration order).
 // If someone alphabetizes or reorders the struct, single-file archives will shuffle
 // key order on every write. This test catches that.
+//
+// We assert the key sequence on a parsed yaml.Node rather than comparing the raw
+// marshaled string so the test guards only the intended invariant (key order) and
+// does not fail on incidental formatting changes in yaml.v3 (indentation, flow
+// style, trailing newline, etc.).
 func TestVocabularyEntryYAMLFieldOrder(t *testing.T) {
 	// An entry that sets every optional field — proves the full order.
 	entry := &VocabularyEntry{
@@ -240,9 +245,26 @@ func TestVocabularyEntryYAMLFieldOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := strings.TrimSpace(string(out))
-	want := "label: L\ndescription: D\ncategory: C\napplies_to:\n    - A\nmime_type: M\ngedcom: G"
-	if got != want {
-		t.Errorf("VocabularyEntry YAML field order changed — single-file archives would shuffle keys on re-marshal.\ngot:\n%s\nwant:\n%s", got, want)
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(out, &doc); err != nil {
+		t.Fatalf("unmarshal marshaled entry into yaml.Node: %v", err)
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) != 1 {
+		t.Fatalf("expected single document node, got kind=%d with %d children", doc.Kind, len(doc.Content))
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		t.Fatalf("expected root mapping node, got kind=%d", root.Kind)
+	}
+
+	// A mapping node's Content alternates key, value, key, value, ...
+	got := make([]string, 0, len(root.Content)/2)
+	for i := 0; i < len(root.Content); i += 2 {
+		got = append(got, root.Content[i].Value)
+	}
+	want := []string{"label", "description", "category", "applies_to", "mime_type", "gedcom"}
+	if !slices.Equal(got, want) {
+		t.Errorf("VocabularyEntry YAML key order changed — single-file archives would shuffle keys on re-marshal.\ngot:  %v\nwant: %v", got, want)
 	}
 }
