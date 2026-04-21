@@ -246,13 +246,13 @@ git commit -s -m "feat: Add GEDCOM 7.0 EXID support"
 This appends a line to the commit message using the identity from `git config user.name` and `git config user.email`:
 
 ```
-Signed-off-by: Jane Developer <jane@example.com>
+Signed-off-by: Your Name <you@example.com>
 ```
 
 Use the same name and email you use for other contributions so maintainers can reach you about your change. If `user.name` or `user.email` are wrong for this repository, set them locally before committing:
 
 ```bash
-git config user.name  "Your Name"
+git config user.name "Your Name"
 git config user.email "you@example.com"
 ```
 
