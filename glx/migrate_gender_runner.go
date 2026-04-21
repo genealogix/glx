@@ -157,11 +157,17 @@ func renamePersonGenderProperties(archive *glxlib.GLXFile, warnOut io.Writer) in
 	return count
 }
 
-// renameGenderAssertions flips assertion.Property from "gender" to "sex".
+// renameGenderAssertions flips assertion.Property from "gender" to "sex"
+// only for assertions whose subject is a person. Non-person subjects (events,
+// relationships, etc.) may legitimately use a custom `gender` property and
+// must not be touched by this migration.
 func renameGenderAssertions(archive *glxlib.GLXFile) int {
 	count := 0
 	for _, assertion := range archive.Assertions {
 		if assertion == nil {
+			continue
+		}
+		if assertion.Subject.Person == "" {
 			continue
 		}
 		if assertion.Property == glxlib.PersonPropertyGender {

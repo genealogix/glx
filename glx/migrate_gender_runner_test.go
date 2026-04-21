@@ -49,6 +49,9 @@ func TestMigrateGenderToSex_AssertionRename(t *testing.T) {
 		Assertions: map[string]*glxlib.Assertion{
 			"a-1": {Subject: glxlib.EntityRef{Person: "person-1"}, Property: "gender", Value: "male"},
 			"a-2": {Subject: glxlib.EntityRef{Person: "person-1"}, Property: "occupation", Value: "farmer"},
+			// Non-person subject — a custom "gender" property on an event
+			// must NOT be renamed by this migration.
+			"a-3": {Subject: glxlib.EntityRef{Event: "event-1"}, Property: "gender", Value: "mixed"},
 		},
 	}
 
@@ -57,6 +60,7 @@ func TestMigrateGenderToSex_AssertionRename(t *testing.T) {
 	assert.Equal(t, 1, report.AssertionsRenamed)
 	assert.Equal(t, "sex", archive.Assertions["a-1"].Property)
 	assert.Equal(t, "occupation", archive.Assertions["a-2"].Property)
+	assert.Equal(t, "gender", archive.Assertions["a-3"].Property)
 }
 
 func TestMigrateGenderToSex_VocabEntryRename(t *testing.T) {

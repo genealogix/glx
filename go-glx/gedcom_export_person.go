@@ -402,6 +402,10 @@ func parseValueToGEDCOMName(value string) string {
 // mapSexToGEDCOM converts a GLX sex (or gender, as fallback) value to a GEDCOM SEX value.
 // Uses the sex_types vocabulary for lookup; falls back to gender_types, then
 // to hardcoded mappings for standard values when no vocabulary entry exists.
+//
+// `not_recorded` maps to "N" for GEDCOM 5.5.x, which is the spec's Not
+// Recorded value. GEDCOM 7.0 restricts SEX to M/F/X/U, so on 7.0 exports
+// `not_recorded` collapses to "U" to keep the output valid.
 func mapSexToGEDCOM(value string, expCtx *ExportContext) string {
 	if expCtx != nil && expCtx.GLX != nil {
 		if expCtx.GLX.SexTypes != nil {
@@ -424,6 +428,10 @@ func mapSexToGEDCOM(value string, expCtx *ExportContext) string {
 	case SexOther:
 		return "X"
 	case SexNotRecorded:
+		if expCtx != nil && expCtx.Version == GEDCOM70 {
+			return "U"
+		}
+
 		return "N"
 	default:
 		return "U"

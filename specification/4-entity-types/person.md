@@ -258,7 +258,7 @@ properties:
 **Key Points:**
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
-- The `sex` and `gender` properties are constrained by the [sex types](vocabularies#sex-types-vocabulary) and [gender types](vocabularies#gender-types-vocabulary) vocabularies — out-of-vocabulary values produce a warning
+- The `sex` and `gender` properties are constrained by the [sex types](../5-standard-vocabularies/#sex-types) and [gender types](../5-standard-vocabularies/#gender-types) vocabularies — out-of-vocabulary values produce a warning
 - Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts#temporal-properties)
 - Custom properties can be added by extending the vocabulary
 - Birth and death information is stored on [Event entities](event) of type `birth` and `death`, not as person properties

@@ -2032,6 +2032,14 @@ func TestMapSexToGEDCOM(t *testing.T) {
 		},
 	}
 	assert.Equal(t, "X", mapSexToGEDCOM("legacy", expCtxGender))
+
+	// not_recorded is version-dependent: "N" is a GEDCOM 5.5.x value and not
+	// valid in GEDCOM 7.0 (M/F/X/U only), so it collapses to "U" on 7.0
+	// exports.
+	expCtx551 := &ExportContext{GLX: &GLXFile{}, Version: GEDCOM551}
+	assert.Equal(t, "N", mapSexToGEDCOM("not_recorded", expCtx551))
+	expCtx70 := &ExportContext{GLX: &GLXFile{}, Version: GEDCOM70}
+	assert.Equal(t, "U", mapSexToGEDCOM("not_recorded", expCtx70))
 }
 
 func TestBuildPersonEventsIndex(t *testing.T) {
