@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"sort"
 	"strings"
@@ -32,10 +33,10 @@ type DuplicateSignal struct {
 
 // DuplicatePair describes a potential duplicate person pair with a similarity score.
 type DuplicatePair struct {
-	PersonA  string            `json:"person_a"`
-	PersonB  string            `json:"person_b"`
-	Score    float64           `json:"score"`
-	Signals  []DuplicateSignal `json:"signals"`
+	PersonA string            `json:"person_a"`
+	PersonB string            `json:"person_b"`
+	Score   float64           `json:"score"`
+	Signals []DuplicateSignal `json:"signals"`
 }
 
 // DuplicateResult holds the complete duplicate detection output.
@@ -63,16 +64,237 @@ const (
 
 // duplicateIndex caches lookup maps built from the archive.
 type duplicateIndex struct {
-	personEvents   map[string][]string          // person ID → event IDs
-	personRelPeers map[string]map[string]bool   // person ID → set of related person IDs
-	relatedPairs   map[[2]string]bool            // sorted person ID pairs that share a relationship
+	personEvents     map[string][]string        // person ID → event IDs
+	personRelPeers   map[string]map[string]bool // person ID → set of related person IDs
+	relatedPairs     map[[2]string]bool         // sorted person ID pairs that share a relationship
+	personBirthEvent map[string]*Event          // person ID → their birth event (lowest-ID principal role)
+	personDeathEvent map[string]*Event          // person ID → their death event (lowest-ID principal role)
+}
+
+// FindCrossArchiveDuplicates detects potential duplicate persons between two
+// separate archives. Only cross-archive pairs are returned (one person from
+// dest, one from src). The archives are not modified.
+func FindCrossArchiveDuplicates(dest, src *GLXFile, opts DuplicateOptions) (*DuplicateResult, error) {
+	if opts.Threshold < 0.0 || opts.Threshold > 1.0 {
+		return nil, fmt.Errorf("%w: %f", ErrInvalidThreshold, opts.Threshold)
+	}
+
+	if dest == nil || src == nil || len(dest.Persons) == 0 || len(src.Persons) == 0 {
+		return &DuplicateResult{Threshold: opts.Threshold, Pairs: []DuplicatePair{}}, nil
+	}
+
+	// Build a combined read-only view for scoring (scorePair needs to look up
+	// events/places/relationships from either archive).
+	combined := buildCombinedView(dest, src)
+	idx := buildDuplicateIndex(combined)
+
+	// Generate only cross-archive pairs
+	pairs := generateCrossArchivePairs(dest, src, idx, opts.PersonFilter)
+
+	var results []DuplicatePair
+	for _, pair := range pairs {
+		personA := combined.Persons[pair[0]]
+		personB := combined.Persons[pair[1]]
+		if personA == nil || personB == nil {
+			continue
+		}
+
+		score, signals := scorePair(pair[0], pair[1], personA, personB, combined, idx)
+		if score >= opts.Threshold {
+			results = append(results, DuplicatePair{
+				PersonA: pair[0],
+				PersonB: pair[1],
+				Score:   math.Round(score*100) / 100, //nolint:mnd // round to 2 decimal places
+				Signals: signals,
+			})
+		}
+	}
+
+	sort.SliceStable(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+
+	return &DuplicateResult{
+		Pairs:     results,
+		Threshold: opts.Threshold,
+	}, nil
+}
+
+// buildCombinedView creates a read-only GLXFile containing entities from both
+// archives. On ID collision, dest wins (consistent with merge semantics).
+// The original archives are not modified.
+func buildCombinedView(dest, src *GLXFile) *GLXFile {
+	combined := &GLXFile{
+		Persons:       make(map[string]*Person, len(dest.Persons)+len(src.Persons)),
+		Events:        make(map[string]*Event, len(dest.Events)+len(src.Events)),
+		Relationships: make(map[string]*Relationship, len(dest.Relationships)+len(src.Relationships)),
+		Places:        make(map[string]*Place, len(dest.Places)+len(src.Places)),
+	}
+
+	// Add src first, then dest (dest overwrites on collision)
+	maps.Copy(combined.Persons, src.Persons)
+	maps.Copy(combined.Persons, dest.Persons)
+
+	maps.Copy(combined.Events, src.Events)
+	maps.Copy(combined.Events, dest.Events)
+
+	maps.Copy(combined.Relationships, src.Relationships)
+	maps.Copy(combined.Relationships, dest.Relationships)
+
+	maps.Copy(combined.Places, src.Places)
+	maps.Copy(combined.Places, dest.Places)
+
+	return combined
+}
+
+// crossArchivePairThreshold is the combined person count above which surname
+// blocking is used to reduce the O(N*M) Cartesian product.
+const crossArchivePairThreshold = 200
+
+// generateCrossArchivePairs produces person ID pairs where one is from dest and
+// the other from src. Skips pairs that share a relationship in the combined index.
+// Uses surname blocking for large archives to avoid O(N*M) explosion.
+func generateCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFilter string) [][2]string {
+	if personFilter != "" {
+		return generateFilteredCrossArchivePairs(dest, src, idx, personFilter)
+	}
+
+	if len(dest.Persons)+len(src.Persons) < crossArchivePairThreshold {
+		return generateAllCrossArchivePairs(dest, src, idx)
+	}
+
+	return generateBlockedCrossArchivePairs(dest, src, idx)
+}
+
+// isCrossArchivePairEligible checks if a dest+src pair should be included.
+func isCrossArchivePairEligible(destID, srcID string, idx *duplicateIndex) bool {
+	if srcID == destID {
+		return false
+	}
+
+	a, b := destID, srcID
+	if a > b {
+		a, b = b, a
+	}
+
+	return !idx.relatedPairs[[2]string{a, b}]
+}
+
+// generateFilteredCrossArchivePairs returns pairs involving a specific person.
+func generateFilteredCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex, personFilter string) [][2]string {
+	var pairs [][2]string
+
+	if _, ok := src.Persons[personFilter]; ok {
+		for id := range dest.Persons {
+			if isCrossArchivePairEligible(id, personFilter, idx) {
+				pairs = append(pairs, [2]string{id, personFilter})
+			}
+		}
+	}
+
+	if _, ok := dest.Persons[personFilter]; ok {
+		for id := range src.Persons {
+			if isCrossArchivePairEligible(personFilter, id, idx) {
+				pairs = append(pairs, [2]string{personFilter, id})
+			}
+		}
+	}
+
+	return sortPairs(pairs)
+}
+
+// generateAllCrossArchivePairs returns all dest×src pairs for small archives.
+func generateAllCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex) [][2]string {
+	var pairs [][2]string
+
+	for destID := range dest.Persons {
+		for srcID := range src.Persons {
+			if isCrossArchivePairEligible(destID, srcID, idx) {
+				pairs = append(pairs, [2]string{destID, srcID})
+			}
+		}
+	}
+
+	return sortPairs(pairs)
+}
+
+// generateBlockedCrossArchivePairs uses surname blocking for large archives.
+func generateBlockedCrossArchivePairs(dest, src *GLXFile, idx *duplicateIndex) [][2]string {
+	destBlocks := buildSurnameBlocks(dest)
+	srcBlocks := buildSurnameBlocks(src)
+
+	seen := make(map[[2]string]bool)
+	var pairs [][2]string
+
+	for surname, destBlock := range destBlocks {
+		srcBlock, ok := srcBlocks[surname]
+		if !ok {
+			continue
+		}
+
+		for _, destID := range destBlock {
+			for _, srcID := range srcBlock {
+				a, b := destID, srcID
+				if a > b {
+					a, b = b, a
+				}
+
+				pair := [2]string{a, b}
+				if seen[pair] {
+					continue
+				}
+
+				seen[pair] = true
+
+				if isCrossArchivePairEligible(destID, srcID, idx) {
+					pairs = append(pairs, [2]string{destID, srcID})
+				}
+			}
+		}
+	}
+
+	return sortPairs(pairs)
+}
+
+// buildSurnameBlocks groups person IDs by normalized surname.
+func buildSurnameBlocks(archive *GLXFile) map[string][]string {
+	blocks := make(map[string][]string)
+	for id, person := range archive.Persons {
+		if person == nil {
+			continue
+		}
+		_, surname := ExtractNameFields(person.Properties[PersonPropertyName])
+		if surname == "" {
+			_, surname = splitFullName(PersonDisplayName(person))
+		}
+		key := strings.ToLower(strings.TrimSpace(surname))
+		if key == "" {
+			key = "_nosurname"
+		}
+		blocks[key] = append(blocks[key], id)
+	}
+
+	return blocks
+}
+
+// sortPairs sorts pairs for deterministic output.
+func sortPairs(pairs [][2]string) [][2]string {
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i][0] != pairs[j][0] {
+			return pairs[i][0] < pairs[j][0]
+		}
+
+		return pairs[i][1] < pairs[j][1]
+	})
+
+	return pairs
 }
 
 // FindDuplicates scans an archive for potential duplicate persons.
 // Threshold must be between 0.0 and 1.0 inclusive.
 func FindDuplicates(archive *GLXFile, opts DuplicateOptions) (*DuplicateResult, error) {
 	if opts.Threshold < 0.0 || opts.Threshold > 1.0 {
-		return nil, fmt.Errorf("threshold must be between 0.0 and 1.0, got %f", opts.Threshold)
+		return nil, fmt.Errorf("%w: %f", ErrInvalidThreshold, opts.Threshold)
 	}
 
 	if archive == nil || len(archive.Persons) < 2 {
@@ -115,19 +337,45 @@ func FindDuplicates(archive *GLXFile, opts DuplicateOptions) (*DuplicateResult, 
 // buildDuplicateIndex creates lookup maps from the archive.
 func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 	idx := &duplicateIndex{
-		personEvents:   make(map[string][]string),
-		personRelPeers: make(map[string]map[string]bool),
-		relatedPairs:   make(map[[2]string]bool),
+		personEvents:     make(map[string][]string),
+		personRelPeers:   make(map[string]map[string]bool),
+		relatedPairs:     make(map[[2]string]bool),
+		personBirthEvent: make(map[string]*Event),
+		personDeathEvent: make(map[string]*Event),
 	}
 
-	// Index events by participant
-	for eventID, event := range archive.Events {
+	// Index events by participant; pre-bind birth/death events per person so
+	// scorePair doesn't re-sort and scan all events for every candidate pair.
+	// Iterate event IDs in sorted order and write only if absent, matching
+	// FindPersonEvent's "lowest-ID principal event wins" determinism.
+	eventIDs := make([]string, 0, len(archive.Events))
+	for id := range archive.Events {
+		eventIDs = append(eventIDs, id)
+	}
+	sort.Strings(eventIDs)
+
+	for _, eventID := range eventIDs {
+		event := archive.Events[eventID]
 		if event == nil {
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person != "" {
-				idx.personEvents[p.Person] = append(idx.personEvents[p.Person], eventID)
+			if p.Person == "" {
+				continue
+			}
+			idx.personEvents[p.Person] = append(idx.personEvents[p.Person], eventID)
+			if !isSubjectRole(p.Role) {
+				continue
+			}
+			switch event.Type {
+			case EventTypeBirth:
+				if _, seen := idx.personBirthEvent[p.Person]; !seen {
+					idx.personBirthEvent[p.Person] = event
+				}
+			case EventTypeDeath:
+				if _, seen := idx.personDeathEvent[p.Person]; !seen {
+					idx.personDeathEvent[p.Person] = event
+				}
 			}
 		}
 	}
@@ -269,8 +517,8 @@ func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx 
 	totalScore += weightName * nameScore
 
 	// Birth year and place
-	_, birthA := FindPersonEvent(archive, idA, EventTypeBirth)
-	_, birthB := FindPersonEvent(archive, idB, EventTypeBirth)
+	birthA := idx.personBirthEvent[idA]
+	birthB := idx.personBirthEvent[idB]
 	byScore, byDetail := scoreEventYearSimilarity(birthA, birthB)
 	signals = append(signals, DuplicateSignal{"Birth year", weightBirthYear, byScore, byDetail})
 	totalScore += weightBirthYear * byScore
@@ -280,8 +528,8 @@ func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx 
 	totalScore += weightBirthPlace * bpScore
 
 	// Death year and place
-	_, deathA := FindPersonEvent(archive, idA, EventTypeDeath)
-	_, deathB := FindPersonEvent(archive, idB, EventTypeDeath)
+	deathA := idx.personDeathEvent[idA]
+	deathB := idx.personDeathEvent[idB]
 	dyScore, dyDetail := scoreEventYearSimilarity(deathA, deathB)
 	signals = append(signals, DuplicateSignal{"Death year", weightDeathYear, dyScore, dyDetail})
 	totalScore += weightDeathYear * dyScore
@@ -457,7 +705,6 @@ func scoreEventPlaceSimilarity(eventA, eventB *Event, archive *GLXFile) (float64
 
 	return 0, "different"
 }
-
 
 // scoreSharedRelationships scores the overlap in related persons.
 func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, string) {
