@@ -44,7 +44,7 @@ An archive is not *required* to be a Git repository — nothing stops a research
 
 **Negative**
 
-- Git has scale limits. Archives with tens of millions of entities will strain Git's object and index models before they strain the YAML format itself. Solutions (partial clones, sub-archive splits) are workable but not free.
+- Git has scale limits. Very large archives can strain Git's object and index models before they strain the YAML format itself. Solutions (partial clones, sub-archive splits) are workable but not free.
 - Contributors must learn at least minimal Git. Tools like GitHub Desktop and the `glx` CLI try to hide the rough edges, but a researcher who edits a file and then wants to "undo" still has to learn at least `git restore`.
 - There is no server-side transactional semantics — two researchers can genuinely disagree about a fact, and the archive is fine with that. It is the researchers, not the database, who have to reconcile via review.
 - Windows line-ending handling and case-insensitive filesystems create occasional friction. The repository pins line endings (`.gitattributes`) and the serializer lowercases filenames to mitigate.

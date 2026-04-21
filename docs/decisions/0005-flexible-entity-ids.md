@@ -21,7 +21,7 @@ Every entity in a GLX archive (persons, events, places, sources, etc.) needs a u
 
 A second consideration is **privacy in shared diffs**. When a researcher shares a commit or issue snippet that references only entity IDs, descriptive IDs leak real names. Random hex IDs do not.
 
-A third is **filesystem layout**. In multi-file archives, filenames are derived from entity IDs (see beta.10 CHANGELOG: `strings.ToLower(entityID) + ".glx"`). IDs therefore need to be filename-safe on Windows, macOS, and Linux — which rules out colons, slashes, and most punctuation.
+A third is **filesystem layout**. In multi-file archives, filenames are derived from entity IDs (`strings.ToLower(entityID) + ".glx"`). IDs therefore need to be filename-safe on Windows, macOS, and Linux — which rules out colons, slashes, and most punctuation.
 
 ## Decision
 

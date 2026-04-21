@@ -17,7 +17,7 @@ The GLX codebase is split into two Go packages:
 - **`go-glx/`** — the core library. Types, serialisation, validation, GEDCOM conversion, vocabulary handling.
 - **`glx/`** — the CLI application. Cobra commands, flag parsing, user-facing messages, and — critically — every interaction with the filesystem.
 
-Early in the project, some library functions did their own I/O (`os.ReadFile`, `os.WriteFile`, `os.MkdirAll`). This caused three recurring problems:
+Without an explicit rule, library functions would naturally reach for `os.ReadFile`, `os.WriteFile`, and `os.MkdirAll` — that pattern causes three recurring problems:
 
 - **Tests needed the filesystem.** A unit test for "does this serialize correctly?" had to create temp directories, write bytes, and clean up. It made tests slower, flakier (especially on Windows with antivirus or indexer locks — see #701), and harder to run in parallel.
 - **The library could not be embedded anywhere else.** A web server wanting to convert an uploaded GEDCOM file to GLX bytes had no way to do so without first writing the input to disk and then reading output from disk.
