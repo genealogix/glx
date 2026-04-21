@@ -279,9 +279,11 @@ Entity IDs can be any unique identifier you choose, with the following constrain
 **Requirements:**
 - 1-64 characters in length
 - Alphanumeric characters (a-z, A-Z, 0-9) and hyphens only
-- Must be unique across the entire archive
+- Must be unique across the entire archive (case-insensitive — `Person-A` and `person-a` collide)
 
 > **Note:** Examples in this documentation use prefixes (e.g., `person-abc123`) for readability. Prefixes are not required—any format meeting the requirements above is valid.
+
+> **Multi-file naming:** In multi-file archives, the entity ID determines the filename. The serializer writes each entity to `<type>/<lowercased-id>.glx` (e.g., entity ID `person-John-Smith` → `persons/person-john-smith.glx`). This means filenames are stable across writes — pick descriptive IDs if you want readable diffs.
 
 **Example Formats:**
 - Random hex: `a1b2c3d4`, `12345678`
@@ -318,7 +320,7 @@ fmt.Sprintf("%x", b)
 - `leeds-uk`
 - `parish-register-leeds`
 
-**Note:** Descriptive IDs are fine for personal use but may cause conflicts when merging archives. Random IDs reduce collision risk in collaborative projects.
+**Note:** Both formats produce stable, deterministic filenames in multi-file archives. Descriptive IDs make diffs and file listings easier to scan; random IDs avoid leaking names when collaborators see only entity IDs. Pick the format that fits your workflow — neither is more collision-prone than the other.
 
 ## Vocabulary Files
 
@@ -442,7 +444,7 @@ See [Validation Levels](#validation-levels) above for details on what is validat
 ## Best Practices
 
 1. **Choose one primary strategy** and stick with it for consistency
-2. **Use meaningful file names** that relate to content (e.g., `smith-family.glx`, `vital-records.glx`)
+2. **For hybrid/multi-entity files, use meaningful file names** that relate to content (e.g., `smith-family.glx`, `vital-records.glx`). In one-entity-per-file mode, the entity ID determines the filename automatically.
 3. **Group related entities** when using multi-file format
 4. **Commit frequently** with descriptive messages
 5. **Validate often** to catch errors early

@@ -36,7 +36,7 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 - `event-birth-john` (event type + person)
 - `citation-john-birth` (what it cites)
 
-**Note:** You can use any ID format you prefer. For collaborative projects, random hex IDs (like `person-a1b2c3d4`) are recommended to avoid conflicts.
+**Note:** Multi-file archive filenames are derived deterministically from entity IDs (`person-john-smith-1850` → `persons/person-john-smith-1850.glx`). Pick descriptive IDs for readability or random hex IDs (like `person-a1b2c3d4`) for privacy — both produce stable filenames.
 
 ## File Organization
 
