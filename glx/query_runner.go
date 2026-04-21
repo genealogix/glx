@@ -617,7 +617,7 @@ func propertyString(props map[string]any, key string) string {
 // personSex returns the person's recorded sex. It intentionally does not
 // fall back to the gender property: post-split (#528), `gender` represents
 // self-identified gender identity, and leaking identity values (e.g.,
-// `nonbinary`) into sex-based inferences (parent role labelling, vitals)
+// `nonbinary`) into sex-based inferences (parent role labeling, vitals)
 // is incorrect. Legacy archives should run `glx migrate --rename-gender-to-sex`
 // before using these CLI commands.
 func personSex(person *glxlib.Person) string {
