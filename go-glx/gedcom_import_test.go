@@ -1024,6 +1024,31 @@ func TestImportSex_NRecordedMapsToNotRecorded(t *testing.T) {
 	}
 }
 
+// TestImportSex_UnrecognizedValuePreservedLowercase tests that GEDCOM SEX
+// values outside the known enumeration (M/F/U/X/N) are preserved in the
+// `sex` property as lowercase strings rather than being flattened to
+// `unknown`. This keeps unfamiliar enumeration extensions round-trippable
+// and lets validation warn on the out-of-vocabulary value (#520).
+func TestImportSex_UnrecognizedValuePreservedLowercase(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX Q
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
+
+	for _, person := range glxFile.Persons {
+		sex, ok := person.Properties[PersonPropertySex].(string)
+		require.True(t, ok, "sex property should be a string")
+		assert.Equal(t, "q", sex, "unrecognized GEDCOM SEX should be preserved lowercase")
+	}
+}
+
 func TestImportDate_CalendarEscapePreserved(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +

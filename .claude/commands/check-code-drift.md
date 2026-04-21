@@ -126,11 +126,11 @@ Compare Go types with JSON schema types:
 - Check that GLXFile struct has all entity type maps
 - Verify yaml tags match schema (e.g., `persons`, `events`, etc.)
 - Check `ImportMetadata *Metadata` field against `metadata` property in schema (Go field name differs from yaml tag)
-- Check all vocabulary definition maps (9 type vocabs + 8 property vocabs)
+- Check all vocabulary definition maps (10 type vocabs + 8 property vocabs)
 
 ### 8. Vocabulary Struct Types
 
-Check all 9 vocabulary definition structs against their schemas in
+Check all 10 vocabulary definition structs against their schemas in
 `specification/schema/v1/vocabularies/`:
 
 | Go Struct | Schema File | Key Fields |

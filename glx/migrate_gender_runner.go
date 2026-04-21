@@ -28,11 +28,15 @@ import (
 // It is opt-in via `glx migrate --rename-gender-to-sex`. The archive is
 // mutated in place; the returned report counts the renames.
 //
-// Legacy detection: the rename is skipped entirely on archives that already
-// carry post-split schema (a `sex` person-property definition, or inlined
-// `gender_types` with a `nonbinary` entry). In post-split archives `gender`
-// means identity, and treating it as sex would silently corrupt identity
-// data.
+// Legacy detection: the rename is skipped entirely when the archive already
+// carries post-split person data or assertions — a person with
+// `properties.sex` set, a person with `gender == "nonbinary"`, or an
+// assertion targeting `sex` or `gender == "nonbinary"`. Vocabulary-only
+// signals are intentionally ignored because `mergeStandardVocabularies`
+// unconditionally populates `sex_types` and the post-split
+// `person_properties` at load time, so those would always look post-split.
+// In post-split archives `gender` means identity, and treating it as sex
+// would silently corrupt identity data.
 func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateReport {
 	if warnOut == nil {
 		warnOut = io.Discard

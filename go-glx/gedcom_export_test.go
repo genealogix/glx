@@ -2040,6 +2040,28 @@ func TestMapSexToGEDCOM(t *testing.T) {
 	assert.Equal(t, "N", mapSexToGEDCOM("not_recorded", expCtx551))
 	expCtx70 := &ExportContext{GLX: &GLXFile{}, Version: GEDCOM70}
 	assert.Equal(t, "U", mapSexToGEDCOM("not_recorded", expCtx70))
+
+	// Vocabulary-provided values are also clamped to 7.0's enum — a custom
+	// sex_types entry with gedcom: "N" must NOT leak into a 7.0 export.
+	expCtx70WithCustomN := &ExportContext{
+		GLX: &GLXFile{
+			SexTypes: map[string]*SexType{
+				"legacy_n": {Label: "Legacy N", GEDCOM: "N"},
+				"legacy_z": {Label: "Legacy Z", GEDCOM: "Z"},
+			},
+		},
+		Version: GEDCOM70,
+	}
+	assert.Equal(t, "U", mapSexToGEDCOM("legacy_n", expCtx70WithCustomN))
+	assert.Equal(t, "U", mapSexToGEDCOM("legacy_z", expCtx70WithCustomN))
+
+	// On 5.5.1 the vocabulary mapping is preserved verbatim.
+	expCtx551WithCustomN := &ExportContext{
+		GLX:     expCtx70WithCustomN.GLX,
+		Version: GEDCOM551,
+	}
+	assert.Equal(t, "N", mapSexToGEDCOM("legacy_n", expCtx551WithCustomN))
+	assert.Equal(t, "Z", mapSexToGEDCOM("legacy_z", expCtx551WithCustomN))
 }
 
 func TestBuildPersonEventsIndex(t *testing.T) {

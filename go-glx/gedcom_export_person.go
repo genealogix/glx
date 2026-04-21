@@ -404,35 +404,52 @@ func parseValueToGEDCOMName(value string) string {
 // to hardcoded mappings for standard values when no vocabulary entry exists.
 //
 // `not_recorded` maps to "N" for GEDCOM 5.5.x, which is the spec's Not
-// Recorded value. GEDCOM 7.0 restricts SEX to M/F/X/U, so on 7.0 exports
-// `not_recorded` collapses to "U" to keep the output valid.
+// Recorded value. GEDCOM 7.0 restricts SEX to M/F/X/U, so any mapping that
+// would emit "N" (either from a custom vocabulary entry or the built-in
+// `not_recorded` fallback) collapses to "U" on 7.0 exports to keep the
+// output valid.
 func mapSexToGEDCOM(value string, expCtx *ExportContext) string {
 	if expCtx != nil && expCtx.GLX != nil {
 		if expCtx.GLX.SexTypes != nil {
 			if sexType, ok := expCtx.GLX.SexTypes[value]; ok && sexType != nil && sexType.GEDCOM != "" {
-				return sexType.GEDCOM
+				return normalizeGEDCOMSex(sexType.GEDCOM, expCtx)
 			}
 		}
 		if expCtx.GLX.GenderTypes != nil {
 			if genderType, ok := expCtx.GLX.GenderTypes[value]; ok && genderType != nil && genderType.GEDCOM != "" {
-				return genderType.GEDCOM
+				return normalizeGEDCOMSex(genderType.GEDCOM, expCtx)
 			}
 		}
 	}
 
+	var out string
 	switch value {
 	case SexMale:
-		return "M"
+		out = "M"
 	case SexFemale:
-		return "F"
+		out = "F"
 	case SexOther:
-		return "X"
+		out = "X"
 	case SexNotRecorded:
-		if expCtx != nil && expCtx.Version == GEDCOM70 {
-			return "U"
-		}
+		out = "N"
+	default:
+		out = "U"
+	}
 
-		return "N"
+	return normalizeGEDCOMSex(out, expCtx)
+}
+
+// normalizeGEDCOMSex enforces the per-version SEX enumeration. GEDCOM 7.0
+// restricts SEX to M/F/X/U; any other value — including "N" from GEDCOM
+// 5.5.x or a custom vocabulary entry — collapses to "U" on a 7.0 export.
+// Earlier versions (and the nil/default case) preserve the value as-is.
+func normalizeGEDCOMSex(value string, expCtx *ExportContext) string {
+	if expCtx == nil || expCtx.Version != GEDCOM70 {
+		return value
+	}
+	switch value {
+	case "M", "F", "X", "U":
+		return value
 	default:
 		return "U"
 	}
