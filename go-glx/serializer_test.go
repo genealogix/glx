@@ -15,8 +15,11 @@
 package glx
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -369,72 +372,192 @@ func TestSerializeMultiFile(t *testing.T) {
 		t.Error("Vocabularies directory not created")
 	}
 
-	// Check person files
-	personFiles, err := os.ReadDir(personsDir)
+	// Check deterministic filenames exist in the map
+	personFile1 := filepath.Join("persons", "person-001.glx")
+	personFile2 := filepath.Join("persons", "person-002.glx")
+	eventFile1 := filepath.Join("events", "event-001.glx")
+
+	if _, ok := files[personFile1]; !ok {
+		t.Errorf("Expected file %q in map, got keys: %v", personFile1, mapKeys(files))
+	}
+	if _, ok := files[personFile2]; !ok {
+		t.Errorf("Expected file %q in map, got keys: %v", personFile2, mapKeys(files))
+	}
+	if _, ok := files[eventFile1]; !ok {
+		t.Errorf("Expected file %q in map, got keys: %v", eventFile1, mapKeys(files))
+	}
+
+	// Verify person file content
+	personData := files[personFile1]
+	var parsedPerson GLXFile
+	if err := yaml.Unmarshal(personData, &parsedPerson); err != nil {
+		t.Fatalf("Person file is not valid YAML: %v", err)
+	}
+	if len(parsedPerson.Persons) != 1 {
+		t.Errorf("Expected 1 person in file, got %d", len(parsedPerson.Persons))
+	}
+	if p, ok := parsedPerson.Persons["person-001"]; !ok {
+		t.Error("Expected person-001 in parsed file")
+	} else if p.Properties == nil {
+		t.Error("Person properties should not be nil")
+	}
+
+	// Verify event file content
+	eventData := files[eventFile1]
+	var parsedEvent GLXFile
+	if err := yaml.Unmarshal(eventData, &parsedEvent); err != nil {
+		t.Fatalf("Event file is not valid YAML: %v", err)
+	}
+	if len(parsedEvent.Events) != 1 {
+		t.Errorf("Expected 1 event in file, got %d", len(parsedEvent.Events))
+	}
+	if e, ok := parsedEvent.Events["event-001"]; !ok {
+		t.Error("Expected event-001 in parsed file")
+	} else if e.Type != "birth" {
+		t.Errorf("Expected event type 'birth', got %q", e.Type)
+	}
+}
+
+// mapKeys returns sorted keys from a map for stable test output.
+func mapKeys(m map[string][]byte) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	return keys
+}
+
+func TestSerializeMultiFileDeterministic(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-001": {Properties: map[string]any{"primary_name": "Test"}},
+			"person-002": {Properties: map[string]any{"primary_name": "Test2"}},
+		},
+		Events:        make(map[string]*Event),
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources:       make(map[string]*Source),
+		Citations:     make(map[string]*Citation),
+		Repositories:  make(map[string]*Repository),
+		Media:         make(map[string]*Media),
+		Assertions:    make(map[string]*Assertion),
+	}
+
+	s := NewSerializer(&SerializerOptions{Validate: false})
+
+	files1, err := s.SerializeMultiFileToMap(glx)
 	if err != nil {
-		t.Fatalf("Failed to read persons directory: %v", err)
-	}
-	if len(personFiles) != 2 {
-		t.Errorf("Expected 2 person files, got %d", len(personFiles))
+		t.Fatalf("First serialization failed: %v", err)
 	}
 
-	// Check event files
-	eventFiles, err := os.ReadDir(eventsDir)
+	files2, err := s.SerializeMultiFileToMap(glx)
 	if err != nil {
-		t.Fatalf("Failed to read events directory: %v", err)
-	}
-	if len(eventFiles) != 1 {
-		t.Errorf("Expected 1 event file, got %d", len(eventFiles))
+		t.Fatalf("Second serialization failed: %v", err)
 	}
 
-	// Verify content of a person file uses standard GLX structure
-	if len(personFiles) > 0 {
-		firstPersonPath := filepath.Join(personsDir, personFiles[0].Name())
-		personData, err := os.ReadFile(firstPersonPath)
-		if err != nil {
-			t.Fatalf("Failed to read person file: %v", err)
-		}
+	if len(files1) != len(files2) {
+		t.Fatalf("File count mismatch: %d vs %d", len(files1), len(files2))
+	}
+	for key, content1 := range files1 {
+		content2, ok := files2[key]
+		if !ok {
+			t.Errorf("Key %q present in first but not second serialization", key)
 
-		// Parse as GLXFile — should have persons collection key
-		var parsed GLXFile
-		if err := yaml.Unmarshal(personData, &parsed); err != nil {
-			t.Fatalf("Person file is not valid YAML: %v", err)
+			continue
 		}
-
-		if len(parsed.Persons) != 1 {
-			t.Errorf("Expected 1 person in file, got %d", len(parsed.Persons))
+		if !bytes.Equal(content1, content2) {
+			t.Errorf("Content for %q differs between serializations:\n--- first ---\n%s\n--- second ---\n%s", key, content1, content2)
 		}
+	}
+}
 
-		// Verify the entity has properties
-		for _, person := range parsed.Persons {
-			if person.Properties == nil {
-				t.Error("Person properties should not be nil")
+func TestSerializeMultiFileCaseCollision(t *testing.T) {
+	tests := []struct {
+		name    string
+		persons map[string]*Person
+		events  map[string]*Event
+	}{
+		{
+			name: "two-way collision in same type",
+			persons: map[string]*Person{
+				"Person-A": {Properties: map[string]any{"primary_name": "Alice"}},
+				"person-a": {Properties: map[string]any{"primary_name": "Bob"}},
+			},
+		},
+		{
+			name: "three-way collision in same type",
+			persons: map[string]*Person{
+				"PERSON-A": {Properties: map[string]any{"primary_name": "Alice"}},
+				"Person-A": {Properties: map[string]any{"primary_name": "Bob"}},
+				"person-a": {Properties: map[string]any{"primary_name": "Carol"}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			glx := &GLXFile{
+				Persons:       tt.persons,
+				Events:        tt.events,
+				Relationships: make(map[string]*Relationship),
+				Places:        make(map[string]*Place),
+				Sources:       make(map[string]*Source),
+				Citations:     make(map[string]*Citation),
+				Repositories:  make(map[string]*Repository),
+				Media:         make(map[string]*Media),
+				Assertions:    make(map[string]*Assertion),
 			}
-		}
+			if glx.Persons == nil {
+				glx.Persons = make(map[string]*Person)
+			}
+			if glx.Events == nil {
+				glx.Events = make(map[string]*Event)
+			}
+
+			s := NewSerializer(&SerializerOptions{Validate: false})
+			_, err := s.SerializeMultiFileToMap(glx)
+			if err == nil {
+				t.Fatal("Expected case-insensitive collision error, got nil")
+			}
+			if !errors.Is(err, ErrCaseInsensitiveCollision) {
+				t.Errorf("Expected ErrCaseInsensitiveCollision, got: %v", err)
+			}
+		})
+	}
+}
+
+// Cross-type "collisions" are not collisions at all — entities live in
+// per-type subdirectories (persons/, events/), so two entities of different
+// types may share an ID without conflict.
+func TestSerializeMultiFileCrossTypeNoCollision(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"shared-id": {Properties: map[string]any{"primary_name": "Alice"}},
+		},
+		Events: map[string]*Event{
+			"shared-id": {Type: "birth", Participants: []Participant{{Person: "shared-id", Role: "principal"}}},
+		},
+		Relationships: make(map[string]*Relationship),
+		Places:        make(map[string]*Place),
+		Sources:       make(map[string]*Source),
+		Citations:     make(map[string]*Citation),
+		Repositories:  make(map[string]*Repository),
+		Media:         make(map[string]*Media),
+		Assertions:    make(map[string]*Assertion),
 	}
 
-	// Verify event file content uses standard GLX structure
-	if len(eventFiles) > 0 {
-		firstEventPath := filepath.Join(eventsDir, eventFiles[0].Name())
-		eventData, err := os.ReadFile(firstEventPath)
-		if err != nil {
-			t.Fatalf("Failed to read event file: %v", err)
-		}
-
-		var parsed GLXFile
-		if err := yaml.Unmarshal(eventData, &parsed); err != nil {
-			t.Fatalf("Event file is not valid YAML: %v", err)
-		}
-
-		if len(parsed.Events) != 1 {
-			t.Errorf("Expected 1 event in file, got %d", len(parsed.Events))
-		}
-
-		for _, event := range parsed.Events {
-			if event.Type != "birth" {
-				t.Errorf("Expected event type 'birth', got %q", event.Type)
-			}
-		}
+	s := NewSerializer(&SerializerOptions{Validate: false})
+	files, err := s.SerializeMultiFileToMap(glx)
+	if err != nil {
+		t.Fatalf("Cross-type same-ID should not collide: %v", err)
+	}
+	if _, ok := files["persons/shared-id.glx"]; !ok {
+		t.Error("Expected persons/shared-id.glx in output")
+	}
+	if _, ok := files["events/shared-id.glx"]; !ok {
+		t.Error("Expected events/shared-id.glx in output")
 	}
 }
 

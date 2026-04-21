@@ -111,7 +111,7 @@ func (s *DefaultSerializer) SerializeSingleFileBytes(glx *GLXFile) ([]byte, erro
 }
 
 // SerializeMultiFileToMap serializes a GLX archive to a map of relative paths to file contents.
-// Map keys are relative paths like "persons/person-abc123.glx", "vocabularies/event-types.glx".
+// Map keys are relative paths like "persons/person-001.glx", "vocabularies/event-types.glx".
 func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]byte, error) {
 	// Validate if requested
 	if s.Options.Validate {
@@ -175,7 +175,7 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 	return files, nil
 }
 
-// serializeEntitiesToMap serializes entities to the files map with random filenames.
+// serializeEntitiesToMap serializes entities to the files map with deterministic filenames.
 // Each entity file uses the standard GLX structure: {collectionKey: {entityID: entity}}
 func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entityType string, files map[string][]byte) error {
 	// Type switch to handle different entity map types
@@ -204,16 +204,21 @@ func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entity
 }
 
 // serializeEntitiesWrapped serializes each entity as a standard GLX file:
-// {collectionKey: {entityID: entity}}. Uses random filenames with collision detection.
+// {collectionKey: {entityID: entity}}. Derives filenames deterministically from entity IDs.
 func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType string, files map[string][]byte) error {
-	usedFilenames := make(map[string]bool)
+	lowercaseToID := make(map[string]string, len(entities))
 
 	for entityID, entity := range entities {
-		// Generate unique random filename
-		filename, err := GenerateUniqueFilename(entityType, usedFilenames, 10)
+		filename, err := EntityIDToFilename(entityID)
 		if err != nil {
-			return fmt.Errorf("failed to generate filename for %s: %w", entityID, err)
+			return fmt.Errorf("entity %s %s: %w", entityType, entityID, err)
 		}
+
+		// Detect case-insensitive collision
+		if existingID, exists := lowercaseToID[filename]; exists {
+			return fmt.Errorf("entity IDs %q and %q: %w", existingID, entityID, ErrCaseInsensitiveCollision)
+		}
+		lowercaseToID[filename] = entityID
 
 		// Wrap as standard GLX structure: {collectionKey: {entityID: entity}}
 		wrapper := map[string]map[string]T{

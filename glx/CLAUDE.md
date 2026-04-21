@@ -37,5 +37,6 @@ func runValidate(_ *cobra.Command, args []string) error {
 
 ## Serialization Gotchas
 
-- Multi-file archives use random filenames; entity IDs are preserved as YAML map keys
+- Multi-file archive filenames are derived deterministically from entity IDs (lowercased, `.glx` suffix) — see `go-glx/id_generator.go::EntityIDToFilename`
+- Two entity IDs that differ only by case (e.g., `Person-A` and `person-a`) collide on case-insensitive filesystems and are rejected at serialize time with `ErrCaseInsensitiveCollision`
 - Vocabularies are serialized as part of multi-file archives automatically
