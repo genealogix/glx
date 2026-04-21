@@ -64,9 +64,11 @@ const (
 
 // duplicateIndex caches lookup maps built from the archive.
 type duplicateIndex struct {
-	personEvents   map[string][]string        // person ID → event IDs
-	personRelPeers map[string]map[string]bool // person ID → set of related person IDs
-	relatedPairs   map[[2]string]bool         // sorted person ID pairs that share a relationship
+	personEvents     map[string][]string        // person ID → event IDs
+	personRelPeers   map[string]map[string]bool // person ID → set of related person IDs
+	relatedPairs     map[[2]string]bool         // sorted person ID pairs that share a relationship
+	personBirthEvent map[string]*Event          // person ID → their birth event (lowest-ID principal role)
+	personDeathEvent map[string]*Event          // person ID → their death event (lowest-ID principal role)
 }
 
 // FindCrossArchiveDuplicates detects potential duplicate persons between two
@@ -335,19 +337,45 @@ func FindDuplicates(archive *GLXFile, opts DuplicateOptions) (*DuplicateResult, 
 // buildDuplicateIndex creates lookup maps from the archive.
 func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 	idx := &duplicateIndex{
-		personEvents:   make(map[string][]string),
-		personRelPeers: make(map[string]map[string]bool),
-		relatedPairs:   make(map[[2]string]bool),
+		personEvents:     make(map[string][]string),
+		personRelPeers:   make(map[string]map[string]bool),
+		relatedPairs:     make(map[[2]string]bool),
+		personBirthEvent: make(map[string]*Event),
+		personDeathEvent: make(map[string]*Event),
 	}
 
-	// Index events by participant
-	for eventID, event := range archive.Events {
+	// Index events by participant; pre-bind birth/death events per person so
+	// scorePair doesn't re-sort and scan all events for every candidate pair.
+	// Iterate event IDs in sorted order and write only if absent, matching
+	// FindPersonEvent's "lowest-ID principal event wins" determinism.
+	eventIDs := make([]string, 0, len(archive.Events))
+	for id := range archive.Events {
+		eventIDs = append(eventIDs, id)
+	}
+	sort.Strings(eventIDs)
+
+	for _, eventID := range eventIDs {
+		event := archive.Events[eventID]
 		if event == nil {
 			continue
 		}
 		for _, p := range event.Participants {
-			if p.Person != "" {
-				idx.personEvents[p.Person] = append(idx.personEvents[p.Person], eventID)
+			if p.Person == "" {
+				continue
+			}
+			idx.personEvents[p.Person] = append(idx.personEvents[p.Person], eventID)
+			if !isSubjectRole(p.Role) {
+				continue
+			}
+			switch event.Type {
+			case EventTypeBirth:
+				if _, seen := idx.personBirthEvent[p.Person]; !seen {
+					idx.personBirthEvent[p.Person] = event
+				}
+			case EventTypeDeath:
+				if _, seen := idx.personDeathEvent[p.Person]; !seen {
+					idx.personDeathEvent[p.Person] = event
+				}
 			}
 		}
 	}
@@ -489,8 +517,8 @@ func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx 
 	totalScore += weightName * nameScore
 
 	// Birth year and place
-	_, birthA := FindPersonEvent(archive, idA, EventTypeBirth)
-	_, birthB := FindPersonEvent(archive, idB, EventTypeBirth)
+	birthA := idx.personBirthEvent[idA]
+	birthB := idx.personBirthEvent[idB]
 	byScore, byDetail := scoreEventYearSimilarity(birthA, birthB)
 	signals = append(signals, DuplicateSignal{"Birth year", weightBirthYear, byScore, byDetail})
 	totalScore += weightBirthYear * byScore
@@ -500,8 +528,8 @@ func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx 
 	totalScore += weightBirthPlace * bpScore
 
 	// Death year and place
-	_, deathA := FindPersonEvent(archive, idA, EventTypeDeath)
-	_, deathB := FindPersonEvent(archive, idB, EventTypeDeath)
+	deathA := idx.personDeathEvent[idA]
+	deathB := idx.personDeathEvent[idB]
 	dyScore, dyDetail := scoreEventYearSimilarity(deathA, deathB)
 	signals = append(signals, DuplicateSignal{"Death year", weightDeathYear, dyScore, dyDetail})
 	totalScore += weightDeathYear * dyScore
