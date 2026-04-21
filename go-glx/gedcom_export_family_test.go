@@ -32,12 +32,12 @@ func TestReconstructFamilies_BasicMarriage(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-husband": {
 					Properties: map[string]any{
-						PersonPropertyGender: "male",
+						PersonPropertySex: "male",
 					},
 				},
 				"person-wife": {
 					Properties: map[string]any{
-						PersonPropertyGender: "female",
+						PersonPropertySex: "female",
 					},
 				},
 			},
@@ -86,12 +86,12 @@ func TestReconstructFamilies_WithChildren(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-father": {
 					Properties: map[string]any{
-						PersonPropertyGender: "male",
+						PersonPropertySex: "male",
 					},
 				},
 				"person-mother": {
 					Properties: map[string]any{
-						PersonPropertyGender: "female",
+						PersonPropertySex: "female",
 					},
 				},
 				"person-child1": {
@@ -167,7 +167,7 @@ func TestReconstructFamilies_SingleParent(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-mother": {
 					Properties: map[string]any{
-						PersonPropertyGender: "female",
+						PersonPropertySex: "female",
 					},
 				},
 				"person-child": {
@@ -221,12 +221,12 @@ func TestReconstructFamilies_SingleParentWithExistingFamily(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-father": {
 					Properties: map[string]any{
-						PersonPropertyGender: "male",
+						PersonPropertySex: "male",
 					},
 				},
 				"person-mother": {
 					Properties: map[string]any{
-						PersonPropertyGender: "female",
+						PersonPropertySex: "female",
 					},
 				},
 				"person-child-married": {
@@ -330,12 +330,12 @@ func TestReconstructFamilies_PedigreeTypes(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-father": {
 					Properties: map[string]any{
-						PersonPropertyGender: "male",
+						PersonPropertySex: "male",
 					},
 				},
 				"person-mother": {
 					Properties: map[string]any{
-						PersonPropertyGender: "female",
+						PersonPropertySex: "female",
 					},
 				},
 				"person-bio-child": {
@@ -426,10 +426,10 @@ func TestExportFamily_Basic(t *testing.T) {
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
 				"person-husband": {
-					Properties: map[string]any{PersonPropertyGender: "male"},
+					Properties: map[string]any{PersonPropertySex: "male"},
 				},
 				"person-wife": {
-					Properties: map[string]any{PersonPropertyGender: "female"},
+					Properties: map[string]any{PersonPropertySex: "female"},
 				},
 			},
 			Relationships: map[string]*Relationship{
@@ -489,10 +489,10 @@ func TestExportFamily_WithEvents(t *testing.T) {
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
 				"person-h": {
-					Properties: map[string]any{PersonPropertyGender: "male"},
+					Properties: map[string]any{PersonPropertySex: "male"},
 				},
 				"person-w": {
-					Properties: map[string]any{PersonPropertyGender: "female"},
+					Properties: map[string]any{PersonPropertySex: "female"},
 				},
 			},
 			Relationships: map[string]*Relationship{
@@ -579,10 +579,10 @@ func TestExportFamily_WithChildren(t *testing.T) {
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
 				"person-h": {
-					Properties: map[string]any{PersonPropertyGender: "male"},
+					Properties: map[string]any{PersonPropertySex: "male"},
 				},
 				"person-w": {
-					Properties: map[string]any{PersonPropertyGender: "female"},
+					Properties: map[string]any{PersonPropertySex: "female"},
 				},
 				"person-c1": {
 					Properties: map[string]any{},
@@ -682,7 +682,7 @@ func TestExportPerson_FAMS_FAMC(t *testing.T) {
 					"surname": "Smith",
 				},
 			},
-			PersonPropertyGender: "male",
+			PersonPropertySex: "male",
 		},
 	}
 
@@ -792,7 +792,7 @@ func TestExportGEDCOM_FullFamily(t *testing.T) {
 							"surname": "Smith",
 						},
 					},
-					PersonPropertyGender: "male",
+					PersonPropertySex: "male",
 				},
 			},
 			"person-mother": {
@@ -804,7 +804,7 @@ func TestExportGEDCOM_FullFamily(t *testing.T) {
 							"surname": "Doe",
 						},
 					},
-					PersonPropertyGender: "female",
+					PersonPropertySex: "female",
 				},
 			},
 			"person-child": {
@@ -908,7 +908,7 @@ func TestExportGEDCOM_FamilyWithNotes(t *testing.T) {
 							"given": "Husband",
 						},
 					},
-					PersonPropertyGender: "male",
+					PersonPropertySex: "male",
 				},
 			},
 			"person-w": {
@@ -919,7 +919,7 @@ func TestExportGEDCOM_FamilyWithNotes(t *testing.T) {
 							"given": "Wife",
 						},
 					},
-					PersonPropertyGender: "female",
+					PersonPropertySex: "female",
 				},
 			},
 		},
@@ -954,10 +954,10 @@ func TestExportFamily_WithFamilyEvents(t *testing.T) {
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
 				"person-h": {
-					Properties: map[string]any{PersonPropertyGender: "male"},
+					Properties: map[string]any{PersonPropertySex: "male"},
 				},
 				"person-w": {
-					Properties: map[string]any{PersonPropertyGender: "female"},
+					Properties: map[string]any{PersonPropertySex: "female"},
 				},
 			},
 			Relationships: map[string]*Relationship{
@@ -1038,8 +1038,8 @@ func TestAssignHusbandWife_MaleFemale(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
-				"a": {Properties: map[string]any{PersonPropertyGender: "male"}},
-				"b": {Properties: map[string]any{PersonPropertyGender: "female"}},
+				"a": {Properties: map[string]any{PersonPropertySex: "male"}},
+				"b": {Properties: map[string]any{PersonPropertySex: "female"}},
 			},
 		},
 	}
@@ -1053,8 +1053,8 @@ func TestAssignHusbandWife_FemaleFirst(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
-				"a": {Properties: map[string]any{PersonPropertyGender: "female"}},
-				"b": {Properties: map[string]any{PersonPropertyGender: "male"}},
+				"a": {Properties: map[string]any{PersonPropertySex: "female"}},
+				"b": {Properties: map[string]any{PersonPropertySex: "male"}},
 			},
 		},
 	}
@@ -1068,8 +1068,8 @@ func TestAssignHusbandWife_SameGender(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
-				"a": {Properties: map[string]any{PersonPropertyGender: "male"}},
-				"b": {Properties: map[string]any{PersonPropertyGender: "male"}},
+				"a": {Properties: map[string]any{PersonPropertySex: "male"}},
+				"b": {Properties: map[string]any{PersonPropertySex: "male"}},
 			},
 		},
 	}
@@ -1237,8 +1237,8 @@ func TestExportFamily_FamilyEventsPreserveEventProperties(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
 			Persons: map[string]*Person{
-				"person-h": {Properties: map[string]any{PersonPropertyGender: "male"}},
-				"person-w": {Properties: map[string]any{PersonPropertyGender: "female"}},
+				"person-h": {Properties: map[string]any{PersonPropertySex: "male"}},
+				"person-w": {Properties: map[string]any{PersonPropertySex: "female"}},
 			},
 			Relationships: map[string]*Relationship{
 				"rel-1": {
@@ -1322,7 +1322,7 @@ func TestReconstructFamilies_MultipleSingleSpouseMarriages(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-father": {
 					Properties: map[string]any{
-						PersonPropertyGender: "male",
+						PersonPropertySex: "male",
 					},
 				},
 				"person-child-a": {

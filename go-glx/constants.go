@@ -99,7 +99,8 @@ const (
 // Standard Person Property Names - commonly used properties on Person entities
 const (
 	PersonPropertyName       = "name"
-	PersonPropertyGender     = "gender"
+	PersonPropertySex        = "sex"    // Sex as recorded in source documents; maps to GEDCOM SEX
+	PersonPropertyGender     = "gender" // Self-identified gender identity; no direct GEDCOM mapping
 	PersonPropertyResidence  = "residence"
 	PersonPropertyOccupation = "occupation"
 )
@@ -416,6 +417,7 @@ const (
 	VocabMediaTypes        = "media_types"
 	VocabConfidenceLevels  = "confidence_levels"
 	VocabSourceTypes       = "source_types"
+	VocabSexTypes          = "sex_types"
 	VocabGenderTypes       = "gender_types"
 )
 
@@ -582,14 +584,24 @@ const (
 	GEDCOMVersion70  = "7.0"
 )
 
-// Gender values for GEDCOM import/export mapping.
+// Sex values for GEDCOM import/export mapping.
 // GEDCOM SEX tag: M→male, F→female, U→unknown, X→other.
-// Gender is vocabulary-constrained via vocabulary_type: gender_types.
+// Sex is vocabulary-constrained via vocabulary_type: sex_types.
 const (
-	GenderMale    = "male"
-	GenderFemale  = "female"
-	GenderUnknown = "unknown"
-	GenderOther   = "other"
+	SexMale        = "male"
+	SexFemale      = "female"
+	SexUnknown     = "unknown"
+	SexNotRecorded = "not_recorded"
+	SexOther       = "other"
+)
+
+// Gender identity values. Vocabulary-constrained via vocabulary_type: gender_types.
+// No direct GEDCOM mapping (GEDCOM defers identity to FACT).
+const (
+	GenderMale      = "male"
+	GenderFemale    = "female"
+	GenderNonbinary = "nonbinary"
+	GenderOther     = "other"
 )
 
 // File Extensions

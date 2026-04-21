@@ -1455,3 +1455,21 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		assert.Contains(t, warn.Message, "conflicting type fields")
 	})
 }
+
+func TestValidateStandardSexAndGenderVocabs(t *testing.T) {
+	var archive GLXFile
+	if err := LoadStandardVocabulariesIntoGLX(&archive); err != nil {
+		t.Fatalf("LoadStandardVocabulariesIntoGLX: %v", err)
+	}
+	archive.Persons = map[string]*Person{
+		"person-1": {Properties: map[string]any{
+			"sex":    "not_recorded",
+			"gender": "nonbinary",
+		}},
+	}
+
+	result := archive.Validate()
+	assert.Empty(t, result.Errors)
+	assert.Empty(t, result.Warnings,
+		"standard vocabularies should validate 'sex: not_recorded' and 'gender: nonbinary' without warnings")
+}

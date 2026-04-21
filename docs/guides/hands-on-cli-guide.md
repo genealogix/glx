@@ -596,7 +596,7 @@ glx census add --from 1860-census-stark.yaml --archive .
 The generated assertions include:
 - **Birth year** (ABT, low confidence) — estimated from age
 - **Birthplace** (medium confidence) — resolved against existing places
-- **Gender** (high confidence) — directly stated
+- **Sex** (high confidence) — directly stated
 - **Occupation** (high confidence, dated) — directly stated
 - **Residence** (high confidence, dated) — enumerated at this place
 

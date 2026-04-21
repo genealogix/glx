@@ -47,7 +47,7 @@ persons:
         fields:
           given: "Alice"
           surname: "Chen"
-      gender: "female"
+      sex: "female"
       occupation: "software engineer"
       residence: "place-cambridge"
     notes: |
@@ -65,7 +65,7 @@ persons:
         fields:
           given: "Robert"
           surname: "Chen"
-      gender: "male"
+      sex: "male"
       # Temporal occupation (changed over time)
       occupation:
         - value: "accountant"

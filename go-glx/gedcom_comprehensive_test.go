@@ -201,12 +201,12 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 		if givenName == "Robert Eugene" && familyName == "Williams" {
 			foundRobert = true
 
-			// Verify gender persisted
-			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != GenderMale {
-				t.Error("Robert Eugene Williams should have gender 'male'")
+			// Verify recorded sex persisted
+			if sex, ok := person.Properties[PersonPropertySex].(string); !ok || sex != SexMale {
+				t.Error("Robert Eugene Williams should have sex 'male'")
 			}
 
-			t.Logf("✓ Robert Eugene Williams: name and gender persisted correctly")
+			t.Logf("✓ Robert Eugene Williams: name and sex persisted correctly")
 
 			break
 		}
@@ -223,12 +223,12 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 		if givenName == "Mary Ann" && familyName == "Wilson" {
 			foundMary = true
 
-			// Verify gender persisted
-			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "female" {
-				t.Error("Mary Ann Wilson should have gender 'female'")
+			// Verify recorded sex persisted
+			if sex, ok := person.Properties[PersonPropertySex].(string); !ok || sex != "female" {
+				t.Error("Mary Ann Wilson should have sex 'female'")
 			}
 
-			t.Logf("✓ Mary Ann Wilson: name and gender persisted correctly")
+			t.Logf("✓ Mary Ann Wilson: name and sex persisted correctly")
 
 			break
 		}

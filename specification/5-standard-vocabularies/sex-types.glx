@@ -1,0 +1,31 @@
+# Standard Sex Types
+# This file defines the standard sex types for GENEALOGIX archives.
+# Sex values represent what was recorded in source documents (e.g., GEDCOM SEX, census enumerations).
+# For self-identified gender identity, see gender-types.glx.
+# Archives can extend this with custom types by adding additional entries.
+# Each entry includes a GEDCOM SEX mapping for interoperability where applicable.
+
+sex_types:
+  male:
+    label: "Male"
+    description: "Recorded as male in source documents"
+    gedcom: "M"
+
+  female:
+    label: "Female"
+    description: "Recorded as female in source documents"
+    gedcom: "F"
+
+  unknown:
+    label: "Unknown"
+    description: "Source was consulted but sex could not be determined"
+    gedcom: "U"
+
+  not_recorded:
+    label: "Not Recorded"
+    description: "Source does not contain a sex/gender field"
+
+  other:
+    label: "Other"
+    description: "Recorded value outside the male/female/unknown categories"
+    gedcom: "X"

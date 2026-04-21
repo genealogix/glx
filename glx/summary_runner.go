@@ -270,11 +270,7 @@ func printIdentitySection(person *glxlib.Person) {
 	name := extractPersonName(person)
 	fmt.Printf("  %-18s%s\n", "Name:", name)
 
-	gender := propertyString(person.Properties, "gender")
-	if gender == "" {
-		gender = propertyString(person.Properties, "sex")
-	}
-	fmt.Printf("  %-18s%s\n", "Sex:", displayOrDash(gender))
+	fmt.Printf("  %-18s%s\n", "Sex:", displayOrDash(personSex(person)))
 
 	variants := extractAllNameVariants(person)
 	if len(variants) > 1 {
@@ -476,10 +472,10 @@ func printFamilySection(personID string, archive *glxlib.GLXFile) {
 			name := pid
 			if ok {
 				name = extractPersonName(parent)
-				gender := strings.ToLower(propertyString(parent.Properties, "gender"))
-				if gender == "male" {
+				switch strings.ToLower(personSex(parent)) {
+				case "male":
 					label = "Father"
-				} else if gender == "female" {
+				case "female":
 					label = "Mother"
 				}
 			}
@@ -1090,11 +1086,11 @@ func narrativeDate(date string) string {
 }
 
 // pronounFor returns subject ("He"/"She"/"They") and possessive ("his"/"her"/"their")
-// pronouns based on the person's gender property.
+// pronouns. Prefers gender identity when set; otherwise falls back to recorded sex.
 func pronounFor(person *glxlib.Person) (subject, possessive string) {
-	gender := strings.ToLower(propertyString(person.Properties, "gender"))
+	gender := strings.ToLower(propertyString(person.Properties, glxlib.PersonPropertyGender))
 	if gender == "" {
-		gender = strings.ToLower(propertyString(person.Properties, "sex"))
+		gender = strings.ToLower(propertyString(person.Properties, glxlib.PersonPropertySex))
 	}
 
 	switch gender {

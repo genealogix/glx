@@ -114,7 +114,7 @@ Import statistics:
 
 The importer processes records in dependency order across multiple passes, handling all standard GEDCOM record types.
 
-**Individuals**: Names (with parsed components), gender, 20+ event types, 8+ property types, external IDs, notes, media references
+**Individuals**: Names (with parsed components), sex (with optional gender identity), 20+ event types, 8+ property types, external IDs, notes, media references
 
 **Events**: Each imported event receives an auto-generated `title` field for human readability. The format varies by event type:
 - Individual events: "Birth of Robert Webb (1815)"
@@ -183,7 +183,7 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | GEDCOM Tag | GLX Property | Notes |
 |------------|-------------|-------|
 | `NAME` | `name` | Parsed into structured fields (see [Name Conversion](#name-conversion)) |
-| `SEX` | `gender` | M→male, F→female, U→unknown, X→other |
+| `SEX` | `sex` | M→male, F→female, U→unknown, X→other |
 | `OCCU` | `occupation` | Temporal property |
 | `RELI` | `religion` | |
 | `EDUC` | `education` | |

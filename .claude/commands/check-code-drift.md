@@ -141,6 +141,7 @@ Check all 9 vocabulary definition structs against their schemas in
 | `SourceType` | `source-types.schema.json` | Label, Description, GEDCOM |
 | `RepositoryType` | `repository-types.schema.json` | Label, Description, GEDCOM |
 | `MediaType` | `media-types.schema.json` | Label, Description, MimeType |
+| `SexType` | `sex-types.schema.json` | Label, Description, GEDCOM |
 | `GenderType` | `gender-types.schema.json` | Label, Description, GEDCOM |
 | `ConfidenceLevel` | `confidence-levels.schema.json` | Label, Description, GEDCOM |
 | `ParticipantRole` | `participant-roles.schema.json` | Label, Description, GEDCOM, AppliesTo |

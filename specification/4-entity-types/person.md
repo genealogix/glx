@@ -44,7 +44,7 @@ persons:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `properties` | object | Vocabulary-defined properties (name, gender, occupation, etc.) |
+| `properties` | object | Vocabulary-defined properties (name, sex, gender, occupation, etc.) |
 | `notes` | string \| string[] | Free-form notes about the person |
 
 > **Note:** While no properties are technically required, the `name` property is recommended for most person records as it enables meaningful identification and display.
@@ -78,7 +78,8 @@ properties:
       surname_prefix: String  # e.g., von, van, de
       surname: String
       suffix: String
-  gender: String            # From person_properties vocabulary
+  sex: String               # From person_properties vocabulary (recorded in source)
+  gender: String            # From person_properties vocabulary (self-identified)
   occupation: String        # From person_properties vocabulary
   residence: "place-id"    # From person_properties vocabulary (reference)
 ```
@@ -91,7 +92,7 @@ properties:
     fields:
       given: "John"
       surname: "Smith"
-  gender: "male"
+  sex: "male"
   occupation: "blacksmith"
   residence:
     - value: "place-leeds"
@@ -100,9 +101,14 @@ properties:
       date: "FROM 1900 TO 1920"
 ```
 
-#### Gender Property
+#### Sex and Gender Properties
 
-The `gender` property is constrained by the `gender_types` vocabulary via `vocabulary_type: gender_types`. The standard vocabulary includes `male`, `female`, `unknown`, and `other` (with GEDCOM SEX mappings), but archives may extend it with additional entries. Values not found in the vocabulary produce a **warning**, not an error — this allows archives to use custom values before adding them to the vocabulary. The property is temporal, allowing changes to be recorded over time.
+GLX splits "recorded sex" and "gender identity" into two separate properties (issue #528).
+
+- **`sex`** — What the source recorded. Maps to GEDCOM `SEX` on import/export. Constrained by the `sex_types` vocabulary via `vocabulary_type: sex_types`. Standard values: `male`, `female`, `unknown`, `not_recorded`, `other` (each with GEDCOM mappings where applicable). Use `not_recorded` when the source has no sex field at all; use `unknown` when the source was consulted but the sex could not be determined.
+- **`gender`** — Self-identified gender identity. Constrained by the `gender_types` vocabulary. Standard values: `male`, `female`, `nonbinary`, `other`. No direct GEDCOM mapping (GEDCOM 7.0 defers identity to `FACT`). Primarily useful for modern records and living persons; for most historical genealogy only `sex` will be populated.
+
+Both properties are temporal, allowing changes over time. Out-of-vocabulary values produce a **warning**, not an error — archives may use custom values before adding them to the vocabulary.
 
 #### Temporal Property Examples
 
@@ -252,7 +258,7 @@ properties:
 **Key Points:**
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
-- The `gender` property is constrained by the [gender types vocabulary](vocabularies#property-definition-structure) — out-of-vocabulary values produce a warning
+- The `sex` and `gender` properties are constrained by the [sex types](vocabularies#sex-types-vocabulary) and [gender types](vocabularies#gender-types-vocabulary) vocabularies — out-of-vocabulary values produce a warning
 - Properties can be temporal (change over time) - see [Core Concepts - Data Types](../2-core-concepts#temporal-properties)
 - Custom properties can be added by extending the vocabulary
 - Birth and death information is stored on [Event entities](event) of type `birth` and `death`, not as person properties
@@ -271,7 +277,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 ```
 
 ### Person with Full Details
@@ -286,7 +292,7 @@ persons:
         fields:
           given: "Margaret Eleanor"
           surname: "Smith"
-      gender: "female"
+      sex: "female"
     notes: |
       Family tradition says she was named after her grandmother.
       Need to verify with census records.
@@ -314,7 +320,7 @@ persons/
 | `properties.name` | `INDI.NAME` | Person's name |
 | `properties.name.fields.given` | `INDI.NAME.GIVN` | Given name |
 | `properties.name.fields.surname` | `INDI.NAME.SURN` | Surname |
-| `properties.gender` | `INDI.SEX` | M/F mapped to male/female |
+| `properties.sex` | `INDI.SEX` | M/F/U/X mapped to male/female/unknown/other |
 | `properties.occupation` | `INDI.OCCU` | Occupation |
 | `properties.residence` | `INDI.RESI` | Residence |
 | `notes` | `INDI.NOTE` | Notes |

@@ -131,9 +131,22 @@ Defines categories of institutions that hold genealogical sources (archives, lib
 
 ---
 
+### Sex Types
+
+Defines controlled values for the `sex` person property (male, female, unknown, not_recorded, other). Sex is what was recorded in source documents (e.g., GEDCOM SEX, census enumerations) and maps to GEDCOM `SEX` on import/export. Out-of-vocabulary values produce a validation warning.
+
+<YamlFile
+  :content="vocabularies['sex-types']"
+  title="vocabularies/sex-types.glx"
+/>
+
+**View Source:** [sex-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/sex-types.glx) | **See Also:** [Person Entity Documentation](../4-entity-types/person) | [Vocabularies Specification](../4-entity-types/vocabularies#property-definition-structure)
+
+---
+
 ### Gender Types
 
-Defines controlled values for the `gender` person property (male, female, unknown, other). Gender values are constrained by this vocabulary via the `vocabulary_type` mechanism — out-of-vocabulary values produce a validation warning.
+Defines controlled values for the `gender` person property — self-identified gender identity (male, female, nonbinary, other). Primarily relevant for modern records and living persons; historical genealogy typically only populates `sex`. GEDCOM has no standard tag for gender identity (it defers to `FACT`). Out-of-vocabulary values produce a validation warning.
 
 <YamlFile
   :content="vocabularies['gender-types']"
@@ -150,13 +163,14 @@ Property vocabularies define the custom properties available for each entity typ
 
 ### Person Properties
 
-Defines standard and custom properties for person entities (name, gender, occupation, residence, etc.). Supports temporal properties that change over time.
+Defines standard and custom properties for person entities (name, sex, gender, occupation, residence, etc.). Supports temporal properties that change over time.
 
 **View Source:** [person-properties.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/person-properties.glx)
 
 **Standard Properties Include:**
 - `name` - Unified name property with optional structured fields (type, given, surname, prefix, suffix, etc.) (temporal)
-- `gender` - Gender identity (temporal)
+- `sex` - Sex as recorded in source documents (temporal, maps to GEDCOM SEX)
+- `gender` - Self-identified gender identity (temporal; primarily for modern/living records)
 - `occupation` - Profession (temporal, GEDCOM: OCCU)
 - `title` - Nobility or honorific title (temporal, GEDCOM: TITL)
 - `residence` - Place of residence (temporal, reference)

@@ -1123,7 +1123,7 @@ glx census add --from <template.yaml> [flags]
 - **Source** — new or reused by title match
 - **Citation** — with locator, text_from_source, URL, accessed date
 - **Place** — new or reused by name match
-- **Assertions** — birth year (ABT, low confidence), birthplace (medium), gender (high), occupation (high, dated), residence (high, dated), custom properties
+- **Assertions** — birth year (ABT, low confidence), birthplace (medium), sex (high), occupation (high, dated), residence (high, dated), custom properties
 
 **Template format:**
 ```yaml

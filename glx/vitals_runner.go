@@ -122,12 +122,7 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	name := extractPersonName(person)
 	vitals = append(vitals, vitalRecord{"Name", name})
 
-	// Sex/Gender
-	gender := propertyString(person.Properties, "gender")
-	if gender == "" {
-		gender = propertyString(person.Properties, "sex")
-	}
-	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(gender)})
+	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(personSex(person))})
 
 	// Birth — from events
 	birth := findEventByType(personID, "birth", eventIDs, archive)

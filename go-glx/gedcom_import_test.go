@@ -1018,9 +1018,9 @@ func TestImportSex_UnrecognizedValuePreserved(t *testing.T) {
 	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
 
 	for _, person := range glxFile.Persons {
-		gender, ok := person.Properties[PersonPropertyGender].(string)
-		require.True(t, ok, "gender property should be a string")
-		assert.Equal(t, "n", gender, "unrecognized SEX value 'N' should be preserved as 'n', not mapped to 'unknown'")
+		sex, ok := person.Properties[PersonPropertySex].(string)
+		require.True(t, ok, "sex property should be a string")
+		assert.Equal(t, "n", sex, "unrecognized SEX value 'N' should be preserved as 'n', not mapped to 'unknown'")
 	}
 }
 

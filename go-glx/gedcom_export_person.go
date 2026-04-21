@@ -23,6 +23,7 @@ import (
 // Properties that are handled specially and should not be exported as generic tags.
 var skipPersonProperties = map[string]bool{
 	PersonPropertyName:         true,
+	PersonPropertySex:          true,
 	PersonPropertyGender:       true,
 	DeprecatedPropertyBornOn:   true,
 	DeprecatedPropertyBornAt:   true,
@@ -126,10 +127,15 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	}
 
 	// SEX
-	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
+	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagSex,
-			Value: mapGenderToSex(gender, expCtx),
+			Value: mapSexToGEDCOM(sex, expCtx),
+		})
+	} else if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagSex,
+			Value: mapSexToGEDCOM(gender, expCtx),
 		})
 	}
 
@@ -393,24 +399,29 @@ func parseValueToGEDCOMName(value string) string {
 	return given + " /" + surname + "/"
 }
 
-// mapGenderToSex converts a GLX gender value to a GEDCOM SEX value.
-// Uses the gender_types vocabulary for lookup; falls back to hardcoded
-// mapping for standard values when the vocabulary is not loaded.
-func mapGenderToSex(gender string, expCtx *ExportContext) string {
-	// Try vocabulary lookup first
-	if expCtx != nil && expCtx.GLX != nil && expCtx.GLX.GenderTypes != nil {
-		if genderType, ok := expCtx.GLX.GenderTypes[gender]; ok && genderType != nil && genderType.GEDCOM != "" {
-			return genderType.GEDCOM
+// mapSexToGEDCOM converts a GLX sex (or gender, as fallback) value to a GEDCOM SEX value.
+// Uses the sex_types vocabulary for lookup; falls back to gender_types, then
+// to hardcoded mappings for standard values when no vocabulary entry exists.
+func mapSexToGEDCOM(value string, expCtx *ExportContext) string {
+	if expCtx != nil && expCtx.GLX != nil {
+		if expCtx.GLX.SexTypes != nil {
+			if sexType, ok := expCtx.GLX.SexTypes[value]; ok && sexType != nil && sexType.GEDCOM != "" {
+				return sexType.GEDCOM
+			}
+		}
+		if expCtx.GLX.GenderTypes != nil {
+			if genderType, ok := expCtx.GLX.GenderTypes[value]; ok && genderType != nil && genderType.GEDCOM != "" {
+				return genderType.GEDCOM
+			}
 		}
 	}
 
-	// Fallback for standard values
-	switch gender {
-	case GenderMale:
+	switch value {
+	case SexMale:
 		return "M"
-	case GenderFemale:
+	case SexFemale:
 		return "F"
-	case GenderOther:
+	case SexOther:
 		return "X"
 	default:
 		return "U"

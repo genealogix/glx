@@ -280,6 +280,7 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		SourceTypes:       make(map[string]*SourceType),
 		RepositoryTypes:   make(map[string]*RepositoryType),
 		MediaTypes:        make(map[string]*MediaType),
+		SexTypes:          make(map[string]*SexType),
 		GenderTypes:       make(map[string]*GenderType),
 
 		PersonProperties:       make(map[string]*PropertyDefinition),

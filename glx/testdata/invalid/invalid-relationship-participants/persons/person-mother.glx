@@ -6,4 +6,4 @@ persons:
         fields:
           given: "Mary"
           surname: "Thompson"
-      gender: female
+      sex: female

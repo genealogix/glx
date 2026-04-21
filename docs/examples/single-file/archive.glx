@@ -69,7 +69,7 @@ confidence_levels:
     label: "High Confidence"
     description: "Strong evidence with minimal doubt"
 
-gender_types:
+sex_types:
   male:
     label: "Male"
     gedcom: "M"
@@ -113,10 +113,10 @@ person_properties:
         label: "Suffix"
         description: "Generational suffix (Jr., Sr., III)"
 
-  gender:
-    label: "Gender"
-    description: "Gender identity"
-    vocabulary_type: gender_types
+  sex:
+    label: "Sex"
+    description: "Sex as recorded in source documents"
+    vocabulary_type: sex_types
 
 source_properties:
   url:
@@ -147,7 +147,7 @@ persons:
           type: "birth"
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 
   person-b2c3d4e5:
     properties:
@@ -157,7 +157,7 @@ persons:
           type: "birth"
           given: "Mary"
           surname: "Brown"
-      gender: "female"
+      sex: "female"
 
 relationships:
   rel-12345678:

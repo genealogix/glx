@@ -30,9 +30,9 @@ person_properties:
         label: "Surname"
         description: "Family name"
 
-  gender:
-    label: "Gender"
-    description: "Gender identity"
+  sex:
+    label: "Sex"
+    description: "Sex as recorded in source documents"
     value_type: string
     temporal: false  # Non-temporal property
 
@@ -57,6 +57,6 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"                # Simple value for non-temporal - VALID
+      sex: "male"                # Simple value for non-temporal - VALID
       occupation: "blacksmith"     # Simple string for temporal property - VALID
       residence: "place-leeds"     # Simple reference for temporal property - VALID

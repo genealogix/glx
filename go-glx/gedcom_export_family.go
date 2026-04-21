@@ -65,14 +65,14 @@ func reconstructFamilies(expCtx *ExportContext) {
 			continue
 		}
 
-		// Determine HUSB/WIFE by gender
+		// Determine HUSB/WIFE by recorded sex
 		var husbandID, wifeID string
 		if len(spouseIDs) >= 2 {
 			husbandID, wifeID = assignHusbandWife(spouseIDs[0], spouseIDs[1], expCtx)
 		} else {
-			// Single-spouse marriage — assign by gender
-			gender := getPersonGender(spouseIDs[0], expCtx)
-			if gender == GenderFemale {
+			// Single-spouse marriage — assign by recorded sex
+			sex := getPersonSex(spouseIDs[0], expCtx)
+			if sex == SexFemale {
 				wifeID = spouseIDs[0]
 			} else {
 				husbandID = spouseIDs[0]
@@ -513,36 +513,38 @@ func extractSpouseIDs(rel *Relationship) []string {
 	return spouseIDs
 }
 
-// assignHusbandWife determines HUSB/WIFE assignment based on gender.
+// assignHusbandWife determines HUSB/WIFE assignment based on recorded sex.
 // Male -> HUSB, Female -> WIFE. If both same or unknown, first -> HUSB, second -> WIFE.
 func assignHusbandWife(personA, personB string, expCtx *ExportContext) (husbandID, wifeID string) {
-	genderA := getPersonGender(personA, expCtx)
-	genderB := getPersonGender(personB, expCtx)
+	sexA := getPersonSex(personA, expCtx)
+	sexB := getPersonSex(personB, expCtx)
 
 	switch {
-	case genderA == GenderMale && genderB == GenderFemale:
+	case sexA == SexMale && sexB == SexFemale:
 		return personA, personB
-	case genderA == GenderFemale && genderB == GenderMale:
+	case sexA == SexFemale && sexB == SexMale:
 		return personB, personA
 	default:
-		// Same gender, both unknown, or mixed unknown — first is HUSB, second is WIFE
+		// Same sex, both unknown, or mixed unknown — first is HUSB, second is WIFE
 		return personA, personB
 	}
 }
 
-// getPersonGender retrieves the gender property for a person ID.
-func getPersonGender(personID string, expCtx *ExportContext) string {
+// getPersonSex retrieves the recorded sex property for a person ID, falling
+// back to the legacy gender property.
+func getPersonSex(personID string, expCtx *ExportContext) string {
 	person, ok := expCtx.GLX.Persons[personID]
 	if !ok {
 		return ""
 	}
 
-	gender, ok := getStringProperty(person.Properties, PersonPropertyGender)
-	if !ok {
-		return ""
+	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok {
+		return sex
 	}
-
-	return gender
+	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
+		return gender
+	}
+	return ""
 }
 
 // relationshipTypeToPedi maps GLX relationship types to GEDCOM PEDI values.
@@ -587,13 +589,13 @@ func extractParentChildIDs(rel *Relationship) (parentID, childID string) {
 
 // createSyntheticFamily creates a single-parent FAM for a parent without a marriage.
 func createSyntheticFamily(parentID string, expCtx *ExportContext, parentToFamilies map[string][]int) int {
-	gender := getPersonGender(parentID, expCtx)
+	sex := getPersonSex(parentID, expCtx)
 
 	family := &ExportFamily{
 		ChildPedigrees: make(map[string]string),
 	}
 
-	if gender == GenderFemale {
+	if sex == SexFemale {
 		family.WifeID = parentID
 	} else {
 		family.HusbandID = parentID

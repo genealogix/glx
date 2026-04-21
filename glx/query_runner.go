@@ -614,6 +614,15 @@ func propertyString(props map[string]any, key string) string {
 	return fmt.Sprint(raw)
 }
 
+// personSex returns the person's recorded sex, falling back to the legacy
+// gender property for archives created before the two-field-model split (#528).
+func personSex(person *glxlib.Person) string {
+	if v := propertyString(person.Properties, glxlib.PersonPropertySex); v != "" {
+		return v
+	}
+	return propertyString(person.Properties, glxlib.PersonPropertyGender)
+}
+
 // queryDayMonthRegexp matches day-of-month followed by a month abbreviation
 // (e.g., "15 MAR"). Used to strip day values before year extraction so that
 // 1–2 digit days are not mistaken for 1–2 digit years.

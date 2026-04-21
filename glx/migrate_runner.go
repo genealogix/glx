@@ -28,6 +28,11 @@ type MigrateReport struct {
 	PropertiesRemoved   int
 	AssertionsMigrated  int
 	VocabEntriesRemoved int
+
+	// gender→sex rename counts (opt-in via --rename-gender-to-sex).
+	PropertiesRenamed   int
+	AssertionsRenamed   int
+	VocabEntriesRenamed int
 }
 
 const (

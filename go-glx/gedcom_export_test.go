@@ -1990,18 +1990,18 @@ func TestExportPerson_NameFormat(t *testing.T) {
 	}
 }
 
-func TestMapGenderToSex(t *testing.T) {
+func TestMapSexToGEDCOM(t *testing.T) {
 	// Test fallback path (nil context)
-	assert.Equal(t, "M", mapGenderToSex("male", nil))
-	assert.Equal(t, "F", mapGenderToSex("female", nil))
-	assert.Equal(t, "X", mapGenderToSex("other", nil))
-	assert.Equal(t, "U", mapGenderToSex("unknown", nil))
-	assert.Equal(t, "U", mapGenderToSex("", nil))
+	assert.Equal(t, "M", mapSexToGEDCOM("male", nil))
+	assert.Equal(t, "F", mapSexToGEDCOM("female", nil))
+	assert.Equal(t, "X", mapSexToGEDCOM("other", nil))
+	assert.Equal(t, "U", mapSexToGEDCOM("unknown", nil))
+	assert.Equal(t, "U", mapSexToGEDCOM("", nil))
 
-	// Test vocabulary lookup path
+	// Test vocabulary lookup path (sex_types preferred)
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
-			GenderTypes: map[string]*GenderType{
+			SexTypes: map[string]*SexType{
 				"male":       {Label: "Male", GEDCOM: "M"},
 				"female":     {Label: "Female", GEDCOM: "F"},
 				"custom":     {Label: "Custom", GEDCOM: "X"},
@@ -2009,18 +2009,28 @@ func TestMapGenderToSex(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, "M", mapGenderToSex("male", expCtx))
-	assert.Equal(t, "F", mapGenderToSex("female", expCtx))
-	assert.Equal(t, "X", mapGenderToSex("custom", expCtx))
+	assert.Equal(t, "M", mapSexToGEDCOM("male", expCtx))
+	assert.Equal(t, "F", mapSexToGEDCOM("female", expCtx))
+	assert.Equal(t, "X", mapSexToGEDCOM("custom", expCtx))
 	// Falls back to default for values not in vocab
-	assert.Equal(t, "U", mapGenderToSex("nonexistent", expCtx))
+	assert.Equal(t, "U", mapSexToGEDCOM("nonexistent", expCtx))
 	// Falls back to default when vocab entry has empty GEDCOM field
-	assert.Equal(t, "U", mapGenderToSex("no_mapping", expCtx))
+	assert.Equal(t, "U", mapSexToGEDCOM("no_mapping", expCtx))
 
 	// Test with non-nil context but nil GLX
 	expCtxNilGLX := &ExportContext{GLX: nil}
-	assert.Equal(t, "M", mapGenderToSex("male", expCtxNilGLX))
-	assert.Equal(t, "U", mapGenderToSex("unknown", expCtxNilGLX))
+	assert.Equal(t, "M", mapSexToGEDCOM("male", expCtxNilGLX))
+	assert.Equal(t, "U", mapSexToGEDCOM("unknown", expCtxNilGLX))
+
+	// Falls back to gender_types when sex_types lacks the key (back-compat).
+	expCtxGender := &ExportContext{
+		GLX: &GLXFile{
+			GenderTypes: map[string]*GenderType{
+				"legacy": {Label: "Legacy", GEDCOM: "X"},
+			},
+		},
+	}
+	assert.Equal(t, "X", mapSexToGEDCOM("legacy", expCtxGender))
 }
 
 func TestBuildPersonEventsIndex(t *testing.T) {

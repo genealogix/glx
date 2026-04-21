@@ -12,6 +12,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Changed
+
+#### Specification
+- **Split `gender` property into `sex` (recorded) and `gender` (identity)** — The existing `gender` property conflated "recorded sex" (GEDCOM `SEX`) with "self-identified gender identity". Introduced a new `sex_types` vocabulary (`male`, `female`, `unknown`, `not_recorded`, `other`) bound to a renamed `sex` person property that maps to GEDCOM `SEX`. The `gender_types` vocabulary now covers identity values (`male`, `female`, `nonbinary`, `other`) bound to a new optional `gender` property (no direct GEDCOM mapping — GEDCOM 7.0 defers identity to `FACT`). GEDCOM import/export, HUSB/WIFE assignment, census parsing, and CLI readers (`vitals`, `summary`) all updated to use `sex`. Archives predating this split can be migrated automatically via `glx migrate --rename-gender-to-sex`. Resolves #528, closes #518, #534, #545.
+
+### Added
+
+#### CLI
+- **`glx migrate --rename-gender-to-sex`** — New opt-in flag on `glx migrate` that renames the legacy `gender` person property (and related assertions and inlined vocabulary entries) to `sex`, completing the two-field-model split in pre-v1.0 archives (#528).
+
 ### Fixed
 
 #### go-glx

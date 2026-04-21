@@ -23,6 +23,8 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+var migrateRenameGenderToSex bool
+
 var migrateCmd = &cobra.Command{
 	Use:   "migrate [archive]",
 	Short: "Migrate an archive to the current format",
@@ -32,14 +34,26 @@ For each person with deprecated properties:
 - Creates a birth, death, or burial event if none exists
 - Merges date/place into existing events if fields are empty
 - Never overwrites existing event data
-- Converts assertions to reference the event instead of the person property`,
+- Converts assertions to reference the event instead of the person property
+
+With --rename-gender-to-sex, also renames the legacy ` + "`gender`" + ` person
+property (and any related assertions and inlined vocabulary entries) to
+` + "`sex`" + `, completing the two-field-model split introduced in #528.`,
 	Example: `  # Migrate a multi-file archive
   glx migrate ./my-archive
 
   # Migrate a single-file archive
-  glx migrate archive.glx`,
+  glx migrate archive.glx
+
+  # Also rename legacy 'gender' person properties to 'sex'
+  glx migrate ./my-archive --rename-gender-to-sex`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMigrate,
+}
+
+func init() {
+	migrateCmd.Flags().BoolVar(&migrateRenameGenderToSex, "rename-gender-to-sex", false,
+		"Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)")
 }
 
 func runMigrate(_ *cobra.Command, args []string) error {
@@ -78,9 +92,21 @@ func migrateArchive(archivePath string) error {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
+	if migrateRenameGenderToSex {
+		genderReport, err := migrateGenderToSex(archive, os.Stderr)
+		if err != nil {
+			return fmt.Errorf("gender→sex migration failed: %w", err)
+		}
+		report.PropertiesRenamed += genderReport.PropertiesRenamed
+		report.AssertionsRenamed += genderReport.AssertionsRenamed
+		report.VocabEntriesRenamed += genderReport.VocabEntriesRenamed
+	}
+
 	if report.EventsCreated == 0 && report.EventsMerged == 0 &&
 		report.PropertiesRemoved == 0 && report.AssertionsMigrated == 0 &&
-		report.VocabEntriesRemoved == 0 {
+		report.VocabEntriesRemoved == 0 &&
+		report.PropertiesRenamed == 0 && report.AssertionsRenamed == 0 &&
+		report.VocabEntriesRenamed == 0 {
 		fmt.Println("No deprecated properties found. Archive is already up to date.")
 		return nil
 	}
@@ -97,11 +123,16 @@ func migrateArchive(archivePath string) error {
 	}
 
 	fmt.Println("Migration complete:")
-	fmt.Printf("  Events created:       %d\n", report.EventsCreated)
-	fmt.Printf("  Events merged:        %d\n", report.EventsMerged)
-	fmt.Printf("  Properties removed:   %d\n", report.PropertiesRemoved)
-	fmt.Printf("  Assertions migrated:  %d\n", report.AssertionsMigrated)
-	fmt.Printf("  Vocab entries removed: %d\n", report.VocabEntriesRemoved)
+	fmt.Printf("  Events created:          %d\n", report.EventsCreated)
+	fmt.Printf("  Events merged:           %d\n", report.EventsMerged)
+	fmt.Printf("  Properties removed:      %d\n", report.PropertiesRemoved)
+	fmt.Printf("  Assertions migrated:     %d\n", report.AssertionsMigrated)
+	fmt.Printf("  Vocab entries removed:   %d\n", report.VocabEntriesRemoved)
+	if migrateRenameGenderToSex {
+		fmt.Printf("  Gender→sex properties:   %d\n", report.PropertiesRenamed)
+		fmt.Printf("  Gender→sex assertions:   %d\n", report.AssertionsRenamed)
+		fmt.Printf("  Gender→sex vocab entries: %d\n", report.VocabEntriesRenamed)
+	}
 
 	return nil
 }

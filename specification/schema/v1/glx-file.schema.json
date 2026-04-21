@@ -170,9 +170,17 @@
       },
       "additionalProperties": false
     },
+    "sex_types": {
+      "type": "object",
+      "description": "Sex type vocabulary (as recorded in source documents)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/sex-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
     "gender_types": {
       "type": "object",
-      "description": "Gender type vocabulary",
+      "description": "Gender identity vocabulary",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json" }
       },
