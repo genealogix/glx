@@ -232,7 +232,7 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	if err := os.Chmod(tmpPath, perm); err != nil {
 		return fmt.Errorf("setting file permissions: %w", err)
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := robustRename(tmpPath, path); err != nil {
 		return fmt.Errorf("replacing target file: %w", err)
 	}
 
