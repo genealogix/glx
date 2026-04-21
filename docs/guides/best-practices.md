@@ -219,18 +219,19 @@ What matters:
 
 ## ID Generation
 
-Generate IDs systematically:
+Multi-file archive filenames are derived deterministically from entity IDs (`person-john-smith` → `persons/person-john-smith.glx`), so the ID you choose IS the filename. Two patterns work well:
 
 ```bash
-# Random hex (recommended for collaboration)
-person-a1b2c3d4
-event-b2c3d4e5
+# Descriptive IDs — readable in diffs and file listings
+person-john-smith-1850
+event-marriage-john-mary-1875
 
-# Command line generation
+# Random hex — better for privacy or when names aren't yet known
+person-a1b2c3d4
 echo "person-$(openssl rand -hex 4)"
 ```
 
-Avoid human-readable IDs that may collide during collaboration.
+Either format is stable across writes. Avoid IDs differing only by case (e.g., `Person-A` and `person-a`) — they collide on case-insensitive filesystems and are rejected at serialize time.
 
 ## Validation
 

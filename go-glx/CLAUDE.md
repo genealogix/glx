@@ -51,7 +51,7 @@ Common pitfalls:
 ## Serializer Architecture
 
 - Vocabulary embedding: `go:embed` in binary
-- Entity filenames: random 8-char hex (e.g., `person-a3f8d2c1.glx`), mapped from entity IDs via the serializer
+- Entity filenames: deterministic, derived from entity ID (e.g., `person-john-smith.glx`), lowercased to prevent case-insensitive filesystem collisions
 - Write strategy: sequential (no parallelization)
 - Validation: default on via `SerializerOptions.Validate` (CLI exposes `--no-validate` flag)
 
