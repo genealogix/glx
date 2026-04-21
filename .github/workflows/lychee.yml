@@ -87,3 +87,13 @@ jobs:
         run: |
           gh issue close "${{ steps.find-issue.outputs.number }}" \
             --comment "All external links healthy as of $(date -u '+%Y-%m-%d'). Automated closure by lychee.yml."
+
+      - name: Fail job when broken links detected
+        # Run this LAST so the issue-creation step above still fires. lychee
+        # itself uses fail: false so later steps can consult exit_code, but
+        # the overall job should go red so the failure is visible in the
+        # Actions UI (and any branch-protection dashboards).
+        if: steps.lychee.outputs.exit_code != 0
+        run: |
+          echo "::error::Lychee found broken external links — details in the filed issue."
+          exit 1

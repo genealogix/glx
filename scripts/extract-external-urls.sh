@@ -6,12 +6,12 @@
 
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO_ROOT"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)" || { echo "ERROR: failed to resolve repo root" >&2; exit 1; }
+cd "$REPO_ROOT" || { echo "ERROR: failed to cd to $REPO_ROOT" >&2; exit 1; }
 
 extract_urls() {
   local file="$1"
-  awk '
+  if ! awk '
     /^[ \t]*```/ { in_code = !in_code; next }
     in_code { next }
     {
@@ -22,7 +22,10 @@ extract_urls() {
         line = substr(line, RSTART + RLENGTH)
       }
     }
-  ' "$file"
+  ' "$file"; then
+    echo "ERROR: awk failed processing $file" >&2
+    exit 1
+  fi
 }
 
 {
