@@ -138,7 +138,7 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	assert.Contains(t, reloaded.Persons, "person-b")
 }
 
-func TestMergeArchives_DryRun(t *testing.T) {
+func TestMergeArchives_PreviewLeavesFilesystemUnchanged(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
@@ -164,21 +164,18 @@ func TestMergeArchives_DryRun(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
 
-	// Snapshot destination files before dry-run (path → size)
 	before := snapshotDir(t, destDir)
 	require.NotEmpty(t, before, "destination should have files before merge")
 
-	// Merge with dry-run — should not modify destination
 	err = mergeArchives(srcDir, destDir, true, 0.6)
 	require.NoError(t, err)
 
-	// Verify filesystem is byte-for-byte unchanged (no new files, no modifications)
 	after := snapshotDir(t, destDir)
-	assert.Equal(t, before, after, "dry run should not create, modify, or remove any files")
+	assert.Equal(t, before, after, "preview should not create, modify, or remove any files")
 }
 
 // snapshotDir returns a map of relative file paths to file sizes for all files
-// under root. Used to detect any filesystem changes after a dry-run merge.
+// under root. Used to detect any filesystem changes after a preview merge.
 func snapshotDir(t *testing.T, root string) map[string]int64 {
 	t.Helper()
 	snapshot := make(map[string]int64)

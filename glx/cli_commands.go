@@ -1328,7 +1328,6 @@ func runRename(_ *cobra.Command, args []string) error {
 
 var (
 	mergeInto      string
-	mergeDryRun    bool
 	mergePreview   bool
 	mergeThreshold float64
 )
@@ -1358,14 +1357,9 @@ including cross-archive duplicate person detection.`,
 func init() {
 	mergeCmd.Flags().StringVar(&mergeInto, "into", ".", "Destination archive path")
 	mergeCmd.Flags().BoolVar(&mergePreview, "preview", false, "Show detailed merge preview with duplicate detection")
-	mergeCmd.Flags().BoolVar(&mergeDryRun, "dry-run", false, "Preview merge without writing")
 	mergeCmd.Flags().Float64Var(&mergeThreshold, "threshold", defaultMergeThreshold, "Similarity threshold for duplicate detection in preview (0.0-1.0)")
-	_ = mergeCmd.Flags().MarkDeprecated("dry-run", "use --preview instead")
-	_ = mergeCmd.Flags().MarkHidden("dry-run")
 }
 
 func runMerge(_ *cobra.Command, args []string) error {
-	preview := mergePreview || mergeDryRun
-
-	return mergeArchives(args[0], mergeInto, preview, mergeThreshold)
+	return mergeArchives(args[0], mergeInto, mergePreview, mergeThreshold)
 }

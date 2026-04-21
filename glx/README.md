@@ -501,15 +501,16 @@ glx merge <source> --into <destination> [flags]
 | Flag | Description |
 |------|-------------|
 | `--into` | Destination archive path (default: current directory) |
-| `--dry-run` | Preview what would be merged without modifying files |
+| `--preview` | Show a detailed merge preview (including cross-archive duplicate detection) without modifying files |
+| `--threshold` | Similarity threshold for duplicate detection in preview (0.0-1.0, default 0.6) |
 
 **Examples:**
 ```bash
 # Merge research-trip findings into main archive
 glx merge research-trip/ --into main-archive/
 
-# Preview merge without writing
-glx merge research-trip/ --into main-archive/ --dry-run
+# Preview merge with cross-archive duplicate detection
+glx merge research-trip/ --into main-archive/ --preview
 
 # Merge single-file archive into current directory
 glx merge cousin-data.glx
