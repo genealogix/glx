@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### CLI
 - **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
 
+#### CI
+- **Scheduled `lychee` external-link check** — New `lychee.yml` workflow runs weekly (Mondays 08:17 UTC) and on `workflow_dispatch`, validating every external URL referenced in `specification/**/*.md`, `docs/**/*.md`, and root-level `*.md`. Broken URLs are reported by creating or updating a single GitHub issue titled "Broken external links detected"; the workflow never blocks PRs. Internal relative links continue to be validated on every PR by `scripts/check-links.sh`. (#316)
+
 ### Removed
 
 #### CLI
