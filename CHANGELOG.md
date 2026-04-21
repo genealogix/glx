@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### CLI
 - **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
 
+#### Documentation
+- **Developer Certificate of Origin (DCO) policy** — CONTRIBUTING.md now documents the DCO 1.1 and requires contributors to sign off commits with `git commit -s`. No CLA is required; contributors retain copyright. No enforcement bot is configured yet — sign-offs are trusted and checked during review. Closes #409
+
 ### Removed
 
 #### CLI
