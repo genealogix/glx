@@ -17,6 +17,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - [Documentation Standards](#documentation-standards)
 - [Submitting Changes](#submitting-changes)
 - [Proposing Major Changes](#proposing-major-changes)
+- [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
 - [AI-Generated Contributions](#ai-generated-contributions)
 - [Code of Conduct](#code-of-conduct)
 - [Security](#security)
@@ -244,6 +245,36 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 2. **Discussion**: Community reviews and comments (minimum 7 days for spec changes)
 3. **Decision**: Maintainers accept, reject, or request changes
 4. **Implementation**: After acceptance, submit a PR
+
+## Architecture Decision Records (ADRs)
+
+Significant architectural decisions are captured as **Architecture Decision Records (ADRs)** in [`docs/decisions/`](/decisions/). An ADR is a short document that records *what* was decided, *why*, and *what follows* from the decision. The goal is to make the reasoning behind load-bearing choices discoverable to new contributors, rather than leaving it buried in old issue threads.
+
+**When to write an ADR:**
+
+- Changes to the core data model, entity types, or validation rules
+- New constraints on the library (e.g., "go-glx must never do X")
+- Choice of a major dependency, format, or protocol
+- Any decision you expect to still be referenced a year from now
+
+For routine bug fixes, documentation improvements, and minor clarifications, no ADR is needed — a regular issue and PR are sufficient.
+
+**ADR format** (Nygard-style — see the [ADR template](/decisions/0000-adr-template)):
+
+- **Title**: `ADR-NNNN: Short descriptive name`
+- **Status**: `Proposed` / `Accepted` / `Deprecated` / `Superseded by ADR-XXXX`
+- **Context**: What prompted the decision — the problem, the constraints, the forces at play.
+- **Decision**: What was decided, stated plainly.
+- **Consequences**: What follows — benefits, costs, trade-offs, constraints this places on future contributors.
+
+**How to propose one:**
+
+1. Copy `docs/decisions/0000-adr-template.md` to `docs/decisions/NNNN-kebab-case-title.md` where `NNNN` is the next unused 4-digit number.
+2. Fill in each section. Keep it short — one or two paragraphs per section is usually enough.
+3. Open a PR. Initial Status is `Proposed`.
+4. On acceptance, flip Status to `Accepted` and add a row to the index in `docs/decisions/README.md`.
+
+**ADRs are immutable once Accepted.** If a decision changes, write a new ADR that supersedes the old one, and update the old one's Status to `Superseded by ADR-XXXX`. This preserves the history of reasoning.
 
 ## AI-Generated Contributions
 
