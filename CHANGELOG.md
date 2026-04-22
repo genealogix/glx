@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Documentation
 - **Architecture Decision Records (ADRs)** — Added `docs/decisions/` directory with an ADR template, an index, and six foundational ADRs covering YAML as the archive file format, the evidence-first data model (Repository → Source → Citation → Assertion), archive-owned vocabularies, Git-native archives, flexible entity IDs, and the go-glx library's no-I/O rule. `CONTRIBUTING.md` now describes the ADR practice and when to write one. Closes #416
 
+### Changed
+
+#### go-glx
+- **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
+
 ### Removed
 
 #### CLI
