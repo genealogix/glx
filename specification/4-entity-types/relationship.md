@@ -28,6 +28,7 @@ relationships:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`rel-marriage-john-mary`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -62,6 +63,7 @@ Relationship properties capture additional details that don't fit into the stand
 | `description` | string | Detailed description of the relationship |
 
 Example:
+
 ```yaml
 relationships:
   rel-business-partnership:
@@ -83,6 +85,7 @@ relationships:
 Relationship types are defined in the archive's `vocabularies/relationship-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
 **See [Vocabularies - Relationship Types](vocabularies#relationship-types-vocabulary) for:**
+
 - Complete list of standard relationship types
 - How to add custom relationship types
 - Vocabulary file structure and examples
@@ -272,6 +275,7 @@ Per-participant properties use the same vocabulary as relationship properties (`
 Participant roles (spouse, parent, child, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
 
 **See [Vocabularies - Participant Roles](vocabularies#participant-roles-vocabulary) for:**
+
 - Complete list of standard participant roles
 - How to add custom roles
 - Vocabulary file structure and examples
@@ -291,7 +295,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 
 Relationship files are typically stored in a `relationships/` directory:
 
-```
+```text
 relationships/
 ├── rel-marriage-001.glx
 ├── rel-marriage-002.glx
@@ -300,7 +304,6 @@ relationships/
 ├── rel-adoption-001.glx
 └── rel-godparent-001.glx
 ```
-
 
 ## GEDCOM Mapping
 

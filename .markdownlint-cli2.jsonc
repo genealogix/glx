@@ -1,0 +1,36 @@
+// Config for markdownlint-cli2 (see https://github.com/DavidAnson/markdownlint-cli2).
+// Rules catalog: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+{
+  "config": {
+    "default": true,
+    // MD013 (line-length): the specification and ADRs use intentionally long lines
+    // for schema URIs, narrative prose, and multi-clause sentences. Enforcing a line
+    // cap would trigger cosmetic reformatting with no rendering benefit.
+    "MD013": false,
+    // MD025 (single-h1): VitePress treats frontmatter `title:` as the page title,
+    // NOT as an h1. Disable the frontmatter-title match so a body `# Heading` under
+    // `title: ...` frontmatter is the only h1 the rule sees.
+    "MD025": { "front_matter_title": "" },
+    // MD033 (inline HTML): the website uses Vue components (<YamlFile>, <script setup>)
+    // that render as inline HTML. Disable globally rather than maintain an allow-list.
+    "MD033": false,
+    // MD036 (emphasis-as-heading): the spec uses **Bold Phrase** as a compact
+    // sub-section marker inside already-nested sections. This is intentional style.
+    "MD036": false,
+    // MD041 (first-line-h1): files may start with YAML frontmatter instead of an h1.
+    "MD041": false,
+    // MD060 (table-column-style): cosmetic table-pipe spacing; irrelevant to rendering.
+    "MD060": false,
+    // MD024 (duplicate-headings): allow identical headings across different sections
+    // (e.g., "### Added" under each version section in CHANGELOG.md).
+    "MD024": { "siblings_only": true }
+  },
+  "globs": [
+    "specification/**/*.md",
+    "docs/**/*.md",
+    "*.md"
+  ],
+  "ignores": [
+    "**/node_modules/**"
+  ]
+}

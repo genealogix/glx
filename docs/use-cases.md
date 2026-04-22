@@ -15,12 +15,14 @@ GENEALOGIX is designed to be flexible and extensible beyond traditional genealog
 **Scenario:** Documenting multi-generational family trees with complete source citations.
 
 **Key Features Used:**
+
 - Standard person, event, and relationship types
 - Evidence chains from repositories to assertions
 - Git version control for collaborative family research
 - GEDCOM import for existing data
 
 **Example Types:**
+
 ```yaml
 # Standard vocabularies
 event_types: birth, death, marriage, baptism, burial
@@ -28,6 +30,7 @@ relationship_types: parent_child, marriage, sibling
 ```
 
 **Perfect For:**
+
 - Personal family history projects
 - Multi-generational family trees
 - Collaborative family research teams
@@ -42,11 +45,13 @@ relationship_types: parent_child, marriage, sibling
 **Scenario:** Documenting the lives and careers of scholars, artists, or professionals with emphasis on achievements and collaborations.
 
 **Key Features Used:**
+
 - Custom relationship types for professional connections
 - Custom event types for career milestones
 - Flexible property fields for publications, awards, etc.
 
 **Custom Vocabularies:**
+
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -78,6 +83,7 @@ relationship_types:
 ```
 
 **Perfect For:**
+
 - Academic biography projects
 - Artist biographies and career documentation
 - Professional networks and collaborations
@@ -92,12 +98,14 @@ relationship_types:
 **Scenario:** Documenting the people and institutions of a specific geographic community over time.
 
 **Key Features Used:**
+
 - Place hierarchy for community geography
 - Custom event types for civic participation
 - Custom relationship types for community roles
 - Git collaboration for local history societies
 
 **Custom Vocabularies:**
+
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -129,6 +137,7 @@ relationship_types:
 ```
 
 **Perfect For:**
+
 - Local history societies
 - Town and county histories
 - Church and religious community records
@@ -143,12 +152,14 @@ relationship_types:
 **Scenario:** Tracking sailors, naval officers, and maritime events with emphasis on ships and voyages.
 
 **Key Features Used:**
+
 - Custom event types for maritime activities
 - Custom properties for ship information
 - Place hierarchy for ports and ocean routes
 - Evidence from ship manifests and naval records
 
 **Custom Vocabularies:**
+
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -182,6 +193,7 @@ participant_roles:
 ```
 
 **Perfect For:**
+
 - Maritime genealogy research
 - Naval history projects
 - Immigration and emigration studies
@@ -196,12 +208,14 @@ participant_roles:
 **Scenario:** Respectfully documenting the lives of enslaved persons with sensitivity to historical trauma.
 
 **Key Features Used:**
+
 - Custom event types for enslavement-specific events
 - Properties for ownership documentation (ethical considerations)
 - Evidence chains from plantation records, sale documents, etc.
 - Git version control for collaborative ethical research
 
 **Custom Vocabularies:**
+
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -228,12 +242,14 @@ relationship_types:
 ```
 
 **Ethical Considerations:**
+
 - Use respectful language in all descriptions
 - Document sources with complete provenance
 - Include agency and resistance when documented
 - Collaborate with descendant communities
 
 **Perfect For:**
+
 - Descendant family research
 - Historical reconciliation projects
 - Academic slavery studies
@@ -248,12 +264,14 @@ relationship_types:
 **Scenario:** Systematic study of a defined group of people (e.g., members of parliament, university students, guild members).
 
 **Key Features Used:**
+
 - Standardized property fields across all persons
 - Custom event types for group-specific milestones
 - Custom relationship types for group membership
 - Git version control for team-based data entry
 
 **Custom Vocabularies:**
+
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -281,6 +299,7 @@ relationship_types:
 ```
 
 **Perfect For:**
+
 - Parliamentary history databases
 - University alumni projects
 - Professional guild records
@@ -295,12 +314,14 @@ relationship_types:
 **Scenario:** Large-scale population data analysis from census records, vital records, and parish registers.
 
 **Key Features Used:**
+
 - Standard event and person types
 - Multi-file organization for large datasets
 - Git version control for collaborative data entry
 - Validation for data quality assurance
 
 **Event Participant Properties:**
+
 ```yaml
 # events/event-1851-census.glx
 events:
@@ -325,6 +346,7 @@ events:
 ```
 
 **Perfect For:**
+
 - Census transcription projects
 - Vital records databases
 - Parish register analysis
@@ -339,12 +361,14 @@ events:
 **Scenario:** Documenting clergy, religious communities, and church membership with emphasis on institutional relationships.
 
 **Key Features Used:**
+
 - Custom event types for religious milestones
 - Custom relationship types for religious roles
 - Place hierarchy for church geography
 - Evidence from church records and archives
 
 **Custom Vocabularies:**
+
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -380,6 +404,7 @@ relationship_types:
 ```
 
 **Perfect For:**
+
 - Church history projects
 - Clerical biographies
 - Monastery and convent records
@@ -399,6 +424,7 @@ glx init my-research-project
 ### 2. Identify Custom Types Needed
 
 Review your research domain and list:
+
 - Event types not in standard vocabulary
 - Relationship types specific to your domain
 - Participant roles unique to your research
@@ -431,6 +457,7 @@ glx validate
 ### 5. Document Your Decisions
 
 Create a `vocabularies/README.md` explaining:
+
 - Why each custom type was added
 - When to use each type
 - Examples of proper usage

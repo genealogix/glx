@@ -12,7 +12,7 @@ This example demonstrates a complete GENEALOGIX archive in a single file.
 
 All entities are in one file: `archive.glx`
 
-```
+```text
 single-file/
 ├── archive.glx    # All entities in one file
 └── README.md
@@ -21,6 +21,7 @@ single-file/
 ## File Contents
 
 The archive.glx file contains all entity types:
+
 - persons (2): John Smith, Mary Brown
 - relationships (1): Marriage
 - events (4): John's birth, marriage, two deaths
@@ -40,6 +41,7 @@ The archive.glx file contains all entity types:
 ## When to Use
 
 Use single-file format when:
+
 - Working solo on personal research
 - Archive has fewer than 50-100 entities
 - Don't need fine-grained version control
@@ -56,11 +58,13 @@ Should validate successfully with all cross-references intact.
 ## Migration to Multi-File
 
 To split this into multiple files:
+
 1. Create entity-type directories (persons/, sources/, etc.)
 2. Extract each entity into its own file
 3. Keep the same entity type key structure
 
 Example:
+
 ```yaml
 # persons/person-john-smith.glx
 persons:
@@ -72,4 +76,3 @@ persons:
           given: "John"
           surname: "Smith"
 ```
-

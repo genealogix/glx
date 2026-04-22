@@ -13,6 +13,7 @@ layout: doc
 A Media entity represents digital or physical media objects that provide visual, audio, or documentary evidence for genealogical research. Media can include photographs, scanned documents, audio recordings, video, or any other supporting materials that help document and illustrate family history.
 
 Media entities serve several purposes:
+
 - Preserve digital copies of original documents
 - Provide visual context for people, places, and events
 - Document physical artifacts and heirlooms
@@ -35,6 +36,7 @@ media:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`media-birth-cert-scan`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -80,11 +82,13 @@ media:
 - Description: Location of the media file
 
 The URI can be:
+
 - **Local file**: `media/files/john-smith.jpg` (recommended — see [File Storage](#file-storage))
 - **URL**: `https://example.com/archives/document.pdf` (for external resources)
 - **URN**: `urn:hash:sha256:abc123...` (content-addressable)
 
 Example:
+
 ```yaml
 uri: "media/files/john-smith-1890.jpg"
 ```
@@ -98,6 +102,7 @@ uri: "media/files/john-smith-1890.jpg"
 - Description: Descriptive title for the media
 
 Example:
+
 ```yaml
 title: "Portrait of John Smith, circa 1890"
 ```
@@ -109,12 +114,14 @@ title: "Portrait of John Smith, circa 1890"
 - Description: MIME type of the media file
 
 Common MIME types:
+
 - Images: `image/jpeg`, `image/png`, `image/tiff`, `image/gif`
 - Documents: `application/pdf`, `image/tiff`
 - Audio: `audio/mpeg`, `audio/wav`, `audio/ogg`
 - Video: `video/mp4`, `video/mpeg`, `video/quicktime`
 
 Example:
+
 ```yaml
 mime_type: "image/jpeg"
 ```
@@ -126,6 +133,7 @@ mime_type: "image/jpeg"
 - Description: Detailed description of the media content
 
 Example:
+
 ```yaml
 description: |
   Original birth certificate for John Smith, born January 15, 1850
@@ -140,10 +148,12 @@ description: |
 - Description: Cryptographic hash of the media file for integrity verification
 
 Common formats:
+
 - SHA-256: `sha256:a1b2c3d4...`
 - MD5: `md5:xyz123...`
 
 Example:
+
 ```yaml
 hash: "sha256:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"
 ```
@@ -155,6 +165,7 @@ hash: "sha256:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"
 - Description: Date the media was created (photograph taken, document scanned, etc.)
 
 Example:
+
 ```yaml
 date: "1890-06-15"
 ```
@@ -166,6 +177,7 @@ date: "1890-06-15"
 - Description: Reference to Source entity that this media documents
 
 Example:
+
 ```yaml
 source: source-parish-register
 ```
@@ -306,6 +318,7 @@ media:
 Media types are defined in the archive's `vocabularies/media-types.glx` file.
 
 **See [Vocabularies - Media Types](vocabularies#media-types-vocabulary) for:**
+
 - Complete list of standard media types
 - How to add custom media types
 - Vocabulary file structure and examples
@@ -313,7 +326,7 @@ Media types are defined in the archive's `vocabularies/media-types.glx` file.
 
 ## Relationship to Other Entities
 
-```
+```text
 Media
     ├── source → Source ID (what source this documents)
     ├── referenced by → Citations (citations can include media array)
@@ -337,7 +350,7 @@ Media entities reference files via the `uri` field. Files can be stored locally 
 
 The standard location for local media files within a GLX archive is **`media/files/`** at the archive root. This flat directory stores the actual binary content (images, PDFs, audio, video) separately from YAML entity metadata:
 
-```
+```text
 family-archive/
 ├── persons/
 │   └── person-abc12345.glx
@@ -363,6 +376,7 @@ media:
 ```
 
 **Why `media/files/`?**
+
 - Separates binary content from YAML entity data
 - Easy to apply Git LFS rules or `.gitignore` to one directory
 - Portable — relative paths work regardless of where the archive lives
@@ -413,7 +427,8 @@ Media entities map to GEDCOM multimedia objects:
 | `uri` | `OBJE.BLOB` | Decoded to file in `media/files/` |
 
 GEDCOM Example:
-```
+
+```text
 0 @M1@ OBJE
 1 FILE photos/john-smith.jpg
 1 FORM jpeg
@@ -422,6 +437,7 @@ GEDCOM Example:
 ```
 
 GENEALOGIX Equivalent:
+
 ```yaml
 media:
   media-john-portrait:
