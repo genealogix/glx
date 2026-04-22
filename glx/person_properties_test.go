@@ -157,3 +157,76 @@ func TestDisplayableGenderIdentity(t *testing.T) {
 func TestDisplayableGenderIdentity_NilPerson(t *testing.T) {
 	assert.Empty(t, displayableGenderIdentity(nil))
 }
+
+// TestPersonSex_TemporalShapes covers the three shapes `sex` can take on disk
+// given its `temporal: true` declaration in person-properties. Each must
+// resolve to the canonical vocab key rather than being fmt.Sprint'd to
+// "map[...]" / "[...]" and silently breaking downstream logic.
+func TestPersonSex_TemporalShapes(t *testing.T) {
+	cases := []struct {
+		name string
+		val  any
+		want string
+	}{
+		{"plain_string", "male", "male"},
+		{"single_temporal_map", map[string]any{"value": "female", "date": "1850"}, "female"},
+		{"temporal_list_first_wins", []any{
+			map[string]any{"value": "male", "date": "1850"},
+			map[string]any{"value": "female", "date": "1860"},
+		}, "male"},
+		{"temporal_list_bare_strings", []any{"male"}, "male"},
+		{"empty_map", map[string]any{}, ""},
+		{"empty_list", []any{}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			person := &glxlib.Person{
+				Properties: map[string]any{glxlib.PersonPropertySex: tc.val},
+			}
+			assert.Equal(t, tc.want, personSex(person))
+		})
+	}
+}
+
+// TestDisplayableGenderIdentity_TemporalShapes mirrors the sex-side test:
+// `gender` is also marked temporal, so the same shapes apply. The predicate
+// must still suppress legacy-sex duplicates and surface identity values.
+func TestDisplayableGenderIdentity_TemporalShapes(t *testing.T) {
+	cases := []struct {
+		name   string
+		gender any
+		sex    any
+		want   string
+	}{
+		{
+			"identity_temporal_map_no_sex",
+			map[string]any{"value": "nonbinary", "date": "2024"},
+			nil, "nonbinary",
+		},
+		{
+			"identity_temporal_list_no_sex",
+			[]any{map[string]any{"value": "nonbinary"}},
+			nil, "nonbinary",
+		},
+		{
+			"legacy_male_temporal_map_no_sex",
+			map[string]any{"value": "male"},
+			nil, "",
+		},
+		{
+			"dual_temporal",
+			map[string]any{"value": "nonbinary"},
+			"male", "nonbinary",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			props := map[string]any{glxlib.PersonPropertyGender: tc.gender}
+			if tc.sex != nil {
+				props[glxlib.PersonPropertySex] = tc.sex
+			}
+			got := displayableGenderIdentity(&glxlib.Person{Properties: props})
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}

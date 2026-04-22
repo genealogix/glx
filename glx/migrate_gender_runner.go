@@ -71,9 +71,11 @@ func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateRepo
 // `person_properties` are always populated by that point. We look at actual
 // person data and assertions instead:
 //
-//   - Any person has a `sex` property set (someone is already using the new
-//     field — treating their `gender` values as sex would corrupt identity
-//     data).
+//   - Any person has a meaningful `sex` value (someone is already using the
+//     new field — treating their `gender` values as sex would corrupt
+//     identity data). Empty or placeholder shapes like `sex: ""`, `sex: {}`,
+//     or `sex: []` do NOT count — those are malformed/partial and the legacy
+//     data still lives in `gender`.
 //   - Any person has a `gender` value of `nonbinary` (only exists in the
 //     post-split gender vocabulary).
 //   - Any assertion targets the `sex` property, or asserts `gender =
@@ -83,7 +85,7 @@ func isPostSplitArchive(archive *glxlib.GLXFile) bool {
 		if person == nil {
 			continue
 		}
-		if _, hasSex := person.Properties[glxlib.PersonPropertySex]; hasSex {
+		if propertyScalar(person.Properties[glxlib.PersonPropertySex]) != "" {
 			return true
 		}
 		if isIdentityOnlyGenderValue(person.Properties[glxlib.PersonPropertyGender]) {

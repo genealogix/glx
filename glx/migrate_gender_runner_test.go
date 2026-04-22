@@ -219,6 +219,41 @@ func TestMigrateGenderToSex_SkipsWhenAssertionTargetsSex(t *testing.T) {
 	assert.Contains(t, warn.String(), "post-split")
 }
 
+// TestMigrateGenderToSex_EmptySexDoesNotGatePostSplit verifies that an
+// archive with a placeholder/empty `sex` value (e.g. `sex: ""`, `sex: {}`,
+// `sex: []`) does NOT trip the post-split guard. The legacy data still lives
+// in `gender` and the migration must proceed rather than silently skip.
+func TestMigrateGenderToSex_EmptySexDoesNotGatePostSplit(t *testing.T) {
+	cases := []struct {
+		name   string
+		sexVal any
+	}{
+		{"empty_string", ""},
+		{"empty_map", map[string]any{}},
+		{"empty_list", []any{}},
+		{"temporal_empty_value", map[string]any{"value": ""}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := &glxlib.GLXFile{
+				Persons: map[string]*glxlib.Person{
+					"person-1": {Properties: map[string]any{
+						"gender": "male",
+						"sex":    tc.sexVal,
+					}},
+				},
+			}
+
+			report := migrateGenderToSex(archive, &bytes.Buffer{})
+
+			assert.Equal(t, 1, report.PropertiesRenamed,
+				"migration must run when sex is empty/placeholder")
+			assert.Equal(t, "male", archive.Persons["person-1"].Properties["sex"])
+			assert.NotContains(t, archive.Persons["person-1"].Properties, "gender")
+		})
+	}
+}
+
 func TestMigrateGenderToSex_NoOpOnAlreadyMigratedArchive(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{

@@ -33,12 +33,48 @@ func personSex(person *glxlib.Person) string {
 	if person == nil {
 		return ""
 	}
-	if v := propertyString(person.Properties, glxlib.PersonPropertySex); v != "" {
+	if v := propertyScalar(person.Properties[glxlib.PersonPropertySex]); v != "" {
 		return v
 	}
-	legacy := propertyString(person.Properties, glxlib.PersonPropertyGender)
+	legacy := propertyScalar(person.Properties[glxlib.PersonPropertyGender])
 	if isLegacySexValue(legacy) {
 		return legacy
+	}
+
+	return ""
+}
+
+// propertyScalar extracts the scalar string value from a property that may be
+// stored as a plain string or a temporal shape. `sex` and `gender` are both
+// marked temporal in person-properties, so archives may store them as:
+//
+//	sex: male                                      # plain string
+//	sex: {value: male, date: 1850}                 # single temporal entry
+//	sex: [{value: male, date: 1850}, ...]          # temporal list
+//
+// Without shape-aware extraction, callers fall back to fmt.Sprint on the
+// raw map/list and end up comparing against strings like "map[date:1850
+// value:male]", which breaks both display and downstream sex/gender logic.
+// Returns the first non-empty scalar from the list form.
+func propertyScalar(val any) string {
+	switch v := val.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if s, ok := v["value"].(string); ok {
+			return s
+		}
+	case []any:
+		for _, item := range v {
+			if s, ok := item.(string); ok && s != "" {
+				return s
+			}
+			if m, ok := item.(map[string]any); ok {
+				if s, ok := m["value"].(string); ok && s != "" {
+					return s
+				}
+			}
+		}
 	}
 
 	return ""
@@ -71,11 +107,11 @@ func displayableGenderIdentity(person *glxlib.Person) string {
 	if person == nil {
 		return ""
 	}
-	gender := propertyString(person.Properties, glxlib.PersonPropertyGender)
+	gender := propertyScalar(person.Properties[glxlib.PersonPropertyGender])
 	if gender == "" {
 		return ""
 	}
-	sex := propertyString(person.Properties, glxlib.PersonPropertySex)
+	sex := propertyScalar(person.Properties[glxlib.PersonPropertySex])
 	if sex == "" && isLegacySexValue(gender) {
 		// Pre-split archive: `gender: "male"` already surfaces as Sex via
 		// the legacy fallback. Showing a duplicate Gender row would print

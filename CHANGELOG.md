@@ -38,6 +38,13 @@ Closes #534.
 
 ### Fixed
 
+#### CLI
+- **`personSex` / `displayableGenderIdentity` handle temporal shapes** — `sex` and `gender` are both declared `temporal: true` in `person-properties`, so archives may store them as `{value, date}` maps or `[{value, date}, ...]` lists. Previously the CLI ran these through `propertyString`, which `fmt.Sprint`-ed non-string values and produced useless display strings like `map[date:1850 value:male]` — also breaking the legacy-gender fallback and the identity-vs-duplicate predicate. A new `propertyScalar` helper extracts the canonical scalar from string / single-map / list shapes. (PR #742)
+- **`glx migrate --rename-gender-to-sex` no longer skips on empty `sex`** — `isPostSplitArchive` previously treated the mere presence of the `sex` key as a post-split signal, so archives with `sex: ""`, `sex: {}`, or `sex: []` incorrectly skipped the migration while their real data still lived in `gender`. The check now requires a meaningful scalar value. (PR #742)
+
+#### Specification Tooling
+- **Removed unused `js-yaml` runtime dependency** from `specification/package.json`. It was never imported by the validation tooling or any script under `specification/`. (PR #742)
+
 #### GEDCOM Import
 - **Empty `SEX` tag maps to `not_recorded`** — A present-but-empty GEDCOM `SEX` tag (e.g. `1 SEX` with no value) now maps to `sex: not_recorded` rather than `sex: unknown`. `unknown` is reserved for `SEX U` (source consulted but sex could not be determined); an empty tag represents absent-from-source data per GEDCOM 5.5.5. (#528)
 
