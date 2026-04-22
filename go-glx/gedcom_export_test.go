@@ -1607,7 +1607,7 @@ func TestExportPerson_Basic(t *testing.T) {
 					"type":    "birth",
 				},
 			},
-			"gender": "male",
+			"sex": "male",
 		},
 	}
 
@@ -1713,7 +1713,7 @@ func TestExportPerson_WithEvents(t *testing.T) {
 					"surname": "Smith",
 				},
 			},
-			"gender": "male",
+			"sex": "male",
 		},
 	}
 
@@ -1798,7 +1798,7 @@ func TestExportPerson_MultipleNames(t *testing.T) {
 					},
 				},
 			},
-			"gender": "female",
+			"sex": "female",
 		},
 	}
 
@@ -1856,7 +1856,7 @@ func TestExportPerson_WithProperties(t *testing.T) {
 					"surname": "Smith",
 				},
 			},
-			"gender":      "male",
+			"sex":         "male",
 			"occupation":  "Farmer",
 			"religion":    "Baptist",
 			"education":   "Harvard",
@@ -2175,7 +2175,7 @@ func TestExportGEDCOM_WithPersons(t *testing.T) {
 							"type":    "birth",
 						},
 					},
-					"gender": "male",
+					"sex": "male",
 				},
 			},
 			"person-2": {
@@ -2187,7 +2187,7 @@ func TestExportGEDCOM_WithPersons(t *testing.T) {
 							"surname": "Doe",
 						},
 					},
-					"gender": "female",
+					"sex": "female",
 				},
 			},
 		},
@@ -2767,7 +2767,7 @@ func TestExportPerson_NoteFromProperties(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"gender": "male",
+					"sex": "male",
 					"name": map[string]any{
 						"value": "Robert Bruce",
 						"fields": map[string]any{
@@ -2874,7 +2874,7 @@ func TestExportPerson_MultipleOccupations(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"gender": "male",
+					"sex": "male",
 					"name": map[string]any{
 						"value":  "John Smith",
 						"fields": map[string]any{"given": "John", "surname": "Smith"},

@@ -202,7 +202,7 @@ Defines confidence levels for assertions, representing researcher certainty in c
 
 ### Sex Types
 
-Defines controlled values for the `sex` person property (male, female, unknown, not_recorded, other). Sex is what was recorded in source documents (e.g., GEDCOM SEX, census enumerations) and maps to GEDCOM `SEX` on import/export.
+Defines controlled values for the `sex` person property (male, female, unknown, not_recorded, other). Sex is what was recorded in source documents (e.g., GEDCOM SEX, census enumerations) and maps to GEDCOM `SEX` on import/export. Out-of-vocabulary values produce a validation warning, not an error — archives may add custom values before recording them in the vocabulary.
 
 <YamlFile
   :content="vocabularies['sex-types']"
@@ -215,7 +215,7 @@ Defines controlled values for the `sex` person property (male, female, unknown, 
 
 ### Gender Types
 
-Defines controlled values for the `gender` person property — self-identified gender identity (male, female, nonbinary, other). Primarily relevant for modern records and living persons.
+Defines controlled values for the `gender` person property — self-identified gender identity (male, female, nonbinary, other). Primarily relevant for modern records and living persons. No direct GEDCOM mapping — GEDCOM 7.0 defers gender identity to `FACT`. Out-of-vocabulary values produce a validation warning, not an error.
 
 <YamlFile
   :content="vocabularies['gender-types']"

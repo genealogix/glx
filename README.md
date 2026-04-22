@@ -66,7 +66,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 
 events:
   event-birth-john:
@@ -162,7 +162,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 
 sources:
   source-12345678:

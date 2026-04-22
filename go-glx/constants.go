@@ -158,7 +158,7 @@ const (
 // GEDCOM Tags - Individual Personal Information
 const (
 	GedcomTagName = "NAME" // Person's name
-	GedcomTagSex  = "SEX"  // Gender/sex
+	GedcomTagSex  = "SEX"  // Recorded sex; maps to GLX sex property
 	GedcomTagOccu = "OCCU" // Occupation
 	GedcomTagReli = "RELI" // Religion
 	GedcomTagEduc = "EDUC" // Education

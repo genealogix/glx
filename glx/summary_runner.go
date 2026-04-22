@@ -1086,7 +1086,11 @@ func narrativeDate(date string) string {
 }
 
 // pronounFor returns subject ("He"/"She"/"They") and possessive ("his"/"her"/"their")
-// pronouns. Prefers gender identity when set; otherwise falls back to recorded sex.
+// pronouns. Prefers self-identified gender over recorded sex because pronouns
+// are an identity concern, not a recorded-document concern — a person's current
+// gender identity is the right source when present. Falls back to recorded sex
+// for archives that only carry `sex` (most historical records). Unrecognized
+// values and `nonbinary`/`other` fall through to singular they/their.
 func pronounFor(person *glxlib.Person) (subject, possessive string) {
 	gender := strings.ToLower(propertyString(person.Properties, glxlib.PersonPropertyGender))
 	if gender == "" {

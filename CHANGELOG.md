@@ -26,6 +26,9 @@ Closes #534.
 
 ### Fixed
 
+#### GEDCOM Import
+- **Empty `SEX` tag maps to `not_recorded`** — A present-but-empty GEDCOM `SEX` tag (e.g. `1 SEX` with no value) now maps to `sex: not_recorded` rather than `sex: unknown`. `unknown` is reserved for `SEX U` (source consulted but sex could not be determined); an empty tag represents absent-from-source data per GEDCOM 5.5.5. (#528)
+
 #### go-glx
 - **Multi-file serializer generates deterministic filenames** — Entity filenames are now derived from entity IDs (`strings.ToLower(entityID) + ".glx"`) instead of random 8-char hex. Previously, every write generated new random filenames, causing massive git diffs even when no data changed. Case-insensitive collisions (e.g., `Person-A` and `person-a`) are detected and reported as errors. Fixes #694
 

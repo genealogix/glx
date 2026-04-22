@@ -314,7 +314,7 @@ func TestQueryAssertions_SubjectFilter(t *testing.T) {
 		},
 		Assertions: map[string]*glxlib.Assertion{
 			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "name", Value: "Jane Webb"},
-			"a-2": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "gender", Value: "female"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "sex", Value: "female"},
 			"a-3": {Subject: glxlib.EntityRef{Person: "person-john"}, Property: "name", Value: "John Smith"},
 		},
 	}

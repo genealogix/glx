@@ -21,6 +21,13 @@ import (
 )
 
 // Properties that are handled specially and should not be exported as generic tags.
+//
+// PersonPropertySex is emitted as a GEDCOM SEX tag (see mapSexToGEDCOM below).
+// PersonPropertyGender (self-identified identity) has NO GEDCOM tag — GEDCOM
+// 7.0 explicitly defers gender identity to a FACT record rather than SEX.
+// Identity values are therefore intentionally dropped on export; a person with
+// both `sex: male` and `gender: nonbinary` will only round-trip the `sex`
+// value through GEDCOM.
 var skipPersonProperties = map[string]bool{
 	PersonPropertyName:         true,
 	PersonPropertySex:          true,

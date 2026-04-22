@@ -352,7 +352,7 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	result, err := BuildCensusEntities(tpl, nil)
 	require.NoError(t, err)
 
-	// Should have assertions for: birth year, birthplace, gender, occupation, residence, race
+	// Should have assertions for: birth year, birthplace, sex, occupation, residence, race
 	assert.GreaterOrEqual(t, len(result.Assertions), 6)
 
 	// Check birth year assertion

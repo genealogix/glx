@@ -57,7 +57,7 @@ func TestReconstructFamilies_BasicMarriage(t *testing.T) {
 			"person-wife":    "@I2@",
 		},
 		ExportIndex: &ExportIndex{
-			EventTypes:       make(map[string]string),
+			EventTypes:        make(map[string]string),
 			RelationshipTypes: make(map[string]string),
 		},
 		PlaceStrings: make(map[string]string),
@@ -133,7 +133,7 @@ func TestReconstructFamilies_WithChildren(t *testing.T) {
 			"person-child2": "@I4@",
 		},
 		ExportIndex: &ExportIndex{
-			EventTypes:       make(map[string]string),
+			EventTypes:        make(map[string]string),
 			RelationshipTypes: make(map[string]string),
 		},
 		PlaceStrings: make(map[string]string),
@@ -190,7 +190,7 @@ func TestReconstructFamilies_SingleParent(t *testing.T) {
 			"person-child":  "@I2@",
 		},
 		ExportIndex: &ExportIndex{
-			EventTypes:       make(map[string]string),
+			EventTypes:        make(map[string]string),
 			RelationshipTypes: make(map[string]string),
 		},
 		PlaceStrings: make(map[string]string),
@@ -399,7 +399,7 @@ func TestReconstructFamilies_PedigreeTypes(t *testing.T) {
 			"person-generic-child": "@I6@",
 		},
 		ExportIndex: &ExportIndex{
-			EventTypes:       make(map[string]string),
+			EventTypes:        make(map[string]string),
 			RelationshipTypes: make(map[string]string),
 		},
 		PlaceStrings: make(map[string]string),
@@ -448,7 +448,7 @@ func TestExportFamily_Basic(t *testing.T) {
 			"person-wife":    "@I2@",
 		},
 		ExportIndex: &ExportIndex{
-			EventTypes:       make(map[string]string),
+			EventTypes:        make(map[string]string),
 			RelationshipTypes: make(map[string]string),
 		},
 		PlaceStrings: make(map[string]string),
@@ -609,7 +609,7 @@ func TestExportFamily_WithChildren(t *testing.T) {
 			"person-c2": "@I4@",
 		},
 		ExportIndex: &ExportIndex{
-			EventTypes:       make(map[string]string),
+			EventTypes:        make(map[string]string),
 			RelationshipTypes: make(map[string]string),
 		},
 		PlaceStrings: make(map[string]string),
@@ -646,7 +646,7 @@ func TestExportFamily_WithChildren(t *testing.T) {
 func TestExportPerson_FAMS_FAMC(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
-			Events:   make(map[string]*Event),
+			Events:    make(map[string]*Event),
 			Citations: make(map[string]*Citation),
 		},
 		PersonXRefMap: map[string]string{
@@ -729,7 +729,7 @@ func TestExportPerson_FAMS_FAMC(t *testing.T) {
 func TestExportPerson_FAMC_NoPedigree(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
-			Events:   make(map[string]*Event),
+			Events:    make(map[string]*Event),
 			Citations: make(map[string]*Citation),
 		},
 		PersonXRefMap: map[string]string{
@@ -867,11 +867,11 @@ func TestExportGEDCOM_FullFamily(t *testing.T) {
 
 	// Should have HUSB and WIFE in FAM
 	// Person IDs are sorted, so person-child=@I1@, person-father=@I2@, person-mother=@I3@
-	assert.Contains(t, output, "HUSB @I2@")  // person-father
-	assert.Contains(t, output, "WIFE @I3@")  // person-mother
+	assert.Contains(t, output, "HUSB @I2@") // person-father
+	assert.Contains(t, output, "WIFE @I3@") // person-mother
 
 	// Should have CHIL
-	assert.Contains(t, output, "CHIL @I1@")  // person-child
+	assert.Contains(t, output, "CHIL @I1@") // person-child
 
 	// Should have MARR with DATE
 	assert.Contains(t, output, "MARR")
@@ -992,8 +992,8 @@ func TestExportFamily_WithFamilyEvents(t *testing.T) {
 		},
 		ExportIndex: &ExportIndex{
 			EventTypes: map[string]string{
-				EventTypeMarriage:    GedcomTagMarr,
-				EventTypeEngagement:  GedcomTagEnga,
+				EventTypeMarriage:   GedcomTagMarr,
+				EventTypeEngagement: GedcomTagEnga,
 			},
 			RelationshipTypes: make(map[string]string),
 		},
@@ -1102,8 +1102,8 @@ func TestExportFamily_MarriageWithoutStartEvent_NoMarr(t *testing.T) {
 	// after import. The conservative choice avoids inflating MARR counts.
 	glxFile := &GLXFile{
 		Persons: map[string]*Person{
-			"person-1": {Properties: map[string]any{"gender": "male", "name": map[string]any{"value": "John"}}},
-			"person-2": {Properties: map[string]any{"gender": "female", "name": map[string]any{"value": "Jane"}}},
+			"person-1": {Properties: map[string]any{"sex": "male", "name": map[string]any{"value": "John"}}},
+			"person-2": {Properties: map[string]any{"sex": "female", "name": map[string]any{"value": "Jane"}}},
 		},
 		Relationships: map[string]*Relationship{
 			"rel-1": {
