@@ -225,19 +225,19 @@ persons:
 						"media-1": {URI: "http://example.com"},
 					},
 					// Vocabularies (include referenced values for validation)
-					EventTypes: map[string]*glxlib.EventType{
+					EventTypes: map[string]*glxlib.VocabularyEntry{
 						"birth":  {Label: "Birth"},
 						"custom": {Label: "Custom"},
 					},
-					ParticipantRoles: map[string]*glxlib.ParticipantRole{
+					ParticipantRoles: map[string]*glxlib.VocabularyEntry{
 						"principal": {Label: "Principal"},
 						"child":     {Label: "Child"},
 						"parent":    {Label: "Parent"},
 					},
-					RelationshipTypes: map[string]*glxlib.RelationshipType{
+					RelationshipTypes: map[string]*glxlib.VocabularyEntry{
 						"parent_child": {Label: "Parent-Child"},
 					},
-					PlaceTypes: map[string]*glxlib.PlaceType{
+					PlaceTypes: map[string]*glxlib.VocabularyEntry{
 						"custom": {Label: "Custom"},
 					},
 				}
@@ -624,7 +624,7 @@ func TestReadWriteMultiFileArchive(t *testing.T) {
 						"pl1": {Name: "Boston"},
 						"pl2": {Name: "Chicago"},
 					},
-					EventTypes: map[string]*glxlib.EventType{
+					EventTypes: map[string]*glxlib.VocabularyEntry{
 						"custom": {Label: "Custom Event"},
 					},
 				}

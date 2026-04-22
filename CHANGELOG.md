@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### CI
 - **Scheduled `lychee` external-link check** — New `lychee.yml` workflow runs weekly (Mondays 08:17 UTC) and on `workflow_dispatch`, validating every external URL referenced in `specification/**/*.md`, `docs/**/*.md`, and root-level `*.md`. Broken URLs are reported by creating or updating a single GitHub issue titled "Broken external links detected"; the workflow never blocks PRs. Internal relative links continue to be validated on every PR by `scripts/check-links.sh`. (#316)
 
+### Changed
+
+#### go-glx
+- **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
+
 ### Removed
 
 #### CLI
