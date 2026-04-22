@@ -141,19 +141,19 @@ func TestGLXFile_Merge_AllEntityTypes(t *testing.T) {
 func TestGLXFile_Merge_Vocabularies_NoDuplicates(t *testing.T) {
 	// Test merging vocabularies without duplicates
 	g1 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {Label: "Birth"},
 		},
-		ParticipantRoles: map[string]*ParticipantRole{
+		ParticipantRoles: map[string]*VocabularyEntry{
 			"parent": {Label: "Parent"},
 		},
 	}
 
 	g2 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"death": {Label: "Death"},
 		},
-		ParticipantRoles: map[string]*ParticipantRole{
+		ParticipantRoles: map[string]*VocabularyEntry{
 			"child": {Label: "Child"},
 		},
 	}
@@ -167,13 +167,13 @@ func TestGLXFile_Merge_Vocabularies_NoDuplicates(t *testing.T) {
 func TestGLXFile_Merge_Vocabularies_WithDuplicates(t *testing.T) {
 	// Test merging vocabularies with duplicates
 	g1 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {Label: "Birth"},
 		},
 	}
 
 	g2 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {Label: "Different Birth"},
 			"death": {Label: "Death"},
 		},
@@ -191,29 +191,29 @@ func TestGLXFile_Merge_Vocabularies_WithDuplicates(t *testing.T) {
 func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 	// Test merging all vocabulary types
 	g1 := &GLXFile{
-		EventTypes:        map[string]*EventType{"type-1": {}},
-		RelationshipTypes: map[string]*RelationshipType{"type-1": {}},
-		PlaceTypes:        map[string]*PlaceType{"type-1": {}},
-		SourceTypes:       map[string]*SourceType{"type-1": {}},
-		RepositoryTypes:   map[string]*RepositoryType{"type-1": {}},
-		MediaTypes:        map[string]*MediaType{"type-1": {}},
-		ParticipantRoles:  map[string]*ParticipantRole{"role-1": {}},
-		ConfidenceLevels:  map[string]*ConfidenceLevel{"level-1": {}},
-		SexTypes:          map[string]*SexType{"sex-1": {}},
-		GenderTypes:       map[string]*GenderType{"gender-1": {}},
+		EventTypes:        map[string]*VocabularyEntry{"type-1": {}},
+		RelationshipTypes: map[string]*VocabularyEntry{"type-1": {}},
+		PlaceTypes:        map[string]*VocabularyEntry{"type-1": {}},
+		SourceTypes:       map[string]*VocabularyEntry{"type-1": {}},
+		RepositoryTypes:   map[string]*VocabularyEntry{"type-1": {}},
+		MediaTypes:        map[string]*VocabularyEntry{"type-1": {}},
+		ParticipantRoles:  map[string]*VocabularyEntry{"role-1": {}},
+		ConfidenceLevels:  map[string]*VocabularyEntry{"level-1": {}},
+		SexTypes:          map[string]*VocabularyEntry{"sex-1": {}},
+		GenderTypes:       map[string]*VocabularyEntry{"gender-1": {}},
 	}
 
 	g2 := &GLXFile{
-		EventTypes:        map[string]*EventType{"type-2": {}},
-		RelationshipTypes: map[string]*RelationshipType{"type-2": {}},
-		PlaceTypes:        map[string]*PlaceType{"type-2": {}},
-		SourceTypes:       map[string]*SourceType{"type-2": {}},
-		RepositoryTypes:   map[string]*RepositoryType{"type-2": {}},
-		MediaTypes:        map[string]*MediaType{"type-2": {}},
-		ParticipantRoles:  map[string]*ParticipantRole{"role-2": {}},
-		ConfidenceLevels:  map[string]*ConfidenceLevel{"level-2": {}},
-		SexTypes:          map[string]*SexType{"sex-2": {}},
-		GenderTypes:       map[string]*GenderType{"gender-2": {}},
+		EventTypes:        map[string]*VocabularyEntry{"type-2": {}},
+		RelationshipTypes: map[string]*VocabularyEntry{"type-2": {}},
+		PlaceTypes:        map[string]*VocabularyEntry{"type-2": {}},
+		SourceTypes:       map[string]*VocabularyEntry{"type-2": {}},
+		RepositoryTypes:   map[string]*VocabularyEntry{"type-2": {}},
+		MediaTypes:        map[string]*VocabularyEntry{"type-2": {}},
+		ParticipantRoles:  map[string]*VocabularyEntry{"role-2": {}},
+		ConfidenceLevels:  map[string]*VocabularyEntry{"level-2": {}},
+		SexTypes:          map[string]*VocabularyEntry{"sex-2": {}},
+		GenderTypes:       map[string]*VocabularyEntry{"gender-2": {}},
 	}
 
 	conflicts, _ := g1.Merge(g2)
@@ -317,7 +317,7 @@ func TestGLXFile_Merge_MultipleDuplicates(t *testing.T) {
 		Events: map[string]*Event{
 			"event-1": {},
 		},
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {},
 		},
 	}
@@ -331,7 +331,7 @@ func TestGLXFile_Merge_MultipleDuplicates(t *testing.T) {
 			"event-1": {}, // duplicate
 			"event-2": {},
 		},
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {}, // duplicate
 			"death": {},
 		},
@@ -414,7 +414,7 @@ func TestGLXFile_Merge_MixedEntitiesAndVocabularies(t *testing.T) {
 			"person-1": {},
 		},
 		Events: map[string]*Event{}, // Initialize empty map
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {},
 		},
 		PersonProperties: map[string]*PropertyDefinition{
@@ -430,7 +430,7 @@ func TestGLXFile_Merge_MixedEntitiesAndVocabularies(t *testing.T) {
 		Events: map[string]*Event{
 			"event-1": {},
 		},
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"death": {},
 		},
 		PersonProperties: map[string]*PropertyDefinition{
@@ -612,7 +612,7 @@ func TestGLXFile_Merge_Metadata_ExistingEmptyDoesNotConflict(t *testing.T) {
 
 func TestGLXFile_Merge_IdenticalVocabsSilentlySkipped(t *testing.T) {
 	g1 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {Label: "Birth", Description: "A birth event"},
 			"death": {Label: "Death"},
 		},
@@ -622,7 +622,7 @@ func TestGLXFile_Merge_IdenticalVocabsSilentlySkipped(t *testing.T) {
 	}
 
 	g2 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth":    {Label: "Birth", Description: "A birth event"},
 			"death":    {Label: "Death"},
 			"marriage": {Label: "Marriage"},
@@ -644,7 +644,7 @@ func TestGLXFile_Merge_IdenticalVocabsSilentlySkipped(t *testing.T) {
 
 func TestGLXFile_Merge_ConflictingVocabsReported(t *testing.T) {
 	g1 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {Label: "Birth"},
 		},
 		PersonProperties: map[string]*PropertyDefinition{
@@ -653,7 +653,7 @@ func TestGLXFile_Merge_ConflictingVocabsReported(t *testing.T) {
 	}
 
 	g2 := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth": {Label: "Different Birth"},
 		},
 		PersonProperties: map[string]*PropertyDefinition{

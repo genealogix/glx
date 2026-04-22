@@ -25,6 +25,11 @@ Closes #534.
 - **`glx migrate --rename-gender-to-sex`** — New opt-in flag on `glx migrate` that renames the legacy `gender` person property (and related assertions and inlined vocabulary entries) to `sex`, completing the two-field-model split in pre-v1.0 archives (#528).
 - **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
 
+### Changed
+
+#### go-glx
+- **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
+
 ### Removed
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
 

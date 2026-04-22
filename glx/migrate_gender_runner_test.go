@@ -85,7 +85,7 @@ func TestMigrateGenderToSex_VocabEntryRename(t *testing.T) {
 
 func TestMigrateGenderToSex_PreSplitGenderTypesMovedToSexTypes(t *testing.T) {
 	archive := &glxlib.GLXFile{
-		GenderTypes: map[string]*glxlib.GenderType{
+		GenderTypes: map[string]*glxlib.VocabularyEntry{
 			"male":    {Label: "Male", GEDCOM: "M"},
 			"female":  {Label: "Female", GEDCOM: "F"},
 			"unknown": {Label: "Unknown", GEDCOM: "U"},
@@ -106,11 +106,11 @@ func TestMigrateGenderToSex_PreSplitMergesIntoExistingSexTypes(t *testing.T) {
 	// mergeStandardVocabularies). Custom legacy entries in gender_types should
 	// merge into sex_types without overwriting the standard ones.
 	archive := &glxlib.GLXFile{
-		SexTypes: map[string]*glxlib.SexType{
+		SexTypes: map[string]*glxlib.VocabularyEntry{
 			"male":   {Label: "Male", GEDCOM: "M"},
 			"female": {Label: "Female", GEDCOM: "F"},
 		},
-		GenderTypes: map[string]*glxlib.GenderType{
+		GenderTypes: map[string]*glxlib.VocabularyEntry{
 			"male":         {Label: "OVERWRITTEN"},
 			"unknown":      {Label: "Unknown", GEDCOM: "U"},
 			"intersex":     {Label: "Intersex"},
@@ -144,7 +144,7 @@ func TestMigrateGenderToSex_NilWriterDoesNotPanic(t *testing.T) {
 func TestMigrateGenderToSex_PostSplitGenderTypesUntouched(t *testing.T) {
 	// Vocabulary contains "nonbinary" -> already the new identity vocabulary.
 	archive := &glxlib.GLXFile{
-		GenderTypes: map[string]*glxlib.GenderType{
+		GenderTypes: map[string]*glxlib.VocabularyEntry{
 			"male":      {Label: "Male"},
 			"female":    {Label: "Female"},
 			"nonbinary": {Label: "Non-binary"},

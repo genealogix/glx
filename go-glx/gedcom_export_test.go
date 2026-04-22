@@ -343,13 +343,13 @@ func TestResolvePlaceString_CacheHit(t *testing.T) {
 
 func TestBuildExportIndex(t *testing.T) {
 	glx := &GLXFile{
-		EventTypes: map[string]*EventType{
+		EventTypes: map[string]*VocabularyEntry{
 			"birth":    {Label: "Birth", GEDCOM: "BIRT"},
 			"death":    {Label: "Death", GEDCOM: "DEAT"},
 			"marriage": {Label: "Marriage", GEDCOM: "MARR"},
 			"custom":   {Label: "Custom"}, // no GEDCOM mapping
 		},
-		RelationshipTypes: map[string]*RelationshipType{
+		RelationshipTypes: map[string]*VocabularyEntry{
 			"marriage": {Label: "Marriage", GEDCOM: "MARR"},
 		},
 		PersonProperties: map[string]*PropertyDefinition{
@@ -2002,7 +2002,7 @@ func TestMapSexToGEDCOM(t *testing.T) {
 	// Test vocabulary lookup path (sex_types preferred)
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
-			SexTypes: map[string]*SexType{
+			SexTypes: map[string]*VocabularyEntry{
 				"male":       {Label: "Male", GEDCOM: "M"},
 				"female":     {Label: "Female", GEDCOM: "F"},
 				"custom":     {Label: "Custom", GEDCOM: "X"},
@@ -2026,7 +2026,7 @@ func TestMapSexToGEDCOM(t *testing.T) {
 	// Falls back to gender_types when sex_types lacks the key (back-compat).
 	expCtxGender := &ExportContext{
 		GLX: &GLXFile{
-			GenderTypes: map[string]*GenderType{
+			GenderTypes: map[string]*VocabularyEntry{
 				"legacy": {Label: "Legacy", GEDCOM: "X"},
 			},
 		},
@@ -2045,7 +2045,7 @@ func TestMapSexToGEDCOM(t *testing.T) {
 	// sex_types entry with gedcom: "N" must NOT leak into a 7.0 export.
 	expCtx70WithCustomN := &ExportContext{
 		GLX: &GLXFile{
-			SexTypes: map[string]*SexType{
+			SexTypes: map[string]*VocabularyEntry{
 				"legacy_n": {Label: "Legacy N", GEDCOM: "N"},
 				"legacy_z": {Label: "Legacy Z", GEDCOM: "Z"},
 			},
@@ -2779,9 +2779,9 @@ func TestExportPerson_NoteFromProperties(t *testing.T) {
 				},
 			},
 		},
-		EventTypes:        make(map[string]*EventType),
+		EventTypes:        make(map[string]*VocabularyEntry),
 		PersonProperties:  make(map[string]*PropertyDefinition),
-		RelationshipTypes: make(map[string]*RelationshipType),
+		RelationshipTypes: make(map[string]*VocabularyEntry),
 		Events:            make(map[string]*Event),
 		Relationships:     make(map[string]*Relationship),
 		Sources:           make(map[string]*Source),
@@ -2828,7 +2828,7 @@ func TestExportPerson_NoteFromProperties(t *testing.T) {
 
 func TestExportPersonEvent_NoteFromProperties(t *testing.T) {
 	glxFile := &GLXFile{
-		EventTypes:       make(map[string]*EventType),
+		EventTypes:       make(map[string]*VocabularyEntry),
 		EventProperties:  make(map[string]*PropertyDefinition),
 		PersonProperties: make(map[string]*PropertyDefinition),
 		Events:           make(map[string]*Event),
@@ -2887,9 +2887,9 @@ func TestExportPerson_MultipleOccupations(t *testing.T) {
 				},
 			},
 		},
-		EventTypes:        make(map[string]*EventType),
+		EventTypes:        make(map[string]*VocabularyEntry),
 		PersonProperties:  make(map[string]*PropertyDefinition),
-		RelationshipTypes: make(map[string]*RelationshipType),
+		RelationshipTypes: make(map[string]*VocabularyEntry),
 		Events:            make(map[string]*Event),
 		Relationships:     make(map[string]*Relationship),
 		Sources:           make(map[string]*Source),

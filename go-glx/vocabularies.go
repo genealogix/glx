@@ -28,7 +28,7 @@ import (
 // via sync.Once. LoadStandardVocabulariesIntoGLX shallow-clones each map so
 // callers can safely add or remove keys without affecting other GLXFiles.
 // The map values (struct pointers) are still shared — callers must not mutate
-// the pointed-to structs (e.g., EventType fields).
+// the pointed-to VocabularyEntry structs.
 var (
 	cachedVocabs     *GLXFile
 	cachedVocabsOnce sync.Once

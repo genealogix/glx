@@ -224,7 +224,7 @@ func movePreSplitGenderTypesVocab(archive *glxlib.GLXFile) int {
 	}
 
 	if archive.SexTypes == nil {
-		archive.SexTypes = make(map[string]*glxlib.SexType, len(archive.GenderTypes))
+		archive.SexTypes = make(map[string]*glxlib.VocabularyEntry, len(archive.GenderTypes))
 	}
 	for key, entry := range archive.GenderTypes {
 		if entry == nil {
@@ -233,7 +233,7 @@ func movePreSplitGenderTypesVocab(archive *glxlib.GLXFile) int {
 		if _, exists := archive.SexTypes[key]; exists {
 			continue
 		}
-		archive.SexTypes[key] = &glxlib.SexType{
+		archive.SexTypes[key] = &glxlib.VocabularyEntry{
 			Label:       entry.Label,
 			Description: entry.Description,
 			GEDCOM:      entry.GEDCOM,

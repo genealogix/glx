@@ -49,7 +49,7 @@ func TestValidateEntityReferences(t *testing.T) {
 	t.Run("missing vocabulary reference", func(t *testing.T) {
 		archive := &GLXFile{
 			Events:     map[string]*Event{"event-1": {Type: "marriage-invalid"}},
-			EventTypes: map[string]*EventType{"marriage": {Label: "Marriage"}},
+			EventTypes: map[string]*VocabularyEntry{"marriage": {Label: "Marriage"}},
 		}
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
@@ -275,7 +275,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 					},
 				},
 			},
-			ParticipantRoles: map[string]*ParticipantRole{
+			ParticipantRoles: map[string]*VocabularyEntry{
 				"bride": {Label: "Bride"},
 				"groom": {Label: "Groom"},
 			},
@@ -306,7 +306,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 					Participants: []Participant{{Person: "person-1", Role: "invalid-role"}},
 				},
 			},
-			ParticipantRoles: map[string]*ParticipantRole{},
+			ParticipantRoles: map[string]*VocabularyEntry{},
 		}
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
@@ -324,7 +324,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 					},
 				},
 			},
-			ParticipantRoles: map[string]*ParticipantRole{
+			ParticipantRoles: map[string]*VocabularyEntry{
 				"spouse": {Label: "Spouse"},
 			},
 		}
@@ -359,7 +359,7 @@ func TestValidateNestedStructReferences(t *testing.T) {
 				},
 			},
 			Events: map[string]*Event{"event-1": {}},
-			ParticipantRoles: map[string]*ParticipantRole{
+			ParticipantRoles: map[string]*VocabularyEntry{
 				"witness": {Label: "Witness"},
 			},
 		}
@@ -684,12 +684,12 @@ func TestValidateAllVocabularyTypes(t *testing.T) {
 				"assert-1": {Subject: EntityRef{Event: "event-1"}, Confidence: "high"},
 			},
 
-			EventTypes:        map[string]*EventType{"birth": {Label: "Birth"}},
-			RelationshipTypes: map[string]*RelationshipType{"spouse": {Label: "Spouse"}},
-			PlaceTypes:        map[string]*PlaceType{"city": {Label: "City"}},
-			SourceTypes:       map[string]*SourceType{"book": {Label: "Book"}},
-			RepositoryTypes:   map[string]*RepositoryType{"library": {Label: "Library"}},
-			ConfidenceLevels:  map[string]*ConfidenceLevel{"high": {Label: "High"}},
+			EventTypes:        map[string]*VocabularyEntry{"birth": {Label: "Birth"}},
+			RelationshipTypes: map[string]*VocabularyEntry{"spouse": {Label: "Spouse"}},
+			PlaceTypes:        map[string]*VocabularyEntry{"city": {Label: "City"}},
+			SourceTypes:       map[string]*VocabularyEntry{"book": {Label: "Book"}},
+			RepositoryTypes:   map[string]*VocabularyEntry{"library": {Label: "Library"}},
+			ConfidenceLevels:  map[string]*VocabularyEntry{"high": {Label: "High"}},
 		}
 		result := archive.Validate()
 		assert.Empty(t, result.Errors)
@@ -702,11 +702,11 @@ func TestValidateAllVocabularyTypes(t *testing.T) {
 			Places:            map[string]*Place{"place-1": {Name: "Test", Type: "invalid"}},
 			Sources:           map[string]*Source{"source-1": {Title: "Test", Type: "invalid"}},
 			Repositories:      map[string]*Repository{"repo-1": {Name: "Test", Type: "invalid"}},
-			EventTypes:        map[string]*EventType{},
-			RelationshipTypes: map[string]*RelationshipType{},
-			PlaceTypes:        map[string]*PlaceType{},
-			SourceTypes:       map[string]*SourceType{},
-			RepositoryTypes:   map[string]*RepositoryType{},
+			EventTypes:        map[string]*VocabularyEntry{},
+			RelationshipTypes: map[string]*VocabularyEntry{},
+			PlaceTypes:        map[string]*VocabularyEntry{},
+			SourceTypes:       map[string]*VocabularyEntry{},
+			RepositoryTypes:   map[string]*VocabularyEntry{},
 		}
 		result := archive.Validate()
 		assert.GreaterOrEqual(t, len(result.Errors), 5)
@@ -1080,7 +1080,7 @@ func TestValidateSuggestReferenceKey(t *testing.T) {
 	t.Run("suggests underscore when hyphen used in vocabulary type", func(t *testing.T) {
 		archive := &GLXFile{
 			Relationships:     map[string]*Relationship{"rel-1": {Type: "parent-child"}},
-			RelationshipTypes: map[string]*RelationshipType{"parent_child": {Label: "Parent-Child"}},
+			RelationshipTypes: map[string]*VocabularyEntry{"parent_child": {Label: "Parent-Child"}},
 		}
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
@@ -1091,7 +1091,7 @@ func TestValidateSuggestReferenceKey(t *testing.T) {
 		archive := &GLXFile{
 			Events:     map[string]*Event{"event-1": {PlaceID: "place_leeds"}},
 			Places:     map[string]*Place{"place-leeds": {Name: "Leeds"}},
-			EventTypes: map[string]*EventType{},
+			EventTypes: map[string]*VocabularyEntry{},
 		}
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
@@ -1101,7 +1101,7 @@ func TestValidateSuggestReferenceKey(t *testing.T) {
 	t.Run("no suggestion when no close match exists", func(t *testing.T) {
 		archive := &GLXFile{
 			Relationships:     map[string]*Relationship{"rel-1": {Type: "nonexistent"}},
-			RelationshipTypes: map[string]*RelationshipType{"parent_child": {Label: "Parent-Child"}},
+			RelationshipTypes: map[string]*VocabularyEntry{"parent_child": {Label: "Parent-Child"}},
 		}
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
@@ -1289,7 +1289,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-1": {Properties: map[string]any{"gender": genderValue}},
 			},
-			GenderTypes: map[string]*GenderType{
+			GenderTypes: map[string]*VocabularyEntry{
 				"male":   {Label: "Male"},
 				"female": {Label: "Female"},
 			},
@@ -1367,7 +1367,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-1": {Properties: map[string]any{"gender": []any{"male", "invalid"}}},
 			},
-			GenderTypes: map[string]*GenderType{
+			GenderTypes: map[string]*VocabularyEntry{
 				"male":   {Label: "Male"},
 				"female": {Label: "Female"},
 			},
@@ -1412,7 +1412,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-1": {Properties: map[string]any{"gender": "male"}},
 			},
-			GenderTypes: map[string]*GenderType{
+			GenderTypes: map[string]*VocabularyEntry{
 				"male":   {Label: "Male"},
 				"female": {Label: "Female"},
 			},
@@ -1437,7 +1437,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 			Persons: map[string]*Person{
 				"person-1": {Properties: map[string]any{"gender": "male"}},
 			},
-			GenderTypes: map[string]*GenderType{
+			GenderTypes: map[string]*VocabularyEntry{
 				"male":   {Label: "Male"},
 				"female": {Label: "Female"},
 			},
