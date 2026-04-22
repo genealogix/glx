@@ -323,13 +323,13 @@ func TestJoinArchive(t *testing.T) {
 							Properties: make(map[string]any),
 						},
 					},
-					EventTypes: map[string]*glxlib.EventType{
+					EventTypes: map[string]*glxlib.VocabularyEntry{
 						"custom-event": {
 							Label:       "Custom Event",
 							Description: "A custom event type",
 						},
 					},
-					PlaceTypes: map[string]*glxlib.PlaceType{
+					PlaceTypes: map[string]*glxlib.VocabularyEntry{
 						"custom-place": {
 							Label: "Custom Place",
 						},
@@ -520,7 +520,7 @@ func TestJoinArchiveRoundTrip(t *testing.T) {
 				Type: "city",
 			},
 		},
-		EventTypes: map[string]*glxlib.EventType{
+		EventTypes: map[string]*glxlib.VocabularyEntry{
 			"custom": {
 				Label: "Custom Event",
 			},
