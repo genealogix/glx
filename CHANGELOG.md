@@ -19,6 +19,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Documentation
 - **Developer Certificate of Origin (DCO) policy** — `CONTRIBUTING.md` now documents the DCO 1.1 and requires contributors to sign off commits with `git commit -s`. Closes #409
+- **Architecture Decision Records (ADRs)** — Added `docs/decisions/` directory with an ADR template, an index, and six foundational ADRs covering YAML as the archive file format, the evidence-first data model (Repository → Source → Citation → Assertion), archive-owned vocabularies, Git-native archives, flexible entity IDs, and the go-glx library's no-I/O rule. `CONTRIBUTING.md` now describes the ADR practice and when to write one. Closes #416
+
+#### CI
+- **Scheduled `lychee` external-link check** — New `lychee.yml` workflow runs weekly (Mondays 08:17 UTC) and on `workflow_dispatch`, validating every external URL referenced in `specification/**/*.md`, `docs/**/*.md`, and root-level `*.md`. Broken URLs are reported by creating or updating a single GitHub issue titled "Broken external links detected"; the workflow never blocks PRs. Internal relative links continue to be validated on every PR by `scripts/check-links.sh`. (#316)
+
 #### Project Infrastructure
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
 
