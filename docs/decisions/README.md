@@ -27,6 +27,7 @@ ADRs are **immutable once Accepted**. If a decision changes, we write a new ADR 
 2. Fill in Context, Decision, and Consequences. Keep each section short — one or two paragraphs is usually enough.
 3. Open a PR. Initial Status is `Proposed`.
 4. On acceptance, flip Status to `Accepted` and add a row to the index below.
+5. Add the accepted ADR to the list in `website/.vitepress/config.js`.
 
 See the [Contributing Guide](/development/contributing#architecture-decision-records-adrs) for when an ADR is required versus when a regular issue or PR is sufficient.
 

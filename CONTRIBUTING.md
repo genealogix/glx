@@ -248,8 +248,6 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 
 ## Architecture Decision Records (ADRs)
 
-Significant architectural decisions are captured as **Architecture Decision Records (ADRs)** in [`docs/decisions/`](https://github.com/genealogix/glx/tree/main/docs/decisions) (also rendered on the website under `/decisions/`). An ADR is a short document that records *what* was decided, *why*, and *what follows* from the decision. The goal is to make the reasoning behind load-bearing choices discoverable to new contributors, rather than leaving it buried in old issue threads.
-
 **When to write an ADR:**
 
 - Changes to the core data model, entity types, or validation rules
@@ -259,22 +257,7 @@ Significant architectural decisions are captured as **Architecture Decision Reco
 
 For routine bug fixes, documentation improvements, and minor clarifications, no ADR is needed — a regular issue and PR are sufficient.
 
-**ADR format** (Nygard-style — see the [ADR template](https://github.com/genealogix/glx/blob/main/docs/decisions/0000-adr-template.md)):
-
-- **Title**: `ADR-NNNN: Short descriptive name`
-- **Status**: `Proposed` / `Accepted` / `Deprecated` / `Superseded by ADR-XXXX`
-- **Context**: What prompted the decision — the problem, the constraints, the forces at play.
-- **Decision**: What was decided, stated plainly.
-- **Consequences**: What follows — benefits, costs, trade-offs, constraints this places on future contributors.
-
-**How to propose one:**
-
-1. Copy `docs/decisions/0000-adr-template.md` to `docs/decisions/NNNN-kebab-case-title.md` where `NNNN` is the next unused 4-digit number.
-2. Fill in each section. Keep it short — one or two paragraphs per section is usually enough.
-3. Open a PR. Initial Status is `Proposed`.
-4. On acceptance, flip Status to `Accepted` and add a row to the index in `docs/decisions/README.md`.
-
-**ADRs are immutable once Accepted.** If a decision changes, write a new ADR that supersedes the old one, and update the old one's Status to `Superseded by ADR-XXXX`. This preserves the history of reasoning.
+See [`docs/decisions/`](https://github.com/genealogix/glx/tree/main/docs/decisions) for the ADR index, template, format, and proposal workflow.
 
 ## AI-Generated Contributions
 
