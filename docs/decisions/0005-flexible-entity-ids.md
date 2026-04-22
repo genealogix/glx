@@ -25,11 +25,7 @@ A third is **filesystem layout**. In multi-file archives, filenames are derived 
 
 ## Decision
 
-The specification (see [Archive Organization — ID Format Standards](/specification/3-archive-organization#id-format-standards)) constrains entity IDs to:
-
-- 1–64 characters in length,
-- alphanumeric (`a–z`, `A–Z`, `0–9`) and hyphens only,
-- unique within the archive, compared case-insensitively.
+The specification (see [Archive Organization — ID Format Standards](/specification/3-archive-organization#id-format-standards)) constrains entity IDs to 1–64 characters, alphanumeric (`a–z`, `A–Z`, `0–9`) and hyphens only. The spec is the source of truth for the full ID grammar and uniqueness scope.
 
 Within those constraints, two patterns are explicitly documented and recommended:
 
