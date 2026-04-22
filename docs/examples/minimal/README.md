@@ -10,7 +10,7 @@ The smallest valid GENEALOGIX archive with one person.
 
 ## Structure
 
-```
+```text
 minimal/
 ├── persons/
 │   └── person-abc123.glx
@@ -49,4 +49,3 @@ glx validate .
 
 See [basic-family](../basic-family/) for a more complete example
 with relationships and assertions.
-

@@ -56,11 +56,13 @@ Schemas follow the format version of the specification:
 ### Breaking vs Non-Breaking Changes
 
 Non-breaking (minor version bump):
+
 - Adding optional fields
 - Adding new enum values
 - Relaxing validation rules
 
 Breaking (major version bump):
+
 - Removing fields
 - Changing required fields
 - Changing field types
@@ -70,7 +72,7 @@ Breaking (major version bump):
 
 All schemas use `$id` URIs that resolve to GitHub raw content. Examples of schema URIs:
 
-```
+```text
 https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/person.schema.json
 https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/relationship.schema.json
 https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/assertion.schema.json
@@ -81,5 +83,3 @@ These URIs directly serve the schema files from the main branch. Additional sche
 ## Custom Extensions
 
 Archives can extend the base format using archive-owned vocabularies. See [Core Concepts](../2-core-concepts#archive-owned-vocabularies) for details.
-
-

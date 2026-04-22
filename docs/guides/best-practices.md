@@ -122,16 +122,19 @@ event_types:
 ### When to Create Custom Vocabularies
 
 **Best Practice:** Create custom types when:
+
 1. Standard types don't capture your research domain
 2. The event/relationship is common in your data
 3. You need to distinguish it for analysis
 
 **Good custom types:**
+
 - Domain-specific events (`ship_departure` for maritime history)
 - Specialized relationships (`patron-artist` for art history)
 - Cultural practices (`coming_of_age`, `pilgrimage`)
 
 **Avoid:**
+
 - Over-granularity (use properties/notes instead)
 - Temporary research needs (use tags/notes)
 - Personal preferences when standard types exist
@@ -196,23 +199,27 @@ assertions:
 GENEALOGIX is flexible about file organization. Choose what works for your workflow:
 
 **One-entity-per-file** (good for collaboration):
-```
+
+```text
 persons/person-john.glx
 events/event-birth.glx
 ```
 
 **Single file** (good for small archives):
-```
+
+```text
 family.glx  # All entities in one file
 ```
 
 **Hybrid** (logical groupings):
-```
+
+```text
 core-family.glx
 sources/vital-records.glx
 ```
 
 What matters:
+
 - Use `.glx` extension
 - Correct entity type prefixes on IDs
 - Valid references between entities

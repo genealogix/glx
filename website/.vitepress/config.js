@@ -67,6 +67,8 @@ export default defineConfig({
     'docs/examples/westeros/README.md': 'examples/westeros/index.md',
     'docs/guides/:page*': 'guides/:page*',
     'docs/examples/:page*': 'examples/:page*',
+    'docs/decisions/README.md': 'decisions/index.md',
+    'docs/decisions/:page*': 'decisions/:page*',
 
     // Specification section - specific files first, then wildcards
     'specification/README.md': 'specification/index.md',
@@ -112,7 +114,8 @@ export default defineConfig({
         text: 'Development',
         items: [
           { text: 'Contributing Guide', link: '/development/contributing' },
-          { text: 'Code of Conduct', link: '/development/code-of-conduct' }
+          { text: 'Code of Conduct', link: '/development/code-of-conduct' },
+          { text: 'Architecture Decisions', link: '/decisions/' }
         ]
       },
       {
@@ -325,6 +328,21 @@ export default defineConfig({
           items: [
             { text: 'Contributing Guide', link: '/development/contributing' },
             { text: 'Code of Conduct', link: '/development/code-of-conduct' }
+          ]
+        }
+      ],
+      '/decisions/': [
+        {
+          text: 'Architecture Decisions',
+          items: [
+            { text: 'Overview', link: '/decisions/' },
+            { text: 'ADR Template', link: '/decisions/0000-adr-template' },
+            { text: 'ADR-0001: YAML file format', link: '/decisions/0001-yaml-file-format' },
+            { text: 'ADR-0002: Evidence-first data model', link: '/decisions/0002-evidence-first-data-model' },
+            { text: 'ADR-0003: Archive-owned vocabularies', link: '/decisions/0003-archive-owned-vocabularies' },
+            { text: 'ADR-0004: Git-native archives', link: '/decisions/0004-git-native-archives' },
+            { text: 'ADR-0005: Flexible entity IDs', link: '/decisions/0005-flexible-entity-ids' },
+            { text: 'ADR-0006: go-glx library is pure', link: '/decisions/0006-go-glx-library-pure' }
           ]
         }
       ],

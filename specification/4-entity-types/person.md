@@ -29,6 +29,7 @@ persons:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`person-john-smith-1850`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -66,6 +67,7 @@ persons:
 - Description: Vocabulary-defined properties representing the concluded/accepted values for this person
 
 Structure:
+
 ```yaml
 properties:
   name:                      # Unified name property with optional fields
@@ -85,6 +87,7 @@ properties:
 ```
 
 Example:
+
 ```yaml
 properties:
   name:
@@ -115,6 +118,7 @@ Both properties are temporal, allowing changes over time. Out-of-vocabulary valu
 Properties marked as `temporal: true` can hold multiple values. Dates are optional — use them when you know when each value applied, omit them when you don't.
 
 **Occupation Changes:**
+
 ```yaml
 properties:
   occupation:
@@ -129,6 +133,7 @@ properties:
 ```
 
 **Occupations Without Dates** (e.g., from an obituary):
+
 ```yaml
 properties:
   occupation:
@@ -138,6 +143,7 @@ properties:
 ```
 
 **Name Changes (e.g., marriage):**
+
 ```yaml
 properties:
   name:
@@ -176,6 +182,7 @@ The authoritative list of name `type` values is defined in the [person propertie
 | `as_recorded` | Name exactly as it appears in a source document |
 
 **Alternate Spellings and Abbreviations:**
+
 ```yaml
 properties:
   name:
@@ -192,6 +199,7 @@ properties:
 ```
 
 **Anglicized Name:**
+
 ```yaml
 properties:
   name:
@@ -209,6 +217,7 @@ properties:
 ```
 
 **Multiple Known Aliases:**
+
 ```yaml
 properties:
   name:
@@ -230,6 +239,7 @@ properties:
 > **Tip:** Dates are optional on name entries. Use them when you know when a name was adopted; omit them for variations that aren't tied to a specific time period. The `type` field clarifies why each entry exists without implying temporal succession.
 
 **Multiple Residences:**
+
 ```yaml
 properties:
   residence:
@@ -242,6 +252,7 @@ properties:
 ```
 
 **Nationality/Citizenship Changes:**
+
 ```yaml
 properties:
   nationality:
@@ -256,6 +267,7 @@ properties:
 **See [Vocabularies - Person Properties](vocabularies#person-properties-vocabulary) for the full vocabulary definition.**
 
 **Key Points:**
+
 - All properties are optional
 - Property names and types are validated against the `person_properties` vocabulary
 - The `sex` and `gender` properties are constrained by the [sex types](../5-standard-vocabularies/#sex-types) and [gender types](../5-standard-vocabularies/#gender-types) vocabularies — out-of-vocabulary values produce a warning
@@ -304,7 +316,7 @@ persons:
 
 Person files are typically stored in a `persons/` directory:
 
-```
+```text
 persons/
 ├── person-john-smith.glx
 ├── person-mary-jones.glx

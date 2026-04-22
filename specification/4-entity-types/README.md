@@ -11,54 +11,63 @@ This section defines the core entity types in GENEALOGIX. Each entity represents
 ## Core Entities
 
 ### [Person](person)
+
 Represents an individual in the family archive. Contains personal identity information, names, events, and relationships.
 
 - **Key Properties**: Names, sex, occupation, residence
 - **GEDCOM Equivalent**: INDI (Individual Record)
 
 ### [Relationship](relationship)
+
 Represents connections between people such as spouse, parent-child, and other family relationships.
 
 - **Key Properties**: Relationship type, participants, start/end events
 - **GEDCOM Equivalent**: FAM (Family Record)
 
 ### [Event](event)
+
 Represents occurrences in time and place: births, marriages, deaths, baptisms, etc.
 
 - **Key Properties**: Type, date, place, participants, notes
 - **GEDCOM Equivalent**: BIRT, DEAT, MARR, BAPM, etc.
 
 ### [Place](place)
+
 Represents geographic locations forming a hierarchical structure. Supports multiple names and historical variations.
 
 - **Key Properties**: Name, type, hierarchy, coordinates, alternative names (via properties)
 - **GEDCOM Equivalent**: PLAC (Place structures)
 
 ### [Assertion](assertion)
+
 Represents an evidence-based conclusion about a specific genealogical fact. Forms the core of the GENEALOGIX assertion model.
 
 - **Key Properties**: Subject, property, value, citations/sources/media, confidence, status
 - **GEDCOM Equivalent**: Implicit (derived from GEDCOM structure and SOUR references)
 
 ### [Source](source)
+
 Represents a bibliographic resource or information source. Can be books, documents, databases, websites, etc.
 
 - **Key Properties**: Title, author, publication info, repository
 - **GEDCOM Equivalent**: SOUR (Source Record)
 
 ### [Citation](citation)
+
 Represents a specific reference to evidence within a source. Links sources to specific pages, records, or items.
 
 - **Key Properties**: Source reference, locator, text from source, accessed date
 - **GEDCOM Equivalent**: SOUR.PAGE, SOUR.QUAY
 
 ### [Repository](repository)
+
 Represents an institution or organization that holds genealogical sources (archives, libraries, databases, etc.).
 
 - **Key Properties**: Name, type, address, contact info, access restrictions
 - **GEDCOM Equivalent**: REPO (Repository Record)
 
 ### [Media](media)
+
 Represents digital or physical media objects associated with genealogical entities (photographs, documents, audio, etc.).
 
 - **Key Properties**: Title, URI, MIME type, description
@@ -66,7 +75,7 @@ Represents digital or physical media objects associated with genealogical entiti
 
 ## Entity Relationships
 
-```
+```text
 Person
   ├── participates in Events (birth, marriage, immigration, etc.)
   ├── has many Properties

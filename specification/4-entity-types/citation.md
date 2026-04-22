@@ -27,6 +27,7 @@ citations:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`citation-birth-record`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -154,7 +155,7 @@ assertions:
 
 Citation files are typically embedded in assertion documents or organized by source:
 
-```
+```text
 sources/
 ├── books/
 │   └── source-book001.glx

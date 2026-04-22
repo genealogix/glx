@@ -21,18 +21,18 @@ This directory contains official GEDCOM specifications from versions 3.0 to 7.0.
 
 ## Source Links
 
-- GEDCOM 7.0: https://gedcom.io/specifications/FamilySearchGEDCOMv7.html
-- GEDCOM 5.6: https://gedcom.io/specifications/Gedcom5.6.pdf
-- GEDCOM 5.5.5 (Annotated PDF): https://docslib.org/doc/6068320/the-gedcom-5-5-5-specification-with-annotations
-- GEDCOM 5.5.1: https://gedcom.io/specifications/ged551.pdf
-- GEDCOM 5.5: https://gedcom.io/specifications/ged55.pdf
-- GEDCOM 5.4: https://gedcom.io/specifications/Gedcom5.4.pdf
-- GEDCOM 5.3: https://gedcom.io/specifications/Gedcom5.3.pdf
-- GEDCOM 5.0: https://gedcom.io/specifications/Gedcom5.0.pdf
-- GEDCOM 4.0: https://gedcom.io/specifications/Gedcom4.0.pdf
-- GEDCOM 3.0: https://gedcom.io/specifications/Gedcom3.0.pdf
-- GEDZIP 0.2: https://gedcom.io/gedzip/
+- GEDCOM 7.0: <https://gedcom.io/specifications/FamilySearchGEDCOMv7.html>
+- GEDCOM 5.6: <https://gedcom.io/specifications/Gedcom5.6.pdf>
+- GEDCOM 5.5.5 (Annotated PDF): <https://docslib.org/doc/6068320/the-gedcom-5-5-5-specification-with-annotations>
+- GEDCOM 5.5.1: <https://gedcom.io/specifications/ged551.pdf>
+- GEDCOM 5.5: <https://gedcom.io/specifications/ged55.pdf>
+- GEDCOM 5.4: <https://gedcom.io/specifications/Gedcom5.4.pdf>
+- GEDCOM 5.3: <https://gedcom.io/specifications/Gedcom5.3.pdf>
+- GEDCOM 5.0: <https://gedcom.io/specifications/Gedcom5.0.pdf>
+- GEDCOM 4.0: <https://gedcom.io/specifications/Gedcom4.0.pdf>
+- GEDCOM 3.0: <https://gedcom.io/specifications/Gedcom3.0.pdf>
+- GEDZIP 0.2: <https://gedcom.io/gedzip/>
 
 ## Additional Resources
 
-- GEDCOM 7 GitHub Repository: https://github.com/FamilySearch/GEDCOM
+- GEDCOM 7 GitHub Repository: <https://github.com/FamilySearch/GEDCOM>

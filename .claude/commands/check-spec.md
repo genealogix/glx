@@ -45,8 +45,9 @@ Check for inconsistent use of terms:
 
 ### 3. Broken or Invalid References
 
-Verify all cross-references work:
-- Links to other specification sections that don't exist
+Internal relative links are validated automatically on every PR by `scripts/check-links.sh` (workflow `check-links.yml`); external URLs are validated weekly by `lychee.yml`, which files an issue on breakage. Manual review here focuses on the semantic items below — not link reachability.
+
+Verify cross-references that require domain knowledge:
 - References to entity types that aren't defined
 - Citations of vocabulary terms not in the vocabulary files
 - Examples referencing undefined fields

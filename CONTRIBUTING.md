@@ -17,6 +17,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - [Documentation Standards](#documentation-standards)
 - [Submitting Changes](#submitting-changes)
 - [Proposing Major Changes](#proposing-major-changes)
+- [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
 - [AI-Generated Contributions](#ai-generated-contributions)
 - [Code of Conduct](#code-of-conduct)
 - [Security](#security)
@@ -139,7 +140,7 @@ git push -u origin feat/my-feature
 
 Use conventional prefixes:
 
-```
+```text
 feat/short-description
 fix/short-description
 docs/short-description
@@ -150,7 +151,7 @@ chore/short-description
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/). Valid types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `ci`.
 
-```
+```text
 feat: Add GEDCOM 7.0 EXID support
 fix: Handle nil map in merge
 docs: Update quickstart guide
@@ -185,6 +186,7 @@ Every PR runs these checks automatically:
 | **Validate Specification / test-conformance** | Go tests for `glx/` and `go-glx/` packages |
 | **Validate Specification / validate-schemas** | JSON schema validation |
 | **Validate Specification / validate-examples** | All example archives pass `glx validate` |
+| **Lint Markdown / markdownlint-cli2** | Structural markdown validation for `specification/`, `docs/`, root `*.md` |
 | **Security** | gosec, govulncheck, and npm audit |
 | **lint-pr-title** | PR title follows conventional commits format |
 | **dependency-review** | Blocks PRs introducing vulnerable dependencies |
@@ -201,8 +203,19 @@ All checks must pass before merge.
 ### Internal Links
 
 Specification documents omit the `.md` file extension for VitePress compatibility:
+
 - Good: `[Person Entity](4-entity-types/person)`
 - Bad: `[Person Entity](4-entity-types/person.md)`
+
+### Markdown Linting
+
+Markdown is validated by [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) in CI (see `Lint Markdown` above). The configuration lives in `.markdownlint-cli2.jsonc` at the repo root. Run it locally before pushing:
+
+```bash
+npx --yes markdownlint-cli2
+# auto-fix what can be fixed (whitespace, blank-line rules):
+npx --yes markdownlint-cli2 --fix
+```
 
 ### Genealogical Standards
 
@@ -231,11 +244,13 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 ## Proposing Major Changes
 
 **Proposal required** (via GitHub Issue) for:
+
 - Changes to core data model or entity types
 - New required fields or breaking changes
 - Changes to validation rules or file format
 
 **No proposal needed** for:
+
 - Bug fixes, documentation improvements, new examples, minor clarifications
 
 ### Proposal Workflow
@@ -244,6 +259,19 @@ Specification documents omit the `.md` file extension for VitePress compatibilit
 2. **Discussion**: Community reviews and comments (minimum 7 days for spec changes)
 3. **Decision**: Maintainers accept, reject, or request changes
 4. **Implementation**: After acceptance, submit a PR
+
+## Architecture Decision Records (ADRs)
+
+**When to write an ADR:**
+
+- Changes to the core data model, entity types, or validation rules
+- New constraints on the library (e.g., "go-glx must never do X")
+- Choice of a major dependency, format, or protocol
+- Any decision you expect to still be referenced a year from now
+
+For routine bug fixes, documentation improvements, and minor clarifications, no ADR is needed — a regular issue and PR are sufficient.
+
+See [`docs/decisions/`](https://github.com/genealogix/glx/tree/main/docs/decisions) for the ADR index, template, format, and proposal workflow.
 
 ## AI-Generated Contributions
 
@@ -270,7 +298,7 @@ Using AI tools (Copilot, Claude, ChatGPT, etc.) as part of your workflow is fine
 
 Contributors SHOULD disclose substantial AI assistance via a commit trailer:
 
-```
+```text
 Assisted-by: Claude <noreply@anthropic.com>
 ```
 
@@ -302,7 +330,7 @@ make release-snapshot
 ## Questions?
 
 - **Technical questions**: [GitHub Discussions](https://github.com/genealogix/glx/discussions)
-- **Private concerns**: Contact maintainers at conduct@genealogix.io
+- **Private concerns**: Contact maintainers at <conduct@genealogix.io>
 
 ---
 

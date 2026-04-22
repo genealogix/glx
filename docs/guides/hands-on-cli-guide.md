@@ -31,7 +31,7 @@ glx validate
 
 The validator reports errors (hard failures) and warnings (soft failures). For a large archive, you'll typically see a few warnings — these flag potential issues without blocking:
 
-```
+```text
 Validated 4,841 files.
 Found 4 errors:
 - ❌ duplicate assertions ID: assertion-lysa-death-littlefinger
@@ -53,7 +53,7 @@ Get a quick overview of what's in the archive:
 glx stats
 ```
 
-```
+```text
 Entity counts:
   Persons:       791
   Events:        961
@@ -87,7 +87,7 @@ Check places for data quality issues — duplicates, missing coordinates, hierar
 glx places
 ```
 
-```
+```text
 Place analysis: 108 places
 
 Duplicate names (ambiguous):
@@ -111,7 +111,7 @@ Run automated analysis to surface evidence gaps, quality issues, chronological i
 glx analyze
 ```
 
-```
+```text
 === Research Gap Analysis: 847 issues found ===
 
 EVIDENCE GAPS (312)
@@ -159,7 +159,7 @@ Search across all entity types at once — useful when you don't know which enti
 glx search "Winterfell"
 ```
 
-```
+```text
 Found 24 match(es) for "Winterfell":
 
   Persons (3):
@@ -197,7 +197,7 @@ List all persons, or filter by name and birth year:
 glx query persons --name "Stark"
 ```
 
-```
+```text
   person-arya-stark       Arya Stark  (b. 289)
   person-benjen-stark     Benjen Stark
   person-brandon-stark-bran  Brandon Stark  (b. 290)
@@ -224,7 +224,7 @@ glx query persons --born-after 280 --born-before 290
 glx query events --type battle
 ```
 
-```
+```text
   event-battle-blackwater          battle  299
   event-battle-green-fork          battle  298
   event-battle-trident             battle  283
@@ -240,7 +240,7 @@ glx query events --type battle
 glx query events --type execution
 ```
 
-```
+```text
   event-execution-brandon-rickard-stark  execution  282
   event-execution-ned-stark              execution  299
   event-execution-janos-slynt            execution  300
@@ -256,7 +256,7 @@ glx query events --type execution
 glx query relationships --type ward
 ```
 
-```
+```text
   rel-ward-theon-greyjoy-ned-stark  ward
     [person-theon-greyjoy, person-eddard-stark]
   rel-ward-littlefinger-tully  ward
@@ -276,7 +276,7 @@ Find assertions by confidence level, source, or citation:
 glx query assertions --confidence low
 ```
 
-```
+```text
   assertion-aegon-vi-blackfyre-theory  persons:person-young-griff
     house=Blackfyre (theoretical)  [low]
   assertion-alleras-sphinx-identity  persons:person-alleras-the-sphinx
@@ -305,7 +305,7 @@ Look up a person's key life data:
 glx vitals "Eddard Stark"
 ```
 
-```
+```text
 Vitals for person-eddard-stark:
 
   Name         Eddard Stark
@@ -350,7 +350,7 @@ Get a comprehensive profile with identity, vital events, life events, family, re
 glx summary "Eddard Stark"
 ```
 
-```
+```text
 === person-eddard-stark ===
 
   Name:             Eddard Stark
@@ -400,7 +400,7 @@ Display the ancestor tree for a person using box-drawing characters:
 glx ancestors person-robb-stark --generations 3
 ```
 
-```
+```text
 Robb Stark  (283 – 299)  person-robb-stark
 ├── Catelyn Tully  (264 – 299)  person-catelyn-tully
 │   ├── Hoster Tully  (d. 299)  person-hoster-tully
@@ -420,7 +420,7 @@ Use `--generations` to limit depth (0 for unlimited). The tree traverses all par
 glx descendants person-rickard-stark --generations 3
 ```
 
-```
+```text
 Rickard Stark  person-rickard-stark
 ├── Benjen Stark  person-benjen-stark
 ├── Brandon Stark  (d. BEF 300)  person-brandon-stark-213
@@ -447,7 +447,7 @@ Find how two people are connected through the relationship graph:
 glx path "Arya Stark" "Jon Snow"
 ```
 
-```
+```text
 Path from person-arya-stark to person-jon-snow (2 hop(s)):
 
   Arya Stark (person-arya-stark)
@@ -463,7 +463,7 @@ The command uses breadth-first search across all relationship types — parent-c
 glx path "Robb Stark" person-lysa-tully
 ```
 
-```
+```text
 Path from person-robb-stark to person-lysa-tully (2 hop(s)):
 
   Robb Stark (person-robb-stark)
@@ -490,7 +490,7 @@ Generate formatted citation text from structured citation data:
 glx cite citation-agot-eddard-xv
 ```
 
-```
+```text
 "A Game of Thrones", novel, A Song of Ice and Fire (Novels) (2026-03-06),
   Eddard XV.
 ```
@@ -529,7 +529,7 @@ glx cluster person-eddard-stark --json
 ```
 
 ::: tip
-The FAN club technique is most powerful when combined with `glx timeline` and `glx query assertions`. Find the associates, then check the timeline and evidence chains to understand _how_ they were connected.
+The FAN club technique is most powerful when combined with `glx timeline` and `glx query assertions`. Find the associates, then check the timeline and evidence chains to understand *how* they were connected.
 :::
 
 ## Adding Census Records
@@ -568,7 +568,7 @@ Preview what would be generated:
 glx census add --from 1860-census-stark.yaml --archive . --dry-run
 ```
 
-```
+```text
 Census Import Summary
 =====================
   Event:      event-260-census-winterfell-stark
@@ -594,6 +594,7 @@ glx census add --from 1860-census-stark.yaml --archive .
 ```
 
 The generated assertions include:
+
 - **Birth year** (ABT, low confidence) — estimated from age
 - **Birthplace** (medium confidence) — resolved against existing places
 - **Sex** (high confidence) — directly stated

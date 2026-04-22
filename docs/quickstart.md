@@ -64,6 +64,7 @@ Create your first person file. All GLX files use the `.glx` extension and are wr
 Here's the basic pattern: each file starts with the **entity type** (`persons`), then an **entity ID** (`person-john-smith`), then the entity's **[properties](/specification/2-core-concepts#properties-recording-conclusions)** — the facts you know about this person. See the full [Person specification](/specification/4-entity-types/person) for all available fields.
 
 **Create `persons/person-john-smith.glx`:**
+
 ```yaml
 persons:
   person-john-smith:             # Unique ID for this person
@@ -84,12 +85,12 @@ persons:
 Properties in GLX can have a simple `value` (the human-readable form) and optional `fields` that break it into structured parts. For a name, `value` is what you'd display ("John Smith") while `fields` lets software know which part is the given name and which is the surname. You can also add a `type` field to classify the name (e.g., "birth", "married", "alias"). See [Properties](/specification/2-core-concepts#properties-recording-conclusions) in the specification for the full details.
 :::
 
-
 ## Step 4: Add a Place
 
 Places are their own [entities](/specification/4-entity-types/place) in GLX, so they can be referenced by multiple events and shared across your archive.
 
 **Create `places/place-leeds.glx`:**
+
 ```yaml
 places:
   place-leeds:
@@ -107,6 +108,7 @@ places:
 [Events](/specification/4-entity-types/event) connect people to places and dates. Notice how `place` and `person` refer to the IDs you created in the previous steps — this is how GLX [entities link together](/specification/2-core-concepts#entity-relationships).
 
 **Create `events/event-john-birth.glx`:**
+
 ```yaml
 events:
   event-john-birth:
@@ -131,7 +133,8 @@ glx validate
 ```
 
 **Expected output:**
-```
+
+```text
 Validated 19 files.
 ✅ Archive is valid.
 ```
@@ -145,6 +148,7 @@ Good research tracks where information comes from. GLX models this as an **[evid
 First, create the source — the parish register where you found the birth record:
 
 **Create `sources/source-parish-register.glx`:**
+
 ```yaml
 sources:
   source-parish-register:
@@ -160,6 +164,7 @@ sources:
 Now create a citation — the specific entry you found in that register:
 
 **Create `citations/citation-birth-entry.glx`:**
+
 ```yaml
 citations:
   citation-birth-entry:
@@ -176,6 +181,7 @@ citations:
 You've documented *where* the information comes from (source and citation). Now record *what you conclude* from it using an **[Assertion](/specification/4-entity-types/assertion)** — a formal statement that links your evidence to a claim about a person.
 
 **Create `assertions/assertion-john-birth.glx`:**
+
 ```yaml
 assertions:
   assertion-john-birth:
@@ -222,6 +228,7 @@ GLX isn't limited to traditional genealogy! Each archive defines its own [contro
 ### Example: Maritime History Research
 
 **Edit `vocabularies/event-types.glx` (or wherever you keep your event types):**
+
 ```yaml
 # vocabularies/event-types.glx
 event_types:
@@ -244,6 +251,7 @@ event_types:
 ### Example: Academic Biography
 
 **Edit `vocabularies/relationship-types.glx` (or wherever you keep your relationship types):**
+
 ```yaml
 # vocabularies/relationship-types.glx
 relationship_types:
@@ -264,6 +272,7 @@ relationship_types:
 ```
 
 **Then use your custom types:**
+
 ```yaml
 # events/event-voyage.glx
 events:
@@ -277,6 +286,7 @@ events:
 ```
 
 **Validate your custom vocabulary:**
+
 ```bash
 glx validate
 # ✓ Confirms your custom types are properly defined
@@ -285,6 +295,7 @@ glx validate
 ### The Power of Custom Vocabularies
 
 GLX adapts to YOUR research domain:
+
 - **Genealogy**: Use standard family history types
 - **Biography**: Add professional relationships and achievements
 - **Local History**: Track community roles and civic events
@@ -344,5 +355,6 @@ Your archive has a person, place, event, source, citation, and assertion — the
 - **Read the Best Practices** — [recommended workflows](/guides/best-practices) for evidence documentation, Git usage, and file organization
 
 **Get help:**
+
 - [GitHub Issues](https://github.com/genealogix/glx/issues) - Bug reports and feature requests
 - [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Community Q&A
