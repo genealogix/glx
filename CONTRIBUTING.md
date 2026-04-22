@@ -17,6 +17,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - [Documentation Standards](#documentation-standards)
 - [Submitting Changes](#submitting-changes)
 - [Proposing Major Changes](#proposing-major-changes)
+- [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
 - [AI-Generated Contributions](#ai-generated-contributions)
 - [Code of Conduct](#code-of-conduct)
 - [Security](#security)
@@ -258,6 +259,19 @@ npx --yes markdownlint-cli2 --fix
 2. **Discussion**: Community reviews and comments (minimum 7 days for spec changes)
 3. **Decision**: Maintainers accept, reject, or request changes
 4. **Implementation**: After acceptance, submit a PR
+
+## Architecture Decision Records (ADRs)
+
+**When to write an ADR:**
+
+- Changes to the core data model, entity types, or validation rules
+- New constraints on the library (e.g., "go-glx must never do X")
+- Choice of a major dependency, format, or protocol
+- Any decision you expect to still be referenced a year from now
+
+For routine bug fixes, documentation improvements, and minor clarifications, no ADR is needed — a regular issue and PR are sufficient.
+
+See [`docs/decisions/`](https://github.com/genealogix/glx/tree/main/docs/decisions) for the ADR index, template, format, and proposal workflow.
 
 ## AI-Generated Contributions
 
