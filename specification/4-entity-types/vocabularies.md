@@ -581,6 +581,7 @@ participant_roles:
 ### Standard Participant Roles
 
 Common event roles:
+
 - `principal` - Primary person in the event
 - `subject` - Subject of the event (preferred over 'principal')
 - `groom`, `bride` - Marriage participants
@@ -589,6 +590,7 @@ Common event roles:
 - `informant` - Person providing information
 
 Common relationship roles:
+
 - `spouse` - Marriage partner
 - `parent` - Parent in parent-child relationship
 - `child` - Child in parent-child relationship
@@ -615,7 +617,7 @@ Property vocabularies enable archives to:
 
 Property vocabulary files are included in the `vocabularies/` directory:
 
-```
+```text
 vocabularies/
 ├── person-properties.glx
 ├── event-properties.glx
@@ -969,12 +971,14 @@ Each field in the `fields` map is defined with:
 When a property has `fields` defined, the property value can be either:
 
 1. **Simple value** - Just a string:
+
    ```yaml
    properties:
      name: "John Smith"
    ```
 
 2. **Structured value** - Object with `value` and optional `fields`:
+
    ```yaml
    properties:
      name:
@@ -985,6 +989,7 @@ When a property has `fields` defined, the property value can be either:
    ```
 
 3. **Temporal list** - For properties with `temporal: true`:
+
    ```yaml
    properties:
      name:
@@ -1106,6 +1111,7 @@ person_properties:
 ```
 
 Usage:
+
 ```yaml
 properties:
   mailing_address:
@@ -1176,6 +1182,7 @@ assertions:
 ```
 
 The validator:
+
 1. Determines the subject's entity type from the typed reference (person, event, relationship, or place)
 2. Looks up the appropriate property vocabulary for that type
 3. Validates the `property` against the vocabulary
@@ -1206,6 +1213,7 @@ The following issues cause validation to fail:
 2. **Broken entity references**: All entity references must point to existing entities
 
 3. **Broken property references**: Properties defined with `reference_type` must reference existing entities
+
    ```yaml
    # Error: place-nonexistent doesn't exist
    persons:
@@ -1221,6 +1229,7 @@ The following issues cause validation to fail:
 The following issues generate warnings but don't fail validation:
 
 1. **Unknown property definitions**: Properties used but not defined in property vocabularies
+
    ```yaml
    # Warning: custom_field not in person_properties vocabulary
    persons:
@@ -1230,6 +1239,7 @@ The following issues generate warnings but don't fail validation:
    ```
 
 2. **Unknown assertion properties**: Properties used but not defined in property vocabularies
+
    ```yaml
    # Warning: custom_property not in person_properties vocabulary
    assertions:
@@ -1241,6 +1251,7 @@ The following issues generate warnings but don't fail validation:
    ```
 
 3. **Out-of-vocabulary values**: Property values not found in the vocabulary referenced by `vocabulary_type`. This is a warning (not an error) because archives may use a value before adding it to their vocabulary file
+
    ```yaml
    # Warning: 'two-spirit' not found in gender_types vocabulary
    persons:
@@ -1316,6 +1327,7 @@ $ glx validate events/event-land-grant.glx
 ### Use Standard Types First
 
 Before creating custom types, check if standard types meet your needs. Standard types:
+
 - Ensure GEDCOM compatibility
 - Work with most genealogy software
 - Are understood by other researchers
@@ -1323,6 +1335,7 @@ Before creating custom types, check if standard types meet your needs. Standard 
 ### Document Additional Types
 
 When adding additional types:
+
 - Provide clear `label` and `description`
 - Document why the additional type is needed
 - Include GEDCOM mapping if possible (use `_TAG` format for custom GEDCOM tags)
@@ -1404,6 +1417,7 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Citation Properties | [citation-properties.schema.json](../schema/v1/vocabularies/citation-properties.schema.json) |
 
 All vocabulary schemas are located in `specification/schema/v1/vocabularies/` and define:
+
 - Required top-level key (e.g., `event_types`, `relationship_types`)
 - Required fields for each entry (typically `label`)
 - Optional fields (e.g., `description`, `gedcom`)
@@ -1424,4 +1438,3 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 - [Citation Entity](citation) - Citation documentation
 
 ---
-

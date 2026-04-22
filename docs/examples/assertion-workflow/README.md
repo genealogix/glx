@@ -36,12 +36,14 @@ events:
 ```
 
 **Best for:**
+
 - Initial data entry from family records
 - Quick capture (document evidence later)
 - Personal research with trusted sources
 - Early stages before formal research begins
 
 **Limitations:**
+
 - No documented evidence chain
 - Hard to verify conclusions later
 - Doesn't capture conflicting evidence
@@ -76,6 +78,7 @@ assertions:
 ```
 
 **Best for:**
+
 - Professional genealogy research
 - Documenting conflicting evidence
 - Collaborative research projects
@@ -85,7 +88,7 @@ assertions:
 
 Complete evidence documentation follows this pattern:
 
-```
+```text
 Repository → Source → Citation → Assertion → Property
     ↓          ↓          ↓          ↓           ↓
  Archives   Records   Specific   Evidence-   Concluded
@@ -186,6 +189,7 @@ assertions:
 Adding `date` makes it temporal: "this relationship existed in 1990." Without `date`, the assertion simply says the relationship is evidenced by the source, with no temporal scope.
 
 **When to use existential assertions:**
+
 - Relationships — evidencing a parent-child or marriage without asserting a specific property
 - Events — confirming an event occurred without asserting its date or place yet
 - Places — documenting that a place existed at a given time

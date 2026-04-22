@@ -46,7 +46,8 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 ### Visual Comparison
 
 **GEDCOM Format:**
-```
+
+```text
 0 @I1@ INDI
 1 NAME John /Smith/
 1 BIRT
@@ -57,6 +58,7 @@ Traditional genealogy formats like GEDCOM have served researchers well, but they
 ```
 
 **GENEALOGIX Format:**
+
 ```yaml
 persons:
   person-john-smith:
@@ -94,18 +96,21 @@ assertions:
 GENEALOGIX is more than an import/export format. It's a **permanent foundation** for your research:
 
 #### Data You Own and Control
+
 - **Human-readable YAML** - Edit in any text editor, no special software required
 - **Open format** - No proprietary database, no vendor lock-in
 - **Portable forever** - Your data outlasts any software application
 - **Git-native** - Industry-standard version control built in
 
 #### Flexible to Your Research Domain
+
 - **Custom vocabularies** - Define your own event types, relationship types, properties
 - **Beyond genealogy** - Biography projects, local history, prosopography, and more
 - **Extensible schema** - Add custom fields without breaking compatibility
 - **No central registry** - Each archive is autonomous and self-contained
 
 #### Built for Collaboration
+
 - **Git workflows** - Branch, merge, and collaborate like software developers
 - **Evidence-first** - Every claim backed by documented sources
 - **Conflict resolution** - Handle competing evidence systematically
@@ -170,6 +175,7 @@ sources:
 ```
 
 **Key Points:**
+
 - Entity IDs are map keys: `person-john-smith` or `person-a1b2c3d4`
 - IDs can be descriptive or random (1-64 alphanumeric/hyphens)
 - Files can contain any combination of entity types
@@ -189,31 +195,37 @@ This specification follows [Semantic Versioning](https://semver.org/).
 GENEALOGIX is an open-source project that thrives on community participation:
 
 ### 🐛 Issues & Bug Reports
+
 - [GitHub Issues](https://github.com/genealogix/glx/issues) - Report bugs and request features
 
 ### 💬 Discussion & Q&A
+
 - [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Community conversations
 - [Discord Community](https://genealogix.io/discord) - Real-time chat and support
 - [Mailing List](https://groups.google.com/g/genealogix) - Email discussions
 
 ### 📚 Documentation & Learning
+
 - [Quickstart Guide](/quickstart) - 5-minute getting started
 - [Best Practices](/guides/best-practices) - Recommended workflows
 - [Migration Guide](/guides/migration-from-gedcom) - Manual conversion guidance from GEDCOM
 - [Glossary](/specification/6-glossary) - Key terms and concepts
 
 ### 🤝 Contributing
+
 - [Contributing Guide](/development/contributing) - How to contribute to the project
 - [Code of Conduct](/development/code-of-conduct) - Community standards
 
 ### 🎯 Getting Help
 
 **For Users:**
+
 1. Start with the [Quickstart Guide](/quickstart)
 2. Explore [Complete Examples](/examples/complete-family/)
 3. Ask questions in [GitHub Discussions](https://github.com/genealogix/glx/discussions)
 
 **For Developers:**
+
 1. Read [CLAUDE.md](CLAUDE.md) for project context
 2. Review the [Contributing Guide](/development/contributing)
 3. Check [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions)
@@ -222,6 +234,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 ### 📊 Project Status
 
 **Current Release:** v0.0.0-beta.10 (Beta)
+
 - ✅ 9 core entity types defined
 - ✅ JSON Schema validation
 - ✅ CLI tool with vocabulary-based validation
@@ -234,6 +247,7 @@ GENEALOGIX is an open-source project that thrives on community participation:
 ### 🙏 Acknowledgments
 
 GENEALOGIX builds on decades of genealogy research and the contributions of:
+
 - The genealogy community for identifying core requirements
 - Open-source projects like GEDCOM, Gramps, and FamilySearch
 - Contributors who help improve the specification
@@ -253,12 +267,12 @@ Licensed under the [Apache License, Version 2.0](https://github.com/genealogix/g
 you may not use this project except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+```text
+http://www.apache.org/licenses/LICENSE-2.0
+```
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-

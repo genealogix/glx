@@ -26,6 +26,7 @@ places:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`place-leeds`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -87,6 +88,7 @@ Place properties allow capturing historical information that doesn't fit into th
 | `alternative_names` | string (temporal, multi-value) | Historical or alternate names for a place |
 
 Example:
+
 ```yaml
 places:
   place-new-amsterdam:
@@ -113,6 +115,7 @@ places:
 Place types are defined in `vocabularies/place-types.glx` within each archive.
 
 **See [Vocabularies - Place Types](vocabularies#place-types-vocabulary) for:**
+
 - Complete list of standard place types
 - How to add custom place types
 - Vocabulary file structure and examples
@@ -200,7 +203,7 @@ persons:
 
 Place files are typically stored in a `places/` directory:
 
-```
+```text
 places/
 ├── countries/
 │   ├── place-england.glx
@@ -245,4 +248,3 @@ See [place.schema.json](../schema/v1/place.schema.json) for the complete JSON Sc
 - [Person Entity](person) - Residence and birth/death places
 - [Vocabularies](vocabularies#place-types-vocabulary) - Place types vocabulary
 - [Core Concepts - Data Types](../2-core-concepts#data-types) - Coordinate and date formats
-

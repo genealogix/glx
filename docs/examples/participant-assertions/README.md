@@ -23,4 +23,3 @@ This example demonstrates how to represent evidence about who participated in ev
 1. How to assert that a person participated in an event
 2. How to specify roles for participants
 3. How assertions provide evidence for structural participants
-

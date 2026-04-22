@@ -26,6 +26,7 @@ repositories:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`repository-national-archives`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -47,6 +48,7 @@ GENEALOGIX supports various repository types:
 - **Other**: Other institution type
 
 **See [Vocabularies - Repository Types](vocabularies#repository-types-vocabulary) for:**
+
 - Complete list of standard repository types
 - How to add custom repository types
 - Vocabulary file structure and examples
@@ -192,7 +194,7 @@ sources:
 
 Repository files are typically stored in a `repositories/` directory:
 
-```
+```text
 repositories/
 ├── archives/
 │   ├── repository-tna.glx
@@ -255,7 +257,3 @@ See [repository.schema.json](../schema/v1/repository.schema.json) for the comple
 
 - [Source Entity](source) - Collections held in repositories
 - [Citation Entity](citation) - References to specific materials in repositories
-
-
-
-

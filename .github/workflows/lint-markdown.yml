@@ -1,0 +1,50 @@
+name: Lint Markdown
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'specification/**/*.md'
+      - 'docs/**/*.md'
+      - '*.md'
+      - '.markdownlint-cli2.jsonc'
+      - '.github/workflows/lint-markdown.yml'
+  pull_request:
+    paths:
+      - 'specification/**/*.md'
+      - 'docs/**/*.md'
+      - '*.md'
+      - '.markdownlint-cli2.jsonc'
+      - '.github/workflows/lint-markdown.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-markdown-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  GIT_CONFIG_KEY_1: advice.detachedHead
+  GIT_CONFIG_VALUE_1: "false"
+
+jobs:
+  markdownlint:
+    name: markdownlint-cli2
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Lint markdown
+        uses: DavidAnson/markdownlint-cli2-action@v23
+        with:
+          # Mirrors the globs in .markdownlint-cli2.jsonc so the workflow scope is
+          # explicit and does not depend on the action's default glob (`*.{md,markdown}`).
+          globs: |
+            specification/**/*.md
+            docs/**/*.md
+            *.md

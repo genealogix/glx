@@ -24,4 +24,3 @@ This example demonstrates how to represent properties that change over time usin
 2. How to represent property values that changed over time
 3. How to use date stamps with temporal values
 4. Examples: occupations changing throughout life, residences at different periods, name changes
-
