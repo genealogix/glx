@@ -16,6 +16,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -127,14 +129,16 @@ func TestMigrateGenderToSex_PreSplitMergesIntoExistingSexTypes(t *testing.T) {
 }
 
 func TestMigrateGenderToSex_NilWriterDoesNotPanic(t *testing.T) {
+	// Pre-split archive exercises the full rename path with a nil writer.
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-1": {Properties: map[string]any{"gender": "male", "sex": "female"}},
+			"person-1": {Properties: map[string]any{"gender": "male"}},
 		},
 	}
 
 	report := migrateGenderToSex(archive, nil)
-	assert.Equal(t, 0, report.PropertiesRenamed)
+	assert.Equal(t, 1, report.PropertiesRenamed)
+	assert.Equal(t, "male", archive.Persons["person-1"].Properties["sex"])
 }
 
 func TestMigrateGenderToSex_PostSplitGenderTypesUntouched(t *testing.T) {
@@ -227,4 +231,136 @@ func TestMigrateGenderToSex_NoOpOnAlreadyMigratedArchive(t *testing.T) {
 	assert.Equal(t, 0, report.PropertiesRenamed)
 	assert.Equal(t, 0, report.AssertionsRenamed)
 	assert.Equal(t, 0, report.VocabEntriesRenamed)
+}
+
+// TestMigrateGenderToSex_UnknownValueRoutesToSex verifies that `gender: unknown`
+// in a pre-split archive becomes `sex: unknown` — `unknown` is a sex_types
+// value post-split, not a gender_types value.
+func TestMigrateGenderToSex_UnknownValueRoutesToSex(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {Properties: map[string]any{"gender": "unknown"}},
+		},
+	}
+
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
+
+	assert.Equal(t, 1, report.PropertiesRenamed)
+	assert.Equal(t, "unknown", archive.Persons["person-1"].Properties["sex"])
+	assert.NotContains(t, archive.Persons["person-1"].Properties, "gender")
+}
+
+// TestMigrateGenderToSex_IsIdempotent runs the migration twice and confirms
+// the second run is a no-op (post-split gate catches the migrated archive).
+func TestMigrateGenderToSex_IsIdempotent(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {Properties: map[string]any{"gender": "male"}},
+			"person-2": {Properties: map[string]any{"gender": "female"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {Subject: glxlib.EntityRef{Person: "person-1"}, Property: "gender", Value: "male"},
+		},
+	}
+
+	first := migrateGenderToSex(archive, &bytes.Buffer{})
+	require.Equal(t, 2, first.PropertiesRenamed)
+	require.Equal(t, 1, first.AssertionsRenamed)
+
+	warn := &bytes.Buffer{}
+	second := migrateGenderToSex(archive, warn)
+	assert.Equal(t, 0, second.PropertiesRenamed)
+	assert.Equal(t, 0, second.AssertionsRenamed)
+	assert.Equal(t, 0, second.VocabEntriesRenamed)
+	assert.Contains(t, warn.String(), "post-split")
+	assert.Equal(t, "male", archive.Persons["person-1"].Properties["sex"])
+	assert.Equal(t, "female", archive.Persons["person-2"].Properties["sex"])
+	assert.Equal(t, "sex", archive.Assertions["a-1"].Property)
+}
+
+// TestMigrateGenderToSex_TemporalShapeValues exercises both the
+// map-with-value and temporal-list value shapes to confirm the rename moves
+// the whole value wholesale rather than only handling scalar strings.
+func TestMigrateGenderToSex_TemporalShapeValues(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-map": {Properties: map[string]any{
+				"gender": map[string]any{"value": "male", "date": "1900"},
+			}},
+			"person-list": {Properties: map[string]any{
+				"gender": []any{
+					map[string]any{"value": "female", "date": "1920"},
+					map[string]any{"value": "male", "date": "1940"},
+				},
+			}},
+		},
+	}
+
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
+
+	assert.Equal(t, 2, report.PropertiesRenamed)
+
+	mapVal, ok := archive.Persons["person-map"].Properties["sex"].(map[string]any)
+	require.True(t, ok, "temporal map value should be preserved")
+	assert.Equal(t, "male", mapVal["value"])
+	assert.Equal(t, "1900", mapVal["date"])
+	assert.NotContains(t, archive.Persons["person-map"].Properties, "gender")
+
+	listVal, ok := archive.Persons["person-list"].Properties["sex"].([]any)
+	require.True(t, ok, "temporal list value should be preserved")
+	require.Len(t, listVal, 2)
+	assert.NotContains(t, archive.Persons["person-list"].Properties, "gender")
+}
+
+// TestMigrateArchive_SingleFileRoundTrip exercises the full archive
+// load → migrate → write → reload pipeline on a single-file archive.
+// In-memory unit tests can miss serialization bugs (see CLAUDE.md /
+// release_smoke_test_demo_repo feedback).
+func TestMigrateArchive_SingleFileRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "archive.glx")
+
+	preSplit := `metadata:
+  glx_version: "1.0"
+persons:
+  person-a:
+    properties:
+      name:
+        value: "Alice"
+      gender: "female"
+  person-b:
+    properties:
+      name:
+        value: "Bob"
+      gender: "male"
+`
+	require.NoError(t, os.WriteFile(archivePath, []byte(preSplit), 0o600))
+
+	t.Cleanup(func() { migrateRenameGenderToSex = false })
+	migrateRenameGenderToSex = true
+	require.NoError(t, migrateArchive(archivePath))
+
+	written, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+	writtenStr := string(written)
+	assert.Contains(t, writtenStr, "sex: female")
+	assert.Contains(t, writtenStr, "sex: male")
+	assert.NotContains(t, writtenStr, "gender: female")
+	assert.NotContains(t, writtenStr, "gender: male")
+
+	reloaded, err := readSingleFileArchive(archivePath, false)
+	require.NoError(t, err)
+	require.Len(t, reloaded.Persons, 2)
+	assert.Equal(t, "female", reloaded.Persons["person-a"].Properties["sex"])
+	assert.Equal(t, "male", reloaded.Persons["person-b"].Properties["sex"])
+	assert.NotContains(t, reloaded.Persons["person-a"].Properties, "gender")
+	assert.NotContains(t, reloaded.Persons["person-b"].Properties, "gender")
+
+	// Idempotency at the fs boundary: a second invocation must be a no-op
+	// and must not corrupt the now-migrated file.
+	require.NoError(t, migrateArchive(archivePath))
+	second, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+	assert.Contains(t, string(second), "sex: female")
+	assert.Contains(t, string(second), "sex: male")
 }

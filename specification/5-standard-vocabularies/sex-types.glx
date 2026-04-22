@@ -23,7 +23,7 @@ sex_types:
 
   not_recorded:
     label: "Not Recorded"
-    description: "Source does not contain a sex/gender field"
+    description: "Source does not contain a sex field"
 
   other:
     label: "Other"

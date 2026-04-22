@@ -614,42 +614,6 @@ func propertyString(props map[string]any, key string) string {
 	return fmt.Sprint(raw)
 }
 
-// personSex returns the person's recorded sex, with a safe back-compat
-// fallback to `gender` for pre-#528 archives.
-//
-// Fallback rules: if `sex` is empty and `gender` holds a value that exists
-// in the sex vocabulary (male, female, unknown, other, not_recorded), the
-// gender value is used. Identity-only values (notably `nonbinary`) are
-// never surfaced as Sex — they can't have come from a legacy archive and
-// belong to the post-split `gender` (identity) semantics.
-//
-// Operators on pre-split archives can run `glx migrate --rename-gender-to-sex`
-// to make the data explicit.
-func personSex(person *glxlib.Person) string {
-	if v := propertyString(person.Properties, glxlib.PersonPropertySex); v != "" {
-		return v
-	}
-	legacy := propertyString(person.Properties, glxlib.PersonPropertyGender)
-	if isLegacySexValue(legacy) {
-		return legacy
-	}
-
-	return ""
-}
-
-// isLegacySexValue reports whether v could plausibly be a pre-#528 `gender`
-// property value that actually denoted recorded sex. The canonical
-// post-split identity-only value (`nonbinary`) is excluded.
-func isLegacySexValue(v string) bool {
-	switch v {
-	case glxlib.SexMale, glxlib.SexFemale, glxlib.SexUnknown,
-		glxlib.SexOther, glxlib.SexNotRecorded:
-		return true
-	}
-
-	return false
-}
-
 // queryDayMonthRegexp matches day-of-month followed by a month abbreviation
 // (e.g., "15 MAR"). Used to strip day values before year extraction so that
 // 1–2 digit days are not mistaken for 1–2 digit years.

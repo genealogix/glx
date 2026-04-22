@@ -306,11 +306,13 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 }
 
 // mapGEDCOMSex maps GEDCOM SEX values to GLX sex property values.
-// "N" maps to SexNotRecorded per GEDCOM 5.5.5 — the source did not contain
-// a sex field. Unrecognized values are preserved as lowercase so the data
-// is not lost; validation will warn about unknown sex types (#520).
+// "N" and an empty/whitespace-only tag value both map to SexNotRecorded
+// per GEDCOM 5.5.5 — the source did not contain a sex field. "U" means
+// the source was consulted but the sex could not be determined. Unrecognized
+// values are preserved as lowercase so the data is not lost; validation will
+// warn about unknown sex types (#520).
 func mapGEDCOMSex(sex string) string {
-	switch strings.ToUpper(sex) {
+	switch strings.ToUpper(strings.TrimSpace(sex)) {
 	case "M":
 		return SexMale
 	case "F":
@@ -319,15 +321,10 @@ func mapGEDCOMSex(sex string) string {
 		return SexUnknown
 	case "X":
 		return SexOther
-	case "N":
+	case "N", "":
 		return SexNotRecorded
 	default:
-		trimmed := strings.ToLower(strings.TrimSpace(sex))
-		if trimmed == "" {
-			return SexUnknown
-		}
-
-		return trimmed
+		return strings.ToLower(strings.TrimSpace(sex))
 	}
 }
 

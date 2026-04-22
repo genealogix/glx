@@ -25,7 +25,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 ```
 
 That's it — no special software needed to read or write it. If you can open a text file, you can work with GLX.

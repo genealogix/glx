@@ -634,7 +634,7 @@ vocabularies/
 
 **Used By**: [Person Entity](person#properties)
 
-**Purpose**: Defines properties that can be set on person entities (name, gender, occupation, residence, etc.)
+**Purpose**: Defines properties that can be set on person entities (name, sex, gender, occupation, residence, etc.)
 
 ### Standard Properties
 
@@ -643,7 +643,8 @@ GENEALOGIX provides standard person properties:
 | Property | Type | Temporal | GEDCOM | Description |
 |----------|------|----------|--------|-------------|
 | `name` | string (with fields) | Yes | | Person's name as recorded, with optional structured fields (type, given, surname, prefix, suffix, etc.) |
-| `gender` | string | Yes | | Gender identity |
+| `sex` | `vocabulary_type: sex_types` | Yes | SEX | Sex as recorded in source documents (M/F/X/U → male/female/other/unknown; absent → not_recorded) |
+| `gender` | `vocabulary_type: gender_types` | Yes | | Self-identified gender identity (no direct GEDCOM tag; GEDCOM 7.0 defers to FACT) |
 | `occupation` | string | Yes | OCCU | Profession or trade |
 | `title` | string | Yes | TITL | Nobility or honorific title |
 | `residence` | places | Yes | | Place of residence |

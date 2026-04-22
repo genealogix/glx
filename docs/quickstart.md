@@ -74,7 +74,7 @@ persons:
           type: "birth"          # Name classification
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
     notes: |
       John was a blacksmith in Leeds during the Industrial Revolution.
       He worked at the ironworks on Wellington Street.

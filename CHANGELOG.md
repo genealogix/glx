@@ -15,7 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Changed
 
 #### Specification
-- **Split `gender` property into `sex` (recorded) and `gender` (identity)** — The existing `gender` property conflated "recorded sex" (GEDCOM `SEX`) with "self-identified gender identity". Introduced a new `sex_types` vocabulary (`male`, `female`, `unknown`, `not_recorded`, `other`) bound to a renamed `sex` person property that maps to GEDCOM `SEX`. The `gender_types` vocabulary now covers identity values (`male`, `female`, `nonbinary`, `other`) bound to a new optional `gender` property (no direct GEDCOM mapping — GEDCOM 7.0 defers identity to `FACT`). GEDCOM import/export, HUSB/WIFE assignment, census parsing, and CLI readers (`vitals`, `summary`) all updated to use `sex`. Archives predating this split can be migrated automatically via `glx migrate --rename-gender-to-sex`. Resolves #528, closes #518, #534, #545.
+- **BREAKING**: Split `gender` property into `sex` (recorded) and `gender` (identity) — The existing `gender` property conflated "recorded sex" (GEDCOM `SEX`) with "self-identified gender identity". Introduced a new `sex_types` vocabulary (`male`, `female`, `unknown`, `not_recorded`, `other`) bound to a new `sex` person property that maps to GEDCOM `SEX`. The `gender_types` vocabulary now covers identity values (`male`, `female`, `nonbinary`, `other`) bound to the repurposed `gender` property (no direct GEDCOM mapping — GEDCOM 7.0 defers identity to `FACT`). GEDCOM import/export, HUSB/WIFE assignment, census parsing, and CLI readers (`vitals`, `summary`) all updated to prefer `sex` with legacy `gender` fallback. Archives predating this split can be migrated via `glx migrate --rename-gender-to-sex`. Wire-format breaking: archives using `gender: "unknown"` produce an out-of-vocabulary warning post-split (`unknown` now lives only in `sex_types`). Resolves #528.
+Closes #518.
+Closes #534.
 
 ### Added
 

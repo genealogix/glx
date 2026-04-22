@@ -120,15 +120,15 @@ func migrateArchive(archivePath string) error {
 	}
 
 	fmt.Println("Migration complete:")
-	fmt.Printf("  Events created:          %d\n", report.EventsCreated)
-	fmt.Printf("  Events merged:           %d\n", report.EventsMerged)
-	fmt.Printf("  Properties removed:      %d\n", report.PropertiesRemoved)
-	fmt.Printf("  Assertions migrated:     %d\n", report.AssertionsMigrated)
-	fmt.Printf("  Vocab entries removed:   %d\n", report.VocabEntriesRemoved)
+	fmt.Printf("  %-27s%d\n", "Events created:", report.EventsCreated)
+	fmt.Printf("  %-27s%d\n", "Events merged:", report.EventsMerged)
+	fmt.Printf("  %-27s%d\n", "Properties removed:", report.PropertiesRemoved)
+	fmt.Printf("  %-27s%d\n", "Assertions migrated:", report.AssertionsMigrated)
+	fmt.Printf("  %-27s%d\n", "Vocab entries removed:", report.VocabEntriesRemoved)
 	if migrateRenameGenderToSex {
-		fmt.Printf("  Gender→sex properties:   %d\n", report.PropertiesRenamed)
-		fmt.Printf("  Gender→sex assertions:   %d\n", report.AssertionsRenamed)
-		fmt.Printf("  Gender→sex vocab entries: %d\n", report.VocabEntriesRenamed)
+		fmt.Printf("  %-27s%d\n", "Gender→sex properties:", report.PropertiesRenamed)
+		fmt.Printf("  %-27s%d\n", "Gender→sex assertions:", report.AssertionsRenamed)
+		fmt.Printf("  %-27s%d\n", "Gender→sex vocab entries:", report.VocabEntriesRenamed)
 	}
 
 	return nil

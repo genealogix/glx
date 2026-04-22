@@ -64,9 +64,9 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 		glxFile.Persons[personID] = &Person{
 			Properties: map[string]any{
-				"primary_name": gofakeit.Name(),
-				"gender":       gofakeit.Gender(),
-				"living":       living,
+				"primary_name":    gofakeit.Name(),
+				PersonPropertySex: gofakeit.Gender(),
+				"living":          living,
 			},
 		}
 

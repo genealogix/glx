@@ -180,7 +180,7 @@
     },
     "gender_types": {
       "type": "object",
-      "description": "Gender identity vocabulary",
+      "description": "Gender identity vocabulary (self-identified; no direct GEDCOM mapping)",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json" }
       },

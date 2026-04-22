@@ -210,8 +210,8 @@ func TestCollectVitals_WitnessChristeningExcluded(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-grandfather": {Properties: map[string]any{
-				"name":   "Martin Krause",
-				"sex": "male",
+				"name": "Martin Krause",
+				"sex":  "male",
 			}},
 			"person-grandchild": {Properties: map[string]any{
 				"name": "Christine Krause",

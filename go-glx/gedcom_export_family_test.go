@@ -1064,7 +1064,7 @@ func TestAssignHusbandWife_FemaleFirst(t *testing.T) {
 	assert.Equal(t, "a", w) // female
 }
 
-func TestAssignHusbandWife_SameGender(t *testing.T) {
+func TestAssignHusbandWife_SameSex(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
 			Persons: map[string]*Person{

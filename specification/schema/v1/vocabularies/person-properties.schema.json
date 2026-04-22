@@ -60,7 +60,7 @@
         },
         "vocabulary_type": {
           "type": "string",
-          "description": "Vocabulary type that constrains allowed values (e.g., gender_types)"
+          "description": "Vocabulary type that constrains allowed values (e.g., sex_types, gender_types)"
         },
         "temporal": {
           "type": "boolean",

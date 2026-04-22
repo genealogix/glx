@@ -52,7 +52,7 @@ func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateRepo
 		return report
 	}
 
-	report.PropertiesRenamed = renamePersonGenderProperties(archive, warnOut)
+	report.PropertiesRenamed = renamePersonGenderProperties(archive)
 	report.AssertionsRenamed = renameGenderAssertions(archive)
 	report.VocabEntriesRenamed = renamePersonPropertyDefinition(archive) +
 		movePreSplitGenderTypesVocab(archive)
@@ -132,10 +132,11 @@ func isIdentityOnlyGenderValue(val any) bool {
 	return false
 }
 
-// renamePersonGenderProperties moves person.properties["gender"] → ["sex"]
-// when "sex" is absent. Person IDs are iterated in sorted order so conflict
-// warnings are deterministic.
-func renamePersonGenderProperties(archive *glxlib.GLXFile, warnOut io.Writer) int {
+// renamePersonGenderProperties moves person.properties["gender"] → ["sex"].
+// Any person already carrying `sex` would have tripped isPostSplitArchive and
+// skipped the whole migration, so the iteration never observes a
+// gender+sex conflict here.
+func renamePersonGenderProperties(archive *glxlib.GLXFile) int {
 	count := 0
 	for _, personID := range sortedKeys(archive.Persons) {
 		person := archive.Persons[personID]
@@ -144,13 +145,6 @@ func renamePersonGenderProperties(archive *glxlib.GLXFile, warnOut io.Writer) in
 		}
 		val, hasGender := person.Properties[glxlib.PersonPropertyGender]
 		if !hasGender {
-			continue
-		}
-		if _, hasSex := person.Properties[glxlib.PersonPropertySex]; hasSex {
-			_, _ = fmt.Fprintf(warnOut,
-				"Warning: person %q has both 'gender' and 'sex' properties; leaving 'gender' untouched\n",
-				personID)
-
 			continue
 		}
 		person.Properties[glxlib.PersonPropertySex] = val

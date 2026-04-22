@@ -60,14 +60,14 @@ func newTestArchive() *glxlib.GLXFile {
 			},
 			"person-child": {
 				Properties: map[string]any{
-					"name":   "Alice Smith",
-					"sex": "female",
+					"name": "Alice Smith",
+					"sex":  "female",
 				},
 			},
 			"person-child2": {
 				Properties: map[string]any{
-					"name":   "Bob Smith",
-					"sex": "male",
+					"name": "Bob Smith",
+					"sex":  "male",
 				},
 			},
 			"person-neighbor": {
@@ -149,7 +149,7 @@ func newTestArchive() *glxlib.GLXFile {
 		},
 		Places: map[string]*glxlib.Place{
 			"place-ny":     {Name: "New York, New York"},
-			"place-boston":  {Name: "Boston, Massachusetts"},
+			"place-boston": {Name: "Boston, Massachusetts"},
 		},
 	}
 }

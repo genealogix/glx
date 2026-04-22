@@ -79,6 +79,8 @@ sex_types:
   unknown:
     label: "Unknown"
     gedcom: "U"
+  not_recorded:
+    label: "Not Recorded"
   other:
     label: "Other"
     gedcom: "X"

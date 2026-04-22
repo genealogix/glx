@@ -1049,6 +1049,30 @@ func TestImportSex_UnrecognizedValuePreservedLowercase(t *testing.T) {
 	}
 }
 
+// TestImportSex_EmptyValueMapsToNotRecorded tests that a present-but-empty
+// GEDCOM `SEX` tag (e.g. `1 SEX` with no value) maps to `not_recorded` rather
+// than `unknown`. `unknown` is reserved for `SEX U` (source consulted but
+// undetermined); an empty tag represents absent-from-source data (#528).
+func TestImportSex_EmptyValueMapsToNotRecorded(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
+
+	for _, person := range glxFile.Persons {
+		sex, ok := person.Properties[PersonPropertySex].(string)
+		require.True(t, ok, "sex property should be a string")
+		assert.Equal(t, SexNotRecorded, sex, "empty GEDCOM SEX tag should map to not_recorded")
+	}
+}
+
 func TestImportDate_CalendarEscapePreserved(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
