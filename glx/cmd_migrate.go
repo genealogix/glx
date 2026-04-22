@@ -114,11 +114,11 @@ func migrateArchive(archivePath string) error {
 			if person == nil {
 				continue
 			}
-			val, ok := person.Properties[glxlib.PersonPropertyGender]
-			if !ok {
-				continue
-			}
-			if s, ok := val.(string); ok && isLegacySexValue(s) {
+			// Also handles temporal shapes (`gender` is declared
+			// `temporal: true`) — propertyScalar pulls the canonical
+			// scalar from string / single-map / list forms so the count
+			// stays accurate on temporal archives.
+			if isLegacySexValue(propertyScalar(person.Properties[glxlib.PersonPropertyGender])) {
 				legacyGenderRemaining++
 			}
 		}
