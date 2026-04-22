@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -124,7 +126,7 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
 
 	// Merge via CLI function
-	err = mergeArchives(srcDir, destDir, false)
+	err = mergeArchives(srcDir, destDir, false, 0.6)
 	require.NoError(t, err)
 
 	// Reload and verify no duplicates
@@ -136,7 +138,7 @@ func TestMergeArchives_DiskRoundTrip(t *testing.T) {
 	assert.Contains(t, reloaded.Persons, "person-b")
 }
 
-func TestMergeArchives_DryRun(t *testing.T) {
+func TestMergeArchives_PreviewLeavesFilesystemUnchanged(t *testing.T) {
 	destDir := t.TempDir()
 	srcDir := t.TempDir()
 
@@ -162,21 +164,18 @@ func TestMergeArchives_DryRun(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
 
-	// Snapshot destination files before dry-run (path → size)
 	before := snapshotDir(t, destDir)
 	require.NotEmpty(t, before, "destination should have files before merge")
 
-	// Merge with dry-run — should not modify destination
-	err = mergeArchives(srcDir, destDir, true)
+	err = mergeArchives(srcDir, destDir, true, 0.6)
 	require.NoError(t, err)
 
-	// Verify filesystem is byte-for-byte unchanged (no new files, no modifications)
 	after := snapshotDir(t, destDir)
-	assert.Equal(t, before, after, "dry run should not create, modify, or remove any files")
+	assert.Equal(t, before, after, "preview should not create, modify, or remove any files")
 }
 
 // snapshotDir returns a map of relative file paths to file sizes for all files
-// under root. Used to detect any filesystem changes after a dry-run merge.
+// under root. Used to detect any filesystem changes after a preview merge.
 func snapshotDir(t *testing.T, root string) map[string]int64 {
 	t.Helper()
 	snapshot := make(map[string]int64)
@@ -227,7 +226,7 @@ func TestMergeArchives_DotDestination(t *testing.T) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 
 	require.NoError(t, os.Chdir(destDir))
-	err = mergeArchives(srcDir, ".", false)
+	err = mergeArchives(srcDir, ".", false, 0.6)
 	require.NoError(t, err)
 
 	// Verify merge result (use absolute destDir since cwd may have changed)
@@ -237,4 +236,95 @@ func TestMergeArchives_DotDestination(t *testing.T) {
 	assert.Len(t, reloaded.Persons, 2, "should have both persons after merge")
 	assert.Contains(t, reloaded.Persons, "person-a")
 	assert.Contains(t, reloaded.Persons, "person-b")
+}
+
+func TestMergeArchives_PreviewShowsDuplicates(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-dest-john": {Properties: map[string]any{"name": "John Smith"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := serializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-src-john": {Properties: map[string]any{"name": "John Smith"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := serializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	before := snapshotDir(t, destDir)
+
+	// Capture stdout to verify duplicate detection output
+	oldStdout := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	require.NoError(t, pipeErr)
+	os.Stdout = w
+	t.Cleanup(func() {
+		os.Stdout = oldStdout
+		_ = w.Close()
+		_ = r.Close()
+	})
+
+	err = mergeArchives(srcDir, destDir, true, 0.2)
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	require.NoError(t, err)
+
+	// Verify duplicate detection output
+	assert.Contains(t, output, "Potential cross-archive duplicates")
+	assert.Contains(t, output, "John Smith")
+	assert.Contains(t, output, "Name similarity")
+	assert.Contains(t, output, "(preview — no files written)")
+
+	// Filesystem unchanged
+	after := snapshotDir(t, destDir)
+	assert.Equal(t, before, after, "preview should not modify any files")
+}
+
+func TestMergeArchives_PreviewNoDuplicates(t *testing.T) {
+	destDir := t.TempDir()
+	srcDir := t.TempDir()
+
+	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false, Pretty: true})
+
+	destArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-alice": {Properties: map[string]any{"name": "Alice Johnson"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(destArchive)
+	destFiles, err := serializer.SerializeMultiFileToMap(destArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(destDir, destFiles))
+
+	srcArchive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-bob": {Properties: map[string]any{"name": "Bob Williams"}},
+		},
+	}
+	glxlib.LoadStandardVocabulariesIntoGLX(srcArchive)
+	srcFiles, err := serializer.SerializeMultiFileToMap(srcArchive)
+	require.NoError(t, err)
+	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
+
+	err = mergeArchives(srcDir, destDir, true, 0.8)
+	require.NoError(t, err)
 }

@@ -23,6 +23,10 @@ Closes #534.
 
 #### CLI
 - **`glx migrate --rename-gender-to-sex`** — New opt-in flag on `glx migrate` that renames the legacy `gender` person property (and related assertions and inlined vocabulary entries) to `sex`, completing the two-field-model split in pre-v1.0 archives (#528).
+- **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
+
+### Removed
+- **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
 
 ### Fixed
 
@@ -31,8 +35,6 @@ Closes #534.
 
 #### go-glx
 - **Multi-file serializer generates deterministic filenames** — Entity filenames are now derived from entity IDs (`strings.ToLower(entityID) + ".glx"`) instead of random 8-char hex. Previously, every write generated new random filenames, causing massive git diffs even when no data changed. Case-insensitive collisions (e.g., `Person-A` and `person-a`) are detected and reported as errors. Fixes #694
-
-#### CLI
 - **`glx migrate`, `glx rename`, and `glx merge` no longer delete non-archive files** — The crash-safe write path (`safeWriteMultiFileArchive`, added in #598) swapped a fresh archive directory into place and then unconditionally removed the original via `.bak`, wiping any top-level entry the serializer didn't produce — including `.git/`, `README.md`, `CLAUDE.md`, `.claude/`, and arbitrary user content. Since GLX archives are designed to live inside git repositories, every invocation against a real archive silently destroyed git history and project docs. The swap now preserves every top-level entry that isn't in the managed set (`metadata.glx`, `vocabularies/`, `persons/`, `events/`, `relationships/`, `places/`, `sources/`, `citations/`, `repositories/`, `media/`, `assertions/`). Test coverage added for foreign-file preservation. Fixes #692
 
 ## [0.0.0-beta.10] - 2026-04-13
@@ -59,17 +61,11 @@ Closes #534.
 - **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
 
 ### Changed
-
-#### CLI
 - **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
 
 ### Fixed
-
-#### CLI
 - **`glx vitals` limited to core vital records only** — Removed non-vital events (census, marriage, residence, etc.) from `glx vitals` output. Vitals now shows exactly Name, Sex, Birth, Christening, Death, Burial; other life events remain available via `glx summary` and `glx timeline` (#685, Fixes #644)
 - **Witness events excluded from vital records display** — `glx vitals` and `glx summary` vital sections now show vital events (birth, christening, death, burial) only where the person is a principal/subject participant. Witnessing a christening (or other vital event) no longer appears as the person's own vital. Non-vital "Life Events" in `glx summary` continue to show all participant roles (#686, Fixes #647)
-
-#### GEDCOM Import
 - **Unrecognized SEX values preserved** — Non-standard or extension GEDCOM SEX values (e.g., custom values, or values such as `N` whose meaning varies between GEDCOM 5.5.5 `Not Recorded` and 7.0 `Nonbinary`) are now lowercased and preserved as-is instead of being silently mapped to `unknown`. Validation will warn about out-of-vocabulary values (#588)
 - **Correct year extraction from Hebrew and French Republican dates** — `ExtractFirstYear` now uses calendar-aware extraction, finding the last digit sequence for HEBREW and FRENCH_R dates where the year appears last. Previously, `HEBREW 15 TSH 5765` would extract `15` (the day) instead of `5765`. Also handles range dates (`BET...AND`, `FROM...TO`) correctly (#590)
 
