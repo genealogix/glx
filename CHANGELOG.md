@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Project Infrastructure
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
 
+### Changed
+
+#### go-glx
+- **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
+
 ### Removed
 
 #### CLI

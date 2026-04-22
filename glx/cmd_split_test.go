@@ -49,7 +49,7 @@ func createTestSingleFileArchive(t *testing.T, tmpDir string) string {
 				Type: "birth",
 			},
 		},
-		EventTypes: map[string]*glxlib.EventType{
+		EventTypes: map[string]*glxlib.VocabularyEntry{
 			"birth": {Label: "Birth"},
 			"death": {Label: "Death"},
 		},

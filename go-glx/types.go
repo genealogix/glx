@@ -76,15 +76,15 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	Media         map[string]*Media        `yaml:"media,omitempty"`
 
 	// Vocabulary definitions
-	EventTypes        map[string]*EventType        `yaml:"event_types,omitempty"`
-	ParticipantRoles  map[string]*ParticipantRole  `yaml:"participant_roles,omitempty"`
-	ConfidenceLevels  map[string]*ConfidenceLevel  `yaml:"confidence_levels,omitempty"`
-	RelationshipTypes map[string]*RelationshipType `yaml:"relationship_types,omitempty"`
-	PlaceTypes        map[string]*PlaceType        `yaml:"place_types,omitempty"`
-	SourceTypes       map[string]*SourceType       `yaml:"source_types,omitempty"`
-	RepositoryTypes   map[string]*RepositoryType   `yaml:"repository_types,omitempty"`
-	MediaTypes        map[string]*MediaType        `yaml:"media_types,omitempty"`
-	GenderTypes       map[string]*GenderType       `yaml:"gender_types,omitempty"`
+	EventTypes        map[string]*VocabularyEntry `yaml:"event_types,omitempty"`
+	ParticipantRoles  map[string]*VocabularyEntry `yaml:"participant_roles,omitempty"`
+	ConfidenceLevels  map[string]*VocabularyEntry `yaml:"confidence_levels,omitempty"`
+	RelationshipTypes map[string]*VocabularyEntry `yaml:"relationship_types,omitempty"`
+	PlaceTypes        map[string]*VocabularyEntry `yaml:"place_types,omitempty"`
+	SourceTypes       map[string]*VocabularyEntry `yaml:"source_types,omitempty"`
+	RepositoryTypes   map[string]*VocabularyEntry `yaml:"repository_types,omitempty"`
+	MediaTypes        map[string]*VocabularyEntry `yaml:"media_types,omitempty"`
+	GenderTypes       map[string]*VocabularyEntry `yaml:"gender_types,omitempty"`
 
 	// Property vocabularies
 	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
@@ -310,70 +310,17 @@ type Media struct {
 // archives. These vocabularies define controlled vocabularies for entity
 // properties like event types, relationship types, participant roles, etc.
 
-// EventType represents a standard event type vocabulary entry.
-type EventType struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	Category    string `yaml:"category,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
-}
-
-// ParticipantRole represents a standard participant role vocabulary entry.
-type ParticipantRole struct {
+// VocabularyEntry is an entry in any standard controlled vocabulary. Unused
+// optional fields are elided from YAML via omitempty. Field order matches the
+// `label, description, <type-specific>, gedcom` layout used in on-disk
+// vocabulary files so single-file archives round-trip without key shuffling.
+type VocabularyEntry struct {
 	Label       string   `yaml:"label"`
 	Description string   `yaml:"description,omitempty"`
+	Category    string   `yaml:"category,omitempty"`
 	AppliesTo   []string `yaml:"applies_to,omitempty"`
+	MimeType    string   `yaml:"mime_type,omitempty"`
 	GEDCOM      string   `yaml:"gedcom,omitempty"`
-}
-
-// ConfidenceLevel represents a standard confidence level vocabulary entry.
-type ConfidenceLevel struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
-}
-
-// RelationshipType represents a standard relationship type vocabulary entry.
-type RelationshipType struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
-}
-
-// PlaceType represents a standard place type vocabulary entry.
-type PlaceType struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	Category    string `yaml:"category,omitempty"`
-}
-
-// SourceType represents a standard source type vocabulary entry.
-type SourceType struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
-}
-
-// RepositoryType represents a standard repository type vocabulary entry.
-type RepositoryType struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
-}
-
-// MediaType represents a standard media type vocabulary entry.
-type MediaType struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	MimeType    string `yaml:"mime_type,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
-}
-
-// GenderType represents a standard gender type vocabulary entry.
-type GenderType struct {
-	Label       string `yaml:"label"`
-	Description string `yaml:"description,omitempty"`
-	GEDCOM      string `yaml:"gedcom,omitempty"`
 }
 
 // PropertyDefinition defines a property that can be used on entities.
@@ -498,31 +445,31 @@ func (g *GLXFile) initMaps() {
 		g.Media = make(map[string]*Media)
 	}
 	if g.EventTypes == nil {
-		g.EventTypes = make(map[string]*EventType)
+		g.EventTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.RelationshipTypes == nil {
-		g.RelationshipTypes = make(map[string]*RelationshipType)
+		g.RelationshipTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.PlaceTypes == nil {
-		g.PlaceTypes = make(map[string]*PlaceType)
+		g.PlaceTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.SourceTypes == nil {
-		g.SourceTypes = make(map[string]*SourceType)
+		g.SourceTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.RepositoryTypes == nil {
-		g.RepositoryTypes = make(map[string]*RepositoryType)
+		g.RepositoryTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.MediaTypes == nil {
-		g.MediaTypes = make(map[string]*MediaType)
+		g.MediaTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.GenderTypes == nil {
-		g.GenderTypes = make(map[string]*GenderType)
+		g.GenderTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.ParticipantRoles == nil {
-		g.ParticipantRoles = make(map[string]*ParticipantRole)
+		g.ParticipantRoles = make(map[string]*VocabularyEntry)
 	}
 	if g.ConfidenceLevels == nil {
-		g.ConfidenceLevels = make(map[string]*ConfidenceLevel)
+		g.ConfidenceLevels = make(map[string]*VocabularyEntry)
 	}
 	if g.PersonProperties == nil {
 		g.PersonProperties = make(map[string]*PropertyDefinition)
