@@ -124,6 +124,13 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(personSex(person))})
 
+	// Gender identity — only shown when explicitly recorded, since most
+	// historical archives won't carry it. Read directly (not via personSex
+	// fallback) so the Sex fallback doesn't duplicate the value here.
+	if identity := propertyString(person.Properties, glxlib.PersonPropertyGender); identity != "" {
+		vitals = append(vitals, vitalRecord{"Gender", identity})
+	}
+
 	// Birth — from events
 	birth := findEventByType(personID, "birth", eventIDs, archive)
 	vitals = append(vitals, vitalRecord{"Birth", displayOrDash(birth)})

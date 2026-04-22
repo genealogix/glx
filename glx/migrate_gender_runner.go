@@ -47,7 +47,9 @@ func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateRepo
 		_, _ = fmt.Fprintln(warnOut,
 			"Warning: archive appears to already use the post-split two-field model "+
 				"(sex/gender) — skipping --rename-gender-to-sex. Running this migration "+
-				"on a post-split archive would corrupt gender-identity data.")
+				"on a post-split archive would corrupt gender-identity data. Any legacy "+
+				"`gender` values still in the archive must be migrated manually.")
+		report.GenderRenameSkipped = true
 
 		return report
 	}
@@ -90,6 +92,13 @@ func isPostSplitArchive(archive *glxlib.GLXFile) bool {
 	}
 	for _, assertion := range archive.Assertions {
 		if assertion == nil {
+			continue
+		}
+		// Only person-subject assertions count as post-split signals.
+		// Non-person subjects (events, relationships) may legitimately
+		// carry custom `sex`/`gender` properties unrelated to the split;
+		// treating them as post-split would incorrectly skip migration.
+		if assertion.Subject.Person == "" {
 			continue
 		}
 		if assertion.Property == glxlib.PersonPropertySex {

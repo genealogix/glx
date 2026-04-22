@@ -564,6 +564,63 @@ func TestPronounFor(t *testing.T) {
 	assert.Equal(t, "their", poss)
 }
 
+// TestPronounFor_IdentityTrumpsSex locks in the load-bearing contract of the
+// two-field split: when self-identified `gender` is present, it wins over
+// recorded `sex` for pronoun selection. Pronouns are an identity concern.
+func TestPronounFor_IdentityTrumpsSex(t *testing.T) {
+	// Nonbinary identity with male-recorded sex should fall through to they/their.
+	nonbinary := &glxlib.Person{Properties: map[string]any{
+		"sex":    "male",
+		"gender": "nonbinary",
+	}}
+	subj, poss := pronounFor(nonbinary)
+	assert.Equal(t, "They", subj)
+	assert.Equal(t, "their", poss)
+
+	// Female identity with male-recorded sex (e.g., a trans woman) uses she/her.
+	transFemale := &glxlib.Person{Properties: map[string]any{
+		"sex":    "male",
+		"gender": "female",
+	}}
+	subj, poss = pronounFor(transFemale)
+	assert.Equal(t, "She", subj)
+	assert.Equal(t, "her", poss)
+
+	// Male identity with female-recorded sex uses he/his.
+	transMale := &glxlib.Person{Properties: map[string]any{
+		"sex":    "female",
+		"gender": "male",
+	}}
+	subj, poss = pronounFor(transMale)
+	assert.Equal(t, "He", subj)
+	assert.Equal(t, "his", poss)
+
+	// `gender: other` is identity-only with no he/she mapping → they/their.
+	other := &glxlib.Person{Properties: map[string]any{
+		"sex":    "female",
+		"gender": "other",
+	}}
+	subj, poss = pronounFor(other)
+	assert.Equal(t, "They", subj)
+	assert.Equal(t, "their", poss)
+}
+
+// TestPronounFor_LegacyGenderFallback covers the pre-split archive shape:
+// a person with only `gender: male/female` (no `sex` yet) should still get
+// gendered pronouns. The pronounFor helper reads gender first, so this works
+// naturally — lock it in.
+func TestPronounFor_LegacyGenderFallback(t *testing.T) {
+	legacyMale := &glxlib.Person{Properties: map[string]any{"gender": "male"}}
+	subj, poss := pronounFor(legacyMale)
+	assert.Equal(t, "He", subj)
+	assert.Equal(t, "his", poss)
+
+	legacyFemale := &glxlib.Person{Properties: map[string]any{"gender": "female"}}
+	subj, poss = pronounFor(legacyFemale)
+	assert.Equal(t, "She", subj)
+	assert.Equal(t, "her", poss)
+}
+
 func TestJoinNames(t *testing.T) {
 	assert.Equal(t, "", joinNames(nil))
 	assert.Equal(t, "Alice", joinNames([]string{"Alice"}))

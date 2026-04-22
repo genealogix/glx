@@ -97,6 +97,23 @@ func migrateArchive(archivePath string) error {
 		report.PropertiesRenamed += genderReport.PropertiesRenamed
 		report.AssertionsRenamed += genderReport.AssertionsRenamed
 		report.VocabEntriesRenamed += genderReport.VocabEntriesRenamed
+		report.GenderRenameSkipped = genderReport.GenderRenameSkipped
+	}
+
+	// If the gender→sex rename was skipped, count any remaining legacy
+	// `gender:` person properties so the user knows whether the skip was
+	// benign (post-migration re-run, no legacy left) or worrying (manual
+	// partial migration leaves legacy data unmigrated).
+	legacyGenderRemaining := 0
+	if report.GenderRenameSkipped {
+		for _, person := range archive.Persons {
+			if person == nil {
+				continue
+			}
+			if _, ok := person.Properties[glxlib.PersonPropertyGender]; ok {
+				legacyGenderRemaining++
+			}
+		}
 	}
 
 	if report.EventsCreated == 0 && report.EventsMerged == 0 &&
@@ -104,6 +121,16 @@ func migrateArchive(archivePath string) error {
 		report.VocabEntriesRemoved == 0 &&
 		report.PropertiesRenamed == 0 && report.AssertionsRenamed == 0 &&
 		report.VocabEntriesRenamed == 0 {
+		if report.GenderRenameSkipped {
+			if legacyGenderRemaining > 0 {
+				fmt.Printf("Gender→sex rename skipped (archive already post-split) but %d legacy `gender` propert%s remain unmigrated; rename manually to preserve intent.\n",
+					legacyGenderRemaining, plural(legacyGenderRemaining, "y", "ies"))
+			} else {
+				fmt.Println("Gender→sex rename skipped (archive already post-split); no legacy `gender` properties remain.")
+			}
+
+			return nil
+		}
 		fmt.Println("No deprecated properties found. Archive is already up to date.")
 		return nil
 	}
@@ -126,10 +153,28 @@ func migrateArchive(archivePath string) error {
 	fmt.Printf("  %-27s%d\n", "Assertions migrated:", report.AssertionsMigrated)
 	fmt.Printf("  %-27s%d\n", "Vocab entries removed:", report.VocabEntriesRemoved)
 	if migrateRenameGenderToSex {
-		fmt.Printf("  %-27s%d\n", "Gender→sex properties:", report.PropertiesRenamed)
-		fmt.Printf("  %-27s%d\n", "Gender→sex assertions:", report.AssertionsRenamed)
-		fmt.Printf("  %-27s%d\n", "Gender→sex vocab entries:", report.VocabEntriesRenamed)
+		if report.GenderRenameSkipped {
+			if legacyGenderRemaining > 0 {
+				fmt.Printf("  Gender→sex rename:         skipped (archive post-split; %d legacy `gender` propert%s remain)\n",
+					legacyGenderRemaining, plural(legacyGenderRemaining, "y", "ies"))
+			} else {
+				fmt.Println("  Gender→sex rename:         skipped (archive already post-split; no legacy data)")
+			}
+		} else {
+			fmt.Printf("  %-27s%d\n", "Gender→sex properties:", report.PropertiesRenamed)
+			fmt.Printf("  %-27s%d\n", "Gender→sex assertions:", report.AssertionsRenamed)
+			fmt.Printf("  %-27s%d\n", "Gender→sex vocab entries:", report.VocabEntriesRenamed)
+		}
 	}
 
 	return nil
+}
+
+// plural picks between singular and plural word forms based on count.
+func plural(count int, singular, pluralForm string) string {
+	if count == 1 {
+		return singular
+	}
+
+	return pluralForm
 }

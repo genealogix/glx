@@ -364,3 +364,56 @@ persons:
 	assert.Contains(t, string(second), "sex: female")
 	assert.Contains(t, string(second), "sex: male")
 }
+
+// TestMigrateArchive_MultiFileRoundTrip mirrors the single-file round-trip
+// test against a multi-file archive. Multi-file write goes through
+// safeWriteMultiFileArchive which does atomic-swap, so a bug in the rename
+// logic against that path would corrupt the whole archive — worth covering
+// separately from the single-file path.
+func TestMigrateArchive_MultiFileRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "metadata.glx"),
+		[]byte("metadata:\n  glx_version: \"1.0\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-a.glx"),
+		[]byte(`persons:
+  person-a:
+    properties:
+      name:
+        value: "Alice"
+      gender: "female"
+`), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-b.glx"),
+		[]byte(`persons:
+  person-b:
+    properties:
+      name:
+        value: "Bob"
+      gender: "male"
+`), 0o600))
+
+	t.Cleanup(func() { migrateRenameGenderToSex = false })
+	migrateRenameGenderToSex = true
+	require.NoError(t, migrateArchive(dir))
+
+	personA, err := os.ReadFile(filepath.Join(dir, "persons", "person-a.glx"))
+	require.NoError(t, err)
+	assert.Contains(t, string(personA), "sex: female")
+	assert.NotContains(t, string(personA), "gender: female")
+
+	personB, err := os.ReadFile(filepath.Join(dir, "persons", "person-b.glx"))
+	require.NoError(t, err)
+	assert.Contains(t, string(personB), "sex: male")
+	assert.NotContains(t, string(personB), "gender: male")
+
+	// Reload via LoadArchive to verify serialized archive still parses.
+	reloaded, _, err := LoadArchiveWithOptions(dir, false)
+	require.NoError(t, err)
+	require.Len(t, reloaded.Persons, 2)
+	assert.Equal(t, "female", reloaded.Persons["person-a"].Properties["sex"])
+	assert.Equal(t, "male", reloaded.Persons["person-b"].Properties["sex"])
+
+	// Second invocation: post-split gate trips; stdout should announce the
+	// skip with zero legacy remaining (benign idempotent re-run).
+	require.NoError(t, migrateArchive(dir))
+}

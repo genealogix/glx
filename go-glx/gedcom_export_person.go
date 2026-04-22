@@ -133,13 +133,16 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 		record.SubRecords = append(record.SubRecords, nameRecords...)
 	}
 
-	// SEX
-	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok {
+	// SEX — prefer the recorded `sex` property; fall back to the legacy
+	// `gender` property ONLY when it carries a value valid in sex_types.
+	// Identity-only values (e.g. `nonbinary`) are never exported as SEX
+	// because clamping them to `U` would silently discard identity semantics.
+	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok && sex != "" {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagSex,
 			Value: mapSexToGEDCOM(sex, expCtx),
 		})
-	} else if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
+	} else if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagSex,
 			Value: mapSexToGEDCOM(gender, expCtx),
@@ -450,13 +453,16 @@ func mapSexToGEDCOM(value string, expCtx *ExportContext) string {
 // restricts SEX to M/F/X/U; any other value — including "N" from GEDCOM
 // 5.5.x or a custom vocabulary entry — collapses to "U" on a 7.0 export.
 // Earlier versions (and the nil/default case) preserve the value as-is.
+// The value is trimmed and uppercased before the enum check so that
+// vocabulary mappings like "m" or " M " don't get surprisingly collapsed
+// to "U" on 7.0 export.
 func normalizeGEDCOMSex(value string, expCtx *ExportContext) string {
 	if expCtx == nil || expCtx.Version != GEDCOM70 {
 		return value
 	}
-	switch value {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
 	case "M", "F", "X", "U":
-		return value
+		return strings.ToUpper(strings.TrimSpace(value))
 	default:
 		return "U"
 	}

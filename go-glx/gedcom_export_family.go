@@ -531,21 +531,39 @@ func assignHusbandWife(personA, personB string, expCtx *ExportContext) (husbandI
 }
 
 // getPersonSex retrieves the recorded sex property for a person ID, falling
-// back to the legacy gender property.
+// back to the legacy gender property for pre-split archives.
+//
+// Identity-only gender values (notably `nonbinary`) are NEVER surfaced as sex
+// — after the two-field split, `gender` may carry identity values that would
+// corrupt sex-based export logic (HUSB/WIFE assignment, GEDCOM SEX emission)
+// if treated as recorded sex. Only legacy values that are also valid in
+// `sex_types` fall through from `gender`.
 func getPersonSex(personID string, expCtx *ExportContext) string {
 	person, ok := expCtx.GLX.Persons[personID]
-	if !ok {
+	if !ok || person == nil {
 		return ""
 	}
 
-	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok {
+	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok && sex != "" {
 		return sex
 	}
-	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
+	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
 		return gender
 	}
 
 	return ""
+}
+
+// isLegacySexValue reports whether a gender-property value could plausibly be
+// a pre-split `gender:` that actually denoted recorded sex. Identity-only
+// values (e.g. `nonbinary`) do not pass this filter.
+func isLegacySexValue(v string) bool {
+	switch v {
+	case SexMale, SexFemale, SexUnknown, SexOther, SexNotRecorded:
+		return true
+	}
+
+	return false
 }
 
 // relationshipTypeToPedi maps GLX relationship types to GEDCOM PEDI values.

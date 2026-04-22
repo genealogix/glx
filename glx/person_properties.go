@@ -30,6 +30,9 @@ import (
 // Operators on pre-split archives can run `glx migrate --rename-gender-to-sex`
 // to make the data explicit.
 func personSex(person *glxlib.Person) string {
+	if person == nil {
+		return ""
+	}
 	if v := propertyString(person.Properties, glxlib.PersonPropertySex); v != "" {
 		return v
 	}

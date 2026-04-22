@@ -265,12 +265,18 @@ func formatNameType(t string) string {
 // Section printers
 // ============================================================================
 
-// printIdentitySection prints name, sex, and alternate names.
+// printIdentitySection prints name, sex, gender, and alternate names.
+// Gender is printed only when explicitly recorded so archives without
+// identity data stay uncluttered.
 func printIdentitySection(person *glxlib.Person) {
 	name := extractPersonName(person)
 	fmt.Printf("  %-18s%s\n", "Name:", name)
 
 	fmt.Printf("  %-18s%s\n", "Sex:", displayOrDash(personSex(person)))
+
+	if identity := propertyString(person.Properties, glxlib.PersonPropertyGender); identity != "" {
+		fmt.Printf("  %-18s%s\n", "Gender:", identity)
+	}
 
 	variants := extractAllNameVariants(person)
 	if len(variants) > 1 {
