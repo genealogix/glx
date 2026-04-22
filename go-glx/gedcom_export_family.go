@@ -544,10 +544,15 @@ func getPersonSex(personID string, expCtx *ExportContext) string {
 		return ""
 	}
 
-	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok && sex != "" {
+	// sex and gender are both declared `temporal: true` in
+	// person-properties, so the scalar extraction (map[value] / list-first)
+	// must run before isLegacySexValue — otherwise HUSB/WIFE inference
+	// silently degrades to first/second on any archive that stores sex as
+	// a temporal shape.
+	if sex, ok := getScalarProperty(person.Properties, PersonPropertySex); ok {
 		return sex
 	}
-	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
+	if gender, ok := getScalarProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
 		return gender
 	}
 

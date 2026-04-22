@@ -621,6 +621,41 @@ func TestPronounFor_LegacyGenderFallback(t *testing.T) {
 	assert.Equal(t, "her", poss)
 }
 
+// TestPronounFor_TemporalShapes covers the round-6 Copilot catch: `sex` and
+// `gender` are both `temporal: true`, so pronounFor must extract the scalar
+// from map/list shapes. Before the fix, fmt.Sprint produced strings like
+// "map[date:1850 value:male]" that never matched male/female and silently
+// fell through to they/their.
+func TestPronounFor_TemporalShapes(t *testing.T) {
+	// Temporal map on gender → identity wins.
+	temporalGenderMap := &glxlib.Person{Properties: map[string]any{
+		"gender": map[string]any{"value": "male", "date": "2020"},
+	}}
+	subj, poss := pronounFor(temporalGenderMap)
+	assert.Equal(t, "He", subj)
+	assert.Equal(t, "his", poss)
+
+	// Temporal list on sex, no gender → sex fallback picks first entry.
+	temporalSexList := &glxlib.Person{Properties: map[string]any{
+		"sex": []any{
+			map[string]any{"value": "female", "date": "1850"},
+			map[string]any{"value": "male", "date": "1860"},
+		},
+	}}
+	subj, poss = pronounFor(temporalSexList)
+	assert.Equal(t, "She", subj)
+	assert.Equal(t, "her", poss)
+
+	// Temporal gender:nonbinary → they/their.
+	temporalNonbinary := &glxlib.Person{Properties: map[string]any{
+		"sex":    "male",
+		"gender": map[string]any{"value": "nonbinary"},
+	}}
+	subj, poss = pronounFor(temporalNonbinary)
+	assert.Equal(t, "They", subj)
+	assert.Equal(t, "their", poss)
+}
+
 func TestJoinNames(t *testing.T) {
 	assert.Equal(t, "", joinNames(nil))
 	assert.Equal(t, "Alice", joinNames([]string{"Alice"}))

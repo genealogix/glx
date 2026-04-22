@@ -1079,6 +1079,29 @@ func TestAssignHusbandWife_SameSex(t *testing.T) {
 	assert.Equal(t, "b", w) // second → WIFE
 }
 
+// TestAssignHusbandWife_TemporalSex locks in Copilot's round-6 regression
+// catch: HUSB/WIFE assignment must still route correctly when sex is stored
+// in a temporal shape. Previously getStringProperty rejected non-string
+// values, silently degrading the assignment to first/second order.
+func TestAssignHusbandWife_TemporalSex(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Persons: map[string]*Person{
+				"a": {Properties: map[string]any{PersonPropertySex: []any{
+					map[string]any{"value": "female", "date": "1850"},
+				}}},
+				"b": {Properties: map[string]any{PersonPropertySex: map[string]any{
+					"value": "male", "date": "1850",
+				}}},
+			},
+		},
+	}
+
+	h, w := assignHusbandWife("a", "b", expCtx)
+	assert.Equal(t, "b", h, "male (temporal map) should be HUSB")
+	assert.Equal(t, "a", w, "female (temporal list) should be WIFE")
+}
+
 func TestRelationshipTypeToPedi(t *testing.T) {
 	assert.Equal(t, "birth", relationshipTypeToPedi(RelationshipTypeBiologicalParentChild))
 	assert.Equal(t, "adopted", relationshipTypeToPedi(RelationshipTypeAdoptiveParentChild))

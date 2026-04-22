@@ -1574,6 +1574,43 @@ func TestGetStringProperty(t *testing.T) {
 	assert.False(t, ok)
 }
 
+// TestGetScalarProperty covers the three shapes that a `temporal: true`
+// property takes on disk — plain string, single temporal map, temporal list —
+// plus the negative cases (missing / empty / wrong scalar type). Export
+// paths for sex/gender depend on this helper to avoid silently dropping
+// valid-but-temporal values.
+func TestGetScalarProperty(t *testing.T) {
+	cases := []struct {
+		name    string
+		props   map[string]any
+		key     string
+		wantVal string
+		wantOK  bool
+	}{
+		{"plain_string", map[string]any{"sex": "male"}, "sex", "male", true},
+		{"single_temporal_map", map[string]any{"sex": map[string]any{"value": "female", "date": "1850"}}, "sex", "female", true},
+		{"temporal_list_first_wins", map[string]any{"sex": []any{
+			map[string]any{"value": "male", "date": "1850"},
+			map[string]any{"value": "female", "date": "1860"},
+		}}, "sex", "male", true},
+		{"temporal_list_bare_strings", map[string]any{"sex": []any{"male"}}, "sex", "male", true},
+		{"empty_string", map[string]any{"sex": ""}, "sex", "", false},
+		{"empty_map", map[string]any{"sex": map[string]any{}}, "sex", "", false},
+		{"empty_list", map[string]any{"sex": []any{}}, "sex", "", false},
+		{"temporal_empty_value", map[string]any{"sex": map[string]any{"value": ""}}, "sex", "", false},
+		{"missing_key", map[string]any{"sex": "male"}, "gender", "", false},
+		{"nil_map", nil, "sex", "", false},
+		{"non_string_scalar", map[string]any{"sex": 42}, "sex", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			val, ok := getScalarProperty(tc.props, tc.key)
+			assert.Equal(t, tc.wantOK, ok)
+			assert.Equal(t, tc.wantVal, val)
+		})
+	}
+}
+
 // ============================================================================
 // exportPerson tests
 // ============================================================================
@@ -1630,6 +1667,45 @@ func TestExportPerson_LegacyGenderFallsBackToSEX(t *testing.T) {
 		}
 	}
 	assert.True(t, foundSex, "legacy gender:male must still produce SEX M via fallback")
+}
+
+// TestExportPerson_TemporalSexStillEmitsSEX guards against the regression
+// Copilot flagged: `sex` is declared `temporal: true`, so a valid archive may
+// store it as a map (`{value, date}`) or a list. Export must extract the
+// scalar and still emit `1 SEX M` — the previous `getStringProperty`-only
+// path silently dropped SEX for all temporal shapes.
+func TestExportPerson_TemporalSexStillEmitsSEX(t *testing.T) {
+	cases := []struct {
+		name string
+		sex  any
+		want string
+	}{
+		{"temporal_map", map[string]any{"value": "male", "date": "1850"}, "M"},
+		{"temporal_list", []any{map[string]any{"value": "female", "date": "1860"}}, "F"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			expCtx := &ExportContext{
+				GLX:           &GLXFile{},
+				PersonXRefMap: map[string]string{"person-1": "@I1@"},
+				PlaceStrings:  map[string]string{},
+			}
+			person := &Person{
+				Properties: map[string]any{PersonPropertySex: tc.sex},
+			}
+
+			record := exportPerson("person-1", person, expCtx)
+
+			var foundSex bool
+			for _, sub := range record.SubRecords {
+				if sub.Tag == GedcomTagSex {
+					foundSex = true
+					assert.Equal(t, tc.want, sub.Value)
+				}
+			}
+			assert.True(t, foundSex, "temporal sex must still produce a SEX sub-record")
+		})
+	}
 }
 
 func TestExportPerson_Basic(t *testing.T) {

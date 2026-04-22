@@ -137,12 +137,15 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 	// `gender` property ONLY when it carries a value valid in sex_types.
 	// Identity-only values (e.g. `nonbinary`) are never exported as SEX
 	// because clamping them to `U` would silently discard identity semantics.
-	if sex, ok := getStringProperty(person.Properties, PersonPropertySex); ok && sex != "" {
+	// Both properties are declared `temporal: true`, so getScalarProperty is
+	// used instead of getStringProperty — temporal map/list shapes would
+	// otherwise be rejected and SEX silently omitted.
+	if sex, ok := getScalarProperty(person.Properties, PersonPropertySex); ok {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagSex,
 			Value: mapSexToGEDCOM(sex, expCtx),
 		})
-	} else if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
+	} else if gender, ok := getScalarProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagSex,
 			Value: mapSexToGEDCOM(gender, expCtx),

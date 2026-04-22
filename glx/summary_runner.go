@@ -1100,9 +1100,13 @@ func narrativeDate(date string) string {
 // for archives that only carry `sex` (most historical records). Unrecognized
 // values and `nonbinary`/`other` fall through to singular they/their.
 func pronounFor(person *glxlib.Person) (subject, possessive string) {
-	gender := strings.ToLower(propertyString(person.Properties, glxlib.PersonPropertyGender))
+	// Both properties are declared `temporal: true`, so propertyScalar (not
+	// propertyString) is required — a temporal-shape value would otherwise
+	// stringify through fmt.Sprint to `map[...]`/`[...]`, never match
+	// male/female, and silently fall through to they/their.
+	gender := strings.ToLower(propertyScalar(person.Properties[glxlib.PersonPropertyGender]))
 	if gender == "" {
-		gender = strings.ToLower(propertyString(person.Properties, glxlib.PersonPropertySex))
+		gender = strings.ToLower(propertyScalar(person.Properties[glxlib.PersonPropertySex]))
 	}
 
 	switch gender {
