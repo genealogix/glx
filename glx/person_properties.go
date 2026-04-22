@@ -56,3 +56,32 @@ func isLegacySexValue(v string) bool {
 
 	return false
 }
+
+// displayableGenderIdentity returns the gender value that should be shown as
+// a distinct "Gender" row in vitals/summary output. Returns "" when the
+// gender property either (a) is unset, or (b) would already be shown as Sex
+// via the legacy-gender fallback path — this prevents duplicate rows on
+// pre-split archives that only carry `gender: "male"`.
+//
+// The Gender row is surfaced when:
+//   - both `sex` and `gender` are explicitly set (genuine dual archive), or
+//   - `gender` holds an identity-only value (e.g. `nonbinary`) that the Sex
+//     fallback would NOT pick up.
+func displayableGenderIdentity(person *glxlib.Person) string {
+	if person == nil {
+		return ""
+	}
+	gender := propertyString(person.Properties, glxlib.PersonPropertyGender)
+	if gender == "" {
+		return ""
+	}
+	sex := propertyString(person.Properties, glxlib.PersonPropertySex)
+	if sex == "" && isLegacySexValue(gender) {
+		// Pre-split archive: `gender: "male"` already surfaces as Sex via
+		// the legacy fallback. Showing a duplicate Gender row would print
+		// the same value twice.
+		return ""
+	}
+
+	return gender
+}

@@ -244,3 +244,69 @@ func TestCollectVitals_WitnessChristeningExcluded(t *testing.T) {
 	}
 	t.Error("Christening vital record not found")
 }
+
+// TestCollectVitals_GenderRowShownWhenIdentityPresent verifies the new
+// behavior from round 3: a separate "Gender" row is added to the vitals
+// output when gender identity is explicitly recorded AND not already being
+// surfaced via the legacy-gender → Sex fallback.
+func TestCollectVitals_GenderRowShownWhenIdentityPresent(t *testing.T) {
+	cases := []struct {
+		name       string
+		props      map[string]any
+		wantSex    string
+		wantGender string // "" means row should be absent
+	}{
+		{
+			name:       "legacy_gender_no_sex_no_gender_row",
+			props:      map[string]any{"gender": "male"},
+			wantSex:    "male",
+			wantGender: "", // Sex row via fallback already shows "male"; Gender row must be suppressed
+		},
+		{
+			name:       "nonbinary_identity_only",
+			props:      map[string]any{"gender": "nonbinary"},
+			wantSex:    "—",
+			wantGender: "nonbinary",
+		},
+		{
+			name:       "dual_sex_and_gender_identity",
+			props:      map[string]any{"sex": "male", "gender": "nonbinary"},
+			wantSex:    "male",
+			wantGender: "nonbinary",
+		},
+		{
+			name:       "sex_only_no_gender",
+			props:      map[string]any{"sex": "female"},
+			wantSex:    "female",
+			wantGender: "",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := &glxlib.GLXFile{
+				Persons: map[string]*glxlib.Person{
+					"person-1": {Properties: tc.props},
+				},
+				Events: map[string]*glxlib.Event{},
+				Places: map[string]*glxlib.Place{},
+			}
+			vitals := collectVitals("person-1", archive.Persons["person-1"], archive)
+
+			var gotSex, gotGender string
+			for _, v := range vitals {
+				switch v.Label {
+				case "Sex":
+					gotSex = v.Value
+				case "Gender":
+					gotGender = v.Value
+				}
+			}
+			if gotSex != tc.wantSex {
+				t.Errorf("Sex row: got %q, want %q", gotSex, tc.wantSex)
+			}
+			if gotGender != tc.wantGender {
+				t.Errorf("Gender row: got %q, want %q", gotGender, tc.wantGender)
+			}
+		})
+	}
+}

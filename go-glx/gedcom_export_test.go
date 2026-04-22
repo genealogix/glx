@@ -1578,6 +1578,60 @@ func TestGetStringProperty(t *testing.T) {
 // exportPerson tests
 // ============================================================================
 
+// TestExportPerson_IdentityOnlyGenderDoesNotEmitSEX verifies that a person
+// who only has a `gender: nonbinary` identity (no recorded `sex`) produces
+// NO GEDCOM SEX sub-record. Emitting `SEX U` or similar would silently
+// discard the identity data and conflate sex with gender — the exact
+// conflation the two-field split exists to avoid.
+func TestExportPerson_IdentityOnlyGenderDoesNotEmitSEX(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX:           &GLXFile{},
+		PersonXRefMap: map[string]string{"person-1": "@I1@"},
+		PlaceStrings:  map[string]string{},
+	}
+	person := &Person{
+		Properties: map[string]any{
+			PersonPropertyGender: GenderNonbinary,
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagSex {
+			t.Fatalf("expected no SEX sub-record for identity-only person, got %q", sub.Value)
+		}
+	}
+}
+
+// TestExportPerson_LegacyGenderFallsBackToSEX confirms the companion
+// behavior: a pre-split archive with only `gender: "male"` still emits
+// `1 SEX M` via the legacy fallback in exportPerson. This locks in the
+// back-compat contract referenced in the CHANGELOG.
+func TestExportPerson_LegacyGenderFallsBackToSEX(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX:           &GLXFile{},
+		PersonXRefMap: map[string]string{"person-1": "@I1@"},
+		PlaceStrings:  map[string]string{},
+	}
+	person := &Person{
+		Properties: map[string]any{
+			PersonPropertyGender: SexMale,
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	var foundSex bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagSex {
+			foundSex = true
+			assert.Equal(t, "M", sub.Value)
+		}
+	}
+	assert.True(t, foundSex, "legacy gender:male must still produce SEX M via fallback")
+}
+
 func TestExportPerson_Basic(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
