@@ -12,7 +12,7 @@
 
 ## Project Structure
 
-```
+```text
 go-glx/              # Core library (package glx) — pure, no I/O
 glx/                 # CLI application (*_runner.go commands)
 specification/       # Spec documents, vocabularies, JSON schemas
@@ -39,6 +39,7 @@ make clean           # Remove build artifacts
 ## Git Workflow
 
 Branch naming — use conventional prefixes, NOT `claude/` or session IDs:
+
 ```bash
 feat/short-description
 fix/short-description
@@ -89,6 +90,7 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 ## Common Tasks
 
 **Add new CLI command** — update all four locations:
+
 1. `glx/README.md` — features list and command reference
 2. `website/.vitepress/config.js` — sidebar menu
 3. `docs/guides/hands-on-cli-guide.md` — walkthrough with Westeros examples

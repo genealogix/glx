@@ -13,6 +13,7 @@ layout: doc
 A Source entity represents an original document, record, publication, or material that contains genealogical information. Sources are the foundation of evidence-based research and form the middle layer of the evidence chain between repositories (where sources are held) and citations (specific references within sources).
 
 Sources can include:
+
 - Vital records (birth, marriage, death certificates)
 - Census records and population registers
 - Church registers (baptisms, marriages, burials)
@@ -42,6 +43,7 @@ sources:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`source-parish-register`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -87,6 +89,7 @@ sources:
 - Description: Full title of the source
 
 Example:
+
 ```yaml
 title: "1851 Census of England and Wales"
 ```
@@ -100,6 +103,7 @@ title: "1851 Census of England and Wales"
 - Description: Classification of the source type
 
 Common source types:
+
 - `vital_record` - Birth, marriage, death certificates
 - `census` - Census records and enumerations
 - `church_register` - Parish registers, baptisms, marriages, burials
@@ -121,6 +125,7 @@ Common source types:
 - `other` - Other source types
 
 Example:
+
 ```yaml
 type: church_register
 ```
@@ -134,6 +139,7 @@ type: church_register
 Use for both personal authors and institutional creators:
 
 Example:
+
 ```yaml
 # Personal author
 authors:
@@ -156,11 +162,13 @@ authors:
 - Description: Publication date or date range covered by the source
 
 Formats:
+
 - Single date: `"1851"`
 - Date range: `"FROM 1840 TO 1860"`
 - Publication date: `"2015-06-20"`
 
 Example:
+
 ```yaml
 date: "FROM 1850 TO 1855"
 ```
@@ -172,6 +180,7 @@ date: "FROM 1850 TO 1855"
 - Description: Repository ID where this source is held
 
 Example:
+
 ```yaml
 repository: repository-national-archives
 ```
@@ -183,6 +192,7 @@ repository: repository-national-archives
 - Description: Detailed description of the source content and scope
 
 Example:
+
 ```yaml
 description: |
   Parish registers for St. Paul's Church, Leeds, covering baptisms,
@@ -197,6 +207,7 @@ description: |
 - Description: Language(s) of the source
 
 Example:
+
 ```yaml
 language: "English"
 ```
@@ -208,6 +219,7 @@ language: "English"
 - Description: References to media entities (scans, photos) of this source
 
 Example:
+
 ```yaml
 media:
   - media-register-scan-page-1
@@ -234,6 +246,7 @@ The following are standard properties from the default vocabulary; archives can 
 | `url` | string | Web address where the source can be accessed online |
 
 Example:
+
 ```yaml
 sources:
   source-parish-register:
@@ -398,6 +411,7 @@ sources:
 Source types are defined in the archive's `vocabularies/source-types.glx` file.
 
 **See [Vocabularies - Source Types](vocabularies#source-types-vocabulary) for:**
+
 - Complete list of standard source types
 - How to add custom source types
 - Vocabulary file structure and examples
@@ -408,7 +422,7 @@ Source types are defined in the archive's `vocabularies/source-types.glx` file.
 
 Source files are typically organized by type or repository:
 
-```
+```text
 sources/
 ├── vital-records/
 │   ├── source-birth-john.glx
@@ -431,7 +445,7 @@ sources/
 
 ## Relationship to Other Entities
 
-```
+```text
 Source
     ├── held in → Repository (via repository field)
     ├── referenced by → Citations (citations point to sources)
@@ -475,7 +489,8 @@ Source entities map to GEDCOM source records:
 | `properties.external_ids` | `SOUR.EXID` | External identifiers (GEDCOM 7.0) |
 
 GEDCOM Example:
-```
+
+```text
 0 @S1@ SOUR
 1 TITL St. Paul's Parish Register
 1 AUTH Church of England
@@ -485,6 +500,7 @@ GEDCOM Example:
 ```
 
 GENEALOGIX Equivalent:
+
 ```yaml
 sources:
   source-st-pauls:
@@ -501,6 +517,7 @@ sources:
 ### Complete Source Documentation
 
 Include as much bibliographic information as possible:
+
 - Full title
 - Author(s)
 - Date or date range
@@ -511,12 +528,14 @@ Include as much bibliographic information as possible:
 ### Consistent Citation Format
 
 Use consistent citation styles within your archive:
+
 - Follow established citation standards (Evidence Explained, Chicago Manual of Style, etc.)
 - Document your chosen citation style in archive documentation
 
 ### Source Characteristics
 
 Documenting source characteristics in notes helps researchers evaluate evidence:
+
 - Primary vs. secondary nature
 - Original vs. derivative
 - Completeness and condition
@@ -525,6 +544,7 @@ Documenting source characteristics in notes helps researchers evaluate evidence:
 ### Digital Preservation
 
 Link media entities to sources for digital preservation:
+
 - Scan or photograph original sources
 - Store digital copies with source metadata
 - Include hash values for integrity verification

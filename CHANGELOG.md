@@ -15,27 +15,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+
 - **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
 
 #### Documentation
 - **Developer Certificate of Origin (DCO) policy** — `CONTRIBUTING.md` now documents the DCO 1.1 and requires contributors to sign off commits with `git commit -s`. Closes #409
+
 - **Architecture Decision Records (ADRs)** — Added `docs/decisions/` directory with an ADR template, an index, and six foundational ADRs covering YAML as the archive file format, the evidence-first data model (Repository → Source → Citation → Assertion), archive-owned vocabularies, Git-native archives, flexible entity IDs, and the go-glx library's no-I/O rule. `CONTRIBUTING.md` now describes the ADR practice and when to write one. Closes #416
 
 #### CI
+
 - **Scheduled `lychee` external-link check** — New `lychee.yml` workflow runs weekly (Mondays 08:17 UTC) and on `workflow_dispatch`, validating every external URL referenced in `specification/**/*.md`, `docs/**/*.md`, and root-level `*.md`. Broken URLs are reported by creating or updating a single GitHub issue titled "Broken external links detected"; the workflow never blocks PRs. Internal relative links continue to be validated on every PR by `scripts/check-links.sh`. (#316)
 
 #### Project Infrastructure
+
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
 
 ### Changed
 
 #### go-glx
+
 - **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
 
 ### Removed
+
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
 
 ### Fixed
+
 - **Multi-file serializer generates deterministic filenames** — Entity filenames are now derived from entity IDs (`strings.ToLower(entityID) + ".glx"`) instead of random 8-char hex. Previously, every write generated new random filenames, causing massive git diffs even when no data changed. Case-insensitive collisions (e.g., `Person-A` and `person-a`) are detected and reported as errors. Fixes #694
 - **`glx migrate`, `glx rename`, and `glx merge` no longer delete non-archive files** — The crash-safe write path (`safeWriteMultiFileArchive`, added in #598) swapped a fresh archive directory into place and then unconditionally removed the original via `.bak`, wiping any top-level entry the serializer didn't produce — including `.git/`, `README.md`, `CLAUDE.md`, `.claude/`, and arbitrary user content. Since GLX archives are designed to live inside git repositories, every invocation against a real archive silently destroyed git history and project docs. The swap now preserves every top-level entry that isn't in the managed set (`metadata.glx`, `vocabularies/`, `persons/`, `events/`, `relationships/`, `places/`, `sources/`, `citations/`, `repositories/`, `media/`, `assertions/`). Test coverage added for foreign-file preservation. Fixes #692
 
@@ -44,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+
 - **Added `glx search` command** — Full-text search across all entity types (persons, events, places, sources, citations, repositories, assertions, relationships, media). Case-insensitive by default with `--case-sensitive` flag, `--type` filter, and results grouped by entity type (#252)
 - **Added `glx merge` command** — Combine two GLX archives by merging all content from a source into a destination. Identical vocabulary entries are silently skipped; true conflicts are reported. Supports both single-file and multi-file archives, with `--dry-run` for preview (#264, #609)
 - **Added `glx migrate` command** — Converts deprecated person properties (`born_on`, `born_at`, `died_on`, `died_at`, `buried_on`, `buried_at`) to birth/death/burial Event entities. Creates new events when none exist, merges date/place into existing events when they do, converts property assertions to event assertions, and removes the deprecated properties (#360, Fixes #645)
@@ -52,34 +60,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `IOStreams` type for testable CLI output** — New `glx/iostreams.go` introduces `IOStreams{Out, ErrOut io.Writer}` following kubectl's minimal pattern. `validatePaths()` migrated to accept `*IOStreams` instead of writing directly to `os.Stdout`/`os.Stderr`; all 18 validation tests use `TestIOStreams()` with buffer capture instead of `os.Pipe()` hacks. Foundation for incremental migration of remaining runners (#682, Fixes #678)
 
 #### Date Handling
+
 - **Non-Gregorian calendar support** — GEDCOM calendar escape sequences (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`) are now preserved as calendar prefixes on DateString values (e.g., `JULIAN 1731-03-15`). Previously, calendar designations were silently discarded. Gregorian remains the default (no prefix). Includes full roundtrip support on GEDCOM export (#564)
 
 #### GEDCOM Import
+
 - **Place-less RESI records preserved** — GEDCOM `RESI` records without a `PLAC` sub-record (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`) are now imported as `residence` Event entities instead of being silently dropped. `RESI` records with a `PLAC` continue to import as temporal person properties. Fixes #488
 - **ASSO subrecords imported as event participants** — Witnesses, officiants, godparents, and other associated persons from GEDCOM ASSO/RELA records are now imported as event participants with correct roles. Supports both individual and family events. Unknown roles preserved in participant notes (#589)
 - **Separate NOTE records preserved through roundtrip** — Notes changed from a single concatenated string to a list (`NoteList`). Import appends separate notes instead of concatenating; export emits each as a separate GEDCOM NOTE record, preserving original note boundaries. Backwards-compatible with existing archives (#584)
 
 #### Changelog
+
 - **Use `[Unreleased]` header** — Changed changelog to use `[Unreleased]` instead of pre-committed version number, per Keep a Changelog specification. Fixes #388
 
 ### Changed
+
 - **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
 
 ### Fixed
+
 - **`glx vitals` limited to core vital records only** — Removed non-vital events (census, marriage, residence, etc.) from `glx vitals` output. Vitals now shows exactly Name, Sex, Birth, Christening, Death, Burial; other life events remain available via `glx summary` and `glx timeline` (#685, Fixes #644)
 - **Witness events excluded from vital records display** — `glx vitals` and `glx summary` vital sections now show vital events (birth, christening, death, burial) only where the person is a principal/subject participant. Witnessing a christening (or other vital event) no longer appears as the person's own vital. Non-vital "Life Events" in `glx summary` continue to show all participant roles (#686, Fixes #647)
 - **Unrecognized SEX values preserved** — Non-standard or extension GEDCOM SEX values (e.g., custom values, or values such as `N` whose meaning varies between GEDCOM 5.5.5 `Not Recorded` and 7.0 `Nonbinary`) are now lowercased and preserved as-is instead of being silently mapped to `unknown`. Validation will warn about out-of-vocabulary values (#588)
 - **Correct year extraction from Hebrew and French Republican dates** — `ExtractFirstYear` now uses calendar-aware extraction, finding the last digit sequence for HEBREW and FRENCH_R dates where the year appears last. Previously, `HEBREW 15 TSH 5765` would extract `15` (the day) instead of `5765`. Also handles range dates (`BET...AND`, `FROM...TO`) correctly (#590)
 
 #### Import
+
 - **GEDCOM OBJE without FILE now preserves metadata** — Previously, OBJE records with no FILE reference were silently dropped during import. Now the media entity is created with an empty URI, preserving all metadata (TITL, NOTE, FORM). Validation catches the missing URI downstream. (#492)
 
 #### Developer Experience
+
 - **devcontainer: remove abandoned ajv-cli and install actual npm deps** — Replaced the unused global `ajv-cli` install with parallel `postCreateCommand` that runs `go mod download`, pins `golangci-lint v2.11.4`, and installs `specification/` and `website/` npm dependencies. Removed unused Docker extension, added YAML and markdownlint extensions, added `forwardPorts` for VitePress dev server (#326, #327)
 - **`go.mod` / `go.sum` pinned to LF line endings** — Added `eol=lf` for `go.mod` and `go.sum` in `.gitattributes`. Go tools always write LF (see golang/go#31870); without this rule, Windows users got CRLF on checkout, which caused `go mod tidy -diff` false positives in CI (#684, Fixes #638)
 - **`/check-code-drift` slash command covers all type categories** — Expanded the drift-detection checklist to cover Metadata, Submitter, EntityRef, NoteList, all 9 vocabulary structs, and FieldDefinition. Added type-mapping entries for `NoteList` (`oneOf`), `DateString` (alias), `*Submitter` (pointer). New "Vocabulary Struct Types" section enumerates the 9 vocab types and their schemas. Documentation only (#689, Fixes #674)
 
 #### CI
+
 - **auto-resolve-conflicts: deduplicate changelog section headers after conflict resolution** — The sed-based "keep both sides" merge produced duplicate `###`/`####` headers when both sides added entries to the same section. Added an awk deduplication pass that merges entries under a single header (#331)
 - **auto-resolve and auto-update workflows can no longer race** — Both workflows now share a `branch-maintenance` concurrency group. Auto-resolve triggers on `workflow_run` after auto-update succeeds instead of independently on push to main. Auto-update cron reduced from every 30min to daily; auto-resolve cron removed (runs only after auto-update) (#332)
 - **release workflow no longer fails when Discord webhook is unconfigured** — Guard the Discord announcement step with an empty-check on the webhook secret so missing secrets skip the step instead of failing the release job. Also switch to `curl -sf` for proper HTTP error handling (#342)
@@ -87,6 +103,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Release workflow: exclude GEDCOM test fixtures from line-ending normalization** — GoReleaser was failing with "git is in a dirty state" because `* text=auto` wanted to renormalize GEDCOM test fixtures that had been deliberately excluded from repo-wide LF normalization in #656 without a matching `-text` attribute. Added `glx/testdata/gedcom/**/*.ged -text` in `.gitattributes` so all GEDCOM fixtures are preserved byte-for-byte. `testdata/gedcom` README.md docs (not fixtures) renormalized to LF
 
 #### Specification
+
 - **Relationship GEDCOM mapping table column header** — The "GLX Field" column actually listed relationship type values; renamed to "GLX Relationship Type" for accuracy (PR #670)
 - **Calendar Prefix glossary placement** — Moved "Calendar Prefix" entry from the `## D` section to the `## C` section where it belongs alphabetically (PR #670)
 - **Date keywords list: clarify `AND`** — `AND` is a connector inside `BET YYYY AND YYYY`, not a standalone keyword; updated validation description to reflect this (PR #670)
@@ -98,18 +115,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added glossary entries for Participant Assertion, Per-Participant Properties, and Temporal Existential Assertion** — These concepts were used in entity specs but missing from the glossary (PR #670)
 
 #### Schema
+
 - **`notes` field accepts string or array across all 9 entity schemas** — The spec was updated in this release to document `notes: string | string[]` (matching the Go `NoteList` type), but the schemas still enforced `type: "string"`, causing validation failures on any archive using array-form notes. Fixed in `assertion.schema.json`, `citation.schema.json`, `event.schema.json`, `media.schema.json`, `person.schema.json`, `place.schema.json`, `relationship.schema.json`, `repository.schema.json`, and `source.schema.json` (12 occurrences total, including participant sub-objects in assertion/event/relationship)
 - **FieldDefinition supports `value_type` in all 8 property-vocabulary schemas** — The spec documents `value_type` as a valid key on structured field components (used by `media-properties.glx` crop sub-fields with `value_type: integer`), but the schemas only documented `label` and `description`. Added `value_type: string` with the standard enum (`string | date | integer | boolean`) to `citation-properties`, `event-properties`, `media-properties`, `person-properties`, `place-properties`, `relationship-properties`, `repository-properties`, and `source-properties` schemas
 - **`participant-roles.schema.json` documents `applies_to` and `gedcom`** — The standard `participant-roles.glx` uses `applies_to: [event | relationship]` on most roles (15+ entries), but the schema did not document the field. Added both `applies_to` (array of enum strings with `uniqueItems`) and `gedcom` (string) to ParticipantRoleDefinition. Related to #499
 - **Added `gedcom` field to 5 vocabulary schemas** — `confidence-levels.schema.json` (→ QUAY, #515), `media-types.schema.json` (→ MEDI), `participant-roles.schema.json` (→ ASSO.RELA, #524), `repository-types.schema.json` (#555), and `source-types.schema.json` (#561) now document the optional `gedcom` key that the other 11 vocabulary schemas already support, closing the schema support gap for in-flight work on these mappings
 
 #### Go Types
+
 - **Vocabulary structs gain `GEDCOM` field** — `ConfidenceLevel`, `ParticipantRole`, `SourceType`, `RepositoryType`, and `MediaType` structs in `go-glx/types.go` now carry `GEDCOM string yaml:"gedcom,omitempty"` matching the schema additions. Previously, a `.glx` file using `gedcom:` on one of these vocabularies would have the value silently dropped on round-trip. `PlaceType` was evaluated but not updated — there is no natural GEDCOM mapping for place types and no open issue tracking one
 - **`FieldDefinition` gains `ValueType` field** — Added `ValueType string yaml:"value_type,omitempty"` to `FieldDefinition` so structured-property field components (used by `media-properties.glx` crop sub-fields) round-trip correctly through the Go types
 
 ### Removed
 
 #### Person Properties
+
 - **BREAKING**: Removed `born_on`, `born_at`, `died_on`, `died_at` person properties. Birth and death information now lives exclusively on Event entities of type `birth`/`death`. Use `glx migrate` to convert existing archives (#360)
 
 ---
@@ -119,12 +139,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### Supply Chain Security
+
 - **Dependency review on PRs** — `dependency-review-action` blocks PRs that introduce dependencies with moderate+ vulnerabilities
 - **Renovate lockfile maintenance** — weekly lockfile refresh keeps transitive dependencies at latest allowed versions
 - **govulncheck SARIF integration** — vulnerability results now upload to GitHub Code Scanning for richer triage
 - **npm audit in CI** — website dependencies are audited for known vulnerabilities on every push and PR
 
 #### CLI
+
 - **Added `glx path` command** - Find the shortest relationship path between two people using breadth-first search. Traverses all relationship types (parent-child, marriage, sibling, godparent, etc.). Supports `--max-hops` to limit search depth and `--json` for machine-readable output
 - **Added `glx cluster` command** - FAN (Friends, Associates, Neighbors) club analysis for brickwall research. Cross-references census households, shared events, and place overlap to identify associates of a target person. Ranks associates by connection strength with compound scoring. Supports `--place`, `--before`, `--after` filters and `--json` output
 - **Added `glx census add` command** - Bulk census import helper that generates GLX entities from a structured YAML template. Reads census year, location, household members, and citation details to produce person records, a census event with participants, source/citation entities, and evidence-based assertions. Supports matching members to existing archive persons by ID or name, `--dry-run` preview, and FAN notes
@@ -135,9 +157,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Analyze flags uncited claims in notes** - `glx analyze` evidence checks now detect assertion notes that reference sources (e.g., "per county history," "census shows") without a corresponding citation. Fixes #162
 
 ### Changed
+
 - **Life History narrative mentions children** - `glx summary` now includes children in the biographical narrative, listed by given name in birth order (e.g., "She had three children: Harriett, Elijah, and Mary."). Fixes #153
 
 ### Fixed
+
 - **Validate catches dangling property references** - `glx validate` now detects when property values like `born_at`, `died_at`, or `residence` reference non-existent entities. Previously, standard vocabularies were not loaded during validation, so property reference checks were silently skipped. Fixes #147
 - **Consistent date display across timeline and summary** - ISO dates like `1860-07-17` now render as `July 17, 1860` in timeline tabular output, summary vital events, and life events. Previously, dates appeared in whichever format they were stored (GEDCOM or ISO), creating inconsistent mixed output. Fixes #139
 - **Stats lists duplicate entity IDs** - `glx stats` now lists the specific duplicate IDs in its warning, consistent with `glx analyze`. Fixes #177
@@ -161,18 +185,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+
 - **Added `glx analyze` command** - Automated research gap analysis engine that cross-references all entities in a GLX archive to surface evidence gaps (missing dates, no parents, no events), evidence quality issues (unsupported assertions, single-source persons, orphaned citations/sources), chronological inconsistencies (death before birth, parent younger than child, implausible lifespan), and research suggestions (census years to search, vital records to locate). Supports `--check` to run a single category, `--format json` for machine-readable output, and person filtering by ID or name
 - **Added `glx diff` command** - Compare two GLX archive states with genealogy-aware diffing. Shows added, modified, and removed entities with field-level detail, confidence upgrade/downgrade tracking, and new evidence metrics. Supports summary, verbose, short, and JSON output modes. Use `--person` to filter changes for a specific person
 - **Added `glx coverage` command** - Show source coverage matrix for a person, listing expected records (US census, vital, probate, land, military, church) and which are present vs missing. Flags high-priority gaps like the 1880 census. Supports `--json` output
 - **Added `glx duplicates` command** - Detect potential duplicate person records using a weighted scoring model (name similarity with Levenshtein distance and nickname matching, birth/death year proximity, place match, shared relationships and events). Supports person-specific filtering and JSON output. Automatically skips persons already linked by relationships
 
 #### Library
+
 - **Exported `ExtractFirstYear` and `ExtractPropertyYear`** - Year-extraction utilities are now public API for use by CLI commands and external consumers
 
 #### Validation
+
 - **Moved temporal consistency checks to `glx analyze`** - Death before birth, parent younger than child, and marriage before birth checks are now part of the analyze command's consistency category instead of the validator, keeping `glx validate` focused on structural and referential integrity
 
 #### Standard Vocabularies
+
 - **Added `vocabulary_type` to property definitions** - Properties can now reference a controlled vocabulary (e.g., `vocabulary_type: gender_types`) instead of a free-form `value_type`. Validation warns on out-of-vocabulary values. Mutually exclusive with `value_type` and `reference_type`
 - **Added `gender_types` vocabulary** - First vocabulary-constrained property type. Standard entries: male, female, unknown, other — with GEDCOM SEX mappings. GEDCOM export now looks up gender→SEX via the vocabulary before falling back to hardcoded mappings
 - **Added `marriage_type` event property** - Classification of marriage (civil, religious, common-law). Was used in GEDCOM import/export but missing from standard vocabulary
@@ -180,10 +208,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `blob_size` media property** - Size in bytes of inline binary data from GEDCOM 5.5.1 BLOB records. Was used in GEDCOM media import but missing from standard vocabulary
 
 ### Changed
+
 - **GEDCOM encoding conversion now streams for charmap encodings** - CP1252/ISO-8859-1 decoding uses `transform.NewReader` instead of reading the entire file into memory. Only ANSEL (which requires combining-mark reordering) buffers the full file. UTF-8 files pass through with near-zero overhead
 - **ANSEL converter handles multiple combining diacriticals** - Consecutive combining marks preceding a base letter are now all buffered and emitted after the base letter in Unicode order, instead of only handling a single combining mark
 
 ### Fixed
+
 - **GEDCOM import now converts non-UTF-8 encodings** - Files with `CHAR ANSI` (Windows-1252), `CHAR cp1252`, `CHAR ANSEL`, or `CHAR ISO-8859-1` are now automatically converted to UTF-8 during import. Previously, non-ASCII characters (German umlauts, accented letters, copyright symbols) were stored as raw bytes, producing `!!binary` YAML tags, garbled event titles, and `{"type":"Buffer"}` place names in the web UI
 - **GEDCOM date import mangled when day-of-month matches level number** - Dates like `2 AUG 1944` (day 2) were imported as `2 DATE 2 AUG 1944` because the parser's value extraction matched the level number instead of the actual value. Fixed by walking past tokens positionally instead of using string search
 - **Date year extraction now handles 1–3 digit years** - Year extraction previously hardcoded a 4-digit assumption (`\d{4}`), silently ignoring dates like `800`, `476`, or `ABT 476`. All four extraction sites (query filtering, timeline sorting, temporal validation, event titles) now support 1–4 digit years. Day-of-month values (e.g., `15` in `15 MAR 1850`) are correctly disambiguated. Timeline sort keys are zero-padded to 4 digits for proper chronological ordering. Fixes #108
@@ -195,6 +225,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+
 - **Added `glx export` command** - Export GLX archives to GEDCOM 5.5.1 or 7.0 format. Supports both single-file and multi-file archives as input. Reconstructs GEDCOM FAM records from GLX relationships, converts dates/places/names back to GEDCOM format, and preserves sources, repositories, media, citations, and notes. Use `--format 70` for GEDCOM 7.0 output
 - **Added `glx timeline` command** - Display chronological events for a person, including direct events and family events (spouse/child births, parent deaths) via relationship traversal. Supports `--no-family` flag to exclude family events; undated events shown in a separate section
 - **Added `glx summary` command** - Comprehensive person profile showing identity, vital events, life events, family (spouses, parents, siblings), other relationships, and an auto-generated life history narrative
@@ -205,9 +236,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Improved `glx query persons --name` to search all name variants** - Now matches across birth names, married names, maiden names, and as-recorded variants (temporal name lists), not just the primary name. Results show alternate names with "aka:" suffix
 
 #### Event Entity
+
 - **Added optional `title` field** - Human-readable label for events (e.g., "1860 Census — Webb Household"). Auto-generated on GEDCOM import (e.g., "Birth of Robert Webb (1815)", "Marriage of John Smith and Jane Doe (1850)")
 
 #### GEDCOM Import
+
 - **Non-standard date preservation** - BCE dates, Julian/Hebrew/French Republican calendar dates, and dual-year dates are preserved as raw strings instead of being dropped
 - **TITL with DATE/PLAC sub-records** - Title properties with dates and places are stored as temporal list items and roundtrip correctly
 - **Empty OCCU with PLAC fallback** - OCCU records with empty values but PLAC sub-records now extract the place text as the occupation value
@@ -216,6 +249,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Family-level NOTE import/export** - NOTE records on FAM are now stored on the relationship's Notes field and roundtrip correctly
 
 #### GEDCOM Export
+
 - **Inline SOUR citations on individual events** - Birth, death, burial, and other individual events now preserve SOUR citations during export
 - **Single-spouse family marriages** - FAM records with only HUSB or WIFE now export marriage relationships and events instead of being silently dropped
 - **Multiple MARR events per family** - Families with multiple MARR records now preserve all marriage events
@@ -226,13 +260,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Multi-family children placed in all matching families** - Children belonging to multiple FAM records (e.g., birth family + step-family) are now placed in all matching families instead of only the first match
 
 #### Validation
+
 - **Added temporal consistency checks** - Validator now warns on: death year before birth year, parent born after child, marriage event before participant's birth. Reported as warnings since dates are often estimates
 
 #### Documentation
+
 - **Added [Westeros example archive](/examples/westeros/)** - Large-scale example featuring 790+ characters from *A Song of Ice and Fire* with full evidence chains, 200+ custom vocabulary types, and temporal properties. Hosted at [github.com/genealogix/glx-archive-westeros](https://github.com/genealogix/glx-archive-westeros)
 - **Added [Hands-On CLI Guide](/guides/hands-on-cli-guide)** - Step-by-step walkthrough of every `glx` command using the Westeros demo archive, with real output examples
 
 ### Fixed
+
 - **SOUR citation duplication on multi-value properties** - Assertion-based SOUR references now filter by matching value, preventing N×N duplication when a person has multiple values for TITL, OCCU, etc.
 
 ---
@@ -242,18 +279,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### CLI
+
 - **Added `glx places` command** - Analyze places for ambiguity and completeness: flags duplicate names, missing coordinates, missing types, hierarchy gaps, and unreferenced places with canonical hierarchy paths
 - **Added `glx query` command** - Filter and list entities from a GLX archive with type-specific flags: `--name`, `--born-before`, `--born-after` for persons; `--type`, `--before`, `--after` for events; `--confidence`, `--status` for assertions
 - **Added `glx stats` command** - Summary dashboard showing entity counts, assertion confidence distribution, and entity coverage for quick feedback on archive health
 
 #### Build & Release
+
 - **Added `make release-snapshot` target** - Build cross-platform binaries locally without publishing, using GoReleaser snapshot mode
 - **Updated release workflow to latest action versions** - `actions/checkout@v4` (with `fetch-depth: 0` for proper changelog), `actions/setup-go@v5`, `goreleaser/goreleaser-action@v6`
 
 #### Person Entity
+
 - **Added name variation tracking** - Expanded the `name.fields.type` classification field with standard values for alternate spellings, abbreviations, and as-recorded forms (`aka`, `maiden`, `anglicized`, `professional`, `as_recorded`). Added documentation and examples for representing name variations like "R. Webb" vs. "Robert Webb"
 
 #### Standard Vocabularies
+
 - **Added `original_place_name` citation property** - Records the verbatim place name from a source before normalization to a place entity (e.g., "The Town Of Oakdale" vs the normalized place reference)
 - **Added relationship types** - `neighbor`, `coworker`, `housemate` for census/social records; `apprenticeship`, `employment`, `enslavement`, `relative` for occupational and generic kinship relationships
 - **Added event types** - `legal_separation`, `taxation`, `voter_registration` for legal/administrative events; `military_service`, `stillborn`, `affiliation` for service periods, stillbirths, and memberships
@@ -261,28 +302,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Expanded `military` source type description** - Now includes draft registrations and muster rolls
 
 #### Participant Object
+
 - **Added `properties` to participants** - Participants across events, relationships, and assertions can now carry per-participant properties like `age_at_event`, enabling shared events (census, passenger lists) to record individual data without creating separate events per person
 - **Participant properties validated against parent entity vocabulary** - Event participant properties validated against event_properties, relationship participant properties against relationship_properties, assertion participant properties against event_properties
 
 #### Assertion Entity
+
 - **Added existential assertions** - Assertions no longer require `property` or `participant`; an assertion with only `subject` and evidence asserts the entity's existence, optionally at a specific `date` (#26)
 
 #### GEDCOM Import
+
 - **Import HEAD metadata** - GEDCOM HEAD record fields (export date, source file, copyright, language, source system/version/corporation, GEDCOM version, character set, notes) are now stored in a `metadata` section on the GLX archive instead of being discarded after logging
 - **Import SUBM metadata** - GEDCOM SUBM submitter information (name, address, phone, email, website) is now stored in `metadata.submitter` on the GLX archive
 
 #### Data Model
+
 - **Added `Metadata` type** - New top-level `metadata` field on GLX archives for storing import provenance information
 - **Added `Submitter` type** - Nested within metadata to hold submitter contact details
 
 ### Changed
 
 #### Specification
+
 - **Removed hard-coded vocabulary counts** - Replaced "N standardized type codes" with descriptive text to prevent stale counts as vocabularies grow
 - **Improved custom type example** - Custom event type example now shows defining custom participant roles (`apprentice`, `master`) alongside the custom event type
 - **Clarified `subject` participant role** - Documented as preferred over `principal`
 
 ### Fixed
+
 - **Fixed confidence levels example format** - Core concepts example now uses the correct `label`/`description` structure instead of simple key-value strings
 - **Fixed citation GEDCOM mapping** - Corrected invalid `SOUR.CITN.EXID` tag to `SOUR.EXID`
 - **Fixed core-concepts.md formatting** - Property Vocabularies heading was merging with preceding table
@@ -295,6 +342,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### Standard Vocabularies
+
 - **Added `url` and `accessed` properties for digital sources** - Sources can now record a `url` property, and citations can record an `accessed` date for when an online source was last verified (#21)
 - **Added `race` person property** - Temporal string property for recording racial classifications as they appear in historical documents such as census records (#24)
 - **Added `url` and `external_ids` citation properties** - Citations can now record a direct URL to cited material and external identifiers (e.g., FamilySearch ARK) for record-level specificity (#23)
@@ -302,14 +350,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `type` field to `name` property** - Name property now supports a `fields.type` to classify name usage (e.g., birth, married, alias) (#25)
 
 #### Assertion Entity
+
 - **Added `status` field to assertion entity** — Assertions can now record a research status (e.g., `proven`, `disproven`, `speculative`) independently of `confidence`, allowing researchers to distinguish between certainty and verification state (#27)
 
 #### GEDCOM Import
+
 - **Import NAME.TYPE subfield** - GEDCOM `NAME.TYPE` values (BIRTH, MARRIED, AKA, etc.) are now lowercased and stored in the name property's `type` field (#25)
 - **Import EXID on citations** - GEDCOM 7.0 `EXID` tags on source citations are now imported as `external_ids` citation properties (#32)
 - **Structured EXID import** - GEDCOM EXID.TYPE is now stored in `fields.type` instead of being concatenated into the ID string; applies to all entity types (#32)
 
 ### Fixed
+
 - **Multiple GEDCOM NAME records no longer silently dropped** (#29) - When a person has multiple NAME records (birth name, married name, etc.), all names are now stored as a temporal list instead of only keeping the last one
 - **FAM event processing no longer depends on HUSB/WIFE tag order** (#15) - Family events (CENS, ENGA, MARB, etc.) are now collected in a first pass and processed after spouse IDs are extracted, so GEDCOM tag order no longer matters
 - **Census NOTE no longer discarded when SOUR exists** (#30) - NOTE text on CENS records is now appended to existing citation notes when SOUR sub-records are present, instead of being silently lost
@@ -323,21 +374,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### Standard Vocabularies
+
 - **Added `township` place type** - Township is a common administrative division in U.S. census and land records, distinct from `town` (a geographic settlement vs. a civil subdivision of a county) (#16)
 
 ### Fixed
 
 #### Validation
+
 - **Suggest correct vocabulary key on hyphen/underscore mismatch** - When a reference fails validation due to a hyphen/underscore swap (e.g., `birth_date` vs `birth-date`), the error message now suggests the correct key (#19)
 
 #### CLI
+
 - **Show directory contents in `glx init` non-empty error** - When `glx init` fails because the target directory is not empty, the error message now lists up to 5 files found (e.g., `.DS_Store`, `.git`), helping users diagnose unexpected blockers like hidden files or sync artifacts (#18)
 - **Remove self-referencing `replace` directive that blocks `go install`** - The `go.mod` contained a no-op self-referencing replace directive that prevented `go install github.com/genealogix/glx/glx@latest` from working (#17)
 
 #### GEDCOM Import
+
 - **Deduplicate evidence references** - When a GEDCOM record references the same source multiple times, `extractEvidence()` and `extractEventDetails()` now skip IDs already seen, preventing duplicate entries that violate unique constraints in downstream consumers (#13)
 
 #### Documentation & Website
+
 - **Fix dead links and website issues** - Rewrote 83 dead links across the site to point to GitHub URLs and VitePress paths, added solid background to navbar on home page, and fixed module path resolution (#10)
 - **Fix Go Report Card link** - Corrected badge link in CLI README to point to the repository root (#11)
 
@@ -346,12 +402,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### Census Event Type
+
 - **Added `census` event type to standard vocabulary** - Census enumeration events (`CENS` GEDCOM tag) now included in `event-types.glx`
 
 #### Schema Embeds
+
 - **`CitationPropertiesSchema` and `SourcePropertiesSchema` embed variables** - Completes the pattern established by all other vocabulary schema embeds in `embed.go`
 
 #### GEDCOM Import: Eliminate Meaningless Citations
+
 - **Bare source references no longer create empty citation entities** - When a GEDCOM SOUR tag references a source without any citation-level detail (no PAGE, DATA, TEXT, QUAY, NOTE, or OBJE subrecords), the assertion or event now references the source directly via the `sources` field instead of creating a citation that only contains a source reference
 - Added `PropertySources` constant for event/relationship properties
 
@@ -360,11 +419,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Assertion Entity Improvements
 
 ##### Renamed `claim` to `property`
+
 - **Renamed `claim` field to `property`** - The field name now matches the vocabulary terminology (property vocabularies)
 - Updated JSON schema, Go types (`Assertion.Claim` → `Assertion.Property`), all specification examples, example archives, test data, and terminology throughout docs
 - Renamed test directories: `assertion-unknown-claim` → `assertion-unknown-property`, `assertion-participant-and-claim` → `assertion-participant-and-property`, `invalid-assertion-claims` → `invalid-assertion-properties`
 
 ##### Typed Subject Reference
+
 - **Changed `subject` from string to typed reference object** - Prevents entity ID collisions in large archives
 - Must specify exactly one of: `person`, `event`, `relationship`, or `place`
 - **Before**: `subject: person-john-smith` → **After**: `subject: { person: person-john-smith }`
@@ -372,11 +433,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Updated validation to ensure exactly one field is set and referenced entity exists
 
 ##### Media as Assertion Evidence
+
 - **Added `media` as a third evidence option for assertions** - Assertions can now reference media entities directly as evidence, alongside citations and sources
 - Useful for direct visual evidence like gravestone photos, handwritten documents, or family photographs
 - JSON schema `anyOf` evidence constraint updated to include `media`
 
 ##### Temporal `date` Field
+
 - **Added `date` field to assertions** - Assertions can now specify a date or date range indicating when the asserted property value applies, enabling precise temporal targeting for properties like occupation, residence, and religion that change over time
 - Added `Date` field to `Assertion` Go struct and `date` property to assertion JSON schema
 - Assertion `value` field is now required when `property` is present
@@ -384,17 +447,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Vocabulary Consolidation
 
 ##### Adoption Modeling
+
 - **Removed redundant `adoption` relationship type** - Use `adoptive-parent-child` relationship type instead
 - Clarified adoption semantics: `adoption` event type records the legal proceeding; `adoptive-parent-child` relationship type models the ongoing bond
 - Removed `RelationshipTypeAdoption` constant from Go code
 
 ##### Godparent Modeling
+
 - **Clarified godparent dual usage** - Participant role `godparent` for event participation (baptism sponsor); relationship type `godparent` for the ongoing bond
 - Added `godchild` participant role for use in godparent relationships
 
 #### Type System
 
 ##### Unified Participant Type
+
 - **Unified participant types** - Consolidated `EventParticipant`, `RelationshipParticipant`, and `AssertionParticipant` into single `Participant` struct
   - All three had identical structure: `person`, `role`, `notes` fields
   - `Event.Participants`, `Relationship.Participants`, and `Assertion.Participant` now all use the unified type
@@ -402,6 +468,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Property Vocabularies
 
 ##### Media Properties
+
 - **New `media-properties.glx` vocabulary** - Standard properties for media entities:
   - `subjects` - People depicted or referenced in the media (multi-value)
   - `width`, `height` - Dimensions in pixels for images/video
@@ -415,6 +482,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Added `Properties` field to Media struct and `MediaProperties` to GLXFile
 
 ##### Repository Properties
+
 - **New `repository-properties.glx` vocabulary** - Standard properties for repository entities:
   - `phones` - Phone numbers for the repository (multi-value)
   - `emails` - Email addresses for the repository (multi-value)
@@ -427,6 +495,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Moved contact fields (phone, email) from direct entity fields to `properties`
 
 ##### Citation Properties
+
 - **New `citation-properties.glx` vocabulary** - Standard properties for citation entities:
   - `locator` - Location within source (consolidates former `page` and `locator` direct fields; GEDCOM PAGE)
   - `text_from_source` - Transcription or excerpt of relevant text (moved from direct entity field)
@@ -434,6 +503,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Added `Properties` field to Citation struct, `CitationProperties` to GLXFile, and vocabulary specification section
 
 ##### Source Properties
+
 - **New `source-properties.glx` vocabulary** - Standard properties for source entities:
   - `abbreviation` - Short reference name (from GEDCOM ABBR)
   - `call_number` - Repository catalog number (from GEDCOM CALN)
@@ -444,29 +514,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Added `Properties` field to Source struct, `SourceProperties` to GLXFile, and `source-properties.schema.json`
 
 ##### Multi-Value Property Support
+
 - **Added `multi_value` field to PropertyDefinition** - Properties can now be marked as supporting multiple values
 - Validation correctly handles array values for multi-value properties
 
 #### GEDCOM Import
 
 ##### Media/OBJE Import
+
 - **Implemented inline OBJE handling for all record types** - Media references and embedded OBJE records on individuals, events, sources, families, submitters, census records, and person property tags are now imported (previously only marriage events and top-level OBJE were handled)
 - Added `handleOBJE` shared helper for XRef references, GEDCOM 7.0 `@VOID@` pointers, and embedded OBJE
 - Added BLOB data handling, URL-type multimedia import, and OBJE processing in `extractEventDetails`
 - Torture test media import improved from 2 to 32 entities (100% coverage)
 
 ##### Media File Import
+
 - **Media files are now copied into the archive during GEDCOM import** - Relative FILE paths copied to `media/files/`; BLOB data decoded and written to files
 - Media URIs rewritten to archive-relative paths; URL and absolute path references left as-is
 - Filename deduplication with counter suffixes; missing source files produce warnings, not errors
 
 ##### Census (CENS) Support
+
 - **Implemented CENS tag handling for individual and family records** - Census records treated as evidence sources, not events
 - Each CENS creates a Source (type: `census`) and Citation; extracts PLAC for temporal `residence` property
 - Family-level CENS applies census data to both husband and wife
 - Added `createPropertyAssertionWithCitations()` helper
 
 ##### Vocabulary-Driven Tag Resolution
+
 - **Added `gedcom` field to `PropertyDefinition` struct** - Property vocabulary entries can now declare their corresponding GEDCOM tag
 - Added GEDCOM tag mappings to all 6 property vocabularies (person, event, citation, source, repository, media)
 - Added `external_ids` to person-properties.glx and event detail properties (`age_at_event`, `cause`, `event_subtype`) to event-properties.glx
@@ -475,35 +550,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Updated vocabulary specification documentation with `gedcom` field and GEDCOM column
 
 ##### Evidence and Citation Handling
+
 - **Assertions require citations** - Assertions are now only created when SOUR tags are present
 - **Embedded citation support** - SOURCE_CITATION without pointer creates synthetic Source entity
 - **Properties-based storage** - Source, media, and citation tags now stored in vocabulary-defined `properties` instead of notes
 - **Citation linkage on media** - SOUR on OBJE now properly links via `citation.Media`
 
 #### Validation
+
 - **Place hierarchy cycle detection** - Validates that place parent references don't form cycles (e.g., A -> B -> C -> A). Reports exactly one error per cycle with the full cycle path in the error message.
 
 #### Place Entity
+
 - **Moved `jurisdiction`, `place_format`, and `alternative_names` to properties** - Now stored as vocabulary-defined properties instead of dedicated entity fields. `alternative_names` simplified from `AlternativeName`/`DateRange` types to a temporal, multi-value string property.
 
 #### Relationship Entity
+
 - **Consolidated `description` into `properties.description`** - Removed as a top-level field
 
 #### Source Entity
+
 - **Consolidated `creator` field into `authors`** - Removed `creator` from spec, schema, and Go types
 
 #### Library Package Restructuring
+
 - **Moved core library from `glx/lib/` to `go-glx/`** - The library is now at the repository root for clean external imports
 - **Renamed package from `lib` to `glx`** - External consumers import as `glxlib "github.com/genealogix/glx/go-glx"` and use `glxlib.GLXFile`, `glxlib.NewSerializer()`, etc.
 - Updated all CLI files to use new import path and `glxlib.` qualifier
 
 #### CLI
+
 - **Changed `glx import` default format** - Now defaults to multi-file (`-f multi`) instead of single-file
 
 #### JSON Schema URLs
+
 - **Standardized schema `$id` URLs** - All JSON schemas now use consistent GitHub raw content URLs; removed references to `schema.genealogix.io` and `genealogix.org` domains
 
 #### Documentation
+
 - **Rewrote Migration from GEDCOM guide** - Expanded from a skeleton to a comprehensive guide covering all supported GEDCOM tags, CLI flags, field mapping tables, common challenges, troubleshooting, and GEDCOM 5.5.1 vs 7.0 differences
 - **Clarified vocabulary file location is flexible** - Spec, quickstart, and vocabulary docs now emphasize that vocabulary files can live anywhere in the archive, not only in `vocabularies/`
 - **Streamlined Introduction** - Simplified [1-introduction.md](specification/1-introduction.md) from 120 to 63 lines
@@ -528,6 +612,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 #### Specification
+
 - Fixed Place hierarchy example that used duplicate YAML top-level keys
 - Fixed examples using incorrect field names throughout specification (`description` → `notes`, `value` → `notes`, `file:` → `uri:`, `death_year` → `died_on`, `married_on` → `born_on`, `residence_dates` → `residence`, `registration_district` → `district`)
 - Fixed assertion example using invalid date format (`circa 1825` → `ABT 1825`)
@@ -555,6 +640,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **CR line ending support** - GEDCOM files using CR-only line endings (old Mac Classic format) now import correctly
 
 #### Code Quality & Robustness
+
 - **`unmarshalVocab` now returns error on missing YAML key** - Previously silently returned nil when the expected top-level key was absent, causing downstream validation to think no vocabulary entries exist
 - **`appendMediaID` safe type assertion** - Now handles `[]any` (from YAML deserialization) instead of panicking on a bare type assertion to `[]string`
 - **`extensionFromMimeType` deterministic output** - MIME types with multiple extensions (`.jpg`/`.jpeg`, `.tif`/`.tiff`) now return a consistent preferred extension instead of random map iteration order
@@ -573,10 +659,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Removed `glx check-schemas` CLI command** - Moved to `make check-schemas` Makefile target; this is a repo-internal dev tool, not a user-facing command
 
 #### Citation Entity
+
 - Removed `data_date`, `page`, `locator`, and `text_from_source` direct fields — consolidated into `properties`
 - Removed `citation`, `coverage`, and `creator` direct fields (`creator` consolidated into `authors`)
 
 #### Event Entity
+
 - Removed `description` field (use `properties.description`) and `tags` field
 
 ## [0.0.0-beta.2] - 2025-11-25
@@ -584,6 +672,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### GEDCOM Import (lib)
+
 - **GEDCOM 5.5.1 support** - Import standard GEDCOM 5.5.1 files
 - **GEDCOM 7.0 support** - Import GEDCOM 7.0 with new features
 - **GEDCOM 5.5.5 support** - Import GEDCOM 5.5.5 specification samples
@@ -599,6 +688,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Character encoding support** - ASCII, UTF-8, Windows CP1252 (CRLF and LF)
 
 #### GLX Serializer (lib)
+
 - **Single-file serialization** - Convert GLX archives to single YAML files
 - **Multi-file serialization** - Entity-per-file structure with random IDs
 - **Archive loading** - Load both single-file and multi-file GLX archives
@@ -612,6 +702,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Round-trip preservation** - Single→Multi→Single conversions preserve all data
 
 #### CLI Commands (glx)
+
 - **`glx import`** - Import GEDCOM files to GLX format
   - Single-file and multi-file output formats
   - Optional vocabulary inclusion (default: true)
@@ -627,6 +718,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - Restores entity IDs from _id fields
 
 #### Schema Enhancements
+
 - **Properties field added** to 5 entity types for extensibility:
   - Source - Store GEDCOM ABBR, EXID, custom tags
   - Citation - Store event type cited, role, entry date
@@ -636,12 +728,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Backward compatible** - Properties fields are optional with omitempty
 
 #### Project Organization
+
 - **`.claude/plans/`** directory for all planning documents
 - **`CLAUDE.md`** project context guide for AI assistants
 - **Plans README** documenting all planning files and current status
 - Moved all planning docs from `docs/` to `.claude/plans/`
 
 #### Vocabularies & Standards
+
 - **Developer documentation** - GEDCOM import docs in `glx/lib/doc.go`
 - **User documentation** - Updated [Migration from GEDCOM Guide](docs/guides/migration-from-gedcom.md)
   - Automated import instructions
@@ -651,6 +745,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 #### GEDCOM Import
+
 - **Malformed line recovery** - Parser now handles MyHeritage export bug
   - Recovers from NOTE fields with missing CONT/CONC prefixes
   - Gracefully imports files with HTML-formatted notes
@@ -659,6 +754,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Place type references** - Fixed gedcom_place.go to use "state" instead of "state_province"
 
 #### Vocabularies
+
 - **Event types vocabulary** - Fixed probate description ("Probate of estate" not "of will")
 - **Place types vocabulary** - Removed duplicate state_province alias (use "state" instead)
 - **Schema categories** - Updated allowed categories in vocabulary schemas
@@ -667,6 +763,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Source types vocabulary** - Added to embedded vocabularies (was missing)
 
 #### Code Quality
+
 - **Clean architecture** - Removed file I/O from library layer
   - Moved importGEDCOMFromFile to test helpers (gedcom_test_helpers.go)
   - CLI handles file operations, lib works with io.Reader
@@ -674,6 +771,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **File organization** - Renamed gedcom_7_0.go → gedcom_shared.go (more accurate)
 
 #### Testing & CI
+
 - **Multi-file vocabulary loading** - Fixed LoadMultiFile to properly load vocabularies from directory
 - **Vocabulary preservation** - Vocabularies now correctly preserved in round-trip conversions
 - **CI test coverage** - Updated GitHub Actions to explicitly run all tests
@@ -688,6 +786,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Removed
 
 #### Attribute Event Types
+
 - **Removed attribute-type events from schema** - Events are now strictly discrete occurrences with participants
   - Removed from event.schema.json enum: `residence`, `occupation`, `title`, `nationality`, `religion`, `education`
   - Removed `census` from event-types.glx vocabulary
@@ -696,6 +795,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Converted RESI (Residence) to temporal property** - GEDCOM RESI tags now create temporal `residence` properties on Person entities instead of events
 
 #### Quality Ratings Support
+
 - **Removed `quality_ratings` vocabulary** - The GEDCOM 0-3 Quality Assessment scale was removed from the GLX specification
   - Deleted `quality-ratings.glx` vocabulary file
   - Deleted `quality-ratings.schema.json` schema file
@@ -706,16 +806,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - GEDCOM QUAY tags are now preserved in citation notes (e.g., `GEDCOM QUAY: 2`)
 
 #### Assertion Entity Fields
+
 - **Removed `evidence_type` field** - Evidence quality classification belongs on citations, not assertions
 - **Removed `type` field** - Redundant with `claim` field and `tags` for categorization
 - **Removed `research_notes` field** - Consolidated into single `notes` field
 
 #### Provenance Fields (All Entities)
+
 - **Removed `modified_at`, `modified_by`, `created_at`, `created_by` fields** - Redundant with git history; use `git log` and `git blame` instead
 
 ### Changed
 
 #### Person Properties Schema
+
 - **Unified `name` property** - Replaced fragmented name properties with single unified property
   - Old: Separate `given_name`, `family_name` properties
   - New: Single `name` property with `value` and optional `fields` breakdown
@@ -727,22 +830,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - Added `PersonPropertyTitle` constant
 
 #### Vocabulary Updates
+
 - **person_properties vocabulary** - Updated to reflect unified name structure
   - `name` property now includes `fields` sub-schema for structured breakdown
   - Added `title` property definition
 
 #### Other
+
 - **Documentation structure** - Separated user docs (docs/) from planning docs (.claude/plans/)
 
 ### Technical Details
 
 **GEDCOM Import Coverage:**
+
 - 100% critical features implemented
 - 94% high-priority features implemented
 - PRODUCTION-READY status
 - Comprehensive gap analysis completed
 
 **Serializer Features:**
+
 - Uses crypto/rand for ID generation
 - 32 bits of randomness per ID (4.3 billion possible values)
 - Collision probability: ~1 in 400,000 with 10,000 entities
@@ -750,6 +857,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - All 12 standard vocabularies embedded with go:embed
 
 **Testing:**
+
 - All existing tests passing
 - 48 new test cases for serializer
 - 33 GEDCOM files tested for import (100% coverage of test files)
@@ -761,13 +869,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ## [0.0.0-beta.1] - 2025-11-18
 
 ### Fixed
+
 - Fixed GitHub release workflow to build on beta tags (`v*.*.*-beta*` pattern)
 - Fixed VitePress build by adding `shiki` dependency to `website/package.json`
 
 ### Changed
+
 - Removed roadmap section from README (no longer maintaining public roadmap)
 
 ### Removed
+
 - Removed archive folder containing old planning documents
 
 ## [0.0.0-beta.0] - 2025-11-14
@@ -775,6 +886,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Added
 
 #### Specification & Standards
+
 - Complete GENEALOGIX specification defining modern, evidence-first genealogy data standard
 - 9 core entity types with full JSON Schema definitions:
   - Person (individuals with biographical properties)
@@ -791,6 +903,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - YAML-based human-readable format with schema validation
 
 #### CLI Tool (`glx`)
+
 - `glx init`: Initialize new GLX repositories with optional single-file mode
 - `glx validate`: Comprehensive validation with:
   - Schema compliance checking against JSON Schemas
@@ -802,6 +915,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Cross-file entity resolution and validation
 
 #### Documentation & Examples
+
 - Comprehensive specification documentation (6 core documents)
 - Complete examples demonstrating various use cases:
   - Minimal single-file archive
@@ -822,6 +936,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
   - Glossary of key terms and concepts
 
 #### Testing & Quality Assurance
+
 - Comprehensive test suite with:
   - Valid example fixtures demonstrating correct usage
   - Invalid example fixtures testing error handling
@@ -832,6 +947,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Full code coverage reporting
 
 #### Project Infrastructure
+
 - Apache 2.0 open-source license
 - Community guidelines and code of conduct
 - Contributing guidelines for developers

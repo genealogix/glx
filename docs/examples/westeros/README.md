@@ -10,10 +10,12 @@ A comprehensive genealogical archive of the known world from George R.R. Martin'
 
 ::: tip Full Archive
 This example is hosted as its own repository. Clone it to follow along:
+
 ```bash
 git clone https://github.com/genealogix/glx-archive-westeros.git
 cd glx-archive-westeros
 ```
+
 :::
 
 ## Archive Statistics
@@ -36,11 +38,12 @@ cd glx-archive-westeros
 
 Every fact traces back to a canonical source through the full evidence chain:
 
-```
+```text
 Repository → Source → Citation → Assertion → Entity Property
 ```
 
 For example, Robb Stark's death is documented as:
+
 - **Repository**: "A Song of Ice and Fire (Novels)"
 - **Source**: *A Storm of Swords*
 - **Citation**: Catelyn VII chapter, with direct text quotes from the Red Wedding
@@ -96,7 +99,7 @@ participants:
 
 Places form a geographic hierarchy from continents down to individual buildings:
 
-```
+```text
 Westeros
 ├── The North
 │   ├── Winterfell (castle)
@@ -116,6 +119,7 @@ Essos
 ### Multi-Canon Support
 
 Separate assertions handle novel vs. TV show divergences. For example, Robb Stark's wife:
+
 - **Novel canon**: Jeyne Westerling (confidence: high, source: *A Storm of Swords*)
 - **Show canon**: Talisa Maegyr (documented as a separate relationship)
 
@@ -133,7 +137,7 @@ Assertions reflect the nature of ASOIAF's unreliable narration:
 
 The archive uses the standard multi-file format:
 
-```
+```text
 glx-archive-westeros/
 ├── persons/           # 791 files — one per character
 ├── events/            # 961 files — births, deaths, battles, etc.

@@ -31,6 +31,7 @@ events:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`event-birth-john-1850`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -39,12 +40,14 @@ events:
 ### Lifecycle Events
 
 Standard events that occur in a person's life:
+
 - **Birth**, **Death**, **Marriage**, **Divorce**, **Engagement**, **Adoption**
 - **Baptism**, **Confirmation**, **Bar/Bat Mitzvah**, **Burial**, **Cremation**
 
 ### Custom Events
 
 Domain-specific events can be added via vocabularies:
+
 - Military service, Migration/Immigration, Land transactions, Legal proceedings
 
 ## Fields
@@ -99,6 +102,7 @@ Event properties are defined in the archive's `vocabularies/event-properties.glx
 **Note:** Event timing and location are handled by the `date` and `place` fields, not properties.
 
 **See [Vocabularies - Event Properties](vocabularies#event-properties-vocabulary) for:**
+
 - Complete list of standard event properties
 - How to add custom event properties
 
@@ -107,6 +111,7 @@ Event properties are defined in the archive's `vocabularies/event-properties.glx
 Event types are defined in the archive's `vocabularies/event-types.glx` file. Each archive includes standard types and can define custom types as needed.
 
 **See [Vocabularies - Event Types](vocabularies#event-types-vocabulary) for:**
+
 - Complete list of standard event types
 - How to add custom event types
 - Vocabulary file structure and examples
@@ -186,7 +191,7 @@ Participant-level properties use the same vocabulary as event properties (`event
 
 Event files are typically stored in an `events/` directory:
 
-```
+```text
 events/
 ├── event-birth-001.glx
 ├── event-marriage-001.glx
@@ -214,7 +219,7 @@ Most events map directly to GEDCOM tags:
 
 For events with multiple participants, GLX uses the ASSO (Associate) tag pattern:
 
-```
+```text
 0 FAM
 1 MARR
 2 DATE 10 MAY 1875
@@ -230,6 +235,7 @@ For events with multiple participants, GLX uses the ASSO (Associate) tag pattern
 Participant roles (principal, witness, officiant, etc.) are defined in the archive's `vocabularies/participant-roles.glx` file.
 
 **See [Vocabularies - Participant Roles](vocabularies#participant-roles-vocabulary) for:**
+
 - Complete list of standard participant roles
 - How to add custom roles
 - Vocabulary file structure and examples
@@ -262,7 +268,3 @@ See [event.schema.json](../schema/v1/event.schema.json) for the complete JSON Sc
 - [Assertion Entity](assertion) - Provides evidence for events
 - [Place Entity](place) - Geographic context for events
 - [Relationship Entity](relationship) - Multi-person events
-
-
-
-
