@@ -74,6 +74,7 @@ You don't need to be a developer to use Git. Tools like [GitHub Desktop](https:/
 ## Why GENEALOGIX?
 
 Traditional genealogy formats are limiting:
+
 - **GEDCOM** is a decades-old format of cryptic tags that's hard to read and hard to extend
 - **Proprietary formats** lock your data inside specific applications — if the software disappears, accessing your research becomes difficult
 - **Fixed schemas** force every project into the same mold, with no room for specialized research domains, chosen family, or nontraditional family structures.

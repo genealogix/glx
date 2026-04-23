@@ -73,6 +73,7 @@ GENEALOGIX validation operates at two levels:
 ### 1. File-Level Validation
 
 Each `.glx` file must:
+
 - Be valid YAML with proper structure
 - Have at least one top-level entity type key (persons, events, relationships, etc.)
 - Pass JSON schema validation for structural correctness
@@ -83,12 +84,14 @@ Each `.glx` file must:
 Across all files in an archive, the validator checks:
 
 **Errors (Hard Failures):**
+
 - Entity IDs must be unique (no duplicates)
 - All entity cross-references must point to existing entities
 - All vocabulary type references must be defined (event_types, relationship_types, etc.)
 - All property `reference_type` values must point to existing entities
 
 **Warnings (Soft Failures):**
+
 - Unknown properties (not defined in property vocabularies) generate warnings
 - Unknown assertion properties (not defined in property vocabularies) generate warnings
 - Temporal consistency issues generate warnings:
@@ -107,7 +110,8 @@ The folder structure and file organization is a **recommended practice**, not a 
 ### One Entity Per File (Recommended for Collaboration)
 
 **Structure:**
-```
+
+```text
 family-archive/
 ├── persons/
 │   ├── person-abc12345.glx
@@ -129,6 +133,7 @@ family-archive/
 ```
 
 **File Contents:**
+
 ```yaml
 # persons/person-abc12345.glx
 persons:
@@ -142,12 +147,14 @@ persons:
 ```
 
 **Benefits:**
+
 - Fine-grained Git diffs (see exactly what changed)
 - Parallel editing without conflicts
 - Easy merge conflict resolution
 - Clear file organization
 
 **Best for:**
+
 - Team research projects
 - Large archives (100+ entities)
 - Active collaboration workflows
@@ -156,7 +163,8 @@ persons:
 ### Single File Archive
 
 **Structure:**
-```
+
+```text
 family-archive/
 ├── family.glx
 └── media/
@@ -165,6 +173,7 @@ family-archive/
 ```
 
 **File Contents:**
+
 ```yaml
 # family.glx
 persons:
@@ -218,12 +227,14 @@ media: {}
 ```
 
 **Benefits:**
+
 - Simple structure (one file to manage)
 - Easy backup and sharing
 - Quick overview of entire archive
 - Good for GEDCOM-style workflows
 
 **Best for:**
+
 - Personal research
 - Small family trees (<50 entities)
 - Quick exports/backups
@@ -234,7 +245,8 @@ media: {}
 Mix and match as needed:
 
 **Structure:**
-```
+
+```text
 family-archive/
 ├── core-family.glx          # Main family members and relationships
 ├── sources/
@@ -257,11 +269,13 @@ family-archive/
 ```
 
 **Benefits:**
+
 - Flexibility to organize by logical groupings
 - Keep related entities together
 - Balance between organization and simplicity
 
 **Best for:**
+
 - Medium-sized archives
 - Mixed collaboration patterns
 - Gradual migration from single-file format
@@ -277,15 +291,17 @@ This convention applies to all organization strategies — single-file, multi-fi
 Entity IDs can be any unique identifier you choose, with the following constraints:
 
 **Requirements:**
+
 - 1-64 characters in length
 - Alphanumeric characters (a-z, A-Z, 0-9) and hyphens only
 - Must be unique across the entire archive (case-insensitive — `Person-A` and `person-a` collide)
 
 > **Note:** Examples in this documentation use prefixes (e.g., `person-abc123`) for readability. Prefixes are not required—any format meeting the requirements above is valid.
-
+>
 > **Multi-file naming:** In multi-file archives, the entity ID determines the filename. The serializer writes each entity to `<type>/<lowercased-id>.glx` (e.g., entity ID `person-John-Smith` → `persons/person-john-smith.glx`). This means filenames are stable across writes — pick descriptive IDs if you want readable diffs.
 
 **Example Formats:**
+
 - Random hex: `a1b2c3d4`, `12345678`
 - Prefixed: `person-a1b2c3d4`, `event-12345678`
 - Descriptive: `john-smith-1850`, `leeds-yorkshire`
@@ -295,6 +311,7 @@ Entity IDs can be any unique identifier you choose, with the following constrain
 ### ID Generation Examples
 
 **Random hex:**
+
 ```bash
 # Bash
 echo "$(openssl rand -hex 4)"
@@ -315,6 +332,7 @@ fmt.Sprintf("%x", b)
 ```
 
 **Descriptive:**
+
 - `john-smith`
 - `birth-john-1850`
 - `leeds-uk`
@@ -385,6 +403,7 @@ build/
 ### Recommended Git Practices
 
 **For multi-file archives:**
+
 ```bash
 # Commit by entity type
 git add persons/
@@ -395,6 +414,7 @@ git commit -m "Add 1850 census sources"
 ```
 
 **For single-file archives:**
+
 ```bash
 # Commit with descriptive messages
 git add family.glx
@@ -431,11 +451,13 @@ glx validate persons/
 ```
 
 **Validation Output:**
+
 - ✓ **Pass**: File/entity is valid
 - ⚠ **Warning**: Soft validation issue (unknown property)
 - ❌ **Error**: Hard validation failure (missing reference, invalid structure)
 
 **Exit Codes:**
+
 - `0`: All files valid (warnings allowed)
 - `1`: One or more validation errors
 
@@ -453,6 +475,7 @@ See [Validation Levels](#validation-levels) above for details on what is validat
 ## Examples
 
 See the `docs/examples/` directory for complete working examples:
+
 - `docs/examples/complete-family/` - Multi-file organization with all entity types
 - `docs/examples/single-file/` - Single-file archive
 - `docs/examples/basic-family/` - Basic family structure

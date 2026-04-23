@@ -95,7 +95,7 @@ glx import family.ged -o family-archive/
 
 After a successful import, the CLI prints a summary of what was created:
 
-```
+```text
 ✓ Successfully imported to family.glx
 
 Import statistics:
@@ -117,6 +117,7 @@ The importer processes records in dependency order across multiple passes, handl
 **Individuals**: Names (with parsed components), gender, 20+ event types, 8+ property types, external IDs, notes, media references
 
 **Events**: Each imported event receives an auto-generated `title` field for human readability. The format varies by event type:
+
 - Individual events: "Birth of Robert Webb (1815)"
 - Couple events: "Marriage of John Smith and Jane Doe (1850)"
 - Date-only: "Census (1860)"
@@ -304,11 +305,13 @@ Repositories are automatically deduplicated by name, city, and country. If two G
 GEDCOM names use slash delimiters for surnames and quotes for nicknames. The importer parses these into structured name fields.
 
 **GEDCOM:**
-```
+
+```text
 1 NAME Dr. John "Jack" /von Smith/ Jr.
 ```
 
 **GENEALOGIX:**
+
 ```yaml
 properties:
   name:
@@ -333,11 +336,13 @@ Recognized surname prefixes include: von, van, de, der, den, del, della, di, da,
 GEDCOM stores places as flat, comma-separated strings (specific to general). The importer builds a proper hierarchy of Place entities with parent references.
 
 **GEDCOM:**
-```
+
+```text
 2 PLAC Leeds, Yorkshire, England
 ```
 
 **GENEALOGIX:**
+
 ```yaml
 places:
   place-3:
@@ -386,7 +391,8 @@ See [Core Concepts - Data Types](/specification/2-core-concepts#data-types) for 
 GEDCOM attaches source citations directly to facts. The importer expands these into complete evidence chains with separate Source, Citation, and Assertion entities.
 
 **GEDCOM:**
-```
+
+```text
 0 @I1@ INDI
 1 BIRT
 2 DATE 15 JAN 1850
@@ -397,6 +403,7 @@ GEDCOM attaches source citations directly to facts. The importer expands these i
 ```
 
 **GENEALOGIX:**
+
 ```yaml
 sources:
   source-1:

@@ -13,6 +13,7 @@ layout: doc
 An Assertion entity represents a source-backed conclusion about a specific genealogical fact. Assertions form the core of the GENEALOGIX evidence model, separating **what sources say** (citations) from **what we conclude** (assertions).
 
 This separation enables:
+
 - Multiple evidence sources supporting a single conclusion
 - Conflicting evidence representation
 - Confidence assessment based on evidence quality
@@ -36,6 +37,7 @@ assertions:
 ```
 
 **Key Points:**
+
 - Entity ID is the map key (`assertion-john-birth-date`)
 - IDs can be descriptive or random, 1-64 alphanumeric/hyphens
 
@@ -102,6 +104,7 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 The typed reference structure prevents entity ID collisions in large archives where different entity types might have the same ID.
 
 Examples:
+
 ```yaml
 # Asserting about a person
 subject:
@@ -129,6 +132,7 @@ subject:
 > **Note:** The `property` field corresponds to property names defined in [property vocabularies](vocabularies#property-vocabularies). For example, `property: occupation` references the `occupation` property from the person properties vocabulary, or `property: date` references the `date` field on an event. Unknown properties generate validation warnings.
 
 Common property types:
+
 - `date` - Event date (on event subjects)
 - `place` - Event place (on event subjects)
 - `occupation` - Occupation/profession (on person subjects)
@@ -136,6 +140,7 @@ Common property types:
 - `name` - Name form (on person subjects)
 
 Example:
+
 ```yaml
 property: occupation
 ```
@@ -143,6 +148,7 @@ property: occupation
 ### Evidence Requirement
 
 At least ONE of the following is required:
+
 - `citations` - Array of citation IDs
 - `sources` - Array of source IDs (direct source references)
 - `media` - Array of media IDs (direct visual or documentary evidence)
@@ -162,6 +168,7 @@ At least ONE of the following is required:
   - Handwritten documents or letters where the media _is_ the primary evidence
 
 Example:
+
 ```yaml
 citations:
   - citation-birth-cert
@@ -179,6 +186,7 @@ media:
 - Description: Used for assertions about a person's participation in an event or relationship (instead of asserting a property value)
 
 Structure:
+
 ```yaml
 participant:
   person: "person-id"    # Reference to the person (required)
@@ -187,10 +195,12 @@ participant:
 ```
 
 **Key Points:**
+
 - When `participant` is present, `property` and `value` must NOT be present
 - Useful for representing conflicting evidence about who participated in an event or relationship
 
 Example:
+
 ```yaml
 assertions:
   assertion-witness-john:
@@ -212,6 +222,7 @@ assertions:
 - Description: The concluded value of the property
 
 Example:
+
 ```yaml
 property: occupation
 value: blacksmith
@@ -224,6 +235,7 @@ value: blacksmith
 - Description: Date or date range. When `property` is present, specifies when the asserted value was true (matching the temporal value format on entities). On [existential assertions](#existential-assertions) (no `property` or `participant`), indicates when the subject existed. This field is strictly for temporal targeting — it is NOT an "evidence date" or "observation date".
 
 When a temporal property on an entity has multiple dated values:
+
 ```yaml
 # Person's temporal property
 occupation:
@@ -234,6 +246,7 @@ occupation:
 ```
 
 Each assertion can target a specific temporal entry using `date`:
+
 ```yaml
 assertions:
   assertion-occupation-blacksmith:
@@ -255,6 +268,7 @@ Date formats follow the standard [date format](../2-core-concepts#date-format-st
 - Description: Confidence level based on evidence quality
 
 Confidence levels and their criteria are defined in each archive's `vocabularies/confidence-levels.glx` file. The standard vocabulary provides these defaults:
+
 - `high` - Multiple high-quality sources agree, minimal uncertainty
 - `medium` - Some evidence supports conclusion, but conflicts or gaps exist
 - `low` - Limited evidence, significant uncertainty
@@ -263,11 +277,13 @@ Confidence levels and their criteria are defined in each archive's `vocabularies
 Archives can customize these descriptions or add additional levels to match their research methodology.
 
 **See [Vocabularies - Confidence Levels](vocabularies#confidence-levels-vocabulary) for:**
+
 - Customizing confidence level definitions for your archive
 - Adding custom confidence levels
 - Vocabulary file structure and validation
 
 Example:
+
 ```yaml
 confidence: high
 ```
@@ -287,6 +303,7 @@ Unlike `confidence` (which measures how certain you are about the claim), `statu
 These values are free-text; archives may use any status labels appropriate for their research methodology.
 
 Example:
+
 ```yaml
 # High confidence but not yet verified
 confidence: high
@@ -416,6 +433,7 @@ assertions:
 ```
 
 Existential assertions are particularly useful for:
+
 - **Relationships** — evidencing that a relationship exists without asserting a specific property
 - **Events** — confirming an event occurred, backed by a source
 - **Places** — documenting that a place existed at a given time
@@ -593,7 +611,7 @@ The standard vocabulary defines these default confidence levels (archives may cu
 
 Assertion files are typically organized by subject or topic:
 
-```
+```text
 assertions/
 ├── biographical/
 │   ├── births/
@@ -611,7 +629,7 @@ assertions/
 
 Or by entity:
 
-```
+```text
 assertions/
 ├── person-john-smith/
 │   ├── assert-birth.glx
@@ -625,7 +643,7 @@ assertions/
 
 ## Relationship to Other Entities
 
-```
+```text
 Assertion
     ├── subject → references Person, Event, Relationship, or Place (typed reference)
     ├── citations → array of Citation IDs (evidence)
@@ -657,7 +675,8 @@ GENEALOGIX assertions are implicit in GEDCOM:
 | `confidence` | (none) | Set by researcher; not derived from GEDCOM |
 
 GEDCOM Example:
-```
+
+```text
 0 @I1@ INDI
 1 NAME John /Smith/
 1 BIRT
@@ -667,6 +686,7 @@ GEDCOM Example:
 ```
 
 GENEALOGIX Equivalent:
+
 ```yaml
 persons:
   person-john-smith:
