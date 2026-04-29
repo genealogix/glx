@@ -6,7 +6,7 @@ persons:
         fields:
           given: "Jane"
           surname: "Smith"
-      gender: "female"
+      sex: "female"
     notes: "Daughter of John Smith and Mary Brown."
     tags:
       - "descendant"

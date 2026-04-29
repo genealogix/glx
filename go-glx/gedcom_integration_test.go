@@ -92,12 +92,12 @@ func TestImportShakespeare(t *testing.T) {
 		if givenName == "William" && familyName == "Shakespeare" {
 			foundWilliam = true
 
-			// Verify gender
-			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "male" {
-				t.Error("William Shakespeare should have gender 'male'")
+			// Verify recorded sex
+			if sex, ok := person.Properties[PersonPropertySex].(string); !ok || sex != "male" {
+				t.Error("William Shakespeare should have sex 'male'")
 			}
 
-			t.Logf("✓ Found William Shakespeare with correct name and gender")
+			t.Logf("✓ Found William Shakespeare with correct name and sex")
 
 			break
 		}

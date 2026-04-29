@@ -31,10 +31,10 @@ func TestGEDCOM_ImportAllTestFiles(t *testing.T) {
 		// GEDCOM 5.5.1 - Edge cases
 		{"5.5.1/edge-cases/empty-family.ged", 0, 0, "Empty family record"},
 		{"5.5.1/edge-cases/self-marriage.ged", 1, 0, "Person married to self"},
-		{"5.5.1/edge-cases/all-genders.ged", 3, 0, "M/F/U genders"},
+		{"5.5.1/edge-cases/all-genders.ged", 3, 0, "M/F/U sex values"},
 		{"5.5.1/edge-cases/female-female-marriage.ged", 2, 0, "Same-sex marriage"},
 		{"5.5.1/edge-cases/male-male-marriage.ged", 2, 0, "Same-sex marriage"},
-		{"5.5.1/edge-cases/unknown-unknown-marriage.ged", 2, 0, "Unknown gender marriage"},
+		{"5.5.1/edge-cases/unknown-unknown-marriage.ged", 2, 0, "Unknown-sex marriage"},
 
 		// GEDCOM 5.5.1 - Encoding tests
 		{"5.5.1/character-encoding/simple-ascii.ged", 1, 0, "ASCII only"},
@@ -201,12 +201,12 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 		if givenName == "Robert Eugene" && familyName == "Williams" {
 			foundRobert = true
 
-			// Verify gender persisted
-			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != GenderMale {
-				t.Error("Robert Eugene Williams should have gender 'male'")
+			// Verify recorded sex persisted
+			if sex, ok := person.Properties[PersonPropertySex].(string); !ok || sex != SexMale {
+				t.Error("Robert Eugene Williams should have sex 'male'")
 			}
 
-			t.Logf("✓ Robert Eugene Williams: name and gender persisted correctly")
+			t.Logf("✓ Robert Eugene Williams: name and sex persisted correctly")
 
 			break
 		}
@@ -223,12 +223,12 @@ func TestGEDCOM555_Sample_DataPersistence(t *testing.T) {
 		if givenName == "Mary Ann" && familyName == "Wilson" {
 			foundMary = true
 
-			// Verify gender persisted
-			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "female" {
-				t.Error("Mary Ann Wilson should have gender 'female'")
+			// Verify recorded sex persisted
+			if sex, ok := person.Properties[PersonPropertySex].(string); !ok || sex != "female" {
+				t.Error("Mary Ann Wilson should have sex 'female'")
 			}
 
-			t.Logf("✓ Mary Ann Wilson: name and gender persisted correctly")
+			t.Logf("✓ Mary Ann Wilson: name and sex persisted correctly")
 
 			break
 		}
