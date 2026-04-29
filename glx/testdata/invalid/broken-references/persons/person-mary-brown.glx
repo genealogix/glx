@@ -6,7 +6,7 @@ persons:
         fields:
           given: "Mary"
           surname: "Smith"
-      gender: "female"
+      sex: "female"
     notes: "Wife of John Smith. Dressmaker by trade."
     tags:
       - "ancestor"

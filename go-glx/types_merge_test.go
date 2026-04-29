@@ -199,6 +199,7 @@ func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 		MediaTypes:        map[string]*VocabularyEntry{"type-1": {}},
 		ParticipantRoles:  map[string]*VocabularyEntry{"role-1": {}},
 		ConfidenceLevels:  map[string]*VocabularyEntry{"level-1": {}},
+		SexTypes:          map[string]*VocabularyEntry{"sex-1": {}},
 		GenderTypes:       map[string]*VocabularyEntry{"gender-1": {}},
 	}
 
@@ -211,6 +212,7 @@ func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 		MediaTypes:        map[string]*VocabularyEntry{"type-2": {}},
 		ParticipantRoles:  map[string]*VocabularyEntry{"role-2": {}},
 		ConfidenceLevels:  map[string]*VocabularyEntry{"level-2": {}},
+		SexTypes:          map[string]*VocabularyEntry{"sex-2": {}},
 		GenderTypes:       map[string]*VocabularyEntry{"gender-2": {}},
 	}
 
@@ -226,6 +228,7 @@ func TestGLXFile_Merge_AllVocabularyTypes(t *testing.T) {
 	require.Len(t, g1.MediaTypes, 2)
 	require.Len(t, g1.ParticipantRoles, 2)
 	require.Len(t, g1.ConfidenceLevels, 2)
+	require.Len(t, g1.SexTypes, 2)
 	require.Len(t, g1.GenderTypes, 2)
 }
 

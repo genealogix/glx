@@ -1001,10 +1001,10 @@ func TestImportASSOEvent_MissingPersonWarning(t *testing.T) {
 	assert.True(t, foundWarning, "missing ASSO reference should produce a warning")
 }
 
-// TestImportSex_UnrecognizedValuePreserved tests that non-standard GEDCOM SEX
-// values are preserved as lowercase instead of being silently mapped to "unknown".
-// Fixes #520.
-func TestImportSex_UnrecognizedValuePreserved(t *testing.T) {
+// TestImportSex_NRecordedMapsToNotRecorded tests that GEDCOM 5.5.5 `SEX N`
+// (Not Recorded) maps to the GLX `not_recorded` sex value rather than being
+// silently mapped to `unknown` or preserved as raw "n". See #520, #528.
+func TestImportSex_NRecordedMapsToNotRecorded(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 7.0
@@ -1018,9 +1018,58 @@ func TestImportSex_UnrecognizedValuePreserved(t *testing.T) {
 	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
 
 	for _, person := range glxFile.Persons {
-		gender, ok := person.Properties[PersonPropertyGender].(string)
-		require.True(t, ok, "gender property should be a string")
-		assert.Equal(t, "n", gender, "unrecognized SEX value 'N' should be preserved as 'n', not mapped to 'unknown'")
+		sex, ok := person.Properties[PersonPropertySex].(string)
+		require.True(t, ok, "sex property should be a string")
+		assert.Equal(t, SexNotRecorded, sex, "GEDCOM 'SEX N' should map to not_recorded")
+	}
+}
+
+// TestImportSex_UnrecognizedValuePreservedLowercase tests that GEDCOM SEX
+// values outside the known enumeration (M/F/U/X/N) are preserved in the
+// `sex` property as lowercase strings rather than being flattened to
+// `unknown`. This keeps unfamiliar enumeration extensions round-trippable
+// and lets validation warn on the out-of-vocabulary value (#520).
+func TestImportSex_UnrecognizedValuePreservedLowercase(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX Q
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
+
+	for _, person := range glxFile.Persons {
+		sex, ok := person.Properties[PersonPropertySex].(string)
+		require.True(t, ok, "sex property should be a string")
+		assert.Equal(t, "q", sex, "unrecognized GEDCOM SEX should be preserved lowercase")
+	}
+}
+
+// TestImportSex_EmptyValueMapsToNotRecorded tests that a present-but-empty
+// GEDCOM `SEX` tag (e.g. `1 SEX` with no value) maps to `not_recorded` rather
+// than `unknown`. `unknown` is reserved for `SEX U` (source consulted but
+// undetermined); an empty tag represents absent-from-source data (#528).
+func TestImportSex_EmptyValueMapsToNotRecorded(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX
+0 TRLR`
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glxFile.Persons, 1, "should import exactly one person")
+
+	for _, person := range glxFile.Persons {
+		sex, ok := person.Properties[PersonPropertySex].(string)
+		require.True(t, ok, "sex property should be a string")
+		assert.Equal(t, SexNotRecorded, sex, "empty GEDCOM SEX tag should map to not_recorded")
 	}
 }
 

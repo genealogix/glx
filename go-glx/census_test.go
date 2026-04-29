@@ -53,7 +53,7 @@ func TestBuildCensusEntities_Minimal(t *testing.T) {
 	person := result.Persons[result.NewPersonIDs[0]]
 	require.NotNil(t, person)
 	assert.Equal(t, "Daniel Lane", person.Properties[PersonPropertyName])
-	assert.Equal(t, "male", person.Properties[PersonPropertyGender])
+	assert.Equal(t, "male", person.Properties[PersonPropertySex])
 
 	// Check event
 	event := result.Event[result.EventID]
@@ -352,7 +352,7 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	result, err := BuildCensusEntities(tpl, nil)
 	require.NoError(t, err)
 
-	// Should have assertions for: birth year, birthplace, gender, occupation, residence, race
+	// Should have assertions for: birth year, birthplace, sex, occupation, residence, race
 	assert.GreaterOrEqual(t, len(result.Assertions), 6)
 
 	// Check birth year assertion
@@ -363,12 +363,12 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 	assert.Equal(t, ConfidenceLevelLow, birthAssertion.Confidence)
 	assert.Contains(t, birthAssertion.Notes.String(), "age 30")
 
-	// Check gender assertion
-	genderAssertion := result.Assertions["assertion-person-daniel-lane-gender-1860"]
-	require.NotNil(t, genderAssertion, "should have gender assertion")
-	assert.Equal(t, PersonPropertyGender, genderAssertion.Property)
-	assert.Equal(t, "male", genderAssertion.Value)
-	assert.Equal(t, ConfidenceLevelHigh, genderAssertion.Confidence)
+	// Check sex assertion
+	sexAssertion := result.Assertions["assertion-person-daniel-lane-sex-1860"]
+	require.NotNil(t, sexAssertion, "should have sex assertion")
+	assert.Equal(t, PersonPropertySex, sexAssertion.Property)
+	assert.Equal(t, "male", sexAssertion.Value)
+	assert.Equal(t, ConfidenceLevelHigh, sexAssertion.Confidence)
 
 	// Check occupation assertion
 	occAssertion := result.Assertions["assertion-person-daniel-lane-occupation-1860"]

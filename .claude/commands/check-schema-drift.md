@@ -50,8 +50,8 @@ Analyze all entity types and compare:
 ### Vocabulary Schemas
 Compare `specification/4-entity-types/vocabularies.md` and `specification/5-standard-vocabularies/*.glx` against `specification/schema/v1/vocabularies/*.schema.json`:
 
-**Type vocabularies** (9 schemas):
-- event-types, relationship-types, place-types, source-types, media-types, repository-types, confidence-levels, participant-roles, gender-types
+**Type vocabularies** (10 schemas):
+- event-types, relationship-types, place-types, source-types, media-types, repository-types, confidence-levels, participant-roles, sex-types, gender-types
 
 **Property vocabularies** (8 schemas):
 - person-properties, event-properties, relationship-properties, place-properties, media-properties, repository-properties, source-properties, citation-properties

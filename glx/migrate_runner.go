@@ -28,6 +28,17 @@ type MigrateReport struct {
 	PropertiesRemoved   int
 	AssertionsMigrated  int
 	VocabEntriesRemoved int
+
+	// gender→sex rename counts (opt-in via --rename-gender-to-sex).
+	PropertiesRenamed   int
+	AssertionsRenamed   int
+	VocabEntriesRenamed int
+
+	// GenderRenameSkipped is true when the gender→sex rename was requested
+	// (via --rename-gender-to-sex) but refused because the archive already
+	// carries post-split data. The archive may still contain legacy `gender`
+	// values that were NOT migrated — this is distinct from "no work to do".
+	GenderRenameSkipped bool
 }
 
 const (
