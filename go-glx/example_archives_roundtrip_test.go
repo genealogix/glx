@@ -342,7 +342,7 @@ func readMultiFileArchive(dir string) (map[string][]byte, error) {
 // normalization step converts map[any]any (which gopkg.in/yaml.v3 may produce
 // for nested maps with non-string keys) into map[string]any so that gojsonschema
 // can ingest the value via NewGoLoader and so that map equality works as
-// expected with require.Equal.
+// expected with assert.Equal.
 func parseYAMLAsMap(data []byte) (map[string]any, error) {
 	var doc any
 	if err := yaml.Unmarshal(data, &doc); err != nil {
