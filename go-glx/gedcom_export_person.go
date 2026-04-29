@@ -21,8 +21,16 @@ import (
 )
 
 // Properties that are handled specially and should not be exported as generic tags.
+//
+// PersonPropertySex is emitted as a GEDCOM SEX tag (see mapSexToGEDCOM below).
+// PersonPropertyGender (self-identified identity) has NO GEDCOM tag — GEDCOM
+// 7.0 explicitly defers gender identity to a FACT record rather than SEX.
+// Identity values are therefore intentionally dropped on export; a person with
+// both `sex: male` and `gender: nonbinary` will only round-trip the `sex`
+// value through GEDCOM.
 var skipPersonProperties = map[string]bool{
 	PersonPropertyName:         true,
+	PersonPropertySex:          true,
 	PersonPropertyGender:       true,
 	DeprecatedPropertyBornOn:   true,
 	DeprecatedPropertyBornAt:   true,
@@ -125,11 +133,22 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 		record.SubRecords = append(record.SubRecords, nameRecords...)
 	}
 
-	// SEX
-	if gender, ok := getStringProperty(person.Properties, PersonPropertyGender); ok {
+	// SEX — prefer the recorded `sex` property; fall back to the legacy
+	// `gender` property ONLY when it carries a value valid in sex_types.
+	// Identity-only values (e.g. `nonbinary`) are never exported as SEX
+	// because clamping them to `U` would silently discard identity semantics.
+	// Both properties are declared `temporal: true`, so getScalarProperty is
+	// used instead of getStringProperty — temporal map/list shapes would
+	// otherwise be rejected and SEX silently omitted.
+	if sex, ok := getScalarProperty(person.Properties, PersonPropertySex); ok {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagSex,
-			Value: mapGenderToSex(gender, expCtx),
+			Value: mapSexToGEDCOM(sex, expCtx),
+		})
+	} else if gender, ok := getScalarProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
+		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
+			Tag:   GedcomTagSex,
+			Value: mapSexToGEDCOM(gender, expCtx),
 		})
 	}
 
@@ -393,25 +412,60 @@ func parseValueToGEDCOMName(value string) string {
 	return given + " /" + surname + "/"
 }
 
-// mapGenderToSex converts a GLX gender value to a GEDCOM SEX value.
-// Uses the gender_types vocabulary for lookup; falls back to hardcoded
-// mapping for standard values when the vocabulary is not loaded.
-func mapGenderToSex(gender string, expCtx *ExportContext) string {
-	// Try vocabulary lookup first
-	if expCtx != nil && expCtx.GLX != nil && expCtx.GLX.GenderTypes != nil {
-		if genderType, ok := expCtx.GLX.GenderTypes[gender]; ok && genderType != nil && genderType.GEDCOM != "" {
-			return genderType.GEDCOM
+// mapSexToGEDCOM converts a GLX sex (or gender, as fallback) value to a GEDCOM SEX value.
+// Uses the sex_types vocabulary for lookup; falls back to gender_types, then
+// to hardcoded mappings for standard values when no vocabulary entry exists.
+//
+// `not_recorded` maps to "N" for GEDCOM 5.5.x, which is the spec's Not
+// Recorded value. GEDCOM 7.0 restricts SEX to M/F/X/U, so any mapping that
+// would emit "N" (either from a custom vocabulary entry or the built-in
+// `not_recorded` fallback) collapses to "U" on 7.0 exports to keep the
+// output valid.
+func mapSexToGEDCOM(value string, expCtx *ExportContext) string {
+	if expCtx != nil && expCtx.GLX != nil {
+		if expCtx.GLX.SexTypes != nil {
+			if sexType, ok := expCtx.GLX.SexTypes[value]; ok && sexType != nil && sexType.GEDCOM != "" {
+				return normalizeGEDCOMSex(sexType.GEDCOM, expCtx)
+			}
+		}
+		if expCtx.GLX.GenderTypes != nil {
+			if genderType, ok := expCtx.GLX.GenderTypes[value]; ok && genderType != nil && genderType.GEDCOM != "" {
+				return normalizeGEDCOMSex(genderType.GEDCOM, expCtx)
+			}
 		}
 	}
 
-	// Fallback for standard values
-	switch gender {
-	case GenderMale:
-		return "M"
-	case GenderFemale:
-		return "F"
-	case GenderOther:
-		return "X"
+	var out string
+	switch value {
+	case SexMale:
+		out = "M"
+	case SexFemale:
+		out = "F"
+	case SexOther:
+		out = "X"
+	case SexNotRecorded:
+		out = "N"
+	default:
+		out = "U"
+	}
+
+	return normalizeGEDCOMSex(out, expCtx)
+}
+
+// normalizeGEDCOMSex enforces the per-version SEX enumeration. GEDCOM 7.0
+// restricts SEX to M/F/X/U; any other value — including "N" from GEDCOM
+// 5.5.x or a custom vocabulary entry — collapses to "U" on a 7.0 export.
+// Earlier versions (and the nil/default case) preserve the value as-is.
+// The value is trimmed and uppercased before the enum check so that
+// vocabulary mappings like "m" or " M " don't get surprisingly collapsed
+// to "U" on 7.0 export.
+func normalizeGEDCOMSex(value string, expCtx *ExportContext) string {
+	if expCtx == nil || expCtx.Version != GEDCOM70 {
+		return value
+	}
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "M", "F", "X", "U":
+		return strings.ToUpper(strings.TrimSpace(value))
 	default:
 		return "U"
 	}

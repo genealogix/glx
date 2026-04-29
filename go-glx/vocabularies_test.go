@@ -44,6 +44,7 @@ func TestStandardVocabularies(t *testing.T) {
 		"event-properties.glx",
 		"relationship-properties.glx",
 		"place-properties.glx",
+		"sex-types.glx",
 		"gender-types.glx",
 	}
 
@@ -219,6 +220,34 @@ func TestLoadStandardVocabulariesIntoGLX_ClonedMaps(t *testing.T) {
 // These tests were removed because WriteStandardVocabularies and WriteVocabulariesToFile
 // were removed from lib (they violated the no-I/O rule). Vocabulary writing is now
 // handled by the CLI commands, and vocabulary serialization is tested in roundtrip tests.
+
+func TestLoadStandardVocabularies_PopulatesSexAndGenderTypes(t *testing.T) {
+	var glx GLXFile
+	if err := LoadStandardVocabulariesIntoGLX(&glx); err != nil {
+		t.Fatalf("LoadStandardVocabulariesIntoGLX: %v", err)
+	}
+
+	for _, key := range []string{"male", "female", "unknown", "not_recorded", "other"} {
+		if _, ok := glx.SexTypes[key]; !ok {
+			t.Errorf("sex_types missing standard entry %q", key)
+		}
+	}
+	if glx.SexTypes["male"].GEDCOM != "M" {
+		t.Errorf("expected sex_types.male.gedcom == M, got %q", glx.SexTypes["male"].GEDCOM)
+	}
+	if glx.SexTypes["not_recorded"].GEDCOM != "" {
+		t.Errorf("expected sex_types.not_recorded.gedcom empty, got %q", glx.SexTypes["not_recorded"].GEDCOM)
+	}
+
+	for _, key := range []string{"male", "female", "nonbinary", "other"} {
+		if _, ok := glx.GenderTypes[key]; !ok {
+			t.Errorf("gender_types missing standard entry %q", key)
+		}
+	}
+	if _, ok := glx.GenderTypes["unknown"]; ok {
+		t.Error("gender_types should no longer contain 'unknown' (moved to sex_types)")
+	}
+}
 
 // TestVocabularyEntryYAMLFieldOrder guards against a silent wire-format regression:
 // the VocabularyEntry struct's field order is load-bearing because on-disk vocabulary

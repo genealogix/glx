@@ -85,7 +85,7 @@ Defines additional properties that can be associated with relationships (like cu
 
 ### Person Properties
 
-Defines properties that can be associated with people (such as gender, physical characteristics, titles).
+Defines properties that can be associated with people (such as sex, gender, physical characteristics, titles).
 
 <YamlFile
   :content="vocabularies['person-properties']"
@@ -197,6 +197,32 @@ Defines confidence levels for assertions, representing researcher certainty in c
 />
 
 **See Also:** [Assertion Entity Documentation](/specification/4-entity-types/assertion) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#confidence-levels-vocabulary)
+
+---
+
+### Sex Types
+
+Defines controlled values for the `sex` person property (male, female, unknown, not_recorded, other). Sex is what was recorded in source documents (e.g., GEDCOM SEX, census enumerations) and maps to GEDCOM `SEX` on import/export. Out-of-vocabulary values produce a validation warning, not an error — archives may add custom values before recording them in the vocabulary.
+
+<YamlFile
+  :content="vocabularies['sex-types']"
+  title="vocabularies/sex-types.glx"
+/>
+
+**See Also:** [Person Entity Documentation](/specification/4-entity-types/person) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#property-definition-structure)
+
+---
+
+### Gender Types
+
+Defines controlled values for the `gender` person property — self-identified gender identity (male, female, nonbinary, other). Primarily relevant for modern records and living persons. No direct GEDCOM mapping — GEDCOM 7.0 defers gender identity to `FACT`. Out-of-vocabulary values produce a validation warning, not an error.
+
+<YamlFile
+  :content="vocabularies['gender-types']"
+  title="vocabularies/gender-types.glx"
+/>
+
+**See Also:** [Person Entity Documentation](/specification/4-entity-types/person) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#property-definition-structure)
 
 ---
 

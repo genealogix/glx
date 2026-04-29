@@ -33,7 +33,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 
   person-def67890:
     properties:

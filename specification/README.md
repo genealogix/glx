@@ -73,7 +73,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
       occupation: "blacksmith"
     notes: "Blacksmith in Leeds, Yorkshire"
 

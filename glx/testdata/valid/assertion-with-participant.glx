@@ -9,7 +9,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 
   person-jane:
     properties:
@@ -18,7 +18,7 @@ persons:
         fields:
           given: "Jane"
           surname: "Doe"
-      gender: "female"
+      sex: "female"
 
   person-thomas:
     properties:
@@ -27,7 +27,7 @@ persons:
         fields:
           given: "Thomas"
           surname: "Brown"
-      gender: "male"
+      sex: "male"
 
 events:
   event-marriage-1880:

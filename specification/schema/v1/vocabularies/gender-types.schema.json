@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/gender-types.schema.json",
   "title": "Gender Types Vocabulary",
-  "description": "Defines the standard and custom gender types available for person entities",
+  "description": "Defines the standard and custom gender identity types for the person `gender` property (self-identified gender identity, primarily for modern/living persons)",
   "type": "object",
   "required": ["gender_types"],
   "properties": {
@@ -18,21 +18,21 @@
   "definitions": {
     "GenderTypeDefinition": {
       "type": "object",
-      "description": "Definition of a single gender type",
+      "description": "Definition of a single gender identity type",
       "required": ["label"],
       "properties": {
         "label": {
           "type": "string",
           "minLength": 1,
-          "description": "Human-readable label for the gender type"
+          "description": "Human-readable label for the gender identity"
         },
         "description": {
           "type": "string",
-          "description": "Detailed description of the gender type"
+          "description": "Detailed description of the gender identity"
         },
         "gedcom": {
           "type": "string",
-          "description": "Corresponding GEDCOM SEX value for interoperability"
+          "description": "Optional GEDCOM value; GEDCOM has no standard tag for gender identity and defers to FACT"
         }
       }
     }
