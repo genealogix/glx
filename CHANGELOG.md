@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
 
 #### Documentation
+
 - **Developer Certificate of Origin (DCO) policy** — `CONTRIBUTING.md` now documents the DCO 1.1 and requires contributors to sign off commits with `git commit -s`. Closes #409
 
 - **Architecture Decision Records (ADRs)** — Added `docs/decisions/` directory with an ADR template, an index, and six foundational ADRs covering YAML as the archive file format, the evidence-first data model (Repository → Source → Citation → Assertion), archive-owned vocabularies, Git-native archives, flexible entity IDs, and the go-glx library's no-I/O rule. `CONTRIBUTING.md` now describes the ADR practice and when to write one. Closes #416

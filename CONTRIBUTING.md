@@ -258,7 +258,7 @@ git commit -s -m "feat: Add GEDCOM 7.0 EXID support"
 
 This appends a line to the commit message using the identity from `git config user.name` and `git config user.email`:
 
-```
+```text
 Signed-off-by: Your Name <you@example.com>
 ```
 
@@ -289,7 +289,7 @@ Only force-push branches you own. If others are collaborating on the branch, coo
 
 ### The DCO text
 
-```
+```text
 Developer Certificate of Origin
 Version 1.1
 
