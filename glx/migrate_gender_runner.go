@@ -233,8 +233,17 @@ func movePreSplitGenderTypesVocab(archive *glxlib.GLXFile) int {
 		return 0
 	}
 
-	if archive.SexTypes == nil {
-		archive.SexTypes = make(map[string]*glxlib.VocabularyEntry, len(archive.GenderTypes))
+	// Always allocate a fresh map. After mergeStandardVocabularies,
+	// archive.SexTypes may alias the embedded standard vocabulary's map
+	// (the loader assigns it by reference when the archive doesn't inline
+	// its own), so mutating it in place would leak this archive's entries
+	// into the shared standard for any other archive loaded by the same
+	// process. Copy any existing entries (entry pointers are shared, which
+	// is fine — the entries themselves are not mutated).
+	existing := archive.SexTypes
+	archive.SexTypes = make(map[string]*glxlib.VocabularyEntry, len(existing)+len(archive.GenderTypes))
+	for k, v := range existing {
+		archive.SexTypes[k] = v
 	}
 	for key, entry := range archive.GenderTypes {
 		if entry == nil {

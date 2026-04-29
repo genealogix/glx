@@ -128,6 +128,34 @@ func TestMigrateGenderToSex_PreSplitMergesIntoExistingSexTypes(t *testing.T) {
 	assert.Equal(t, "Not Recorded", archive.SexTypes["not_recorded"].Label)
 }
 
+func TestMigrateGenderToSex_DoesNotMutateSharedSexTypesMap(t *testing.T) {
+	// mergeStandardVocabularies assigns std.SexTypes to archive.SexTypes by
+	// reference when the archive has no inlined sex_types. Two archives loaded
+	// in the same process can therefore share that map. The migration on
+	// archive A must not leak its custom legacy entries into the map that
+	// archive B sees.
+	shared := map[string]*glxlib.VocabularyEntry{
+		"male":   {Label: "Male", GEDCOM: "M"},
+		"female": {Label: "Female", GEDCOM: "F"},
+	}
+	archiveA := &glxlib.GLXFile{
+		SexTypes: shared,
+		GenderTypes: map[string]*glxlib.VocabularyEntry{
+			"male":     {Label: "OVERWRITTEN"},
+			"unknown":  {Label: "Unknown", GEDCOM: "U"},
+			"intersex": {Label: "Intersex"},
+		},
+	}
+	archiveB := &glxlib.GLXFile{SexTypes: shared}
+
+	migrateGenderToSex(archiveA, &bytes.Buffer{})
+
+	assert.Contains(t, archiveA.SexTypes, "intersex", "archive A should have the moved entry")
+	assert.NotContains(t, shared, "intersex", "shared standard map must not be mutated")
+	assert.NotContains(t, archiveB.SexTypes, "intersex", "archive B (sharing the std map) must not see archive A's entries")
+	assert.Len(t, shared, 2, "shared map should still contain only its original entries")
+}
+
 func TestMigrateGenderToSex_NilWriterDoesNotPanic(t *testing.T) {
 	// Pre-split archive exercises the full rename path with a nil writer.
 	archive := &glxlib.GLXFile{
