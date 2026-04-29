@@ -16,6 +16,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - [Testing](#testing)
 - [Documentation Standards](#documentation-standards)
 - [Submitting Changes](#submitting-changes)
+- [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco)
 - [Proposing Major Changes](#proposing-major-changes)
 - [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
 - [AI-Generated Contributions](#ai-generated-contributions)
@@ -157,6 +158,8 @@ fix: Handle nil map in merge
 docs: Update quickstart guide
 ```
 
+Every commit must also carry a `Signed-off-by` trailer — see [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco) for how to add one and what you're attesting to.
+
 ## Testing
 
 Prefer using the Makefile to run tests for consistency. `go test` directly is fine for targeted runs.
@@ -240,6 +243,88 @@ npx --yes markdownlint-cli2 --fix
 - Maintainers will review PRs within 3-5 business days
 - Address review comments promptly
 - Be open to feedback and iteration
+
+## Developer Certificate of Origin (DCO)
+
+GENEALOGIX uses the [Developer Certificate of Origin (DCO) 1.1](https://developercertificate.org/) — the same lightweight attestation used by the Linux kernel, CNCF projects, and many other open-source projects. Rather than requiring a heavier Contributor License Agreement, there is no separate document to sign and no CLA bot to negotiate with. By signing off each commit, you attest that you wrote the change (or have the right to submit it) and that it can be contributed under the project's Apache 2.0 license. The DCO is an attestation of your right to contribute the code — it is **not** a copyright assignment. You retain copyright in your contribution. There is no automated DCO check today; sign-offs are trusted and verified manually during review.
+
+### Signing off
+
+Add a `Signed-off-by` trailer to every commit using the `-s` (or `--signoff`) flag:
+
+```bash
+git commit -s -m "feat: Add GEDCOM 7.0 EXID support"
+```
+
+This appends a line to the commit message using the identity from `git config user.name` and `git config user.email`:
+
+```text
+Signed-off-by: Your Name <you@example.com>
+```
+
+Use the same name and email you use for other contributions so maintainers can reach you about your change. If `user.name` or `user.email` are wrong for this repository, set them locally before committing:
+
+```bash
+git config user.name "Your Name"
+git config user.email "you@example.com"
+```
+
+### Fixing a missing sign-off
+
+If you forgot `-s` on your most recent commit:
+
+```bash
+git commit --amend --signoff --no-edit
+git push --force-with-lease
+```
+
+For a range of commits (e.g., the last 3):
+
+```bash
+git rebase --signoff HEAD~3
+git push --force-with-lease
+```
+
+Only force-push branches you own. If others are collaborating on the branch, coordinate with them before rewriting history to avoid disrupting their work.
+
+### The DCO text
+
+```text
+Developer Certificate of Origin
+Version 1.1
+
+Copyright (C) 2004, 2006 The Linux Foundation and its contributors.
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+
+Developer's Certificate of Origin 1.1
+
+By making a contribution to this project, I certify that:
+
+(a) The contribution was created in whole or in part by me and I
+    have the right to submit it under the open source license
+    indicated in the file; or
+
+(b) The contribution is based upon previous work that, to the best
+    of my knowledge, is covered under an appropriate open source
+    license and I have the right under that license to submit that
+    work with modifications, whether created in whole or in part
+    by me, under the same open source license (unless I am
+    permitted to submit under a different license), as indicated
+    in the file; or
+
+(c) The contribution was provided directly to me by some other
+    person who certified (a), (b) or (c) and I have not modified
+    it.
+
+(d) I understand and agree that this project and the contribution
+    are public and that a record of the contribution (including all
+    personal information I submit with it, including my sign-off) is
+    maintained indefinitely and may be redistributed consistent with
+    this project or the open source license(s) involved.
+```
 
 ## Proposing Major Changes
 
