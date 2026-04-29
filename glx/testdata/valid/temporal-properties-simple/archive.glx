@@ -30,9 +30,9 @@ person_properties:
         label: "Surname"
         description: "Family name"
 
-  sex:
-    label: "Sex"
-    description: "Sex as recorded in source documents"
+  birth_country:
+    label: "Birth Country"
+    description: "Country of birth (custom non-temporal property for this fixture)"
     value_type: string
     temporal: false  # Non-temporal property
 
@@ -57,6 +57,6 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      sex: "male"                # Simple value for non-temporal - VALID
+      birth_country: "England"     # Simple value for non-temporal - VALID
       occupation: "blacksmith"     # Simple string for temporal property - VALID
       residence: "place-leeds"     # Simple reference for temporal property - VALID

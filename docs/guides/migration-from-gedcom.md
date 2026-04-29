@@ -184,7 +184,7 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | GEDCOM Tag | GLX Property | Notes |
 |------------|-------------|-------|
 | `NAME` | `name` | Parsed into structured fields (see [Name Conversion](#name-conversion)) |
-| `SEX` | `sex` | M→male, F→female, U→unknown, X→other; absent/N→not_recorded |
+| `SEX` | `sex` | M→male, F→female, U→unknown, X→other; `N` or empty `SEX` value→not_recorded. A missing `SEX` tag leaves the `sex` property unset. |
 | `OCCU` | `occupation` | Temporal property |
 | `RELI` | `religion` | |
 | `EDUC` | `education` | |

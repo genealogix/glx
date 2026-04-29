@@ -108,7 +108,7 @@ properties:
 
 GLX splits "recorded sex" and "gender identity" into two separate properties (issue #528).
 
-- **`sex`** — What the source recorded. Maps to GEDCOM `SEX` on import/export. Constrained by the `sex_types` vocabulary via `vocabulary_type: sex_types`. Standard values: `male` (GEDCOM `M`), `female` (`F`), `unknown` (`U`), `not_recorded` (absent/`N`), `other` (`X`). Use `not_recorded` when the source has no sex field at all; use `unknown` when the source was consulted but the sex could not be determined.
+- **`sex`** — What the source recorded. Maps to GEDCOM `SEX` on import/export. Constrained by the `sex_types` vocabulary via `vocabulary_type: sex_types`. Standard values: `male` (GEDCOM `M`), `female` (`F`), `unknown` (`U`), `not_recorded` (`N` or empty `SEX` value), `other` (`X`). A GEDCOM record with no `SEX` tag at all imports without a `sex` property — `not_recorded` is reserved for sources that explicitly indicate the sex field is absent. Use `unknown` when the source was consulted but the sex could not be determined.
 - **`gender`** — Self-identified gender identity. Constrained by the `gender_types` vocabulary. Standard values: `male`, `female`, `nonbinary`, `other`. No direct GEDCOM mapping (GEDCOM 7.0 defers identity to `FACT`). Primarily useful for modern records and living persons; for most historical genealogy only `sex` will be populated.
 
 Both properties are temporal, allowing changes over time. Out-of-vocabulary values produce a **warning**, not an error — archives may use custom values before adding them to the vocabulary.
