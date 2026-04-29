@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"maps"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -242,9 +243,7 @@ func movePreSplitGenderTypesVocab(archive *glxlib.GLXFile) int {
 	// is fine — the entries themselves are not mutated).
 	existing := archive.SexTypes
 	archive.SexTypes = make(map[string]*glxlib.VocabularyEntry, len(existing)+len(archive.GenderTypes))
-	for k, v := range existing {
-		archive.SexTypes[k] = v
-	}
+	maps.Copy(archive.SexTypes, existing)
 	for key, entry := range archive.GenderTypes {
 		if entry == nil {
 			continue
