@@ -102,7 +102,7 @@ func discoverExampleArchives(examplesRoot string) ([]exampleArchive, error) {
 		}
 		dir := filepath.Join(examplesRoot, entry.Name())
 		archivePath := filepath.Join(dir, "archive.glx")
-		if _, err := os.Stat(archivePath); err == nil {
+		if info, err := os.Lstat(archivePath); err == nil && info.Mode().IsRegular() {
 			archives = append(archives, exampleArchive{
 				name:           entry.Name(),
 				dir:            dir,
@@ -145,12 +145,21 @@ func dirHasOwnGLXFiles(dir string) (bool, error) {
 // vocabularies/ subdirectory. fn receives the absolute path and the path
 // relative to dir; returning filepath.SkipDir or another error stops the walk
 // in the standard filepath.Walk way.
+//
+// Non-regular files (symlinks, devices, sockets) are skipped. This is
+// defensive: in normal usage example archives only contain regular .glx files
+// plus vocabulary symlinks (which are also filtered out by isVocabularyPath
+// later). Skipping non-regular files prevents the test from following an
+// unexpected symlink out of docs/examples/ if one ever lands there.
 func walkOwnGLXFiles(dir string, fn func(absPath, rel string) error) error {
 	return filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if info.IsDir() || filepath.Ext(path) != ".glx" {
+			return nil
+		}
+		if !info.Mode().IsRegular() {
 			return nil
 		}
 		rel, relErr := filepath.Rel(dir, path)
