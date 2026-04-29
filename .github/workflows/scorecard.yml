@@ -30,6 +30,7 @@ jobs:
       security-events: write
       id-token: write   # OIDC for publish_results
       contents: read
+      actions: read     # workflow YAML analysis (Token-Permissions, Pinned-Dependencies)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
