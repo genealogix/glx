@@ -6,6 +6,6 @@ persons:
         fields:
           given: "Robert"
           surname: "Thompson"
-      gender: male
+      sex: male
       invalid_property: "should fail"
       another_invalid: "also bad"

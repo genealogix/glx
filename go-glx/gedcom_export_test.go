@@ -1574,9 +1574,139 @@ func TestGetStringProperty(t *testing.T) {
 	assert.False(t, ok)
 }
 
+// TestGetScalarProperty covers the three shapes that a `temporal: true`
+// property takes on disk — plain string, single temporal map, temporal list —
+// plus the negative cases (missing / empty / wrong scalar type). Export
+// paths for sex/gender depend on this helper to avoid silently dropping
+// valid-but-temporal values.
+func TestGetScalarProperty(t *testing.T) {
+	cases := []struct {
+		name    string
+		props   map[string]any
+		key     string
+		wantVal string
+		wantOK  bool
+	}{
+		{"plain_string", map[string]any{"sex": "male"}, "sex", "male", true},
+		{"single_temporal_map", map[string]any{"sex": map[string]any{"value": "female", "date": "1850"}}, "sex", "female", true},
+		{"temporal_list_first_wins", map[string]any{"sex": []any{
+			map[string]any{"value": "male", "date": "1850"},
+			map[string]any{"value": "female", "date": "1860"},
+		}}, "sex", "male", true},
+		{"temporal_list_bare_strings", map[string]any{"sex": []any{"male"}}, "sex", "male", true},
+		{"empty_string", map[string]any{"sex": ""}, "sex", "", false},
+		{"empty_map", map[string]any{"sex": map[string]any{}}, "sex", "", false},
+		{"empty_list", map[string]any{"sex": []any{}}, "sex", "", false},
+		{"temporal_empty_value", map[string]any{"sex": map[string]any{"value": ""}}, "sex", "", false},
+		{"missing_key", map[string]any{"sex": "male"}, "gender", "", false},
+		{"nil_map", nil, "sex", "", false},
+		{"non_string_scalar", map[string]any{"sex": 42}, "sex", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			val, ok := getScalarProperty(tc.props, tc.key)
+			assert.Equal(t, tc.wantOK, ok)
+			assert.Equal(t, tc.wantVal, val)
+		})
+	}
+}
+
 // ============================================================================
 // exportPerson tests
 // ============================================================================
+
+// TestExportPerson_IdentityOnlyGenderDoesNotEmitSEX verifies that a person
+// who only has a `gender: nonbinary` identity (no recorded `sex`) produces
+// NO GEDCOM SEX sub-record. Emitting `SEX U` or similar would silently
+// discard the identity data and conflate sex with gender — the exact
+// conflation the two-field split exists to avoid.
+func TestExportPerson_IdentityOnlyGenderDoesNotEmitSEX(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX:           &GLXFile{},
+		PersonXRefMap: map[string]string{"person-1": "@I1@"},
+		PlaceStrings:  map[string]string{},
+	}
+	person := &Person{
+		Properties: map[string]any{
+			PersonPropertyGender: GenderNonbinary,
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagSex {
+			t.Fatalf("expected no SEX sub-record for identity-only person, got %q", sub.Value)
+		}
+	}
+}
+
+// TestExportPerson_LegacyGenderFallsBackToSEX confirms the companion
+// behavior: a pre-split archive with only `gender: "male"` still emits
+// `1 SEX M` via the legacy fallback in exportPerson. This locks in the
+// back-compat contract referenced in the CHANGELOG.
+func TestExportPerson_LegacyGenderFallsBackToSEX(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX:           &GLXFile{},
+		PersonXRefMap: map[string]string{"person-1": "@I1@"},
+		PlaceStrings:  map[string]string{},
+	}
+	person := &Person{
+		Properties: map[string]any{
+			PersonPropertyGender: SexMale,
+		},
+	}
+
+	record := exportPerson("person-1", person, expCtx)
+
+	var foundSex bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagSex {
+			foundSex = true
+			assert.Equal(t, "M", sub.Value)
+		}
+	}
+	assert.True(t, foundSex, "legacy gender:male must still produce SEX M via fallback")
+}
+
+// TestExportPerson_TemporalSexStillEmitsSEX guards against the regression
+// Copilot flagged: `sex` is declared `temporal: true`, so a valid archive may
+// store it as a map (`{value, date}`) or a list. Export must extract the
+// scalar and still emit `1 SEX M` — the previous `getStringProperty`-only
+// path silently dropped SEX for all temporal shapes.
+func TestExportPerson_TemporalSexStillEmitsSEX(t *testing.T) {
+	cases := []struct {
+		name string
+		sex  any
+		want string
+	}{
+		{"temporal_map", map[string]any{"value": "male", "date": "1850"}, "M"},
+		{"temporal_list", []any{map[string]any{"value": "female", "date": "1860"}}, "F"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			expCtx := &ExportContext{
+				GLX:           &GLXFile{},
+				PersonXRefMap: map[string]string{"person-1": "@I1@"},
+				PlaceStrings:  map[string]string{},
+			}
+			person := &Person{
+				Properties: map[string]any{PersonPropertySex: tc.sex},
+			}
+
+			record := exportPerson("person-1", person, expCtx)
+
+			var foundSex bool
+			for _, sub := range record.SubRecords {
+				if sub.Tag == GedcomTagSex {
+					foundSex = true
+					assert.Equal(t, tc.want, sub.Value)
+				}
+			}
+			assert.True(t, foundSex, "temporal sex must still produce a SEX sub-record")
+		})
+	}
+}
 
 func TestExportPerson_Basic(t *testing.T) {
 	expCtx := &ExportContext{
@@ -1607,7 +1737,7 @@ func TestExportPerson_Basic(t *testing.T) {
 					"type":    "birth",
 				},
 			},
-			"gender": "male",
+			"sex": "male",
 		},
 	}
 
@@ -1713,7 +1843,7 @@ func TestExportPerson_WithEvents(t *testing.T) {
 					"surname": "Smith",
 				},
 			},
-			"gender": "male",
+			"sex": "male",
 		},
 	}
 
@@ -1798,7 +1928,7 @@ func TestExportPerson_MultipleNames(t *testing.T) {
 					},
 				},
 			},
-			"gender": "female",
+			"sex": "female",
 		},
 	}
 
@@ -1856,7 +1986,7 @@ func TestExportPerson_WithProperties(t *testing.T) {
 					"surname": "Smith",
 				},
 			},
-			"gender":      "male",
+			"sex":         "male",
 			"occupation":  "Farmer",
 			"religion":    "Baptist",
 			"education":   "Harvard",
@@ -1990,18 +2120,19 @@ func TestExportPerson_NameFormat(t *testing.T) {
 	}
 }
 
-func TestMapGenderToSex(t *testing.T) {
+func TestMapSexToGEDCOM(t *testing.T) {
 	// Test fallback path (nil context)
-	assert.Equal(t, "M", mapGenderToSex("male", nil))
-	assert.Equal(t, "F", mapGenderToSex("female", nil))
-	assert.Equal(t, "X", mapGenderToSex("other", nil))
-	assert.Equal(t, "U", mapGenderToSex("unknown", nil))
-	assert.Equal(t, "U", mapGenderToSex("", nil))
+	assert.Equal(t, "M", mapSexToGEDCOM("male", nil))
+	assert.Equal(t, "F", mapSexToGEDCOM("female", nil))
+	assert.Equal(t, "X", mapSexToGEDCOM("other", nil))
+	assert.Equal(t, "U", mapSexToGEDCOM("unknown", nil))
+	assert.Equal(t, "N", mapSexToGEDCOM("not_recorded", nil))
+	assert.Equal(t, "U", mapSexToGEDCOM("", nil))
 
-	// Test vocabulary lookup path
+	// Test vocabulary lookup path (sex_types preferred)
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
-			GenderTypes: map[string]*VocabularyEntry{
+			SexTypes: map[string]*VocabularyEntry{
 				"male":       {Label: "Male", GEDCOM: "M"},
 				"female":     {Label: "Female", GEDCOM: "F"},
 				"custom":     {Label: "Custom", GEDCOM: "X"},
@@ -2009,18 +2140,58 @@ func TestMapGenderToSex(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, "M", mapGenderToSex("male", expCtx))
-	assert.Equal(t, "F", mapGenderToSex("female", expCtx))
-	assert.Equal(t, "X", mapGenderToSex("custom", expCtx))
+	assert.Equal(t, "M", mapSexToGEDCOM("male", expCtx))
+	assert.Equal(t, "F", mapSexToGEDCOM("female", expCtx))
+	assert.Equal(t, "X", mapSexToGEDCOM("custom", expCtx))
 	// Falls back to default for values not in vocab
-	assert.Equal(t, "U", mapGenderToSex("nonexistent", expCtx))
+	assert.Equal(t, "U", mapSexToGEDCOM("nonexistent", expCtx))
 	// Falls back to default when vocab entry has empty GEDCOM field
-	assert.Equal(t, "U", mapGenderToSex("no_mapping", expCtx))
+	assert.Equal(t, "U", mapSexToGEDCOM("no_mapping", expCtx))
 
 	// Test with non-nil context but nil GLX
 	expCtxNilGLX := &ExportContext{GLX: nil}
-	assert.Equal(t, "M", mapGenderToSex("male", expCtxNilGLX))
-	assert.Equal(t, "U", mapGenderToSex("unknown", expCtxNilGLX))
+	assert.Equal(t, "M", mapSexToGEDCOM("male", expCtxNilGLX))
+	assert.Equal(t, "U", mapSexToGEDCOM("unknown", expCtxNilGLX))
+
+	// Falls back to gender_types when sex_types lacks the key (back-compat).
+	expCtxGender := &ExportContext{
+		GLX: &GLXFile{
+			GenderTypes: map[string]*VocabularyEntry{
+				"legacy": {Label: "Legacy", GEDCOM: "X"},
+			},
+		},
+	}
+	assert.Equal(t, "X", mapSexToGEDCOM("legacy", expCtxGender))
+
+	// not_recorded is version-dependent: "N" is a GEDCOM 5.5.x value and not
+	// valid in GEDCOM 7.0 (M/F/X/U only), so it collapses to "U" on 7.0
+	// exports.
+	expCtx551 := &ExportContext{GLX: &GLXFile{}, Version: GEDCOM551}
+	assert.Equal(t, "N", mapSexToGEDCOM("not_recorded", expCtx551))
+	expCtx70 := &ExportContext{GLX: &GLXFile{}, Version: GEDCOM70}
+	assert.Equal(t, "U", mapSexToGEDCOM("not_recorded", expCtx70))
+
+	// Vocabulary-provided values are also clamped to 7.0's enum — a custom
+	// sex_types entry with gedcom: "N" must NOT leak into a 7.0 export.
+	expCtx70WithCustomN := &ExportContext{
+		GLX: &GLXFile{
+			SexTypes: map[string]*VocabularyEntry{
+				"legacy_n": {Label: "Legacy N", GEDCOM: "N"},
+				"legacy_z": {Label: "Legacy Z", GEDCOM: "Z"},
+			},
+		},
+		Version: GEDCOM70,
+	}
+	assert.Equal(t, "U", mapSexToGEDCOM("legacy_n", expCtx70WithCustomN))
+	assert.Equal(t, "U", mapSexToGEDCOM("legacy_z", expCtx70WithCustomN))
+
+	// On 5.5.1 the vocabulary mapping is preserved verbatim.
+	expCtx551WithCustomN := &ExportContext{
+		GLX:     expCtx70WithCustomN.GLX,
+		Version: GEDCOM551,
+	}
+	assert.Equal(t, "N", mapSexToGEDCOM("legacy_n", expCtx551WithCustomN))
+	assert.Equal(t, "Z", mapSexToGEDCOM("legacy_z", expCtx551WithCustomN))
 }
 
 func TestBuildPersonEventsIndex(t *testing.T) {
@@ -2134,7 +2305,7 @@ func TestExportGEDCOM_WithPersons(t *testing.T) {
 							"type":    "birth",
 						},
 					},
-					"gender": "male",
+					"sex": "male",
 				},
 			},
 			"person-2": {
@@ -2146,7 +2317,7 @@ func TestExportGEDCOM_WithPersons(t *testing.T) {
 							"surname": "Doe",
 						},
 					},
-					"gender": "female",
+					"sex": "female",
 				},
 			},
 		},
@@ -2726,7 +2897,7 @@ func TestExportPerson_NoteFromProperties(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"gender": "male",
+					"sex": "male",
 					"name": map[string]any{
 						"value": "Robert Bruce",
 						"fields": map[string]any{
@@ -2833,7 +3004,7 @@ func TestExportPerson_MultipleOccupations(t *testing.T) {
 		Persons: map[string]*Person{
 			"person-1": {
 				Properties: map[string]any{
-					"gender": "male",
+					"sex": "male",
 					"name": map[string]any{
 						"value":  "John Smith",
 						"fields": map[string]any{"given": "John", "surname": "Smith"},

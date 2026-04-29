@@ -417,7 +417,7 @@ func resolveCensusPerson(member CensusHouseholdMember, existing *GLXFile, result
 		},
 	}
 	if member.Sex != "" {
-		person.Properties[PersonPropertyGender] = strings.ToLower(member.Sex)
+		person.Properties[PersonPropertySex] = strings.ToLower(member.Sex)
 	}
 
 	result.Persons[personID] = person
@@ -526,12 +526,12 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 			}
 		}
 
-		// Gender
+		// Sex (as recorded in the census)
 		if member.Sex != "" {
-			assertionID := uniqueAssertionID(fmt.Sprintf("assertion-%s-gender-%s", pidSlug, yearStr), existing, result)
+			assertionID := uniqueAssertionID(fmt.Sprintf("assertion-%s-sex-%s", pidSlug, yearStr), existing, result)
 			result.Assertions[assertionID] = &Assertion{
 				Subject:    EntityRef{Person: personID},
-				Property:   PersonPropertyGender,
+				Property:   PersonPropertySex,
 				Value:      strings.ToLower(member.Sex),
 				Citations:  []string{citationID},
 				Confidence: ConfidenceLevelHigh,

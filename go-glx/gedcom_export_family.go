@@ -65,14 +65,14 @@ func reconstructFamilies(expCtx *ExportContext) {
 			continue
 		}
 
-		// Determine HUSB/WIFE by gender
+		// Determine HUSB/WIFE by recorded sex
 		var husbandID, wifeID string
 		if len(spouseIDs) >= 2 {
 			husbandID, wifeID = assignHusbandWife(spouseIDs[0], spouseIDs[1], expCtx)
 		} else {
-			// Single-spouse marriage — assign by gender
-			gender := getPersonGender(spouseIDs[0], expCtx)
-			if gender == GenderFemale {
+			// Single-spouse marriage — assign by recorded sex
+			sex := getPersonSex(spouseIDs[0], expCtx)
+			if sex == SexFemale {
 				wifeID = spouseIDs[0]
 			} else {
 				husbandID = spouseIDs[0]
@@ -513,36 +513,62 @@ func extractSpouseIDs(rel *Relationship) []string {
 	return spouseIDs
 }
 
-// assignHusbandWife determines HUSB/WIFE assignment based on gender.
+// assignHusbandWife determines HUSB/WIFE assignment based on recorded sex.
 // Male -> HUSB, Female -> WIFE. If both same or unknown, first -> HUSB, second -> WIFE.
 func assignHusbandWife(personA, personB string, expCtx *ExportContext) (husbandID, wifeID string) {
-	genderA := getPersonGender(personA, expCtx)
-	genderB := getPersonGender(personB, expCtx)
+	sexA := getPersonSex(personA, expCtx)
+	sexB := getPersonSex(personB, expCtx)
 
 	switch {
-	case genderA == GenderMale && genderB == GenderFemale:
+	case sexA == SexMale && sexB == SexFemale:
 		return personA, personB
-	case genderA == GenderFemale && genderB == GenderMale:
+	case sexA == SexFemale && sexB == SexMale:
 		return personB, personA
 	default:
-		// Same gender, both unknown, or mixed unknown — first is HUSB, second is WIFE
+		// Same sex, both unknown, or mixed unknown — first is HUSB, second is WIFE
 		return personA, personB
 	}
 }
 
-// getPersonGender retrieves the gender property for a person ID.
-func getPersonGender(personID string, expCtx *ExportContext) string {
+// getPersonSex retrieves the recorded sex property for a person ID, falling
+// back to the legacy gender property for pre-split archives.
+//
+// Identity-only gender values (notably `nonbinary`) are NEVER surfaced as sex
+// — after the two-field split, `gender` may carry identity values that would
+// corrupt sex-based export logic (HUSB/WIFE assignment, GEDCOM SEX emission)
+// if treated as recorded sex. Only legacy values that are also valid in
+// `sex_types` fall through from `gender`.
+func getPersonSex(personID string, expCtx *ExportContext) string {
 	person, ok := expCtx.GLX.Persons[personID]
-	if !ok {
+	if !ok || person == nil {
 		return ""
 	}
 
-	gender, ok := getStringProperty(person.Properties, PersonPropertyGender)
-	if !ok {
-		return ""
+	// sex and gender are both declared `temporal: true` in
+	// person-properties, so the scalar extraction (map[value] / list-first)
+	// must run before isLegacySexValue — otherwise HUSB/WIFE inference
+	// silently degrades to first/second on any archive that stores sex as
+	// a temporal shape.
+	if sex, ok := getScalarProperty(person.Properties, PersonPropertySex); ok {
+		return sex
+	}
+	if gender, ok := getScalarProperty(person.Properties, PersonPropertyGender); ok && isLegacySexValue(gender) {
+		return gender
 	}
 
-	return gender
+	return ""
+}
+
+// isLegacySexValue reports whether a gender-property value could plausibly be
+// a pre-split `gender:` that actually denoted recorded sex. Identity-only
+// values (e.g. `nonbinary`) do not pass this filter.
+func isLegacySexValue(v string) bool {
+	switch v {
+	case SexMale, SexFemale, SexUnknown, SexOther, SexNotRecorded:
+		return true
+	}
+
+	return false
 }
 
 // relationshipTypeToPedi maps GLX relationship types to GEDCOM PEDI values.
@@ -587,13 +613,13 @@ func extractParentChildIDs(rel *Relationship) (parentID, childID string) {
 
 // createSyntheticFamily creates a single-parent FAM for a parent without a marriage.
 func createSyntheticFamily(parentID string, expCtx *ExportContext, parentToFamilies map[string][]int) int {
-	gender := getPersonGender(parentID, expCtx)
+	sex := getPersonSex(parentID, expCtx)
 
 	family := &ExportFamily{
 		ChildPedigrees: make(map[string]string),
 	}
 
-	if gender == GenderFemale {
+	if sex == SexFemale {
 		family.WifeID = parentID
 	} else {
 		family.HusbandID = parentID

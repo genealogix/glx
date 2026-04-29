@@ -122,12 +122,15 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 	name := extractPersonName(person)
 	vitals = append(vitals, vitalRecord{"Name", name})
 
-	// Sex/Gender
-	gender := propertyString(person.Properties, "gender")
-	if gender == "" {
-		gender = propertyString(person.Properties, "sex")
+	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(personSex(person))})
+
+	// Gender identity — shown only when it adds information beyond the Sex
+	// row. For pre-split archives carrying `gender: "male"`, the Sex row
+	// already surfaces that value via legacy fallback, so the Gender row
+	// is suppressed to avoid printing the same value twice.
+	if identity := displayableGenderIdentity(person); identity != "" {
+		vitals = append(vitals, vitalRecord{"Gender", identity})
 	}
-	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(gender)})
 
 	// Birth — from events
 	birth := findEventByType(personID, "birth", eventIDs, archive)

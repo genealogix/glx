@@ -73,12 +73,12 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			createNameAssertion(personID, parsedName, sub, conv)
 
 		case GedcomTagSex:
-			// Gender mapping
-			gender := mapGEDCOMSex(sub.Value)
-			person.Properties[PersonPropertyGender] = gender
+			// Sex mapping (what the source recorded)
+			sex := mapGEDCOMSex(sub.Value)
+			person.Properties[PersonPropertySex] = sex
 
 			// Create assertion
-			createPropertyAssertion(personID, PersonPropertyGender, gender, sub, conv)
+			createPropertyAssertion(personID, PersonPropertySex, sex, sub, conv)
 
 		case GedcomTagBirt, GedcomTagChr, GedcomTagDeat, GedcomTagBuri, GedcomTagCrem, GedcomTagAdop, GedcomTagBapm, GedcomTagBarm, GedcomTagBatm, GedcomTagBasm,
 			GedcomTagBles, GedcomTagChra, GedcomTagConf, GedcomTagFcom, GedcomTagOrdn, GedcomTagNatu, GedcomTagEmig, GedcomTagImmi,
@@ -305,27 +305,26 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	return nil
 }
 
-// mapGEDCOMSex maps GEDCOM sex values to GLX gender
+// mapGEDCOMSex maps GEDCOM SEX values to GLX sex property values.
+// "N" and an empty/whitespace-only tag value both map to SexNotRecorded
+// per GEDCOM 5.5.5 — the source did not contain a sex field. "U" means
+// the source was consulted but the sex could not be determined. Unrecognized
+// values are preserved as lowercase so the data is not lost; validation will
+// warn about unknown sex types (#520).
 func mapGEDCOMSex(sex string) string {
-	switch strings.ToUpper(sex) {
+	switch strings.ToUpper(strings.TrimSpace(sex)) {
 	case "M":
-		return GenderMale
+		return SexMale
 	case "F":
-		return GenderFemale
+		return SexFemale
 	case "U":
-		return GenderUnknown
+		return SexUnknown
 	case "X":
-		return GenderOther
+		return SexOther
+	case "N", "":
+		return SexNotRecorded
 	default:
-		// Preserve unrecognized values as lowercase so the data is not lost.
-		// Validation will warn about unknown gender types. Fixes #520.
-		// Note: GEDCOM export maps unknown values to SEX U; true roundtrip
-		// requires a custom gender_types vocabulary entry with a gedcom: field.
-		trimmed := strings.ToLower(strings.TrimSpace(sex))
-		if trimmed == "" {
-			return GenderUnknown
-		}
-		return trimmed
+		return strings.ToLower(strings.TrimSpace(sex))
 	}
 }
 

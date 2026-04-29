@@ -6,5 +6,5 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
     notes: "Blacksmith in Leeds, Yorkshire. Married Mary Brown in 1875."
