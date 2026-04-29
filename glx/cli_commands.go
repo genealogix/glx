@@ -1379,21 +1379,23 @@ var (
 )
 
 var linkCmd = &cobra.Command{
-	Use:   "link <familysearch-ark-url>",
-	Short: "Create a FamilySearch citation from an ARK URL",
+	Use:   "link <familysearch-ark>",
+	Short: "Create a FamilySearch citation from an ARK",
 	Long: `Create a GLX citation (and, if needed, a FamilySearch repository and source)
-from a FamilySearch ARK URL.
+from a FamilySearch ARK. Accepts full ARK URLs
+(https://www.familysearch.org/ark:/61903/...) as well as bare ARK identifiers
+(ark:/61903/...); the citation always records the canonical URL form.
 
 This is an offline, URL-parse-only MVP of the FamilySearch linker described in
-issue #87. It performs no network I/O. The citation captures the URL, today's
-date as the accessed date, and the ARK under the structured external_ids
-property, matching the shape produced by GEDCOM 7 EXID import.
+issue #87. It performs no network I/O. The citation captures the canonical
+URL, today's date as the accessed date, and the ARK under the structured
+external_ids property, matching the shape produced by GEDCOM 7 EXID import.
 
 Exactly one of --source or --create-source must be provided. If the target
 archive does not already have a repository-familysearch entity, one is
 created automatically. If it does, the existing entity is left untouched.
 
-Re-running the command with the same ARK URL is idempotent — a citation with
+Re-running the command with the same ARK is idempotent — a citation with
 the deterministic ID citation-familysearch-<slug> is not re-created.`,
 	Example: `  # Attach to an existing source
   glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \

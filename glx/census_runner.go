@@ -107,12 +107,13 @@ func loadArchiveForCensus(path string) (*glxlib.GLXFile, error) {
 }
 
 // writeCensusEntities serializes the generated entities and writes them to
-// the archive directory. Returns the number of entity maps written (count
+// the archive directory. Returns the number of entity files written (count
 // reported in the success message).
 //
-// Entity ID collisions are caught by validateCensusRefs before this function
-// is called. File paths use random names (SerializeMultiFileToMap), so
-// file-level collision checks are not meaningful.
+// SerializeMultiFileToMap (called by writePartialArchive) derives filenames
+// deterministically from entity IDs and rejects case-insensitive filename
+// collisions with ErrCaseInsensitiveCollision. Cross-reference validity is
+// checked separately by validateCensusRefs before this function runs.
 func writeCensusEntities(archivePath string, result *glxlib.CensusResult) (int, error) {
 	partial := &glxlib.GLXFile{
 		Persons:    result.Persons,
