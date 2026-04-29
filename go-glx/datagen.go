@@ -29,6 +29,16 @@ func secureIntn(n int) int {
 	return int(r.Int64())
 }
 
+// randomSexValue picks a random canonical sex_types vocabulary value.
+// gofakeit.Gender() returns human labels ("Male"/"Female") which are
+// out-of-vocab; this helper returns the lowercase keys (`male`/`female`)
+// so generated archives pass validation cleanly.
+var datagenSexValues = []string{SexMale, SexFemale}
+
+func randomSexValue() string {
+	return datagenSexValues[secureIntn(len(datagenSexValues))]
+}
+
 // GenerateTestData creates a complete GLXFile structure with plausible test data
 // for a specified number of people.
 func GenerateTestData(numPeople int) (*GLXFile, error) {
@@ -64,9 +74,9 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 		glxFile.Persons[personID] = &Person{
 			Properties: map[string]any{
-				"primary_name": gofakeit.Name(),
-				"gender":       gofakeit.Gender(),
-				"living":       living,
+				"primary_name":    gofakeit.Name(),
+				PersonPropertySex: randomSexValue(),
+				"living":          living,
 			},
 		}
 

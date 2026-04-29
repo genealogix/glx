@@ -113,7 +113,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
 ```
 
 **Key Points:**

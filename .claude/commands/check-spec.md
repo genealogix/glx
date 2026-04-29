@@ -21,7 +21,7 @@ Analyze all specification files in the `specification/` directory:
 
 ### Standard Vocabularies
 - `5-standard-vocabularies/` - Controlled vocabulary definitions (.glx files)
-  - citation-properties.glx, confidence-levels.glx, event-properties.glx, event-types.glx, gender-types.glx, media-properties.glx, media-types.glx, participant-roles.glx, person-properties.glx, place-properties.glx, place-types.glx, relationship-properties.glx, relationship-types.glx, repository-properties.glx, repository-types.glx, source-properties.glx, source-types.glx
+  - citation-properties.glx, confidence-levels.glx, event-properties.glx, event-types.glx, gender-types.glx, media-properties.glx, media-types.glx, participant-roles.glx, person-properties.glx, place-properties.glx, place-types.glx, relationship-properties.glx, relationship-types.glx, repository-properties.glx, repository-types.glx, sex-types.glx, source-properties.glx, source-types.glx
 
 **Note**: Schema validation is handled by `/check-schema-drift` - this command focuses on internal specification consistency only.
 

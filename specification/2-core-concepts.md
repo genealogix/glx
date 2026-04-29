@@ -53,7 +53,8 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `media-types.glx` | Photo, document, audio, etc. |
 | `participant-roles.glx` | Subject, witness, godparent, etc. |
 | `confidence-levels.glx` | High, medium, low, disputed |
-| `gender-types.glx` | Male, female, unknown, other |
+| `sex-types.glx` | Male, female, unknown, not_recorded, other (recorded sex) |
+| `gender-types.glx` | Male, female, nonbinary, other (self-identified identity) |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
 | `relationship-properties.glx` | Relationship properties |
@@ -430,7 +431,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
       occupation: "blacksmith"
       residence: "place-leeds"  # Single-value shorthand; see Temporal Properties for list format
 ```
@@ -439,7 +440,7 @@ persons:
 
 All properties are defined in property vocabularies (see Archive-Owned Vocabularies above). The `person-properties.glx` vocabulary defines:
 
-- What properties exist (`name`, `gender`, `occupation`, etc.)
+- What properties exist (`name`, `sex`, `gender`, `occupation`, etc.)
 - Their data types (string, date, place reference)
 - Whether they can change over time (temporal)
 - Whether they have structured fields
@@ -456,7 +457,7 @@ Properties marked as `temporal: true` in vocabularies can hold multiple values â
 
 ```yaml
 properties:
-  gender: "male"
+  sex: "male"
   occupation: "blacksmith"
 ```
 

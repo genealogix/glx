@@ -45,7 +45,7 @@ persons:
         fields:
           given: "Mary"
           surname: "Thompson"
-      gender: female
+      sex: female
 ```
 
 ### persons/person-father.glx
@@ -59,7 +59,7 @@ persons:
         fields:
           given: "Robert"
           surname: "Thompson"
-      gender: male
+      sex: male
 ```
 
 ### persons/person-child-alice.glx
@@ -73,7 +73,7 @@ persons:
         fields:
           given: "Alice"
           surname: "Thompson"
-      gender: female
+      sex: female
 ```
 
 ### persons/person-child-bob.glx
@@ -87,7 +87,7 @@ persons:
         fields:
           given: "Robert"
           surname: "Thompson"
-      gender: male
+      sex: male
 ```
 
 ### relationships/rel-marriage.glx
