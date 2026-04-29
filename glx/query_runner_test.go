@@ -314,7 +314,7 @@ func TestQueryAssertions_SubjectFilter(t *testing.T) {
 		},
 		Assertions: map[string]*glxlib.Assertion{
 			"a-1": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "name", Value: "Jane Webb"},
-			"a-2": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "gender", Value: "female"},
+			"a-2": {Subject: glxlib.EntityRef{Person: "person-jane"}, Property: "sex", Value: "female"},
 			"a-3": {Subject: glxlib.EntityRef{Person: "person-john"}, Property: "name", Value: "John Smith"},
 		},
 	}
@@ -411,7 +411,7 @@ func TestExtractAllNames_TemporalList(t *testing.T) {
 }
 
 func TestExtractAllNames_NoName(t *testing.T) {
-	person := &glxlib.Person{Properties: map[string]any{"gender": "male"}}
+	person := &glxlib.Person{Properties: map[string]any{"sex": "male"}}
 	names := extractAllNames(person)
 	assert.Nil(t, names)
 }
@@ -458,7 +458,7 @@ func TestExtractPersonName(t *testing.T) {
 		},
 		{
 			name:  "no name property",
-			props: map[string]any{"gender": "male"},
+			props: map[string]any{"sex": "male"},
 			want:  "(unnamed)",
 		},
 	}

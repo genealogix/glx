@@ -63,7 +63,7 @@ Validate an archive:
 
 The core entity types map to genealogical concepts:
 
-  - [Person] — an individual, with vocabulary-defined properties (name, gender, etc.)
+  - [Person] — an individual, with vocabulary-defined properties (name, sex, gender, etc.)
   - [Event] — a life event (birth, death, marriage) linked to participants and places
   - [Relationship] — a connection between people (parent-child, marriage, etc.)
   - [Place] — a geographic location with optional hierarchical parent

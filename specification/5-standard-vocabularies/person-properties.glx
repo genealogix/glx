@@ -32,12 +32,18 @@ person_properties:
         label: "Suffix"
         description: "Generational suffix (Jr., Sr., III)"
 
+  sex:
+    label: "Sex"
+    description: "Sex as recorded in source documents (e.g., GEDCOM SEX, census enumerations)"
+    vocabulary_type: sex_types
+    temporal: true
+
   gender:
     label: "Gender"
-    description: "Gender identity"
+    description: "Self-identified gender identity (modern/living persons)"
     vocabulary_type: gender_types
     temporal: true
-  
+
   occupation:
     label: "Occupation"
     description: "Profession or trade"

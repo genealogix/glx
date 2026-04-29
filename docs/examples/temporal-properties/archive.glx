@@ -25,7 +25,7 @@ persons:
             given: "John"
             surname: "Smith"
 
-      gender: "male"
+      sex: "male"
 
       # Occupations throughout life
       occupation:

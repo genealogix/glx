@@ -32,6 +32,7 @@ export default {
         'utf-8'
       ),
       'repository-types': readFileSync(resolve(vocabDir, 'repository-types.glx'), 'utf-8'),
+      'sex-types': readFileSync(resolve(vocabDir, 'sex-types.glx'), 'utf-8'),
       'source-properties': readFileSync(resolve(vocabDir, 'source-properties.glx'), 'utf-8'),
       'source-types': readFileSync(resolve(vocabDir, 'source-types.glx'), 'utf-8')
     }

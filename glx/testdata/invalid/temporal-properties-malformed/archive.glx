@@ -26,9 +26,9 @@ person_properties:
         label: "Surname"
         description: "Family name"
 
-  gender:
-    label: "Gender"
-    description: "Gender identity"
+  sex:
+    label: "Sex"
+    description: "Sex as recorded in source documents"
     value_type: string
     temporal: true
 

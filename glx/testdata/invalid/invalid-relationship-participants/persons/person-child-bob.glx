@@ -6,4 +6,4 @@ persons:
         fields:
           given: "Robert"
           surname: "Thompson"
-      gender: male
+      sex: male

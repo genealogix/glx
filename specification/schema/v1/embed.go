@@ -60,6 +60,11 @@ var MediaTypesSchema []byte
 //go:embed vocabularies/confidence-levels.schema.json
 var ConfidenceLevelsSchema []byte
 
+// SexTypesSchema contains the embedded sex-types vocabulary schema.
+//
+//go:embed vocabularies/sex-types.schema.json
+var SexTypesSchema []byte
+
 // GenderTypesSchema contains the embedded gender-types vocabulary schema.
 //
 //go:embed vocabularies/gender-types.schema.json

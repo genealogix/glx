@@ -72,7 +72,7 @@ func TestE2E_GEDCOM551_Shakespeare(t *testing.T) {
 		given, family := ExtractNameFields(person.Properties[PersonPropertyName])
 		if given == "William" && family == "Shakespeare" {
 			foundWilliam = true
-			if gender, ok := person.Properties[PersonPropertyGender].(string); !ok || gender != "male" {
+			if sex, ok := person.Properties[PersonPropertySex].(string); !ok || sex != "male" {
 				t.Error("William Shakespeare should be male")
 			}
 		}
