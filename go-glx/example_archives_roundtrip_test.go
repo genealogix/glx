@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,7 +103,9 @@ func discoverExampleArchives(examplesRoot string) ([]exampleArchive, error) {
 		}
 		dir := filepath.Join(examplesRoot, entry.Name())
 		archivePath := filepath.Join(dir, "archive.glx")
-		if info, err := os.Lstat(archivePath); err == nil && info.Mode().IsRegular() {
+		info, err := os.Lstat(archivePath)
+		switch {
+		case err == nil && info.Mode().IsRegular():
 			archives = append(archives, exampleArchive{
 				name:           entry.Name(),
 				dir:            dir,
@@ -110,6 +113,8 @@ func discoverExampleArchives(examplesRoot string) ([]exampleArchive, error) {
 			})
 
 			continue
+		case err != nil && !errors.Is(err, fs.ErrNotExist):
+			return nil, fmt.Errorf("lstat %s: %w", archivePath, err)
 		}
 
 		hasGLX, err := dirHasOwnGLXFiles(dir)
@@ -146,44 +151,32 @@ func dirHasOwnGLXFiles(dir string) (bool, error) {
 // relative to dir; returning filepath.SkipDir or another error stops the walk
 // in the standard filepath.Walk way.
 //
-// Non-regular files (symlinks, devices, sockets) are skipped. This is
-// defensive: in normal usage example archives only contain regular .glx files
-// plus vocabulary symlinks (which are also filtered out by isVocabularyPath
-// later). Skipping non-regular files prevents the test from following an
-// unexpected symlink out of docs/examples/ if one ever lands there.
+// vocabularies/ subtrees are pruned at the directory boundary so we don't
+// stat the (often-symlinked) entries inside them. Non-regular files
+// (symlinks, devices, sockets) at the .glx level are also skipped — defensive
+// in case a non-regular .glx ever lands outside vocabularies/.
 func walkOwnGLXFiles(dir string, fn func(absPath, rel string) error) error {
 	return filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if info.IsDir() || filepath.Ext(path) != ".glx" {
+		if info.IsDir() {
+			if filepath.Base(path) == "vocabularies" {
+				return filepath.SkipDir
+			}
+
 			return nil
 		}
-		if !info.Mode().IsRegular() {
+		if filepath.Ext(path) != ".glx" || !info.Mode().IsRegular() {
 			return nil
 		}
 		rel, relErr := filepath.Rel(dir, path)
 		if relErr != nil {
 			return relErr
 		}
-		if isVocabularyPath(rel) {
-			return nil
-		}
 
 		return fn(path, rel)
 	})
-}
-
-// isVocabularyPath reports whether a relative path lives inside a vocabularies/
-// directory. Example archives store vocabularies as git symlinks to the canonical
-// spec, which on Windows checkouts without core.symlinks=true become plain text
-// files containing a relative path; including them in the file map would break
-// YAML deserialization. Vocabularies are not part of the example's own content.
-func isVocabularyPath(rel string) bool {
-	slashed := filepath.ToSlash(rel)
-
-	return strings.HasPrefix(slashed, "vocabularies/") ||
-		strings.Contains(slashed, "/vocabularies/")
 }
 
 // roundTripExampleArchive runs the schema and semantic-equality assertions
