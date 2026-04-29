@@ -313,6 +313,110 @@ func TestMigrateGenderToSex_IsIdempotent(t *testing.T) {
 	assert.Equal(t, "sex", archive.Assertions["a-1"].Property)
 }
 
+// TestMigrateGenderToSex_SkipsWhenGenderHasCustomIdentity verifies that an
+// archive using post-split semantics with a custom identity value (one that
+// isn't the canonical `nonbinary`) is not migrated. Otherwise the rename
+// would silently move identity values into `sex` and corrupt the archive.
+func TestMigrateGenderToSex_SkipsWhenGenderHasCustomIdentity(t *testing.T) {
+	cases := []struct {
+		name  string
+		value any
+	}{
+		{"string_two_spirit", "two-spirit"},
+		{"string_fluid", "fluid"},
+		{"temporal_map_custom", map[string]any{"value": "two-spirit", "date": "2020"}},
+		{"temporal_list_custom", []any{
+			map[string]any{"value": "male", "date": "2000"},
+			map[string]any{"value": "two-spirit", "date": "2020"},
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := &glxlib.GLXFile{
+				Persons: map[string]*glxlib.Person{
+					"person-1": {Properties: map[string]any{"gender": tc.value}},
+				},
+			}
+
+			warn := &bytes.Buffer{}
+			report := migrateGenderToSex(archive, warn)
+
+			assert.Equal(t, 0, report.PropertiesRenamed,
+				"custom identity values must trip the post-split guard")
+			assert.Equal(t, tc.value, archive.Persons["person-1"].Properties["gender"])
+			assert.NotContains(t, archive.Persons["person-1"].Properties, "sex")
+			assert.Contains(t, warn.String(), "post-split")
+		})
+	}
+}
+
+// TestMigrateGenderToSex_SkipsWhenAssertionHasCustomIdentity covers the
+// assertion-side equivalent of the above: a person-subject assertion with a
+// non-legacy gender value must also be treated as a post-split signal.
+func TestMigrateGenderToSex_SkipsWhenAssertionHasCustomIdentity(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-1": {Properties: map[string]any{"gender": "male"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-1": {
+				Subject:  glxlib.EntityRef{Person: "person-1"},
+				Property: "gender",
+				Value:    "two-spirit",
+			},
+		},
+	}
+
+	warn := &bytes.Buffer{}
+	report := migrateGenderToSex(archive, warn)
+
+	assert.Equal(t, 0, report.PropertiesRenamed)
+	assert.Equal(t, 0, report.AssertionsRenamed)
+	assert.Equal(t, "male", archive.Persons["person-1"].Properties["gender"])
+	assert.Contains(t, warn.String(), "post-split")
+}
+
+// TestMigrateGenderToSex_PreSplitVocabFullClone verifies that all optional
+// VocabularyEntry fields (Category, AppliesTo, MimeType) on user-supplied
+// gender_types entries survive the move into sex_types — earlier the move
+// only copied Label/Description/GEDCOM and silently dropped the rest.
+func TestMigrateGenderToSex_PreSplitVocabFullClone(t *testing.T) {
+	original := &glxlib.VocabularyEntry{
+		Label:       "Custom",
+		Description: "A custom legacy entry",
+		Category:    "demographic",
+		AppliesTo:   []string{"persons", "events"},
+		MimeType:    "text/plain",
+		GEDCOM:      "X",
+	}
+	archive := &glxlib.GLXFile{
+		GenderTypes: map[string]*glxlib.VocabularyEntry{
+			"male":    {Label: "Male", GEDCOM: "M"},
+			"female":  {Label: "Female", GEDCOM: "F"},
+			"unknown": {Label: "Unknown", GEDCOM: "U"},
+			"custom":  original,
+		},
+	}
+
+	report := migrateGenderToSex(archive, &bytes.Buffer{})
+
+	require.Equal(t, 1, report.VocabEntriesRenamed)
+	require.Contains(t, archive.SexTypes, "custom")
+	migrated := archive.SexTypes["custom"]
+	assert.Equal(t, "Custom", migrated.Label)
+	assert.Equal(t, "A custom legacy entry", migrated.Description)
+	assert.Equal(t, "demographic", migrated.Category)
+	assert.Equal(t, []string{"persons", "events"}, migrated.AppliesTo)
+	assert.Equal(t, "text/plain", migrated.MimeType)
+	assert.Equal(t, "X", migrated.GEDCOM)
+
+	// AppliesTo must be a deep copy — mutating the migrated slice must not
+	// reach back into the (now-discarded but caller-shared) original.
+	migrated.AppliesTo[0] = "MUTATED"
+	assert.Equal(t, "persons", original.AppliesTo[0],
+		"AppliesTo should be cloned, not aliased")
+}
+
 // TestMigrateGenderToSex_TemporalShapeValues exercises both the
 // map-with-value and temporal-list value shapes to confirm the rename moves
 // the whole value wholesale rather than only handling scalar strings.

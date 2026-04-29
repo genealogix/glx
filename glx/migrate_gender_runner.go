@@ -30,13 +30,14 @@ import (
 //
 // Legacy detection: the rename is skipped entirely when the archive already
 // carries post-split person data or assertions — a person with
-// `properties.sex` set, a person with `gender == "nonbinary"`, or an
-// assertion targeting `sex` or `gender == "nonbinary"`. Vocabulary-only
-// signals are intentionally ignored because `mergeStandardVocabularies`
-// unconditionally populates `sex_types` and the post-split
-// `person_properties` at load time, so those would always look post-split.
-// In post-split archives `gender` means identity, and treating it as sex
-// would silently corrupt identity data.
+// `properties.sex` set, a person whose `gender` carries a non-legacy-sex
+// value (e.g. `nonbinary`, `two-spirit`, or any custom identity vocab key),
+// or an assertion expressing either signal. Vocabulary-only signals are
+// intentionally ignored because `mergeStandardVocabularies` unconditionally
+// populates `sex_types` and the post-split `person_properties` at load
+// time, so those would always look post-split. In post-split archives
+// `gender` means identity, and treating it as sex would silently corrupt
+// identity data.
 func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateReport {
 	if warnOut == nil {
 		warnOut = io.Discard
@@ -76,10 +77,12 @@ func migrateGenderToSex(archive *glxlib.GLXFile, warnOut io.Writer) *MigrateRepo
 //     identity data). Empty or placeholder shapes like `sex: ""`, `sex: {}`,
 //     or `sex: []` do NOT count — those are malformed/partial and the legacy
 //     data still lives in `gender`.
-//   - Any person has a `gender` value of `nonbinary` (only exists in the
-//     post-split gender vocabulary).
-//   - Any assertion targets the `sex` property, or asserts `gender =
-//     nonbinary`.
+//   - Any person has a `gender` value that is NOT one of the legacy sex
+//     vocabulary keys (male/female/unknown/other/not_recorded). The
+//     standard `nonbinary` and any custom identity values (e.g.
+//     `two-spirit`, `fluid`) all qualify — moving them into `sex` would
+//     corrupt identity data.
+//   - Any assertion expresses either signal above for a person subject.
 func isPostSplitArchive(archive *glxlib.GLXFile) bool {
 	for _, person := range archive.Persons {
 		if person == nil {
@@ -107,7 +110,7 @@ func isPostSplitArchive(archive *glxlib.GLXFile) bool {
 			return true
 		}
 		if assertion.Property == glxlib.PersonPropertyGender &&
-			assertion.Value == glxlib.GenderNonbinary {
+			assertion.Value != "" && !isLegacySexValue(assertion.Value) {
 			return true
 		}
 	}
@@ -115,25 +118,30 @@ func isPostSplitArchive(archive *glxlib.GLXFile) bool {
 	return false
 }
 
-// isIdentityOnlyGenderValue reports whether a gender property value contains
-// `nonbinary` — the canonical "only exists post-split" marker. Handles the
-// string, single-temporal-object, and temporal-list shapes a property can
-// take.
+// isIdentityOnlyGenderValue reports whether a gender property value carries a
+// post-split-only identity — any non-empty value that is NOT one of the legacy
+// sex vocabulary keys (male/female/unknown/other/not_recorded). Examples:
+// `nonbinary`, `two-spirit`, `fluid`, or any custom identity vocab key. Handles
+// the string, single-temporal-map, and temporal-list shapes a property can
+// take; in a list, ANY non-legacy scalar flags the whole value.
 func isIdentityOnlyGenderValue(val any) bool {
+	isIdentity := func(s string) bool {
+		return s != "" && !isLegacySexValue(s)
+	}
 	switch v := val.(type) {
 	case string:
-		return v == glxlib.GenderNonbinary
+		return isIdentity(v)
 	case map[string]any:
 		if s, ok := v["value"].(string); ok {
-			return s == glxlib.GenderNonbinary
+			return isIdentity(s)
 		}
 	case []any:
 		for _, item := range v {
-			if s, ok := item.(string); ok && s == glxlib.GenderNonbinary {
+			if s, ok := item.(string); ok && isIdentity(s) {
 				return true
 			}
 			if m, ok := item.(map[string]any); ok {
-				if s, ok := m["value"].(string); ok && s == glxlib.GenderNonbinary {
+				if s, ok := m["value"].(string); ok && isIdentity(s) {
 					return true
 				}
 			}
@@ -235,11 +243,13 @@ func movePreSplitGenderTypesVocab(archive *glxlib.GLXFile) int {
 		if _, exists := archive.SexTypes[key]; exists {
 			continue
 		}
-		archive.SexTypes[key] = &glxlib.VocabularyEntry{
-			Label:       entry.Label,
-			Description: entry.Description,
-			GEDCOM:      entry.GEDCOM,
+		// Clone the full entry so optional fields (Category, AppliesTo,
+		// MimeType) on user-supplied entries survive the move.
+		cloned := *entry
+		if entry.AppliesTo != nil {
+			cloned.AppliesTo = append([]string(nil), entry.AppliesTo...)
 		}
+		archive.SexTypes[key] = &cloned
 	}
 	archive.GenderTypes = nil
 
