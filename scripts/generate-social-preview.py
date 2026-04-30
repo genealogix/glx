@@ -6,6 +6,13 @@ Settings -> Social preview. GitHub does not expose an API for that
 upload, so this script only produces the asset; the upload itself is
 manual and must be re-done whenever the asset changes.
 
+Reproducibility scope: rendering on the same machine with the same
+Pillow version and the same first-resolved system font produces the
+same PNG. Fonts are looked up by name from the OS, so re-rendering
+on a different OS (or after a font install/uninstall) can produce a
+visually similar but not byte-identical image. The maintainer commits
+whatever the current toolchain produces.
+
 Usage:
     pip install Pillow numpy
     python scripts/generate-social-preview.py
@@ -51,9 +58,16 @@ BULLETS_SIZE = 26
 WORDMARK_GAP = 28
 TAGLINE_GAP = 22
 
-# Tried in order. First hit wins; missing all of them is a hard error
-# because the PIL bitmap fallback renders ~10px and would ship a broken
-# PNG without the maintainer noticing.
+# System-font lookup. Tried in order; first hit wins. Missing all of
+# them is a hard error because the PIL bitmap fallback renders ~10px
+# and would ship a broken PNG without the maintainer noticing.
+#
+# This makes the rendered output environment-dependent: the Windows
+# Arial → Linux DejaVu → macOS Helvetica fallback chain produces
+# visually similar but not byte-identical PNGs. Vendoring a TTF in-repo
+# would give true cross-machine reproducibility (see issue #468 for
+# follow-up); for now the rendered PNG is committed alongside the
+# script, so each maintainer ships whatever their local fonts produce.
 FONT_CANDIDATES_BOLD = [
     "arialbd.ttf",
     "Arial Bold.ttf",
@@ -78,10 +92,16 @@ def load_font(candidates: list[str], size: int) -> ImageFont.FreeTypeFont:
 
 
 def render_gradient() -> Image.Image:
-    """Linear gradient projected onto the (WIDTH, HEIGHT) diagonal vector."""
-    xs = np.arange(WIDTH)[None, :] * WIDTH
-    ys = np.arange(HEIGHT)[:, None] * HEIGHT
-    t = ((xs + ys) / (WIDTH * WIDTH + HEIGHT * HEIGHT))[..., None]
+    """Linear gradient projected onto the diagonal from (0, 0) to (W-1, H-1).
+
+    Projecting onto (WIDTH-1, HEIGHT-1) rather than (WIDTH, HEIGHT) makes
+    t hit exactly 0 at the top-left pixel and exactly 1 at the bottom-right
+    pixel, so GRADIENT_END is reached on the canvas itself.
+    """
+    w, h = WIDTH - 1, HEIGHT - 1
+    xs = np.arange(WIDTH)[None, :] * w
+    ys = np.arange(HEIGHT)[:, None] * h
+    t = ((xs + ys) / (w * w + h * h))[..., None]
     start = np.array(GRADIENT_START)
     end = np.array(GRADIENT_END)
     rgb = (start + (end - start) * t).round().clip(0, 255).astype("uint8")
@@ -100,7 +120,8 @@ def chroma_key_logo(logo: Image.Image) -> Image.Image:
 
 
 def paste_logo(canvas: Image.Image) -> None:
-    logo = chroma_key_logo(Image.open(LOGO_PATH))
+    with Image.open(LOGO_PATH) as src:
+        logo = chroma_key_logo(src)
     scale = LOGO_TARGET_HEIGHT / logo.height
     new_size = (round(logo.width * scale), LOGO_TARGET_HEIGHT)
     logo = logo.resize(new_size, Image.LANCZOS)
@@ -133,7 +154,10 @@ def main() -> int:
     paste_logo(canvas)
     draw_text(canvas)
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(OUTPUT_PATH, format="PNG", optimize=True)
+    # compress_level pinned to a fixed value so re-renders on the same
+    # toolchain produce stable PNG bytes; optimize=True is avoided
+    # because Pillow may change its optimization strategy across versions.
+    canvas.save(OUTPUT_PATH, format="PNG", compress_level=9)
     print(f"wrote {OUTPUT_PATH.relative_to(REPO_ROOT)}")
     return 0
 
