@@ -111,7 +111,10 @@ func pruneStaleGenerated(outDir string, expected map[string]struct{}) error {
 		if _, ok := expected[filepath.Base(m)]; ok {
 			continue
 		}
-		body, err := os.ReadFile(m)
+		// m is a path produced by filepath.Glob from outDir + the literal
+		// "glx*.md" pattern, so it cannot escape outDir; the gosec G304
+		// check still flags variable file paths conservatively.
+		body, err := os.ReadFile(m) // #nosec G304
 		if err != nil {
 			return fmt.Errorf("read %q: %w", m, err)
 		}
