@@ -17,7 +17,7 @@ git clone https://github.com/genealogix/glx-archive-westeros.git
 cd glx-archive-westeros
 ```
 
-If you haven't installed the CLI yet, see the [installation instructions](/cli#installation).
+If you haven't installed the CLI yet, see the [installation instructions](https://github.com/genealogix/glx/blob/main/glx/README.md#installation).
 
 ## Archive Health
 
