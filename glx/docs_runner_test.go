@@ -93,6 +93,42 @@ func TestRunDocsGenWritesFrontmatter(t *testing.T) {
 	}
 }
 
+// TestRunDocsGenPrunesStaleGenerated verifies that a previously-generated
+// doc whose command no longer exists is removed, while an unrelated
+// hand-written sibling file (e.g. index.md) is preserved. Without pruning,
+// renaming or removing a command would leave an orphan glx_<old>.md page on
+// disk and the drift check would silently pass.
+func TestRunDocsGenPrunesStaleGenerated(t *testing.T) {
+	outDir := t.TempDir()
+
+	zombie := filepath.Join(outDir, "glx_zombie_command.md")
+	if err := os.WriteFile(zombie, []byte("stale"), 0o644); err != nil {
+		t.Fatalf("seed zombie: %v", err)
+	}
+
+	indexPath := filepath.Join(outDir, "index.md")
+	indexBody := []byte("hand-written overview")
+	if err := os.WriteFile(indexPath, indexBody, 0o644); err != nil {
+		t.Fatalf("seed index: %v", err)
+	}
+
+	if err := runDocsGen(rootCmd, outDir); err != nil {
+		t.Fatalf("runDocsGen: %v", err)
+	}
+
+	if _, err := os.Stat(zombie); !os.IsNotExist(err) {
+		t.Errorf("expected stale glx_zombie_command.md to be removed; stat err: %v", err)
+	}
+
+	got, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read index after run: %v", err)
+	}
+	if string(got) != string(indexBody) {
+		t.Errorf("index.md was modified; got %q want %q", got, indexBody)
+	}
+}
+
 // TestRunDocsGenIsDeterministic guards against drift detection becoming a
 // false-positive treadmill: two consecutive runs into clean directories must
 // produce byte-identical output, otherwise CI would fail on every PR.

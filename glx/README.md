@@ -195,7 +195,7 @@ glx check-schemas
 
 ## Commands
 
-The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, and analysis. The full per-command reference (flags, examples, aliases) is auto-generated from the live Cobra command tree on every build:
+The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, and analysis. The full per-command reference (flags, examples, aliases) is regenerated on demand by `make docs-cli` from the live Cobra command tree, and CI fails on any drift between the source and the committed pages:
 
 - Browse online: <https://genealogix.dev/cli/>
 - Read in this repo: [`docs/cli/glx.md`](../docs/cli/glx.md)

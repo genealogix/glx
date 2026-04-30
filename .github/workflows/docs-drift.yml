@@ -51,7 +51,12 @@ jobs:
 
       - name: Fail on drift
         run: |
-          if ! git diff --exit-code -- docs/cli/; then
+          # `git status --porcelain` catches both modified AND untracked files,
+          # so a new command whose generated page was forgotten in `git add`
+          # still trips the check (plain `git diff --exit-code` would miss it).
+          drift=$(git status --porcelain -- docs/cli/)
+          if [ -n "$drift" ]; then
             echo "::error::docs/cli/ is out of date. Run 'make docs-cli' locally and commit the result."
+            echo "$drift"
             exit 1
           fi

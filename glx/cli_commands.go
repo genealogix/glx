@@ -1375,6 +1375,7 @@ var docsCmd = &cobra.Command{
 	Use:    "docs",
 	Short:  "Regenerate CLI reference Markdown under docs/cli/",
 	Hidden: true,
+	Args:   cobra.NoArgs,
 	RunE:   runDocs,
 }
 

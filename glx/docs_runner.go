@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -34,6 +35,9 @@ import (
 func runDocsGen(cmd *cobra.Command, outDir string) error {
 	if err := os.MkdirAll(outDir, dirPermissions); err != nil {
 		return fmt.Errorf("create docs output dir %q: %w", outDir, err)
+	}
+	if err := pruneGeneratedDocs(outDir); err != nil {
+		return err
 	}
 	disableAutoGenTagRecursive(cmd)
 	frontmatter := func(_ string) string {
@@ -54,4 +58,23 @@ func disableAutoGenTagRecursive(cmd *cobra.Command) {
 	for _, sub := range cmd.Commands() {
 		disableAutoGenTagRecursive(sub)
 	}
+}
+
+// pruneGeneratedDocs deletes previously-generated `glx*.md` files in outDir so
+// that renaming or removing a Cobra command surfaces as a drift-CI failure
+// (the deleted file is the diff). The pattern is intentionally narrow — the
+// hand-written `index.md` and any future hand-authored sibling files are not
+// touched.
+func pruneGeneratedDocs(outDir string) error {
+	matches, err := filepath.Glob(filepath.Join(outDir, "glx*.md"))
+	if err != nil {
+		return fmt.Errorf("glob existing generated docs: %w", err)
+	}
+	for _, m := range matches {
+		if err := os.Remove(m); err != nil {
+			return fmt.Errorf("remove stale doc %q: %w", m, err)
+		}
+	}
+
+	return nil
 }
