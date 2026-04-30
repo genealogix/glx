@@ -94,15 +94,16 @@ func TestRunDocsGenWritesFrontmatter(t *testing.T) {
 }
 
 // TestRunDocsGenPrunesStaleGenerated verifies that a previously-generated
-// doc whose command no longer exists is removed, while an unrelated
-// hand-written sibling file (e.g. index.md) is preserved. Without pruning,
-// renaming or removing a command would leave an orphan glx_<old>.md page on
-// disk and the drift check would silently pass.
+// doc whose command no longer exists is removed. The zombie file carries the
+// real generated-doc front-matter so the pruner recognizes it as ours.
+// Without pruning, renaming or removing a command would leave an orphan
+// glx_<old>.md page on disk and the drift check would silently pass.
 func TestRunDocsGenPrunesStaleGenerated(t *testing.T) {
 	outDir := t.TempDir()
 
 	zombie := filepath.Join(outDir, "glx_zombie_command.md")
-	if err := os.WriteFile(zombie, []byte("stale"), 0o644); err != nil {
+	zombieBody := []byte(generatedDocFrontmatter + "\n## glx zombie_command\n\nstale\n")
+	if err := os.WriteFile(zombie, zombieBody, 0o644); err != nil {
 		t.Fatalf("seed zombie: %v", err)
 	}
 
@@ -126,6 +127,33 @@ func TestRunDocsGenPrunesStaleGenerated(t *testing.T) {
 	}
 	if string(got) != string(indexBody) {
 		t.Errorf("index.md was modified; got %q want %q", got, indexBody)
+	}
+}
+
+// TestRunDocsGenPreservesHandAuthoredGlxFiles verifies that the pruner does
+// NOT delete a glx-prefixed file lacking the generated-doc front-matter
+// signature. This guards two scenarios: a future hand-authored
+// docs/cli/glx_tips.md sibling, and a stray glx*.md in some unrelated
+// directory if a user accidentally runs `glx docs --output <wrong-path>`.
+func TestRunDocsGenPreservesHandAuthoredGlxFiles(t *testing.T) {
+	outDir := t.TempDir()
+
+	handAuthored := filepath.Join(outDir, "glx_tips.md")
+	body := []byte("# Tips\n\nHand-written, no front-matter.\n")
+	if err := os.WriteFile(handAuthored, body, 0o644); err != nil {
+		t.Fatalf("seed handAuthored: %v", err)
+	}
+
+	if err := runDocsGen(rootCmd, outDir); err != nil {
+		t.Fatalf("runDocsGen: %v", err)
+	}
+
+	got, err := os.ReadFile(handAuthored)
+	if err != nil {
+		t.Fatalf("read handAuthored after run: %v", err)
+	}
+	if string(got) != string(body) {
+		t.Errorf("hand-authored glx_tips.md was modified; got %q want %q", got, body)
 	}
 }
 
