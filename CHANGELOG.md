@@ -36,10 +36,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Specification
 
 - **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
+#### Tests
+
+- **Round-trip validation tests for example archives** — `go-glx/example_archives_roundtrip_test.go` walks every archive under `docs/examples/` (single-file or multi-file), runs it through deserialize → re-serialize, validates each entity in the re-emitted output against its per-entity JSON schema (`person.schema.json`, `event.schema.json`, etc.), and asserts that the parsed-input YAML map equals the parsed-output map. The map-level comparison catches `omitempty` drops that struct equality cannot detect. (#296)
 
 ### Changed
-
-#### Specification
 
 - **BREAKING**: Split `gender` property into `sex` (recorded) and `gender` (identity) — The existing `gender` property conflated "recorded sex" (GEDCOM `SEX`) with "self-identified gender identity". Introduced a new `sex_types` vocabulary (`male`, `female`, `unknown`, `not_recorded`, `other`) bound to a new `sex` person property that maps to GEDCOM `SEX`. The `gender_types` vocabulary now covers identity values (`male`, `female`, `nonbinary`, `other`) bound to the repurposed `gender` property (no direct GEDCOM mapping — GEDCOM 7.0 defers identity to `FACT`). GEDCOM import/export, HUSB/WIFE assignment, census parsing, and CLI readers (`vitals`, `summary`) all updated to prefer `sex` with legacy `gender` fallback. Archives predating this split can be migrated via `glx migrate --rename-gender-to-sex`. Wire-format breaking: archives using `gender: "unknown"` produce an out-of-vocabulary warning post-split (`unknown` now lives only in `sex_types`). Resolves #528. Closes #518. Closes #534.
 
@@ -53,8 +54,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
-#### CLI
-
 - **`personSex` / `displayableGenderIdentity` / `pronounFor` handle temporal shapes** — `sex` and `gender` are both declared `temporal: true` in `person-properties`, so archives may store them as `{value, date}` maps or `[{value, date}, ...]` lists. Previously the CLI ran these through `propertyString`, which `fmt.Sprint`-ed non-string values and produced useless display strings like `map[date:1850 value:male]` — also breaking the legacy-gender fallback, the identity-vs-duplicate predicate, and pronoun selection (every temporal value silently fell through to they/their). A new `propertyScalar` helper extracts the canonical scalar from string / single-map / list shapes. (PR #742)
 - **`glx migrate --rename-gender-to-sex` no longer skips on empty `sex`** — `isPostSplitArchive` previously treated the mere presence of the `sex` key as a post-split signal, so archives with `sex: ""`, `sex: {}`, or `sex: []` incorrectly skipped the migration while their real data still lived in `gender`. The check now requires a meaningful scalar value. (PR #742)
 - **`glx migrate --rename-gender-to-sex` detects custom identity values** — The post-split guard previously only flagged the canonical `gender: nonbinary` marker. An archive already using post-split semantics with a custom identity value (e.g. `gender: two-spirit` or any non-legacy-sex vocabulary key) and no `sex` set would have its identity values silently migrated into `sex`. The guard now skips migration for any non-legacy-sex value in either person properties or person-subject assertions. (PR #742)
@@ -67,8 +66,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### GEDCOM Import
 
 - **Empty `SEX` tag maps to `not_recorded`** — A present-but-empty GEDCOM `SEX` tag (e.g. `1 SEX` with no value) now maps to `sex: not_recorded` rather than `sex: unknown`. `unknown` is reserved for `SEX U` (source consulted but sex could not be determined); an empty tag represents absent-from-source data per GEDCOM 5.5.5. (#528)
-
-#### go-glx
 
 - **GEDCOM export handles temporal `sex`/`gender`** — `exportPerson` (SEX emission) and `getPersonSex` (HUSB/WIFE inference) previously read sex/gender via `getStringProperty`, which only accepts plain strings. A temporal archive (`sex: {value: male, date: 1850}` or `sex: [{value, date}, ...]`) would silently get SEX omitted from its INDI record and fall back to first/second order for HUSB/WIFE. New `getScalarProperty` helper extracts the scalar from all three shapes and is used at the sex/gender call sites; non-temporal fields (citation locator, source publication info, etc.) continue to use `getStringProperty` so their type check still catches data errors. (PR #742)
 - **Multi-file serializer generates deterministic filenames** — Entity filenames are now derived from entity IDs (`strings.ToLower(entityID) + ".glx"`) instead of random 8-char hex. Previously, every write generated new random filenames, causing massive git diffs even when no data changed. Case-insensitive collisions (e.g., `Person-A` and `person-a`) are detected and reported as errors. Fixes #694
