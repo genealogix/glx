@@ -1,0 +1,79 @@
+---
+editLink: false
+---
+
+## glx query
+
+Query entities in a GLX archive
+
+### Synopsis
+
+Filter and list entities from a GENEALOGIX archive.
+
+Supported entity types: persons, events, assertions, sources,
+relationships, places, citations, repositories, media.
+
+Filters vary by entity type:
+  persons:       --name, --born-before, --born-after, --birthplace
+  events:        --type, --before, --after
+  assertions:    --confidence, --status, --source, --citation, --subject
+  sources:       --name, --type
+  relationships: --type
+  places:        --name
+  repositories:  --name
+
+All entity types support --archive to specify the archive path.
+
+```
+glx query <entity-type> [flags]
+```
+
+### Examples
+
+```
+  # Find persons born before 1850
+  glx query persons --born-before 1850
+
+  # Find low-confidence assertions
+  glx query assertions --confidence low
+
+  # Find assertions citing a specific source
+  glx query assertions --source source-abc123
+
+  # Find assertions using a specific citation
+  glx query assertions --citation citation-abc123
+
+  # Find marriage events
+  glx query events --type marriage
+
+  # Find persons by name in a specific archive
+  glx query persons --name "Smith" --archive my-archive
+
+  # List all sources
+  glx query sources
+```
+
+### Options
+
+```
+      --after int           Filter events with date after this year
+  -a, --archive string      Archive path (directory or single file) (default ".")
+      --before int          Filter events with date before this year
+      --birthplace string   Filter persons by birthplace (place ID or name substring)
+      --born-after int      Filter persons born after this year
+      --born-before int     Filter persons born before this year
+      --citation string     Filter assertions by citation ID
+      --confidence string   Filter assertions by confidence level
+  -h, --help                help for query
+      --name string         Filter by name (substring match, case-insensitive)
+      --phonetic            Use phonetic (Soundex) matching for --name
+      --source string       Filter assertions by source ID (direct or via citation)
+      --status string       Filter assertions by status
+      --subject string      Filter assertions by subject entity ID or person name substring
+      --type string         Filter by type (event type, relationship type, etc.)
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+

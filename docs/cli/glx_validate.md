@@ -1,0 +1,63 @@
+---
+editLink: false
+---
+
+## glx validate
+
+Validate GLX files and cross-references
+
+### Synopsis
+
+Validate GENEALOGIX (.glx) files for correctness and integrity.
+
+Performs comprehensive validation including:
+- YAML syntax correctness
+- Required fields presence
+- Entity ID format validation
+- Cross-reference integrity (directories only)
+- Duplicate ID detection (directories only)
+- Vocabulary validation (if vocabularies/ exists)
+
+Validation behavior:
+- Single file: Validates file structure only, skips cross-reference checks
+- Directory: Validates all .glx files with full cross-reference validation
+- No arguments: Validates current directory with full cross-reference validation
+
+Use --report to generate a confidence summary showing assertion coverage
+and highlighting unsupported claims.
+
+```
+glx validate [paths...] [flags]
+```
+
+### Examples
+
+```
+  # Validate current directory (with cross-reference checks)
+  glx validate
+
+  # Validate specific directory (with cross-reference checks)
+  glx validate persons/
+
+  # Validate multiple paths (with cross-reference checks)
+  glx validate persons/ events/ places/
+
+  # Validate single file (structure only, no cross-reference checks)
+  glx validate archive.glx
+
+  # Generate confidence summary report
+  glx validate --report
+  glx validate path/to/archive --report
+```
+
+### Options
+
+```
+  -h, --help     help for validate
+      --report   Generate confidence summary report
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+

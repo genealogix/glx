@@ -1,0 +1,28 @@
+---
+editLink: false
+---
+
+## glx completion
+
+Generate the autocompletion script for the specified shell
+
+### Synopsis
+
+Generate the autocompletion script for glx for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+
+
+### Options
+
+```
+  -h, --help   help for completion
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx completion bash](/cli/glx_completion_bash)	 - Generate the autocompletion script for bash
+* [glx completion fish](/cli/glx_completion_fish)	 - Generate the autocompletion script for fish
+* [glx completion powershell](/cli/glx_completion_powershell)	 - Generate the autocompletion script for powershell
+* [glx completion zsh](/cli/glx_completion_zsh)	 - Generate the autocompletion script for zsh
+

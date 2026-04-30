@@ -1,0 +1,57 @@
+name: Docs Drift
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - 'docs/cli/**'
+      - '.github/workflows/docs-drift.yml'
+  pull_request:
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - 'docs/cli/**'
+      - '.github/workflows/docs-drift.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-drift-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  GIT_CONFIG_KEY_1: advice.detachedHead
+  GIT_CONFIG_VALUE_1: "false"
+
+jobs:
+  docs-cli-drift:
+    name: CLI docs match source
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Regenerate CLI docs
+        run: make docs-cli
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code -- docs/cli/; then
+            echo "::error::docs/cli/ is out of date. Run 'make docs-cli' locally and commit the result."
+            exit 1
+          fi

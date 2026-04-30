@@ -1,0 +1,58 @@
+---
+editLink: false
+---
+
+## glx export
+
+Export a GLX archive to GEDCOM format
+
+### Synopsis
+
+Export a GLX archive to GEDCOM format.
+
+Supports both GEDCOM 5.5.1 and GEDCOM 7.0 output formats.
+
+The input can be either a single-file GLX archive (.glx) or a multi-file
+archive directory.
+
+The exported GEDCOM file will include:
+- All individuals (INDI records)
+- All families (FAM records, reconstructed from relationships)
+- All sources (SOUR records)
+- All repositories (REPO records)
+- All media objects (OBJE records)
+- Events, places, citations, and notes
+
+```
+glx export <glx-archive> [flags]
+```
+
+### Examples
+
+```
+  # Export to GEDCOM 5.5.1 (default)
+  glx export family-archive -o family.ged
+
+  # Export a single-file archive
+  glx export family.glx -o family.ged
+
+  # Export to GEDCOM 7.0
+  glx export family-archive -o family.ged --format 70
+
+  # Export with verbose output
+  glx export family-archive -o family.ged --verbose
+```
+
+### Options
+
+```
+  -f, --format string   GEDCOM version: 551 or 70 (default "551")
+  -h, --help            help for export
+  -o, --output string   Output GEDCOM file path (required)
+  -v, --verbose         Verbose output
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+

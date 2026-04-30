@@ -96,6 +96,7 @@ func init() {
 	rootCmd.AddCommand(renameCmd)
 	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(migrateCmd)
+	rootCmd.AddCommand(docsCmd)
 }
 
 // ============================================================================

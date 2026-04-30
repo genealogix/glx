@@ -1,0 +1,60 @@
+---
+editLink: false
+---
+
+## glx duplicates
+
+Detect potential duplicate persons in a GLX archive
+
+### Synopsis
+
+Scan a GLX archive for potential duplicate person records.
+
+Compares all persons using a weighted scoring model based on:
+  - Name similarity (Levenshtein distance, nickname matching, initials)
+  - Birth/death year proximity
+  - Birth/death place match
+  - Shared relationships and events
+
+Persons already linked by a direct relationship (parent-child, spouse, etc.)
+are automatically skipped since they are known to be distinct individuals.
+
+Use --threshold to adjust sensitivity (0.0-1.0, default 0.60).
+Higher values = fewer, higher-confidence matches.
+
+```
+glx duplicates [person] [flags]
+```
+
+### Examples
+
+```
+  # Scan for duplicates in current directory
+  glx duplicates
+
+  # Scan with higher confidence threshold
+  glx duplicates --threshold 0.8
+
+  # Check a specific person for duplicates
+  glx duplicates person-robert-webb
+
+  # JSON output for tooling
+  glx duplicates --json
+
+  # Scan a specific archive
+  glx duplicates --archive my-family-archive
+```
+
+### Options
+
+```
+  -a, --archive string    Archive path (directory or single file) (default ".")
+  -h, --help              help for duplicates
+      --json              JSON output
+      --threshold float   Minimum similarity score (0.0-1.0) (default 0.6)
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+

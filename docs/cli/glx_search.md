@@ -1,0 +1,45 @@
+---
+editLink: false
+---
+
+## glx search
+
+Full-text search across all entities
+
+### Synopsis
+
+Search all entity types and fields in the archive for a keyword or phrase.
+Case-insensitive by default. Use --case-sensitive for exact case matching.
+Use --type to restrict results to a specific entity type.
+
+```
+glx search <query> [flags]
+```
+
+### Examples
+
+```
+  # Search for a name across all entities
+  glx search "Millbrook" --archive ./archive
+
+  # Case-sensitive search
+  glx search "Miller" --archive ./archive --case-sensitive
+
+  # Search only persons
+  glx search "Jane" --archive ./archive --type persons
+```
+
+### Options
+
+```
+  -a, --archive string   Path to GLX archive (default ".")
+      --case-sensitive   Case-sensitive search
+  -h, --help             help for search
+      --json             Output results as JSON
+      --type string      Filter to entity type (persons, events, places, etc.)
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+

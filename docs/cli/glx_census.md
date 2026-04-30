@@ -1,0 +1,26 @@
+---
+editLink: false
+---
+
+## glx census
+
+Bulk census record tools
+
+### Synopsis
+
+Tools for working with census records in a GENEALOGIX archive.
+
+Subcommands:
+  add    Import a census template into the archive
+
+### Options
+
+```
+  -h, --help   help for census
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+* [glx census add](/cli/glx_census_add)	 - Import a census template into the archive
+

@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 
+- **Hidden `glx docs` subcommand** — Generates per-command Markdown reference for every (non-hidden) Cobra command into a configurable output directory (default `./docs/cli/`). Used by `make docs-cli` and the `docs-drift` CI workflow. Adds `github.com/spf13/cobra/doc` to the dependency graph (transitive via existing cobra dependency). (#299)
+
 - **`glx migrate --rename-gender-to-sex`** — New opt-in flag on `glx migrate` that renames the legacy `gender` person property (and related assertions and inlined vocabulary entries) to `sex`, completing the two-field-model split in pre-v1.0 archives (#528).
 - **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
 
@@ -26,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Architecture Decision Records (ADRs)** — Added `docs/decisions/` directory with an ADR template, an index, and six foundational ADRs covering YAML as the archive file format, the evidence-first data model (Repository → Source → Citation → Assertion), archive-owned vocabularies, Git-native archives, flexible entity IDs, and the go-glx library's no-I/O rule. `CONTRIBUTING.md` now describes the ADR practice and when to write one. Closes #416
 
 #### CI
+
+- **`docs-drift` workflow** — New `.github/workflows/docs-drift.yml` builds the CLI, runs `make docs-cli`, and fails if `git diff --exit-code -- docs/cli/` is non-empty. Catches PRs that change a Cobra command without regenerating its Markdown page. Triggered on changes to `**.go`, `Makefile`, or `docs/cli/**`. (#299)
 
 - **Scheduled `lychee` external-link check** — New `lychee.yml` workflow runs weekly (Mondays 08:17 UTC) and on `workflow_dispatch`, validating every external URL referenced in `specification/**/*.md`, `docs/**/*.md`, and root-level `*.md`. Broken URLs are reported by creating or updating a single GitHub issue titled "Broken external links detected"; the workflow never blocks PRs. Internal relative links continue to be validated on every PR by `scripts/check-links.sh`. (#316)
 
@@ -38,6 +42,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Round-trip validation tests for example archives** — `go-glx/example_archives_roundtrip_test.go` walks every archive under `docs/examples/` (single-file or multi-file), runs it through deserialize → re-serialize, validates each entity in the re-emitted output against its per-entity JSON schema (`person.schema.json`, `event.schema.json`, etc.), and asserts that the parsed-input YAML map equals the parsed-output map. The map-level comparison catches `omitempty` drops that struct equality cannot detect. (#296)
 
 ### Changed
+
+#### Documentation
+
+- **CLI reference is now auto-generated** — Replaced the ~1,200-line manually-maintained "Commands" section in `glx/README.md` with a short pointer paragraph linking to the auto-generated pages under `docs/cli/`. The VitePress `/cli` route now serves a hand-written `docs/cli/index.md` overview instead of the README; per-command pages live at `/cli/glx_init`, `/cli/glx_validate`, etc. (file-per-command, replacing the previous single-page anchor links like `/cli#glx-init`). The website sidebar in `website/.vitepress/config.js` was rewritten accordingly and now also covers the previously-unlisted `duplicates`, `coverage`, `diff`, `rename`, and `completion` commands. (#299)
 
 #### Specification
 
