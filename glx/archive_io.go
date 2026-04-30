@@ -363,6 +363,9 @@ func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
 	if len(glx.ConfidenceLevels) == 0 {
 		glx.ConfidenceLevels = std.ConfidenceLevels
 	}
+	if len(glx.SexTypes) == 0 {
+		glx.SexTypes = std.SexTypes
+	}
 	if len(glx.GenderTypes) == 0 {
 		glx.GenderTypes = std.GenderTypes
 	}

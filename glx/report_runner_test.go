@@ -119,7 +119,7 @@ func TestBuildConfidenceReport_NoCitations(t *testing.T) {
 			},
 			"a-media-only": {
 				Subject:    glxlib.EntityRef{Person: "person-a"},
-				Property:   "gender",
+				Property:   "sex",
 				Value:      "male",
 				Confidence: "low",
 				Media:      []string{"m1"},

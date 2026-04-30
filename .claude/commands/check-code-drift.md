@@ -126,24 +126,31 @@ Compare Go types with JSON schema types:
 - Check that GLXFile struct has all entity type maps
 - Verify yaml tags match schema (e.g., `persons`, `events`, etc.)
 - Check `ImportMetadata *Metadata` field against `metadata` property in schema (Go field name differs from yaml tag)
-- Check all vocabulary definition maps (9 type vocabs + 8 property vocabs)
+- Check all vocabulary definition maps (10 type vocabs + 8 property vocabs)
 
 ### 8. Vocabulary Struct Types
 
-Check all 9 vocabulary definition structs against their schemas in
-`specification/schema/v1/vocabularies/`:
+All 10 type-vocabulary schemas share a single Go struct `VocabularyEntry`
+(unified in #727). Its fields are the superset of every vocabulary's
+needs: `Label, Description, Category, AppliesTo, MimeType, GEDCOM`.
+Unused fields are elided via `omitempty` per schema.
 
-| Go Struct | Schema File | Key Fields |
-|-----------|-------------|------------|
-| `EventType` | `event-types.schema.json` | Label, Description, GEDCOM, Category |
-| `RelationshipType` | `relationship-types.schema.json` | Label, Description, GEDCOM |
-| `PlaceType` | `place-types.schema.json` | Label, Description, Category |
-| `SourceType` | `source-types.schema.json` | Label, Description, GEDCOM |
-| `RepositoryType` | `repository-types.schema.json` | Label, Description, GEDCOM |
-| `MediaType` | `media-types.schema.json` | Label, Description, MimeType |
-| `GenderType` | `gender-types.schema.json` | Label, Description, GEDCOM |
-| `ConfidenceLevel` | `confidence-levels.schema.json` | Label, Description, GEDCOM |
-| `ParticipantRole` | `participant-roles.schema.json` | Label, Description, GEDCOM, AppliesTo |
+| Schema File | Fields actually populated |
+|-------------|---------------------------|
+| `event-types.schema.json` | Label, Description, Category, GEDCOM |
+| `relationship-types.schema.json` | Label, Description, GEDCOM |
+| `place-types.schema.json` | Label, Description, Category |
+| `source-types.schema.json` | Label, Description, GEDCOM |
+| `repository-types.schema.json` | Label, Description, GEDCOM |
+| `media-types.schema.json` | Label, Description, MimeType |
+| `sex-types.schema.json` | Label, Description, GEDCOM |
+| `gender-types.schema.json` | Label, Description, GEDCOM (usually empty) |
+| `confidence-levels.schema.json` | Label, Description, GEDCOM |
+| `participant-roles.schema.json` | Label, Description, AppliesTo, GEDCOM |
+
+Drift checks:
+- `VocabularyEntry` YAML field order is load-bearing — guarded by `TestVocabularyEntryYAMLFieldOrder`. The declared order `label, description, category, applies_to, mime_type, gedcom` matches on-disk vocab files.
+- Each `GLXFile` vocabulary map must use `map[string]*VocabularyEntry`.
 
 Also check:
 - `FieldDefinition` struct (Label, Description, ValueType) against property vocabulary schemas

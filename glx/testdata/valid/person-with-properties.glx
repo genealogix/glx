@@ -25,9 +25,9 @@ person_properties:
         label: "Surname"
         description: "Family name"
 
-  gender:
-    label: "Gender"
-    description: "Gender identity"
+  sex:
+    label: "Sex"
+    description: "Sex as recorded in source documents"
     value_type: string
 
   occupation:
@@ -51,7 +51,7 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
-      gender: "male"
+      sex: "male"
       occupation:
         - value: "blacksmith"
           date: "1870"
@@ -74,7 +74,7 @@ persons:
         fields:
           given: "Jane"
           surname: "Doe"
-      gender: "female"
+      sex: "female"
     notes: "Additional research needed"
 
 # Life events for persons

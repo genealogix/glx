@@ -1169,7 +1169,7 @@ glx census add --from <template.yaml> [flags]
 - **Source** — new or reused by title match
 - **Citation** — with locator, text_from_source, URL, accessed date
 - **Place** — new or reused by name match
-- **Assertions** — birth year (ABT, low confidence), birthplace (medium), gender (high), occupation (high, dated), residence (high, dated), custom properties
+- **Assertions** — birth year (ABT, low confidence), birthplace (medium), sex (high), occupation (high, dated), residence (high, dated), custom properties
 
 **Template format:**
 ```yaml
@@ -1240,11 +1240,14 @@ Migrate a GLX archive by converting deprecated person properties to birth/death 
 
 **Usage:**
 ```bash
-glx migrate <path>
+glx migrate <path> [flags]
 ```
 
 **Arguments:**
 - `<path>` - Path to a multi-file archive directory or a single-file `.glx` archive
+
+**Flags:**
+- `--rename-gender-to-sex` - Opt-in: rename legacy `gender` person property to `sex` for archives created before the two-field split (see #528). Also renames matching assertions and moves inlined pre-split `gender_types` vocabulary entries to `sex_types`. Default: off.
 
 **What it does:**
 - Converts `born_on`/`born_at` person properties to birth Event entities
@@ -1254,6 +1257,7 @@ glx migrate <path>
 - Converts property assertions (`property: born_on`) to event assertions (`property: date`)
 - Removes the deprecated properties from person entities
 - Strips deprecated entries from archive vocabulary files
+- With `--rename-gender-to-sex`: renames `gender:` → `sex:` in person properties, assertions, and inlined pre-split vocabularies. Skipped automatically if the archive already shows post-split signals (any `sex` property, `gender: nonbinary`, or assertion targeting `sex`).
 
 **Examples:**
 
@@ -1263,6 +1267,9 @@ glx migrate my-family-archive
 
 # Migrate a single-file archive
 glx migrate archive.glx
+
+# Also rename legacy gender property to sex
+glx migrate my-family-archive --rename-gender-to-sex
 ```
 
 **Output:**
@@ -1273,6 +1280,9 @@ Migration complete:
   Properties removed:   40
   Assertions migrated:  20
   Vocab entries removed: 4
+  Gender→sex properties: 3
+  Gender→sex assertions: 2
+  Gender→sex vocab entries: 0
 ```
 
 ## File Format

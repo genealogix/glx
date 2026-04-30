@@ -40,7 +40,7 @@ func newTestArchive() *glxlib.GLXFile {
 							"fields": map[string]any{"type": "nickname"},
 						},
 					},
-					"gender": "male",
+					"sex": "male",
 				},
 			},
 			"person-jane": {
@@ -55,19 +55,19 @@ func newTestArchive() *glxlib.GLXFile {
 							"fields": map[string]any{"type": "married"},
 						},
 					},
-					"gender": "female",
+					"sex": "female",
 				},
 			},
 			"person-child": {
 				Properties: map[string]any{
-					"name":   "Alice Smith",
-					"gender": "female",
+					"name": "Alice Smith",
+					"sex":  "female",
 				},
 			},
 			"person-child2": {
 				Properties: map[string]any{
-					"name":   "Bob Smith",
-					"gender": "male",
+					"name": "Bob Smith",
+					"sex":  "male",
 				},
 			},
 			"person-neighbor": {
@@ -149,7 +149,7 @@ func newTestArchive() *glxlib.GLXFile {
 		},
 		Places: map[string]*glxlib.Place{
 			"place-ny":     {Name: "New York, New York"},
-			"place-boston":  {Name: "Boston, Massachusetts"},
+			"place-boston": {Name: "Boston, Massachusetts"},
 		},
 	}
 }
@@ -252,7 +252,7 @@ func TestExtractAllNameVariants_StructuredMap(t *testing.T) {
 
 func TestExtractAllNameVariants_NoName(t *testing.T) {
 	person := &glxlib.Person{
-		Properties: map[string]any{"gender": "male"},
+		Properties: map[string]any{"sex": "male"},
 	}
 
 	variants := extractAllNameVariants(person)
@@ -400,9 +400,9 @@ func TestDisplayDate(t *testing.T) {
 func TestFindSpouses_ChronologicalOrder(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary Green", "gender": "female"}},
-			"person-dan":  {Properties: map[string]any{"name": "Daniel Lane", "gender": "male"}},
-			"person-john": {Properties: map[string]any{"name": "John Babcock", "gender": "male"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary Green", "sex": "female"}},
+			"person-dan":  {Properties: map[string]any{"name": "Daniel Lane", "sex": "male"}},
+			"person-john": {Properties: map[string]any{"name": "John Babcock", "sex": "male"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-marriage-babcock": {
@@ -452,9 +452,9 @@ func TestFindSpouses_ChronologicalOrder(t *testing.T) {
 func TestFindSpouses_SameYearDifferentMonths(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary", "gender": "female"}},
-			"person-a":    {Properties: map[string]any{"name": "Spouse A", "gender": "male"}},
-			"person-b":    {Properties: map[string]any{"name": "Spouse B", "gender": "male"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary", "sex": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "sex": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "sex": "male"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-b": {
@@ -505,9 +505,9 @@ func TestFindSpouses_SameYearDifferentMonths(t *testing.T) {
 func TestFindSpouses_UndatedLast(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-mary": {Properties: map[string]any{"name": "Mary", "gender": "female"}},
-			"person-a":    {Properties: map[string]any{"name": "Spouse A", "gender": "male"}},
-			"person-b":    {Properties: map[string]any{"name": "Spouse B", "gender": "male"}},
+			"person-mary": {Properties: map[string]any{"name": "Mary", "sex": "female"}},
+			"person-a":    {Properties: map[string]any{"name": "Spouse A", "sex": "male"}},
+			"person-b":    {Properties: map[string]any{"name": "Spouse B", "sex": "male"}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-a": {
@@ -547,8 +547,8 @@ func TestFindSpouses_UndatedLast(t *testing.T) {
 }
 
 func TestPronounFor(t *testing.T) {
-	male := &glxlib.Person{Properties: map[string]any{"gender": "male"}}
-	female := &glxlib.Person{Properties: map[string]any{"gender": "female"}}
+	male := &glxlib.Person{Properties: map[string]any{"sex": "male"}}
+	female := &glxlib.Person{Properties: map[string]any{"sex": "female"}}
 	unknown := &glxlib.Person{Properties: map[string]any{}}
 
 	subj, poss := pronounFor(male)
@@ -560,6 +560,98 @@ func TestPronounFor(t *testing.T) {
 	assert.Equal(t, "her", poss)
 
 	subj, poss = pronounFor(unknown)
+	assert.Equal(t, "They", subj)
+	assert.Equal(t, "their", poss)
+}
+
+// TestPronounFor_IdentityTrumpsSex locks in the load-bearing contract of the
+// two-field split: when self-identified `gender` is present, it wins over
+// recorded `sex` for pronoun selection. Pronouns are an identity concern.
+func TestPronounFor_IdentityTrumpsSex(t *testing.T) {
+	// Nonbinary identity with male-recorded sex should fall through to they/their.
+	nonbinary := &glxlib.Person{Properties: map[string]any{
+		"sex":    "male",
+		"gender": "nonbinary",
+	}}
+	subj, poss := pronounFor(nonbinary)
+	assert.Equal(t, "They", subj)
+	assert.Equal(t, "their", poss)
+
+	// Female identity with male-recorded sex (e.g., a trans woman) uses she/her.
+	transFemale := &glxlib.Person{Properties: map[string]any{
+		"sex":    "male",
+		"gender": "female",
+	}}
+	subj, poss = pronounFor(transFemale)
+	assert.Equal(t, "She", subj)
+	assert.Equal(t, "her", poss)
+
+	// Male identity with female-recorded sex uses he/his.
+	transMale := &glxlib.Person{Properties: map[string]any{
+		"sex":    "female",
+		"gender": "male",
+	}}
+	subj, poss = pronounFor(transMale)
+	assert.Equal(t, "He", subj)
+	assert.Equal(t, "his", poss)
+
+	// `gender: other` is identity-only with no he/she mapping → they/their.
+	other := &glxlib.Person{Properties: map[string]any{
+		"sex":    "female",
+		"gender": "other",
+	}}
+	subj, poss = pronounFor(other)
+	assert.Equal(t, "They", subj)
+	assert.Equal(t, "their", poss)
+}
+
+// TestPronounFor_LegacyGenderFallback covers the pre-split archive shape:
+// a person with only `gender: male/female` (no `sex` yet) should still get
+// gendered pronouns. The pronounFor helper reads gender first, so this works
+// naturally — lock it in.
+func TestPronounFor_LegacyGenderFallback(t *testing.T) {
+	legacyMale := &glxlib.Person{Properties: map[string]any{"gender": "male"}}
+	subj, poss := pronounFor(legacyMale)
+	assert.Equal(t, "He", subj)
+	assert.Equal(t, "his", poss)
+
+	legacyFemale := &glxlib.Person{Properties: map[string]any{"gender": "female"}}
+	subj, poss = pronounFor(legacyFemale)
+	assert.Equal(t, "She", subj)
+	assert.Equal(t, "her", poss)
+}
+
+// TestPronounFor_TemporalShapes covers the round-6 Copilot catch: `sex` and
+// `gender` are both `temporal: true`, so pronounFor must extract the scalar
+// from map/list shapes. Before the fix, fmt.Sprint produced strings like
+// "map[date:1850 value:male]" that never matched male/female and silently
+// fell through to they/their.
+func TestPronounFor_TemporalShapes(t *testing.T) {
+	// Temporal map on gender → identity wins.
+	temporalGenderMap := &glxlib.Person{Properties: map[string]any{
+		"gender": map[string]any{"value": "male", "date": "2020"},
+	}}
+	subj, poss := pronounFor(temporalGenderMap)
+	assert.Equal(t, "He", subj)
+	assert.Equal(t, "his", poss)
+
+	// Temporal list on sex, no gender → sex fallback picks first entry.
+	temporalSexList := &glxlib.Person{Properties: map[string]any{
+		"sex": []any{
+			map[string]any{"value": "female", "date": "1850"},
+			map[string]any{"value": "male", "date": "1860"},
+		},
+	}}
+	subj, poss = pronounFor(temporalSexList)
+	assert.Equal(t, "She", subj)
+	assert.Equal(t, "her", poss)
+
+	// Temporal gender:nonbinary → they/their.
+	temporalNonbinary := &glxlib.Person{Properties: map[string]any{
+		"sex":    "male",
+		"gender": map[string]any{"value": "nonbinary"},
+	}}
+	subj, poss = pronounFor(temporalNonbinary)
 	assert.Equal(t, "They", subj)
 	assert.Equal(t, "their", poss)
 }
@@ -584,7 +676,7 @@ func TestGenerateLifeHistory(t *testing.T) {
 func TestGenerateLifeHistory_IncludesChildren(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-jane":     {Properties: map[string]any{"name": "Jane Miller", "gender": "female"}},
+			"person-jane":     {Properties: map[string]any{"name": "Jane Miller", "sex": "female"}},
 			"person-harriett": {Properties: map[string]any{"name": "Harriett Webb"}},
 			"person-elijah":   {Properties: map[string]any{"name": "Elijah Webb"}},
 			"person-mary":     {Properties: map[string]any{"name": "Mary Ellen Webb"}},

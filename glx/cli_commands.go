@@ -881,7 +881,7 @@ Reads a YAML census template and generates:
 - A census event with participants
 - A source (new or matched to existing)
 - A citation with locator, URL, transcription
-- Assertions for birth year, birthplace, gender, occupation, residence
+- Assertions for birth year, birthplace, sex, occupation, residence
 
 The template format uses a simple YAML structure describing the census
 year, location, household members, and citation details. Members can

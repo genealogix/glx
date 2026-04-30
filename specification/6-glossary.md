@@ -300,7 +300,7 @@ Information created at the time of the event by someone with direct knowledge (b
 
 ### Property
 
-A vocabulary-defined attribute of an entity (e.g., `occupation`, `residence`, `gender`). Properties are defined in property vocabularies and used in the `properties` field of entities.
+A vocabulary-defined attribute of an entity (e.g., `sex`, `occupation`, `residence`, `gender`). Properties are defined in property vocabularies and used in the `properties` field of entities.
 
 > **See Also:** [Property Vocabularies](4-entity-types/vocabularies#property-vocabularies)
 

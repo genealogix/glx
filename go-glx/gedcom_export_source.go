@@ -213,3 +213,49 @@ func getStringProperty(props map[string]any, key string) (string, bool) {
 	return s, true
 }
 
+// getScalarProperty extracts a scalar string from the three shapes a
+// `temporal: true` property can take on disk — plain string, single temporal
+// map (`{value, date}`), or temporal list (`[{value, date}, ...]`). Returns
+// the first non-empty scalar for the list form.
+//
+// Prefer this over getStringProperty for properties declared `temporal: true`
+// (e.g., `sex`, `gender`, `occupation`, `residence`) so export paths don't
+// silently drop valid-but-temporal values. Non-temporal properties
+// (source/citation/media string fields) should continue to use
+// getStringProperty since relaxing their type check would mask data errors.
+func getScalarProperty(props map[string]any, key string) (string, bool) {
+	if props == nil {
+		return "", false
+	}
+
+	val, ok := props[key]
+	if !ok {
+		return "", false
+	}
+
+	switch v := val.(type) {
+	case string:
+		if v == "" {
+			return "", false
+		}
+
+		return v, true
+	case map[string]any:
+		if s, ok := v["value"].(string); ok && s != "" {
+			return s, true
+		}
+	case []any:
+		for _, item := range v {
+			if s, ok := item.(string); ok && s != "" {
+				return s, true
+			}
+			if m, ok := item.(map[string]any); ok {
+				if s, ok := m["value"].(string); ok && s != "" {
+					return s, true
+				}
+			}
+		}
+	}
+
+	return "", false
+}
