@@ -1364,3 +1364,24 @@ func init() {
 func runMerge(_ *cobra.Command, args []string) error {
 	return mergeArchives(args[0], mergeInto, mergePreview, mergeThreshold)
 }
+
+// ============================================================================
+// Docs Command (build-time tool, hidden from glx --help)
+// ============================================================================
+
+var docsOutput string
+
+var docsCmd = &cobra.Command{
+	Use:    "docs",
+	Short:  "Regenerate CLI reference Markdown under docs/cli/",
+	Hidden: true,
+	RunE:   runDocs,
+}
+
+func init() {
+	docsCmd.Flags().StringVarP(&docsOutput, "output", "o", "./docs/cli/", "output directory for generated docs")
+}
+
+func runDocs(_ *cobra.Command, _ []string) error {
+	return runDocsGen(rootCmd, docsOutput)
+}

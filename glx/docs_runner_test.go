@@ -19,15 +19,24 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
-const docsFrontmatter = "---\neditLink: false\n---\n\n"
+// countAvailableCommands mirrors cobra/doc.GenMarkdownTreeCustom's traversal
+// rule (skip hidden, deprecated, additional-help-topic) so the test asserts
+// against exactly the file count that runDocsGen should produce.
+func countAvailableCommands(cmd *cobra.Command) int {
+	count := 1
+	for _, sub := range cmd.Commands() {
+		if !sub.IsAvailableCommand() || sub.IsAdditionalHelpTopicCommand() {
+			continue
+		}
+		count += countAvailableCommands(sub)
+	}
 
-// minExpectedDocsFiles is a lower bound on the number of Markdown files
-// runDocsGen should produce. It must be ≤ the actual command count so adding
-// a new command never breaks this test; CI drift detection (docs-drift.yml)
-// is what catches missing/stale pages, not this number.
-const minExpectedDocsFiles = 20
+	return count
+}
 
 func TestRunDocsGenProducesPerCommandMarkdown(t *testing.T) {
 	outDir := t.TempDir()
@@ -49,16 +58,18 @@ func TestRunDocsGenProducesPerCommandMarkdown(t *testing.T) {
 		mdFiles[e.Name()] = struct{}{}
 	}
 
-	if len(mdFiles) < minExpectedDocsFiles {
-		t.Fatalf("got %d Markdown files, want at least %d", len(mdFiles), minExpectedDocsFiles)
+	if want := countAvailableCommands(rootCmd); len(mdFiles) != want {
+		t.Fatalf("got %d Markdown files, want %d (one per available command in the tree)", len(mdFiles), want)
 	}
 
-	// Spot-check a few well-known commands. If these are renamed the test
-	// must be updated alongside the command — that is the intended signal.
 	for _, name := range []string{"glx.md", "glx_init.md", "glx_validate.md", "glx_import.md"} {
 		if _, ok := mdFiles[name]; !ok {
 			t.Errorf("expected %s in generated output", name)
 		}
+	}
+
+	if _, ok := mdFiles["glx_docs.md"]; ok {
+		t.Errorf("hidden glx docs subcommand leaked into generated output")
 	}
 }
 
@@ -73,8 +84,12 @@ func TestRunDocsGenWritesFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read glx_init.md: %v", err)
 	}
-	if !strings.HasPrefix(string(body), docsFrontmatter) {
-		t.Errorf("glx_init.md missing VitePress frontmatter; got prefix %q", string(body[:min(len(body), 40)]))
+	head := string(body)
+	if len(head) > 100 {
+		head = head[:100]
+	}
+	if !strings.HasPrefix(head, "---\n") || !strings.Contains(head, "editLink: false") {
+		t.Errorf("glx_init.md missing expected VitePress frontmatter; head: %q", head)
 	}
 }
 
@@ -95,6 +110,9 @@ func TestRunDocsGenIsDeterministic(t *testing.T) {
 	entriesA, err := os.ReadDir(a)
 	if err != nil {
 		t.Fatalf("read a: %v", err)
+	}
+	if len(entriesA) == 0 {
+		t.Fatal("runDocsGen produced no files; nothing to compare")
 	}
 
 	for _, e := range entriesA {
