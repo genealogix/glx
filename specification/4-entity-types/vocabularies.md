@@ -164,7 +164,7 @@ relationship_types:
 
 ### Standard Relationship Types
 
-**Standard Relationship Types**: GENEALOGIX provides standardized relationship type codes including marriage, parent-child (plus biological, adoptive, and foster variants), sibling, step-parent, godparent, guardian, partner, and social/occupational relationships.
+**Standard Relationship Types**: GENEALOGIX provides standardized relationship type codes including marriage, parent-child (plus biological, adoptive, and foster variants), sibling, step-parent, godparent, guardian, partner, social/occupational relationships, and `possibly_same_person` for unconfirmed identifications between two person records.
 
 **Complete List**: See [Standard Vocabularies - Relationship Types](../5-standard-vocabularies/#relationship-types) for the complete default vocabulary file with all standard types.
 

@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+#### Specification
+
+- **`possibly_same_person` relationship type** — New standard relationship type for linking two person records that may refer to the same individual but cannot yet be confirmed; pair with an Assertion subject-referencing the relationship to record `confidence` and supporting citations. No direct GEDCOM mapping. Closes #227.
+
 #### CLI
 
 - **`glx migrate --rename-gender-to-sex`** — New opt-in flag on `glx migrate` that renames the legacy `gender` person property (and related assertions and inlined vocabulary entries) to `sex`, completing the two-field-model split in pre-v1.0 archives (#528).
