@@ -256,7 +256,7 @@ assertions:
       same person; needs further research in parish registers.
 ```
 
-**Note**: most relationships connect *two distinct people*. The
+**Note:** most relationships connect *two distinct people*. The
 `possibly_same_person` type is the unusual case where the two participants
 are two **records** that may, on further research, turn out to refer to a
 single individual. Once the identification is confirmed (or refuted),
