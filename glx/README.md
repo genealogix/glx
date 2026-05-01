@@ -201,7 +201,7 @@ The `glx` CLI groups its commands into archive management, import/export, explor
 - Read in this repo: [`docs/cli/glx.md`](../docs/cli/glx.md)
 - Regenerate locally: `make docs-cli`
 
-CI fails on any drift between `glx/cli_commands.go` and the committed pages under `docs/cli/`. To change the docs for a command, edit its `Use`/`Short`/`Long`/`Example` strings (or its `*_runner.go` file) and re-run `make docs-cli`.
+CI fails on any drift between the Cobra command tree (as defined across the `glx/` package) and the committed pages under `docs/cli/`. To change the docs for a command, edit its `Use`/`Short`/`Long`/`Example` strings — typically in `glx/cli_commands.go` — and re-run `make docs-cli`.
 
 ## File Format
 
