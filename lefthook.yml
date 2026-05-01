@@ -1,0 +1,16 @@
+# Pre-commit hooks for genealogix/glx.
+# Install with: make install-hooks
+# Skip once:    LEFTHOOK=0 git commit ...
+# Docs:         https://lefthook.dev/
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: golangci-lint
+      glob: "*.go"
+      run: golangci-lint run --new-from-rev=HEAD ./...
+
+    - name: eslint
+      root: "website/"
+      glob: "*.{js,vue}"
+      run: npx eslint {staged_files}

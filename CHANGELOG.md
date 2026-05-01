@@ -33,6 +33,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
 
+#### Tooling
+
+- **Pre-commit hooks via `lefthook`** — `lefthook.yml` defines `pre-commit` jobs that run `golangci-lint` on staged Go files and `eslint` on staged JS/Vue files in `website/.vitepress/`. Install with `make install-hooks`. Catches lint issues locally before they reach CI; skip a single commit with `LEFTHOOK=0 git commit ...`. (#280)
+
 #### Tests
 
 - **Round-trip validation tests for example archives** — `go-glx/example_archives_roundtrip_test.go` walks every archive under `docs/examples/` (single-file or multi-file), runs it through deserialize → re-serialize, validates each entity in the re-emitted output against its per-entity JSON schema (`person.schema.json`, `event.schema.json`, etc.), and asserts that the parsed-input YAML map equals the parsed-output map. The map-level comparison catches `omitempty` drops that struct equality cannot detect. (#296)
