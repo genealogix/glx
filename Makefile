@@ -15,14 +15,18 @@ install-deps: ## Install Go modules and npm packages
 	cd website && npm install
 
 install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
-	@if command -v lefthook >/dev/null 2>&1; then \
-		LEFTHOOK_BIN=lefthook; \
-	else \
+	@if ! command -v lefthook >/dev/null 2>&1; then \
 		echo "Installing lefthook via 'go install'..."; \
 		go install github.com/evilmartians/lefthook@latest; \
-		LEFTHOOK_BIN="$$(go env GOPATH)/bin/lefthook"; \
+		GO_BIN_DIR="$$(go env GOBIN)"; \
+		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$$(go env GOPATH)/bin"; fi; \
+		export PATH="$$GO_BIN_DIR:$$PATH"; \
 	fi; \
-	"$$LEFTHOOK_BIN" install
+	if ! command -v lefthook >/dev/null 2>&1; then \
+		echo "ERROR: lefthook is installed but not on PATH. Ensure your Go bin directory is on PATH and re-run 'make install-hooks'."; \
+		exit 1; \
+	fi; \
+	lefthook install
 
 ## Verification
 check: tidy-check lint test check-schemas check-links validate-examples ## Run all checks (mirrors CI)

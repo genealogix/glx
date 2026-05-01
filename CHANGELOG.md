@@ -35,7 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Tooling
 
-- **Pre-commit hooks via `lefthook`** — `lefthook.yml` defines `pre-commit` jobs that run `golangci-lint` on staged Go files and `eslint` on staged JS/Vue files in `website/.vitepress/`. Install with `make install-hooks`. Catches lint issues locally before they reach CI; skip a single commit with `LEFTHOOK=0 git commit ...`. (#280)
+- **Pre-commit hooks via `lefthook`** — `lefthook.yml` defines `pre-commit` jobs that, when Go files are staged, run `golangci-lint` (flagging only issues introduced since `HEAD`) and, when JS/Vue files under `website/.vitepress/` are staged, run `eslint` on those staged files. Install with `make install-hooks`. Catches lint issues locally before they reach CI; skip a single commit with `LEFTHOOK=0 git commit ...`. (#280)
 
 #### Tests
 

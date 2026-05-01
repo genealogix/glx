@@ -101,9 +101,10 @@ before each commit:
 make install-hooks
 ```
 
-The hooks run `golangci-lint` on staged Go files and `eslint` on staged JS/Vue
-files under `website/.vitepress/`, catching issues locally before they hit CI.
-Skip once with `LEFTHOOK=0 git commit ...` if needed.
+When Go files are staged the hook runs `golangci-lint` (flagging only issues
+introduced since `HEAD`, mirroring CI's `only-new-issues: true`); when JS/Vue
+files under `website/.vitepress/` are staged it runs `eslint` on those staged
+files. Skip once with `LEFTHOOK=0 git commit ...` if needed.
 
 ### Makefile Reference
 
