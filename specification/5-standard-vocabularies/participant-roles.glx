@@ -6,13 +6,13 @@ participant_roles:
   # Event Roles
   principal:
     label: "Principal"
-    description: "Primary person in the event"
+    description: "Primary person in the event. Canonical role for the event's subject; tooling also accepts 'subject' as a synonym."
     applies_to:
       - event
-  
+
   subject:
     label: "Subject"
-    description: "Subject of the event (preferred over 'principal')"
+    description: "Synonym of 'principal'. Both terms are accepted by tooling; 'principal' is canonical and is what 'glx init' and GEDCOM import emit."
     applies_to:
       - event
   

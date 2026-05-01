@@ -46,7 +46,8 @@ var skipPersonProperties = map[string]bool{
 }
 
 // buildPersonEventsIndex scans all events and builds a map from person ID
-// to the event IDs where that person participates as principal.
+// to the event IDs where that person is the event's subject (role principal,
+// subject, or unset — see isSubjectRole).
 // This avoids scanning all events for each person during export.
 func buildPersonEventsIndex(expCtx *ExportContext) {
 	expCtx.PersonEvents = make(map[string][]string)
@@ -59,7 +60,7 @@ func buildPersonEventsIndex(expCtx *ExportContext) {
 			continue
 		}
 		for _, participant := range event.Participants {
-			if participant.Role == ParticipantRolePrincipal && participant.Person != "" {
+			if participant.Person != "" && isSubjectRole(participant.Role) {
 				expCtx.PersonEvents[participant.Person] = append(
 					expCtx.PersonEvents[participant.Person], eventID)
 			}
