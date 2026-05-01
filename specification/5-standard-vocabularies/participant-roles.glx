@@ -15,7 +15,7 @@ participant_roles:
     description: "Synonym of 'principal'. Both terms are accepted by tooling; 'principal' is canonical and is what 'glx init' and GEDCOM import emit."
     applies_to:
       - event
-  
+
   witness:
     label: "Witness"
     description: "Person who witnessed the event"

@@ -2244,10 +2244,11 @@ func TestBuildPersonEventsIndex(t *testing.T) {
 	}
 }
 
-// TestBuildPersonEventsIndex_SubjectAndEmptyRolesAreEquivalent locks in the
-// principal/subject alias semantics defined in participant-roles.glx: an event
-// whose participant uses role "subject", "principal", or "" must all be
-// indexed identically. Regression test for #523.
+// TestBuildPersonEventsIndex_SubjectAndEmptyRolesAreEquivalent locks in two
+// related behaviors: participant-roles.glx defines `principal` and `subject`
+// as equivalent event-subject roles, and isSubjectRole additionally treats an
+// unset role ("") as subject-equivalent for indexing purposes. Regression
+// test for #523.
 func TestBuildPersonEventsIndex_SubjectAndEmptyRolesAreEquivalent(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
