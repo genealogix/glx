@@ -96,6 +96,7 @@ func init() {
 	rootCmd.AddCommand(renameCmd)
 	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(migrateCmd)
+	rootCmd.AddCommand(linkCmd)
 }
 
 // ============================================================================
@@ -1362,4 +1363,75 @@ func init() {
 
 func runMerge(_ *cobra.Command, args []string) error {
 	return mergeArchives(args[0], mergeInto, mergePreview, mergeThreshold)
+}
+
+// ============================================================================
+// Link Command
+// ============================================================================
+
+var (
+	linkArchive      string
+	linkSource       string
+	linkCreateSource string
+	linkText         string
+	linkLocator      string
+	linkDryRun       bool
+)
+
+var linkCmd = &cobra.Command{
+	Use:   "link <familysearch-ark>",
+	Short: "Create a FamilySearch citation from an ARK",
+	Long: `Create a GLX citation (and, if needed, a FamilySearch repository and source)
+from a FamilySearch ARK. Accepts full ARK URLs
+(https://www.familysearch.org/ark:/61903/...) as well as bare ARK identifiers
+(ark:/61903/...); the citation always records the canonical URL form.
+
+This is an offline, URL-parse-only MVP of the FamilySearch linker described in
+issue #87. It performs no network I/O. The citation captures the canonical
+URL, today's date as the accessed date, and the ARK under the structured
+external_ids property, matching the shape produced by GEDCOM 7 EXID import.
+
+Exactly one of --source or --create-source must be provided. If the target
+archive does not already have a repository-familysearch entity, one is
+created automatically. If it does, the existing entity is left untouched.
+
+Re-running the command with the same ARK is idempotent — a citation with
+the deterministic ID citation-familysearch-<slug> is not re-created.`,
+	Example: `  # Attach to an existing source
+  glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+    --archive my-family-archive \
+    --source source-deutschland-geburten-taufen
+
+  # Create a new source at the same time
+  glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+    --archive my-family-archive \
+    --create-source "Deutschland Geburten und Taufen, 1558-1898" \
+    --text "Johann Peter Jungk, 1725"
+
+  # Preview without writing
+  glx link "ark:/61903/1:1:C4H8-2DW2" --archive my-archive \
+    --source source-fs-index --dry-run`,
+	Args: cobra.ExactArgs(1),
+	RunE: runLink,
+}
+
+func init() {
+	linkCmd.Flags().StringVarP(&linkArchive, "archive", "a", ".", "Archive path (directory)")
+	linkCmd.Flags().StringVar(&linkSource, "source", "", "Attach the new citation to an existing source ID")
+	linkCmd.Flags().StringVar(&linkCreateSource, "create-source", "", "Create a new source with this title and attach the citation to it")
+	linkCmd.Flags().StringVar(&linkText, "text", "", "Populate citation.properties.text_from_source")
+	linkCmd.Flags().StringVar(&linkLocator, "locator", "", "Populate citation.properties.locator (page, entry number, etc.)")
+	linkCmd.Flags().BoolVar(&linkDryRun, "dry-run", false, "Print planned changes without writing files")
+}
+
+func runLink(_ *cobra.Command, args []string) error {
+	return linkFamilySearchARK(SystemIOStreams(), linkOptions{
+		ARKInput:          args[0],
+		ArchivePath:       linkArchive,
+		SourceID:          linkSource,
+		CreateSourceTitle: linkCreateSource,
+		Text:              linkText,
+		Locator:           linkLocator,
+		DryRun:            linkDryRun,
+	})
 }
