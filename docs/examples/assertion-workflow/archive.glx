@@ -8,23 +8,34 @@
 # ===========================================================================
 
 places:
+  place-united-states:
+    name: "United States"
+    type: country
+
+  place-massachusetts:
+    name: "Massachusetts"
+    type: state
+    parent: place-united-states
+
+  place-new-york-state:
+    name: "New York"
+    type: state
+    parent: place-united-states
+
   place-boston:
     name: "Boston"
     type: city
-    properties:
-      jurisdiction: "Massachusetts, United States"
+    parent: place-massachusetts
 
   place-new-york:
     name: "New York"
     type: city
-    properties:
-      jurisdiction: "New York, United States"
+    parent: place-new-york-state
 
   place-cambridge:
     name: "Cambridge"
     type: city
-    properties:
-      jurisdiction: "Massachusetts, United States"
+    parent: place-massachusetts
 
 # ===========================================================================
 # APPROACH 1: DIRECT PROPERTY SETTING (Quick Data Entry)
