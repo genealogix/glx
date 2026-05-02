@@ -57,6 +57,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+#### Documentation
+
+- **`assertion-workflow` example uses flat `jurisdiction` strings instead of place hierarchy** — `docs/examples/assertion-workflow/archive.glx` defined `place-boston`, `place-new-york`, and `place-cambridge` with a `jurisdiction: "Massachusetts, United States"` property string instead of the `parent:` chain documented in `specification/4-entity-types/place.md`. The example now adds `place-united-states`, `place-massachusetts`, and `place-new-york-state` and links the cities via `parent:`, matching the canonical pattern in `complete-family`. Closes #574
+
 #### CLI
 
 - **`personSex` / `displayableGenderIdentity` / `pronounFor` handle temporal shapes** — `sex` and `gender` are both declared `temporal: true` in `person-properties`, so archives may store them as `{value, date}` maps or `[{value, date}, ...]` lists. Previously the CLI ran these through `propertyString`, which `fmt.Sprint`-ed non-string values and produced useless display strings like `map[date:1850 value:male]` — also breaking the legacy-gender fallback, the identity-vs-duplicate predicate, and pronoun selection (every temporal value silently fell through to they/their). A new `propertyScalar` helper extracts the canonical scalar from string / single-map / list shapes. (PR #742)
