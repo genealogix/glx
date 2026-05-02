@@ -86,6 +86,7 @@ Place properties allow capturing historical information that doesn't fit into th
 | `jurisdiction` | string | Formal jurisdiction identifier or code (e.g., ISO 3166, FIPS code) |
 | `place_format` | string | Standard format for place hierarchy (GEDCOM PLAC.FORM style) |
 | `alternative_names` | string (temporal, multi-value) | Historical or alternate names for a place |
+| `external_ids` | string (multi-value) | Identifiers from external geographic databases (e.g., GeoNames, Wikidata, OpenStreetMap) |
 
 Example:
 

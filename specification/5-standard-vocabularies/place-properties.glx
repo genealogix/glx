@@ -42,3 +42,14 @@ place_properties:
     temporal: true
     multi_value: true
 
+  external_ids:
+    label: "External Identifiers"
+    description: "Identifiers from external geographic databases (e.g., GeoNames, Wikidata, OpenStreetMap)"
+    value_type: string
+    multi_value: true
+    gedcom: "EXID"
+    fields:
+      type:
+        label: "Identifier Type"
+        description: "Authority or system that issued this identifier (e.g., geonames, wikidata, openstreetmap, familysearch). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."
+
