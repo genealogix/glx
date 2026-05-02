@@ -239,6 +239,7 @@ Defines standard and custom properties for place entities.
 - `jurisdiction` - Formal jurisdiction identifier or code
 - `place_format` - Standard format string for place hierarchy
 - `alternative_names` - Historical or alternate names (temporal, multi-value)
+- `external_ids` - External identifiers from geographic databases like GeoNames, Wikidata (multi-value, GEDCOM: EXID)
 
 **See Also:** [Place Entity Documentation](../4-entity-types/place#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#place-properties-vocabulary)
 
