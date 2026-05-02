@@ -708,6 +708,7 @@ Standard properties include:
 - `jurisdiction` - Formal jurisdiction identifier or code
 - `place_format` - Standard format string for place hierarchy
 - `alternative_names` - Historical or alternate names for a place (temporal, multi-value)
+- `external_ids` - External identifiers from geographic databases (GeoNames, Wikidata, etc.)
 
 ### Media Properties Vocabulary
 
