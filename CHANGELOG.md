@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Project Infrastructure
 
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
+- **PR template changelog reminder** — `.github/PULL_REQUEST_TEMPLATE.md` now ends with an HTML-comment reminder to update `CHANGELOG.md` for user-facing changes (Added/Changed/Fixed/Removed). (#363)
 
 #### Specification
 
