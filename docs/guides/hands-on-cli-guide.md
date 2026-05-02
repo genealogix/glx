@@ -639,6 +639,37 @@ The exporter reconstructs GEDCOM FAM records from GLX relationships, converts da
 GEDCOM is a simpler format than GLX. Custom vocabularies (like `battle`, `coronation`, `ward`) will be exported as generic event/relationship types. Evidence chains are preserved as SOUR citations but lose the structured assertion model.
 :::
 
+### `glx link` — Create a FamilySearch citation from an ARK URL
+
+When reviewing FamilySearch records, transcribing the URL, accessed date, and ARK identifier into a new citation for every record is repetitive. `glx link` writes that boilerplate for you:
+
+```bash
+# Attach to an existing source in your archive
+glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+  --archive . \
+  --source source-deutschland-geburten-taufen \
+  --text "Johann Peter Jungk, 1725"
+
+# Or create a new source at the same time
+glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+  --archive . \
+  --create-source "Deutschland Geburten und Taufen, 1558-1898"
+
+# Preview without writing
+glx link "ark:/61903/1:1:C4H8-2DW2" --archive . \
+  --source source-fs-index --dry-run
+```
+
+The command:
+
+- Validates the ARK (full URL, URL without `www`, or bare `ark:/61903/...` all work)
+- Creates `repository-familysearch` if your archive doesn't already have it (skipped otherwise — your customizations are preserved)
+- Uses the `--source` you point at, or mints a new source with `--create-source <title>`
+- Writes a citation with the canonical URL, today's date as `accessed`, and the ARK as a structured `external_ids` entry whose `fields.type` matches GEDCOM 7 EXID import (`https://www.familysearch.org/ark:/61903/`). This keeps FS-imported GEDCOM files and `glx link`-generated citations format-compatible.
+- Is idempotent: running it twice with the same ARK is a no-op.
+
+This is an offline MVP — `glx link` does not fetch anything over the network. The larger [#87](https://github.com/genealogix/glx/issues/87) scope (OAuth PKCE, GEDCOM X JSON extraction, automatic person/event/relationship import from the record) is tracked as follow-up work.
+
 ## Archive Merging
 
 ### `glx merge` — Combine two archives

@@ -25,6 +25,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
+- 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
@@ -487,6 +488,50 @@ glx join family-archive family.glx --no-validate
 
 # Verbose output
 glx join family-archive family.glx --verbose
+```
+
+### `glx link`
+
+Create a GLX citation (and, when needed, a FamilySearch repository and source) from a FamilySearch ARK URL. Offline URL-parse MVP — no network I/O.
+
+The citation carries the canonical URL, today's date as the accessed date, and the ARK identifier as a structured `external_ids` entry whose `fields.type` matches the URI form that GEDCOM 7 EXID import produces, so FS-imported GEDCOM files and `glx link`-generated citations stay format-compatible.
+
+Re-running the command with the same ARK is idempotent: the deterministic ID `citation-familysearch-<slug>` is not re-created.
+
+```
+glx link <familysearch-ark-url> [flags]
+```
+
+**Flags:**
+| Flag | Description |
+|------|-------------|
+| `--archive` | Archive path (default: current directory) |
+| `--source` | Attach the new citation to an existing source ID |
+| `--create-source` | Create a new source with this title and attach the citation to it |
+| `--text` | Populate `citation.properties.text_from_source` |
+| `--locator` | Populate `citation.properties.locator` (page, entry number, etc.) |
+| `--dry-run` | Print planned changes without writing files |
+
+Exactly one of `--source` or `--create-source` must be provided.
+
+Accepted input forms: full URL (`https://www.familysearch.org/ark:/61903/...`), URL without `www`, bare ARK (`ark:/61903/...`).
+
+**Examples:**
+```bash
+# Attach to an existing source
+glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+  --archive my-family-archive \
+  --source source-deutschland-geburten-taufen
+
+# Create a new source at the same time
+glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+  --archive my-family-archive \
+  --create-source "Deutschland Geburten und Taufen, 1558-1898" \
+  --text "Johann Peter Jungk, 1725"
+
+# Preview without writing
+glx link "ark:/61903/1:1:C4H8-2DW2" --archive my-archive \
+  --source source-fs-index --dry-run
 ```
 
 ### `glx merge`
