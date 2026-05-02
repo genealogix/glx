@@ -36,13 +36,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
 - **PR template changelog reminder** — `.github/PULL_REQUEST_TEMPLATE.md` now ends with an HTML-comment reminder to update `CHANGELOG.md` for user-facing changes (Added/Changed/Fixed/Removed). (#363)
 
+#### Specification
+
+- **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
+
 #### Tests
 
 - **Round-trip validation tests for example archives** — `go-glx/example_archives_roundtrip_test.go` walks every archive under `docs/examples/` (single-file or multi-file), runs it through deserialize → re-serialize, validates each entity in the re-emitted output against its per-entity JSON schema (`person.schema.json`, `event.schema.json`, etc.), and asserts that the parsed-input YAML map equals the parsed-output map. The map-level comparison catches `omitempty` drops that struct equality cannot detect. (#296)
 
 ### Changed
-
-#### Specification
 
 - **BREAKING**: Split `gender` property into `sex` (recorded) and `gender` (identity) — The existing `gender` property conflated "recorded sex" (GEDCOM `SEX`) with "self-identified gender identity". Introduced a new `sex_types` vocabulary (`male`, `female`, `unknown`, `not_recorded`, `other`) bound to a new `sex` person property that maps to GEDCOM `SEX`. The `gender_types` vocabulary now covers identity values (`male`, `female`, `nonbinary`, `other`) bound to the repurposed `gender` property (no direct GEDCOM mapping — GEDCOM 7.0 defers identity to `FACT`). GEDCOM import/export, HUSB/WIFE assignment, census parsing, and CLI readers (`vitals`, `summary`) all updated to prefer `sex` with legacy `gender` fallback. Archives predating this split can be migrated via `glx migrate --rename-gender-to-sex`. Wire-format breaking: archives using `gender: "unknown"` produce an out-of-vocabulary warning post-split (`unknown` now lives only in `sex_types`). Resolves #528. Closes #518. Closes #534.
 
