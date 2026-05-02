@@ -212,25 +212,37 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 	return placeID
 }
 
-
 // buildExternalIDEntry builds a structured property entry from an EXID record.
 // If TYPE is present, returns a map with value and fields.type; otherwise returns a plain string.
 func buildExternalIDEntry(exidRecord *GEDCOMRecord) any {
-	idValue := exidRecord.Value
 	var exidType string
 	for _, sub := range exidRecord.SubRecords {
 		if sub.Tag == GedcomTagType && sub.Value != "" {
 			exidType = sub.Value
+
 			break
 		}
 	}
-	if exidType != "" {
-		return map[string]any{
-			"value":  idValue,
-			"fields": map[string]any{"type": exidType},
-		}
+
+	return NewExternalIDEntry(exidRecord.Value, exidType)
+}
+
+// NewExternalIDEntry constructs the canonical external_ids property entry for
+// an identifier. If typeURI is non-empty, returns a structured map of the form
+// {value: ..., fields: {type: ...}} matching GEDCOM 7 EXID/TYPE import. When
+// typeURI is empty, returns the bare value string — the same shape produced
+// for a GEDCOM EXID without a TYPE sub-record. Non-GEDCOM code paths (e.g.,
+// glx link) should use this helper so both import and first-party entry
+// points produce identical YAML.
+func NewExternalIDEntry(value, typeURI string) any {
+	if typeURI == "" {
+		return value
 	}
-	return idValue
+
+	return map[string]any{
+		"value":  value,
+		"fields": map[string]any{"type": typeURI},
+	}
 }
 
 // appendMultiValueProperty appends a value to a multi-value property slice.
@@ -258,4 +270,3 @@ func extractExternalIDs(record *GEDCOMRecord, propertyKey string, props map[stri
 		}
 	}
 }
-
