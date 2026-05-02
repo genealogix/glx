@@ -92,11 +92,26 @@ npm ci --prefix specification
 make check-schemas
 ```
 
+### Pre-Commit Hooks (Recommended)
+
+Install [lefthook](https://lefthook.dev/) to run lint checks on staged files
+before each commit:
+
+```bash
+make install-hooks
+```
+
+When Go files are staged the hook runs `golangci-lint` (flagging only issues
+introduced since `HEAD`, mirroring CI's `only-new-issues: true`); when JS/Vue
+files under `website/.vitepress/` are staged it runs `eslint` on those staged
+files. Skip once with `LEFTHOOK=0 git commit ...` if needed.
+
 ### Makefile Reference
 
 | Target | Description |
 |--------|-------------|
 | `make install-deps` | Install Go modules and npm packages |
+| `make install-hooks` | Install lefthook pre-commit hooks (one-time) |
 | `make test` | Run all tests |
 | `make test-verbose` | Run tests with verbose output |
 | `make test-coverage` | Run tests with coverage report |
