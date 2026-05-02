@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 
+- **Added `glx link` command** — Create a GLX citation, and (when needed) a FamilySearch repository and source, from a FamilySearch ARK URL. Offline URL-parse MVP of #87: no network I/O, no authentication required. The citation captures the canonical URL, today's date as the accessed date, and the ARK identifier as a structured `external_ids` entry whose `fields.type` matches the URI form produced by GEDCOM 7 EXID import (`https://www.familysearch.org/ark:/61903/`), keeping FS-imported GEDCOM files and `glx link`-generated citations format-compatible. Accepts full URLs (`https://www.familysearch.org/ark:/61903/...`), URLs without `www`, and bare ARK identifiers. Requires exactly one of `--source` (attach to existing) or `--create-source <title>` (mint a new source). Supports `--text`, `--locator`, and `--dry-run`. Idempotent — re-running with the same ARK is a no-op once the deterministic citation ID `citation-familysearch-<slug>` exists. Follow-ups for the remaining #87 scope (unauthenticated HTTP fetch, OAuth PKCE, GEDCOM X JSON extraction, person/event/relationship import) are tracked separately (#87)
+
 - **`glx migrate --rename-gender-to-sex`** — New opt-in flag on `glx migrate` that renames the legacy `gender` person property (and related assertions and inlined vocabulary entries) to `sex`, completing the two-field-model split in pre-v1.0 archives (#528).
 - **`glx merge --preview` with cross-archive duplicate detection** — Preview mode now detects potential duplicate persons across source and destination archives using 7-signal similarity scoring (name, birth/death year and place, shared relationships and events). Configurable via `--threshold` (default 0.6). Replaces the previous `--dry-run` flag, which has been removed. (#702, part of #94)
 
@@ -53,11 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
-#### Documentation
-
 - **`assertion-workflow` example uses flat `jurisdiction` strings instead of place hierarchy** — `docs/examples/assertion-workflow/archive.glx` defined `place-boston`, `place-new-york`, and `place-cambridge` with a `jurisdiction: "Massachusetts, United States"` property string instead of the `parent:` chain documented in `specification/4-entity-types/place.md`. The example now adds `place-united-states`, `place-massachusetts`, and `place-new-york-state` and links the cities via `parent:`, matching the canonical pattern in `complete-family`. Closes #574
-
-#### CLI
 
 - **`personSex` / `displayableGenderIdentity` / `pronounFor` handle temporal shapes** — `sex` and `gender` are both declared `temporal: true` in `person-properties`, so archives may store them as `{value, date}` maps or `[{value, date}, ...]` lists. Previously the CLI ran these through `propertyString`, which `fmt.Sprint`-ed non-string values and produced useless display strings like `map[date:1850 value:male]` — also breaking the legacy-gender fallback, the identity-vs-duplicate predicate, and pronoun selection (every temporal value silently fell through to they/their). A new `propertyScalar` helper extracts the canonical scalar from string / single-map / list shapes. (PR #742)
 - **`glx migrate --rename-gender-to-sex` no longer skips on empty `sex`** — `isPostSplitArchive` previously treated the mere presence of the `sex` key as a post-split signal, so archives with `sex: ""`, `sex: {}`, or `sex: []` incorrectly skipped the migration while their real data still lived in `gender`. The check now requires a meaningful scalar value. (PR #742)
@@ -71,8 +69,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### GEDCOM Import
 
 - **Empty `SEX` tag maps to `not_recorded`** — A present-but-empty GEDCOM `SEX` tag (e.g. `1 SEX` with no value) now maps to `sex: not_recorded` rather than `sex: unknown`. `unknown` is reserved for `SEX U` (source consulted but sex could not be determined); an empty tag represents absent-from-source data per GEDCOM 5.5.5. (#528)
-
-#### go-glx
 
 - **GEDCOM export handles temporal `sex`/`gender`** — `exportPerson` (SEX emission) and `getPersonSex` (HUSB/WIFE inference) previously read sex/gender via `getStringProperty`, which only accepts plain strings. A temporal archive (`sex: {value: male, date: 1850}` or `sex: [{value, date}, ...]`) would silently get SEX omitted from its INDI record and fall back to first/second order for HUSB/WIFE. New `getScalarProperty` helper extracts the scalar from all three shapes and is used at the sex/gender call sites; non-temporal fields (citation locator, source publication info, etc.) continue to use `getStringProperty` so their type check still catches data errors. (PR #742)
 - **Multi-file serializer generates deterministic filenames** — Entity filenames are now derived from entity IDs (`strings.ToLower(entityID) + ".glx"`) instead of random 8-char hex. Previously, every write generated new random filenames, causing massive git diffs even when no data changed. Case-insensitive collisions (e.g., `Person-A` and `person-a`) are detected and reported as errors. Fixes #694
