@@ -2244,6 +2244,54 @@ func TestBuildPersonEventsIndex(t *testing.T) {
 	}
 }
 
+// TestBuildPersonEventsIndex_SubjectAndEmptyRolesAreEquivalent locks in two
+// related behaviors: participant-roles.glx defines `principal` and `subject`
+// as equivalent event-subject roles, and isSubjectRole additionally treats an
+// unset role ("") as subject-equivalent for indexing purposes. Regression
+// test for #523.
+func TestBuildPersonEventsIndex_SubjectAndEmptyRolesAreEquivalent(t *testing.T) {
+	expCtx := &ExportContext{
+		GLX: &GLXFile{
+			Events: map[string]*Event{
+				"event-principal": {
+					Type: "birth",
+					Participants: []Participant{
+						{Person: "person-p", Role: ParticipantRolePrincipal},
+					},
+				},
+				"event-subject": {
+					Type: "birth",
+					Participants: []Participant{
+						{Person: "person-s", Role: ParticipantRoleSubject},
+					},
+				},
+				"event-empty": {
+					Type: "birth",
+					Participants: []Participant{
+						{Person: "person-e", Role: ""},
+					},
+				},
+				"event-witness": {
+					Type: "birth",
+					Participants: []Participant{
+						{Person: "person-w", Role: ParticipantRoleWitness},
+					},
+				},
+			},
+		},
+	}
+
+	buildPersonEventsIndex(expCtx)
+
+	assert.Equal(t, []string{"event-principal"}, expCtx.PersonEvents["person-p"])
+	assert.Equal(t, []string{"event-subject"}, expCtx.PersonEvents["person-s"],
+		"role=subject must be indexed identically to role=principal")
+	assert.Equal(t, []string{"event-empty"}, expCtx.PersonEvents["person-e"],
+		"role=\"\" must be indexed identically to role=principal")
+	assert.NotContains(t, expCtx.PersonEvents, "person-w",
+		"role=witness must not be indexed as the event's subject")
+}
+
 func TestExportPerson_WithNotes(t *testing.T) {
 	expCtx := &ExportContext{
 		GLX: &GLXFile{
