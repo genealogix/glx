@@ -9,6 +9,7 @@ person_properties:
     description: "Person's name as recorded, with optional structured breakdown"
     value_type: string
     temporal: true
+    gedcom: "NAME"
     fields:
       type:
         label: "Name Type"
@@ -37,12 +38,14 @@ person_properties:
     description: "Sex as recorded in source documents (e.g., GEDCOM SEX, census enumerations)"
     vocabulary_type: sex_types
     temporal: true
+    gedcom: "SEX"
 
   gender:
     label: "Gender"
     description: "Self-identified gender identity (modern/living persons)"
     vocabulary_type: gender_types
     temporal: true
+    # No direct GEDCOM equivalent — identity defers to FACT in GEDCOM 7.0
 
   occupation:
     label: "Occupation"
@@ -63,6 +66,7 @@ person_properties:
     description: "Place of residence"
     reference_type: places
     temporal: true
+    gedcom: "RESI"
   
   religion:
     label: "Religion"
@@ -83,12 +87,14 @@ person_properties:
     description: "Ethnic background"
     value_type: string
     temporal: true
+    # No direct GEDCOM equivalent
   
   race:
     label: "Race"
     description: "Racial classification as recorded in historical documents (e.g., census records)"
     value_type: string
     temporal: true
+    # No direct GEDCOM equivalent (sometimes recorded as a GEDCOM census FACT)
 
   nationality:
     label: "Nationality"
@@ -114,6 +120,7 @@ person_properties:
     label: "Primary Name"
     description: "Simple display name for the person, used as a fallback when the structured name property is not available"
     value_type: string
+    # No GEDCOM equivalent — GLX-specific display name
 
   external_ids:
     label: "External Identifiers"
