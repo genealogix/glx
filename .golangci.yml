@@ -69,6 +69,7 @@ linters:
     # Bugs
     - bodyclose # Check HTTP response body is closed
     - errorlint # Find code that will cause problems with Go 1.13+ error wrapping
+    - fatcontext # Detect nested contexts in loops (unbounded chain growth)
 
     # Complexity
     - gocyclo # Cyclomatic complexity
