@@ -20,3 +20,5 @@
 ## Breaking changes
 
 <!-- None, or describe the migration path. -->
+
+<!-- Reminder: update CHANGELOG.md for user-facing changes (Added/Changed/Fixed/Removed). -->
