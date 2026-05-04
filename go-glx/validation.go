@@ -1162,6 +1162,17 @@ func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
 			glx.validateDateFormat(EntityTypeAssertions, id, "date", string(assertion.Date), result)
 		}
 	}
+	for id, log := range glx.ResearchLogs {
+		if log.Date != "" {
+			glx.validateDateFormat(EntityTypeResearchLogs, id, "date", string(log.Date), result)
+		}
+		for i, search := range log.Searches {
+			if search.Date != "" {
+				field := fmt.Sprintf("searches[%d].date", i)
+				glx.validateDateFormat(EntityTypeResearchLogs, id, field, string(search.Date), result)
+			}
+		}
+	}
 
 	// Validate repository website URLs
 	for id, repo := range glx.Repositories {

@@ -71,7 +71,7 @@ func TestResearchLogRoundTrip(t *testing.T) {
 	}
 
 	// Standard vocabularies must be loaded so the validator can resolve
-	// search_result_types / research_log_status_types references.
+	// search_result_types / research_status_types references.
 	require.NoError(t, LoadStandardVocabulariesIntoGLX(original))
 
 	s := NewSerializer(nil)

@@ -79,6 +79,7 @@ citations: {}
 repositories: {}
 assertions: {}
 media: {}
+research_logs: {}
 `
 	if err := os.WriteFile("archive.glx", []byte(template), filePermissions); err != nil {
 		return fmt.Errorf("failed to create archive.glx: %w", err)
