@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples docs-cli release-snapshot
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples docs-cli release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -13,6 +13,20 @@ install-deps: ## Install Go modules and npm packages
 	go mod download
 	@echo "Installing website dependencies..."
 	cd website && npm install
+
+install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
+	@if ! command -v lefthook >/dev/null 2>&1; then \
+		echo "Installing lefthook via 'go install'..."; \
+		go install github.com/evilmartians/lefthook@latest; \
+		GO_BIN_DIR="$$(go env GOBIN)"; \
+		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$$(go env GOPATH)/bin"; fi; \
+		export PATH="$$GO_BIN_DIR:$$PATH"; \
+	fi; \
+	if ! command -v lefthook >/dev/null 2>&1; then \
+		echo "ERROR: lefthook is installed but not on PATH. Ensure your Go bin directory is on PATH and re-run 'make install-hooks'."; \
+		exit 1; \
+	fi; \
+	lefthook install
 
 ## Verification
 check: tidy-check lint test check-schemas check-links validate-examples ## Run all checks (mirrors CI)

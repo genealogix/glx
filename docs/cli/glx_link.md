@@ -1,0 +1,66 @@
+---
+editLink: false
+---
+
+## glx link
+
+Create a FamilySearch citation from an ARK
+
+### Synopsis
+
+Create a GLX citation (and, if needed, a FamilySearch repository and source)
+from a FamilySearch ARK. Accepts full ARK URLs
+(https://www.familysearch.org/ark:/61903/...) as well as bare ARK identifiers
+(ark:/61903/...); the citation always records the canonical URL form.
+
+This is an offline, URL-parse-only MVP of the FamilySearch linker described in
+issue #87. It performs no network I/O. The citation captures the canonical
+URL, today's date as the accessed date, and the ARK under the structured
+external_ids property, matching the shape produced by GEDCOM 7 EXID import.
+
+Exactly one of --source or --create-source must be provided. If the target
+archive does not already have a repository-familysearch entity, one is
+created automatically. If it does, the existing entity is left untouched.
+
+Re-running the command with the same ARK is idempotent — a citation with
+the deterministic ID citation-familysearch-<slug> is not re-created.
+
+```
+glx link <familysearch-ark> [flags]
+```
+
+### Examples
+
+```
+  # Attach to an existing source
+  glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+    --archive my-family-archive \
+    --source source-deutschland-geburten-taufen
+
+  # Create a new source at the same time
+  glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
+    --archive my-family-archive \
+    --create-source "Deutschland Geburten und Taufen, 1558-1898" \
+    --text "Johann Peter Jungk, 1725"
+
+  # Preview without writing
+  glx link "ark:/61903/1:1:C4H8-2DW2" --archive my-archive \
+    --source source-fs-index --dry-run
+```
+
+### Options
+
+```
+  -a, --archive string         Archive path (directory) (default ".")
+      --create-source string   Create a new source with this title and attach the citation to it
+      --dry-run                Print planned changes without writing files
+  -h, --help                   help for link
+      --locator string         Populate citation.properties.locator (page, entry number, etc.)
+      --source string          Attach the new citation to an existing source ID
+      --text string            Populate citation.properties.text_from_source
+```
+
+### SEE ALSO
+
+* [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
+

@@ -35,6 +35,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx import](/cli/glx_import)	 - Import a GEDCOM file to GLX format
 * [glx init](/cli/glx_init)	 - Initialize a new GENEALOGIX archive in the specified directory
 * [glx join](/cli/glx_join)	 - Join a multi-file GLX archive into single-file format
+* [glx link](/cli/glx_link)	 - Create a FamilySearch citation from an ARK
 * [glx merge](/cli/glx_merge)	 - Merge another archive into the destination archive
 * [glx migrate](/cli/glx_migrate)	 - Migrate an archive to the current format
 * [glx path](/cli/glx_path)	 - Find the shortest relationship path between two people

@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CLI
 
+- **Added `glx link` command** — Create a GLX citation, and (when needed) a FamilySearch repository and source, from a FamilySearch ARK URL. Offline URL-parse MVP of #87: no network I/O, no authentication required. The citation captures the canonical URL, today's date as the accessed date, and the ARK identifier as a structured `external_ids` entry whose `fields.type` matches the URI form produced by GEDCOM 7 EXID import (`https://www.familysearch.org/ark:/61903/`), keeping FS-imported GEDCOM files and `glx link`-generated citations format-compatible. Accepts full URLs (`https://www.familysearch.org/ark:/61903/...`), URLs without `www`, and bare ARK identifiers. Requires exactly one of `--source` (attach to existing) or `--create-source <title>` (mint a new source). Supports `--text`, `--locator`, and `--dry-run`. Idempotent — re-running with the same ARK is a no-op once the deterministic citation ID `citation-familysearch-<slug>` exists. Follow-ups for the remaining #87 scope (unauthenticated HTTP fetch, OAuth PKCE, GEDCOM X JSON extraction, person/event/relationship import) are tracked separately (#87)
+
 - **Hidden `glx docs` subcommand** — Generates per-command Markdown reference for every (non-hidden) Cobra command into a configurable output directory (default `./docs/cli/`). Used by `make docs-cli` and the `docs-drift` CI workflow. Adds `github.com/spf13/cobra/doc` to the dependency graph (transitive via existing cobra dependency). (#299)
 
 - **`glx migrate --rename-gender-to-sex`** — New opt-in flag on `glx migrate` that renames the legacy `gender` person property (and related assertions and inlined vocabulary entries) to `sex`, completing the two-field-model split in pre-v1.0 archives (#528).
@@ -36,6 +38,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Project Infrastructure
 
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
+- **PR template changelog reminder** — `.github/PULL_REQUEST_TEMPLATE.md` now ends with an HTML-comment reminder to update `CHANGELOG.md` for user-facing changes (Added/Changed/Fixed/Removed). (#363)
+
+#### Specification
+
+- **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
+
+#### Tooling
+
+- **Pre-commit hooks via `lefthook`** — `lefthook.yml` defines `pre-commit` jobs that, when Go files are staged, run `golangci-lint` (flagging only issues introduced since `HEAD`) and, when JS/Vue files under `website/.vitepress/` are staged, run `eslint` on those staged files. Install with `make install-hooks`. Catches lint issues locally before they reach CI; skip a single commit with `LEFTHOOK=0 git commit ...`. (#280)
 
 #### Tests
 
@@ -50,6 +61,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Specification
 
 - **BREAKING**: Split `gender` property into `sex` (recorded) and `gender` (identity) — The existing `gender` property conflated "recorded sex" (GEDCOM `SEX`) with "self-identified gender identity". Introduced a new `sex_types` vocabulary (`male`, `female`, `unknown`, `not_recorded`, `other`) bound to a new `sex` person property that maps to GEDCOM `SEX`. The `gender_types` vocabulary now covers identity values (`male`, `female`, `nonbinary`, `other`) bound to the repurposed `gender` property (no direct GEDCOM mapping — GEDCOM 7.0 defers identity to `FACT`). GEDCOM import/export, HUSB/WIFE assignment, census parsing, and CLI readers (`vitals`, `summary`) all updated to prefer `sex` with legacy `gender` fallback. Archives predating this split can be migrated via `glx migrate --rename-gender-to-sex`. Wire-format breaking: archives using `gender: "unknown"` produce an out-of-vocabulary warning post-split (`unknown` now lives only in `sex_types`). Resolves #528. Closes #518. Closes #534.
+- **`participant-roles.glx` clarified `principal` and `subject` as synonyms** — The previous wording described `subject` as "preferred over 'principal'", which was misleading about the intended contract. The two role descriptions now state that `principal` is the canonical term and `subject` is an accepted synonym. `glx init` and GEDCOM import emit `principal`; some paths (e.g., census import's empty-role default) emit `subject`. Tooling treats both as equivalent and no data migration is required. Fixes #523.
+
+- **`person-properties.glx` GEDCOM mappings completed** — Added `gedcom:` tags to `name` (`NAME`), `sex` (`SEX`), and `residence` (`RESI`); documented `gender`, `ethnicity`, `race`, and `primary_name` as having no direct GEDCOM equivalent via inline comments. Closes #533.
 
 #### go-glx
 
@@ -61,11 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
-#### Documentation
-
 - **`assertion-workflow` example uses flat `jurisdiction` strings instead of place hierarchy** — `docs/examples/assertion-workflow/archive.glx` defined `place-boston`, `place-new-york`, and `place-cambridge` with a `jurisdiction: "Massachusetts, United States"` property string instead of the `parent:` chain documented in `specification/4-entity-types/place.md`. The example now adds `place-united-states`, `place-massachusetts`, and `place-new-york-state` and links the cities via `parent:`, matching the canonical pattern in `complete-family`. Closes #574
-
-#### CLI
 
 - **`personSex` / `displayableGenderIdentity` / `pronounFor` handle temporal shapes** — `sex` and `gender` are both declared `temporal: true` in `person-properties`, so archives may store them as `{value, date}` maps or `[{value, date}, ...]` lists. Previously the CLI ran these through `propertyString`, which `fmt.Sprint`-ed non-string values and produced useless display strings like `map[date:1850 value:male]` — also breaking the legacy-gender fallback, the identity-vs-duplicate predicate, and pronoun selection (every temporal value silently fell through to they/their). A new `propertyScalar` helper extracts the canonical scalar from string / single-map / list shapes. (PR #742)
 - **`glx migrate --rename-gender-to-sex` no longer skips on empty `sex`** — `isPostSplitArchive` previously treated the mere presence of the `sex` key as a post-split signal, so archives with `sex: ""`, `sex: {}`, or `sex: []` incorrectly skipped the migration while their real data still lived in `gender`. The check now requires a meaningful scalar value. (PR #742)
@@ -80,10 +90,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Empty `SEX` tag maps to `not_recorded`** — A present-but-empty GEDCOM `SEX` tag (e.g. `1 SEX` with no value) now maps to `sex: not_recorded` rather than `sex: unknown`. `unknown` is reserved for `SEX U` (source consulted but sex could not be determined); an empty tag represents absent-from-source data per GEDCOM 5.5.5. (#528)
 
-#### go-glx
-
 - **GEDCOM export handles temporal `sex`/`gender`** — `exportPerson` (SEX emission) and `getPersonSex` (HUSB/WIFE inference) previously read sex/gender via `getStringProperty`, which only accepts plain strings. A temporal archive (`sex: {value: male, date: 1850}` or `sex: [{value, date}, ...]`) would silently get SEX omitted from its INDI record and fall back to first/second order for HUSB/WIFE. New `getScalarProperty` helper extracts the scalar from all three shapes and is used at the sex/gender call sites; non-temporal fields (citation locator, source publication info, etc.) continue to use `getStringProperty` so their type check still catches data errors. (PR #742)
 - **Multi-file serializer generates deterministic filenames** — Entity filenames are now derived from entity IDs (`strings.ToLower(entityID) + ".glx"`) instead of random 8-char hex. Previously, every write generated new random filenames, causing massive git diffs even when no data changed. Case-insensitive collisions (e.g., `Person-A` and `person-a`) are detected and reported as errors. Fixes #694
+- **GEDCOM export emits events whose principal participant uses `role: subject`** — `buildPersonEventsIndex` filtered on `participant.Role == ParticipantRolePrincipal`, silently dropping events from the per-person event index whenever the participant used the documented synonym `subject` (or left the role unset). The filter now uses the existing `isSubjectRole` helper, which accepts `principal`, `subject`, and `""` consistently with `FindPersonEvent`, the census import default, and `vitals_runner`. Fixes #523.
 - **`glx migrate`, `glx rename`, and `glx merge` no longer delete non-archive files** — The crash-safe write path (`safeWriteMultiFileArchive`, added in #598) swapped a fresh archive directory into place and then unconditionally removed the original via `.bak`, wiping any top-level entry the serializer didn't produce — including `.git/`, `README.md`, `CLAUDE.md`, `.claude/`, and arbitrary user content. Since GLX archives are designed to live inside git repositories, every invocation against a real archive silently destroyed git history and project docs. The swap now preserves every top-level entry that isn't in the managed set (`metadata.glx`, `vocabularies/`, `persons/`, `events/`, `relationships/`, `places/`, `sources/`, `citations/`, `repositories/`, `media/`, `assertions/`). Test coverage added for foreign-file preservation. Fixes #692
 
 ## [0.0.0-beta.10] - 2026-04-13

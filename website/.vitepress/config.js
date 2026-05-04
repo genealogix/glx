@@ -306,7 +306,8 @@ export default defineConfig({
           text: 'Data Entry',
           items: [
             { text: 'glx census', link: '/cli/glx_census' },
-            { text: 'glx census add', link: '/cli/glx_census_add' }
+            { text: 'glx census add', link: '/cli/glx_census_add' },
+            { text: 'glx link', link: '/cli/glx_link' }
           ]
         },
         {
