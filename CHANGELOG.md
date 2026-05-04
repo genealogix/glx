@@ -47,6 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 #### Tests
 
 - **Round-trip validation tests for example archives** — `go-glx/example_archives_roundtrip_test.go` walks every archive under `docs/examples/` (single-file or multi-file), runs it through deserialize → re-serialize, validates each entity in the re-emitted output against its per-entity JSON schema (`person.schema.json`, `event.schema.json`, etc.), and asserts that the parsed-input YAML map equals the parsed-output map. The map-level comparison catches `omitempty` drops that struct equality cannot detect. (#296)
+- **Regression tests pinning `value_type` enforcement on temporal properties** — `go-glx/validation_temporal_test.go` now covers all three temporal-value shapes (simple value, single `{value, date}` object, list of objects) for properties declaring `value_type: integer`, asserting a warning is emitted when the value's runtime type doesn't match. Locks in behavior already implemented in `validateTemporalItem`. Closes #668.
 
 ### Changed
 
