@@ -225,6 +225,48 @@ relationships:
       description: "Blood brother ceremony witnessed by tribal elders"
 ```
 
+### Possibly Same Person
+
+When two person records may describe the same individual but the
+identification cannot yet be confirmed, link them with a `possibly_same_person`
+relationship. Both participants are equal "candidates", so no `role` is set:
+
+```yaml
+relationships:
+  rel-maybe-john-1850-1860:
+    type: possibly_same_person
+    participants:
+      - person: person-john-smith-1850-census
+      - person: person-john-smith-1860-census
+    notes: "Same name, similar age, same county. No primary record links them."
+
+# Confidence and evidence go on a companion assertion, not the relationship.
+assertions:
+  assertion-john-1850-1860-match:
+    subject:
+      relationship: rel-maybe-john-1850-1860
+    confidence: medium
+    status: speculative
+    citations:
+      - citation-1850-census-page-12
+      - citation-1860-census-page-47
+    notes: |
+      Both records list "John Smith" born ~1820 in Yorkshire, both in
+      Leeds parish. No marriage or death record yet links them as the
+      same person; needs further research in parish registers.
+```
+
+**Note:** most relationships connect *two distinct people*. The
+`possibly_same_person` type is the unusual case where the two participants
+are two **records** that may, on further research, turn out to refer to a
+single individual. Once the identification is confirmed (or refuted),
+follow-up actions are research decisions outside the scope of GLX —
+typically merging the records or recording the disproof on the assertion's
+`status` field. See [Assertion Entity](assertion#confidence) for the
+evidence model and [Confidence Levels](vocabularies#confidence-levels-vocabulary)
+for the standard vocabulary. There is no direct GEDCOM mapping (see
+[GEDCOM Mapping](#gedcom-mapping)).
+
 ## Participants Format
 
 The `participants` array defines the people involved in the relationship and their roles:
@@ -317,6 +359,7 @@ Relationships map to GEDCOM family and individual structures:
 | `adoptive_parent_child` | FAM.CHIL + INDI.FAMC with PEDI adopted | Legally adopted child (use `adoption` event for ADOP tag) |
 | `foster_parent_child` | FAM.CHIL + INDI.FAMC with PEDI foster | Foster care relationship |
 | `sibling` | Shared FAM.CHIL | Siblings share parents |
+| `possibly_same_person` | (none) | No direct mapping. GEDCOM `ALIA` asserts identity, which is stronger than "possibly" — exporting an unconfirmed match would misrepresent the evidence. |
 
 **PEDI (Pedigree Linkage)**:
 
