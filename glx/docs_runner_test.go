@@ -160,6 +160,10 @@ func TestRunDocsGenPreservesHandAuthoredGlxFiles(t *testing.T) {
 // TestRunDocsGenIsDeterministic guards against drift detection becoming a
 // false-positive treadmill: two consecutive runs into clean directories must
 // produce byte-identical output, otherwise CI would fail on every PR.
+//
+// The filename sets must match too — comparing only files present in dir a
+// would miss a run that emits an extra (or skips a) file in dir b, which is a
+// subtler form of nondeterminism that would still cause drift CI to flap.
 func TestRunDocsGenIsDeterministic(t *testing.T) {
 	a := t.TempDir()
 	b := t.TempDir()
@@ -171,28 +175,56 @@ func TestRunDocsGenIsDeterministic(t *testing.T) {
 		t.Fatalf("runDocsGen b: %v", err)
 	}
 
-	entriesA, err := os.ReadDir(a)
-	if err != nil {
-		t.Fatalf("read a: %v", err)
-	}
-	if len(entriesA) == 0 {
+	namesA := fileNames(t, a)
+	namesB := fileNames(t, b)
+
+	if len(namesA) == 0 {
 		t.Fatal("runDocsGen produced no files; nothing to compare")
 	}
+	for name := range namesA {
+		if _, ok := namesB[name]; !ok {
+			t.Errorf("file %s present in a but missing from b", name)
+		}
+	}
+	for name := range namesB {
+		if _, ok := namesA[name]; !ok {
+			t.Errorf("file %s present in b but missing from a", name)
+		}
+	}
 
-	for _, e := range entriesA {
+	for name := range namesA {
+		if _, ok := namesB[name]; !ok {
+			continue
+		}
+		ba, err := os.ReadFile(filepath.Join(a, name))
+		if err != nil {
+			t.Fatalf("read %s from a: %v", name, err)
+		}
+		bb, err := os.ReadFile(filepath.Join(b, name))
+		if err != nil {
+			t.Fatalf("read %s from b: %v", name, err)
+		}
+		if string(ba) != string(bb) {
+			t.Errorf("nondeterministic output for %s", name)
+		}
+	}
+}
+
+// fileNames returns the set of regular-file names directly under dir.
+// Subdirectories are skipped because runDocsGen emits a flat layout.
+func fileNames(t *testing.T, dir string) map[string]struct{} {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read %s: %v", dir, err)
+	}
+	names := make(map[string]struct{}, len(entries))
+	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
-		ba, err := os.ReadFile(filepath.Join(a, e.Name()))
-		if err != nil {
-			t.Fatalf("read %s from a: %v", e.Name(), err)
-		}
-		bb, err := os.ReadFile(filepath.Join(b, e.Name()))
-		if err != nil {
-			t.Fatalf("read %s from b: %v", e.Name(), err)
-		}
-		if string(ba) != string(bb) {
-			t.Errorf("nondeterministic output for %s", e.Name())
-		}
+		names[e.Name()] = struct{}{}
 	}
+
+	return names
 }
