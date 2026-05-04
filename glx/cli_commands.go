@@ -1397,7 +1397,7 @@ archive does not already have a repository-familysearch entity, one is
 created automatically. If it does, the existing entity is left untouched.
 
 Re-running the command with the same ARK is idempotent — a citation with
-the deterministic ID `+"`citation-familysearch-<slug>`"+` is not re-created.`,
+the deterministic ID ` + "`citation-familysearch-<slug>`" + ` is not re-created.`,
 	Example: `  # Attach to an existing source
   glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
     --archive my-family-archive \
