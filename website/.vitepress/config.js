@@ -20,7 +20,7 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
     ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
-    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-N2YJJJFE6K');"]
+    ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
   ],
 
   // Vite configuration for file watching in Docker/WSL
@@ -178,7 +178,8 @@ export default defineConfig({
             { text: 'Citation', link: '/specification/4-entity-types/citation' },
             { text: 'Assertion', link: '/specification/4-entity-types/assertion' },
             { text: 'Repository', link: '/specification/4-entity-types/repository' },
-            { text: 'Media', link: '/specification/4-entity-types/media' }
+            { text: 'Media', link: '/specification/4-entity-types/media' },
+            { text: 'Research Log', link: '/specification/4-entity-types/research-log' }
           ]
         },
         {
@@ -241,7 +242,8 @@ export default defineConfig({
             { text: 'Citation', link: '/specification/4-entity-types/citation' },
             { text: 'Assertion', link: '/specification/4-entity-types/assertion' },
             { text: 'Repository', link: '/specification/4-entity-types/repository' },
-            { text: 'Media', link: '/specification/4-entity-types/media' }
+            { text: 'Media', link: '/specification/4-entity-types/media' },
+            { text: 'Research Log', link: '/specification/4-entity-types/research-log' }
           ]
         },
         {

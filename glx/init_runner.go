@@ -103,6 +103,7 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 		"repositories",
 		"assertions",
 		"media",
+		"research_logs",
 		"vocabularies",
 	}
 
@@ -145,6 +146,7 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 	fmt.Println("  Core: persons/, relationships/, events/, places/")
 	fmt.Println("  Evidence: sources/, citations/, repositories/, assertions/")
 	fmt.Println("  Media: media/")
+	fmt.Println("  Research: research_logs/")
 	fmt.Println("Created .gitignore and README.md")
 	fmt.Println("")
 	fmt.Println("Each .glx file should have entity type keys at the top level.")

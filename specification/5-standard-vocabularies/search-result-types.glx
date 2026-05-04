@@ -1,0 +1,21 @@
+# Standard Search Result Types
+# This file defines the standard outcomes of an individual search recorded in
+# a research log entry. Archives can extend this with custom outcomes by
+# adding additional entries.
+
+search_result_types:
+  found:
+    label: "Found"
+    description: "Record located, target identified"
+
+  not_found:
+    label: "Not Found"
+    description: "Collection searched, target not present (negative evidence)"
+
+  inconclusive:
+    label: "Inconclusive"
+    description: "Candidate found but identity could not be confirmed"
+
+  not_searched:
+    label: "Not Searched"
+    description: "Search planned but not yet executed"

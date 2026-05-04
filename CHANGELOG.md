@@ -38,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Specification
 
+- **Research Log entity** — New top-level entity type `research_logs` for documenting the research *process* (what repositories and collections were searched, with what terms, with what outcome) alongside the existing assertion entities that document the *conclusion*. Each log is scoped to a specific objective and contains a list of `searches`, each with a required `result` value. Two new controlled vocabularies are added: `search_result_types` (`found`, `not_found`, `inconclusive`, `not_searched`) makes negative evidence — "this collection was searched, this person is not in it" — first-class data; `research_status_types` (`complete`, `in_progress`, `blocked`) tracks whether the objective is finished or pending. Includes Go types in `go-glx`, JSON Schemas, embedded standard vocabularies, and the `research-log.md` entity spec page. CLI commands (`glx log add/list/report`) and auto-generation of negative-evidence assertions from `not_found` results are deferred to follow-up issues. Closes #89
+
 - **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
 
 #### Tooling

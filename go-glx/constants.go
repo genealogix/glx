@@ -349,6 +349,23 @@ const (
 	ConfidenceLevelDisputed = "disputed" // Multiple sources conflict, resolution unclear
 )
 
+// Standard Search Result Types - from search-result-types.glx vocabulary.
+// Used as the `result` value on each entry in a research log's searches list.
+const (
+	SearchResultFound        = "found"        // Record located, target identified
+	SearchResultNotFound     = "not_found"    // Collection searched, target not present (negative evidence)
+	SearchResultInconclusive = "inconclusive" // Candidate found but identity could not be confirmed
+	SearchResultNotSearched  = "not_searched" // Search planned but not yet executed
+)
+
+// Standard Research Status Types - from research-status-types.glx vocabulary.
+// Used as the `status` value on a research log entry.
+const (
+	ResearchStatusComplete   = "complete"    // Research objective answered or definitively closed
+	ResearchStatusInProgress = "in_progress" // Research is actively underway
+	ResearchStatusBlocked    = "blocked"     // Research is paused waiting on access or external input
+)
+
 // Standard Source Types - from source-types.glx vocabulary
 const (
 	SourceTypeVitalRecord        = "vital_record"        // Birth, marriage, death certificates
@@ -405,20 +422,23 @@ const (
 	EntityTypeRepositories  = "repositories"
 	EntityTypeAssertions    = "assertions"
 	EntityTypeMedia         = "media"
+	EntityTypeResearchLogs  = "research_logs"
 )
 
 // Vocabulary type constants - used as map keys in GLXFile
 const (
-	VocabRelationshipTypes = "relationship_types"
-	VocabEventTypes        = "event_types"
-	VocabPlaceTypes        = "place_types"
-	VocabRepositoryTypes   = "repository_types"
-	VocabParticipantRoles  = "participant_roles"
-	VocabMediaTypes        = "media_types"
-	VocabConfidenceLevels  = "confidence_levels"
-	VocabSourceTypes       = "source_types"
-	VocabSexTypes          = "sex_types"
-	VocabGenderTypes       = "gender_types"
+	VocabRelationshipTypes   = "relationship_types"
+	VocabEventTypes          = "event_types"
+	VocabPlaceTypes          = "place_types"
+	VocabRepositoryTypes     = "repository_types"
+	VocabParticipantRoles    = "participant_roles"
+	VocabMediaTypes          = "media_types"
+	VocabConfidenceLevels    = "confidence_levels"
+	VocabSourceTypes         = "source_types"
+	VocabSexTypes            = "sex_types"
+	VocabGenderTypes         = "gender_types"
+	VocabSearchResultTypes   = "search_result_types"
+	VocabResearchStatusTypes = "research_status_types"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile

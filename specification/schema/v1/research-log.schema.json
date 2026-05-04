@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/research-log.schema.json",
+  "title": "Research Log",
+  "description": "A structured record of research activity — what was searched, where, with what outcome — supporting the Genealogical Proof Standard's reasonably exhaustive search. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["objective"],
+  "properties": {
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The specific question this research log is investigating (e.g., 'Locate Jane Webb in 1860 census to confirm birthplace')"
+    },
+    "date": {
+      "type": "string",
+      "description": "Date or date range when the log entry was created or last updated"
+    },
+    "researcher": {
+      "type": "string",
+      "description": "Name of the researcher who created or owns this log entry"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Current status of the research objective — value should exist in the research_status_types vocabulary"
+    },
+    "searches": {
+      "type": "array",
+      "description": "Individual searches performed against the objective",
+      "items": {
+        "$ref": "#/definitions/ResearchLogSearch"
+      }
+    },
+    "conclusions": {
+      "type": "string",
+      "description": "Conclusions or summary the researcher drew from the searches"
+    },
+    "related_persons": {
+      "type": "array",
+      "description": "Persons this research is investigating",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "related_events": {
+      "type": "array",
+      "description": "Events this research is investigating",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "related_relationships": {
+      "type": "array",
+      "description": "Relationships this research is investigating",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "related_places": {
+      "type": "array",
+      "description": "Places this research is investigating",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "notes": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "General notes about the research log entry"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ResearchLogSearch": {
+      "type": "object",
+      "description": "A single search performed as part of the research objective",
+      "required": ["result"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]{1,64}$",
+          "description": "Reference to a Repository entity where the search was performed"
+        },
+        "collection": {
+          "type": "string",
+          "description": "Free-form name of the collection or database searched (e.g., 'United States, Census, 1860')"
+        },
+        "search_terms": {
+          "type": "string",
+          "description": "Free-form record of the search terms or strategy used"
+        },
+        "result": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Outcome of the search — value should exist in the search_result_types vocabulary"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date the search was executed"
+        },
+        "citation": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]{1,64}$",
+          "description": "Reference to a Citation entity recording the located evidence"
+        },
+        "media": {
+          "type": "array",
+          "description": "References to Media entities — e.g. screenshots of the search results page",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$"
+          },
+          "uniqueItems": true
+        },
+        "notes": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Notes about this individual search"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

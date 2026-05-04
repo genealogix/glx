@@ -96,7 +96,7 @@ Common organizational pattern for GENEALOGIX files (not required). Files can be 
 
 ### Entity
 
-A typed record in a GENEALOGIX archive representing a person, event, place, relationship, source, citation, repository, assertion, or media file.
+A typed record in a GENEALOGIX archive representing a person, event, place, relationship, source, citation, repository, assertion, media file, or research log.
 
 > **See Also:** [Entity Types](4-entity-types/)
 
@@ -357,6 +357,12 @@ Varies by entity type. Common required fields include `title` (sources), `name` 
 ### Research Branch
 
 A Git branch dedicated to investigating a specific research question or time period.
+
+### Research Log
+
+A structured record of research activity against a specific objective: which repositories and collections were searched, with what terms, and what was or was not found. The home for **negative evidence** in GLX — the documented fact that a person does *not* appear in a particular record set, which is critical to the Genealogical Proof Standard's reasonably exhaustive search.
+
+> **See Also:** [Research Log Entity](4-entity-types/research-log)
 
 ### Research Notes
 

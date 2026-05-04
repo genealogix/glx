@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/research-status-types.schema.json",
+  "title": "Research Status Types Vocabulary",
+  "description": "Defines the standard status values for a research log entry",
+  "type": "object",
+  "required": ["research_status_types"],
+  "properties": {
+    "research_status_types": {
+      "type": "object",
+      "description": "Map of research status type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/ResearchStatusTypeDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ResearchStatusTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single research status type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the status"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of when this status applies"
+        }
+      }
+    }
+  }
+}
