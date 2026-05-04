@@ -56,7 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **`person-properties.glx` GEDCOM mappings completed** — Added `gedcom:` tags to `name` (`NAME`), `sex` (`SEX`), and `residence` (`RESI`); documented `gender`, `ethnicity`, `race`, and `primary_name` as having no direct GEDCOM equivalent via inline comments. Closes #533.
 
-- **`relationship-types.glx` GEDCOM mappings completed** — Added `gedcom:` tags to `step_parent` (`FAMC with PEDI sealing`, partial — LDS sealing semantics), `godparent` (`ASSO with ROLE GODP`), and `partner` (`MARR with TYPE domestic partnership`); documented `guardian`, `neighbor`, `coworker`, `housemate`, `apprenticeship`, `employment`, `enslavement`, and `relative` as having no direct GEDCOM equivalent via inline comments. Closes #544.
+- **`relationship-types.glx` GEDCOM mapping coverage documented** — Documented `step_parent`, `godparent`, `partner`, `guardian`, `neighbor`, `coworker`, `housemate`, `apprenticeship`, `employment`, `enslavement`, and `relative` as having no direct GEDCOM equivalent via inline comments, with rationale for `step_parent` (PEDI `sealed` is mapped to generic `parent_child` per `specification/4-entity-types/relationship.md` and `go-glx/gedcom_converter.go`), `godparent` (GEDCOM 7.0 `ASSO ROLE GODP` is consumed as a baptism event participant role, not a standalone relationship), and `partner` (`MARR TYPE` is collapsed into the `marriage` relationship plus a `marriage_type` event property by the importer). Closes #544.
 
 #### go-glx
 

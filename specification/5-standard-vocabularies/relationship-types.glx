@@ -36,23 +36,22 @@ relationship_types:
   step_parent:
     label: "Step-Parent"
     description: "Step-parent through marriage"
-    gedcom: "FAMC with PEDI sealing"
-    # Partial — PEDI sealing has LDS sealing-to-parents semantics; no general step-parent tag in GEDCOM 7.0
-  
+    # No direct GEDCOM equivalent — GEDCOM 7.0 has no general step-parent tag; PEDI sealing has LDS sealing-to-parents semantics and is mapped to generic parent_child by this implementation (see specification/4-entity-types/relationship.md PEDI section)
+
   godparent:
     label: "Godparent"
     description: "Ongoing godparent-godchild bond (use baptism/christening event for the ceremony)"
-    gedcom: "ASSO with ROLE GODP"
-  
+    # No direct GEDCOM equivalent — GEDCOM 7.0 ASSO with ROLE GODP records the godparent as a participant role on a baptism/christening event, not as a standalone relationship; see participant-roles vocabulary
+
   guardian:
     label: "Guardian"
     description: "Legal guardian relationship"
     # No direct GEDCOM equivalent
-  
+
   partner:
     label: "Partner"
     description: "Domestic partnership or cohabitation"
-    gedcom: "MARR with TYPE domestic partnership"
+    # No direct GEDCOM equivalent — GEDCOM has no standard tag for non-marital partnership; MARR with TYPE "domestic partnership" rounds back to a marriage relationship in this implementation
 
   neighbor:
     label: "Neighbor"
