@@ -55,6 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **`person-properties.glx` GEDCOM mappings completed** — Added `gedcom:` tags to `name` (`NAME`), `sex` (`SEX`), and `residence` (`RESI`); documented `gender`, `ethnicity`, `race`, and `primary_name` as having no direct GEDCOM equivalent via inline comments. Closes #533.
 
+- **`relationship-types.glx` GEDCOM mappings completed** — Added `gedcom:` tags to `step_parent` (`FAMC with PEDI sealing`, partial — LDS sealing semantics), `godparent` (`ASSO with ROLE GODP`), and `partner` (`MARR with TYPE domestic partnership`); documented `guardian`, `neighbor`, `coworker`, `housemate`, `apprenticeship`, `employment`, `enslavement`, and `relative` as having no direct GEDCOM equivalent via inline comments. Closes #544.
+
 #### go-glx
 
 - **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
