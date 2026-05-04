@@ -1216,6 +1216,237 @@ func TestAnalyzeSuggestions_1890Note(t *testing.T) {
 	}
 }
 
+// --- Suggestion Consolidation (parent + minor child same census year) ---
+
+func TestAnalyzeSuggestions_ConsolidateParentAndMinorChild(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Parent Green"}},
+			"person-child":  {Properties: map[string]any{"name": "Child Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{
+				{Person: "person-parent", Role: "parent"},
+				{Person: "person-child", Role: "child"},
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-parent": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-death-parent": {Type: glxlib.EventTypeDeath, Date: "1850", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1825", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1832", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	if parent1830 == nil {
+		t.Fatal("expected parent to have a 1830 census suggestion")
+	}
+	if !containsSubstring(parent1830.Message, "would also cover") {
+		t.Errorf("expected parent 1830 message to contain consolidation note; got %q", parent1830.Message)
+	}
+	if !containsSubstring(parent1830.Message, "Child Green (~5)") {
+		t.Errorf("expected parent 1830 message to mention child age ~5; got %q", parent1830.Message)
+	}
+
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 != nil {
+		t.Errorf("child 1830 suggestion should be suppressed; got %q", child1830.Message)
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateAdultChildNotIncluded(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Parent Green"}},
+			"person-child":  {Properties: map[string]any{"name": "Adult Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{
+				{Person: "person-parent", Role: "parent"},
+				{Person: "person-child", Role: "child"},
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-parent": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-death-parent": {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1828", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	parent1850 := findIssueByMessage(issues, "person-parent", "1850 census")
+	if parent1850 == nil {
+		t.Fatal("expected parent 1850 census suggestion")
+	}
+	if containsSubstring(parent1850.Message, "would also cover") {
+		t.Errorf("parent 1850 should NOT consolidate child (age 22); got %q", parent1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("expected adult child to keep independent 1850 census suggestion")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateChildIndependentWhenParentHasCensus(t *testing.T) {
+	// Parent already has the 1850 census, so produces no parent suggestion for 1850.
+	// The minor child still needs its own 1850 suggestion (no parent suggestion to fold into).
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Parent Green"}},
+			"person-child":  {Properties: map[string]any{"name": "Child Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{
+				{Person: "person-parent", Role: "parent"},
+				{Person: "person-child", Role: "child"},
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-parent": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-death-parent": {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1845", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1855", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-1850-parent": {
+				Type: glxlib.EventTypeCensus, Date: "1850",
+				Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}},
+			},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	if parent1850 := findIssueByMessage(issues, "person-parent", "1850 census"); parent1850 != nil {
+		t.Errorf("parent should NOT have 1850 suggestion when census event exists; got %q", parent1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child should keep independent 1850 census suggestion when parent already has the census")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateMultipleMinorChildrenSorted(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent":      {Properties: map[string]any{"name": "Parent Green"}},
+			"person-child-alpha": {Properties: map[string]any{"name": "Alpha Green"}},
+			"person-child-beta":  {Properties: map[string]any{"name": "Beta Green"}},
+			"person-child-gamma": {Properties: map[string]any{"name": "Gamma Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-a": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-parent", Role: "parent"}, {Person: "person-child-alpha", Role: "child"}}},
+			"rel-b": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-parent", Role: "parent"}, {Person: "person-child-beta", Role: "child"}}},
+			"rel-g": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-parent", Role: "parent"}, {Person: "person-child-gamma", Role: "child"}}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-parent":      {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-death-parent":      {Type: glxlib.EventTypeDeath, Date: "1850", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-birth-child-alpha": {Type: glxlib.EventTypeBirth, Date: "1825", Participants: []glxlib.Participant{{Person: "person-child-alpha", Role: "principal"}}},
+			"event-death-child-alpha": {Type: glxlib.EventTypeDeath, Date: "1832", Participants: []glxlib.Participant{{Person: "person-child-alpha", Role: "principal"}}},
+			"event-birth-child-beta":  {Type: glxlib.EventTypeBirth, Date: "1826", Participants: []glxlib.Participant{{Person: "person-child-beta", Role: "principal"}}},
+			"event-death-child-beta":  {Type: glxlib.EventTypeDeath, Date: "1832", Participants: []glxlib.Participant{{Person: "person-child-beta", Role: "principal"}}},
+			"event-birth-child-gamma": {Type: glxlib.EventTypeBirth, Date: "1827", Participants: []glxlib.Participant{{Person: "person-child-gamma", Role: "principal"}}},
+			"event-death-child-gamma": {Type: glxlib.EventTypeDeath, Date: "1832", Participants: []glxlib.Participant{{Person: "person-child-gamma", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	if parent1830 == nil {
+		t.Fatal("expected parent 1830 census suggestion")
+	}
+	want := "would also cover: Alpha Green (~5), Beta Green (~4), Gamma Green (~3)"
+	if !containsSubstring(parent1830.Message, want) {
+		t.Errorf("parent 1830 message missing or out-of-order children;\n got: %q\nwant substring: %q", parent1830.Message, want)
+	}
+
+	for _, childID := range []string{"person-child-alpha", "person-child-beta", "person-child-gamma"} {
+		if found := findIssueByMessage(issues, childID, "1830 census"); found != nil {
+			t.Errorf("child %s 1830 suggestion should be suppressed; got %q", childID, found.Message)
+		}
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateChildBirthYearUnknown(t *testing.T) {
+	// Child has no birth event, so neither participates in consolidation
+	// nor produces independent census suggestions of its own.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-parent": {Properties: map[string]any{"name": "Parent Green"}},
+			"person-child":  {Properties: map[string]any{"name": "Child Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-1": {Type: "parent_child", Participants: []glxlib.Participant{
+				{Person: "person-parent", Role: "parent"},
+				{Person: "person-child", Role: "child"},
+			}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-parent": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+			"event-death-parent": {Type: glxlib.EventTypeDeath, Date: "1840", Participants: []glxlib.Participant{{Person: "person-parent", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	parent1830 := findIssueByMessage(issues, "person-parent", "1830 census")
+	if parent1830 == nil {
+		t.Fatal("expected parent 1830 census suggestion")
+	}
+	if containsSubstring(parent1830.Message, "would also cover") {
+		t.Errorf("parent 1830 should have no consolidation note when child birth year unknown; got %q", parent1830.Message)
+	}
+	if found := findIssueByMessage(issues, "person-child", "1830 census"); found != nil {
+		t.Errorf("child without birth year should produce no census suggestion; got %q", found.Message)
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBothParentsMissingSameYear(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-father": {Properties: map[string]any{"name": "Father Green"}},
+			"person-mother": {Properties: map[string]any{"name": "Mother Green"}},
+			"person-child":  {Properties: map[string]any{"name": "Child Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-f": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-father", Role: "parent"}, {Person: "person-child", Role: "child"}}},
+			"rel-m": {Type: "parent_child", Participants: []glxlib.Participant{{Person: "person-mother", Role: "parent"}, {Person: "person-child", Role: "child"}}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-father": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-father", Role: "principal"}}},
+			"event-death-father": {Type: glxlib.EventTypeDeath, Date: "1850", Participants: []glxlib.Participant{{Person: "person-father", Role: "principal"}}},
+			"event-birth-mother": {Type: glxlib.EventTypeBirth, Date: "1802", Participants: []glxlib.Participant{{Person: "person-mother", Role: "principal"}}},
+			"event-death-mother": {Type: glxlib.EventTypeDeath, Date: "1850", Participants: []glxlib.Participant{{Person: "person-mother", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1825", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1832", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	father1830 := findIssueByMessage(issues, "person-father", "1830 census")
+	if father1830 == nil {
+		t.Fatal("expected father 1830 census suggestion")
+	}
+	if !containsSubstring(father1830.Message, "Child Green (~5)") {
+		t.Errorf("father 1830 message should mention child; got %q", father1830.Message)
+	}
+
+	mother1830 := findIssueByMessage(issues, "person-mother", "1830 census")
+	if mother1830 == nil {
+		t.Fatal("expected mother 1830 census suggestion")
+	}
+	if !containsSubstring(mother1830.Message, "Child Green (~5)") {
+		t.Errorf("mother 1830 message should mention child; got %q", mother1830.Message)
+	}
+
+	if found := findIssueByMessage(issues, "person-child", "1830 census"); found != nil {
+		t.Errorf("child 1830 should be suppressed when either parent consolidates; got %q", found.Message)
+	}
+}
+
 // --- Runner ---
 
 func TestBuildSummary(t *testing.T) {

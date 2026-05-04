@@ -89,10 +89,19 @@ func analyzeSuggestions(archive *glxlib.GLXFile) []AnalysisIssue {
 	return issues
 }
 
-// suggestCensusSearches recommends census years to search for persons who were
-// alive during a census year but have no census event or citation for that year.
+// minorAgeUnder is the cutoff for treating a child as living in the parent's
+// household for census-suggestion consolidation. Children younger than this
+// age at the census year normally appear on the same record as the parent,
+// so one search covers both.
+const minorAgeUnder = 18
+
+// suggestCensusSearches recommends census years to search for persons who
+// were alive during a census year but have no census event or citation for
+// that year. When both a parent and a minor child are missing the same year,
+// the parent's suggestion lists the children covered and the children's
+// independent suggestions for that year are suppressed — minors live in the
+// parent's household and would appear on the same record (#161).
 func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
-	// Build index of census years each person already has — from events
 	personCensusYears := make(map[string]map[int]bool)
 	for _, event := range archive.Events {
 		if event == nil || event.Type != glxlib.EventTypeCensus {
@@ -110,18 +119,40 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 	}
 
-	// Also index census years from citations/sources via assertions,
-	// matching the detection logic used by `glx coverage`.
 	addCensusYearFromSources(archive, personCensusYears)
-
-	// Build index of burial event years per person for death inference
 	personBurialYear := buildBurialYearIndex(archive)
 
-	var issues []AnalysisIssue
+	plans := buildCensusSuggestionPlans(archive, personCensusYears, personBurialYear)
+	parentExtras, suppressed := consolidateParentChildCensus(archive, plans)
 
+	return emitCensusSuggestions(archive, plans, parentExtras, suppressed)
+}
+
+// censusSuggestionPlan is the missing-year set computed for one person.
+type censusSuggestionPlan struct {
+	birthYear int
+	missing   []int
+}
+
+// coveredChild records a minor child whose census suggestion is rolled up
+// into a parent's suggestion for the same year.
+type coveredChild struct {
+	id  string
+	age int
+}
+
+// buildCensusSuggestionPlans returns, for every person with a known birth
+// year, the set of US federal census years between birth and death (capped at
+// maxLifespan when death is unknown) that are not already represented by a
+// census event or census source for that person.
+func buildCensusSuggestionPlans(
+	archive *glxlib.GLXFile,
+	personCensusYears map[string]map[int]bool,
+	personBurialYear map[string]int,
+) map[string]*censusSuggestionPlan {
+	plans := make(map[string]*censusSuggestionPlan)
 	for _, id := range sortedPersonIDs(archive.Persons) {
-		person := archive.Persons[id]
-		if person == nil {
+		if archive.Persons[id] == nil {
 			continue
 		}
 
@@ -131,39 +162,134 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 
 		deathYear := deathYearFromEvent(archive, id)
-
-		// Infer death from burial event if no death event
 		if deathYear == 0 {
 			deathYear = personBurialYear[id]
 		}
-
-		// Cap at max lifespan when no death year is known
 		upperBound := deathYear
 		if upperBound == 0 {
 			upperBound = birthYear + maxLifespan
 		}
 
-		name := personName(archive, id)
 		existing := personCensusYears[id]
-
 		var missing []int
 		for _, censusYear := range usFederalCensusYears {
-			if censusYear < birthYear {
-				continue
-			}
-			if censusYear > upperBound {
-				continue
-			}
-			if existing[censusYear] {
+			if censusYear < birthYear || censusYear > upperBound || existing[censusYear] {
 				continue
 			}
 			missing = append(missing, censusYear)
 		}
+		if len(missing) > 0 {
+			plans[id] = &censusSuggestionPlan{birthYear: birthYear, missing: missing}
+		}
+	}
 
-		for _, year := range missing {
+	return plans
+}
+
+// consolidateParentChildCensus finds (parent, year) pairs whose minor children
+// also need that year, returning the children to mention under each parent's
+// suggestion and the (childID, year) pairs whose independent suggestions
+// should be suppressed.
+func consolidateParentChildCensus(
+	archive *glxlib.GLXFile,
+	plans map[string]*censusSuggestionPlan,
+) (parentExtras map[string]map[int][]coveredChild, suppressed map[string]map[int]bool) {
+	parentToChildren := buildParentToChildrenIndex(archive)
+	parentExtras = make(map[string]map[int][]coveredChild)
+	suppressed = make(map[string]map[int]bool)
+
+	for _, parentID := range sortedPersonIDs(archive.Persons) {
+		parentPlan := plans[parentID]
+		if parentPlan == nil {
+			continue
+		}
+		children := parentToChildren[parentID]
+		if len(children) == 0 {
+			continue
+		}
+		parentMissing := yearSet(parentPlan.missing)
+		// children are sorted by buildParentToChildrenIndex, so per-year
+		// entries accumulate in deterministic child-ID order.
+		for _, childID := range children {
+			recordConsolidatedChild(plans[childID], childID, parentID, parentMissing, parentExtras, suppressed)
+		}
+	}
+
+	return parentExtras, suppressed
+}
+
+// yearSet turns a list of years into a presence map for cheap membership tests.
+func yearSet(years []int) map[int]bool {
+	set := make(map[int]bool, len(years))
+	for _, y := range years {
+		set[y] = true
+	}
+
+	return set
+}
+
+// recordConsolidatedChild appends (childID, age) to parentExtras and marks
+// (childID, year) as suppressed for every year the child is missing where
+// the parent is also missing and the child was a minor (age < minorAgeUnder).
+func recordConsolidatedChild(
+	childPlan *censusSuggestionPlan,
+	childID, parentID string,
+	parentMissing map[int]bool,
+	parentExtras map[string]map[int][]coveredChild,
+	suppressed map[string]map[int]bool,
+) {
+	if childPlan == nil {
+		return
+	}
+	for _, year := range childPlan.missing {
+		if !parentMissing[year] {
+			continue
+		}
+		age := year - childPlan.birthYear
+		if age < 0 || age >= minorAgeUnder {
+			continue
+		}
+		if parentExtras[parentID] == nil {
+			parentExtras[parentID] = make(map[int][]coveredChild)
+		}
+		parentExtras[parentID][year] = append(parentExtras[parentID][year], coveredChild{id: childID, age: age})
+		if suppressed[childID] == nil {
+			suppressed[childID] = make(map[int]bool)
+		}
+		suppressed[childID][year] = true
+	}
+}
+
+// emitCensusSuggestions turns the per-person plans into AnalysisIssues,
+// skipping pairs suppressed by parent consolidation and appending a
+// "would also cover" annotation to parent suggestions that subsume children.
+func emitCensusSuggestions(
+	archive *glxlib.GLXFile,
+	plans map[string]*censusSuggestionPlan,
+	parentExtras map[string]map[int][]coveredChild,
+	suppressed map[string]map[int]bool,
+) []AnalysisIssue {
+	var issues []AnalysisIssue
+	for _, id := range sortedPersonIDs(archive.Persons) {
+		plan := plans[id]
+		if plan == nil {
+			continue
+		}
+		name := personName(archive, id)
+		for _, year := range plan.missing {
+			if suppressed[id][year] {
+				continue
+			}
 			note := fmt.Sprintf("%s — search %d census (alive, no census event)", name, year)
 			if year == 1890 {
 				note += " — mostly destroyed (1921 fire)"
+			}
+			if extras := parentExtras[id][year]; len(extras) > 0 {
+				parts := make([]string, 0, len(extras))
+				for _, c := range extras {
+					parts = append(parts, fmt.Sprintf("%s (~%d)", personName(archive, c.id), c.age))
+				}
+				note += " — would also cover: " + strings.Join(parts, ", ")
 			}
 			issues = append(issues, AnalysisIssue{
 				Category: "suggestion",
@@ -173,7 +299,6 @@ func suggestCensusSearches(archive *glxlib.GLXFile) []AnalysisIssue {
 			})
 		}
 	}
-
 	return issues
 }
 
@@ -337,4 +462,3 @@ func suggestVitalRecords(archive *glxlib.GLXFile) []AnalysisIssue {
 
 	return issues
 }
-
