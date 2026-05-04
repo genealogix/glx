@@ -77,3 +77,7 @@ relationship_types:
     label: "Relative"
     description: "Generic kinship relationship when the specific type is unknown or not applicable"
 
+  possibly_same_person:
+    label: "Possibly Same Person"
+    description: "Two person records that may refer to the same individual but cannot yet be confirmed (pair with an Assertion as subject to record confidence)"
+
