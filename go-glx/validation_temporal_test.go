@@ -261,6 +261,120 @@ func TestValidatePropertyValue_TemporalValidList(t *testing.T) {
 	}
 }
 
+// Pin value_type enforcement on the simple-value temporal path. Regression test for #668.
+func TestValidatePropertyValue_TemporalSimpleValueTypeMismatch(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {
+				Properties: map[string]any{
+					"birth_year": "not-a-number",
+				},
+			},
+		},
+	}
+
+	propDef := &PropertyDefinition{
+		Label:     "Birth Year",
+		ValueType: "integer",
+		Temporal:  new(true),
+	}
+
+	result := &ValidationResult{}
+	glx.validatePropertyValue("persons", "person-1", "birth_year", glx.Persons["person-1"].Properties["birth_year"], propDef, result)
+
+	if len(result.Errors) != 0 {
+		t.Errorf("Expected 0 errors, got %d: %v", len(result.Errors), result.Errors)
+	}
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "expected integer value, got string") {
+		t.Errorf("Warning should report integer/string mismatch, got: %s", result.Warnings[0].Message)
+	}
+	if result.Warnings[0].Field != "properties.birth_year" {
+		t.Errorf("Warning field should be 'properties.birth_year', got: %s", result.Warnings[0].Field)
+	}
+}
+
+// Pin value_type enforcement on the single-object temporal path. Regression test for #668.
+func TestValidatePropertyValue_TemporalSingleObjectValueTypeMismatch(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {
+				Properties: map[string]any{
+					"birth_year": map[string]any{
+						"value": "not-a-number",
+						"date":  "1850",
+					},
+				},
+			},
+		},
+	}
+
+	propDef := &PropertyDefinition{
+		Label:     "Birth Year",
+		ValueType: "integer",
+		Temporal:  new(true),
+	}
+
+	result := &ValidationResult{}
+	glx.validatePropertyValue("persons", "person-1", "birth_year", glx.Persons["person-1"].Properties["birth_year"], propDef, result)
+
+	if len(result.Errors) != 0 {
+		t.Errorf("Expected 0 errors, got %d: %v", len(result.Errors), result.Errors)
+	}
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "expected integer value, got string") {
+		t.Errorf("Warning should report integer/string mismatch, got: %s", result.Warnings[0].Message)
+	}
+	if result.Warnings[0].Field != "properties.birth_year.value" {
+		t.Errorf("Warning field should be 'properties.birth_year.value', got: %s", result.Warnings[0].Field)
+	}
+}
+
+// Pin value_type enforcement on the list-of-objects temporal path. Mirrors the
+// exact YAML scenario from #668.
+func TestValidatePropertyValue_TemporalListItemValueTypeMismatch(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {
+				Properties: map[string]any{
+					"birth_year": []any{
+						map[string]any{
+							"value": "not-a-number",
+							"date":  "1850",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	propDef := &PropertyDefinition{
+		Label:     "Birth Year",
+		ValueType: "integer",
+		Temporal:  new(true),
+	}
+
+	result := &ValidationResult{}
+	glx.validatePropertyValue("persons", "person-1", "birth_year", glx.Persons["person-1"].Properties["birth_year"], propDef, result)
+
+	if len(result.Errors) != 0 {
+		t.Errorf("Expected 0 errors, got %d: %v", len(result.Errors), result.Errors)
+	}
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+	if !strings.Contains(result.Warnings[0].Message, "expected integer value, got string") {
+		t.Errorf("Warning should report integer/string mismatch, got: %s", result.Warnings[0].Message)
+	}
+	if result.Warnings[0].Field != "properties.birth_year[0].value" {
+		t.Errorf("Warning field should be 'properties.birth_year[0].value', got: %s", result.Warnings[0].Field)
+	}
+}
+
 // --- Temporal consistency tests ---
 
 func TestValidateDeathBeforeBirth(t *testing.T) {
