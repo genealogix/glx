@@ -1447,6 +1447,130 @@ func TestAnalyzeSuggestions_ConsolidateBothParentsMissingSameYear(t *testing.T) 
 	}
 }
 
+func TestAnalyzeSuggestions_ConsolidateStepParentNotYetMarried(t *testing.T) {
+	// step_parent relationship begins at 1860 marriage event, so the
+	// step-parent's 1830 census suggestion must not consolidate the child
+	// (who was not yet living in their household).
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-stepfather": {Properties: map[string]any{"name": "Stepfather Green"}},
+			"person-child":      {Properties: map[string]any{"name": "Child Green"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-step": {
+				Type:       "step_parent",
+				StartEvent: "event-marriage-1860",
+				Participants: []glxlib.Participant{
+					{Person: "person-stepfather", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-stepfather": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-stepfather", Role: "principal"}}},
+			"event-death-stepfather": {Type: glxlib.EventTypeDeath, Date: "1870", Participants: []glxlib.Participant{{Person: "person-stepfather", Role: "principal"}}},
+			"event-birth-child":      {Type: glxlib.EventTypeBirth, Date: "1825", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":      {Type: glxlib.EventTypeDeath, Date: "1832", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-marriage-1860":    {Type: glxlib.EventTypeMarriage, Date: "1860"},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	step1830 := findIssueByMessage(issues, "person-stepfather", "1830 census")
+	if step1830 == nil {
+		t.Fatal("expected stepfather 1830 census suggestion")
+	}
+	if containsSubstring(step1830.Message, "would also cover") {
+		t.Errorf("stepfather 1830 must not consolidate child before step relationship started; got %q", step1830.Message)
+	}
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 == nil {
+		t.Error("child 1830 should be emitted independently when step-parent relationship had not yet started")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateRelationshipEnded(t *testing.T) {
+	// Foster parent-child relationship ended at 1840, so the foster parent's
+	// 1850 census suggestion must not consolidate the (still-minor) child.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-foster": {Properties: map[string]any{"name": "Foster Parent"}},
+			"person-child":  {Properties: map[string]any{"name": "Foster Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-foster": {
+				Type:     "foster_parent_child",
+				EndEvent: "event-foster-ended-1840",
+				Participants: []glxlib.Participant{
+					{Person: "person-foster", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-foster":      {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-death-foster":      {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-birth-child":       {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":       {Type: glxlib.EventTypeDeath, Date: "1855", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-foster-ended-1840": {Type: "custody_change", Date: "1840"},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	if foster1850 == nil {
+		t.Fatal("expected foster 1850 census suggestion")
+	}
+	if containsSubstring(foster1850.Message, "would also cover") {
+		t.Errorf("foster 1850 must not consolidate child after relationship ended; got %q", foster1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently after foster relationship ended")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsViaStartedOnProperty(t *testing.T) {
+	// Adoptive relationship's started_on property places the start at 1860,
+	// so the 1830 suggestion for the adoptive parent must not consolidate
+	// the child even though the relationship has no StartEvent.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-adoptive": {Properties: map[string]any{"name": "Adoptive Parent"}},
+			"person-child":    {Properties: map[string]any{"name": "Adopted Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-adopt": {
+				Type: "adoptive_parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-adoptive", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+				Properties: map[string]any{"started_on": "1860"},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-adoptive": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-adoptive", Role: "principal"}}},
+			"event-death-adoptive": {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-adoptive", Role: "principal"}}},
+			"event-birth-child":    {Type: glxlib.EventTypeBirth, Date: "1825", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":    {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	adopt1830 := findIssueByMessage(issues, "person-adoptive", "1830 census")
+	if adopt1830 == nil {
+		t.Fatal("expected adoptive parent 1830 census suggestion")
+	}
+	if containsSubstring(adopt1830.Message, "would also cover") {
+		t.Errorf("adoptive parent 1830 must not consolidate child before adoption (started_on 1860); got %q", adopt1830.Message)
+	}
+	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 == nil {
+		t.Error("child 1830 should be emitted independently before adoptive relationship started")
+	}
+}
+
 // --- Runner ---
 
 func TestBuildSummary(t *testing.T) {

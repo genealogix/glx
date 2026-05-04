@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -186,15 +187,27 @@ func buildCensusSuggestionPlans(
 	return plans
 }
 
+// parentChildBound is the time window of one parent-child relationship
+// record. A zero value on either side means that boundary is unknown
+// and the consolidation pass treats it as open-ended.
+type parentChildBound struct {
+	startYear int
+	endYear   int
+}
+
 // consolidateParentChildCensus finds (parent, year) pairs whose minor children
 // also need that year, returning the children to mention under each parent's
 // suggestion and the (childID, year) pairs whose independent suggestions
-// should be suppressed.
+// should be suppressed. A relationship that is bounded by start_event /
+// end_event (or the started_on / ended_on properties) only consolidates for
+// census years where the relationship was active — a step-parent who married
+// in 1860 cannot subsume their stepchild's 1830 census, and a foster
+// relationship that ended in 1845 cannot subsume the child's 1850 census.
 func consolidateParentChildCensus(
 	archive *glxlib.GLXFile,
 	plans map[string]*censusSuggestionPlan,
 ) (parentExtras map[string]map[int][]coveredChild, suppressed map[string]map[int]bool) {
-	parentToChildren := buildParentToChildrenIndex(archive)
+	parentChildBounds := buildParentChildBoundsIndex(archive)
 	parentExtras = make(map[string]map[int][]coveredChild)
 	suppressed = make(map[string]map[int]bool)
 
@@ -203,15 +216,20 @@ func consolidateParentChildCensus(
 		if parentPlan == nil {
 			continue
 		}
-		children := parentToChildren[parentID]
-		if len(children) == 0 {
+		childMap := parentChildBounds[parentID]
+		if len(childMap) == 0 {
 			continue
 		}
 		parentMissing := yearSet(parentPlan.missing)
-		// children are sorted by buildParentToChildrenIndex, so per-year
-		// entries accumulate in deterministic child-ID order.
-		for _, childID := range children {
-			recordConsolidatedChild(plans[childID], childID, parentID, parentMissing, parentExtras, suppressed)
+
+		childIDs := make([]string, 0, len(childMap))
+		for cid := range childMap {
+			childIDs = append(childIDs, cid)
+		}
+		sort.Strings(childIDs)
+
+		for _, childID := range childIDs {
+			recordConsolidatedChild(plans[childID], childID, parentID, parentMissing, childMap[childID], parentExtras, suppressed)
 		}
 	}
 
@@ -228,13 +246,96 @@ func yearSet(years []int) map[int]bool {
 	return set
 }
 
+// buildParentChildBoundsIndex returns parentID → childID → relationship
+// bounds for every parent-child relationship in the archive. A pair may
+// have multiple bound records when more than one relationship (e.g.
+// biological + step) connects the same two people; consolidation treats
+// the union of these windows as the active range.
+func buildParentChildBoundsIndex(archive *glxlib.GLXFile) map[string]map[string][]parentChildBound {
+	index := make(map[string]map[string][]parentChildBound)
+	for _, rel := range archive.Relationships {
+		if rel == nil || !isParentChildType(rel.Type) {
+			continue
+		}
+		startYear, endYear := relationshipYearBounds(archive, rel)
+		var parentIDs, childIDs []string
+		for _, p := range rel.Participants {
+			if p.Person == "" {
+				continue
+			}
+			switch p.Role {
+			case glxlib.ParticipantRoleParent:
+				parentIDs = append(parentIDs, p.Person)
+			case glxlib.ParticipantRoleChild:
+				childIDs = append(childIDs, p.Person)
+			}
+		}
+		bound := parentChildBound{startYear: startYear, endYear: endYear}
+		for _, parentID := range parentIDs {
+			if index[parentID] == nil {
+				index[parentID] = make(map[string][]parentChildBound)
+			}
+			for _, childID := range childIDs {
+				index[parentID][childID] = append(index[parentID][childID], bound)
+			}
+		}
+	}
+
+	return index
+}
+
+// relationshipYearBounds extracts a relationship's start and end years from
+// its StartEvent / EndEvent (preferred) and falls back to the started_on /
+// ended_on temporal properties. BEF/AFT prefixes are not adjusted — the
+// extracted year is treated as the boundary directly, which is conservative
+// on BEF-prefixed start dates and slightly permissive on AFT-prefixed ends;
+// finer-grained handling belongs in the central date helpers.
+func relationshipYearBounds(archive *glxlib.GLXFile, rel *glxlib.Relationship) (start, end int) {
+	if rel.StartEvent != "" {
+		if e, ok := archive.Events[rel.StartEvent]; ok && e != nil {
+			start = glxlib.ExtractFirstYear(string(e.Date))
+		}
+	}
+	if rel.EndEvent != "" {
+		if e, ok := archive.Events[rel.EndEvent]; ok && e != nil {
+			end = glxlib.ExtractFirstYear(string(e.Date))
+		}
+	}
+	if start == 0 {
+		if v, ok := rel.Properties["started_on"]; ok {
+			start = glxlib.ExtractFirstYear(extractDateString(v))
+		}
+	}
+	if end == 0 {
+		if v, ok := rel.Properties["ended_on"]; ok {
+			end = glxlib.ExtractFirstYear(extractDateString(v))
+		}
+	}
+
+	return start, end
+}
+
+// wasActiveInYear reports whether any of the supplied bound records covers
+// the given year. A zero start or end is treated as open on that side.
+func wasActiveInYear(bounds []parentChildBound, year int) bool {
+	for _, b := range bounds {
+		if (b.startYear == 0 || year >= b.startYear) && (b.endYear == 0 || year <= b.endYear) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // recordConsolidatedChild appends (childID, age) to parentExtras and marks
 // (childID, year) as suppressed for every year the child is missing where
-// the parent is also missing and the child was a minor (age < minorAgeUnder).
+// the parent is also missing, the parent-child relationship was active,
+// and the child was a minor (age < minorAgeUnder).
 func recordConsolidatedChild(
 	childPlan *censusSuggestionPlan,
 	childID, parentID string,
 	parentMissing map[int]bool,
+	bounds []parentChildBound,
 	parentExtras map[string]map[int][]coveredChild,
 	suppressed map[string]map[int]bool,
 ) {
@@ -243,6 +344,9 @@ func recordConsolidatedChild(
 	}
 	for _, year := range childPlan.missing {
 		if !parentMissing[year] {
+			continue
+		}
+		if !wasActiveInYear(bounds, year) {
 			continue
 		}
 		age := year - childPlan.birthYear
