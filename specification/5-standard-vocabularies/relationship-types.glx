@@ -36,7 +36,7 @@ relationship_types:
   step_parent:
     label: "Step-Parent"
     description: "Step-parent through marriage"
-    # No direct GEDCOM equivalent — GEDCOM 7.0 has no general step-parent tag; PEDI sealing has LDS sealing-to-parents semantics and is mapped to generic parent_child by this implementation (see specification/4-entity-types/relationship.md PEDI section)
+    # No direct GEDCOM equivalent — GEDCOM 7.0 has no general step-parent tag; PEDI `sealed` carries LDS sealing-to-parents semantics and is mapped to generic parent_child by this implementation (see specification/4-entity-types/relationship.md PEDI section)
 
   godparent:
     label: "Godparent"
