@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples release-snapshot
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples docs-cli release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -107,6 +107,10 @@ validate-examples: build-cli ## Validate all example archives
 	  echo "Validating $$dir..."; \
 	  ./bin/glx validate "$$dir" || exit 1; \
 	done
+
+## Documentation
+docs-cli: build-cli ## Regenerate per-command CLI reference under docs/cli/
+	@./bin/glx docs --output ./docs/cli/
 
 ## Release
 release-snapshot: ## Build cross-platform binaries locally (no publish)
