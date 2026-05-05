@@ -32,6 +32,7 @@ func runValidate(_ *cobra.Command, args []string) error {
 
 - `cli_commands.go` — all command definitions and `rootCmd.AddCommand()` calls
 - `*_runner.go` — one per CLI command (analyze, import, export, merge, etc.)
+- `docs_runner.go` — hidden `glx docs` subcommand that regenerates `docs/cli/` from the live Cobra tree (called by `make docs-cli`)
 - `archive_io.go` — single/multi-file archive read/write
 - `testdata/gedcom/` — 180+ GEDCOM test files
 
