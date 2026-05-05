@@ -16,6 +16,7 @@ package main
 
 import (
 	"archive/zip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -44,11 +45,17 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 
 	zr, err := zip.OpenReader(filepath.Clean(gedzipPath))
 	if err != nil {
-		if os.IsNotExist(err) {
+		switch {
+		case os.IsNotExist(err):
 			return fmt.Errorf("%w: %s: %w", ErrGEDCOMFileNotFound, gedzipPath, err)
+		case errors.Is(err, zip.ErrFormat),
+			errors.Is(err, zip.ErrAlgorithm),
+			errors.Is(err, zip.ErrChecksum),
+			errors.Is(err, zip.ErrInsecurePath):
+			return fmt.Errorf("%w: %s: %w", ErrGEDZIPNotValidArchive, gedzipPath, err)
+		default:
+			return fmt.Errorf("opening gedzip archive %s: %w", gedzipPath, err)
 		}
-
-		return fmt.Errorf("%w: %s: %w", ErrGEDZIPNotValidArchive, gedzipPath, err)
 	}
 	defer func() { _ = zr.Close() }()
 
@@ -86,10 +93,13 @@ func hasGedcomEntry(files []*zip.File) bool {
 // extractGEDZIP writes each file entry into destDir, skipping directory and
 // symlink entries (the latter to prevent zip-symlink-slip attacks where a
 // symlink target could redirect a later entry's write outside destDir).
-// Case-insensitive duplicate entry names are rejected because Windows NTFS
-// and the default macOS APFS configuration silently overwrite the first write
-// when two entries fold to the same name — an attacker could otherwise hijack
-// gedcom.ged after hasGedcomEntry has already approved the archive.
+// Duplicate entries — defined as two entries whose cleaned, case-folded
+// destination paths collide — are rejected. This catches both case-only
+// variants ("gedcom.ged" vs "Gedcom.GED") that overwrite on Windows NTFS and
+// the default macOS APFS configuration, AND dot-segment variants
+// ("gedcom.ged" vs "media/../gedcom.ged") that path.Clean folds to the same
+// destination. Without this, an attacker could hijack gedcom.ged after
+// hasGedcomEntry has already approved the archive.
 func extractGEDZIP(files []*zip.File, destDir string) error {
 	seen := make(map[string]struct{}, len(files))
 	for _, f := range files {
@@ -98,7 +108,7 @@ func extractGEDZIP(files []*zip.File, destDir string) error {
 			return err
 		}
 
-		key := strings.ToLower(f.Name)
+		key := strings.ToLower(dest)
 		if _, dup := seen[key]; dup {
 			return fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, f.Name)
 		}

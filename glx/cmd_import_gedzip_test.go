@@ -221,3 +221,18 @@ func TestImportGEDZIP_RejectsCaseFoldedDuplicateGedcom(t *testing.T) {
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
 }
+
+func TestImportGEDZIP_RejectsDotSegmentDuplicateGedcom(t *testing.T) {
+	// gedcom.ged and media/../gedcom.ged are two distinct ZIP entry names
+	// that path.Clean folds to the same destination. Without the
+	// destination-keyed dedup, the second write would silently overwrite
+	// the first, hijacking the GEDCOM after hasGedcomEntry already approved
+	// the archive on the original (uncleaned) name.
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":          []byte(minimalGEDCOM7),
+		"media/../gedcom.ged": []byte(minimalGEDCOM7),
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
+}
