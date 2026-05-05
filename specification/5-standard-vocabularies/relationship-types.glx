@@ -36,46 +36,57 @@ relationship_types:
   step_parent:
     label: "Step-Parent"
     description: "Step-parent through marriage"
-  
+    # No direct GEDCOM equivalent — GEDCOM 7.0 has no general step-parent tag; PEDI `sealed` carries LDS sealing-to-parents semantics and is mapped to generic parent_child by this implementation (see specification/4-entity-types/relationship.md PEDI section)
+
   godparent:
     label: "Godparent"
     description: "Ongoing godparent-godchild bond (use baptism/christening event for the ceremony)"
-  
+    # No direct GEDCOM equivalent — GEDCOM 7.0 ASSO with ROLE GODP records the godparent as a participant role on a baptism/christening event, not as a standalone relationship; see participant-roles vocabulary
+
   guardian:
     label: "Guardian"
     description: "Legal guardian relationship"
-  
+    # No direct GEDCOM equivalent
+
   partner:
     label: "Partner"
     description: "Domestic partnership or cohabitation"
+    # No direct GEDCOM equivalent — GEDCOM has no standard tag for non-marital partnership; MARR with TYPE "domestic partnership" rounds back to a marriage relationship in this implementation
 
   neighbor:
     label: "Neighbor"
     description: "People who lived near each other"
+    # No direct GEDCOM equivalent
 
   coworker:
     label: "Coworker"
     description: "People who worked together"
+    # No direct GEDCOM equivalent
 
   housemate:
     label: "Housemate"
     description: "People who shared a household without a family relationship"
+    # No direct GEDCOM equivalent
 
   apprenticeship:
     label: "Apprenticeship"
     description: "Master-apprentice relationship for learning a trade or skill"
+    # No direct GEDCOM equivalent
 
   employment:
     label: "Employment"
     description: "Employer-employee relationship"
+    # No direct GEDCOM equivalent
 
   enslavement:
     label: "Enslavement"
     description: "Enslaver-enslaved relationship"
+    # No direct GEDCOM equivalent
 
   relative:
     label: "Relative"
     description: "Generic kinship relationship when the specific type is unknown or not applicable"
+    # No direct GEDCOM equivalent
 
   possibly_same_person:
     label: "Possibly Same Person"
