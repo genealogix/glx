@@ -1,0 +1,21 @@
+# Standard Study Statuses
+# This file defines the standard status values for Study entities, indicating
+# the current state of a research project. Archives can extend this with
+# custom statuses by adding additional entries.
+
+study_statuses:
+  active:
+    label: "Active"
+    description: "Currently being researched"
+
+  paused:
+    label: "Paused"
+    description: "Temporarily on hold, expected to resume"
+
+  completed:
+    label: "Completed"
+    description: "Research goals met; no further work planned"
+
+  abandoned:
+    label: "Abandoned"
+    description: "Research will not be continued (insufficient sources, redirected priorities, etc.)"

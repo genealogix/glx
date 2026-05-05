@@ -416,6 +416,12 @@ A property with structured fields that break down complex values into named comp
 
 > **See Also:** [Structured Properties](2-core-concepts#structured-properties)
 
+### Study
+
+A formal declaration of the scope of a research project within an archive — for example a One Place Study, One Name Study, family reconstruction, or brick-wall investigation. A Study collects the places, sources, and date range that bound the project so tooling can report coverage and progress. GLX-native; no GEDCOM equivalent.
+
+> **See Also:** [Study Entity](4-entity-types/study)
+
 ### Status (Assertion)
 
 The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), and `disproven` (evidence contradicts the assertion). Free-text; archives may use any labels.

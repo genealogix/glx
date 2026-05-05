@@ -157,6 +157,32 @@ Defines controlled values for the `gender` person property — self-identified g
 
 ---
 
+### Study Types
+
+Defines classifications for research-project Study entities (one place study, one name study, family reconstruction, descendancy/ancestry studies, brick-wall investigations).
+
+<YamlFile
+  :content="vocabularies['study-types']"
+  title="vocabularies/study-types.glx"
+/>
+
+**View Source:** [study-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/study-types.glx) | **See Also:** [Study Entity Documentation](../4-entity-types/study) | [Vocabularies Specification](../4-entity-types/vocabularies#study-types-vocabulary)
+
+---
+
+### Study Statuses
+
+Defines status values for Study entities indicating the current state of a research project (active, paused, completed, abandoned).
+
+<YamlFile
+  :content="vocabularies['study-statuses']"
+  title="vocabularies/study-statuses.glx"
+/>
+
+**View Source:** [study-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/study-statuses.glx) | **See Also:** [Study Entity Documentation](../4-entity-types/study) | [Vocabularies Specification](../4-entity-types/vocabularies#study-statuses-vocabulary)
+
+---
+
 ## Property Vocabularies
 
 Property vocabularies define the custom properties available for each entity type. These enable flexible, extensible data modeling for person, event, relationship, and place entities.
