@@ -61,6 +61,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
 
+#### Tooling
+
+- **Tightened markdownlint `MD033` from disabled to an allow-list** — `.markdownlint-cli2.jsonc` now allows only `<script>` and `<YamlFile>` (the two VitePress/Vue constructs the spec actually uses) instead of disabling the rule entirely. Stray inline HTML (e.g., an accidental `<div>` or `<iframe>`) is once again caught by lint. Closes #740
+
 ### Removed
 
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
