@@ -31,6 +31,14 @@
     "*.md"
   ],
   "ignores": [
-    "**/node_modules/**"
+    "**/node_modules/**",
+    // docs/cli/glx*.md is auto-generated from the live Cobra command tree by
+    // `make docs-cli`. cobra/doc's emitter uses hard tabs in SEE ALSO,
+    // unlanguaged code fences, and `*` bullets — all violations of the
+    // human-authoring rules above. The `docs-drift` workflow guarantees
+    // these files match cobra's output exactly; lint compliance would
+    // require fragile post-processing that breaks on every cobra release.
+    // The hand-written docs/cli/index.md is still linted.
+    "docs/cli/glx*.md"
   ]
 }

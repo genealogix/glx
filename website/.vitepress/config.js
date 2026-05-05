@@ -54,8 +54,12 @@ export default defineConfig({
     'CONTRIBUTING.md': 'development/contributing.md',
     'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
 
-    // GLX CLI documentation
-    'glx/README.md': 'cli.md',
+    // GLX CLI documentation — per-command pages auto-generated under docs/cli/
+    // by `make docs-cli`; the index page is hand-written. Specific rule for
+    // index.md maps it to /cli (matches the historical URL); wildcard handles
+    // per-command pages at /cli/glx_init etc.
+    'docs/cli/index.md': 'cli.md',
+    'docs/cli/:page*': 'cli/:page*',
 
     'docs/examples/basic-family/README.md': 'examples/basic-family/index.md',
     'docs/examples/complete-family/README.md': 'examples/complete-family/index.md',
@@ -261,55 +265,67 @@ export default defineConfig({
         {
           text: 'CLI Tool',
           items: [
-            { text: 'Overview', link: '/cli' }
+            { text: 'Overview', link: '/cli/' },
+            { text: 'glx (root)', link: '/cli/glx' }
           ]
         },
         {
           text: 'Archive Management',
           items: [
-            { text: 'glx init', link: '/cli#glx-init' },
-            { text: 'glx validate', link: '/cli#glx-validate' },
-            { text: 'glx split', link: '/cli#glx-split' },
-            { text: 'glx join', link: '/cli#glx-join' },
-            { text: 'glx merge', link: '/cli#glx-merge' },
-            { text: 'glx migrate', link: '/cli#glx-migrate' }
+            { text: 'glx init', link: '/cli/glx_init' },
+            { text: 'glx validate', link: '/cli/glx_validate' },
+            { text: 'glx split', link: '/cli/glx_split' },
+            { text: 'glx join', link: '/cli/glx_join' },
+            { text: 'glx merge', link: '/cli/glx_merge' },
+            { text: 'glx migrate', link: '/cli/glx_migrate' },
+            { text: 'glx rename', link: '/cli/glx_rename' }
           ]
         },
         {
           text: 'Import & Export',
           items: [
-            { text: 'glx import', link: '/cli#glx-import' },
-            { text: 'glx export', link: '/cli#glx-export' }
+            { text: 'glx import', link: '/cli/glx_import' },
+            { text: 'glx export', link: '/cli/glx_export' }
           ]
         },
         {
           text: 'Exploration',
           items: [
-            { text: 'glx search', link: '/cli#glx-search' },
-            { text: 'glx query', link: '/cli#glx-query' },
-            { text: 'glx vitals', link: '/cli#glx-vitals' },
-            { text: 'glx timeline', link: '/cli#glx-timeline' },
-            { text: 'glx summary', link: '/cli#glx-summary' },
-            { text: 'glx ancestors', link: '/cli#glx-ancestors' },
-            { text: 'glx descendants', link: '/cli#glx-descendants' },
-            { text: 'glx cite', link: '/cli#glx-cite' },
-            { text: 'glx path', link: '/cli#glx-path' }
+            { text: 'glx search', link: '/cli/glx_search' },
+            { text: 'glx query', link: '/cli/glx_query' },
+            { text: 'glx vitals', link: '/cli/glx_vitals' },
+            { text: 'glx timeline', link: '/cli/glx_timeline' },
+            { text: 'glx summary', link: '/cli/glx_summary' },
+            { text: 'glx ancestors', link: '/cli/glx_ancestors' },
+            { text: 'glx descendants', link: '/cli/glx_descendants' },
+            { text: 'glx cite', link: '/cli/glx_cite' },
+            { text: 'glx path', link: '/cli/glx_path' }
           ]
         },
         {
           text: 'Data Entry',
           items: [
-            { text: 'glx census add', link: '/cli#glx-census-add' },
-            { text: 'glx link', link: '/cli#glx-link' }
+            { text: 'glx census', link: '/cli/glx_census' },
+            { text: 'glx census add', link: '/cli/glx_census_add' },
+            { text: 'glx link', link: '/cli/glx_link' }
           ]
         },
         {
           text: 'Analysis',
           items: [
-            { text: 'glx stats', link: '/cli#glx-stats' },
-            { text: 'glx places', link: '/cli#glx-places' },
-            { text: 'glx cluster', link: '/cli#glx-cluster' },
-            { text: 'glx analyze', link: '/cli#glx-analyze' }
+            { text: 'glx stats', link: '/cli/glx_stats' },
+            { text: 'glx places', link: '/cli/glx_places' },
+            { text: 'glx cluster', link: '/cli/glx_cluster' },
+            { text: 'glx analyze', link: '/cli/glx_analyze' },
+            { text: 'glx duplicates', link: '/cli/glx_duplicates' },
+            { text: 'glx coverage', link: '/cli/glx_coverage' },
+            { text: 'glx diff', link: '/cli/glx_diff' }
+          ]
+        },
+        {
+          text: 'Shell completion',
+          items: [
+            { text: 'glx completion', link: '/cli/glx_completion' }
           ]
         }
       ],
