@@ -33,7 +33,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx diff](/cli/glx_diff)	 - Compare two GLX archive states
 * [glx duplicates](/cli/glx_duplicates)	 - Detect potential duplicate persons in a GLX archive
 * [glx export](/cli/glx_export)	 - Export a GLX archive to GEDCOM format
-* [glx import](/cli/glx_import)	 - Import a GEDCOM file to GLX format
+* [glx import](/cli/glx_import)	 - Import a GEDCOM or GEDZIP file to GLX format
 * [glx init](/cli/glx_init)	 - Initialize a new GENEALOGIX archive in the specified directory
 * [glx join](/cli/glx_join)	 - Join a multi-file GLX archive into single-file format
 * [glx link](/cli/glx_link)	 - Create a FamilySearch citation from an ARK
