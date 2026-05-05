@@ -1615,11 +1615,11 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStart(t *testing.T) {
 			},
 		},
 		Events: map[string]*glxlib.Event{
-			"event-birth-step":    {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
-			"event-death-step":    {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
-			"event-birth-child":   {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
-			"event-death-child":   {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
-			"event-step-married":  {Type: "marriage", Date: "AFT 1850"},
+			"event-birth-step":   {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-death-step":   {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-step-married": {Type: "marriage", Date: "AFT 1850"},
 		},
 	}
 
@@ -1656,11 +1656,11 @@ func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEnd(t *testing.T) {
 			},
 		},
 		Events: map[string]*glxlib.Event{
-			"event-birth-foster":  {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
-			"event-death-foster":  {Type: glxlib.EventTypeDeath, Date: "1890", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
-			"event-birth-child":   {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
-			"event-death-child":   {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
-			"event-foster-ended":  {Type: "custody_change", Date: "BEF 1850"},
+			"event-birth-foster": {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-death-foster": {Type: glxlib.EventTypeDeath, Date: "1890", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-foster-ended": {Type: "custody_change", Date: "BEF 1850"},
 		},
 	}
 
