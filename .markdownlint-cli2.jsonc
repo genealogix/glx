@@ -11,11 +11,14 @@
     // NOT as an h1. Disable the frontmatter-title match so a body `# Heading` under
     // `title: ...` frontmatter is the only h1 the rule sees.
     "MD025": { "front_matter_title": "" },
-    // MD033 (inline HTML) is left at its strict default. The only file that needs raw
-    // HTML — `specification/5-standard-vocabularies/README.md`, which uses VitePress
+    // MD033 (inline HTML) is left at its strict default. The only file in the linted
+    // scope (`specification/**/*.md`, `docs/**/*.md`, root `*.md`) that needs raw HTML
+    // — `specification/5-standard-vocabularies/README.md`, which uses VitePress
     // `<script setup>` and `<YamlFile />` — declares its own allow-list inline via a
     // `<!-- markdownlint-configure-file -->` directive at the top of the file, so the
     // exemption is scoped to that one page rather than the entire docs set.
+    // (`website/standard-vocabularies.md` uses the same constructs but is outside the
+    // lint scope — the workflow only globs `specification/`, `docs/`, and root.)
     // MD036 (emphasis-as-heading): the spec uses **Bold Phrase** as a compact
     // sub-section marker inside already-nested sections. This is intentional style.
     "MD036": false,

@@ -75,7 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Tooling
 
-- **Tightened markdownlint `MD033` from disabled to strict + per-file allow-list** — `.markdownlint-cli2.jsonc` now leaves `MD033` (no-inline-html) at its strict default. The single page that legitimately needs raw HTML — `specification/5-standard-vocabularies/README.md`, which embeds `<script setup>` and `<YamlFile />` — declares its own allow-list inline via a `markdownlint-configure-file` directive. Stray inline HTML anywhere else (e.g., an accidental `<div>`, `<iframe>`, or even a `<script>` outside that one page) is once again caught by lint. Closes #740
+- **Tightened markdownlint `MD033` from disabled to strict + per-file allow-list** — `.markdownlint-cli2.jsonc` now leaves `MD033` (no-inline-html) at its strict default. The only page in the linted scope (`specification/**/*.md`, `docs/**/*.md`, root `*.md`) that needs raw HTML — `specification/5-standard-vocabularies/README.md`, which embeds `<script setup>` and `<YamlFile />` — declares its own allow-list inline via a `markdownlint-configure-file` directive. (`website/standard-vocabularies.md` uses the same constructs but is outside the lint globs.) Stray inline HTML anywhere else (e.g., an accidental `<div>`, `<iframe>`, or even a `<script>` outside that one page) is once again caught by lint. Closes #740
 
 ### Removed
 
