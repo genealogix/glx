@@ -3,6 +3,22 @@ title: Standard Vocabularies
 description: Standard vocabulary templates for GENEALOGIX archives
 ---
 
+<!--
+  VitePress requires the `<script setup>` block below to import the `<YamlFile />`
+  Vue component rendered inline by the vocabulary tables. The directive whitelists
+  exactly those two elements for MD033/no-inline-html within this file.
+
+  Scope caveat: markdownlint's `allowed_elements` is tag-name-granular — listing
+  `script` whitelists every `<script>` block in this file, not just `<script setup>`.
+  This is still a strict tightening of MD033 (previously globally `false`): the bypass
+  is now scoped to a single file rather than the whole linted docs set, and any stray
+  plain `<script>` added here would still be visible in the diff against the single
+  `<script setup>` block immediately below.
+-->
+<!-- markdownlint-configure-file {
+  "MD033": { "allowed_elements": ["script", "YamlFile"] }
+} -->
+
 <script setup>
 import YamlFile from '../../website/.vitepress/components/YamlFile.vue'
 import { data as vocabularies } from '../../website/.vitepress/data/vocabularies.data.js'
