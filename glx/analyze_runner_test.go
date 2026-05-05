@@ -976,6 +976,8 @@ func TestDeathYearUpperBound(t *testing.T) {
 		{"bef lowercase", "bef 1870", 1869},
 		{"ABT prefix", "ABT 1870", 1870},
 		{"AFT prefix", "AFT 1860", 1860},
+		{"calendar prefix plain", "JULIAN 1870", 1870},
+		{"calendar prefix BEF", "JULIAN BEF 1870", 1869},
 		{"empty string", "", 0},
 		{"nil", nil, 0},
 		{"structured map", map[string]any{"value": "BEF 1870"}, 1869},
@@ -1606,7 +1608,7 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStart(t *testing.T) {
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-step": {
-				Type:       "step_parent_child",
+				Type:       "step_parent",
 				StartEvent: "event-step-married",
 				Participants: []glxlib.Participant{
 					{Person: "person-step", Role: "parent"},
@@ -1687,7 +1689,7 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStartedOnProperty(t *testing.T
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-step": {
-				Type: "step_parent_child",
+				Type: "step_parent",
 				Participants: []glxlib.Participant{
 					{Person: "person-step", Role: "parent"},
 					{Person: "person-child", Role: "child"},
@@ -1762,6 +1764,60 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnEnd(t *testing.T) {
 	require.NotNil(t, foster1840, "expected foster 1840 census suggestion")
 	if !containsSubstring(foster1840.Message, "would also cover") {
 		t.Errorf("foster 1840 should consolidate child (named year of AFT is still active); got %q", foster1840.Message)
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsAFTWithCalendarPrefix(t *testing.T) {
+	// GLX dates can carry a calendar prefix in front of the qualifier:
+	// "JULIAN AFT 1850" means the relationship started after 1850 in the
+	// Julian calendar. The qualifier handling must strip the calendar
+	// prefix before checking AFT / BEF so the relationship is not treated
+	// as active in 1850 itself.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-step":  {Properties: map[string]any{"name": "Step Parent"}},
+			"person-child": {Properties: map[string]any{"name": "Step Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-step": {
+				Type:       "step_parent",
+				StartEvent: "event-step-married",
+				Participants: []glxlib.Participant{
+					{Person: "person-step", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-step":   {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-death-step":   {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1845", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-step-married": {Type: "marriage", Date: "JULIAN AFT 1850"},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	// 1850 census: relationship not yet active (AFT means strictly after,
+	// and the calendar prefix must not foil the qualifier check). Without
+	// calendar-prefix stripping the qualifier matcher would miss "JULIAN
+	// AFT 1850" entirely and treat 1850 as inside the active window,
+	// falsely consolidating the child.
+	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
+	if containsSubstring(step1850.Message, "would also cover") {
+		t.Errorf("step parent 1850 must not consolidate when JULIAN AFT 1850 start; got %q", step1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently when relationship starts JULIAN AFT 1850")
+	}
+
+	// 1860 census: relationship active (any year > 1850 is in the window).
+	step1860 := findIssueByMessage(issues, "person-step", "1860 census")
+	require.NotNil(t, step1860, "expected step parent 1860 census suggestion")
+	if !containsSubstring(step1860.Message, "would also cover") {
+		t.Errorf("step parent 1860 should consolidate child after JULIAN AFT 1850 start; got %q", step1860.Message)
 	}
 }
 

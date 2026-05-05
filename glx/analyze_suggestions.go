@@ -26,18 +26,20 @@ import (
 // suggestions from a death date property value. Handles string, structured
 // map ({value: "BEF 1870"}), and temporal list ([{value: "BEF 1870"}]) shapes.
 // For "BEF <year>" dates, the year is decremented by 1 since the person
-// died before that year.
+// died before that year. Calendar prefixes (e.g. "JULIAN BEF 1870") are
+// stripped before the qualifier check.
 func deathYearUpperBound(raw any) int {
 	dateStr := extractDateString(raw)
 	year := glxlib.ExtractFirstYear(dateStr)
-	if year > 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(dateStr)), "BEF ") {
+	if year > 0 && strings.HasPrefix(dateStringWithoutCalendarPrefix(dateStr), "BEF ") {
 		year--
 	}
 	return year
 }
 
 // deathYearFromEvent returns the death year upper bound from a person's death
-// event. For "BEF <year>" dates the year is decremented by 1.
+// event. For "BEF <year>" dates the year is decremented by 1. Calendar
+// prefixes (e.g. "JULIAN BEF 1870") are stripped before the qualifier check.
 func deathYearFromEvent(archive *glxlib.GLXFile, personID string) int {
 	_, event := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath)
 	if event == nil || event.Date == "" {
@@ -45,7 +47,7 @@ func deathYearFromEvent(archive *glxlib.GLXFile, personID string) int {
 	}
 	dateStr := string(event.Date)
 	year := glxlib.ExtractFirstYear(dateStr)
-	if year > 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(dateStr)), "BEF ") {
+	if year > 0 && strings.HasPrefix(dateStringWithoutCalendarPrefix(dateStr), "BEF ") {
 		year--
 	}
 	return year
@@ -315,7 +317,7 @@ func extractRelationshipBoundaryYear(dateStr string, kind boundaryKind) int {
 		return 0
 	}
 
-	upper := strings.ToUpper(strings.TrimSpace(dateStr))
+	upper := dateStringWithoutCalendarPrefix(dateStr)
 	switch {
 	case strings.HasPrefix(upper, "AFT "):
 		if kind == boundaryStart {
@@ -332,6 +334,17 @@ func extractRelationshipBoundaryYear(dateStr string, kind boundaryKind) int {
 	}
 
 	return year
+}
+
+// dateStringWithoutCalendarPrefix returns the upper-cased body of a GLX date
+// string with any leading calendar prefix removed (e.g. "JULIAN AFT 1731" →
+// "AFT 1731"). It centralizes the prefix-stripping step that all of the
+// qualifier-aware date helpers in this file rely on so they recognize BEF /
+// AFT regardless of the calendar in which the date is expressed.
+func dateStringWithoutCalendarPrefix(dateStr string) string {
+	_, body := glxlib.ExtractCalendarPrefix(glxlib.DateString(strings.TrimSpace(dateStr)))
+
+	return strings.ToUpper(string(body))
 }
 
 // relationshipYearBounds extracts a relationship's start and end years from
