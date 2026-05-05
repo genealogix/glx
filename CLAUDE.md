@@ -80,7 +80,7 @@ Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s
 
 ## Entity Types
 
-Person, Event, Relationship, Place, Source, Citation, Repository, Media, Assertion
+Person, Event, Relationship, Place, Source, Citation, Repository, Media, Assertion, Study
 
 ## Testing
 

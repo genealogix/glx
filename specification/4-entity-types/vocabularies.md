@@ -42,6 +42,8 @@ The standard vocabulary files are:
 - `citation-properties.glx`
 - `sex-types.glx`
 - `gender-types.glx`
+- `study-types.glx`
+- `study-statuses.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
@@ -597,6 +599,95 @@ Common relationship roles:
 - `child` - Child in parent-child relationship
 - `adoptive_parent`, `adopted_child` - Adoption roles
 - `sibling` - Brother or sister
+
+---
+
+## Study Types Vocabulary
+
+**Default file**: `vocabularies/study-types.glx`
+
+**Used By**: [Study Entity](study#type)
+
+**Purpose**: Classifies the kind of research project a Study represents (one place study, one name study, family reconstruction, brick-wall investigation, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Study Types](../5-standard-vocabularies/#study-types) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+study_types:
+  one_place_study:
+    label: "One Place Study"
+    description: "Systematic research of all records and people associated with a specific place over a defined time range"
+
+  one_name_study:
+    label: "One Name Study"
+    description: "Systematic research of all bearers of a specific surname (and its variants) across places and time"
+
+  family_reconstruction:
+    label: "Family Reconstruction"
+    description: "Reconstruction of the membership and connections of a single family or kin group"
+
+  # Additional study types
+  brick_wall:
+    label: "Brick Wall Research"
+    description: "Focused investigation aimed at resolving a specific genealogical problem or unanswered question"
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Study Types
+
+See [Study Entity](study#type) for the full list of standard types.
+
+---
+
+## Study Statuses Vocabulary
+
+**Default file**: `vocabularies/study-statuses.glx`
+
+**Used By**: [Study Entity](study#status)
+
+**Purpose**: Indicates the current state of a research project (active, paused, completed, abandoned).
+
+**Standard Templates**: See [Standard Vocabularies - Study Statuses](../5-standard-vocabularies/#study-statuses) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+study_statuses:
+  active:
+    label: "Active"
+    description: "Currently being researched"
+
+  paused:
+    label: "Paused"
+    description: "Temporarily on hold, expected to resume"
+
+  completed:
+    label: "Completed"
+    description: "Research goals met; no further work planned"
+
+  abandoned:
+    label: "Abandoned"
+    description: "Research will not be continued"
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Study Statuses
+
+See [Study Entity](study#status) for the full list of standard statuses.
 
 ---
 

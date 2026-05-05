@@ -42,7 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Specification
 
-- **`possibly_same_person` relationship type** — New standard relationship type for linking two person records that may refer to the same individual but cannot yet be confirmed; pair with an Assertion subject-referencing the relationship to record `confidence` and supporting citations. No direct GEDCOM mapping. Closes #227.
+- **`Study` entity type for research-project scope** — New first-class entity that formally declares the scope of a research project within an archive: One Place Studies, One Name Studies, family reconstructions, descendancy/ancestry studies, and brick-wall investigations. Fields: `title`, `type` (validated against new `study_types` vocabulary), `status` (validated against new `study_statuses` vocabulary), `date_range` (GLX date string, e.g., `FROM 1610 TO 1875`), `places` (Place refs), `sources` (Source refs), `properties` (vocabulary-extensible), and `notes`. Replaces the prior workaround of recording scope informally in Place `notes`, making study scope machine-readable so tooling can report coverage and progress. GLX-native; no GEDCOM equivalent. Closes #226.
 - **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
 
 #### Tooling

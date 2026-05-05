@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/study.schema.json",
+  "title": "Study",
+  "description": "Formal scope of a research project (one place study, one name study, family reconstruction, etc.). ID comes from the map key in the parent structure.",
+  "type": "object",
+  "required": ["title"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the study"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Study type (validated against study_types vocabulary)"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Current status of the study (validated against study_statuses vocabulary)"
+    },
+    "date_range": {
+      "type": "string",
+      "description": "Temporal scope as a GLX date string, typically a range (e.g., \"FROM 1840 TO 1890\")"
+    },
+    "places": {
+      "type": "array",
+      "description": "References to Place entities in scope",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "sources": {
+      "type": "array",
+      "description": "References to Source entities in scope",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-extensible metadata (e.g., source_types in scope, surname variants for one-name studies)",
+      "additionalProperties": true
+    },
+    "notes": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "Free-form notes about the study (research objectives, methodology, etc.)"
+    }
+  },
+  "additionalProperties": false
+}

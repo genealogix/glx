@@ -74,6 +74,7 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	Repositories  map[string]*Repository   `yaml:"repositories,omitempty"`
 	Assertions    map[string]*Assertion    `yaml:"assertions,omitempty"`
 	Media         map[string]*Media        `yaml:"media,omitempty"`
+	Studies       map[string]*Study        `yaml:"studies,omitempty"`
 
 	// Vocabulary definitions
 	EventTypes        map[string]*VocabularyEntry `yaml:"event_types,omitempty"`
@@ -86,6 +87,8 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	MediaTypes        map[string]*VocabularyEntry `yaml:"media_types,omitempty"`
 	SexTypes          map[string]*VocabularyEntry `yaml:"sex_types,omitempty"`
 	GenderTypes       map[string]*VocabularyEntry `yaml:"gender_types,omitempty"`
+	StudyTypes        map[string]*VocabularyEntry `yaml:"study_types,omitempty"`
+	StudyStatuses     map[string]*VocabularyEntry `yaml:"study_statuses,omitempty"`
 
 	// Property vocabularies
 	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
@@ -215,6 +218,22 @@ type Citation struct {
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed)
 	Notes        NoteList       `yaml:"notes,omitempty"`
+}
+
+// Study represents the formal scope of a research project — a One Place Study,
+// One Name Study, family reconstruction, or similar focused inquiry. A Study
+// declares which places, sources, and time period are in scope, allowing tooling
+// to report on coverage and progress. Studies are GLX-native; there is no
+// GEDCOM equivalent.
+type Study struct {
+	Title      string         `yaml:"title"`
+	Type       string         `refType:"study_types"       yaml:"type,omitempty"`
+	Status     string         `refType:"study_statuses"    yaml:"status,omitempty"`
+	DateRange  DateString     `yaml:"date_range,omitempty"` // GLX date format, typically a range: "FROM 1840 TO 1890"
+	Places     []string       `refType:"places"            yaml:"places,omitempty"`
+	Sources    []string       `refType:"sources"           yaml:"sources,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-extensible metadata (e.g., source_types in scope, surname variants for one-name studies)
+	Notes      NoteList       `yaml:"notes,omitempty"`
 }
 
 // Repository represents a repository where sources are held.
@@ -382,6 +401,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	conflicts = append(conflicts, mergeMap("repositories", g.Repositories, other.Repositories)...)
 	conflicts = append(conflicts, mergeMap("assertions", g.Assertions, other.Assertions)...)
 	conflicts = append(conflicts, mergeMap("media", g.Media, other.Media)...)
+	conflicts = append(conflicts, mergeMap("studies", g.Studies, other.Studies)...)
 
 	// Helper to accumulate mergeMapDedup results
 	addDedup := func(c []string, s int) {
@@ -400,6 +420,8 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	addDedup(mergeMapDedup("gender_types", g.GenderTypes, other.GenderTypes))
 	addDedup(mergeMapDedup("participant_roles", g.ParticipantRoles, other.ParticipantRoles))
 	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
+	addDedup(mergeMapDedup("study_types", g.StudyTypes, other.StudyTypes))
+	addDedup(mergeMapDedup("study_statuses", g.StudyStatuses, other.StudyStatuses))
 
 	// Merge property vocabularies — same dedup behavior
 	addDedup(mergeMapDedup("person_properties", g.PersonProperties, other.PersonProperties))
@@ -446,6 +468,9 @@ func (g *GLXFile) initMaps() {
 	if g.Media == nil {
 		g.Media = make(map[string]*Media)
 	}
+	if g.Studies == nil {
+		g.Studies = make(map[string]*Study)
+	}
 	if g.EventTypes == nil {
 		g.EventTypes = make(map[string]*VocabularyEntry)
 	}
@@ -469,6 +494,12 @@ func (g *GLXFile) initMaps() {
 	}
 	if g.GenderTypes == nil {
 		g.GenderTypes = make(map[string]*VocabularyEntry)
+	}
+	if g.StudyTypes == nil {
+		g.StudyTypes = make(map[string]*VocabularyEntry)
+	}
+	if g.StudyStatuses == nil {
+		g.StudyStatuses = make(map[string]*VocabularyEntry)
 	}
 	if g.ParticipantRoles == nil {
 		g.ParticipantRoles = make(map[string]*VocabularyEntry)

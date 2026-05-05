@@ -78,6 +78,7 @@ func (glx *GLXFile) buildEntityMaps(result *ValidationResult) {
 	result.Entities[EntityTypeRepositories] = buildIDSet(glx.Repositories)
 	result.Entities[EntityTypeAssertions] = buildIDSet(glx.Assertions)
 	result.Entities[EntityTypeMedia] = buildIDSet(glx.Media)
+	result.Entities[EntityTypeStudies] = buildIDSet(glx.Studies)
 }
 
 // buildVocabularyMaps builds maps of all vocabulary values for quick lookup.
@@ -92,6 +93,8 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
 	result.Vocabularies[VocabSexTypes] = buildIDSet(glx.SexTypes)
 	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
+	result.Vocabularies[VocabStudyTypes] = buildIDSet(glx.StudyTypes)
+	result.Vocabularies[VocabStudyStatuses] = buildIDSet(glx.StudyStatuses)
 }
 
 // buildPropertyVocabMaps builds maps of property vocabularies.
@@ -131,6 +134,7 @@ func (glx *GLXFile) validateAllReferences(result *ValidationResult) {
 	glx.validateEntityTypeReferences(EntityTypeRepositories, glx.Repositories, result)
 	glx.validateEntityTypeReferences(EntityTypeAssertions, glx.Assertions, result)
 	glx.validateEntityTypeReferences(EntityTypeMedia, glx.Media, result)
+	glx.validateEntityTypeReferences(EntityTypeStudies, glx.Studies, result)
 }
 
 // validateEntityTypeReferences validates all entities of a given type.
@@ -336,6 +340,7 @@ func isVocabularyType(typeName string) bool {
 		strings.HasSuffix(typeName, "_levels") ||
 		strings.HasSuffix(typeName, "_roles") ||
 		strings.HasSuffix(typeName, "_ratings") ||
+		strings.HasSuffix(typeName, "_statuses") ||
 		strings.HasSuffix(typeName, "_properties")
 }
 
