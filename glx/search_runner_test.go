@@ -199,6 +199,50 @@ func TestSearchArchive_TypeFilter(t *testing.T) {
 	assert.True(t, hasNonPlace, "unfiltered results should include non-place entities")
 }
 
+func TestSearchArchive_FindsResearchLogObjectiveAndSearchFields(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"log-jane-parents": {
+				Objective:      "Identify Jane Miller's parents in 1860 Wisconsin",
+				Status:         "in_progress",
+				RelatedPersons: []string{"person-jane"},
+				Searches: []glxlib.ResearchLogSearch{
+					{
+						Repository:  "repo-fs",
+						Collection:  "1860 US Census",
+						SearchTerms: "Jane Miller Hartford",
+						Result:      "not_found",
+					},
+				},
+			},
+		},
+	}
+
+	objectiveResults := searchArchive(archive, "1860 Wisconsin", false, "")
+	hasObjective := false
+	for _, r := range objectiveResults {
+		if r.EntityType == "research_logs" && r.Field == "objective" {
+			hasObjective = true
+		}
+	}
+	assert.True(t, hasObjective, "should find objective text match")
+
+	termsResults := searchArchive(archive, "Hartford", false, "")
+	hasTerms := false
+	for _, r := range termsResults {
+		if r.EntityType == "research_logs" && r.Field == "searches[0].search_terms" {
+			hasTerms = true
+		}
+	}
+	assert.True(t, hasTerms, "should find search_terms match inside searches[0]")
+
+	typeFilterResults := searchArchive(archive, "Identify", false, "research_logs")
+	require.NotEmpty(t, typeFilterResults)
+	for _, r := range typeFilterResults {
+		assert.Equal(t, "research_logs", r.EntityType)
+	}
+}
+
 func TestShowSearch_TypeFilterOutput(t *testing.T) {
 	// Write a temporary single-file archive
 	archiveContent := `persons:

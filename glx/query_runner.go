@@ -52,7 +52,7 @@ var errPhoneticRequiresName = errors.New("--phonetic requires --name to be speci
 var queryEntityTypes = []string{
 	"persons", "events", "assertions", "sources",
 	"relationships", "places", "citations",
-	"repositories", "media",
+	"repositories", "media", "research_logs",
 }
 
 // validateQueryFlags checks that the given filter flags are applicable to the

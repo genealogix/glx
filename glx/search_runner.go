@@ -51,6 +51,7 @@ var searchEntityTypes = []searchEntityType{
 	{"assertions", "Assertions"},
 	{"relationships", "Relationships"},
 	{"media", "Media"},
+	{"research_logs", "Research Logs"},
 }
 
 // searchEntityTypeMap provides O(1) lookup by key.
@@ -453,6 +454,91 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 	return results
 }
 
+// searchResearchLogs searches all ResearchLog entities in the archive.
+func searchResearchLogs(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
+	for _, id := range sortedKeys(archive.ResearchLogs) {
+		log := archive.ResearchLogs[id]
+		if log == nil {
+			continue
+		}
+		results = append(results, searchResearchLogScalars(id, log, matchFn)...)
+		results = append(results, searchSlice("research_logs", id, "related_persons", log.RelatedPersons, matchFn)...)
+		results = append(results, searchSlice("research_logs", id, "related_events", log.RelatedEvents, matchFn)...)
+		results = append(results, searchSlice("research_logs", id, "related_relationships", log.RelatedRelationships, matchFn)...)
+		results = append(results, searchSlice("research_logs", id, "related_places", log.RelatedPlaces, matchFn)...)
+		for i, search := range log.Searches {
+			results = append(results, searchResearchLogSearch(id, i, search, matchFn)...)
+		}
+	}
+
+	return results
+}
+
+// searchResearchLogScalars searches the scalar string fields on a single
+// ResearchLog (id, objective, date, researcher, status, conclusions, notes).
+func searchResearchLogScalars(id string, log *glxlib.ResearchLog, matchFn func(string) bool) []searchResult {
+	fields := []struct {
+		field string
+		value string
+		trunc bool
+	}{
+		{"id", id, false},
+		{"objective", log.Objective, true},
+		{"date", string(log.Date), false},
+		{"researcher", log.Researcher, false},
+		{"status", log.Status, false},
+		{"conclusions", log.Conclusions, true},
+		{"notes", log.Notes.String(), true},
+	}
+	var results []searchResult
+	for _, f := range fields {
+		if !matchFn(f.value) {
+			continue
+		}
+		display := f.value
+		if f.trunc {
+			display = truncate(display)
+		}
+		results = append(results, searchResult{"research_logs", id, f.field, display})
+	}
+
+	return results
+}
+
+// searchResearchLogSearch searches a single ResearchLogSearch entry, prefixing
+// field paths with searches[i] for caller display.
+func searchResearchLogSearch(logID string, idx int, s glxlib.ResearchLogSearch, matchFn func(string) bool) []searchResult {
+	prefix := fmt.Sprintf("searches[%d].", idx)
+	fields := []struct {
+		field string
+		value string
+		trunc bool
+	}{
+		{prefix + "repository", s.Repository, false},
+		{prefix + "collection", s.Collection, false},
+		{prefix + "search_terms", s.SearchTerms, true},
+		{prefix + "result", s.Result, false},
+		{prefix + "date", string(s.Date), false},
+		{prefix + "citation", s.Citation, false},
+		{prefix + "notes", s.Notes.String(), true},
+	}
+	var results []searchResult
+	for _, f := range fields {
+		if !matchFn(f.value) {
+			continue
+		}
+		display := f.value
+		if f.trunc {
+			display = truncate(display)
+		}
+		results = append(results, searchResult{"research_logs", logID, f.field, display})
+	}
+	results = append(results, searchSlice("research_logs", logID, prefix+"media", s.Media, matchFn)...)
+
+	return results
+}
+
 // searchFuncs maps entity type keys to their search functions.
 var searchFuncs = map[string]func(*glxlib.GLXFile, func(string) bool) []searchResult{
 	"persons":       searchPersons,
@@ -464,6 +550,7 @@ var searchFuncs = map[string]func(*glxlib.GLXFile, func(string) bool) []searchRe
 	"assertions":    searchAssertions,
 	"relationships": searchRelationships,
 	"media":         searchMedia,
+	"research_logs": searchResearchLogs,
 }
 
 // searchArchive searches entities for the given query string. If typeFilter is

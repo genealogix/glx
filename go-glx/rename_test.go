@@ -292,3 +292,73 @@ func TestRenameEntity_AssertionValue(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "place-new", glx.Assertions["a-1"].Value)
 }
+
+func TestRenameEntity_ResearchLogMapKey(t *testing.T) {
+	glx := &GLXFile{
+		ResearchLogs: map[string]*ResearchLog{
+			"log-old": {Objective: "Find Jane Webb's parents"},
+		},
+	}
+
+	result, err := RenameEntity(glx, "log-old", "log-new")
+	require.NoError(t, err)
+	assert.Equal(t, EntityTypeResearchLogs, result.EntityType)
+	assert.Contains(t, glx.ResearchLogs, "log-new")
+	assert.NotContains(t, glx.ResearchLogs, "log-old")
+}
+
+func TestRenameEntity_ResearchLogRefs(t *testing.T) {
+	glx := &GLXFile{
+		Repositories: map[string]*Repository{
+			"repo-old": {Name: "FamilySearch"},
+		},
+		ResearchLogs: map[string]*ResearchLog{
+			"log-1": {
+				Objective: "Find Jane Webb",
+				Searches: []ResearchLogSearch{
+					{Repository: "repo-old", Result: "not_found"},
+				},
+			},
+		},
+	}
+
+	_, err := RenameEntity(glx, "repo-old", "repo-new")
+	require.NoError(t, err)
+	assert.Equal(t, "repo-new", glx.ResearchLogs["log-1"].Searches[0].Repository)
+}
+
+func TestRenameEntity_ResearchLogRelatedAndSearchMedia(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-old": {},
+		},
+		Citations: map[string]*Citation{
+			"cit-old": {SourceID: "src-1"},
+		},
+		Media: map[string]*Media{
+			"media-old": {Type: "photo"},
+		},
+		ResearchLogs: map[string]*ResearchLog{
+			"log-1": {
+				Objective: "Trace lineage",
+				Searches: []ResearchLogSearch{
+					{Citation: "cit-old", Media: []string{"media-old", "media-other"}, Result: "found"},
+				},
+				RelatedPersons: []string{"person-old", "person-other"},
+				RelatedEvents:  []string{"event-1"},
+			},
+		},
+	}
+
+	_, err := RenameEntity(glx, "person-old", "person-new")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"person-new", "person-other"}, glx.ResearchLogs["log-1"].RelatedPersons)
+
+	_, err = RenameEntity(glx, "cit-old", "cit-new")
+	require.NoError(t, err)
+	assert.Equal(t, "cit-new", glx.ResearchLogs["log-1"].Searches[0].Citation)
+
+	_, err = RenameEntity(glx, "media-old", "media-new")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"media-new", "media-other"}, glx.ResearchLogs["log-1"].Searches[0].Media)
+}

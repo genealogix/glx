@@ -86,6 +86,7 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 	diffEntityMap(result, EntityTypeRepositories, oldArchive.Repositories, newArchive.Repositories, nil, nil)
 	diffEntityMap(result, EntityTypeAssertions, oldArchive.Assertions, newArchive.Assertions, nil, nil)
 	diffEntityMap(result, EntityTypeMedia, oldArchive.Media, newArchive.Media, nil, nil)
+	diffEntityMap(result, EntityTypeResearchLogs, oldArchive.ResearchLogs, newArchive.ResearchLogs, nil, nil)
 
 	// Filter by person if requested (before computing stats)
 	if personFilter != "" {
@@ -118,6 +119,7 @@ func entityTypeOrder(t string) int {
 		EntityTypeCitations:     6,
 		EntityTypeRepositories:  7,
 		EntityTypeMedia:         8,
+		EntityTypeResearchLogs:  9,
 	}
 	if v, ok := order[t]; ok {
 		return v
@@ -323,6 +325,8 @@ func summarizeEntity[T any](entityType, id string, entity *T, archive *GLXFile) 
 		return summarizeRelationship(m)
 	case EntityTypePlaces:
 		return summarizePlace(m)
+	case EntityTypeResearchLogs:
+		return summarizeResearchLog(m)
 	default:
 		return id
 	}
@@ -439,6 +443,23 @@ func summarizePlace(m map[string]any) string {
 		return name
 	}
 	return "(unnamed place)"
+}
+
+func summarizeResearchLog(m map[string]any) string {
+	objective, _ := m["objective"].(string)
+	status, _ := m["status"].(string)
+	if objective == "" {
+		if status != "" {
+			return "(research log, " + status + ")"
+		}
+
+		return "(research log)"
+	}
+	if status != "" {
+		return objective + " [" + status + "]"
+	}
+
+	return objective
 }
 
 // summarizeModified generates a one-line summary for a modified entity.
