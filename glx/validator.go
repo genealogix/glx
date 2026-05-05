@@ -361,6 +361,7 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 		glxlib.EntityTypePersons, glxlib.EntityTypeEvents, glxlib.EntityTypeRelationships,
 		glxlib.EntityTypePlaces, glxlib.EntityTypeSources, glxlib.EntityTypeCitations,
 		glxlib.EntityTypeRepositories, glxlib.EntityTypeAssertions, glxlib.EntityTypeMedia,
+		glxlib.EntityTypeResearchLogs,
 	}
 
 	for _, entityType := range entityTypes {

@@ -32,6 +32,11 @@ export default {
         'utf-8'
       ),
       'repository-types': readFileSync(resolve(vocabDir, 'repository-types.glx'), 'utf-8'),
+      'research-status-types': readFileSync(
+        resolve(vocabDir, 'research-status-types.glx'),
+        'utf-8'
+      ),
+      'search-result-types': readFileSync(resolve(vocabDir, 'search-result-types.glx'), 'utf-8'),
       'sex-types': readFileSync(resolve(vocabDir, 'sex-types.glx'), 'utf-8'),
       'source-properties': readFileSync(resolve(vocabDir, 'source-properties.glx'), 'utf-8'),
       'source-types': readFileSync(resolve(vocabDir, 'source-types.glx'), 'utf-8')

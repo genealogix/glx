@@ -46,6 +46,8 @@ func TestStandardVocabularies(t *testing.T) {
 		"place-properties.glx",
 		"sex-types.glx",
 		"gender-types.glx",
+		"search-result-types.glx",
+		"research-status-types.glx",
 	}
 
 	for _, name := range expected {

@@ -265,6 +265,32 @@ Defines additional properties that can be associated with repositories (such as 
 
 ---
 
+### Search Result Types
+
+Defines outcomes recorded for an individual search inside a research log entry. Distinguishes `found` from `not_found` (negative evidence), `inconclusive`, and `not_searched` (planned but not yet executed).
+
+<YamlFile
+  :content="vocabularies['search-result-types']"
+  title="vocabularies/search-result-types.glx"
+/>
+
+**See Also:** [Research Log Entity Documentation](/specification/4-entity-types/research-log) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#search-result-types-vocabulary)
+
+---
+
+### Research Status Types
+
+Defines status values for a research log entry — `complete`, `in_progress`, or `blocked`.
+
+<YamlFile
+  :content="vocabularies['research-status-types']"
+  title="vocabularies/research-status-types.glx"
+/>
+
+**See Also:** [Research Log Entity Documentation](/specification/4-entity-types/research-log) | [Vocabularies Specification](/specification/4-entity-types/vocabularies#research-status-types-vocabulary)
+
+---
+
 ## Customizing Vocabularies
 
 ### Adding Custom Types

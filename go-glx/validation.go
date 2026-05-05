@@ -78,6 +78,7 @@ func (glx *GLXFile) buildEntityMaps(result *ValidationResult) {
 	result.Entities[EntityTypeRepositories] = buildIDSet(glx.Repositories)
 	result.Entities[EntityTypeAssertions] = buildIDSet(glx.Assertions)
 	result.Entities[EntityTypeMedia] = buildIDSet(glx.Media)
+	result.Entities[EntityTypeResearchLogs] = buildIDSet(glx.ResearchLogs)
 }
 
 // buildVocabularyMaps builds maps of all vocabulary values for quick lookup.
@@ -92,6 +93,8 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
 	result.Vocabularies[VocabSexTypes] = buildIDSet(glx.SexTypes)
 	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
+	result.Vocabularies[VocabSearchResultTypes] = buildIDSet(glx.SearchResultTypes)
+	result.Vocabularies[VocabResearchStatusTypes] = buildIDSet(glx.ResearchStatusTypes)
 }
 
 // buildPropertyVocabMaps builds maps of property vocabularies.
@@ -131,6 +134,7 @@ func (glx *GLXFile) validateAllReferences(result *ValidationResult) {
 	glx.validateEntityTypeReferences(EntityTypeRepositories, glx.Repositories, result)
 	glx.validateEntityTypeReferences(EntityTypeAssertions, glx.Assertions, result)
 	glx.validateEntityTypeReferences(EntityTypeMedia, glx.Media, result)
+	glx.validateEntityTypeReferences(EntityTypeResearchLogs, glx.ResearchLogs, result)
 }
 
 // validateEntityTypeReferences validates all entities of a given type.
@@ -1156,6 +1160,17 @@ func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
 	for id, assertion := range glx.Assertions {
 		if assertion.Date != "" {
 			glx.validateDateFormat(EntityTypeAssertions, id, "date", string(assertion.Date), result)
+		}
+	}
+	for id, log := range glx.ResearchLogs {
+		if log.Date != "" {
+			glx.validateDateFormat(EntityTypeResearchLogs, id, "date", string(log.Date), result)
+		}
+		for i, search := range log.Searches {
+			if search.Date != "" {
+				field := fmt.Sprintf("searches[%d].date", i)
+				glx.validateDateFormat(EntityTypeResearchLogs, id, field, string(search.Date), result)
+			}
 		}
 	}
 

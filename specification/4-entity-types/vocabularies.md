@@ -42,6 +42,8 @@ The standard vocabulary files are:
 - `citation-properties.glx`
 - `sex-types.glx`
 - `gender-types.glx`
+- `search-result-types.glx`
+- `research-status-types.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
@@ -454,6 +456,87 @@ confidence_levels:
 - **Archive-defined**: Each archive can customize the meaning of confidence levels
 
 See [Assertion Entity - Confidence](assertion#confidence) for usage details.
+
+---
+
+## Search Result Types Vocabulary
+
+**Default file**: `vocabularies/search-result-types.glx`
+
+**Used By**: [Research Log Entity](research-log#search-result-vocabulary)
+
+**Purpose**: Defines outcomes recorded for an individual search inside a research log entry, including the **negative-evidence** outcome `not_found`
+
+**Standard Templates**: See [Standard Vocabularies - Search Result Types](../5-standard-vocabularies/#search-result-types) for the default vocabulary.
+
+### Structure
+
+```yaml
+search_result_types:
+  found:
+    label: "Found"
+    description: "Record located, target identified"
+
+  not_found:
+    label: "Not Found"
+    description: "Collection searched, target not present (negative evidence)"
+
+  inconclusive:
+    label: "Inconclusive"
+    description: "Candidate found but identity could not be confirmed"
+
+  not_searched:
+    label: "Not Searched"
+    description: "Search planned but not yet executed"
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Important Notes
+
+- `not_found` is structured negative evidence — record it explicitly to support "reasonably exhaustive search" claims
+- `not_searched` doubles as a research roadmap entry — it lets a log capture planned work alongside completed work
+
+---
+
+## Research Status Types Vocabulary
+
+**Default file**: `vocabularies/research-status-types.glx`
+
+**Used By**: [Research Log Entity](research-log#status-vocabulary)
+
+**Purpose**: Defines status values for a research log entry, summarising whether the objective is complete, in flight, or waiting on something external
+
+**Standard Templates**: See [Standard Vocabularies - Research Status Types](../5-standard-vocabularies/#research-status-types) for the default vocabulary.
+
+### Structure
+
+```yaml
+research_status_types:
+  complete:
+    label: "Complete"
+    description: "Research objective answered or definitively closed"
+
+  in_progress:
+    label: "In Progress"
+    description: "Research is actively underway"
+
+  blocked:
+    label: "Blocked"
+    description: "Research is paused waiting on access or external input"
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
 
 ---
 

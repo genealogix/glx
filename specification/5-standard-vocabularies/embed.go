@@ -109,6 +109,16 @@ var CitationProperties []byte
 //go:embed source-properties.glx
 var SourceProperties []byte
 
+// SearchResultTypes contains the embedded search-result-types.glx vocabulary file.
+//
+//go:embed search-result-types.glx
+var SearchResultTypes []byte
+
+// ResearchStatusTypes contains the embedded research-status-types.glx vocabulary file.
+//
+//go:embed research-status-types.glx
+var ResearchStatusTypes []byte
+
 // Files maps output filenames to embedded content
 var Files = map[string][]byte{
 	"relationship-types.glx":      RelationshipTypes,
@@ -129,4 +139,6 @@ var Files = map[string][]byte{
 	"repository-properties.glx":   RepositoryProperties,
 	"citation-properties.glx":     CitationProperties,
 	"source-properties.glx":       SourceProperties,
+	"search-result-types.glx":     SearchResultTypes,
+	"research-status-types.glx":   ResearchStatusTypes,
 }

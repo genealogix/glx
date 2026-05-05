@@ -106,6 +106,14 @@
       },
       "additionalProperties": false
     },
+    "research_logs": {
+      "type": "object",
+      "description": "Map of research log entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "research-log.schema.json" }
+      },
+      "additionalProperties": false
+    },
     "event_types": {
       "type": "object",
       "description": "Event type vocabulary",
@@ -183,6 +191,22 @@
       "description": "Gender identity vocabulary (self-identified; no direct GEDCOM mapping)",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "search_result_types": {
+      "type": "object",
+      "description": "Search result type vocabulary (used by research logs)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/search-result-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "research_status_types": {
+      "type": "object",
+      "description": "Research status vocabulary (used by research log entities)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/research-status-types.schema.json" }
       },
       "additionalProperties": false
     },

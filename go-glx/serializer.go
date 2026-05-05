@@ -171,6 +171,9 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 	if err := s.serializeEntitiesToMap(glx.Assertions, "assertions", "assertion", files); err != nil {
 		return nil, err
 	}
+	if err := s.serializeEntitiesToMap(glx.ResearchLogs, "research_logs", "research-log", files); err != nil {
+		return nil, err
+	}
 
 	return files, nil
 }
@@ -197,6 +200,8 @@ func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entity
 	case map[string]*Media:
 		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Assertion:
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+	case map[string]*ResearchLog:
 		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	default:
 		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
@@ -271,17 +276,20 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		Repositories:  make(map[string]*Repository),
 		Media:         make(map[string]*Media),
 		Assertions:    make(map[string]*Assertion),
+		ResearchLogs:  make(map[string]*ResearchLog),
 
-		EventTypes:        make(map[string]*VocabularyEntry),
-		ParticipantRoles:  make(map[string]*VocabularyEntry),
-		ConfidenceLevels:  make(map[string]*VocabularyEntry),
-		RelationshipTypes: make(map[string]*VocabularyEntry),
-		PlaceTypes:        make(map[string]*VocabularyEntry),
-		SourceTypes:       make(map[string]*VocabularyEntry),
-		RepositoryTypes:   make(map[string]*VocabularyEntry),
-		MediaTypes:        make(map[string]*VocabularyEntry),
-		SexTypes:          make(map[string]*VocabularyEntry),
-		GenderTypes:       make(map[string]*VocabularyEntry),
+		EventTypes:          make(map[string]*VocabularyEntry),
+		ParticipantRoles:    make(map[string]*VocabularyEntry),
+		ConfidenceLevels:    make(map[string]*VocabularyEntry),
+		RelationshipTypes:   make(map[string]*VocabularyEntry),
+		PlaceTypes:          make(map[string]*VocabularyEntry),
+		SourceTypes:         make(map[string]*VocabularyEntry),
+		RepositoryTypes:     make(map[string]*VocabularyEntry),
+		MediaTypes:          make(map[string]*VocabularyEntry),
+		SexTypes:            make(map[string]*VocabularyEntry),
+		GenderTypes:         make(map[string]*VocabularyEntry),
+		SearchResultTypes:   make(map[string]*VocabularyEntry),
+		ResearchStatusTypes: make(map[string]*VocabularyEntry),
 
 		PersonProperties:       make(map[string]*PropertyDefinition),
 		EventProperties:        make(map[string]*PropertyDefinition),
@@ -355,6 +363,9 @@ func validateGLXFile(glx *GLXFile) error {
 	}
 	if glx.Assertions == nil {
 		glx.Assertions = make(map[string]*Assertion)
+	}
+	if glx.ResearchLogs == nil {
+		glx.ResearchLogs = make(map[string]*ResearchLog)
 	}
 
 	// Run full validation

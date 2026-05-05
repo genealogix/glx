@@ -539,3 +539,25 @@ func TestDiffArchives_EventWithTitle(t *testing.T) {
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "1860 Census — Webb Household", result.Changes[0].Summary)
 }
+
+func TestDiffArchives_AddedResearchLog(t *testing.T) {
+	old := &GLXFile{}
+	newArchive := &GLXFile{
+		ResearchLogs: map[string]*ResearchLog{
+			"log-jane-parents": {
+				Objective: "Identify Jane Webb's parents",
+				Status:    "in_progress",
+			},
+		},
+	}
+
+	result := DiffArchives(old, newArchive, "")
+	require.Len(t, result.Changes, 1)
+	c := result.Changes[0]
+	assert.Equal(t, ChangeAdded, c.Kind)
+	assert.Equal(t, EntityTypeResearchLogs, c.EntityType)
+	assert.Equal(t, "log-jane-parents", c.ID)
+	assert.Contains(t, c.Summary, "Identify Jane Webb's parents")
+	assert.Contains(t, c.Summary, "in_progress")
+	assert.Equal(t, 1, result.Stats.Added)
+}

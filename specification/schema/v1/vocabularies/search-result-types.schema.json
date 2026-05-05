@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/search-result-types.schema.json",
+  "title": "Search Result Types Vocabulary",
+  "description": "Defines the standard outcomes recorded for an individual search inside a research log entry",
+  "type": "object",
+  "required": ["search_result_types"],
+  "properties": {
+    "search_result_types": {
+      "type": "object",
+      "description": "Map of search result type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/SearchResultTypeDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "SearchResultTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single search result type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the search result type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of when this result type applies"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# Standard Research Status Types
+# This file defines the standard status values for a research log entry.
+# Archives can extend this with custom statuses by adding additional entries.
+
+research_status_types:
+  complete:
+    label: "Complete"
+    description: "Research objective answered or definitively closed"
+
+  in_progress:
+    label: "In Progress"
+    description: "Research is actively underway"
+
+  blocked:
+    label: "Blocked"
+    description: "Research is paused waiting on access or external input"

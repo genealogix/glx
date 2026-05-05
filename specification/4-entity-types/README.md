@@ -73,6 +73,13 @@ Represents digital or physical media objects associated with genealogical entiti
 - **Key Properties**: Title, URI, MIME type, description
 - **GEDCOM Equivalent**: OBJE (Object/Media Record)
 
+### [Research Log](research-log)
+
+Represents a structured record of research activity against a specific objective: what was searched, where, and what was or was not found. The home for **negative evidence** in GLX.
+
+- **Key Properties**: Objective, searches (with result), status, conclusions, related entities
+- **GEDCOM Equivalent**: None — GLX-specific
+
 ## Entity Relationships
 
 ```text
@@ -123,6 +130,10 @@ Repository
 Media
   ├── associated with any entity
   └── referenced by assertions/evidence
+
+ResearchLog
+  ├── searches[] reference Repository, Citation, Media
+  └── related_* reference Person, Event, Relationship, Place
 ```
 
 ## See Also
