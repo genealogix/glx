@@ -1618,7 +1618,7 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStart(t *testing.T) {
 			"event-birth-step":    {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
 			"event-death-step":    {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
 			"event-birth-child":   {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
-			"event-death-child":   {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-death-child":   {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
 			"event-step-married":  {Type: "marriage", Date: "AFT 1850"},
 		},
 	}
@@ -1712,6 +1712,56 @@ func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStartedOnProperty(t *testing.T
 	}
 	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
 		t.Error("child 1850 should be emitted independently when started_on AFT 1850")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnEnd(t *testing.T) {
+	// Foster relationship ended "AFT 1840". The named year (1840) is still
+	// in the active window (the relationship had not yet ended), but we
+	// have no evidence about how long after — the window must therefore
+	// close at 1840 conservatively, not extend open-ended into 1850. The
+	// 1850 census must NOT consolidate (relationship not confirmed active
+	// in 1850); the 1840 census, if both parent and child were missing it,
+	// WOULD still consolidate.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-foster": {Properties: map[string]any{"name": "Foster Parent"}},
+			"person-child":  {Properties: map[string]any{"name": "Foster Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-foster": {
+				Type:     "foster_parent_child",
+				EndEvent: "event-foster-ended",
+				Participants: []glxlib.Participant{
+					{Person: "person-foster", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-foster": {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-death-foster": {Type: glxlib.EventTypeDeath, Date: "1890", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1835", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-foster-ended": {Type: "custody_change", Date: "AFT 1840"},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
+	if containsSubstring(foster1850.Message, "would also cover") {
+		t.Errorf("foster 1850 must not consolidate when EndEvent=AFT 1840 (post-boundary year unconfirmed); got %q", foster1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently when foster relationship ended AFT 1840")
+	}
+
+	foster1840 := findIssueByMessage(issues, "person-foster", "1840 census")
+	require.NotNil(t, foster1840, "expected foster 1840 census suggestion")
+	if !containsSubstring(foster1840.Message, "would also cover") {
+		t.Errorf("foster 1840 should consolidate child (named year of AFT is still active); got %q", foster1840.Message)
 	}
 }
 
