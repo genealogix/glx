@@ -119,11 +119,14 @@ var (
 )
 
 var importCmd = &cobra.Command{
-	Use:   "import <gedcom-file>",
-	Short: "Import a GEDCOM file to GLX format",
-	Long: `Import a GEDCOM file and convert it to GLX format.
+	Use:   "import <file>",
+	Short: "Import a GEDCOM or GEDZIP file to GLX format",
+	Long: `Import a GEDCOM or GEDZIP file and convert it to GLX format.
 
-Supports both GEDCOM 5.5.1 and GEDCOM 7.0 formats.
+The input format is detected by extension:
+- .ged: GEDCOM 5.5.1 or 7.0
+- .gdz: GEDZIP (a ZIP archive containing gedcom.ged at the root plus
+        any media files referenced by FILE records)
 
 The imported archive will include:
 - All individuals (persons)
@@ -137,8 +140,11 @@ The imported archive will include:
 Output formats:
 - multi: Multi-file directory structure (default, one file per entity)
 - single: Single YAML file`,
-	Example: `  # Import to multi-file directory (default)
+	Example: `  # Import GEDCOM to multi-file directory (default)
   glx import family.ged -o family-archive
+
+  # Import GEDZIP archive (auto-extracts media files)
+  glx import family.gdz -o family-archive
 
   # Import to single file
   glx import family.ged -o family.glx --format single

@@ -7,7 +7,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 ## Features
 
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
-- 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files to GLX format
+- 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
 - 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats

@@ -22,11 +22,17 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// importGEDCOM imports a GEDCOM file and converts it to GLX format
+// importGEDCOM imports a GEDCOM or GEDZIP file and converts it to GLX format.
+// GEDZIP archives (.gdz) are detected by extension and routed through
+// importGEDZIP, which extracts to a temp directory before delegating back here.
 func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool, showFirstErrors int) error {
 	// Validate format flag
 	if format != FormatSingle && format != FormatMulti {
 		return fmt.Errorf("%w: %s", ErrInvalidFormat, format)
+	}
+
+	if isGEDZIPPath(gedcomPath) {
+		return importGEDZIP(gedcomPath, outputPath, format, validate, verbose, showFirstErrors)
 	}
 
 	// Check if GEDCOM file exists
