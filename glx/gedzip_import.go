@@ -28,6 +28,12 @@ import (
 // archive, as defined by the GEDZIP specification.
 const gedzipGedcomEntry = "gedcom.ged"
 
+// maxGEDZIPEntries caps the per-archive entry count to prevent inode/syscall
+// DoS from archives with millions of zero-byte entries. The largest plausible
+// genealogy archive (a 100k-person tree with several media items per person)
+// would still fit comfortably.
+const maxGEDZIPEntries = 100_000
+
 // importGEDZIP extracts a .gdz archive into a temporary directory and delegates
 // to the existing GEDCOM import pipeline. The temp directory is removed when
 // the function returns, regardless of outcome.
@@ -39,12 +45,16 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 	zr, err := zip.OpenReader(filepath.Clean(gedzipPath))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("%w: %s", ErrGEDCOMFileNotFound, gedzipPath)
+			return fmt.Errorf("%w: %s: %w", ErrGEDCOMFileNotFound, gedzipPath, err)
 		}
 
 		return fmt.Errorf("%w: %s: %w", ErrGEDZIPNotValidArchive, gedzipPath, err)
 	}
 	defer func() { _ = zr.Close() }()
+
+	if len(zr.File) > maxGEDZIPEntries {
+		return fmt.Errorf("%w: %d entries (limit %d)", ErrGEDZIPTooManyEntries, len(zr.File), maxGEDZIPEntries)
+	}
 
 	if !hasGedcomEntry(zr.File) {
 		return fmt.Errorf("%w: %s", ErrGEDZIPMissingGedcom, gedzipPath)
@@ -76,12 +86,23 @@ func hasGedcomEntry(files []*zip.File) bool {
 // extractGEDZIP writes each file entry into destDir, skipping directory and
 // symlink entries (the latter to prevent zip-symlink-slip attacks where a
 // symlink target could redirect a later entry's write outside destDir).
+// Case-insensitive duplicate entry names are rejected because Windows NTFS
+// and the default macOS APFS configuration silently overwrite the first write
+// when two entries fold to the same name — an attacker could otherwise hijack
+// gedcom.ged after hasGedcomEntry has already approved the archive.
 func extractGEDZIP(files []*zip.File, destDir string) error {
+	seen := make(map[string]struct{}, len(files))
 	for _, f := range files {
 		dest, err := safeExtractPath(destDir, f.Name)
 		if err != nil {
 			return err
 		}
+
+		key := strings.ToLower(f.Name)
+		if _, dup := seen[key]; dup {
+			return fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, f.Name)
+		}
+		seen[key] = struct{}{}
 
 		if f.FileInfo().IsDir() {
 			continue
@@ -114,7 +135,16 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 		return "", fmt.Errorf("%w: empty entry name", ErrGEDZIPInvalidEntry)
 	}
 
-	if path.IsAbs(entryName) || strings.HasPrefix(entryName, "/") || strings.HasPrefix(entryName, `\`) {
+	// ZIP entries use forward slashes per APPNOTE 4.4.17.1; backslashes and
+	// embedded NULs are not legal and cause platform-specific anomalies.
+	if strings.ContainsRune(entryName, 0) {
+		return "", fmt.Errorf("%w: NUL byte in entry name %q", ErrGEDZIPInvalidEntry, entryName)
+	}
+	if strings.Contains(entryName, `\`) {
+		return "", fmt.Errorf("%w: backslash in entry name %q", ErrGEDZIPInvalidEntry, entryName)
+	}
+
+	if path.IsAbs(entryName) || strings.HasPrefix(entryName, "/") {
 		return "", fmt.Errorf("%w: absolute path %q", ErrGEDZIPInvalidEntry, entryName)
 	}
 	if filepath.VolumeName(filepath.FromSlash(entryName)) != "" {

@@ -54,4 +54,6 @@ var (
 	ErrGEDZIPMissingGedcom        = errors.New("gedzip archive is missing gedcom.ged at root")
 	ErrGEDZIPInvalidEntry         = errors.New("gedzip archive contains an invalid entry path")
 	ErrGEDZIPNotValidArchive      = errors.New("file is not a valid zip archive")
+	ErrGEDZIPDuplicateEntry       = errors.New("gedzip archive contains case-insensitive duplicate entries")
+	ErrGEDZIPTooManyEntries       = errors.New("gedzip archive entry count exceeds the per-archive limit")
 )

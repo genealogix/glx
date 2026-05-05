@@ -184,3 +184,40 @@ func TestImportGEDZIP_FileNotFound(t *testing.T) {
 	err := importGEDCOM(missing, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDCOMFileNotFound)
 }
+
+func TestImportGEDZIP_RejectsBackslashInEntryName(t *testing.T) {
+	// On Windows the final isPathWithin guard catches this; the explicit
+	// reject closes the gap on every platform and matches the ZIP spec
+	// (APPNOTE 4.4.17.1 mandates forward slashes only).
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":         []byte(minimalGEDCOM7),
+		`subdir\..\evil.txt`: []byte("payload"),
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+func TestImportGEDZIP_RejectsNULByteInEntryName(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged": []byte(minimalGEDCOM7),
+		"foo\x00bar": []byte("payload"),
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPInvalidEntry)
+}
+
+func TestImportGEDZIP_RejectsCaseFoldedDuplicateGedcom(t *testing.T) {
+	// Without the dedup check, an attacker could ship gedcom.ged (benign)
+	// alongside Gedcom.GED (malicious); on case-insensitive filesystems the
+	// second write silently overwrites the first, hijacking the GEDCOM the
+	// importer parses after hasGedcomEntry has already approved the archive.
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged": []byte(minimalGEDCOM7),
+		"Gedcom.GED": []byte(minimalGEDCOM7),
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
+}
