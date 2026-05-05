@@ -17,8 +17,9 @@ package main
 import (
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // --- Gap Analysis ---
@@ -1106,7 +1107,7 @@ func TestAnalyzeSuggestions_DirectSourceCoversCensus(t *testing.T) {
 				Date: "1860",
 			},
 		},
-		Citations:  map[string]*glxlib.Citation{},
+		Citations: map[string]*glxlib.Citation{},
 		Assertions: map[string]*glxlib.Assertion{
 			"a-1": {
 				Subject:  glxlib.EntityRef{Person: "person-a"},
@@ -1551,6 +1552,205 @@ func TestAnalyzeSuggestions_ConsolidateBoundsViaStartedOnProperty(t *testing.T) 
 	}
 	if child1830 := findIssueByMessage(issues, "person-child", "1830 census"); child1830 == nil {
 		t.Error("child 1830 should be emitted independently before adoptive relationship started")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsViaEndedOnProperty(t *testing.T) {
+	// Foster relationship's ended_on property places the end at 1840, so
+	// the 1850 suggestion for the foster parent must not consolidate the
+	// (still-minor) child even though the relationship has no EndEvent.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-foster": {Properties: map[string]any{"name": "Foster Parent"}},
+			"person-child":  {Properties: map[string]any{"name": "Foster Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-foster": {
+				Type: "foster_parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-foster", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+				Properties: map[string]any{"ended_on": "1840"},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-foster": {Type: glxlib.EventTypeBirth, Date: "1800", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-death-foster": {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
+	if containsSubstring(foster1850.Message, "would also cover") {
+		t.Errorf("foster 1850 must not consolidate child after ended_on=1840; got %q", foster1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently after ended_on relationship boundary")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStart(t *testing.T) {
+	// Step-parent relationship started "AFT 1850". The named year (1850) is
+	// not in the active window — the relationship begins strictly after.
+	// The step-parent's 1850 census must therefore not consolidate the
+	// (still-minor) child.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-step":  {Properties: map[string]any{"name": "Step Parent"}},
+			"person-child": {Properties: map[string]any{"name": "Step Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-step": {
+				Type:       "step_parent_child",
+				StartEvent: "event-step-married",
+				Participants: []glxlib.Participant{
+					{Person: "person-step", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-step":    {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-death-step":    {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-birth-child":   {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":   {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-step-married":  {Type: "marriage", Date: "AFT 1850"},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
+	if containsSubstring(step1850.Message, "would also cover") {
+		t.Errorf("step parent 1850 must not consolidate child whose relationship starts AFT 1850; got %q", step1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently when step relationship starts AFT 1850")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEnd(t *testing.T) {
+	// Foster relationship ended "BEF 1850". The named year (1850) is not in
+	// the active window — the relationship had already ended. The foster
+	// parent's 1850 census must therefore not consolidate the (still-minor)
+	// child.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-foster": {Properties: map[string]any{"name": "Foster Parent"}},
+			"person-child":  {Properties: map[string]any{"name": "Foster Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-foster": {
+				Type:     "foster_parent_child",
+				EndEvent: "event-foster-ended",
+				Participants: []glxlib.Participant{
+					{Person: "person-foster", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-foster":  {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-death-foster":  {Type: glxlib.EventTypeDeath, Date: "1890", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-birth-child":   {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":   {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-foster-ended":  {Type: "custody_change", Date: "BEF 1850"},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
+	if containsSubstring(foster1850.Message, "would also cover") {
+		t.Errorf("foster 1850 must not consolidate child whose relationship ended BEF 1850; got %q", foster1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently when foster relationship ended BEF 1850")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsAFTOnStartedOnProperty(t *testing.T) {
+	// Same AFT-on-start case as the StartEvent variant, but driven by the
+	// started_on property fallback. Ensures qualifier handling applies in
+	// both the event and property paths.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-step":  {Properties: map[string]any{"name": "Step Parent"}},
+			"person-child": {Properties: map[string]any{"name": "Step Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-step": {
+				Type: "step_parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-step", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+				Properties: map[string]any{"started_on": "AFT 1850"},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-step":  {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-death-step":  {Type: glxlib.EventTypeDeath, Date: "1880", Participants: []glxlib.Participant{{Person: "person-step", Role: "principal"}}},
+			"event-birth-child": {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child": {Type: glxlib.EventTypeDeath, Date: "1900", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	step1850 := findIssueByMessage(issues, "person-step", "1850 census")
+	require.NotNil(t, step1850, "expected step parent 1850 census suggestion")
+	if containsSubstring(step1850.Message, "would also cover") {
+		t.Errorf("step parent 1850 must not consolidate when started_on=AFT 1850; got %q", step1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently when started_on AFT 1850")
+	}
+}
+
+func TestAnalyzeSuggestions_ConsolidateBoundsBEFOnEndedOnProperty(t *testing.T) {
+	// Same BEF-on-end case as the EndEvent variant, but driven by the
+	// ended_on property fallback. Ensures qualifier handling applies in
+	// both the event and property paths.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-foster": {Properties: map[string]any{"name": "Foster Parent"}},
+			"person-child":  {Properties: map[string]any{"name": "Foster Child"}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"rel-foster": {
+				Type: "foster_parent_child",
+				Participants: []glxlib.Participant{
+					{Person: "person-foster", Role: "parent"},
+					{Person: "person-child", Role: "child"},
+				},
+				Properties: map[string]any{"ended_on": "BEF 1850"},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-foster": {Type: glxlib.EventTypeBirth, Date: "1810", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-death-foster": {Type: glxlib.EventTypeDeath, Date: "1890", Participants: []glxlib.Participant{{Person: "person-foster", Role: "principal"}}},
+			"event-birth-child":  {Type: glxlib.EventTypeBirth, Date: "1840", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-death-child":  {Type: glxlib.EventTypeDeath, Date: "1860", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+		},
+	}
+
+	issues := analyzeSuggestions(archive)
+
+	foster1850 := findIssueByMessage(issues, "person-foster", "1850 census")
+	require.NotNil(t, foster1850, "expected foster 1850 census suggestion")
+	if containsSubstring(foster1850.Message, "would also cover") {
+		t.Errorf("foster 1850 must not consolidate when ended_on=BEF 1850; got %q", foster1850.Message)
+	}
+	if child1850 := findIssueByMessage(issues, "person-child", "1850 census"); child1850 == nil {
+		t.Error("child 1850 should be emitted independently when ended_on BEF 1850")
 	}
 }
 

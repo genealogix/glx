@@ -284,31 +284,78 @@ func buildParentChildBoundsIndex(archive *glxlib.GLXFile) map[string]map[string]
 	return index
 }
 
+// boundaryKind distinguishes whether an extracted relationship-bound year
+// represents the active-from (start) side or the active-through (end) side
+// of the active window. The kind controls how BEF / AFT qualifiers are
+// translated into the inclusive boundary year used for membership tests.
+type boundaryKind int
+
+const (
+	boundaryStart boundaryKind = iota
+	boundaryEnd
+)
+
+// extractRelationshipBoundaryYear returns an inclusive boundary year for the
+// given side of a relationship's active window. Qualified dates are
+// interpreted relative to the side so that the boundary year itself is only
+// reported as "active" when the qualifier supports it: AFT on a start shifts
+// to year+1 (the relationship was not yet active in the named year); BEF on
+// an end shifts to year-1 (the relationship had already ended in the named
+// year); AFT on an end yields 0 (open upper bound — the named year is still
+// active, but we have no evidence about how long after); BEF on a start is
+// treated conservatively as the named year (we know the relationship had
+// started by then, even though it may have been active earlier). Unqualified
+// dates and approximations (ABT / EST / CIRCA) use the extracted year
+// directly.
+func extractRelationshipBoundaryYear(dateStr string, kind boundaryKind) int {
+	year := glxlib.ExtractFirstYear(dateStr)
+	if year == 0 {
+		return 0
+	}
+
+	upper := strings.ToUpper(strings.TrimSpace(dateStr))
+	switch {
+	case strings.HasPrefix(upper, "AFT "):
+		if kind == boundaryStart {
+			return year + 1
+		}
+
+		return 0
+	case strings.HasPrefix(upper, "BEF "):
+		if kind == boundaryEnd {
+			return year - 1
+		}
+
+		return year
+	}
+
+	return year
+}
+
 // relationshipYearBounds extracts a relationship's start and end years from
 // its StartEvent / EndEvent (preferred) and falls back to the started_on /
-// ended_on temporal properties. BEF/AFT prefixes are not adjusted — the
-// extracted year is treated as the boundary directly, which is conservative
-// on BEF-prefixed start dates and slightly permissive on AFT-prefixed ends;
-// finer-grained handling belongs in the central date helpers.
+// ended_on temporal properties. BEF and AFT qualifiers are translated by
+// extractRelationshipBoundaryYear so that the named year is only reported as
+// "active" when the qualifier actually places the relationship there.
 func relationshipYearBounds(archive *glxlib.GLXFile, rel *glxlib.Relationship) (start, end int) {
 	if rel.StartEvent != "" {
 		if e, ok := archive.Events[rel.StartEvent]; ok && e != nil {
-			start = glxlib.ExtractFirstYear(string(e.Date))
+			start = extractRelationshipBoundaryYear(string(e.Date), boundaryStart)
 		}
 	}
 	if rel.EndEvent != "" {
 		if e, ok := archive.Events[rel.EndEvent]; ok && e != nil {
-			end = glxlib.ExtractFirstYear(string(e.Date))
+			end = extractRelationshipBoundaryYear(string(e.Date), boundaryEnd)
 		}
 	}
 	if start == 0 {
 		if v, ok := rel.Properties["started_on"]; ok {
-			start = glxlib.ExtractFirstYear(extractDateString(v))
+			start = extractRelationshipBoundaryYear(extractDateString(v), boundaryStart)
 		}
 	}
 	if end == 0 {
 		if v, ok := rel.Properties["ended_on"]; ok {
-			end = glxlib.ExtractFirstYear(extractDateString(v))
+			end = extractRelationshipBoundaryYear(extractDateString(v), boundaryEnd)
 		}
 	}
 
