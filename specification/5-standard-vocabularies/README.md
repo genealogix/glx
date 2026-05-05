@@ -3,6 +3,10 @@ title: Standard Vocabularies
 description: Standard vocabulary templates for GENEALOGIX archives
 ---
 
+<!-- markdownlint-configure-file {
+  "MD033": { "allowed_elements": ["script", "YamlFile"] }
+} -->
+
 <script setup>
 import YamlFile from '../../website/.vitepress/components/YamlFile.vue'
 import { data as vocabularies } from '../../website/.vitepress/data/vocabularies.data.js'
