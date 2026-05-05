@@ -89,12 +89,14 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 
 ## Common Tasks
 
-**Add new CLI command** — update all four locations:
+**Add new CLI command**:
 
-1. `glx/README.md` — features list and command reference
-2. `website/.vitepress/config.js` — sidebar menu
-3. `docs/guides/hands-on-cli-guide.md` — walkthrough with Westeros examples
-4. `CHANGELOG.md`
+1. Define the command in `glx/cli_commands.go` (`Use`/`Short`/`Long`/`Example`) and add a `*_runner.go` file
+2. Run `make docs-cli` to regenerate per-command pages under `docs/cli/` (CI fails on drift)
+3. Add the command to the relevant category in the `/cli` sidebar of `website/.vitepress/config.js` (groupings are editorial, not auto-generated)
+4. If the command warrants a walkthrough, update `docs/guides/hands-on-cli-guide.md`
+5. If it's a user-visible feature, add a one-liner to `glx/README.md` "## Features"
+6. Update `CHANGELOG.md` with an issue/PR reference
 
 **Add new entity type**: define in `go-glx/types.go` → add to `GLXFile` → update serializer → add vocabulary → update docs
 

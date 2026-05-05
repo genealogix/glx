@@ -97,6 +97,7 @@ func init() {
 	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
+	rootCmd.AddCommand(docsCmd)
 }
 
 // ============================================================================
@@ -1396,7 +1397,7 @@ archive does not already have a repository-familysearch entity, one is
 created automatically. If it does, the existing entity is left untouched.
 
 Re-running the command with the same ARK is idempotent — a citation with
-the deterministic ID citation-familysearch-<slug> is not re-created.`,
+the deterministic ID ` + "`citation-familysearch-<slug>`" + ` is not re-created.`,
 	Example: `  # Attach to an existing source
   glx link "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" \
     --archive my-family-archive \
@@ -1434,4 +1435,26 @@ func runLink(_ *cobra.Command, args []string) error {
 		Locator:           linkLocator,
 		DryRun:            linkDryRun,
 	})
+}
+
+// ============================================================================
+// Docs Command (build-time tool, hidden from glx --help)
+// ============================================================================
+
+var docsOutput string
+
+var docsCmd = &cobra.Command{
+	Use:    "docs",
+	Short:  "Regenerate CLI reference Markdown under docs/cli/",
+	Hidden: true,
+	Args:   cobra.NoArgs,
+	RunE:   runDocs,
+}
+
+func init() {
+	docsCmd.Flags().StringVarP(&docsOutput, "output", "o", "./docs/cli/", "output directory for generated docs")
+}
+
+func runDocs(_ *cobra.Command, _ []string) error {
+	return runDocsGen(rootCmd, docsOutput)
 }
