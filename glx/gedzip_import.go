@@ -179,7 +179,8 @@ func writeZipEntry(f *zip.File, destPath string) error {
 		return fmt.Errorf("creating destination file for %q: %w", f.Name, err)
 	}
 
-	_, copyErr := io.Copy(dst, src) //nolint:gosec // size is bounded by archive contents; bomb guard is out of scope
+	// #nosec G110 -- decompressed-size cap is intentionally deferred; tracked in #775
+	_, copyErr := io.Copy(dst, src)
 	closeErr := dst.Close()
 
 	if copyErr != nil {
