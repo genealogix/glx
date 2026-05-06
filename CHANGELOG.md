@@ -99,6 +99,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **GEDCOM export emits events whose principal participant uses `role: subject`** — `buildPersonEventsIndex` filtered on `participant.Role == ParticipantRolePrincipal`, silently dropping events from the per-person event index whenever the participant used the documented synonym `subject` (or left the role unset). The filter now uses the existing `isSubjectRole` helper, which accepts `principal`, `subject`, and `""` consistently with `FindPersonEvent`, the census import default, and `vitals_runner`. Fixes #523.
 - **`glx migrate`, `glx rename`, and `glx merge` no longer delete non-archive files** — The crash-safe write path (`safeWriteMultiFileArchive`, added in #598) swapped a fresh archive directory into place and then unconditionally removed the original via `.bak`, wiping any top-level entry the serializer didn't produce — including `.git/`, `README.md`, `CLAUDE.md`, `.claude/`, and arbitrary user content. Since GLX archives are designed to live inside git repositories, every invocation against a real archive silently destroyed git history and project docs. The swap now preserves every top-level entry that isn't in the managed set (`metadata.glx`, `vocabularies/`, `persons/`, `events/`, `relationships/`, `places/`, `sources/`, `citations/`, `repositories/`, `media/`, `assertions/`). Test coverage added for foreign-file preservation. Fixes #692
 
+#### CI
+
+- **`scorecard.yml` could not resolve `ossf/scorecard-action@v2`** — The OpenSSF Scorecard action does not publish a floating `v2` major-version tag; only specific tags `v2.0.x` through `v2.4.3` exist. The workflow failed at the "Prepare all required actions" step on every run since it was introduced in #753. Pinned to `v2.4.3` (latest published, 2025-09-30) to match the version-tag pinning convention used by the other actions in the file. (Fixes the broken job introduced by #753.)
+
 ## [0.0.0-beta.10] - 2026-04-13
 
 ### Added
