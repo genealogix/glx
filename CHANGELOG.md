@@ -101,7 +101,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### CI
 
-- **`scorecard.yml` could not resolve `ossf/scorecard-action@v2`** — The OpenSSF Scorecard action does not publish a floating `v2` major-version tag; only specific tags `v2.0.x` through `v2.4.3` exist. The workflow failed at the "Prepare all required actions" step on every run since it was introduced in #753. Pinned to `v2.4.3` (latest published, 2025-09-30) to match the version-tag pinning convention used by the other actions in the file. (Fixes the broken job introduced by #753.)
+- **Pin `ossf/scorecard-action` to `v2.4.3`** — The action does not publish a floating `v2` major-version tag, so the workflow failed at the "Prepare all required actions" step on every run since it was introduced in #753. `v2.4.3` is the latest published tag; unlike the other actions in the file (`@v6`, `@v7`, `@v4`), `scorecard-action` requires a minor.patch pin until upstream ships a floating major.
 
 ## [0.0.0-beta.10] - 2026-04-13
 
