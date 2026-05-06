@@ -73,6 +73,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
 
+#### Dependencies
+
+- **Replaced JSON Schema validator library** — Migrated `glx/validator.go` (Pass 1 structural validation) and `go-glx/example_archives_roundtrip_test.go` from the unmaintained `github.com/xeipuuv/gojsonschema v1.2.0` (last release 2020) to the actively-maintained `github.com/santhosh-tekuri/jsonschema/v6 v6.0.2`. Behavior preserved: same compile-once schema cache, same `[]string` issue list. Drops the stale `xeipuuv/gojsonpointer` and `xeipuuv/gojsonreference` indirect dependencies (both pinned to 2018/2019 pseudo-versions). Error messages from invalid GLX files are reworded by the new library; no external code parses these strings. Closes #675; supersedes #268.
+
 ### Removed
 
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
