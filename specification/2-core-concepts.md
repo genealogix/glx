@@ -52,7 +52,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `repository-types.glx` | Archive, library, church, etc. |
 | `media-types.glx` | Photo, document, audio, etc. |
 | `participant-roles.glx` | Subject, witness, godparent, etc. |
-| `confidence-levels.glx` | High, medium, low, disputed |
+| `confidence-levels.glx` | High, medium, low |
 | `sex-types.glx` | Male, female, unknown, not_recorded, other (recorded sex) |
 | `gender-types.glx` | Male, female, nonbinary, other (self-identified identity) |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
@@ -863,6 +863,7 @@ assertions:
     property: date
     value: "1850-01-15"
     confidence: medium
+    status: disputed
     notes: |
       Two conflicting sources:
       - Birth certificate: January 15, 1850 (preferred, higher quality)
