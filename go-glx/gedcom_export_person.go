@@ -222,6 +222,9 @@ func exportPerson(personID string, person *Person, expCtx *ExportContext) *GEDCO
 		}
 	}
 
+	// Preserved extension tags from import round-trip
+	record.SubRecords = append(record.SubRecords, exportExtensionTags(person.Properties)...)
+
 	return record
 }
 
