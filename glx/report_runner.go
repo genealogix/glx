@@ -160,13 +160,12 @@ func findUnbacked[V any](entities map[string]V, asserted map[string]bool) []stri
 }
 
 // buildConfidenceOrder returns confidence levels in display order:
-// high, medium, low, disputed, then any custom levels alphabetically, then (unset).
+// high, medium, low, then any custom levels alphabetically, then (unset).
 func buildConfidenceOrder(counts map[string]int) []string {
 	knownOrder := []string{
 		glxlib.ConfidenceLevelHigh,
 		glxlib.ConfidenceLevelMedium,
 		glxlib.ConfidenceLevelLow,
-		glxlib.ConfidenceLevelDisputed,
 	}
 
 	var order []string

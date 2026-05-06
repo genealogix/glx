@@ -431,10 +431,6 @@ confidence_levels:
     label: "Low Confidence"
     description: "Limited evidence, significant uncertainty"
   
-  disputed:
-    label: "Disputed"
-    description: "Multiple sources conflict, resolution unclear"
-  
   # Additional confidence levels
   tentative:
     label: "Tentative"

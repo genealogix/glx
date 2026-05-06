@@ -66,10 +66,9 @@ type DiffResult struct {
 
 // confidenceRank maps confidence levels to numeric rank for upgrade/downgrade detection.
 var confidenceRank = map[string]int{
-	ConfidenceLevelLow:      0,
-	ConfidenceLevelDisputed: 1,
-	ConfidenceLevelMedium:   2,
-	ConfidenceLevelHigh:     3,
+	ConfidenceLevelLow:    0,
+	ConfidenceLevelMedium: 1,
+	ConfidenceLevelHigh:   2,
 }
 
 // DiffArchives compares two loaded archives and returns a structured diff.

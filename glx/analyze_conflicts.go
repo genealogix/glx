@@ -149,9 +149,7 @@ func confidenceRank(c string) int {
 		return 2
 	case "low":
 		return 3
-	case "disputed":
-		return 4
 	default:
-		return 5
+		return 4
 	}
 }
