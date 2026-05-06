@@ -700,9 +700,6 @@ confidence_levels:
   low:
     label: "Low Confidence"
     description: "Limited evidence, significant uncertainty"
-  disputed:
-    label: "Disputed"
-    description: "Multiple sources conflict, resolution unclear"
 ```
 
 Confidence levels are defined in `confidence-levels.glx` and can be customized per archive.

@@ -21,6 +21,12 @@ With --rename-gender-to-sex, also renames the legacy `gender` person
 property (and any related assertions and inlined vocabulary entries) to
 `sex`, completing the two-field-model split introduced in #528.
 
+With --confidence-disputed-to-status, moves the legacy `confidence: disputed`
+signal to `status: disputed`, separating evidence quality (confidence) from
+conclusion state (status) per #516. Confidence is cleared on each touched
+assertion; existing non-disputed statuses are preserved with a warning so the
+user can reconcile by hand.
+
 ```
 glx migrate [archive] [flags]
 ```
@@ -36,13 +42,17 @@ glx migrate [archive] [flags]
 
   # Also rename legacy 'gender' person properties to 'sex'
   glx migrate ./my-archive --rename-gender-to-sex
+
+  # Also move legacy 'confidence: disputed' to 'status: disputed'
+  glx migrate ./my-archive --confidence-disputed-to-status
 ```
 
 ### Options
 
 ```
-  -h, --help                   help for migrate
-      --rename-gender-to-sex   Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
+      --confidence-disputed-to-status   Move legacy 'confidence: disputed' to 'status: disputed' (evidence quality vs conclusion state, #516)
+  -h, --help                            help for migrate
+      --rename-gender-to-sex            Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
 ```
 
 ### SEE ALSO

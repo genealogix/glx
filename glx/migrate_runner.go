@@ -39,6 +39,14 @@ type MigrateReport struct {
 	// carries post-split data. The archive may still contain legacy `gender`
 	// values that were NOT migrated — this is distinct from "no work to do".
 	GenderRenameSkipped bool
+
+	// confidence: disputed → status: disputed conversion counts (opt-in via
+	// --confidence-disputed-to-status, #516). ConfidenceDisputedConverted is
+	// the total number of assertions touched; ConfidenceDisputedStatusConflicts
+	// is the subset where an existing non-disputed status was preserved
+	// instead of being overwritten — the user must reconcile those by hand.
+	ConfidenceDisputedConverted       int
+	ConfidenceDisputedStatusConflicts int
 }
 
 const (

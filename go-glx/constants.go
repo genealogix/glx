@@ -343,10 +343,9 @@ const (
 
 // Standard Confidence Levels - from confidence-levels.glx vocabulary
 const (
-	ConfidenceLevelHigh     = "high"     // Multiple high-quality sources agree, minimal uncertainty
-	ConfidenceLevelMedium   = "medium"   // Some evidence supports conclusion, but conflicts or gaps exist
-	ConfidenceLevelLow      = "low"      // Limited evidence, significant uncertainty
-	ConfidenceLevelDisputed = "disputed" // Multiple sources conflict, resolution unclear
+	ConfidenceLevelHigh   = "high"   // Multiple high-quality sources agree, minimal uncertainty
+	ConfidenceLevelMedium = "medium" // Some evidence supports conclusion, but conflicts or gaps exist
+	ConfidenceLevelLow    = "low"    // Limited evidence, significant uncertainty
 )
 
 // Standard Source Types - from source-types.glx vocabulary
