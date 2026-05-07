@@ -65,7 +65,7 @@ GLX is a local CLI and Go library. There is no service, no telemetry, no auto-up
 
 Adopters who **package or embed** GLX into a CRA-regulated product may cite this attestation as part of their own evidence pack. The OpenSSF maintains guidance on how the OSPS Baseline maps to CRA expectations: <https://openssf.org/public-policy/eu-cyber-resilience-act/>.
 
-If you need an explicit statement for procurement or audit purposes that does not appear here (for example, "GLX commits to a 90-day SLA on critical vulnerabilities"), open a discussion on <https://github.com/genealogix/glx/discussions> rather than an issue — procurement-shaped questions tend to attract maintainer time better in that forum.
+If you need an explicit statement for procurement or audit purposes that does not appear here (for example, a specific export-control classification or evidence packaging beyond what this file already cites), open a discussion on <https://github.com/genealogix/glx/discussions> rather than an issue — procurement-shaped questions tend to attract maintainer time better in that forum.
 
 ## Maintenance
 
