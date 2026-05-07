@@ -105,6 +105,49 @@ func TestFindDuplicates_Integration_InvalidThreshold(t *testing.T) {
 	assert.Contains(t, err.Error(), "--threshold must be between 0.0 and 1.0")
 }
 
+func TestFindDuplicates_Integration_AgeImplausibleSuppressed(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "events"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "relationships"), 0o755))
+
+	// Father has no birth date but is documented as parent on a 1720
+	// child-birth relationship. Newborn is principal of a 1730 birth event.
+	// The father-vs-newborn pair must score 0 even though their names match.
+	personYAML := func(id, name string) string {
+		return "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-hans-father.glx"),
+		[]byte(personYAML("person-hans-father", "Hans Schmidt")), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-hans-newborn.glx"),
+		[]byte(personYAML("person-hans-newborn", "Hans Schmidt")), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-anna-child.glx"),
+		[]byte(personYAML("person-anna-child", "Anna Schmidt")), 0o644))
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "events", "event-birth-newborn.glx"),
+		[]byte("events:\n  event-birth-newborn:\n    type: birth\n    date: \"1730\"\n    participants:\n      - person: person-hans-newborn\n        role: principal\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "events", "event-birth-child.glx"),
+		[]byte("events:\n  event-birth-child:\n    type: birth\n    date: \"1720\"\n    participants:\n      - person: person-anna-child\n        role: principal\n"), 0o644))
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "relationships", "rel-father-child.glx"),
+		[]byte("relationships:\n  rel-father-child:\n    type: parent_child\n    participants:\n      - person: person-hans-father\n        role: parent\n      - person: person-anna-child\n        role: child\n"), 0o644))
+
+	output := captureStdout(t, func() {
+		err := findDuplicates(dir, 0.0, "", true)
+		require.NoError(t, err)
+	})
+
+	// In the JSON output, locate the father-vs-newborn pair and assert score 0.
+	assert.Contains(t, output, "person-hans-father")
+	assert.Contains(t, output, "person-hans-newborn")
+	assert.Contains(t, output, "Age plausibility")
+	assert.Contains(t, output, "1720")
+	// Confirm the pair's score is suppressed (not the same as a non-implausible
+	// match would produce). The smoking gun is a "score": 0 entry next to the
+	// father-newborn pair; check both the suppressed score and the breakdown.
+	assert.Contains(t, output, `"score": 0`)
+}
+
 func writeTestPerson(t *testing.T, dir, id, name, born string) {
 	t.Helper()
 	personYAML := "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n"
