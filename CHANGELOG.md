@@ -44,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **`possibly_same_person` relationship type** — New standard relationship type for linking two person records that may refer to the same individual but cannot yet be confirmed; pair with an Assertion subject-referencing the relationship to record `confidence` and supporting citations. No direct GEDCOM mapping. Closes #227.
 - **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
+- **`name_as_recorded` property added to `event_properties` and `relationship_properties`** — Standard structured property for the participant's name exactly as written in the source backing the event or relationship. Captures source-specific renderings (Latin-genitive forms in 18th-century parish registers, abbreviations, transcription quirks) on `event.participants[].properties` and `relationship.participants[].properties` rather than as a temporal variant on the Person entity. Mirrors the field shape of `person_properties.name` (`prefix`, `given`, `surname_prefix`, `surname`, `suffix`). Closes #714
 
 #### Tooling
 
