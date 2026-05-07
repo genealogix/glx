@@ -103,6 +103,8 @@ Repository → Source → Citation → Assertion → Property
 4. **Assertion**: `assertion-robert-birth` (claim that Robert was born March 22, 1955)
 5. **Event**: `event-robert-birth` with date `"1955-03-22"` and place `place-new-york`
 
+> **Why this matters:** The evidence chain supports the [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) (GPS), which requires (1) reasonably exhaustive research, (2) complete source citations, (3) analysis of evidence, (4) resolution of conflicts, and (5) a soundly reasoned conclusion. GLX's assertion model provides the data structure for documenting all five elements. See [decision 0002](/decisions/0002-evidence-first-data-model) for the rationale.
+
 ## Recommended Workflow
 
 ### For Quick Data Entry
