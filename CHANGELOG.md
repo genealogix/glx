@@ -58,6 +58,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Documentation
 
+- **`basic-family` example renamed to use descriptive person IDs** — Replaced role-based IDs (`person-mother`, `person-father`, `person-bob`) with name-based IDs (`person-mary-thompson`, `person-robert-thompson`, `person-alice-thompson`, `person-robert-thompson-jr`) to match the project's example-best-practice guidance and the convention already used in `complete-family/`. Also corrected the son's name to "Robert Thompson Jr." with a structured `suffix: "Jr."` field, matching the README's "Robert Jr." description. Person filenames were renamed in lockstep with their IDs, and `rel-parent-bob.glx`/`rel-parent-bob` were renamed to `rel-parent-robert-jr.glx`/`rel-parent-robert-jr` to drop the lingering nickname. Closes #577.
+
 - **CLI reference is now auto-generated** — Replaced the ~1,200-line manually-maintained "Commands" section in `glx/README.md` with a short pointer paragraph linking to the auto-generated pages under `docs/cli/`. The VitePress `/cli` route now serves a hand-written `docs/cli/index.md` overview instead of the README; per-command pages live at `/cli/glx_init`, `/cli/glx_validate`, etc. (file-per-command, replacing the previous single-page anchor links like `/cli#glx-init`). The website sidebar in `website/.vitepress/config.js` was rewritten accordingly and now also covers the previously-unlisted `duplicates`, `coverage`, `diff`, `rename`, and `completion` commands. (#299)
 
 #### Specification
