@@ -53,6 +53,7 @@ export default defineConfig({
     // Root-level docs to development section
     'CONTRIBUTING.md': 'development/contributing.md',
     'CODE_OF_CONDUCT.md': 'development/code-of-conduct.md',
+    'SECURITY-POSTURE.md': 'development/security-posture.md',
 
     // GLX CLI documentation — per-command pages auto-generated under docs/cli/
     // by `make docs-cli`; the index page is hand-written. Specific rule for
@@ -345,6 +346,12 @@ export default defineConfig({
           items: [
             { text: 'Contributing Guide', link: '/development/contributing' },
             { text: 'Code of Conduct', link: '/development/code-of-conduct' }
+          ]
+        },
+        {
+          text: 'Security & Compliance',
+          items: [
+            { text: 'Security Posture', link: '/development/security-posture' }
           ]
         }
       ],
