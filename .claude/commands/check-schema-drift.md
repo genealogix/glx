@@ -4,7 +4,6 @@ allowed-tools:
   - Read
   - Grep
   - Glob
-  - Bash(gh issue list:*)
 model: claude-opus-4-7
 ---
 
