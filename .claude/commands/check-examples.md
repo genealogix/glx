@@ -1,5 +1,12 @@
 ---
 description: Review example GLX archives for compliance with specification and code
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash(gh issue list:*)
+  - Bash(./bin/glx validate:*)
+model: claude-opus-4-7
 ---
 
 You are tasked with comprehensively reviewing the example GLX archives in `docs/examples/` for compliance with the GLX specification and implementation.
