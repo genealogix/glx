@@ -799,7 +799,8 @@ func TestImportQUAY_MapsToAssertionConfidence(t *testing.T) {
 }
 
 // TestImportQUAY_OutOfRange verifies that QUAY values outside the vocabulary
-// (e.g., QUAY 4) leave assertion confidence empty rather than picking a default.
+// (e.g., QUAY 4) leave assertion confidence empty rather than picking a default,
+// while still preserving the raw value in citation notes.
 func TestImportQUAY_OutOfRange(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @S1@ SOUR\n1 TITL Birth Record\n" +
@@ -810,12 +811,28 @@ func TestImportQUAY_OutOfRange(t *testing.T) {
 	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
 
+	var dateAssertion *Assertion
 	for _, a := range glxFile.Assertions {
 		if a.Property == "date" {
-			assert.Empty(t, a.Confidence,
-				"out-of-range QUAY value should leave confidence unset")
+			dateAssertion = a
+
+			break
 		}
 	}
+	require.NotNil(t, dateAssertion, "expected a date assertion")
+	assert.Empty(t, dateAssertion.Confidence,
+		"out-of-range QUAY value should leave confidence unset")
+
+	var rawNote string
+	for _, c := range glxFile.Citations {
+		for _, n := range c.Notes {
+			if strings.HasPrefix(n, "GEDCOM QUAY: ") {
+				rawNote = n
+			}
+		}
+	}
+	assert.Equal(t, "GEDCOM QUAY: 4", rawNote,
+		"raw QUAY value should still appear in citation notes")
 }
 
 // TestImportQUAY_MaxRankAcrossSources verifies that when an event has multiple
