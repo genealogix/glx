@@ -230,6 +230,29 @@ func TestBuildGEDCOMIndex(t *testing.T) {
 		}
 	}
 
+	// Repository type mappings (GEDCOM REPO.TYPE value → GLX key, lowercased)
+	repoTypeTests := map[string]string{
+		"archive":    RepositoryTypeArchive,
+		"library":    RepositoryTypeLibrary,
+		"church":     RepositoryTypeChurch,
+		"online":     RepositoryTypeDatabase,
+		"museum":     RepositoryTypeMuseum,
+		"registry":   RepositoryTypeRegistry,
+		"society":    RepositoryTypeHistoricalSociety,
+		"university": RepositoryTypeUniversity,
+		"government": RepositoryTypeGovernmentAgency,
+	}
+	for value, want := range repoTypeTests {
+		if got := index.RepositoryTypes[value]; got != want {
+			t.Errorf("RepositoryTypes[%q] = %q, want %q", value, got, want)
+		}
+	}
+	// "other" has no GEDCOM equivalent and must not appear in the reverse index.
+	if _, present := index.RepositoryTypes[RepositoryTypeOther]; present {
+		t.Errorf("RepositoryTypes[%q] should not be set; %q is the fallback target, not a GEDCOM value",
+			RepositoryTypeOther, RepositoryTypeOther)
+	}
+
 	// Media property mappings
 	mediaPropTests := map[string]string{
 		"MEDI": "medium",
