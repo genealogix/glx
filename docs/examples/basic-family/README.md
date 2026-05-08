@@ -14,14 +14,14 @@ with two children and basic relationship entries.
 ```text
 basic-family/
 ├── persons/
-│   ├── person-mother.glx
-│   ├── person-father.glx
-│   ├── person-child-alice.glx
-│   └── person-child-bob.glx
+│   ├── person-mary-thompson.glx
+│   ├── person-robert-thompson.glx
+│   ├── person-alice-thompson.glx
+│   └── person-robert-thompson-jr.glx
 ├── relationships/
 │   ├── rel-marriage.glx
 │   ├── rel-parent-alice.glx
-│   └── rel-parent-bob.glx
+│   └── rel-parent-robert-jr.glx
 ├── vocabularies/           # Symlinks to standard vocabularies
 └── README.md
 ```
@@ -34,11 +34,11 @@ basic-family/
 
 ## Files
 
-### persons/person-mother.glx
+### persons/person-mary-thompson.glx
 
 ```yaml
 persons:
-  person-mother:
+  person-mary-thompson:
     properties:
       name:
         value: "Mary Thompson"
@@ -48,11 +48,11 @@ persons:
       sex: female
 ```
 
-### persons/person-father.glx
+### persons/person-robert-thompson.glx
 
 ```yaml
 persons:
-  person-father:
+  person-robert-thompson:
     properties:
       name:
         value: "Robert Thompson"
@@ -62,11 +62,11 @@ persons:
       sex: male
 ```
 
-### persons/person-child-alice.glx
+### persons/person-alice-thompson.glx
 
 ```yaml
 persons:
-  person-alice:
+  person-alice-thompson:
     properties:
       name:
         value: "Alice Thompson"
@@ -76,17 +76,18 @@ persons:
       sex: female
 ```
 
-### persons/person-child-bob.glx
+### persons/person-robert-thompson-jr.glx
 
 ```yaml
 persons:
-  person-bob:
+  person-robert-thompson-jr:
     properties:
       name:
-        value: "Robert Thompson"
+        value: "Robert Thompson Jr."
         fields:
           given: "Robert"
           surname: "Thompson"
+          suffix: "Jr."
       sex: male
 ```
 
@@ -97,9 +98,9 @@ relationships:
   rel-marriage:
     type: marriage
     participants:
-      - person: person-mother
+      - person: person-mary-thompson
         role: spouse
-      - person: person-father
+      - person: person-robert-thompson
         role: spouse
 ```
 
@@ -110,26 +111,26 @@ relationships:
   rel-parent-alice:
     type: parent_child
     participants:
-      - person: person-mother
+      - person: person-mary-thompson
         role: parent
-      - person: person-father
+      - person: person-robert-thompson
         role: parent
-      - person: person-alice
+      - person: person-alice-thompson
         role: child
 ```
 
-### relationships/rel-parent-bob.glx
+### relationships/rel-parent-robert-jr.glx
 
 ```yaml
 relationships:
-  rel-parent-bob:
+  rel-parent-robert-jr:
     type: parent_child
     participants:
-      - person: person-mother
+      - person: person-mary-thompson
         role: parent
-      - person: person-father
+      - person: person-robert-thompson
         role: parent
-      - person: person-bob
+      - person: person-robert-thompson-jr
         role: child
 ```
 
