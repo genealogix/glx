@@ -675,10 +675,12 @@ func TestFindDuplicates_AgeImplausibleSuppressed(t *testing.T) {
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
 	require.NoError(t, err)
 
+	var found bool
 	for _, pair := range result.Pairs {
 		bothInvolved := (pair.PersonA == "person-johann-juncker" && pair.PersonB == "person-johann-jungk-b1725") ||
 			(pair.PersonA == "person-johann-jungk-b1725" && pair.PersonB == "person-johann-juncker")
 		if bothInvolved {
+			found = true
 			assert.InDelta(t, 0.0, pair.Score, 1e-9, "infant-vs-adult-parent pair must be suppressed")
 			var hasAgeSignal bool
 			for _, sig := range pair.Signals {
@@ -691,6 +693,7 @@ func TestFindDuplicates_AgeImplausibleSuppressed(t *testing.T) {
 			assert.True(t, hasAgeSignal, "suppressed pair must include Age plausibility signal in breakdown")
 		}
 	}
+	require.True(t, found, "candidate pair (juncker, jungk-b1725) must appear in result.Pairs at threshold 0")
 }
 
 func TestFindDuplicates_AgeImplausibilityViaParentChildRelationship(t *testing.T) {
@@ -726,11 +729,23 @@ func TestFindDuplicates_AgeImplausibilityViaParentChildRelationship(t *testing.T
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
 	require.NoError(t, err)
 
+	var found bool
 	for _, pair := range result.Pairs {
 		bothInvolved := (pair.PersonA == "person-father" && pair.PersonB == "person-newborn") ||
 			(pair.PersonA == "person-newborn" && pair.PersonB == "person-father")
 		if bothInvolved {
+			found = true
 			assert.InDelta(t, 0.0, pair.Score, 1e-9, "father-vs-newborn pair must be suppressed when parent role established by relationship")
+			var hasAgeSignal bool
+			for _, sig := range pair.Signals {
+				if sig.Name == "Age plausibility" {
+					hasAgeSignal = true
+					assert.InDelta(t, 0.0, sig.Score, 1e-9)
+					assert.Contains(t, sig.Detail, "1725")
+				}
+			}
+			assert.True(t, hasAgeSignal, "suppressed pair must include Age plausibility signal in breakdown")
 		}
 	}
+	require.True(t, found, "candidate pair (father, newborn) must appear in result.Pairs at threshold 0")
 }

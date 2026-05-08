@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestFindDuplicates_Integration_TextOutput(t *testing.T) {
@@ -137,15 +140,29 @@ func TestFindDuplicates_Integration_AgeImplausibleSuppressed(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	// In the JSON output, locate the father-vs-newborn pair and assert score 0.
-	assert.Contains(t, output, "person-hans-father")
-	assert.Contains(t, output, "person-hans-newborn")
-	assert.Contains(t, output, "Age plausibility")
-	assert.Contains(t, output, "1720")
-	// Confirm the pair's score is suppressed (not the same as a non-implausible
-	// match would produce). The smoking gun is a "score": 0 entry next to the
-	// father-newborn pair; check both the suppressed score and the breakdown.
-	assert.Contains(t, output, `"score": 0`)
+	var result glxlib.DuplicateResult
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+
+	var found bool
+	for _, pair := range result.Pairs {
+		bothInvolved := (pair.PersonA == "person-hans-father" && pair.PersonB == "person-hans-newborn") ||
+			(pair.PersonA == "person-hans-newborn" && pair.PersonB == "person-hans-father")
+		if !bothInvolved {
+			continue
+		}
+		found = true
+		assert.InDelta(t, 0.0, pair.Score, 1e-9, "father-vs-newborn pair must be suppressed in JSON output")
+		var hasAgeSignal bool
+		for _, sig := range pair.Signals {
+			if sig.Name == "Age plausibility" {
+				hasAgeSignal = true
+				assert.InDelta(t, 0.0, sig.Score, 1e-9)
+				assert.Contains(t, sig.Detail, "1720")
+			}
+		}
+		assert.True(t, hasAgeSignal, "suppressed pair must include Age plausibility signal in breakdown")
+	}
+	require.True(t, found, "candidate pair (person-hans-father, person-hans-newborn) must appear in JSON pairs at threshold 0")
 }
 
 func writeTestPerson(t *testing.T, dir, id, name, born string) {
