@@ -747,6 +747,106 @@ func TestImportIndividualEvent_SOURCitationsPreserved(t *testing.T) {
 	assert.True(t, hasCitations, "Birth event should have SOUR citations stored in Properties")
 }
 
+// TestImportQUAY_MapsToAssertionConfidence verifies that GEDCOM QUAY values on
+// SOUR records drive assertion.confidence per the standard confidence_levels
+// vocabulary, and that the raw value is still preserved as a citation note for
+// lossless round-trip. Fixes #515.
+func TestImportQUAY_MapsToAssertionConfidence(t *testing.T) {
+	cases := []struct {
+		name, quay, expected string
+	}{
+		{"QUAY 3 maps to high", "3", ConfidenceLevelHigh},
+		{"QUAY 2 maps to medium", "2", ConfidenceLevelMedium},
+		{"QUAY 1 maps to low", "1", ConfidenceLevelLow},
+		{"QUAY 0 maps to low", "0", ConfidenceLevelLow},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+				"0 @S1@ SOUR\n1 TITL Birth Record\n" +
+				"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+				"1 BIRT\n2 DATE 1 JAN 1900\n2 SOUR @S1@\n3 PAGE Page 42\n3 QUAY " + tc.quay + "\n" +
+				"0 TRLR\n"
+
+			glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+			require.NoError(t, err)
+
+			var dateAssertion *Assertion
+			for _, a := range glxFile.Assertions {
+				if a.Property == "date" {
+					dateAssertion = a
+
+					break
+				}
+			}
+			require.NotNil(t, dateAssertion, "expected a date assertion")
+			assert.Equal(t, tc.expected, dateAssertion.Confidence,
+				"assertion confidence should reflect QUAY %s", tc.quay)
+
+			var rawNote string
+			for _, c := range glxFile.Citations {
+				for _, n := range c.Notes {
+					if strings.HasPrefix(n, "GEDCOM QUAY: ") {
+						rawNote = n
+					}
+				}
+			}
+			assert.Equal(t, "GEDCOM QUAY: "+tc.quay, rawNote,
+				"raw QUAY value should still appear in citation notes")
+		})
+	}
+}
+
+// TestImportQUAY_OutOfRange verifies that QUAY values outside the vocabulary
+// (e.g., QUAY 4) leave assertion confidence empty rather than picking a default.
+func TestImportQUAY_OutOfRange(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @S1@ SOUR\n1 TITL Birth Record\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 BIRT\n2 DATE 1 JAN 1900\n2 SOUR @S1@\n3 PAGE Page 42\n3 QUAY 4\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	for _, a := range glxFile.Assertions {
+		if a.Property == "date" {
+			assert.Empty(t, a.Confidence,
+				"out-of-range QUAY value should leave confidence unset")
+		}
+	}
+}
+
+// TestImportQUAY_MaxRankAcrossSources verifies that when an event has multiple
+// SOURs with different QUAY values, the strongest QUAY drives the assertion's
+// confidence — matching how genealogists weigh evidence (best source wins).
+func TestImportQUAY_MaxRankAcrossSources(t *testing.T) {
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @S1@ SOUR\n1 TITL Weak Record\n" +
+		"0 @S2@ SOUR\n1 TITL Strong Record\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+		"1 BIRT\n2 DATE 1 JAN 1900\n" +
+		"2 SOUR @S1@\n3 PAGE A\n3 QUAY 1\n" +
+		"2 SOUR @S2@\n3 PAGE B\n3 QUAY 3\n" +
+		"0 TRLR\n"
+
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var dateAssertion *Assertion
+	for _, a := range glxFile.Assertions {
+		if a.Property == "date" {
+			dateAssertion = a
+
+			break
+		}
+	}
+	require.NotNil(t, dateAssertion)
+	assert.Equal(t, ConfidenceLevelHigh, dateAssertion.Confidence,
+		"strongest QUAY across multiple SOURs should set the assertion's confidence")
+}
+
 func TestImportTITL_WithDatePreserved(t *testing.T) {
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
 		"0 @I1@ INDI\n1 NAME John /Smith/\n" +

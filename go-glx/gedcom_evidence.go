@@ -25,9 +25,13 @@ import (
 // a Citation entity is created and CitationID is set.
 // If it only references a source with no additional detail, SourceID is set instead
 // so the caller can reference the source directly without a meaningless citation.
+// Confidence carries the QUAY-derived assertion confidence level (empty when
+// the SOUR has no QUAY or the QUAY value is not declared in the confidence_levels
+// vocabulary). See #515.
 type sourResult struct {
 	CitationID string
 	SourceID   string
+	Confidence string
 }
 
 // createCitationFromSOUR processes a GEDCOM SOUR subrecord.
@@ -63,6 +67,8 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 	citation := &Citation{
 		SourceID: sourceID,
 	}
+
+	var confidence string // set by the QUAY case below; surfaced via sourResult to the caller
 
 	// Extract citation details from SOUR subrecords
 	for _, sub := range sourRecord.SubRecords {
@@ -124,8 +130,13 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 			}
 
 		case GedcomTagQuay:
-			// GEDCOM quality assessment (0-3) - preserve in notes
+			// GEDCOM quality assessment (0-3). Map to assertion confidence via the
+			// confidence_levels vocabulary (#515) and preserve the raw value in
+			// citation notes for lossless round-trip.
 			citation.Notes = append(citation.Notes, "GEDCOM QUAY: "+sub.Value)
+			if mapped, ok := conv.GEDCOMIndex.ConfidenceLevels[strings.TrimSpace(sub.Value)]; ok {
+				confidence = mapped
+			}
 
 		case GedcomTagNote:
 			// Notes about the citation
@@ -145,7 +156,7 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 	// If the citation adds no value beyond referencing the source, skip creating it
 	// and return the source ID directly so the caller can reference the source.
 	if !citationHasDetail(citation) {
-		return sourResult{SourceID: sourceID}, nil
+		return sourResult{SourceID: sourceID, Confidence: confidence}, nil
 	}
 
 	// Store citation
@@ -153,7 +164,7 @@ func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (
 	conv.GLX.Citations[citationID] = citation
 	conv.Stats.CitationsCreated++
 
-	return sourResult{CitationID: citationID}, nil
+	return sourResult{CitationID: citationID, Confidence: confidence}, nil
 }
 
 // citationHasDetail reports whether a citation contains any data beyond its source reference.
@@ -205,11 +216,12 @@ func createPropertyAssertionWithEvidence(subjectID, property string, value any, 
 
 	// Create assertion
 	assertion := &Assertion{
-		Subject:   EntityRef{Person: subjectID},
-		Property:  property,
-		Value:     valueStr,
-		Sources:   refs.SourceIDs,
-		Citations: refs.CitationIDs,
+		Subject:    EntityRef{Person: subjectID},
+		Property:   property,
+		Value:      valueStr,
+		Confidence: refs.Confidence,
+		Sources:    refs.SourceIDs,
+		Citations:  refs.CitationIDs,
 	}
 
 	// Store assertion
@@ -261,11 +273,12 @@ func createEventAssertionWithEvidence(eventID, property string, value any, refs 
 
 	// Create assertion
 	assertion := &Assertion{
-		Subject:   EntityRef{Event: eventID},
-		Property:  property,
-		Value:     valueStr,
-		Sources:   refs.SourceIDs,
-		Citations: refs.CitationIDs,
+		Subject:    EntityRef{Event: eventID},
+		Property:   property,
+		Value:      valueStr,
+		Confidence: refs.Confidence,
+		Sources:    refs.SourceIDs,
+		Citations:  refs.CitationIDs,
 	}
 
 	// Store assertion
@@ -274,9 +287,12 @@ func createEventAssertionWithEvidence(eventID, property string, value any, refs 
 }
 
 // evidenceRefs holds citation IDs and bare source IDs extracted from SOUR subrecords.
+// Confidence is the strongest QUAY-derived confidence across the SOURs (max-rank
+// wins) — the assertion's confidence reflects its best supporting evidence. See #515.
 type evidenceRefs struct {
 	CitationIDs []string
 	SourceIDs   []string
+	Confidence  string
 }
 
 // extractEvidence extracts all evidence references from a record's SOUR subrecords.
@@ -301,6 +317,9 @@ func extractEvidence(record *GEDCOMRecord, conv *ConversionContext) evidenceRefs
 			} else if result.SourceID != "" && !seenSources[result.SourceID] {
 				seenSources[result.SourceID] = true
 				refs.SourceIDs = append(refs.SourceIDs, result.SourceID)
+			}
+			if result.Confidence != "" && (refs.Confidence == "" || confidenceRank[result.Confidence] > confidenceRank[refs.Confidence]) {
+				refs.Confidence = result.Confidence
 			}
 		}
 	}

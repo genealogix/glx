@@ -193,6 +193,10 @@ type GEDCOMIndex struct {
 
 	// MediaProperties maps GEDCOM media tags to GLX property keys (e.g., "MEDI" → "medium")
 	MediaProperties map[string]string
+
+	// ConfidenceLevels maps GEDCOM QUAY values to GLX confidence level keys
+	// (e.g., "3" → "high"). See #515.
+	ConfidenceLevels map[string]string
 }
 
 // buildGEDCOMIndex constructs reverse lookup indices from vocabularies in the GLXFile.
@@ -206,6 +210,7 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 		SourceProperties:     make(map[string]string),
 		RepositoryProperties: make(map[string]string),
 		MediaProperties:      make(map[string]string),
+		ConfidenceLevels:     make(map[string]string),
 	}
 
 	// Build event type index from vocabulary
@@ -262,6 +267,22 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 	for key, propDef := range glx.MediaProperties {
 		if propDef.GEDCOM != "" {
 			index.MediaProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	// Build QUAY → confidence-level index from the confidence_levels vocabulary (#515).
+	for key, level := range glx.ConfidenceLevels {
+		if level.GEDCOM != "" {
+			index.ConfidenceLevels[level.GEDCOM] = key
+		}
+	}
+
+	// QUAY 0 ("unreliable evidence or estimated data") and QUAY 1 ("questionable
+	// reliability") both map to the same confidence level. The vocabulary's gedcom
+	// field is single-valued, so QUAY 0 is registered as an alias for QUAY 1's level.
+	if key, ok := index.ConfidenceLevels["1"]; ok {
+		if _, exists := index.ConfidenceLevels["0"]; !exists {
+			index.ConfidenceLevels["0"] = key
 		}
 	}
 
