@@ -1,5 +1,5 @@
 persons:
-  person-mother:
+  person-mary-thompson:
     properties:
       name:
         value: "Mary Thompson"

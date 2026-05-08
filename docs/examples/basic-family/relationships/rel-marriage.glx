@@ -2,7 +2,7 @@ relationships:
   rel-marriage:
     type: marriage
     participants:
-      - person: person-mother
+      - person: person-mary-thompson
         role: spouse
-      - person: person-father
+      - person: person-robert-thompson
         role: spouse
