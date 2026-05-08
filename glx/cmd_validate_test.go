@@ -27,7 +27,7 @@ func TestRunValidate_SingleValidFile(t *testing.T) {
 	t.Chdir("../docs/examples/basic-family")
 	streams, out, _ := TestIOStreams()
 
-	err := validatePaths(streams, []string{"persons/person-father.glx"})
+	err := validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
 	require.NoError(t, err, "should successfully validate a valid GLX file")
 	require.Contains(t, out.String(), "Cross-reference validation skipped")
 	require.Contains(t, out.String(), "passed structural and semantic validation")
