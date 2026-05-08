@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples docs-cli release-snapshot
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples docs-cli release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -61,6 +61,12 @@ lint-fix: ## Run linters with automatic fixes
 	golangci-lint run --fix ./...
 	@echo "Fixing website..."
 	cd website && npm run lint:fix
+
+fix: ## Run Go 1.26 modernizers on codebase
+	go fix ./...
+
+fix-diff: ## Preview Go 1.26 modernizer changes without applying
+	go fix -diff ./...
 
 ## Testing
 test: ## Run all tests
