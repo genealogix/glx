@@ -1055,6 +1055,9 @@ Compares all persons using a weighted scoring model based on:
 
 Persons already linked by a direct relationship (parent-child, spouse, etc.)
 are automatically skipped since they are known to be distinct individuals.
+Pairs whose dated parent-role evidence makes them generationally impossible
+to be the same person (e.g., a documented adult parent vs. a newborn at the
+same time) are also suppressed automatically.
 
 Use --threshold to adjust sensitivity (0.0-1.0, default 0.60).
 Higher values = fewer, higher-confidence matches.`,

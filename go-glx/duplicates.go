@@ -24,6 +24,12 @@ import (
 )
 
 // DuplicateSignal describes one scoring component for a duplicate pair.
+//
+// A signal with Weight > 0 contributes Weight*Score to the pair's total
+// (weighted-sum signal). A signal with Weight == 0 is a multiplicative gate:
+// it does not contribute to the sum, but its Score (in [0, 1]) multiplies the
+// final pair score and is only emitted when it actually fires (Score < 1).
+// Consumers reconstructing a pair score from signals must handle both shapes.
 type DuplicateSignal struct {
 	Name   string  `json:"name"`
 	Weight float64 `json:"weight"`
@@ -62,13 +68,22 @@ const (
 	weightEvents       = 0.05
 )
 
+// Age-plausibility bounds. A person whose first documented year as role=parent
+// is X must have been born somewhere in [X-maxParentAge, X-minParentAge].
+const (
+	minParentAge = 15
+	maxParentAge = 100
+)
+
 // duplicateIndex caches lookup maps built from the archive.
 type duplicateIndex struct {
-	personEvents     map[string][]string        // person ID → event IDs
-	personRelPeers   map[string]map[string]bool // person ID → set of related person IDs
-	relatedPairs     map[[2]string]bool         // sorted person ID pairs that share a relationship
-	personBirthEvent map[string]*Event          // person ID → their birth event (lowest-ID principal role)
-	personDeathEvent map[string]*Event          // person ID → their death event (lowest-ID principal role)
+	personEvents          map[string][]string        // person ID → event IDs
+	personRelPeers        map[string]map[string]bool // person ID → set of related person IDs
+	relatedPairs          map[[2]string]bool         // sorted person ID pairs that share a relationship
+	personBirthEvent      map[string]*Event          // person ID → their birth event (lowest-ID principal role)
+	personDeathEvent      map[string]*Event          // person ID → their death event (lowest-ID principal role)
+	personBirthYear       map[string]int             // person ID → year extracted from their birth event (0 if unknown)
+	personFirstParentYear map[string]int             // person ID → earliest year they appear as role=parent (0 if never)
 }
 
 // FindCrossArchiveDuplicates detects potential duplicate persons between two
@@ -337,11 +352,13 @@ func FindDuplicates(archive *GLXFile, opts DuplicateOptions) (*DuplicateResult, 
 // buildDuplicateIndex creates lookup maps from the archive.
 func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 	idx := &duplicateIndex{
-		personEvents:     make(map[string][]string),
-		personRelPeers:   make(map[string]map[string]bool),
-		relatedPairs:     make(map[[2]string]bool),
-		personBirthEvent: make(map[string]*Event),
-		personDeathEvent: make(map[string]*Event),
+		personEvents:          make(map[string][]string),
+		personRelPeers:        make(map[string]map[string]bool),
+		relatedPairs:          make(map[[2]string]bool),
+		personBirthEvent:      make(map[string]*Event),
+		personDeathEvent:      make(map[string]*Event),
+		personBirthYear:       make(map[string]int),
+		personFirstParentYear: make(map[string]int),
 	}
 
 	// Index events by participant; pre-bind birth/death events per person so
@@ -359,11 +376,15 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 		if event == nil {
 			continue
 		}
+		eventYear := ExtractFirstYear(string(event.Date))
 		for _, p := range event.Participants {
 			if p.Person == "" {
 				continue
 			}
 			idx.personEvents[p.Person] = append(idx.personEvents[p.Person], eventID)
+			if p.Role == ParticipantRoleParent && eventYear > 0 {
+				recordParentYear(idx, p.Person, eventYear)
+			}
 			if !isSubjectRole(p.Role) {
 				continue
 			}
@@ -371,6 +392,7 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 			case EventTypeBirth:
 				if _, seen := idx.personBirthEvent[p.Person]; !seen {
 					idx.personBirthEvent[p.Person] = event
+					idx.personBirthYear[p.Person] = eventYear
 				}
 			case EventTypeDeath:
 				if _, seen := idx.personDeathEvent[p.Person]; !seen {
@@ -385,10 +407,32 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 		if rel == nil {
 			continue
 		}
-		var personIDs []string
+		var (
+			personIDs []string
+			parentIDs []string
+			childYear int
+		)
+		isParentChild := isParentChildRelType(rel.Type)
 		for _, p := range rel.Participants {
-			if p.Person != "" {
-				personIDs = append(personIDs, p.Person)
+			if p.Person == "" {
+				continue
+			}
+			personIDs = append(personIDs, p.Person)
+			if !isParentChild {
+				continue
+			}
+			switch p.Role {
+			case ParticipantRoleParent:
+				parentIDs = append(parentIDs, p.Person)
+			case ParticipantRoleChild:
+				if y := idx.personBirthYear[p.Person]; y > 0 && (childYear == 0 || y < childYear) {
+					childYear = y
+				}
+			}
+		}
+		if childYear > 0 {
+			for _, parentID := range parentIDs {
+				recordParentYear(idx, parentID, childYear)
 			}
 		}
 		// Record all pairwise relationships
@@ -414,6 +458,12 @@ func buildDuplicateIndex(archive *GLXFile) *duplicateIndex {
 	}
 
 	return idx
+}
+
+func recordParentYear(idx *duplicateIndex, personID string, year int) {
+	if existing, ok := idx.personFirstParentYear[personID]; !ok || year < existing {
+		idx.personFirstParentYear[personID] = year
+	}
 }
 
 // generateCandidatePairs produces person ID pairs to compare.
@@ -548,7 +598,48 @@ func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx 
 	signals = append(signals, DuplicateSignal{"Shared events", weightEvents, evScore, evDetail})
 	totalScore += weightEvents * evScore
 
+	// Age plausibility is a multiplicative gate, not a weighted-sum contributor:
+	// it can only zero an otherwise-passing pair, never lift one. Emit the signal
+	// only when it fires, so plausible pairs keep a clean breakdown.
+	if ageScore, ageDetail := scoreAgePlausibility(idA, idB, idx); ageScore < 1.0 {
+		signals = append(signals, DuplicateSignal{"Age plausibility", 0, ageScore, ageDetail})
+		totalScore *= ageScore
+	}
+
 	return totalScore, signals
+}
+
+// scoreAgePlausibility returns 0.0 when the pair's dated parent-role evidence
+// makes it physically impossible for A and B to be the same person, and 1.0
+// otherwise (including when there's not enough dated evidence to rule out).
+//
+// Rule: if X appears as role=parent in year P, X must have been born somewhere
+// in [P-maxParentAge, P-minParentAge]. If the candidate-counterpart Y has a
+// known birth year outside that window, A and B cannot be the same person.
+// Both directions are checked.
+func scoreAgePlausibility(idA, idB string, idx *duplicateIndex) (float64, string) {
+	if reason := implausibilityReason(idA, idx.personFirstParentYear[idA], idB, idx.personBirthYear[idB]); reason != "" {
+		return 0.0, reason
+	}
+	if reason := implausibilityReason(idB, idx.personFirstParentYear[idB], idA, idx.personBirthYear[idA]); reason != "" {
+		return 0.0, reason
+	}
+
+	return 1.0, "plausible"
+}
+
+// implausibilityReason returns a non-empty explanation iff the (parent X,
+// candidate-birth Y) pair violates the parent-age window.
+func implausibilityReason(parentID string, parentYear int, birthID string, birthYr int) string {
+	if parentYear <= 0 || birthYr <= 0 {
+		return ""
+	}
+	ageAtParenthood := parentYear - birthYr
+	if ageAtParenthood < minParentAge || ageAtParenthood > maxParentAge {
+		return fmt.Sprintf("%s parent in %d, %s born %d (would be %d at parenthood)", parentID, parentYear, birthID, birthYr, ageAtParenthood)
+	}
+
+	return ""
 }
 
 // scoreNameSimilarity compares two persons' names.

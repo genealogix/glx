@@ -581,3 +581,171 @@ func TestFindCrossArchiveDuplicates_ThresholdFiltering(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, result.Pairs, "threshold 1.0 should filter out all pairs")
 }
+
+// --- Age plausibility tests ---
+
+func TestScoreAgePlausibility_NoData(t *testing.T) {
+	idx := &duplicateIndex{
+		personBirthYear:       map[string]int{},
+		personFirstParentYear: map[string]int{},
+	}
+	score, detail := scoreAgePlausibility("person-a", "person-b", idx)
+	assert.InDelta(t, 1.0, score, 1e-9)
+	assert.Equal(t, "plausible", detail)
+}
+
+func TestScoreAgePlausibility_PlausibleParent(t *testing.T) {
+	// A born 1700, parent at 1720 (age 20). B born 1702, parent at 1725 (age 23).
+	// Both directions land inside [15, 100] — plausible.
+	idx := &duplicateIndex{
+		personBirthYear:       map[string]int{"person-a": 1700, "person-b": 1702},
+		personFirstParentYear: map[string]int{"person-a": 1720, "person-b": 1725},
+	}
+	score, detail := scoreAgePlausibility("person-a", "person-b", idx)
+	assert.InDelta(t, 1.0, score, 1e-9)
+	assert.Equal(t, "plausible", detail)
+}
+
+func TestScoreAgePlausibility_InfantVsAdultParent(t *testing.T) {
+	// A is documented as parent in 1720. B is born in 1725.
+	// If A and B were the same person, B would be -5 at A's parenthood → impossible.
+	idx := &duplicateIndex{
+		personBirthYear:       map[string]int{"person-b": 1725},
+		personFirstParentYear: map[string]int{"person-a": 1720},
+	}
+	score, detail := scoreAgePlausibility("person-a", "person-b", idx)
+	assert.InDelta(t, 0.0, score, 1e-9)
+	assert.Contains(t, detail, "person-a")
+	assert.Contains(t, detail, "1720")
+	assert.Contains(t, detail, "person-b")
+	assert.Contains(t, detail, "1725")
+	assert.Contains(t, detail, "-5")
+}
+
+func TestScoreAgePlausibility_OverhundredYearGap(t *testing.T) {
+	// A is documented as parent in 1720. B is born in 1500.
+	// If A and B were the same person, B would be 220 at A's parenthood → impossible.
+	idx := &duplicateIndex{
+		personBirthYear:       map[string]int{"person-b": 1500},
+		personFirstParentYear: map[string]int{"person-a": 1720},
+	}
+	score, detail := scoreAgePlausibility("person-a", "person-b", idx)
+	assert.InDelta(t, 0.0, score, 1e-9)
+	assert.Contains(t, detail, "220")
+}
+
+func TestScoreAgePlausibility_SymmetricDirection(t *testing.T) {
+	// B is documented as parent in 1720. A is born 1725.
+	// Should still fire — direction shouldn't matter.
+	idx := &duplicateIndex{
+		personBirthYear:       map[string]int{"person-a": 1725},
+		personFirstParentYear: map[string]int{"person-b": 1720},
+	}
+	score, _ := scoreAgePlausibility("person-a", "person-b", idx)
+	assert.InDelta(t, 0.0, score, 1e-9)
+}
+
+func TestFindDuplicates_AgeImplausibleSuppressed(t *testing.T) {
+	// Replicates issue #717: a putative father (no birth date) gets matched
+	// against his newborn son with the same name. The son is principal of a
+	// 1725 birth event; the father is documented as parent on a sibling's
+	// 1720 birth event. The pair must score 0 (suppressed).
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-johann-juncker":     {Properties: map[string]any{"name": "Johann Peter Juncker"}},
+			"person-johann-jungk-b1725": {Properties: map[string]any{"name": "Johann Peter Jungk"}},
+			"person-sibling":            {Properties: map[string]any{"name": "Anna Maria Jungk"}},
+		},
+		Events: map[string]*Event{
+			"event-birth-jungk-b1725": {
+				Type: EventTypeBirth, Date: "1725-02-18",
+				Participants: []Participant{
+					{Person: "person-johann-jungk-b1725", Role: ParticipantRolePrincipal},
+				},
+			},
+			"event-birth-sibling": {
+				Type: EventTypeBirth, Date: "1720",
+				Participants: []Participant{
+					{Person: "person-sibling", Role: ParticipantRolePrincipal},
+					{Person: "person-johann-juncker", Role: ParticipantRoleParent},
+				},
+			},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	require.NoError(t, err)
+
+	var found bool
+	for _, pair := range result.Pairs {
+		bothInvolved := (pair.PersonA == "person-johann-juncker" && pair.PersonB == "person-johann-jungk-b1725") ||
+			(pair.PersonA == "person-johann-jungk-b1725" && pair.PersonB == "person-johann-juncker")
+		if bothInvolved {
+			found = true
+			assert.InDelta(t, 0.0, pair.Score, 1e-9, "infant-vs-adult-parent pair must be suppressed")
+			var hasAgeSignal bool
+			for _, sig := range pair.Signals {
+				if sig.Name == "Age plausibility" {
+					hasAgeSignal = true
+					assert.InDelta(t, 0.0, sig.Score, 1e-9)
+					assert.Contains(t, sig.Detail, "1720")
+				}
+			}
+			assert.True(t, hasAgeSignal, "suppressed pair must include Age plausibility signal in breakdown")
+		}
+	}
+	require.True(t, found, "candidate pair (juncker, jungk-b1725) must appear in result.Pairs at threshold 0")
+}
+
+func TestFindDuplicates_AgeImplausibilityViaParentChildRelationship(t *testing.T) {
+	// Same scenario but with the parent role established via a parent_child
+	// Relationship rather than directly on a birth event. The relationship
+	// has no own date, so the year is inferred from the child's birth event.
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-father":  {Properties: map[string]any{"name": "Hans Schmidt"}},
+			"person-newborn": {Properties: map[string]any{"name": "Hans Schmidt"}},
+			"person-child":   {Properties: map[string]any{"name": "Anna Schmidt"}},
+		},
+		Events: map[string]*Event{
+			"event-birth-newborn": {
+				Type: EventTypeBirth, Date: "1730",
+				Participants: []Participant{{Person: "person-newborn", Role: ParticipantRolePrincipal}},
+			},
+			"event-birth-child": {
+				Type: EventTypeBirth, Date: "1725",
+				Participants: []Participant{{Person: "person-child", Role: ParticipantRolePrincipal}},
+			},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-father-child": {
+				Type: "parent_child",
+				Participants: []Participant{
+					{Person: "person-father", Role: ParticipantRoleParent},
+					{Person: "person-child", Role: ParticipantRoleChild},
+				},
+			},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	require.NoError(t, err)
+
+	var found bool
+	for _, pair := range result.Pairs {
+		bothInvolved := (pair.PersonA == "person-father" && pair.PersonB == "person-newborn") ||
+			(pair.PersonA == "person-newborn" && pair.PersonB == "person-father")
+		if bothInvolved {
+			found = true
+			assert.InDelta(t, 0.0, pair.Score, 1e-9, "father-vs-newborn pair must be suppressed when parent role established by relationship")
+			var hasAgeSignal bool
+			for _, sig := range pair.Signals {
+				if sig.Name == "Age plausibility" {
+					hasAgeSignal = true
+					assert.InDelta(t, 0.0, sig.Score, 1e-9)
+					assert.Contains(t, sig.Detail, "1725")
+				}
+			}
+			assert.True(t, hasAgeSignal, "suppressed pair must include Age plausibility signal in breakdown")
+		}
+	}
+	require.True(t, found, "candidate pair (father, newborn) must appear in result.Pairs at threshold 0")
+}
