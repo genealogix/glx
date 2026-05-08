@@ -1,8 +1,8 @@
 assertions:
   assertion-marriage-date:
     subject:
-      relationship: rel-marriage-john-mary
-    property: started_on
+      event: event-marriage-1875
+    property: date
     value: "1875-05-10"
     citations:
       - citation-marriage
