@@ -1,5 +1,7 @@
 # Security Policy
 
+> For supply-chain controls and OSPS Baseline self-attestation, see [SECURITY-POSTURE.md](SECURITY-POSTURE.md).
+
 ## Supported Versions
 
 | Version | Supported          |

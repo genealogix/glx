@@ -231,6 +231,11 @@ GENEALOGIX is an open-source project that thrives on community participation:
 3. Check [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions)
 4. Follow [Best Practices](/guides/best-practices)
 
+### 🔒 Security & Compliance
+
+- [Security Policy](https://github.com/genealogix/glx/blob/main/SECURITY.md) — How to report a vulnerability
+- [Security Posture](https://github.com/genealogix/glx/blob/main/SECURITY-POSTURE.md) — OpenSSF OSPS Baseline self-attestation and EU CRA readiness notes
+
 ### 📊 Project Status
 
 **Current Release:** v0.0.0-beta.10 (Beta)
