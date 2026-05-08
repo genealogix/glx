@@ -47,6 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **`possibly_same_person` relationship type** — New standard relationship type for linking two person records that may refer to the same individual but cannot yet be confirmed; pair with an Assertion subject-referencing the relationship to record `confidence` and supporting citations. No direct GEDCOM mapping. Closes #227.
 - **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
+- **`repository-types.glx` GEDCOM mappings added** — Added `gedcom:` fields to nine of the ten standard repository types (`archive`, `library`, `church`, `database` → `online`, `museum`, `registry`, `historical_society` → `society`, `university`, `government_agency` → `government`); `other` is intentionally left unmapped as the fallback target for unrecognized values. The hardcoded `gedcomRepositoryTypeMapping` map in `go-glx/constants.go` has been removed and the mapping is now read from the vocabulary at import time, bringing repository-types in line with how every other vocabulary handles GEDCOM tags. Closes #555.
 
 #### Tooling
 
