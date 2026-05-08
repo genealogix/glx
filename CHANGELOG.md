@@ -98,6 +98,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **GEDCOM export emits events whose principal participant uses `role: subject`** — `buildPersonEventsIndex` filtered on `participant.Role == ParticipantRolePrincipal`, silently dropping events from the per-person event index whenever the participant used the documented synonym `subject` (or left the role unset). The filter now uses the existing `isSubjectRole` helper, which accepts `principal`, `subject`, and `""` consistently with `FindPersonEvent`, the census import default, and `vitals_runner`. Fixes #523.
 - **`glx migrate`, `glx rename`, and `glx merge` no longer delete non-archive files** — The crash-safe write path (`safeWriteMultiFileArchive`, added in #598) swapped a fresh archive directory into place and then unconditionally removed the original via `.bak`, wiping any top-level entry the serializer didn't produce — including `.git/`, `README.md`, `CLAUDE.md`, `.claude/`, and arbitrary user content. Since GLX archives are designed to live inside git repositories, every invocation against a real archive silently destroyed git history and project docs. The swap now preserves every top-level entry that isn't in the managed set (`metadata.glx`, `vocabularies/`, `persons/`, `events/`, `relationships/`, `places/`, `sources/`, `citations/`, `repositories/`, `media/`, `assertions/`). Test coverage added for foreign-file preservation. Fixes #692
 
+#### CI
+
+- **Pin `ossf/scorecard-action` to `v2.4.3`** — The action does not publish a floating `v2` major-version tag, so the workflow failed at the "Prepare all required actions" step on every run since it was introduced in #753. `v2.4.3` is the latest published tag; unlike the other actions in the file (`@v6`, `@v7`, `@v4`), `scorecard-action` requires a minor.patch pin until upstream ships a floating major.
+
 ## [0.0.0-beta.10] - 2026-04-13
 
 ### Added
