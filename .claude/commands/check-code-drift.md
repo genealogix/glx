@@ -215,9 +215,6 @@ Also check the reverse direction — validation logic in Go code that is NOT doc
 
 ### 11. GEDCOM Converter Drift
 
-Skip this section if no entity struct fields were added, renamed, removed, or
-retyped — the converter only drifts when schema shape changes.
-
 The GEDCOM converter (`go-glx/gedcom_*.go`) is the I/O boundary to external
 genealogy software; field drift here causes silent round-trip data loss.
 Importer is `gedcom_<entity>.go`, exporter is `gedcom_export_<entity>.go`,
@@ -290,7 +287,7 @@ OR
 - Schema field `field_name` renamed to `new_name`; old name still present in go-glx/gedcom_export_repository.go:NN
 - Fix: Update GEDCOM importer/exporter to use new field name
 - Schema field `removed_field` removed; still emitted by go-glx/gedcom_export_person.go:NN — CRITICAL (silent round-trip data loss)
-- Schema field `new_field` added; not referenced in any gedcom_*.go (info — confirm intentionally not exported, or wire through the converter)
+- Schema field `new_field` added; not referenced in any gedcom_*.go — INFO (confirm intentionally not exported, or wire through the converter)
 ```
 
 **Remember**:
