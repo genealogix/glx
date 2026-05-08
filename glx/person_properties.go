@@ -80,6 +80,41 @@ func propertyScalar(val any) string {
 	return ""
 }
 
+// propertyScalars returns every non-empty scalar string value from a property
+// stored as a plain string, map-with-"value", or temporal list. Used by
+// callers that need to match against all values (e.g. search), as opposed to
+// propertyScalar which returns only the canonical first value for display.
+func propertyScalars(val any) []string {
+	switch v := val.(type) {
+	case string:
+		if v != "" {
+			return []string{v}
+		}
+	case map[string]any:
+		if s, ok := v["value"].(string); ok && s != "" {
+			return []string{s}
+		}
+	case []any:
+		var out []string
+		for _, item := range v {
+			switch it := item.(type) {
+			case string:
+				if it != "" {
+					out = append(out, it)
+				}
+			case map[string]any:
+				if s, ok := it["value"].(string); ok && s != "" {
+					out = append(out, s)
+				}
+			}
+		}
+
+		return out
+	}
+
+	return nil
+}
+
 // isLegacySexValue reports whether v could plausibly be a pre-#528 `gender`
 // property value that actually denoted recorded sex. The canonical
 // post-split identity-only value (`nonbinary`) is excluded.
