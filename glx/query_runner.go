@@ -57,7 +57,7 @@ var queryEntityTypes = []string{
 
 // validateQueryFlags checks that the given filter flags are applicable to the
 // entity type and returns an error for any unsupported combination.
-func validateQueryFlags(entityType string, opts queryOpts) error {
+func validateQueryFlags(entityType string, opts *queryOpts) error {
 	type check struct {
 		flag  string
 		value bool
@@ -108,7 +108,7 @@ func validateQueryFlags(entityType string, opts queryOpts) error {
 }
 
 // queryEntities validates the entity type, loads the archive, and dispatches.
-func queryEntities(entityType string, opts queryOpts) error {
+func queryEntities(entityType string, opts *queryOpts) error {
 	if !slices.Contains(queryEntityTypes, entityType) {
 		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
@@ -172,7 +172,7 @@ func loadArchiveForQuery(path string) (*glxlib.GLXFile, error) {
 }
 
 // queryPersons filters and displays persons.
-func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
+func queryPersons(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Persons)
 	var count int
 
@@ -286,7 +286,7 @@ func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 }
 
 // queryEvents filters and displays events.
-func queryEvents(archive *glxlib.GLXFile, opts queryOpts) error {
+func queryEvents(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Events)
 	var count int
 
@@ -318,7 +318,7 @@ func queryEvents(archive *glxlib.GLXFile, opts queryOpts) error {
 }
 
 // queryAssertions filters and displays assertions.
-func queryAssertions(archive *glxlib.GLXFile, opts queryOpts) error {
+func queryAssertions(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Assertions)
 	var count int
 	lowerSubject := strings.ToLower(opts.Subject)
@@ -366,7 +366,7 @@ func queryAssertions(archive *glxlib.GLXFile, opts queryOpts) error {
 }
 
 // querySources filters and displays sources.
-func querySources(archive *glxlib.GLXFile, opts queryOpts) error {
+func querySources(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Sources)
 	var count int
 
@@ -390,7 +390,7 @@ func querySources(archive *glxlib.GLXFile, opts queryOpts) error {
 }
 
 // queryRelationships filters and displays relationships.
-func queryRelationships(archive *glxlib.GLXFile, opts queryOpts) error {
+func queryRelationships(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Relationships)
 	var count int
 
@@ -415,7 +415,7 @@ func queryRelationships(archive *glxlib.GLXFile, opts queryOpts) error {
 }
 
 // queryPlaces filters and displays places.
-func queryPlaces(archive *glxlib.GLXFile, opts queryOpts) error {
+func queryPlaces(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Places)
 	var count int
 
@@ -454,7 +454,7 @@ func queryCitations(archive *glxlib.GLXFile) error {
 }
 
 // queryRepositories filters and displays repositories.
-func queryRepositories(archive *glxlib.GLXFile, opts queryOpts) error {
+func queryRepositories(archive *glxlib.GLXFile, opts *queryOpts) error {
 	ids := sortedKeys(archive.Repositories)
 	var count int
 
