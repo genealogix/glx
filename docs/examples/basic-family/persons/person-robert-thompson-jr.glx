@@ -1,9 +1,10 @@
 persons:
-  person-father:
+  person-robert-thompson-jr:
     properties:
       name:
-        value: "Robert Thompson"
+        value: "Robert Thompson Jr."
         fields:
           given: "Robert"
           surname: "Thompson"
+          suffix: "Jr."
       sex: male
