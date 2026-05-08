@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestFindDuplicates_Integration_TextOutput(t *testing.T) {
@@ -103,6 +106,63 @@ func TestFindDuplicates_Integration_InvalidThreshold(t *testing.T) {
 	err = findDuplicates(".", -0.1, "", false)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "--threshold must be between 0.0 and 1.0")
+}
+
+func TestFindDuplicates_Integration_AgeImplausibleSuppressed(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "persons"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "events"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "relationships"), 0o755))
+
+	// Father has no birth date but is documented as parent on a 1720
+	// child-birth relationship. Newborn is principal of a 1730 birth event.
+	// The father-vs-newborn pair must score 0 even though their names match.
+	personYAML := func(id, name string) string {
+		return "persons:\n  " + id + ":\n    properties:\n      name: \"" + name + "\"\n"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-hans-father.glx"),
+		[]byte(personYAML("person-hans-father", "Hans Schmidt")), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-hans-newborn.glx"),
+		[]byte(personYAML("person-hans-newborn", "Hans Schmidt")), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-anna-child.glx"),
+		[]byte(personYAML("person-anna-child", "Anna Schmidt")), 0o644))
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "events", "event-birth-newborn.glx"),
+		[]byte("events:\n  event-birth-newborn:\n    type: birth\n    date: \"1730\"\n    participants:\n      - person: person-hans-newborn\n        role: principal\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "events", "event-birth-child.glx"),
+		[]byte("events:\n  event-birth-child:\n    type: birth\n    date: \"1720\"\n    participants:\n      - person: person-anna-child\n        role: principal\n"), 0o644))
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "relationships", "rel-father-child.glx"),
+		[]byte("relationships:\n  rel-father-child:\n    type: parent_child\n    participants:\n      - person: person-hans-father\n        role: parent\n      - person: person-anna-child\n        role: child\n"), 0o644))
+
+	output := captureStdout(t, func() {
+		err := findDuplicates(dir, 0.0, "", true)
+		require.NoError(t, err)
+	})
+
+	var result glxlib.DuplicateResult
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+
+	var found bool
+	for _, pair := range result.Pairs {
+		bothInvolved := (pair.PersonA == "person-hans-father" && pair.PersonB == "person-hans-newborn") ||
+			(pair.PersonA == "person-hans-newborn" && pair.PersonB == "person-hans-father")
+		if !bothInvolved {
+			continue
+		}
+		found = true
+		assert.InDelta(t, 0.0, pair.Score, 1e-9, "father-vs-newborn pair must be suppressed in JSON output")
+		var hasAgeSignal bool
+		for _, sig := range pair.Signals {
+			if sig.Name == "Age plausibility" {
+				hasAgeSignal = true
+				assert.InDelta(t, 0.0, sig.Score, 1e-9)
+				assert.Contains(t, sig.Detail, "1720")
+			}
+		}
+		assert.True(t, hasAgeSignal, "suppressed pair must include Age plausibility signal in breakdown")
+	}
+	require.True(t, found, "candidate pair (person-hans-father, person-hans-newborn) must appear in JSON pairs at threshold 0")
 }
 
 func writeTestPerson(t *testing.T, dir, id, name, born string) {
