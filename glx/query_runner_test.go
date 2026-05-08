@@ -73,7 +73,7 @@ func TestQueryPersons_BirthplaceFilter(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		err := queryPersons(archive, &queryOpts{Birthplace: "Virginia"})
+		err := queryPersons(archive, queryOpts{Birthplace: "Virginia"})
 		require.NoError(t, err)
 	})
 
@@ -100,7 +100,7 @@ func TestQueryPersons_BirthplaceViaEvent(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		err := queryPersons(archive, &queryOpts{Birthplace: "Virginia"})
+		err := queryPersons(archive, queryOpts{Birthplace: "Virginia"})
 		require.NoError(t, err)
 	})
 
@@ -495,7 +495,7 @@ func TestQueryPersons_PhoneticMatching(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		err := queryPersons(archive, &queryOpts{Name: "miller", Phonetic: true})
+		err := queryPersons(archive, queryOpts{Name: "miller", Phonetic: true})
 		require.NoError(t, err)
 	})
 

@@ -127,7 +127,7 @@ func queryEntities(entityType string, opts *queryOpts) error {
 
 	switch entityType {
 	case "persons":
-		return queryPersons(archive, opts)
+		return queryPersons(archive, *opts)
 	case "events":
 		return queryEvents(archive, opts)
 	case "assertions":
@@ -172,7 +172,7 @@ func loadArchiveForQuery(path string) (*glxlib.GLXFile, error) {
 }
 
 // queryPersons filters and displays persons.
-func queryPersons(archive *glxlib.GLXFile, opts *queryOpts) error {
+func queryPersons(archive *glxlib.GLXFile, opts queryOpts) error {
 	ids := sortedKeys(archive.Persons)
 	var count int
 
