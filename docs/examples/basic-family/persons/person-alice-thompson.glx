@@ -1,5 +1,5 @@
 persons:
-  person-alice:
+  person-alice-thompson:
     properties:
       name:
         value: "Alice Thompson"
