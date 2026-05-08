@@ -1,45 +1,57 @@
 # Standard Repository Types
 # This file defines the standard repository types for GENEALOGIX archives.
 # Archives can extend this with custom types by adding additional entries.
+#
+# The `gedcom:` field is the GEDCOM REPO.TYPE value (matched case-insensitively
+# on import). Entries without a `gedcom:` field have no GEDCOM equivalent;
+# unrecognized GEDCOM TYPE values fall back to `other`.
 
 repository_types:
   archive:
     label: "Archive"
     description: "Government or historical archive"
-  
+    gedcom: "archive"
+
   library:
     label: "Library"
     description: "Public, university, or specialty library"
-  
+    gedcom: "library"
+
   church:
     label: "Church"
     description: "Church or religious organization archives"
-  
+    gedcom: "church"
+
   database:
     label: "Online Database"
     description: "Online genealogical database service"
-  
+    gedcom: "online"
+
   museum:
     label: "Museum"
     description: "Museum with genealogical collections"
-  
+    gedcom: "museum"
+
   registry:
     label: "Registry"
     description: "Civil registration office or vital records office"
-  
+    gedcom: "registry"
+
   historical_society:
     label: "Historical Society"
     description: "Local historical society"
-  
+    gedcom: "society"
+
   university:
     label: "University"
     description: "University special collections or archives"
-  
+    gedcom: "university"
+
   government_agency:
     label: "Government Agency"
     description: "Government record-keeping agency"
-  
+    gedcom: "government"
+
   other:
     label: "Other"
     description: "Other institution type"
-
