@@ -465,7 +465,10 @@ const (
 	PlaceTypeLocality = "locality"
 )
 
-// Repository Types - used by inferRepositoryType function
+// Repository Types - used by inferRepositoryType and mapRepositoryType. The
+// GEDCOM REPO.TYPE → GLX-key mapping is no longer hardcoded here; it is read
+// from the gedcom: fields on entries in
+// specification/5-standard-vocabularies/repository-types.glx.
 const (
 	RepositoryTypeArchive           = "archive"
 	RepositoryTypeLibrary           = "library"
@@ -478,20 +481,6 @@ const (
 	RepositoryTypeGovernmentAgency  = "government_agency"
 	RepositoryTypeOther             = "other"
 )
-
-// gedcomRepositoryTypeMapping maps GEDCOM repository type values to GLX repository types.
-// Package-level to avoid allocation on every call.
-var gedcomRepositoryTypeMapping = map[string]string{
-	"archive":    RepositoryTypeArchive,
-	"library":    RepositoryTypeLibrary,
-	"church":     RepositoryTypeChurch,
-	"government": RepositoryTypeGovernmentAgency,
-	"museum":     RepositoryTypeMuseum,
-	"online":     RepositoryTypeDatabase,
-	"registry":   RepositoryTypeRegistry,
-	"society":    RepositoryTypeHistoricalSociety,
-	"university": RepositoryTypeUniversity,
-}
 
 // MIME Types - Common media types
 const (

@@ -89,7 +89,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		case GedcomTagType:
 			// Repository type (GEDCOM 7.0)
-			repository.Type = mapRepositoryType(sub.Value)
+			repository.Type = mapRepositoryType(sub.Value, conv.GEDCOMIndex)
 		}
 	}
 
@@ -158,15 +158,15 @@ func buildRepositoryDedupeKey(repo *Repository) string {
 	return key
 }
 
-// mapRepositoryType maps GEDCOM repository type to GLX.
-// Uses gedcomRepositoryTypeMapping from constants.go.
-func mapRepositoryType(gedcomType string) string {
-	typeLower := strings.ToLower(gedcomType)
-	if mapped, ok := gedcomRepositoryTypeMapping[typeLower]; ok {
+// mapRepositoryType maps a GEDCOM REPO.TYPE value to a GLX repository type
+// key using the index built from the repository-types vocabulary. Unrecognized
+// values fall back to RepositoryTypeOther.
+func mapRepositoryType(gedcomType string, index *GEDCOMIndex) string {
+	if mapped, ok := index.RepositoryTypes[strings.ToLower(gedcomType)]; ok {
 		return mapped
 	}
 
-	return "other"
+	return RepositoryTypeOther
 }
 
 // inferRepositoryType infers repository type from name
