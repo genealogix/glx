@@ -1,10 +1,10 @@
 relationships:
-  rel-parent-alice:
+  rel-parent-robert-jr:
     type: parent_child
     participants:
       - person: person-mary-thompson
         role: parent
       - person: person-robert-thompson
         role: parent
-      - person: person-alice-thompson
+      - person: person-robert-thompson-jr
         role: child

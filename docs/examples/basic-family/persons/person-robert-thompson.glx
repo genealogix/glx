@@ -1,5 +1,5 @@
 persons:
-  person-bob:
+  person-robert-thompson:
     properties:
       name:
         value: "Robert Thompson"
