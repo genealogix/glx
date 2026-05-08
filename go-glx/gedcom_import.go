@@ -171,6 +171,11 @@ type GEDCOMIndex struct {
 	// EventTypes maps GEDCOM event tags to GLX event type keys (e.g., "BIRT" → "birth")
 	EventTypes map[string]string
 
+	// RepositoryTypes maps GEDCOM REPO.TYPE values to GLX repository type keys
+	// (e.g., "archive" → "archive", "society" → "historical_society"). Keys
+	// are lowercased so callers can lower-case the GEDCOM value at lookup time.
+	RepositoryTypes map[string]string
+
 	// PersonProperties maps GEDCOM person attribute tags to GLX property keys (e.g., "OCCU" → "occupation")
 	PersonProperties map[string]string
 
@@ -194,6 +199,7 @@ type GEDCOMIndex struct {
 func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 	index := &GEDCOMIndex{
 		EventTypes:           make(map[string]string),
+		RepositoryTypes:      make(map[string]string),
 		PersonProperties:     make(map[string]string),
 		EventProperties:      make(map[string]string),
 		CitationProperties:   make(map[string]string),
@@ -212,6 +218,14 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 	// BASM is a non-standard alias for BATM (bat_mitzvah) used by some exporters
 	if key, ok := index.EventTypes[GedcomTagBatm]; ok {
 		index.EventTypes[GedcomTagBasm] = key
+	}
+
+	// GEDCOM REPO.TYPE values are matched case-insensitively per GEDCOM 7.0,
+	// so the lookup index key is lowercased.
+	for key, repoType := range glx.RepositoryTypes {
+		if repoType.GEDCOM != "" {
+			index.RepositoryTypes[strings.ToLower(repoType.GEDCOM)] = key
+		}
 	}
 
 	// Build property indices from vocabularies
