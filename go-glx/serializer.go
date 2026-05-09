@@ -16,7 +16,7 @@ package glx
 
 import (
 	"fmt"
-	"path/filepath"
+	"path"
 
 	"gopkg.in/yaml.v3"
 )
@@ -129,7 +129,7 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 
 	// Add standard vocabularies
 	for filename, content := range StandardVocabularies() {
-		vocabPath := filepath.Join("vocabularies", filename)
+		vocabPath := path.Join("vocabularies", filename)
 		files[vocabPath] = content
 	}
 
@@ -237,7 +237,7 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 		}
 
 		// Add to files map
-		filePath := filepath.Join(dirName, filename)
+		filePath := path.Join(dirName, filename)
 		files[filePath] = yamlBytes
 	}
 
@@ -306,14 +306,14 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 	// Each file is a GLXFile fragment — the YAML top-level keys (persons:,
 	// events:, event_types:, etc.) determine what entities it contains,
 	// regardless of which directory the file lives in.
-	for path, data := range files {
-		ext := filepath.Ext(path)
+	for filePath, data := range files {
+		ext := path.Ext(filePath)
 		if ext != FileExtGLX && ext != ".yaml" && ext != ".yml" {
 			continue
 		}
 		var partial GLXFile
 		if err := yaml.Unmarshal(data, &partial); err != nil {
-			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
+			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", filePath, err)
 		}
 		conflicts, _ := glx.Merge(&partial)
 		allConflicts = append(allConflicts, conflicts...)

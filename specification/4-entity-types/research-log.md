@@ -66,6 +66,7 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 - `not_found` — the source was searched and the target was not present (negative evidence)
 - `inconclusive` — a candidate record was located but cannot be confirmed
 - `partial` — some relevant information was located, but the objective was not fully met
+- `not_searched` — search is planned but has not yet been performed (use to record outstanding work alongside completed searches)
 
 **See [Vocabularies - Search Result Types](vocabularies#search-result-types-vocabulary)** for the full vocabulary.
 

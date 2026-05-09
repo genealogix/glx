@@ -264,17 +264,74 @@ func TestResearchLogStandardVocabulariesLoaded(t *testing.T) {
 	glx := &GLXFile{}
 	require.NoError(t, LoadStandardVocabulariesIntoGLX(glx))
 
-	assert.Len(t, glx.SearchResultTypes, 4, "expected 4 standard search result types")
+	assert.Len(t, glx.SearchResultTypes, 5, "expected 5 standard search result types")
 	assert.Contains(t, glx.SearchResultTypes, SearchResultFound)
 	assert.Contains(t, glx.SearchResultTypes, SearchResultNotFound)
 	assert.Contains(t, glx.SearchResultTypes, SearchResultInconclusive)
 	assert.Contains(t, glx.SearchResultTypes, SearchResultPartial)
+	assert.Contains(t, glx.SearchResultTypes, SearchResultNotSearched)
 
 	assert.Len(t, glx.ResearchLogStatusTypes, 4, "expected 4 standard research log statuses")
 	assert.Contains(t, glx.ResearchLogStatusTypes, ResearchLogStatusOpen)
 	assert.Contains(t, glx.ResearchLogStatusTypes, ResearchLogStatusInProgress)
 	assert.Contains(t, glx.ResearchLogStatusTypes, ResearchLogStatusComplete)
 	assert.Contains(t, glx.ResearchLogStatusTypes, ResearchLogStatusBlocked)
+}
+
+func TestResearchLogDateFormatValidation(t *testing.T) {
+	t.Run("malformed log date emits warning", func(t *testing.T) {
+		archive := &GLXFile{
+			ResearchLogs: map[string]*ResearchLog{
+				"log-1": {Date: "not-a-date"},
+			},
+		}
+		result := archive.Validate()
+		var dateWarning bool
+		for _, w := range result.Warnings {
+			if w.SourceType == EntityTypeResearchLogs && w.Field == "date" {
+				dateWarning = true
+
+				break
+			}
+		}
+		assert.True(t, dateWarning, "expected date-format warning on ResearchLog, got %v", result.Warnings)
+	})
+
+	t.Run("malformed search date emits warning", func(t *testing.T) {
+		archive := &GLXFile{
+			ResearchLogs: map[string]*ResearchLog{
+				"log-1": {Searches: []Search{{Date: "not-a-date"}}},
+			},
+		}
+		result := archive.Validate()
+		var dateWarning bool
+		for _, w := range result.Warnings {
+			if w.SourceType == EntityTypeResearchLogs &&
+				strings.HasPrefix(w.Field, "searches[") &&
+				strings.HasSuffix(w.Field, "].date") {
+				dateWarning = true
+
+				break
+			}
+		}
+		assert.True(t, dateWarning, "expected date-format warning on Search.Date, got %v", result.Warnings)
+	})
+
+	t.Run("valid dates produce no date warnings", func(t *testing.T) {
+		archive := &GLXFile{
+			ResearchLogs: map[string]*ResearchLog{
+				"log-1": {
+					Date:     "2026-03-09",
+					Searches: []Search{{Date: "2026-03-10"}},
+				},
+			},
+		}
+		result := archive.Validate()
+		for _, w := range result.Warnings {
+			assert.NotEqual(t, "date", w.Field,
+				"unexpected date warning for valid date: %v", w)
+		}
+	})
 }
 
 func TestResearchLogMergeConflictDetection(t *testing.T) {

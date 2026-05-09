@@ -20,3 +20,7 @@ search_result_types:
   partial:
     label: "Partial"
     description: "Some relevant information was located, but the search objective was not fully met."
+
+  not_searched:
+    label: "Not Searched"
+    description: "Search is planned but has not yet been performed. Use to record outstanding work alongside completed searches."

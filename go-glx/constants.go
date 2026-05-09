@@ -351,12 +351,14 @@ const (
 
 // Standard Search Result Types - from search-result-types.glx vocabulary.
 // Used by Search.Result inside a ResearchLog to record whether a search located
-// the target, found nothing (negative evidence), or returned an unclear result.
+// the target, found nothing (negative evidence), returned an unclear result, or
+// is still queued.
 const (
 	SearchResultFound        = "found"
 	SearchResultNotFound     = "not_found"
 	SearchResultInconclusive = "inconclusive"
 	SearchResultPartial      = "partial"
+	SearchResultNotSearched  = "not_searched"
 )
 
 // Standard Research Log Status Types - from research-log-status-types.glx vocabulary.
