@@ -76,7 +76,7 @@ func validatePaths(streams *IOStreams, args []string) error {
 		semanticErrors, semanticWarnings := validateSingleFileSemantics(paths)
 
 		streams.Println("⚠️  Cross-reference validation skipped (single file specified).")
-		streams.Printf("Validated %d file(s).\n", fileCount)
+		streams.Printf("%d files validated.\n", fileCount)
 
 		if len(semanticWarnings) > 0 {
 			streams.Printf("Found %d warnings:\n", len(semanticWarnings))
@@ -131,6 +131,9 @@ func validatePaths(streams *IOStreams, args []string) error {
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
 	streams.Printf("Validated %d files.\n", fileCount)
+	if fileCount == 0 {
+		streams.Println("No GLX files found in the specified path.")
+	}
 	if len(allWarnings) > 0 {
 		streams.Printf("Found %d warnings:\n", len(allWarnings))
 		for _, warn := range allWarnings {
