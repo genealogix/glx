@@ -15,6 +15,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"sort"
 
@@ -155,11 +157,11 @@ func migrateOrphanedAssertions(archive *glxlib.GLXFile, report *MigrateReport) e
 
 		eventID, event := glxlib.FindPersonEvent(archive, personID, mapping.eventType)
 		if eventID == "" {
-			newID, err := glxlib.GenerateRandomID()
+			id, err := newEventID()
 			if err != nil {
-				return fmt.Errorf("generating event ID for orphaned assertion: %w", err)
+				return fmt.Errorf("orphaned assertion: %w", err)
 			}
-			eventID = "event-" + newID
+			eventID = id
 			event = &glxlib.Event{
 				Type: mapping.eventType,
 				Participants: []glxlib.Participant{
@@ -321,11 +323,10 @@ func migrateEventProperties(
 		return "", transferred, nil
 	}
 
-	newID, err := glxlib.GenerateRandomID()
+	eventID, err := newEventID()
 	if err != nil {
-		return "", transferred, fmt.Errorf("generating event ID: %w", err)
+		return "", transferred, err
 	}
-	eventID = "event-" + newID
 
 	event := &glxlib.Event{
 		Type: eventType,
@@ -373,4 +374,15 @@ func migrateAssertions(
 			report.AssertionsMigrated++
 		}
 	}
+}
+
+// newEventID mints a synthetic event ID for migrated deprecated person
+// properties. Random because there's no natural deterministic derivation —
+// every other event in the archive is hand-authored with a meaningful ID.
+func newEventID() (string, error) {
+	bytes := make([]byte, 4)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("creating event ID: %w", err)
+	}
+	return "event-" + hex.EncodeToString(bytes), nil
 }

@@ -85,6 +85,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
 
+#### go-glx
+
+- **Removed unused random filename helpers** — `GenerateRandomID`, `GenerateEntityFilename`, `GenerateUniqueFilename`, and the `ErrUniqueFilenameFailed` sentinel are deleted from the `go-glx` package. They were superseded by `EntityIDToFilename` (#699) and had no remaining callers in `go-glx`. The `glx migrate` deprecated-property migration path, which used `GenerateRandomID` to mint synthetic `event-<8hex>` IDs for newly-created events, now does so via a small private helper in `glx/migrate_runner.go`. Closes #697
+
 ### Fixed
 
 - **`glx duplicates` now suppresses generationally-implausible pairs** — When candidate person A is documented as `role=parent` in some year P and candidate person B has a known birth year Y outside the plausible parenthood window `[P-100, P-15]` (i.e., B was born within 15 years before P, after P, or more than 100 years before P), the pair is now scored as 0 (impossible to be the same person) instead of being scored solely on name + place similarity. Previously a putative father with no birth data and his newborn son could score identically to the genuine same-generation candidate; the suppressed pair now drops below any reasonable threshold and is annotated with an `Age plausibility` signal in the breakdown explaining which years were incompatible. Closes #717
