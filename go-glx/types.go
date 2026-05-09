@@ -74,18 +74,21 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	Repositories  map[string]*Repository   `yaml:"repositories,omitempty"`
 	Assertions    map[string]*Assertion    `yaml:"assertions,omitempty"`
 	Media         map[string]*Media        `yaml:"media,omitempty"`
+	ResearchLogs  map[string]*ResearchLog  `yaml:"research_logs,omitempty"`
 
 	// Vocabulary definitions
-	EventTypes        map[string]*VocabularyEntry `yaml:"event_types,omitempty"`
-	ParticipantRoles  map[string]*VocabularyEntry `yaml:"participant_roles,omitempty"`
-	ConfidenceLevels  map[string]*VocabularyEntry `yaml:"confidence_levels,omitempty"`
-	RelationshipTypes map[string]*VocabularyEntry `yaml:"relationship_types,omitempty"`
-	PlaceTypes        map[string]*VocabularyEntry `yaml:"place_types,omitempty"`
-	SourceTypes       map[string]*VocabularyEntry `yaml:"source_types,omitempty"`
-	RepositoryTypes   map[string]*VocabularyEntry `yaml:"repository_types,omitempty"`
-	MediaTypes        map[string]*VocabularyEntry `yaml:"media_types,omitempty"`
-	SexTypes          map[string]*VocabularyEntry `yaml:"sex_types,omitempty"`
-	GenderTypes       map[string]*VocabularyEntry `yaml:"gender_types,omitempty"`
+	EventTypes             map[string]*VocabularyEntry `yaml:"event_types,omitempty"`
+	ParticipantRoles       map[string]*VocabularyEntry `yaml:"participant_roles,omitempty"`
+	ConfidenceLevels       map[string]*VocabularyEntry `yaml:"confidence_levels,omitempty"`
+	RelationshipTypes      map[string]*VocabularyEntry `yaml:"relationship_types,omitempty"`
+	PlaceTypes             map[string]*VocabularyEntry `yaml:"place_types,omitempty"`
+	SourceTypes            map[string]*VocabularyEntry `yaml:"source_types,omitempty"`
+	RepositoryTypes        map[string]*VocabularyEntry `yaml:"repository_types,omitempty"`
+	MediaTypes             map[string]*VocabularyEntry `yaml:"media_types,omitempty"`
+	SexTypes               map[string]*VocabularyEntry `yaml:"sex_types,omitempty"`
+	GenderTypes            map[string]*VocabularyEntry `yaml:"gender_types,omitempty"`
+	SearchResultTypes      map[string]*VocabularyEntry `yaml:"search_result_types,omitempty"`
+	ResearchLogStatusTypes map[string]*VocabularyEntry `yaml:"research_log_status_types,omitempty"`
 
 	// Property vocabularies
 	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
@@ -215,6 +218,39 @@ type Citation struct {
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed)
 	Notes        NoteList       `yaml:"notes,omitempty"`
+}
+
+// ResearchLog documents a research investigation, capturing every search
+// performed (including searches that found nothing) so researchers can avoid
+// duplicating work and document a "reasonably exhaustive search" per the
+// Genealogical Proof Standard. Negative evidence is first-class: a Search with
+// result "not_found" records that a source was checked and the target was
+// absent.
+type ResearchLog struct {
+	Title       string         `yaml:"title,omitempty"`
+	Subject     *EntityRef     `yaml:"subject,omitempty"`
+	Date        DateString     `yaml:"date,omitempty"`
+	Researcher  string         `yaml:"researcher,omitempty"`
+	Objective   string         `yaml:"objective,omitempty"`
+	Status      string         `refType:"research_log_status_types" yaml:"status,omitempty"`
+	Searches    []Search       `yaml:"searches,omitempty"`
+	Citations   []string       `refType:"citations"                 yaml:"citations,omitempty"`
+	Conclusions string         `yaml:"conclusions,omitempty"`
+	Properties  map[string]any `yaml:"properties,omitempty"`
+	Notes       NoteList       `yaml:"notes,omitempty"`
+}
+
+// Search is one attempt within a ResearchLog. Searches are embedded (not
+// standalone entities) because they are not referenced from anywhere else.
+type Search struct {
+	RepositoryID string     `refType:"repositories"        yaml:"repository,omitempty"`
+	SourceID     string     `refType:"sources"             yaml:"source,omitempty"`
+	Collection   string     `yaml:"collection,omitempty"`
+	Query        string     `yaml:"query,omitempty"`
+	Date         DateString `yaml:"date,omitempty"`
+	Result       string     `refType:"search_result_types" yaml:"result,omitempty"`
+	CitationID   string     `refType:"citations"           yaml:"citation,omitempty"`
+	Notes        NoteList   `yaml:"notes,omitempty"`
 }
 
 // Repository represents a repository where sources are held.
@@ -382,6 +418,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	conflicts = append(conflicts, mergeMap("repositories", g.Repositories, other.Repositories)...)
 	conflicts = append(conflicts, mergeMap("assertions", g.Assertions, other.Assertions)...)
 	conflicts = append(conflicts, mergeMap("media", g.Media, other.Media)...)
+	conflicts = append(conflicts, mergeMap("research_logs", g.ResearchLogs, other.ResearchLogs)...)
 
 	// Helper to accumulate mergeMapDedup results
 	addDedup := func(c []string, s int) {
@@ -400,6 +437,8 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	addDedup(mergeMapDedup("gender_types", g.GenderTypes, other.GenderTypes))
 	addDedup(mergeMapDedup("participant_roles", g.ParticipantRoles, other.ParticipantRoles))
 	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
+	addDedup(mergeMapDedup("search_result_types", g.SearchResultTypes, other.SearchResultTypes))
+	addDedup(mergeMapDedup("research_log_status_types", g.ResearchLogStatusTypes, other.ResearchLogStatusTypes))
 
 	// Merge property vocabularies — same dedup behavior
 	addDedup(mergeMapDedup("person_properties", g.PersonProperties, other.PersonProperties))
@@ -446,6 +485,9 @@ func (g *GLXFile) initMaps() {
 	if g.Media == nil {
 		g.Media = make(map[string]*Media)
 	}
+	if g.ResearchLogs == nil {
+		g.ResearchLogs = make(map[string]*ResearchLog)
+	}
 	if g.EventTypes == nil {
 		g.EventTypes = make(map[string]*VocabularyEntry)
 	}
@@ -469,6 +511,12 @@ func (g *GLXFile) initMaps() {
 	}
 	if g.GenderTypes == nil {
 		g.GenderTypes = make(map[string]*VocabularyEntry)
+	}
+	if g.SearchResultTypes == nil {
+		g.SearchResultTypes = make(map[string]*VocabularyEntry)
+	}
+	if g.ResearchLogStatusTypes == nil {
+		g.ResearchLogStatusTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.ParticipantRoles == nil {
 		g.ParticipantRoles = make(map[string]*VocabularyEntry)

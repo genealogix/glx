@@ -1,0 +1,22 @@
+# Standard Search Result Types
+# This file defines the standard outcomes for a Search entry inside a ResearchLog.
+# Negative evidence (not_found) is first-class so a "reasonably exhaustive search"
+# per the Genealogical Proof Standard can be documented and queried.
+# Archives can extend this with custom types by adding additional entries.
+
+search_result_types:
+  found:
+    label: "Found"
+    description: "The target of the search was located in the source."
+
+  not_found:
+    label: "Not Found"
+    description: "The source was searched and the target was not present (negative evidence)."
+
+  inconclusive:
+    label: "Inconclusive"
+    description: "A candidate record was located but cannot be confirmed to identify the target."
+
+  partial:
+    label: "Partial"
+    description: "Some relevant information was located, but the search objective was not fully met."

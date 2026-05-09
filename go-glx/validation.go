@@ -78,6 +78,7 @@ func (glx *GLXFile) buildEntityMaps(result *ValidationResult) {
 	result.Entities[EntityTypeRepositories] = buildIDSet(glx.Repositories)
 	result.Entities[EntityTypeAssertions] = buildIDSet(glx.Assertions)
 	result.Entities[EntityTypeMedia] = buildIDSet(glx.Media)
+	result.Entities[EntityTypeResearchLogs] = buildIDSet(glx.ResearchLogs)
 }
 
 // buildVocabularyMaps builds maps of all vocabulary values for quick lookup.
@@ -92,6 +93,8 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
 	result.Vocabularies[VocabSexTypes] = buildIDSet(glx.SexTypes)
 	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
+	result.Vocabularies[VocabSearchResultTypes] = buildIDSet(glx.SearchResultTypes)
+	result.Vocabularies[VocabResearchLogStatusTypes] = buildIDSet(glx.ResearchLogStatusTypes)
 }
 
 // buildPropertyVocabMaps builds maps of property vocabularies.
@@ -131,6 +134,7 @@ func (glx *GLXFile) validateAllReferences(result *ValidationResult) {
 	glx.validateEntityTypeReferences(EntityTypeRepositories, glx.Repositories, result)
 	glx.validateEntityTypeReferences(EntityTypeAssertions, glx.Assertions, result)
 	glx.validateEntityTypeReferences(EntityTypeMedia, glx.Media, result)
+	glx.validateEntityTypeReferences(EntityTypeResearchLogs, glx.ResearchLogs, result)
 }
 
 // validateEntityTypeReferences validates all entities of a given type.
@@ -177,9 +181,18 @@ func (glx *GLXFile) validateStructReferences(
 func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, result *ValidationResult) {
 	switch fieldVal.Kind() {
 	case reflect.Ptr:
-		if !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Struct {
-			glx.validateStructReferences(entityType, entityID, fieldVal.Elem(), result)
+		if fieldVal.IsNil() || fieldVal.Elem().Kind() != reflect.Struct {
+			return
 		}
+		// Special handling for *EntityRef (mirrors the value-typed EntityRef case below).
+		// A nil pointer means "no subject" and is allowed; a non-nil pointer must reference
+		// an existing entity.
+		if entityRef, ok := fieldVal.Elem().Interface().(EntityRef); ok {
+			glx.validateEntityRef(entityType, entityID, "Subject", entityRef, result)
+
+			return
+		}
+		glx.validateStructReferences(entityType, entityID, fieldVal.Elem(), result)
 	case reflect.Struct:
 		// Special handling for EntityRef
 		if entityRef, ok := fieldVal.Interface().(EntityRef); ok {

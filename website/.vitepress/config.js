@@ -183,7 +183,8 @@ export default defineConfig({
             { text: 'Citation', link: '/specification/4-entity-types/citation' },
             { text: 'Assertion', link: '/specification/4-entity-types/assertion' },
             { text: 'Repository', link: '/specification/4-entity-types/repository' },
-            { text: 'Media', link: '/specification/4-entity-types/media' }
+            { text: 'Media', link: '/specification/4-entity-types/media' },
+            { text: 'Research Log', link: '/specification/4-entity-types/research-log' }
           ]
         },
         {
@@ -246,7 +247,8 @@ export default defineConfig({
             { text: 'Citation', link: '/specification/4-entity-types/citation' },
             { text: 'Assertion', link: '/specification/4-entity-types/assertion' },
             { text: 'Repository', link: '/specification/4-entity-types/repository' },
-            { text: 'Media', link: '/specification/4-entity-types/media' }
+            { text: 'Media', link: '/specification/4-entity-types/media' },
+            { text: 'Research Log', link: '/specification/4-entity-types/research-log' }
           ]
         },
         {
