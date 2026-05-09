@@ -294,7 +294,7 @@ assertions:
     confidence: high
 
   # --- Alice's possible middle name — family lore, no primary records pulled ---
-  # Demonstrates `status: unresearched`: lead captured from a low-quality source
+  # Demonstrates `status: unresearched`: a lead captured from an indirect source
   # so it isn't lost, with no primary-record search yet performed.
   assertion-alice-middle-name:
     subject:

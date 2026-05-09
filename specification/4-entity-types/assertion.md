@@ -299,7 +299,7 @@ Unlike `confidence` (which measures how certain you are about the claim), `statu
 - `proven` — verified through primary evidence
 - `speculative` — a hypothesis that needs further research
 - `disproven` — evidence has been found that contradicts this assertion
-- `unresearched` — no search has been conducted for this claim; used to track research gaps
+- `unresearched` — no search has been conducted for this claim
 
 These values are free-text; archives may use any status labels appropriate for their research methodology.
 
@@ -319,6 +319,7 @@ confidence: high
 status: disproven
 
 # Claim recorded from a tree hint, no source search yet performed
+# (low confidence reflects the absence of any primary-source backing)
 confidence: low
 status: unresearched
 ```
