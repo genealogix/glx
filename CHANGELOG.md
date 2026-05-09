@@ -87,7 +87,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### go-glx
 
-- **Removed unused random filename helpers** — `GenerateRandomID`, `GenerateEntityFilename`, `GenerateUniqueFilename`, and the `ErrUniqueFilenameFailed` sentinel are deleted from the `go-glx` package. They were superseded by `EntityIDToFilename` (#699) and had no remaining callers in `go-glx`. The `glx migrate` deprecated-property migration path, which used `GenerateRandomID` to mint synthetic `event-<8hex>` IDs for newly-created events, now does so via a small private helper in `glx/migrate_runner.go`. Closes #697
+- **BREAKING**: Removed unused random filename helpers from `go-glx` — `GenerateRandomID`, `GenerateEntityFilename`, `GenerateUniqueFilename`, and the `ErrUniqueFilenameFailed` sentinel are deleted. They were superseded by `EntityIDToFilename` (#699) and had no remaining callers in `go-glx`; the `glx migrate` deprecated-property path that used `GenerateRandomID` for synthetic `event-<8hex>` IDs now does so via a small private helper in `glx/migrate_runner.go`. External consumers of `github.com/genealogix/glx/go-glx` that imported any of the four removed symbols will need to migrate to `EntityIDToFilename` (for filename derivation) or vendor the deleted helpers. Closes #697
 
 ### Fixed
 
