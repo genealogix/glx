@@ -52,6 +52,6 @@ repository_types:
     description: "Government record-keeping agency"
     gedcom: "government"
 
-  other:
+  other: # Intentionally no `gedcom:` mapping; used as fallback for unrecognized GEDCOM REPO.TYPE values.
     label: "Other"
     description: "Other institution type"
