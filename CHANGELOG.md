@@ -81,6 +81,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Tightened markdownlint `MD033` from disabled to strict + per-file allow-list** — `.markdownlint-cli2.jsonc` now leaves `MD033` (no-inline-html) at its strict default. The only page in the linted scope (`specification/**/*.md`, `docs/**/*.md`, root `*.md`) that needs raw HTML — `specification/5-standard-vocabularies/README.md`, which embeds `<script setup>` and `<YamlFile />` — declares its own allow-list inline via a `markdownlint-configure-file` directive. (`website/standard-vocabularies.md` uses the same constructs but is outside the lint globs.) Stray inline HTML anywhere else (e.g., an accidental `<div>`, `<iframe>`, or even a `<script>` outside that one page) is once again caught by lint. Closes #740
 
+#### CI
+
+- **Concurrency groups added to PR-triggered workflows** — `validate-spec.yml`, `check-links.yml`, `security.yml`, `dependency-review.yml`, and `lint-pr-title.yml` now declare workflow-level concurrency groups with `cancel-in-progress: true`, so pushing multiple commits to a PR branch in quick succession cancels stale runs and reduces wasted CI minutes. `auto-resolve-conflicts.yml`, `auto-update-branches.yml`, and `lint.yml` already had appropriate concurrency configs and are unchanged. Closes #346
+
 ### Removed
 
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
