@@ -68,7 +68,6 @@ If you're evaluating whether to report: please do. The project benefits from sec
 
 - **Dependabot** — daily automated dependency updates for Go, npm, and GitHub Actions
 - **Dependency review** — blocks PRs that introduce dependencies with moderate+ vulnerabilities
-- **Renovate** — weekly lockfile maintenance for transitive dependency refresh
 
 ### Code Scanning
 

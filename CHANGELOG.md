@@ -75,7 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Documentation
 
-- **`SECURITY.md` Security Measures section now lists all six active controls** — Three subsections (Vulnerability Scanning, Dependency Management, Code Scanning) replace the previous two-bullet list of `govulncheck` and `gosec` only. Newly documented: `npm audit`, `Dependabot`, `dependency-review-action`, and Renovate lockfile maintenance. Closes #475
+- **`SECURITY.md` Security Measures section reorganized into three subsections covering all five active controls** — Vulnerability Scanning, Dependency Management, and Code Scanning replace the previous brief flat list (`govulncheck`, `gosec`, weekly-scan note). Newly documented: `npm audit`, `Dependabot`, and `dependency-review-action`. Closes #475
 
 #### go-glx
 
