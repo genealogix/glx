@@ -384,5 +384,6 @@ func newEventID() (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("creating event ID: %w", err)
 	}
+
 	return "event-" + hex.EncodeToString(bytes), nil
 }
