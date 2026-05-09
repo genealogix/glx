@@ -130,9 +130,10 @@ func validatePaths(streams *IOStreams, args []string) error {
 	// Check media file existence on disk
 	allWarnings = append(allWarnings, validateMediaFileExistence(archive, archiveRoot)...)
 
-	streams.Printf("Validated %d files.\n", fileCount)
 	if fileCount == 0 {
-		streams.Println("No GLX files found in the specified path.")
+		streams.Println("No GLX files found. Validated 0 files.")
+	} else {
+		streams.Printf("Validated %d files.\n", fileCount)
 	}
 	if len(allWarnings) > 0 {
 		streams.Printf("Found %d warnings:\n", len(allWarnings))
