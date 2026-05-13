@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: validate-spec-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   GIT_CONFIG_COUNT: 2
   GIT_CONFIG_KEY_0: init.defaultBranch
