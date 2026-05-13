@@ -111,7 +111,7 @@ func detectGEDCOMCharset(data []byte) string {
 	for _, line := range strings.Split(chunk, "\n") {
 		line = strings.TrimRight(line, "\r")
 		fields := strings.Fields(line)
-		if len(fields) >= 3 && fields[0] == "1" && strings.ToUpper(fields[1]) == "CHAR" {
+		if len(fields) >= 3 && fields[0] == "1" && strings.EqualFold(fields[1], "CHAR") {
 			return fields[2]
 		}
 	}

@@ -176,6 +176,10 @@ linters:
         - "strings.SplitN"
         - "strings.Repeat"
 
+    gocritic:
+      enabled-tags:
+        - performance
+
     grouper:
       import-require-single-import: true
       import-require-grouping: true
