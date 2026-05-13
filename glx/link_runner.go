@@ -56,7 +56,7 @@ type linkOptions struct {
 
 // linkFamilySearchARK creates a citation (and, when needed, a repository and
 // source) in the archive from a FamilySearch ARK URL. No network I/O.
-func linkFamilySearchARK(io *IOStreams, opts linkOptions) error {
+func linkFamilySearchARK(io *IOStreams, opts *linkOptions) error {
 	opts.SourceID = strings.TrimSpace(opts.SourceID)
 	opts.CreateSourceTitle = strings.TrimSpace(opts.CreateSourceTitle)
 
@@ -112,7 +112,7 @@ func linkFamilySearchARK(io *IOStreams, opts linkOptions) error {
 	return nil
 }
 
-func validateLinkOptions(opts linkOptions) error {
+func validateLinkOptions(opts *linkOptions) error {
 	if opts.SourceID == "" && opts.CreateSourceTitle == "" {
 		return ErrLinkSourceRequired
 	}
@@ -127,7 +127,7 @@ func validateLinkOptions(opts linkOptions) error {
 // memory. Returns the partial GLXFile and the resolved source ID (the
 // --source value, or the ID of the source created or reused from
 // --create-source).
-func buildLinkEntities(archive *glxlib.GLXFile, ark *ARK, opts linkOptions) (*glxlib.GLXFile, string, error) {
+func buildLinkEntities(archive *glxlib.GLXFile, ark *ARK, opts *linkOptions) (*glxlib.GLXFile, string, error) {
 	newEntities := &glxlib.GLXFile{}
 
 	// Never clobber an existing repository-familysearch — the user may have
@@ -194,7 +194,7 @@ func citationIDFor(ark *ARK) string {
 //     reused (so reviewing many records from the same FS collection does not
 //     mint a new source per record).
 //   - Otherwise a fresh source is added to newEntities.
-func resolveSource(archive, newEntities *glxlib.GLXFile, opts linkOptions) (string, error) {
+func resolveSource(archive, newEntities *glxlib.GLXFile, opts *linkOptions) (string, error) {
 	if opts.SourceID != "" {
 		if _, ok := archive.Sources[opts.SourceID]; !ok {
 			return "", fmt.Errorf("%w: %s", ErrLinkSourceNotFound, opts.SourceID)

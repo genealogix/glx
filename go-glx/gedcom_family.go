@@ -410,7 +410,7 @@ func convertFamilyCensus(husbandID, wifeID string, censRecord *GEDCOMRecord, con
 		if !ok {
 			continue
 		}
-		applyCensusData(spouseID, person, data, conv)
+		applyCensusData(spouseID, person, &data, conv)
 	}
 }
 
