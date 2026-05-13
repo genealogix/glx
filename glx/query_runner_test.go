@@ -27,12 +27,12 @@ import (
 )
 
 func TestQueryPersons_BasicFamily(t *testing.T) {
-	err := queryEntities("persons", queryOpts{Archive: "../docs/examples/basic-family"})
+	err := queryEntities("persons", &queryOpts{Archive: "../docs/examples/basic-family"})
 	require.NoError(t, err)
 }
 
 func TestQueryPersons_NameFilter(t *testing.T) {
-	err := queryEntities("persons", queryOpts{
+	err := queryEntities("persons", &queryOpts{
 		Archive: "../docs/examples/complete-family",
 		Name:    "John",
 	})
@@ -40,7 +40,7 @@ func TestQueryPersons_NameFilter(t *testing.T) {
 }
 
 func TestQueryPersons_BornBefore(t *testing.T) {
-	err := queryEntities("persons", queryOpts{
+	err := queryEntities("persons", &queryOpts{
 		Archive:    "../docs/examples/complete-family",
 		BornBefore: 1860,
 	})
@@ -48,7 +48,7 @@ func TestQueryPersons_BornBefore(t *testing.T) {
 }
 
 func TestQueryPersons_BornAfter(t *testing.T) {
-	err := queryEntities("persons", queryOpts{
+	err := queryEntities("persons", &queryOpts{
 		Archive:   "../docs/examples/complete-family",
 		BornAfter: 1870,
 	})
@@ -109,7 +109,7 @@ func TestQueryPersons_BirthplaceViaEvent(t *testing.T) {
 }
 
 func TestQueryEvents_TypeFilter(t *testing.T) {
-	err := queryEntities("events", queryOpts{
+	err := queryEntities("events", &queryOpts{
 		Archive: "../docs/examples/complete-family",
 		Type:    "birth",
 	})
@@ -117,7 +117,7 @@ func TestQueryEvents_TypeFilter(t *testing.T) {
 }
 
 func TestQueryEvents_BeforeFilter(t *testing.T) {
-	err := queryEntities("events", queryOpts{
+	err := queryEntities("events", &queryOpts{
 		Archive: "../docs/examples/complete-family",
 		Before:  1860,
 	})
@@ -125,7 +125,7 @@ func TestQueryEvents_BeforeFilter(t *testing.T) {
 }
 
 func TestQueryAssertions(t *testing.T) {
-	err := queryEntities("assertions", queryOpts{
+	err := queryEntities("assertions", &queryOpts{
 		Archive:    "../docs/examples/complete-family",
 		Confidence: "high",
 	})
@@ -133,37 +133,37 @@ func TestQueryAssertions(t *testing.T) {
 }
 
 func TestQuerySources(t *testing.T) {
-	err := queryEntities("sources", queryOpts{Archive: "../docs/examples/complete-family"})
+	err := queryEntities("sources", &queryOpts{Archive: "../docs/examples/complete-family"})
 	require.NoError(t, err)
 }
 
 func TestQueryRelationships(t *testing.T) {
-	err := queryEntities("relationships", queryOpts{Archive: "../docs/examples/complete-family"})
+	err := queryEntities("relationships", &queryOpts{Archive: "../docs/examples/complete-family"})
 	require.NoError(t, err)
 }
 
 func TestQueryPlaces(t *testing.T) {
-	err := queryEntities("places", queryOpts{Archive: "../docs/examples/complete-family"})
+	err := queryEntities("places", &queryOpts{Archive: "../docs/examples/complete-family"})
 	require.NoError(t, err)
 }
 
 func TestQueryCitations(t *testing.T) {
-	err := queryEntities("citations", queryOpts{Archive: "../docs/examples/complete-family"})
+	err := queryEntities("citations", &queryOpts{Archive: "../docs/examples/complete-family"})
 	require.NoError(t, err)
 }
 
 func TestQueryRepositories(t *testing.T) {
-	err := queryEntities("repositories", queryOpts{Archive: "../docs/examples/complete-family"})
+	err := queryEntities("repositories", &queryOpts{Archive: "../docs/examples/complete-family"})
 	require.NoError(t, err)
 }
 
 func TestQueryMedia(t *testing.T) {
-	err := queryEntities("media", queryOpts{Archive: "../docs/examples/complete-family"})
+	err := queryEntities("media", &queryOpts{Archive: "../docs/examples/complete-family"})
 	require.NoError(t, err)
 }
 
 func TestQueryUnknownEntityType(t *testing.T) {
-	err := queryEntities("foobar", queryOpts{Archive: "../docs/examples/basic-family"})
+	err := queryEntities("foobar", &queryOpts{Archive: "../docs/examples/basic-family"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown entity type")
 }
@@ -181,7 +181,7 @@ func TestQueryUnsupportedFlag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := queryEntities(tt.entityType, tt.opts)
+			err := queryEntities(tt.entityType, &tt.opts)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "not supported for entity type")
 		})
@@ -189,7 +189,7 @@ func TestQueryUnsupportedFlag(t *testing.T) {
 }
 
 func TestQueryNonexistentArchive(t *testing.T) {
-	err := queryEntities("persons", queryOpts{Archive: filepath.Join(t.TempDir(), "does-not-exist")})
+	err := queryEntities("persons", &queryOpts{Archive: filepath.Join(t.TempDir(), "does-not-exist")})
 	require.Error(t, err)
 }
 
@@ -259,7 +259,7 @@ func TestQueryAssertions_SourceFilter(t *testing.T) {
 	t.Cleanup(func() { r.Close() })
 	os.Stdout = w
 
-	err := queryAssertions(archive, queryOpts{Source: "source-abc"})
+	err := queryAssertions(archive, &queryOpts{Source: "source-abc"})
 
 	w.Close()
 	os.Stdout = old
@@ -293,7 +293,7 @@ func TestQueryAssertions_CitationFilter(t *testing.T) {
 	t.Cleanup(func() { r.Close() })
 	os.Stdout = w
 
-	err := queryAssertions(archive, queryOpts{Citation: "cit-1"})
+	err := queryAssertions(archive, &queryOpts{Citation: "cit-1"})
 
 	w.Close()
 	os.Stdout = old
@@ -320,7 +320,7 @@ func TestQueryAssertions_SubjectFilter(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		err := queryAssertions(archive, queryOpts{Subject: "person-jane"})
+		err := queryAssertions(archive, &queryOpts{Subject: "person-jane"})
 		require.NoError(t, err)
 	})
 
@@ -342,7 +342,7 @@ func TestQueryAssertions_SubjectByName(t *testing.T) {
 	}
 
 	output := captureStdout(t, func() {
-		err := queryAssertions(archive, queryOpts{Subject: "Jane"})
+		err := queryAssertions(archive, &queryOpts{Subject: "Jane"})
 		require.NoError(t, err)
 	})
 
@@ -350,7 +350,7 @@ func TestQueryAssertions_SubjectByName(t *testing.T) {
 }
 
 func TestQueryUnsupportedFlag_SourceOnPersons(t *testing.T) {
-	err := queryEntities("persons", queryOpts{
+	err := queryEntities("persons", &queryOpts{
 		Archive: "../docs/examples/basic-family",
 		Source:  "source-abc",
 	})
@@ -476,12 +476,12 @@ func TestExtractPersonName_NilPerson(t *testing.T) {
 }
 
 func TestValidateQueryFlags_PhoneticRequiresName(t *testing.T) {
-	err := validateQueryFlags("persons", queryOpts{Phonetic: true, Name: ""})
+	err := validateQueryFlags("persons", &queryOpts{Phonetic: true, Name: ""})
 	require.ErrorIs(t, err, errPhoneticRequiresName)
 }
 
 func TestValidateQueryFlags_PhoneticWithName(t *testing.T) {
-	err := validateQueryFlags("persons", queryOpts{Phonetic: true, Name: "Miller"})
+	err := validateQueryFlags("persons", &queryOpts{Phonetic: true, Name: "Miller"})
 	require.NoError(t, err)
 }
 

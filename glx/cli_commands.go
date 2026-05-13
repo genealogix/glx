@@ -555,7 +555,7 @@ func init() {
 }
 
 func runQuery(_ *cobra.Command, args []string) error {
-	return queryEntities(args[0], queryOpts{
+	return queryEntities(args[0], &queryOpts{
 		Archive:    queryArchive,
 		Name:       queryName,
 		Phonetic:   queryPhonetic,
@@ -1435,7 +1435,7 @@ func init() {
 }
 
 func runLink(_ *cobra.Command, args []string) error {
-	return linkFamilySearchARK(SystemIOStreams(), linkOptions{
+	return linkFamilySearchARK(SystemIOStreams(), &linkOptions{
 		ARKInput:          args[0],
 		ArchivePath:       linkArchive,
 		SourceID:          linkSource,

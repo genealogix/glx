@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,7 +126,7 @@ func TestRunDocsGenPrunesStaleGenerated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read index after run: %v", err)
 	}
-	if string(got) != string(indexBody) {
+	if !bytes.Equal(got, indexBody) {
 		t.Errorf("index.md was modified; got %q want %q", got, indexBody)
 	}
 }
@@ -152,7 +153,7 @@ func TestRunDocsGenPreservesHandAuthoredGlxFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read handAuthored after run: %v", err)
 	}
-	if string(got) != string(body) {
+	if !bytes.Equal(got, body) {
 		t.Errorf("hand-authored glx_tips.md was modified; got %q want %q", got, body)
 	}
 }
@@ -204,7 +205,7 @@ func TestRunDocsGenIsDeterministic(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s from b: %v", name, err)
 		}
-		if string(ba) != string(bb) {
+		if !bytes.Equal(ba, bb) {
 			t.Errorf("nondeterministic output for %s", name)
 		}
 	}
