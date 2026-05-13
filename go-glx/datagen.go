@@ -94,8 +94,10 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 			parent1 := personIDs[secureIntn(i)]
 			parent2 := personIDs[secureIntn(i)]
 			if parent1 != parent2 {
-				participants = append(participants, Participant{Person: parent1, Role: "parent"})
-				participants = append(participants, Participant{Person: parent2, Role: "parent"})
+				participants = append(participants,
+					Participant{Person: parent1, Role: "parent"},
+					Participant{Person: parent2, Role: "parent"},
+				)
 			}
 		}
 
