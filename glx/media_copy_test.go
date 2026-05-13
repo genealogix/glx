@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,7 +131,7 @@ func TestCopyMediaFiles_FileCopy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read copied file: %v", err)
 	}
-	if string(copied) != string(testContent) {
+	if !bytes.Equal(copied, testContent) {
 		t.Errorf("Copied content mismatch: got %q, want %q", string(copied), string(testContent))
 	}
 }
