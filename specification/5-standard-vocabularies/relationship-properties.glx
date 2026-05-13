@@ -24,4 +24,32 @@ relationship_properties:
     description: "Detailed description of the relationship"
     value_type: string
 
+  name_as_recorded:
+    label: "Name As Recorded"
+    description: |
+      Name of this participant exactly as written in the source document
+      backing the relationship. Captures source-specific renderings
+      (Latin-genitive forms in 18th-century parish registers, abbreviations,
+      transcription quirks) that should not be promoted to the Person entity.
+      Distinct from person_properties.name, which conveys a conclusion about
+      the person's name. Set on relationship.participants[].properties; the
+      as-recorded string is implicitly attested by the source citing the
+      relationship.
+    value_type: string
+    fields:
+      prefix:
+        label: "Prefix"
+        description: "Honorific prefix (Dr., Rev., Hon.)"
+      given:
+        label: "Given Name"
+        description: "Given/first name(s)"
+      surname_prefix:
+        label: "Surname Prefix"
+        description: "Article or prefix (von, van, de)"
+      surname:
+        label: "Surname"
+        description: "Family name"
+      suffix:
+        label: "Suffix"
+        description: "Generational suffix (Jr., Sr., III)"
 
