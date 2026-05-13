@@ -70,7 +70,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 			}
 
 			// Create name assertion (with evidence/citations)
-			createNameAssertion(personID, parsedName, sub, conv)
+			createNameAssertion(personID, &parsedName, sub, conv)
 
 		case GedcomTagSex:
 			// Sex mapping (what the source recorded)
@@ -206,7 +206,7 @@ func extractNameSubstructure(nameRecord *GEDCOMRecord) *NameSubstructure {
 
 // createNameAssertion creates an assertion for the name property, but only if there are citations.
 // Assertions without citations are not meaningful - the name is already stored on the person entity.
-func createNameAssertion(personID string, name PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) {
+func createNameAssertion(personID string, name *PersonName, nameRecord *GEDCOMRecord, conv *ConversionContext) {
 	fullName := name.FormatFullName()
 	if fullName == "" {
 		return
@@ -618,7 +618,7 @@ type censusData struct {
 //   - An assertion for residence backed by citations (when PLAC and citations exist)
 func convertCensus(personID string, person *Person, censRecord *GEDCOMRecord, conv *ConversionContext) {
 	data := extractCensusData(censRecord, conv)
-	applyCensusData(personID, person, data, conv)
+	applyCensusData(personID, person, &data, conv)
 }
 
 // extractCensusData extracts all data from a CENS record and creates source/citation entities.
@@ -747,7 +747,7 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 
 // applyCensusData applies extracted census data to a person: sets temporal
 // residence property and creates assertions backed by citations.
-func applyCensusData(personID string, person *Person, data censusData, conv *ConversionContext) {
+func applyCensusData(personID string, person *Person, data *censusData, conv *ConversionContext) {
 	// Attach media to census citations and sources
 	if len(data.mediaIDs) > 0 {
 		for _, citID := range data.evidence.CitationIDs {
