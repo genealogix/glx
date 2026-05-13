@@ -74,6 +74,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **`relationship-types.glx` GEDCOM mapping coverage documented** — Documented `step_parent`, `godparent`, `partner`, `guardian`, `neighbor`, `coworker`, `housemate`, `apprenticeship`, `employment`, `enslavement`, and `relative` as having no direct GEDCOM equivalent via inline comments, with rationale for `step_parent` (PEDI `sealed` is mapped to generic `parent_child` per `specification/4-entity-types/relationship.md` and `go-glx/gedcom_converter.go`), `godparent` (GEDCOM 7.0 `ASSO ROLE GODP` is consumed as a baptism event participant role, not a standalone relationship), and `partner` (`MARR TYPE` is collapsed into the `marriage` relationship plus a `marriage_type` event property by the importer). Closes #544.
 
+- **`source-properties.glx` clarified `url` vs citation `url`** — The previous description didn't distinguish the source-level URL (collection or database landing page) from the per-record citation URL, leaving readers looking for "where to put a permalink to a specific record" with no signal. The description now names the source-level intent and redirects record-specific URLs to the citation `url` property. Closes #560.
+
 #### go-glx
 
 - **Unified 9 vocabulary structs into a single `VocabularyEntry` type** — `EventType`, `ParticipantRole`, `ConfidenceLevel`, `RelationshipType`, `PlaceType`, `SourceType`, `RepositoryType`, `MediaType`, and `GenderType` have been replaced by one `VocabularyEntry` struct carrying the union of their optional fields (`GEDCOM`, `Category`, `MimeType`, `AppliesTo`). The YAML wire format (`.glx` files on disk) is unchanged; consumers of `*EventType` etc. must switch to `*VocabularyEntry`. Closes #504
