@@ -42,7 +42,7 @@ func TestLink_CreatesRepoSourceCitation(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 
-	err := linkFamilySearchARK(io, linkOptions{
+	err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:          "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2",
 		ArchivePath:       dir,
 		CreateSourceTitle: "Deutschland Geburten und Taufen, 1558-1898",
@@ -104,7 +104,7 @@ func TestLink_RequiresSourceFlag(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 
-	err := linkFamilySearchARK(io, linkOptions{
+	err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:    "ark:/61903/1:1:TEST-AAAA",
 		ArchivePath: dir,
 	})
@@ -120,7 +120,7 @@ func TestLink_RejectsBothSourceFlags(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 
-	err := linkFamilySearchARK(io, linkOptions{
+	err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:          "ark:/61903/1:1:TEST-AAAA",
 		ArchivePath:       dir,
 		SourceID:          "source-x",
@@ -135,7 +135,7 @@ func TestLink_MissingSourceErrors(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 
-	err := linkFamilySearchARK(io, linkOptions{
+	err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:    "ark:/61903/1:1:TEST-AAAA",
 		ArchivePath: dir,
 		SourceID:    "source-does-not-exist",
@@ -157,7 +157,7 @@ func TestLink_Idempotent(t *testing.T) {
 		ArchivePath:       dir,
 		CreateSourceTitle: "Test Collection",
 	}
-	if err := linkFamilySearchARK(io1, opts); err != nil {
+	if err := linkFamilySearchARK(io1, &opts); err != nil {
 		t.Fatalf("first link: %v", err)
 	}
 	if strings.Contains(out1.String(), "already exists") {
@@ -177,7 +177,7 @@ func TestLink_Idempotent(t *testing.T) {
 		ArchivePath: dir,
 		SourceID:    "source-test-collection",
 	}
-	if err := linkFamilySearchARK(io2, opts2); err != nil {
+	if err := linkFamilySearchARK(io2, &opts2); err != nil {
 		t.Fatalf("second link: %v", err)
 	}
 	if !strings.Contains(out2.String(), "already exists") {
@@ -196,7 +196,7 @@ func TestLink_DryRunWritesNothing(t *testing.T) {
 
 	before := countFiles(t, filepath.Join(dir, "citations"))
 
-	err := linkFamilySearchARK(io, linkOptions{
+	err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:          "ark:/61903/1:1:DRY-0001",
 		ArchivePath:       dir,
 		CreateSourceTitle: "Dry Run Collection",
@@ -230,7 +230,7 @@ func TestLink_ReusesSourceForSameTitleAcrossRecords(t *testing.T) {
 	}
 	for _, ark := range arks {
 		io, _, _ := TestIOStreams()
-		err := linkFamilySearchARK(io, linkOptions{
+		err := linkFamilySearchARK(io, &linkOptions{
 			ARKInput:          ark,
 			ArchivePath:       dir,
 			CreateSourceTitle: title,
@@ -288,7 +288,7 @@ func TestLink_PreservesExistingRepository(t *testing.T) {
 	}
 
 	io, _, _ := TestIOStreams()
-	err := linkFamilySearchARK(io, linkOptions{
+	err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:          "ark:/61903/1:1:PRESERVE-01",
 		ArchivePath:       dir,
 		CreateSourceTitle: "Preserve Test",
@@ -333,7 +333,7 @@ func TestLink_RejectsWhitespaceOnlyCreateSource(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
 
-	err := linkFamilySearchARK(io, linkOptions{
+	err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:          "ark:/61903/1:1:WS-0001",
 		ArchivePath:       dir,
 		CreateSourceTitle: "   \t  \n  ",
@@ -353,7 +353,7 @@ func TestLink_TrimsSourceIDWhitespace(t *testing.T) {
 	io, _, _ := TestIOStreams()
 
 	// Seed a real source so the trimmed ID resolves.
-	if err := linkFamilySearchARK(io, linkOptions{
+	if err := linkFamilySearchARK(io, &linkOptions{
 		ARKInput:          "ark:/61903/1:1:SEED-0001",
 		ArchivePath:       dir,
 		CreateSourceTitle: "Trim Test Collection",
@@ -362,7 +362,7 @@ func TestLink_TrimsSourceIDWhitespace(t *testing.T) {
 	}
 
 	io2, _, _ := TestIOStreams()
-	err := linkFamilySearchARK(io2, linkOptions{
+	err := linkFamilySearchARK(io2, &linkOptions{
 		ARKInput:    "ark:/61903/1:1:TRIM-0002",
 		ArchivePath: dir,
 		SourceID:    "  source-trim-test-collection  ",
