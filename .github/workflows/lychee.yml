@@ -72,6 +72,7 @@ jobs:
           echo "number=$num" >> "$GITHUB_OUTPUT"
 
       - name: Create or update broken-links issue
+        id: create-issue
         if: steps.lychee.outputs.exit_code != 0
         uses: peter-evans/create-issue-from-file@v6
         with:
@@ -79,6 +80,47 @@ jobs:
           content-filepath: ./lychee-out.md
           labels: tooling
           issue-number: ${{ steps.find-issue.outputs.number }}
+
+      - name: Set Bug issue type
+        # Only fire when a brand-new issue was just created (no pre-existing issue).
+        if: steps.lychee.outputs.exit_code != 0 && steps.find-issue.outputs.number == '' && steps.create-issue.outputs.issue-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.create-issue.outputs.issue-number }}
+        run: |
+          issue_id=$(gh api graphql -f query='
+            query($owner:String!, $repo:String!, $n:Int!) {
+              repository(owner:$owner, name:$repo) { issue(number:$n) { id } }
+            }' \
+            -F owner="${{ github.repository_owner }}" \
+            -F repo="${{ github.event.repository.name }}" \
+            -F n="$ISSUE_NUMBER" \
+            --jq .data.repository.issue.id)
+          if [[ -z "$issue_id" ]]; then
+            echo "::error::Could not resolve node ID for issue #${ISSUE_NUMBER}"
+            exit 1
+          fi
+          bug_type_id=$(gh api graphql -f query='
+            query($org:String!) {
+              organization(login:$org) { issueTypes(first:50) { nodes { id name } } }
+            }' \
+            -F org="${{ github.repository_owner }}" \
+            --jq '.data.organization.issueTypes.nodes[] | select(.name == "Bug") | .id')
+          if [[ -z "$bug_type_id" ]]; then
+            echo "::error::Bug issue type not found in organization ${{ github.repository_owner }}"
+            exit 1
+          fi
+          result=$(gh api graphql \
+            -f query='mutation($id:ID!, $type:ID!) {
+              updateIssueIssueType(input:{issueId:$id, issueTypeId:$type}) { issue { number } }
+            }' \
+            -F id="$issue_id" \
+            -F type="$bug_type_id")
+          if ! echo "$result" | grep -q '"number"'; then
+            errors=$(echo "$result" | jq -r '.errors[]?.message // "unknown error"' 2>/dev/null || echo "unparseable response")
+            echo "::error::updateIssueIssueType mutation failed: $errors"
+            exit 1
+          fi
 
       - name: Close stale broken-links issue
         if: steps.lychee.outputs.exit_code == 0 && steps.find-issue.outputs.number != ''
