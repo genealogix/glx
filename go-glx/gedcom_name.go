@@ -163,6 +163,8 @@ func isNameSuffix(word string) bool {
 
 // FormatFullName constructs a display string from the PersonName components.
 // The format follows: Prefix Given "Nickname" SurnamePrefix Surname Suffix
+//
+//nolint:gocritic // value receiver preserved on exported method of public library type; switching to pointer receiver would break external callers invoking it on non-addressable PersonName values (composite literals, function returns, map indexes)
 func (n PersonName) FormatFullName() string {
 	var parts []string
 
