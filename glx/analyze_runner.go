@@ -212,8 +212,8 @@ func printAnalysisTerminal(result AnalysisResult) {
 		}
 
 		fmt.Printf("\n%s (%d)\n", cat.label, len(catIssues))
-		for _, issue := range catIssues {
-			printIssue(issue)
+		for i := range catIssues {
+			printIssue(&catIssues[i])
 		}
 	}
 	fmt.Println()
@@ -231,7 +231,7 @@ func filterCategory(issues []AnalysisIssue, category string) []AnalysisIssue {
 }
 
 // printIssue prints a single analysis issue.
-func printIssue(issue AnalysisIssue) {
+func printIssue(issue *AnalysisIssue) {
 	ref := issue.Person
 	if ref == "" {
 		ref = issue.Entity
