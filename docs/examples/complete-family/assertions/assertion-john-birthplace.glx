@@ -7,6 +7,4 @@ assertions:
     citations:
       - citation-john-birth
     confidence: high
-    sources:
-      - source-parish-leeds
     notes: "Birth place stated in parish register"
