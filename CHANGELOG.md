@@ -86,6 +86,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
 
+#### go-glx
+
+- **BREAKING**: Removed unused random filename helpers from `go-glx` — `GenerateRandomID`, `GenerateEntityFilename`, `GenerateUniqueFilename`, and the `ErrUniqueFilenameFailed` sentinel are deleted. They were superseded by `EntityIDToFilename` (#699) and had no remaining callers in `go-glx`; the `glx migrate` deprecated-property path that used `GenerateRandomID` for synthetic `event-<8hex>` IDs now does so via a small private helper in `glx/migrate_runner.go`. External consumers of `github.com/genealogix/glx/go-glx` that imported any of the four removed symbols will need to migrate to `EntityIDToFilename` (for filename derivation) or vendor the deleted helpers. Closes #697
+
 ### Fixed
 
 - **`complete-family` example: redundant `sources` on assertions** — `docs/examples/complete-family/assertions/assertion-john-birth.glx`, `assertion-john-birthplace.glx`, and `assertion-marriage.glx` each carried both a `citations:` list and a `sources:` list pointing at the same sources reachable through those citations. Per `specification/4-entity-types/assertion.md`, `citations` is the preferred evidence path when citations carry sub-location details (locator, `text_from_source`), which all three citations here do. Removed the redundant `sources` field on each assertion; the evidence chain Repository → Source → Citation → Assertion remains intact through the citations. Closes #579
