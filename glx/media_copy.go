@@ -209,9 +209,12 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 		b3 := cleaned[i+2] - '.'
 		b4 := cleaned[i+3] - '.'
 
-		result = append(result, (b1<<2)|(b2>>4)) //nolint:mnd // well-known base64 bit shifts
-		result = append(result, (b2<<4)|(b3>>2)) //nolint:mnd // well-known base64 bit shifts
-		result = append(result, (b3<<6)|b4)      //nolint:mnd // well-known base64 bit shifts
+		//nolint:mnd // well-known base64 bit shifts
+		result = append(result,
+			(b1<<2)|(b2>>4),
+			(b2<<4)|(b3>>2),
+			(b3<<6)|b4,
+		)
 	}
 
 	// Handle trailing characters (2 chars → 1 byte, 3 chars → 2 bytes)
