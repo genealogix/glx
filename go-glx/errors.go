@@ -40,7 +40,6 @@ var (
 	ErrInvalidEntityType        = errors.New("invalid entity type")
 	ErrFileWriteFailed          = errors.New("failed to write file")
 	ErrUnsupportedEntityType    = errors.New("unsupported entity type")
-	ErrUniqueFilenameFailed     = errors.New("failed to generate unique filename")
 	ErrCaseInsensitiveCollision = errors.New("case-insensitive filename collision: two entity IDs produce the same lowercase filename")
 	ErrUnsafeEntityID           = errors.New("entity ID contains unsafe characters for use as filename")
 	ErrVocabularyNotFound       = errors.New("vocabulary not found")
