@@ -49,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **`possibly_same_person` relationship type** — New standard relationship type for linking two person records that may refer to the same individual but cannot yet be confirmed; pair with an Assertion subject-referencing the relationship to record `confidence` and supporting citations. No direct GEDCOM mapping. Closes #227.
 - **`external_ids` property added to `place_properties`** — Standard property for cross-system place identifiers (GeoNames, Wikidata, OpenStreetMap, etc.), mirroring the existing `external_ids` pattern on `person`, `source`, `citation`, and `repository` properties. Multi-value with a `type` field for the issuing authority. Maps to GEDCOM 7.0 `PLAC.EXID`. Closes #536
+- **`name_as_recorded` property added to `event_properties` and `relationship_properties`** — Standard structured property for the participant's name exactly as written in the source backing the event or relationship. Captures source-specific renderings (Latin-genitive forms in 18th-century parish registers, abbreviations, transcription quirks) on `event.participants[].properties` and `relationship.participants[].properties` rather than as a temporal variant on the Person entity. Mirrors the field shape of `person_properties.name` (`prefix`, `given`, `surname_prefix`, `surname`, `suffix`). Closes #714
 - **`repository-types.glx` GEDCOM mappings added** — Added `gedcom:` fields to nine of the ten standard repository types (`archive`, `library`, `church`, `database` → `online`, `museum`, `registry`, `historical_society` → `society`, `university`, `government_agency` → `government`); `other` is intentionally left unmapped as the fallback target for unrecognized values. The hardcoded `gedcomRepositoryTypeMapping` map in `go-glx/constants.go` has been removed and the mapping is now read from the vocabulary at import time, bringing repository-types in line with how every other vocabulary handles GEDCOM tags. Closes #555.
 
 #### Tooling
@@ -86,6 +87,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Removed
 
 - **Removed `glx merge --dry-run`** — The `--dry-run` flag on `glx merge` (added in beta.10, #264) has been removed in favor of `--preview`, which supersedes it with richer output including cross-archive duplicate detection. (#702)
+
+#### go-glx
+
+- **BREAKING**: Removed unused random filename helpers from `go-glx` — `GenerateRandomID`, `GenerateEntityFilename`, `GenerateUniqueFilename`, and the `ErrUniqueFilenameFailed` sentinel are deleted. They were superseded by `EntityIDToFilename` (#699) and had no remaining callers in `go-glx`; the `glx migrate` deprecated-property path that used `GenerateRandomID` for synthetic `event-<8hex>` IDs now does so via a small private helper in `glx/migrate_runner.go`. External consumers of `github.com/genealogix/glx/go-glx` that imported any of the four removed symbols will need to migrate to `EntityIDToFilename` (for filename derivation) or vendor the deleted helpers. Closes #697
 
 ### Fixed
 
