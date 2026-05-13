@@ -116,8 +116,8 @@ func migrateVitalEventProperties(archive *glxlib.GLXFile) (*MigrateReport, error
 			{glxlib.EventTypeDeath, glxlib.DeprecatedPropertyDiedOn, glxlib.DeprecatedPropertyDiedAt, diedOn, hasDiedOn, diedAt, hasDiedAt},
 			{glxlib.EventTypeBurial, glxlib.DeprecatedPropertyBuriedOn, glxlib.DeprecatedPropertyBuriedAt, buriedOn, hasBuriedOn, buriedAt, hasBuriedAt},
 		}
-		for _, pm := range pairs {
-			if err := migratePropertyPair(archive, personID, person, pm, report); err != nil {
+		for i := range pairs {
+			if err := migratePropertyPair(archive, personID, person, &pairs[i], report); err != nil {
 				return nil, err
 			}
 		}
@@ -214,7 +214,7 @@ func migratePropertyPair(
 	archive *glxlib.GLXFile,
 	personID string,
 	person *glxlib.Person,
-	pm propertyMigration,
+	pm *propertyMigration,
 	report *MigrateReport,
 ) error {
 	if !pm.hasDate && !pm.hasPlace {

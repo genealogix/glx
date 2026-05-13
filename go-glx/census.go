@@ -180,7 +180,8 @@ func validateCensusTemplate(template *CensusTemplate) error {
 	if len(c.Household.Members) == 0 {
 		return fmt.Errorf("census.household.members is required (at least one member)")
 	}
-	for i, m := range c.Household.Members {
+	for i := range c.Household.Members {
+		m := &c.Household.Members[i]
 		if strings.TrimSpace(m.Name) == "" {
 			return fmt.Errorf("census.household.members[%d].name is required", i)
 		}
@@ -329,7 +330,8 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 	var participants []Participant
 	var resolvedIDs []string
 
-	for _, member := range census.Household.Members {
+	for i := range census.Household.Members {
+		member := &census.Household.Members[i]
 		personID, isNew, err := resolveCensusPerson(member, existing, result)
 		if err != nil {
 			return nil, nil, err
@@ -370,7 +372,7 @@ func resolveCensusPersons(census *CensusData, existing *GLXFile, result *CensusR
 }
 
 // resolveCensusPerson resolves a single household member.
-func resolveCensusPerson(member CensusHouseholdMember, existing *GLXFile, result *CensusResult) (string, bool, error) {
+func resolveCensusPerson(member *CensusHouseholdMember, existing *GLXFile, result *CensusResult) (string, bool, error) {
 	// Explicit person ID
 	if member.PersonID != "" {
 		if existing.Persons != nil {
@@ -465,7 +467,8 @@ func buildCensusEvent(census *CensusData, placeID string, participants []Partici
 func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID, citationID string, existing *GLXFile, result *CensusResult) error {
 	yearStr := fmt.Sprintf("%d", census.Year)
 
-	for i, member := range census.Household.Members {
+	for i := range census.Household.Members {
+		member := &census.Household.Members[i]
 		personID := resolvedIDs[i]
 
 		// Use personID slug (not name slug) for assertion IDs to avoid

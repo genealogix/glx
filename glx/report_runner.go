@@ -31,7 +31,7 @@ func confidenceReport(archivePath string) error {
 	}
 
 	report := buildConfidenceReport(archive)
-	printConfidenceReport(report)
+	printConfidenceReport(&report)
 
 	return nil
 }
@@ -197,7 +197,7 @@ func buildConfidenceOrder(counts map[string]int) []string {
 }
 
 // printConfidenceReport outputs the report to stdout.
-func printConfidenceReport(report reportData) {
+func printConfidenceReport(report *reportData) {
 	fmt.Println("Confidence Summary Report")
 	fmt.Println(strings.Repeat("=", 40))
 
