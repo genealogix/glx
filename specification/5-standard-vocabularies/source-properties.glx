@@ -54,5 +54,5 @@ source_properties:
 
   url:
     label: "URL"
-    description: "Web address where the source can be accessed online (e.g., FamilySearch, Ancestry, FindAGrave)"
+    description: "Web address for the source collection or database. For URLs to specific records within the source, use the citation url property instead."
     value_type: string
