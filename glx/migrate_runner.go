@@ -15,11 +15,16 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"sort"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+var errEventIDCollisions = errors.New("creating event ID: too many collisions with existing event IDs")
 
 // MigrateReport summarizes the changes made by a migration run.
 type MigrateReport struct {
@@ -163,11 +168,11 @@ func migrateOrphanedAssertions(archive *glxlib.GLXFile, report *MigrateReport) e
 
 		eventID, event := glxlib.FindPersonEvent(archive, personID, mapping.eventType)
 		if eventID == "" {
-			newID, err := glxlib.GenerateRandomID()
+			id, err := newEventID(archive)
 			if err != nil {
-				return fmt.Errorf("generating event ID for orphaned assertion: %w", err)
+				return fmt.Errorf("orphaned assertion for person %s (%s): %w", personID, mapping.eventType, err)
 			}
-			eventID = "event-" + newID
+			eventID = id
 			event = &glxlib.Event{
 				Type: mapping.eventType,
 				Participants: []glxlib.Participant{
@@ -329,11 +334,10 @@ func migrateEventProperties(
 		return "", transferred, nil
 	}
 
-	newID, err := glxlib.GenerateRandomID()
+	eventID, err := newEventID(archive)
 	if err != nil {
-		return "", transferred, fmt.Errorf("generating event ID: %w", err)
+		return "", transferred, err
 	}
-	eventID = "event-" + newID
 
 	event := &glxlib.Event{
 		Type: eventType,
@@ -381,4 +385,27 @@ func migrateAssertions(
 			report.AssertionsMigrated++
 		}
 	}
+}
+
+// newEventID mints a synthetic event ID for migrated deprecated person
+// properties that doesn't collide with an existing event in the archive.
+// Random because there's no natural deterministic derivation — every other
+// event in the archive is hand-authored with a meaningful ID. 64 bits of
+// randomness make collisions astronomically unlikely; the retry loop is
+// defense in depth against the unbounded-archive case.
+func newEventID(archive *glxlib.GLXFile) (string, error) {
+	const maxAttempts = 16
+
+	bytes := make([]byte, 8)
+	for range maxAttempts {
+		if _, err := rand.Read(bytes); err != nil {
+			return "", fmt.Errorf("creating event ID: %w", err)
+		}
+		id := "event-" + hex.EncodeToString(bytes)
+		if _, exists := archive.Events[id]; !exists {
+			return id, nil
+		}
+	}
+
+	return "", fmt.Errorf("%w (%d attempts)", errEventIDCollisions, maxAttempts)
 }
