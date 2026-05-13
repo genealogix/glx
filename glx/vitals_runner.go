@@ -120,9 +120,10 @@ func collectVitals(personID string, person *glxlib.Person, archive *glxlib.GLXFi
 
 	// Name
 	name := extractPersonName(person)
-	vitals = append(vitals, vitalRecord{"Name", name})
-
-	vitals = append(vitals, vitalRecord{"Sex", displayOrDash(personSex(person))})
+	vitals = append(vitals,
+		vitalRecord{"Name", name},
+		vitalRecord{"Sex", displayOrDash(personSex(person))},
+	)
 
 	// Gender identity — shown only when it adds information beyond the Sex
 	// row. For pre-split archives carrying `gender: "male"`, the Sex row
