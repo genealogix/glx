@@ -58,9 +58,20 @@ If you're evaluating whether to report: please do. The project benefits from sec
 
 ## Security Measures
 
-- **govulncheck** runs in CI on pushes to main, pull requests, and weekly to detect known vulnerabilities in dependencies
-- **gosec** performs static security analysis on pushes to main, pull requests, and weekly
-- Weekly scheduled scans catch newly disclosed vulnerabilities in existing dependencies
+### Vulnerability Scanning
+
+- **govulncheck** — scans Go dependencies for known CVEs (CI + weekly)
+- **gosec** — static analysis for common Go security issues (CI + weekly)
+- **npm audit** — checks website dependencies for vulnerabilities (CI + weekly)
+
+### Dependency Management
+
+- **Dependabot** — daily automated dependency updates for Go, npm, and GitHub Actions
+- **Dependency review** — blocks PRs that introduce dependencies with moderate+ vulnerabilities
+
+### Code Scanning
+
+- **GitHub Code Scanning** — receives govulncheck SARIF uploads for triage
 
 ## Scope
 
