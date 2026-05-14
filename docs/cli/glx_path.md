@@ -52,6 +52,12 @@ glx path <person-a> <person-b> [flags]
       --max-hops int     Maximum number of hops to search (default 10)
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
