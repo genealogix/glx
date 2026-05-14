@@ -168,7 +168,7 @@ Also check:
 
 The CLI (`glx validate`) runs validation in two passes:
 
-1. **Pass 1 — JSON Schema validation** (`glx/validator.go` → `ValidateGLXFileStructure` using `gojsonschema`):
+1. **Pass 1 — JSON Schema validation** (`glx/validator.go` → `ValidateGLXFileStructure` using `santhosh-tekuri/jsonschema/v6`):
    Enforces ALL structural constraints from the JSON schemas:
    - `required` fields
    - `minLength`, `minItems`, `minimum`/`maximum` constraints
