@@ -48,20 +48,33 @@ var nonGeographicPLACSentinels = map[string]string{
 // nonGeographicPLACReason returns a short rejection reason if the
 // GEDCOM PLAC value clearly does not describe a geographic location, or
 // the empty string if it should be parsed normally. The check is
-// conservative — substrings of legitimate places (e.g. "Unknown County,
-// Texas") are accepted; circumstance-phrase heuristics never fire on
-// comma-bearing values, since a comma is a strong signal that the
-// author meant a place hierarchy.
+// conservative — two-or-more non-empty comma components signal a real
+// place hierarchy and are accepted unconditionally (e.g. "Unknown
+// County, Texas"), so the sentinel and circumstance-phrase heuristics
+// only fire on values that collapse to a single non-empty component
+// (this covers leading/trailing-comma variants like "Unknown,").
 func nonGeographicPLACReason(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return ""
 	}
-	if strings.IndexByte(trimmed, ',') >= 0 {
+
+	var single string
+	nonEmpty := 0
+	for part := range strings.SplitSeq(trimmed, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			nonEmpty++
+			single = p
+			if nonEmpty > 1 {
+				return ""
+			}
+		}
+	}
+	if nonEmpty == 0 {
 		return ""
 	}
 
-	lower := strings.ToLower(trimmed)
+	lower := strings.ToLower(single)
 	if reason, ok := nonGeographicPLACSentinels[lower]; ok {
 		return reason
 	}

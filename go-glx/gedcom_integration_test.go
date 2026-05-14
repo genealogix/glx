@@ -357,8 +357,13 @@ func TestNonGeographicPLACReason(t *testing.T) {
 		{"died in childbirth", "Died in childbirth", true},
 		{"killed in action", "Killed in action", true},
 		{"childbirth alone", "childbirth", true},
+		// Leading/trailing commas around a single sentinel component still reject.
+		{"trailing comma sentinel", "Unknown,", true},
+		{"leading comma sentinel", ", Unknown", true},
+		{"surrounding empty components", "  ,  Unknown  ,  ", true},
 		// Real places that contain sentinel substrings or look risky must pass.
 		{"empty", "", false},
+		{"only commas", ",,,", false},
 		{"paris france", "Paris, France", false},
 		{"new york ny usa", "New York, NY, USA", false},
 		{"unknown county tx", "Unknown County, Texas", false},
