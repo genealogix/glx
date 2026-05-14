@@ -88,6 +88,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ steps.create-issue.outputs.issue-number }}
         run: |
+          # `gh api graphql --jq` prints the literal string "null" when the
+          # path resolves to JSON null (e.g. missing issue, missing org-level
+          # issue-type access), so reject both empty and "null" results before
+          # treating the value as a valid ID.
           issue_id=$(gh api graphql -f query='
             query($owner:String!, $repo:String!, $n:Int!) {
               repository(owner:$owner, name:$repo) { issue(number:$n) { id } }
@@ -96,7 +100,7 @@ jobs:
             -F repo="${{ github.event.repository.name }}" \
             -F n="$ISSUE_NUMBER" \
             --jq .data.repository.issue.id)
-          if [[ -z "$issue_id" ]]; then
+          if [[ -z "$issue_id" || "$issue_id" == "null" ]]; then
             echo "::error::Could not resolve node ID for issue #${ISSUE_NUMBER}"
             exit 1
           fi
@@ -106,7 +110,7 @@ jobs:
             }' \
             -F org="${{ github.repository_owner }}" \
             --jq '.data.organization.issueTypes.nodes[] | select(.name == "Bug") | .id')
-          if [[ -z "$bug_type_id" ]]; then
+          if [[ -z "$bug_type_id" || "$bug_type_id" == "null" ]]; then
             echo "::error::Bug issue type not found in organization ${{ github.repository_owner }}"
             exit 1
           fi
@@ -116,7 +120,8 @@ jobs:
             }' \
             -F id="$issue_id" \
             -F type="$bug_type_id")
-          if ! echo "$result" | grep -q '"number"'; then
+          returned_number=$(echo "$result" | jq -r '.data.updateIssueIssueType.issue.number // empty' 2>/dev/null || true)
+          if [[ -z "$returned_number" ]]; then
             errors=$(echo "$result" | jq -r '.errors[]?.message // "unknown error"' 2>/dev/null || echo "unparseable response")
             echo "::error::updateIssueIssueType mutation failed: $errors"
             exit 1
