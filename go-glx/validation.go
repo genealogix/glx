@@ -1166,7 +1166,8 @@ func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
 		if log.Date != "" {
 			glx.validateDateFormat(EntityTypeResearchLogs, id, "date", string(log.Date), result)
 		}
-		for i, search := range log.Searches {
+		for i := range log.Searches {
+			search := &log.Searches[i]
 			if search.Date != "" {
 				field := fmt.Sprintf("searches[%d].date", i)
 				glx.validateDateFormat(EntityTypeResearchLogs, id, field, string(search.Date), result)

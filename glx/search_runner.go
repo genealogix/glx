@@ -461,8 +461,8 @@ func searchResearchLogs(archive *glxlib.GLXFile, matchFn func(string) bool) []se
 		results = append(results, searchSlice("research_logs", id, "related_events", log.RelatedEvents, matchFn)...)
 		results = append(results, searchSlice("research_logs", id, "related_relationships", log.RelatedRelationships, matchFn)...)
 		results = append(results, searchSlice("research_logs", id, "related_places", log.RelatedPlaces, matchFn)...)
-		for i, search := range log.Searches {
-			results = append(results, searchResearchLogSearch(id, i, search, matchFn)...)
+		for i := range log.Searches {
+			results = append(results, searchResearchLogSearch(id, i, &log.Searches[i], matchFn)...)
 		}
 	}
 
@@ -502,7 +502,7 @@ func searchResearchLogScalars(id string, log *glxlib.ResearchLog, matchFn func(s
 
 // searchResearchLogSearch searches a single ResearchLogSearch entry, prefixing
 // field paths with searches[i] for caller display.
-func searchResearchLogSearch(logID string, idx int, s glxlib.ResearchLogSearch, matchFn func(string) bool) []searchResult {
+func searchResearchLogSearch(logID string, idx int, s *glxlib.ResearchLogSearch, matchFn func(string) bool) []searchResult {
 	prefix := fmt.Sprintf("searches[%d].", idx)
 	fields := []struct {
 		field string
