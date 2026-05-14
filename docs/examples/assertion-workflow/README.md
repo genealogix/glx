@@ -89,10 +89,11 @@ assertions:
 Complete evidence documentation follows this pattern:
 
 ```text
-Repository → Source → Citation → Assertion → Property
-    ↓          ↓          ↓          ↓           ↓
- Archives   Records   Specific   Evidence-   Concluded
-            & Docs    Reference  Based Claim   Value
+Repository → Source → Citation → Assertion ─┬─→ Property (e.g. name, occupation)
+    ↓          ↓          ↓          ↓      │
+ Archives   Records   Specific   Evidence-  │
+            & Docs    Reference  Based      └─→ Event (e.g. date, place)
+                                 Claim
 ```
 
 **Example chain in this archive:**
