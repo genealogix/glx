@@ -350,6 +350,9 @@ func convertFamilyResidence(husbandID, wifeID string, resiRecord *GEDCOMRecord, 
 	for _, sub := range resiRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagPlac:
+			if warnIfNonGeographicPLAC(sub, conv) {
+				continue
+			}
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				placeID = buildPlaceHierarchy(hierarchy, conv)

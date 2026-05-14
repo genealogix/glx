@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -24,6 +25,67 @@ type PlaceHierarchy struct {
 	Components []string // From specific to general
 	Latitude   *float64 // Latitude coordinate (if provided)
 	Longitude  *float64 // Longitude coordinate (if provided)
+}
+
+// nonGeographicPLACSentinels keys trimmed, lower-cased PLAC sentinel
+// values to a short reason. Package-level to avoid per-call allocation.
+var nonGeographicPLACSentinels = map[string]string{
+	"unknown":    "placeholder value",
+	"unk":        "placeholder value",
+	"?":          "placeholder value",
+	"n/a":        "placeholder value",
+	"na":         "placeholder value",
+	"none":       "placeholder value",
+	"no record":  "placeholder value",
+	"no records": "placeholder value",
+	"unrecorded": "placeholder value",
+	"private":    "placeholder value",
+	"deceased":   "status, not a place",
+	"unmarried":  "marital status, not a place",
+	"stillborn":  "life event, not a place",
+}
+
+// nonGeographicPLACReason returns a short rejection reason if the
+// GEDCOM PLAC value clearly does not describe a geographic location, or
+// the empty string if it should be parsed normally. The check is
+// conservative — substrings of legitimate places (e.g. "Unknown County,
+// Texas") are accepted; circumstance-phrase heuristics never fire on
+// comma-bearing values, since a comma is a strong signal that the
+// author meant a place hierarchy.
+func nonGeographicPLACReason(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.IndexByte(trimmed, ',') >= 0 {
+		return ""
+	}
+
+	lower := strings.ToLower(trimmed)
+	if reason, ok := nonGeographicPLACSentinels[lower]; ok {
+		return reason
+	}
+	if strings.HasPrefix(lower, "died in ") ||
+		strings.HasPrefix(lower, "killed in ") ||
+		strings.Contains(lower, "childbirth") {
+		return "describes circumstance, not place"
+	}
+
+	return ""
+}
+
+// warnIfNonGeographicPLAC emits an import warning and returns true when
+// the PLAC subrecord's value is non-geographic, so the caller can skip
+// place creation for that subrecord.
+func warnIfNonGeographicPLAC(sub *GEDCOMRecord, conv *ConversionContext) bool {
+	reason := nonGeographicPLACReason(sub.Value)
+	if reason == "" {
+		return false
+	}
+	conv.addWarning(sub.Line, GedcomTagPlac,
+		fmt.Sprintf("PLAC value %q is not a geographic place (%s); ignored", sub.Value, reason))
+
+	return true
 }
 
 // parseGEDCOMPlace parses a GEDCOM place string

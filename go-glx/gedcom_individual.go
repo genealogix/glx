@@ -524,6 +524,9 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 	for _, sub := range resiRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagPlac:
+			if warnIfNonGeographicPLAC(sub, conv) {
+				continue
+			}
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				placeID = buildPlaceHierarchy(hierarchy, conv)
@@ -638,6 +641,9 @@ func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) census
 		case GedcomTagDate:
 			dateStr = string(parseGEDCOMDate(sub.Value))
 		case GedcomTagPlac:
+			if warnIfNonGeographicPLAC(sub, conv) {
+				continue
+			}
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				lat, lon := extractPlaceCoordinates(sub)

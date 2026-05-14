@@ -334,6 +334,108 @@ func TestParseGEDCOMPlace(t *testing.T) {
 	}
 }
 
+func TestNonGeographicPLACReason(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantReject bool
+	}{
+		// Sentinel placeholders (case + whitespace variants).
+		{"unknown", "Unknown", true},
+		{"unknown caps", "UNKNOWN", true},
+		{"unknown padded", "  unknown  ", true},
+		{"question mark", "?", true},
+		{"n slash a", "N/A", true},
+		{"none", "none", true},
+		{"private", "Private", true},
+		{"unrecorded", "Unrecorded", true},
+		// Status / non-place markers.
+		{"unmarried", "Unmarried", true},
+		{"deceased", "Deceased", true},
+		{"stillborn", "Stillborn", true},
+		// Circumstance-prose (no comma).
+		{"died in childbirth", "Died in childbirth", true},
+		{"killed in action", "Killed in action", true},
+		{"childbirth alone", "childbirth", true},
+		// Real places that contain sentinel substrings or look risky must pass.
+		{"empty", "", false},
+		{"paris france", "Paris, France", false},
+		{"new york ny usa", "New York, NY, USA", false},
+		{"unknown county tx", "Unknown County, Texas", false},
+		{"london", "London", false},
+		{"cathedral with comma", "St. Pauls Cathedral, London", false},
+		// Circumstance keyword inside a comma-delimited hierarchy is left alone.
+		{"died in with comma", "Died in childbirth, Boston", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reason := nonGeographicPLACReason(tt.input)
+			gotReject := reason != ""
+			if gotReject != tt.wantReject {
+				t.Errorf("nonGeographicPLACReason(%q) = %q, want reject=%v",
+					tt.input, reason, tt.wantReject)
+			}
+		})
+	}
+}
+
+func TestImportPLACNonGeographicValueEmitsWarning(t *testing.T) {
+	const gedcom = "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n" +
+		"1 NAME Jane /Doe/\n" +
+		"1 DEAT\n" +
+		"2 PLAC Died in childbirth\n" +
+		"0 TRLR\n"
+
+	glx, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("ImportGEDCOM failed: %v", err)
+	}
+
+	// No Place entity should have been created for the bad PLAC value.
+	for _, place := range glx.Places {
+		if strings.Contains(strings.ToLower(place.Name), "childbirth") {
+			t.Errorf("expected no Place for non-geographic PLAC, got %q", place.Name)
+		}
+	}
+
+	// The DEAT event should exist with an empty PlaceID.
+	var deathEvent *Event
+	for _, ev := range glx.Events {
+		if ev.Type == "death" {
+			deathEvent = ev
+
+			break
+		}
+	}
+	if deathEvent == nil {
+		t.Fatalf("expected a death event for @I1@")
+	}
+	if deathEvent.PlaceID != "" {
+		t.Errorf("death event PlaceID = %q, want empty", deathEvent.PlaceID)
+	}
+
+	// Exactly one PLAC warning should be in the import result.
+	var placWarnings []ImportWarning
+	for _, w := range result.Statistics.Warnings {
+		if w.Tag == GedcomTagPlac {
+			placWarnings = append(placWarnings, w)
+		}
+	}
+	if len(placWarnings) != 1 {
+		t.Fatalf("got %d PLAC warnings, want 1: %+v", len(placWarnings), placWarnings)
+	}
+	if !strings.Contains(placWarnings[0].Message, "Died in childbirth") {
+		t.Errorf("warning message %q does not reference the rejected value", placWarnings[0].Message)
+	}
+	if !strings.Contains(placWarnings[0].Message, "not a geographic place") {
+		t.Errorf("warning message %q does not explain why it was rejected", placWarnings[0].Message)
+	}
+}
+
 func TestImportNoteReferenceResolution(t *testing.T) {
 	// Test that NOTE references (e.g., NOTE @N176@) are resolved to their text content
 	// The assess.ged file has:
