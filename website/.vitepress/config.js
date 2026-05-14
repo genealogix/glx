@@ -276,7 +276,7 @@ export default defineConfig({
         {
           text: 'CLI Tool',
           items: [
-            { text: 'Overview', link: '/cli/' },
+            { text: 'Overview', link: '/cli' },
             { text: 'glx (root)', link: '/cli/glx' }
           ]
         },
