@@ -103,6 +103,7 @@ const (
 	PersonPropertyGender     = "gender" // Self-identified gender identity; no direct GEDCOM mapping
 	PersonPropertyResidence  = "residence"
 	PersonPropertyOccupation = "occupation"
+	PersonPropertyLiving     = "living" // Boolean; opt-in marker honored by export privacy filters
 )
 
 // Deprecated property constants - these properties have been removed from the spec.

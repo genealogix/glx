@@ -24,6 +24,15 @@ The exported GEDCOM file will include:
 - All media objects (OBJE records)
 - Events, places, citations, and notes
 
+Use --privatize-living to redact living persons' data on export. A person is
+treated as living when their `living: true` property is set, or — under
+the fallback heuristic — when no recorded death, burial, or cremation event
+exists and their earliest known birth year is less than 100 years ago.
+Redaction replaces the person's name with "Living", strips all other
+properties (occupation, residence, religion, etc.), and blanks dates and
+places on events whose subject is a living person. Family structure is
+preserved.
+
 ```
 glx export <glx-archive> [flags]
 ```
@@ -40,6 +49,9 @@ glx export <glx-archive> [flags]
   # Export to GEDCOM 7.0
   glx export family-archive -o family.ged --format 70
 
+  # Redact living persons before exporting (e.g. before publishing to a public Git repo)
+  glx export family-archive -o family-public.ged --privatize-living
+
   # Export with verbose output
   glx export family-archive -o family.ged --verbose
 ```
@@ -47,10 +59,11 @@ glx export <glx-archive> [flags]
 ### Options
 
 ```
-  -f, --format string   GEDCOM version: 551 or 70 (default "551")
-  -h, --help            help for export
-  -o, --output string   Output GEDCOM file path (required)
-  -v, --verbose         Verbose output
+  -f, --format string      GEDCOM version: 551 or 70 (default "551")
+  -h, --help               help for export
+  -o, --output string      Output GEDCOM file path (required)
+      --privatize-living   Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)
+  -v, --verbose            Verbose output
 ```
 
 ### SEE ALSO

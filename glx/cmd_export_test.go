@@ -122,7 +122,7 @@ func TestExportToGEDCOM_SingleFileInput(t *testing.T) {
 
 	// Export to GEDCOM
 	outputPath := filepath.Join(tmpDir, "output.ged")
-	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, false)
+	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, false, false)
 	require.NoError(t, err)
 
 	// Verify file was created with content
@@ -142,7 +142,7 @@ func TestExportToGEDCOM_MultiFileInput(t *testing.T) {
 
 	// Export to GEDCOM
 	outputPath := filepath.Join(tmpDir, "output.ged")
-	err = exportToGEDCOM(archiveDir, outputPath, ExportFormat551, false)
+	err = exportToGEDCOM(archiveDir, outputPath, ExportFormat551, false, false)
 	require.NoError(t, err)
 
 	// Verify file was created
@@ -162,7 +162,7 @@ func TestExportToGEDCOM_AddsGEDExtension(t *testing.T) {
 
 	// Export without .ged extension
 	outputPath := filepath.Join(tmpDir, "output")
-	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, false)
+	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, false, false)
 	require.NoError(t, err)
 
 	// Verify .ged extension was added
@@ -179,7 +179,7 @@ func TestExportToGEDCOM_InvalidFormat(t *testing.T) {
 	require.NoError(t, err, "setup: import should succeed")
 
 	outputPath := filepath.Join(tmpDir, "output.ged")
-	err = exportToGEDCOM(glxPath, outputPath, "invalid", false)
+	err = exportToGEDCOM(glxPath, outputPath, "invalid", false, false)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrInvalidExportFormat)
 }
@@ -188,7 +188,7 @@ func TestExportToGEDCOM_InputNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.ged")
 
-	err := exportToGEDCOM("/nonexistent/path", outputPath, ExportFormat551, false)
+	err := exportToGEDCOM("/nonexistent/path", outputPath, ExportFormat551, false, false)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrInputNotFound)
 }
@@ -203,7 +203,7 @@ func TestExportToGEDCOM_OutputDirectoryCreation(t *testing.T) {
 
 	// Export to a nested directory that doesn't exist yet
 	outputPath := filepath.Join(tmpDir, "nested", "dir", "output.ged")
-	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, false)
+	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, false, false)
 	require.NoError(t, err)
 
 	_, err = os.Stat(outputPath)
@@ -218,7 +218,7 @@ func TestExportToGEDCOM_VerboseMode(t *testing.T) {
 	require.NoError(t, err, "setup: import should succeed")
 
 	outputPath := filepath.Join(tmpDir, "output.ged")
-	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, true)
+	err = exportToGEDCOM(glxPath, outputPath, ExportFormat551, true, false)
 	require.NoError(t, err, "should succeed with verbose mode")
 
 	_, err = os.Stat(outputPath)
@@ -233,12 +233,87 @@ func TestExportToGEDCOM_GEDCOM70(t *testing.T) {
 	require.NoError(t, err, "setup: import should succeed")
 
 	outputPath := filepath.Join(tmpDir, "output.ged")
-	err = exportToGEDCOM(glxPath, outputPath, ExportFormat70, false)
+	err = exportToGEDCOM(glxPath, outputPath, ExportFormat70, false, false)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(outputPath)
 	require.NoError(t, err)
 	require.Contains(t, string(data), "0 HEAD")
+}
+
+func TestExportToGEDCOM_PrivatizeLiving(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Build a synthetic archive with one clearly-dead person (birth 1850,
+	// death 1920) and one clearly-living person (birth 2010, no death). The
+	// living person's birth year is 2010 so the heuristic (now < birth+100)
+	// holds until 2110; tests needing exact control over `now` exercise the
+	// library function directly in privacy_test.go.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-old": {
+				Properties: map[string]any{
+					"name": map[string]any{
+						"value":  "Ezekiel Privacytest",
+						"fields": map[string]any{"given": "Ezekiel", "surname": "Privacytest"},
+					},
+					"sex": "male",
+				},
+			},
+			"person-young": {
+				Properties: map[string]any{
+					"name": map[string]any{
+						"value":  "Modern Currentperson",
+						"fields": map[string]any{"given": "Modern", "surname": "Currentperson"},
+					},
+					"sex":        "male",
+					"occupation": "software engineer",
+				},
+			},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth-old": {
+				Type: glxlib.EventTypeBirth,
+				Date: "1850",
+				Participants: []glxlib.Participant{
+					{Person: "person-old", Role: glxlib.ParticipantRolePrincipal},
+				},
+			},
+			"event-death-old": {
+				Type: glxlib.EventTypeDeath,
+				Date: "1920",
+				Participants: []glxlib.Participant{
+					{Person: "person-old", Role: glxlib.ParticipantRolePrincipal},
+				},
+			},
+			"event-birth-young": {
+				Type: glxlib.EventTypeBirth,
+				Date: "2010",
+				Participants: []glxlib.Participant{
+					{Person: "person-young", Role: glxlib.ParticipantRolePrincipal},
+				},
+			},
+		},
+	}
+
+	glxPath := filepath.Join(tmpDir, "archive.glx")
+	require.NoError(t, writeSingleFileArchive(glxPath, archive, false), "setup: write archive")
+
+	outputPath := filepath.Join(tmpDir, "output.ged")
+	require.NoError(t, exportToGEDCOM(glxPath, outputPath, ExportFormat551, false, true))
+
+	data, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	out := string(data)
+
+	require.Contains(t, out, "Living //", "living person's NAME should be redacted to 'Living'")
+	require.NotContains(t, out, "Modern", "living person's given name should not leak")
+	require.NotContains(t, out, "Currentperson", "living person's surname should not leak")
+	require.NotContains(t, out, "software engineer", "living person's occupation should not leak")
+	require.NotContains(t, out, "2010", "living person's birth year should not leak")
+	require.Contains(t, out, "Ezekiel", "dead person's data should be preserved")
+	require.Contains(t, out, "1850", "dead person's birth year should be preserved")
+	require.Contains(t, out, "1920", "dead person's death year should be preserved")
 }
 
 func TestRunExport(t *testing.T) {

@@ -168,9 +168,10 @@ func runImport(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	exportOutput  string
-	exportFormat  string
-	exportVerbose bool
+	exportOutput          string
+	exportFormat          string
+	exportVerbose         bool
+	exportPrivatizeLiving bool
 )
 
 var exportCmd = &cobra.Command{
@@ -189,7 +190,16 @@ The exported GEDCOM file will include:
 - All sources (SOUR records)
 - All repositories (REPO records)
 - All media objects (OBJE records)
-- Events, places, citations, and notes`,
+- Events, places, citations, and notes
+
+Use --privatize-living to redact living persons' data on export. A person is
+treated as living when their ` + "`living: true`" + ` property is set, or — under
+the fallback heuristic — when no recorded death, burial, or cremation event
+exists and their earliest known birth year is less than 100 years ago.
+Redaction replaces the person's name with "Living", strips all other
+properties (occupation, residence, religion, etc.), and blanks dates and
+places on events whose subject is a living person. Family structure is
+preserved.`,
 	Example: `  # Export to GEDCOM 5.5.1 (default)
   glx export family-archive -o family.ged
 
@@ -198,6 +208,9 @@ The exported GEDCOM file will include:
 
   # Export to GEDCOM 7.0
   glx export family-archive -o family.ged --format 70
+
+  # Redact living persons before exporting (e.g. before publishing to a public Git repo)
+  glx export family-archive -o family-public.ged --privatize-living
 
   # Export with verbose output
   glx export family-archive -o family.ged --verbose`,
@@ -209,12 +222,13 @@ func init() {
 	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output GEDCOM file path (required)")
 	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "GEDCOM version: 551 or 70")
 	exportCmd.Flags().BoolVarP(&exportVerbose, "verbose", "v", false, "Verbose output")
+	exportCmd.Flags().BoolVar(&exportPrivatizeLiving, "privatize-living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
 
 	_ = exportCmd.MarkFlagRequired("output")
 }
 
 func runExport(_ *cobra.Command, args []string) error {
-	return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose)
+	return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
 }
 
 // ============================================================================

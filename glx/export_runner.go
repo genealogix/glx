@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -30,7 +31,7 @@ const (
 )
 
 // exportToGEDCOM loads a GLX archive and exports it to GEDCOM format
-func exportToGEDCOM(inputPath, outputPath, format string, verbose bool) error {
+func exportToGEDCOM(inputPath, outputPath, format string, verbose, privatizeLiving bool) error {
 	// Parse GEDCOM version
 	version, err := parseGEDCOMVersion(format)
 	if err != nil {
@@ -41,6 +42,14 @@ func exportToGEDCOM(inputPath, outputPath, format string, verbose bool) error {
 	glx, err := loadGLXArchive(inputPath, verbose)
 	if err != nil {
 		return err
+	}
+
+	if privatizeLiving {
+		redacted := glxlib.PrivatizeLiving(glx, time.Now(), glxlib.LivingThresholdYears)
+		if verbose {
+			fmt.Printf("Privatized %d living persons before export (events redacted: %d, assertions dropped: %d)\n",
+				redacted.PersonsRedacted, redacted.EventsRedacted, redacted.AssertionsDropped)
+		}
 	}
 
 	// Set up log writer for verbose mode
