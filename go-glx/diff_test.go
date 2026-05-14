@@ -539,3 +539,33 @@ func TestDiffArchives_EventWithTitle(t *testing.T) {
 	require.Len(t, result.Changes, 1)
 	assert.Equal(t, "1860 Census — Webb Household", result.Changes[0].Summary)
 }
+
+func TestDiffArchives_ResearchLog(t *testing.T) {
+	old := &GLXFile{
+		ResearchLogs: map[string]*ResearchLog{
+			"rl-modified": {Title: "Find parents", Status: "open"},
+			"rl-removed":  {Title: "Old hypothesis"},
+		},
+	}
+	newArchive := &GLXFile{
+		ResearchLogs: map[string]*ResearchLog{
+			"rl-modified": {Title: "Find parents", Status: "complete"},
+			"rl-added":    {Title: "New investigation"},
+		},
+	}
+
+	result := DiffArchives(old, newArchive, "")
+
+	kinds := make(map[string]ChangeKind)
+	for _, c := range result.Changes {
+		assert.Equal(t, EntityTypeResearchLogs, c.EntityType,
+			"all changes in this test should be research_logs")
+		kinds[c.ID] = c.Kind
+	}
+	assert.Equal(t, ChangeAdded, kinds["rl-added"])
+	assert.Equal(t, ChangeModified, kinds["rl-modified"])
+	assert.Equal(t, ChangeRemoved, kinds["rl-removed"])
+	assert.Equal(t, 1, result.Stats.Added)
+	assert.Equal(t, 1, result.Stats.Modified)
+	assert.Equal(t, 1, result.Stats.Removed)
+}

@@ -79,6 +79,9 @@ func findEntityType(glx *GLXFile, id string) (string, error) {
 	if v, ok := glx.Media[id]; ok && v != nil {
 		return EntityTypeMedia, nil
 	}
+	if v, ok := glx.ResearchLogs[id]; ok && v != nil {
+		return EntityTypeResearchLogs, nil
+	}
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
 
@@ -120,6 +123,9 @@ func moveMapKey(glx *GLXFile, entityType, oldID, newID string) {
 	case EntityTypeMedia:
 		glx.Media[newID] = glx.Media[oldID]
 		delete(glx.Media, oldID)
+	case EntityTypeResearchLogs:
+		glx.ResearchLogs[newID] = glx.ResearchLogs[oldID]
+		delete(glx.ResearchLogs, oldID)
 	}
 }
 
@@ -268,6 +274,49 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 			count++
 		}
 		count += replaceInProperties(m.Properties, oldID, newID)
+	}
+
+	// Research log refs
+	for _, rl := range glx.ResearchLogs {
+		if rl == nil {
+			continue
+		}
+		// Subject is *EntityRef (optional), unlike Assertion.Subject which is a value.
+		if rl.Subject != nil {
+			if rl.Subject.Person == oldID {
+				rl.Subject.Person = newID
+				count++
+			}
+			if rl.Subject.Event == oldID {
+				rl.Subject.Event = newID
+				count++
+			}
+			if rl.Subject.Relationship == oldID {
+				rl.Subject.Relationship = newID
+				count++
+			}
+			if rl.Subject.Place == oldID {
+				rl.Subject.Place = newID
+				count++
+			}
+		}
+		// Mutate Searches via index because the slice holds values, not pointers.
+		for i := range rl.Searches {
+			if rl.Searches[i].RepositoryID == oldID {
+				rl.Searches[i].RepositoryID = newID
+				count++
+			}
+			if rl.Searches[i].SourceID == oldID {
+				rl.Searches[i].SourceID = newID
+				count++
+			}
+			if rl.Searches[i].CitationID == oldID {
+				rl.Searches[i].CitationID = newID
+				count++
+			}
+		}
+		count += replaceInSlice(rl.Citations, oldID, newID)
+		count += replaceInProperties(rl.Properties, oldID, newID)
 	}
 
 	return count
