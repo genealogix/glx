@@ -15,18 +15,18 @@
 package glx
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
 
 	schema "github.com/genealogix/glx/specification/schema/v1"
@@ -52,13 +52,12 @@ var (
 //
 // See issue #296. We intentionally validate per-entity rather than against
 // glx-file.schema.json: that top-level schema $refs the vocabulary schemas
-// directly (e.g. `"$ref": "vocabularies/event-types.schema.json"`), so
-// gojsonschema applies the whole vocabulary-schema document to each individual
-// vocab entry — which fails. The CLI validator at glx/validator.go works
-// around this by inlining $refs and extracting the inner pattern/additional
-// property definitions; reproducing that ~200 lines of resolution logic is
-// out of scope for this test. Per-entity schemas have no $refs (verified
-// across all schemas in specification/schema/v1/) so they validate cleanly.
+// directly (e.g. `"$ref": "vocabularies/event-types.schema.json"`). The CLI
+// validator at glx/validator.go inlines those $refs and extracts the inner
+// pattern/additional property definitions; reproducing that ~200 lines of
+// resolution logic is out of scope for this test. Per-entity schemas have no
+// $refs (verified across all schemas in specification/schema/v1/) so they
+// validate cleanly.
 func TestExampleArchivesRoundTrip(t *testing.T) {
 	const examplesRoot = "../docs/examples"
 
@@ -181,7 +180,7 @@ func walkOwnGLXFiles(dir string, fn func(absPath, rel string) error) error {
 
 // roundTripExampleArchive runs the schema and semantic-equality assertions
 // for one example.
-func roundTripExampleArchive(t *testing.T, ex exampleArchive, entitySchemas map[string]*gojsonschema.Schema) {
+func roundTripExampleArchive(t *testing.T, ex exampleArchive, entitySchemas map[string]*jsonschema.Schema) {
 	t.Helper()
 
 	serializer := NewSerializer(&SerializerOptions{Validate: false, Pretty: true})
@@ -255,14 +254,22 @@ var entitySchemaFiles = map[string]string{
 
 // loadEntitySchemas compiles the per-entity schemas once for reuse across
 // every sub-test. Failures here halt the parent test before any sub-tests run.
-func loadEntitySchemas() (map[string]*gojsonschema.Schema, error) {
-	out := make(map[string]*gojsonschema.Schema, len(entitySchemaFiles))
+func loadEntitySchemas() (map[string]*jsonschema.Schema, error) {
+	out := make(map[string]*jsonschema.Schema, len(entitySchemaFiles))
+	compiler := jsonschema.NewCompiler()
 	for entityType, filename := range entitySchemaFiles {
-		bytes, err := schema.EntitySchemas.ReadFile(filename)
+		schemaBytes, err := schema.EntitySchemas.ReadFile(filename)
 		if err != nil {
 			return nil, fmt.Errorf("read embedded schema %s: %w", filename, err)
 		}
-		compiled, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(bytes))
+		schemaDoc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaBytes))
+		if err != nil {
+			return nil, fmt.Errorf("parse %s: %w", filename, err)
+		}
+		if err := compiler.AddResource(filename, schemaDoc); err != nil {
+			return nil, fmt.Errorf("add resource %s: %w", filename, err)
+		}
+		compiled, err := compiler.Compile(filename)
 		if err != nil {
 			return nil, fmt.Errorf("compile %s: %w", filename, err)
 		}
@@ -278,7 +285,7 @@ func loadEntitySchemas() (map[string]*gojsonschema.Schema, error) {
 // definition blocks (person_properties, …) are intentionally skipped — those
 // would require resolving cross-file $refs from glx-file.schema.json, which
 // is the CLI validator's territory.
-func validateEntitiesAgainstSchemas(t *testing.T, exampleName string, archiveMap map[string]any, schemas map[string]*gojsonschema.Schema) {
+func validateEntitiesAgainstSchemas(t *testing.T, exampleName string, archiveMap map[string]any, schemas map[string]*jsonschema.Schema) {
 	t.Helper()
 
 	for entityType, schemaForType := range schemas {
@@ -300,20 +307,16 @@ func validateEntitiesAgainstSchemas(t *testing.T, exampleName string, archiveMap
 
 				continue
 			}
-			result, err := schemaForType.Validate(gojsonschema.NewBytesLoader(entityJSON))
+			inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(entityJSON))
 			if err != nil {
-				t.Errorf("%s: %s/%s: schema validator errored: %v",
+				t.Errorf("%s: %s/%s: parse JSON for validation: %v",
 					exampleName, entityType, entityID, err)
 
 				continue
 			}
-			if !result.Valid() {
-				var msgs []string
-				for _, e := range result.Errors() {
-					msgs = append(msgs, e.String())
-				}
-				t.Errorf("%s: %s/%s failed schema validation:\n  %s",
-					exampleName, entityType, entityID, strings.Join(msgs, "\n  "))
+			if verr := schemaForType.Validate(inst); verr != nil {
+				t.Errorf("%s: %s/%s failed schema validation: %v",
+					exampleName, entityType, entityID, verr)
 			}
 		}
 	}
@@ -341,8 +344,8 @@ func readMultiFileArchive(dir string) (map[string][]byte, error) {
 
 // parseYAMLAsMap parses YAML bytes into a normalized map[string]any. The
 // normalization step converts map[any]any (which gopkg.in/yaml.v3 may produce
-// for nested maps with non-string keys) into map[string]any so that gojsonschema
-// can ingest the value via NewGoLoader and so that map equality works as
+// for nested maps with non-string keys) into map[string]any so that the JSON
+// schema validator can ingest the value and so that map equality works as
 // expected with assert.Equal.
 func parseYAMLAsMap(data []byte) (map[string]any, error) {
 	var doc any

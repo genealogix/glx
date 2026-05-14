@@ -15,13 +15,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"strings"
 	"sync"
 
-	"github.com/xeipuuv/gojsonschema"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"gopkg.in/yaml.v3"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -38,7 +40,7 @@ const (
 // via sync.Once, then reused for all subsequent validations. This avoids re-parsing
 // the schema and re-compiling regexp patterns (~2 MB of regexp allocs) per file.
 var (
-	compiledSchema     *gojsonschema.Schema
+	compiledSchema     *jsonschema.Schema
 	compiledSchemaOnce sync.Once
 	compiledSchemaErr  error
 )
@@ -328,31 +330,40 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 			compiledSchemaErr = err
 			return
 		}
-		schemaBytes, err := json.Marshal(resolved)
-		if err != nil {
-			compiledSchemaErr = fmt.Errorf("failed to marshal resolved schema: %w", err)
+		compiler := jsonschema.NewCompiler()
+		if err := compiler.AddResource("glx-file.schema.json", resolved); err != nil {
+			compiledSchemaErr = fmt.Errorf("failed to add schema resource: %w", err)
 			return
 		}
-		compiledSchema, compiledSchemaErr = gojsonschema.NewSchema(
-			gojsonschema.NewBytesLoader(schemaBytes))
+		compiledSchema, compiledSchemaErr = compiler.Compile("glx-file.schema.json")
 	})
 	if compiledSchemaErr != nil {
 		return []string{fmt.Sprintf("failed to load schema: %v", compiledSchemaErr)}
 	}
 
-	// Validate against the pre-compiled schema
+	// Round-trip the document through JSON to give jsonschema a value with
+	// json.Unmarshal-canonical types (numbers as float64, etc.). YAML decodes
+	// integers as int, which the validator accepts but which can produce
+	// subtly different "type": "integer" / "type": "number" outcomes than the
+	// JSON-decoded form the schemas were authored against.
 	entityJSON, err := json.Marshal(doc)
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("failed to marshal entity: %v", err))
 
 		return issues
 	}
-	result, err := compiledSchema.Validate(gojsonschema.NewBytesLoader(entityJSON))
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(entityJSON))
 	if err != nil {
-		issues = append(issues, fmt.Sprintf("schema validation failed: %v", err))
-	} else if !result.Valid() {
-		for _, desc := range result.Errors() {
-			issues = append(issues, desc.String())
+		issues = append(issues, fmt.Sprintf("failed to parse entity: %v", err))
+
+		return issues
+	}
+	if verr := compiledSchema.Validate(inst); verr != nil {
+		var ve *jsonschema.ValidationError
+		if errors.As(verr, &ve) {
+			issues = append(issues, flattenValidationErrors(ve)...)
+		} else {
+			issues = append(issues, fmt.Sprintf("schema validation failed: %v", verr))
 		}
 	}
 
@@ -375,6 +386,26 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 	}
 
 	return issues
+}
+
+// flattenValidationErrors converts a jsonschema.ValidationError tree into a
+// flat list of "<instance-location>: <message>" strings, one per leaf cause.
+// Uses BasicOutput, which already flattens the cause tree for us.
+func flattenValidationErrors(ve *jsonschema.ValidationError) []string {
+	out := ve.BasicOutput()
+	msgs := make([]string, 0, len(out.Errors))
+	for _, unit := range out.Errors {
+		if unit.Error == nil {
+			continue
+		}
+		loc := unit.InstanceLocation
+		if loc == "" {
+			loc = "(root)"
+		}
+		msgs = append(msgs, fmt.Sprintf("%s: %s", loc, unit.Error))
+	}
+
+	return msgs
 }
 
 func isValidEntityID(id string) bool {
