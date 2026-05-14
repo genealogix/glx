@@ -266,3 +266,75 @@ places:
 	assert.Contains(t, output, "Places")
 	assert.NotContains(t, output, "Persons")
 }
+
+func TestSearchArchive_FindsTemporalListPropertyValue(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-temporal": {Properties: map[string]any{
+				"occupation": []any{
+					map[string]any{"value": "farmer", "date": 1850},
+					map[string]any{"value": "blacksmith", "date": 1860},
+				},
+			}},
+		},
+	}
+
+	results := searchArchive(archive, "blacksmith", false, "")
+
+	require.Len(t, results, 1, "should find one match for 'blacksmith' in temporal-list property")
+	assert.Equal(t, "persons", results[0].EntityType)
+	assert.Equal(t, "person-temporal", results[0].EntityID)
+	assert.Equal(t, "properties.occupation", results[0].Field)
+	assert.Equal(t, "blacksmith", results[0].Value)
+}
+
+func TestSearchArchive_FindsMapShapedPropertyValue(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-mapshaped": {Properties: map[string]any{
+				"religion": map[string]any{"value": "Methodist", "date": 1850},
+			}},
+		},
+	}
+
+	results := searchArchive(archive, "Methodist", false, "")
+
+	require.Len(t, results, 1, "should find one match for 'Methodist' in map-shaped property")
+	assert.Equal(t, "persons", results[0].EntityType)
+	assert.Equal(t, "person-mapshaped", results[0].EntityID)
+	assert.Equal(t, "properties.religion", results[0].Field)
+	assert.Equal(t, "Methodist", results[0].Value)
+}
+
+func TestSearchArchive_DeterministicOrdering(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-multi": {Properties: map[string]any{
+				"alpha": map[string]any{"value": "smith-target"},
+				"beta":  map[string]any{"value": "jones-target"},
+			}},
+		},
+	}
+
+	first := searchArchive(archive, "target", false, "")
+	require.Len(t, first, 2, "both map-shaped properties should match")
+
+	for i := range 50 {
+		got := searchArchive(archive, "target", false, "")
+		assert.Equal(t, first, got, "search results must be identical across runs (run %d)", i)
+	}
+}
+
+func TestSearchArchive_SkipsNonExtractableProperty(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-int": {Properties: map[string]any{
+				"age": 42,
+			}},
+		},
+	}
+
+	results := searchArchive(archive, "42", false, "")
+
+	assert.Empty(t, results)
+}

@@ -75,6 +75,9 @@ type searchResult struct {
 // searchProps searches a properties map (sorted keys for deterministic output)
 // and appends any matches to results. The prefix distinguishes entity-level
 // properties ("properties.") from participant-level ("participant.properties.").
+// Property values are enumerated via propertyScalars so every value in the
+// canonical GLX shapes (string, map-with-"value", []any temporal list) is
+// searchable; the first matching value within a property is recorded.
 func searchProps(entityType, id, prefix string, props map[string]any, matchFn func(string) bool) []searchResult {
 	var results []searchResult
 	keys := make([]string, 0, len(props))
@@ -83,21 +86,12 @@ func searchProps(entityType, id, prefix string, props map[string]any, matchFn fu
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		var s string
-		switch v := props[key].(type) {
-		case string:
-			s = v
-		case map[string]any:
-			if val, ok := v["value"]; ok {
-				if str, ok := val.(string); ok {
-					s = str
-				}
+		for _, s := range propertyScalars(props[key]) {
+			if matchFn(s) {
+				results = append(results, searchResult{entityType, id, prefix + key, truncate(s)})
+
+				break
 			}
-		default:
-			continue
-		}
-		if matchFn(s) {
-			results = append(results, searchResult{entityType, id, prefix + key, truncate(s)})
 		}
 	}
 
