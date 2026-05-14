@@ -104,12 +104,47 @@ jobs:
             echo "::error::Could not resolve node ID for issue #${ISSUE_NUMBER}"
             exit 1
           fi
-          bug_type_id=$(gh api graphql -f query='
-            query($org:String!) {
-              organization(login:$org) { issueTypes(first:50) { nodes { id name } } }
-            }' \
-            -F org="${{ github.repository_owner }}" \
-            --jq '.data.organization.issueTypes.nodes[] | select(.name == "Bug") | .id')
+          # Paginate through organization issueTypes (API max page size is 100).
+          # Stop as soon as Bug is found; only error out once all pages are
+          # exhausted, so an org with >100 issue types is still handled
+          # deterministically.
+          bug_type_id=""
+          cursor=""
+          while :; do
+            if [[ -z "$cursor" ]]; then
+              page=$(gh api graphql -f query='
+                query($org:String!) {
+                  organization(login:$org) {
+                    issueTypes(first:100) {
+                      nodes { id name }
+                      pageInfo { hasNextPage endCursor }
+                    }
+                  }
+                }' \
+                -F org="${{ github.repository_owner }}")
+            else
+              page=$(gh api graphql -f query='
+                query($org:String!, $cursor:String!) {
+                  organization(login:$org) {
+                    issueTypes(first:100, after:$cursor) {
+                      nodes { id name }
+                      pageInfo { hasNextPage endCursor }
+                    }
+                  }
+                }' \
+                -F org="${{ github.repository_owner }}" \
+                -F cursor="$cursor")
+            fi
+            bug_type_id=$(echo "$page" | jq -r '.data.organization.issueTypes.nodes[] | select(.name == "Bug") | .id')
+            if [[ -n "$bug_type_id" && "$bug_type_id" != "null" ]]; then
+              break
+            fi
+            has_next=$(echo "$page" | jq -r '.data.organization.issueTypes.pageInfo.hasNextPage')
+            if [[ "$has_next" != "true" ]]; then
+              break
+            fi
+            cursor=$(echo "$page" | jq -r '.data.organization.issueTypes.pageInfo.endCursor')
+          done
           if [[ -z "$bug_type_id" || "$bug_type_id" == "null" ]]; then
             echo "::error::Bug issue type not found in organization ${{ github.repository_owner }}"
             exit 1
@@ -122,7 +157,10 @@ jobs:
             -F type="$bug_type_id")
           returned_number=$(echo "$result" | jq -r '.data.updateIssueIssueType.issue.number // empty' 2>/dev/null || true)
           if [[ -z "$returned_number" ]]; then
-            errors=$(echo "$result" | jq -r '.errors[]?.message // "unknown error"' 2>/dev/null || echo "unparseable response")
+            # Collapse multi-error responses to a single line; embedded newlines
+            # truncate `::error::` workflow annotations.
+            errors=$(echo "$result" | jq -r '[.errors[]?.message] | join("; ")' 2>/dev/null || true)
+            errors="${errors:-unknown error}"
             echo "::error::updateIssueIssueType mutation failed: $errors"
             exit 1
           fi
