@@ -210,6 +210,33 @@ Also check the reverse direction — validation logic in Go code that is NOT doc
 - Required fields that have `omitempty` (wrong!)
 - Validation logic in code not documented in specification
 - Validation requirements in specification not implemented in code
+- GEDCOM converter still emits or consumes a renamed/removed schema field (silent round-trip data loss)
+- New schema field has no `gedcom_*.go` reference (verify intentionally not mapped)
+
+### 11. GEDCOM Converter Drift
+
+The GEDCOM converter (`go-glx/gedcom_*.go`) is the I/O boundary to external
+genealogy software; field drift here causes silent round-trip data loss.
+Importer is `gedcom_<entity>.go`, exporter is `gedcom_export_<entity>.go`,
+with these exceptions:
+
+- Person — `gedcom_individual.go` (INDI tag) / `gedcom_export_person.go`
+- Relationship — `gedcom_family.go` (FAM tag) / `gedcom_export_family.go`
+- Citation, Assertion, source-citation chains — `gedcom_evidence.go`
+- Event — nested in Person/Relationship importers (no dedicated file)
+
+Search all `go-glx/gedcom_*.go` (including helpers and `_test.go` goldens),
+case-insensitive:
+
+- For each renamed or retyped field, search for the old field name. Any
+  match is drift — the converter still reads/writes the old name.
+- For each removed field, search for the field name. An active read/write is
+  critical drift (silent round-trip data loss). An `assert.NotEqual` or
+  "should be skipped" guard assertion is the post-cleanup state, not drift.
+- For each added field, search for the new field name. Zero matches means
+  the GEDCOM layer ignores the field — flag as info-severity ("is this
+  intentionally not exported?"); some GLX fields legitimately have no
+  GEDCOM tag.
 
 ## Output Format
 
@@ -255,6 +282,12 @@ OR
 ### Documentation
 - Go field `FieldName` comment doesn't match schema description
 - Fix: Update comment to match schema
+
+### GEDCOM Converter Drift
+- Schema field `field_name` renamed to `new_name`; old name still present in go-glx/gedcom_export_repository.go:NN
+- Fix: Update GEDCOM importer/exporter to use new field name
+- Schema field `removed_field` removed; still emitted by go-glx/gedcom_export_person.go:NN — CRITICAL (silent round-trip data loss)
+- Schema field `new_field` added; not referenced in any gedcom_*.go — INFO (confirm intentionally not exported, or wire through the converter)
 ```
 
 **Remember**:
