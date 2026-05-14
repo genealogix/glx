@@ -104,18 +104,8 @@ func TestResearchLogMultiFileSerialize(t *testing.T) {
 	files, err := s.SerializeMultiFileToMap(glx)
 	require.NoError(t, err)
 
-	// Multi-file serialization writes per-entity files. Path uses filepath.Join,
-	// which differs by platform; assert by suffix to stay portable.
-	var found bool
-	for path := range files {
-		if strings.HasSuffix(path, "research-log-1.glx") &&
-			(strings.Contains(path, "research_logs/") || strings.Contains(path, "research_logs\\")) {
-			found = true
-
-			break
-		}
-	}
-	assert.True(t, found, "expected research_logs/research-log-1.glx in output, got files: %v",
+	_, ok := files["research_logs/research-log-1.glx"]
+	assert.True(t, ok, "expected research_logs/research-log-1.glx in output, got files: %v",
 		slices.Sorted(maps.Keys(files)))
 }
 
