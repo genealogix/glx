@@ -16,12 +16,20 @@ export default defineConfig({
   // This allows VitePress to access all markdown files in the repo
   srcDir: '..',
 
+  // Exclude vendored markdown so the build (and sitemap) only indexes our own pages
+  srcExclude: ['**/node_modules/**'],
+
   // Head configuration
   head: [
     ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
     ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
     ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-N2YJJJFE6K');"]
   ],
+
+  // Sitemap generation
+  sitemap: {
+    hostname: 'https://genealogix.dev'
+  },
 
   // Vite configuration for file watching in Docker/WSL
   vite: {
