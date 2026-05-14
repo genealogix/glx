@@ -55,29 +55,50 @@ func personSex(person *glxlib.Person) string {
 // Without shape-aware extraction, callers fall back to fmt.Sprint on the
 // raw map/list and end up comparing against strings like "map[date:1850
 // value:male]", which breaks both display and downstream sex/gender logic.
-// Returns the first non-empty scalar from the list form.
+// Returns the first non-empty scalar; "" if none of the supported shapes
+// yield a value. Implemented in terms of propertyScalars so the canonical
+// shape list lives in one place.
 func propertyScalar(val any) string {
-	switch v := val.(type) {
-	case string:
-		return v
-	case map[string]any:
-		if s, ok := v["value"].(string); ok {
-			return s
-		}
-	case []any:
-		for _, item := range v {
-			if s, ok := item.(string); ok && s != "" {
-				return s
-			}
-			if m, ok := item.(map[string]any); ok {
-				if s, ok := m["value"].(string); ok && s != "" {
-					return s
-				}
-			}
-		}
+	if scalars := propertyScalars(val); len(scalars) > 0 {
+		return scalars[0]
 	}
 
 	return ""
+}
+
+// propertyScalars returns every non-empty scalar string value from a property
+// stored as a plain string, map-with-"value", or temporal list. Used by
+// callers that need to match against all values (e.g. search); propertyScalar
+// is the single-value sibling for display callers.
+func propertyScalars(val any) []string {
+	switch v := val.(type) {
+	case string:
+		if v != "" {
+			return []string{v}
+		}
+	case map[string]any:
+		if s, ok := v["value"].(string); ok && s != "" {
+			return []string{s}
+		}
+	case []any:
+		var out []string
+		for _, item := range v {
+			switch it := item.(type) {
+			case string:
+				if it != "" {
+					out = append(out, it)
+				}
+			case map[string]any:
+				if s, ok := it["value"].(string); ok && s != "" {
+					out = append(out, s)
+				}
+			}
+		}
+
+		return out
+	}
+
+	return nil
 }
 
 // isLegacySexValue reports whether v could plausibly be a pre-#528 `gender`
