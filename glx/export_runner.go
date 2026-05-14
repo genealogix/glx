@@ -47,8 +47,9 @@ func exportToGEDCOM(inputPath, outputPath, format string, verbose, privatizeLivi
 	if privatizeLiving {
 		redacted := glxlib.PrivatizeLiving(glx, time.Now(), glxlib.LivingThresholdYears)
 		if verbose {
-			fmt.Printf("Privatized %d living persons before export (events redacted: %d, assertions dropped: %d)\n",
-				redacted.PersonsRedacted, redacted.EventsRedacted, redacted.AssertionsDropped)
+			fmt.Printf("Privatized %d living persons before export (events redacted: %d, events scrubbed: %d, relationships redacted: %d, assertions dropped: %d)\n",
+				redacted.PersonsRedacted, redacted.EventsRedacted, redacted.EventsScrubbed,
+				redacted.RelationshipsRedacted, redacted.AssertionsDropped)
 		}
 	}
 

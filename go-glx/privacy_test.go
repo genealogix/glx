@@ -406,7 +406,9 @@ func TestPrivatizeLiving_NoLivingPersons(t *testing.T) {
 	}
 
 	result := PrivatizeLiving(archive, fixedNow, LivingThresholdYears)
-	if result.PersonsRedacted != 0 || result.EventsRedacted != 0 || result.AssertionsDropped != 0 {
+	if result.PersonsRedacted != 0 || result.EventsRedacted != 0 ||
+		result.EventsScrubbed != 0 || result.RelationshipsRedacted != 0 ||
+		result.AssertionsDropped != 0 {
 		t.Errorf("expected empty result, got %+v", result)
 	}
 	if archive.Persons["dead1"].Properties[PersonPropertyName].(map[string]any)["value"] != "Old One" {
@@ -416,7 +418,152 @@ func TestPrivatizeLiving_NoLivingPersons(t *testing.T) {
 
 func TestPrivatizeLiving_NilArchive(t *testing.T) {
 	got := PrivatizeLiving(nil, fixedNow, LivingThresholdYears)
-	if got == nil || got.PersonsRedacted != 0 || got.EventsRedacted != 0 || got.AssertionsDropped != 0 {
+	if got == nil || got.PersonsRedacted != 0 || got.EventsRedacted != 0 ||
+		got.EventsScrubbed != 0 || got.RelationshipsRedacted != 0 ||
+		got.AssertionsDropped != 0 {
 		t.Errorf("PrivatizeLiving(nil) = %+v, want empty result", got)
+	}
+}
+
+// TestPrivatizeLiving_MarriageBetweenLivingSpouses covers the case where two
+// living spouses are joined by a marriage relationship and event. Spouse role
+// is not a subject role, so the marriage event would otherwise leak DATE /
+// PLAC / NOTE / Properties through the FAM record. The relationship pass must
+// fully redact both the event and the relationship payload.
+func TestPrivatizeLiving_MarriageBetweenLivingSpouses(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"alice": {Properties: map[string]any{PersonPropertyLiving: true}},
+			"bob":   {Properties: map[string]any{PersonPropertyLiving: true}},
+		},
+		Events: map[string]*Event{
+			"marriage": {
+				Type:    EventTypeMarriage,
+				Date:    "2018-06-15",
+				PlaceID: "place-las-vegas",
+				Notes:   NoteList{"Eloped while parents were on vacation"},
+				Properties: map[string]any{
+					"description": "Marriage of Alice and Bob",
+				},
+				Participants: []Participant{
+					{
+						Person:     "alice",
+						Role:       ParticipantRoleSpouse,
+						Properties: map[string]any{"name_as_recorded": map[string]any{"value": "Alice Currentperson"}},
+						Notes:      NoteList{"alice's note"},
+					},
+					{
+						Person:     "bob",
+						Role:       ParticipantRoleSpouse,
+						Properties: map[string]any{"name_as_recorded": map[string]any{"value": "Bob Currentperson"}},
+					},
+				},
+			},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-marriage": {
+				Type:       RelationshipTypeMarriage,
+				StartEvent: "marriage",
+				Participants: []Participant{
+					{Person: "alice", Role: ParticipantRoleSpouse, Notes: NoteList{"a's role note"}},
+					{Person: "bob", Role: ParticipantRoleSpouse},
+				},
+				Notes:      NoteList{"Met at Stanford 2018; via Jane Doe"},
+				Properties: map[string]any{"marriage_type": "civil"},
+			},
+		},
+	}
+
+	result := PrivatizeLiving(archive, fixedNow, LivingThresholdYears)
+	if result.RelationshipsRedacted != 1 {
+		t.Errorf("RelationshipsRedacted = %d, want 1", result.RelationshipsRedacted)
+	}
+	if result.EventsRedacted != 1 {
+		t.Errorf("EventsRedacted = %d, want 1", result.EventsRedacted)
+	}
+
+	rel := archive.Relationships["rel-marriage"]
+	if rel.Notes != nil {
+		t.Errorf("relationship notes should be cleared; got %v", rel.Notes)
+	}
+	if rel.Properties != nil {
+		t.Errorf("relationship properties should be cleared; got %v", rel.Properties)
+	}
+	for i, p := range rel.Participants {
+		if p.Properties != nil || p.Notes != nil {
+			t.Errorf("relationship participant %d (%s) should have nil Properties/Notes; got props=%v notes=%v",
+				i, p.Person, p.Properties, p.Notes)
+		}
+		if p.Person == "" || p.Role == "" {
+			t.Errorf("relationship participant %d should preserve Person and Role; got %+v", i, p)
+		}
+	}
+
+	ev := archive.Events["marriage"]
+	if ev.Date != "" || ev.PlaceID != "" || ev.Notes != nil || ev.Properties != nil {
+		t.Errorf("marriage event should be fully redacted; got date=%q place=%q notes=%v props=%v",
+			ev.Date, ev.PlaceID, ev.Notes, ev.Properties)
+	}
+	for i, p := range ev.Participants {
+		if p.Properties != nil || p.Notes != nil {
+			t.Errorf("event participant %d (%s) should have nil Properties/Notes; got props=%v notes=%v",
+				i, p.Person, p.Properties, p.Notes)
+		}
+	}
+}
+
+// TestPrivatizeLiving_ScrubsLivingNonSubjectParticipants covers a dead
+// person's event that names a living person in a non-subject role (witness,
+// informant). The event itself is not redacted, but the living-witness's
+// participant-level Properties and Notes must be scrubbed so per-participant
+// fields like name_as_recorded do not leak.
+func TestPrivatizeLiving_ScrubsLivingNonSubjectParticipants(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"alive": {Properties: map[string]any{PersonPropertyLiving: true}},
+			"dead":  {},
+		},
+		Events: map[string]*Event{
+			"death-dead": {
+				Type:    EventTypeDeath,
+				Date:    "1920-06-01",
+				PlaceID: "place-y",
+				Participants: []Participant{
+					{Person: "dead", Role: ParticipantRolePrincipal},
+					{
+						Person:     "alive",
+						Role:       ParticipantRoleWitness,
+						Properties: map[string]any{"name_as_recorded": map[string]any{"value": "Alive Witness"}},
+						Notes:      NoteList{"signed the death certificate"},
+					},
+				},
+			},
+		},
+	}
+
+	result := PrivatizeLiving(archive, fixedNow, LivingThresholdYears)
+	if result.EventsRedacted != 0 {
+		t.Errorf("dead person's event should not be fully redacted; EventsRedacted = %d", result.EventsRedacted)
+	}
+	if result.EventsScrubbed != 1 {
+		t.Errorf("event should be scrubbed for living non-subject participant; EventsScrubbed = %d", result.EventsScrubbed)
+	}
+
+	ev := archive.Events["death-dead"]
+	if ev.Date != "1920-06-01" || ev.PlaceID != "place-y" {
+		t.Errorf("dead person's event top-level fields should be preserved; got date=%q place=%q", ev.Date, ev.PlaceID)
+	}
+	for _, p := range ev.Participants {
+		if p.Person == "alive" {
+			if p.Properties != nil || p.Notes != nil {
+				t.Errorf("living witness participant should be scrubbed; got props=%v notes=%v",
+					p.Properties, p.Notes)
+			}
+		}
+		if p.Person == "dead" {
+			if p.Role != ParticipantRolePrincipal {
+				t.Errorf("dead principal should be preserved; got %+v", p)
+			}
+		}
 	}
 }

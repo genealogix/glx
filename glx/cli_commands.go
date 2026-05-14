@@ -196,10 +196,24 @@ Use --privatize-living to redact living persons' data on export. A person is
 treated as living when their ` + "`living: true`" + ` property is set, or — under
 the fallback heuristic — when no recorded death, burial, or cremation event
 exists and their earliest known birth year is less than 100 years ago.
+
 Redaction replaces the person's name with "Living", strips all other
-properties (occupation, residence, religion, etc.), and blanks dates and
-places on events whose subject is a living person. Family structure is
-preserved.`,
+properties (occupation, residence, religion, etc.), and clears notes.
+On every event whose subject is a living person, dates / places / notes /
+properties are blanked. On every relationship that names any living
+participant, the relationship's notes / properties are cleared and the
+referenced start/end events are fully redacted (this covers marriages
+between living spouses). On every other event that names a living person
+as a non-subject participant, the per-participant Properties and Notes are
+scrubbed so fields like name_as_recorded do not leak. Assertions whose
+subject or participant is a living person are dropped.
+
+Free-text fields on Sources, Citations, Repositories, and Media are NOT
+scanned. If you have included living-person names or contact information
+in those fields, you must redact them by hand before publishing.
+
+Family structure (FAM, FAMS, FAMC) and event types are preserved so the
+GEDCOM still validates and relationships still reconstruct.`,
 	Example: `  # Export to GEDCOM 5.5.1 (default)
   glx export family-archive -o family.ged
 
