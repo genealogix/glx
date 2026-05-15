@@ -75,6 +75,8 @@ const (
 	RelationshipTypeEmployment            = "employment"
 	RelationshipTypeEnslavement           = "enslavement"
 	RelationshipTypeRelative              = "relative"
+	RelationshipTypeAssociate             = "associate"
+	RelationshipTypeBoarder               = "boarder"
 )
 
 // Standard Participant Roles - from participant-roles.glx vocabulary
@@ -94,6 +96,9 @@ const (
 	ParticipantRoleSibling        = "sibling"
 	ParticipantRoleGodparent      = "godparent"
 	ParticipantRoleGodchild       = "godchild"
+	ParticipantRoleAssociate      = "associate"
+	ParticipantRoleHouseholdHead  = "household_head"
+	ParticipantRoleBoarder        = "boarder"
 )
 
 // Standard Person Property Names - commonly used properties on Person entities

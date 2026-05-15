@@ -92,3 +92,13 @@ relationship_types:
     label: "Possibly Same Person"
     description: "Two person records that may refer to the same individual but cannot yet be confirmed (pair with an Assertion as subject to record confidence)"
 
+  associate:
+    label: "Associate"
+    description: "Known social connection — friend, colleague, or community member. Use for durable FAN-research links between persons (e.g. families that repeatedly witness each other's vital events, migrate together, or appear together in legal records)."
+    # No direct GEDCOM equivalent — GEDCOM 7.0 ASSO with ROLE FRIEND records the association as an event-participant link, not a standalone relationship
+
+  boarder:
+    label: "Boarder/Ward"
+    description: "Asymmetric household-membership relationship between a head of household and a dependent — boarder, lodger, ward, or servant — as recorded in census or household records. Pair participants with the household_head and boarder roles. Distinct from `housemate` (symmetric cohabitation) and `apprenticeship` (trade-training)."
+    # No direct GEDCOM equivalent
+

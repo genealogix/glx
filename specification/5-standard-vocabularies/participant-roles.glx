@@ -97,3 +97,21 @@ participant_roles:
       - event
       - relationship
 
+  associate:
+    label: "Associate"
+    description: "Person in an associate (FAN — friend, colleague, community member) relationship"
+    applies_to:
+      - relationship
+
+  household_head:
+    label: "Household Head"
+    description: "Head of household in a boarder/ward relationship"
+    applies_to:
+      - relationship
+
+  boarder:
+    label: "Boarder"
+    description: "Boarder, lodger, ward, servant, or apprentice in a household"
+    applies_to:
+      - relationship
+
