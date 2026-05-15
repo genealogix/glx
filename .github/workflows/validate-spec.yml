@@ -102,9 +102,15 @@ jobs:
           # Run all tests for both CLI and core library packages
           # Includes slow/large file tests (habsburg.ged with 34,020 persons)
           # Capture stderr — fail if any "Warning:" lines are emitted
-          go test ./glx/... ./go-glx/... -v -timeout 15m 2> >(tee /tmp/test-stderr.log >&2)
+          go test ./glx/... ./go-glx/... -v -timeout 15m -coverprofile=coverage.out 2> >(tee /tmp/test-stderr.log >&2)
           if grep -qi "^Warning:" /tmp/test-stderr.log 2>/dev/null; then
             echo "::error::Tests emitted warnings on stderr — see log above"
             exit 1
           fi
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
