@@ -58,6 +58,12 @@ glx duplicates [person] [flags]
       --threshold float   Minimum similarity score (0.0-1.0) (default 0.6)
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
