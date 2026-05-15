@@ -98,7 +98,7 @@ relationship_types:
     # No direct GEDCOM equivalent — GEDCOM 7.0 ASSO with ROLE FRIEND records the association as an event-participant link, not a standalone relationship
 
   boarder:
-    label: "Boarder/Ward"
+    label: "Boarder"
     description: "Asymmetric household-membership relationship between a head of household and a dependent — boarder, lodger, ward, or servant — as recorded in census or household records. Pair participants with the household_head and boarder roles. Distinct from `housemate` (symmetric cohabitation) and `apprenticeship` (trade-training)."
     # No direct GEDCOM equivalent
 

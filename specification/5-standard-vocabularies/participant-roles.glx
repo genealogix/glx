@@ -105,13 +105,13 @@ participant_roles:
 
   household_head:
     label: "Household Head"
-    description: "Head of household in a boarder/ward relationship"
+    description: "Head of household in a boarder relationship"
     applies_to:
       - relationship
 
   boarder:
     label: "Boarder"
-    description: "Boarder, lodger, ward, servant, or apprentice in a household"
+    description: "Boarder, lodger, ward, or servant in a household"
     applies_to:
       - relationship
 
