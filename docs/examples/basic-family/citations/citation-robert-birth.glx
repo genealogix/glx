@@ -1,0 +1,7 @@
+citations:
+  citation-robert-birth:
+    source: source-sangamon-births
+    properties:
+      locator: "Volume 1, Page 47, Entry 312"
+      text_from_source: "Robert Thompson, male, born April 12, 1850, Springfield"
+    notes: "Primary source - civil birth register"
