@@ -199,3 +199,54 @@ func TestStudyMergeReportsConflicts(t *testing.T) {
 	assert.Contains(t, conflicts[0], "studies")
 	assert.Contains(t, conflicts[0], "study-1")
 }
+
+// TestRenameEntity_StudyMapKey covers the Studies cases in findEntityType
+// and moveMapKey when the entity being renamed is itself a Study.
+func TestRenameEntity_StudyMapKey(t *testing.T) {
+	glx := &GLXFile{
+		Studies: map[string]*Study{
+			"study-old": {Title: "Pohl-Göns One Place Study"},
+		},
+	}
+
+	result, err := RenameEntity(glx, "study-old", "study-new")
+	require.NoError(t, err)
+	assert.Contains(t, glx.Studies, "study-new")
+	assert.NotContains(t, glx.Studies, "study-old")
+	assert.Equal(t, EntityTypeStudies, result.EntityType)
+	assert.Equal(t, "Pohl-Göns One Place Study", glx.Studies["study-new"].Title)
+}
+
+// TestRenameEntity_StudyRefs covers the updateAllRefs branch that rewrites
+// place, source, and property references stored on Studies, including the
+// nil-entry guard that skips empty map slots.
+func TestRenameEntity_StudyRefs(t *testing.T) {
+	glx := &GLXFile{
+		Places: map[string]*Place{
+			"place-old": {Name: "Old Place"},
+		},
+		Sources: map[string]*Source{
+			"source-old": {Title: "Old Source"},
+		},
+		Studies: map[string]*Study{
+			"study-1": {
+				Title:   "Study with refs",
+				Places:  []string{"place-old"},
+				Sources: []string{"source-old"},
+				Properties: map[string]any{
+					"primary_place": "place-old",
+				},
+			},
+			"study-nil": nil,
+		},
+	}
+
+	_, err := RenameEntity(glx, "place-old", "place-new")
+	require.NoError(t, err)
+	assert.Equal(t, "place-new", glx.Studies["study-1"].Places[0])
+	assert.Equal(t, "place-new", glx.Studies["study-1"].Properties["primary_place"])
+
+	_, err = RenameEntity(glx, "source-old", "source-new")
+	require.NoError(t, err)
+	assert.Equal(t, "source-new", glx.Studies["study-1"].Sources[0])
+}
