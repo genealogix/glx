@@ -1,0 +1,7 @@
+repositories:
+  repository-sangamon-county-courthouse:
+    name: "Sangamon County Courthouse - County Clerk"
+    type: registry
+    address: "200 South Ninth Street, Springfield, IL 62701"
+    website: "https://www.sangamonil.gov/Departments/County-Clerk"
+    notes: "Civil records repository for Sangamon County, Illinois, including birth and marriage registers"
