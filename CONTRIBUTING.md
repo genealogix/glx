@@ -195,6 +195,15 @@ make check-schemas     # Validate JSON schemas
 - GEDCOM test files: `glx/testdata/gedcom/`
 - Validation test fixtures: `glx/testdata/valid/` and `glx/testdata/invalid/`
 
+### Coverage
+
+CI uploads coverage to [Codecov](https://codecov.io/gh/genealogix/glx) on every PR and push to `main`. Two checks gate merges:
+
+- **Project coverage** must not drop more than 1% from the current baseline.
+- **Patch coverage** (lines changed by the PR) must be at least **80%** covered.
+
+Run `make test-coverage` locally to preview the total project coverage before pushing (the patch number is computed by Codecov from the PR diff and isn't reproducible locally).
+
 ### CI Checks
 
 Every PR runs these checks automatically:
@@ -202,6 +211,7 @@ Every PR runs these checks automatically:
 | Check | What it does |
 |-------|--------------|
 | **Validate Specification / test-conformance** | Go tests for `glx/` and `go-glx/` packages |
+| **codecov/project**, **codecov/patch** | Project coverage may drop by at most 1%; patch coverage (new code) must be ≥80% |
 | **Validate Specification / validate-schemas** | JSON schema validation |
 | **Validate Specification / validate-examples** | All example archives pass `glx validate` |
 | **Lint Markdown / markdownlint-cli2** | Structural markdown validation for `specification/`, `docs/`, root `*.md` |
