@@ -1,5 +1,11 @@
 ---
 description: Review the GLX specification for issues, contradictions, and ambiguities
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash(gh issue list:*)
+model: claude-opus-4-7
 ---
 
 You are tasked with conducting a comprehensive audit of the GLX specification to identify issues, contradictions, ambiguities, and areas for improvement.
