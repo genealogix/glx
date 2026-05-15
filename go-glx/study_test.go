@@ -15,7 +15,6 @@
 package glx
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,7 +86,7 @@ func TestStudyMultiFileRoundTrip(t *testing.T) {
 	files, err := s.SerializeMultiFileToMap(original)
 	require.NoError(t, err)
 
-	studyPath := filepath.Join("studies", "study-chiddick-ons.glx")
+	studyPath := "studies/study-chiddick-ons.glx"
 	require.Contains(t, files, studyPath, "expected study file at %s", studyPath)
 
 	parsed, _, err := s.DeserializeMultiFileFromMap(files)
@@ -165,6 +164,40 @@ func TestStudyValidation(t *testing.T) {
 
 		result := archive.Validate()
 		assert.Empty(t, result.Errors)
+	})
+
+	t.Run("malformed date_range warns", func(t *testing.T) {
+		archive := &GLXFile{
+			Studies: map[string]*Study{
+				"study-1": {Title: "Test", DateRange: "March 1850"},
+			},
+		}
+		require.NoError(t, LoadStandardVocabulariesIntoGLX(archive))
+
+		result := archive.Validate()
+		require.NotEmpty(t, result.Warnings, "expected a date-format warning")
+		var found bool
+		for _, w := range result.Warnings {
+			if w.SourceType == "studies" && w.SourceID == "study-1" && w.Field == "date_range" {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "expected studies[study-1].date_range warning, got %+v", result.Warnings)
+	})
+
+	t.Run("well-formed date_range does not warn", func(t *testing.T) {
+		archive := &GLXFile{
+			Studies: map[string]*Study{
+				"study-1": {Title: "Test", DateRange: "FROM 1610 TO 1875"},
+			},
+		}
+		require.NoError(t, LoadStandardVocabulariesIntoGLX(archive))
+
+		result := archive.Validate()
+		for _, w := range result.Warnings {
+			assert.NotEqual(t, "date_range", w.Field, "did not expect a date_range warning for valid range")
+		}
 	})
 }
 
