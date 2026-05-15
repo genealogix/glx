@@ -1,0 +1,8 @@
+places:
+  place-springfield:
+    name: "Springfield"
+    type: city
+    parent: place-illinois
+    latitude: 39.7817
+    longitude: -89.6501
+    notes: "Capital of Illinois, seat of Sangamon County"
