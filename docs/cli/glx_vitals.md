@@ -42,6 +42,12 @@ glx vitals <person> [flags]
   -h, --help             help for vitals
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
