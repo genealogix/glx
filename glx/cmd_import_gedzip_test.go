@@ -385,11 +385,13 @@ func TestImportGEDZIP_OpenReaderDefaultErrorPath(t *testing.T) {
 }
 
 func TestImportGEDZIP_RejectsGedcomEntryAsDirectory(t *testing.T) {
-	// A directory entry named gedcom.ged passes a raw name match but is
-	// skipped during extraction, so the tempdir would have no gedcom.ged
-	// file for the inner importer to read. Treat it as a missing gedcom.
+	// A malicious archive can name a directory entry "gedcom.ged" (no
+	// trailing slash, ModeDir set via external attrs) so a raw name match
+	// passes but extractGEDZIP skips the entry, leaving the tempdir with
+	// no gedcom.ged for the inner importer. hasGedcomEntry must reject
+	// this shape at the same ErrGEDZIPMissingGedcom boundary.
 	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
-		{Name: "gedcom.ged/", Mode: os.ModeDir | dirPermissions},
+		{Name: "gedcom.ged", Mode: os.ModeDir | dirPermissions},
 	})
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
