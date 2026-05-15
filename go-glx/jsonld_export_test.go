@@ -289,6 +289,137 @@ func TestRepositoryNode_AddressOnlyWhenAnyFieldPresent(t *testing.T) {
 	assert.NotContains(t, bareNode, "address")
 }
 
+func TestParseJSONLDContextBytes(t *testing.T) {
+	t.Run("valid context", func(t *testing.T) {
+		got, err := parseJSONLDContextBytes([]byte(`{"@context":{"schema":"https://schema.org/"}}`))
+		require.NoError(t, err)
+		m, ok := got.(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, "https://schema.org/", m["schema"])
+	})
+	t.Run("malformed JSON", func(t *testing.T) {
+		_, err := parseJSONLDContextBytes([]byte("not json"))
+		require.Error(t, err)
+	})
+	t.Run("missing @context key", func(t *testing.T) {
+		_, err := parseJSONLDContextBytes([]byte(`{"other":"value"}`))
+		require.ErrorIs(t, err, ErrJSONLDContextMissing)
+	})
+}
+
+func TestEntityRefToFragment_AllBranches(t *testing.T) {
+	cases := []struct {
+		name string
+		ref  EntityRef
+		want string
+	}{
+		{name: "person", ref: EntityRef{Person: "p1"}, want: "#person-p1"},
+		{name: "event", ref: EntityRef{Event: "e1"}, want: "#event-e1"},
+		{name: "relationship", ref: EntityRef{Relationship: "r1"}, want: "#relationship-r1"},
+		{name: "place", ref: EntityRef{Place: "pl1"}, want: "#place-pl1"},
+		{name: "empty", ref: EntityRef{}, want: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := tc.ref
+			assert.Equal(t, tc.want, entityRefToFragment(&r))
+		})
+	}
+}
+
+func TestAssertionNode_ParticipantBranch(t *testing.T) {
+	role := "witness"
+	a := &Assertion{
+		Subject:     EntityRef{Event: "e1"},
+		Participant: &Participant{Person: "p1", Role: role},
+		Date:        "1850",
+		Status:      "confirmed",
+		Media:       []string{"m1"},
+		Notes:       NoteList{"note one"},
+	}
+
+	node := assertionNode("a1", a)
+	assert.Equal(t, "#event-e1", node["subject"])
+	part, ok := node["participant"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "#person-p1", part["person"])
+	assert.Equal(t, role, part["role"])
+	assert.Equal(t, "1850", node["startDate"])
+	assert.Equal(t, "confirmed", node["status"])
+	assert.Equal(t, []any{"#media-m1"}, node["media"])
+	assert.Equal(t, []any{"note one"}, node["notes"])
+}
+
+func TestSourceCitationMediaNodes_FullFields(t *testing.T) {
+	src := &Source{
+		Title:        "Stratford Register",
+		Type:         "parish_register",
+		Authors:      []string{"Holy Trinity"},
+		Date:         "1558",
+		Description:  "Baptisms, marriages, burials",
+		RepositoryID: "shak-trust",
+		Language:     "en",
+		Media:        []string{"img1"},
+		Notes:        NoteList{"hand-written"},
+	}
+	srcNode := sourceNode("stratford-register", src)
+	assert.Equal(t, "Stratford Register", srcNode["name"])
+	assert.Equal(t, "parish_register", srcNode["sourceType"])
+	assert.Equal(t, []any{"Holy Trinity"}, srcNode["author"])
+	assert.Equal(t, "1558", srcNode["datePublished"])
+	assert.Equal(t, "Baptisms, marriages, burials", srcNode["description"])
+	assert.Equal(t, "#repository-shak-trust", srcNode["repository"])
+	assert.Equal(t, "en", srcNode["inLanguage"])
+	assert.Equal(t, []any{"#media-img1"}, srcNode["associatedMedia"])
+	assert.Equal(t, []any{"hand-written"}, srcNode["notes"])
+
+	cit := &Citation{
+		SourceID:     "stratford-register",
+		RepositoryID: "shak-trust",
+		Media:        []string{"img1"},
+		Notes:        NoteList{"page 42"},
+	}
+	citNode := citationNode("c1", cit)
+	assert.Equal(t, "#source-stratford-register", citNode["source"])
+	assert.Equal(t, "#repository-shak-trust", citNode["repository"])
+	assert.Equal(t, []any{"#media-img1"}, citNode["media"])
+
+	m := &Media{
+		URI:         "img/p.jpg",
+		Type:        "photo",
+		MimeType:    "image/jpeg",
+		Title:       "Portrait",
+		Description: "Oil on canvas",
+		Date:        "1610",
+		Source:      "stratford-register",
+		Notes:       NoteList{"restored 2010"},
+	}
+	mNode := mediaNode("portrait", m)
+	assert.Equal(t, "photo", mNode["mediaType"])
+	assert.Equal(t, "Oil on canvas", mNode["description"])
+	assert.Equal(t, "1610", mNode["datePublished"])
+	assert.Equal(t, "#source-stratford-register", mNode["source"])
+}
+
+func TestRelationshipNode_StartAndEndEvents(t *testing.T) {
+	r := &Relationship{
+		Type:       "marriage",
+		StartEvent: "wedding-1582",
+		EndEvent:   "burial-1623",
+		Participants: []Participant{
+			{Person: "p1", Role: "spouse"},
+			{Person: "p2", Role: "spouse"},
+		},
+		Properties: map[string]any{"location": "Stratford"},
+		Notes:      NoteList{"per parish register"},
+	}
+	node := relationshipNode("rel1", r)
+	assert.Equal(t, "#event-wedding-1582", node["startEvent"])
+	assert.Equal(t, "#event-burial-1623", node["endEvent"])
+	assert.Equal(t, "Stratford", node["glx:location"])
+	assert.Equal(t, []any{"per parish register"}, node["notes"])
+}
+
 func TestAssertionNode_SubjectFragment(t *testing.T) {
 	a := &Assertion{
 		Subject:    EntityRef{Person: "john"},

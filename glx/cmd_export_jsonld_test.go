@@ -103,6 +103,27 @@ func TestExportToJSONLD_CreatesNestedOutputDirectory(t *testing.T) {
 	require.NoError(t, err, "nested directories should be created")
 }
 
+func TestExportToJSONLD_InputNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := exportToJSONLD(filepath.Join(tmpDir, "nonexistent.glx"), filepath.Join(tmpDir, "out.jsonld"), false)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInputNotFound)
+}
+
+func TestExportToJSONLD_VerboseMode(t *testing.T) {
+	tmpDir := t.TempDir()
+	glxPath := filepath.Join(tmpDir, "archive.glx")
+
+	err := importGEDCOM("testdata/gedcom/7.0/minimal-valid/minimal70.ged", glxPath, "single", true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+
+	outPath := filepath.Join(tmpDir, "verbose-out.jsonld")
+	require.NoError(t, exportToJSONLD(glxPath, outPath, true))
+
+	_, err = os.Stat(outPath)
+	require.NoError(t, err)
+}
+
 func TestRunExport_DispatchesToJSONLDFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	glxPath := filepath.Join(tmpDir, "archive.glx")

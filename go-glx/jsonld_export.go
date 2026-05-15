@@ -138,27 +138,31 @@ var (
 )
 
 // decodeJSONLDContext parses the embedded canonical context file (once per
-// process) and returns the top-level @context value. The file wraps the
-// mapping under "@context" so it is itself a valid JSON-LD context document.
+// process) and returns the top-level @context value.
 func decodeJSONLDContext() (any, error) {
 	cachedJSONLDContextOnce.Do(func() {
-		var wrapper struct {
-			Context any `json:"@context"`
-		}
-		if err := json.Unmarshal(jsonld.ContextBytes, &wrapper); err != nil {
-			errJSONLDContextCached = fmt.Errorf("failed to parse embedded JSON-LD context: %w", err)
-
-			return
-		}
-		if wrapper.Context == nil {
-			errJSONLDContextCached = ErrJSONLDContextMissing
-
-			return
-		}
-		cachedJSONLDContext = wrapper.Context
+		cachedJSONLDContext, errJSONLDContextCached = parseJSONLDContextBytes(jsonld.ContextBytes)
 	})
 
 	return cachedJSONLDContext, errJSONLDContextCached
+}
+
+// parseJSONLDContextBytes unwraps a JSON-LD context document and returns the
+// inner @context value. The canonical file at specification/jsonld/
+// glx-context.jsonld wraps the mapping under "@context" so it is itself a
+// valid JSON-LD context document, which is why callers strip one layer.
+func parseJSONLDContextBytes(b []byte) (any, error) {
+	var wrapper struct {
+		Context any `json:"@context"`
+	}
+	if err := json.Unmarshal(b, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON-LD context: %w", err)
+	}
+	if wrapper.Context == nil {
+		return nil, ErrJSONLDContextMissing
+	}
+
+	return wrapper.Context, nil
 }
 
 // buildJSONLDGraph walks every entity map in deterministic order and produces
