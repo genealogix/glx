@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - **Added `public/.well-known/security.txt`** — RFC 9116 machine-readable security-contact file served at `/.well-known/security.txt`. Points security scanners and researchers to the GitHub Security Advisories report channel and `SECURITY.md` policy. (#271)
 - **Added `.github/SUPPORT.md`** — Surfaces GitHub's "Support resources" link on the new-issue flow, directing support questions to Discussions, Discord, and the mailing list instead of the issue tracker. (#423)
 - **PR template changelog reminder** — `.github/PULL_REQUEST_TEMPLATE.md` now ends with an HTML-comment reminder to update `CHANGELOG.md` for user-facing changes (Added/Changed/Fixed/Removed). (#363)
+- **PR template Review focus section** — `.github/PULL_REQUEST_TEMPLATE.md` now includes a "Review focus" section after "Related issues", prompting PR authors to state what reviewers should pay attention to (e.g. "API design", "correctness", or "trivial change"). (#362)
 - **Added `public/robots.txt` and VitePress sitemap** — VitePress now emits `/sitemap.xml` (hostname `https://genealogix.dev`), and `public/robots.txt` allows all crawlers and points to it. `srcExclude` was also added to keep vendored `node_modules/**/*.md` out of the build and sitemap. (#282)
 
 #### Specification
