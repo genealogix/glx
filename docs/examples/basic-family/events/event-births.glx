@@ -1,0 +1,40 @@
+events:
+  event-birth-robert:
+    type: birth
+    date: "1850-04-12"
+    place: place-springfield
+    participants:
+      - person: person-robert-thompson
+        role: subject
+    properties:
+      description: "Birth of Robert Thompson in Springfield, Illinois"
+
+  event-birth-mary:
+    type: birth
+    date: "1852-08-30"
+    place: place-springfield
+    participants:
+      - person: person-mary-thompson
+        role: subject
+    properties:
+      description: "Birth of Mary Thompson in Springfield, Illinois"
+
+  event-birth-alice:
+    type: birth
+    date: "1878-03-22"
+    place: place-springfield
+    participants:
+      - person: person-alice-thompson
+        role: subject
+    properties:
+      description: "Birth of Alice Thompson in Springfield, Illinois"
+
+  event-birth-robert-jr:
+    type: birth
+    date: "1881-11-05"
+    place: place-springfield
+    participants:
+      - person: person-robert-thompson-jr
+        role: subject
+    properties:
+      description: "Birth of Robert Thompson Jr. in Springfield, Illinois"

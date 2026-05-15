@@ -1,0 +1,13 @@
+events:
+  event-marriage-1875:
+    title: "Thompson Wedding"
+    type: marriage
+    date: "1875-06-15"
+    place: place-springfield
+    participants:
+      - person: person-robert-thompson
+        role: groom
+      - person: person-mary-thompson
+        role: bride
+    properties:
+      description: "Marriage of Robert Thompson and Mary Thompson in Springfield, Illinois"
