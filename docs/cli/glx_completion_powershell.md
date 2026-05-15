@@ -30,6 +30,12 @@ glx completion powershell [flags]
       --no-descriptions   disable completion descriptions
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx completion](/cli/glx_completion)	 - Generate the autocompletion script for the specified shell
