@@ -1,5 +1,10 @@
 ---
 description: Identify drift between Go code (go-glx/types.go) and JSON schemas/specification
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+model: claude-opus-4-7
 ---
 
 You are tasked with identifying any drift between the GLX Go code implementation and the JSON schemas/specification.
