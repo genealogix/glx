@@ -64,8 +64,15 @@ func newTestArchiveForSearch() *glxlib.GLXFile {
 			},
 		},
 		Relationships: map[string]*glxlib.Relationship{},
-		Repositories:  map[string]*glxlib.Repository{},
-		Media:         map[string]*glxlib.Media{},
+		Repositories: map[string]*glxlib.Repository{
+			"repo-archives": {
+				Name:       "Hartford County Archives",
+				State:      "Wisconsin",
+				PostalCode: "54321",
+				Country:    "USA",
+			},
+		},
+		Media: map[string]*glxlib.Media{},
 	}
 }
 
@@ -147,6 +154,35 @@ func TestSearchArchive_FindsAssertionNotes(t *testing.T) {
 		}
 	}
 	assert.True(t, hasAssertionMatch, "should find 'Millbrook area' in assertion notes")
+}
+
+// Regression guard: searchArchive must match repo.State, repo.PostalCode, and repo.Country.
+func TestSearchArchive_FindsRepositoryAddressFields(t *testing.T) {
+	cases := []struct {
+		name      string
+		query     string
+		wantField string
+	}{
+		{"state", "Wisconsin", "state"},
+		{"postal_code", "54321", "postal_code"},
+		{"country", "USA", "country"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := newTestArchiveForSearch()
+			results := searchArchive(archive, tc.query, false, "")
+
+			found := false
+			for _, r := range results {
+				if r.EntityType == "repositories" && r.EntityID == "repo-archives" && r.Field == tc.wantField {
+					found = true
+
+					break
+				}
+			}
+			assert.True(t, found, "should find %q in repository %s field", tc.query, tc.wantField)
+		})
+	}
 }
 
 func TestSearchArchive_NoMatches(t *testing.T) {
