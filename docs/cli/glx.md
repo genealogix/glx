@@ -17,7 +17,8 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 ### Options
 
 ```
-  -h, --help   help for glx
+  -h, --help    help for glx
+  -q, --quiet   Suppress non-error output (where supported)
 ```
 
 ### SEE ALSO
