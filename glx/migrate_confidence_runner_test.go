@@ -16,6 +16,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -148,4 +150,76 @@ func TestMigrateConfidenceDisputedToStatus_NilWarnOutSafe(t *testing.T) {
 	report := migrateConfidenceDisputed(archive, nil)
 	assert.Equal(t, 1, report.ConfidenceDisputedConverted)
 	assert.Equal(t, 1, report.ConfidenceDisputedStatusConflicts)
+}
+
+// TestMigrateArchive_ConfidenceDisputedToStatus_SingleFileRoundTrip exercises
+// the full load -> migrate -> write -> reload pipeline against the new
+// --confidence-disputed-to-status flag, mirroring the gender-rename round-trip
+// test. The fixture includes a clean conversion, a status conflict (to drive
+// the conflict-print branch in migrateArchive), and an already-disputed
+// assertion (idempotent path).
+func TestMigrateArchive_ConfidenceDisputedToStatus_SingleFileRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "archive.glx")
+
+	preMigration := `metadata:
+  glx_version: "1.0"
+assertions:
+  a-clean:
+    subject:
+      person: person-1
+    property: name
+    value: "Mary Smith"
+    confidence: disputed
+  a-conflict:
+    subject:
+      person: person-2
+    property: birth_date
+    value: "1850"
+    confidence: disputed
+    status: proven
+  a-already-disputed:
+    subject:
+      person: person-3
+    property: death_date
+    value: "1900"
+    confidence: disputed
+    status: disputed
+`
+	require.NoError(t, os.WriteFile(archivePath, []byte(preMigration), 0o600))
+
+	t.Cleanup(func() { migrateConfidenceDisputedToStatus = false })
+	migrateConfidenceDisputedToStatus = true
+	require.NoError(t, migrateArchive(archivePath))
+
+	written, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+	writtenStr := string(written)
+	assert.NotContains(t, writtenStr, "confidence: disputed",
+		"all confidence: disputed entries should be cleared post-migration")
+
+	reloaded, err := readSingleFileArchive(archivePath, false)
+	require.NoError(t, err)
+
+	require.NotNil(t, reloaded.Assertions["a-clean"])
+	assert.Empty(t, reloaded.Assertions["a-clean"].Confidence)
+	assert.Equal(t, "disputed", reloaded.Assertions["a-clean"].Status)
+
+	require.NotNil(t, reloaded.Assertions["a-conflict"])
+	assert.Empty(t, reloaded.Assertions["a-conflict"].Confidence)
+	assert.Equal(t, "proven", reloaded.Assertions["a-conflict"].Status,
+		"existing non-disputed status must be preserved")
+
+	require.NotNil(t, reloaded.Assertions["a-already-disputed"])
+	assert.Empty(t, reloaded.Assertions["a-already-disputed"].Confidence)
+	assert.Equal(t, "disputed", reloaded.Assertions["a-already-disputed"].Status)
+
+	// Idempotency at the fs boundary: a second invocation must not corrupt
+	// the now-migrated file.
+	require.NoError(t, migrateArchive(archivePath))
+	second, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+	assert.NotContains(t, string(second), "confidence: disputed")
+	assert.Contains(t, string(second), "status: disputed")
+	assert.Contains(t, string(second), "status: proven")
 }
