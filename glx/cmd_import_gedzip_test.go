@@ -383,3 +383,28 @@ func TestImportGEDZIP_OpenReaderDefaultErrorPath(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "opening gedzip archive")
 }
+
+func TestImportGEDZIP_RejectsGedcomEntryAsDirectory(t *testing.T) {
+	// A directory entry named gedcom.ged passes a raw name match but is
+	// skipped during extraction, so the tempdir would have no gedcom.ged
+	// file for the inner importer to read. Treat it as a missing gedcom.
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "gedcom.ged/", Mode: os.ModeDir | dirPermissions},
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
+}
+
+func TestImportGEDZIP_RejectsGedcomEntryAsSymlink(t *testing.T) {
+	// A symlink entry named gedcom.ged is skipped during extraction (to
+	// prevent zip-symlink-slip), so the tempdir would have no gedcom.ged
+	// file. Treat it as a missing gedcom rather than letting the inner
+	// importer fail with a confusing ErrGEDCOMFileNotFound on the tempdir.
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "gedcom.ged", Body: []byte("/etc/passwd"), Mode: os.ModeSymlink | 0o777},
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPMissingGedcom)
+}

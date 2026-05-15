@@ -49,10 +49,14 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		switch {
 		case os.IsNotExist(err):
 			return fmt.Errorf("%w: %s: %w", ErrGEDCOMFileNotFound, gedzipPath, err)
+		case errors.Is(err, zip.ErrInsecurePath):
+			// ErrInsecurePath flags an entry name that fails the zip
+			// Reader's local-path check (e.g. zip-slip); the archive
+			// itself parses fine, the failure mode is a bad entry.
+			return fmt.Errorf("%w: %s: %w", ErrGEDZIPInvalidEntry, gedzipPath, err)
 		case errors.Is(err, zip.ErrFormat),
 			errors.Is(err, zip.ErrAlgorithm),
-			errors.Is(err, zip.ErrChecksum),
-			errors.Is(err, zip.ErrInsecurePath):
+			errors.Is(err, zip.ErrChecksum):
 			return fmt.Errorf("%w: %s: %w", ErrGEDZIPNotValidArchive, gedzipPath, err)
 		default:
 			return fmt.Errorf("opening gedzip archive %s: %w", gedzipPath, err)
@@ -81,11 +85,24 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 	return importGEDCOM(filepath.Join(tempDir, gedzipGedcomEntry), outputPath, format, validate, verbose, showFirstErrors)
 }
 
+// hasGedcomEntry reports whether the archive contains a gedcom.ged entry that
+// will actually be extracted as a regular file. A directory or symlink entry
+// named gedcom.ged passes the name check but is skipped by extractGEDZIP,
+// which would leave the temp directory without the file and surface a
+// confusing ErrGEDCOMFileNotFound pointing at the tempdir path.
 func hasGedcomEntry(files []*zip.File) bool {
 	for _, f := range files {
-		if f.Name == gedzipGedcomEntry {
-			return true
+		if f.Name != gedzipGedcomEntry {
+			continue
 		}
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		if f.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+
+		return true
 	}
 
 	return false

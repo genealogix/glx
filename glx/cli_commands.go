@@ -126,9 +126,9 @@ var importCmd = &cobra.Command{
 	Long: `Import a GEDCOM or GEDZIP file and convert it to GLX format.
 
 The input format is detected by extension:
-- .ged: GEDCOM 5.5.1 or 7.0
 - .gdz: GEDZIP (a ZIP archive containing gedcom.ged at the root plus
         any media files referenced by FILE records)
+- Any other extension is treated as GEDCOM 5.5.1 or 7.0 (typically .ged)
 
 The imported archive will include:
 - All individuals (persons)
