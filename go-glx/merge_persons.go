@@ -132,7 +132,7 @@ func requirePerson(glx *GLXFile, id, role string) error {
 		return nil
 	}
 	if entityType, err := findEntityType(glx, id); err == nil {
-		return fmt.Errorf("%w: %s %q is a %s", ErrMergeNotAPerson, role, id, entityType)
+		return fmt.Errorf("%w: %s %q exists in %s, not persons", ErrMergeNotAPerson, role, id, entityType)
 	}
 
 	return fmt.Errorf("%w: %s %q", ErrPersonNotFound, role, id)
@@ -223,13 +223,14 @@ func propertyYear(v any) int {
 
 // unionPropertyList returns the union of two property lists, deduplicating by
 // deep-equal of each entry. Returns the merged list and the count of new
-// entries added from drop.
+// entries added from drop. Duplicates within dropList itself are also
+// collapsed (each distinct value is appended at most once).
 func unionPropertyList(keepList, dropList []any) ([]any, int) {
 	out := make([]any, len(keepList), len(keepList)+len(dropList))
 	copy(out, keepList)
 	added := 0
 	for _, dropEntry := range dropList {
-		if containsEntry(keepList, dropEntry) {
+		if containsEntry(out, dropEntry) {
 			continue
 		}
 		out = append(out, dropEntry)

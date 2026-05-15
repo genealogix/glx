@@ -142,6 +142,22 @@ func TestMergePersons_UnionsListProperties(t *testing.T) {
 	assert.Empty(t, result.Conflicts, "list union should not produce conflicts")
 }
 
+func TestMergePersons_DedupesWithinDropList(t *testing.T) {
+	// Regression: a list property where dropList contains internal duplicates
+	// must collapse those duplicates as well, not just cross-list duplicates.
+	glx := newTwoPersonArchive()
+	entry := map[string]any{"value": "Hans Jungk", "date": "1755"}
+	glx.Persons["person-keep"].Properties["name"] = []any{}
+	glx.Persons["person-drop"].Properties["name"] = []any{entry, entry, entry}
+
+	result, err := MergePersons(glx, "person-keep", "person-drop", MergePersonsOptions{})
+	require.NoError(t, err)
+
+	names := glx.Persons["person-keep"].Properties["name"].([]any)
+	assert.Len(t, names, 1, "duplicate entries within dropList should be collapsed")
+	assert.Equal(t, 1, result.PropertiesMerged)
+}
+
 func TestMergePersons_ExternalIdsDeduped(t *testing.T) {
 	glx := newTwoPersonArchive()
 	fsID := map[string]any{
@@ -319,7 +335,7 @@ func TestMergePersons_ErrorNonPersonID(t *testing.T) {
 	}
 	_, err := MergePersons(glx, "person-keep", "event-1", MergePersonsOptions{})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "is a events")
+	assert.Contains(t, err.Error(), "exists in events, not persons")
 }
 
 func TestMergePersons_InvalidatesValidationCache(t *testing.T) {
