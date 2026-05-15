@@ -55,6 +55,12 @@ glx migrate [archive] [flags]
       --rename-gender-to-sex            Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
