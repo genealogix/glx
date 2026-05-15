@@ -71,7 +71,16 @@ var jsonLDPersonPropertyAliases = map[string]string{
 	"sex":        "glx:sex",
 	"gender":     "gender",
 	"occupation": "hasOccupation",
-	"residence":  "homeLocation",
+}
+
+// Person-property names whose values are place IDs. The exporter emits them
+// as Schema.org `homeLocation` references prefixed with `#place-` so JSON-LD
+// consumers can resolve the link to the corresponding Place node in @graph.
+// Values not matching the expected string shape pass through as `glx:<name>`
+// without aliasing to avoid mislabeling a structured (e.g. temporal) value
+// as a single Schema.org reference.
+var jsonLDPersonPlaceRefProperties = map[string]string{
+	"residence": "homeLocation",
 }
 
 // ExportJSONLD converts a GLX archive to a JSON-LD document.
@@ -531,6 +540,18 @@ func applyPersonProperties(node, props map[string]any) {
 				continue
 			}
 		}
+		if alias, ok := jsonLDPersonPlaceRefProperties[k]; ok {
+			if id, ok := v.(string); ok && id != "" {
+				node[alias] = jsonLDPlacePrefix + id
+
+				continue
+			}
+			// Non-string shape (e.g. temporal list) — pass through under glx:
+			// rather than aliasing to a Schema.org @id-typed term.
+			node["glx:"+k] = v
+
+			continue
+		}
 		if alias, ok := jsonLDPersonPropertyAliases[k]; ok {
 			node[alias] = v
 
@@ -550,10 +571,21 @@ func applyPersonProperties(node, props map[string]any) {
 //     givenName / familyName / honorificPrefix / honorificSuffix.
 //  2. A flat layout where the given/surname/etc. fields sit at the top
 //     level of the map (some hand-curated archives use this shape).
+//
+// Subfields without a Schema.org alias (`type`, `nickname`, `surname_prefix`,
+// or any custom vocabulary field) pass through under glx:name_<subfield> so
+// the structured name round-trips without silent data loss.
 func structuredName(v any) (map[string]any, bool) {
 	m, ok := v.(map[string]any)
 	if !ok {
 		return nil, false
+	}
+
+	nameSubfieldAliases := map[string]string{
+		"prefix":  "honorificPrefix",
+		"given":   "givenName",
+		"surname": "familyName",
+		"suffix":  "honorificSuffix",
 	}
 
 	out := map[string]any{}
@@ -562,20 +594,24 @@ func structuredName(v any) (map[string]any, bool) {
 	}
 
 	fields := m
+	nestedFields := false
 	if nested, ok := m["fields"].(map[string]any); ok {
 		fields = nested
+		nestedFields = true
 	}
-	if prefix, ok := stringField(fields, "prefix"); ok {
-		out["honorificPrefix"] = prefix
-	}
-	if given, ok := stringField(fields, "given"); ok {
-		out["givenName"] = given
-	}
-	if surname, ok := stringField(fields, "surname"); ok {
-		out["familyName"] = surname
-	}
-	if suffix, ok := stringField(fields, "suffix"); ok {
-		out["honorificSuffix"] = suffix
+	for k, raw := range fields {
+		if alias, ok := nameSubfieldAliases[k]; ok {
+			if s, ok := raw.(string); ok && s != "" {
+				out[alias] = s
+			}
+
+			continue
+		}
+		if !nestedFields && (k == "value" || k == "fields") {
+			// Already handled above; not a custom subfield of the flat shape.
+			continue
+		}
+		out["glx:name_"+k] = raw
 	}
 	if len(out) == 0 {
 		return nil, false

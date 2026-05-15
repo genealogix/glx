@@ -208,12 +208,18 @@ type ExportResult struct {
 	Version    string
 }
 
-// ExportStatistics tracks export metrics. PersonsExported, FamiliesExported,
-// SourcesExported, RepositoriesExported, MediaExported, EventsProcessed, and
-// PlacesResolved are populated by all exporters. Citations/Relationships/
-// Assertions are populated only by exporters that emit those entity types
-// directly (e.g., JSON-LD); GEDCOM folds them into other records and leaves
-// the counters at zero.
+// ExportStatistics tracks export metrics. Which fields are populated depends
+// on the target format:
+//
+//   - PersonsExported, SourcesExported, RepositoriesExported, MediaExported,
+//     EventsProcessed, PlacesResolved are populated by every exporter.
+//   - FamiliesExported is GEDCOM-specific and counts reconstructed FAM
+//     records; JSON-LD leaves it at zero and reports relationships under
+//     RelationshipsExported instead.
+//   - CitationsExported, RelationshipsExported, AssertionsExported are
+//     populated by exporters that emit those entity types directly
+//     (JSON-LD); GEDCOM folds them into other records and leaves the
+//     counters at zero.
 type ExportStatistics struct {
 	PersonsExported       int
 	FamiliesExported      int

@@ -30,7 +30,7 @@
     "honorificSuffix": "schema:honorificSuffix",
     "gender": "schema:gender",
     "hasOccupation": "schema:hasOccupation",
-    "homeLocation": "schema:homeLocation",
+    "homeLocation": { "@id": "schema:homeLocation", "@type": "@id" },
 
     "containedInPlace": { "@id": "schema:containedInPlace", "@type": "@id" },
     "geo": "schema:geo",

@@ -139,6 +139,51 @@ func TestPersonNode_StructuredName(t *testing.T) {
 	assert.NotContains(t, node, "name")
 }
 
+func TestPersonNode_ResidenceAsPlaceReference(t *testing.T) {
+	t.Run("string place id", func(t *testing.T) {
+		p := &Person{Properties: map[string]any{"residence": "stratford"}}
+		node := personNode("william", p)
+		assert.Equal(t, "#place-stratford", node["homeLocation"], "residence should become a #place- reference")
+		assert.NotContains(t, node, "glx:residence")
+	})
+	t.Run("non-string falls through to glx:", func(t *testing.T) {
+		// e.g. a temporal residence stored as a list — pass through unaliased.
+		p := &Person{Properties: map[string]any{
+			"residence": []any{
+				map[string]any{"value": "stratford", "date": "1564"},
+			},
+		}}
+		node := personNode("william", p)
+		assert.NotContains(t, node, "homeLocation")
+		assert.NotEmpty(t, node["glx:residence"], "non-string residence must survive under glx:residence")
+	})
+}
+
+func TestStructuredName_PreservesUnmappedSubfields(t *testing.T) {
+	p := &Person{
+		Properties: map[string]any{
+			"name": map[string]any{
+				"value": "Anne (Nan) Hathaway",
+				"fields": map[string]any{
+					"given":          "Anne",
+					"surname":        "Hathaway",
+					"nickname":       "Nan",
+					"surname_prefix": "de",
+					"type":           "birth",
+				},
+			},
+		},
+	}
+
+	node := personNode("anne", p)
+	assert.Equal(t, "Anne (Nan) Hathaway", node["name"])
+	assert.Equal(t, "Anne", node["givenName"])
+	assert.Equal(t, "Hathaway", node["familyName"])
+	assert.Equal(t, "Nan", node["glx:name_nickname"], "nickname must round-trip under glx:")
+	assert.Equal(t, "de", node["glx:name_surname_prefix"], "surname_prefix must round-trip under glx:")
+	assert.Equal(t, "birth", node["glx:name_type"], "name type must round-trip under glx:")
+}
+
 func TestPersonNode_SexAndGenderDoNotCollide(t *testing.T) {
 	p := &Person{
 		Properties: map[string]any{
