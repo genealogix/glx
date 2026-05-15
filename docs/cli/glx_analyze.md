@@ -55,6 +55,12 @@ glx analyze [person] [flags]
   -p, --person string    Filter results to a specific person (ID or name)
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives

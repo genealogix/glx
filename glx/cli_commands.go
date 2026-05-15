@@ -70,6 +70,8 @@ func Execute() {
 
 func init() {
 	rootCmd.SetVersionTemplate("glx version {{.Version}}\n")
+	rootCmd.PersistentFlags().BoolVarP(&quietOutput, "quiet", "q", false,
+		"Suppress non-error output (where supported)")
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(initCmd)
