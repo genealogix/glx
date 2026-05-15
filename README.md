@@ -11,6 +11,7 @@ layout: doc
 [![Go Version](https://img.shields.io/github/go-mod/go-version/genealogix/glx)](https://github.com/genealogix/glx/blob/main/go.mod)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/genealogix/glx/blob/main/LICENSE)
 [![CI](https://github.com/genealogix/glx/workflows/Validate%20Specification/badge.svg)](https://github.com/genealogix/glx/actions)
+[![codecov](https://codecov.io/gh/genealogix/glx/branch/main/graph/badge.svg)](https://codecov.io/gh/genealogix/glx)
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
 [![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
 
