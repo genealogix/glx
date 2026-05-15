@@ -1,5 +1,10 @@
 ---
 description: Identify drift between specification markdown files and JSON schemas
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+model: claude-opus-4-7
 ---
 
 You are tasked with identifying any drift between the GLX specification markdown files and the JSON schemas.
