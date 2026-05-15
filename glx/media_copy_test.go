@@ -177,7 +177,7 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 		},
 	}
 
-	streams, _, errOut := TestIOStreams()
+	streams, out, _ := TestIOStreams()
 
 	err := copyMediaFiles(streams, destDir, mediaFiles, srcDir, false)
 	if err != nil {
@@ -191,8 +191,8 @@ func TestCopyMediaFiles_MissingSourceWarns(t *testing.T) {
 	}
 
 	// Verify warning was captured
-	if !strings.Contains(errOut.String(), "Warning: could not copy media file nonexistent.jpg") {
-		t.Errorf("expected warning about missing file, got: %q", errOut.String())
+	if !strings.Contains(out.String(), "Warning: could not copy media file nonexistent.jpg") {
+		t.Errorf("expected warning about missing file, got: %q", out.String())
 	}
 }
 
@@ -333,7 +333,7 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 
 	// Step 3: Copy media files (CLI layer)
 	destDir := t.TempDir()
-	streams, _, errOut := TestIOStreams()
+	streams, out, _ := TestIOStreams()
 	err = copyMediaFiles(streams, destDir, result.MediaFiles, gedcomDir, false)
 	if err != nil {
 		t.Fatalf("copyMediaFiles failed: %v", err)
@@ -464,7 +464,7 @@ func TestE2E_TortureTest_MediaFileCopy(t *testing.T) {
 	t.Logf("  Total files in media/files/: %d", len(entries))
 
 	// Step 11: Verify warnings were captured and expected
-	warnings := errOut.String()
+	warnings := out.String()
 	warnCount := strings.Count(warnings, "Warning:")
 	t.Logf("  Warnings captured: %d", warnCount)
 	// 8 missing-file warnings (ImgFile.BMP referenced 3 times) + 1 blob decode = 9
