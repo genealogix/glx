@@ -154,6 +154,57 @@ cd my-family-archive
 glx validate
 ```
 
+## CLI Commands
+
+The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.dev/cli/) for flags, examples, and per-command details.
+
+### Archive Management
+
+- `glx init` — initialize a new archive
+- `glx validate` — validate files and cross-references
+- `glx split` — convert a single-file archive to multi-file
+- `glx join` — convert a multi-file archive to single-file
+- `glx merge` — combine two archives with duplicate detection
+- `glx migrate` — migrate an archive to the current format
+- `glx rename` — rename an entity by ID
+
+### Import & Export
+
+- `glx import` — import a GEDCOM file
+- `glx export` — export to GEDCOM
+
+### Exploration
+
+- `glx search` — full-text search across entities
+- `glx query` — filter and list entities
+- `glx vitals` — show birth, death, burial for a person
+- `glx timeline` — chronological events for a person
+- `glx summary` — full person profile with narrative
+- `glx ancestors` — ancestor tree
+- `glx descendants` — descendant tree
+- `glx cite` — formatted citation text
+- `glx path` — shortest relationship path between two people
+
+### Data Entry
+
+- `glx census` — census tooling (see subcommands)
+- `glx census add` — generate entities from a census template
+- `glx link` — create a FamilySearch citation from an ARK
+
+### Analysis
+
+- `glx stats` — entity-count and confidence dashboard
+- `glx places` — place data quality issues
+- `glx cluster` — FAN-club analysis
+- `glx analyze` — gap, conflict, and suggestion analysis
+- `glx duplicates` — detect duplicate entities
+- `glx coverage` — research coverage report
+- `glx diff` — diff two archives
+
+### Shell completion
+
+- `glx completion` — generate shell completion scripts (bash, zsh, fish, powershell)
+
 ## File Format
 
 All GENEALOGIX files use the same structure:
