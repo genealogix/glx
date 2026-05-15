@@ -183,9 +183,11 @@ func TestRunValidate_NonExistentPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Chdir(tmpDir)
 
-	streams, _, _ := TestIOStreams()
+	streams, out, _ := TestIOStreams()
 	err := validatePaths(streams, []string{"does-not-exist"})
 	require.NoError(t, err, "non-existent path results in 0 files validated")
+	require.Contains(t, out.String(), "0 files validated",
+		"should report that no files were validated for a non-existent path")
 }
 
 func TestRunValidate_MixedValidAndInvalidFiles(t *testing.T) {
@@ -214,10 +216,11 @@ func TestRunValidate_MixedValidAndInvalidFiles(t *testing.T) {
 
 func TestRunValidate_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
-	streams, _, _ := TestIOStreams()
+	streams, out, _ := TestIOStreams()
 
 	err := validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "empty directory should validate successfully")
+	require.Contains(t, out.String(), "Validated 0 file", "should report that no GLX files were validated")
 }
 
 func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
@@ -227,9 +230,10 @@ func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
 	err := os.WriteFile(txtFile, []byte("This is not a GLX file"), 0o644)
 	require.NoError(t, err)
 
-	streams, _, _ := TestIOStreams()
+	streams, out, _ := TestIOStreams()
 	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "directory with no GLX files should validate successfully")
+	require.Contains(t, out.String(), "No GLX files", "should report that zero GLX files were processed")
 }
 
 func TestRunValidate_NestedDirectories(t *testing.T) {
