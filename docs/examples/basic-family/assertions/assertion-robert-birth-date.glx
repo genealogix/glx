@@ -1,0 +1,11 @@
+assertions:
+  assertion-robert-birth-date:
+    subject:
+      event: event-birth-robert
+    property: date
+    value: "1850-04-12"
+    citations:
+      - citation-robert-birth
+    confidence: high
+    status: proven
+    notes: "Birth date confirmed by the Sangamon County civil birth register"
