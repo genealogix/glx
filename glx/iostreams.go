@@ -28,9 +28,21 @@ type IOStreams struct {
 	ErrOut io.Writer
 }
 
+// quietOutput is set by the --quiet/-q persistent flag registered on rootCmd
+// in cli_commands.go. When true, SystemIOStreams discards stdout while leaving
+// stderr connected to os.Stderr so errors are still surfaced.
+var quietOutput bool
+
 // SystemIOStreams returns IOStreams connected to os.Stdout and os.Stderr.
+// If the --quiet/-q flag was passed, Out is replaced with io.Discard so
+// migrated runners that write diagnostic output via Out are silenced.
 func SystemIOStreams() *IOStreams {
-	return &IOStreams{Out: os.Stdout, ErrOut: os.Stderr}
+	out := io.Writer(os.Stdout)
+	if quietOutput {
+		out = io.Discard
+	}
+
+	return &IOStreams{Out: out, ErrOut: os.Stderr}
 }
 
 // TestIOStreams returns IOStreams backed by buffers for testing.

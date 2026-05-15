@@ -74,6 +74,12 @@ glx query <entity-type> [flags]
       --type string         Filter by type (event type, relationship type, etc.)
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives

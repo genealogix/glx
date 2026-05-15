@@ -19,6 +19,12 @@ See each sub-command's help for details on how to use the generated script.
   -h, --help   help for completion
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
