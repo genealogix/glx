@@ -933,10 +933,8 @@ func TestFindDuplicates_FullData_RegressionUnchanged(t *testing.T) {
 
 func TestFindDuplicates_NoComparableData(t *testing.T) {
 	// Both persons present, neither has a name or any events — no signal can
-	// produce data. effectiveWeight == 0 path; score must be 0 and the pair
-	// must not surface even at threshold 0 (which findDuplicates treats as
-	// "strictly greater than 0", but for safety we assert score==0 directly
-	// via threshold-0.0 + signal inspection).
+	// produce data. effectiveWeight == 0 path; the pair must still surface at
+	// threshold 0 (FindDuplicates uses `>=`), and its score must be 0.
 	archive := &GLXFile{
 		Persons: map[string]*Person{
 			"person-a": {Properties: map[string]any{}},
@@ -945,12 +943,16 @@ func TestFindDuplicates_NoComparableData(t *testing.T) {
 	}
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
 	require.NoError(t, err)
+
+	var found bool
 	for _, pair := range result.Pairs {
 		if (pair.PersonA == "person-a" && pair.PersonB == "person-b") ||
 			(pair.PersonA == "person-b" && pair.PersonB == "person-a") {
+			found = true
 			assert.InDelta(t, 0.0, pair.Score, 1e-9, "no-data pair must score 0 via the effectiveWeight==0 branch")
 		}
 	}
+	require.True(t, found, "(person-a, person-b) must appear in result.Pairs at threshold 0; otherwise the score assertion above would pass vacuously")
 }
 
 func TestFindDuplicates_OneSidedPartial_NameExactMatch_ScoresHigh(t *testing.T) {
