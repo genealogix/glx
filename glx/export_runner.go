@@ -91,7 +91,7 @@ func parseGEDCOMVersion(format string) (glxlib.GEDCOMVersion, error) {
 	case ExportFormat70, "7.0":
 		return glxlib.GEDCOM70, nil
 	default:
-		return glxlib.GEDCOMUnknown, fmt.Errorf("%w: %s (use '551' or '70')", ErrInvalidExportFormat, format)
+		return glxlib.GEDCOMUnknown, fmt.Errorf("%w: %s (use '551', '70', or 'jsonld')", ErrInvalidExportFormat, format)
 	}
 }
 

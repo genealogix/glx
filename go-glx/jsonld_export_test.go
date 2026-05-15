@@ -54,6 +54,28 @@ func TestExportJSONLD_EmptyArchive(t *testing.T) {
 	require.Equal(t, "https://glx.genealogix.dev/ns/v1#", ctx["glx"])
 }
 
+func TestExportJSONLD_SkipsNilMapValues(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"alive": {Properties: map[string]any{"name": "Real Person"}},
+			"null":  nil,
+		},
+		Events: map[string]*Event{
+			"e1": nil,
+		},
+	}
+
+	data, result, err := ExportJSONLD(glx, nil)
+	require.NoError(t, err, "nil map values must not panic the exporter")
+	require.Equal(t, 1, result.Statistics.PersonsExported, "nil persons should be skipped")
+	require.Equal(t, 0, result.Statistics.EventsProcessed, "nil events should be skipped")
+
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(data, &doc))
+	graph, _ := doc["@graph"].([]any)
+	require.Len(t, graph, 1)
+}
+
 func TestExportJSONLD_FullDocumentShape(t *testing.T) {
 	glx := smallFixture()
 
@@ -99,7 +121,7 @@ func TestPersonNode_StructuredName(t *testing.T) {
 				"surname": "Shakespeare",
 				"suffix":  "Sr.",
 			},
-			"sex":        "male",
+			"gender":     "male",
 			"occupation": "glover",
 		},
 	}
@@ -115,6 +137,19 @@ func TestPersonNode_StructuredName(t *testing.T) {
 	assert.Equal(t, "glover", node["hasOccupation"])
 	// Unknown property would land under glx:; "name" expanded so should not be present.
 	assert.NotContains(t, node, "name")
+}
+
+func TestPersonNode_SexAndGenderDoNotCollide(t *testing.T) {
+	p := &Person{
+		Properties: map[string]any{
+			"sex":    "female",
+			"gender": "non-binary",
+		},
+	}
+
+	node := personNode("p1", p)
+	assert.Equal(t, "female", node["glx:sex"], "biological sex must survive under glx:sex")
+	assert.Equal(t, "non-binary", node["gender"], "self-identified gender maps to schema:gender")
 }
 
 func TestPersonNode_NestedFieldsShape(t *testing.T) {

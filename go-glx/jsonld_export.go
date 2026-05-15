@@ -61,9 +61,14 @@ const (
 // Person-property names whose values should map to Schema.org aliases. Names
 // not in this set fall through as glx:<name> to keep custom vocabularies
 // forward-compatible.
+//
+// `sex` (biological) and `gender` (self-identified) are distinct GLX
+// properties — both can be present on the same Person. Schema.org has only
+// `gender`, so we map GLX `gender` -> schema:gender and keep GLX `sex` under
+// the distinct `glx:sex` property so neither value is silently overwritten.
 var jsonLDPersonPropertyAliases = map[string]string{
 	"name":       "name",
-	"sex":        "gender",
+	"sex":        "glx:sex",
 	"gender":     "gender",
 	"occupation": "hasOccupation",
 	"residence":  "homeLocation",
@@ -165,40 +170,79 @@ func buildJSONLDGraph(glx *GLXFile) ([]map[string]any, ExportStatistics) {
 			len(glx.Relationships)+len(glx.Sources)+len(glx.Citations)+
 			len(glx.Repositories)+len(glx.Media)+len(glx.Assertions))
 
+	// Nil map values are possible when a YAML entity deserialized to null;
+	// skip them rather than panic in the per-entity builders that dereference
+	// fields. Matches the GEDCOM exporter's behavior (gedcom_export.go).
 	for _, id := range sortedKeys(glx.Persons) {
-		graph = append(graph, personNode(id, glx.Persons[id]))
+		p := glx.Persons[id]
+		if p == nil {
+			continue
+		}
+		graph = append(graph, personNode(id, p))
 		stats.PersonsExported++
 	}
 	for _, id := range sortedKeys(glx.Events) {
-		graph = append(graph, eventNode(id, glx.Events[id]))
+		e := glx.Events[id]
+		if e == nil {
+			continue
+		}
+		graph = append(graph, eventNode(id, e))
 		stats.EventsProcessed++
 	}
 	for _, id := range sortedKeys(glx.Places) {
-		graph = append(graph, placeNode(id, glx.Places[id]))
+		p := glx.Places[id]
+		if p == nil {
+			continue
+		}
+		graph = append(graph, placeNode(id, p))
 		stats.PlacesResolved++
 	}
 	for _, id := range sortedKeys(glx.Relationships) {
-		graph = append(graph, relationshipNode(id, glx.Relationships[id]))
+		r := glx.Relationships[id]
+		if r == nil {
+			continue
+		}
+		graph = append(graph, relationshipNode(id, r))
 		stats.RelationshipsExported++
 	}
 	for _, id := range sortedKeys(glx.Sources) {
-		graph = append(graph, sourceNode(id, glx.Sources[id]))
+		s := glx.Sources[id]
+		if s == nil {
+			continue
+		}
+		graph = append(graph, sourceNode(id, s))
 		stats.SourcesExported++
 	}
 	for _, id := range sortedKeys(glx.Citations) {
-		graph = append(graph, citationNode(id, glx.Citations[id]))
+		c := glx.Citations[id]
+		if c == nil {
+			continue
+		}
+		graph = append(graph, citationNode(id, c))
 		stats.CitationsExported++
 	}
 	for _, id := range sortedKeys(glx.Repositories) {
-		graph = append(graph, repositoryNode(id, glx.Repositories[id]))
+		r := glx.Repositories[id]
+		if r == nil {
+			continue
+		}
+		graph = append(graph, repositoryNode(id, r))
 		stats.RepositoriesExported++
 	}
 	for _, id := range sortedKeys(glx.Media) {
-		graph = append(graph, mediaNode(id, glx.Media[id]))
+		m := glx.Media[id]
+		if m == nil {
+			continue
+		}
+		graph = append(graph, mediaNode(id, m))
 		stats.MediaExported++
 	}
 	for _, id := range sortedKeys(glx.Assertions) {
-		graph = append(graph, assertionNode(id, glx.Assertions[id]))
+		a := glx.Assertions[id]
+		if a == nil {
+			continue
+		}
+		graph = append(graph, assertionNode(id, a))
 		stats.AssertionsExported++
 	}
 
