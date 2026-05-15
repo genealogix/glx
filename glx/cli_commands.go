@@ -177,21 +177,26 @@ var (
 
 var exportCmd = &cobra.Command{
 	Use:   "export <glx-archive>",
-	Short: "Export a GLX archive to GEDCOM format",
-	Long: `Export a GLX archive to GEDCOM format.
+	Short: "Export a GLX archive to GEDCOM or JSON-LD format",
+	Long: `Export a GLX archive to GEDCOM or JSON-LD format.
 
-Supports both GEDCOM 5.5.1 and GEDCOM 7.0 output formats.
+Supports GEDCOM 5.5.1, GEDCOM 7.0, and JSON-LD output formats.
 
 The input can be either a single-file GLX archive (.glx) or a multi-file
 archive directory.
 
-The exported GEDCOM file will include:
+GEDCOM output (--format 551 or 70) includes:
 - All individuals (INDI records)
 - All families (FAM records, reconstructed from relationships)
 - All sources (SOUR records)
 - All repositories (REPO records)
 - All media objects (OBJE records)
-- Events, places, citations, and notes`,
+- Events, places, citations, and notes
+
+JSON-LD output (--format jsonld) emits a single self-contained document
+with an inlined @context aligned with Schema.org (Person, Event, Place,
+CreativeWork, ArchiveOrganization, MediaObject) plus a glx: namespace for
+Citation, Relationship, and Assertion.`,
 	Example: `  # Export to GEDCOM 5.5.1 (default)
   glx export family-archive -o family.ged
 
@@ -201,6 +206,9 @@ The exported GEDCOM file will include:
   # Export to GEDCOM 7.0
   glx export family-archive -o family.ged --format 70
 
+  # Export to JSON-LD (Schema.org-aligned)
+  glx export family-archive -o family.jsonld --format jsonld
+
   # Export with verbose output
   glx export family-archive -o family.ged --verbose`,
 	Args: cobra.ExactArgs(1),
@@ -208,15 +216,20 @@ The exported GEDCOM file will include:
 }
 
 func init() {
-	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output GEDCOM file path (required)")
-	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "GEDCOM version: 551 or 70")
+	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (required)")
+	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "Export format: 551, 70, or jsonld")
 	exportCmd.Flags().BoolVarP(&exportVerbose, "verbose", "v", false, "Verbose output")
 
 	_ = exportCmd.MarkFlagRequired("output")
 }
 
 func runExport(_ *cobra.Command, args []string) error {
-	return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose)
+	switch exportFormat {
+	case ExportFormatJSONLD:
+		return exportToJSONLD(args[0], exportOutput, exportVerbose)
+	default:
+		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose)
+	}
 }
 
 // ============================================================================

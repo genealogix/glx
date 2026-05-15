@@ -175,12 +175,12 @@ type ExportContext struct {
 	PersonEvents map[string][]string
 
 	// Reconstructed family records
-	Families     []*ExportFamily
+	Families      []*ExportFamily
 	FamilyXRefMap map[string]string // relationship ID -> family XREF
 
 	// Person-to-family reverse maps for FAMS/FAMC back-references
-	PersonSpouseFamilies map[string][]string          // person ID -> family XRefs where spouse
-	PersonChildFamilies  map[string][]childFamilyRef  // person ID -> family refs where child
+	PersonSpouseFamilies map[string][]string         // person ID -> family XRefs where spouse
+	PersonChildFamilies  map[string][]childFamilyRef // person ID -> family refs where child
 
 	// PersonPropertyAssertions maps personID -> property -> assertions
 	// Used to export SOUR on NAME, OCCU, RESI, etc. from assertion evidence
@@ -208,16 +208,24 @@ type ExportResult struct {
 	Version    string
 }
 
-// ExportStatistics tracks export metrics.
+// ExportStatistics tracks export metrics. PersonsExported, FamiliesExported,
+// SourcesExported, RepositoriesExported, MediaExported, EventsProcessed, and
+// PlacesResolved are populated by all exporters. Citations/Relationships/
+// Assertions are populated only by exporters that emit those entity types
+// directly (e.g., JSON-LD); GEDCOM folds them into other records and leaves
+// the counters at zero.
 type ExportStatistics struct {
-	PersonsExported      int
-	FamiliesExported     int
-	SourcesExported      int
-	RepositoriesExported int
-	MediaExported        int
-	EventsProcessed      int
-	PlacesResolved       int
-	Warnings             []ExportWarning
+	PersonsExported       int
+	FamiliesExported      int
+	SourcesExported       int
+	RepositoriesExported  int
+	MediaExported         int
+	EventsProcessed       int
+	PlacesResolved        int
+	CitationsExported     int
+	RelationshipsExported int
+	AssertionsExported    int
+	Warnings              []ExportWarning
 }
 
 // ExportWarning represents a warning during export.

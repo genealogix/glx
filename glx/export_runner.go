@@ -23,10 +23,13 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// GEDCOM version format constants for the --format flag
+// Export format constants for the --format flag. GEDCOM versions and the
+// JSON-LD format share the same flag; the export dispatcher in
+// cli_commands.go routes on this value.
 const (
-	ExportFormat551 = "551"
-	ExportFormat70  = "70"
+	ExportFormat551    = "551"
+	ExportFormat70     = "70"
+	ExportFormatJSONLD = "jsonld"
 )
 
 // exportToGEDCOM loads a GLX archive and exports it to GEDCOM format
