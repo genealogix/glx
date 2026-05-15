@@ -13,6 +13,10 @@
 
 <!-- Fixes #123 — or "None" if no linked issue. -->
 
+## Review focus
+
+<!-- What should reviewers pay attention to? e.g. "API design", "correctness", or "trivial change". -->
+
 ## Testing
 
 <!-- What did you run or verify? -->
