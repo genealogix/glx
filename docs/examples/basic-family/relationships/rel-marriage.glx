@@ -6,3 +6,4 @@ relationships:
         role: spouse
       - person: person-robert-thompson
         role: spouse
+    start_event: event-marriage-1875
