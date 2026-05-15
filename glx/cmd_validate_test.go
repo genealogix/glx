@@ -15,6 +15,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -339,4 +340,16 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 	streams, _, _ := TestIOStreams()
 	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "should successfully validate .yaml and .yml files")
+}
+
+func TestRunValidate_RespectsQuietFlag(t *testing.T) {
+	t.Cleanup(func() { quietOutput = false })
+	quietOutput = true
+
+	streams := SystemIOStreams()
+	require.Equal(t, io.Discard, streams.Out, "stdout must be discarded when --quiet is set")
+
+	t.Chdir("../docs/examples/basic-family")
+	err := validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
+	require.NoError(t, err, "validation of a known-good file should succeed under --quiet")
 }

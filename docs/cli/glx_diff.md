@@ -56,6 +56,12 @@ glx diff <dir1> <dir2> [flags]
   -v, --verbose         Show full field-level details
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives
