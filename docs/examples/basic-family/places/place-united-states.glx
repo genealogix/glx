@@ -1,0 +1,7 @@
+places:
+  place-united-states:
+    name: "United States"
+    type: country
+    latitude: 39.8283
+    longitude: -98.5795
+    notes: "Country in North America"
