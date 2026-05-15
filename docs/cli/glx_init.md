@@ -45,6 +45,12 @@ glx init [directory] [flags]
   -s, --single-file            create a single-file archive instead of multi-file
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx](/cli/glx)	 - GENEALOGIX CLI - Manage and validate genealogy archives

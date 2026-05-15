@@ -28,7 +28,8 @@ import (
 // copyMediaFiles copies or writes media files into the archive's media/files/ directory.
 // gedcomDir is the source directory for resolving relative FILE paths.
 // archiveDir is the root of the output archive.
-// Missing source files produce warnings on stderr, not fatal errors.
+// Missing source files produce warnings on stdout (suppressible via --quiet),
+// not fatal errors.
 func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.MediaFileSource, gedcomDir string, verbose bool) error {
 	if len(mediaFiles) == 0 {
 		return nil
@@ -47,7 +48,7 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 		switch mf.SourceType {
 		case glxlib.MediaSourceFile:
 			if err := copyMediaFile(gedcomDir, mf.RelativePath, destPath); err != nil {
-				streams.Errorf("Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
+				streams.Printf("Warning: could not copy media file %s: %v\n", mf.RelativePath, err)
 				warnCount++
 
 				continue
@@ -57,13 +58,13 @@ func copyMediaFiles(streams *IOStreams, archiveDir string, mediaFiles []glxlib.M
 		case glxlib.MediaSourceBlob:
 			decoded, err := decodeGEDCOMBlob(mf.BlobData)
 			if err != nil {
-				streams.Errorf("Warning: could not decode BLOB for %s: %v\n", mf.MediaID, err)
+				streams.Printf("Warning: could not decode BLOB for %s: %v\n", mf.MediaID, err)
 				warnCount++
 
 				continue
 			}
 			if err := os.WriteFile(destPath, decoded, filePermissions); err != nil {
-				streams.Errorf("Warning: could not write BLOB file %s: %v\n", destPath, err)
+				streams.Printf("Warning: could not write BLOB file %s: %v\n", destPath, err)
 				warnCount++
 
 				continue
