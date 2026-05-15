@@ -16,6 +16,7 @@ package main
 
 import (
 	"archive/zip"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,6 +69,43 @@ func buildGEDZIP(t *testing.T, entries map[string][]byte) string {
 		require.NoError(t, err, "creating zip entry %s", name)
 		_, err = w.Write(content)
 		require.NoError(t, err, "writing zip entry %s", name)
+	}
+	require.NoError(t, zw.Close())
+
+	return gdzPath
+}
+
+// gedzipTestEntry describes one entry written into a test fixture archive.
+// Mode==0 means a regular file; set os.ModeDir for a directory entry,
+// os.ModeSymlink for a symlink (Body holds the link target).
+type gedzipTestEntry struct {
+	Name string
+	Body []byte
+	Mode os.FileMode
+}
+
+// buildGEDZIPOrdered is the slice-based sibling of buildGEDZIP. Tests that
+// depend on the order entries are written into the archive (file-vs-directory
+// collisions on the destination filesystem) must use this helper because the
+// map-keyed buildGEDZIP iterates in nondeterministic order.
+func buildGEDZIPOrdered(t *testing.T, entries []gedzipTestEntry) string {
+	t.Helper()
+
+	gdzPath := filepath.Join(t.TempDir(), "fixture.gdz")
+	f, err := os.Create(filepath.Clean(gdzPath))
+	require.NoError(t, err)
+	defer func() { _ = f.Close() }()
+
+	zw := zip.NewWriter(f)
+	for _, e := range entries {
+		h := &zip.FileHeader{Name: e.Name, Method: zip.Deflate}
+		if e.Mode != 0 {
+			h.SetMode(e.Mode)
+		}
+		w, err := zw.CreateHeader(h)
+		require.NoError(t, err, "creating zip entry %q", e.Name)
+		_, err = w.Write(e.Body)
+		require.NoError(t, err, "writing zip entry %q", e.Name)
 	}
 	require.NoError(t, zw.Close())
 
@@ -235,4 +273,113 @@ func TestImportGEDZIP_RejectsDotSegmentDuplicateGedcom(t *testing.T) {
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPDuplicateEntry)
+}
+
+func TestImportGEDZIP_VerboseEmitsExtractionMessage(t *testing.T) {
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged": []byte(minimalGEDCOM7),
+	})
+	outDir := filepath.Join(t.TempDir(), "archive")
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	origStdout := os.Stdout
+	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = origStdout })
+
+	importErr := importGEDCOM(gdz, outDir, FormatMulti, true, true, defaultShowFirstErrors)
+	require.NoError(t, w.Close())
+	out, readErr := io.ReadAll(r)
+	require.NoError(t, readErr)
+
+	require.NoError(t, importErr)
+	require.Contains(t, string(out), "Extracting GEDZIP archive")
+}
+
+func TestImportGEDZIP_SkipsDirectoryEntry(t *testing.T) {
+	// A directory entry (name ending "/" with ModeDir set) must be skipped
+	// during extraction so its zero-byte body isn't written as a regular file
+	// over a path our later entries might rely on as a directory.
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "media/", Mode: os.ModeDir | dirPermissions},
+		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
+	})
+	outDir := filepath.Join(t.TempDir(), "archive")
+
+	err := importGEDCOM(gdz, outDir, FormatMulti, true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+}
+
+func TestImportGEDZIP_SkipsSymlinkEntry(t *testing.T) {
+	// A symlink entry must be skipped so a later entry's write cannot follow
+	// the link outside the destination directory (zip-symlink-slip).
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
+		{Name: "link-to-passwd", Body: []byte("/etc/passwd"), Mode: os.ModeSymlink | 0o777},
+	})
+	outDir := filepath.Join(t.TempDir(), "archive")
+
+	err := importGEDCOM(gdz, outDir, FormatMulti, true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+
+	// The symlink entry must not have been materialized anywhere under the
+	// destination — neither as a link nor as a regular file holding the
+	// link-target string.
+	_, statErr := os.Lstat(filepath.Join(outDir, "media", "files", "link-to-passwd"))
+	require.True(t, os.IsNotExist(statErr), "symlink entry must not be extracted")
+}
+
+func TestImportGEDZIP_RejectsArchiveExceedingEntryLimit(t *testing.T) {
+	orig := maxGEDZIPEntries
+	maxGEDZIPEntries = 2
+	t.Cleanup(func() { maxGEDZIPEntries = orig })
+
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":  []byte(minimalGEDCOM7),
+		"media/a.jpg": []byte("a"),
+		"media/b.jpg": []byte("b"),
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPTooManyEntries)
+}
+
+func TestImportGEDZIP_MkdirAllFailsWhenFileOccupiesDirectoryPath(t *testing.T) {
+	// Write "foo" as a regular file, then "foo/bar.txt". When extracting the
+	// second entry, MkdirAll("foo/") fails because "foo" is already a regular
+	// file — exercising the directory-creation error branch.
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
+		{Name: "foo", Body: []byte("regular-file-content")},
+		{Name: "foo/bar.txt", Body: []byte("nested-content")},
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "creating directory")
+}
+
+func TestImportGEDZIP_OpenFileFailsWhenDirectoryOccupiesFilePath(t *testing.T) {
+	// Write "foo/bar.txt" first (which creates "foo" as a directory), then
+	// write "foo" as a regular file. The second entry's OpenFile fails with
+	// EISDIR — exercising the destination-open error branch in writeZipEntry
+	// and the error-propagation branch in extractGEDZIP.
+	gdz := buildGEDZIPOrdered(t, []gedzipTestEntry{
+		{Name: "gedcom.ged", Body: []byte(minimalGEDCOM7)},
+		{Name: "foo/bar.txt", Body: []byte("nested-content")},
+		{Name: "foo", Body: []byte("conflicts-with-dir")},
+	})
+
+	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "creating destination file")
+}
+
+func TestImportGEDZIP_OpenReaderDefaultErrorPath(t *testing.T) {
+	// A path with an embedded NUL byte is rejected by os.Open with EINVAL,
+	// which is neither IsNotExist nor any of the typed zip.ErrXxx errors —
+	// exercising the default arm of the OpenReader error switch.
+	err := importGEDCOM("foo\x00bar.gdz", filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "opening gedzip archive")
 }

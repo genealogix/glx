@@ -32,8 +32,9 @@ const gedzipGedcomEntry = "gedcom.ged"
 // maxGEDZIPEntries caps the per-archive entry count to prevent inode/syscall
 // DoS from archives with millions of zero-byte entries. The largest plausible
 // genealogy archive (a 100k-person tree with several media items per person)
-// would still fit comfortably.
-const maxGEDZIPEntries = 100_000
+// would still fit comfortably. Declared as var (not const) so tests can lower
+// the cap without building a 100k-entry fixture.
+var maxGEDZIPEntries = 100_000
 
 // importGEDZIP extracts a .gdz archive into a temporary directory and delegates
 // to the existing GEDCOM import pipeline. The temp directory is removed when
