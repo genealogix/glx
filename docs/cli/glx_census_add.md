@@ -51,6 +51,12 @@ glx census add [flags]
   -v, --verbose          Show detailed summary of generated entities
 ```
 
+### Options inherited from parent commands
+
+```
+  -q, --quiet   Suppress non-error output (where supported)
+```
+
 ### SEE ALSO
 
 * [glx census](/cli/glx_census)	 - Bulk census record tools
