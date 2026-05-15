@@ -1,0 +1,8 @@
+places:
+  place-illinois:
+    name: "Illinois"
+    type: state
+    parent: place-united-states
+    latitude: 40.0417
+    longitude: -89.1965
+    notes: "Midwestern U.S. state, admitted 1818"
