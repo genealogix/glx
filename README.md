@@ -155,7 +155,7 @@ glx validate
 
 ## CLI Commands
 
-The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, and analysis. See the [full CLI reference](https://genealogix.dev/cli/) for flags, examples, and per-command details.
+The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, analysis, and shell completion. See the [full CLI reference](https://genealogix.dev/cli/) for flags, examples, and per-command details.
 
 ### Archive Management
 
@@ -186,6 +186,7 @@ The `glx` CLI groups its commands into archive management, import/export, explor
 
 ### Data Entry
 
+- `glx census` — census tooling (see subcommands)
 - `glx census add` — generate entities from a census template
 - `glx link` — create a FamilySearch citation from an ARK
 
