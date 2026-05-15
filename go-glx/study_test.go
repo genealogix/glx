@@ -180,6 +180,7 @@ func TestStudyValidation(t *testing.T) {
 		for _, w := range result.Warnings {
 			if w.SourceType == "studies" && w.SourceID == "study-1" && w.Field == "date_range" {
 				found = true
+
 				break
 			}
 		}
