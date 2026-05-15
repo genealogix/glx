@@ -15,7 +15,10 @@
 package glx
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestMapRepositoryType verifies that GEDCOM REPO.TYPE values resolve through
@@ -54,5 +57,32 @@ func TestMapRepositoryType(t *testing.T) {
 				t.Errorf("mapRepositoryType(%q) = %q, want %q", tc.gedcom, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestImportRepository_AcceptsLegacyStateTag(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @R1@ REPO
+1 NAME State Archives
+1 ADDR 123 Main St
+2 CITY Springfield
+2 STATE Illinois
+2 POST 62701
+2 CTRY USA
+0 TRLR`
+
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+	require.Len(t, glx.Repositories, 1)
+
+	for _, repo := range glx.Repositories {
+		require.Equal(t, "State Archives", repo.Name)
+		require.Equal(t, "123 Main St", repo.Address)
+		require.Equal(t, "Springfield", repo.City)
+		require.Equal(t, "Illinois", repo.State)
+		require.Equal(t, "62701", repo.PostalCode)
+		require.Equal(t, "USA", repo.Country)
 	}
 }
