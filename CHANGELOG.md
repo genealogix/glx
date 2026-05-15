@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 #### Documentation
 
+- **README.md CLI Commands section** — `README.md` now includes a "CLI Commands" section after the Quick Start that lists every `glx` subcommand grouped into Archive Management, Import & Export, Exploration, Data Entry, Analysis, and Shell completion, each with a one-line description and a link to the full CLI reference. Closes #466
+
 - **Developer Certificate of Origin (DCO) policy** — `CONTRIBUTING.md` now documents the DCO 1.1 and requires contributors to sign off commits with `git commit -s`. Closes #409
 
 - **`SECURITY-POSTURE.md` self-attestation** — New repo-root document attesting GLX's compliance with [OpenSSF OSPS Baseline](https://baseline.openssf.org/) v2026.02.19 at Level 1, with most Level 2 controls also met. Tracks outstanding gaps (#269 SBOM, #424 safe-harbor/embargo, #256 SLSA provenance) and notes EU Cyber Resilience Act applicability for adopters. Surfaced on the website at `/development/security-posture` and linked from `README.md` and `SECURITY.md`. Closes #425
