@@ -1,5 +1,10 @@
 ---
 description: Identify drift between docs/ folder and specification/schemas/code
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+model: claude-opus-4-7
 ---
 
 You are tasked with identifying any drift between the GLX user documentation and the source of truth (specification, schemas, and code).
