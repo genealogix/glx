@@ -54,9 +54,11 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 			// Reader's local-path check (e.g. zip-slip); the archive
 			// itself parses fine, the failure mode is a bad entry.
 			return fmt.Errorf("%w: %s: %w", ErrGEDZIPInvalidEntry, gedzipPath, err)
-		case errors.Is(err, zip.ErrFormat),
-			errors.Is(err, zip.ErrAlgorithm),
-			errors.Is(err, zip.ErrChecksum):
+		case errors.Is(err, zip.ErrFormat), errors.Is(err, zip.ErrChecksum):
+			// zip.ErrAlgorithm is intentionally absent here: archive/zip
+			// surfaces it from (*File).Open during entry decompression, not
+			// from OpenReader. writeZipEntry maps it to
+			// ErrGEDZIPUnsupportedAlgorithm at that point.
 			return fmt.Errorf("%w: %s: %w", ErrGEDZIPNotValidArchive, gedzipPath, err)
 		default:
 			return fmt.Errorf("opening gedzip archive %s: %w", gedzipPath, err)
@@ -111,7 +113,7 @@ func hasGedcomEntry(files []*zip.File) bool {
 // extractGEDZIP writes each file entry into destDir, skipping directory and
 // symlink entries (the latter to prevent zip-symlink-slip attacks where a
 // symlink target could redirect a later entry's write outside destDir).
-// Duplicate entries — defined as two entries whose cleaned, case-folded
+// Duplicate entries — defined as two entries whose cleaned, ASCII-lowercased
 // destination paths collide — are rejected. This catches both case-only
 // variants ("gedcom.ged" vs "Gedcom.GED") that overwrite on Windows NTFS and
 // the default macOS APFS configuration, AND dot-segment variants
@@ -198,6 +200,13 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 func writeZipEntry(f *zip.File, destPath string) error {
 	src, err := f.Open()
 	if err != nil {
+		if errors.Is(err, zip.ErrAlgorithm) {
+			// The archive parses fine but uses a compression method
+			// archive/zip has no decompressor for; this is a "structurally
+			// valid but unsupported" failure, not a corrupt-archive case.
+			return fmt.Errorf("%w: %q: %w", ErrGEDZIPUnsupportedAlgorithm, f.Name, err)
+		}
+
 		return fmt.Errorf("opening zip entry %q: %w", f.Name, err)
 	}
 	defer func() { _ = src.Close() }()

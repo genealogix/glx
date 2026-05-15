@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,31 @@ import (
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+// unsupportedZipMethod is a compression method id registered by tests with a
+// passthrough compressor but no decompressor, so an archive built with it
+// parses fine but fails entry decompression with zip.ErrAlgorithm. It is well
+// outside the range archive/zip ships compressors for (0=Store, 8=Deflate).
+const unsupportedZipMethod uint16 = 0xABCD
+
+var registerUnsupportedZipCompressorOnce sync.Once
+
+// registerUnsupportedZipCompressor installs a passthrough compressor for
+// unsupportedZipMethod so tests can build a fixture whose readback fails with
+// zip.ErrAlgorithm. archive/zip exposes no Unregister API; the registration is
+// idempotent and confined to a method id no other code path uses.
+func registerUnsupportedZipCompressor(t *testing.T) {
+	t.Helper()
+	registerUnsupportedZipCompressorOnce.Do(func() {
+		zip.RegisterCompressor(unsupportedZipMethod, func(w io.Writer) (io.WriteCloser, error) {
+			return passthroughWriteCloser{Writer: w}, nil
+		})
+	})
+}
+
+type passthroughWriteCloser struct{ io.Writer }
+
+func (passthroughWriteCloser) Close() error { return nil }
 
 // minimalGEDCOM7 is a self-contained GEDCOM 7.0 fixture used by tests that
 // only need to assert "import succeeded and a person came through".
@@ -215,6 +241,29 @@ func TestImportGEDZIP_NotAValidArchive(t *testing.T) {
 
 	err := importGEDCOM(notAZip, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPNotValidArchive)
+}
+
+func TestImportGEDZIP_UnsupportedCompressionMethod(t *testing.T) {
+	// Build a gdz whose gedcom.ged entry uses a compression method with no
+	// registered decompressor. The archive parses fine (so the OpenReader
+	// arm is not taken), but (*zip.File).Open returns zip.ErrAlgorithm
+	// during extraction. That must surface as ErrGEDZIPUnsupportedAlgorithm,
+	// not the corrupt-archive sentinel.
+	registerUnsupportedZipCompressor(t)
+
+	gdzPath := filepath.Join(t.TempDir(), "fixture.gdz")
+	f, err := os.Create(filepath.Clean(gdzPath))
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: "gedcom.ged", Method: unsupportedZipMethod})
+	require.NoError(t, err)
+	_, err = w.Write([]byte(minimalGEDCOM7))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	err = importGEDCOM(gdzPath, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
+	require.ErrorIs(t, err, ErrGEDZIPUnsupportedAlgorithm)
 }
 
 func TestImportGEDZIP_FileNotFound(t *testing.T) {
