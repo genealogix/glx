@@ -225,6 +225,107 @@ relationships:
       description: "Blood brother ceremony witnessed by tribal elders"
 ```
 
+### Enslavement Relationship
+
+Enslavement is modeled as a relationship with `enslaver` and `enslaved_person` roles, bounded by `start_event` and `end_event` so that successive enslavers — through sale, inheritance, or manumission — appear as distinct relationships with shared boundary events. Use the `legal_status` property to distinguish chattel slavery from indentured servitude, debt bondage, and apprenticeship-as-enslavement.
+
+#### Single enslaver
+
+```yaml
+relationships:
+  rel-enslavement-jenny-by-thomas-1820-1834:
+    type: enslavement
+    participants:
+      - person: person-thomas-pettus
+        role: enslaver
+      - person: person-jenny
+        role: enslaved_person
+    start_event: event-jenny-purchased-1820
+    end_event: event-jenny-sold-1834
+    properties:
+      legal_status: chattel
+      description: "Jenny appears in Thomas Pettus's 1820 bill of sale and 1834 estate division."
+```
+
+#### Multiple enslavers across a lifetime
+
+When an enslaved person was sold or inherited, model each enslaver as a separate relationship. The same transfer event closes one relationship and opens the next, preserving the audit trail through the shared event:
+
+```yaml
+events:
+  event-jenny-sold-1834:
+    type: sale
+    date: "1834-04-12"
+    place: place-campbell-co-va
+    participants:
+      - person: person-jenny
+        role: subject
+
+relationships:
+  rel-enslavement-jenny-by-thomas-1820-1834:
+    type: enslavement
+    participants:
+      - person: person-thomas-pettus
+        role: enslaver
+      - person: person-jenny
+        role: enslaved_person
+    end_event: event-jenny-sold-1834
+    properties:
+      legal_status: chattel
+
+  rel-enslavement-jenny-by-william-1834-1851:
+    type: enslavement
+    participants:
+      - person: person-william-cabell
+        role: enslaver
+      - person: person-jenny
+        role: enslaved_person
+    start_event: event-jenny-sold-1834
+    end_event: event-jenny-manumitted-1851
+    properties:
+      legal_status: chattel
+```
+
+#### Inherited enslavement (partus sequitur ventrem)
+
+Children born to enslaved mothers were legally enslaved at birth in most U.S. slaveholding jurisdictions before emancipation. Model this as two relationships citing the same source — a `parent_child` link to the mother and an `enslavement` link to the mother's enslaver at the time of birth:
+
+```yaml
+relationships:
+  rel-parent-jenny-sarah:
+    type: parent_child
+    participants:
+      - person: person-jenny
+        role: parent
+      - person: person-sarah
+        role: child
+    start_event: event-sarah-born-1828
+
+  rel-enslavement-sarah-by-thomas-1828:
+    type: enslavement
+    participants:
+      - person: person-thomas-pettus
+        role: enslaver
+      - person: person-sarah
+        role: enslaved_person
+    start_event: event-sarah-born-1828
+    properties:
+      legal_status: chattel
+      description: "Sarah enslaved at birth by Pettus per partus sequitur ventrem; both relationships attested by the 1830 plantation inventory."
+```
+
+#### Source provenance
+
+Source provenance for enslavement relationships (bills of sale, estate inventories, tax lists, manumission deeds) uses the standard [Citation](citation) → [Source](source) → [Repository](repository) chain. No relationship-level field encodes the source type — citations carry that, and the same enslavement relationship may be attested by multiple citations as additional records surface.
+
+#### Further reading
+
+The GLX project does not endorse a specific reconciliation methodology. The following projects provide controlled vocabularies and best-practice guidance for documenting enslaved persons that archives may wish to consult:
+
+- [Enslaved.org](https://enslaved.org/) — Peoples of the Historical Slave Trade
+- [Beyond Kin](https://www.beyondkin.org/) — Documenting enslaved ancestors in family tree software
+- See also [Enslaved Persons Research](../../docs/use-cases#enslaved-persons-research) in the GLX use-case guide for additional ethical framing.
+
 ### Possibly Same Person
 
 When two person records may describe the same individual but the
