@@ -54,7 +54,7 @@ func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error 
 				switch addrSub.Tag {
 				case GedcomTagCity:
 					repository.City = addrSub.Value
-				case GedcomTagStae:
+				case GedcomTagStae, "STATE":
 					repository.State = addrSub.Value
 				case GedcomTagPost:
 					repository.PostalCode = addrSub.Value
