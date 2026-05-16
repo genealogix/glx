@@ -45,12 +45,12 @@ glx add citation [flags]
       --accessed string           Date the source was accessed (YYYY-MM-DD)
   -a, --archive string            Archive path (directory) (default ".")
       --dry-run                   Print what would be created without writing files
-      --external-id strings       External ID in the form type:value (repeatable)
+      --external-id stringArray   External ID in the form type:value (repeatable)
       --force                     Overwrite an existing entity with the chosen ID
   -h, --help                      help for citation
       --id string                 Override the derived entity ID
       --locator string            Locator (page number, entry, etc.)
-      --note strings              Free-text note (repeatable)
+      --note stringArray          Free-text note (repeatable)
       --repository string         Repository ID (optional override)
       --skip-validate             Skip whole-archive validation after adding (vocab and reference checks still run)
       --source string             Source ID (required)

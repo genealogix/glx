@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -316,6 +317,83 @@ func TestAdd_RepositorySourceCitationChain(t *testing.T) {
 	if fields["type"] != "familysearch" {
 		t.Errorf("external_ids[0].fields.type: got %v", fields["type"])
 	}
+}
+
+func TestAdd_PersonRequiresResidencePlaceRef(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Jane",
+		Residence:        "place-nonexistent",
+	})
+	if !errors.Is(err, ErrAddRefNotFound) {
+		t.Errorf("expected ErrAddRefNotFound, got %v", err)
+	}
+}
+
+func TestAdd_CitationRequiresDistinguisher(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addSource(io, &addSourceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Title:            "S",
+	}); err != nil {
+		t.Fatalf("setup source: %v", err)
+	}
+	err := addCitation(io, &addCitationOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Source:           "source-s",
+	})
+	if !errors.Is(err, ErrAddCitationDistinguisherRequired) {
+		t.Errorf("expected ErrAddCitationDistinguisherRequired, got %v", err)
+	}
+}
+
+func TestAdd_CitationDeterministicIDsAreIdempotent(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addSource(io, &addSourceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Title:            "S",
+	}); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	opts := &addCitationOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Source:           "source-s",
+		URL:              "https://example.com/record/1",
+	}
+	if err := addCitation(io, opts); err != nil {
+		t.Fatalf("first add: %v", err)
+	}
+	first := citationIDs(readBackArchive(t, dir))
+
+	// Second invocation with identical inputs derives the same slug, hits
+	// the collision path, and auto-suffixes to citation-...-2. The point is
+	// that both IDs are stable — repeating yet again would produce -3, not
+	// a brand-new hash from time.Now().
+	if err := addCitation(io, opts); err != nil {
+		t.Fatalf("second add: %v", err)
+	}
+	second := citationIDs(readBackArchive(t, dir))
+	if len(second) != 2 {
+		t.Fatalf("expected 2 citation IDs after second add, got %v", second)
+	}
+	for _, id := range first {
+		if !slices.Contains(second, id) {
+			t.Errorf("first-pass citation %q vanished from second-pass archive (non-idempotent)", id)
+		}
+	}
+}
+
+func citationIDs(archive *glxlib.GLXFile) []string {
+	out := make([]string, 0, len(archive.Citations))
+	for k := range archive.Citations {
+		out = append(out, k)
+	}
+
+	return out
 }
 
 func TestAdd_CitationRequiresSource(t *testing.T) {

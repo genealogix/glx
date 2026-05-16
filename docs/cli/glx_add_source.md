@@ -34,7 +34,7 @@ glx add source [flags]
 
 ```
   -a, --archive string       Archive path (directory) (default ".")
-      --author strings       Author (repeatable)
+      --author stringArray   Author (repeatable)
       --date string          Publication or compilation date
       --description string   Short description
       --dry-run              Print what would be created without writing files
@@ -42,7 +42,7 @@ glx add source [flags]
   -h, --help                 help for source
       --id string            Override the derived entity ID
       --language string      Source language (e.g. en, de, la)
-      --note strings         Free-text note (repeatable)
+      --note stringArray     Free-text note (repeatable)
       --repository string    Repository ID
       --skip-validate        Skip whole-archive validation after adding (vocab and reference checks still run)
       --title string         Source title (required unless --id is given)

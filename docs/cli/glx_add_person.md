@@ -48,10 +48,10 @@ glx add person [flags]
   -h, --help                    help for person
       --id string               Override the derived entity ID
       --nickname string         Nickname
-      --note strings            Free-text note (repeatable)
+      --note stringArray        Free-text note (repeatable)
       --occupation string       Occupation (free text)
       --prefix string           Name prefix (e.g. Dr., Rev.)
-      --residence string        Residence (free text)
+      --residence string        Place ID of residence (must reference an existing place; person_properties.residence is reference_type:places)
       --sex string              Recorded sex (vocabulary key in sex_types)
       --skip-validate           Skip whole-archive validation after adding (vocab and reference checks still run)
       --suffix string           Name suffix (e.g. Jr., III)

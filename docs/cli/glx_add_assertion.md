@@ -45,19 +45,19 @@ glx add assertion [flags]
 
 ```
   -a, --archive string                Archive path (directory) (default ".")
-      --citation strings              Citation ID supporting the assertion (repeatable)
+      --citation stringArray          Citation ID supporting the assertion (repeatable)
       --confidence string             Confidence level (vocabulary key in confidence_levels)
       --date string                   Date the property value applies to (temporal properties)
       --dry-run                       Print what would be created without writing files
       --force                         Overwrite an existing entity with the chosen ID
   -h, --help                          help for assertion
       --id string                     Override the derived entity ID
-      --media strings                 Media ID supporting the assertion (repeatable)
-      --note strings                  Free-text note (repeatable)
+      --media stringArray             Media ID supporting the assertion (repeatable)
+      --note stringArray              Free-text note (repeatable)
       --participant string            Participant assertion in the form person-id:role (mutually exclusive with --property/--value)
       --property string               Property name (e.g. date, place, name)
       --skip-validate                 Skip whole-archive validation after adding (vocab and reference checks still run)
-      --source strings                Source ID supporting the assertion (repeatable)
+      --source stringArray            Source ID supporting the assertion (repeatable)
       --status string                 Assertion status (e.g. accepted, disputed)
       --subject-event string          Event ID this assertion is about
       --subject-person string         Person ID this assertion is about

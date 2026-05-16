@@ -52,8 +52,10 @@ func addCommonFlags(cmd *cobra.Command, dest *addCommonOptions) {
 	cmd.Flags().BoolVar(&dest.Force, "force", false, "Overwrite an existing entity with the chosen ID")
 	cmd.Flags().BoolVar(&dest.SkipValidate, "skip-validate", false, "Skip whole-archive validation after adding (vocab and reference checks still run)")
 	cmd.Flags().BoolVar(&dest.DryRun, "dry-run", false, "Print what would be created without writing files")
-	// StringArrayVar (not StringArrayVar) so notes containing commas are NOT
-	// silently split. A note like "John, born 1850" must stay one note.
+	// StringArrayVar (not StringSliceVar) — StringSliceVar would silently
+	// split on commas, mangling a note like "John, born 1850" into two
+	// separate notes. StringArrayVar treats each --note invocation as one
+	// whole value. Applies to all repeatable string flags on add subcommands.
 	cmd.Flags().StringArrayVar(&dest.Notes, "note", nil, "Free-text note (repeatable)")
 }
 
@@ -346,7 +348,7 @@ func init() {
 	addPersonCmd.Flags().StringVar(&addPersonOpts.Sex, "sex", "", "Recorded sex (vocabulary key in sex_types)")
 	addPersonCmd.Flags().StringVar(&addPersonOpts.Gender, "gender", "", "Self-identified gender (vocabulary key in gender_types)")
 	addPersonCmd.Flags().StringVar(&addPersonOpts.Occupation, "occupation", "", "Occupation (free text)")
-	addPersonCmd.Flags().StringVar(&addPersonOpts.Residence, "residence", "", "Residence (free text)")
+	addPersonCmd.Flags().StringVar(&addPersonOpts.Residence, "residence", "", "Place ID of residence (must reference an existing place; person_properties.residence is reference_type:places)")
 
 	// place
 	addCommonFlags(addPlaceCmd, &addPlaceOpts.addCommonOptions)

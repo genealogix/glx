@@ -38,20 +38,20 @@ glx add relationship [flags]
 ### Options
 
 ```
-  -a, --archive string        Archive path (directory) (default ".")
-      --child strings         Child person ID (repeatable; adds participant with role child)
-      --dry-run               Print what would be created without writing files
-      --end-event string      Event ID marking the relationship's end
-      --force                 Overwrite an existing entity with the chosen ID
-  -h, --help                  help for relationship
-      --id string             Override the derived entity ID
-      --note strings          Free-text note (repeatable)
-      --parent strings        Parent person ID (repeatable; adds participant with role parent)
-      --participant strings   Participant in the form person-id:role (repeatable)
-      --skip-validate         Skip whole-archive validation after adding (vocab and reference checks still run)
-      --spouse strings        Spouse person ID (repeatable; adds participant with role spouse)
-      --start-event string    Event ID marking the relationship's start
-      --type string           Relationship type (required, vocabulary key in relationship_types)
+  -a, --archive string            Archive path (directory) (default ".")
+      --child stringArray         Child person ID (repeatable; adds participant with role child)
+      --dry-run                   Print what would be created without writing files
+      --end-event string          Event ID marking the relationship's end
+      --force                     Overwrite an existing entity with the chosen ID
+  -h, --help                      help for relationship
+      --id string                 Override the derived entity ID
+      --note stringArray          Free-text note (repeatable)
+      --parent stringArray        Parent person ID (repeatable; adds participant with role parent)
+      --participant stringArray   Participant in the form person-id:role (repeatable)
+      --skip-validate             Skip whole-archive validation after adding (vocab and reference checks still run)
+      --spouse stringArray        Spouse person ID (repeatable; adds participant with role spouse)
+      --start-event string        Event ID marking the relationship's start
+      --type string               Relationship type (required, vocabulary key in relationship_types)
 ```
 
 ### Options inherited from parent commands

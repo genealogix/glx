@@ -477,6 +477,11 @@ func addPerson(io *IOStreams, opts *addPersonOptions) error {
 	if err := validateVocabKey(ctx.archive, glxlib.VocabGenderTypes, opts.Gender); err != nil {
 		return err
 	}
+	// person_properties.residence is reference_type: places per the standard
+	// vocab, so --residence is a place ID, not free text.
+	if err := validateRefExists(ctx.archive, glxlib.EntityTypePlaces, opts.Residence); err != nil {
+		return err
+	}
 
 	slug := slugifyForID(strings.TrimSpace(opts.Given+" "+opts.Surname), maxEntityIDLength-len("person-"))
 	id, err := deriveOrOverrideID(
@@ -884,13 +889,19 @@ func addCitation(io *IOStreams, opts *addCitationOptions) error {
 	}
 
 	// Hash one of the distinguishing fields so two citations of the same source
-	// don't collide on the source-derived slug.
+	// don't collide on the source-derived slug. At least one is required:
+	// without --url/--locator/--text-from-source there is nothing
+	// evidence-bearing to distinguish citations of one source, and falling
+	// back to a timestamp would mint non-idempotent IDs.
 	hashSeed := opts.URL
 	if hashSeed == "" {
 		hashSeed = opts.Locator
 	}
 	if hashSeed == "" {
 		hashSeed = opts.TextFromSource
+	}
+	if hashSeed == "" && opts.OverrideID == "" {
+		return ErrAddCitationDistinguisherRequired
 	}
 	sourceSlug := strings.TrimPrefix(opts.Source, "source-")
 	const citationPrefix = "citation-"
@@ -1245,22 +1256,24 @@ func buildAssertion(opts *addAssertionOptions, subjectType, subjectID string, pa
 
 // resolveAssertionSubject enforces "exactly one of --subject-*" and returns the
 // entity type + ID. Each non-empty subject flag is also reference-checked.
+// Iterated as an ordered slice (not a map) so error messages, future
+// conflict-reporting extensions, and tests stay deterministic across runs.
 func resolveAssertionSubject(archive *glxlib.GLXFile, opts *addAssertionOptions) (string, string, error) {
-	subjects := map[string]string{
-		glxlib.EntityTypePersons:       opts.SubjectPerson,
-		glxlib.EntityTypeEvents:        opts.SubjectEvent,
-		glxlib.EntityTypeRelationships: opts.SubjectRelationship,
-		glxlib.EntityTypePlaces:        opts.SubjectPlace,
+	subjects := []struct{ entityType, id string }{
+		{glxlib.EntityTypePersons, opts.SubjectPerson},
+		{glxlib.EntityTypeEvents, opts.SubjectEvent},
+		{glxlib.EntityTypeRelationships, opts.SubjectRelationship},
+		{glxlib.EntityTypePlaces, opts.SubjectPlace},
 	}
 	var chosenType, chosenID string
-	for typ, id := range subjects {
-		if id == "" {
+	for _, s := range subjects {
+		if s.id == "" {
 			continue
 		}
 		if chosenID != "" {
 			return "", "", ErrAddSubjectConflict
 		}
-		chosenType, chosenID = typ, id
+		chosenType, chosenID = s.entityType, s.id
 	}
 	if chosenID == "" {
 		return "", "", ErrAddSubjectRequired

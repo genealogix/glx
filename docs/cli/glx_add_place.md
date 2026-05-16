@@ -34,18 +34,18 @@ glx add place [flags]
 ### Options
 
 ```
-  -a, --archive string   Archive path (directory) (default ".")
-      --dry-run          Print what would be created without writing files
-      --force            Overwrite an existing entity with the chosen ID
-  -h, --help             help for place
-      --id string        Override the derived entity ID
-      --lat float        Latitude (decimal degrees)
-      --lng float        Longitude (decimal degrees)
-      --name string      Place name (required unless --id is given)
-      --note strings     Free-text note (repeatable)
-      --parent string    Parent place ID
-      --skip-validate    Skip whole-archive validation after adding (vocab and reference checks still run)
-      --type string      Place type (vocabulary key in place_types)
+  -a, --archive string     Archive path (directory) (default ".")
+      --dry-run            Print what would be created without writing files
+      --force              Overwrite an existing entity with the chosen ID
+  -h, --help               help for place
+      --id string          Override the derived entity ID
+      --lat float          Latitude (decimal degrees)
+      --lng float          Longitude (decimal degrees)
+      --name string        Place name (required unless --id is given)
+      --note stringArray   Free-text note (repeatable)
+      --parent string      Parent place ID
+      --skip-validate      Skip whole-archive validation after adding (vocab and reference checks still run)
+      --type string        Place type (vocabulary key in place_types)
 ```
 
 ### Options inherited from parent commands

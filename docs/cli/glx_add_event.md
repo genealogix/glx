@@ -38,19 +38,19 @@ glx add event [flags]
 ### Options
 
 ```
-  -a, --archive string        Archive path (directory) (default ".")
-      --date string           Event date (GLX date string)
-      --dry-run               Print what would be created without writing files
-      --force                 Overwrite an existing entity with the chosen ID
-  -h, --help                  help for event
-      --id string             Override the derived entity ID
-      --note strings          Free-text note (repeatable)
-      --participant strings   Additional participant in the form person-id:role (repeatable)
-      --place string          Place ID for the event
-      --principal string      Person ID of the principal subject (shorthand for --participant <id>:principal)
-      --skip-validate         Skip whole-archive validation after adding (vocab and reference checks still run)
-      --title string          Optional human-readable title
-      --type string           Event type (required, vocabulary key in event_types)
+  -a, --archive string            Archive path (directory) (default ".")
+      --date string               Event date (GLX date string)
+      --dry-run                   Print what would be created without writing files
+      --force                     Overwrite an existing entity with the chosen ID
+  -h, --help                      help for event
+      --id string                 Override the derived entity ID
+      --note stringArray          Free-text note (repeatable)
+      --participant stringArray   Additional participant in the form person-id:role (repeatable)
+      --place string              Place ID for the event
+      --principal string          Person ID of the principal subject (shorthand for --participant <id>:principal)
+      --skip-validate             Skip whole-archive validation after adding (vocab and reference checks still run)
+      --title string              Optional human-readable title
+      --type string               Event type (required, vocabulary key in event_types)
 ```
 
 ### Options inherited from parent commands

@@ -41,7 +41,7 @@ glx add repository [flags]
   -h, --help                 help for repository
       --id string            Override the derived entity ID
       --name string          Repository name (required unless --id is given)
-      --note strings         Free-text note (repeatable)
+      --note stringArray     Free-text note (repeatable)
       --postal-code string   Postal code
       --skip-validate        Skip whole-archive validation after adding (vocab and reference checks still run)
       --state string         State or province
