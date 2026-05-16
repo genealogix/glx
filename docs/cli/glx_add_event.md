@@ -47,7 +47,7 @@ glx add event [flags]
       --note stringArray          Free-text note (repeatable)
       --participant stringArray   Additional participant in the form person-id:role (repeatable)
       --place string              Place ID for the event
-      --principal string          Person ID of the principal subject (shorthand for --participant <id>:principal)
+      --principal string          Person ID of the principal subject (shorthand for --participant PERSON-ID:principal)
       --skip-validate             Skip whole-archive validation after adding (vocab and reference checks still run)
       --title string              Optional human-readable title
       --type string               Event type (required, vocabulary key in event_types)

@@ -12,7 +12,7 @@ Create a person entity
 Create a Person entity in the archive.
 
 At least one of --given, --surname, or --id must be supplied. The derived ID
-is "person-<given-slug>-<surname-slug>"; --id overrides it.
+is "person-GIVEN-SURNAME" with each part slug-lowercased; --id overrides it.
 
 Sex (recorded sex, GEDCOM SEX) and gender (self-identified) are validated
 against the archive's sex_types and gender_types vocabularies. Standard

@@ -23,7 +23,7 @@ glx add citation [flags]
 
 ```
   # Citation with URL and external ID
-  # --external-id is parsed as <type>:<value> on the FIRST colon, so the
+  # --external-id is parsed as TYPE:VALUE on the FIRST colon, so the
   # type cannot itself contain colons. Use a short identifier scheme name
   # (familysearch, wikidata, geonames, ...) as the type.
   glx add citation --source source-fs-births-deutschland \

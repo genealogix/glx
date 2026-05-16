@@ -946,6 +946,330 @@ func TestParseExternalIDFlag(t *testing.T) {
 	}
 }
 
+func TestAdd_RepositoryHappyPath(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addRepository(io, &addRepositoryOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "Virginia State Library",
+		Type:             "library",
+		Address:          "800 E. Broad St",
+		City:             "Richmond",
+		State:            "VA",
+		PostalCode:       "23219",
+		Country:          "USA",
+		Website:          "https://lva.virginia.gov",
+	}); err != nil {
+		t.Fatalf("addRepository: %v", err)
+	}
+	archive := readBackArchive(t, dir)
+	repo, ok := archive.Repositories["repository-virginia-state-library"]
+	if !ok {
+		t.Fatalf("repository missing")
+	}
+	if repo.Type != "library" || repo.City != "Richmond" || repo.State != "VA" {
+		t.Errorf("repository fields wrong: %+v", repo)
+	}
+}
+
+func TestAdd_SourceHappyPath(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addRepository(io, &addRepositoryOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "FamilySearch",
+		Type:             "database",
+	}); err != nil {
+		t.Fatalf("setup repo: %v", err)
+	}
+	if err := addSource(io, &addSourceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Title:            "Virginia Marriage Records",
+		Type:             "database",
+		Repository:       "repository-familysearch",
+		Authors:          []string{"FamilySearch"},
+		Date:             "1850",
+		Description:      "Indexed VA marriages",
+		Language:         "en",
+	}); err != nil {
+		t.Fatalf("addSource: %v", err)
+	}
+	archive := readBackArchive(t, dir)
+	source, ok := archive.Sources["source-virginia-marriage-records"]
+	if !ok {
+		t.Fatalf("source missing")
+	}
+	if source.RepositoryID != "repository-familysearch" || source.Description != "Indexed VA marriages" {
+		t.Errorf("source fields wrong: %+v", source)
+	}
+}
+
+func TestAdd_AssertionSubjects(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	// Seed: person, event, relationship (between two persons), place.
+	for _, given := range []string{"A", "B"} {
+		if err := addPerson(io, &addPersonOptions{
+			addCommonOptions: addCommonOptions{ArchivePath: dir},
+			Given:            given,
+		}); err != nil {
+			t.Fatalf("addPerson %s: %v", given, err)
+		}
+	}
+	if err := addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "marriage",
+		Date:             "1850",
+		Participants:     []string{"person-a:groom", "person-b:bride"},
+	}); err != nil {
+		t.Fatalf("addEvent: %v", err)
+	}
+	if err := addRelationship(io, &addRelationshipOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "marriage",
+		Spouses:          []string{"person-a", "person-b"},
+	}); err != nil {
+		t.Fatalf("addRelationship: %v", err)
+	}
+	if err := addPlace(io, &addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "Richmond",
+	}); err != nil {
+		t.Fatalf("addPlace: %v", err)
+	}
+
+	type subjectCase struct {
+		name, subjectPerson, subjectEvent, subjectRelationship, subjectPlace string
+		wantPersonField, wantEventField                                      string
+		wantRelField, wantPlaceField                                         string
+	}
+	cases := []subjectCase{
+		{name: "subject-person", subjectPerson: "person-a", wantPersonField: "person-a"},
+		{name: "subject-event", subjectEvent: "event-marriage-1850", wantEventField: "event-marriage-1850"},
+		{name: "subject-relationship", subjectRelationship: "relationship-marriage-a-b", wantRelField: "relationship-marriage-a-b"},
+		{name: "subject-place", subjectPlace: "place-richmond", wantPlaceField: "place-richmond"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := addAssertion(io, &addAssertionOptions{
+				addCommonOptions:    addCommonOptions{ArchivePath: dir},
+				SubjectPerson:       tc.subjectPerson,
+				SubjectEvent:        tc.subjectEvent,
+				SubjectRelationship: tc.subjectRelationship,
+				SubjectPlace:        tc.subjectPlace,
+				Property:            "note",
+				Value:               tc.name,
+			}); err != nil {
+				t.Fatalf("addAssertion: %v", err)
+			}
+			archive := readBackArchive(t, dir)
+			var found *glxlib.Assertion
+			for _, a := range archive.Assertions {
+				if a.Value == tc.name {
+					found = a
+
+					break
+				}
+			}
+			if found == nil {
+				t.Fatalf("assertion missing for %s", tc.name)
+			}
+			if found.Subject.Person != tc.wantPersonField {
+				t.Errorf("subject.person: got %q, want %q", found.Subject.Person, tc.wantPersonField)
+			}
+			if found.Subject.Event != tc.wantEventField {
+				t.Errorf("subject.event: got %q, want %q", found.Subject.Event, tc.wantEventField)
+			}
+			if found.Subject.Relationship != tc.wantRelField {
+				t.Errorf("subject.relationship: got %q, want %q", found.Subject.Relationship, tc.wantRelField)
+			}
+			if found.Subject.Place != tc.wantPlaceField {
+				t.Errorf("subject.place: got %q, want %q", found.Subject.Place, tc.wantPlaceField)
+			}
+		})
+	}
+}
+
+func TestAdd_AssertionRefValidation(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "P",
+	}); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	for _, tc := range []struct {
+		name      string
+		sources   []string
+		citations []string
+		media     []string
+	}{
+		{name: "bad source", sources: []string{"source-nope"}},
+		{name: "bad citation", citations: []string{"citation-nope"}},
+		{name: "bad media", media: []string{"media-nope"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := addAssertion(io, &addAssertionOptions{
+				addCommonOptions: addCommonOptions{ArchivePath: dir},
+				SubjectPerson:    "person-p",
+				Property:         "note",
+				Value:            "x",
+				Sources:          tc.sources,
+				Citations:        tc.citations,
+				Media:            tc.media,
+			})
+			if !errors.Is(err, ErrAddRefNotFound) {
+				t.Errorf("expected ErrAddRefNotFound, got %v", err)
+			}
+		})
+	}
+}
+
+func TestAdd_CitationWithRepository(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addRepository(io, &addRepositoryOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "R",
+	}); err != nil {
+		t.Fatalf("setup repo: %v", err)
+	}
+	if err := addSource(io, &addSourceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Title:            "S",
+	}); err != nil {
+		t.Fatalf("setup source: %v", err)
+	}
+	if err := addCitation(io, &addCitationOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Source:           "source-s",
+		Repository:       "repository-r",
+		Locator:          "p. 42",
+		SourceDate:       "1850",
+	}); err != nil {
+		t.Fatalf("addCitation: %v", err)
+	}
+	archive := readBackArchive(t, dir)
+	var cit *glxlib.Citation
+	for _, c := range archive.Citations {
+		cit = c
+
+		break
+	}
+	if cit == nil {
+		t.Fatalf("citation missing")
+	}
+	if cit.RepositoryID != "repository-r" {
+		t.Errorf("citation.repository: got %q", cit.RepositoryID)
+	}
+	if cit.Properties["locator"] != "p. 42" || cit.Properties["source_date"] != "1850" {
+		t.Errorf("citation properties wrong: %+v", cit.Properties)
+	}
+}
+
+// TestAdd_CobraWrappersDelegateCleanly drives each of the eight runAdd* cobra
+// handlers end-to-end so they aren't dead weight in coverage. Each handler is
+// a thin pass-through to its addX runner; this test sets the package-level
+// option vars and invokes the handler directly. The actual entity-add
+// behavior is covered by the TestAdd_* tests above; this test only asserts
+// that no handler returns an error on a valid invocation, locking in the
+// "thin wrapper" contract from glx/CLAUDE.md.
+func TestAdd_CobraWrappersDelegateCleanly(t *testing.T) {
+	dir := initArchiveDir(t)
+
+	addPersonOpts = addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Given:            "Wrapper",
+	}
+	if err := runAddPerson(nil, nil); err != nil {
+		t.Fatalf("runAddPerson: %v", err)
+	}
+
+	addPlaceOpts = addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Name:             "Wrapperville",
+	}
+	if err := runAddPlace(nil, nil); err != nil {
+		t.Fatalf("runAddPlace: %v", err)
+	}
+
+	addEventOpts = addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Type:             "birth",
+		Principal:        "person-wrapper",
+	}
+	if err := runAddEvent(nil, nil); err != nil {
+		t.Fatalf("runAddEvent: %v", err)
+	}
+
+	addRepoOpts = addRepositoryOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Name:             "Wrapper Repo",
+	}
+	if err := runAddRepository(nil, nil); err != nil {
+		t.Fatalf("runAddRepository: %v", err)
+	}
+
+	addSourceOpts = addSourceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Title:            "Wrapper Source",
+	}
+	if err := runAddSource(nil, nil); err != nil {
+		t.Fatalf("runAddSource: %v", err)
+	}
+
+	addCitationOpts = addCitationOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Source:           "source-wrapper-source",
+		Locator:          "p. 1",
+	}
+	if err := runAddCitation(nil, nil); err != nil {
+		t.Fatalf("runAddCitation: %v", err)
+	}
+
+	// Need a second person for the relationship.
+	addPersonOpts = addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Given:            "Other",
+	}
+	if err := runAddPerson(nil, nil); err != nil {
+		t.Fatalf("runAddPerson (second): %v", err)
+	}
+
+	addRelOpts = addRelationshipOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Type:             "sibling",
+		Participants:     []string{"person-wrapper:sibling", "person-other:sibling"},
+	}
+	if err := runAddRelationship(nil, nil); err != nil {
+		t.Fatalf("runAddRelationship: %v", err)
+	}
+
+	addAssertionOpts = addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		SubjectPerson:    "person-wrapper",
+		Property:         "note",
+		Value:            "wrapped",
+	}
+	if err := runAddAssertion(nil, nil); err != nil {
+		t.Fatalf("runAddAssertion: %v", err)
+	}
+
+	// Reset package-level option vars so subsequent tests start clean.
+	t.Cleanup(func() {
+		addPersonOpts = addPersonOptions{}
+		addPlaceOpts = addPlaceOptions{}
+		addEventOpts = addEventOptions{}
+		addRepoOpts = addRepositoryOptions{}
+		addSourceOpts = addSourceOptions{}
+		addCitationOpts = addCitationOptions{}
+		addRelOpts = addRelationshipOptions{}
+		addAssertionOpts = addAssertionOptions{}
+	})
+}
+
 func TestStripEntityPrefix(t *testing.T) {
 	cases := map[string]string{
 		"person-x":       "x",

@@ -71,7 +71,7 @@ var addPersonCmd = &cobra.Command{
 	Long: `Create a Person entity in the archive.
 
 At least one of --given, --surname, or --id must be supplied. The derived ID
-is "person-<given-slug>-<surname-slug>"; --id overrides it.
+is "person-GIVEN-SURNAME" with each part slug-lowercased; --id overrides it.
 
 Sex (recorded sex, GEDCOM SEX) and gender (self-identified) are validated
 against the archive's sex_types and gender_types vocabularies. Standard
@@ -232,7 +232,7 @@ var addCitationCmd = &cobra.Command{
 --external-id is repeatable in the form type:value (e.g.
 familysearch:ark:/61903/1:1:C4H8-2DW2).`,
 	Example: `  # Citation with URL and external ID
-  # --external-id is parsed as <type>:<value> on the FIRST colon, so the
+  # --external-id is parsed as TYPE:VALUE on the FIRST colon, so the
   # type cannot itself contain colons. Use a short identifier scheme name
   # (familysearch, wikidata, geonames, ...) as the type.
   glx add citation --source source-fs-births-deutschland \
@@ -370,7 +370,7 @@ func init() {
 	addEventCmd.Flags().StringVar(&addEventOpts.Date, "date", "", "Event date (GLX date string)")
 	addEventCmd.Flags().StringVar(&addEventOpts.Place, "place", "", "Place ID for the event")
 	addEventCmd.Flags().StringVar(&addEventOpts.Title, "title", "", "Optional human-readable title")
-	addEventCmd.Flags().StringVar(&addEventOpts.Principal, "principal", "", "Person ID of the principal subject (shorthand for --participant <id>:principal)")
+	addEventCmd.Flags().StringVar(&addEventOpts.Principal, "principal", "", "Person ID of the principal subject (shorthand for --participant PERSON-ID:principal)")
 	addEventCmd.Flags().StringArrayVar(&addEventOpts.Participants, "participant", nil, "Additional participant in the form person-id:role (repeatable)")
 
 	// repository
