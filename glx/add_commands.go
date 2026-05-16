@@ -52,7 +52,9 @@ func addCommonFlags(cmd *cobra.Command, dest *addCommonOptions) {
 	cmd.Flags().BoolVar(&dest.Force, "force", false, "Overwrite an existing entity with the chosen ID")
 	cmd.Flags().BoolVar(&dest.SkipValidate, "skip-validate", false, "Skip whole-archive validation after adding (vocab and reference checks still run)")
 	cmd.Flags().BoolVar(&dest.DryRun, "dry-run", false, "Print what would be created without writing files")
-	cmd.Flags().StringSliceVar(&dest.Notes, "note", nil, "Free-text note (repeatable)")
+	// StringArrayVar (not StringArrayVar) so notes containing commas are NOT
+	// silently split. A note like "John, born 1850" must stay one note.
+	cmd.Flags().StringArrayVar(&dest.Notes, "note", nil, "Free-text note (repeatable)")
 }
 
 // =============================================================================
@@ -367,7 +369,7 @@ func init() {
 	addEventCmd.Flags().StringVar(&addEventOpts.Place, "place", "", "Place ID for the event")
 	addEventCmd.Flags().StringVar(&addEventOpts.Title, "title", "", "Optional human-readable title")
 	addEventCmd.Flags().StringVar(&addEventOpts.Principal, "principal", "", "Person ID of the principal subject (shorthand for --participant <id>:principal)")
-	addEventCmd.Flags().StringSliceVar(&addEventOpts.Participants, "participant", nil, "Additional participant in the form person-id:role (repeatable)")
+	addEventCmd.Flags().StringArrayVar(&addEventOpts.Participants, "participant", nil, "Additional participant in the form person-id:role (repeatable)")
 
 	// repository
 	addCommonFlags(addRepoCmd, &addRepoOpts.addCommonOptions)
@@ -385,7 +387,7 @@ func init() {
 	addSourceCmd.Flags().StringVar(&addSourceOpts.Title, "title", "", "Source title (required unless --id is given)")
 	addSourceCmd.Flags().StringVar(&addSourceOpts.Type, "type", "", "Source type (vocabulary key in source_types)")
 	addSourceCmd.Flags().StringVar(&addSourceOpts.Repository, "repository", "", "Repository ID")
-	addSourceCmd.Flags().StringSliceVar(&addSourceOpts.Authors, "author", nil, "Author (repeatable)")
+	addSourceCmd.Flags().StringArrayVar(&addSourceOpts.Authors, "author", nil, "Author (repeatable)")
 	addSourceCmd.Flags().StringVar(&addSourceOpts.Date, "date", "", "Publication or compilation date")
 	addSourceCmd.Flags().StringVar(&addSourceOpts.Description, "description", "", "Short description")
 	addSourceCmd.Flags().StringVar(&addSourceOpts.Language, "language", "", "Source language (e.g. en, de, la)")
@@ -399,16 +401,16 @@ func init() {
 	addCitationCmd.Flags().StringVar(&addCitationOpts.Locator, "locator", "", "Locator (page number, entry, etc.)")
 	addCitationCmd.Flags().StringVar(&addCitationOpts.TextFromSource, "text-from-source", "", "Verbatim transcription from the source")
 	addCitationCmd.Flags().StringVar(&addCitationOpts.SourceDate, "source-date", "", "Date carried by the source itself")
-	addCitationCmd.Flags().StringSliceVar(&addCitationOpts.ExternalIDs, "external-id", nil, "External ID in the form type:value (repeatable)")
+	addCitationCmd.Flags().StringArrayVar(&addCitationOpts.ExternalIDs, "external-id", nil, "External ID in the form type:value (repeatable)")
 	_ = addCitationCmd.MarkFlagRequired("source")
 
 	// relationship
 	addCommonFlags(addRelCmd, &addRelOpts.addCommonOptions)
 	addRelCmd.Flags().StringVar(&addRelOpts.Type, "type", "", "Relationship type (required, vocabulary key in relationship_types)")
-	addRelCmd.Flags().StringSliceVar(&addRelOpts.Parents, "parent", nil, "Parent person ID (repeatable; adds participant with role parent)")
-	addRelCmd.Flags().StringSliceVar(&addRelOpts.Children, "child", nil, "Child person ID (repeatable; adds participant with role child)")
-	addRelCmd.Flags().StringSliceVar(&addRelOpts.Spouses, "spouse", nil, "Spouse person ID (repeatable; adds participant with role spouse)")
-	addRelCmd.Flags().StringSliceVar(&addRelOpts.Participants, "participant", nil, "Participant in the form person-id:role (repeatable)")
+	addRelCmd.Flags().StringArrayVar(&addRelOpts.Parents, "parent", nil, "Parent person ID (repeatable; adds participant with role parent)")
+	addRelCmd.Flags().StringArrayVar(&addRelOpts.Children, "child", nil, "Child person ID (repeatable; adds participant with role child)")
+	addRelCmd.Flags().StringArrayVar(&addRelOpts.Spouses, "spouse", nil, "Spouse person ID (repeatable; adds participant with role spouse)")
+	addRelCmd.Flags().StringArrayVar(&addRelOpts.Participants, "participant", nil, "Participant in the form person-id:role (repeatable)")
 	addRelCmd.Flags().StringVar(&addRelOpts.StartEvent, "start-event", "", "Event ID marking the relationship's start")
 	addRelCmd.Flags().StringVar(&addRelOpts.EndEvent, "end-event", "", "Event ID marking the relationship's end")
 
@@ -424,7 +426,7 @@ func init() {
 	addAssertionCmd.Flags().StringVar(&addAssertionOpts.AssertionDate, "date", "", "Date the property value applies to (temporal properties)")
 	addAssertionCmd.Flags().StringVar(&addAssertionOpts.Confidence, "confidence", "", "Confidence level (vocabulary key in confidence_levels)")
 	addAssertionCmd.Flags().StringVar(&addAssertionOpts.Status, "status", "", "Assertion status (e.g. accepted, disputed)")
-	addAssertionCmd.Flags().StringSliceVar(&addAssertionOpts.Sources, "source", nil, "Source ID supporting the assertion (repeatable)")
-	addAssertionCmd.Flags().StringSliceVar(&addAssertionOpts.Citations, "citation", nil, "Citation ID supporting the assertion (repeatable)")
-	addAssertionCmd.Flags().StringSliceVar(&addAssertionOpts.Media, "media", nil, "Media ID supporting the assertion (repeatable)")
+	addAssertionCmd.Flags().StringArrayVar(&addAssertionOpts.Sources, "source", nil, "Source ID supporting the assertion (repeatable)")
+	addAssertionCmd.Flags().StringArrayVar(&addAssertionOpts.Citations, "citation", nil, "Citation ID supporting the assertion (repeatable)")
+	addAssertionCmd.Flags().StringArrayVar(&addAssertionOpts.Media, "media", nil, "Media ID supporting the assertion (repeatable)")
 }

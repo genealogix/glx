@@ -286,9 +286,12 @@ func parseExternalIDFlag(s string) (typ, value string, err error) {
 // then remove them so further callers see the unmodified archive.
 func runWholeArchiveValidate(archive, partial *glxlib.GLXFile) error {
 	added := installPartial(archive, partial)
+	// LIFO defer order matters: InvalidateCache must run AFTER
+	// uninstallPartial so the cleared cache reflects the restored
+	// (uninstalled) state, not the merged state.
+	defer archive.InvalidateCache()
 	defer uninstallPartial(archive, added)
 	archive.InvalidateCache()
-	defer archive.InvalidateCache()
 
 	result := archive.Validate()
 	if len(result.Errors) == 0 {
@@ -465,7 +468,7 @@ func addPerson(io *IOStreams, opts *addPersonOptions) error {
 		return err
 	}
 
-	if opts.Given == "" && opts.Surname == "" && opts.OverrideID == "" {
+	if strings.TrimSpace(opts.Given) == "" && strings.TrimSpace(opts.Surname) == "" && opts.OverrideID == "" {
 		return ErrAddPersonNameRequired
 	}
 	if err := validateVocabKey(ctx.archive, glxlib.VocabSexTypes, opts.Sex); err != nil {
@@ -1116,7 +1119,7 @@ func addAssertion(io *IOStreams, opts *addAssertionOptions) error {
 		return err
 	}
 	if err := validateVocabKey(ctx.archive, glxlib.VocabConfidenceLevels, opts.Confidence); err != nil {
-		return fmt.Errorf("confidence: %w", err)
+		return err
 	}
 	participant, err := resolveAssertionParticipant(ctx.archive, opts)
 	if err != nil {
@@ -1137,15 +1140,22 @@ func addAssertion(io *IOStreams, opts *addAssertionOptions) error {
 	return finalizeAdd(io, &opts.addCommonOptions, ctx, glxlib.EntityTypeAssertions, id, partial)
 }
 
-// validateAssertionPayload enforces the "either property+value OR participant"
-// payload contract.
+// validateAssertionPayload enforces the "either --property+--value OR
+// --participant" payload contract. --property without --value (or vice
+// versa) is rejected — half a fact assertion is not a valid shape.
 func validateAssertionPayload(opts *addAssertionOptions) error {
-	hasPropertyValue := opts.Property != "" || opts.Value != ""
+	hasProperty := opts.Property != ""
+	hasValue := opts.Value != ""
 	hasParticipant := opts.Participant != ""
+	hasFact := hasProperty && hasValue
+	hasPartialFact := (hasProperty || hasValue) && !hasFact
+
 	switch {
-	case !hasPropertyValue && !hasParticipant:
+	case hasPartialFact:
 		return ErrAddAssertionPayloadRequired
-	case hasPropertyValue && hasParticipant:
+	case !hasFact && !hasParticipant:
+		return ErrAddAssertionPayloadRequired
+	case hasFact && hasParticipant:
 		return ErrAddAssertionPayloadConflict
 	}
 

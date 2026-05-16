@@ -469,6 +469,83 @@ func assertionKeys(archive *glxlib.GLXFile) []string {
 	return out
 }
 
+func TestAdd_AssertionParticipantPayload(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	for _, given := range []string{"Subject", "Godparent"} {
+		if err := addPerson(io, &addPersonOptions{
+			addCommonOptions: addCommonOptions{ArchivePath: dir},
+			Given:            given,
+		}); err != nil {
+			t.Fatalf("addPerson %s: %v", given, err)
+		}
+	}
+	if err := addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "christening",
+		Principal:        "person-subject",
+	}); err != nil {
+		t.Fatalf("addEvent: %v", err)
+	}
+	if err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		SubjectEvent:     "event-christening-subject",
+		Participant:      "person-godparent:godparent",
+	}); err != nil {
+		t.Fatalf("addAssertion: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	assertion, ok := archive.Assertions["assertion-christening-subject-godparent"]
+	if !ok {
+		t.Fatalf("expected assertion-christening-subject-godparent; have %v", assertionKeys(archive))
+	}
+	if assertion.Participant == nil {
+		t.Fatalf("participant is nil")
+	}
+	if got := assertion.Participant.Person; got != "person-godparent" {
+		t.Errorf("participant.person: %q", got)
+	}
+	if got := assertion.Participant.Role; got != "godparent" {
+		t.Errorf("participant.role: %q", got)
+	}
+	if assertion.Property != "" || assertion.Value != "" {
+		t.Errorf("participant-only assertion should not have property/value; got prop=%q val=%q", assertion.Property, assertion.Value)
+	}
+}
+
+func TestAdd_AssertionRejectsPartialFactPayload(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "P",
+	}); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	for _, tc := range []struct {
+		name     string
+		property string
+		value    string
+	}{
+		{"property only", "date", ""},
+		{"value only", "", "1850"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := addAssertion(io, &addAssertionOptions{
+				addCommonOptions: addCommonOptions{ArchivePath: dir},
+				SubjectPerson:    "person-p",
+				Property:         tc.property,
+				Value:            tc.value,
+			})
+			if !errors.Is(err, ErrAddAssertionPayloadRequired) {
+				t.Errorf("expected ErrAddAssertionPayloadRequired, got %v", err)
+			}
+		})
+	}
+}
+
 func TestAdd_AssertionRequiresExactlyOneSubject(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
