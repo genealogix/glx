@@ -235,13 +235,45 @@ case-insensitive:
 
 - For each renamed or retyped field, search for the old field name. Any
   match is drift — the converter still reads/writes the old name.
-- For each removed field, search for the field name. An active read/write is
-  critical drift (silent round-trip data loss). An `assert.NotEqual` or
-  "should be skipped" guard assertion is the post-cleanup state, not drift.
+- For each removed field, search for the field name. An active read/write
+  is drift. An `assert.NotEqual` or "should be skipped" guard assertion is
+  the post-cleanup state, not drift.
 - For each added field, search for the new field name. Zero matches means
-  the GEDCOM layer ignores the field — flag as info-severity ("is this
-  intentionally not exported?"); some GLX fields legitimately have no
-  GEDCOM tag.
+  the GEDCOM layer ignores the field; some GLX fields legitimately have no
+  GEDCOM tag, so the right question is "is this intentionally not
+  exported?"
+
+Severity for each of these cases is in the Severity Rubric below.
+
+## Severity Rubric
+
+Assign one of **critical / major / minor / info** to every finding. The
+table below is the authoritative source — don't invent severities outside it
+or vary across runs. Where a row says "info", the finding is informational
+and does not require action unless investigation confirms a problem.
+
+| Category | Condition | Severity |
+|---|---|---|
+| Field presence | Required schema field has no Go counterpart | **critical** |
+| Field presence | Go field has no schema counterpart, schema has `additionalProperties: false` | **critical** |
+| Field presence | Optional schema field has no Go counterpart | **major** |
+| Field presence | Internal Go field (e.g., `validation *ValidationResult`) not in schema | **info** |
+| Required/optional | Schema-required field has `omitempty` in Go | **critical** |
+| Required/optional | Schema-optional field missing `omitempty` in Go | **major** |
+| Field types | Type mismatch that breaks marshaling (`string` vs `[]string`) | **critical** |
+| Field types | Type widening covered by custom marshaler (`NoteList` vs `oneOf[string,array]`) | **info** |
+| YAML tags | Tag name mismatches schema property name (`state` vs `state_province`) | **critical** |
+| Reference types | Missing `refType` tag on a reference field | **major** |
+| Reference types | Wrong `refType` target (e.g., `persons` vs `events`) | **critical** |
+| GEDCOM converter | Removed schema field still emitted by `gedcom_export_*.go` | **critical** (silent round-trip data loss) |
+| GEDCOM converter | Renamed schema field still read/written under old name | **critical** |
+| GEDCOM converter | Added schema field with zero `gedcom_*.go` references | **info** (confirm intentional) |
+| Validation | Spec requires constraint neither JSON schema nor Go enforces | **major** |
+| Validation | Go enforces constraint not documented in spec | **minor** |
+| Documentation | Go comment doesn't match schema description | **info** |
+
+This rubric is shape-only; row-level severities are starting points and
+will be tuned by the eval harness (#796) once hand-graded cases exist.
 
 ## Output Format
 
@@ -291,9 +323,11 @@ OR
 ### GEDCOM Converter Drift
 - Schema field `field_name` renamed to `new_name`; old name still present in go-glx/gedcom_export_repository.go:NN
 - Fix: Update GEDCOM importer/exporter to use new field name
-- Schema field `removed_field` removed; still emitted by go-glx/gedcom_export_person.go:NN — CRITICAL (silent round-trip data loss)
-- Schema field `new_field` added; not referenced in any gedcom_*.go — INFO (confirm intentionally not exported, or wire through the converter)
+- Schema field `removed_field` removed; still emitted by go-glx/gedcom_export_person.go:NN (silent round-trip data loss)
+- Schema field `new_field` added; not referenced in any gedcom_*.go (confirm intentionally not exported, or wire through the converter)
 ```
+
+Severity for every reported finding comes from the Severity Rubric above.
 
 **Remember**:
 - Frame struct/field drift as "what the Go code needs to change" to match the schema
@@ -318,7 +352,7 @@ At the end, provide:
 - Count of entity types with structural drift (field/type/yaml tag issues)
 - List of Go types that need updates to match schema
 - Any validation gaps not covered by EITHER JSON schema or Go validator
-- Severity assessment (critical/major/minor)
+- Count of findings per severity (critical/major/minor/info), per the Severity Rubric above
 - Recommended actions
 
 ## Notes
@@ -330,5 +364,4 @@ At the end, provide:
 - Focus on structural issues that could cause marshaling/unmarshaling problems
 - Check both directions: schema → Go (missing in Go) AND Go → schema (not in schema, may need removal)
 - Pay special attention to required fields - these are critical for validation
-- Required field with `omitempty` is a **CRITICAL** error
-- Go fields that exist but are NOT in the schema (with `additionalProperties: false`) are **CRITICAL** — they produce schema-invalid YAML
+- See the Severity Rubric above for how each finding category maps to severity
