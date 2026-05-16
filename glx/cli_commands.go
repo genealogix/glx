@@ -99,6 +99,7 @@ func init() {
 	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
+	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 

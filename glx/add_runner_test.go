@@ -1,0 +1,796 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"bytes"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	glxlib "github.com/genealogix/glx/go-glx"
+)
+
+// readBackArchive returns the loaded archive for assertion. Helper used by
+// every TestAdd_* test so the table-driven assertions can read from disk.
+func readBackArchive(t *testing.T, dir string) *glxlib.GLXFile {
+	t.Helper()
+	archive, _, err := LoadArchiveWithOptions(dir, false)
+	if err != nil {
+		t.Fatalf("LoadArchiveWithOptions: %v", err)
+	}
+
+	return archive
+}
+
+// trailingLine returns the last non-empty line written to out — the
+// invariant from finalizeAdd is that the new entity ID is the final line of
+// stdout so $(glx add …) substitution works.
+func trailingLine(s string) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) == 0 {
+		return ""
+	}
+
+	return lines[len(lines)-1]
+}
+
+// =============================================================================
+// add person
+// =============================================================================
+
+func TestAdd_PersonHappyPath(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, out, _ := TestIOStreams()
+
+	err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Johann Peter",
+		Surname:          "Jungk",
+		Sex:              "male",
+	})
+	if err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+
+	want := "person-johann-peter-jungk"
+	if got := trailingLine(out.String()); got != want {
+		t.Errorf("trailing stdout line: got %q, want %q", got, want)
+	}
+
+	archive := readBackArchive(t, dir)
+	person, ok := archive.Persons[want]
+	if !ok {
+		t.Fatalf("person %s missing from archive", want)
+	}
+	if got := person.Properties[glxlib.PersonPropertySex]; got != "male" {
+		t.Errorf("sex property: got %v, want male", got)
+	}
+	name, ok := person.Properties[glxlib.PersonPropertyName].(map[string]any)
+	if !ok {
+		t.Fatalf("name property: got %T, want map", person.Properties[glxlib.PersonPropertyName])
+	}
+	if got := name["value"]; got != "Johann Peter Jungk" {
+		t.Errorf("name.value: got %v, want %q", got, "Johann Peter Jungk")
+	}
+	fields, _ := name["fields"].(map[string]any)
+	if fields["given"] != "Johann Peter" {
+		t.Errorf("name.fields.given: got %v", fields["given"])
+	}
+}
+
+func TestAdd_PersonRequiresAName(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+	})
+	if !errors.Is(err, ErrAddPersonNameRequired) {
+		t.Errorf("expected ErrAddPersonNameRequired, got %v", err)
+	}
+}
+
+func TestAdd_PersonBadVocabRejected(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Jane",
+		Sex:              "bogus",
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Errorf("expected ErrAddVocabKeyUnknown, got %v", err)
+	}
+}
+
+// =============================================================================
+// add place
+// =============================================================================
+
+func TestAdd_PlaceWithParent(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	if err := addPlace(io, &addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "Germany",
+		Type:             "country",
+	}); err != nil {
+		t.Fatalf("addPlace germany: %v", err)
+	}
+	if err := addPlace(io, &addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "Enkirch",
+		Type:             "city",
+		Parent:           "place-germany",
+	}); err != nil {
+		t.Fatalf("addPlace enkirch: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	enkirch, ok := archive.Places["place-enkirch"]
+	if !ok {
+		t.Fatalf("place-enkirch missing")
+	}
+	if enkirch.ParentID != "place-germany" {
+		t.Errorf("parent: got %q, want place-germany", enkirch.ParentID)
+	}
+}
+
+func TestAdd_PlaceUnknownParentRejected(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addPlace(io, &addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "Enkirch",
+		Parent:           "place-nope",
+	})
+	if !errors.Is(err, ErrAddRefNotFound) {
+		t.Errorf("expected ErrAddRefNotFound, got %v", err)
+	}
+}
+
+// =============================================================================
+// add event
+// =============================================================================
+
+func TestAdd_EventWithPrincipalAndPlace(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Johann",
+		Surname:          "Jungk",
+	}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+	if err := addPlace(io, &addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "Enkirch",
+	}); err != nil {
+		t.Fatalf("addPlace: %v", err)
+	}
+	if err := addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "christening",
+		Date:             "1725-02-25",
+		Place:            "place-enkirch",
+		Principal:        "person-johann-jungk",
+	}); err != nil {
+		t.Fatalf("addEvent: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	event, ok := archive.Events["event-christening-johann-jungk"]
+	if !ok {
+		t.Fatalf("event-christening-johann-jungk missing")
+	}
+	if event.Type != "christening" || event.PlaceID != "place-enkirch" {
+		t.Errorf("event fields wrong: %+v", event)
+	}
+	if got := string(event.Date); got != "1725-02-25" {
+		t.Errorf("date: got %q", got)
+	}
+	if len(event.Participants) != 1 || event.Participants[0].Person != "person-johann-jungk" ||
+		event.Participants[0].Role != glxlib.ParticipantRolePrincipal {
+		t.Errorf("participants: %+v", event.Participants)
+	}
+}
+
+func TestAdd_EventRequiresType(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+	})
+	if !errors.Is(err, ErrAddEventTypeRequired) {
+		t.Errorf("expected ErrAddEventTypeRequired, got %v", err)
+	}
+}
+
+func TestAdd_EventRejectsBadParticipantFlag(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "marriage",
+		Participants:     []string{""},
+	})
+	if !errors.Is(err, ErrAddParticipantFormat) {
+		t.Errorf("expected ErrAddParticipantFormat, got %v", err)
+	}
+}
+
+// =============================================================================
+// add repository / source / citation
+// =============================================================================
+
+func TestAdd_RepositorySourceCitationChain(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	if err := addRepository(io, &addRepositoryOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "FamilySearch",
+		Type:             "database",
+		Website:          "https://www.familysearch.org",
+	}); err != nil {
+		t.Fatalf("addRepository: %v", err)
+	}
+	if err := addSource(io, &addSourceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Title:            "Deutschland Geburten",
+		Type:             "database",
+		Repository:       "repository-familysearch",
+	}); err != nil {
+		t.Fatalf("addSource: %v", err)
+	}
+	if err := addCitation(io, &addCitationOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Source:           "source-deutschland-geburten",
+		URL:              "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2",
+		Accessed:         "2026-04-20",
+		ExternalIDs:      []string{"familysearch:ark:/61903/1:1:C4H8-2DW2"},
+	}); err != nil {
+		t.Fatalf("addCitation: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	if _, ok := archive.Repositories["repository-familysearch"]; !ok {
+		t.Errorf("repository missing")
+	}
+	src, ok := archive.Sources["source-deutschland-geburten"]
+	if !ok {
+		t.Fatalf("source missing")
+	}
+	if src.RepositoryID != "repository-familysearch" {
+		t.Errorf("source repository: got %q", src.RepositoryID)
+	}
+
+	// Pick out the citation by source prefix — its full ID has a hash suffix.
+	var foundCitation *glxlib.Citation
+	for id, c := range archive.Citations {
+		if strings.HasPrefix(id, "citation-deutschland-geburten-") {
+			foundCitation = c
+
+			break
+		}
+	}
+	if foundCitation == nil {
+		t.Fatalf("citation missing; archive citations=%+v", archive.Citations)
+	}
+	if foundCitation.SourceID != "source-deutschland-geburten" {
+		t.Errorf("citation source: got %q", foundCitation.SourceID)
+	}
+	if got := foundCitation.Properties["url"]; got != "https://www.familysearch.org/ark:/61903/1:1:C4H8-2DW2" {
+		t.Errorf("citation url: got %v", got)
+	}
+	extIDs, ok := foundCitation.Properties["external_ids"].([]any)
+	if !ok || len(extIDs) != 1 {
+		t.Fatalf("external_ids: got %T (%v)", foundCitation.Properties["external_ids"], foundCitation.Properties["external_ids"])
+	}
+	entry, ok := extIDs[0].(map[string]any)
+	if !ok {
+		t.Fatalf("external_ids[0] not a structured entry: %T", extIDs[0])
+	}
+	if entry["value"] != "ark:/61903/1:1:C4H8-2DW2" {
+		t.Errorf("external_ids[0].value: got %v", entry["value"])
+	}
+	fields, _ := entry["fields"].(map[string]any)
+	if fields["type"] != "familysearch" {
+		t.Errorf("external_ids[0].fields.type: got %v", fields["type"])
+	}
+}
+
+func TestAdd_CitationRequiresSource(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addCitation(io, &addCitationOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+	})
+	if !errors.Is(err, ErrAddCitationSourceRequired) {
+		t.Errorf("expected ErrAddCitationSourceRequired, got %v", err)
+	}
+}
+
+func TestAdd_CitationBadExternalIDFlag(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addRepository(io, &addRepositoryOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "R",
+	}); err != nil {
+		t.Fatalf("setup repo: %v", err)
+	}
+	if err := addSource(io, &addSourceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Title:            "S",
+	}); err != nil {
+		t.Fatalf("setup source: %v", err)
+	}
+	err := addCitation(io, &addCitationOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Source:           "source-s",
+		ExternalIDs:      []string{"missing-colon"},
+	})
+	if !errors.Is(err, ErrAddExternalIDFormat) {
+		t.Errorf("expected ErrAddExternalIDFormat, got %v", err)
+	}
+}
+
+// =============================================================================
+// add relationship / assertion
+// =============================================================================
+
+func TestAdd_RelationshipParentChild(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	for _, given := range []string{"Father", "Son"} {
+		if err := addPerson(io, &addPersonOptions{
+			addCommonOptions: addCommonOptions{ArchivePath: dir},
+			Given:            given,
+			Surname:          "Smith",
+		}); err != nil {
+			t.Fatalf("addPerson %s: %v", given, err)
+		}
+	}
+	if err := addRelationship(io, &addRelationshipOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "biological_parent_child",
+		Parents:          []string{"person-father-smith"},
+		Children:         []string{"person-son-smith"},
+	}); err != nil {
+		t.Fatalf("addRelationship: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	rel, ok := archive.Relationships["relationship-biological-parent-child-father-smith-son-smith"]
+	if !ok {
+		t.Fatalf("relationship missing; have keys: %v", relKeys(archive))
+	}
+	if rel.Type != "biological_parent_child" {
+		t.Errorf("type: %q", rel.Type)
+	}
+	if len(rel.Participants) != 2 {
+		t.Fatalf("participants: %+v", rel.Participants)
+	}
+}
+
+func relKeys(archive *glxlib.GLXFile) []string {
+	out := make([]string, 0, len(archive.Relationships))
+	for k := range archive.Relationships {
+		out = append(out, k)
+	}
+
+	return out
+}
+
+func TestAdd_RelationshipRequiresTwoParticipants(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Lonely",
+	}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+	err := addRelationship(io, &addRelationshipOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "marriage",
+		Spouses:          []string{"person-lonely"},
+	})
+	if !errors.Is(err, ErrAddRelationshipParticipantsRequired) {
+		t.Errorf("expected ErrAddRelationshipParticipantsRequired, got %v", err)
+	}
+}
+
+func TestAdd_AssertionFactOnEvent(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Johann",
+	}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+	if err := addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "christening",
+		Principal:        "person-johann",
+	}); err != nil {
+		t.Fatalf("addEvent: %v", err)
+	}
+	if err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		SubjectEvent:     "event-christening-johann",
+		Property:         "date",
+		Value:            "1725-02-18",
+		Confidence:       "medium",
+	}); err != nil {
+		t.Fatalf("addAssertion: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	assertion, ok := archive.Assertions["assertion-christening-johann-date"]
+	if !ok {
+		t.Fatalf("assertion missing; have keys: %v", assertionKeys(archive))
+	}
+	if assertion.Subject.Event != "event-christening-johann" {
+		t.Errorf("subject.event: %q", assertion.Subject.Event)
+	}
+	if assertion.Property != "date" || assertion.Value != "1725-02-18" {
+		t.Errorf("assertion fields: %+v", assertion)
+	}
+}
+
+func assertionKeys(archive *glxlib.GLXFile) []string {
+	out := make([]string, 0, len(archive.Assertions))
+	for k := range archive.Assertions {
+		out = append(out, k)
+	}
+
+	return out
+}
+
+func TestAdd_AssertionRequiresExactlyOneSubject(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	// Missing
+	err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Property:         "p",
+		Value:            "v",
+	})
+	if !errors.Is(err, ErrAddSubjectRequired) {
+		t.Errorf("missing: expected ErrAddSubjectRequired, got %v", err)
+	}
+
+	// Two
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "P",
+	}); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	if err := addEvent(io, &addEventOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "birth",
+		Principal:        "person-p",
+	}); err != nil {
+		t.Fatalf("setup event: %v", err)
+	}
+	err = addAssertion(io, &addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		SubjectPerson:    "person-p",
+		SubjectEvent:     "event-birth-p",
+		Property:         "p",
+		Value:            "v",
+	})
+	if !errors.Is(err, ErrAddSubjectConflict) {
+		t.Errorf("two: expected ErrAddSubjectConflict, got %v", err)
+	}
+}
+
+func TestAdd_AssertionPayloadConflict(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "P",
+	}); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		SubjectPerson:    "person-p",
+		Property:         "name",
+		Value:            "P",
+		Participant:      "person-p:witness",
+	})
+	if !errors.Is(err, ErrAddAssertionPayloadConflict) {
+		t.Errorf("expected ErrAddAssertionPayloadConflict, got %v", err)
+	}
+}
+
+// =============================================================================
+// shared behaviors (ID override, --force, --dry-run, --skip-validate)
+// =============================================================================
+
+func TestAdd_ExplicitIDCollisionErrorsWithoutForce(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	for i, given := range []string{"A", "B"} {
+		opts := &addPersonOptions{
+			addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "person-shared"},
+			Given:            given,
+		}
+		err := addPerson(io, opts)
+		if i == 0 {
+			if err != nil {
+				t.Fatalf("first add: %v", err)
+			}
+		} else {
+			if !errors.Is(err, ErrAddEntityExists) {
+				t.Errorf("second add: expected ErrAddEntityExists, got %v", err)
+			}
+		}
+	}
+}
+
+func TestAdd_ExplicitIDCollisionForceOverwrites(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "person-shared"},
+		Given:            "A",
+	}); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "person-shared", Force: true},
+		Given:            "B",
+	}); err != nil {
+		t.Fatalf("force: %v", err)
+	}
+	archive := readBackArchive(t, dir)
+	name, ok := archive.Persons["person-shared"].Properties[glxlib.PersonPropertyName].(map[string]any)
+	if !ok {
+		t.Fatalf("name not a map: %T", archive.Persons["person-shared"].Properties[glxlib.PersonPropertyName])
+	}
+	if name["value"] != "B" {
+		t.Errorf("expected overwrite to B, got %v", name["value"])
+	}
+}
+
+func TestAdd_DerivedIDsAutoSuffixOnCollision(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	wantIDs := []string{"person-jane", "person-jane-2", "person-jane-3"}
+	for i := range wantIDs {
+		if err := addPerson(io, &addPersonOptions{
+			addCommonOptions: addCommonOptions{ArchivePath: dir},
+			Given:            "Jane",
+		}); err != nil {
+			t.Fatalf("add %d: %v", i, err)
+		}
+	}
+	archive := readBackArchive(t, dir)
+	for _, want := range wantIDs {
+		if _, ok := archive.Persons[want]; !ok {
+			t.Errorf("expected %s to exist; persons=%v", want, personKeys(archive))
+		}
+	}
+}
+
+func personKeys(archive *glxlib.GLXFile) []string {
+	out := make([]string, 0, len(archive.Persons))
+	for k := range archive.Persons {
+		out = append(out, k)
+	}
+
+	return out
+}
+
+func TestAdd_DryRunWritesNothing(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, out, _ := TestIOStreams()
+	before := countFiles(t, filepath.Join(dir, "persons"))
+
+	if err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, DryRun: true},
+		Given:            "Dryrun",
+	}); err != nil {
+		t.Fatalf("addPerson dry: %v", err)
+	}
+
+	after := countFiles(t, filepath.Join(dir, "persons"))
+	if before != after {
+		t.Errorf("dry-run wrote files: before=%d after=%d", before, after)
+	}
+	if !strings.Contains(out.String(), "(dry run") {
+		t.Errorf("output should mention dry-run; got %q", out.String())
+	}
+	if got := trailingLine(out.String()); got != "person-dryrun" {
+		t.Errorf("trailing line: got %q, want person-dryrun", got)
+	}
+}
+
+func TestAdd_QuietSuppressesDiagnosticsButKeepsIDEcho(t *testing.T) {
+	dir := initArchiveDir(t)
+
+	machineOut := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
+	// Mirror the SystemIOStreams shape when --quiet is set: Out discarded,
+	// MachineOut still routed to a real writer.
+	streams := &IOStreams{Out: io.Discard, MachineOut: machineOut, ErrOut: errOut}
+
+	if err := addPerson(streams, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Given:            "Quiet",
+		Surname:          "Person",
+	}); err != nil {
+		t.Fatalf("addPerson: %v", err)
+	}
+
+	if got := strings.TrimSpace(machineOut.String()); got != "person-quiet-person" {
+		t.Errorf("MachineOut: got %q, want person-quiet-person", got)
+	}
+}
+
+func TestAdd_RejectsUnsafeOverrideID(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+	err := addPerson(io, &addPersonOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "../escape"},
+		Given:            "Jane",
+	})
+	if !errors.Is(err, ErrAddInvalidID) {
+		t.Errorf("expected ErrAddInvalidID, got %v", err)
+	}
+}
+
+func TestAdd_SkipValidateAllowsStaleArchive(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	// Hand-craft a stale assertion file pointing at a non-existent event so
+	// the whole-archive validation pass fails. Without --skip-validate the
+	// add must error; with --skip-validate it must succeed.
+	stale := "" +
+		"assertions:\n" +
+		"  assertion-stale:\n" +
+		"    subject:\n" +
+		"      event: event-missing\n" +
+		"    property: date\n" +
+		"    value: \"1850\"\n"
+	staleDir := filepath.Join(dir, "assertions")
+	if err := os.MkdirAll(staleDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(staleDir, "assertion-stale.glx"), []byte(stale), 0o644); err != nil {
+		t.Fatalf("write stale: %v", err)
+	}
+
+	// Without skip-validate: should fail because the archive doesn't validate
+	// post-merge (the new place is fine; the stale assertion is the problem).
+	err := addPlace(io, &addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Name:             "WithValidate",
+	})
+	if err == nil {
+		t.Errorf("expected whole-archive validation to surface the stale assertion")
+	}
+
+	// With skip-validate: should succeed.
+	err = addPlace(io, &addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Name:             "SkipValidate",
+	})
+	if err != nil {
+		t.Errorf("with --skip-validate: %v", err)
+	}
+}
+
+// =============================================================================
+// helpers
+// =============================================================================
+
+func TestParseParticipantFlag(t *testing.T) {
+	tests := []struct {
+		in         string
+		wantPerson string
+		wantRole   string
+		wantErr    bool
+	}{
+		{"person-x:role", "person-x", "role", false},
+		{"person-x", "person-x", "", false},
+		{"  person-x : role  ", "person-x", "role", false},
+		{":role", "", "", true},
+		{"", "", "", true},
+	}
+	for _, tc := range tests {
+		gotPerson, gotRole, err := parseParticipantFlag(tc.in)
+		if tc.wantErr {
+			if err == nil {
+				t.Errorf("%q: expected error", tc.in)
+			}
+
+			continue
+		}
+		if err != nil {
+			t.Errorf("%q: %v", tc.in, err)
+
+			continue
+		}
+		if gotPerson != tc.wantPerson || gotRole != tc.wantRole {
+			t.Errorf("%q: got (%q,%q), want (%q,%q)", tc.in, gotPerson, gotRole, tc.wantPerson, tc.wantRole)
+		}
+	}
+}
+
+func TestParseExternalIDFlag(t *testing.T) {
+	tests := []struct {
+		in      string
+		wantT   string
+		wantV   string
+		wantErr bool
+	}{
+		{"familysearch:ark:/61903/1:1:C4H8-2DW2", "familysearch", "ark:/61903/1:1:C4H8-2DW2", false},
+		{"type:value", "type", "value", false},
+		{"missing-colon", "", "", true},
+		{":value", "", "", true},
+		{"type:", "", "", true},
+	}
+	for _, tc := range tests {
+		gotT, gotV, err := parseExternalIDFlag(tc.in)
+		if tc.wantErr {
+			if err == nil {
+				t.Errorf("%q: expected error", tc.in)
+			}
+
+			continue
+		}
+		if err != nil {
+			t.Errorf("%q: %v", tc.in, err)
+
+			continue
+		}
+		if gotT != tc.wantT || gotV != tc.wantV {
+			t.Errorf("%q: got (%q,%q), want (%q,%q)", tc.in, gotT, gotV, tc.wantT, tc.wantV)
+		}
+	}
+}
+
+func TestStripEntityPrefix(t *testing.T) {
+	cases := map[string]string{
+		"person-x":       "x",
+		"event-y":        "y",
+		"relationship-z": "z",
+		"place-foo":      "foo",
+		"unprefixed":     "unprefixed",
+		"":               "",
+	}
+	for in, want := range cases {
+		if got := stripEntityPrefix(in); got != want {
+			t.Errorf("stripEntityPrefix(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
