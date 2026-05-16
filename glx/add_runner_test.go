@@ -657,13 +657,24 @@ func TestAdd_QuietSuppressesDiagnosticsButKeepsIDEcho(t *testing.T) {
 
 func TestAdd_RejectsUnsafeOverrideID(t *testing.T) {
 	dir := initArchiveDir(t)
-	io, _, _ := TestIOStreams()
-	err := addPerson(io, &addPersonOptions{
-		addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: "../escape"},
-		Given:            "Jane",
-	})
-	if !errors.Is(err, ErrAddInvalidID) {
-		t.Errorf("expected ErrAddInvalidID, got %v", err)
+	cases := map[string]string{
+		"path traversal":      "../escape",
+		"control char":        "person-x\x00bad",
+		"too long":            "person-" + strings.Repeat("a", maxEntityIDLength),
+		"leading hyphen":      "-leading-hyphen",
+		"forbidden character": "person@bad",
+	}
+	for name, badID := range cases {
+		t.Run(name, func(t *testing.T) {
+			io, _, _ := TestIOStreams()
+			err := addPerson(io, &addPersonOptions{
+				addCommonOptions: addCommonOptions{ArchivePath: dir, OverrideID: badID},
+				Given:            "Jane",
+			})
+			if !errors.Is(err, ErrAddInvalidID) {
+				t.Errorf("%s: expected ErrAddInvalidID, got %v", name, err)
+			}
+		})
 	}
 }
 
@@ -724,6 +735,7 @@ func TestParseParticipantFlag(t *testing.T) {
 		{"person-x", "person-x", "", false},
 		{"  person-x : role  ", "person-x", "role", false},
 		{":role", "", "", true},
+		{"person-x:", "", "", true}, // trailing colon == empty role, rejected
 		{"", "", "", true},
 	}
 	for _, tc := range tests {

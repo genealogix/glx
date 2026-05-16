@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -60,13 +61,22 @@ func loadAddContext(io *IOStreams, archivePath string) (*addContext, error) {
 	return &addContext{archive: archive}, nil
 }
 
-// mustBeSafeID returns ErrAddInvalidID wrapping the underlying serializer
-// rejection if the proposed ID is not a safe filename. The serializer's
-// EntityIDToFilename is the authoritative gate; the caller's job is to fail
-// fast with a clear error rather than at write time.
+// validEntityIDPattern matches the GLX entity-ID grammar: must start with an
+// alphanumeric and otherwise contain only alphanumerics and hyphens, up to
+// 64 chars total. Enforced here as defense-in-depth on top of
+// EntityIDToFilename: that helper rejects path-traversal and reserved device
+// names but does not enforce the spec's charset/length, so a NUL byte,
+// control character, or 200-char ID could otherwise reach disk.
+var validEntityIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,63}$`)
+
+// mustBeSafeID returns ErrAddInvalidID if the proposed ID is unsafe as either
+// a filename (EntityIDToFilename) or as a GLX entity ID (validEntityIDPattern).
 func mustBeSafeID(id string) error {
 	if _, err := glxlib.EntityIDToFilename(id); err != nil {
 		return fmt.Errorf("%w: %s", ErrAddInvalidID, id)
+	}
+	if !validEntityIDPattern.MatchString(id) {
+		return fmt.Errorf("%w: %s (must match %s)", ErrAddInvalidID, id, validEntityIDPattern.String())
 	}
 
 	return nil
@@ -225,9 +235,10 @@ func mapHas[T any](m map[string]*T, id string) bool {
 }
 
 // parseParticipantFlag splits "person-x:role" into ("person-x", "role").
-// Whitespace around either part is trimmed. The role half is optional; if
-// missing, role is returned as empty and the caller decides whether that is
-// acceptable.
+// Whitespace around either part is trimmed. The role half is optional only
+// when the flag omits the colon entirely; "person-x:" (trailing colon with
+// empty role) is rejected so the help-string "person-id:role" contract is
+// enforced uniformly with parseExternalIDFlag.
 func parseParticipantFlag(s string) (person, role string, err error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -240,6 +251,9 @@ func parseParticipantFlag(s string) (person, role string, err error) {
 	}
 	if len(parts) == 2 {
 		role = strings.TrimSpace(parts[1])
+		if role == "" {
+			return "", "", fmt.Errorf("%w: empty role in %q", ErrAddParticipantFormat, s)
+		}
 	}
 
 	return person, role, nil
@@ -318,11 +332,17 @@ func installPartial(archive, partial *glxlib.GLXFile) []addedEntity {
 type addedEntity struct {
 	entityType string
 	id         string
+	// previous holds the pointer that lived at archive.<Map>[id] before
+	// installPartial overwrote it, so uninstallPartial can restore the
+	// archive's in-memory state exactly when --force overwrote a key. nil
+	// means the key was newly created and should be deleted on uninstall.
+	previous any
 }
 
 // copyEntities adds every key in src to dest, allocating dest if nil, and
 // returns the addedEntity list. Generic over the value type so each entity
-// kind can use it.
+// kind can use it. If a key already exists in dest, the prior pointer is
+// captured in addedEntity.previous so uninstall can restore it.
 func copyEntities[T any](dest *map[string]*T, src map[string]*T, entityType string) []addedEntity {
 	if len(src) == 0 {
 		return nil
@@ -332,37 +352,65 @@ func copyEntities[T any](dest *map[string]*T, src map[string]*T, entityType stri
 	}
 	added := make([]addedEntity, 0, len(src))
 	for id, v := range src {
+		var prior any
+		if existing, ok := (*dest)[id]; ok {
+			prior = existing
+		}
 		(*dest)[id] = v
-		added = append(added, addedEntity{entityType: entityType, id: id})
+		added = append(added, addedEntity{entityType: entityType, id: id, previous: prior})
 	}
 
 	return added
 }
 
-// uninstallPartial removes every previously-installed entity from the archive.
+// uninstallPartial reverses installPartial: deletes newly-installed entities
+// and restores any pointer that an overwrite displaced, so the archive's
+// in-memory state matches the on-disk state exactly. Without the restore,
+// a --force overwrite would leave `archive` missing the prior entity even
+// though the on-disk write is a no-op for it.
 func uninstallPartial(archive *glxlib.GLXFile, added []addedEntity) {
 	for _, e := range added {
 		switch e.entityType {
 		case glxlib.EntityTypePersons:
-			delete(archive.Persons, e.id)
+			restoreOrDelete(archive.Persons, e)
 		case glxlib.EntityTypeEvents:
-			delete(archive.Events, e.id)
+			restoreOrDelete(archive.Events, e)
 		case glxlib.EntityTypeRelationships:
-			delete(archive.Relationships, e.id)
+			restoreOrDelete(archive.Relationships, e)
 		case glxlib.EntityTypePlaces:
-			delete(archive.Places, e.id)
+			restoreOrDelete(archive.Places, e)
 		case glxlib.EntityTypeSources:
-			delete(archive.Sources, e.id)
+			restoreOrDelete(archive.Sources, e)
 		case glxlib.EntityTypeCitations:
-			delete(archive.Citations, e.id)
+			restoreOrDelete(archive.Citations, e)
 		case glxlib.EntityTypeRepositories:
-			delete(archive.Repositories, e.id)
+			restoreOrDelete(archive.Repositories, e)
 		case glxlib.EntityTypeAssertions:
-			delete(archive.Assertions, e.id)
+			restoreOrDelete(archive.Assertions, e)
 		case glxlib.EntityTypeMedia:
-			delete(archive.Media, e.id)
+			restoreOrDelete(archive.Media, e)
 		}
 	}
+}
+
+// restoreOrDelete restores e.previous if it holds the appropriate concrete
+// pointer type, otherwise deletes the key. Concrete pointer types are
+// emitted by copyEntities so the type assertion is total in practice.
+func restoreOrDelete[T any](m map[string]*T, e addedEntity) {
+	if e.previous == nil {
+		delete(m, e.id)
+
+		return
+	}
+	if prior, ok := e.previous.(*T); ok {
+		m[e.id] = prior
+
+		return
+	}
+	// Type mismatch should be unreachable (entityType determines T at the
+	// call site). Fail closed by deleting rather than silently leaving the
+	// overwrite in place.
+	delete(m, e.id)
 }
 
 // finalizeAdd is the tail of every add subcommand: optionally run whole-archive
