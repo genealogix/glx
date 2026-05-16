@@ -1127,6 +1127,277 @@ func TestAdd_AssertionRefValidation(t *testing.T) {
 	}
 }
 
+func TestAdd_RequiredFlagErrors(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	type call func() error
+	cases := []struct {
+		name  string
+		run   call
+		errIs error
+	}{
+		{
+			name: "place without --name",
+			run: func() error {
+				return addPlace(io, &addPlaceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}})
+			},
+			errIs: ErrAddPlaceNameRequired,
+		},
+		{
+			name: "repository without --name",
+			run: func() error {
+				return addRepository(io, &addRepositoryOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}})
+			},
+			errIs: ErrAddRepositoryNameRequired,
+		},
+		{
+			name: "source without --title",
+			run: func() error {
+				return addSource(io, &addSourceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}})
+			},
+			errIs: ErrAddSourceTitleRequired,
+		},
+		{
+			name: "relationship without --type",
+			run: func() error {
+				return addRelationship(io, &addRelationshipOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}})
+			},
+			errIs: ErrAddRelationshipTypeRequired,
+		},
+		{
+			name: "citation without --source",
+			run: func() error {
+				return addCitation(io, &addCitationOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}})
+			},
+			errIs: ErrAddCitationSourceRequired,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.run()
+			if !errors.Is(err, tc.errIs) {
+				t.Errorf("expected %v, got %v", tc.errIs, err)
+			}
+		})
+	}
+}
+
+func TestAdd_BadVocabKeys(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	cases := []struct {
+		name string
+		run  func() error
+	}{
+		{name: "place bad type", run: func() error {
+			return addPlace(io, &addPlaceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Name: "X", Type: "bogus"})
+		}},
+		{name: "repository bad type", run: func() error {
+			return addRepository(io, &addRepositoryOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Name: "X", Type: "bogus"})
+		}},
+		{name: "source bad type", run: func() error {
+			return addSource(io, &addSourceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Title: "X", Type: "bogus"})
+		}},
+		{name: "event bad type", run: func() error {
+			return addEvent(io, &addEventOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Type: "bogus"})
+		}},
+		{name: "relationship bad type", run: func() error {
+			return addRelationship(io, &addRelationshipOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Type: "bogus"})
+		}},
+		{name: "person bad gender", run: func() error {
+			return addPerson(io, &addPersonOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Given: "X", Gender: "bogus"})
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.run()
+			if !errors.Is(err, ErrAddVocabKeyUnknown) {
+				t.Errorf("expected ErrAddVocabKeyUnknown, got %v", err)
+			}
+		})
+	}
+}
+
+func TestAdd_BadReferences(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	cases := []struct {
+		name string
+		run  func() error
+	}{
+		{name: "event bad place", run: func() error {
+			return addEvent(io, &addEventOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Type: "birth", Place: "place-nope"})
+		}},
+		{name: "event bad principal", run: func() error {
+			return addEvent(io, &addEventOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Type: "birth", Principal: "person-nope"})
+		}},
+		{name: "event bad participant ref", run: func() error {
+			return addEvent(io, &addEventOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Type: "birth", Participants: []string{"person-nope:principal"}})
+		}},
+		{name: "source bad repository", run: func() error {
+			return addSource(io, &addSourceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Title: "X", Repository: "repository-nope"})
+		}},
+		{name: "citation bad source", run: func() error {
+			return addCitation(io, &addCitationOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Source: "source-nope", URL: "x"})
+		}},
+		{name: "relationship bad start-event", run: func() error {
+			return addRelationship(io, &addRelationshipOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Type: "marriage", StartEvent: "event-nope"})
+		}},
+		{name: "relationship bad parent person", run: func() error {
+			return addRelationship(io, &addRelationshipOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Type: "biological_parent_child", Parents: []string{"person-nope"}, Children: []string{"person-nope2"}})
+		}},
+		{name: "assertion bad subject person", run: func() error {
+			return addAssertion(io, &addAssertionOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, SubjectPerson: "person-nope", Property: "p", Value: "v"})
+		}},
+		{name: "assertion participant bad person", run: func() error {
+			// Seed a real subject so subject resolution passes.
+			if err := addPerson(io, &addPersonOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Given: "Real"}); err != nil {
+				return err
+			}
+
+			return addAssertion(io, &addAssertionOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, SubjectPerson: "person-real", Participant: "person-nope:witness"})
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.run()
+			if !errors.Is(err, ErrAddRefNotFound) {
+				t.Errorf("expected ErrAddRefNotFound, got %v", err)
+			}
+		})
+	}
+}
+
+func TestAdd_RelationshipParticipantFlagAndBadRole(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	for _, given := range []string{"X", "Y"} {
+		if err := addPerson(io, &addPersonOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Given: given}); err != nil {
+			t.Fatalf("setup person %s: %v", given, err)
+		}
+	}
+
+	// Happy path: --participant person-id:role twice.
+	if err := addRelationship(io, &addRelationshipOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "sibling",
+		Participants:     []string{"person-x:sibling", "person-y:sibling"},
+	}); err != nil {
+		t.Fatalf("addRelationship via participants: %v", err)
+	}
+
+	// Bad role rejected.
+	err := addRelationship(io, &addRelationshipOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir},
+		Type:             "sibling",
+		Participants:     []string{"person-x:bogusrole", "person-y:bogusrole"},
+	})
+	if !errors.Is(err, ErrAddVocabKeyUnknown) {
+		t.Errorf("expected ErrAddVocabKeyUnknown for bad role, got %v", err)
+	}
+}
+
+func TestAdd_PlaceWithCoordinates(t *testing.T) {
+	dir := initArchiveDir(t)
+
+	addPlaceLat = 49.97
+	addPlaceLng = 7.13
+	addPlaceLatSet = true
+	addPlaceLngSet = true
+	addPlaceOpts = addPlaceOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, SkipValidate: true},
+		Name:             "Enkirch",
+		Type:             "city",
+	}
+	t.Cleanup(func() {
+		addPlaceLat, addPlaceLng = 0, 0
+		addPlaceLatSet, addPlaceLngSet = false, false
+		addPlaceOpts = addPlaceOptions{}
+	})
+
+	if err := runAddPlace(nil, nil); err != nil {
+		t.Fatalf("runAddPlace: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	place, ok := archive.Places["place-enkirch"]
+	if !ok {
+		t.Fatalf("place-enkirch missing")
+	}
+	if place.Latitude == nil || *place.Latitude != 49.97 {
+		t.Errorf("latitude: %v", place.Latitude)
+	}
+	if place.Longitude == nil || *place.Longitude != 7.13 {
+		t.Errorf("longitude: %v", place.Longitude)
+	}
+}
+
+func TestAdd_AssertionWithEvidence(t *testing.T) {
+	dir := initArchiveDir(t)
+	io, _, _ := TestIOStreams()
+
+	if err := addPerson(io, &addPersonOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Given: "P"}); err != nil {
+		t.Fatalf("setup person: %v", err)
+	}
+	if err := addRepository(io, &addRepositoryOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Name: "R"}); err != nil {
+		t.Fatalf("setup repo: %v", err)
+	}
+	if err := addSource(io, &addSourceOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Title: "S"}); err != nil {
+		t.Fatalf("setup source: %v", err)
+	}
+	if err := addCitation(io, &addCitationOptions{addCommonOptions: addCommonOptions{ArchivePath: dir}, Source: "source-s", URL: "https://x"}); err != nil {
+		t.Fatalf("setup citation: %v", err)
+	}
+	citationID := ""
+	for id := range readBackArchive(t, dir).Citations {
+		citationID = id
+
+		break
+	}
+
+	if err := addAssertion(io, &addAssertionOptions{
+		addCommonOptions: addCommonOptions{ArchivePath: dir, Notes: []string{"researcher note"}},
+		SubjectPerson:    "person-p",
+		Property:         "note",
+		Value:            "evidence",
+		Sources:          []string{"source-s"},
+		Citations:        []string{citationID},
+		Confidence:       "high",
+		Status:           "accepted",
+	}); err != nil {
+		t.Fatalf("addAssertion: %v", err)
+	}
+
+	archive := readBackArchive(t, dir)
+	var a *glxlib.Assertion
+	for _, ent := range archive.Assertions {
+		if ent.Property == "note" && ent.Value == "evidence" {
+			a = ent
+
+			break
+		}
+	}
+	if a == nil {
+		t.Fatalf("evidence assertion missing")
+	}
+	if len(a.Sources) != 1 || a.Sources[0] != "source-s" {
+		t.Errorf("sources: %v", a.Sources)
+	}
+	if len(a.Citations) != 1 || a.Citations[0] != citationID {
+		t.Errorf("citations: %v", a.Citations)
+	}
+	if a.Confidence != "high" || a.Status != "accepted" {
+		t.Errorf("confidence/status: %q / %q", a.Confidence, a.Status)
+	}
+	if len(a.Notes) != 1 || a.Notes[0] != "researcher note" {
+		t.Errorf("notes: %v", a.Notes)
+	}
+}
+
 func TestAdd_CitationWithRepository(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
