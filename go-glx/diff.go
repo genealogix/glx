@@ -491,7 +491,12 @@ func computeConfidenceStats(result *DiffResult, oldArchive, newArchive *GLXFile)
 			if f.Path != "confidence" {
 				continue
 			}
-			oldRank, oldOK := lookupConfidenceRank(strings.Trim(f.OldValue, "\""), newArchive, oldArchive)
+			// Resolve each side against its own archive's vocabulary first. If the
+			// confidence-level vocab evolves between archives (e.g. a custom level's
+			// rank is rebalanced), the old value reflects the old archive's meaning
+			// and the new value reflects the new archive's meaning. Cross-archive
+			// fallback handles the case where one side dropped the level.
+			oldRank, oldOK := lookupConfidenceRank(strings.Trim(f.OldValue, "\""), oldArchive, newArchive)
 			newRank, newOK := lookupConfidenceRank(strings.Trim(f.NewValue, "\""), newArchive, oldArchive)
 			if !oldOK || !newOK {
 				continue
@@ -505,11 +510,13 @@ func computeConfidenceStats(result *DiffResult, oldArchive, newArchive *GLXFile)
 	}
 }
 
-// lookupConfidenceRank resolves a confidence level name to its numeric rank,
-// preferring vocabulary metadata (newArchive wins ties with oldArchive) over
-// the standard confidenceRank fallback.
-func lookupConfidenceRank(level string, newArchive, oldArchive *GLXFile) (int, bool) {
-	for _, a := range []*GLXFile{newArchive, oldArchive} {
+// lookupConfidenceRank resolves a confidence level name to its numeric rank.
+// It consults `primary`'s ConfidenceLevels vocabulary first — callers pass the
+// archive that owns the value being ranked — then falls back to `fallback`'s
+// vocabulary in case the level isn't defined on the primary side, and finally
+// to the hardcoded confidenceRank map for the standard levels.
+func lookupConfidenceRank(level string, primary, fallback *GLXFile) (int, bool) {
+	for _, a := range []*GLXFile{primary, fallback} {
 		if a == nil {
 			continue
 		}
