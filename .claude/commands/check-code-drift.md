@@ -265,7 +265,7 @@ and does not require action unless investigation confirms a problem.
 | YAML tags | Tag name mismatches schema property name (`state` vs `state_province`) | **critical** |
 | Reference types | Missing `refType` tag on a reference field | **major** |
 | Reference types | Wrong `refType` target (e.g., `persons` vs `events`) | **critical** |
-| GEDCOM converter | Removed schema field still emitted by `gedcom_export_*.go` | **critical** (silent round-trip data loss) |
+| GEDCOM converter | Removed schema field still read or written by `gedcom_*.go` (importer or exporter) | **critical** (silent round-trip data loss) |
 | GEDCOM converter | Renamed schema field still read/written under old name | **critical** |
 | GEDCOM converter | Added schema field with zero `gedcom_*.go` references | **info** (confirm intentional) |
 | Validation | Spec requires constraint neither JSON schema nor Go enforces | **major** |
@@ -288,46 +288,52 @@ OR
 
 ⚠️ Drift detected:
 
+Each finding line MUST start with its severity tag (`**critical**`,
+`**major**`, `**minor**`, or `**info**`) drawn from the Severity Rubric
+above. `Fix:` continuation lines do not get their own tag.
+
 ### Field Presence
-- Go struct missing field for schema property `property_name`
-- Go field `FieldName` exists but not in schema (may need removal or schema update)
+- **critical** — Go struct missing field for schema property `property_name` (required field)
+- **major** — Go struct missing field for schema property `property_name` (optional field)
+- **critical** — Go field `FieldName` exists but not in schema (schema has `additionalProperties: false`)
 
 ### Field Types
-- Go field `FieldName` has type `[]string` but schema defines type `string`
+- **critical** — Go field `FieldName` has type `[]string` but schema defines type `string`
 - Fix: Update Go type to match schema
 
 ### Required vs Optional
-- Go field `FieldName` is required in schema but has `omitempty` tag (REMOVE omitempty)
-- Go field `FieldName` is optional in schema but missing `omitempty` tag (ADD omitempty)
+- **critical** — Go field `FieldName` is required in schema but has `omitempty` tag (REMOVE omitempty)
+- **major** — Go field `FieldName` is optional in schema but missing `omitempty` tag (ADD omitempty)
 
 ### YAML Tags
-- Go field `FieldName` has yaml tag `field` but schema property is `field_name`
+- **critical** — Go field `FieldName` has yaml tag `field` but schema property is `field_name`
 - Fix: Change yaml tag to match schema property name
 
 ### Reference Types
-- Go field `FieldName` references entities but missing `refType:"entity_type"` tag
+- **major** — Go field `FieldName` references entities but missing `refType:"entity_type"` tag
 - Fix: Add appropriate refType tag
 
 ### Validation Drift (Code → Specification)
-- Validation logic in go-glx/validation.go:123 not documented in specification
+- **minor** — Validation logic in go-glx/validation.go:123 not documented in specification
 - Fix: Document validation requirement in specification/4-entity-types/[entity].md
 
 ### Validation Drift (Specification → Code)
-- Validation requirement in specification/4-entity-types/[entity].md:45 not implemented
+- **major** — Validation requirement in specification/4-entity-types/[entity].md:45 not implemented
 - Fix: Implement validation in go-glx/validation.go
 
 ### Documentation
-- Go field `FieldName` comment doesn't match schema description
+- **info** — Go field `FieldName` comment doesn't match schema description
 - Fix: Update comment to match schema
 
 ### GEDCOM Converter Drift
-- Schema field `field_name` renamed to `new_name`; old name still present in go-glx/gedcom_export_repository.go:NN
+- **critical** — Schema field `field_name` renamed to `new_name`; old name still present in go-glx/gedcom_export_repository.go:NN
 - Fix: Update GEDCOM importer/exporter to use new field name
-- Schema field `removed_field` removed; still emitted by go-glx/gedcom_export_person.go:NN (silent round-trip data loss)
-- Schema field `new_field` added; not referenced in any gedcom_*.go (confirm intentionally not exported, or wire through the converter)
+- **critical** — Schema field `removed_field` removed; still emitted by go-glx/gedcom_export_person.go:NN (silent round-trip data loss)
+- **info** — Schema field `new_field` added; not referenced in any gedcom_*.go (confirm intentionally not exported, or wire through the converter)
 ```
 
-Severity for every reported finding comes from the Severity Rubric above.
+Severity tags come from the Severity Rubric above. Findings without a
+severity tag fail the format contract.
 
 **Remember**:
 - Frame struct/field drift as "what the Go code needs to change" to match the schema
