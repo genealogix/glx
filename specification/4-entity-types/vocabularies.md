@@ -453,6 +453,7 @@ confidence_levels:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `rank` | No | Numeric ordering used by `glx diff` to detect confidence upgrades vs downgrades. Higher values rank above lower; standard levels supply ranks 0-3 (low=0, disputed=1, medium=2, high=3). Custom levels without a rank are skipped by upgrade-detection. |
+| `gedcom` | No | Reserved for the corresponding GEDCOM QUAY value (`0`-`3`) for import/export mapping. The standard levels do not currently populate this field; defined in the JSON schema for forward compatibility with QUAY round-tripping. |
 
 ### Important Notes
 
