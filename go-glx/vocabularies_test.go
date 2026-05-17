@@ -251,7 +251,7 @@ func TestLoadStandardVocabularies_PopulatesSexAndGenderTypes(t *testing.T) {
 
 // TestVocabularyEntryYAMLFieldOrder guards against a silent wire-format regression:
 // the VocabularyEntry struct's field order is load-bearing because on-disk vocabulary
-// files use `label, description, <type-specific>, gedcom` order, and single-file
+// files use `label, description, <type-specific>, gedcom, rank` order, and single-file
 // archives re-marshal via yaml.Marshal (which follows struct declaration order).
 // If someone alphabetizes or reorders the struct, single-file archives will shuffle
 // key order on every write. This test catches that.
@@ -269,6 +269,7 @@ func TestVocabularyEntryYAMLFieldOrder(t *testing.T) {
 		AppliesTo:   []string{"A"},
 		MimeType:    "M",
 		GEDCOM:      "G",
+		Rank:        intPtr(0),
 	}
 	out, err := yaml.Marshal(entry)
 	if err != nil {
@@ -292,8 +293,40 @@ func TestVocabularyEntryYAMLFieldOrder(t *testing.T) {
 	for i := 0; i < len(root.Content); i += 2 {
 		got = append(got, root.Content[i].Value)
 	}
-	want := []string{"label", "description", "category", "applies_to", "mime_type", "gedcom"}
+	want := []string{"label", "description", "category", "applies_to", "mime_type", "gedcom", "rank"}
 	if !slices.Equal(got, want) {
 		t.Errorf("VocabularyEntry YAML key order changed — single-file archives would shuffle keys on re-marshal.\ngot:  %v\nwant: %v", got, want)
+	}
+}
+
+// TestLoadStandardVocabulariesIntoGLX_ConfidenceRanks pins the rank values
+// embedded in confidence-levels.glx. The diff tool's upgrade/downgrade
+// detection relies on these ranks (and on the hardcoded fallback in
+// go-glx/diff.go matching them) — if the YAML drifts, this test catches it.
+func TestLoadStandardVocabulariesIntoGLX_ConfidenceRanks(t *testing.T) {
+	var glx GLXFile
+	if err := LoadStandardVocabulariesIntoGLX(&glx); err != nil {
+		t.Fatalf("LoadStandardVocabulariesIntoGLX: %v", err)
+	}
+
+	wantRanks := map[string]int{
+		"high":     3,
+		"medium":   2,
+		"disputed": 1,
+		"low":      0,
+	}
+	for key, want := range wantRanks {
+		entry, ok := glx.ConfidenceLevels[key]
+		if !ok || entry == nil {
+			t.Errorf("confidence_levels missing standard entry %q", key)
+			continue
+		}
+		if entry.Rank == nil {
+			t.Errorf("confidence_levels[%q].rank is nil; expected %d", key, want)
+			continue
+		}
+		if *entry.Rank != want {
+			t.Errorf("confidence_levels[%q].rank = %d; want %d", key, *entry.Rank, want)
+		}
 	}
 }

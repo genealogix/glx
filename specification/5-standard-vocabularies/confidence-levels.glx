@@ -8,16 +8,20 @@ confidence_levels:
   high:
     label: "High Confidence"
     description: "Multiple high-quality sources agree, minimal uncertainty"
-  
+    rank: 3
+
   medium:
     label: "Medium Confidence"
     description: "Some evidence supports conclusion, but conflicts or gaps exist"
-  
-  low:
-    label: "Low Confidence"
-    description: "Limited evidence, significant uncertainty"
-  
+    rank: 2
+
   disputed:
     label: "Disputed"
     description: "Multiple sources conflict, resolution unclear"
+    rank: 1
+
+  low:
+    label: "Low Confidence"
+    description: "Limited evidence, significant uncertainty"
+    rank: 0
 
