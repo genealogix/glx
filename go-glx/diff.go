@@ -525,6 +525,7 @@ func lookupConfidenceRank(level string, primary, fallback *GLXFile) (int, bool) 
 		}
 	}
 	rank, ok := confidenceRank[level]
+
 	return rank, ok
 }
 

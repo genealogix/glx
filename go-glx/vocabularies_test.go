@@ -269,7 +269,7 @@ func TestVocabularyEntryYAMLFieldOrder(t *testing.T) {
 		AppliesTo:   []string{"A"},
 		MimeType:    "M",
 		GEDCOM:      "G",
-		Rank:        intPtr(0),
+		Rank:        new(0),
 	}
 	out, err := yaml.Marshal(entry)
 	if err != nil {
@@ -319,10 +319,12 @@ func TestLoadStandardVocabulariesIntoGLX_ConfidenceRanks(t *testing.T) {
 		entry, ok := glx.ConfidenceLevels[key]
 		if !ok || entry == nil {
 			t.Errorf("confidence_levels missing standard entry %q", key)
+
 			continue
 		}
 		if entry.Rank == nil {
 			t.Errorf("confidence_levels[%q].rank is nil; expected %d", key, want)
+
 			continue
 		}
 		if *entry.Rank != want {

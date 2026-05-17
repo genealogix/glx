@@ -529,8 +529,8 @@ func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
 // ConfidenceLevels vocabulary entry with an explicit Rank.
 func TestDiffArchives_ConfidenceCustomLevelWithRank(t *testing.T) {
 	vocab := map[string]*VocabularyEntry{
-		"tentative": {Label: "Tentative", Rank: intPtr(1)},
-		"high":      {Label: "High Confidence", Rank: intPtr(3)},
+		"tentative": {Label: "Tentative", Rank: new(1)},
+		"high":      {Label: "High Confidence", Rank: new(3)},
 	}
 
 	old := &GLXFile{
@@ -610,8 +610,8 @@ func TestDiffArchives_ConfidenceRankArchivePrecedence(t *testing.T) {
 	// given the assertion was filed under the old archive's vocabulary.
 	old := &GLXFile{
 		ConfidenceLevels: map[string]*VocabularyEntry{
-			"tentative": {Label: "Tentative", Rank: intPtr(2)},
-			"high":      {Label: "High Confidence", Rank: intPtr(3)},
+			"tentative": {Label: "Tentative", Rank: new(2)},
+			"high":      {Label: "High Confidence", Rank: new(3)},
 		},
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
@@ -624,8 +624,8 @@ func TestDiffArchives_ConfidenceRankArchivePrecedence(t *testing.T) {
 	}
 	newArchive := &GLXFile{
 		ConfidenceLevels: map[string]*VocabularyEntry{
-			"tentative": {Label: "Tentative", Rank: intPtr(4)},
-			"high":      {Label: "High Confidence", Rank: intPtr(3)},
+			"tentative": {Label: "Tentative", Rank: new(4)},
+			"high":      {Label: "High Confidence", Rank: new(3)},
 		},
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
@@ -645,7 +645,7 @@ func TestDiffArchives_ConfidenceRankArchivePrecedence(t *testing.T) {
 	// oldArchive's vocab rather than skipping the level as unknown.
 	oldHasRank := &GLXFile{
 		ConfidenceLevels: map[string]*VocabularyEntry{
-			"tentative": {Label: "Tentative", Rank: intPtr(1)},
+			"tentative": {Label: "Tentative", Rank: new(1)},
 		},
 		Assertions: map[string]*Assertion{
 			"assertion-1": {
