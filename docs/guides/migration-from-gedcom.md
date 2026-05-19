@@ -495,7 +495,7 @@ After importing, review the results:
 The automated import creates a solid foundation. Consider enhancing:
 
 - **Confidence levels**: Add `confidence: high/medium/low` to assertions
-- **Assertion status**: Add `status: proven/speculative/disproven` to track research verification
+- **Assertion status**: Add `status: proven/speculative/disproven/unresearched` to track research verification (use `unresearched` to flag claims that haven't been investigated yet)
 - **Transcriptions**: Add `text_from_source` to citations
 - **Place details**: Add coordinates and refine place types
 - **Research notes**: Add notes to entities documenting your analysis
