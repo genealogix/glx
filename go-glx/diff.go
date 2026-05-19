@@ -64,7 +64,13 @@ type DiffResult struct {
 	Stats   DiffStats      `json:"stats"`
 }
 
-// confidenceRank maps confidence levels to numeric rank for upgrade/downgrade detection.
+// confidenceRank maps the standard confidence levels to numeric rank. Used as
+// the fallback when neither archive's confidence-levels vocabulary supplies an
+// explicit rank on a VocabularyEntry — e.g. unit-test fixtures that construct
+// a *GLXFile directly without loading vocabularies, or older on-disk archives
+// from before the rank field existed. Custom (non-standard) levels are not in
+// this map, so unranked custom levels remain "unknown" and are skipped, which
+// is the pre-existing behavior.
 var confidenceRank = map[string]int{
 	ConfidenceLevelLow:      0,
 	ConfidenceLevelDisputed: 1,
@@ -95,6 +101,7 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 
 	// Compute stats on the (possibly filtered) change set
 	computeStats(result)
+	computeConfidenceStats(result, oldArchive, newArchive)
 
 	// Sort changes by entity type then ID
 	sort.SliceStable(result.Changes, func(i, j int) bool {
@@ -490,12 +497,13 @@ func computeStats(result *DiffResult) {
 			result.Stats.Removed++
 		}
 	}
-	computeConfidenceStats(result)
 }
 
 // computeConfidenceStats counts confidence upgrades and downgrades.
-// Only counts changes where both old and new values are recognized confidence levels.
-func computeConfidenceStats(result *DiffResult) {
+// Only counts changes where both old and new values resolve to a numeric rank,
+// either from a confidence-levels vocabulary entry's Rank field or from the
+// confidenceRank fallback map. Unranked values are skipped.
+func computeConfidenceStats(result *DiffResult, oldArchive, newArchive *GLXFile) {
 	for _, c := range result.Changes {
 		if c.EntityType != EntityTypeAssertions || c.Kind != ChangeModified {
 			continue
@@ -504,8 +512,13 @@ func computeConfidenceStats(result *DiffResult) {
 			if f.Path != "confidence" {
 				continue
 			}
-			oldRank, oldOK := confidenceRank[strings.Trim(f.OldValue, "\"")]
-			newRank, newOK := confidenceRank[strings.Trim(f.NewValue, "\"")]
+			// Resolve each side against its own archive's vocabulary first. If the
+			// confidence-level vocab evolves between archives (e.g. a custom level's
+			// rank is rebalanced), the old value reflects the old archive's meaning
+			// and the new value reflects the new archive's meaning. Cross-archive
+			// fallback handles the case where one side dropped the level.
+			oldRank, oldOK := lookupConfidenceRank(strings.Trim(f.OldValue, "\""), oldArchive, newArchive)
+			newRank, newOK := lookupConfidenceRank(strings.Trim(f.NewValue, "\""), newArchive, oldArchive)
 			if !oldOK || !newOK {
 				continue
 			}
@@ -516,6 +529,25 @@ func computeConfidenceStats(result *DiffResult) {
 			}
 		}
 	}
+}
+
+// lookupConfidenceRank resolves a confidence level name to its numeric rank.
+// It consults `primary`'s ConfidenceLevels vocabulary first — callers pass the
+// archive that owns the value being ranked — then falls back to `fallback`'s
+// vocabulary in case the level isn't defined on the primary side, and finally
+// to the hardcoded confidenceRank map for the standard levels.
+func lookupConfidenceRank(level string, primary, fallback *GLXFile) (int, bool) {
+	for _, a := range []*GLXFile{primary, fallback} {
+		if a == nil {
+			continue
+		}
+		if entry, ok := a.ConfidenceLevels[level]; ok && entry != nil && entry.Rank != nil {
+			return *entry.Rank, true
+		}
+	}
+	rank, ok := confidenceRank[level]
+
+	return rank, ok
 }
 
 // filterByPerson keeps only changes relevant to a specific person.
