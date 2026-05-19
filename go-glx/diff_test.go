@@ -523,6 +523,156 @@ func TestDiffArchives_ConfidenceUnknownLevel_NotCounted(t *testing.T) {
 	assert.Equal(t, 0, result.Stats.ConfidenceUpgrades, "unknown old confidence should not count as upgrade")
 }
 
+// TestDiffArchives_ConfidenceCustomLevelWithRank exercises vocabulary-driven
+// ranking: a custom confidence level not in the hardcoded fallback map can
+// still participate in upgrade detection when both archives carry a
+// ConfidenceLevels vocabulary entry with an explicit Rank.
+func TestDiffArchives_ConfidenceCustomLevelWithRank(t *testing.T) {
+	vocab := map[string]*VocabularyEntry{
+		"tentative": {Label: "Tentative", Rank: new(1)},
+		"high":      {Label: "High Confidence", Rank: new(3)},
+	}
+
+	old := &GLXFile{
+		ConfidenceLevels: vocab,
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: "tentative",
+			},
+		},
+	}
+	newArchive := &GLXFile{
+		ConfidenceLevels: vocab,
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: "high",
+			},
+		},
+	}
+
+	result := DiffArchives(old, newArchive, "")
+	assert.Equal(t, 1, result.Stats.ConfidenceUpgrades, "custom level with rank should support upgrade detection")
+	assert.Equal(t, 0, result.Stats.ConfidenceDowngrades)
+}
+
+// TestDiffArchives_ConfidenceCustomLevelWithoutRank pins the existing behavior
+// for unranked custom levels: without a Rank on the VocabularyEntry and no
+// entry in the hardcoded fallback map, the level remains unknown and the
+// transition is not counted.
+func TestDiffArchives_ConfidenceCustomLevelWithoutRank(t *testing.T) {
+	vocab := map[string]*VocabularyEntry{
+		"tentative": {Label: "Tentative"}, // no Rank
+	}
+
+	old := &GLXFile{
+		ConfidenceLevels: vocab,
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: "tentative",
+			},
+		},
+	}
+	newArchive := &GLXFile{
+		ConfidenceLevels: vocab,
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: ConfidenceLevelHigh,
+			},
+		},
+	}
+
+	result := DiffArchives(old, newArchive, "")
+	assert.Equal(t, 0, result.Stats.ConfidenceUpgrades, "unranked custom level should not count as upgrade")
+}
+
+// TestDiffArchives_ConfidenceRankArchivePrecedence pins the per-side lookup
+// semantics: each value resolves against the archive that owned it. The
+// scenario is constructed so that resolving both values against newArchive
+// would flip the direction (downgrade) — only the correct per-side lookup
+// produces the right answer (upgrade).
+func TestDiffArchives_ConfidenceRankArchivePrecedence(t *testing.T) {
+	// Both archives define "tentative" with different ranks. Resolving the
+	// old value ("tentative") against newArchive's vocab would read rank=4
+	// and yield 4→3 = downgrade. Resolving against oldArchive's vocab reads
+	// rank=2 and yields 2→3 = upgrade, which is the only correct reading
+	// given the assertion was filed under the old archive's vocabulary.
+	old := &GLXFile{
+		ConfidenceLevels: map[string]*VocabularyEntry{
+			"tentative": {Label: "Tentative", Rank: new(2)},
+			"high":      {Label: "High Confidence", Rank: new(3)},
+		},
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: "tentative",
+			},
+		},
+	}
+	newArchive := &GLXFile{
+		ConfidenceLevels: map[string]*VocabularyEntry{
+			"tentative": {Label: "Tentative", Rank: new(4)},
+			"high":      {Label: "High Confidence", Rank: new(3)},
+		},
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: "high",
+			},
+		},
+	}
+	result := DiffArchives(old, newArchive, "")
+	assert.Equal(t, 1, result.Stats.ConfidenceUpgrades, "old value should rank against old archive's vocab")
+	assert.Equal(t, 0, result.Stats.ConfidenceDowngrades)
+
+	// Cross-archive fallback: newArchive drops rank metadata for the level
+	// that only the old value uses. The lookup should fall through to
+	// oldArchive's vocab rather than skipping the level as unknown.
+	oldHasRank := &GLXFile{
+		ConfidenceLevels: map[string]*VocabularyEntry{
+			"tentative": {Label: "Tentative", Rank: new(1)},
+		},
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: "tentative",
+			},
+		},
+	}
+	newDropsRank := &GLXFile{
+		ConfidenceLevels: map[string]*VocabularyEntry{
+			"tentative": {Label: "Tentative"}, // no Rank
+		},
+		Assertions: map[string]*Assertion{
+			"assertion-1": {
+				Subject:    EntityRef{Person: "person-mary"},
+				Property:   "occupation",
+				Value:      "weaver",
+				Confidence: ConfidenceLevelHigh,
+			},
+		},
+	}
+	result = DiffArchives(oldHasRank, newDropsRank, "")
+	assert.Equal(t, 1, result.Stats.ConfidenceUpgrades, "old archive's rank should be consulted when new archive lacks one")
+}
+
 func TestDiffArchives_EventWithTitle(t *testing.T) {
 	old := &GLXFile{Events: map[string]*Event{}}
 	newArchive := &GLXFile{
