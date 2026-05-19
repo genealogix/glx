@@ -269,6 +269,7 @@ relationships:
         role: enslaver
       - person: person-jenny
         role: enslaved_person
+    start_event: event-jenny-purchased-1820
     end_event: event-jenny-sold-1834
     properties:
       legal_status: chattel
