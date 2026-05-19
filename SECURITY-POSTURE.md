@@ -6,7 +6,7 @@ layout: doc
 
 # Security Posture
 
-> As of **2026-05-07**, GLX self-attests to the [OpenSSF OSPS Baseline](https://baseline.openssf.org/) version **2026.02.19** at **Level 1 (foundational)**, with most **Level 2 (operationally mature)** controls also met. Outstanding gaps are listed below and tracked as open issues.
+> As of **2026-05-19**, GLX self-attests to the [OpenSSF OSPS Baseline](https://baseline.openssf.org/) version **2026.02.19** at **Level 1 (foundational)**, with most **Level 2 (operationally mature)** controls also met. Outstanding gaps are listed below and tracked as open issues.
 
 This document is the public-facing companion to [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md). SECURITY.md tells you how to *report* a vulnerability; this file tells you how the project handles supply-chain and process risk so adopters can make informed decisions about depending on GLX.
 

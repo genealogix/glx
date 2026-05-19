@@ -40,6 +40,8 @@ jobs:
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
