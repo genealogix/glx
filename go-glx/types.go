@@ -332,7 +332,7 @@ type Media struct {
 
 // VocabularyEntry is an entry in any standard controlled vocabulary. Unused
 // optional fields are elided from YAML via omitempty. Field order matches the
-// `label, description, <type-specific>, gedcom` layout used in on-disk
+// `label, description, <type-specific>, gedcom, rank` layout used in on-disk
 // vocabulary files so single-file archives round-trip without key shuffling.
 type VocabularyEntry struct {
 	Label       string   `yaml:"label"`
@@ -341,6 +341,11 @@ type VocabularyEntry struct {
 	AppliesTo   []string `yaml:"applies_to,omitempty"`
 	MimeType    string   `yaml:"mime_type,omitempty"`
 	GEDCOM      string   `yaml:"gedcom,omitempty"`
+	// Rank is an optional numeric ordering used by ranked vocabularies (e.g.
+	// confidence-levels) to detect upgrades and downgrades. Higher values rank
+	// above lower ones. Pointer type so a legitimate `rank: 0` is distinguishable
+	// from an unset field; nil pointers are elided from YAML output.
+	Rank *int `yaml:"rank,omitempty"`
 }
 
 // PropertyDefinition defines a property that can be used on entities.
