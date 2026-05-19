@@ -213,7 +213,7 @@
     },
     "status": {
       "type": "string",
-      "description": "Research status of this assertion (e.g., proven, disproven, speculative)"
+      "description": "Research status of this assertion (e.g., proven, disproven, speculative, unresearched)"
     },
     "sources": {
       "type": "array",
