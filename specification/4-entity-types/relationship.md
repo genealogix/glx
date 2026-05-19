@@ -314,6 +314,48 @@ relationships:
       description: "Sarah enslaved at birth by Pettus per partus sequitur ventrem; both relationships attested by the 1830 plantation inventory."
 ```
 
+#### Apprenticeship as continued enslavement
+
+Between 1865 and 1867 in several former slaveholding states, "apprenticeship" became the legal mechanism by which freed children of color were bound back to their former enslavers under Black Code statutes — arrangements structurally indistinguishable from chattel slavery but classified differently in court records. Model these with the same `enslavement` relationship type, distinguished by `legal_status: apprenticeship`:
+
+```yaml
+relationships:
+  rel-apprenticeship-rachel-by-pettus-1865-1867:
+    type: enslavement
+    participants:
+      - person: person-john-pettus
+        role: enslaver
+      - person: person-rachel
+        role: enslaved_person
+    start_event: event-rachel-apprenticed-1865
+    end_event: event-rachel-released-1867
+    properties:
+      legal_status: apprenticeship
+      description: "Rachel, freed at emancipation, bound back to her former enslaver's son by the Campbell County court on 1865-11-04 as an 'apprentice'; the Freedmen's Bureau secured her release on 1867-03-12."
+```
+
+#### Indentured servitude
+
+Indentured servitude — most commonly a fixed-term labor contract exchanged for passage to the colonies — is modeled with the same relationship type, distinguished by `legal_status: indentured`. The `start_event`/`end_event` references the indenture instrument and the discharge:
+
+```yaml
+relationships:
+  rel-indenture-mary-by-burwell-1685-1692:
+    type: enslavement
+    participants:
+      - person: person-richard-burwell
+        role: enslaver
+      - person: person-mary-cooper
+        role: enslaved_person
+    start_event: event-mary-indentured-1685
+    end_event: event-mary-discharged-1692
+    properties:
+      legal_status: indentured
+      description: "Seven-year indenture binding Mary Cooper to Richard Burwell of Gloucester County, Virginia, in exchange for passage from Bristol; discharge with freedom dues recorded in the county court order book on 1692-09-15."
+```
+
+The `debt_bondage` legal status follows the same shape — `start_event` references the debt acknowledgement that initiated the servitude, and `end_event` references the manumission, satisfaction-of-debt order, or death that closed it.
+
 #### Source provenance
 
 Source provenance for enslavement relationships (bills of sale, estate inventories, tax lists, manumission deeds) uses the standard [Citation](citation) → [Source](source) → [Repository](repository) chain. No relationship-level field encodes the source type — citations carry that, and the same enslavement relationship may be attested by multiple citations as additional records surface.
