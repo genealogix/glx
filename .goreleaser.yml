@@ -38,6 +38,15 @@ archives:
       - CHANGELOG.md
 checksum:
   name_template: 'checksums.txt'
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args:
+      - "sign-blob"
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 changelog:

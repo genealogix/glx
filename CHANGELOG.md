@@ -43,6 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **Scheduled `lychee` external-link check** — New `lychee.yml` workflow runs weekly (Mondays 08:17 UTC) and on `workflow_dispatch`, validating every external URL referenced in `specification/**/*.md`, `docs/**/*.md`, and root-level `*.md`. Broken URLs are reported by creating or updating a single GitHub issue titled "Broken external links detected"; the workflow never blocks PRs. Internal relative links continue to be validated on every PR by `scripts/check-links.sh`. (#316)
 
+- **Cosign keyless signing of release checksums** — `.goreleaser.yml` now signs `checksums.txt` with cosign keyless (Sigstore / OIDC) at release time, producing `checksums.txt.sigstore.json` alongside the manifest. Users verify with `cosign verify-blob --bundle checksums.txt.sigstore.json checksums.txt`. Signing the checksum file transitively covers every release artifact via its SHA-256. Complements the planned SLSA build provenance (#256) — signing proves authenticity, provenance proves how the binary was built. (#387)
+
 #### Project Infrastructure
 
 - **Added `public/.well-known/security.txt`** — RFC 9116 machine-readable security-contact file served at `/.well-known/security.txt`. Points security scanners and researchers to the GitHub Security Advisories report channel and `SECURITY.md` policy. (#271)
