@@ -288,9 +288,10 @@ OR
 
 ⚠️ Drift detected:
 
-Each finding line MUST start with its severity tag (`**critical**`,
-`**major**`, `**minor**`, or `**info**`) drawn from the Severity Rubric
-above. `Fix:` continuation lines do not get their own tag.
+Each finding bullet MUST begin with its severity tag (`**critical**`,
+`**major**`, `**minor**`, or `**info**`) immediately after the `-` list
+marker, drawn from the Severity Rubric above. `Fix:` continuation lines
+do not get their own tag.
 
 ### Field Presence
 - **critical** — Go struct missing field for schema property `property_name` (required field)
