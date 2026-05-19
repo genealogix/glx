@@ -6,9 +6,7 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-beta*'
 
-permissions:
-  contents: write
-  id-token: write   # OIDC for cosign keyless signing
+permissions: read-all
 
 env:
   GIT_CONFIG_COUNT: 2
@@ -22,6 +20,9 @@ jobs:
     name: Build and Release
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write   # OIDC for cosign keyless signing
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
