@@ -356,6 +356,10 @@ relationships:
 
 The `debt_bondage` legal status follows the same shape — `start_event` references the debt acknowledgement that initiated the servitude, and `end_event` references the manumission, satisfaction-of-debt order, or death that closed it.
 
+#### Archive-local event types
+
+The events bounding enslavement relationships — `sale`/`purchase`, `manumission`, `apprenticeship_binding`/`apprenticeship_released`, `indenture_signed`/`indenture_discharged` — are not part of the standard [`event_types`](../5-standard-vocabularies/event-types.glx) vocabulary. Archives should add them to archive-local `event_types` following the [additional-event-types extension pattern](./vocabularies.md#adding-additional-event-types), at which point references like `type: sale` in the examples above validate cleanly. Whether to elevate any of these to the standard vocabulary is a separate question tracked outside this section.
+
 #### Source provenance
 
 Source provenance for enslavement relationships (bills of sale, estate inventories, tax lists, manumission deeds) uses the standard [Citation](citation) → [Source](source) → [Repository](repository) chain. No relationship-level field encodes the source type — citations carry that, and the same enslavement relationship may be attested by multiple citations as additional records surface.
