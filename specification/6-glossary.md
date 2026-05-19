@@ -424,7 +424,7 @@ A property with structured fields that break down complex values into named comp
 
 ### Status (Assertion)
 
-The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), and `disproven` (evidence contradicts the assertion). Free-text; archives may use any labels.
+The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), `disproven` (evidence contradicts the assertion), and `unresearched` (no search has been conducted yet — tracks research gaps). Free-text; archives may use any labels.
 
 > **See Also:** [Assertion Entity - Status](4-entity-types/assertion#status)
 

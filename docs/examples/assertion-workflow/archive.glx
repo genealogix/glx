@@ -176,6 +176,10 @@ sources:
     properties:
       url: "https://www.linkedin.com/in/robert-chen-example"
 
+  source-chen-family-lore:
+    title: "Chen family oral history (cousin Sarah)"
+    type: oral_history
+
 # ---------------------------------------------------------------------
 # CITATIONS - Specific references within sources
 # ---------------------------------------------------------------------
@@ -289,6 +293,20 @@ assertions:
       - citation-alice-birth-cert
     confidence: high
 
+  # --- Alice's possible middle name — family lore, no primary records pulled ---
+  # Demonstrates `status: unresearched`: a lead captured from an indirect source
+  # so it isn't lost, with no primary-record search yet performed.
+  assertion-alice-middle-name:
+    subject:
+      person: person-alice-chen
+    property: name
+    value: "Alice Marie Chen"
+    sources:
+      - source-chen-family-lore
+    confidence: low
+    status: unresearched
+    notes: "Cousin Sarah's recollection; no birth, baptism, or census records pulled to verify a middle name."
+
   # --- EXISTENTIAL ASSERTION: relationship exists, evidenced by census ---
   # No property or participant — this simply asserts the relationship exists,
   # backed by source evidence. Adding a date scopes it to a specific time.
@@ -329,12 +347,15 @@ assertions:
 #   - Evidence complexity (straightforward vs. conflicting)
 #
 # The `status` field tracks research state independently of `confidence`:
-#   - status: proven     — verified through primary evidence
-#   - status: speculative — hypothesis that needs further research
-#   - status: disproven  — evidence contradicts this assertion
-#   - confidence: high   — how certain you are about the claim
+#   - status: proven       — verified through primary evidence
+#   - status: speculative  — hypothesis that needs further research
+#   - status: disproven    — evidence contradicts this assertion
+#   - status: unresearched — no search has been conducted yet (research gap)
+#   - confidence: high     — how certain you are about the claim
 #
 # A `confidence: high` + `status: speculative` assertion means
 # "I'm fairly sure this is right, but I haven't verified it yet."
+# A `status: unresearched` assertion means
+# "I captured this lead, but I haven't actually searched for evidence yet."
 #
 # ===========================================================================
