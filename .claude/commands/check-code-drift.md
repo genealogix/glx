@@ -265,9 +265,9 @@ and does not require action unless investigation confirms a problem.
 | YAML tags | Tag name mismatches schema property name (`state` vs `state_province`) | **critical** |
 | Reference types | Missing `refType` tag on a reference field | **major** |
 | Reference types | Wrong `refType` target (e.g., `persons` vs `events`) | **critical** |
-| GEDCOM converter | Removed schema field still read or written by `gedcom_*.go` (importer or exporter) | **critical** (silent round-trip data loss) |
+| GEDCOM converter | Removed schema field still read or written by `gedcom_*.go` (importer or exporter) — silent round-trip data loss | **critical** |
 | GEDCOM converter | Renamed schema field still read/written under old name | **critical** |
-| GEDCOM converter | Added schema field with zero `gedcom_*.go` references | **info** (confirm intentional) |
+| GEDCOM converter | Added schema field with zero `gedcom_*.go` references — verify intentionally not exported | **info** |
 | Validation | Spec requires constraint neither JSON schema nor Go enforces | **major** |
 | Validation | Go enforces constraint not documented in spec | **minor** |
 | Documentation | Go comment doesn't match schema description | **info** |
