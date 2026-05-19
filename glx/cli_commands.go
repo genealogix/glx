@@ -19,6 +19,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // version is set at build time via ldflags:
@@ -97,6 +99,7 @@ func init() {
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(renameCmd)
 	rootCmd.AddCommand(mergeCmd)
+	rootCmd.AddCommand(mergePersonsCmd)
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(docsCmd)
@@ -1382,6 +1385,73 @@ func init() {
 
 func runMerge(_ *cobra.Command, args []string) error {
 	return mergeArchives(args[0], mergeInto, mergePreview, mergeThreshold)
+}
+
+// ============================================================================
+// Merge-Persons Command
+// ============================================================================
+
+var (
+	mergePersonsArchive       string
+	mergePersonsDryRun        bool
+	mergePersonsKeepNewest    bool
+	mergePersonsKeepOldest    bool
+	mergePersonsNotesStrategy string
+)
+
+var mergePersonsCmd = &cobra.Command{
+	Use:   "merge-persons <keep-id> <drop-id>",
+	Short: "Merge two person entities, keeping the first and folding in the second",
+	Long: `Consolidate two person entities into one. The keep-id is retained;
+the drop-id's properties, notes, and cross-references are folded into it,
+then the drop-id person file is removed.
+
+Property merging:
+  - Properties present only on drop are copied verbatim.
+  - Multi-value (list) properties are unioned with deep-equal deduplication.
+  - Single-value conflicts default to keep's value (recorded in the conflict
+    report). Pass --keep-newest or --keep-oldest to resolve dated conflicts
+    by date instead.
+
+Notes are combined per --notes-strategy (default: append).
+
+This is the natural follow-on to ` + "`glx duplicates`" + `: once you've identified
+that two person records are the same individual, this command consolidates
+them in a single atomic operation.`,
+	Example: `  # Merge person-jungk-1750 into person-juncker-1750
+  glx merge-persons person-juncker-1750 person-jungk-1750 --archive ./archive
+
+  # Preview the merge
+  glx merge-persons person-a person-b --archive ./archive --dry-run
+
+  # Resolve dated conflicts by picking the later entry
+  glx merge-persons person-a person-b --archive ./archive --keep-newest
+
+  # Replace keep's notes with drop's
+  glx merge-persons person-a person-b --archive ./archive --notes-strategy prefer-drop`,
+	Args: cobra.ExactArgs(2),
+	RunE: runMergePersons,
+}
+
+func init() {
+	mergePersonsCmd.Flags().StringVarP(&mergePersonsArchive, "archive", "a", ".", "Path to GLX archive")
+	mergePersonsCmd.Flags().BoolVar(&mergePersonsDryRun, "dry-run", false, "Show what would change without writing")
+	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepNewest, "keep-newest", false,
+		"For conflicting temporal properties, keep the entry with the later date")
+	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepOldest, "keep-oldest", false,
+		"For conflicting temporal properties, keep the entry with the earlier date")
+	mergePersonsCmd.Flags().StringVar(&mergePersonsNotesStrategy, "notes-strategy", "append",
+		"How to combine notes: append | prefer-keep | prefer-drop")
+}
+
+func runMergePersons(_ *cobra.Command, args []string) error {
+	opts := glxlib.MergePersonsOptions{
+		NotesStrategy: glxlib.NotesStrategy(mergePersonsNotesStrategy),
+		KeepNewest:    mergePersonsKeepNewest,
+		KeepOldest:    mergePersonsKeepOldest,
+	}
+
+	return mergePersons(mergePersonsArchive, args[0], args[1], opts, mergePersonsDryRun)
 }
 
 // ============================================================================

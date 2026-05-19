@@ -54,6 +54,14 @@ var (
 	ErrJSONLDContextMissing     = errors.New("embedded JSON-LD context has no @context key")
 )
 
+// MergePersons errors
+var (
+	ErrMergeSelfReferential   = errors.New("cannot merge person with itself")
+	ErrMergeConflictingFlags  = errors.New("--keep-newest and --keep-oldest are mutually exclusive")
+	ErrMergeInvalidNotesStrat = errors.New("invalid notes strategy")
+	ErrMergeNotAPerson        = errors.New("entity is not a person")
+)
+
 // StructuredValidationError wraps a list of ValidationErrors for structured error handling.
 // This allows the CLI layer to format errors according to user preferences.
 type StructuredValidationError struct {
