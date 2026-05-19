@@ -358,7 +358,7 @@ The `debt_bondage` legal status follows the same shape — `start_event` referen
 
 #### Archive-local event types
 
-The events bounding enslavement relationships — `sale`/`purchase`, `manumission`, `apprenticeship_binding`/`apprenticeship_released`, `indenture_signed`/`indenture_discharged` — are not part of the standard [`event_types`](../5-standard-vocabularies/event-types.glx) vocabulary. Archives should add them to archive-local `event_types` following the [additional-event-types extension pattern](./vocabularies.md#adding-additional-event-types), at which point references like `type: sale` in the examples above validate cleanly. Whether to elevate any of these to the standard vocabulary is a separate question tracked outside this section.
+The events bounding enslavement relationships — `sale`/`purchase`, `manumission`, `apprenticeship_binding`/`apprenticeship_released`, `indenture_signed`/`indenture_discharged` — are not part of the [standard event-types vocabulary](../5-standard-vocabularies/#event-types). Archives should add them to archive-local `event_types` following the [additional-event-types extension pattern](./vocabularies#adding-additional-event-types), at which point references like `type: sale` in the examples above validate cleanly. Whether to elevate any of these to the standard vocabulary is a separate question tracked outside this section.
 
 #### Source provenance
 
