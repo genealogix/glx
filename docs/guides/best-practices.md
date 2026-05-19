@@ -43,7 +43,7 @@ assertions:
     citations: [citation-birth-cert, citation-baptism]
 ```
 
-Use `confidence` to express certainty and `status` to track research state (`proven`, `speculative`, `disproven`). These are independent — `confidence: high` + `status: speculative` means "I'm fairly sure, but haven't verified yet." See [Assertion Entity](/specification/4-entity-types/assertion#status).
+Use `confidence` to express certainty and `status` to track research state (`proven`, `speculative`, `disproven`, `unresearched`). These are independent — `confidence: high` + `status: speculative` means "I'm fairly sure, but haven't verified yet"; `status: unresearched` flags claims that haven't been investigated at all. See [Assertion Entity](/specification/4-entity-types/assertion#status).
 
 ### Transcribe Key Evidence
 
