@@ -33,6 +33,10 @@
         "gedcom": {
           "type": "string",
           "description": "Corresponding GEDCOM QUAY value (0-3) for import/export mapping"
+        },
+        "rank": {
+          "type": "integer",
+          "description": "Numeric ordering used by glx diff to detect confidence upgrades vs downgrades. Higher values rank above lower. Standard levels supply ranks 0-3 (low=0, disputed=1, medium=2, high=3); archives extending the vocabulary with custom levels can supply a rank to participate in upgrade detection."
         }
       }
     }
