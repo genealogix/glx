@@ -40,6 +40,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx join](/cli/glx_join)	 - Join a multi-file GLX archive into single-file format
 * [glx link](/cli/glx_link)	 - Create a FamilySearch citation from an ARK
 * [glx merge](/cli/glx_merge)	 - Merge another archive into the destination archive
+* [glx merge-persons](/cli/glx_merge-persons)	 - Merge two person entities, keeping the first and folding in the second
 * [glx migrate](/cli/glx_migrate)	 - Migrate an archive to the current format
 * [glx path](/cli/glx_path)	 - Find the shortest relationship path between two people
 * [glx places](/cli/glx_places)	 - Analyze places for ambiguity and completeness
