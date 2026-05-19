@@ -46,6 +46,7 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 
 | Control | Status | Evidence |
 |---|---|---|
+| Release artifact signing | ✓ | [`.goreleaser.yml`](https://github.com/genealogix/glx/blob/main/.goreleaser.yml) signs `checksums.txt` with cosign keyless (Sigstore / OIDC) at release time, publishing `checksums.txt.sigstore.json` alongside the manifest. Signing the checksum manifest transitively covers every release artifact via its SHA-256. Users verify with `cosign verify-blob --bundle checksums.txt.sigstore.json checksums.txt`. ([#387](https://github.com/genealogix/glx/issues/387)) |
 | SBOM with compiled releases | ☐ | Tracked in [#269](https://github.com/genealogix/glx/issues/269) — GoReleaser v2 native SBOM via `sboms:` config |
 | Build provenance / SLSA attestations | ☐ | Tracked in [#256](https://github.com/genealogix/glx/issues/256) |
 
@@ -73,4 +74,4 @@ If you need an explicit statement for procurement or audit purposes that does no
 
 - **Review cadence**: this document is reviewed at every minor release, when any tracked gap (#424, #269, #256) closes, and when a new OSPS Baseline version is published.
 - **Pinned Baseline version**: 2026.02.19. Re-review on each new Baseline release to incorporate added or changed controls.
-- **Last reviewed**: 2026-05-07.
+- **Last reviewed**: 2026-05-19.
