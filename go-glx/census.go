@@ -16,7 +16,6 @@ package glx
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -815,17 +814,9 @@ func slugify(prefix, name string) string {
 	return prefix + "-" + slug
 }
 
-var slugifyNonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
-
 // slugifyString converts a name to a URL/ID-safe slug.
 func slugifyString(name string) string {
-	lower := strings.ToLower(strings.TrimSpace(name))
-	slug := slugifyNonAlphanumeric.ReplaceAllString(lower, "-")
-	slug = strings.Trim(slug, "-")
-	if slug == "" {
-		return "unknown"
-	}
-	return slug
+	return SlugifyForID(name, 0)
 }
 
 // lastWord returns the last whitespace-delimited word in a string.

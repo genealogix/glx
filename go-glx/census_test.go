@@ -619,6 +619,8 @@ func Test_slugify(t *testing.T) {
 		{"event", "1860 Census", "event-1860-census"},
 		{"", "Daniel Lane", "daniel-lane"},
 		{"person", "Mary O'Brien", "person-mary-o-brien"},
+		{"person", "Straße", "person-strasse"},
+		{"person", "Crème brûlée y piñata", "person-creme-brulee-y-pinata"},
 		{"person", "  spaces  ", "person-spaces"},
 		{"person", "", "person-unknown"},
 	}
