@@ -38,6 +38,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	var familyEventRecords []*GEDCOMRecord
 	var familyResiRecords []*GEDCOMRecord
 	var objeRecords []*GEDCOMRecord
+	var extensionRecords []*GEDCOMRecord
 	var noteTexts []string
 
 	for _, sub := range famRecord.SubRecords {
@@ -79,7 +80,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			objeRecords = append(objeRecords, sub)
 		default:
 			if isExtensionTag(sub.Tag) {
-				conv.addWarning(sub.Line, sub.Tag, "Extension tag not stored")
+				extensionRecords = append(extensionRecords, sub)
 			}
 		}
 	}
@@ -135,6 +136,11 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			handleOBJE(obje, relationship.Properties, conv)
 		}
 
+		// Preserve FAM-level extension tags on the relationship
+		for _, ext := range extensionRecords {
+			appendExtensionTag(relationship.Properties, ext)
+		}
+
 		conv.GLX.Relationships[relationshipID] = relationship
 		conv.Stats.RelationshipsCreated++
 
@@ -150,6 +156,12 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		// Process divorce event if exists
 		if divorceRecord != nil {
 			convertDivorceEvent(husbandID, wifeID, relationshipID, divorceRecord, conv)
+		}
+	} else {
+		// No spouses — no relationship was created, so FAM-level extension
+		// tags have no entity owner. Warn instead of silently dropping.
+		for _, ext := range extensionRecords {
+			conv.addWarning(ext.Line, ext.Tag, "Extension tag dropped: FAM has no spouses")
 		}
 	}
 
@@ -350,6 +362,9 @@ func convertFamilyResidence(husbandID, wifeID string, resiRecord *GEDCOMRecord, 
 	for _, sub := range resiRecord.SubRecords {
 		switch sub.Tag {
 		case GedcomTagPlac:
+			if warnIfNonGeographicPLAC(sub, conv) {
+				continue
+			}
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				placeID = buildPlaceHierarchy(hierarchy, conv)

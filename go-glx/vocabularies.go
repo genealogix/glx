@@ -92,6 +92,7 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 	glx.GenderTypes = maps.Clone(cachedVocabs.GenderTypes)
 	glx.SearchResultTypes = maps.Clone(cachedVocabs.SearchResultTypes)
 	glx.ResearchLogStatusTypes = maps.Clone(cachedVocabs.ResearchLogStatusTypes)
+	glx.LegalStatuses = maps.Clone(cachedVocabs.LegalStatuses)
 	glx.PersonProperties = maps.Clone(cachedVocabs.PersonProperties)
 	glx.EventProperties = maps.Clone(cachedVocabs.EventProperties)
 	glx.RelationshipProperties = maps.Clone(cachedVocabs.RelationshipProperties)
@@ -147,6 +148,8 @@ func loadVocabulary(filename string, data []byte, glx *GLXFile) error {
 		return unmarshalVocab(filename, data, "search_result_types", &glx.SearchResultTypes)
 	case "research-log-status-types.glx":
 		return unmarshalVocab(filename, data, "research_log_status_types", &glx.ResearchLogStatusTypes)
+	case "legal-statuses.glx":
+		return unmarshalVocab(filename, data, "legal_statuses", &glx.LegalStatuses)
 	case "person-properties.glx":
 		return unmarshalVocab(filename, data, "person_properties", &glx.PersonProperties)
 	case "event-properties.glx":

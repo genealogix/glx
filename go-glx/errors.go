@@ -51,6 +51,7 @@ var (
 	ErrGLXFileNil               = errors.New("GLX file is nil")
 	ErrValidationHasErrors      = errors.New("validation failed with errors")
 	ErrInvalidThreshold         = errors.New("threshold must be between 0.0 and 1.0")
+	ErrJSONLDContextMissing     = errors.New("embedded JSON-LD context has no @context key")
 )
 
 // MergePersons errors
