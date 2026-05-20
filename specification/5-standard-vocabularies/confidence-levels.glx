@@ -15,11 +15,6 @@ confidence_levels:
     description: "Some evidence supports conclusion, but conflicts or gaps exist"
     rank: 2
 
-  disputed:
-    label: "Disputed"
-    description: "Multiple sources conflict, resolution unclear"
-    rank: 1
-
   low:
     label: "Low Confidence"
     description: "Limited evidence, significant uncertainty"
