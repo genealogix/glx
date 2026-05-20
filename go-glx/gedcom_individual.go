@@ -162,7 +162,7 @@ func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error 
 
 		default:
 			if isExtensionTag(sub.Tag) {
-				conv.addWarning(sub.Line, sub.Tag, "Extension tag not stored")
+				appendExtensionTag(person.Properties, sub)
 			} else if sub.Value != "" && len(sub.Tag) > 0 {
 				// Administrative/reference tags - store as properties if they have values
 				propKey := strings.ToLower(sub.Tag)
