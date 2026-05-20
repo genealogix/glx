@@ -149,7 +149,7 @@ Start with direct properties, then add evidence chain incrementally:
 Assertions have two independent fields for tracking certainty and verification:
 
 - **`confidence`** — how certain you are about the claim (`high`, `medium`, `low`)
-- **`status`** — the research state of the assertion (`proven`, `speculative`, `disputed`, `disproven`)
+- **`status`** — the research state of the assertion (`proven`, `speculative`, `disputed`, `disproven`, `unresearched`)
 
 A `confidence: high` + `status: speculative` assertion means "I'm fairly sure this is right, but I haven't verified it yet."
 

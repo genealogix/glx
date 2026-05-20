@@ -61,7 +61,7 @@ assertions:
 | `date` | string | Date or date range: when `property` is present, specifies when the value applies; on existential assertions, indicates when the subject existed |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string \| string[] | General notes about the assertion |
-| `status` | string | Research status of this assertion (e.g., proven, disproven, speculative) |
+| `status` | string | Research status of this assertion (e.g., proven, disproven, speculative, unresearched) |
 
 ### Subject Object
 
@@ -301,6 +301,7 @@ Unlike `confidence` (which measures how certain you are about the claim), `statu
 - `speculative` — a hypothesis that needs further research
 - `disputed` — multiple sources conflict, resolution unclear
 - `disproven` — evidence has been found that contradicts this assertion
+- `unresearched` — no search has been conducted for this claim
 
 These values are free-text; archives may use any status labels appropriate for their research methodology.
 
@@ -322,6 +323,11 @@ status: disputed
 # High confidence that this is wrong
 confidence: high
 status: disproven
+
+# Claim recorded from a tree hint, no source search yet performed
+# (low confidence reflects the absence of any primary-source backing)
+confidence: low
+status: unresearched
 ```
 
 ### `notes`

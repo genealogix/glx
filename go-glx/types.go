@@ -86,6 +86,7 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	MediaTypes        map[string]*VocabularyEntry `yaml:"media_types,omitempty"`
 	SexTypes          map[string]*VocabularyEntry `yaml:"sex_types,omitempty"`
 	GenderTypes       map[string]*VocabularyEntry `yaml:"gender_types,omitempty"`
+	LegalStatuses     map[string]*VocabularyEntry `yaml:"legal_statuses,omitempty"`
 
 	// Property vocabularies
 	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
@@ -313,7 +314,7 @@ type Media struct {
 
 // VocabularyEntry is an entry in any standard controlled vocabulary. Unused
 // optional fields are elided from YAML via omitempty. Field order matches the
-// `label, description, <type-specific>, gedcom` layout used in on-disk
+// `label, description, <type-specific>, gedcom, rank` layout used in on-disk
 // vocabulary files so single-file archives round-trip without key shuffling.
 type VocabularyEntry struct {
 	Label       string   `yaml:"label"`
@@ -322,6 +323,11 @@ type VocabularyEntry struct {
 	AppliesTo   []string `yaml:"applies_to,omitempty"`
 	MimeType    string   `yaml:"mime_type,omitempty"`
 	GEDCOM      string   `yaml:"gedcom,omitempty"`
+	// Rank is an optional numeric ordering used by ranked vocabularies (e.g.
+	// confidence-levels) to detect upgrades and downgrades. Higher values rank
+	// above lower ones. Pointer type so a legitimate `rank: 0` is distinguishable
+	// from an unset field; nil pointers are elided from YAML output.
+	Rank *int `yaml:"rank,omitempty"`
 }
 
 // PropertyDefinition defines a property that can be used on entities.
@@ -398,6 +404,7 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	addDedup(mergeMapDedup("media_types", g.MediaTypes, other.MediaTypes))
 	addDedup(mergeMapDedup("sex_types", g.SexTypes, other.SexTypes))
 	addDedup(mergeMapDedup("gender_types", g.GenderTypes, other.GenderTypes))
+	addDedup(mergeMapDedup("legal_statuses", g.LegalStatuses, other.LegalStatuses))
 	addDedup(mergeMapDedup("participant_roles", g.ParticipantRoles, other.ParticipantRoles))
 	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
 
@@ -469,6 +476,9 @@ func (g *GLXFile) initMaps() {
 	}
 	if g.GenderTypes == nil {
 		g.GenderTypes = make(map[string]*VocabularyEntry)
+	}
+	if g.LegalStatuses == nil {
+		g.LegalStatuses = make(map[string]*VocabularyEntry)
 	}
 	if g.ParticipantRoles == nil {
 		g.ParticipantRoles = make(map[string]*VocabularyEntry)
