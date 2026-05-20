@@ -15,6 +15,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -203,17 +204,18 @@ func TestExecuteMediaCopies_ZeroLengthPlan(t *testing.T) {
 }
 
 func TestExecuteMediaCopies_SkipsWhenAllReferencesDropped(t *testing.T) {
-	// A planned binary whose every referencing Media entity was dropped (or
-	// rewritten elsewhere) by the merge must be skipped, not copied.
+	// A planned binary whose every referencing src Media entity was dropped
+	// by the merge (no pointer in merged.Media matches) must be skipped.
 	destDir := t.TempDir()
 	srcMediaDir := t.TempDir()
 	srcBinary := filepath.Join(srcMediaDir, "ghost.jpg")
 	require.NoError(t, os.WriteFile(srcBinary, []byte("GHOST"), 0o644))
 
+	srcEntity := &glxlib.Media{URI: "media/files/ghost.jpg"}
 	plan := []plannedMediaCopy{{
 		SrcPath:    srcBinary,
 		TargetName: "ghost.jpg",
-		MediaIDs:   []string{"media-dropped"},
+		SrcMedia:   map[string]*glxlib.Media{"media-dropped": srcEntity},
 	}}
 	// merged has no surviving media-dropped entity.
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{}}
@@ -229,20 +231,27 @@ func TestExecuteMediaCopies_SkipsWhenAllReferencesDropped(t *testing.T) {
 }
 
 func TestExecuteMediaCopies_CopiesWhenAnyReferenceSurvives(t *testing.T) {
-	// When several Media entities point at the same binary and at least one
-	// survives the merge with a matching URI, the binary is copied once.
+	// When several src Media entities point at the same binary and at least
+	// one survives the merge (same pointer ends up in merged.Media), the
+	// binary is copied once.
 	destDir := t.TempDir()
 	srcMediaDir := t.TempDir()
 	srcBinary := filepath.Join(srcMediaDir, "shared.jpg")
 	require.NoError(t, os.WriteFile(srcBinary, []byte("SHARED"), 0o644))
 
+	droppedSrc := &glxlib.Media{URI: "media/files/shared.jpg"}
+	survivorSrc := &glxlib.Media{URI: "media/files/shared.jpg"}
 	plan := []plannedMediaCopy{{
 		SrcPath:    srcBinary,
 		TargetName: "shared.jpg",
-		MediaIDs:   []string{"media-dropped", "media-survivor"},
+		SrcMedia: map[string]*glxlib.Media{
+			"media-dropped":  droppedSrc,
+			"media-survivor": survivorSrc,
+		},
 	}}
+	// Survivor's src pointer is what merged.Media holds.
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
-		"media-survivor": {URI: "media/files/shared.jpg"},
+		"media-survivor": survivorSrc,
 	}}
 
 	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
@@ -255,28 +264,37 @@ func TestExecuteMediaCopies_CopiesWhenAnyReferenceSurvives(t *testing.T) {
 	assert.Equal(t, "SHARED", string(got))
 }
 
-func TestExecuteMediaCopies_SkipsWhenSurvivorURIRewritten(t *testing.T) {
-	// A surviving Media entity whose URI points somewhere else (e.g., the
-	// merge kept dest's same-ID entity with its own URI) must NOT trigger a
-	// source-binary copy — that would orphan the file.
+func TestExecuteMediaCopies_SkipsWhenSameIDButDestEntityKept(t *testing.T) {
+	// Conflict scenario: src and dest both define media-shared. Merge keeps
+	// dest's. merged.Media[media-shared] is dest's pointer, not src's — so
+	// pointer-check correctly skips the copy even though the URI happens to
+	// match the planned target. Copying would import src's binary under
+	// dest's preserved metadata, which would misattribute it.
 	destDir := t.TempDir()
 	srcMediaDir := t.TempDir()
-	srcBinary := filepath.Join(srcMediaDir, "src-only.jpg")
-	require.NoError(t, os.WriteFile(srcBinary, []byte("X"), 0o644))
+	srcBinary := filepath.Join(srcMediaDir, "photo.jpg")
+	require.NoError(t, os.WriteFile(srcBinary, []byte("SRC"), 0o644))
+
+	srcEntity := &glxlib.Media{URI: "media/files/photo.jpg"}
+	destEntity := &glxlib.Media{URI: "media/files/photo.jpg"} // same URI by coincidence
 
 	plan := []plannedMediaCopy{{
 		SrcPath:    srcBinary,
-		TargetName: "src-only.jpg",
-		MediaIDs:   []string{"media-shared"},
+		TargetName: "photo.jpg",
+		SrcMedia:   map[string]*glxlib.Media{"media-shared": srcEntity},
 	}}
+	// merged kept dest's entity (different pointer).
 	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
-		"media-shared": {URI: "media/files/something-else.jpg"},
+		"media-shared": destEntity,
 	}}
 
 	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
 	require.NoError(t, err)
 	assert.Zero(t, copied)
 	assert.Equal(t, 1, skipped)
+
+	_, statErr := os.Stat(filepath.Join(destDir, "media", "files", "photo.jpg"))
+	assert.True(t, os.IsNotExist(statErr))
 }
 
 func TestMergeArchives_SingleFileDestWarnsAboutSourceBinaries(t *testing.T) {
@@ -317,9 +335,9 @@ func TestMergeArchives_SingleFileDestWarnsAboutSourceBinaries(t *testing.T) {
 
 	_ = w.Close()
 	os.Stderr = oldStderr
-	stderrBytes := make([]byte, 4096)
-	n, _ := r.Read(stderrBytes)
-	stderr := string(stderrBytes[:n])
+	stderrBytes, readErr := io.ReadAll(r)
+	require.NoError(t, readErr)
+	stderr := string(stderrBytes)
 
 	require.NoError(t, mergeErr)
 	assert.Contains(t, stderr, "single-file destination", "expected dangling-binary warning")
