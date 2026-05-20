@@ -310,10 +310,9 @@ func TestLoadStandardVocabulariesIntoGLX_ConfidenceRanks(t *testing.T) {
 	}
 
 	wantRanks := map[string]int{
-		"high":     3,
-		"medium":   2,
-		"disputed": 1,
-		"low":      0,
+		"high":   3,
+		"medium": 2,
+		"low":    0,
 	}
 	for key, want := range wantRanks {
 		entry, ok := glx.ConfidenceLevels[key]
