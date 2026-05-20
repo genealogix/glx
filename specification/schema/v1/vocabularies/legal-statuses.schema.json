@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/legal-statuses.schema.json",
+  "title": "Legal Statuses Vocabulary",
+  "description": "Defines the standard and custom legal-status values available for relationships (primarily the enslavement relationship type)",
+  "type": "object",
+  "required": ["legal_statuses"],
+  "properties": {
+    "legal_statuses": {
+      "type": "object",
+      "description": "Map of legal-status definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/LegalStatusDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "LegalStatusDefinition": {
+      "type": "object",
+      "description": "Definition of a single legal-status value",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the legal status"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the legal status"
+        }
+      }
+    }
+  }
+}

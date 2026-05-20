@@ -225,6 +225,154 @@ relationships:
       description: "Blood brother ceremony witnessed by tribal elders"
 ```
 
+### Enslavement Relationship
+
+Enslavement is modeled as a relationship with `enslaver` and `enslaved_person` roles, bounded by `start_event` and `end_event` so that successive enslavers — through sale, inheritance, or manumission — appear as distinct relationships with shared boundary events. Use the `legal_status` property to distinguish chattel slavery from indentured servitude, debt bondage, and apprenticeship-as-enslavement.
+
+#### Single enslaver
+
+```yaml
+relationships:
+  rel-enslavement-jenny-by-thomas-1820-1834:
+    type: enslavement
+    participants:
+      - person: person-thomas-pettus
+        role: enslaver
+      - person: person-jenny
+        role: enslaved_person
+    start_event: event-jenny-purchased-1820
+    end_event: event-jenny-sold-1834
+    properties:
+      legal_status: chattel
+      description: "Jenny appears in Thomas Pettus's 1820 bill of sale and 1834 estate division."
+```
+
+#### Multiple enslavers across a lifetime
+
+When an enslaved person was sold or inherited, model each enslaver as a separate relationship. The same transfer event closes one relationship and opens the next, preserving the audit trail through the shared event:
+
+```yaml
+events:
+  event-jenny-sold-1834:
+    type: sale
+    date: "1834-04-12"
+    place: place-campbell-co-va
+    participants:
+      - person: person-jenny
+        role: subject
+
+relationships:
+  rel-enslavement-jenny-by-thomas-1820-1834:
+    type: enslavement
+    participants:
+      - person: person-thomas-pettus
+        role: enslaver
+      - person: person-jenny
+        role: enslaved_person
+    start_event: event-jenny-purchased-1820
+    end_event: event-jenny-sold-1834
+    properties:
+      legal_status: chattel
+
+  rel-enslavement-jenny-by-william-1834-1851:
+    type: enslavement
+    participants:
+      - person: person-william-cabell
+        role: enslaver
+      - person: person-jenny
+        role: enslaved_person
+    start_event: event-jenny-sold-1834
+    end_event: event-jenny-manumitted-1851
+    properties:
+      legal_status: chattel
+```
+
+#### Inherited enslavement (partus sequitur ventrem)
+
+Children born to enslaved mothers were legally enslaved at birth in most U.S. slaveholding jurisdictions before emancipation. Model this as two relationships citing the same source — a `parent_child` link to the mother and an `enslavement` link to the mother's enslaver at the time of birth:
+
+```yaml
+relationships:
+  rel-parent-jenny-sarah:
+    type: parent_child
+    participants:
+      - person: person-jenny
+        role: parent
+      - person: person-sarah
+        role: child
+    start_event: event-sarah-born-1828
+
+  rel-enslavement-sarah-by-thomas-1828:
+    type: enslavement
+    participants:
+      - person: person-thomas-pettus
+        role: enslaver
+      - person: person-sarah
+        role: enslaved_person
+    start_event: event-sarah-born-1828
+    properties:
+      legal_status: chattel
+      description: "Sarah enslaved at birth by Pettus per partus sequitur ventrem; both relationships attested by the 1830 plantation inventory."
+```
+
+#### Apprenticeship as continued enslavement
+
+Between 1865 and 1867 in several former slaveholding states, "apprenticeship" became the legal mechanism by which freed children of color were bound back to their former enslavers under Black Code statutes — arrangements structurally indistinguishable from chattel slavery but classified differently in court records. Model these with the same `enslavement` relationship type, distinguished by `legal_status: apprenticeship`:
+
+```yaml
+relationships:
+  rel-apprenticeship-rachel-by-pettus-1865-1867:
+    type: enslavement
+    participants:
+      - person: person-john-pettus
+        role: enslaver
+      - person: person-rachel
+        role: enslaved_person
+    start_event: event-rachel-apprenticed-1865
+    end_event: event-rachel-released-1867
+    properties:
+      legal_status: apprenticeship
+      description: "Rachel, freed at emancipation, bound back to her former enslaver's son by the Campbell County court on 1865-11-04 as an 'apprentice'; the Freedmen's Bureau secured her release on 1867-03-12."
+```
+
+#### Indentured servitude
+
+Indentured servitude — most commonly a fixed-term labor contract exchanged for passage to the colonies — is modeled with the same relationship type, distinguished by `legal_status: indentured`. The `start_event`/`end_event` references the indenture instrument and the discharge:
+
+```yaml
+relationships:
+  rel-indenture-mary-by-burwell-1685-1692:
+    type: enslavement
+    participants:
+      - person: person-richard-burwell
+        role: enslaver
+      - person: person-mary-cooper
+        role: enslaved_person
+    start_event: event-mary-indentured-1685
+    end_event: event-mary-discharged-1692
+    properties:
+      legal_status: indentured
+      description: "Seven-year indenture binding Mary Cooper to Richard Burwell of Gloucester County, Virginia, in exchange for passage from Bristol; discharge with freedom dues recorded in the county court order book on 1692-09-15."
+```
+
+The `debt_bondage` legal status follows the same shape — `start_event` references the debt acknowledgement that initiated the servitude, and `end_event` references the manumission, satisfaction-of-debt order, or death that closed it.
+
+#### Archive-local event types
+
+The events bounding enslavement relationships — `sale`/`purchase`, `manumission`, `apprenticeship_binding`/`apprenticeship_released`, `indenture_signed`/`indenture_discharged` — are not part of the [standard event-types vocabulary](../5-standard-vocabularies/#event-types). Archives should add them to archive-local `event_types` following the [additional-event-types extension pattern](./vocabularies#adding-additional-event-types), at which point references like `type: sale` in the examples above validate cleanly. Whether to elevate any of these to the standard vocabulary is a separate question tracked outside this section.
+
+#### Source provenance
+
+Source provenance for enslavement relationships (bills of sale, estate inventories, tax lists, manumission deeds) uses the standard [Citation](citation) → [Source](source) → [Repository](repository) chain. No relationship-level field encodes the source type — citations carry that, and the same enslavement relationship may be attested by multiple citations as additional records surface.
+
+#### Further reading
+
+The GLX project does not endorse a specific reconciliation methodology. The following projects provide controlled vocabularies and best-practice guidance for documenting enslaved persons that archives may wish to consult:
+
+- [Enslaved.org](https://enslaved.org/) — Peoples of the Historical Slave Trade
+- [Beyond Kin](https://www.beyondkin.org/) — Documenting enslaved ancestors in family tree software
+- See also [Enslaved Persons Research](../../docs/use-cases#enslaved-persons-research) in the GLX use-case guide for additional ethical framing.
+
 ### Possibly Same Person
 
 When two person records may describe the same individual but the
