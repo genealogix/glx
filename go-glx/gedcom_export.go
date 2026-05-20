@@ -455,3 +455,55 @@ func (expCtx *ExportContext) addExportWarning(entityType, entityID, message stri
 		Message:    message,
 	})
 }
+
+// exportExtensionTags reconstructs GEDCOM records from an entity's
+// gedcom_extensions list, mirroring the recursive shape produced by
+// recordToExtensionEntry on import. Returns nil when the property is
+// missing, malformed, or yields no usable entries.
+func exportExtensionTags(props map[string]any) []*GEDCOMRecord {
+	raw, ok := props[PropertyGEDCOMExtensions].([]any)
+	if !ok {
+		return nil
+	}
+
+	records := make([]*GEDCOMRecord, 0, len(raw))
+	for _, item := range raw {
+		if rec := extensionEntryToRecord(item); rec != nil {
+			records = append(records, rec)
+		}
+	}
+
+	return records
+}
+
+// extensionEntryToRecord converts a single extension entry (and its
+// subrecords, recursively) back into a GEDCOMRecord. Returns nil for
+// malformed entries (missing tag, wrong types) so partial corruption
+// doesn't abort the export.
+func extensionEntryToRecord(item any) *GEDCOMRecord {
+	entry, ok := item.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	tag, _ := entry[ExtensionEntryTag].(string)
+	if tag == "" {
+		return nil
+	}
+
+	rec := &GEDCOMRecord{Tag: tag}
+
+	if value, ok := entry[ExtensionEntryValue].(string); ok {
+		rec.Value = value
+	}
+
+	if subs, ok := entry[ExtensionEntrySubrecords].([]any); ok {
+		for _, sub := range subs {
+			if subRec := extensionEntryToRecord(sub); subRec != nil {
+				rec.SubRecords = append(rec.SubRecords, subRec)
+			}
+		}
+	}
+
+	return rec
+}

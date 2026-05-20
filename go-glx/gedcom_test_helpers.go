@@ -45,3 +45,24 @@ func importGEDCOMFromFile(filepath, logPath string) (*GLXFile, *ImportResult, er
 
 	return ImportGEDCOM(file, logWriter)
 }
+
+// firstPerson returns any person from the archive — useful in tests where
+// the GEDCOM input has exactly one INDI and the test author doesn't want
+// to plumb an XRef through. Returns nil if the map is empty.
+func firstPerson(glx *GLXFile) *Person {
+	for _, p := range glx.Persons {
+		return p
+	}
+
+	return nil
+}
+
+// firstRelationship returns any relationship from the archive — symmetric
+// to firstPerson. Returns nil if the map is empty.
+func firstRelationship(glx *GLXFile) *Relationship {
+	for _, r := range glx.Relationships {
+		return r
+	}
+
+	return nil
+}
