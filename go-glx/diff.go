@@ -73,8 +73,8 @@ type DiffResult struct {
 // is the pre-existing behavior.
 var confidenceRank = map[string]int{
 	ConfidenceLevelLow:    0,
-	ConfidenceLevelMedium: 1,
-	ConfidenceLevelHigh:   2,
+	ConfidenceLevelMedium: 2,
+	ConfidenceLevelHigh:   3,
 }
 
 // DiffArchives compares two loaded archives and returns a structured diff.
