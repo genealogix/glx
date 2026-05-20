@@ -23,6 +23,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 
 ### SEE ALSO
 
+* [glx add](/cli/glx_add)	 - Create entities (person, place, event, …) from CLI flags
 * [glx analyze](/cli/glx_analyze)	 - Analyze archive for research gaps, evidence quality, and consistency
 * [glx ancestors](/cli/glx_ancestors)	 - Show ancestor tree for a person
 * [glx census](/cli/glx_census)	 - Bulk census record tools

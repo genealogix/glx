@@ -102,6 +102,7 @@ func init() {
 	rootCmd.AddCommand(mergePersonsCmd)
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
+	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
