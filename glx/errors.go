@@ -51,6 +51,12 @@ var (
 	ErrLinkSourceConflict         = errors.New("--source and --create-source are mutually exclusive")
 	ErrLinkSourceNotFound         = errors.New("--source not found in archive")
 	ErrLinkSourceIDExhausted      = errors.New("could not derive a unique source ID within the attempt limit")
+	ErrGEDZIPMissingGedcom        = errors.New("gedzip archive is missing gedcom.ged at root")
+	ErrGEDZIPInvalidEntry         = errors.New("gedzip archive contains an invalid entry path")
+	ErrGEDZIPNotValidArchive      = errors.New("file is not a valid zip archive")
+	ErrGEDZIPDuplicateEntry       = errors.New("gedzip archive contains entries that resolve to the same destination path")
+	ErrGEDZIPTooManyEntries       = errors.New("gedzip archive entry count exceeds the per-archive limit")
+	ErrGEDZIPUnsupportedAlgorithm = errors.New("gedzip archive uses an unsupported compression algorithm")
 
 	// `glx add` errors
 	ErrAddEntityExists                     = errors.New("entity ID already exists (use --force to overwrite)")
