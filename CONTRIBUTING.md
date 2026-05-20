@@ -16,6 +16,7 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - [Testing](#testing)
 - [Documentation Standards](#documentation-standards)
 - [Submitting Changes](#submitting-changes)
+- [Contributor Path](#contributor-path)
 - [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco)
 - [Proposing Major Changes](#proposing-major-changes)
 - [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
@@ -46,7 +47,15 @@ Thank you for your interest in contributing to GENEALOGIX! Whether you're a gene
 - **Documentation**: Fix typos, improve clarity, add examples
 - **Community Support**: Help others in [Discussions](https://github.com/genealogix/glx/discussions)
 
-Looking for where to start? Check issues labeled [`good first issue`](https://github.com/genealogix/glx/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+### Good First Issues
+
+Browse issues labeled [`good first issue`](https://github.com/genealogix/glx/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) for beginner-friendly tasks.
+
+What to expect when you pick one up:
+
+- Each `good first issue` has clear acceptance criteria in the issue body. If something is ambiguous, comment on the issue before you start.
+- Maintainers respond to questions in issue comments as bandwidth allows — ask before sinking time into a large change.
+- First PRs typically receive substantive review feedback (see [Review Process](#review-process) for response time).
 
 ## Development Environment Setup
 
@@ -268,6 +277,16 @@ npx --yes markdownlint-cli2 --fix
 - Maintainers will review PRs within 3-5 business days
 - Address review comments promptly
 - Be open to feedback and iteration
+
+## Contributor Path
+
+GLX keeps the contributor structure deliberately lightweight. There is no formal application process; progression is recognition of an established pattern.
+
+- **First-time contributor** — you've submitted (or are submitting) your first PR. No special permissions; your change is reviewed like any other PR.
+- **Regular contributor** — multiple merged PRs across the codebase. May be asked to review PRs in areas you're familiar with. Changes still go through normal review.
+- **Maintainer** — commit access, release authority, and triage responsibility. Invited by current maintainers based on sustained contributions and engagement. Invitation only.
+
+All contributors at every level are expected to follow the [Code of Conduct](#code-of-conduct).
 
 ## Developer Certificate of Origin (DCO)
 
