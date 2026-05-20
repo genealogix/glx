@@ -157,9 +157,20 @@ func removeStaleBackup(backupDir string) error {
 	// media/ is managed (so media/<id>.glx entity files are fair game to drop)
 	// but media/files/ holds user binaries that the serializer never produces.
 	// A stale backup whose binaries haven't been carried into the new archive
-	// is unrecovered data; refuse to delete it.
-	if mediaEntries, err := os.ReadDir(filepath.Join(backupDir, glxlib.MediaFilesDir)); err == nil && len(mediaEntries) > 0 {
-		return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, glxlib.MediaFilesDir)
+	// is unrecovered data; refuse to delete it. Any error other than "doesn't
+	// exist" (e.g., permissions, transient I/O) is also refused — we cannot
+	// confirm the backup is empty, so the safe move is to leave it for the
+	// user to inspect.
+	mediaFilesDir := filepath.Join(backupDir, glxlib.MediaFilesDir)
+	switch mediaEntries, err := os.ReadDir(mediaFilesDir); {
+	case err == nil:
+		if len(mediaEntries) > 0 {
+			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, glxlib.MediaFilesDir)
+		}
+	case os.IsNotExist(err):
+		// No media/files/ in the backup — safe to proceed.
+	default:
+		return fmt.Errorf("inspecting %s: %w", mediaFilesDir, err)
 	}
 	if err := os.RemoveAll(backupDir); err != nil {
 		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)

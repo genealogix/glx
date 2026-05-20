@@ -1103,6 +1103,35 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 		}
 	})
 
+	t.Run("safe-write succeeds when backup media/files path is a regular file", func(t *testing.T) {
+		// Defensive: if some prior corruption left a regular file at the
+		// media/files path inside the backup, preserveMediaBinaries treats it
+		// as nothing-to-preserve rather than crashing.
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
+			t.Fatal(err)
+		}
+		// Plant a regular file where media/files/ would normally be a dir
+		if err := os.MkdirAll(filepath.Join(archiveDir, "media"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(archiveDir, "media", "files"), []byte("not a dir"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := safeWriteMultiFileArchive(archiveDir, makeArchive()); err != nil {
+			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
+		}
+		// Backup cleaned up
+		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
+			t.Error("backup directory was not cleaned up")
+		}
+	})
+
 	t.Run("preserves media/files binaries across the swap", func(t *testing.T) {
 		// The serializer writes Media entity YAML but never emits anything
 		// into media/files/. Without the binary-preservation step the

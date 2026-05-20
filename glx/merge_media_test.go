@@ -19,9 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestMediaURIBasename(t *testing.T) {
@@ -178,6 +179,104 @@ func TestPlanSourceMediaCopies_NestedSubdirSkipped(t *testing.T) {
 	plan, err := planSourceMediaCopies(srcDir, destDir, src)
 	require.NoError(t, err)
 	assert.Empty(t, plan)
+}
+
+func TestPlanSourceMediaCopies_NonDirAtMediaFilesPath(t *testing.T) {
+	// If a regular file sits where media/files/ should be, the planner must
+	// silently return nothing rather than try to walk it.
+	srcDir := t.TempDir()
+	destDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "media"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "media", "files"), []byte("not a dir"), 0o644))
+
+	src := &glxlib.GLXFile{Media: map[string]*glxlib.Media{"m1": {URI: "media/files/photo.jpg"}}}
+	plan, err := planSourceMediaCopies(srcDir, destDir, src)
+	require.NoError(t, err)
+	assert.Empty(t, plan)
+}
+
+func TestExecuteMediaCopies_ZeroLengthPlan(t *testing.T) {
+	copied, skipped, err := executeMediaCopies(nil, t.TempDir(), &glxlib.GLXFile{})
+	require.NoError(t, err)
+	assert.Zero(t, copied)
+	assert.Zero(t, skipped)
+}
+
+func TestExecuteMediaCopies_SkipsWhenAllReferencesDropped(t *testing.T) {
+	// A planned binary whose every referencing Media entity was dropped (or
+	// rewritten elsewhere) by the merge must be skipped, not copied.
+	destDir := t.TempDir()
+	srcMediaDir := t.TempDir()
+	srcBinary := filepath.Join(srcMediaDir, "ghost.jpg")
+	require.NoError(t, os.WriteFile(srcBinary, []byte("GHOST"), 0o644))
+
+	plan := []plannedMediaCopy{{
+		SrcPath:    srcBinary,
+		TargetName: "ghost.jpg",
+		MediaIDs:   []string{"media-dropped"},
+	}}
+	// merged has no surviving media-dropped entity.
+	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{}}
+
+	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	require.NoError(t, err)
+	assert.Zero(t, copied)
+	assert.Equal(t, 1, skipped)
+
+	// Binary must not have been copied
+	_, statErr := os.Stat(filepath.Join(destDir, "media", "files", "ghost.jpg"))
+	assert.True(t, os.IsNotExist(statErr))
+}
+
+func TestExecuteMediaCopies_CopiesWhenAnyReferenceSurvives(t *testing.T) {
+	// When several Media entities point at the same binary and at least one
+	// survives the merge with a matching URI, the binary is copied once.
+	destDir := t.TempDir()
+	srcMediaDir := t.TempDir()
+	srcBinary := filepath.Join(srcMediaDir, "shared.jpg")
+	require.NoError(t, os.WriteFile(srcBinary, []byte("SHARED"), 0o644))
+
+	plan := []plannedMediaCopy{{
+		SrcPath:    srcBinary,
+		TargetName: "shared.jpg",
+		MediaIDs:   []string{"media-dropped", "media-survivor"},
+	}}
+	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+		"media-survivor": {URI: "media/files/shared.jpg"},
+	}}
+
+	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	require.NoError(t, err)
+	assert.Equal(t, 1, copied)
+	assert.Zero(t, skipped)
+
+	got, err := os.ReadFile(filepath.Join(destDir, "media", "files", "shared.jpg"))
+	require.NoError(t, err)
+	assert.Equal(t, "SHARED", string(got))
+}
+
+func TestExecuteMediaCopies_SkipsWhenSurvivorURIRewritten(t *testing.T) {
+	// A surviving Media entity whose URI points somewhere else (e.g., the
+	// merge kept dest's same-ID entity with its own URI) must NOT trigger a
+	// source-binary copy — that would orphan the file.
+	destDir := t.TempDir()
+	srcMediaDir := t.TempDir()
+	srcBinary := filepath.Join(srcMediaDir, "src-only.jpg")
+	require.NoError(t, os.WriteFile(srcBinary, []byte("X"), 0o644))
+
+	plan := []plannedMediaCopy{{
+		SrcPath:    srcBinary,
+		TargetName: "src-only.jpg",
+		MediaIDs:   []string{"media-shared"},
+	}}
+	merged := &glxlib.GLXFile{Media: map[string]*glxlib.Media{
+		"media-shared": {URI: "media/files/something-else.jpg"},
+	}}
+
+	copied, skipped, err := executeMediaCopies(plan, destDir, merged)
+	require.NoError(t, err)
+	assert.Zero(t, copied)
+	assert.Equal(t, 1, skipped)
 }
 
 func TestMergeArchives_SingleFileDestWarnsAboutSourceBinaries(t *testing.T) {

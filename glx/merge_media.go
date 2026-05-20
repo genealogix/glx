@@ -27,11 +27,13 @@ import (
 )
 
 // plannedMediaCopy describes one binary file to copy from the source archive
-// into the destination archive once the merge has been written.
+// into the destination archive once the merge has been written. Several Media
+// entities may reference the same binary, so the plan is keyed by source
+// file: MediaIDs lists every entity whose URI points at this binary.
 type plannedMediaCopy struct {
-	SrcPath    string // absolute path of the file under srcPath/media/files/
-	TargetName string // basename to write into destPath/media/files/
-	MediaID    string // Media entity in src whose URI references this file
+	SrcPath    string   // absolute path of the file under srcPath/media/files/
+	TargetName string   // basename to write into destPath/media/files/
+	MediaIDs   []string // Media entities in src whose URI references this file
 }
 
 // planSourceMediaCopies inspects srcPath/media/files/ and builds a plan for
@@ -106,23 +108,21 @@ func planSourceMediaCopies(srcPath, destPath string, src *glxlib.GLXFile) ([]pla
 			}
 		}
 		taken[target] = struct{}{}
-		for _, id := range mediaIDs {
-			plan = append(plan, plannedMediaCopy{
-				SrcPath:    srcFile,
-				TargetName: target,
-				MediaID:    id,
-			})
-		}
+		plan = append(plan, plannedMediaCopy{
+			SrcPath:    srcFile,
+			TargetName: target,
+			MediaIDs:   mediaIDs,
+		})
 	}
 
 	return plan, nil
 }
 
 // executeMediaCopies copies each planned source binary into the merged
-// archive's media/files/ directory. A plan entry is skipped (and counted) when
-// its Media entity didn't survive the merge (ID conflict — dest's version was
-// kept) or the surviving entity's URI no longer matches the planned target,
-// since copying the binary would leave an orphan on disk.
+// archive's media/files/ directory. A planned binary is skipped (and counted)
+// when none of its referencing Media entities survived the merge with a URI
+// that still points at the planned target — copying it would leave the binary
+// orphaned on disk.
 func executeMediaCopies(plan []plannedMediaCopy, destPath string, merged *glxlib.GLXFile) (copied, skipped int, err error) {
 	if len(plan) == 0 {
 		return 0, 0, nil
@@ -131,32 +131,28 @@ func executeMediaCopies(plan []plannedMediaCopy, destPath string, merged *glxlib
 	if err := os.MkdirAll(dstDir, dirPermissions); err != nil {
 		return 0, 0, fmt.Errorf("creating media/files dir: %w", err)
 	}
-	// Several Media entities may reference the same binary; track names
-	// already written so we copy each source file at most once.
-	written := make(map[string]struct{})
+	expectedURI := func(target string) string { return glxlib.MediaFilesDir + "/" + target }
 	for _, p := range plan {
-		m, ok := merged.Media[p.MediaID]
-		if !ok {
+		// Copy the binary if at least one referencing entity survived with a
+		// URI that still points at this target. If every reference was
+		// dropped or rewritten elsewhere by a merge conflict, skip.
+		var referenced bool
+		for _, id := range p.MediaIDs {
+			if m, ok := merged.Media[id]; ok && m != nil && m.URI == expectedURI(p.TargetName) {
+				referenced = true
+
+				break
+			}
+		}
+		if !referenced {
 			skipped++
 
-			continue
-		}
-		if m.URI != glxlib.MediaFilesDir+"/"+p.TargetName {
-			// The merged entity points somewhere else (e.g., the merge kept
-			// dest's same-ID entity with its own URI). Copying the source
-			// binary would orphan it; skip.
-			skipped++
-
-			continue
-		}
-		if _, done := written[p.TargetName]; done {
 			continue
 		}
 		dst := filepath.Join(dstDir, p.TargetName)
 		if err := copyFile(p.SrcPath, dst); err != nil {
 			return copied, skipped, fmt.Errorf("copying %s: %w", p.SrcPath, err)
 		}
-		written[p.TargetName] = struct{}{}
 		copied++
 	}
 
