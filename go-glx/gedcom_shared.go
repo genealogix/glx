@@ -92,30 +92,37 @@ func convertExtensionSchema(schmaRecord *GEDCOMRecord, conv *ConversionContext) 
 	return nil
 }
 
-// convertExtensionData converts extension tag data into properties map
-func convertExtensionData(tag, value string, subRecords []*GEDCOMRecord) map[string]any {
-	properties := make(map[string]any)
-
-	// Only process extension tags (those starting with underscore)
-	if len(tag) == 0 || tag[0] != '_' {
-		return properties
+// recordToExtensionEntry converts an extension GEDCOMRecord (and its
+// sub-records, recursively) into the YAML-friendly entry shape stored under
+// PropertyGEDCOMExtensions. Each entry has tag, optional value, and an
+// optional subrecords list of further entries with the same shape — which
+// preserves duplicate child tags, sub-record order, and arbitrary nesting
+// across a GEDCOM round-trip.
+func recordToExtensionEntry(record *GEDCOMRecord) map[string]any {
+	entry := map[string]any{
+		ExtensionEntryTag: record.Tag,
 	}
 
-	properties["extension_tag"] = tag
-
-	if value != "" {
-		properties["value"] = value
+	if record.Value != "" {
+		entry[ExtensionEntryValue] = record.Value
 	}
 
-	if len(subRecords) > 0 {
-		subData := make(map[string]any)
-		for _, sub := range subRecords {
-			subData[sub.Tag] = sub.Value
+	if len(record.SubRecords) > 0 {
+		subs := make([]any, 0, len(record.SubRecords))
+		for _, sub := range record.SubRecords {
+			subs = append(subs, recordToExtensionEntry(sub))
 		}
-		properties["subrecords"] = subData
+		entry[ExtensionEntrySubrecords] = subs
 	}
 
-	return properties
+	return entry
+}
+
+// appendExtensionTag appends an extension record to the entity's
+// gedcom_extensions list. The caller must ensure props is non-nil.
+func appendExtensionTag(props map[string]any, sub *GEDCOMRecord) {
+	existing, _ := props[PropertyGEDCOMExtensions].([]any)
+	props[PropertyGEDCOMExtensions] = append(existing, recordToExtensionEntry(sub))
 }
 
 // extractEventDetails extracts common event details (DATE, PLAC, NOTE, ADDR, and optionally SOUR)
@@ -141,6 +148,9 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 			event.Date = parseGEDCOMDate(sub.Value)
 
 		case GedcomTagPlac:
+			if warnIfNonGeographicPLAC(sub, conv) {
+				continue
+			}
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				// Extract coordinates from MAP/LATI/LONG subrecords
