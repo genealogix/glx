@@ -314,6 +314,15 @@ export default defineConfig({
         {
           text: 'Data Entry',
           items: [
+            { text: 'glx add', link: '/cli/glx_add' },
+            { text: 'glx add person', link: '/cli/glx_add_person' },
+            { text: 'glx add place', link: '/cli/glx_add_place' },
+            { text: 'glx add event', link: '/cli/glx_add_event' },
+            { text: 'glx add repository', link: '/cli/glx_add_repository' },
+            { text: 'glx add source', link: '/cli/glx_add_source' },
+            { text: 'glx add citation', link: '/cli/glx_add_citation' },
+            { text: 'glx add relationship', link: '/cli/glx_add_relationship' },
+            { text: 'glx add assertion', link: '/cli/glx_add_assertion' },
             { text: 'glx census', link: '/cli/glx_census' },
             { text: 'glx census add', link: '/cli/glx_census_add' },
             { text: 'glx link', link: '/cli/glx_link' }
