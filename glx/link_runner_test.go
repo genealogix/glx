@@ -456,6 +456,13 @@ func TestSlugifyForID(t *testing.T) {
 		want   string
 	}{
 		{"Deutschland Geburten und Taufen, 1558-1898", 60, "deutschland-geburten-und-taufen-1558-1898"},
+		{
+			"Deutschland, ausgewählte evangelische Kirchenbücher 1500-1971",
+			64,
+			"deutschland-ausgewaehlte-evangelische-kirchenbuecher-1500-1971",
+		},
+		{"Straße", 60, "strasse"},
+		{"Crème brûlée y piñata", 60, "creme-brulee-y-pinata"},
 		{"Hello, World!", 60, "hello-world"},
 		{"   ", 60, "unknown"},
 		{"---abc---", 60, "abc"},

@@ -21,8 +21,10 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -285,12 +287,24 @@ func nextUniqueSourceID(title string, archive *glxlib.GLXFile) (string, error) {
 }
 
 var slugNonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
+var germanSlugReplacer = strings.NewReplacer(
+	"ä", "ae",
+	"ö", "oe",
+	"ü", "ue",
+	"Ä", "Ae",
+	"Ö", "Oe",
+	"Ü", "Ue",
+	"ß", "ss",
+	"ẞ", "ss",
+)
 
 // slugifyForID lowercases the input, replaces runs of non-alphanumerics with a
 // single hyphen, trims leading/trailing hyphens, and truncates to maxLen.
 // Produces a value matching the GLX entity ID pattern `[a-zA-Z0-9-]{1,64}`.
 // Falls back to "unknown" if the input contains no alphanumerics.
 func slugifyForID(s string, maxLen int) string {
+	s = germanSlugReplacer.Replace(s)
+	s = stripCombiningMarks(norm.NFKD.String(s))
 	s = strings.ToLower(s)
 	s = slugNonAlphaNum.ReplaceAllString(s, "-")
 	s = strings.Trim(s, "-")
@@ -299,6 +313,19 @@ func slugifyForID(s string, maxLen int) string {
 	}
 
 	return trimToMaxLen(s, maxLen)
+}
+
+func stripCombiningMarks(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if unicode.Is(unicode.Mn, r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+
+	return b.String()
 }
 
 func trimToMaxLen(s string, maxLen int) string {
