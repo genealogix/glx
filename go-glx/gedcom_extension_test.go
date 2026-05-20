@@ -22,75 +22,94 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConvertExtensionData tests the convertExtensionData function
-func TestConvertExtensionData(t *testing.T) {
+// TestRecordToExtensionEntry verifies the recursive shape produced for an
+// extension GEDCOMRecord, including duplicate child tags and 2-level nesting
+// — both of which the old flat map[string]string subrecord shape collapsed.
+func TestRecordToExtensionEntry(t *testing.T) {
 	tests := []struct {
-		name       string
-		tag        string
-		value      string
-		subRecords []*GEDCOMRecord
-		wantProps  map[string]any
+		name   string
+		record *GEDCOMRecord
+		want   map[string]any
 	}{
 		{
-			name:  "extension tag with value only",
-			tag:   "_CUSTOM",
-			value: "custom value",
-			wantProps: map[string]any{
-				"extension_tag": "_CUSTOM",
-				"value":         "custom value",
+			name:   "tag with value only",
+			record: &GEDCOMRecord{Tag: "_CUSTOM", Value: "custom value"},
+			want: map[string]any{
+				ExtensionEntryTag:   "_CUSTOM",
+				ExtensionEntryValue: "custom value",
 			},
 		},
 		{
-			name:  "extension tag with subrecords",
-			tag:   "_MYEXT",
-			value: "main value",
-			subRecords: []*GEDCOMRecord{
-				{Tag: "TYPE", Value: "custom_type"},
-				{Tag: "NOTE", Value: "custom note"},
+			name: "tag with subrecords",
+			record: &GEDCOMRecord{
+				Tag:   "_MYEXT",
+				Value: "main value",
+				SubRecords: []*GEDCOMRecord{
+					{Tag: "TYPE", Value: "custom_type"},
+					{Tag: "NOTE", Value: "custom note"},
+				},
 			},
-			wantProps: map[string]any{
-				"extension_tag": "_MYEXT",
-				"value":         "main value",
-				"subrecords": map[string]any{
-					"TYPE": "custom_type",
-					"NOTE": "custom note",
+			want: map[string]any{
+				ExtensionEntryTag:   "_MYEXT",
+				ExtensionEntryValue: "main value",
+				ExtensionEntrySubrecords: []any{
+					map[string]any{ExtensionEntryTag: "TYPE", ExtensionEntryValue: "custom_type"},
+					map[string]any{ExtensionEntryTag: "NOTE", ExtensionEntryValue: "custom note"},
 				},
 			},
 		},
 		{
-			name:  "extension tag with subrecords no value",
-			tag:   "_DATA",
-			value: "",
-			subRecords: []*GEDCOMRecord{
-				{Tag: "FIELD1", Value: "value1"},
-				{Tag: "FIELD2", Value: "value2"},
+			name: "duplicate child tags preserved",
+			record: &GEDCOMRecord{
+				Tag: "_DATA",
+				SubRecords: []*GEDCOMRecord{
+					{Tag: "FIELD", Value: "first"},
+					{Tag: "FIELD", Value: "second"},
+				},
 			},
-			wantProps: map[string]any{
-				"extension_tag": "_DATA",
-				"subrecords": map[string]any{
-					"FIELD1": "value1",
-					"FIELD2": "value2",
+			want: map[string]any{
+				ExtensionEntryTag: "_DATA",
+				ExtensionEntrySubrecords: []any{
+					map[string]any{ExtensionEntryTag: "FIELD", ExtensionEntryValue: "first"},
+					map[string]any{ExtensionEntryTag: "FIELD", ExtensionEntryValue: "second"},
 				},
 			},
 		},
 		{
-			name:      "non-extension tag returns empty",
-			tag:       "REGULAR",
-			value:     "value",
-			wantProps: map[string]any{},
-		},
-		{
-			name:      "empty tag returns empty",
-			tag:       "",
-			value:     "value",
-			wantProps: map[string]any{},
+			name: "two-level nesting preserved",
+			record: &GEDCOMRecord{
+				Tag:   "_PROFILE",
+				Value: "FamilySearch",
+				SubRecords: []*GEDCOMRecord{
+					{
+						Tag:   "ID",
+						Value: "FS-12345",
+						SubRecords: []*GEDCOMRecord{
+							{Tag: "URL", Value: "https://familysearch.org/p/FS-12345"},
+						},
+					},
+				},
+			},
+			want: map[string]any{
+				ExtensionEntryTag:   "_PROFILE",
+				ExtensionEntryValue: "FamilySearch",
+				ExtensionEntrySubrecords: []any{
+					map[string]any{
+						ExtensionEntryTag:   "ID",
+						ExtensionEntryValue: "FS-12345",
+						ExtensionEntrySubrecords: []any{
+							map[string]any{ExtensionEntryTag: "URL", ExtensionEntryValue: "https://familysearch.org/p/FS-12345"},
+						},
+					},
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := convertExtensionData(tt.tag, tt.value, tt.subRecords)
-			assert.Equal(t, tt.wantProps, got)
+			got := recordToExtensionEntry(tt.record)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -118,97 +137,148 @@ func TestIsExtensionTag(t *testing.T) {
 	}
 }
 
-// TestExtensionTagInGEDCOM tests that extension tags are properly processed in GEDCOM conversion
-func TestExtensionTagInGEDCOM(t *testing.T) {
+// TestExtensionTagOnPerson asserts that an extension subrecord inside an
+// INDI record is preserved on the Person's gedcom_extensions list.
+func TestExtensionTagOnPerson(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
 0 @I1@ INDI
 1 NAME John /Doe/
-0 _CUSTOM Extension Record
-1 TYPE custom_type
-1 DATA some data
+1 _CUSTOM Extension Value
+2 TYPE custom_type
+2 DATA some data
 0 TRLR`
 
-	// Import GEDCOM
-	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, nil)
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.Len(t, glx.Persons, 1)
 
-	// Verify that the person was created (other records should still be processed)
-	assert.Len(t, glx.Persons, 1, "Should create person despite extension tag")
+	person := firstPerson(glx)
+	require.NotNil(t, person)
 
-	// Verify statistics show successful import
-	assert.Equal(t, 1, result.Statistics.PersonsCreated)
+	exts, ok := person.Properties[PropertyGEDCOMExtensions].([]any)
+	require.True(t, ok, "expected gedcom_extensions list on Person")
+	require.Len(t, exts, 1)
+
+	entry, ok := exts[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "_CUSTOM", entry[ExtensionEntryTag])
+	assert.Equal(t, "Extension Value", entry[ExtensionEntryValue])
+
+	subs, ok := entry[ExtensionEntrySubrecords].([]any)
+	require.True(t, ok)
+	require.Len(t, subs, 2)
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "TYPE", ExtensionEntryValue: "custom_type"}, subs[0])
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "DATA", ExtensionEntryValue: "some data"}, subs[1])
 }
 
-// TestExtensionTagWithSubrecords tests extension tags with complex subrecord structures
-func TestExtensionTagWithSubrecords(t *testing.T) {
+// TestExtensionTagOnPersonNested asserts that subrecord nesting under an
+// extension tag is preserved (FamilySearch profile-style structure).
+func TestExtensionTagOnPersonNested(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
 0 @I1@ INDI
 1 NAME Jane /Smith/
-0 _GENEALOGY_SITE FamilySearch Profile
-1 NAME FamilySearch
-1 ID FS-12345
-1 URL https://familysearch.org
+1 _GENEALOGY_SITE FamilySearch Profile
+2 NAME FamilySearch
+2 ID FS-12345
+2 URL https://familysearch.org
 0 TRLR`
 
-	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, nil)
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.Len(t, glx.Persons, 1)
 
-	// Verify person was created
-	assert.Equal(t, 1, result.Statistics.PersonsCreated)
-	assert.Len(t, glx.Persons, 1)
+	person := firstPerson(glx)
+	require.NotNil(t, person)
+
+	exts, ok := person.Properties[PropertyGEDCOMExtensions].([]any)
+	require.True(t, ok)
+	require.Len(t, exts, 1)
+
+	entry := exts[0].(map[string]any)
+	assert.Equal(t, "_GENEALOGY_SITE", entry[ExtensionEntryTag])
+	assert.Equal(t, "FamilySearch Profile", entry[ExtensionEntryValue])
+
+	subs := entry[ExtensionEntrySubrecords].([]any)
+	require.Len(t, subs, 3)
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "NAME", ExtensionEntryValue: "FamilySearch"}, subs[0])
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "ID", ExtensionEntryValue: "FS-12345"}, subs[1])
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "URL", ExtensionEntryValue: "https://familysearch.org"}, subs[2])
 }
 
-// TestMultipleExtensionTags tests handling of multiple extension tags
-func TestMultipleExtensionTags(t *testing.T) {
+// TestMultipleExtensionTagsOnPerson asserts that multiple distinct extension
+// tags on the same INDI all land in the same gedcom_extensions list, in
+// source order.
+func TestMultipleExtensionTagsOnPerson(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
-0 _EXT1 First Extension
-1 DATA data1
-0 _EXT2 Second Extension
-1 DATA data2
 0 @I1@ INDI
 1 NAME Test /Person/
-0 _EXT3 Third Extension
-1 NOTE final extension
+1 _EXT1 First
+1 _EXT2 Second
+1 _EXT3 Third
 0 TRLR`
 
-	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, nil)
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.Len(t, glx.Persons, 1)
 
-	// Should process person successfully despite multiple extension tags
-	assert.Equal(t, 1, result.Statistics.PersonsCreated)
-	assert.Len(t, glx.Persons, 1)
+	person := firstPerson(glx)
+	require.NotNil(t, person)
+
+	exts, ok := person.Properties[PropertyGEDCOMExtensions].([]any)
+	require.True(t, ok)
+	require.Len(t, exts, 3)
+
+	tags := make([]string, 0, len(exts))
+	for _, ext := range exts {
+		tags = append(tags, ext.(map[string]any)[ExtensionEntryTag].(string))
+	}
+	assert.Equal(t, []string{"_EXT1", "_EXT2", "_EXT3"}, tags)
 }
 
-// TestExtensionTagVsUnknownTag tests that extension tags are handled differently than unknown tags
-func TestExtensionTagVsUnknownTag(t *testing.T) {
+// TestExtensionTagOnFamily asserts that an extension subrecord inside a FAM
+// record is preserved on the marriage Relationship's gedcom_extensions list.
+func TestExtensionTagOnFamily(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
-0 _EXTENSION Valid Extension
-1 DATA data
-0 UNKNOWN Invalid Tag
-1 DATA data
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 _FAMTAG Family Extension
+2 NOTE attached note
 0 TRLR`
 
-	reader := strings.NewReader(gedcom)
-	glx, result, err := ImportGEDCOM(reader, nil)
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.Len(t, glx.Relationships, 1)
 
-	// Import should succeed - both extension and unknown tags are handled gracefully
-	// The difference is that extension tags are processed by convertExtensionData
-	// while unknown tags just get a warning
-	assert.NotNil(t, glx)
+	rel := firstRelationship(glx)
+	require.NotNil(t, rel)
+	require.Equal(t, RelationshipTypeMarriage, rel.Type)
+
+	exts, ok := rel.Properties[PropertyGEDCOMExtensions].([]any)
+	require.True(t, ok, "expected gedcom_extensions list on Relationship")
+	require.Len(t, exts, 1)
+
+	entry := exts[0].(map[string]any)
+	assert.Equal(t, "_FAMTAG", entry[ExtensionEntryTag])
+	assert.Equal(t, "Family Extension", entry[ExtensionEntryValue])
+
+	subs := entry[ExtensionEntrySubrecords].([]any)
+	require.Len(t, subs, 1)
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "NOTE", ExtensionEntryValue: "attached note"}, subs[0])
 }

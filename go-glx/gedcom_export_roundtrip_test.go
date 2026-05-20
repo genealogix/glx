@@ -1102,3 +1102,94 @@ func TestRoundtrip_MultiplePersonNotes(t *testing.T) {
 	assert.Equal(t, "Second note about Jane", person2.Notes[1])
 	assert.Equal(t, "Third note about Jane", person2.Notes[2])
 }
+
+// TestRoundtrip_ExtensionTags asserts that GEDCOM 7.0 vendor extension tags
+// inside INDI and FAM records survive an import → export → re-import cycle.
+// Closes #289.
+func TestRoundtrip_ExtensionTags(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 _FSFTID FS-XXX-1234
+1 _PROFILE FamilySearch
+2 ID FS-XXX-1234
+2 URL https://familysearch.org/p/FS-XXX-1234
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 _FAMTAG FamilyExt
+2 NOTE family-level extension note
+0 TRLR
+`
+
+	// Import → re-import via export roundtrip
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err, "first import failed")
+
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM70, nil)
+	require.NoError(t, err, "export failed")
+
+	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+	require.NoError(t, err, "re-import failed")
+
+	// Locate John Smith in the re-imported archive
+	var john *Person
+	for _, p := range glx2.Persons {
+		if strings.Contains(getPersonNameValue(p), "John") {
+			john = p
+
+			break
+		}
+	}
+	require.NotNil(t, john, "John Smith missing after roundtrip")
+
+	exts, ok := john.Properties[PropertyGEDCOMExtensions].([]any)
+	require.True(t, ok, "expected gedcom_extensions on John after roundtrip")
+	require.Len(t, exts, 2, "expected both _FSFTID and _PROFILE preserved")
+
+	// _FSFTID is value-only
+	fsftid := exts[0].(map[string]any)
+	assert.Equal(t, "_FSFTID", fsftid[ExtensionEntryTag])
+	assert.Equal(t, "FS-XXX-1234", fsftid[ExtensionEntryValue])
+
+	// _PROFILE has nested subrecords
+	profile := exts[1].(map[string]any)
+	assert.Equal(t, "_PROFILE", profile[ExtensionEntryTag])
+	assert.Equal(t, "FamilySearch", profile[ExtensionEntryValue])
+
+	subs := profile[ExtensionEntrySubrecords].([]any)
+	require.Len(t, subs, 2, "expected ID and URL subrecords on _PROFILE")
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "ID", ExtensionEntryValue: "FS-XXX-1234"}, subs[0])
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "URL", ExtensionEntryValue: "https://familysearch.org/p/FS-XXX-1234"}, subs[1])
+
+	// Locate the marriage relationship
+	var rel *Relationship
+	for _, r := range glx2.Relationships {
+		if r.Type == RelationshipTypeMarriage {
+			rel = r
+
+			break
+		}
+	}
+	require.NotNil(t, rel, "marriage relationship missing after roundtrip")
+
+	famExts, ok := rel.Properties[PropertyGEDCOMExtensions].([]any)
+	require.True(t, ok, "expected gedcom_extensions on Relationship after roundtrip")
+	require.Len(t, famExts, 1)
+
+	famtag := famExts[0].(map[string]any)
+	assert.Equal(t, "_FAMTAG", famtag[ExtensionEntryTag])
+	assert.Equal(t, "FamilyExt", famtag[ExtensionEntryValue])
+
+	famSubs := famtag[ExtensionEntrySubrecords].([]any)
+	require.Len(t, famSubs, 1)
+	assert.Equal(t, map[string]any{ExtensionEntryTag: "NOTE", ExtensionEntryValue: "family-level extension note"}, famSubs[0])
+}
