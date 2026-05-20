@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,46 +51,52 @@ func TestNormalizedLevenshtein_Range(t *testing.T) {
 func TestScoreNameSimilarity_ExactMatch(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "John Smith"}}
 	b := &Person{Properties: map[string]any{"name": "John Smith"}}
-	score, _ := scoreNameSimilarity(a, b)
+	score, _, hasData := scoreNameSimilarity(a, b)
 	assert.Equal(t, 1.0, score)
+	assert.True(t, hasData)
 }
 
 func TestScoreNameSimilarity_SurnameMatchGivenDifferent(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "John Smith"}}
 	b := &Person{Properties: map[string]any{"name": "James Smith"}}
-	score, _ := scoreNameSimilarity(a, b)
+	score, _, hasData := scoreNameSimilarity(a, b)
 	assert.True(t, score > 0.5, "same surname should give partial credit")
 	assert.True(t, score < 1.0, "different given name should not be perfect")
+	assert.True(t, hasData)
 }
 
 func TestScoreNameSimilarity_NicknameVariant(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "William Smith"}}
 	b := &Person{Properties: map[string]any{"name": "Bill Smith"}}
-	score, detail := scoreNameSimilarity(a, b)
+	score, detail, hasData := scoreNameSimilarity(a, b)
 	assert.True(t, score > 0.8, "nickname variant should score high, got %f", score)
 	assert.Contains(t, detail, "surname exact")
+	assert.True(t, hasData)
 }
 
 func TestScoreNameSimilarity_InitialMatch(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "J. Smith"}}
 	b := &Person{Properties: map[string]any{"name": "John Smith"}}
-	score, _ := scoreNameSimilarity(a, b)
+	score, _, hasData := scoreNameSimilarity(a, b)
 	assert.True(t, score > 0.7, "initial match should give partial credit, got %f", score)
+	assert.True(t, hasData)
 }
 
 func TestScoreNameSimilarity_CompletelyDifferent(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "John Smith"}}
 	b := &Person{Properties: map[string]any{"name": "Mary Johnson"}}
-	score, _ := scoreNameSimilarity(a, b)
+	score, _, hasData := scoreNameSimilarity(a, b)
 	assert.True(t, score < 0.5, "completely different names should score low, got %f", score)
+	assert.True(t, hasData, "completely-different names were still compared, so the dimension carries data")
 }
 
 func TestScoreNameSimilarity_NoName(t *testing.T) {
 	a := &Person{Properties: map[string]any{}}
 	b := &Person{Properties: map[string]any{"name": "John Smith"}}
-	score, detail := scoreNameSimilarity(a, b)
+	score, detail, hasData := scoreNameSimilarity(a, b)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no name", detail)
+	assert.False(t, hasData)
 }
 
 func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
@@ -105,9 +112,10 @@ func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
 			"fields": map[string]any{"given": "Rob", "surname": "Webb"},
 		},
 	}}
-	score, detail := scoreNameSimilarity(a, b)
+	score, detail, hasData := scoreNameSimilarity(a, b)
 	assert.True(t, score > 0.8, "Rob/Robert Webb should match well, got %f", score)
 	assert.Contains(t, detail, "surname exact")
+	assert.True(t, hasData)
 }
 
 // --- Scoring boundary tests ---
@@ -115,17 +123,19 @@ func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
 func TestScoreNameSimilarity_BothEmpty(t *testing.T) {
 	a := &Person{Properties: map[string]any{}}
 	b := &Person{Properties: map[string]any{}}
-	score, detail := scoreNameSimilarity(a, b)
+	score, detail, hasData := scoreNameSimilarity(a, b)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no name", detail)
+	assert.False(t, hasData)
 }
 
 func TestScoreNameSimilarity_NilProperties(t *testing.T) {
 	a := &Person{}
 	b := &Person{Properties: map[string]any{"name": "John Smith"}}
-	score, detail := scoreNameSimilarity(a, b)
+	score, detail, hasData := scoreNameSimilarity(a, b)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no name", detail)
+	assert.False(t, hasData)
 }
 
 func TestCompareSurnames_BothEmpty(t *testing.T) {
@@ -147,85 +157,96 @@ func TestCompareGivenNames_OneEmpty(t *testing.T) {
 }
 
 func TestScoreEventYearSimilarity_NilEvents(t *testing.T) {
-	score, detail := scoreEventYearSimilarity(nil, nil)
+	score, detail, hasData := scoreEventYearSimilarity(nil, nil)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no data", detail)
+	assert.False(t, hasData)
 }
 
 func TestScoreEventYearSimilarity_OneNil(t *testing.T) {
 	e := &Event{Date: "1850"}
-	score, detail := scoreEventYearSimilarity(e, nil)
+	score, detail, hasData := scoreEventYearSimilarity(e, nil)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no data", detail)
+	assert.False(t, hasData)
 }
 
 func TestScoreEventYearSimilarity_EmptyDates(t *testing.T) {
 	a := &Event{Date: ""}
 	b := &Event{Date: "1850"}
-	score, detail := scoreEventYearSimilarity(a, b)
+	score, detail, hasData := scoreEventYearSimilarity(a, b)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no data", detail)
+	assert.False(t, hasData)
 }
 
 func TestScoreEventYearSimilarity_ExactYear(t *testing.T) {
 	a := &Event{Date: "1850"}
 	b := &Event{Date: "1850"}
-	score, detail := scoreEventYearSimilarity(a, b)
+	score, detail, hasData := scoreEventYearSimilarity(a, b)
 	assert.Equal(t, 1.0, score)
 	assert.Equal(t, "exact match", detail)
+	assert.True(t, hasData)
 }
 
 func TestScoreEventYearSimilarity_Within1Year(t *testing.T) {
 	a := &Event{Date: "1850"}
 	b := &Event{Date: "1851"}
-	score, detail := scoreEventYearSimilarity(a, b)
+	score, detail, hasData := scoreEventYearSimilarity(a, b)
 	assert.Equal(t, 0.75, score)
 	assert.Equal(t, "within 1 year", detail)
+	assert.True(t, hasData)
 }
 
 func TestScoreEventYearSimilarity_Within2Years(t *testing.T) {
 	a := &Event{Date: "1850"}
 	b := &Event{Date: "1852"}
-	score, detail := scoreEventYearSimilarity(a, b)
+	score, detail, hasData := scoreEventYearSimilarity(a, b)
 	assert.Equal(t, 0.5, score)
 	assert.Equal(t, "within 2 years", detail)
+	assert.True(t, hasData)
 }
 
 func TestScoreEventYearSimilarity_FarApart(t *testing.T) {
 	a := &Event{Date: "1850"}
 	b := &Event{Date: "1900"}
-	score, detail := scoreEventYearSimilarity(a, b)
+	score, detail, hasData := scoreEventYearSimilarity(a, b)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "different", detail)
+	assert.True(t, hasData, "years compared and differed by >2; the dimension carries real data and must stay in the renormalization denominator")
 }
 
 func TestScoreEventPlaceSimilarity_NilEvents(t *testing.T) {
-	score, detail := scoreEventPlaceSimilarity(nil, nil, nil)
+	score, detail, hasData := scoreEventPlaceSimilarity(nil, nil, nil)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no data", detail)
+	assert.False(t, hasData)
 }
 
 func TestScoreEventPlaceSimilarity_EmptyPlaces(t *testing.T) {
 	a := &Event{PlaceID: ""}
 	b := &Event{PlaceID: "place-x"}
-	score, detail := scoreEventPlaceSimilarity(a, b, nil)
+	score, detail, hasData := scoreEventPlaceSimilarity(a, b, nil)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "no data", detail)
+	assert.False(t, hasData)
 }
 
 func TestScoreEventPlaceSimilarity_SamePlace(t *testing.T) {
 	a := &Event{PlaceID: "place-london"}
 	b := &Event{PlaceID: "place-london"}
-	score, _ := scoreEventPlaceSimilarity(a, b, nil)
+	score, _, hasData := scoreEventPlaceSimilarity(a, b, nil)
 	assert.Equal(t, 1.0, score)
+	assert.True(t, hasData)
 }
 
 func TestScoreEventPlaceSimilarity_DifferentPlaces(t *testing.T) {
 	a := &Event{PlaceID: "place-london"}
 	b := &Event{PlaceID: "place-paris"}
-	score, detail := scoreEventPlaceSimilarity(a, b, nil)
+	score, detail, hasData := scoreEventPlaceSimilarity(a, b, nil)
 	assert.Equal(t, 0.0, score)
 	assert.Equal(t, "different", detail)
+	assert.True(t, hasData, "places compared and differed; the dimension carries real data and must stay in the renormalization denominator")
 }
 
 func TestScoreSharedRelationships_MissingPerson(t *testing.T) {
@@ -234,8 +255,9 @@ func TestScoreSharedRelationships_MissingPerson(t *testing.T) {
 			"person-a": {"person-x": true},
 		},
 	}
-	score, _ := scoreSharedRelationships("person-a", "person-missing", idx)
+	score, _, hasData := scoreSharedRelationships("person-a", "person-missing", idx)
 	assert.Equal(t, 0.0, score)
+	assert.False(t, hasData)
 }
 
 func TestScoreSharedEvents_MissingPerson(t *testing.T) {
@@ -244,8 +266,9 @@ func TestScoreSharedEvents_MissingPerson(t *testing.T) {
 			"person-a": {"event-1"},
 		},
 	}
-	score, _ := scoreSharedEvents("person-a", "person-missing", idx)
+	score, _, hasData := scoreSharedEvents("person-a", "person-missing", idx)
 	assert.Equal(t, 0.0, score)
+	assert.False(t, hasData)
 }
 
 // --- Relationship/event scoring tests ---
@@ -257,9 +280,10 @@ func TestScoreSharedRelationships_CommonPeer(t *testing.T) {
 			"person-b": {"person-x": true, "person-z": true},
 		},
 	}
-	score, detail := scoreSharedRelationships("person-a", "person-b", idx)
+	score, detail, hasData := scoreSharedRelationships("person-a", "person-b", idx)
 	assert.True(t, score > 0, "should have positive score for shared peer")
 	assert.Contains(t, detail, "1 shared")
+	assert.True(t, hasData)
 }
 
 func TestScoreSharedRelationships_NoOverlap(t *testing.T) {
@@ -269,8 +293,10 @@ func TestScoreSharedRelationships_NoOverlap(t *testing.T) {
 			"person-b": {"person-y": true},
 		},
 	}
-	score, _ := scoreSharedRelationships("person-a", "person-b", idx)
+	score, detail, hasData := scoreSharedRelationships("person-a", "person-b", idx)
 	assert.Equal(t, 0.0, score)
+	assert.Equal(t, "no overlap", detail)
+	assert.True(t, hasData, "both persons have peers; no-overlap is a real negative signal, not missing data")
 }
 
 func TestScoreSharedEvents_CommonEvent(t *testing.T) {
@@ -280,9 +306,10 @@ func TestScoreSharedEvents_CommonEvent(t *testing.T) {
 			"person-b": {"event-census-1860", "event-birth-b"},
 		},
 	}
-	score, detail := scoreSharedEvents("person-a", "person-b", idx)
+	score, detail, hasData := scoreSharedEvents("person-a", "person-b", idx)
 	assert.True(t, score > 0, "should have positive score for shared event")
 	assert.Contains(t, detail, "1 shared")
+	assert.True(t, hasData)
 }
 
 // --- Integration tests ---
@@ -572,15 +599,17 @@ func TestFindCrossArchiveDuplicates_ThresholdFiltering(t *testing.T) {
 	}
 	src := &GLXFile{
 		Persons: map[string]*Person{
-			"person-src-1": {Properties: map[string]any{"name": "John Smith"}},
+			"person-src-1": {Properties: map[string]any{"name": "Jon Smyth"}},
 		},
 		Events: make(map[string]*Event),
 	}
 
-	// High threshold should filter out weak matches
+	// High threshold should filter out weak matches. Under renormalization (#716),
+	// an exact name-only pair scores 1.0 on the available evidence; this fixture
+	// uses similar-but-not-exact names so threshold 1.0 still filters it.
 	result, err := FindCrossArchiveDuplicates(dest, src, DuplicateOptions{Threshold: 1.0})
 	require.NoError(t, err)
-	assert.Empty(t, result.Pairs, "threshold 1.0 should filter out all pairs")
+	assert.Empty(t, result.Pairs, "threshold 1.0 should filter out non-exact name matches")
 }
 
 // --- Age plausibility tests ---
@@ -751,6 +780,215 @@ func TestFindDuplicates_AgeImplausibilityViaParentChildRelationship(t *testing.T
 		}
 	}
 	require.True(t, found, "candidate pair (father, newborn) must appear in result.Pairs at threshold 0")
+}
+
+// --- Renormalization tests (issue #716) ---
+//
+// These tests pin the behavior that when a dimension has no data on at least
+// one side, it drops out of both the numerator and the denominator of the
+// pair's weighted average. A name-only exact match must therefore score on
+// the merit of its name comparison alone, not on name-weight (0.30) over a
+// fixed denominator of 1.0.
+
+func TestFindDuplicates_NameOnly_ExactMatch_ScoresHigh(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "Johann Peter Juncker"}},
+			"person-b": {Properties: map[string]any{"name": "Johann Peter Juncker"}},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
+	require.Len(t, result.Pairs, 1)
+	assert.GreaterOrEqual(t, result.Pairs[0].Score, 0.9, "exact name match with no other data must renormalize to ~1.0")
+}
+
+func TestFindDuplicates_NameOnly_NearMatch_AboveThreshold(t *testing.T) {
+	// The worked example from issue #716: 18th-century Enkirch father pair with
+	// only names ("Johann Peter Juncker" / "Johann Peter Jungk"). Pre-fix this
+	// scored 0.24 against the 0.60 default; post-fix it must surface.
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-juncker": {Properties: map[string]any{"name": "Johann Peter Juncker"}},
+			"person-jungk":   {Properties: map[string]any{"name": "Johann Peter Jungk"}},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
+	require.Len(t, result.Pairs, 1, "Juncker/Jungk must clear the default threshold post-renormalization")
+	assert.GreaterOrEqual(t, result.Pairs[0].Score, 0.6)
+}
+
+func TestFindDuplicates_NameOnly_Mismatch_BelowThreshold(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "John Smith"}},
+			"person-b": {Properties: map[string]any{"name": "Mary Johnson"}},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
+	assert.Empty(t, result.Pairs, "dissimilar name-only pairs must still fall below the default threshold")
+}
+
+func TestFindDuplicates_PartialData_NameAndBirthYearOnly(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "Robert Webb"}},
+			"person-b": {Properties: map[string]any{"name": "Robert Webb"}},
+		},
+		Events: map[string]*Event{
+			"event-birth-a": {
+				Type: EventTypeBirth, Date: "1815",
+				Participants: []Participant{{Person: "person-a", Role: ParticipantRolePrincipal}},
+			},
+			"event-birth-b": {
+				Type: EventTypeBirth, Date: "1815",
+				Participants: []Participant{{Person: "person-b", Role: ParticipantRolePrincipal}},
+			},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
+	require.Len(t, result.Pairs, 1)
+	assert.GreaterOrEqual(t, result.Pairs[0].Score, 0.9, "exact name + exact birth year (effective weight 0.50) renormalizes to ~1.0")
+}
+
+func TestFindDuplicates_FullData_RegressionUnchanged(t *testing.T) {
+	// Every weighted dimension has data on both sides (and the age gate does
+	// not fire). effectiveWeight == 1.0, so the renormalized score must equal
+	// the sum-of-weight*score contributions byte-for-byte — proving the fix
+	// is a strict generalization of the old algorithm rather than a behavior
+	// change on fully-documented pairs.
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "William Smith"}},
+			"person-b": {Properties: map[string]any{"name": "Bill Smith"}},
+		},
+		Events: map[string]*Event{
+			"event-birth-a": {
+				Type: EventTypeBirth, Date: "1850", PlaceID: "place-london",
+				Participants: []Participant{{Person: "person-a", Role: ParticipantRolePrincipal}},
+			},
+			"event-birth-b": {
+				Type: EventTypeBirth, Date: "1851", PlaceID: "place-london",
+				Participants: []Participant{{Person: "person-b", Role: ParticipantRolePrincipal}},
+			},
+			"event-death-a": {
+				Type: EventTypeDeath, Date: "1920", PlaceID: "place-london",
+				Participants: []Participant{{Person: "person-a", Role: ParticipantRolePrincipal}},
+			},
+			"event-death-b": {
+				Type: EventTypeDeath, Date: "1922", PlaceID: "place-paris",
+				Participants: []Participant{{Person: "person-b", Role: ParticipantRolePrincipal}},
+			},
+			"event-shared": {
+				Type: EventTypeBirth, Date: "1900",
+				Participants: []Participant{
+					{Person: "person-a", Role: "witness"},
+					{Person: "person-b", Role: "witness"},
+				},
+			},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-shared-peer-a": {
+				Type: "spouse",
+				Participants: []Participant{
+					{Person: "person-a", Role: "spouse"},
+					{Person: "person-shared-peer", Role: "spouse"},
+				},
+			},
+			"rel-shared-peer-b": {
+				Type: "spouse",
+				Participants: []Participant{
+					{Person: "person-b", Role: "spouse"},
+					{Person: "person-shared-peer", Role: "spouse"},
+				},
+			},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	require.NoError(t, err)
+
+	var found bool
+	for _, pair := range result.Pairs {
+		if (pair.PersonA == "person-a" && pair.PersonB == "person-b") ||
+			(pair.PersonA == "person-b" && pair.PersonB == "person-a") {
+			found = true
+			var weightedSum, effective float64
+			for _, sig := range pair.Signals {
+				if sig.Weight > 0 && sig.HasData {
+					weightedSum += sig.Weight * sig.Score
+					effective += sig.Weight
+				}
+			}
+			require.InDelta(t, 1.0, effective, 1e-12, "fixture must cover all weighted dimensions; effective weight should be 1.0")
+			// FindDuplicates rounds pair.Score to 2 decimal places (see duplicates.go).
+			// Replicate that rounding so the comparison checks the algorithmic equivalence,
+			// not the display-precision rounding. InDelta with delta=0 is the exact-equality
+			// assertion the testifylint plugin lets us write for floats.
+			expected := math.Round(weightedSum*100) / 100
+			assert.InDelta(t, expected, pair.Score, 0, "with full data the renormalized score must equal the old weighted sum exactly (post-rounding)")
+		}
+	}
+	require.True(t, found, "(person-a, person-b) must appear in result.Pairs")
+}
+
+func TestFindDuplicates_NoComparableData(t *testing.T) {
+	// Both persons present, neither has a name or any events — no signal can
+	// produce data. effectiveWeight == 0 path; the pair must still surface at
+	// threshold 0 (FindDuplicates uses `>=`), and its score must be 0.
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{}},
+			"person-b": {Properties: map[string]any{}},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	require.NoError(t, err)
+
+	var found bool
+	for _, pair := range result.Pairs {
+		if (pair.PersonA == "person-a" && pair.PersonB == "person-b") ||
+			(pair.PersonA == "person-b" && pair.PersonB == "person-a") {
+			found = true
+			assert.InDelta(t, 0.0, pair.Score, 1e-9, "no-data pair must score 0 via the effectiveWeight==0 branch")
+		}
+	}
+	require.True(t, found, "(person-a, person-b) must appear in result.Pairs at threshold 0; otherwise the score assertion above would pass vacuously")
+}
+
+func TestFindDuplicates_OneSidedPartial_NameExactMatch_ScoresHigh(t *testing.T) {
+	// Person A is fully documented; Person B has only a name (exact match to
+	// A). Every non-name dimension hits `yearB == 0 || placeB == ""` etc. on
+	// the B side and returns HasData=false, so only Name participates in the
+	// weighted average. The pair therefore renormalizes to ~1.0.
+	//
+	// This is the deliberate trade-off of pure renormalization (issue #716,
+	// option (a)): a thinly-documented record matches cleanly against a
+	// well-documented one of the same name. Locked in by this test so the
+	// behavior is visible to reviewers, not stumbled into. A confidence floor
+	// based on effective weight is a possible follow-up.
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-a": {Properties: map[string]any{"name": "Robert Webb"}},
+			"person-b": {Properties: map[string]any{"name": "Robert Webb"}},
+		},
+		Events: map[string]*Event{
+			"event-birth-a": {
+				Type: EventTypeBirth, Date: "1815", PlaceID: "place-va",
+				Participants: []Participant{{Person: "person-a", Role: ParticipantRolePrincipal}},
+			},
+			"event-death-a": {
+				Type: EventTypeDeath, Date: "1885", PlaceID: "place-va",
+				Participants: []Participant{{Person: "person-a", Role: ParticipantRolePrincipal}},
+			},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
+	require.NoError(t, err)
+	require.Len(t, result.Pairs, 1)
+	assert.GreaterOrEqual(t, result.Pairs[0].Score, 0.9, "name-only B must renormalize to ~1.0 against well-documented A")
 }
 
 func TestFindDuplicates_AgeImplausibilityParentYearEarliestWinsAcrossSources(t *testing.T) {
