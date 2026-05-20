@@ -422,23 +422,24 @@ confidence_levels:
   high:
     label: "High Confidence"
     description: "Multiple high-quality sources agree, minimal uncertainty"
-  
+    rank: 3
+
   medium:
     label: "Medium Confidence"
     description: "Some evidence supports conclusion, but conflicts or gaps exist"
-  
+    rank: 2
+
   low:
     label: "Low Confidence"
     description: "Limited evidence, significant uncertainty"
-  
-  disputed:
-    label: "Disputed"
-    description: "Multiple sources conflict, resolution unclear"
-  
+    rank: 0
+
+
   # Additional confidence levels
   tentative:
     label: "Tentative"
     description: "Working hypothesis pending additional research"
+    rank: 1
 ```
 
 ### Fields
@@ -447,11 +448,14 @@ confidence_levels:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
+| `rank` | No | Numeric ordering used by `glx diff` to detect confidence upgrades vs downgrades. Higher values rank above lower; standard levels supply ranks 0–3 (low=0, medium=2, high=3). Custom levels without a rank are skipped by upgrade-detection. |
+| `gedcom` | No | Reserved for the corresponding GEDCOM QUAY value (`0`-`3`) for import/export mapping. The standard levels do not currently populate this field; defined in the JSON schema for forward compatibility with QUAY round-tripping. |
 
 ### Important Notes
 
 - **Researcher's judgment**: Reflects overall confidence in conclusion
 - **Archive-defined**: Each archive can customize the meaning of confidence levels
+- **Rank is optional**: Archives that extend the vocabulary with custom levels can opt into `glx diff` upgrade detection by supplying a `rank`. Levels without a rank are still valid; they just don't contribute to the confidence-upgrade/downgrade counters.
 
 See [Assertion Entity - Confidence](assertion#confidence) for usage details.
 

@@ -61,7 +61,7 @@ assertions:
 | `date` | string | Date or date range: when `property` is present, specifies when the value applies; on existential assertions, indicates when the subject existed |
 | `confidence` | string | Confidence level (defined in archive vocabulary) |
 | `notes` | string \| string[] | General notes about the assertion |
-| `status` | string | Research status of this assertion (e.g., proven, disproven, speculative) |
+| `status` | string | Research status of this assertion (e.g., proven, disproven, speculative, unresearched) |
 
 ### Subject Object
 
@@ -272,7 +272,8 @@ Confidence levels and their criteria are defined in each archive's `vocabularies
 - `high` - Multiple high-quality sources agree, minimal uncertainty
 - `medium` - Some evidence supports conclusion, but conflicts or gaps exist
 - `low` - Limited evidence, significant uncertainty
-- `disputed` - Multiple sources conflict, resolution unclear
+
+For conflicting evidence, use the `status` field with value `disputed` rather than encoding it as a confidence level — see the [`status`](#status) section below.
 
 Archives can customize these descriptions or add additional levels to match their research methodology.
 
@@ -298,7 +299,9 @@ Unlike `confidence` (which measures how certain you are about the claim), `statu
 
 - `proven` — verified through primary evidence
 - `speculative` — a hypothesis that needs further research
+- `disputed` — multiple sources conflict, resolution unclear
 - `disproven` — evidence has been found that contradicts this assertion
+- `unresearched` — no search has been conducted for this claim
 
 These values are free-text; archives may use any status labels appropriate for their research methodology.
 
@@ -313,9 +316,18 @@ status: speculative
 confidence: high
 status: proven
 
+# Conflicting evidence — sources disagree
+confidence: medium
+status: disputed
+
 # High confidence that this is wrong
 confidence: high
 status: disproven
+
+# Claim recorded from a tree hint, no source search yet performed
+# (low confidence reflects the absence of any primary-source backing)
+confidence: low
+status: unresearched
 ```
 
 ### `notes`
@@ -483,6 +495,7 @@ assertions:
       - citation-birth-cert       # Says March 10
       - citation-family-bible      # Says March 12
     confidence: medium
+    status: disputed
     notes: |
       Birth certificate (primary source) says March 10, 1852.
       Family Bible (secondary source) says March 12, 1852.
@@ -590,7 +603,8 @@ The standard vocabulary defines these default confidence levels (archives may cu
 | `high` | Multiple high-quality sources agree, minimal uncertainty | 3 birth certificates with same date |
 | `medium` | Some evidence supports, but conflicts or gaps exist | 2 sources agree, 1 disagrees |
 | `low` | Limited evidence, significant uncertainty | Only one low-quality source |
-| `disputed` | Multiple sources conflict, resolution unclear | Multiple primary sources disagree |
+
+For conflicting evidence where sources disagree and resolution is unclear, set the assertion's [`status`](#status) field to `disputed` instead of encoding it in the confidence level. Confidence reflects evidence quality; status reflects whether sources agree.
 
 ## Validation Rules
 

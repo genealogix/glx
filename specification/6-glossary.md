@@ -48,9 +48,9 @@ The process of evaluating multiple sources with different conclusions and determ
 
 ### Confidence Level
 
-An assessment of how certain a conclusion is based on available evidence. Common levels include: high, medium, low, disputed.
+An assessment of how certain a conclusion is based on available evidence. Common levels include: high, medium, low. Disputed conclusions — where sources conflict — are tracked via the assertion `status` field rather than as a confidence level.
 
-> **See Also:** [Confidence Levels Vocabulary](4-entity-types/vocabularies#confidence-levels-vocabulary)
+> **See Also:** [Confidence Levels Vocabulary](4-entity-types/vocabularies#confidence-levels-vocabulary), [Assertion → status](4-entity-types/assertion#status)
 
 ### Corroboration
 
@@ -418,7 +418,7 @@ A property with structured fields that break down complex values into named comp
 
 ### Status (Assertion)
 
-The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), and `disproven` (evidence contradicts the assertion). Free-text; archives may use any labels.
+The research verification state of an assertion, independent of confidence. Common values include `proven` (verified through primary evidence), `speculative` (hypothesis needing further research), `disproven` (evidence contradicts the assertion), and `unresearched` (no search has been conducted yet — tracks research gaps). Free-text; archives may use any labels.
 
 > **See Also:** [Assertion Entity - Status](4-entity-types/assertion#status)
 

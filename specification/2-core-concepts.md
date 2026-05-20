@@ -52,7 +52,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `repository-types.glx` | Archive, library, church, etc. |
 | `media-types.glx` | Photo, document, audio, etc. |
 | `participant-roles.glx` | Subject, witness, godparent, etc. |
-| `confidence-levels.glx` | High, medium, low, disputed |
+| `confidence-levels.glx` | High, medium, low |
 | `sex-types.glx` | Male, female, unknown, not_recorded, other (recorded sex) |
 | `gender-types.glx` | Male, female, nonbinary, other (self-identified identity) |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
@@ -623,7 +623,7 @@ assertions:
 - `value`: The concluded value of the property
 - `citations`, `sources`, or `media`: Evidence supporting this assertion (at least one required)
 - `confidence`: How certain we are based on evidence quality
-- `status`: Research state of the assertion (e.g., `proven`, `speculative`, `disproven`) — independent of confidence
+- `status`: Research state of the assertion (e.g., `proven`, `speculative`, `disproven`, `unresearched`) — independent of confidence
 
 **The `property` field references property vocabularies:**
 
@@ -700,9 +700,6 @@ confidence_levels:
   low:
     label: "Low Confidence"
     description: "Limited evidence, significant uncertainty"
-  disputed:
-    label: "Disputed"
-    description: "Multiple sources conflict, resolution unclear"
 ```
 
 Confidence levels are defined in `confidence-levels.glx` and can be customized per archive.
@@ -866,6 +863,7 @@ assertions:
     property: date
     value: "1850-01-15"
     confidence: medium
+    status: disputed
     notes: |
       Two conflicting sources:
       - Birth certificate: January 15, 1850 (preferred, higher quality)

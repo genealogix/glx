@@ -9,18 +9,17 @@ confidence_levels:
     label: "High Confidence"
     description: "Multiple high-quality sources agree, minimal uncertainty"
     gedcom: "3"
+    rank: 3
 
   medium:
     label: "Medium Confidence"
     description: "Some evidence supports conclusion, but conflicts or gaps exist"
     gedcom: "2"
+    rank: 2
 
   low:
     label: "Low Confidence"
     description: "Limited evidence, significant uncertainty"
     gedcom: "1"
-
-  disputed:
-    label: "Disputed"
-    description: "Multiple sources conflict, resolution unclear"
+    rank: 0
 

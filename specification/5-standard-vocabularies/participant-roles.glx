@@ -97,3 +97,33 @@ participant_roles:
       - event
       - relationship
 
+  enslaver:
+    label: "Enslaver"
+    description: "Person who legally claimed ownership of an enslaved person"
+    applies_to:
+      - relationship
+
+  enslaved_person:
+    label: "Enslaved Person"
+    description: "Person held in enslavement (preferred term over 'slave', which reduces personhood to legal status)"
+    applies_to:
+      - relationship
+
+  associate:
+    label: "Associate"
+    description: "Person in an associate (FAN — friend, colleague, community member) relationship"
+    applies_to:
+      - relationship
+
+  household_head:
+    label: "Household Head"
+    description: "Head of household in a boarder relationship"
+    applies_to:
+      - relationship
+
+  boarder:
+    label: "Boarder"
+    description: "Boarder, lodger, ward, or servant in a household"
+    applies_to:
+      - relationship
+

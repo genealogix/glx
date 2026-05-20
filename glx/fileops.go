@@ -26,7 +26,17 @@ import (
 
 // File extension constants
 const (
-	FileExtGLX = ".glx"
+	FileExtGLX    = ".glx"
+	FileExtGEDZIP = ".gdz"
+
+	// maxSymlinkPlaceholderLength limits candidate Git symlink placeholder
+	// content to short path-like strings. Real placeholders are typically
+	// small single-line relative paths; larger content is likely regular file data.
+	maxSymlinkPlaceholderLength = 200
+
+	// symlinkPlaceholderInvalidChars rejects multiline or structured-looking
+	// content when detecting Windows Git symlink placeholders.
+	symlinkPlaceholderInvalidChars = "\n\r{["
 )
 
 // File permission constants
@@ -47,6 +57,12 @@ func ensureGLXExtension(path string) string {
 // isGLXFile checks if a file has the .glx extension.
 func isGLXFile(filename string) bool {
 	return filepath.Ext(filename) == FileExtGLX
+}
+
+// isGEDZIPPath reports whether the given file path has the .gdz extension.
+// Match is case-insensitive because user-supplied filenames vary by platform.
+func isGEDZIPPath(p string) bool {
+	return strings.EqualFold(filepath.Ext(p), FileExtGEDZIP)
 }
 
 // fileExists checks if a file exists
@@ -149,7 +165,7 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 func resolveSymlinkPlaceholder(filePath string, data []byte) []byte {
 	content := strings.TrimSpace(string(data))
 	// Symlink placeholders are short, single-line, and look like relative paths
-	if len(content) > 200 || strings.ContainsAny(content, "\n\r{[") {
+	if len(content) > maxSymlinkPlaceholderLength || strings.ContainsAny(content, symlinkPlaceholderInvalidChars) {
 		return data
 	}
 	if !strings.Contains(content, "/") && !strings.Contains(content, "\\") {

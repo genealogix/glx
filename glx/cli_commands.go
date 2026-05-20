@@ -19,6 +19,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // version is set at build time via ldflags:
@@ -97,8 +99,10 @@ func init() {
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(renameCmd)
 	rootCmd.AddCommand(mergeCmd)
+	rootCmd.AddCommand(mergePersonsCmd)
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
+	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
@@ -121,11 +125,14 @@ var (
 )
 
 var importCmd = &cobra.Command{
-	Use:   "import <gedcom-file>",
-	Short: "Import a GEDCOM file to GLX format",
-	Long: `Import a GEDCOM file and convert it to GLX format.
+	Use:   "import <file>",
+	Short: "Import a GEDCOM or GEDZIP file to GLX format",
+	Long: `Import a GEDCOM or GEDZIP file and convert it to GLX format.
 
-Supports both GEDCOM 5.5.1 and GEDCOM 7.0 formats.
+The input format is detected by extension:
+- .gdz: GEDZIP (a ZIP archive containing gedcom.ged at the root plus
+        any media files referenced by FILE records)
+- Any other extension is treated as GEDCOM 5.5.1 or 7.0 (typically .ged)
 
 The imported archive will include:
 - All individuals (persons)
@@ -139,8 +146,11 @@ The imported archive will include:
 Output formats:
 - multi: Multi-file directory structure (default, one file per entity)
 - single: Single YAML file`,
-	Example: `  # Import to multi-file directory (default)
+	Example: `  # Import GEDCOM to multi-file directory (default)
   glx import family.ged -o family-archive
+
+  # Import GEDZIP archive (auto-extracts media files)
+  glx import family.gdz -o family-archive
 
   # Import to single file
   glx import family.ged -o family.glx --format single
@@ -177,21 +187,26 @@ var (
 
 var exportCmd = &cobra.Command{
 	Use:   "export <glx-archive>",
-	Short: "Export a GLX archive to GEDCOM format",
-	Long: `Export a GLX archive to GEDCOM format.
+	Short: "Export a GLX archive to GEDCOM or JSON-LD format",
+	Long: `Export a GLX archive to GEDCOM or JSON-LD format.
 
-Supports both GEDCOM 5.5.1 and GEDCOM 7.0 output formats.
+Supports GEDCOM 5.5.1, GEDCOM 7.0, and JSON-LD output formats.
 
 The input can be either a single-file GLX archive (.glx) or a multi-file
 archive directory.
 
-The exported GEDCOM file will include:
+GEDCOM output (--format 551 or 70) includes:
 - All individuals (INDI records)
 - All families (FAM records, reconstructed from relationships)
 - All sources (SOUR records)
 - All repositories (REPO records)
 - All media objects (OBJE records)
-- Events, places, citations, and notes`,
+- Events, places, citations, and notes
+
+JSON-LD output (--format jsonld) emits a single self-contained document
+with an inlined @context aligned with Schema.org (Person, Event, Place,
+CreativeWork, ArchiveOrganization, MediaObject) plus a glx: namespace for
+Citation, Relationship, and Assertion.`,
 	Example: `  # Export to GEDCOM 5.5.1 (default)
   glx export family-archive -o family.ged
 
@@ -201,6 +216,9 @@ The exported GEDCOM file will include:
   # Export to GEDCOM 7.0
   glx export family-archive -o family.ged --format 70
 
+  # Export to JSON-LD (Schema.org-aligned)
+  glx export family-archive -o family.jsonld --format jsonld
+
   # Export with verbose output
   glx export family-archive -o family.ged --verbose`,
 	Args: cobra.ExactArgs(1),
@@ -208,15 +226,20 @@ The exported GEDCOM file will include:
 }
 
 func init() {
-	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output GEDCOM file path (required)")
-	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "GEDCOM version: 551 or 70")
+	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (required)")
+	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "Export format: 551, 70, or jsonld")
 	exportCmd.Flags().BoolVarP(&exportVerbose, "verbose", "v", false, "Verbose output")
 
 	_ = exportCmd.MarkFlagRequired("output")
 }
 
 func runExport(_ *cobra.Command, args []string) error {
-	return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose)
+	switch exportFormat {
+	case ExportFormatJSONLD:
+		return exportToJSONLD(args[0], exportOutput, exportVerbose)
+	default:
+		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose)
+	}
 }
 
 // ============================================================================
@@ -1369,6 +1392,73 @@ func init() {
 
 func runMerge(_ *cobra.Command, args []string) error {
 	return mergeArchives(args[0], mergeInto, mergePreview, mergeThreshold)
+}
+
+// ============================================================================
+// Merge-Persons Command
+// ============================================================================
+
+var (
+	mergePersonsArchive       string
+	mergePersonsDryRun        bool
+	mergePersonsKeepNewest    bool
+	mergePersonsKeepOldest    bool
+	mergePersonsNotesStrategy string
+)
+
+var mergePersonsCmd = &cobra.Command{
+	Use:   "merge-persons <keep-id> <drop-id>",
+	Short: "Merge two person entities, keeping the first and folding in the second",
+	Long: `Consolidate two person entities into one. The keep-id is retained;
+the drop-id's properties, notes, and cross-references are folded into it,
+then the drop-id person file is removed.
+
+Property merging:
+  - Properties present only on drop are copied verbatim.
+  - Multi-value (list) properties are unioned with deep-equal deduplication.
+  - Single-value conflicts default to keep's value (recorded in the conflict
+    report). Pass --keep-newest or --keep-oldest to resolve dated conflicts
+    by date instead.
+
+Notes are combined per --notes-strategy (default: append).
+
+This is the natural follow-on to ` + "`glx duplicates`" + `: once you've identified
+that two person records are the same individual, this command consolidates
+them in a single atomic operation.`,
+	Example: `  # Merge person-jungk-1750 into person-juncker-1750
+  glx merge-persons person-juncker-1750 person-jungk-1750 --archive ./archive
+
+  # Preview the merge
+  glx merge-persons person-a person-b --archive ./archive --dry-run
+
+  # Resolve dated conflicts by picking the later entry
+  glx merge-persons person-a person-b --archive ./archive --keep-newest
+
+  # Replace keep's notes with drop's
+  glx merge-persons person-a person-b --archive ./archive --notes-strategy prefer-drop`,
+	Args: cobra.ExactArgs(2),
+	RunE: runMergePersons,
+}
+
+func init() {
+	mergePersonsCmd.Flags().StringVarP(&mergePersonsArchive, "archive", "a", ".", "Path to GLX archive")
+	mergePersonsCmd.Flags().BoolVar(&mergePersonsDryRun, "dry-run", false, "Show what would change without writing")
+	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepNewest, "keep-newest", false,
+		"For conflicting temporal properties, keep the entry with the later date")
+	mergePersonsCmd.Flags().BoolVar(&mergePersonsKeepOldest, "keep-oldest", false,
+		"For conflicting temporal properties, keep the entry with the earlier date")
+	mergePersonsCmd.Flags().StringVar(&mergePersonsNotesStrategy, "notes-strategy", "append",
+		"How to combine notes: append | prefer-keep | prefer-drop")
+}
+
+func runMergePersons(_ *cobra.Command, args []string) error {
+	opts := glxlib.MergePersonsOptions{
+		NotesStrategy: glxlib.NotesStrategy(mergePersonsNotesStrategy),
+		KeepNewest:    mergePersonsKeepNewest,
+		KeepOldest:    mergePersonsKeepOldest,
+	}
+
+	return mergePersons(mergePersonsArchive, args[0], args[1], opts, mergePersonsDryRun)
 }
 
 // ============================================================================

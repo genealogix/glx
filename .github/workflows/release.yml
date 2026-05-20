@@ -6,8 +6,7 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-beta*'
 
-permissions:
-  contents: write
+permissions: read-all
 
 env:
   GIT_CONFIG_COUNT: 2
@@ -21,6 +20,9 @@ jobs:
     name: Build and Release
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write   # OIDC for cosign keyless signing
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -35,6 +37,11 @@ jobs:
 
       - name: Download Go modules
         run: go mod download
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7

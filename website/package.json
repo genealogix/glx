@@ -20,9 +20,9 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@eslint/js": "^10.0.0",
-    "eslint": "^10.2.0",
-    "eslint-plugin-vue": "^10.9.0",
-    "globals": "^17.5.0",
+    "eslint": "^10.4.0",
+    "eslint-plugin-vue": "^10.9.1",
+    "globals": "^17.6.0",
     "prettier": "^3.8.3",
     "vitepress": "^2.0.0-alpha.17"
   }

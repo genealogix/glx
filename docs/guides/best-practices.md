@@ -39,11 +39,11 @@ assertions:
       event: event-john-birth
     property: date
     value: "1850-01-15"
-    confidence: high  # high, medium, low, or disputed
+    confidence: high  # high, medium, or low
     citations: [citation-birth-cert, citation-baptism]
 ```
 
-Use `confidence` to express certainty and `status` to track research state (`proven`, `speculative`, `disproven`). These are independent — `confidence: high` + `status: speculative` means "I'm fairly sure, but haven't verified yet." See [Assertion Entity](/specification/4-entity-types/assertion#status).
+Use `confidence` to express certainty and `status` to track research state (`proven`, `speculative`, `disputed`, `disproven`, `unresearched`). These are independent — `confidence: high` + `status: speculative` means "I'm fairly sure, but haven't verified yet"; `status: unresearched` flags claims that haven't been investigated at all. See [Assertion Entity](/specification/4-entity-types/assertion#status).
 
 ### Transcribe Key Evidence
 

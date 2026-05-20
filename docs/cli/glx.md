@@ -23,6 +23,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 
 ### SEE ALSO
 
+* [glx add](/cli/glx_add)	 - Create entities (person, place, event, …) from CLI flags
 * [glx analyze](/cli/glx_analyze)	 - Analyze archive for research gaps, evidence quality, and consistency
 * [glx ancestors](/cli/glx_ancestors)	 - Show ancestor tree for a person
 * [glx census](/cli/glx_census)	 - Bulk census record tools
@@ -33,12 +34,13 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx descendants](/cli/glx_descendants)	 - Show descendant tree for a person
 * [glx diff](/cli/glx_diff)	 - Compare two GLX archive states
 * [glx duplicates](/cli/glx_duplicates)	 - Detect potential duplicate persons in a GLX archive
-* [glx export](/cli/glx_export)	 - Export a GLX archive to GEDCOM format
-* [glx import](/cli/glx_import)	 - Import a GEDCOM file to GLX format
+* [glx export](/cli/glx_export)	 - Export a GLX archive to GEDCOM or JSON-LD format
+* [glx import](/cli/glx_import)	 - Import a GEDCOM or GEDZIP file to GLX format
 * [glx init](/cli/glx_init)	 - Initialize a new GENEALOGIX archive in the specified directory
 * [glx join](/cli/glx_join)	 - Join a multi-file GLX archive into single-file format
 * [glx link](/cli/glx_link)	 - Create a FamilySearch citation from an ARK
 * [glx merge](/cli/glx_merge)	 - Merge another archive into the destination archive
+* [glx merge-persons](/cli/glx_merge-persons)	 - Merge two person entities, keeping the first and folding in the second
 * [glx migrate](/cli/glx_migrate)	 - Migrate an archive to the current format
 * [glx path](/cli/glx_path)	 - Find the shortest relationship path between two people
 * [glx places](/cli/glx_places)	 - Analyze places for ambiguity and completeness

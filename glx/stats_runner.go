@@ -93,7 +93,6 @@ func printConfidenceDistribution(archive *glxlib.GLXFile) {
 		glxlib.ConfidenceLevelHigh,
 		glxlib.ConfidenceLevelMedium,
 		glxlib.ConfidenceLevelLow,
-		glxlib.ConfidenceLevelDisputed,
 	}
 	seen := make(map[string]bool)
 	for _, level := range standardOrder {

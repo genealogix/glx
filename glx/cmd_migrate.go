@@ -23,7 +23,10 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-var migrateRenameGenderToSex bool
+var (
+	migrateRenameGenderToSex          bool
+	migrateConfidenceDisputedToStatus bool
+)
 
 var migrateCmd = &cobra.Command{
 	Use:   "migrate [archive]",
@@ -38,7 +41,13 @@ For each person with deprecated properties:
 
 With --rename-gender-to-sex, also renames the legacy ` + "`gender`" + ` person
 property (and any related assertions and inlined vocabulary entries) to
-` + "`sex`" + `, completing the two-field-model split introduced in #528.`,
+` + "`sex`" + `, completing the two-field-model split introduced in #528.
+
+With --confidence-disputed-to-status, moves the legacy ` + "`confidence: disputed`" + `
+signal to ` + "`status: disputed`" + `, separating evidence quality (confidence) from
+conclusion state (status) per #516. Confidence is cleared on each touched
+assertion; existing non-disputed statuses are preserved with a warning so the
+user can reconcile by hand.`,
 	Example: `  # Migrate a multi-file archive
   glx migrate ./my-archive
 
@@ -46,7 +55,10 @@ property (and any related assertions and inlined vocabulary entries) to
   glx migrate archive.glx
 
   # Also rename legacy 'gender' person properties to 'sex'
-  glx migrate ./my-archive --rename-gender-to-sex`,
+  glx migrate ./my-archive --rename-gender-to-sex
+
+  # Also move legacy 'confidence: disputed' to 'status: disputed'
+  glx migrate ./my-archive --confidence-disputed-to-status`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMigrate,
 }
@@ -54,6 +66,8 @@ property (and any related assertions and inlined vocabulary entries) to
 func init() {
 	migrateCmd.Flags().BoolVar(&migrateRenameGenderToSex, "rename-gender-to-sex", false,
 		"Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)")
+	migrateCmd.Flags().BoolVar(&migrateConfidenceDisputedToStatus, "confidence-disputed-to-status", false,
+		"Move legacy 'confidence: disputed' to 'status: disputed' (evidence quality vs conclusion state, #516)")
 }
 
 func runMigrate(_ *cobra.Command, args []string) error {
@@ -100,6 +114,12 @@ func migrateArchive(archivePath string) error {
 		report.GenderRenameSkipped = genderReport.GenderRenameSkipped
 	}
 
+	if migrateConfidenceDisputedToStatus {
+		confidenceMigrationReport := migrateConfidenceDisputed(archive, os.Stderr)
+		report.ConfidenceDisputedConverted += confidenceMigrationReport.ConfidenceDisputedConverted
+		report.ConfidenceDisputedStatusConflicts += confidenceMigrationReport.ConfidenceDisputedStatusConflicts
+	}
+
 	// If the gender→sex rename was skipped, count any remaining legacy
 	// `gender:` person properties so the user knows whether the skip was
 	// benign (post-migration re-run, no legacy left) or worrying (manual
@@ -128,7 +148,8 @@ func migrateArchive(archivePath string) error {
 		report.PropertiesRemoved == 0 && report.AssertionsMigrated == 0 &&
 		report.VocabEntriesRemoved == 0 &&
 		report.PropertiesRenamed == 0 && report.AssertionsRenamed == 0 &&
-		report.VocabEntriesRenamed == 0 {
+		report.VocabEntriesRenamed == 0 &&
+		report.ConfidenceDisputedConverted == 0 {
 		if report.GenderRenameSkipped {
 			if legacyGenderRemaining > 0 {
 				noun, verb := "properties", "remain"
@@ -180,6 +201,13 @@ func migrateArchive(archivePath string) error {
 			fmt.Printf("  %-27s%d\n", "Gender→sex properties:", report.PropertiesRenamed)
 			fmt.Printf("  %-27s%d\n", "Gender→sex assertions:", report.AssertionsRenamed)
 			fmt.Printf("  %-27s%d\n", "Gender→sex vocab entries:", report.VocabEntriesRenamed)
+		}
+	}
+	if migrateConfidenceDisputedToStatus {
+		fmt.Printf("  %-27s%d\n", "Confidence→status moves:", report.ConfidenceDisputedConverted)
+		if report.ConfidenceDisputedStatusConflicts > 0 {
+			fmt.Printf("  %-27s%d (existing status preserved; review warnings)\n",
+				"  status conflicts:", report.ConfidenceDisputedStatusConflicts)
 		}
 	}
 
