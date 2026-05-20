@@ -26,7 +26,8 @@ import (
 
 // File extension constants
 const (
-	FileExtGLX = ".glx"
+	FileExtGLX    = ".glx"
+	FileExtGEDZIP = ".gdz"
 )
 
 // File permission constants
@@ -47,6 +48,12 @@ func ensureGLXExtension(path string) string {
 // isGLXFile checks if a file has the .glx extension.
 func isGLXFile(filename string) bool {
 	return filepath.Ext(filename) == FileExtGLX
+}
+
+// isGEDZIPPath reports whether the given file path has the .gdz extension.
+// Match is case-insensitive because user-supplied filenames vary by platform.
+func isGEDZIPPath(p string) bool {
+	return strings.EqualFold(filepath.Ext(p), FileExtGEDZIP)
 }
 
 // fileExists checks if a file exists
