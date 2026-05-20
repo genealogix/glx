@@ -1473,3 +1473,51 @@ func TestValidateStandardSexAndGenderVocabs(t *testing.T) {
 	assert.Empty(t, result.Warnings,
 		"standard vocabularies should validate 'sex: not_recorded' and 'gender: nonbinary' without warnings")
 }
+
+// TestValidateStandardLegalStatusesVocab guards the legal_statuses registration
+// in buildVocabularyMaps. Dropping VocabLegalStatuses from validation.go would
+// flip the "value not found in legal_statuses" warning into "vocabulary
+// 'legal_statuses' not loaded", and the canonical-value case would also start
+// producing the not-loaded warning — both assertions below would fail.
+func TestValidateStandardLegalStatusesVocab(t *testing.T) {
+	makeArchive := func(legalStatus string) *GLXFile {
+		var archive GLXFile
+		if err := LoadStandardVocabulariesIntoGLX(&archive); err != nil {
+			t.Fatalf("LoadStandardVocabulariesIntoGLX: %v", err)
+		}
+		archive.Persons = map[string]*Person{
+			"person-thomas": {},
+			"person-jenny":  {},
+		}
+		archive.Relationships = map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeEnslavement,
+				Participants: []Participant{
+					{Person: "person-thomas", Role: ParticipantRoleEnslaver},
+					{Person: "person-jenny", Role: ParticipantRoleEnslavedPerson},
+				},
+				Properties: map[string]any{"legal_status": legalStatus},
+			},
+		}
+
+		return &archive
+	}
+
+	t.Run("canonical value accepted", func(t *testing.T) {
+		result := makeArchive("chattel").Validate()
+		assert.Empty(t, result.Errors)
+		assert.Empty(t, result.Warnings,
+			"legal_status: chattel should validate against standard legal_statuses vocabulary")
+	})
+
+	t.Run("unknown value warns", func(t *testing.T) {
+		result := makeArchive("foobar").Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		warn := result.Warnings[0]
+		assert.Equal(t, "relationships", warn.SourceType)
+		assert.Equal(t, "rel-1", warn.SourceID)
+		assert.Equal(t, "properties.legal_status", warn.Field)
+		assert.Contains(t, warn.Message, "'foobar' not found in legal_statuses")
+	})
+}
