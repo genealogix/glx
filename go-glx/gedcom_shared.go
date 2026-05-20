@@ -148,6 +148,9 @@ func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event
 			event.Date = parseGEDCOMDate(sub.Value)
 
 		case GedcomTagPlac:
+			if warnIfNonGeographicPLAC(sub, conv) {
+				continue
+			}
 			hierarchy := parseGEDCOMPlace(sub.Value)
 			if hierarchy != nil {
 				// Extract coordinates from MAP/LATI/LONG subrecords
