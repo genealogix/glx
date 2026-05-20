@@ -1,0 +1,22 @@
+# Standard Legal Statuses
+# This file defines the standard legal-status values for relationships,
+# primarily for distinguishing forms of coerced labor on the enslavement
+# relationship type. Archives can extend this with custom values by adding
+# additional entries.
+
+legal_statuses:
+  chattel:
+    label: "Chattel Slavery"
+    description: "Lifelong, hereditary enslavement with the enslaved person treated as transferable property"
+
+  indentured:
+    label: "Indentured Servitude"
+    description: "Fixed-term labor contract; may have been entered voluntarily or under coercion"
+
+  debt_bondage:
+    label: "Debt Bondage"
+    description: "Servitude pledged against a debt, lasting until the debt is repaid"
+
+  apprenticeship:
+    label: "Apprenticeship"
+    description: "Trade-learning contract; in some jurisdictions used post-emancipation as a euphemism for continued enslavement of free children of color"
