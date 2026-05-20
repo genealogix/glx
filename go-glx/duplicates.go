@@ -25,16 +25,26 @@ import (
 
 // DuplicateSignal describes one scoring component for a duplicate pair.
 //
-// A signal with Weight > 0 contributes Weight*Score to the pair's total
-// (weighted-sum signal). A signal with Weight == 0 is a multiplicative gate:
-// it does not contribute to the sum, but its Score (in [0, 1]) multiplies the
-// final pair score and is only emitted when it actually fires (Score < 1).
+// A signal with Weight > 0 is a weighted-sum contributor. Its Weight*Score
+// participates in the pair total only when HasData is true; when HasData is
+// false (e.g. the dimension is absent on one or both persons), the dimension
+// drops out of both numerator and denominator so missing data does not
+// artificially deflate the pair's score (#716). A weighted-sum Score of 0
+// with HasData true is a real "compared and no match" signal (e.g. birth
+// years differ by >2) and is kept in the denominator.
+//
+// A signal with Weight == 0 is a multiplicative gate: it does not contribute
+// to the sum, but its Score (in [0, 1]) multiplies the renormalized pair
+// score and is only emitted when it actually fires (Score < 1). Gates ignore
+// HasData.
+//
 // Consumers reconstructing a pair score from signals must handle both shapes.
 type DuplicateSignal struct {
-	Name   string  `json:"name"`
-	Weight float64 `json:"weight"`
-	Score  float64 `json:"score"`
-	Detail string  `json:"detail"`
+	Name    string  `json:"name"`
+	Weight  float64 `json:"weight"`
+	Score   float64 `json:"score"`
+	Detail  string  `json:"detail"`
+	HasData bool    `json:"has_data"`
 }
 
 // DuplicatePair describes a potential duplicate person pair with a similarity score.
@@ -66,6 +76,17 @@ const (
 	weightDeathPlace   = 0.10
 	weightRelationship = 0.10
 	weightEvents       = 0.05
+)
+
+// Detail strings used when a scoring dimension reports HasData=false.
+const noDataDetail = "no data"
+
+// Year-similarity scores for the two graduated within-N-years buckets above
+// "exact match" (1.0). Promoted to named constants so the mnd linter doesn't
+// flag the literals when they appear inside multi-value returns.
+const (
+	yearSimWithin1Year  = 0.75
+	yearSimWithin2Years = 0.5
 )
 
 // Age-plausibility bounds. A person whose first documented year as role=parent
@@ -557,52 +578,67 @@ func generateCandidatePairs(archive *GLXFile, idx *duplicateIndex, personFilter 
 }
 
 // scorePair computes the similarity score between two persons.
+//
+// The pair total is a renormalized weighted average across the dimensions
+// that actually have data on both sides. Dimensions where HasData is false
+// drop out of both the numerator and the denominator, so a pair with only a
+// name match (and birth/death/place/etc. simply unrecorded) scores by the
+// fraction of name-similarity it shares, not by name-weight alone (#716).
+// A weighted-sum dimension that compared and disagreed (e.g. years differ
+// by >2) keeps HasData=true and contributes 0 to the numerator while
+// remaining in the denominator, which still penalizes real disagreement.
+// The age-plausibility gate, when emitted, multiplies the renormalized score.
 func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx *duplicateIndex) (float64, []DuplicateSignal) {
 	var signals []DuplicateSignal
-	var totalScore float64
 
 	// Name similarity
-	nameScore, nameDetail := scoreNameSimilarity(personA, personB)
-	signals = append(signals, DuplicateSignal{"Name similarity", weightName, nameScore, nameDetail})
-	totalScore += weightName * nameScore
+	nameScore, nameDetail, nameHas := scoreNameSimilarity(personA, personB)
+	signals = append(signals, DuplicateSignal{"Name similarity", weightName, nameScore, nameDetail, nameHas})
 
 	// Birth year and place
 	birthA := idx.personBirthEvent[idA]
 	birthB := idx.personBirthEvent[idB]
-	byScore, byDetail := scoreEventYearSimilarity(birthA, birthB)
-	signals = append(signals, DuplicateSignal{"Birth year", weightBirthYear, byScore, byDetail})
-	totalScore += weightBirthYear * byScore
+	byScore, byDetail, byHas := scoreEventYearSimilarity(birthA, birthB)
+	signals = append(signals, DuplicateSignal{"Birth year", weightBirthYear, byScore, byDetail, byHas})
 
-	bpScore, bpDetail := scoreEventPlaceSimilarity(birthA, birthB, archive)
-	signals = append(signals, DuplicateSignal{"Birth place", weightBirthPlace, bpScore, bpDetail})
-	totalScore += weightBirthPlace * bpScore
+	bpScore, bpDetail, bpHas := scoreEventPlaceSimilarity(birthA, birthB, archive)
+	signals = append(signals, DuplicateSignal{"Birth place", weightBirthPlace, bpScore, bpDetail, bpHas})
 
 	// Death year and place
 	deathA := idx.personDeathEvent[idA]
 	deathB := idx.personDeathEvent[idB]
-	dyScore, dyDetail := scoreEventYearSimilarity(deathA, deathB)
-	signals = append(signals, DuplicateSignal{"Death year", weightDeathYear, dyScore, dyDetail})
-	totalScore += weightDeathYear * dyScore
+	dyScore, dyDetail, dyHas := scoreEventYearSimilarity(deathA, deathB)
+	signals = append(signals, DuplicateSignal{"Death year", weightDeathYear, dyScore, dyDetail, dyHas})
 
-	dpScore, dpDetail := scoreEventPlaceSimilarity(deathA, deathB, archive)
-	signals = append(signals, DuplicateSignal{"Death place", weightDeathPlace, dpScore, dpDetail})
-	totalScore += weightDeathPlace * dpScore
+	dpScore, dpDetail, dpHas := scoreEventPlaceSimilarity(deathA, deathB, archive)
+	signals = append(signals, DuplicateSignal{"Death place", weightDeathPlace, dpScore, dpDetail, dpHas})
 
 	// Shared relationships
-	relScore, relDetail := scoreSharedRelationships(idA, idB, idx)
-	signals = append(signals, DuplicateSignal{"Shared relationships", weightRelationship, relScore, relDetail})
-	totalScore += weightRelationship * relScore
+	relScore, relDetail, relHas := scoreSharedRelationships(idA, idB, idx)
+	signals = append(signals, DuplicateSignal{"Shared relationships", weightRelationship, relScore, relDetail, relHas})
 
 	// Shared events
-	evScore, evDetail := scoreSharedEvents(idA, idB, idx)
-	signals = append(signals, DuplicateSignal{"Shared events", weightEvents, evScore, evDetail})
-	totalScore += weightEvents * evScore
+	evScore, evDetail, evHas := scoreSharedEvents(idA, idB, idx)
+	signals = append(signals, DuplicateSignal{"Shared events", weightEvents, evScore, evDetail, evHas})
+
+	// Renormalize across dimensions that have data on both sides.
+	var weightedSum, effectiveWeight float64
+	for _, sig := range signals {
+		if sig.HasData {
+			weightedSum += sig.Weight * sig.Score
+			effectiveWeight += sig.Weight
+		}
+	}
+	var totalScore float64
+	if effectiveWeight > 0 {
+		totalScore = weightedSum / effectiveWeight
+	}
 
 	// Age plausibility is a multiplicative gate, not a weighted-sum contributor:
 	// it can only zero an otherwise-passing pair, never lift one. Emit the signal
 	// only when it fires, so plausible pairs keep a clean breakdown.
 	if ageScore, ageDetail := scoreAgePlausibility(idA, idB, idx); ageScore < 1.0 {
-		signals = append(signals, DuplicateSignal{"Age plausibility", 0, ageScore, ageDetail})
+		signals = append(signals, DuplicateSignal{"Age plausibility", 0, ageScore, ageDetail, true})
 		totalScore *= ageScore
 	}
 
@@ -642,12 +678,15 @@ func implausibilityReason(parentID string, parentYear int, birthID string, birth
 	return ""
 }
 
-// scoreNameSimilarity compares two persons' names.
-func scoreNameSimilarity(personA, personB *Person) (float64, string) {
+// scoreNameSimilarity compares two persons' names. The third return is true
+// iff both persons have a non-empty display name (i.e. the comparison was
+// possible); a name-comparison that ran but found no overlap returns
+// (0, "no match", true) so the dimension still counts against the pair.
+func scoreNameSimilarity(personA, personB *Person) (float64, string, bool) {
 	nameA := PersonDisplayName(personA)
 	nameB := PersonDisplayName(personB)
 	if nameA == "" || nameB == "" {
-		return 0, "no name"
+		return 0, "no name", false
 	}
 
 	givenA, surnameA := ExtractNameFields(personA.Properties[PersonPropertyName])
@@ -687,7 +726,7 @@ func scoreNameSimilarity(personA, personB *Person) (float64, string) {
 		detail = "no match"
 	}
 
-	return score, detail
+	return score, detail, true
 }
 
 // splitFullName splits a simple "Given Surname" string into parts.
@@ -739,8 +778,11 @@ func compareGivenNames(a, b string) float64 {
 	return normalizedLevenshtein(a, b)
 }
 
-// scoreEventYearSimilarity compares years from two events.
-func scoreEventYearSimilarity(eventA, eventB *Event) (float64, string) {
+// scoreEventYearSimilarity compares years from two events. The third return
+// is true iff a year could be extracted from both events; a years-too-far-
+// apart result returns (0, "different", true) so the dimension still counts
+// against the pair (#716 — distinguishing "no data" from "mismatch").
+func scoreEventYearSimilarity(eventA, eventB *Event) (float64, string, bool) {
 	yearA, yearB := 0, 0
 	if eventA != nil {
 		yearA = ExtractFirstYear(string(eventA.Date))
@@ -750,7 +792,7 @@ func scoreEventYearSimilarity(eventA, eventB *Event) (float64, string) {
 	}
 
 	if yearA == 0 || yearB == 0 {
-		return 0, "no data"
+		return 0, noDataDetail, false
 	}
 
 	diff := yearA - yearB
@@ -760,18 +802,21 @@ func scoreEventYearSimilarity(eventA, eventB *Event) (float64, string) {
 
 	switch {
 	case diff == 0:
-		return 1.0, "exact match"
+		return 1.0, "exact match", true
 	case diff <= 1:
-		return 0.75, "within 1 year"
+		return yearSimWithin1Year, "within 1 year", true
 	case diff <= 2:
-		return 0.5, "within 2 years"
+		return yearSimWithin2Years, "within 2 years", true
 	default:
-		return 0, "different"
+		return 0, "different", true
 	}
 }
 
-// scoreEventPlaceSimilarity compares place references from two events.
-func scoreEventPlaceSimilarity(eventA, eventB *Event, archive *GLXFile) (float64, string) {
+// scoreEventPlaceSimilarity compares place references from two events. The
+// third return is true iff both events carry a non-empty PlaceID; a
+// different-place result returns (0, "different", true) so the dimension
+// still counts against the pair (#716).
+func scoreEventPlaceSimilarity(eventA, eventB *Event, archive *GLXFile) (float64, string, bool) {
 	placeA, placeB := "", ""
 	if eventA != nil {
 		placeA = eventA.PlaceID
@@ -781,7 +826,7 @@ func scoreEventPlaceSimilarity(eventA, eventB *Event, archive *GLXFile) (float64
 	}
 
 	if placeA == "" || placeB == "" {
-		return 0, "no data"
+		return 0, noDataDetail, false
 	}
 
 	if placeA == placeB {
@@ -791,18 +836,23 @@ func scoreEventPlaceSimilarity(eventA, eventB *Event, archive *GLXFile) (float64
 				placeName = p.Name
 			}
 		}
-		return 1.0, placeName
+
+		return 1.0, placeName, true
 	}
 
-	return 0, "different"
+	return 0, "different", true
 }
 
-// scoreSharedRelationships scores the overlap in related persons.
-func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, string) {
+// scoreSharedRelationships scores the overlap in related persons. The third
+// return is true iff both persons have at least one related peer; an empty-
+// overlap result with peers on both sides returns (0, "no overlap", true) so
+// the dimension still counts against the pair (a real "compared and found no
+// shared family" signal, vs. "we haven't recorded their family yet").
+func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, string, bool) {
 	peersA := idx.personRelPeers[idA]
 	peersB := idx.personRelPeers[idB]
 	if len(peersA) == 0 || len(peersB) == 0 {
-		return 0, "no data"
+		return 0, noDataDetail, false
 	}
 
 	var common int
@@ -813,7 +863,7 @@ func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, st
 	}
 
 	if common == 0 {
-		return 0, "no overlap"
+		return 0, "no overlap", true
 	}
 
 	maxPeers := len(peersA)
@@ -823,15 +873,18 @@ func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, st
 
 	score := float64(common) / float64(maxPeers)
 
-	return score, pluralize(common, "shared")
+	return score, pluralize(common, "shared"), true
 }
 
-// scoreSharedEvents scores the overlap in event participation.
-func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string) {
+// scoreSharedEvents scores the overlap in event participation. The third
+// return is true iff both persons participate in at least one event; an
+// empty-overlap result with events on both sides returns (0, "no overlap",
+// true) so the dimension still counts against the pair.
+func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string, bool) {
 	eventsA := idx.personEvents[idA]
 	eventsB := idx.personEvents[idB]
 	if len(eventsA) == 0 || len(eventsB) == 0 {
-		return 0, "no data"
+		return 0, noDataDetail, false
 	}
 
 	setB := make(map[string]bool, len(eventsB))
@@ -847,7 +900,7 @@ func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string) {
 	}
 
 	if common == 0 {
-		return 0, "no overlap"
+		return 0, "no overlap", true
 	}
 
 	maxEvents := len(eventsA)
@@ -857,7 +910,7 @@ func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string) {
 
 	score := float64(common) / float64(maxEvents)
 
-	return score, pluralize(common, "shared")
+	return score, pluralize(common, "shared"), true
 }
 
 func pluralize(count int, label string) string {
