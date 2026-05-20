@@ -75,6 +75,8 @@ const (
 	RelationshipTypeEmployment            = "employment"
 	RelationshipTypeEnslavement           = "enslavement"
 	RelationshipTypeRelative              = "relative"
+	RelationshipTypeAssociate             = "associate"
+	RelationshipTypeBoarder               = "boarder"
 )
 
 // Standard Participant Roles - from participant-roles.glx vocabulary
@@ -94,6 +96,11 @@ const (
 	ParticipantRoleSibling        = "sibling"
 	ParticipantRoleGodparent      = "godparent"
 	ParticipantRoleGodchild       = "godchild"
+	ParticipantRoleEnslaver       = "enslaver"
+	ParticipantRoleEnslavedPerson = "enslaved_person"
+	ParticipantRoleAssociate      = "associate"
+	ParticipantRoleHouseholdHead  = "household_head"
+	ParticipantRoleBoarder        = "boarder"
 )
 
 // Standard Person Property Names - commonly used properties on Person entities
@@ -129,12 +136,23 @@ const (
 
 // Common Property Names - used across multiple entity types
 const (
-	PropertySources      = "sources"
-	PropertyCitations    = "citations"
-	PropertyMedia        = "media"
-	PropertyNotes        = "notes"
-	PropertyAddress      = "address"
-	PropertyMarriageType = "marriage_type"
+	PropertySources          = "sources"
+	PropertyCitations        = "citations"
+	PropertyMedia            = "media"
+	PropertyNotes            = "notes"
+	PropertyAddress          = "address"
+	PropertyMarriageType     = "marriage_type"
+	PropertyGEDCOMExtensions = "gedcom_extensions" // Preserved GEDCOM 7.0 vendor and SCHMA-defined extension tags
+)
+
+// Extension Entry Keys - used inside the gedcom_extensions list.
+// These are the import↔export contract: import writes them in
+// recordToExtensionEntry, export reads them in extensionEntryToRecord, and
+// any drift breaks round-trip silently.
+const (
+	ExtensionEntryTag        = "tag"
+	ExtensionEntryValue      = "value"
+	ExtensionEntrySubrecords = "subrecords"
 )
 
 // MediaFilesDir is the directory within an archive where media files are stored.
@@ -343,10 +361,9 @@ const (
 
 // Standard Confidence Levels - from confidence-levels.glx vocabulary
 const (
-	ConfidenceLevelHigh     = "high"     // Multiple high-quality sources agree, minimal uncertainty
-	ConfidenceLevelMedium   = "medium"   // Some evidence supports conclusion, but conflicts or gaps exist
-	ConfidenceLevelLow      = "low"      // Limited evidence, significant uncertainty
-	ConfidenceLevelDisputed = "disputed" // Multiple sources conflict, resolution unclear
+	ConfidenceLevelHigh   = "high"   // Multiple high-quality sources agree, minimal uncertainty
+	ConfidenceLevelMedium = "medium" // Some evidence supports conclusion, but conflicts or gaps exist
+	ConfidenceLevelLow    = "low"    // Limited evidence, significant uncertainty
 )
 
 // Standard Source Types - from source-types.glx vocabulary
@@ -422,6 +439,7 @@ const (
 	VocabGenderTypes       = "gender_types"
 	VocabStudyTypes        = "study_types"
 	VocabStudyStatuses     = "study_statuses"
+	VocabLegalStatuses     = "legal_statuses"
 )
 
 // Standard Study Types - from study-types.glx vocabulary

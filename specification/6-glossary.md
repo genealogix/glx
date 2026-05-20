@@ -48,9 +48,9 @@ The process of evaluating multiple sources with different conclusions and determ
 
 ### Confidence Level
 
-An assessment of how certain a conclusion is based on available evidence. Common levels include: high, medium, low, disputed.
+An assessment of how certain a conclusion is based on available evidence. Common levels include: high, medium, low. Disputed conclusions — where sources conflict — are tracked via the assertion `status` field rather than as a confidence level.
 
-> **See Also:** [Confidence Levels Vocabulary](4-entity-types/vocabularies#confidence-levels-vocabulary)
+> **See Also:** [Confidence Levels Vocabulary](4-entity-types/vocabularies#confidence-levels-vocabulary), [Assertion → status](4-entity-types/assertion#status)
 
 ### Corroboration
 

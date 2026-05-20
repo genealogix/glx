@@ -23,10 +23,13 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// GEDCOM version format constants for the --format flag
+// Export format constants for the --format flag. GEDCOM versions and the
+// JSON-LD format share the same flag; the export dispatcher in
+// cli_commands.go routes on this value.
 const (
-	ExportFormat551 = "551"
-	ExportFormat70  = "70"
+	ExportFormat551    = "551"
+	ExportFormat70     = "70"
+	ExportFormatJSONLD = "jsonld"
 )
 
 // exportToGEDCOM loads a GLX archive and exports it to GEDCOM format
@@ -88,7 +91,7 @@ func parseGEDCOMVersion(format string) (glxlib.GEDCOMVersion, error) {
 	case ExportFormat70, "7.0":
 		return glxlib.GEDCOM70, nil
 	default:
-		return glxlib.GEDCOMUnknown, fmt.Errorf("%w: %s (use '551' or '70')", ErrInvalidExportFormat, format)
+		return glxlib.GEDCOMUnknown, fmt.Errorf("%w: %s (use '551', '70', or 'jsonld')", ErrInvalidExportFormat, format)
 	}
 }
 

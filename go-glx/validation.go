@@ -95,6 +95,7 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
 	result.Vocabularies[VocabStudyTypes] = buildIDSet(glx.StudyTypes)
 	result.Vocabularies[VocabStudyStatuses] = buildIDSet(glx.StudyStatuses)
+	result.Vocabularies[VocabLegalStatuses] = buildIDSet(glx.LegalStatuses)
 }
 
 // buildPropertyVocabMaps builds maps of property vocabularies.

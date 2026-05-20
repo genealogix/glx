@@ -21,7 +21,7 @@ For installation instructions, see [`glx/README.md`](https://github.com/genealog
 ### Import & Export
 
 - [`glx import`](/cli/glx_import) — import a GEDCOM file
-- [`glx export`](/cli/glx_export) — export to GEDCOM
+- [`glx export`](/cli/glx_export) — export to GEDCOM or Schema.org-aligned JSON-LD
 
 ### Exploration
 

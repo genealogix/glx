@@ -210,6 +210,14 @@
       },
       "additionalProperties": false
     },
+    "legal_statuses": {
+      "type": "object",
+      "description": "Legal-status vocabulary (forms of coerced labor; primarily for the enslavement relationship type)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/legal-statuses.schema.json" }
+      },
+      "additionalProperties": false
+    },
     "person_properties": {
       "type": "object",
       "description": "Person property vocabulary",

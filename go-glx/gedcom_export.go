@@ -175,12 +175,12 @@ type ExportContext struct {
 	PersonEvents map[string][]string
 
 	// Reconstructed family records
-	Families     []*ExportFamily
+	Families      []*ExportFamily
 	FamilyXRefMap map[string]string // relationship ID -> family XREF
 
 	// Person-to-family reverse maps for FAMS/FAMC back-references
-	PersonSpouseFamilies map[string][]string          // person ID -> family XRefs where spouse
-	PersonChildFamilies  map[string][]childFamilyRef  // person ID -> family refs where child
+	PersonSpouseFamilies map[string][]string         // person ID -> family XRefs where spouse
+	PersonChildFamilies  map[string][]childFamilyRef // person ID -> family refs where child
 
 	// PersonPropertyAssertions maps personID -> property -> assertions
 	// Used to export SOUR on NAME, OCCU, RESI, etc. from assertion evidence
@@ -208,16 +208,30 @@ type ExportResult struct {
 	Version    string
 }
 
-// ExportStatistics tracks export metrics.
+// ExportStatistics tracks export metrics. Which fields are populated depends
+// on the target format:
+//
+//   - PersonsExported, SourcesExported, RepositoriesExported, MediaExported,
+//     EventsProcessed, PlacesResolved are populated by every exporter.
+//   - FamiliesExported is GEDCOM-specific and counts reconstructed FAM
+//     records; JSON-LD leaves it at zero and reports relationships under
+//     RelationshipsExported instead.
+//   - CitationsExported, RelationshipsExported, AssertionsExported are
+//     populated by exporters that emit those entity types directly
+//     (JSON-LD); GEDCOM folds them into other records and leaves the
+//     counters at zero.
 type ExportStatistics struct {
-	PersonsExported      int
-	FamiliesExported     int
-	SourcesExported      int
-	RepositoriesExported int
-	MediaExported        int
-	EventsProcessed      int
-	PlacesResolved       int
-	Warnings             []ExportWarning
+	PersonsExported       int
+	FamiliesExported      int
+	SourcesExported       int
+	RepositoriesExported  int
+	MediaExported         int
+	EventsProcessed       int
+	PlacesResolved        int
+	CitationsExported     int
+	RelationshipsExported int
+	AssertionsExported    int
+	Warnings              []ExportWarning
 }
 
 // ExportWarning represents a warning during export.
@@ -454,4 +468,56 @@ func (expCtx *ExportContext) addExportWarning(entityType, entityID, message stri
 		EntityID:   entityID,
 		Message:    message,
 	})
+}
+
+// exportExtensionTags reconstructs GEDCOM records from an entity's
+// gedcom_extensions list, mirroring the recursive shape produced by
+// recordToExtensionEntry on import. Returns nil when the property is
+// missing, malformed, or yields no usable entries.
+func exportExtensionTags(props map[string]any) []*GEDCOMRecord {
+	raw, ok := props[PropertyGEDCOMExtensions].([]any)
+	if !ok {
+		return nil
+	}
+
+	records := make([]*GEDCOMRecord, 0, len(raw))
+	for _, item := range raw {
+		if rec := extensionEntryToRecord(item); rec != nil {
+			records = append(records, rec)
+		}
+	}
+
+	return records
+}
+
+// extensionEntryToRecord converts a single extension entry (and its
+// subrecords, recursively) back into a GEDCOMRecord. Returns nil for
+// malformed entries (missing tag, wrong types) so partial corruption
+// doesn't abort the export.
+func extensionEntryToRecord(item any) *GEDCOMRecord {
+	entry, ok := item.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	tag, _ := entry[ExtensionEntryTag].(string)
+	if tag == "" {
+		return nil
+	}
+
+	rec := &GEDCOMRecord{Tag: tag}
+
+	if value, ok := entry[ExtensionEntryValue].(string); ok {
+		rec.Value = value
+	}
+
+	if subs, ok := entry[ExtensionEntrySubrecords].([]any); ok {
+		for _, sub := range subs {
+			if subRec := extensionEntryToRecord(sub); subRec != nil {
+				rec.SubRecords = append(rec.SubRecords, subRec)
+			}
+		}
+	}
+
+	return rec
 }

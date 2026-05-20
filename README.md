@@ -171,7 +171,7 @@ The `glx` CLI groups its commands into archive management, import/export, explor
 ### Import & Export
 
 - `glx import` — import a GEDCOM file
-- `glx export` — export to GEDCOM
+- `glx export` — export to GEDCOM or Schema.org-aligned JSON-LD
 
 ### Exploration
 

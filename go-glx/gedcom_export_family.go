@@ -353,6 +353,9 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 					Value: note,
 				})
 			}
+
+			// Preserved FAM-level extension tags from import round-trip
+			record.SubRecords = append(record.SubRecords, exportExtensionTags(rel.Properties)...)
 		}
 	}
 

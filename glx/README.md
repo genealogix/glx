@@ -7,8 +7,9 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 ## Features
 
 - ✅ **Initialize Archives** - Create new single-file or multi-file genealogy archives
-- 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files to GLX format
+- 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
+- 🌐 **JSON-LD Export** - Export GLX archives as Schema.org-aligned JSON-LD for linked-data interop
 - 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
@@ -26,6 +27,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
 - 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
+- ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting

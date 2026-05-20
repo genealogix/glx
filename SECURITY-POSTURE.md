@@ -6,7 +6,7 @@ layout: doc
 
 # Security Posture
 
-> As of **2026-05-07**, GLX self-attests to the [OpenSSF OSPS Baseline](https://baseline.openssf.org/) version **2026.02.19** at **Level 1 (foundational)**, with most **Level 2 (operationally mature)** controls also met. Outstanding gaps are listed below and tracked as open issues.
+> As of **2026-05-19**, GLX self-attests to the [OpenSSF OSPS Baseline](https://baseline.openssf.org/) version **2026.02.19** at **Level 1 (foundational)**, with most **Level 2 (operationally mature)** controls also met. Outstanding gaps are listed below and tracked as open issues.
 
 This document is the public-facing companion to [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md). SECURITY.md tells you how to *report* a vulnerability; this file tells you how the project handles supply-chain and process risk so adopters can make informed decisions about depending on GLX.
 
@@ -46,6 +46,7 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 
 | Control | Status | Evidence |
 |---|---|---|
+| Release artifact signing | ✓ | [`.goreleaser.yml`](https://github.com/genealogix/glx/blob/main/.goreleaser.yml) signs `checksums.txt` with cosign keyless (Sigstore / OIDC) at release time, publishing `checksums.txt.sigstore.json` alongside the manifest. Signing the checksum manifest transitively covers every release artifact via its SHA-256. Verification (the `--certificate-*` flags constrain which OIDC identity the Fulcio cert was issued to and which OIDC provider issued the underlying token, binding the signature to this repo's release workflow — without them, `verify-blob` would still validate the Fulcio chain, signature, and Rekor inclusion proof but would accept *any* valid keyless signature from any workflow): `cosign verify-blob --bundle checksums.txt.sigstore.json --certificate-identity-regexp '^https://github\.com/genealogix/glx/\.github/workflows/release\.yml@refs/tags/' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' checksums.txt`. ([#387](https://github.com/genealogix/glx/issues/387)) |
 | SBOM with compiled releases | ☐ | Tracked in [#269](https://github.com/genealogix/glx/issues/269) — GoReleaser v2 native SBOM via `sboms:` config |
 | Build provenance / SLSA attestations | ☐ | Tracked in [#256](https://github.com/genealogix/glx/issues/256) |
 
@@ -73,4 +74,4 @@ If you need an explicit statement for procurement or audit purposes that does no
 
 - **Review cadence**: this document is reviewed at every minor release, when any tracked gap (#424, #269, #256) closes, and when a new OSPS Baseline version is published.
 - **Pinned Baseline version**: 2026.02.19. Re-review on each new Baseline release to incorporate added or changed controls.
-- **Last reviewed**: 2026-05-07.
+- **Last reviewed**: 2026-05-19.

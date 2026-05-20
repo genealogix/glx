@@ -377,6 +377,9 @@ func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
 	if len(glx.StudyStatuses) == 0 {
 		glx.StudyStatuses = std.StudyStatuses
 	}
+	if len(glx.LegalStatuses) == 0 {
+		glx.LegalStatuses = std.LegalStatuses
+	}
 	if len(glx.PersonProperties) == 0 {
 		glx.PersonProperties = std.PersonProperties
 	}
