@@ -27,13 +27,15 @@ import (
 
 // gedzipGedcomEntry is the canonical name of the GEDCOM file inside a GEDZIP
 // archive, as defined by the GEDZIP specification.
+const maxGEDZIPEntryBytes int64 = 512 << 20 // 512 MiB safety cap per extracted entry
 const gedzipGedcomEntry = "gedcom.ged"
 
-// maxGEDZIPEntries caps the per-archive entry count to prevent inode/syscall
-// DoS from archives with millions of zero-byte entries. The largest plausible
-// genealogy archive (a 100k-person tree with several media items per person)
-// would still fit comfortably. Declared as var (not const) so tests can lower
-// the cap without building a 100k-entry fixture.
+// maxGEDZIPEntries is a security limit on per-archive entry count to mitigate
+// inode/syscall exhaustion DoS from archives containing huge numbers of tiny
+// (including zero-byte) entries. The 100k threshold is intentionally high
+// enough for very large legitimate genealogy datasets, while still bounding
+// extraction work. Declared as var (not const) so tests can lower the cap
+// without building a 100k-entry fixture.
 var maxGEDZIPEntries = 100_000
 
 // importGEDZIP extracts a .gdz archive into a temporary directory and delegates
@@ -216,14 +218,19 @@ func writeZipEntry(f *zip.File, destPath string) error {
 		return fmt.Errorf("creating destination file for %q: %w", f.Name, err)
 	}
 
-	// #nosec G110 -- decompressed-size cap is intentionally deferred; tracked in #775
-	_, copyErr := io.Copy(dst, src)
+	limitedSrc := io.LimitReader(src, maxGEDZIPEntryBytes+1)
+	written, copyErr := io.Copy(dst, limitedSrc)
 	closeErr := dst.Close()
 
 	if copyErr != nil {
 		_ = os.Remove(destPath)
 
 		return fmt.Errorf("extracting zip entry %q: %w", f.Name, copyErr)
+	}
+	if written > maxGEDZIPEntryBytes {
+		_ = os.Remove(destPath)
+
+		return fmt.Errorf("extracting zip entry %q: decompressed data exceeds limit (%d bytes)", f.Name, maxGEDZIPEntryBytes)
 	}
 	if closeErr != nil {
 		_ = os.Remove(destPath)

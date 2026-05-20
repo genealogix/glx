@@ -54,6 +54,16 @@ type passthroughWriteCloser struct{ io.Writer }
 
 func (passthroughWriteCloser) Close() error { return nil }
 
+type repeatedByteReader struct{ b byte }
+
+func (r repeatedByteReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = r.b
+	}
+
+	return len(p), nil
+}
+
 // minimalGEDCOM7 is a self-contained GEDCOM 7.0 fixture used by tests that
 // only need to assert "import succeeded and a person came through".
 const minimalGEDCOM7 = `0 HEAD
@@ -391,6 +401,33 @@ func TestImportGEDZIP_RejectsArchiveExceedingEntryLimit(t *testing.T) {
 
 	err := importGEDCOM(gdz, filepath.Join(t.TempDir(), "archive"), FormatMulti, true, false, defaultShowFirstErrors)
 	require.ErrorIs(t, err, ErrGEDZIPTooManyEntries)
+}
+
+func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
+	zipPath := filepath.Join(t.TempDir(), "oversized.gdz")
+	f, err := os.Create(filepath.Clean(zipPath))
+	require.NoError(t, err)
+
+	zw := zip.NewWriter(f)
+	w, err := zw.Create("media/huge.bin")
+	require.NoError(t, err)
+	_, err = io.CopyN(w, repeatedByteReader{b: 'A'}, maxGEDZIPEntryBytes+1)
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	zr, err := zip.OpenReader(filepath.Clean(zipPath))
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+	require.Len(t, zr.File, 1)
+
+	destPath := filepath.Join(t.TempDir(), "huge.bin")
+	err = writeZipEntry(zr.File[0], destPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "decompressed data exceeds limit")
+
+	_, statErr := os.Stat(destPath)
+	require.True(t, os.IsNotExist(statErr), "oversized extracted file should be removed")
 }
 
 func TestImportGEDZIP_MkdirAllFailsWhenFileOccupiesDirectoryPath(t *testing.T) {
