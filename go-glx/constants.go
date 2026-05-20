@@ -94,6 +94,8 @@ const (
 	ParticipantRoleSibling        = "sibling"
 	ParticipantRoleGodparent      = "godparent"
 	ParticipantRoleGodchild       = "godchild"
+	ParticipantRoleEnslaver       = "enslaver"
+	ParticipantRoleEnslavedPerson = "enslaved_person"
 )
 
 // Standard Person Property Names - commonly used properties on Person entities
@@ -420,6 +422,7 @@ const (
 	VocabSourceTypes       = "source_types"
 	VocabSexTypes          = "sex_types"
 	VocabGenderTypes       = "gender_types"
+	VocabLegalStatuses     = "legal_statuses"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile
