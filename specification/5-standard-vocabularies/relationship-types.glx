@@ -80,7 +80,17 @@ relationship_types:
 
   enslavement:
     label: "Enslavement"
-    description: "Enslaver-enslaved relationship"
+    description: |
+      Enslaver-enslaved relationship. Model each distinct enslaver as a
+      separate relationship bounded by start_event/end_event (e.g. sale,
+      inheritance, manumission). Children born to enslaved mothers were
+      legally enslaved at birth — model with a parent_child relationship to
+      the mother plus an enslavement relationship to her enslaver, both
+      citing the same source. Use the legal_status relationship property
+      to distinguish chattel slavery, indentured servitude, debt bondage,
+      and apprenticeship-as-enslavement. See the Enslavement Relationship
+      section in specification/4-entity-types/relationship.md for full
+      usage patterns and references to scholarly vocabularies.
     # No direct GEDCOM equivalent
 
   relative:

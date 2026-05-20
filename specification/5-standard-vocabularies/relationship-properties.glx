@@ -53,3 +53,13 @@ relationship_properties:
         label: "Suffix"
         description: "Generational suffix (Jr., Sr., III)"
 
+  legal_status:
+    label: "Legal Status"
+    description: |
+      Legal classification of the relationship. Primarily used on
+      enslavement relationships to distinguish chattel slavery, indentured
+      servitude, debt bondage, and apprenticeship-as-enslavement. Values
+      are validated against the legal_statuses vocabulary; archives may
+      extend that vocabulary with custom values.
+    vocabulary_type: legal_statuses
+
