@@ -96,6 +96,8 @@ const (
 	ParticipantRoleSibling        = "sibling"
 	ParticipantRoleGodparent      = "godparent"
 	ParticipantRoleGodchild       = "godchild"
+	ParticipantRoleEnslaver       = "enslaver"
+	ParticipantRoleEnslavedPerson = "enslaved_person"
 	ParticipantRoleAssociate      = "associate"
 	ParticipantRoleHouseholdHead  = "household_head"
 	ParticipantRoleBoarder        = "boarder"
@@ -134,12 +136,23 @@ const (
 
 // Common Property Names - used across multiple entity types
 const (
-	PropertySources      = "sources"
-	PropertyCitations    = "citations"
-	PropertyMedia        = "media"
-	PropertyNotes        = "notes"
-	PropertyAddress      = "address"
-	PropertyMarriageType = "marriage_type"
+	PropertySources          = "sources"
+	PropertyCitations        = "citations"
+	PropertyMedia            = "media"
+	PropertyNotes            = "notes"
+	PropertyAddress          = "address"
+	PropertyMarriageType     = "marriage_type"
+	PropertyGEDCOMExtensions = "gedcom_extensions" // Preserved GEDCOM 7.0 vendor and SCHMA-defined extension tags
+)
+
+// Extension Entry Keys - used inside the gedcom_extensions list.
+// These are the import↔export contract: import writes them in
+// recordToExtensionEntry, export reads them in extensionEntryToRecord, and
+// any drift breaks round-trip silently.
+const (
+	ExtensionEntryTag        = "tag"
+	ExtensionEntryValue      = "value"
+	ExtensionEntrySubrecords = "subrecords"
 )
 
 // MediaFilesDir is the directory within an archive where media files are stored.
@@ -424,6 +437,7 @@ const (
 	VocabSourceTypes       = "source_types"
 	VocabSexTypes          = "sex_types"
 	VocabGenderTypes       = "gender_types"
+	VocabLegalStatuses     = "legal_statuses"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile
