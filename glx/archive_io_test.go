@@ -1102,4 +1102,99 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("preserves media/files binaries across the swap", func(t *testing.T) {
+		// The serializer writes Media entity YAML but never emits anything
+		// into media/files/. Without the binary-preservation step the
+		// safe-write swap would delete every pre-existing media binary —
+		// see genealogix/glx#593.
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
+			t.Fatal(err)
+		}
+
+		// Seed pre-existing binaries
+		mediaFilesDir := filepath.Join(archiveDir, "media", "files")
+		if err := os.MkdirAll(mediaFilesDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		binaries := map[string][]byte{
+			"photo.jpg":     []byte("JPEG-bytes-1"),
+			"document.pdf":  []byte("PDF-bytes-1"),
+			"nested-ok.bin": []byte("any-bytes"),
+		}
+		for name, content := range binaries {
+			if err := os.WriteFile(filepath.Join(mediaFilesDir, name), content, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		// Trigger a safe write
+		if err := safeWriteMultiFileArchive(archiveDir, makeArchive()); err != nil {
+			t.Fatalf("safeWriteMultiFileArchive() error = %v", err)
+		}
+
+		// Verify every binary survived with the right content
+		for name, want := range binaries {
+			got, err := os.ReadFile(filepath.Join(mediaFilesDir, name))
+			if err != nil {
+				t.Errorf("binary %s lost across swap: %v", name, err)
+
+				continue
+			}
+			if !bytes.Equal(got, want) {
+				t.Errorf("binary %s corrupted: got %q, want %q", name, got, want)
+			}
+		}
+
+		// Backup must be cleaned up
+		if _, err := os.Stat(archiveDir + ".bak"); !os.IsNotExist(err) {
+			t.Error("backup directory was not cleaned up")
+		}
+	})
+
+	t.Run("refuses to wipe stale backup with unrecovered media binaries", func(t *testing.T) {
+		// A previous run that crashed before binary preservation completed
+		// would leave a .bak with media/files/<binaries> still inside it.
+		// The next run must refuse rather than silently destroy them.
+		tmpDir := t.TempDir()
+		archiveDir := filepath.Join(tmpDir, "archive")
+		if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeMultiFileArchive(archiveDir, makeArchive(), false); err != nil {
+			t.Fatal(err)
+		}
+
+		// Plant a stale backup with an unrecovered media binary
+		staleBackup := archiveDir + ".bak"
+		stalemediaFiles := filepath.Join(staleBackup, "media", "files")
+		if err := os.MkdirAll(stalemediaFiles, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(stalemediaFiles, "irreplaceable.jpg"), []byte("only-copy"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		err := safeWriteMultiFileArchive(archiveDir, makeArchive())
+		if err == nil {
+			t.Fatal("expected error when stale backup holds unrecovered media binaries")
+		}
+		if !strings.Contains(err.Error(), "media/files") {
+			t.Errorf("error should mention media/files; got: %v", err)
+		}
+
+		// Binary must still be on disk
+		got, readErr := os.ReadFile(filepath.Join(stalemediaFiles, "irreplaceable.jpg"))
+		if readErr != nil {
+			t.Fatalf("stale backup binary destroyed: %v", readErr)
+		}
+		if string(got) != "only-copy" {
+			t.Errorf("stale backup binary corrupted; got %q", got)
+		}
+	})
 }

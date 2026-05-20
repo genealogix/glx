@@ -119,6 +119,15 @@ func safeWriteMultiFileArchive(destPath string, archive *glxlib.GLXFile) error {
 		return fmt.Errorf("preserving non-archive files: %w", err)
 	}
 
+	// The serializer writes Media entity YAML under media/ but never touches
+	// media/files/, so the fresh tmpDir has no binaries. Move the dest's
+	// pre-existing media/files/ across the swap; without this every safe-write
+	// would silently destroy media binaries — see genealogix/glx#593.
+	if err := preserveMediaBinaries(backupDir, destPath); err != nil {
+		// Leave backupDir in place so the user can recover. Do not mark success.
+		return fmt.Errorf("preserving media binaries: %w", err)
+	}
+
 	// Clean up backup (now contains only managed entries that have been
 	// superseded by the fresh write).
 	_ = os.RemoveAll(backupDir)
@@ -144,6 +153,13 @@ func removeStaleBackup(backupDir string) error {
 		if !archiveManagedTopLevel[entry.Name()] {
 			return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, entry.Name())
 		}
+	}
+	// media/ is managed (so media/<id>.glx entity files are fair game to drop)
+	// but media/files/ holds user binaries that the serializer never produces.
+	// A stale backup whose binaries haven't been carried into the new archive
+	// is unrecovered data; refuse to delete it.
+	if mediaEntries, err := os.ReadDir(filepath.Join(backupDir, glxlib.MediaFilesDir)); err == nil && len(mediaEntries) > 0 {
+		return fmt.Errorf("%w: %s contains %q", ErrStaleBackupForeignFile, backupDir, glxlib.MediaFilesDir)
 	}
 	if err := os.RemoveAll(backupDir); err != nil {
 		return fmt.Errorf("removing stale backup %s: %w", backupDir, err)
@@ -176,6 +192,41 @@ func restoreForeignEntries(backupDir, destPath string) error {
 		if err := robustRename(src, dst); err != nil {
 			return fmt.Errorf("restoring %s: %w", name, err)
 		}
+	}
+
+	return nil
+}
+
+// preserveMediaBinaries carries media/files/ from the backup into the freshly
+// written destination. The multi-file serializer writes Media entity YAML under
+// media/ but never produces anything under media/files/, so the tmpDir that was
+// swapped into place is guaranteed to have no binaries — moving the subtree
+// from the backup is the only way for the user's media files to survive the
+// safe-write swap. See genealogix/glx#593.
+func preserveMediaBinaries(backupDir, destPath string) error {
+	srcDir := filepath.Join(backupDir, glxlib.MediaFilesDir)
+	info, err := os.Stat(srcDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return fmt.Errorf("inspecting backup media/files: %w", err)
+	}
+	if !info.IsDir() {
+		return nil
+	}
+
+	dstDir := filepath.Join(destPath, glxlib.MediaFilesDir)
+	// Parent media/ may not exist if the new archive has no Media entities;
+	// create it so the rename target has a valid parent.
+	if err := os.MkdirAll(filepath.Dir(dstDir), dirPermissions); err != nil {
+		return fmt.Errorf("creating media dir: %w", err)
+	}
+	// Whole-subdir rename is safe: the safe-write tmpDir never contains
+	// media/files/, so dstDir is guaranteed absent.
+	if err := robustRename(srcDir, dstDir); err != nil {
+		return fmt.Errorf("moving media/files into place: %w", err)
 	}
 
 	return nil
