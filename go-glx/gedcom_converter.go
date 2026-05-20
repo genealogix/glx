@@ -110,12 +110,12 @@ func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 		convertSubmitter(record, conv)
 	}
 
-	// Process extension tags
+	// Top-level extension tags (e.g. `0 _CUSTOM ...`) have no entity owner;
+	// preservation requires storing them on the archive itself, which is
+	// out of scope for #289 — see follow-up issue. Warn so the loss is
+	// visible in import diagnostics rather than silent.
 	for _, record := range grouped["_EXT"] {
-		extData := convertExtensionData(record.Tag, record.Value, record.SubRecords)
-		if len(extData) > 0 {
-			conv.Logger.LogInfof("Processed extension tag %s: %+v", record.Tag, extData)
-		}
+		conv.addWarning(record.Line, record.Tag, "Top-level extension tag not preserved")
 	}
 
 	// Log unknown tags
