@@ -80,6 +80,18 @@ func TestSlugify(t *testing.T) {
 			want: "person-abc12345",
 		},
 		{
+			name: "unsafe fallback is slugified",
+			in:   "   ",
+			opts: []SlugOption{WithSlugFallback("Some Value!")},
+			want: "some-value",
+		},
+		{
+			name: "fallback that slugifies to empty yields unknown",
+			in:   "   ",
+			opts: []SlugOption{WithSlugFallback("!!!")},
+			want: "unknown",
+		},
+		{
 			name: "last option wins (prefix)",
 			in:   "x",
 			opts: []SlugOption{WithSlugPrefix("a-"), WithSlugPrefix("b-")},

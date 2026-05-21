@@ -75,7 +75,10 @@ func WithSlugMaxLength(n int) SlugOption {
 
 // WithSlugFallback replaces the default "unknown" placeholder used when the
 // input has no alphanumeric characters. Useful for deterministic hash-based
-// fallbacks (e.g., shortHash of a related field).
+// fallbacks (e.g., shortHash of a related field). The fallback is itself run
+// through the slug pipeline, so Slugify's output stays within [a-z0-9-]
+// regardless of the fallback's contents; a fallback that slugifies to empty
+// yields "unknown".
 func WithSlugFallback(fallback string) SlugOption {
 	return func(c *slugConfig) { c.fallback = fallback }
 }
@@ -116,16 +119,31 @@ func EntityID(prefix, text string) string {
 }
 
 func slugifyBody(s, fallback string) string {
+	if body := slugifyOnce(s); body != "" {
+		return body
+	}
+	// The input produced no slug-safe content. Normalize the fallback through
+	// the same pipeline so Slugify's output always stays within [a-z0-9-]; if
+	// the fallback is itself empty after slugifying, use the guaranteed-safe
+	// package default.
+	if fb := slugifyOnce(fallback); fb != "" {
+		return fb
+	}
+
+	return slugFallback
+}
+
+// slugifyOnce runs the slug normalization pipeline — German digraph
+// transliteration, NFKD, combining-mark stripping, lowercasing, collapsing
+// non-alphanumeric runs to hyphens, and trimming hyphens — returning "" when
+// nothing survives.
+func slugifyOnce(s string) string {
 	s = germanSlugReplacer.Replace(s)
 	s = stripCombiningMarks(norm.NFKD.String(s))
 	s = strings.ToLower(s)
 	s = slugNonAlphaNum.ReplaceAllString(s, "-")
-	s = strings.Trim(s, "-")
-	if s == "" {
-		return fallback
-	}
 
-	return s
+	return strings.Trim(s, "-")
 }
 
 func stripCombiningMarks(s string) string {
