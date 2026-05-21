@@ -27,7 +27,6 @@ import (
 
 // gedzipGedcomEntry is the canonical name of the GEDCOM file inside a GEDZIP
 // archive, as defined by the GEDZIP specification.
-const maxGEDZIPEntryBytes int64 = 512 << 20 // 512 MiB safety cap per extracted entry
 const gedzipGedcomEntry = "gedcom.ged"
 
 // maxGEDZIPEntries is a security limit on per-archive entry count to mitigate
@@ -37,6 +36,14 @@ const gedzipGedcomEntry = "gedcom.ged"
 // extraction work. Declared as var (not const) so tests can lower the cap
 // without building a 100k-entry fixture.
 var maxGEDZIPEntries = 100_000
+
+// maxGEDZIPEntryBytes is a security limit on the decompressed size of a single
+// archive entry, mitigating decompression-bomb DoS where a tiny compressed
+// entry expands to exhaust disk during extraction. 512 MiB comfortably exceeds
+// any legitimate single GEDCOM or media file while still bounding extraction
+// work. Declared as var (not const) so tests can lower the cap without writing
+// a multi-hundred-MiB fixture.
+var maxGEDZIPEntryBytes int64 = 512 << 20
 
 // importGEDZIP extracts a .gdz archive into a temporary directory and delegates
 // to the existing GEDCOM import pipeline. The temp directory is removed when
@@ -230,7 +237,7 @@ func writeZipEntry(f *zip.File, destPath string) error {
 	if written > maxGEDZIPEntryBytes {
 		_ = os.Remove(destPath)
 
-		return fmt.Errorf("extracting zip entry %q: decompressed data exceeds limit (%d bytes)", f.Name, maxGEDZIPEntryBytes)
+		return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", f.Name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
 	}
 	if closeErr != nil {
 		_ = os.Remove(destPath)

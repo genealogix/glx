@@ -404,6 +404,12 @@ func TestImportGEDZIP_RejectsArchiveExceedingEntryLimit(t *testing.T) {
 }
 
 func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
+	// Lower the cap so this writes ~1 KiB instead of 512 MiB; the limit is a
+	// var precisely so this regression stays cheap and CI-stable.
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 1024
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
 	zipPath := filepath.Join(t.TempDir(), "oversized.gdz")
 	f, err := os.Create(filepath.Clean(zipPath))
 	require.NoError(t, err)
@@ -423,8 +429,7 @@ func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
 
 	destPath := filepath.Join(t.TempDir(), "huge.bin")
 	err = writeZipEntry(zr.File[0], destPath)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "decompressed data exceeds limit")
+	require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
 
 	_, statErr := os.Stat(destPath)
 	require.True(t, os.IsNotExist(statErr), "oversized extracted file should be removed")
