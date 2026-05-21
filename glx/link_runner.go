@@ -268,7 +268,7 @@ func newOrExisting(isNew bool) string {
 // is taken — realistically unreachable, but cheap insurance against an
 // adversarially-constructed archive.
 func nextUniqueSourceID(title string, archive *glxlib.GLXFile) (string, error) {
-	base := sourceIDPrefix + slugifyForID(title, maxEntityIDLength-len(sourceIDPrefix))
+	base := sourceIDPrefix + glxlib.SlugifyForID(title, maxEntityIDLength-len(sourceIDPrefix))
 	if _, taken := archive.Sources[base]; !taken {
 		return base, nil
 	}
@@ -281,14 +281,6 @@ func nextUniqueSourceID(title string, archive *glxlib.GLXFile) (string, error) {
 	}
 
 	return "", fmt.Errorf("%w: %s", ErrLinkSourceIDExhausted, base)
-}
-
-// slugifyForID lowercases the input, replaces runs of non-alphanumerics with a
-// single hyphen, trims leading/trailing hyphens, and truncates to maxLen.
-// Produces a value matching the GLX entity ID pattern `[a-zA-Z0-9-]{1,64}`.
-// Falls back to "unknown" if the input contains no alphanumerics.
-func slugifyForID(s string, maxLen int) string {
-	return glxlib.SlugifyForID(s, maxLen)
 }
 
 func trimToMaxLen(s string, maxLen int) string {

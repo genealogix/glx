@@ -449,30 +449,3 @@ func TestNextUniqueSourceID_CapsAtCollisionLimit(t *testing.T) {
 	}
 }
 
-func TestSlugifyForID(t *testing.T) {
-	cases := []struct {
-		in     string
-		maxLen int
-		want   string
-	}{
-		{"Deutschland Geburten und Taufen, 1558-1898", 60, "deutschland-geburten-und-taufen-1558-1898"},
-		{
-			"Deutschland, ausgewählte evangelische Kirchenbücher 1500-1971",
-			64,
-			"deutschland-ausgewaehlte-evangelische-kirchenbuecher-1500-1971",
-		},
-		{"Straße", 60, "strasse"},
-		{"Crème brûlée y piñata", 60, "creme-brulee-y-pinata"},
-		{"Hello, World!", 60, "hello-world"},
-		{"   ", 60, "unknown"},
-		{"---abc---", 60, "abc"},
-		{"A Very Long Title That Exceeds Sixty Characters To Test Trimming Behavior", 10, "a-very-lon"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.in, func(t *testing.T) {
-			if got := slugifyForID(tc.in, tc.maxLen); got != tc.want {
-				t.Errorf("slugifyForID(%q, %d) = %q, want %q", tc.in, tc.maxLen, got, tc.want)
-			}
-		})
-	}
-}

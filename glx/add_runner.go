@@ -483,7 +483,7 @@ func addPerson(io *IOStreams, opts *addPersonOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(strings.TrimSpace(opts.Given+" "+opts.Surname), maxEntityIDLength-len("person-"))
+	slug := glxlib.SlugifyForID(strings.TrimSpace(opts.Given+" "+opts.Surname), maxEntityIDLength-len("person-"))
 	id, err := deriveOrOverrideID(
 		"person-", slug,
 		opts.Given+opts.Surname,
@@ -588,7 +588,7 @@ func addPlace(io *IOStreams, opts *addPlaceOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(opts.Name, maxEntityIDLength-len("place-"))
+	slug := glxlib.SlugifyForID(opts.Name, maxEntityIDLength-len("place-"))
 	id, err := deriveOrOverrideID(
 		"place-", slug,
 		opts.Name+opts.Parent,
@@ -663,7 +663,7 @@ func addEvent(io *IOStreams, opts *addEventOptions) error {
 		descriptor = participants[0].Person
 	}
 	descriptor = stripEntityPrefix(descriptor)
-	slug := slugifyForID(opts.Type+" "+descriptor, maxEntityIDLength-len("event-"))
+	slug := glxlib.SlugifyForID(opts.Type+" "+descriptor, maxEntityIDLength-len("event-"))
 	id, err := deriveOrOverrideID(
 		"event-", slug,
 		opts.Type+descriptor,
@@ -759,7 +759,7 @@ func addRepository(io *IOStreams, opts *addRepositoryOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(opts.Name, maxEntityIDLength-len("repository-"))
+	slug := glxlib.SlugifyForID(opts.Name, maxEntityIDLength-len("repository-"))
 	id, err := deriveOrOverrideID(
 		"repository-", slug,
 		opts.Name,
@@ -820,7 +820,7 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(opts.Title, maxEntityIDLength-len("source-"))
+	slug := glxlib.SlugifyForID(opts.Title, maxEntityIDLength-len("source-"))
 	id, err := deriveOrOverrideID(
 		"source-", slug,
 		opts.Title,
@@ -907,7 +907,7 @@ func addCitation(io *IOStreams, opts *addCitationOptions) error {
 	const citationPrefix = "citation-"
 	hashSuffix := "-" + shortHash(hashSeed)
 	slugBudget := maxEntityIDLength - len(citationPrefix) - len(hashSuffix)
-	slug := trimToMaxLen(slugifyForID(sourceSlug, slugBudget), slugBudget) + hashSuffix
+	slug := trimToMaxLen(glxlib.SlugifyForID(sourceSlug, slugBudget), slugBudget) + hashSuffix
 	id, err := deriveOrOverrideID(
 		citationPrefix, slug,
 		opts.Source+hashSeed,
@@ -1017,7 +1017,7 @@ func addRelationship(io *IOStreams, opts *addRelationshipOptions) error {
 	}
 
 	descriptor := stripEntityPrefix(participants[0].Person) + "-" + stripEntityPrefix(participants[1].Person)
-	slug := slugifyForID(opts.Type+" "+descriptor, maxEntityIDLength-len("relationship-"))
+	slug := glxlib.SlugifyForID(opts.Type+" "+descriptor, maxEntityIDLength-len("relationship-"))
 	id, err := deriveOrOverrideID(
 		"relationship-", slug,
 		opts.Type+descriptor,
@@ -1224,7 +1224,7 @@ func deriveAssertionID(archive *glxlib.GLXFile, opts *addAssertionOptions, subje
 	if tail == "" {
 		tail = "fact"
 	}
-	slug := slugifyForID(descriptor+" "+tail, maxEntityIDLength-len("assertion-"))
+	slug := glxlib.SlugifyForID(descriptor+" "+tail, maxEntityIDLength-len("assertion-"))
 
 	return deriveOrOverrideID(
 		"assertion-", slug,
