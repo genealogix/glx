@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,4 +84,35 @@ func TestAtomicWriteFile_InvalidDir(t *testing.T) {
 	err := atomicWriteFile("/nonexistent/dir/file.glx", []byte("data"), 0o644)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "creating temp file")
+}
+
+func TestResolveSymlinkPlaceholder_ResolvesTargetContent(t *testing.T) {
+	dir := t.TempDir()
+	targetPath := filepath.Join(dir, "target.glx")
+	require.NoError(t, os.WriteFile(targetPath, []byte("resolved"), 0o644))
+
+	placeholderPath := filepath.Join(dir, "link.glx")
+	got := resolveSymlinkPlaceholder(placeholderPath, []byte("./target.glx"))
+
+	assert.Equal(t, []byte("resolved"), got)
+}
+
+func TestResolveSymlinkPlaceholder_RejectsLongPlaceholderContent(t *testing.T) {
+	dir := t.TempDir()
+	placeholderPath := filepath.Join(dir, "link.glx")
+	longContent := "a/" + strings.Repeat("b", maxSymlinkPlaceholderLength)
+
+	got := resolveSymlinkPlaceholder(placeholderPath, []byte(longContent))
+
+	assert.Equal(t, []byte(longContent), got)
+}
+
+func TestResolveSymlinkPlaceholder_RejectsInvalidCharacters(t *testing.T) {
+	dir := t.TempDir()
+	placeholderPath := filepath.Join(dir, "link.glx")
+	content := "nested/\nfile.glx"
+
+	got := resolveSymlinkPlaceholder(placeholderPath, []byte(content))
+
+	assert.Equal(t, []byte(content), got)
 }

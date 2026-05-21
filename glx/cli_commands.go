@@ -188,15 +188,15 @@ var (
 
 var exportCmd = &cobra.Command{
 	Use:   "export <glx-archive>",
-	Short: "Export a GLX archive to GEDCOM format",
-	Long: `Export a GLX archive to GEDCOM format.
+	Short: "Export a GLX archive to GEDCOM or JSON-LD format",
+	Long: `Export a GLX archive to GEDCOM or JSON-LD format.
 
-Supports both GEDCOM 5.5.1 and GEDCOM 7.0 output formats.
+Supports GEDCOM 5.5.1, GEDCOM 7.0, and JSON-LD output formats.
 
 The input can be either a single-file GLX archive (.glx) or a multi-file
 archive directory.
 
-The exported GEDCOM file will include:
+GEDCOM output (--format 551 or 70) includes:
 - All individuals (INDI records)
 - All families (FAM records, reconstructed from relationships)
 - All sources (SOUR records)
@@ -204,10 +204,16 @@ The exported GEDCOM file will include:
 - All media objects (OBJE records)
 - Events, places, citations, and notes
 
-Use --privatize-living to redact living persons' data on export. A person is
-treated as living when their ` + "`living: true`" + ` property is set, or — under
-the fallback heuristic — when no recorded death, burial, or cremation event
-exists and their earliest known birth year is less than 100 years ago.
+JSON-LD output (--format jsonld) emits a single self-contained document
+with an inlined @context aligned with Schema.org (Person, Event, Place,
+CreativeWork, ArchiveOrganization, MediaObject) plus a glx: namespace for
+Citation, Relationship, and Assertion.
+
+Use --privatize-living (supported for every output format) to redact living
+persons' data on export. A person is treated as living when their ` + "`living: true`" + `
+property is set, or — under the fallback heuristic — when no recorded death,
+burial, or cremation event exists and their earliest known birth year is less
+than 100 years ago.
 
 Redaction replaces the person's name with "Living", strips all other
 properties (occupation, residence, religion, etc.), and clears notes.
@@ -224,8 +230,10 @@ Free-text fields on Sources, Citations, Repositories, and Media are NOT
 scanned. If you have included living-person names or contact information
 in those fields, you must redact them by hand before publishing.
 
-Family structure (FAM, FAMS, FAMC) and event types are preserved so the
-GEDCOM still validates and relationships still reconstruct.`,
+Redaction operates on the loaded archive before either exporter runs, so the
+same guarantees apply to GEDCOM and JSON-LD output. Event types and family
+structure are preserved (GEDCOM FAM / FAMS / FAMC still reconstruct; JSON-LD
+Relationship and Participation nodes still link) so the export stays valid.`,
 	Example: `  # Export to GEDCOM 5.5.1 (default)
   glx export family-archive -o family.ged
 
@@ -235,7 +243,10 @@ GEDCOM still validates and relationships still reconstruct.`,
   # Export to GEDCOM 7.0
   glx export family-archive -o family.ged --format 70
 
-  # Redact living persons before exporting (e.g. before publishing to a public Git repo)
+  # Export to JSON-LD (Schema.org-aligned)
+  glx export family-archive -o family.jsonld --format jsonld
+
+  # Redact living persons before exporting (works for any format, e.g. before publishing to a public Git repo)
   glx export family-archive -o family-public.ged --privatize-living
 
   # Export with verbose output
@@ -245,8 +256,8 @@ GEDCOM still validates and relationships still reconstruct.`,
 }
 
 func init() {
-	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output GEDCOM file path (required)")
-	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "GEDCOM version: 551 or 70")
+	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (required)")
+	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "Export format: 551, 70, or jsonld")
 	exportCmd.Flags().BoolVarP(&exportVerbose, "verbose", "v", false, "Verbose output")
 	exportCmd.Flags().BoolVar(&exportPrivatizeLiving, "privatize-living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
 
@@ -254,7 +265,12 @@ func init() {
 }
 
 func runExport(_ *cobra.Command, args []string) error {
-	return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
+	switch exportFormat {
+	case ExportFormatJSONLD:
+		return exportToJSONLD(args[0], exportOutput, exportVerbose, exportPrivatizeLiving)
+	default:
+		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
+	}
 }
 
 // ============================================================================

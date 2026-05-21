@@ -24,10 +24,13 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// GEDCOM version format constants for the --format flag
+// Export format constants for the --format flag. GEDCOM versions and the
+// JSON-LD format share the same flag; the export dispatcher in
+// cli_commands.go routes on this value.
 const (
-	ExportFormat551 = "551"
-	ExportFormat70  = "70"
+	ExportFormat551    = "551"
+	ExportFormat70     = "70"
+	ExportFormatJSONLD = "jsonld"
 )
 
 // exportToGEDCOM loads a GLX archive and exports it to GEDCOM format
@@ -44,14 +47,7 @@ func exportToGEDCOM(inputPath, outputPath, format string, verbose, privatizeLivi
 		return err
 	}
 
-	if privatizeLiving {
-		redacted := glxlib.PrivatizeLiving(glx, time.Now(), glxlib.LivingThresholdYears)
-		if verbose {
-			fmt.Printf("Privatized %d living persons before export (events redacted: %d, events scrubbed: %d, relationships redacted: %d, assertions dropped: %d)\n",
-				redacted.PersonsRedacted, redacted.EventsRedacted, redacted.EventsScrubbed,
-				redacted.RelationshipsRedacted, redacted.AssertionsDropped)
-		}
-	}
+	applyExportPrivacy(glx, privatizeLiving, verbose)
 
 	// Set up log writer for verbose mode
 	var logWriter *os.File
@@ -98,7 +94,25 @@ func parseGEDCOMVersion(format string) (glxlib.GEDCOMVersion, error) {
 	case ExportFormat70, "7.0":
 		return glxlib.GEDCOM70, nil
 	default:
-		return glxlib.GEDCOMUnknown, fmt.Errorf("%w: %s (use '551' or '70')", ErrInvalidExportFormat, format)
+		return glxlib.GEDCOMUnknown, fmt.Errorf("%w: %s (use '551', '70', or 'jsonld')", ErrInvalidExportFormat, format)
+	}
+}
+
+// applyExportPrivacy redacts living persons in the loaded archive in place
+// when privatizeLiving is set, printing a summary in verbose mode. Both the
+// GEDCOM and JSON-LD export paths call this immediately after loading the
+// archive, so the privacy guarantee — and its verbose report — is identical
+// regardless of output format.
+func applyExportPrivacy(glx *glxlib.GLXFile, privatizeLiving, verbose bool) {
+	if !privatizeLiving {
+		return
+	}
+
+	redacted := glxlib.PrivatizeLiving(glx, time.Now(), glxlib.LivingThresholdYears)
+	if verbose {
+		fmt.Printf("Privatized %d living persons before export (events redacted: %d, events scrubbed: %d, relationships redacted: %d, assertions dropped: %d)\n",
+			redacted.PersonsRedacted, redacted.EventsRedacted, redacted.EventsScrubbed,
+			redacted.RelationshipsRedacted, redacted.AssertionsDropped)
 	}
 }
 

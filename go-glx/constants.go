@@ -74,6 +74,7 @@ const (
 	RelationshipTypeApprenticeship        = "apprenticeship"
 	RelationshipTypeEmployment            = "employment"
 	RelationshipTypeEnslavement           = "enslavement"
+	RelationshipTypePossiblySamePerson    = "possibly_same_person"
 	RelationshipTypeRelative              = "relative"
 	RelationshipTypeAssociate             = "associate"
 	RelationshipTypeBoarder               = "boarder"

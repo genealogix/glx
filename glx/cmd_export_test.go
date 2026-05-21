@@ -40,6 +40,13 @@ func TestParseGEDCOMVersion(t *testing.T) {
 		{name: "empty string", format: "", wantErr: true},
 	}
 
+	// Spot-check that the error message lists every supported format so
+	// users see the full list (not just GEDCOM versions) when the CLI also
+	// accepts jsonld.
+	_, err := parseGEDCOMVersion("xml")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "jsonld", "error must mention jsonld as a supported format")
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := parseGEDCOMVersion(tt.format)
