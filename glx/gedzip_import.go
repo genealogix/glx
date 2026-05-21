@@ -203,9 +203,10 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 	return dest, nil
 }
 
-// writeZipEntry copies one ZIP entry to destPath. On any copy or close failure
-// the partially written destination is removed so the next caller cannot
-// observe a truncated file.
+// writeZipEntry copies one ZIP entry to destPath, rejecting any entry whose
+// decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
+// when that size limit is exceeded, the partially written destination is
+// removed so the next caller cannot observe a truncated or oversized file.
 func writeZipEntry(f *zip.File, destPath string) error {
 	src, err := f.Open()
 	if err != nil {
