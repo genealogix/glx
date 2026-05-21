@@ -22,16 +22,18 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var slugNonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
-var germanSlugReplacer = strings.NewReplacer(
-	"ä", "ae",
-	"ö", "oe",
-	"ü", "ue",
-	"Ä", "Ae",
-	"Ö", "Oe",
-	"Ü", "Ue",
-	"ß", "ss",
-	"ẞ", "ss",
+var (
+	slugNonAlphaNum    = regexp.MustCompile(`[^a-z0-9]+`)
+	germanSlugReplacer = strings.NewReplacer(
+		"ä", "ae",
+		"ö", "oe",
+		"ü", "ue",
+		"Ä", "Ae",
+		"Ö", "Oe",
+		"Ü", "Ue",
+		"ß", "ss",
+		"ẞ", "ss",
+	)
 )
 
 // SlugifyForID lowercases the input, replaces runs of non-alphanumerics with a

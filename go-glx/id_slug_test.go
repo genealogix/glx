@@ -14,7 +14,9 @@
 
 package glx
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSlugifyForID(t *testing.T) {
 	tests := []struct {
