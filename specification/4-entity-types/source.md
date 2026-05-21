@@ -63,7 +63,6 @@ sources:
 | `type` | string | Source type from vocabulary |
 | `authors` | array | Author(s) or creator(s) — personal names or institutional names |
 | `date` | string | Date or date range of the source |
-| `description` | string | Description of the source |
 | `repository` | string | Reference to Repository entity |
 | `language` | string | Language of the source |
 | `media` | array | References to Media entities |
@@ -185,21 +184,6 @@ Example:
 repository: repository-national-archives
 ```
 
-### `description`
-
-- Type: String
-- Required: No
-- Description: Detailed description of the source content and scope
-
-Example:
-
-```yaml
-description: |
-  Parish registers for St. Paul's Church, Leeds, covering baptisms,
-  marriages, and burials from 1840 to 1860. Includes entries for
-  families in the Wellington Street area.
-```
-
 ### `language`
 
 - Type: String
@@ -236,6 +220,7 @@ The following are standard properties from the default vocabulary; archives can 
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `description` | string | Detailed description of the source content and scope |
 | `abbreviation` | string | Short reference name (from GEDCOM ABBR) |
 | `call_number` | string | Repository catalog number (from GEDCOM CALN) |
 | `events_recorded` | string[] | Types of events documented (from GEDCOM EVEN) |
@@ -254,6 +239,7 @@ sources:
     type: church_register
     repository: repository-leeds-archives
     properties:
+      description: "Parish registers for St. Paul's Church, Leeds, covering baptisms, marriages, and burials"
       abbreviation: "StP-Reg"
       call_number: "PR/LEE/123"
       events_recorded:
@@ -278,10 +264,11 @@ sources:
       - "General Register Office"
     date: "1850-01-15"
     repository: repository-gro
-    description: "Original birth certificate for John Smith, born Leeds"
     language: "English"
     media:
       - media-birth-cert-scan
+    properties:
+      description: "Original birth certificate for John Smith, born Leeds"
 ```
 
 ### Census Record
@@ -295,10 +282,11 @@ sources:
       - "UK Census Office"
     date: "1851-03-30"
     repository: repository-national-archives
-    description: |
-      Census enumeration for Leeds, Yorkshire, England.
-      Enumeration District 5, covering Wellington Street area.
     language: "English"
+    properties:
+      description: |
+        Census enumeration for Leeds, Yorkshire, England.
+        Enumeration District 5, covering Wellington Street area.
 ```
 
 ### Church Register
@@ -312,18 +300,19 @@ sources:
       - "Church of England"
     date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
-    description: |
-      Parish registers for St. Paul's Cathedral, Leeds.
-      Includes baptisms, marriages, and burials.
-
-      Coverage:
-      - Baptisms: 1840-1860
-      - Marriages: 1840-1860
-      - Burials: 1845-1860
     language: "English"
     media:
       - media-register-volume-1
     notes: "Well preserved, some water damage to pages 45-50"
+    properties:
+      description: |
+        Parish registers for St. Paul's Cathedral, Leeds.
+        Includes baptisms, marriages, and burials.
+
+        Coverage:
+        - Baptisms: 1840-1860
+        - Marriages: 1840-1860
+        - Burials: 1845-1860
 ```
 
 ### Published Book
@@ -337,12 +326,12 @@ sources:
       - "Elizabeth Brown"
     date: "1985"
     repository: repository-family-history-library
-    description: |
-      Comprehensive genealogy of the Smith family of Leeds
-      and surrounding areas, 1750-1950. Includes source
-      citations and family group sheets.
     language: "English"
     properties:
+      description: |
+        Comprehensive genealogy of the Smith family of Leeds
+        and surrounding areas, 1750-1950. Includes source
+        citations and family group sheets.
       publication_info: "Yorkshire Genealogical Society, Leeds, Yorkshire. 1st Edition, 324 pages."
 ```
 
@@ -357,13 +346,14 @@ sources:
       - "Ancestry.com"
     date: "FROM 1841 TO 1911"
     repository: repository-ancestry
-    description: |
-      Digitized and indexed UK census records from 1841-1911.
-      Images and transcriptions available online.
-
-      Subscription required for access.
     language: "English"
     notes: "Digital images of original records"
+    properties:
+      description: |
+        Digitized and indexed UK census records from 1841-1911.
+        Images and transcriptions available online.
+
+        Subscription required for access.
 ```
 
 ### Newspaper
@@ -377,8 +367,9 @@ sources:
       - "Leeds Mercury Publishing Company"
     date: "1890-06-15"
     repository: repository-british-library
-    description: "Daily newspaper published in Leeds, Yorkshire"
     language: "English"
+    properties:
+      description: "Daily newspaper published in Leeds, Yorkshire"
 ```
 
 ### Oral History
@@ -392,18 +383,19 @@ sources:
       - "Jane Researcher (interviewer)"
       - "Mary Smith (interviewee)"
     date: "2020-03-15"
-    description: |
-      Oral history interview with Mary Smith discussing her
-      childhood in Leeds during the 1940s and 1950s. Family
-      stories, local history, and genealogical information.
-      
-      Duration: 60 minutes
-      Location: Leeds, Yorkshire
     media:
       - media-interview-audio
       - media-interview-transcript
     language: "English"
     notes: "Recorded with permission, transcript available"
+    properties:
+      description: |
+        Oral history interview with Mary Smith discussing her
+        childhood in Leeds during the 1940s and 1950s. Family
+        stories, local history, and genealogical information.
+
+        Duration: 60 minutes
+        Location: Leeds, Yorkshire
 ```
 
 ## Source Types
@@ -480,7 +472,7 @@ Source entities map to GEDCOM source records:
 | `authors[0]` | `SOUR.AUTH` | Author/creator (first only in GEDCOM) |
 | `date` | `SOUR.DATE` | Publication date |
 | `repository` | `SOUR.REPO` | Repository reference |
-| `description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
+| `properties.description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
 | `properties.abbreviation` | `SOUR.ABBR` | Short title |
 | `properties.publication_info` | `SOUR.PUBL` | Publication info |
 | `properties.call_number` | `SOUR.REPO.CALN` | Call number at repository |
@@ -509,7 +501,8 @@ sources:
       - "Church of England"
     date: "FROM 1840 TO 1860"
     repository: repository-leeds-archives
-    description: "Parish registers for baptisms, marriages, and burials"
+    properties:
+      description: "Parish registers for baptisms, marriages, and burials"
 ```
 
 ## Best Practices

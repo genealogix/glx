@@ -52,6 +52,11 @@ type MigrateReport struct {
 	// instead of being overwritten — the user must reconcile those by hand.
 	ConfidenceDisputedConverted       int
 	ConfidenceDisputedStatusConflicts int
+
+	// source top-level `description` → `properties.description` conversions
+	// (opt-in via --source-description-to-property, #667). Counts sources whose
+	// legacy top-level `description:` was folded into properties.description.
+	SourceDescriptionsConverted int
 }
 
 const (

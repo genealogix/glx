@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	migrateRenameGenderToSex          bool
-	migrateConfidenceDisputedToStatus bool
+	migrateRenameGenderToSex           bool
+	migrateConfidenceDisputedToStatus  bool
+	migrateSourceDescriptionToProperty bool
 )
 
 var migrateCmd = &cobra.Command{
@@ -47,7 +48,12 @@ With --confidence-disputed-to-status, moves the legacy ` + "`confidence: dispute
 signal to ` + "`status: disputed`" + `, separating evidence quality (confidence) from
 conclusion state (status) per #516. Confidence is cleared on each touched
 assertion; existing non-disputed statuses are preserved with a warning so the
-user can reconcile by hand.`,
+user can reconcile by hand.
+
+With --source-description-to-property, moves a Source's legacy top-level
+` + "`description`" + ` field into ` + "`properties.description`" + `, completing the
+structural-field-to-vocabulary-property consolidation from #667. An explicit
+` + "`properties.description`" + ` is never overwritten.`,
 	Example: `  # Migrate a multi-file archive
   glx migrate ./my-archive
 
@@ -58,7 +64,10 @@ user can reconcile by hand.`,
   glx migrate ./my-archive --rename-gender-to-sex
 
   # Also move legacy 'confidence: disputed' to 'status: disputed'
-  glx migrate ./my-archive --confidence-disputed-to-status`,
+  glx migrate ./my-archive --confidence-disputed-to-status
+
+  # Also move legacy top-level source 'description' into 'properties.description'
+  glx migrate ./my-archive --source-description-to-property`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMigrate,
 }
@@ -68,6 +77,8 @@ func init() {
 		"Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)")
 	migrateCmd.Flags().BoolVar(&migrateConfidenceDisputedToStatus, "confidence-disputed-to-status", false,
 		"Move legacy 'confidence: disputed' to 'status: disputed' (evidence quality vs conclusion state, #516)")
+	migrateCmd.Flags().BoolVar(&migrateSourceDescriptionToProperty, "source-description-to-property", false,
+		"Move legacy top-level source 'description' into 'properties.description' (#667)")
 }
 
 func runMigrate(_ *cobra.Command, args []string) error {
@@ -120,6 +131,12 @@ func migrateArchive(archivePath string) error {
 		report.ConfidenceDisputedStatusConflicts += confidenceMigrationReport.ConfidenceDisputedStatusConflicts
 	}
 
+	if migrateSourceDescriptionToProperty {
+		// The shim folds the legacy field on load; this re-scan only counts
+		// (which also triggers the save that persists the new on-disk form).
+		report.SourceDescriptionsConverted += migrateSourceDescriptions(archivePath, isDir)
+	}
+
 	// If the gender→sex rename was skipped, count any remaining legacy
 	// `gender:` person properties so the user knows whether the skip was
 	// benign (post-migration re-run, no legacy left) or worrying (manual
@@ -149,7 +166,8 @@ func migrateArchive(archivePath string) error {
 		report.VocabEntriesRemoved == 0 &&
 		report.PropertiesRenamed == 0 && report.AssertionsRenamed == 0 &&
 		report.VocabEntriesRenamed == 0 &&
-		report.ConfidenceDisputedConverted == 0 {
+		report.ConfidenceDisputedConverted == 0 &&
+		report.SourceDescriptionsConverted == 0 {
 		if report.GenderRenameSkipped {
 			if legacyGenderRemaining > 0 {
 				noun, verb := "properties", "remain"
@@ -209,6 +227,9 @@ func migrateArchive(archivePath string) error {
 			fmt.Printf("  %-27s%d (existing status preserved; review warnings)\n",
 				"  status conflicts:", report.ConfidenceDisputedStatusConflicts)
 		}
+	}
+	if migrateSourceDescriptionToProperty {
+		fmt.Printf("  %-27s%d\n", "Source descriptions moved:", report.SourceDescriptionsConverted)
 	}
 
 	return nil
