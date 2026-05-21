@@ -54,8 +54,10 @@ type MigrateReport struct {
 	ConfidenceDisputedStatusConflicts int
 
 	// source top-level `description` → `properties.description` conversions
-	// (opt-in via --source-description-to-property, #667). Counts sources whose
-	// legacy top-level `description:` was folded into properties.description.
+	// (opt-in via --source-description-to-property, #667). Counts sources that
+	// carried a legacy top-level `description:` — folded into
+	// properties.description, or, when an explicit properties.description
+	// already existed, simply removed.
 	SourceDescriptionsConverted int
 }
 

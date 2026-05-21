@@ -472,7 +472,8 @@ Source entities map to GEDCOM source records:
 | `authors[0]` | `SOUR.AUTH` | Author/creator (first only in GEDCOM) |
 | `date` | `SOUR.DATE` | Publication date |
 | `repository` | `SOUR.REPO` | Repository reference |
-| `properties.description` | `SOUR.TEXT` or `SOUR.NOTE` | Source text/notes |
+| `notes` | `SOUR.NOTE` | Research notes |
+| `properties.description` | `SOUR.TEXT` | Source text |
 | `properties.abbreviation` | `SOUR.ABBR` | Short title |
 | `properties.publication_info` | `SOUR.PUBL` | Publication info |
 | `properties.call_number` | `SOUR.REPO.CALN` | Call number at repository |
@@ -488,7 +489,7 @@ GEDCOM Example:
 1 AUTH Church of England
 1 DATE 1840/1860
 1 REPO @R1@
-1 NOTE Parish registers for baptisms, marriages, and burials
+1 TEXT Parish registers for baptisms, marriages, and burials
 ```
 
 GENEALOGIX Equivalent:

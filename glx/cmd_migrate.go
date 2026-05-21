@@ -229,7 +229,7 @@ func migrateArchive(archivePath string) error {
 		}
 	}
 	if migrateSourceDescriptionToProperty {
-		fmt.Printf("  %-27s%d\n", "Source descriptions moved:", report.SourceDescriptionsConverted)
+		fmt.Printf("  %-27s%d\n", "Source descriptions migrated:", report.SourceDescriptionsConverted)
 	}
 
 	return nil

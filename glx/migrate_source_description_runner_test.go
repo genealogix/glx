@@ -41,9 +41,9 @@ func TestCountLegacySourceDescriptions(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "both present: explicit property wins, not counted",
+			name: "both present: legacy top-level still counted (must be removed on save)",
 			yaml: "sources:\n  source-1:\n    title: T\n    description: legacy\n    properties:\n      description: prop\n",
-			want: 0,
+			want: 1,
 		},
 		{
 			name: "no sources block (e.g. vocabulary file)",
@@ -130,4 +130,33 @@ func TestMigrateArchive_SourceDescriptionToProperty_EndToEnd(t *testing.T) {
 
 	// Idempotent: a second scan finds nothing left to migrate.
 	assert.Equal(t, 0, migrateSourceDescriptions(path, false))
+}
+
+// A source with BOTH a legacy top-level description and an explicit
+// properties.description must still be re-saved so the schema-invalid top-level
+// key is removed from disk; the explicit property is preserved (no-clobber).
+func TestMigrateArchive_SourceDescriptionToProperty_RemovesLegacyDuplicate(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "archive.glx")
+	content := "sources:\n  source-1:\n    title: T\n    description: legacy\n    properties:\n      description: explicit\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+
+	migrateSourceDescriptionToProperty = true
+	defer func() { migrateSourceDescriptionToProperty = false }()
+	require.NoError(t, migrateArchive(path))
+
+	out, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var doc struct {
+		Sources map[string]struct {
+			Description string         `yaml:"description"`
+			Properties  map[string]any `yaml:"properties"`
+		} `yaml:"sources"`
+	}
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+
+	src := doc.Sources["source-1"]
+	assert.Empty(t, src.Description, "schema-invalid top-level description must be removed from disk")
+	assert.Equal(t, "explicit", src.Properties["description"], "explicit properties.description is preserved (no-clobber)")
+	assert.Equal(t, 0, migrateSourceDescriptions(path, false), "idempotent after migration")
 }

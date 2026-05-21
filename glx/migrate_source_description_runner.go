@@ -22,13 +22,13 @@ import (
 
 // migrateSourceDescriptions reports how many Source entities in the archive at
 // archivePath carry a legacy top-level `description:` field (the pre-#667
-// form). The Source.UnmarshalYAML shim in go-glx already folds that value into
-// properties.description when the archive is loaded, so the in-memory archive
-// is already correct; this raw re-scan exists to produce an accurate migration
-// report and to signal the migrate command to persist the upgraded on-disk
-// form. A source whose properties.description is already set is not counted —
-// the explicit property wins and the legacy field is ignored, matching the
-// shim's no-clobber behavior.
+// form). The Source.UnmarshalYAML shim in go-glx already handles the value on
+// load — folding it into properties.description, or, when an explicit
+// properties.description is already present, dropping the legacy duplicate
+// (no-clobber). Either way the schema-invalid top-level key must be removed
+// from disk, so this raw re-scan counts every source that still carries it:
+// the count produces an accurate report and signals the migrate command to
+// re-save the archive in the upgraded on-disk form.
 func migrateSourceDescriptions(archivePath string, isDir bool) int {
 	if isDir {
 		files, err := collectGLXFilesFromDir(archivePath)
@@ -54,14 +54,15 @@ func migrateSourceDescriptions(archivePath string, isDir bool) int {
 }
 
 // countLegacySourceDescriptions parses a single .glx file's raw bytes and
-// counts sources that declare a top-level `description:` without an explicit
-// `properties.description`. Files without a `sources:` block (e.g. vocabulary
-// files, which use `source_properties:`) contribute nothing.
+// counts sources that declare a legacy top-level `description:` field —
+// regardless of whether an explicit `properties.description` also exists, since
+// in both cases the top-level key is schema-invalid and must be removed on
+// save. Files without a `sources:` block (e.g. vocabulary files, which use
+// `source_properties:`) contribute nothing.
 func countLegacySourceDescriptions(data []byte) int {
 	var doc struct {
 		Sources map[string]struct {
-			Description string         `yaml:"description"`
-			Properties  map[string]any `yaml:"properties"`
+			Description string `yaml:"description"`
 		} `yaml:"sources"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
@@ -69,13 +70,9 @@ func countLegacySourceDescriptions(data []byte) int {
 	}
 	count := 0
 	for _, src := range doc.Sources {
-		if src.Description == "" {
-			continue
+		if src.Description != "" {
+			count++
 		}
-		if _, ok := src.Properties["description"]; ok {
-			continue
-		}
-		count++
 	}
 
 	return count
