@@ -40,3 +40,16 @@ func TestSlugifyForID(t *testing.T) {
 		})
 	}
 }
+
+func TestStripCombiningMarks_RemovesAllMarkCategories(t *testing.T) {
+	const (
+		nonSpacingMark = "\u0301" // Mn COMBINING ACUTE ACCENT
+		spacingMark    = "\u0903" // Mc DEVANAGARI SIGN VISARGA
+		enclosingMark  = "\u20DD" // Me COMBINING ENCLOSING CIRCLE
+	)
+
+	got := stripCombiningMarks("a" + nonSpacingMark + "b" + spacingMark + "c" + enclosingMark + "d")
+	if got != "abcd" {
+		t.Fatalf("stripCombiningMarks should remove Mn/Mc/Me marks: got %q, want %q", got, "abcd")
+	}
+}

@@ -54,7 +54,7 @@ func stripCombiningMarks(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
 	for _, r := range s {
-		if unicode.Is(unicode.Mn, r) {
+		if unicode.Is(unicode.M, r) {
 			continue
 		}
 		b.WriteRune(r)
