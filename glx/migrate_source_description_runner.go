@@ -43,7 +43,9 @@ func migrateSourceDescriptions(archivePath string, isDir bool) int {
 		return count
 	}
 
-	data, err := os.ReadFile(archivePath)
+	// archivePath is the user-supplied path to their own archive — the same
+	// trust model as the archive loader's own read of this file moments earlier.
+	data, err := os.ReadFile(archivePath) // #nosec G304
 	if err != nil {
 		return 0
 	}
