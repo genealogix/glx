@@ -55,6 +55,11 @@ func TestCountLegacySourceDescriptions(t *testing.T) {
 			yaml: "sources:\n  s1:\n    title: A\n    description: d1\n  s2:\n    title: B\n    description: d2\n  s3:\n    title: C\n",
 			want: 2,
 		},
+		{
+			name: "malformed yaml returns 0",
+			yaml: "sources: [",
+			want: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -70,6 +75,27 @@ func TestMigrateSourceDescriptions_SingleFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 
 	assert.Equal(t, 1, migrateSourceDescriptions(path, false))
+}
+
+func TestMigrateSourceDescriptions_MultiFileDir(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "source-1.glx"),
+		[]byte("sources:\n  source-1:\n    title: A\n    description: legacy\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "source-2.glx"),
+		[]byte("sources:\n  source-2:\n    title: B\n    properties:\n      description: prop\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "source-3.glx"),
+		[]byte("sources:\n  source-3:\n    title: C\n    description: also-legacy\n"), 0o644))
+
+	// Two of the three sources carry a legacy top-level description; the one
+	// with an explicit properties.description is not counted.
+	assert.Equal(t, 2, migrateSourceDescriptions(dir, true))
+}
+
+func TestMigrateSourceDescriptions_ErrorsReturnZero(t *testing.T) {
+	// An unreadable single file and an unreadable directory both degrade
+	// gracefully to 0 (a real archive was already loaded before this runs).
+	assert.Equal(t, 0, migrateSourceDescriptions(filepath.Join(t.TempDir(), "missing.glx"), false))
+	assert.Equal(t, 0, migrateSourceDescriptions(filepath.Join(t.TempDir(), "missing-dir"), true))
 }
 
 // TestMigrateArchive_SourceDescriptionToProperty_EndToEnd exercises the full
