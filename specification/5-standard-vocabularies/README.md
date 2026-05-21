@@ -173,6 +173,32 @@ Defines controlled values for the `gender` person property — self-identified g
 
 ---
 
+### Search Result Types
+
+Defines the outcome of each search recorded in a [research log](../4-entity-types/research-log) (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting a "reasonably exhaustive search" per the Genealogical Proof Standard.
+
+<YamlFile
+  :content="vocabularies['search-result-types']"
+  title="vocabularies/search-result-types.glx"
+/>
+
+**View Source:** [search-result-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/search-result-types.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log) | [Vocabularies Specification](../4-entity-types/vocabularies#search-result-types-vocabulary)
+
+---
+
+### Research Log Status Types
+
+Defines the lifecycle status of a [research log](../4-entity-types/research-log) investigation (open, in progress, complete, blocked).
+
+<YamlFile
+  :content="vocabularies['research-log-status-types']"
+  title="vocabularies/research-log-status-types.glx"
+/>
+
+**View Source:** [research-log-status-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/research-log-status-types.glx) | **See Also:** [ResearchLog Entity Documentation](../4-entity-types/research-log) | [Vocabularies Specification](../4-entity-types/vocabularies#research-log-status-types-vocabulary)
+
+---
+
 ## Property Vocabularies
 
 Property vocabularies define the custom properties available for each entity type. These enable flexible, extensible data modeling for person, event, relationship, and place entities.

@@ -32,6 +32,8 @@ The standard vocabulary files are:
 - `confidence-levels.glx`
 - `participant-roles.glx`
 - `repository-types.glx`
+- `search-result-types.glx`
+- `research-log-status-types.glx`
 - `person-properties.glx`
 - `event-properties.glx`
 - `relationship-properties.glx`
@@ -601,6 +603,98 @@ Common relationship roles:
 - `child` - Child in parent-child relationship
 - `adoptive_parent`, `adopted_child` - Adoption roles
 - `sibling` - Brother or sister
+
+---
+
+## Search Result Types Vocabulary
+
+**Default file**: `vocabularies/search-result-types.glx`
+
+**Used By**: [ResearchLog Entity](research-log#search-results)
+
+**Purpose**: Defines the outcome of each search recorded in a research log (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
+
+**Standard Templates**: See [Standard Vocabularies - Search Result Types](../5-standard-vocabularies/#search-result-types) for the complete default vocabulary with all standard search result types.
+
+### Structure
+
+```yaml
+search_result_types:
+  found:
+    label: "Found"
+    description: "The target of the search was located in the source."
+
+  not_found:
+    label: "Not Found"
+    description: "The source was searched and the target was not present (negative evidence)."
+
+  inconclusive:
+    label: "Inconclusive"
+    description: "A candidate record was located but cannot be confirmed to identify the target."
+
+  partial:
+    label: "Partial"
+    description: "Some relevant information was located, but the search objective was not fully met."
+
+  not_searched:
+    label: "Not Searched"
+    description: "Search is planned but has not yet been performed."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Search Result Types
+
+See [ResearchLog Entity - Search results](research-log#search-results) for the standard search result types and guidance on when to use each.
+
+---
+
+## Research Log Status Types Vocabulary
+
+**Default file**: `vocabularies/research-log-status-types.glx`
+
+**Used By**: [ResearchLog Entity](research-log#status-lifecycle)
+
+**Purpose**: Defines the lifecycle status of a research investigation (open, in progress, complete, blocked).
+
+**Standard Templates**: See [Standard Vocabularies - Research Log Status Types](../5-standard-vocabularies/#research-log-status-types) for the complete default vocabulary with all standard status values.
+
+### Structure
+
+```yaml
+research_log_status_types:
+  open:
+    label: "Open"
+    description: "Research objective defined but not yet started."
+
+  in_progress:
+    label: "In Progress"
+    description: "Research is actively being performed."
+
+  complete:
+    label: "Complete"
+    description: "Research objective met and conclusions documented."
+
+  blocked:
+    label: "Blocked"
+    description: "Research cannot proceed (waiting on access, missing records, or other obstacle)."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Research Log Status Types
+
+See [ResearchLog Entity - Status lifecycle](research-log#status-lifecycle) for the standard status values and the investigation lifecycle.
 
 ---
 
@@ -1420,6 +1514,8 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Participant Roles | [participant-roles.schema.json](../schema/v1/vocabularies/participant-roles.schema.json) |
 | Repository Types | [repository-types.schema.json](../schema/v1/vocabularies/repository-types.schema.json) |
 | Confidence Levels | [confidence-levels.schema.json](../schema/v1/vocabularies/confidence-levels.schema.json) |
+| Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
+| Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |
@@ -1449,5 +1545,6 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 - [Source Entity](source) - Source types vocabulary
 - [Media Entity](media) - Media types vocabulary
 - [Citation Entity](citation) - Citation documentation
+- [ResearchLog Entity](research-log) - Search result types and research log status types vocabularies
 
 ---
