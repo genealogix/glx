@@ -49,15 +49,24 @@ type slugConfig struct {
 	fallback  string
 }
 
-// WithSlugPrefix prepends prefix to the returned slug. The prefix counts
-// against any length budget set by [WithSlugMaxLength].
+// WithSlugPrefix prepends prefix verbatim to the returned slug — it is NOT
+// itself slugified, so the caller is responsible for passing a slug-safe
+// value. The intended use is a constant entity-ID prefix such as
+// [EntityIDPrefixPerson] ("person-"); passing a value containing spaces,
+// uppercase letters, or non-ASCII characters will leak those into the output
+// and violate the [a-z0-9-] charset Slugify otherwise guarantees. The prefix
+// counts against any length budget set by [WithSlugMaxLength].
 func WithSlugPrefix(prefix string) SlugOption {
 	return func(c *slugConfig) { c.prefix = prefix }
 }
 
-// WithSlugSuffix appends suffix verbatim to the returned slug — the suffix is
-// NOT itself slugified, so it can carry a hash or numeric disambiguator. The
-// suffix counts against any length budget set by [WithSlugMaxLength].
+// WithSlugSuffix appends suffix verbatim to the returned slug — it is NOT
+// itself slugified, so it can carry a hash or numeric disambiguator (e.g.
+// "-abc12345" or "-2"). For the same reason, the caller is responsible for
+// passing a slug-safe value; passing a suffix containing spaces, uppercase
+// letters, or non-ASCII characters will leak those into the output and
+// violate the [a-z0-9-] charset Slugify otherwise guarantees. The suffix
+// counts against any length budget set by [WithSlugMaxLength].
 func WithSlugSuffix(suffix string) SlugOption {
 	return func(c *slugConfig) { c.suffix = suffix }
 }
