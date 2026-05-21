@@ -29,12 +29,21 @@ import (
 // archive, as defined by the GEDZIP specification.
 const gedzipGedcomEntry = "gedcom.ged"
 
-// maxGEDZIPEntries caps the per-archive entry count to prevent inode/syscall
-// DoS from archives with millions of zero-byte entries. The largest plausible
-// genealogy archive (a 100k-person tree with several media items per person)
-// would still fit comfortably. Declared as var (not const) so tests can lower
-// the cap without building a 100k-entry fixture.
+// maxGEDZIPEntries is a security limit on per-archive entry count to mitigate
+// inode/syscall exhaustion DoS from archives containing huge numbers of tiny
+// (including zero-byte) entries. The 100k threshold is intentionally high
+// enough for very large legitimate genealogy datasets, while still bounding
+// extraction work. Declared as var (not const) so tests can lower the cap
+// without building a 100k-entry fixture.
 var maxGEDZIPEntries = 100_000
+
+// maxGEDZIPEntryBytes is a security limit on the decompressed size of a single
+// archive entry, mitigating decompression-bomb DoS where a tiny compressed
+// entry expands to exhaust disk during extraction. 512 MiB comfortably exceeds
+// any legitimate single GEDCOM or media file while still bounding extraction
+// work. Declared as var (not const) so tests can lower the cap without writing
+// a multi-hundred-MiB fixture.
+var maxGEDZIPEntryBytes int64 = 512 << 20
 
 // importGEDZIP extracts a .gdz archive into a temporary directory and delegates
 // to the existing GEDCOM import pipeline. The temp directory is removed when
@@ -194,9 +203,10 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 	return dest, nil
 }
 
-// writeZipEntry copies one ZIP entry to destPath. On any copy or close failure
-// the partially written destination is removed so the next caller cannot
-// observe a truncated file.
+// writeZipEntry copies one ZIP entry to destPath, rejecting any entry whose
+// decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
+// when that size limit is exceeded, the partially written destination is
+// removed so the next caller cannot observe a truncated or oversized file.
 func writeZipEntry(f *zip.File, destPath string) error {
 	src, err := f.Open()
 	if err != nil {
@@ -216,14 +226,19 @@ func writeZipEntry(f *zip.File, destPath string) error {
 		return fmt.Errorf("creating destination file for %q: %w", f.Name, err)
 	}
 
-	// #nosec G110 -- decompressed-size cap is intentionally deferred; tracked in #775
-	_, copyErr := io.Copy(dst, src)
+	limitedSrc := io.LimitReader(src, maxGEDZIPEntryBytes+1)
+	written, copyErr := io.Copy(dst, limitedSrc)
 	closeErr := dst.Close()
 
 	if copyErr != nil {
 		_ = os.Remove(destPath)
 
 		return fmt.Errorf("extracting zip entry %q: %w", f.Name, copyErr)
+	}
+	if written > maxGEDZIPEntryBytes {
+		_ = os.Remove(destPath)
+
+		return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", f.Name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
 	}
 	if closeErr != nil {
 		_ = os.Remove(destPath)
