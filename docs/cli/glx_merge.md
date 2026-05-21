@@ -14,6 +14,16 @@ into the destination. Duplicate or conflicting items (entities,
 vocabularies, property definitions, and metadata) are reported and skipped
 (the destination version is kept).
 
+For multi-file archives, media binaries referenced by source Media entities
+are copied from the source's media/files/ into the destination's
+media/files/ after the entity merge. Source files whose content matches an
+identically-named binary already in the destination are skipped; collisions
+with different-content destination files are resolved by renaming the
+source copy (e.g. photo.jpg -> photo-2.jpg) and rewriting the merged Media
+entity's URI to match. Single-file destinations cannot hold binaries -- if
+the source has any, a warning is printed and the merged Media URIs will
+dangle.
+
 Use --preview to see what would happen without modifying any files,
 including cross-archive duplicate person detection.
 
