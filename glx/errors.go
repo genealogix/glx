@@ -56,6 +56,7 @@ var (
 	ErrGEDZIPNotValidArchive      = errors.New("file is not a valid zip archive")
 	ErrGEDZIPDuplicateEntry       = errors.New("gedzip archive contains entries that resolve to the same destination path")
 	ErrGEDZIPTooManyEntries       = errors.New("gedzip archive entry count exceeds the per-archive limit")
+	ErrGEDZIPEntryTooLarge        = errors.New("gedzip archive entry exceeds the per-entry decompressed size limit")
 	ErrGEDZIPUnsupportedAlgorithm = errors.New("gedzip archive uses an unsupported compression algorithm")
 
 	// `glx add` errors
