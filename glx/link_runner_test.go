@@ -380,8 +380,8 @@ func TestCitationIDFor(t *testing.T) {
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
-		if len(got) > maxEntityIDLength {
-			t.Errorf("short NOID produced over-long ID: %d > %d", len(got), maxEntityIDLength)
+		if len(got) > glxlib.MaxEntityIDLength {
+			t.Errorf("short NOID produced over-long ID: %d > %d", len(got), glxlib.MaxEntityIDLength)
 		}
 	})
 
@@ -389,8 +389,8 @@ func TestCitationIDFor(t *testing.T) {
 		long := "1:1:" + strings.Repeat("ABCD-", 20) + "END"
 		ark, _ := ParseFamilySearchARK("ark:/61903/" + long)
 		got := citationIDFor(ark)
-		if len(got) > maxEntityIDLength {
-			t.Errorf("long NOID produced over-long ID: %d > %d (id=%q)", len(got), maxEntityIDLength, got)
+		if len(got) > glxlib.MaxEntityIDLength {
+			t.Errorf("long NOID produced over-long ID: %d > %d (id=%q)", len(got), glxlib.MaxEntityIDLength, got)
 		}
 		if !strings.HasPrefix(got, citationIDPrefixFS) {
 			t.Errorf("missing prefix: %q", got)

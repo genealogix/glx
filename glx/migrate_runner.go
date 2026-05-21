@@ -401,7 +401,7 @@ func newEventID(archive *glxlib.GLXFile) (string, error) {
 		if _, err := rand.Read(bytes); err != nil {
 			return "", fmt.Errorf("creating event ID: %w", err)
 		}
-		id := "event-" + hex.EncodeToString(bytes)
+		id := glxlib.EntityIDPrefixEvent + hex.EncodeToString(bytes)
 		if _, exists := archive.Events[id]; !exists {
 			return id, nil
 		}

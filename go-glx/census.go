@@ -633,7 +633,7 @@ func censusSlugID(prefix string, year int, loc CensusLocation) string {
 	if name == "" {
 		name = loc.PlaceID
 	}
-	placeSlug := SlugifyForID(name, 0)
+	placeSlug := Slugify(name)
 	id := fmt.Sprintf("%s-%d-census-%s", prefix, year, placeSlug)
 
 	return truncateID(id)
@@ -646,8 +646,8 @@ func censusSlugIDWithHousehold(prefix string, year int, loc CensusLocation, surn
 	if name == "" {
 		name = loc.PlaceID
 	}
-	placeSlug := SlugifyForID(name, 0)
-	surnameSlug := SlugifyForID(surname, 0)
+	placeSlug := Slugify(name)
+	surnameSlug := Slugify(surname)
 	id := fmt.Sprintf("%s-%d-census-%s-%s", prefix, year, placeSlug, surnameSlug)
 
 	return truncateID(id)
@@ -814,7 +814,7 @@ func truncateIDWithSuffix(baseID string, suffix int) string {
 
 // slugify generates a deterministic entity ID from a prefix and name.
 func slugify(prefix, name string) string {
-	slug := SlugifyForID(name, 0)
+	slug := Slugify(name)
 	if prefix == "" {
 		return slug
 	}

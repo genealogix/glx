@@ -22,6 +22,8 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+const slugFallback = "unknown"
+
 var (
 	slugNonAlphaNum    = regexp.MustCompile(`[^a-z0-9]+`)
 	germanSlugReplacer = strings.NewReplacer(
@@ -36,20 +38,88 @@ var (
 	)
 )
 
-// SlugifyForID lowercases the input, replaces runs of non-alphanumerics with a
-// single hyphen, trims leading/trailing hyphens, and truncates to maxLen.
-// Falls back to "unknown" if the input contains no alphanumerics.
-func SlugifyForID(s string, maxLen int) string {
+// SlugOption configures Slugify. Options are applied in order and the last
+// call wins per field, so callers can compose defaults with overrides.
+type SlugOption func(*slugConfig)
+
+type slugConfig struct {
+	prefix    string
+	suffix    string
+	maxLength int
+	fallback  string
+}
+
+// WithSlugPrefix prepends prefix to the returned slug. The prefix counts
+// against any length budget set by [WithSlugMaxLength].
+func WithSlugPrefix(prefix string) SlugOption {
+	return func(c *slugConfig) { c.prefix = prefix }
+}
+
+// WithSlugSuffix appends suffix verbatim to the returned slug — the suffix is
+// NOT itself slugified, so it can carry a hash or numeric disambiguator. The
+// suffix counts against any length budget set by [WithSlugMaxLength].
+func WithSlugSuffix(suffix string) SlugOption {
+	return func(c *slugConfig) { c.suffix = suffix }
+}
+
+// WithSlugMaxLength caps the returned string (prefix + body + suffix) at n
+// characters by trimming the slug body. 0 (the default) leaves the slug
+// uncapped.
+func WithSlugMaxLength(n int) SlugOption {
+	return func(c *slugConfig) { c.maxLength = n }
+}
+
+// WithSlugFallback replaces the default "unknown" placeholder used when the
+// input has no alphanumeric characters. Useful for deterministic hash-based
+// fallbacks (e.g., shortHash of a related field).
+func WithSlugFallback(fallback string) SlugOption {
+	return func(c *slugConfig) { c.fallback = fallback }
+}
+
+// Slugify normalizes s into a URL/ID-safe identifier:
+//
+//   - applies German digraph transliteration (ä→ae, ß→ss, …) before NFKD
+//     normalization so umlauts produce the canonical German digraph form
+//     rather than bare ASCII
+//   - normalizes via NFKD and strips combining marks (Mn/Mc/Me)
+//   - lowercases and collapses non-alphanumeric runs into single hyphens
+//   - trims leading and trailing hyphens
+//   - falls back to "unknown" (or [WithSlugFallback]) when no alphanumerics
+//     survive
+//
+// Options apply in order; last write wins per field.
+func Slugify(s string, opts ...SlugOption) string {
+	cfg := slugConfig{fallback: slugFallback}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	body := slugifyBody(s, cfg.fallback)
+	if cfg.maxLength > 0 {
+		body = capSlugBody(body, cfg.maxLength-len(cfg.prefix)-len(cfg.suffix))
+	}
+
+	return cfg.prefix + body + cfg.suffix
+}
+
+// EntityID is an ergonomic wrapper for the standard case of minting a GLX
+// entity ID: it slugifies text and prepends prefix, capping the result at
+// [MaxEntityIDLength].
+func EntityID(prefix, text string) string {
+	return Slugify(text, WithSlugPrefix(prefix), WithSlugMaxLength(MaxEntityIDLength))
+}
+
+func slugifyBody(s, fallback string) string {
 	s = germanSlugReplacer.Replace(s)
 	s = stripCombiningMarks(norm.NFKD.String(s))
 	s = strings.ToLower(s)
 	s = slugNonAlphaNum.ReplaceAllString(s, "-")
 	s = strings.Trim(s, "-")
 	if s == "" {
-		return "unknown"
+		return fallback
 	}
 
-	return trimToMaxLen(s, maxLen)
+	return s
 }
 
 func stripCombiningMarks(s string) string {
@@ -65,13 +135,16 @@ func stripCombiningMarks(s string) string {
 	return b.String()
 }
 
-func trimToMaxLen(s string, maxLen int) string {
-	if maxLen <= 0 {
-		return s
+// capSlugBody trims body to fit budget characters, dropping trailing hyphens.
+// budget <= 0 means prefix + suffix already meet or exceed the cap, so there
+// is no room for any body characters.
+func capSlugBody(body string, budget int) string {
+	if budget <= 0 {
+		return ""
 	}
-	if len(s) <= maxLen {
-		return s
+	if len(body) <= budget {
+		return body
 	}
 
-	return strings.TrimRight(s[:maxLen], "-")
+	return strings.TrimRight(body[:budget], "-")
 }

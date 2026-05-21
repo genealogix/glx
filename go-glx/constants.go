@@ -425,6 +425,27 @@ const (
 	EntityTypeMedia         = "media"
 )
 
+// Entity ID prefixes - prepended to slugs when minting deterministic IDs.
+// Always reference these constants instead of rebuilding the "<type>-" literal
+// at the call site.
+const (
+	EntityIDPrefixPerson       = "person-"
+	EntityIDPrefixRelationship = "relationship-"
+	EntityIDPrefixEvent        = "event-"
+	EntityIDPrefixPlace        = "place-"
+	EntityIDPrefixSource       = "source-"
+	EntityIDPrefixCitation     = "citation-"
+	EntityIDPrefixRepository   = "repository-"
+	EntityIDPrefixAssertion    = "assertion-"
+	EntityIDPrefixMedia        = "media-"
+)
+
+// Entity ID length bounds, per the GLX entity ID pattern `[a-zA-Z0-9-]{1,64}`.
+const (
+	MinEntityIDLength = 1
+	MaxEntityIDLength = 64
+)
+
 // Vocabulary type constants - used as map keys in GLXFile
 const (
 	VocabRelationshipTypes = "relationship_types"

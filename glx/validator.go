@@ -30,12 +30,6 @@ import (
 	schema "github.com/genealogix/glx/specification/schema/v1"
 )
 
-const (
-	// ID validation constants
-	MinEntityIDLength = 1
-	MaxEntityIDLength = 64
-)
-
 // compiledSchema holds the fully compiled JSON schema. Compiled once on first use
 // via sync.Once, then reused for all subsequent validations. This avoids re-parsing
 // the schema and re-compiling regexp patterns (~2 MB of regexp allocs) per file.
@@ -408,7 +402,7 @@ func flattenValidationErrors(ve *jsonschema.ValidationError) []string {
 }
 
 func isValidEntityID(id string) bool {
-	if len(id) < MinEntityIDLength || len(id) > MaxEntityIDLength {
+	if len(id) < glxlib.MinEntityIDLength || len(id) > glxlib.MaxEntityIDLength {
 		return false
 	}
 	for _, c := range id {

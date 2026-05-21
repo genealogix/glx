@@ -815,7 +815,7 @@ func TestAdd_RejectsUnsafeOverrideID(t *testing.T) {
 	cases := map[string]string{
 		"path traversal":      "../escape",
 		"control char":        "person-x\x00bad",
-		"too long":            "person-" + strings.Repeat("a", maxEntityIDLength),
+		"too long":            "person-" + strings.Repeat("a", glxlib.MaxEntityIDLength),
 		"leading hyphen":      "-leading-hyphen",
 		"forbidden character": "person@bad",
 	}
