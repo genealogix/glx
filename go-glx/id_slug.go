@@ -62,9 +62,13 @@ func WithSlugSuffix(suffix string) SlugOption {
 	return func(c *slugConfig) { c.suffix = suffix }
 }
 
-// WithSlugMaxLength caps the returned string (prefix + body + suffix) at n
-// characters by trimming the slug body. 0 (the default) leaves the slug
-// uncapped.
+// WithSlugMaxLength caps the returned string at n characters by trimming the
+// slug body; the prefix and suffix are always preserved verbatim (the suffix
+// often carries a hash or disambiguator that must stay intact). When
+// len(prefix)+len(suffix) <= n the body is trimmed so prefix+body+suffix fits
+// within n. When len(prefix)+len(suffix) > n the body is dropped entirely and
+// the result is prefix+suffix, which can exceed n. 0 (the default) leaves the
+// slug uncapped.
 func WithSlugMaxLength(n int) SlugOption {
 	return func(c *slugConfig) { c.maxLength = n }
 }
@@ -104,7 +108,9 @@ func Slugify(s string, opts ...SlugOption) string {
 
 // EntityID is an ergonomic wrapper for the standard case of minting a GLX
 // entity ID: it slugifies text and prepends prefix, capping the result at
-// [MaxEntityIDLength].
+// [MaxEntityIDLength]. Entity-type prefixes are far shorter than
+// [MaxEntityIDLength], so the cap always holds in practice; see
+// [WithSlugMaxLength] for the over-budget edge case.
 func EntityID(prefix, text string) string {
 	return Slugify(text, WithSlugPrefix(prefix), WithSlugMaxLength(MaxEntityIDLength))
 }

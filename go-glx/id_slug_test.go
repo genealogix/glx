@@ -97,6 +97,15 @@ func TestSlugify(t *testing.T) {
 			opts: []SlugOption{WithSlugPrefix("citation-"), WithSlugSuffix("-hash"), WithSlugMaxLength(len("citation-") + len("-hash"))},
 			want: "citation--hash",
 		},
+		{
+			// prefix+suffix already exceed the cap: the body is dropped and the
+			// result is prefix+suffix verbatim, which is allowed to exceed
+			// maxLength because the prefix and suffix are never trimmed.
+			name: "prefix and suffix exceed max length: body dropped, result exceeds cap",
+			in:   "title",
+			opts: []SlugOption{WithSlugPrefix("citation-"), WithSlugSuffix("-hash"), WithSlugMaxLength(5)},
+			want: "citation--hash",
+		},
 	}
 
 	for _, tt := range tests {
