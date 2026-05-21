@@ -25,9 +25,12 @@ import (
 // importGEDCOM imports a GEDCOM or GEDZIP file and converts it to GLX format.
 // GEDZIP archives (.gdz) are detected by extension and routed through
 // importGEDZIP, which extracts to a temp directory before delegating back here.
-// Media files referenced by the GEDCOM are copied into media/files/: for
-// single-file output this is a sibling directory to the output file, and for
-// multi-file output this is within the archive layout's media/files/ directory.
+//
+// Local media referenced by the GEDCOM is written into media/files/. Relative
+// FILE references are copied from the GEDCOM's source directory and inline BLOB
+// data is decoded and written; URL and absolute FILE references are left as-is
+// (no download). For single-file output media/files/ is a sibling directory of
+// the output file; for multi-file output it lives within the archive layout.
 func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool, showFirstErrors int) error {
 	// Validate format flag
 	if format != FormatSingle && format != FormatMulti {
