@@ -633,7 +633,7 @@ func censusSlugID(prefix string, year int, loc CensusLocation) string {
 	if name == "" {
 		name = loc.PlaceID
 	}
-	return truncateID(fmt.Sprintf("%s-%d-census-%s", prefix, year, slugifyString(name)))
+	return truncateID(fmt.Sprintf("%s-%d-census-%s", prefix, year, SlugifyForID(name, 0)))
 }
 
 // censusSlugIDWithHousehold generates a deterministic entity ID that includes
@@ -643,7 +643,7 @@ func censusSlugIDWithHousehold(prefix string, year int, loc CensusLocation, surn
 	if name == "" {
 		name = loc.PlaceID
 	}
-	return truncateID(fmt.Sprintf("%s-%d-census-%s-%s", prefix, year, slugifyString(name), slugifyString(surname)))
+	return truncateID(fmt.Sprintf("%s-%d-census-%s-%s", prefix, year, SlugifyForID(name, 0), SlugifyForID(surname, 0)))
 }
 
 // truncateID truncates an entity ID to the 64-character maximum.
@@ -807,16 +807,11 @@ func truncateIDWithSuffix(baseID string, suffix int) string {
 
 // slugify generates a deterministic entity ID from a prefix and name.
 func slugify(prefix, name string) string {
-	slug := slugifyString(name)
+	slug := SlugifyForID(name, 0)
 	if prefix == "" {
 		return slug
 	}
 	return prefix + "-" + slug
-}
-
-// slugifyString converts a name to a URL/ID-safe slug.
-func slugifyString(name string) string {
-	return SlugifyForID(name, 0)
 }
 
 // lastWord returns the last whitespace-delimited word in a string.
