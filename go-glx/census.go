@@ -633,8 +633,10 @@ func censusSlugID(prefix string, year int, loc CensusLocation) string {
 	if name == "" {
 		name = loc.PlaceID
 	}
+	placeSlug := SlugifyForID(name, 0)
+	id := fmt.Sprintf("%s-%d-census-%s", prefix, year, placeSlug)
 
-	return truncateID(fmt.Sprintf("%s-%d-census-%s", prefix, year, SlugifyForID(name, 0)))
+	return truncateID(id)
 }
 
 // censusSlugIDWithHousehold generates a deterministic entity ID that includes
@@ -644,8 +646,11 @@ func censusSlugIDWithHousehold(prefix string, year int, loc CensusLocation, surn
 	if name == "" {
 		name = loc.PlaceID
 	}
+	placeSlug := SlugifyForID(name, 0)
+	surnameSlug := SlugifyForID(surname, 0)
+	id := fmt.Sprintf("%s-%d-census-%s-%s", prefix, year, placeSlug, surnameSlug)
 
-	return truncateID(fmt.Sprintf("%s-%d-census-%s-%s", prefix, year, SlugifyForID(name, 0), SlugifyForID(surname, 0)))
+	return truncateID(id)
 }
 
 // truncateID truncates an entity ID to the 64-character maximum.
