@@ -207,6 +207,59 @@ func TestIsLivingPerson(t *testing.T) {
 			want: false,
 		},
 		{
+			// A lower-ID birth event with no parseable year must not mask a
+			// higher-ID birth event with a recent year: the most recent
+			// parseable year across all subject birth events governs, so the
+			// person is still classified living and gets redacted (no PII leak).
+			name: "multiple births: unparseable lowest-id event does not mask recent birth",
+			archive: &GLXFile{
+				Persons: map[string]*Person{"p": {}},
+				Events: map[string]*Event{
+					"b1-unparseable": {
+						Type: EventTypeBirth,
+						Date: "unknown",
+						Participants: []Participant{
+							{Person: "p", Role: ParticipantRolePrincipal},
+						},
+					},
+					"b2-recent": {
+						Type: EventTypeBirth,
+						Date: "2010",
+						Participants: []Participant{
+							{Person: "p", Role: ParticipantRolePrincipal},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			// Conflicting birth years (data error or rival sources): the most
+			// recent year wins because that is the privacy-conservative
+			// direction for a redaction filter — assume possibly-living.
+			name: "conflicting birth years: most recent wins",
+			archive: &GLXFile{
+				Persons: map[string]*Person{"p": {}},
+				Events: map[string]*Event{
+					"b1-old": {
+						Type: EventTypeBirth,
+						Date: "1850",
+						Participants: []Participant{
+							{Person: "p", Role: ParticipantRolePrincipal},
+						},
+					},
+					"b2-recent": {
+						Type: EventTypeBirth,
+						Date: "2010",
+						Participants: []Participant{
+							{Person: "p", Role: ParticipantRolePrincipal},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
 			name: "no birth date and no end event is not living",
 			archive: &GLXFile{
 				Persons: map[string]*Person{"p": {}},
@@ -565,5 +618,63 @@ func TestPrivatizeLiving_ScrubsLivingNonSubjectParticipants(t *testing.T) {
 				t.Errorf("dead principal should be preserved; got %+v", p)
 			}
 		}
+	}
+}
+
+// TestPrivatizeLiving_MultipleBirthEventsUseMostRecentYear proves the bulk
+// redaction path (buildPersonLifeEventIndex) derives the heuristic from the
+// most recent parseable birth year across ALL of a person's subject birth
+// events, not a single arbitrary (lowest-ID) event. A person whose lowest-ID
+// birth event has no parseable year but who has a second, recent birth event
+// must still be redacted; otherwise the recent year is masked and PII leaks.
+func TestPrivatizeLiving_MultipleBirthEventsUseMostRecentYear(t *testing.T) {
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"p": {
+				Properties: map[string]any{
+					PersonPropertyName:       map[string]any{"value": "Recent Person"},
+					PersonPropertyOccupation: "engineer",
+				},
+			},
+		},
+		Events: map[string]*Event{
+			// Lower ID, no parseable year — alone this would classify "not living".
+			"birth-a-unparseable": {
+				Type: EventTypeBirth,
+				Date: "unknown",
+				Participants: []Participant{
+					{Person: "p", Role: ParticipantRolePrincipal},
+				},
+			},
+			// Higher ID, recent parseable year — must drive the decision.
+			"birth-b-recent": {
+				Type:    EventTypeBirth,
+				Date:    "2012-03-04",
+				PlaceID: "place-hospital",
+				Participants: []Participant{
+					{Person: "p", Role: ParticipantRolePrincipal},
+				},
+			},
+		},
+	}
+
+	result := PrivatizeLiving(archive, fixedNow, LivingThresholdYears)
+	if result.PersonsRedacted != 1 {
+		t.Fatalf("PersonsRedacted = %d, want 1 (most recent birth year should classify person as living)", result.PersonsRedacted)
+	}
+
+	p := archive.Persons["p"]
+	if p.Properties[PersonPropertyName].(map[string]any)["value"] != "Living" {
+		t.Errorf("living person name should be redacted to 'Living'; got %v", p.Properties[PersonPropertyName])
+	}
+	if _, ok := p.Properties[PersonPropertyOccupation]; ok {
+		t.Errorf("occupation should be stripped from redacted person; got %v", p.Properties)
+	}
+	// Both birth events name the living person as subject, so both are fully redacted.
+	if result.EventsRedacted != 2 {
+		t.Errorf("EventsRedacted = %d, want 2 (both subject birth events)", result.EventsRedacted)
+	}
+	if b := archive.Events["birth-b-recent"]; b.Date != "" || b.PlaceID != "" {
+		t.Errorf("recent birth event should be redacted; got date=%q place=%q", b.Date, b.PlaceID)
 	}
 }

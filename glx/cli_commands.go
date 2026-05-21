@@ -212,8 +212,9 @@ Citation, Relationship, and Assertion.
 Use --privatize-living (supported for every output format) to redact living
 persons' data on export. A person is treated as living when their ` + "`living: true`" + `
 property is set, or — under the fallback heuristic — when no recorded death,
-burial, or cremation event exists and their earliest known birth year is less
-than 100 years ago.
+burial, or cremation event exists and their most recent known birth year is
+less than 100 years ago. When birth records conflict, the most recent year is
+used so the filter errs toward redaction.
 
 Redaction replaces the person's name with "Living", strips all other
 properties (occupation, residence, religion, etc.), and clears notes.

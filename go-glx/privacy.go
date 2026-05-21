@@ -15,7 +15,6 @@
 package glx
 
 import (
-	"sort"
 	"time"
 )
 
@@ -44,12 +43,18 @@ type PrivatizeResult struct {
 	AssertionsDropped     int
 }
 
-// personLifeEvents pre-aggregates the information IsLivingPerson needs about
-// a single person, so a bulk pass can be O(events) total instead of
-// O(persons × events) from calling FindPersonEvent per person per event type.
+// personLifeEvents pre-aggregates the information classifyLiving needs about a
+// single person, so both the single-person path (personLifeEventsFor) and the
+// bulk path (buildPersonLifeEventIndex) derive it in one O(events) sweep rather
+// than calling FindPersonEvent once per person per event type.
+//
+// latestBirthYear holds the most recent (largest) parseable year across every
+// birth event the person is a subject of. hasBirthYear distinguishes "no
+// parseable birth year recorded" from a legitimately computed year of 0.
 type personLifeEvents struct {
-	birth       *Event
-	hasEndEvent bool
+	hasEndEvent     bool
+	hasBirthYear    bool
+	latestBirthYear int
 }
 
 // IsLivingPerson reports whether the person identified by personID should be
@@ -64,12 +69,19 @@ type personLifeEvents struct {
 //  2. Otherwise, if the person is the subject of any death, burial, or
 //     cremation event, the person is not living — regardless of whether the
 //     event's date is known.
-//  3. Otherwise, if a birth event exists with a parseable year and that year
-//     is less than thresholdYears before now, the person is living.
+//  3. Otherwise, if the person is the subject of any birth event with a
+//     parseable year, the most recent (largest) such year is used: if it is
+//     less than thresholdYears before now, the person is living. Taking the
+//     most recent year is the privacy-conservative choice when birth events
+//     conflict — it maximizes redaction, so a stray recent birth year cannot
+//     be masked by an older or unparseable one and leak PII.
 //  4. Otherwise the person is not living.
 //
 // Persons with no end-of-life event and no parseable birth year fall under
 // rule 4 — explicit `living: true` is the escape hatch for those cases.
+//
+// A single call walks archive.Events once (O(events)); it does not call
+// FindPersonEvent per event type.
 func IsLivingPerson(archive *GLXFile, personID string, now time.Time, thresholdYears int) bool {
 	if archive == nil {
 		return false
@@ -79,22 +91,36 @@ func IsLivingPerson(archive *GLXFile, personID string, now time.Time, thresholdY
 		return false
 	}
 
-	var lifeEvents personLifeEvents
-	for endType := range livingEndEventTypes {
-		if id, _ := FindPersonEvent(archive, personID, endType); id != "" {
-			lifeEvents.hasEndEvent = true
+	return classifyLiving(person, personLifeEventsFor(archive, personID), now, thresholdYears)
+}
+
+// personLifeEventsFor walks archive.Events once and aggregates the life events
+// for which personID is a subject (principal/subject/unset role): whether any
+// end-of-life event names them and the most recent parseable birth year. It is
+// the single-person analog of buildPersonLifeEventIndex and shares the same
+// folding logic (accumulateLifeEvent), so both paths classify identically.
+func personLifeEventsFor(archive *GLXFile, personID string) personLifeEvents {
+	var life personLifeEvents
+	for _, event := range archive.Events {
+		if event == nil || !isLifeEvent(event.Type) {
+			continue
+		}
+		for _, p := range event.Participants {
+			if p.Person != personID || !isSubjectRole(p.Role) {
+				continue
+			}
+			accumulateLifeEvent(&life, event)
 
 			break
 		}
 	}
-	_, lifeEvents.birth = FindPersonEvent(archive, personID, EventTypeBirth)
 
-	return classifyLiving(person, lifeEvents, now, thresholdYears)
+	return life
 }
 
-// classifyLiving applies the IsLivingPerson decision rule with already-fetched
-// life events. Sharing this with the bulk index path keeps the rule single-
-// sourced.
+// classifyLiving applies the IsLivingPerson decision rule with already-
+// aggregated life events. Sharing this with both the single-person and bulk
+// index paths keeps the rule single-sourced.
 func classifyLiving(person *Person, lifeEvents personLifeEvents, now time.Time, thresholdYears int) bool {
 	if explicit, ok := person.Properties[PersonPropertyLiving].(bool); ok {
 		return explicit
@@ -102,39 +128,53 @@ func classifyLiving(person *Person, lifeEvents personLifeEvents, now time.Time, 
 	if lifeEvents.hasEndEvent {
 		return false
 	}
-	if lifeEvents.birth == nil || lifeEvents.birth.Date == "" {
-		return false
-	}
-	birthYear := ExtractFirstYear(string(lifeEvents.birth.Date))
-	if birthYear == 0 {
+	if !lifeEvents.hasBirthYear {
 		return false
 	}
 
-	return now.Year()-birthYear < thresholdYears
+	return now.Year()-lifeEvents.latestBirthYear < thresholdYears
 }
 
-// buildPersonLifeEventIndex makes a single pass over archive.Events and
-// returns, per person, the earliest-ID birth event they were the subject of
-// and whether any end-of-life event (death/burial/cremation) names them as
-// subject. Sorting by event ID matches FindPersonEvent's "lowest ID wins"
-// tie-break so the bulk path produces the same classification as ad-hoc
-// IsLivingPerson calls.
-func buildPersonLifeEventIndex(archive *GLXFile) map[string]personLifeEvents {
-	ids := make([]string, 0, len(archive.Events))
-	for id := range archive.Events {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
+// isLifeEvent reports whether an event type feeds the living heuristic: a birth
+// (for the date threshold) or an end-of-life event (death/burial/cremation).
+func isLifeEvent(eventType string) bool {
+	return eventType == EventTypeBirth || livingEndEventTypes[eventType]
+}
 
+// accumulateLifeEvent folds one event for which a person is a subject into that
+// person's aggregate. An end-of-life event sets hasEndEvent; a birth event with
+// a parseable year advances latestBirthYear to the most recent (largest) year
+// seen so far. Both operations are order-independent (boolean OR and max), so
+// callers need not visit events in any particular order.
+func accumulateLifeEvent(life *personLifeEvents, event *Event) {
+	if livingEndEventTypes[event.Type] {
+		life.hasEndEvent = true
+
+		return
+	}
+	if event.Type != EventTypeBirth {
+		return
+	}
+	year := ExtractFirstYear(string(event.Date))
+	if year == 0 {
+		return
+	}
+	if !life.hasBirthYear || year > life.latestBirthYear {
+		life.hasBirthYear = true
+		life.latestBirthYear = year
+	}
+}
+
+// buildPersonLifeEventIndex makes a single O(events) pass over archive.Events
+// and returns, per person, the aggregated life events (end-of-life presence and
+// most recent parseable birth year) across every event the person is a subject
+// of. No sort is needed: accumulateLifeEvent is order-independent (end-event is
+// a boolean OR, birth year is a max), so the bulk path produces the same
+// classification as per-person IsLivingPerson calls.
+func buildPersonLifeEventIndex(archive *GLXFile) map[string]personLifeEvents {
 	index := make(map[string]personLifeEvents)
-	for _, id := range ids {
-		event := archive.Events[id]
-		if event == nil {
-			continue
-		}
-		isBirth := event.Type == EventTypeBirth
-		isEnd := livingEndEventTypes[event.Type]
-		if !isBirth && !isEnd {
+	for _, event := range archive.Events {
+		if event == nil || !isLifeEvent(event.Type) {
 			continue
 		}
 		for _, p := range event.Participants {
@@ -142,12 +182,7 @@ func buildPersonLifeEventIndex(archive *GLXFile) map[string]personLifeEvents {
 				continue
 			}
 			entry := index[p.Person]
-			if isBirth && entry.birth == nil {
-				entry.birth = event
-			}
-			if isEnd {
-				entry.hasEndEvent = true
-			}
+			accumulateLifeEvent(&entry, event)
 			index[p.Person] = entry
 		}
 	}
