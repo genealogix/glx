@@ -26,17 +26,21 @@ const defaultMergeThreshold = 0.6
 
 // mergeResult holds statistics from a merge operation.
 type mergeResult struct {
-	Conflicts        []string
-	IdenticalSkipped int
-	NewPersons       int
-	NewEvents        int
-	NewRelationships int
-	NewPlaces        int
-	NewSources       int
-	NewCitations     int
-	NewRepositories  int
-	NewAssertions    int
-	NewMedia         int
+	Conflicts         []string
+	IdenticalSkipped  int
+	NewPersons        int
+	NewEvents         int
+	NewRelationships  int
+	NewPlaces         int
+	NewSources        int
+	NewCitations      int
+	NewRepositories   int
+	NewAssertions     int
+	NewMedia          int
+	MediaFilesPlanned int // binaries scheduled to copy from src into dest
+	MediaFilesRenamed int // planned binaries that needed a dedup rename
+	MediaFilesCopied  int // binaries actually copied after the save
+	MediaFilesSkipped int // planned binaries dropped because their entity didn't merge
 }
 
 // TotalNew returns the total number of new entities merged.
@@ -175,8 +179,29 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 		}
 	}
 
+	// Plan source media binary copies before the merge, so the URI rewrites
+	// done for name-collision dedup flow into the merged Media entities. Only
+	// multi-file destinations can hold binaries; warn and skip the plan
+	// otherwise.
+	var mediaPlan []plannedMediaCopy
+	if destIsDir {
+		plan, planErr := planSourceMediaCopies(srcPath, destPath, src)
+		if planErr != nil {
+			return fmt.Errorf("planning source media copies: %w", planErr)
+		}
+		mediaPlan = plan
+	} else if srcInfo.IsDir() {
+		warnOrphanSourceMedia(srcPath)
+	}
+
 	// Merge
 	result := mergeArchivesInMemory(dest, src)
+	result.MediaFilesPlanned = len(mediaPlan)
+	for _, p := range mediaPlan {
+		if filepath.Base(p.SrcPath) != p.TargetName {
+			result.MediaFilesRenamed++
+		}
+	}
 
 	// Report
 	fmt.Printf("Merging %s into %s\n\n", srcPath, destPath)
@@ -188,6 +213,13 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	}
 
 	if preview {
+		if result.MediaFilesPlanned > 0 {
+			fmt.Printf("\n  Would copy %d media file(s) into %s", result.MediaFilesPlanned, glxlib.MediaFilesDir)
+			if result.MediaFilesRenamed > 0 {
+				fmt.Printf(" (%d renamed to avoid name collisions)", result.MediaFilesRenamed)
+			}
+			fmt.Println("")
+		}
 		fmt.Println("\n(preview — no files written)")
 
 		return nil
@@ -196,10 +228,37 @@ func mergeArchives(srcPath, destPath string, preview bool, threshold float64) er
 	// Save — multi-file archives use crash-safe temp+swap to prevent partial writes.
 	// Single-file archives use os.WriteFile directly (not atomic; see #595).
 	if destIsDir {
-		return safeWriteMultiFileArchive(destPath, dest)
+		if err := safeWriteMultiFileArchive(destPath, dest); err != nil {
+			return err
+		}
+		copied, skipped, copyErr := executeMediaCopies(mediaPlan, destPath, dest)
+		result.MediaFilesCopied = copied
+		result.MediaFilesSkipped = skipped
+		printMediaCopyReport(result)
+		if copyErr != nil {
+			return fmt.Errorf("copying source media binaries: %w", copyErr)
+		}
+
+		return nil
 	}
 
 	return writeSingleFileArchive(destPath, dest, false)
+}
+
+// warnOrphanSourceMedia prints a warning when the source archive carries media
+// binaries that a single-file destination cannot hold. Merged Media URIs will
+// dangle in this case; the warning lets the user decide whether to convert the
+// destination to multi-file or accept the dangling references.
+func warnOrphanSourceMedia(srcPath string) {
+	srcFiles := filepath.Join(srcPath, glxlib.MediaFilesDir)
+	entries, err := os.ReadDir(srcFiles)
+	if err != nil || len(entries) == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr,
+		"Warning: source has %d file(s) under %s; single-file destination cannot hold binaries, so they will not be copied. Merged Media URIs may dangle.\n",
+		len(entries), glxlib.MediaFilesDir,
+	)
 }
 
 func printMergeReport(result *mergeResult) {
@@ -234,6 +293,23 @@ func printEntityCount(name string, count int) {
 	if count > 0 {
 		fmt.Printf("    %d %s\n", count, name)
 	}
+}
+
+// printMediaCopyReport reports the media-binary copy outcome of a non-preview
+// merge. Silent when no source binaries were planned (single-file source or
+// archive with no media/files/).
+func printMediaCopyReport(result *mergeResult) {
+	if result.MediaFilesPlanned == 0 {
+		return
+	}
+	fmt.Printf("  Media files: %d copied", result.MediaFilesCopied)
+	if result.MediaFilesRenamed > 0 {
+		fmt.Printf(", %d renamed to avoid name collisions", result.MediaFilesRenamed)
+	}
+	if result.MediaFilesSkipped > 0 {
+		fmt.Printf(", %d skipped (entity conflict)", result.MediaFilesSkipped)
+	}
+	fmt.Println("")
 }
 
 // printCrossArchiveDuplicates renders potential duplicates found between two archives.
