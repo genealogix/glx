@@ -102,6 +102,13 @@ func deriveOrOverrideID(base, overrideID string, taken map[string]struct{}, forc
 		return overrideID, nil
 	}
 
+	// Defense-in-depth: base is expected to arrive already slugified and capped
+	// via glxlib.EntityID(prefix, userText), so this never fires for a
+	// well-formed caller — but base ultimately derives from user input, so we
+	// fail fast rather than write an uncapped or invalid ID to disk.
+	if err := mustBeSafeID(base); err != nil {
+		return "", err
+	}
 	if _, exists := taken[base]; !exists {
 		return base, nil
 	}
@@ -112,6 +119,9 @@ func deriveOrOverrideID(base, overrideID string, taken map[string]struct{}, forc
 	for i := 2; i <= maxAddIDCollisions; i++ {
 		suffix := fmt.Sprintf("-%d", i)
 		candidate := glxlib.Slugify(base, glxlib.WithSlugSuffix(suffix), glxlib.WithSlugMaxLength(glxlib.MaxEntityIDLength))
+		if err := mustBeSafeID(candidate); err != nil {
+			return "", err
+		}
 		if _, exists := taken[candidate]; !exists {
 			return candidate, nil
 		}

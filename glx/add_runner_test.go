@@ -833,6 +833,27 @@ func TestAdd_RejectsUnsafeOverrideID(t *testing.T) {
 	}
 }
 
+func TestDeriveOrOverrideID_RejectsUnsafeDerivedBase(t *testing.T) {
+	// base is contractually pre-slugified via glxlib.EntityID, so this never
+	// fires in normal flows — but deriveOrOverrideID promises a validated ID,
+	// so a malformed base (e.g. a caller bug producing an uncapped or invalid
+	// value from user input) must be rejected, not returned for writing.
+	cases := map[string]string{
+		"spaces and punctuation": "Bad ID!",
+		"path traversal":         "../escape",
+		"too long":               strings.Repeat("a", glxlib.MaxEntityIDLength+1),
+		"leading hyphen":         "-leading",
+	}
+	for name, badBase := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := deriveOrOverrideID(badBase, "", map[string]struct{}{}, false)
+			if !errors.Is(err, ErrAddInvalidID) {
+				t.Errorf("%s: expected ErrAddInvalidID for unsafe base, got %v", name, err)
+			}
+		})
+	}
+}
+
 func TestAdd_SkipValidateAllowsStaleArchive(t *testing.T) {
 	dir := initArchiveDir(t)
 	io, _, _ := TestIOStreams()
