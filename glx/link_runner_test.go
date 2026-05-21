@@ -448,4 +448,3 @@ func TestNextUniqueSourceID_CapsAtCollisionLimit(t *testing.T) {
 		t.Errorf("expected ErrLinkSourceIDExhausted, got %v", err)
 	}
 }
-

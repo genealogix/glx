@@ -633,6 +633,7 @@ func censusSlugID(prefix string, year int, loc CensusLocation) string {
 	if name == "" {
 		name = loc.PlaceID
 	}
+
 	return truncateID(fmt.Sprintf("%s-%d-census-%s", prefix, year, SlugifyForID(name, 0)))
 }
 
@@ -643,6 +644,7 @@ func censusSlugIDWithHousehold(prefix string, year int, loc CensusLocation, surn
 	if name == "" {
 		name = loc.PlaceID
 	}
+
 	return truncateID(fmt.Sprintf("%s-%d-census-%s-%s", prefix, year, SlugifyForID(name, 0), SlugifyForID(surname, 0)))
 }
 
