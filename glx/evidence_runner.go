@@ -112,6 +112,14 @@ func loadArchiveForEvidence(io *IOStreams, path string) (*glxlib.GLXFile, error)
 	return readSingleFileArchive(path, false)
 }
 
+// noteConfidence raises the group's best confidence to c when c outranks the
+// current best (lower confidenceRank means stronger).
+func (g *EvidenceGroup) noteConfidence(c string) {
+	if g.BestConfidence == "" || confidenceRank(c) < confidenceRank(g.BestConfidence) {
+		g.BestConfidence = c
+	}
+}
+
 // collectEvidence gathers every assertion for the given person+property,
 // groups the supporting reports by asserted value, and ranks the values by
 // report count and confidence. Output is deterministic.
@@ -123,12 +131,19 @@ func collectEvidence(archive *glxlib.GLXFile, personID, property string) Evidenc
 	}
 
 	groups := make(map[string]*EvidenceGroup)
-	// seenCitations dedups a citation that supports the same value via more than
-	// one assertion — the same record cited twice is one report, not two.
-	seenCitations := make(map[string]map[string]bool) // value -> citationID -> seen
+	// citationIdx maps value -> citationID -> index of that citation's report in
+	// the group's Items. The same record cited for the same value by more than
+	// one assertion is a single report — but its confidence is upgraded to the
+	// strongest seen across those assertions, rather than whichever was seen first.
+	citationIdx := make(map[string]map[string]int)
 
 	for _, a := range matchingAssertions(archive, personID, property) {
-		value := resolveAssertionValue(a.Value, property, archive)
+		// Resolve against the matched assertion's own property key (a.Property),
+		// not the raw query string: under the case-insensitive fallback the query
+		// casing can differ, and placeRefProperties / PersonProperties lookups are
+		// case-sensitive, so resolving by the query would miss place/person/event
+		// references.
+		value := resolveAssertionValue(a.Value, a.Property, archive)
 		if value == "" {
 			value = unspecifiedValue
 		}
@@ -137,23 +152,28 @@ func collectEvidence(archive *glxlib.GLXFile, personID, property string) Evidenc
 		if !ok {
 			g = &EvidenceGroup{Value: value}
 			groups[value] = g
-			seenCitations[value] = make(map[string]bool)
+			citationIdx[value] = make(map[string]int)
 		}
 
 		for _, item := range assertionItems(a, archive) {
 			if item.CitationID != "" {
-				if seenCitations[value][item.CitationID] {
+				if idx, seen := citationIdx[value][item.CitationID]; seen {
+					// Same record cited again: keep one report, but raise its
+					// confidence (and the group's) when this assertion is stronger.
+					if confidenceRank(item.Confidence) < confidenceRank(g.Items[idx].Confidence) {
+						g.Items[idx].Confidence = item.Confidence
+					}
+					g.noteConfidence(item.Confidence)
+
 					continue
 				}
-				seenCitations[value][item.CitationID] = true
+				citationIdx[value][item.CitationID] = len(g.Items)
 			}
 
 			g.Items = append(g.Items, item)
 			g.Reports++
 			report.TotalReports++
-			if g.BestConfidence == "" || confidenceRank(item.Confidence) < confidenceRank(g.BestConfidence) {
-				g.BestConfidence = item.Confidence
-			}
+			g.noteConfidence(item.Confidence)
 		}
 	}
 
@@ -383,13 +403,15 @@ func printBestEvidence(io *IOStreams, r *EvidenceReport) {
 		g.Value, g.Reports, pluralize(g.Reports, "report", "reports"), displayOrDash(g.BestConfidence))
 }
 
-// printEvidenceJSON renders the report as indented JSON.
+// printEvidenceJSON renders the report as indented JSON. JSON is machine-
+// consumable output, so it goes to MachineOut — which, unlike Out, survives
+// --quiet — keeping `glx --quiet evidence ... --format json` scriptable.
 func printEvidenceJSON(io *IOStreams, r *EvidenceReport) error {
 	data, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal evidence report: %w", err)
 	}
-	io.Println(string(data))
+	fmt.Fprintln(io.MachineOut, string(data)) //nolint:errcheck // CLI output
 
 	return nil
 }

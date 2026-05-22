@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -167,9 +168,11 @@ func TestCollectEvidence_DedupsSameCitationForSameValue(t *testing.T) {
 		Sources:   map[string]*glxlib.Source{"s": {Title: "Shared Source"}},
 		Citations: map[string]*glxlib.Citation{"c": {SourceID: "s"}},
 		Assertions: map[string]*glxlib.Assertion{
-			// Two assertions cite the same record for the same value.
-			"a1": {Subject: glxlib.EntityRef{Person: "p"}, Property: "prop", Value: "X", Confidence: "medium", Citations: []string{"c"}},
-			"a2": {Subject: glxlib.EntityRef{Person: "p"}, Property: "prop", Value: "X", Confidence: "medium", Citations: []string{"c"}},
+			// Two assertions cite the same record for the same value, with
+			// different confidence. The report is counted once, but it keeps the
+			// strongest confidence (high) — not whichever assertion was seen first.
+			"a1": {Subject: glxlib.EntityRef{Person: "p"}, Property: "prop", Value: "X", Confidence: "low", Citations: []string{"c"}},
+			"a2": {Subject: glxlib.EntityRef{Person: "p"}, Property: "prop", Value: "X", Confidence: "high", Citations: []string{"c"}},
 		},
 	}
 
@@ -177,6 +180,16 @@ func TestCollectEvidence_DedupsSameCitationForSameValue(t *testing.T) {
 
 	if report.TotalReports != 1 {
 		t.Errorf("TotalReports = %d, want 1 (same citation counted once)", report.TotalReports)
+	}
+	if len(report.Groups) != 1 {
+		t.Fatalf("len(Groups) = %d, want 1", len(report.Groups))
+	}
+	g := report.Groups[0]
+	if g.BestConfidence != "high" {
+		t.Errorf("BestConfidence = %q, want high (strongest across dedup'd assertions)", g.BestConfidence)
+	}
+	if len(g.Items) != 1 || g.Items[0].Confidence != "high" {
+		t.Errorf("Items = %+v, want a single item with confidence high", g.Items)
 	}
 }
 
@@ -279,6 +292,25 @@ func TestCollectEvidence_CaseInsensitiveFallback(t *testing.T) {
 	}
 }
 
+func TestCollectEvidence_CaseInsensitiveResolvesReferences(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{"p": {}},
+		Places:  map[string]*glxlib.Place{"place-richmond": {Name: "Richmond, Virginia"}},
+		Assertions: map[string]*glxlib.Assertion{
+			// Stored property is "residence" (a place reference); the query uses
+			// different casing and matches via the case-insensitive fallback.
+			// Resolution must use the assertion's own property key, so the place
+			// still resolves to its name.
+			"a1": {Subject: glxlib.EntityRef{Person: "p"}, Property: "residence", Value: "place-richmond", Confidence: "high"},
+		},
+	}
+
+	report := collectEvidence(archive, "p", "RESIDENCE")
+	if len(report.Groups) != 1 || report.Groups[0].Value != "Richmond, Virginia" {
+		t.Errorf("Groups = %+v, want value resolved to place name despite query casing", report.Groups)
+	}
+}
+
 func TestCollectEvidence_NoMatchingAssertions(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{"p": {Properties: map[string]any{"name": map[string]any{"value": "Pat"}}}},
@@ -355,6 +387,24 @@ func TestPrintEvidenceJSON_RoundTrip(t *testing.T) {
 	}
 	if len(decoded.Groups) != 3 || decoded.Groups[0].Value != "VIRGINIA" {
 		t.Errorf("decoded.Groups = %+v", decoded.Groups)
+	}
+}
+
+func TestPrintEvidenceJSON_GoesToMachineOut(t *testing.T) {
+	report := collectEvidence(brickwallArchive(), "person-jane-webb", "born_at")
+	// Separate Out and MachineOut so we can prove JSON is on the machine stream
+	// (which survives --quiet), not the diagnostic stream (which does not).
+	var out, machine bytes.Buffer
+	streams := &IOStreams{Out: &out, MachineOut: &machine, ErrOut: &out}
+
+	if err := printEvidenceJSON(streams, &report); err != nil {
+		t.Fatalf("printEvidenceJSON: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Errorf("JSON leaked to Out (would be silenced by --quiet): %q", out.String())
+	}
+	if err := json.Unmarshal(machine.Bytes(), &report); err != nil {
+		t.Fatalf("MachineOut does not contain valid JSON: %v", err)
 	}
 }
 
