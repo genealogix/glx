@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -794,4 +795,152 @@ func TestShowSummary_NotFound(t *testing.T) {
 	err := showSummary("../docs/examples/complete-family", "ZZZ_NONEXISTENT_ZZZ")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no person found")
+}
+
+// ============================================================================
+// Place-reference property resolution (issue #897)
+// ============================================================================
+
+// residenceArchive builds a minimal archive with a person carrying the given
+// residence property value, the referenced place entities, and a vocabulary
+// that declares residence as a place reference (mirroring a vocab-merged load).
+func residenceArchive(residence any) *glxlib.GLXFile {
+	return &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-johannes": {Properties: map[string]any{"residence": residence}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-pohlgoens": {Name: "Pohl-Göns"},
+			"place-leeds":     {Name: "Leeds"},
+		},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"residence": {ReferenceType: "places"},
+		},
+	}
+}
+
+func TestPrintLifeEventsSection_ResidenceResolvesPlaceName(t *testing.T) {
+	archive := residenceArchive("place-pohlgoens")
+
+	out := captureStdout(t, func() {
+		printLifeEventsSection("person-johannes", archive.Persons["person-johannes"], archive)
+	})
+
+	assert.Contains(t, out, "Residence:")
+	assert.Contains(t, out, "Pohl-Göns")
+	assert.NotContains(t, out, "place-pohlgoens")
+}
+
+func TestPrintLifeEventsSection_ResidenceTemporalList(t *testing.T) {
+	archive := residenceArchive([]any{
+		map[string]any{"value": "place-pohlgoens", "date": "1813"},
+		map[string]any{"value": "place-leeds", "date": "1850"},
+	})
+
+	out := captureStdout(t, func() {
+		printLifeEventsSection("person-johannes", archive.Persons["person-johannes"], archive)
+	})
+
+	// Each entry resolves to its place name and keeps the temporal "(date)" annotation.
+	assert.Contains(t, out, "Pohl-Göns (1813)")
+	assert.Contains(t, out, "Leeds (1850)")
+	assert.NotContains(t, out, "place-pohlgoens")
+	assert.NotContains(t, out, "place-leeds")
+}
+
+func TestPrintLifeEventsSection_ResidenceMissingPlaceFallsBackToID(t *testing.T) {
+	archive := residenceArchive("place-unknown")
+
+	out := captureStdout(t, func() {
+		printLifeEventsSection("person-johannes", archive.Persons["person-johannes"], archive)
+	})
+
+	// resolvePlaceName returns the raw ID when the referenced place is absent.
+	assert.Contains(t, out, "place-unknown")
+}
+
+// TestPrintLifeEventsSection_NonPlacePropertyNotResolved proves the resolution
+// is vocabulary-driven, not a value-shape heuristic: a non-place property whose
+// value happens to equal a real place ID is still shown verbatim.
+func TestPrintLifeEventsSection_NonPlacePropertyNotResolved(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-johannes": {Properties: map[string]any{"occupation": "place-pohlgoens"}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-pohlgoens": {Name: "Pohl-Göns"},
+		},
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"occupation": {ValueType: "string"},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		printLifeEventsSection("person-johannes", archive.Persons["person-johannes"], archive)
+	})
+
+	assert.Contains(t, out, "place-pohlgoens")
+	assert.NotContains(t, out, "Pohl-Göns")
+}
+
+// TestPrintLifeEventsSection_ResidenceNoVocab covers an archive whose vocabulary
+// wasn't loaded (nil PersonProperties): residence is shown verbatim without
+// panicking on the nil-map lookup.
+func TestPrintLifeEventsSection_ResidenceNoVocab(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-johannes": {Properties: map[string]any{"residence": "place-pohlgoens"}},
+		},
+		Places: map[string]*glxlib.Place{
+			"place-pohlgoens": {Name: "Pohl-Göns"},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		printLifeEventsSection("person-johannes", archive.Persons["person-johannes"], archive)
+	})
+
+	assert.Contains(t, out, "place-pohlgoens")
+}
+
+func TestIsPlaceReferenceProperty(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		PersonProperties: map[string]*glxlib.PropertyDefinition{
+			"residence":  {ReferenceType: "places"},
+			"occupation": {ValueType: "string"},
+		},
+	}
+
+	assert.True(t, isPlaceReferenceProperty("residence", archive))
+	assert.False(t, isPlaceReferenceProperty("occupation", archive))
+	assert.False(t, isPlaceReferenceProperty("unknown", archive))
+
+	// Nil vocabulary map must not panic.
+	assert.False(t, isPlaceReferenceProperty("residence", &glxlib.GLXFile{}))
+}
+
+// TestShowSummary_SingleFileResolvesResidence exercises loadArchiveForSummary's
+// single-file path: standard vocabularies are merged on load, so the residence
+// place reference resolves the same as in a directory archive (issue #897).
+func TestShowSummary_SingleFileResolvesResidence(t *testing.T) {
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "archive.glx")
+	content := `persons:
+  person-johannes-schepp:
+    properties:
+      name: "Johannes Schepp"
+      residence: place-pohlgoens
+places:
+  place-pohlgoens:
+    name: "Pohl-Göns"
+    type: town
+`
+	require.NoError(t, os.WriteFile(archivePath, []byte(content), 0o644))
+
+	out := captureStdout(t, func() {
+		require.NoError(t, showSummary(archivePath, "person-johannes-schepp"))
+	})
+
+	assert.Contains(t, out, "Pohl-Göns")
+	assert.NotContains(t, out, "place-pohlgoens")
 }
