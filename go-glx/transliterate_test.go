@@ -61,7 +61,7 @@ func TestTransliterateForSlug(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, TransliterateForSlug(tt.in), "TransliterateForSlug(%q)", tt.in)
+			assert.Equalf(t, tt.want, TransliterateForSlug(tt.in), "TransliterateForSlug(%q)", tt.in)
 		})
 	}
 }

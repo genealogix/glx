@@ -628,7 +628,7 @@ func Test_slugify(t *testing.T) {
 
 	for _, tt := range tests {
 		got := slugify(tt.prefix, tt.name)
-		assert.Equal(t, tt.want, got, "slugify(%q, %q)", tt.prefix, tt.name)
+		assert.Equalf(t, tt.want, got, "slugify(%q, %q)", tt.prefix, tt.name)
 	}
 }
 
