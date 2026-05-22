@@ -21,7 +21,7 @@ import (
 
 // convertSource converts a GEDCOM SOUR record to a GLX Source
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if sourRecord.Tag != GedcomTagSour {
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedSourceRecord, GedcomTagSour, sourRecord.Tag)

@@ -118,8 +118,6 @@ func LoadVocabulariesFromMap(vocabFiles map[string][]byte, glx *GLXFile) error {
 
 // loadVocabulary parses a single vocabulary file and assigns its contents to the
 // appropriate field on the GLXFile. Unrecognized filenames are silently skipped.
-//
-//nolint:gocyclo
 func loadVocabulary(filename string, data []byte, glx *GLXFile) error {
 	switch filename {
 	case "event-types.glx":
