@@ -38,11 +38,13 @@ func TestTransliterateForSlug(t *testing.T) {
 		{"german word Mueller", "Müller", "Mueller"},
 		{"german word Groesse", "Größe", "Groesse"},
 		{"german word Kirchenbuecher", "Kirchenbücher", "Kirchenbuecher"},
-		// Decomposed (NFD) umlaut input — "u" + U+0308 combining diaeresis,
-		// written here with explicit escapes — is composed to NFC first, so it
-		// still expands to the digraph instead of being reduced to a bare vowel.
-		{"decomposed umlaut u", "ü", "ue"},
-		{"decomposed umlaut word", "Müller", "Mueller"},
+		// Decomposed (NFD) umlaut input: "u" followed by combining
+		// diaeresis U+0308, written with an explicit \u0308 escape so an
+		// editor cannot silently re-normalize it to the precomposed form. It
+		// is composed to NFC first, so it still expands to the digraph rather
+		// than being reduced to a bare vowel by the NFKD pass.
+		{"decomposed umlaut u", "u\u0308", "ue"},
+		{"decomposed umlaut word", "Mu\u0308ller", "Mueller"},
 		// Other accented Latin letters are reduced to their base via NFKD.
 		{"acute e", "é", "e"},
 		{"ring a", "å", "a"},
