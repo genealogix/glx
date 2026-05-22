@@ -848,6 +848,18 @@ func TestPrintLifeEventsSection_ResidenceTemporalList(t *testing.T) {
 	assert.NotContains(t, out, "place-leeds")
 }
 
+func TestPrintLifeEventsSection_ResidenceSingleMap(t *testing.T) {
+	// Single {value, date} map shape (not wrapped in a list).
+	archive := residenceArchive(map[string]any{"value": "place-pohlgoens", "date": "1850"})
+
+	out := captureStdout(t, func() {
+		printLifeEventsSection("person-johannes", archive.Persons["person-johannes"], archive)
+	})
+
+	assert.Contains(t, out, "Pohl-Göns")
+	assert.NotContains(t, out, "place-pohlgoens")
+}
+
 func TestPrintLifeEventsSection_ResidenceMissingPlaceFallsBackToID(t *testing.T) {
 	archive := residenceArchive("place-unknown")
 

@@ -104,7 +104,9 @@ func loadArchiveForSummary(path string) (*glxlib.GLXFile, error) {
 	// summary is read-only and mergeStandardVocabularies only fills empty
 	// vocabulary maps, so any archive-defined vocabulary is preserved. This lets
 	// place-reference properties (e.g. residence) resolve to place names
-	// regardless of whether the archive is a directory or a single file.
+	// regardless of whether the archive is a directory or a single file. Unlike
+	// the directory path, no InvalidateCache call is needed: summary never runs
+	// validation, so there is no cached validation result to invalidate.
 	if err := mergeStandardVocabularies(archive); err != nil {
 		return nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
 	}
