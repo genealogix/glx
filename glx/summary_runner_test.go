@@ -956,3 +956,15 @@ places:
 	assert.Contains(t, out, "Pohl-Göns")
 	assert.NotContains(t, out, "place-pohlgoens")
 }
+
+// TestLoadArchiveForSummary_SingleFileReadError covers the error path of the
+// single-file branch: a file that exists (so os.Stat succeeds) but holds
+// invalid YAML, so readSingleFileArchive fails and the error propagates.
+func TestLoadArchiveForSummary_SingleFileReadError(t *testing.T) {
+	dir := t.TempDir()
+	bad := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(bad, []byte("persons: [unterminated\n"), 0o644))
+
+	_, err := loadArchiveForSummary(bad)
+	require.Error(t, err)
+}

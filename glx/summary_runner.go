@@ -963,9 +963,10 @@ func resolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
 
 // isPlaceReferenceProperty reports whether a person property is declared as a
 // place reference (reference_type: places) in the loaded vocabulary. Residence
-// is the canonical example. Returns false when no vocabulary is loaded (e.g. a
-// single-file archive whose standard vocabularies weren't merged), so values
-// are shown verbatim rather than panicking on a nil map.
+// is the canonical example. Returns false when the vocabulary isn't loaded
+// (e.g. a single-file archive whose standard vocabularies weren't merged): a
+// read from a nil PersonProperties map is safe in Go and simply reports no
+// definition, so such values are shown verbatim.
 func isPlaceReferenceProperty(key string, archive *glxlib.GLXFile) bool {
 	def, ok := archive.PersonProperties[key]
 
