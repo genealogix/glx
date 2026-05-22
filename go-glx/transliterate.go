@@ -40,7 +40,11 @@ var germanDigraphs = strings.NewReplacer(
 // transliteration (CJK, emoji, ligatures like æ/ø/ł) are returned unchanged —
 // the caller's slug step decides what to do with them.
 func TransliterateForSlug(s string) string {
-	s = germanDigraphs.Replace(s)
+	// Compose to NFC first so decomposed input (e.g. "u" + combining diaeresis,
+	// as produced by some macOS/filesystem sources) matches the precomposed
+	// umlauts in germanDigraphs and expands to "ue" — otherwise the NFKD pass
+	// below would strip the mark and silently reduce it to a bare "u".
+	s = germanDigraphs.Replace(norm.NFC.String(s))
 
 	// NFKD-decompose, then drop the combining marks (Unicode category Mn) it
 	// exposes, reducing accented Latin letters to their base form: é→e, å→a,
