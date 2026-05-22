@@ -286,11 +286,14 @@ func nextUniqueSourceID(title string, archive *glxlib.GLXFile) (string, error) {
 
 var slugNonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
 
-// slugifyForID lowercases the input, replaces runs of non-alphanumerics with a
-// single hyphen, trims leading/trailing hyphens, and truncates to maxLen.
-// Produces a value matching the GLX entity ID pattern `[a-zA-Z0-9-]{1,64}`.
-// Falls back to "unknown" if the input contains no alphanumerics.
+// slugifyForID transliterates diacritics to ASCII (German umlauts/ß via digraph
+// expansion, other accented letters via NFKD — see glxlib.TransliterateForSlug),
+// lowercases the input, replaces runs of non-alphanumerics with a single hyphen,
+// trims leading/trailing hyphens, and truncates to maxLen. Produces a value
+// matching the GLX entity ID pattern `[a-zA-Z0-9-]{1,64}`. Falls back to
+// "unknown" if the input contains no alphanumerics.
 func slugifyForID(s string, maxLen int) string {
+	s = glxlib.TransliterateForSlug(s)
 	s = strings.ToLower(s)
 	s = slugNonAlphaNum.ReplaceAllString(s, "-")
 	s = strings.Trim(s, "-")

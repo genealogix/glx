@@ -817,9 +817,11 @@ func slugify(prefix, name string) string {
 
 var slugifyNonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
 
-// slugifyString converts a name to a URL/ID-safe slug.
+// slugifyString converts a name to a URL/ID-safe slug, transliterating
+// diacritics to ASCII first (see TransliterateForSlug) so non-ASCII letters
+// such as German umlauts and accented Latin characters are not dropped.
 func slugifyString(name string) string {
-	lower := strings.ToLower(strings.TrimSpace(name))
+	lower := strings.ToLower(TransliterateForSlug(strings.TrimSpace(name)))
 	slug := slugifyNonAlphanumeric.ReplaceAllString(lower, "-")
 	slug = strings.Trim(slug, "-")
 	if slug == "" {

@@ -621,6 +621,9 @@ func Test_slugify(t *testing.T) {
 		{"person", "Mary O'Brien", "person-mary-o-brien"},
 		{"person", "  spaces  ", "person-spaces"},
 		{"person", "", "person-unknown"},
+		// #896: diacritics are transliterated rather than dropped.
+		{"place", "München", "place-muenchen"},
+		{"person", "José Hernández", "person-jose-hernandez"},
 	}
 
 	for _, tt := range tests {

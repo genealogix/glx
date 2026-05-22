@@ -460,6 +460,16 @@ func TestSlugifyForID(t *testing.T) {
 		{"   ", 60, "unknown"},
 		{"---abc---", 60, "abc"},
 		{"A Very Long Title That Exceeds Sixty Characters To Test Trimming Behavior", 10, "a-very-lon"},
+		// #896: diacritics are transliterated, not dropped. German umlauts
+		// expand to digraphs (ä→ae, ü→ue) so words stay intact instead of being
+		// split by a stray hyphen (formerly "ausgew-hlte").
+		{"Deutschland, ausgewählte evangelische Kirchenbücher 1500-1971", 64, "deutschland-ausgewaehlte-evangelische-kirchenbuecher-1500-1971"},
+		// At the real source budget (64 - len("source-") = 57) the slug now
+		// truncates on a token boundary to "…-1500" rather than the
+		// incomplete-looking "…-1500-1".
+		{"Deutschland, ausgewählte evangelische Kirchenbücher 1500-1971", 57, "deutschland-ausgewaehlte-evangelische-kirchenbuecher-1500"},
+		// French accents reduce to their base letter via NFKD (É→e, é→e).
+		{"Paroisse de Saint-Étienne, Québec — Registres paroissiaux", 64, "paroisse-de-saint-etienne-quebec-registres-paroissiaux"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
