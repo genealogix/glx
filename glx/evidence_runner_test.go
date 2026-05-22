@@ -290,6 +290,10 @@ func TestCollectEvidence_CaseInsensitiveFallback(t *testing.T) {
 	if len(report.Groups) != 1 || report.Groups[0].Value != "FUZZY" {
 		t.Errorf("Groups = %+v, want case-insensitive fallback to FUZZY", report.Groups)
 	}
+	// Property reflects the canonical key stored on the assertion, not the query.
+	if report.Property != "Born_At" {
+		t.Errorf("Property = %q, want canonical key Born_At", report.Property)
+	}
 }
 
 func TestCollectEvidence_CaseInsensitiveResolvesReferences(t *testing.T) {
@@ -309,6 +313,10 @@ func TestCollectEvidence_CaseInsensitiveResolvesReferences(t *testing.T) {
 	if len(report.Groups) != 1 || report.Groups[0].Value != "Richmond, Virginia" {
 		t.Errorf("Groups = %+v, want value resolved to place name despite query casing", report.Groups)
 	}
+	// JSON/text consumers see the canonical "residence", not the "RESIDENCE" query.
+	if report.Property != "residence" {
+		t.Errorf("Property = %q, want canonical key residence", report.Property)
+	}
 }
 
 func TestCollectEvidence_NoMatchingAssertions(t *testing.T) {
@@ -325,6 +333,10 @@ func TestCollectEvidence_NoMatchingAssertions(t *testing.T) {
 	}
 	if report.BestEvidence != "" {
 		t.Errorf("BestEvidence = %q, want empty", report.BestEvidence)
+	}
+	// With no matches there is no canonical key, so the query is echoed back.
+	if report.Property != "born_at" {
+		t.Errorf("Property = %q, want the query echoed (born_at)", report.Property)
 	}
 }
 

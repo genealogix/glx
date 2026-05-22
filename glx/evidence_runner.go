@@ -124,10 +124,14 @@ func (g *EvidenceGroup) noteConfidence(c string) {
 // groups the supporting reports by asserted value, and ranks the values by
 // report count and confidence. Output is deterministic.
 func collectEvidence(archive *glxlib.GLXFile, personID, property string) EvidenceReport {
+	assertions, canonicalProperty := matchingAssertions(archive, personID, property)
 	report := EvidenceReport{
 		Person:     personID,
 		PersonName: personName(archive, personID),
-		Property:   property,
+		// canonicalProperty is the property key as stored in the matched
+		// assertions (e.g. "residence" for a "RESIDENCE" query), so JSON and text
+		// output reflect the data rather than the query's casing.
+		Property: canonicalProperty,
 	}
 
 	groups := make(map[string]*EvidenceGroup)
@@ -137,7 +141,7 @@ func collectEvidence(archive *glxlib.GLXFile, personID, property string) Evidenc
 	// strongest seen across those assertions, rather than whichever was seen first.
 	citationIdx := make(map[string]map[string]int)
 
-	for _, a := range matchingAssertions(archive, personID, property) {
+	for _, a := range assertions {
 		// Resolve against the matched assertion's own property key (a.Property),
 		// not the raw query string: under the case-insensitive fallback the query
 		// casing can differ, and placeRefProperties / PersonProperties lookups are
@@ -192,10 +196,14 @@ func collectEvidence(archive *glxlib.GLXFile, personID, property string) Evidenc
 }
 
 // matchingAssertions returns the assertions whose subject is personID and whose
-// property matches. Exact matches win; only when none exist does it fall back
-// to case-insensitive matches, so "born_at" never silently picks up "Born_At"
-// when an exact "born_at" is present. Iteration order is deterministic.
-func matchingAssertions(archive *glxlib.GLXFile, personID, property string) []*glxlib.Assertion {
+// property matches, plus the canonical property key actually stored on those
+// assertions. Exact matches win; only when none exist does it fall back to
+// case-insensitive matches, so "born_at" never silently picks up "Born_At" when
+// an exact "born_at" is present. On a case-insensitive match the stored key
+// (e.g. "residence" for a "RESIDENCE" query) is returned so callers report the
+// property as stored rather than as typed; with no matches the query is echoed
+// back. Iteration order is deterministic.
+func matchingAssertions(archive *glxlib.GLXFile, personID, property string) (matched []*glxlib.Assertion, canonical string) {
 	var exact, insensitive []*glxlib.Assertion
 
 	for _, id := range sortedKeys(archive.Assertions) {
@@ -213,10 +221,13 @@ func matchingAssertions(archive *glxlib.GLXFile, personID, property string) []*g
 	}
 
 	if len(exact) > 0 {
-		return exact
+		return exact, property
+	}
+	if len(insensitive) > 0 {
+		return insensitive, insensitive[0].Property
 	}
 
-	return insensitive
+	return nil, property
 }
 
 // assertionItems expands an assertion into its supporting reports: one per
