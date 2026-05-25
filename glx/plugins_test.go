@@ -116,6 +116,29 @@ func TestDiscoverPlugins_FindsAndSortsAndDedups(t *testing.T) {
 	}
 }
 
+// TestDiscoverPlugins_NormalizesRelativePATHEntry verifies that a relative
+// PATH directory (e.g., "./bin") is canonicalized to an absolute path at
+// discovery time, so the resolved Plugin.Path is stable across any later CWD
+// change and exec is given an unambiguous absolute path.
+func TestDiscoverPlugins_NormalizesRelativePATHEntry(t *testing.T) {
+	parent := t.TempDir()
+	relDir := "bin"
+	absDir := filepath.Join(parent, relDir)
+	if err := os.Mkdir(absDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	makeFakePluginFile(t, absDir, "glx-foo", "echo")
+	t.Chdir(parent)
+
+	plugins := discoverPlugins(relDir, defaultPathExtForTest())
+	if len(plugins) != 1 {
+		t.Fatalf("want 1 plugin from relative PATH entry, got %d: %+v", len(plugins), plugins)
+	}
+	if !filepath.IsAbs(plugins[0].Path) {
+		t.Errorf("Plugin.Path should be normalized to absolute; got %q", plugins[0].Path)
+	}
+}
+
 func TestDiscoverPlugins_SkipsUnreadableAndEmptyEntries(t *testing.T) {
 	sep := string(os.PathListSeparator)
 	pathEnv := sep + "  " + sep + filepath.Join(t.TempDir(), "does-not-exist")
@@ -219,6 +242,7 @@ func TestPluginNameFromEntry(t *testing.T) {
 		{"unix: notglx-foo → rejected", fakeDirEntry{name: "notglx-foo", mode: 0o755}, nil, false, "", 0, false},
 		{"unix: GLX-FOO → rejected (case-sensitive prefix on Unix)", fakeDirEntry{name: "GLX-FOO", mode: 0o755}, nil, false, "", 0, false},
 		{"unix: directory glx-foo → rejected", fakeDirEntry{name: "glx-foo", isDir: true, mode: fs.ModeDir | 0o755}, nil, false, "", 0, false},
+		{"unix: symlink glx-foo → rejected (non-regular file)", fakeDirEntry{name: "glx-foo", mode: fs.ModeSymlink | 0o777}, nil, false, "", 0, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -301,6 +325,31 @@ func TestPluginsFlagRequested(t *testing.T) {
 	}
 }
 
+func TestQuietFlagRequested(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"nil", nil, false},
+		{"-q short", []string{"-q"}, true},
+		{"--quiet long", []string{"--quiet"}, true},
+		{"--quiet=true", []string{"--quiet=true"}, true},
+		{"--quiet=1", []string{"--quiet=1"}, true},
+		{"--quiet=false", []string{"--quiet=false"}, false},
+		{"--quiet=garbage", []string{"--quiet=garbage"}, false},
+		{"-q before --plugins", []string{"-q", "--plugins"}, true},
+		{"unrelated", []string{"validate", "/path"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := quietFlagRequested(tt.args); got != tt.want {
+				t.Errorf("quietFlagRequested(%v) = %v; want %v", tt.args, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestKnownCommandNames_ContainsBuiltinsAndAutoAdded(t *testing.T) {
 	ensureBuiltinSubcommands(rootCmd)
 	known := knownCommandNames(rootCmd)
@@ -313,7 +362,9 @@ func TestKnownCommandNames_ContainsBuiltinsAndAutoAdded(t *testing.T) {
 
 // TestPluginDispatchTarget covers Execute()'s dispatch decision: built-ins win,
 // cobra-internal __complete* falls through, unknown-with-plugin dispatches,
-// unknown-without-plugin falls through, and no-subcommand falls through.
+// unknown-without-plugin falls through, and no-subcommand falls through. The
+// Windows case-insensitive subset is exercised by the isWindows column so the
+// branch is covered on Linux CI.
 func TestPluginDispatchTarget(t *testing.T) {
 	ensureBuiltinSubcommands(rootCmd)
 	dir := t.TempDir()
@@ -324,22 +375,31 @@ func TestPluginDispatchTarget(t *testing.T) {
 	ext := defaultPathExtForTest()
 
 	cases := []struct {
-		name     string
-		args     []string
-		wantOk   bool
-		wantName string
-		wantRest []string
+		name      string
+		args      []string
+		isWindows bool
+		wantOk    bool
+		wantName  string
+		wantRest  []string
 	}{
-		{"built-in beats discovered plugin", []string{"validate", "/some/path"}, false, "", nil},
-		{"unknown name with no plugin", []string{"definitely-not-a-plugin"}, false, "", nil},
-		{"unknown name with plugin → dispatch", []string{"mycmd", "--x", "y"}, true, "mycmd", []string{"--x", "y"}},
-		{"cobra __complete falls through", []string{"__complete", "validate"}, false, "", nil},
-		{"no subcommand (only flags) falls through", []string{"--plugins"}, false, "", nil},
-		{"empty args falls through", []string{}, false, "", nil},
+		// Unix-style dispatch: isWindows=false, name lookup is case-sensitive.
+		{"unix: built-in beats discovered plugin", []string{"validate", "/some/path"}, false, false, "", nil},
+		{"unix: unknown name with no plugin", []string{"definitely-not-a-plugin"}, false, false, "", nil},
+		{"unix: unknown name with plugin → dispatch", []string{"mycmd", "--x", "y"}, false, true, "mycmd", []string{"--x", "y"}},
+		{"cobra __complete falls through", []string{"__complete", "validate"}, false, false, "", nil},
+		{"no subcommand (only flags) falls through", []string{"--plugins"}, false, false, "", nil},
+		{"empty args falls through", []string{}, false, false, "", nil},
+
+		// Windows-style dispatch: isWindows=true, lookup is lowercased.
+		// Fixture plugins on disk are named glx-mycmd (lowercase), so the
+		// lowercase-normalized lookup matches on any host filesystem.
+		{"win: uppercase name dispatches to lowercase plugin", []string{"MYCMD", "a"}, true, true, "mycmd", []string{"a"}},
+		{"win: mixed-case name dispatches", []string{"Mycmd"}, true, true, "mycmd", []string{}},
+		{"win: uppercase built-in still wins (no plugin shadow)", []string{"VALIDATE"}, true, false, "", nil},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			p, rest, ok := pluginDispatchTarget(rootCmd, tt.args, dir, ext)
+			p, rest, ok := pluginDispatchTarget(rootCmd, tt.args, dir, ext, tt.isWindows)
 			if ok != tt.wantOk {
 				t.Fatalf("ok = %v; want %v (plugin=%+v rest=%v)", ok, tt.wantOk, p, rest)
 			}
@@ -358,12 +418,36 @@ func TestPluginDispatchTarget(t *testing.T) {
 
 func TestListPlugins_EmptyNotice(t *testing.T) {
 	var buf bytes.Buffer
-	listPlugins(nil, map[string]bool{}, &buf)
+	listPlugins(nil, map[string]bool{}, false /* quiet */, &buf)
 	if !strings.Contains(buf.String(), "No glx plugins found") {
 		t.Errorf("empty listing should explain how to install plugins; got %q", buf.String())
 	}
 	if !strings.Contains(buf.String(), "glx-<name>") {
 		t.Errorf("empty listing should describe the naming convention; got %q", buf.String())
+	}
+}
+
+// TestListPlugins_EmptyUnderQuietSuppressesNotice — `--quiet` suppresses the
+// informational "no plugins found" notice (it's a warning-like message), per
+// the established quiet-output contract.
+func TestListPlugins_EmptyUnderQuietSuppressesNotice(t *testing.T) {
+	var buf bytes.Buffer
+	listPlugins(nil, map[string]bool{}, true /* quiet */, &buf)
+	if buf.Len() != 0 {
+		t.Errorf("under --quiet, empty listing should suppress the notice; got %q", buf.String())
+	}
+}
+
+// TestListPlugins_NonEmptyUnderQuietStillPrints — `--quiet` does NOT suppress
+// the actual listing, because the listing IS the user-requested output (the
+// answer to `--plugins`). This mirrors `glx add`'s rule that the entity ID is
+// emitted on IOStreams.MachineOut regardless of quiet.
+func TestListPlugins_NonEmptyUnderQuietStillPrints(t *testing.T) {
+	plugins := []Plugin{{Name: "foo", Path: "/x/glx-foo"}}
+	var buf bytes.Buffer
+	listPlugins(plugins, map[string]bool{}, true /* quiet */, &buf)
+	if !strings.Contains(buf.String(), "foo") || !strings.Contains(buf.String(), "/x/glx-foo") {
+		t.Errorf("listing must still print under --quiet (it's the requested output); got %q", buf.String())
 	}
 }
 
@@ -373,7 +457,7 @@ func TestListPlugins_FormattedWithShadowedAnnotation(t *testing.T) {
 		{Name: "validate", Path: "/x/glx-validate"},
 	}
 	var buf bytes.Buffer
-	listPlugins(plugins, map[string]bool{"validate": true}, &buf)
+	listPlugins(plugins, map[string]bool{"validate": true}, false /* quiet */, &buf)
 	out := buf.String()
 
 	if !strings.Contains(out, "NAME") || !strings.Contains(out, "PATH") {

@@ -56,11 +56,12 @@ type Plugin struct {
 	// "german-places").
 	Name string
 
-	// Path is the path to the executable that will be exec'd when `glx <Name>` is
-	// invoked. It is filepath.Join(<PATH dir>, <filename>), so it is absolute when
-	// the PATH directory was absolute. The path always contains a separator, so
-	// exec.CommandContext does NOT route through exec.LookPath/PATH and Go 1.19+
-	// ErrDot/CWD-resolution ambiguity does not apply.
+	// Path is the absolute path to the executable that will be exec'd when
+	// `glx <Name>` is invoked. discoverPlugins normalizes each PATH directory
+	// to absolute form via filepath.Abs before joining the filename, so this
+	// is always absolute and contains a separator — exec.CommandContext does
+	// NOT route through exec.LookPath/PATH, and Go 1.19+ ErrDot/CWD-resolution
+	// ambiguity does not apply even when PATH had relative entries.
 	Path string
 }
 
@@ -87,6 +88,16 @@ func discoverPlugins(pathEnv, pathExt string) []Plugin {
 		if dir == "" {
 			continue
 		}
+		// Normalize relative PATH entries (e.g., ".", "./bin") to absolute paths
+		// at discovery time so the resolved Plugin.Path is stable regardless of
+		// any later CWD change, and so exec.CommandContext receives an absolute
+		// path that cannot be misinterpreted relative to CWD. Skip the entry on
+		// failure (rare — only when CWD itself cannot be determined).
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			continue
+		}
+		dir = absDir
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue
@@ -179,7 +190,13 @@ func pluginNameFromEntry(e os.DirEntry, exts []string, isWindows bool) (name str
 		return "", 0, false
 	}
 	info, err := e.Info()
-	if err != nil || info.Mode()&0o111 == 0 {
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
+		// Reject directories (already filtered above via e.IsDir(), but defense
+		// in depth), symlinks (e.Info() reports the link's own mode, which is
+		// not regular), and devices/sockets — none of these are safe to exec
+		// as a plugin even if their mode bits happen to include execute. A
+		// symlink that points to a legitimate executable falls under the same
+		// rule; supporting that is a deliberate Phase-2 follow-up if needed.
 		return "", 0, false
 	}
 	stem := strings.TrimPrefix(fn, pluginPrefix)
@@ -248,10 +265,16 @@ func runPlugin(ctx context.Context, p Plugin, args []string, stdin io.Reader, st
 // Plugins whose names match a built-in command are annotated as shadowed —
 // they cannot be invoked via `glx <name>` because built-in commands take
 // precedence. When no plugins are discovered, an explanatory notice is written
-// instead so the user knows how to install one.
-func listPlugins(plugins []Plugin, known map[string]bool, out io.Writer) {
+// instead so the user knows how to install one — unless quiet is true, in
+// which case the empty-case notice is suppressed to honor the established
+// `--quiet`/`-q` contract for informational output. The listing itself (when
+// non-empty) is the user-requested data, analogous to `glx add`'s
+// `IOStreams.MachineOut`, and is always printed regardless of quiet.
+func listPlugins(plugins []Plugin, known map[string]bool, quiet bool, out io.Writer) {
 	if len(plugins) == 0 {
-		_, _ = fmt.Fprintln(out, "No glx plugins found on PATH. Plugins are executables named glx-<name> placed on your PATH.")
+		if !quiet {
+			_, _ = fmt.Fprintln(out, "No glx plugins found on PATH. Plugins are executables named glx-<name> placed on your PATH.")
+		}
 
 		return
 	}
@@ -354,6 +377,25 @@ func pluginsFlagRequested(args []string) bool {
 	return false
 }
 
+// quietFlagRequested reports whether `-q`, `--quiet`, or a truthy
+// `--quiet=true|1|t|...` was passed in args. Used by Execute() to honor the
+// established `--quiet` contract for the `glx --plugins` listing path, which
+// runs before cobra parses flags into the package-level quietOutput variable.
+func quietFlagRequested(args []string) bool {
+	for _, a := range args {
+		if a == "-q" || a == "--quiet" {
+			return true
+		}
+		if rest, ok := strings.CutPrefix(a, "--quiet="); ok {
+			if b, err := strconv.ParseBool(rest); err == nil && b {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // pluginDispatchTarget decides whether `glx <args>` should be redirected to a
 // discovered plugin instead of letting cobra handle it. It returns the plugin
 // to invoke and the args to forward, or ok=false if Execute() should fall
@@ -361,7 +403,14 @@ func pluginsFlagRequested(args []string) bool {
 // or render help). Cobra-internal completion commands (the `__complete*`
 // family) and built-in commands always win — built-ins take precedence so a
 // `glx-validate` plugin can never preempt the bundled `validate` command.
-func pluginDispatchTarget(root *cobra.Command, args []string, pathEnv, pathExt string) (Plugin, []string, bool) {
+//
+// On Windows (isWindows=true) the lookup name is lowercased before checking
+// against built-ins and discovered plugins. discoverPlugins also stores
+// plugin names lowercased on Windows, and Windows filesystems are
+// case-insensitive, so `glx Hello` correctly finds `glx-hello.exe` and a
+// `glx-validate` plugin cannot shadow the bundled `validate` command just
+// because the user typed `glx VALIDATE`.
+func pluginDispatchTarget(root *cobra.Command, args []string, pathEnv, pathExt string, isWindows bool) (Plugin, []string, bool) {
 	name, rest, ok := firstSubcommandToken(args)
 	if !ok {
 		return Plugin{}, nil, false
@@ -369,10 +418,14 @@ func pluginDispatchTarget(root *cobra.Command, args []string, pathEnv, pathExt s
 	if strings.HasPrefix(name, "__") {
 		return Plugin{}, nil, false
 	}
-	if knownCommandNames(root)[name] {
+	lookup := name
+	if isWindows {
+		lookup = strings.ToLower(name)
+	}
+	if knownCommandNames(root)[lookup] {
 		return Plugin{}, nil, false
 	}
-	p, found := findPlugin(name, pathEnv, pathExt)
+	p, found := findPlugin(lookup, pathEnv, pathExt)
 	if !found {
 		return Plugin{}, nil, false
 	}

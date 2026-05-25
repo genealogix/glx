@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -76,18 +77,24 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 func Execute() {
 	args := os.Args[1:]
 	pathEnv, pathExt := os.Getenv("PATH"), os.Getenv("PATHEXT")
+	isWindows := runtime.GOOS == osWindows
 
 	// Materialize cobra's lazy help/completion subcommands once so both branches
 	// below see them when enumerating known command names.
 	ensureBuiltinSubcommands(rootCmd)
 
 	if pluginsFlagRequested(args) {
-		listPlugins(discoverPlugins(pathEnv, pathExt), knownCommandNames(rootCmd), os.Stdout)
+		listPlugins(
+			discoverPlugins(pathEnv, pathExt),
+			knownCommandNames(rootCmd),
+			quietFlagRequested(args),
+			os.Stdout,
+		)
 
 		return
 	}
 
-	if p, rest, ok := pluginDispatchTarget(rootCmd, args, pathEnv, pathExt); ok {
+	if p, rest, ok := pluginDispatchTarget(rootCmd, args, pathEnv, pathExt, isWindows); ok {
 		os.Exit(runPlugin(context.Background(), p, rest, os.Stdin, os.Stdout, os.Stderr))
 	}
 	// No plugin to dispatch: fall through so cobra handles built-ins, prints
