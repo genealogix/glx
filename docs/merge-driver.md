@@ -68,7 +68,7 @@ your file contains both sides' changes.
 **Auto-resolved confidence tiebreaker** — git reports a clean merge, and
 on stderr you'll see:
 
-```
+```text
 [glx merge-driver] file=assertions/assertion-john-birth-date.glx — auto-resolved by the driver:
   assertions[assertion-john-birth-date].value → ours (higher confidence)
     ours   : 1850-04-12
@@ -79,7 +79,7 @@ on stderr you'll see:
 and on stderr you'll see a per-conflict summary listing both values with
 any assertion-level evidence available:
 
-```
+```text
 [glx merge-driver] file=assertions/assertion-john-birth-date.glx
   conflict at assertions[assertion-john-birth-date].value
     ours    : 1850-04-12  conf=medium  cites=[citation-parish-register]

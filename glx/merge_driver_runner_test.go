@@ -341,6 +341,86 @@ func TestMergeDriver_ConflictWithAnsiEscapeInValue_StderrSanitized(t *testing.T)
 	}
 }
 
+// TestMergeDriver_ConflictOnAssertion_StderrIncludesEvidence drives an
+// assertion-value conflict with equal confidence on both sides (so neither
+// wins) and citations set on both sides. The stderr summary should include
+// the per-side confidence and citation refs — that's the whole point of
+// special-casing assertions in assertionMetaForConflict.
+func TestMergeDriver_ConflictOnAssertion_StderrIncludesEvidence(t *testing.T) {
+	requireGit(t)
+	dst := t.TempDir()
+	base := `assertions:
+  assertion-john-birth:
+    subject:
+      event: event-birth
+    property: date
+    value: "1850"
+    confidence: medium
+    citations:
+      - citation-base
+`
+	ours := `assertions:
+  assertion-john-birth:
+    subject:
+      event: event-birth
+    property: date
+    value: "1850-04-12"
+    confidence: medium
+    citations:
+      - citation-base
+      - citation-parish-register
+`
+	theirs := `assertions:
+  assertion-john-birth:
+    subject:
+      event: event-birth
+    property: date
+    value: "1850-04-15"
+    confidence: medium
+    citations:
+      - citation-base
+      - citation-1851-census
+`
+	if err := os.WriteFile(filepath.Join(dst, "base.glx"), []byte(base), 0o644); err != nil {
+		t.Fatalf("write base: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "ours.glx"), []byte(ours), 0o644); err != nil {
+		t.Fatalf("write ours: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "theirs.glx"), []byte(theirs), 0o644); err != nil {
+		t.Fatalf("write theirs: %v", err)
+	}
+	in := mergeDriverInputs{
+		BasePath:   filepath.Join(dst, "base.glx"),
+		OursPath:   filepath.Join(dst, "ours.glx"),
+		TheirsPath: filepath.Join(dst, "theirs.glx"),
+		OrigPath:   "assertion-john-birth.glx",
+	}
+	var errBuf bytes.Buffer
+
+	code := runMergeDriver(in, &errBuf)
+	if code == mergeDriverExitClean {
+		t.Fatalf("expected nonzero exit (equal confidence falls back), got %d", code)
+	}
+	out := errBuf.String()
+	// The runner should mention the conflict path under assertions[…].value.
+	if !strings.Contains(out, "assertions[assertion-john-birth].value") {
+		t.Errorf("expected stderr to name the conflict path, got:\n%s", out)
+	}
+	// Both sides' confidence is medium — that string should appear.
+	if !strings.Contains(out, "conf=medium") {
+		t.Errorf("expected stderr to show conf=medium, got:\n%s", out)
+	}
+	// Both sides' newly-added citations should be visible in the evidence
+	// suffix so the researcher can pick.
+	if !strings.Contains(out, "citation-parish-register") {
+		t.Errorf("expected stderr to include ours' citation, got:\n%s", out)
+	}
+	if !strings.Contains(out, "citation-1851-census") {
+		t.Errorf("expected stderr to include theirs' citation, got:\n%s", out)
+	}
+}
+
 func TestMergeDriver_ParseOrEmpty_TreatsEmptyInputAsEmptyGLXFile(t *testing.T) {
 	deser := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 

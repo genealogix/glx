@@ -160,6 +160,11 @@ func readAllInputs(in mergeDriverInputs, errOut io.Writer) (base, ours, theirs [
 // maxMergeInputBytes returns errMergeInputTooLarge so the caller hands the
 // merge off to git's text merge instead of trying to parse a multi-gigabyte
 // input.
+//
+// The path argument originates from git's merge-driver invocation
+// (%O / %A / %B), which git always supplies as a path inside the worktree
+// or git's own tempdir. The runner does no path arithmetic on top of it.
+// G304 here is a false positive in that contract.
 func readCappedFile(path string) ([]byte, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -170,7 +175,7 @@ func readCappedFile(path string) ([]byte, error) {
 			errMergeInputTooLarge, path, info.Size(), maxMergeInputBytes)
 	}
 
-	return os.ReadFile(path)
+	return os.ReadFile(path) //#nosec G304 -- path is supplied by git per the merge-driver contract; see func doc.
 }
 
 // parseAllInputs deserializes the three input byte slices. On any failure it
@@ -213,8 +218,13 @@ func parseOrEmpty(deser glxlib.Serializer, data []byte) (*glxlib.GLXFile, error)
 // This is git's standard text-merge implementation; it writes <<<<<<< markers
 // into %A on conflict. Returns the exit code (0 = clean merge, 1 = conflicts,
 // >1 = error).
+//
+// The three paths come from git's merge-driver invocation. They're passed as
+// argv to exec.CommandContext (not interpolated into a shell command), so
+// there's no shell-injection surface; the worst a hostile path could do is
+// fail to open. G204 here is a false positive in that contract.
 func execGitMergeFile(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode {
-	cmd := exec.CommandContext(context.Background(), "git", "merge-file",
+	cmd := exec.CommandContext(context.Background(), "git", "merge-file", //#nosec G204 -- argv (no shell); paths supplied by git per merge-driver contract.
 		"-L", "ours", "-L", "base", "-L", "theirs",
 		in.OursPath, in.BasePath, in.TheirsPath)
 	cmd.Stderr = errOut

@@ -496,6 +496,340 @@ func TestThreeWayMerge_PlaceLatConflict(t *testing.T) {
 }
 
 // =============================================================================
+// Per-entity-type field merges (coverage for mergeOne* functions beyond
+// Person, Place, Assertion which are already exercised above)
+// =============================================================================
+
+func TestThreeWayMerge_Event_FieldLevelMerge(t *testing.T) {
+	// Title changes on ours only → ours wins.
+	// PlaceID changes identically on both sides → no conflict.
+	// Type changes differently on both sides → conflict, tagged with
+	// EntityType=events so the runner can resolve assertion context.
+	base := &GLXFile{Events: map[string]*Event{
+		"ev1": {Title: "", Type: "birth", PlaceID: "pl-old"},
+	}}
+	ours := &GLXFile{Events: map[string]*Event{
+		"ev1": {Title: "Birth of John", Type: "baptism", PlaceID: "pl-new"},
+	}}
+	theirs := &GLXFile{Events: map[string]*Event{
+		"ev1": {Title: "", Type: "death", PlaceID: "pl-new"},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Fatalf("expected unresolved conflict on Type, got %v", conflicts)
+	}
+	if merged.Events["ev1"].Title != "Birth of John" {
+		t.Errorf("expected Title=Birth of John (ours), got %q", merged.Events["ev1"].Title)
+	}
+	if merged.Events["ev1"].PlaceID != "pl-new" {
+		t.Errorf("expected PlaceID=pl-new (both sides agreed), got %q", merged.Events["ev1"].PlaceID)
+	}
+	// Conflict should be tagged with the entity type — pin this so
+	// the runner can route assertion context correctly (issue from PR review).
+	if !hasConflictTaggedAs(conflicts, EntityTypeEvents, "ev1") {
+		t.Errorf("expected at least one conflict tagged EntityType=events, EntityID=ev1, got %+v", conflicts)
+	}
+}
+
+func TestThreeWayMerge_Relationship_FieldLevelMerge(t *testing.T) {
+	base := &GLXFile{Relationships: map[string]*Relationship{
+		"r1": {Type: "spouse", Participants: []Participant{{Person: "p1"}, {Person: "p2"}}},
+	}}
+	ours := &GLXFile{Relationships: map[string]*Relationship{
+		"r1": {Type: "spouse", Participants: []Participant{{Person: "p1"}, {Person: "p2"}}, StartEvent: "ev-marriage"},
+	}}
+	theirs := &GLXFile{Relationships: map[string]*Relationship{
+		"r1": {Type: "spouse", Participants: []Participant{{Person: "p1"}, {Person: "p2"}}, EndEvent: "ev-divorce"},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("disjoint event additions should not conflict, got %v", conflicts)
+	}
+	r := merged.Relationships["r1"]
+	if r.StartEvent != "ev-marriage" || r.EndEvent != "ev-divorce" {
+		t.Errorf("expected both StartEvent and EndEvent set, got %+v", r)
+	}
+}
+
+func TestThreeWayMerge_Source_AuthorsAndMedia(t *testing.T) {
+	// Authors is ordered (treated opaquely): one-sided edit takes.
+	// Media is reference-list (additive set): both sides' adds union.
+	base := &GLXFile{Sources: map[string]*Source{
+		"s1": {Title: "Census 1850", Authors: []string{"Smith, J."}, Media: []string{"m-base"}},
+	}}
+	ours := &GLXFile{Sources: map[string]*Source{
+		"s1": {Title: "Census 1850", Authors: []string{"Smith, J.", "Doe, A."}, Media: []string{"m-base", "m-ours"}},
+	}}
+	theirs := &GLXFile{Sources: map[string]*Source{
+		"s1": {Title: "Census 1850", Authors: []string{"Smith, J."}, Media: []string{"m-base", "m-theirs"}},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("expected clean merge, got %v", conflicts)
+	}
+	s := merged.Sources["s1"]
+	if len(s.Authors) != 2 || s.Authors[1] != "Doe, A." {
+		t.Errorf("expected ours' Authors to win, got %v", s.Authors)
+	}
+	if !reflect.DeepEqual(s.Media, []string{"m-base", "m-ours", "m-theirs"}) {
+		t.Errorf("Media should union, got %v", s.Media)
+	}
+}
+
+func TestThreeWayMerge_Source_AuthorsConflict(t *testing.T) {
+	base := &GLXFile{Sources: map[string]*Source{
+		"s1": {Title: "Census 1850", Authors: []string{"Smith, J."}},
+	}}
+	ours := &GLXFile{Sources: map[string]*Source{
+		"s1": {Title: "Census 1850", Authors: []string{"Smith, John"}},
+	}}
+	theirs := &GLXFile{Sources: map[string]*Source{
+		"s1": {Title: "Census 1850", Authors: []string{"Smith, Jane"}},
+	}}
+
+	_, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Errorf("diverging ordered author lists must conflict, got %v", conflicts)
+	}
+}
+
+func TestThreeWayMerge_Citation_FieldLevelMerge(t *testing.T) {
+	base := &GLXFile{Citations: map[string]*Citation{
+		"c1": {SourceID: "s1", RepositoryID: "r1"},
+	}}
+	ours := &GLXFile{Citations: map[string]*Citation{
+		"c1": {SourceID: "s1", RepositoryID: "r-better", Media: []string{"m-a"}},
+	}}
+	theirs := &GLXFile{Citations: map[string]*Citation{
+		"c1": {SourceID: "s1", RepositoryID: "r1", Media: []string{"m-b"}},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("expected clean merge, got %v", conflicts)
+	}
+	c := merged.Citations["c1"]
+	if c.RepositoryID != "r-better" {
+		t.Errorf("expected RepositoryID=r-better from ours, got %q", c.RepositoryID)
+	}
+	if !reflect.DeepEqual(c.Media, []string{"m-a", "m-b"}) {
+		t.Errorf("Media should union, got %v", c.Media)
+	}
+}
+
+func TestThreeWayMerge_Repository_FieldLevelMerge(t *testing.T) {
+	base := &GLXFile{Repositories: map[string]*Repository{
+		"r1": {Name: "State Archives", City: "Old City"},
+	}}
+	ours := &GLXFile{Repositories: map[string]*Repository{
+		"r1": {Name: "State Archives", City: "New City", Country: "USA"},
+	}}
+	theirs := &GLXFile{Repositories: map[string]*Repository{
+		"r1": {Name: "State Archives", City: "Old City", Website: "https://example.org"},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("disjoint Repository edits should not conflict, got %v", conflicts)
+	}
+	r := merged.Repositories["r1"]
+	if r.City != "New City" || r.Country != "USA" || r.Website != "https://example.org" {
+		t.Errorf("expected all three additive fields preserved, got %+v", r)
+	}
+}
+
+func TestThreeWayMerge_Media_FieldLevelMerge(t *testing.T) {
+	base := &GLXFile{Media: map[string]*Media{
+		"m1": {URI: "/a.jpg", Title: "Old title"},
+	}}
+	ours := &GLXFile{Media: map[string]*Media{
+		"m1": {URI: "/a.jpg", Title: "New title"},
+	}}
+	theirs := &GLXFile{Media: map[string]*Media{
+		"m1": {URI: "/a.jpg", Title: "Old title", Description: "Family photo"},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("disjoint Media edits should not conflict, got %v", conflicts)
+	}
+	m := merged.Media["m1"]
+	if m.Title != "New title" || m.Description != "Family photo" {
+		t.Errorf("expected both edits preserved, got %+v", m)
+	}
+}
+
+// hasConflictTaggedAs reports whether the slice contains a conflict whose
+// EntityType and EntityID match the given values. Used by per-entity tests to
+// confirm conflicts produced by field-level helpers are tagged by the
+// orchestrator (see tagConflicts in merge3.go).
+func hasConflictTaggedAs(conflicts []Merge3Conflict, entityType, entityID string) bool {
+	for i := range conflicts {
+		if conflicts[i].EntityType == entityType && conflicts[i].EntityID == entityID {
+			return true
+		}
+	}
+
+	return false
+}
+
+// =============================================================================
+// Nil-entity-pointer-in-map: Copilot-flagged edge from PR #906
+// =============================================================================
+
+func TestThreeWayMerge_NilEntityPointer_TreatedAsAbsent(t *testing.T) {
+	// `ours` has `p1: nil` (e.g. from an odd YAML serialization).
+	// Expectation: treated as if `p1` weren't there, so the merge proceeds
+	// as base + theirs (no concurrent delete-vs-modify confusion), and the
+	// merged output does NOT include `p1: null`.
+	base := &GLXFile{Persons: map[string]*Person{
+		"p1": {Properties: map[string]any{"name": "Alice"}},
+	}}
+	ours := &GLXFile{Persons: map[string]*Person{"p1": nil}}
+	theirs := &GLXFile{Persons: map[string]*Person{
+		"p1": {Properties: map[string]any{"name": "Alice"}},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	// ours' nil counts as "deleted", theirs unchanged from base → p1 should
+	// be dropped from the merged output (delete on one side, no change on
+	// the other side).
+	if _, present := merged.Persons["p1"]; present {
+		t.Errorf("p1 should be dropped (nil-as-absent + unchanged-theirs), got %+v", merged.Persons)
+	}
+	if len(conflicts) != 0 {
+		t.Errorf("clean delete-vs-unchanged should not conflict, got %v", conflicts)
+	}
+}
+
+// =============================================================================
+// Field-level helpers: cover the diverging branches that mergeOne* tests
+// don't otherwise exercise.
+// =============================================================================
+
+func TestThreeWayMerge_AssertionSubjectDivergence_Conflict(t *testing.T) {
+	// EntityRef Subject is opaque-3-way. Both sides switch the subject to
+	// different entity types → unresolved conflict.
+	base := &GLXFile{Assertions: map[string]*Assertion{
+		"a1": {Subject: EntityRef{Event: "e-base"}, Property: "date", Value: "1850"},
+	}}
+	ours := &GLXFile{Assertions: map[string]*Assertion{
+		"a1": {Subject: EntityRef{Person: "p-john"}, Property: "date", Value: "1850"},
+	}}
+	theirs := &GLXFile{Assertions: map[string]*Assertion{
+		"a1": {Subject: EntityRef{Event: "e-better"}, Property: "date", Value: "1850"},
+	}}
+
+	_, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Errorf("diverging Subject must conflict, got %v", conflicts)
+	}
+}
+
+func TestThreeWayMerge_Event_ParticipantsConflict(t *testing.T) {
+	// []Participant is treated opaquely. Both sides change the list
+	// differently → conflict.
+	base := &GLXFile{Events: map[string]*Event{
+		"ev1": {Type: "marriage", Participants: []Participant{{Person: "p1"}}},
+	}}
+	ours := &GLXFile{Events: map[string]*Event{
+		"ev1": {Type: "marriage", Participants: []Participant{{Person: "p1"}, {Person: "p2"}}},
+	}}
+	theirs := &GLXFile{Events: map[string]*Event{
+		"ev1": {Type: "marriage", Participants: []Participant{{Person: "p1"}, {Person: "p3"}}},
+	}}
+
+	_, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Errorf("diverging Participants must conflict, got %v", conflicts)
+	}
+}
+
+func TestThreeWayMerge_Assertion_ParticipantPtrChange(t *testing.T) {
+	// *Participant on Assertion, only ours sets it (from nil base) → take ours.
+	base := &GLXFile{Assertions: map[string]*Assertion{
+		"a1": {Subject: EntityRef{Event: "e1"}},
+	}}
+	ours := &GLXFile{Assertions: map[string]*Assertion{
+		"a1": {Subject: EntityRef{Event: "e1"}, Participant: &Participant{Person: "p1", Role: "primary"}},
+	}}
+	theirs := &GLXFile{Assertions: map[string]*Assertion{
+		"a1": {Subject: EntityRef{Event: "e1"}},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("one-sided Participant add must not conflict, got %v", conflicts)
+	}
+	if merged.Assertions["a1"].Participant == nil || merged.Assertions["a1"].Participant.Person != "p1" {
+		t.Errorf("expected Participant from ours, got %+v", merged.Assertions["a1"].Participant)
+	}
+}
+
+// =============================================================================
+// Opaque (vocabulary) merge: all-three-present diverging case
+// =============================================================================
+
+func TestThreeWayMerge_Vocabulary_BothSidesDivergeConflict(t *testing.T) {
+	// All three present, both sides change a vocabulary entry differently
+	// → opaqueAllPresent emits a conflict.
+	r1 := 1
+	r2 := 2
+	r3 := 3
+
+	base := &GLXFile{ConfidenceLevels: map[string]*VocabularyEntry{
+		"medium": {Label: "Medium", Rank: &r1},
+	}}
+	ours := &GLXFile{ConfidenceLevels: map[string]*VocabularyEntry{
+		"medium": {Label: "Medium-Ours", Rank: &r2},
+	}}
+	theirs := &GLXFile{ConfidenceLevels: map[string]*VocabularyEntry{
+		"medium": {Label: "Medium-Theirs", Rank: &r3},
+	}}
+
+	_, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Errorf("diverging vocab definitions must conflict, got %v", conflicts)
+	}
+}
+
+func TestThreeWayMerge_Vocabulary_DeleteVsModify(t *testing.T) {
+	// Ours deletes a vocab entry; theirs modifies it. Conflict.
+	r1 := 1
+	r2 := 2
+	base := &GLXFile{EventTypes: map[string]*VocabularyEntry{
+		"baptism": {Label: "Baptism", Rank: &r1},
+	}}
+	ours := &GLXFile{}
+	theirs := &GLXFile{EventTypes: map[string]*VocabularyEntry{
+		"baptism": {Label: "Christening", Rank: &r2},
+	}}
+
+	_, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Errorf("delete-vs-modify on vocab must conflict, got %v", conflicts)
+	}
+}
+
+// =============================================================================
+// Top-level metadata
+// =============================================================================
+
+func TestThreeWayMerge_MetadataDivergesOnBothSides_Conflict(t *testing.T) {
+	base := &GLXFile{ImportMetadata: &Metadata{Copyright: ""}}
+	ours := &GLXFile{ImportMetadata: &Metadata{Copyright: "(c) Alice"}}
+	theirs := &GLXFile{ImportMetadata: &Metadata{Copyright: "(c) Bob"}}
+
+	_, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Errorf("diverging metadata must conflict, got %v", conflicts)
+	}
+}
+
+// =============================================================================
 // Vocabulary opaque merge
 // =============================================================================
 

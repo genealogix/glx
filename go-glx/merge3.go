@@ -159,7 +159,7 @@ func merge3EntityMap[V any](
 		if keep {
 			out[id] = merged
 		}
-		conflicts = append(conflicts, sub...)
+		conflicts = append(conflicts, tagConflicts(entityType, id, sub)...)
 	}
 
 	if len(out) == 0 {
@@ -169,9 +169,34 @@ func merge3EntityMap[V any](
 	return out, conflicts
 }
 
+// tagConflicts fills in EntityType and EntityID on any conflict that doesn't
+// already carry them. The per-entity mergeOne functions and the field-level
+// helpers (scalarOrConflict, merge3Properties, …) only know the Path; they
+// don't carry the entity type and ID through every call site. The runner
+// uses EntityType / EntityID to look up assertion-level context (confidence,
+// citations) for stderr conflict summaries, so we backfill them here, where
+// we know both.
+func tagConflicts(entityType, id string, conflicts []Merge3Conflict) []Merge3Conflict {
+	for i := range conflicts {
+		if conflicts[i].EntityType == "" {
+			conflicts[i].EntityType = entityType
+		}
+		if conflicts[i].EntityID == "" {
+			conflicts[i].EntityID = id
+		}
+	}
+
+	return conflicts
+}
+
 // merge3EntityID dispatches one ID's base/ours/theirs presence pattern to the
 // right rule. Returns (merged value, conflicts produced by this ID, whether
 // the merged value should be present in the output map).
+//
+// A nil pointer stored at the ID is treated as "absent" rather than "present
+// with a null value" — git's merge can land us with a map literal that lists
+// an ID but no body (e.g. an empty `persons:` entry under YAML serialization
+// quirks), and we never want to emit `persons: {p1: null}` back out.
 //
 //nolint:gocyclo // 7-case finite presence enumeration; splitting further hurts readability.
 func merge3EntityID[V any](
@@ -179,9 +204,9 @@ func merge3EntityID[V any](
 	base, ours, theirs map[string]*V,
 	mergeOne func(entityType, id string, base, ours, theirs *V) (*V, []Merge3Conflict),
 ) (*V, []Merge3Conflict, bool) {
-	b, bOK := base[id]
-	o, oOK := ours[id]
-	t, tOK := theirs[id]
+	b, bOK := lookupNonNil(base, id)
+	o, oOK := lookupNonNil(ours, id)
+	t, tOK := lookupNonNil(theirs, id)
 
 	switch {
 	case !bOK && oOK && !tOK:
@@ -239,13 +264,14 @@ func mergeDeleteVsKeep[V any](entityType, id string, b, ours, theirs *V) (*V, []
 
 // merge3OpaqueID handles one ID's worth of opaque-value 3-way merge. Returns
 // the value to place in the merged map, conflicts produced, and whether to
-// emit the entry into the output map.
+// emit the entry into the output map. Same nil-as-absent rule as
+// merge3EntityID applies.
 //
 //nolint:gocyclo // 7-case finite presence enumeration; splitting further hurts readability.
 func merge3OpaqueID[V any](vocabType, id string, base, ours, theirs map[string]*V) (*V, []Merge3Conflict, bool) {
-	b, bOK := base[id]
-	o, oOK := ours[id]
-	t, tOK := theirs[id]
+	b, bOK := lookupNonNil(base, id)
+	o, oOK := lookupNonNil(ours, id)
+	t, tOK := lookupNonNil(theirs, id)
 
 	path := vocabType + "[" + id + "]"
 
@@ -1090,10 +1116,17 @@ func propertyAllPresent(path, k string, b, o, t any) (any, []Merge3Conflict, boo
 // Utility
 // ============================================================================
 
+// unionMapKeys returns the sorted union of keys across the input maps,
+// excluding keys whose value is a nil pointer. A nil-valued map entry is
+// treated as "key absent" so the merger doesn't carry forward (or emit)
+// entries like `persons: {p1: null}` in the merged YAML output.
 func unionMapKeys[V any](maps ...map[string]*V) []string {
 	seen := make(map[string]struct{})
 	for _, m := range maps {
-		for k := range m {
+		for k, v := range m {
+			if v == nil {
+				continue
+			}
 			seen[k] = struct{}{}
 		}
 	}
@@ -1109,6 +1142,19 @@ func unionMapKeys[V any](maps ...map[string]*V) []string {
 
 func entityPath(entityType, id string) string {
 	return entityType + "[" + id + "]"
+}
+
+// lookupNonNil reads m[id] and reports presence only when the stored pointer
+// is non-nil. A `map[string]*Person{"p1": nil}` returns (nil, false), not
+// (nil, true), so downstream logic treats it as "absent" — see merge3EntityID
+// for why this matters.
+func lookupNonNil[V any](m map[string]*V, id string) (*V, bool) {
+	v, ok := m[id]
+	if !ok || v == nil {
+		return nil, false
+	}
+
+	return v, true
 }
 
 func cloneOrNil[V any](v *V) *V {
