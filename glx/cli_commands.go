@@ -15,8 +15,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -62,8 +64,34 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	},
 }
 
-// Execute runs the root command
+// Execute runs the root command. Two plugin-related interceptions run before
+// cobra parses args (see plugins.go for the full rationale):
+//
+//   - `glx --plugins` is short-circuited here to list discovered plugins.
+//     Attaching a RunE to rootCmd to read the flag instead would make root
+//     "runnable" and suppress cobra's standard "unknown command" error for
+//     real typos — a UX regression we explicitly avoid.
+//   - `glx <name>` falls back to executing `glx-<name>` from PATH when <name>
+//     is not a built-in command (git/kubectl plugin model, #95 Phase 1).
+//     Cobra-internal __complete* commands and built-ins are never replaced.
 func Execute() {
+	args := os.Args[1:]
+
+	if pluginsFlagRequested(args) {
+		listPlugins(discoverPlugins(os.Getenv("PATH"), os.Getenv("PATHEXT")),
+			knownCommandNames(rootCmd), os.Stdout)
+
+		return
+	}
+
+	if name, rest, ok := firstSubcommandToken(args); ok &&
+		!strings.HasPrefix(name, "__") && !knownCommandNames(rootCmd)[name] {
+		if p, found := findPlugin(name, os.Getenv("PATH"), os.Getenv("PATHEXT")); found {
+			os.Exit(runPlugin(context.Background(), p, rest, os.Stdin, os.Stdout, os.Stderr))
+		}
+		// Not a plugin either: fall through so cobra prints "unknown command".
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -74,6 +102,10 @@ func init() {
 	rootCmd.SetVersionTemplate("glx version {{.Version}}\n")
 	rootCmd.PersistentFlags().BoolVarP(&quietOutput, "quiet", "q", false,
 		"Suppress non-error output (where supported)")
+	// `--plugins` is registered for --help and docs visibility only; the flag is
+	// handled in Execute() before cobra parses, because making rootCmd runnable
+	// to read it via RunE would suppress cobra's "unknown command" error for typos.
+	rootCmd.Flags().Bool("plugins", false, "List discovered glx-<name> plugins found on PATH")
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(initCmd)

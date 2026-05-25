@@ -29,6 +29,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
+- 🔌 **Plugins** - Discover and run third-party `glx-<name>` executables from PATH (git-style fallback); list with `glx --plugins`
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
 - 📚 **Examples Validation** - Automatically validates documentation examples
