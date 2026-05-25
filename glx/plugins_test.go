@@ -95,6 +95,46 @@ func TestDiscoverPlugins_SkipsUnreadableAndEmptyEntries(t *testing.T) {
 	}
 }
 
+// TestDiscoverPlugins_WindowsPATHEXTPrecedence verifies that when the same
+// PATH directory holds glx-foo.bat and glx-foo.exe, the .exe wins because it
+// appears earlier in PATHEXT — matching how Windows shells resolve names.
+func TestDiscoverPlugins_WindowsPATHEXTPrecedence(t *testing.T) {
+	if runtime.GOOS != osWindows {
+		t.Skip("PATHEXT precedence is a Windows-only concern")
+	}
+	dir := t.TempDir()
+	// Both files have the same logical name "foo"; .exe should win over .bat.
+	if err := os.WriteFile(filepath.Join(dir, "glx-foo.bat"), []byte("@echo off\r\n"), 0o644); err != nil {
+		t.Fatalf("write .bat: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "glx-foo.exe"), []byte{0x4d, 0x5a}, 0o644); err != nil {
+		t.Fatalf("write .exe: %v", err)
+	}
+	plugins := discoverPlugins(dir, ".COM;.EXE;.BAT;.CMD")
+	if len(plugins) != 1 {
+		t.Fatalf("want 1 plugin (single logical name), got %d: %+v", len(plugins), plugins)
+	}
+	if !strings.HasSuffix(strings.ToLower(plugins[0].Path), ".exe") {
+		t.Errorf("PATHEXT precedence: want .exe to win over .bat; got %q", plugins[0].Path)
+	}
+}
+
+// TestDiscoverPlugins_WindowsUppercaseFilename verifies that the case-insensitive
+// prefix match on Windows handles GLX-FOO.BAT just like glx-foo.bat.
+func TestDiscoverPlugins_WindowsUppercaseFilename(t *testing.T) {
+	if runtime.GOOS != osWindows {
+		t.Skip("uppercase prefix matching is a Windows-only concern (NTFS reports case as stored)")
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "GLX-FOO.BAT"), []byte("@echo off\r\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	plugins := discoverPlugins(dir, ".COM;.EXE;.BAT;.CMD")
+	if len(plugins) != 1 || plugins[0].Name != "foo" {
+		t.Errorf("want plugin name 'foo' from GLX-FOO.BAT, got %+v", plugins)
+	}
+}
+
 func TestFindPlugin_HitAndMiss(t *testing.T) {
 	dir := t.TempDir()
 	makeFakePluginFile(t, dir, "glx-helloworld", "echo hi")
@@ -126,6 +166,7 @@ func TestFirstSubcommandToken(t *testing.T) {
 		{"sub with flags", []string{"foo", "--x", "y"}, "foo", []string{"--x", "y"}, true},
 		{"global flag then sub", []string{"-q", "foo", "bar"}, "foo", []string{"bar"}, true},
 		{"long global then sub", []string{"--quiet", "validate"}, "validate", []string{}, true},
+		{"cobra-internal __complete", []string{"__complete", "validate"}, "__complete", []string{"validate"}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,11 +206,57 @@ func TestPluginsFlagRequested(t *testing.T) {
 }
 
 func TestKnownCommandNames_ContainsBuiltinsAndAutoAdded(t *testing.T) {
+	ensureBuiltinSubcommands(rootCmd)
 	known := knownCommandNames(rootCmd)
 	for _, name := range []string{"validate", "import", "export", "help", "completion"} {
 		if !known[name] {
 			t.Errorf("knownCommandNames missing %q", name)
 		}
+	}
+}
+
+// TestPluginDispatchTarget covers Execute()'s dispatch decision: built-ins win,
+// cobra-internal __complete* falls through, unknown-with-plugin dispatches,
+// unknown-without-plugin falls through, and no-subcommand falls through.
+func TestPluginDispatchTarget(t *testing.T) {
+	ensureBuiltinSubcommands(rootCmd)
+	dir := t.TempDir()
+	// Two fixture plugins: one shadows the built-in `validate` (must not be
+	// dispatched), one is a genuine new subcommand (must be dispatched).
+	makeFakePluginFile(t, dir, "glx-validate", "echo shadowed")
+	makeFakePluginFile(t, dir, "glx-mycmd", "echo mycmd")
+	ext := defaultPathExtForTest()
+
+	cases := []struct {
+		name     string
+		args     []string
+		wantOk   bool
+		wantName string
+		wantRest []string
+	}{
+		{"built-in beats discovered plugin", []string{"validate", "/some/path"}, false, "", nil},
+		{"unknown name with no plugin", []string{"definitely-not-a-plugin"}, false, "", nil},
+		{"unknown name with plugin → dispatch", []string{"mycmd", "--x", "y"}, true, "mycmd", []string{"--x", "y"}},
+		{"cobra __complete falls through", []string{"__complete", "validate"}, false, "", nil},
+		{"no subcommand (only flags) falls through", []string{"--plugins"}, false, "", nil},
+		{"empty args falls through", []string{}, false, "", nil},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			p, rest, ok := pluginDispatchTarget(rootCmd, tt.args, dir, ext)
+			if ok != tt.wantOk {
+				t.Fatalf("ok = %v; want %v (plugin=%+v rest=%v)", ok, tt.wantOk, p, rest)
+			}
+			if !ok {
+				return
+			}
+			if p.Name != tt.wantName {
+				t.Errorf("plugin.Name = %q; want %q", p.Name, tt.wantName)
+			}
+			if !slices.Equal(rest, tt.wantRest) {
+				t.Errorf("rest = %v; want %v", rest, tt.wantRest)
+			}
+		})
 	}
 }
 

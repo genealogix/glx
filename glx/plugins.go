@@ -58,14 +58,19 @@ type Plugin struct {
 
 	// Path is the path to the executable that will be exec'd when `glx <Name>` is
 	// invoked. It is filepath.Join(<PATH dir>, <filename>), so it is absolute when
-	// the PATH directory was absolute.
+	// the PATH directory was absolute. The path always contains a separator, so
+	// exec.CommandContext does NOT route through exec.LookPath/PATH and Go 1.19+
+	// ErrDot/CWD-resolution ambiguity does not apply.
 	Path string
 }
 
 // discoverPlugins scans the directories in pathEnv (the PATH environment variable)
 // for executables named glx-<name> and returns them sorted by Name. When the same
 // plugin name appears in more than one PATH directory the first occurrence wins,
-// matching git's plugin resolution.
+// matching git's plugin resolution. When the same PATH directory contains the
+// same plugin name under multiple Windows PATHEXT extensions (e.g. glx-foo.exe
+// and glx-foo.bat), the one whose extension appears earliest in PATHEXT wins,
+// matching how Windows shells resolve command names.
 //
 // pathExt is consulted on Windows to determine which file extensions count as
 // executable (PATHEXT, default ".COM;.EXE;.BAT;.CMD"); it is ignored on other
@@ -85,16 +90,37 @@ func discoverPlugins(pathEnv, pathExt string) []Plugin {
 		if err != nil {
 			continue
 		}
+		// Within this directory, group entries by logical plugin name and keep
+		// the one whose extension has the highest PATHEXT priority (lowest index).
+		// On non-Windows extIdx is always 0, so the first match wins, which is fine.
+		type cand struct {
+			extIdx int
+			fn     string
+		}
+		best := make(map[string]cand)
 		for _, e := range entries {
-			name, ok := pluginNameFromEntry(e, exts)
+			name, extIdx, ok := pluginNameFromEntry(e, exts)
 			if !ok {
 				continue
 			}
+			if cur, exists := best[name]; !exists || extIdx < cur.extIdx {
+				best[name] = cand{extIdx: extIdx, fn: e.Name()}
+			}
+		}
+		// Materialize this directory's winners, honoring cross-directory dedup
+		// (first PATH dir wins). Sort the per-dir keys so the result is stable
+		// across runs even though map iteration is randomized.
+		dirNames := make([]string, 0, len(best))
+		for n := range best {
+			dirNames = append(dirNames, n)
+		}
+		sort.Strings(dirNames)
+		for _, name := range dirNames {
 			if _, dup := seen[name]; dup {
 				continue
 			}
 			seen[name] = struct{}{}
-			plugins = append(plugins, Plugin{Name: name, Path: filepath.Join(dir, e.Name())})
+			plugins = append(plugins, Plugin{Name: name, Path: filepath.Join(dir, best[name].fn)})
 		}
 	}
 	sort.Slice(plugins, func(i, j int) bool { return plugins[i].Name < plugins[j].Name })
@@ -116,11 +142,14 @@ func findPlugin(name, pathEnv, pathExt string) (Plugin, bool) {
 // pluginNameFromEntry extracts a plugin's logical name from a directory entry.
 // Returns ok=false unless the entry is a regular file (not a directory) with the
 // glx- prefix and is executable on the current platform. On Windows that means
-// the extension is in PATHEXT; on other platforms the file must have at least
-// one executable permission bit set.
-func pluginNameFromEntry(e os.DirEntry, exts []string) (string, bool) {
+// the extension is in PATHEXT; the returned extIdx is the matched extension's
+// index in exts (lower = higher PATHEXT priority) and is used by discoverPlugins
+// to pick the right file when several extensions co-exist. On other platforms
+// the file must have at least one executable permission bit set; extIdx is
+// always 0.
+func pluginNameFromEntry(e os.DirEntry, exts []string) (name string, extIdx int, ok bool) {
 	if e.IsDir() {
-		return "", false
+		return "", 0, false
 	}
 	fn := e.Name()
 	matchName := fn
@@ -128,32 +157,32 @@ func pluginNameFromEntry(e os.DirEntry, exts []string) (string, bool) {
 		matchName = strings.ToLower(fn)
 	}
 	if !strings.HasPrefix(matchName, pluginPrefix) {
-		return "", false
+		return "", 0, false
 	}
 	if runtime.GOOS == osWindows {
-		for _, ext := range exts {
+		for i, ext := range exts {
 			if strings.HasSuffix(matchName, ext) {
-				name := strings.TrimSuffix(strings.TrimPrefix(matchName, pluginPrefix), ext)
-				if name == "" {
-					return "", false
+				stem := strings.TrimSuffix(strings.TrimPrefix(matchName, pluginPrefix), ext)
+				if stem == "" {
+					return "", 0, false
 				}
 
-				return name, true
+				return stem, i, true
 			}
 		}
 
-		return "", false
+		return "", 0, false
 	}
 	info, err := e.Info()
 	if err != nil || info.Mode()&0o111 == 0 {
-		return "", false
+		return "", 0, false
 	}
-	name := strings.TrimPrefix(fn, pluginPrefix)
-	if name == "" {
-		return "", false
+	stem := strings.TrimPrefix(fn, pluginPrefix)
+	if stem == "" {
+		return "", 0, false
 	}
 
-	return name, true
+	return stem, 0, true
 }
 
 // parsePathExt splits a Windows PATHEXT value into a lowercased extension list
@@ -230,13 +259,22 @@ func listPlugins(plugins []Plugin, known map[string]bool, out io.Writer) {
 	}
 }
 
-// knownCommandNames returns the set of built-in command names and aliases of the
-// root command tree, including cobra's auto-added "help" and "completion"
-// commands. Used to decide whether `glx <name>` should dispatch to a plugin
-// (no when name is a built-in).
-func knownCommandNames(root *cobra.Command) map[string]bool {
+// ensureBuiltinSubcommands materializes cobra's lazily-added "help" and
+// "completion" subcommands on root so that subsequent enumeration via
+// knownCommandNames sees them. Calling this is idempotent in cobra v1.10.
+// It's separated from knownCommandNames so the latter can remain a pure read.
+func ensureBuiltinSubcommands(root *cobra.Command) {
 	root.InitDefaultHelpCmd()
 	root.InitDefaultCompletionCmd()
+}
+
+// knownCommandNames returns the set of built-in command names and aliases of
+// the root command tree. The caller is expected to have invoked
+// ensureBuiltinSubcommands(root) earlier so that cobra's auto-added "help" and
+// "completion" commands appear in root.Commands(). The "help"/"completion"
+// fallback entries are belt-and-suspenders for cobra versions where the lazy
+// init ordering differs.
+func knownCommandNames(root *cobra.Command) map[string]bool {
 	out := map[string]bool{}
 	for _, c := range root.Commands() {
 		out[c.Name()] = true
@@ -244,7 +282,6 @@ func knownCommandNames(root *cobra.Command) map[string]bool {
 			out[a] = true
 		}
 	}
-	// Belt-and-suspenders: cobra adds these lazily depending on call order.
 	out["help"] = true
 	out["completion"] = true
 
@@ -254,9 +291,18 @@ func knownCommandNames(root *cobra.Command) map[string]bool {
 // firstSubcommandToken returns the first non-flag token in args (the candidate
 // subcommand name) and the args that follow it. Tokens starting with "-" are
 // skipped on the way to the first positional argument; this matches how git
-// resolves its subcommand when global flags appear before it. Args before the
-// resolved token are NOT forwarded to a plugin in Phase 1 — a deliberate
-// simplification that mirrors git's behavior with global flags.
+// resolves its subcommand when global flags appear before it.
+//
+// IMPORTANT (tripwire for future contributors): this helper assumes every
+// global/root flag is a boolean (no value follows it). If a value-taking
+// persistent root flag is ever added (e.g., `--config <path>`), this scan will
+// misread the value as the subcommand. Adding such a flag MUST be paired with
+// teaching this function to consult `rootCmd.PersistentFlags()` so it can skip
+// past the value of value-taking flags. Today's root flags (`-q`/`--quiet`,
+// `--plugins`) are both booleans, so the simple scan is correct.
+//
+// Args before the resolved token are NOT forwarded to a plugin in Phase 1 — a
+// deliberate simplification that mirrors git's behavior with global flags.
 func firstSubcommandToken(args []string) (name string, rest []string, ok bool) {
 	for i, a := range args {
 		if a == "" || strings.HasPrefix(a, "-") {
@@ -294,4 +340,30 @@ func pluginsFlagRequested(args []string) bool {
 	}
 
 	return false
+}
+
+// pluginDispatchTarget decides whether `glx <args>` should be redirected to a
+// discovered plugin instead of letting cobra handle it. It returns the plugin
+// to invoke and the args to forward, or ok=false if Execute() should fall
+// through to cobra (which will handle the built-in, print "unknown command",
+// or render help). Cobra-internal completion commands (the `__complete*`
+// family) and built-in commands always win — built-ins take precedence so a
+// `glx-validate` plugin can never preempt the bundled `validate` command.
+func pluginDispatchTarget(root *cobra.Command, args []string, pathEnv, pathExt string) (Plugin, []string, bool) {
+	name, rest, ok := firstSubcommandToken(args)
+	if !ok {
+		return Plugin{}, nil, false
+	}
+	if strings.HasPrefix(name, "__") {
+		return Plugin{}, nil, false
+	}
+	if knownCommandNames(root)[name] {
+		return Plugin{}, nil, false
+	}
+	p, found := findPlugin(name, pathEnv, pathExt)
+	if !found {
+		return Plugin{}, nil, false
+	}
+
+	return p, rest, true
 }
