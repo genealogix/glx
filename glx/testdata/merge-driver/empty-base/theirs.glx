@@ -1,0 +1,4 @@
+persons:
+  person-john-smith:
+    properties:
+      name: John Smith

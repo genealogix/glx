@@ -24,6 +24,7 @@ The official specification for **GENEALOGIX (GLX)** - a portable, extensible arc
 - [💡 Examples](/examples/)
 - [🧪 Test Suite](https://github.com/genealogix/glx/tree/main/glx/tests)
 - [🛠 CLI](/cli)
+- [🔀 GLX-aware Git merge driver](docs/merge-driver.md)
 - [🧱 Dev Container](https://github.com/genealogix/glx/tree/main/.devcontainer)
 
 ## Why GENEALOGIX?

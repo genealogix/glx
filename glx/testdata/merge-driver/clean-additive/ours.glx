@@ -1,0 +1,10 @@
+assertions:
+  assertion-john-birth-date:
+    subject:
+      event: event-birth-john
+    property: date
+    value: "1850-04-12"
+    confidence: high
+    citations:
+      - citation-parish-register
+      - citation-1851-census

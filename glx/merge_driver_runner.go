@@ -1,0 +1,302 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
+
+	glxlib "github.com/genealogix/glx/go-glx"
+)
+
+// mergedFilePerm is the permission bits used when overwriting %A. git owns
+// the file path and re-applies any per-repo umask after the merge driver
+// returns, so the value matches the OS default for regular files.
+const mergedFilePerm = 0o644
+
+// maxConflictValueDisplay caps the per-conflict stderr value length so a
+// pathologically large structured value doesn't drown the diagnostic block.
+const maxConflictValueDisplay = 200
+
+// mergeDriverInputs is what git passes us. Named fields make the runner
+// signature self-documenting and let tests construct it without positional
+// ambiguity.
+type mergeDriverInputs struct {
+	BasePath   string // %O — common ancestor (may be an empty file when both branches added)
+	OursPath   string // %A — our side; the merge driver writes the result here
+	TheirsPath string // %B — their side
+	OrigPath   string // %P — original pathname; used in diagnostics only
+}
+
+// mergeDriverExitCode is the exit code returned to git. 0 = clean merge,
+// nonzero = conflicts remain in OursPath.
+type mergeDriverExitCode int
+
+const (
+	mergeDriverExitClean    mergeDriverExitCode = 0
+	mergeDriverExitConflict mergeDriverExitCode = 1
+)
+
+// runMergeDriver is the entry point invoked by the Cobra command. Reads the
+// three input files, attempts a structural 3-way merge, and falls back to
+// `git merge-file` when conflicts remain. Returns the exit code git should
+// see (writes to OursPath and to errOut as side effects).
+//
+// errOut is used for the conflict summary so the researcher sees both
+// sides' values + assertion evidence while resolving. The fall-back also
+// writes git's own messages to errOut.
+func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode {
+	baseBytes, oursBytes, theirsBytes, ok := readAllInputs(in, errOut)
+	if !ok {
+		return mergeDriverExitConflict
+	}
+
+	// Deserialize without validation — the merge driver runs per-file, so
+	// cross-reference validation against entities in other files would always
+	// fail and isn't this layer's job.
+	deser := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
+
+	base, ours, theirs, parseOK := parseAllInputs(deser, baseBytes, oursBytes, theirsBytes, errOut)
+	if !parseOK {
+		return execGitMergeFile(in, errOut)
+	}
+
+	merged, conflicts := glxlib.ThreeWayMerge(base, ours, theirs)
+
+	if glxlib.HasUnresolvedConflict(conflicts) {
+		printConflictSummary(errOut, in.OrigPath, conflicts, ours, theirs)
+
+		return execGitMergeFile(in, errOut)
+	}
+
+	// Surface auto-resolved decisions even on the clean path so the
+	// researcher knows why their value was picked over theirs (or vice versa).
+	if len(conflicts) > 0 {
+		printAutoResolvedSummary(errOut, in.OrigPath, conflicts)
+	}
+
+	mergedBytes, err := deser.SerializeSingleFileBytes(merged)
+	if err != nil {
+		fprintf(errOut, "[glx merge-driver] serialize merged: %v — falling back to text merge\n", err)
+
+		return execGitMergeFile(in, errOut)
+	}
+
+	// Only touch OursPath now that we know we have a clean structural merge.
+	// Up to this point OursPath still holds the original "ours" bytes that
+	// git invoked us with, so if anything fails above we hand a pristine
+	// %A off to `git merge-file`.
+	if err := os.WriteFile(in.OursPath, mergedBytes, mergedFilePerm); err != nil {
+		fprintf(errOut, "[glx merge-driver] write ours %q: %v\n", in.OursPath, err)
+
+		return mergeDriverExitConflict
+	}
+
+	return mergeDriverExitClean
+}
+
+// readAllInputs reads base/ours/theirs from disk, reporting each failure to
+// errOut. Returns ok=false if any read failed. Factored out of runMergeDriver
+// to keep the orchestrating function readable.
+func readAllInputs(in mergeDriverInputs, errOut io.Writer) (base, ours, theirs []byte, ok bool) {
+	base, err := os.ReadFile(in.BasePath)
+	if err != nil {
+		fprintf(errOut, "[glx merge-driver] read base %q: %v\n", in.BasePath, err)
+
+		return nil, nil, nil, false
+	}
+	ours, err = os.ReadFile(in.OursPath)
+	if err != nil {
+		fprintf(errOut, "[glx merge-driver] read ours %q: %v\n", in.OursPath, err)
+
+		return nil, nil, nil, false
+	}
+	theirs, err = os.ReadFile(in.TheirsPath)
+	if err != nil {
+		fprintf(errOut, "[glx merge-driver] read theirs %q: %v\n", in.TheirsPath, err)
+
+		return nil, nil, nil, false
+	}
+
+	return base, ours, theirs, true
+}
+
+// parseAllInputs deserializes the three input byte slices. On any failure it
+// writes a "falling back to text merge" note to errOut and returns ok=false,
+// so the caller can hand the still-untouched files off to git merge-file.
+func parseAllInputs(deser glxlib.Serializer, baseBytes, oursBytes, theirsBytes []byte, errOut io.Writer) (base, ours, theirs *glxlib.GLXFile, ok bool) {
+	base, err := parseOrEmpty(deser, baseBytes)
+	if err != nil {
+		fprintf(errOut, "[glx merge-driver] parse base: %v — falling back to text merge\n", err)
+
+		return nil, nil, nil, false
+	}
+	ours, err = parseOrEmpty(deser, oursBytes)
+	if err != nil {
+		fprintf(errOut, "[glx merge-driver] parse ours: %v — falling back to text merge\n", err)
+
+		return nil, nil, nil, false
+	}
+	theirs, err = parseOrEmpty(deser, theirsBytes)
+	if err != nil {
+		fprintf(errOut, "[glx merge-driver] parse theirs: %v — falling back to text merge\n", err)
+
+		return nil, nil, nil, false
+	}
+
+	return base, ours, theirs, true
+}
+
+// parseOrEmpty deserializes GLX YAML bytes, treating empty input as an empty
+// GLXFile (git passes an empty %O when both branches added the file fresh).
+func parseOrEmpty(deser glxlib.Serializer, data []byte) (*glxlib.GLXFile, error) {
+	if len(strings.TrimSpace(string(data))) == 0 {
+		return &glxlib.GLXFile{}, nil
+	}
+
+	return deser.DeserializeSingleFileBytes(data)
+}
+
+// execGitMergeFile runs `git merge-file -L ours -L base -L theirs %A %O %B`.
+// This is git's standard text-merge implementation; it writes <<<<<<< markers
+// into %A on conflict. Returns the exit code (0 = clean merge, 1 = conflicts,
+// >1 = error).
+func execGitMergeFile(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode {
+	cmd := exec.CommandContext(context.Background(), "git", "merge-file",
+		"-L", "ours", "-L", "base", "-L", "theirs",
+		in.OursPath, in.BasePath, in.TheirsPath)
+	cmd.Stderr = errOut
+
+	if err := cmd.Run(); err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			return mergeDriverExitCode(ee.ExitCode())
+		}
+		fprintf(errOut, "[glx merge-driver] git merge-file failed: %v\n", err)
+
+		return mergeDriverExitConflict
+	}
+
+	return mergeDriverExitClean
+}
+
+// printConflictSummary writes a structured block per unresolved conflict to
+// errOut. For assertion-property conflicts it pulls Confidence and Citations
+// from the original ours/theirs entities so the researcher sees the evidence
+// alongside the values they have to choose between.
+func printConflictSummary(errOut io.Writer, origPath string, conflicts []glxlib.Merge3Conflict, ours, theirs *glxlib.GLXFile) {
+	fprintf(errOut, "[glx merge-driver] file=%s\n", origPath)
+	for i := range conflicts {
+		c := &conflicts[i]
+		if c.AutoResolved {
+			continue
+		}
+		oursMeta, theirsMeta := assertionMetaForConflict(c, ours, theirs)
+		fprintf(errOut, "  conflict at %s\n", c.Path)
+		fprintf(errOut, "    ours    : %s%s\n", formatValue(c.OursValue), oursMeta)
+		fprintf(errOut, "    theirs  : %s%s\n", formatValue(c.TheirsValue), theirsMeta)
+	}
+}
+
+// printAutoResolvedSummary tells the researcher when the driver picked a
+// winner on their behalf — relevant for confidence-based resolution where
+// the file lands without conflict markers but a real decision was made.
+func printAutoResolvedSummary(errOut io.Writer, origPath string, conflicts []glxlib.Merge3Conflict) {
+	hasAuto := false
+	for i := range conflicts {
+		if conflicts[i].AutoResolved {
+			hasAuto = true
+
+			break
+		}
+	}
+	if !hasAuto {
+		return
+	}
+
+	fprintf(errOut, "[glx merge-driver] file=%s — auto-resolved by the driver:\n", origPath)
+	for i := range conflicts {
+		c := &conflicts[i]
+		if !c.AutoResolved {
+			continue
+		}
+		fprintf(errOut, "  %s → %s\n    ours   : %s\n    theirs : %s\n",
+			c.Path, c.Resolution, formatValue(c.OursValue), formatValue(c.TheirsValue))
+	}
+}
+
+// assertionMetaForConflict returns suffix strings like "  conf=high  cites=[a,b]"
+// when the conflict's entity is an Assertion present in ours/theirs. Empty
+// strings otherwise.
+func assertionMetaForConflict(c *glxlib.Merge3Conflict, ours, theirs *glxlib.GLXFile) (oursSuffix, theirsSuffix string) {
+	if c.EntityType != glxlib.EntityTypeAssertions || c.EntityID == "" {
+		return "", ""
+	}
+	if a, ok := ours.Assertions[c.EntityID]; ok && a != nil {
+		oursSuffix = assertionMetaSuffix(a)
+	}
+	if a, ok := theirs.Assertions[c.EntityID]; ok && a != nil {
+		theirsSuffix = assertionMetaSuffix(a)
+	}
+
+	return oursSuffix, theirsSuffix
+}
+
+func assertionMetaSuffix(a *glxlib.Assertion) string {
+	var parts []string
+	if a.Confidence != "" {
+		parts = append(parts, "conf="+a.Confidence)
+	}
+	if len(a.Citations) > 0 {
+		parts = append(parts, "cites=["+strings.Join(a.Citations, ",")+"]")
+	}
+	if len(a.Sources) > 0 {
+		parts = append(parts, "sources=["+strings.Join(a.Sources, ",")+"]")
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return "  " + strings.Join(parts, "  ")
+}
+
+// formatValue stringifies a conflict's value for stderr display. Designed
+// for stderr-readability, not round-trippability — long structured values
+// (entire entities, large maps) are still shown but trimmed.
+func formatValue(v any) string {
+	if v == nil {
+		return "<absent>"
+	}
+	s := fmt.Sprintf("%v", v)
+	if len(s) > maxConflictValueDisplay {
+		return s[:maxConflictValueDisplay] + "…"
+	}
+
+	return s
+}
+
+// fprintf wraps fmt.Fprintf and discards its error return — all callers in
+// this file write to stderr where an I/O failure is both unrecoverable and
+// the only signal we'd want to surface (the merge driver itself would
+// already be exiting nonzero). Keeping the wrapper localized avoids
+// scattering `//nolint:errcheck` across every diagnostic line.
+func fprintf(w io.Writer, format string, args ...any) {
+	_, _ = fmt.Fprintf(w, format, args...)
+}
