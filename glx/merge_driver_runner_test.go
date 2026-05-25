@@ -249,6 +249,98 @@ func TestMergeDriver_OursPathUntouchedOnFallback(t *testing.T) {
 	}
 }
 
+func TestMergeDriver_OversizedInputFallsBackToTextMerge(t *testing.T) {
+	requireGit(t)
+	dst := t.TempDir()
+	// 65 MiB of zeros — past the maxMergeInputBytes cap of 64 MiB.
+	big := make([]byte, maxMergeInputBytes+1024*1024)
+	if err := os.WriteFile(filepath.Join(dst, "base.glx"), []byte("persons:\n"), 0o644); err != nil {
+		t.Fatalf("write base: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "ours.glx"), big, 0o644); err != nil {
+		t.Fatalf("write big ours: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "theirs.glx"), []byte("persons:\n"), 0o644); err != nil {
+		t.Fatalf("write theirs: %v", err)
+	}
+	in := mergeDriverInputs{
+		BasePath:   filepath.Join(dst, "base.glx"),
+		OursPath:   filepath.Join(dst, "ours.glx"),
+		TheirsPath: filepath.Join(dst, "theirs.glx"),
+		OrigPath:   "oversized.glx",
+	}
+	var errBuf bytes.Buffer
+
+	code := runMergeDriver(in, &errBuf)
+	if code == mergeDriverExitClean {
+		t.Errorf("expected nonzero exit for oversized input, got %d", code)
+	}
+	if !strings.Contains(errBuf.String(), "exceeds merge-driver cap") {
+		t.Errorf("expected stderr to mention the size cap, got:\n%s", errBuf.String())
+	}
+}
+
+func TestSafeForStderr(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "hello", "hello"},
+		{"tab and newline kept", "a\tb\nc", "a\tb\nc"},
+		{"ANSI escape stripped", "1850\x1b[2J\x1b[Hmerge ok", "1850�[2J�[Hmerge ok"},
+		{"DEL stripped", "a\u007fb", "a\uFFFDb"},
+		{"C1 control stripped", "a\u009bb", "a\uFFFDb"},
+		{"bidi RLO stripped", "alice\u202eevil", "alice\uFFFDevil"},
+		{"bidi PDI stripped", "a\u2069b", "a\uFFFDb"},
+		{"implicit LRM kept", "a\u200eb", "a\u200eb"},
+		{"unicode letters kept", "Märchen", "Märchen"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := safeForStderr(c.in); got != c.want {
+				t.Errorf("safeForStderr(%q) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
+
+func TestMergeDriver_ConflictWithAnsiEscapeInValue_StderrSanitized(t *testing.T) {
+	requireGit(t)
+	dst := t.TempDir()
+	// Both branches modify a property to different values, one containing an
+	// ANSI clear-screen + fake-success sequence. The driver should print the
+	// hostile value to stderr without honoring the escape.
+	base := "persons:\n  person-john-smith:\n    properties:\n      note: \"original\"\n"
+	ours := "persons:\n  person-john-smith:\n    properties:\n      note: \"ours-version\"\n"
+	theirs := "persons:\n  person-john-smith:\n    properties:\n      note: \"\\u001b[2J\\u001b[Hmerge ok\"\n"
+	if err := os.WriteFile(filepath.Join(dst, "base.glx"), []byte(base), 0o644); err != nil {
+		t.Fatalf("write base: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "ours.glx"), []byte(ours), 0o644); err != nil {
+		t.Fatalf("write ours: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "theirs.glx"), []byte(theirs), 0o644); err != nil {
+		t.Fatalf("write theirs: %v", err)
+	}
+	in := mergeDriverInputs{
+		BasePath:   filepath.Join(dst, "base.glx"),
+		OursPath:   filepath.Join(dst, "ours.glx"),
+		TheirsPath: filepath.Join(dst, "theirs.glx"),
+		OrigPath:   "person-john-smith.glx",
+	}
+	var errBuf bytes.Buffer
+	_ = runMergeDriver(in, &errBuf)
+
+	if strings.ContainsRune(errBuf.String(), 0x1B) {
+		t.Errorf("stderr must not contain literal ESC (0x1B) after sanitization, got:\n%q", errBuf.String())
+	}
+	// The replacement glyph confirms sanitization actually triggered.
+	if !strings.ContainsRune(errBuf.String(), '�') {
+		t.Errorf("stderr should contain U+FFFD replacement after stripping ANSI, got:\n%q", errBuf.String())
+	}
+}
+
 func TestMergeDriver_ParseOrEmpty_TreatsEmptyInputAsEmptyGLXFile(t *testing.T) {
 	deser := glxlib.NewSerializer(&glxlib.SerializerOptions{Validate: false})
 

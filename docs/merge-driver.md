@@ -108,6 +108,15 @@ options:
 runs per file. A conflict on a `Person` property where the confidence
 lives in a separate `Assertion` file lands as a text-merge conflict.
 
+**The auto-resolution trusts the on-branch confidence value.** When two
+branches both modify an assertion and disagree on the value, the side
+that claims `confidence: high` wins silently. A researcher could in
+principle promote a fabricated value to `high` just to win merges with
+collaborators who set `medium`. Review confidence promotions in
+`git log -p assertions/` before merging branches from less-trusted
+contributors. The driver fast-forwards the merge for you; it does not
+replace your peer-review of the underlying claim.
+
 **"More evidence" is not a tiebreaker.** Issue
 [#293](https://github.com/genealogix/glx/issues/293) mentions "auto-resolve
 when one side has higher confidence or more evidence." The current

@@ -35,6 +35,24 @@ const mergedFilePerm = 0o644
 // pathologically large structured value doesn't drown the diagnostic block.
 const maxConflictValueDisplay = 200
 
+// maxMergeInputBytes caps the per-file size the merge driver will parse as
+// structured YAML. Files larger than this are handled by git's text merge
+// fallback (which streams rather than holding the file in memory). Caps the
+// blast radius of a hostile branch shipping a YAML bomb / multi-GB .glx.
+// 64 MiB is ~6500× the size of a realistic single-entity GLX file (~10 KiB)
+// and three orders of magnitude above the largest .glx in any of the example
+// archives shipped with this repo.
+const maxMergeInputBytes = 64 * 1024 * 1024
+
+// asciiDel is the C0 DEL control character. Named so the sanitizer doesn't
+// trip the magic-number linter and the intent is obvious at the call site.
+const asciiDel = 0x7F
+
+// errMergeInputTooLarge is returned by readCappedFile when a merge input
+// exceeds maxMergeInputBytes. The runner reports it via stderr and falls
+// back to git's text merge.
+var errMergeInputTooLarge = errors.New("merge input exceeds merge-driver cap")
+
 // mergeDriverInputs is what git passes us. Named fields make the runner
 // signature self-documenting and let tests construct it without positional
 // ambiguity.
@@ -116,19 +134,19 @@ func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode 
 // errOut. Returns ok=false if any read failed. Factored out of runMergeDriver
 // to keep the orchestrating function readable.
 func readAllInputs(in mergeDriverInputs, errOut io.Writer) (base, ours, theirs []byte, ok bool) {
-	base, err := os.ReadFile(in.BasePath)
+	base, err := readCappedFile(in.BasePath)
 	if err != nil {
 		fprintf(errOut, "[glx merge-driver] read base %q: %v\n", in.BasePath, err)
 
 		return nil, nil, nil, false
 	}
-	ours, err = os.ReadFile(in.OursPath)
+	ours, err = readCappedFile(in.OursPath)
 	if err != nil {
 		fprintf(errOut, "[glx merge-driver] read ours %q: %v\n", in.OursPath, err)
 
 		return nil, nil, nil, false
 	}
-	theirs, err = os.ReadFile(in.TheirsPath)
+	theirs, err = readCappedFile(in.TheirsPath)
 	if err != nil {
 		fprintf(errOut, "[glx merge-driver] read theirs %q: %v\n", in.TheirsPath, err)
 
@@ -136,6 +154,23 @@ func readAllInputs(in mergeDriverInputs, errOut io.Writer) (base, ours, theirs [
 	}
 
 	return base, ours, theirs, true
+}
+
+// readCappedFile is os.ReadFile with a size ceiling. A file larger than
+// maxMergeInputBytes returns errMergeInputTooLarge so the caller hands the
+// merge off to git's text merge instead of trying to parse a multi-gigabyte
+// input.
+func readCappedFile(path string) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() > maxMergeInputBytes {
+		return nil, fmt.Errorf("%w: %s is %d bytes (cap %d)",
+			errMergeInputTooLarge, path, info.Size(), maxMergeInputBytes)
+	}
+
+	return os.ReadFile(path)
 }
 
 // parseAllInputs deserializes the three input byte slices. On any failure it
@@ -201,15 +236,20 @@ func execGitMergeFile(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCod
 // errOut. For assertion-property conflicts it pulls Confidence and Citations
 // from the original ours/theirs entities so the researcher sees the evidence
 // alongside the values they have to choose between.
+//
+// All user-controlled strings (entity IDs from YAML, property values, citation
+// IDs, the original path) are passed through safeForStderr before formatting
+// so a malicious branch can't embed ANSI escapes or Unicode bidi marks that
+// would mislead the researcher resolving the merge.
 func printConflictSummary(errOut io.Writer, origPath string, conflicts []glxlib.Merge3Conflict, ours, theirs *glxlib.GLXFile) {
-	fprintf(errOut, "[glx merge-driver] file=%s\n", origPath)
+	fprintf(errOut, "[glx merge-driver] file=%s\n", safeForStderr(origPath))
 	for i := range conflicts {
 		c := &conflicts[i]
 		if c.AutoResolved {
 			continue
 		}
 		oursMeta, theirsMeta := assertionMetaForConflict(c, ours, theirs)
-		fprintf(errOut, "  conflict at %s\n", c.Path)
+		fprintf(errOut, "  conflict at %s\n", safeForStderr(c.Path))
 		fprintf(errOut, "    ours    : %s%s\n", formatValue(c.OursValue), oursMeta)
 		fprintf(errOut, "    theirs  : %s%s\n", formatValue(c.TheirsValue), theirsMeta)
 	}
@@ -231,14 +271,15 @@ func printAutoResolvedSummary(errOut io.Writer, origPath string, conflicts []glx
 		return
 	}
 
-	fprintf(errOut, "[glx merge-driver] file=%s — auto-resolved by the driver:\n", origPath)
+	fprintf(errOut, "[glx merge-driver] file=%s — auto-resolved by the driver:\n", safeForStderr(origPath))
 	for i := range conflicts {
 		c := &conflicts[i]
 		if !c.AutoResolved {
 			continue
 		}
 		fprintf(errOut, "  %s → %s\n    ours   : %s\n    theirs : %s\n",
-			c.Path, c.Resolution, formatValue(c.OursValue), formatValue(c.TheirsValue))
+			safeForStderr(c.Path), safeForStderr(c.Resolution),
+			formatValue(c.OursValue), formatValue(c.TheirsValue))
 	}
 }
 
@@ -262,13 +303,13 @@ func assertionMetaForConflict(c *glxlib.Merge3Conflict, ours, theirs *glxlib.GLX
 func assertionMetaSuffix(a *glxlib.Assertion) string {
 	var parts []string
 	if a.Confidence != "" {
-		parts = append(parts, "conf="+a.Confidence)
+		parts = append(parts, "conf="+safeForStderr(a.Confidence))
 	}
 	if len(a.Citations) > 0 {
-		parts = append(parts, "cites=["+strings.Join(a.Citations, ",")+"]")
+		parts = append(parts, "cites=["+safeForStderr(strings.Join(a.Citations, ","))+"]")
 	}
 	if len(a.Sources) > 0 {
-		parts = append(parts, "sources=["+strings.Join(a.Sources, ",")+"]")
+		parts = append(parts, "sources=["+safeForStderr(strings.Join(a.Sources, ","))+"]")
 	}
 	if len(parts) == 0 {
 		return ""
@@ -279,17 +320,75 @@ func assertionMetaSuffix(a *glxlib.Assertion) string {
 
 // formatValue stringifies a conflict's value for stderr display. Designed
 // for stderr-readability, not round-trippability — long structured values
-// (entire entities, large maps) are still shown but trimmed.
+// (entire entities, large maps) are still shown but trimmed. The result is
+// sanitized of ANSI escapes and Unicode bidi controls so a hostile branch
+// can't inject misleading terminal output.
 func formatValue(v any) string {
 	if v == nil {
 		return "<absent>"
 	}
 	s := fmt.Sprintf("%v", v)
 	if len(s) > maxConflictValueDisplay {
-		return s[:maxConflictValueDisplay] + "…"
+		s = s[:maxConflictValueDisplay] + "…"
 	}
 
-	return s
+	return safeForStderr(s)
+}
+
+// safeForStderr strips control characters and Unicode bidi marks from a
+// string before it lands on stderr. C0 controls (other than tab and newline,
+// which are display-safe and present in legitimate values), DEL, and the
+// Unicode bidi-control range (LRE/RLE/PDF/LRO/RLO and LRI/RLI/FSI/PDI) are
+// replaced with U+FFFD. Without this, a YAML value like
+// `"1850\x1b[2J\x1b[Hmerge ok"` would clear the user's terminal and print a
+// fake success message when the driver writes its conflict summary.
+func safeForStderr(s string) string {
+	needsSanitize := false
+	for _, r := range s {
+		if isUnsafeForStderr(r) {
+			needsSanitize = true
+
+			break
+		}
+	}
+	if !needsSanitize {
+		return s
+	}
+
+	out := make([]rune, 0, len(s))
+	for _, r := range s {
+		if isUnsafeForStderr(r) {
+			out = append(out, '�')
+
+			continue
+		}
+		out = append(out, r)
+	}
+
+	return string(out)
+}
+
+func isUnsafeForStderr(r rune) bool {
+	// C0 controls except tab and newline.
+	if r < 0x20 && r != '\t' && r != '\n' {
+		return true
+	}
+	// DEL.
+	if r == asciiDel {
+		return true
+	}
+	// C1 controls (0x80–0x9F).
+	if r >= 0x80 && r <= 0x9F {
+		return true
+	}
+	// Unicode bidi controls: explicit-direction (LRE/RLE/PDF/LRO/RLO) and
+	// isolate (LRI/RLI/FSI/PDI). Don't strip the implicit LRM/RLM/ALM marks,
+	// which are legitimate in mixed-script text.
+	if (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069) {
+		return true
+	}
+
+	return false
 }
 
 // fprintf wraps fmt.Fprintf and discards its error return — all callers in
