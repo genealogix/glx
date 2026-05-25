@@ -10,15 +10,26 @@ Before compacting, verify changelog integrity:
 
 ### 1. Ensure Latest Version Is Unreleased
 
-Run `git tag --sort=-v:refname | head -1` to get the most recent release tag. Compare the tag version against the latest `## [version]` header in the changelog (tags use `v` prefix, changelog doesn't — e.g., tag `v0.0.0-beta.7` matches changelog `0.0.0-beta.7`).
+Run `git fetch --tags --quiet` to refresh local tag refs (prevents stale-local-tag drift from upstream). Then run `git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1` to get the most recent release tag. The `--list` glob matches the release-tag pattern in `.github/workflows/release.yml` so the command and the workflow agree on what counts as a release. Compare the tag version against the latest `## [version]` header in the changelog (tags use `v` prefix, changelog doesn't — e.g., tag `v0.0.0-beta.7` matches changelog `0.0.0-beta.7`).
 
-**If the latest changelog version already has a matching tag, STOP.** The latest section has already been released — there should be a newer unreleased section above it. If there isn't, warn the user that a new section needs to be created before adding entries.
+**If the latest changelog version already has a matching tag, STOP.** The latest section has already been released — there should be a newer unreleased section above it.
+
+**STOP semantics.** Print the offending state to the user, print
+"Refusing to proceed. Create the next unreleased section first by:
+
+    1. Decide the next version (e.g., 0.0.0-beta.11)
+    2. Add a `## [0.0.0-beta.11] - Unreleased` header above the
+       most recent dated section
+    3. Re-run /compact-changelog
+
+" and return without modifying CHANGELOG.md. Do not attempt to infer
+or create the missing section yourself.
 
 ### 2. Fix Entries Added to Released Sections
 
 Find the changelog section that matches the latest release tag. Do NOT assume it is the second section — there may be intermediate unreleased versions between the latest section and the tagged one. Search all `## [version]` headers to find the one whose version matches the latest tag.
 
-Run `git show <tag>:CHANGELOG.md` (e.g., `git show v0.0.0-beta.8:CHANGELOG.md`) to get the changelog as it existed at that release. Extract the matching version section from both the tagged version and the current file. Diff them (ignoring the date-line change from `Unreleased` to a date, which is expected).
+Run `git show <tag>:CHANGELOG.md` (e.g., `git show v0.0.0-beta.8:CHANGELOG.md`) to get the changelog as it existed at that release. Note: this is a no-op if `CHANGELOG.md` did not exist at that tag — a known edge case the maintainer can ignore, because the project's earliest tag (`v0.0.0-beta.0`) post-dates `CHANGELOG.md`. Extract the matching version section from both the tagged version and the current file. Diff them (ignoring the date-line change from `Unreleased` to a date, which is expected).
 
 **If the released section has new entries that weren't in the tagged release, move them to the latest (unreleased) section.** Then restore the released section to match the tagged version exactly (except the date). This is a common issue when agentic editing adds entries to the wrong section. After moving, merge the relocated entries into the appropriate subsections (Added/Changed/Fixed/Removed) of the latest version, following the same deduplication and ordering rules.
 
@@ -27,6 +38,8 @@ If there are sections between the latest and the tagged section that have no cor
 ### 3. Update the Date on the Latest Version
 
 If the latest section header does not already have a date in `YYYY-MM-DD` format (e.g., `## [0.0.0-beta.9]` or `## [0.0.0-beta.9] - Unreleased`), update it to today's date (e.g., `## [0.0.0-beta.9] - 2026-03-29`). This keeps the date current as work progresses.
+
+**If the latest section header is bare `## [Unreleased]` with no version number**, refuse to proceed. Print the offending header to the user, print "Refusing to proceed. The latest section has no version. Promote `## [Unreleased]` to `## [<next-version>] - YYYY-MM-DD` yourself (e.g., `## [0.0.0-beta.11] - 2026-05-25`), then re-run /compact-changelog." and return without modifying CHANGELOG.md. Do not infer the next version from the latest tag — version bumps are a maintainer decision and out of scope for compaction.
 
 ## Rules
 
