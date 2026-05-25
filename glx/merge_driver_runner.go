@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -81,8 +82,17 @@ const (
 // sides' values + assertion evidence while resolving. The fall-back also
 // writes git's own messages to errOut.
 func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode {
-	baseBytes, oursBytes, theirsBytes, ok := readAllInputs(in, errOut)
-	if !ok {
+	baseBytes, oursBytes, theirsBytes, readErr := readAllInputs(in, errOut)
+	if readErr != nil {
+		// Size-cap rejection means the files exist and are readable; we
+		// just declined to parse them structurally. Hand them off to git's
+		// text merge — it streams line-by-line and isn't bounded by our
+		// in-memory cap. Other read failures (missing file, permission
+		// denied) would just make git merge-file fail too, so exit nonzero.
+		if errors.Is(readErr, errMergeInputTooLarge) {
+			return execGitMergeFile(in, errOut)
+		}
+
 		return mergeDriverExitConflict
 	}
 
@@ -131,29 +141,30 @@ func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode 
 }
 
 // readAllInputs reads base/ours/theirs from disk, reporting each failure to
-// errOut. Returns ok=false if any read failed. Factored out of runMergeDriver
-// to keep the orchestrating function readable.
-func readAllInputs(in mergeDriverInputs, errOut io.Writer) (base, ours, theirs []byte, ok bool) {
-	base, err := readCappedFile(in.BasePath)
+// errOut. Returns the first error encountered, with nil byte slices on
+// failure. The caller checks for errMergeInputTooLarge specifically to
+// decide between hard-exit and text-merge fallback.
+func readAllInputs(in mergeDriverInputs, errOut io.Writer) (base, ours, theirs []byte, err error) {
+	base, err = readCappedFile(in.BasePath)
 	if err != nil {
 		fprintf(errOut, "[glx merge-driver] read base %q: %v\n", in.BasePath, err)
 
-		return nil, nil, nil, false
+		return nil, nil, nil, err
 	}
 	ours, err = readCappedFile(in.OursPath)
 	if err != nil {
 		fprintf(errOut, "[glx merge-driver] read ours %q: %v\n", in.OursPath, err)
 
-		return nil, nil, nil, false
+		return nil, nil, nil, err
 	}
 	theirs, err = readCappedFile(in.TheirsPath)
 	if err != nil {
 		fprintf(errOut, "[glx merge-driver] read theirs %q: %v\n", in.TheirsPath, err)
 
-		return nil, nil, nil, false
+		return nil, nil, nil, err
 	}
 
-	return base, ours, theirs, true
+	return base, ours, theirs, nil
 }
 
 // readCappedFile is os.ReadFile with a size ceiling. A file larger than
@@ -206,8 +217,11 @@ func parseAllInputs(deser glxlib.Serializer, baseBytes, oursBytes, theirsBytes [
 
 // parseOrEmpty deserializes GLX YAML bytes, treating empty input as an empty
 // GLXFile (git passes an empty %O when both branches added the file fresh).
+// Uses bytes.TrimSpace to avoid copying potentially large []byte → string
+// when probing for emptiness — the post-cap input may still be up to
+// maxMergeInputBytes large, which would be a 64 MiB allocation per side.
 func parseOrEmpty(deser glxlib.Serializer, data []byte) (*glxlib.GLXFile, error) {
-	if len(strings.TrimSpace(string(data))) == 0 {
+	if len(bytes.TrimSpace(data)) == 0 {
 		return &glxlib.GLXFile{}, nil
 	}
 

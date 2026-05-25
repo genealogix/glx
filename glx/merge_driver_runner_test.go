@@ -252,17 +252,33 @@ func TestMergeDriver_OursPathUntouchedOnFallback(t *testing.T) {
 func TestMergeDriver_OversizedInputFallsBackToTextMerge(t *testing.T) {
 	requireGit(t)
 	dst := t.TempDir()
-	// 65 MiB of zeros — past the maxMergeInputBytes cap of 64 MiB.
-	big := make([]byte, maxMergeInputBytes+1024*1024)
-	if err := os.WriteFile(filepath.Join(dst, "base.glx"), []byte("persons:\n"), 0o644); err != nil {
+
+	// theirs is over the cap; ours and base are small with diverging content
+	// so git merge-file's line-based merge has something to chew on. Using
+	// 1 KiB beyond the cap keeps the test cheap; the threshold itself is
+	// exercised regardless of how much we exceed it by.
+	const overage = 1024
+	big := make([]byte, maxMergeInputBytes+overage)
+	// Make it valid-looking text content so git merge-file treats it as text.
+	for i := range big {
+		big[i] = 'x'
+	}
+
+	if err := os.WriteFile(filepath.Join(dst, "base.glx"), []byte("base content\n"), 0o644); err != nil {
 		t.Fatalf("write base: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dst, "ours.glx"), big, 0o644); err != nil {
-		t.Fatalf("write big ours: %v", err)
+	if err := os.WriteFile(filepath.Join(dst, "ours.glx"), []byte("ours content\n"), 0o644); err != nil {
+		t.Fatalf("write ours: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dst, "theirs.glx"), []byte("persons:\n"), 0o644); err != nil {
-		t.Fatalf("write theirs: %v", err)
+	if err := os.WriteFile(filepath.Join(dst, "theirs.glx"), big, 0o644); err != nil {
+		t.Fatalf("write big theirs: %v", err)
 	}
+
+	originalOurs, err := os.ReadFile(filepath.Join(dst, "ours.glx"))
+	if err != nil {
+		t.Fatalf("read original ours: %v", err)
+	}
+
 	in := mergeDriverInputs{
 		BasePath:   filepath.Join(dst, "base.glx"),
 		OursPath:   filepath.Join(dst, "ours.glx"),
@@ -272,11 +288,23 @@ func TestMergeDriver_OversizedInputFallsBackToTextMerge(t *testing.T) {
 	var errBuf bytes.Buffer
 
 	code := runMergeDriver(in, &errBuf)
-	if code == mergeDriverExitClean {
-		t.Errorf("expected nonzero exit for oversized input, got %d", code)
-	}
+	// Either clean (rare — git might auto-merge despite divergence) or
+	// nonzero (typical — conflict markers written). Either way, the
+	// fallback must have run.
+	_ = code
+
 	if !strings.Contains(errBuf.String(), "exceeds merge-driver cap") {
 		t.Errorf("expected stderr to mention the size cap, got:\n%s", errBuf.String())
+	}
+
+	// Verify the fallback actually ran: %A must have been touched by
+	// git merge-file, not left as the original "ours content\n".
+	merged, err := os.ReadFile(in.OursPath)
+	if err != nil {
+		t.Fatalf("read merged: %v", err)
+	}
+	if bytes.Equal(originalOurs, merged) {
+		t.Errorf("oursPath unchanged — fallback did not run; size-cap path likely exited early.\nstderr was:\n%s", errBuf.String())
 	}
 }
 
