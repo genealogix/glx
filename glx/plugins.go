@@ -84,15 +84,22 @@ func discoverPlugins(pathEnv, pathExt string) []Plugin {
 	seen := make(map[string]struct{})
 	var plugins []Plugin
 	for _, dir := range filepath.SplitList(pathEnv) {
-		dir = strings.TrimSpace(dir)
 		if dir == "" {
 			continue
 		}
-		// Normalize relative PATH entries (e.g., ".", "./bin") to absolute paths
-		// at discovery time so the resolved Plugin.Path is stable regardless of
-		// any later CWD change, and so exec.CommandContext receives an absolute
-		// path that cannot be misinterpreted relative to CWD. Skip the entry on
-		// failure (rare — only when CWD itself cannot be determined).
+		// Do NOT trim whitespace from dir: on Unix, leading/trailing spaces
+		// are valid in directory names (e.g., "/opt/tools "), so trimming
+		// would render legitimate PATH entries undiscoverable. An entry that
+		// is *only* whitespace will fall through harmlessly — filepath.Abs
+		// resolves it relative to CWD and os.ReadDir below will fail, so it
+		// is skipped without changing observable behavior.
+		//
+		// Normalize relative PATH entries (e.g., ".", "./bin") to absolute
+		// paths at discovery time so the resolved Plugin.Path is stable
+		// regardless of any later CWD change, and so exec.CommandContext
+		// receives an absolute path that cannot be misinterpreted relative
+		// to CWD. Skip the entry on failure (rare — only when CWD itself
+		// cannot be determined).
 		absDir, err := filepath.Abs(dir)
 		if err != nil {
 			continue
