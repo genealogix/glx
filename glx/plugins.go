@@ -78,7 +78,8 @@ type Plugin struct {
 // skipped. Unreadable or non-existent PATH directories are skipped silently,
 // mirroring shell behavior.
 func discoverPlugins(pathEnv, pathExt string) []Plugin {
-	exts := parsePathExt(pathExt)
+	isWindows := runtime.GOOS == osWindows
+	exts := parsePathExt(pathExt, isWindows)
 	seen := make(map[string]struct{})
 	var plugins []Plugin
 	for _, dir := range filepath.SplitList(pathEnv) {
@@ -99,7 +100,7 @@ func discoverPlugins(pathEnv, pathExt string) []Plugin {
 		}
 		best := make(map[string]cand)
 		for _, e := range entries {
-			name, extIdx, ok := pluginNameFromEntry(e, exts)
+			name, extIdx, ok := pluginNameFromEntry(e, exts, isWindows)
 			if !ok {
 				continue
 			}
@@ -141,25 +142,29 @@ func findPlugin(name, pathEnv, pathExt string) (Plugin, bool) {
 
 // pluginNameFromEntry extracts a plugin's logical name from a directory entry.
 // Returns ok=false unless the entry is a regular file (not a directory) with the
-// glx- prefix and is executable on the current platform. On Windows that means
-// the extension is in PATHEXT; the returned extIdx is the matched extension's
-// index in exts (lower = higher PATHEXT priority) and is used by discoverPlugins
-// to pick the right file when several extensions co-exist. On other platforms
-// the file must have at least one executable permission bit set; extIdx is
-// always 0.
-func pluginNameFromEntry(e os.DirEntry, exts []string) (name string, extIdx int, ok bool) {
+// glx- prefix and is executable on the target platform. When isWindows is true,
+// the entry's extension must be in exts; the returned extIdx is the matched
+// extension's index in exts (lower = higher PATHEXT priority) and is used by
+// discoverPlugins to pick the right file when several extensions co-exist.
+// Otherwise the file must have at least one executable permission bit set;
+// extIdx is always 0.
+//
+// isWindows is taken as a parameter (rather than read from runtime.GOOS inside
+// the function) so both platform branches are exercised by unit tests on any
+// host.
+func pluginNameFromEntry(e os.DirEntry, exts []string, isWindows bool) (name string, extIdx int, ok bool) {
 	if e.IsDir() {
 		return "", 0, false
 	}
 	fn := e.Name()
 	matchName := fn
-	if runtime.GOOS == osWindows {
+	if isWindows {
 		matchName = strings.ToLower(fn)
 	}
 	if !strings.HasPrefix(matchName, pluginPrefix) {
 		return "", 0, false
 	}
-	if runtime.GOOS == osWindows {
+	if isWindows {
 		for i, ext := range exts {
 			if strings.HasSuffix(matchName, ext) {
 				stem := strings.TrimSuffix(strings.TrimPrefix(matchName, pluginPrefix), ext)
@@ -186,10 +191,12 @@ func pluginNameFromEntry(e os.DirEntry, exts []string) (name string, extIdx int,
 }
 
 // parsePathExt splits a Windows PATHEXT value into a lowercased extension list
-// (e.g., [".com", ".exe", ".bat", ".cmd"]). Returns nil on non-Windows. Falls
-// back to a conservative default when PATHEXT is unset on Windows.
-func parsePathExt(pathExt string) []string {
-	if runtime.GOOS != osWindows {
+// (e.g., [".com", ".exe", ".bat", ".cmd"]). Returns nil when isWindows is
+// false. Falls back to a conservative default when isWindows is true but
+// pathExt is unset. isWindows is taken as a parameter so both branches are
+// exercised by tests on any host.
+func parsePathExt(pathExt string, isWindows bool) []string {
+	if !isWindows {
 		return nil
 	}
 	if pathExt == "" {
@@ -215,6 +222,11 @@ func parsePathExt(pathExt string) []string {
 // writes a diagnostic to stderr and returns exitPluginStartFailure, matching
 // the shell convention for "command not found / not executable".
 func runPlugin(ctx context.Context, p Plugin, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	// #nosec G204 -- plugin dispatch is the entire purpose of this function (#95
+	// Phase 1, git/kubectl model). p.Path was resolved by discoverPlugins from a
+	// PATH directory and always contains a separator, so exec.LookPath/PATH-routed
+	// resolution does not occur; args are user input forwarded as a string slice
+	// (no shell). Trust model is "user controls PATH", documented in the PR.
 	cmd := exec.CommandContext(ctx, p.Path, args...)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout

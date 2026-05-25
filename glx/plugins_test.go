@@ -19,13 +19,43 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
+
+// fakeDirEntry / fakeFileInfo let us drive pluginNameFromEntry deterministically
+// on any platform without depending on the host filesystem's mode-bit semantics
+// (Windows in particular reports executable-bit oddly for files created via
+// os.WriteFile). The mocks implement just the os.DirEntry / fs.FileInfo
+// surface that pluginNameFromEntry actually uses.
+type fakeDirEntry struct {
+	name  string
+	mode  fs.FileMode
+	isDir bool
+}
+
+func (f fakeDirEntry) Name() string               { return f.name }
+func (f fakeDirEntry) IsDir() bool                { return f.isDir }
+func (f fakeDirEntry) Type() fs.FileMode          { return f.mode.Type() }
+func (f fakeDirEntry) Info() (fs.FileInfo, error) { return fakeFileInfo{f.name, f.mode}, nil }
+
+type fakeFileInfo struct {
+	name string
+	mode fs.FileMode
+}
+
+func (fi fakeFileInfo) Name() string       { return fi.name }
+func (fi fakeFileInfo) Size() int64        { return 0 }
+func (fi fakeFileInfo) Mode() fs.FileMode  { return fi.mode }
+func (fi fakeFileInfo) ModTime() time.Time { return time.Time{} }
+func (fi fakeFileInfo) IsDir() bool        { return fi.mode.IsDir() }
+func (fi fakeFileInfo) Sys() any           { return nil }
 
 // makeFakePluginFile writes an executable file at dir/base that discoverPlugins
 // will recognize on the current platform. On Windows it writes <base>.bat; on
@@ -132,6 +162,72 @@ func TestDiscoverPlugins_WindowsUppercaseFilename(t *testing.T) {
 	plugins := discoverPlugins(dir, ".COM;.EXE;.BAT;.CMD")
 	if len(plugins) != 1 || plugins[0].Name != "foo" {
 		t.Errorf("want plugin name 'foo' from GLX-FOO.BAT, got %+v", plugins)
+	}
+}
+
+// TestParsePathExt exercises both isWindows branches deterministically so the
+// platform-specific branches are covered by Linux-only CI runs.
+func TestParsePathExt(t *testing.T) {
+	if got := parsePathExt(".EXE;.BAT", false); got != nil {
+		t.Errorf("parsePathExt(_, isWindows=false) = %v; want nil", got)
+	}
+	got := parsePathExt(".EXE;.BAT", true)
+	want := []string{".exe", ".bat"}
+	if !slices.Equal(got, want) {
+		t.Errorf("parsePathExt(.EXE;.BAT, true) = %v; want %v", got, want)
+	}
+	// Empty pathExt under isWindows: conservative default kicks in.
+	got = parsePathExt("", true)
+	want = []string{".com", ".exe", ".bat", ".cmd"}
+	if !slices.Equal(got, want) {
+		t.Errorf("parsePathExt(empty, true) = %v; want default %v", got, want)
+	}
+	// Whitespace + empty entries are tolerated.
+	got = parsePathExt(" .EXE ; ; .BAT ", true)
+	want = []string{".exe", ".bat"}
+	if !slices.Equal(got, want) {
+		t.Errorf("parsePathExt whitespace handling = %v; want %v", got, want)
+	}
+}
+
+// TestPluginNameFromEntry exercises both isWindows branches and the various
+// rejection paths (directory, non-prefixed, empty stem, missing exec bit)
+// without depending on real filesystem mode semantics.
+func TestPluginNameFromEntry(t *testing.T) {
+	winExts := []string{".com", ".exe", ".bat", ".cmd"}
+	tests := []struct {
+		name      string
+		entry     fakeDirEntry
+		exts      []string
+		isWindows bool
+		wantName  string
+		wantIdx   int
+		wantOk    bool
+	}{
+		// --- Windows branch ---
+		{"win: glx-foo.exe → foo (idx 1)", fakeDirEntry{name: "glx-foo.exe", mode: 0o644}, winExts, true, "foo", 1, true},
+		{"win: GLX-FOO.BAT → foo (case-insensitive prefix + ext)", fakeDirEntry{name: "GLX-FOO.BAT", mode: 0o644}, winExts, true, "foo", 2, true},
+		{"win: glx-foo.txt → rejected (not in PATHEXT)", fakeDirEntry{name: "glx-foo.txt", mode: 0o644}, winExts, true, "", 0, false},
+		{"win: notglx-foo.exe → rejected (no prefix)", fakeDirEntry{name: "notglx-foo.exe", mode: 0o644}, winExts, true, "", 0, false},
+		{"win: glx-.exe → rejected (empty stem)", fakeDirEntry{name: "glx-.exe", mode: 0o644}, winExts, true, "", 0, false},
+		{"win: directory glx-foo.exe → rejected", fakeDirEntry{name: "glx-foo.exe", isDir: true, mode: fs.ModeDir | 0o755}, winExts, true, "", 0, false},
+
+		// --- Unix branch ---
+		{"unix: glx-foo (exec bit) → foo", fakeDirEntry{name: "glx-foo", mode: 0o755}, nil, false, "foo", 0, true},
+		{"unix: glx-foo (no exec bit) → rejected", fakeDirEntry{name: "glx-foo", mode: 0o644}, nil, false, "", 0, false},
+		{"unix: glx- (empty stem)", fakeDirEntry{name: "glx-", mode: 0o755}, nil, false, "", 0, false},
+		{"unix: notglx-foo → rejected", fakeDirEntry{name: "notglx-foo", mode: 0o755}, nil, false, "", 0, false},
+		{"unix: GLX-FOO → rejected (case-sensitive prefix on Unix)", fakeDirEntry{name: "GLX-FOO", mode: 0o755}, nil, false, "", 0, false},
+		{"unix: directory glx-foo → rejected", fakeDirEntry{name: "glx-foo", isDir: true, mode: fs.ModeDir | 0o755}, nil, false, "", 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotName, gotIdx, gotOk := pluginNameFromEntry(tt.entry, tt.exts, tt.isWindows)
+			if gotOk != tt.wantOk || gotName != tt.wantName || gotIdx != tt.wantIdx {
+				t.Errorf("pluginNameFromEntry = (%q, %d, %v); want (%q, %d, %v)",
+					gotName, gotIdx, gotOk, tt.wantName, tt.wantIdx, tt.wantOk)
+			}
+		})
 	}
 }
 
@@ -316,6 +412,23 @@ func TestRunPlugin_ExitCodeAndStdio(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "stderr-marker-from-helper") {
 		t.Errorf("stderr forwarding failed; got %q", stderr.String())
+	}
+}
+
+// TestRunPlugin_SuccessExit exercises the exit-code=0 happy path via the same
+// helper-process pattern.
+func TestRunPlugin_SuccessExit(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("os.Executable: %v", err)
+	}
+	p := Plugin{Name: "helper", Path: exe}
+	args := []string{"-test.run=TestHelperProcess", "--", "echo-and-exit", "0"}
+	var stdout, stderr bytes.Buffer
+	t.Setenv("GO_WANT_HELPER_PROCESS", "1")
+	code := runPlugin(context.Background(), p, args, strings.NewReader(""), &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("want exit 0 on success path, got %d (stderr=%q)", code, stderr.String())
 	}
 }
 
