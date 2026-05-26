@@ -5,7 +5,7 @@ allowed-tools:
   - Grep
   - Glob
   - Bash(mktemp:*)
-  - Bash(printf:*)
+  - Bash(cat:*)
   - Bash(./bin/glx validate:*)
   - Bash(rm -rf /tmp/glx-drift-*:*)
 model: claude-opus-4-7
@@ -59,17 +59,19 @@ Compare with **specification/4-entity-types/*.md** and **glx/cmd_*.go** (CLI com
 
 For each YAML-tagged fenced code block in a documentation markdown file:
 
-1. Extract the YAML body.
-2. Write it to a temp file, run the real validator, and clean up — do NOT mentally simulate schema validation:
+1. Extract the YAML body from the markdown source.
+2. Write the body to a temp file via a single-quoted heredoc (so YAML containing `$`, `` ` ``, or quotes is preserved literally), run the real validator, and clean up — do NOT mentally simulate schema validation. Copy the bash block below verbatim at column 0 (do not indent it — leading whitespace on heredoc lines becomes part of the YAML body and breaks parsing):
 
 ```bash
 tmpdir=$(mktemp -d /tmp/glx-drift-XXXXXX)
-printf '%s\n' "$snippet" > "$tmpdir/snippet.glx"
+cat > "$tmpdir/snippet.glx" <<'GLX_SNIPPET'
+<paste the extracted YAML body here, verbatim, no escaping needed>
+GLX_SNIPPET
 ./bin/glx validate "$tmpdir/snippet.glx"
 rm -rf "$tmpdir"
 ```
 
-Per-snippet cleanup keeps concurrent runs of this command from racing on a shared `/tmp/glx-drift-*` namespace.
+Per-snippet cleanup keeps concurrent runs of this command from racing on a shared `/tmp/glx-drift-*` namespace. The single-quoted `'GLX_SNIPPET'` delimiter prevents shell expansion of the YAML body.
 
 3. Classify the result and record the exit code + stderr verbatim:
    - **Exit 0** → snippet validates structurally; still apply the narrative checks below since `glx validate` does not catch specification-prose drift.
