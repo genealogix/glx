@@ -1,0 +1,77 @@
+name: Issue templates — Area drift check
+
+# Fails CI if the Area dropdown options in any issue-form template diverge from
+# the canonical list in .github/issue-areas.yml, or if any template's Area
+# dropdown lacks the stable `id: area` key that .github/workflows/issue-labeler.yml
+# and any future form-aware tooling will key off.
+
+on:
+  pull_request:
+    paths:
+      - '.github/ISSUE_TEMPLATE/*.yml'
+      - '.github/issue-areas.yml'
+      - '.github/workflows/issue-labeler.yml'
+      - '.github/workflows/issue-templates-drift.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/ISSUE_TEMPLATE/*.yml'
+      - '.github/issue-areas.yml'
+      - '.github/workflows/issue-labeler.yml'
+      - '.github/workflows/issue-templates-drift.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compare each template's Area dropdown to the canonical list
+        run: |
+          set -euo pipefail
+
+          SOURCE=.github/issue-areas.yml
+          TEMPLATES=(
+            .github/ISSUE_TEMPLATE/bug_report.yml
+            .github/ISSUE_TEMPLATE/feature_request.yml
+            .github/ISSUE_TEMPLATE/enhancement.yml
+          )
+
+          expected=$(yq '.areas[]' "$SOURCE" | sort)
+          if [ -z "$expected" ]; then
+            echo "::error file=$SOURCE::canonical .areas list is empty"
+            exit 1
+          fi
+
+          fail=0
+          for tpl in "${TEMPLATES[@]}"; do
+            # Defensive: also catches templates missing the id: area dropdown.
+            # If no body entry has id == "area", `yq` emits nothing and the
+            # diff below will flag the divergence.
+            actual=$(yq '.body[] | select(.id == "area") | .attributes.options[]' "$tpl" | sort)
+
+            if [ -z "$actual" ]; then
+              echo "::error file=$tpl::no dropdown with id: area found (the issue-labeler workflow keys off this id)"
+              fail=1
+              continue
+            fi
+
+            if ! diff <(echo "$expected") <(echo "$actual") >/dev/null; then
+              echo "::error file=$tpl::Area options diverge from $SOURCE"
+              echo "--- expected (from $SOURCE)"
+              echo "$expected"
+              echo "--- actual (from $tpl)"
+              echo "$actual"
+              fail=1
+            fi
+          done
+
+          if [ "$fail" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "All ${#TEMPLATES[@]} templates' Area options match $SOURCE."

@@ -1,0 +1,26 @@
+# Canonical source of truth for the "Area" dropdown options used at issue intake.
+#
+# Consumed by:
+#   - .github/ISSUE_TEMPLATE/bug_report.yml        (Area dropdown options)
+#   - .github/ISSUE_TEMPLATE/feature_request.yml   (Area dropdown options)
+#   - .github/ISSUE_TEMPLATE/enhancement.yml       (Area dropdown options)
+#   - .github/workflows/issue-labeler.yml          (reads via yq at runtime to
+#                                                   compute VALID_LABELS)
+#
+# Enforced by:
+#   - .github/workflows/issue-templates-drift.yml  (fails CI if any template's
+#                                                   Area dropdown options diverge
+#                                                   from this list, or if any
+#                                                   template's Area dropdown lacks
+#                                                   the stable `id: area` key)
+#
+# To add or rename an area: edit this file. CI will tell you which template(s)
+# also need their Area dropdown updated to match.
+
+areas:
+  - cli
+  - spec
+  - go-glx
+  - import-export
+  - ui
+  - tooling

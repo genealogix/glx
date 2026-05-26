@@ -3,6 +3,7 @@ description: Report a bug or unexpected behavior
 type: Bug
 body:
   - type: dropdown
+    id: area
     attributes:
       label: Area
       description: Which part of the project is affected?

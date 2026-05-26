@@ -6,12 +6,29 @@ on:
 
 permissions:
   issues: write
+  contents: read
 
 jobs:
   label-area:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout repo (for .github/issue-areas.yml)
+        uses: actions/checkout@v6
+
+      - name: Ensure needs-triage label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Idempotent: --force updates if exists, creates if not.
+          # Runs before any --add-label so the triage fallback can't no-op on
+          # the very first parse failure in a repo that lacks the label.
+          gh label create needs-triage \
+            --repo "${{ github.repository }}" \
+            --color FBCA04 \
+            --description "Issue intake couldn't classify the Area — maintainer triage required" \
+            --force
+
       - name: Apply area label from template dropdown
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -21,11 +38,18 @@ jobs:
           # Extract area from form dropdown (renders as "### Area\n\n<value>")
           AREA=$(echo "$BODY" | awk '/^### Area/{getline; getline; print; exit}' | tr -d '[:space:]')
 
-          VALID_LABELS="cli spec go-glx import-export ui tooling"
+          # Single source of truth for valid areas: .github/issue-areas.yml
+          # (synchronized with the templates' Area dropdowns by
+          # .github/workflows/issue-templates-drift.yml).
+          VALID_LABELS=$(yq '.areas[]' .github/issue-areas.yml | xargs)
 
-          if echo "$VALID_LABELS" | grep -wq "$AREA"; then
+          if [ -z "$AREA" ]; then
+            echo "Empty AREA parsed from body — applying needs-triage."
+            gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label needs-triage
+          elif echo "$VALID_LABELS" | grep -wq "$AREA"; then
             echo "Applying label: $AREA"
             gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label "$AREA"
           else
-            echo "No valid area found in body (got: '$AREA')"
+            echo "Parsed area '$AREA' is not in VALID_LABELS ($VALID_LABELS) — applying needs-triage."
+            gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label needs-triage
           fi
