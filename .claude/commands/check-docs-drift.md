@@ -4,7 +4,7 @@ allowed-tools:
   - Read
   - Grep
   - Glob
-  - Bash(mktemp:*)
+  - Bash(mktemp -d /tmp/glx-drift-*:*)
   - Bash(cat:*)
   - Bash(./bin/glx validate:*)
   - Bash(rm -rf /tmp/glx-drift-*:*)
@@ -73,10 +73,10 @@ rm -rf "$tmpdir"
 
 Per-snippet cleanup keeps concurrent runs of this command from racing on a shared `/tmp/glx-drift-*` namespace. The single-quoted `'GLX_SNIPPET'` delimiter prevents shell expansion of the YAML body.
 
-3. Classify the result and record the exit code + stderr verbatim:
-   - **Exit 0** → snippet validates structurally; still apply the narrative checks below since `glx validate` does not catch specification-prose drift.
-   - **Exit non-zero with root-level "additional properties not allowed"** → snippet is a partial fragment, not a full archive file. Record as `category: snippet_not_archive_shape` (informational, not CRITICAL) and apply the narrative checks. *Phase-1 limitation*: `glx validate` requires top-level entity-group wrappers (`persons:` / `events:` / `places:` / etc.); a follow-up issue tracks adding `--stdin --entity-type` so partial snippets validate in-place.
-   - **Any other non-zero exit** → **CRITICAL** (a documented example does not validate).
+3. Classify the result by exit code AND the snippet's own top-level YAML structure. Do not classify on stderr substring matching alone — the validator reports both "missing archive wrapper" and "typoed archive wrapper" as `(root): additional properties '<key>', ... not allowed`, and those two cases need opposite verdicts. Record the exit code and full stderr in all cases.
+   - **Exit 0** → snippet passed structural + semantic validation (`glx validate` runs both in single-file mode; only cross-reference checks are skipped). Still apply the narrative checks below since the validator does not catch specification-prose drift.
+   - **Exit non-zero AND the snippet's top-level key is a recognized archive wrapper** (`persons:`, `events:`, `places:`, `sources:`, `citations:`, `repositories:`, `relationships:`, `assertions:`, `media:`, `vocabularies:`) **OR is a plausibly-typoed wrapper** (e.g., `people:`, `event:`, `place:`) → **CRITICAL** drift. The doc example intends to demonstrate an archive but contains a real schema violation.
+   - **Exit non-zero AND the snippet's top-level keys look like entity properties** (`id:`, `name:`, `properties:`, etc.) or a vocabulary-entry shape, with no archive-wrapper key in sight → record as `category: snippet_not_archive_shape` informational (not CRITICAL); the doc is illustrating a fragment, not a full archive. Then apply the narrative checks below. *Phase-1 limitation*: `glx validate` requires archive-shape input at top level; a follow-up issue tracks adding `--stdin --entity-type` so fragments can be validated in-place.
 
 If `./bin/glx` is unavailable in the session, surface `category: validator_unavailable` rather than guessing (build with `make build-cli` if needed).
 
