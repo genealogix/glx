@@ -43,13 +43,15 @@ jobs:
           # .github/workflows/issue-templates-drift.yml).
           VALID_LABELS=$(yq '.areas[]' .github/issue-areas.yml | xargs)
 
+          # Default to needs-triage; only the recognized-area branch overrides.
+          LABEL=needs-triage
           if [ -z "$AREA" ]; then
-            echo "Empty AREA parsed from body — applying needs-triage."
-            gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label needs-triage
+            echo "Empty AREA parsed from body — falling through to needs-triage."
           elif echo "$VALID_LABELS" | grep -wq "$AREA"; then
-            echo "Applying label: $AREA"
-            gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label "$AREA"
+            LABEL="$AREA"
           else
-            echo "Parsed area '$AREA' is not in VALID_LABELS ($VALID_LABELS) — applying needs-triage."
-            gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label needs-triage
+            echo "Parsed area '$AREA' is not in VALID_LABELS ($VALID_LABELS) — falling through to needs-triage."
           fi
+
+          echo "Applying label: $LABEL"
+          gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-label "$LABEL"
