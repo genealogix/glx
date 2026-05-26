@@ -156,6 +156,106 @@ func TestCompareGivenNames_OneEmpty(t *testing.T) {
 	assert.Equal(t, 0.0, compareGivenNames("", "John"))
 }
 
+// --- Phonetic similarity tests (#704) ---
+
+func TestScorePhoneticSimilarity_ExactMatch(t *testing.T) {
+	// Schneider/Snider — the #704 motivating example. Same given on both
+	// sides so both sub-comparisons run and both match.
+	a := &Person{Properties: map[string]any{"name": "Hans Schneider"}}
+	b := &Person{Properties: map[string]any{"name": "Hans Snider"}}
+	score, detail, hasData := scorePhoneticSimilarity(a, b)
+	assert.InDelta(t, 1.0, score, 1e-12)
+	assert.True(t, hasData)
+	assert.Contains(t, detail, "surname phonetic")
+	assert.Contains(t, detail, "given phonetic")
+}
+
+func TestScorePhoneticSimilarity_GermanizedSurname(t *testing.T) {
+	// Mueller/Miller Soundex both M460, same given Anna.
+	a := &Person{Properties: map[string]any{"name": "Anna Mueller"}}
+	b := &Person{Properties: map[string]any{"name": "Anna Miller"}}
+	score, _, hasData := scorePhoneticSimilarity(a, b)
+	assert.InDelta(t, 1.0, score, 1e-12)
+	assert.True(t, hasData)
+}
+
+func TestScorePhoneticSimilarity_OnlySurnameMatches(t *testing.T) {
+	// Schneider/Snider phonetic match, given names phonetically distinct.
+	a := &Person{Properties: map[string]any{"name": "Hans Schneider"}}
+	b := &Person{Properties: map[string]any{"name": "Karl Snider"}}
+	score, detail, hasData := scorePhoneticSimilarity(a, b)
+	assert.InDelta(t, 0.5, score, 1e-12)
+	assert.True(t, hasData)
+	assert.Equal(t, "surname phonetic", detail)
+}
+
+func TestScorePhoneticSimilarity_NoMatch(t *testing.T) {
+	a := &Person{Properties: map[string]any{"name": "John Smith"}}
+	b := &Person{Properties: map[string]any{"name": "Mary Johnson"}}
+	score, detail, hasData := scorePhoneticSimilarity(a, b)
+	assert.InDelta(t, 0.0, score, 1e-12)
+	assert.True(t, hasData, "both sub-comparisons ran and disagreed; dimension carries data and must remain in the renormalization denominator")
+	assert.Equal(t, "no match", detail)
+}
+
+func TestScorePhoneticSimilarity_BothEmpty(t *testing.T) {
+	a := &Person{Properties: map[string]any{}}
+	b := &Person{Properties: map[string]any{}}
+	score, detail, hasData := scorePhoneticSimilarity(a, b)
+	assert.InDelta(t, 0.0, score, 1e-12)
+	assert.False(t, hasData)
+	assert.Equal(t, noDataDetail, detail)
+}
+
+func TestScorePhoneticSimilarity_InitialVsFullGiven(t *testing.T) {
+	// "J. Smith" vs "John Smith": Soundex on a single letter ("J000") cannot
+	// meaningfully match a full name's code ("J500"). The given sub-comparison
+	// is skipped (single-rune initial rule); the surname sub-comparison runs
+	// and matches; signal averages over the one comparison that ran. Pins the
+	// preservation of scoreNameSimilarity's existing isInitialMatch 0.6 credit.
+	a := &Person{Properties: map[string]any{"name": "J. Smith"}}
+	b := &Person{Properties: map[string]any{"name": "John Smith"}}
+	score, detail, hasData := scorePhoneticSimilarity(a, b)
+	assert.InDelta(t, 1.0, score, 1e-12)
+	assert.True(t, hasData)
+	assert.Equal(t, "surname phonetic", detail)
+}
+
+func TestScorePhoneticSimilarity_OneComponentOnlyPerSide(t *testing.T) {
+	// Both persons have only a single-word name. splitFullName treats a
+	// single-word string as the given, so given="Mueller"/"Miller" and
+	// surname="" on both sides. Surname sub-comparison can't run (both
+	// Soundex codes empty); given sub-comparison runs and matches. Signal
+	// averages over the one sub-comparison that ran rather than penalizing
+	// the absent surname — pins the "skip missing sub-comparisons" rule.
+	a := &Person{Properties: map[string]any{"name": "Mueller"}}
+	b := &Person{Properties: map[string]any{"name": "Miller"}}
+	score, detail, hasData := scorePhoneticSimilarity(a, b)
+	assert.InDelta(t, 1.0, score, 1e-12)
+	assert.True(t, hasData)
+	assert.Equal(t, "given phonetic", detail)
+}
+
+func TestScorePhoneticSimilarity_StructuredSurnameOnly(t *testing.T) {
+	// Structured name with only the surname field populated on both sides.
+	// Given sub-comparison can't run; surname sub-comparison runs and
+	// matches. The mirror case of OneComponentOnlyPerSide above, exercising
+	// the surname-only branch via the ExtractNameFields path.
+	mk := func(surname string) *Person {
+		return &Person{Properties: map[string]any{
+			"name": map[string]any{
+				"fields": map[string]any{
+					"surname": surname,
+				},
+			},
+		}}
+	}
+	score, detail, hasData := scorePhoneticSimilarity(mk("Schneider"), mk("Snider"))
+	assert.InDelta(t, 1.0, score, 1e-12)
+	assert.True(t, hasData)
+	assert.Equal(t, "surname phonetic", detail)
+}
+
 func TestScoreEventYearSimilarity_NilEvents(t *testing.T) {
 	score, detail, hasData := scoreEventYearSimilarity(nil, nil)
 	assert.Equal(t, 0.0, score)
@@ -851,7 +951,7 @@ func TestFindDuplicates_PartialData_NameAndBirthYearOnly(t *testing.T) {
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.6})
 	require.NoError(t, err)
 	require.Len(t, result.Pairs, 1)
-	assert.GreaterOrEqual(t, result.Pairs[0].Score, 0.9, "exact name + exact birth year (effective weight 0.50) renormalizes to ~1.0")
+	assert.GreaterOrEqual(t, result.Pairs[0].Score, 0.9, "exact name + exact phonetic + exact birth year (effective weight 0.50: 0.20 name + 0.10 phonetic + 0.20 birth year) renormalizes to ~1.0")
 }
 
 func TestFindDuplicates_FullData_RegressionUnchanged(t *testing.T) {
@@ -1052,4 +1152,58 @@ func TestFindDuplicates_AgeImplausibilityParentYearEarliestWinsAcrossSources(t *
 		}
 	}
 	require.True(t, found, "candidate pair (father, newborn) must appear in result.Pairs at threshold 0")
+}
+
+// --- Phonetic end-to-end (#704) ---
+
+func TestFindDuplicates_PhoneticSignalAppearsOnSchneiderSnider(t *testing.T) {
+	// End-to-end claim: a Schneider/Snider pair surfaces a populated
+	// Phonetic signal in pair.Signals, and the total pair score is strictly
+	// greater than it would be if the Phonetic dimension were absent.
+	//
+	// Stated this way (rather than as a threshold-crossing assertion against
+	// the 0.60 default) the regression is robust to future weight tuning:
+	// what we're locking in is "phonetic contributes positively when names
+	// are phonetically equivalent but lexically distant", not "this exact
+	// pair clears this exact threshold under these exact weights".
+	archive := &GLXFile{
+		Persons: map[string]*Person{
+			"person-schneider": {Properties: map[string]any{"name": "Hans Schneider"}},
+			"person-snider":    {Properties: map[string]any{"name": "Hans Snider"}},
+		},
+	}
+	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.0})
+	require.NoError(t, err)
+	require.Len(t, result.Pairs, 1)
+
+	pair := result.Pairs[0]
+
+	var (
+		phonSig       DuplicateSignal
+		phonFound     bool
+		sumWithout    float64
+		weightWithout float64
+	)
+	for _, sig := range pair.Signals {
+		if sig.Name == "Phonetic" {
+			phonSig = sig
+			phonFound = true
+
+			continue
+		}
+		if sig.Weight > 0 && sig.HasData {
+			sumWithout += sig.Weight * sig.Score
+			weightWithout += sig.Weight
+		}
+	}
+	require.True(t, phonFound, "Phonetic signal must appear in pair.Signals")
+	assert.InDelta(t, 1.0, phonSig.Score, 1e-12, "Schneider/Snider + Hans/Hans phonetically match on both components")
+	assert.True(t, phonSig.HasData)
+	assert.InDelta(t, weightPhonetic, phonSig.Weight, 1e-12)
+
+	// Name signal always contributes on this fixture (both persons carry a
+	// non-empty `name`), so weightWithout is guaranteed non-zero — the
+	// division below is safe without a guard.
+	scoreWithoutPhonetic := sumWithout / weightWithout
+	assert.Greater(t, pair.Score, scoreWithoutPhonetic, "phonetic signal must lift the renormalized score on a Schneider/Snider pair (the #704 motivating case)")
 }

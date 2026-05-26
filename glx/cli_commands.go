@@ -1068,6 +1068,7 @@ var duplicatesCmd = &cobra.Command{
 
 Compares all persons using a weighted scoring model based on:
   - Name similarity (Levenshtein distance, nickname matching, initials)
+  - Phonetic matching (Soundex — catches Schneider/Snider, Mueller/Miller, etc.)
   - Birth/death year proximity
   - Birth/death place match
   - Shared relationships and events
