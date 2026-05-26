@@ -4,6 +4,9 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Bash(mktemp:*)
+  - Bash(./bin/glx validate:*)
+  - Bash(rm -rf /tmp/glx-drift-*:*)
 model: claude-opus-4-7
 ---
 
@@ -52,10 +55,37 @@ Compare with **specification/4-entity-types/*.md** and **glx/cmd_*.go** (CLI com
 - Check field types are accurately described
 
 ### 2. Example Code Blocks in Documentation
-- Extract YAML examples from markdown prose
-- Verify they would pass schema validation
+
+For each YAML-tagged fenced code block in a documentation markdown file:
+
+1. Extract the YAML body.
+2. Create a unique scratch directory, write the snippet to a file inside it, then invoke the real validator — do NOT mentally simulate schema validation:
+
+```bash
+tmpdir=$(mktemp -d /tmp/glx-drift-XXXXXX)
+printf '%s\n' "$snippet" > "$tmpdir/snippet.glx"
+./bin/glx validate "$tmpdir/snippet.glx"
+```
+
+3. Record the validator's exit code and stderr verbatim in the findings.
+4. After all snippets in the run have been validated, clean up once:
+
+```bash
+rm -rf /tmp/glx-drift-*
+```
+
+If `./bin/glx` is unavailable in the session, surface a finding with `category: validator_unavailable` rather than falling back to a guess (build with `make build-cli` if needed).
+
+**Phase-1 limitation:** `glx validate` currently requires the snippet to be a full archive-shape file (top-level `persons:` / `events:` / `places:` / etc.). If the doc block is a partial snippet (bare entity, comment-only header, or properties fragment), the validator will report a structural error at root. In that case, classify the finding as `category: snippet_not_archive_shape` (informational, not CRITICAL) and fall through to the narrative checks below. A follow-up issue tracks adding `--stdin --entity-type` to `glx validate` so partial snippets can be validated in-place.
+
+**Findings semantics:**
+- Validator exits non-zero on an archive-shaped snippet → **CRITICAL** (a documented example does not validate).
+- Validator exits non-zero on a partial snippet (root-level "additional properties not allowed") → **INFORMATIONAL** (`snippet_not_archive_shape`).
+- Validator exits zero → still apply the narrative checks below, since `glx validate` enforces schema conformance but not specification-prose accuracy.
+
+**Beyond the structural check**, compare each snippet against `specification/4-entity-types/*.md`:
 - Check for outdated syntax or deprecated fields
-- Verify field names, types, and structure match specification
+- Verify field names, types, and structure match what the specification documents
 
 ### 3. CLI Command Examples
 - Verify documented commands exist in glx/cmd_*.go
