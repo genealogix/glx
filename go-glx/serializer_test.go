@@ -397,6 +397,7 @@ func TestSerializeMultiFile(t *testing.T) {
 	for k := range files {
 		if strings.HasPrefix(k, "vocabularies/") {
 			foundVocab = true
+
 			break
 		}
 	}
