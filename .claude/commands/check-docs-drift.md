@@ -59,7 +59,7 @@ Compare with **specification/4-entity-types/*.md** and **glx/cmd_*.go** (CLI com
 For each YAML-tagged fenced code block in a documentation markdown file:
 
 1. Extract the YAML body.
-2. Create a unique scratch directory, write the snippet to a file inside it, then invoke the real validator — do NOT mentally simulate schema validation:
+2. Write it to a temp file and run the real validator — do NOT mentally simulate schema validation:
 
 ```bash
 tmpdir=$(mktemp -d /tmp/glx-drift-XXXXXX)
@@ -67,23 +67,14 @@ printf '%s\n' "$snippet" > "$tmpdir/snippet.glx"
 ./bin/glx validate "$tmpdir/snippet.glx"
 ```
 
-3. Record the validator's exit code and stderr verbatim in the findings.
-4. After all snippets in the run have been validated, clean up once:
+3. Classify the result and record the exit code + stderr verbatim:
+   - **Exit 0** → snippet validates structurally; still apply the narrative checks below since `glx validate` does not catch specification-prose drift.
+   - **Exit non-zero with root-level "additional properties not allowed"** → snippet is a partial fragment, not a full archive file. Record as `category: snippet_not_archive_shape` (informational, not CRITICAL) and apply the narrative checks. *Phase-1 limitation*: `glx validate` requires top-level entity-group wrappers (`persons:` / `events:` / `places:` / etc.); a follow-up issue tracks adding `--stdin --entity-type` so partial snippets validate in-place.
+   - **Any other non-zero exit** → **CRITICAL** (a documented example does not validate).
 
-```bash
-rm -rf /tmp/glx-drift-*
-```
+If `./bin/glx` is unavailable in the session, surface `category: validator_unavailable` rather than guessing (build with `make build-cli` if needed). After processing all snippets, clean up once: `rm -rf /tmp/glx-drift-*`.
 
-If `./bin/glx` is unavailable in the session, surface a finding with `category: validator_unavailable` rather than falling back to a guess (build with `make build-cli` if needed).
-
-**Phase-1 limitation:** `glx validate` currently requires the snippet to be a full archive-shape file (top-level `persons:` / `events:` / `places:` / etc.). If the doc block is a partial snippet (bare entity, comment-only header, or properties fragment), the validator will report a structural error at root. In that case, classify the finding as `category: snippet_not_archive_shape` (informational, not CRITICAL) and fall through to the narrative checks below. A follow-up issue tracks adding `--stdin --entity-type` to `glx validate` so partial snippets can be validated in-place.
-
-**Findings semantics:**
-- Validator exits non-zero on an archive-shaped snippet → **CRITICAL** (a documented example does not validate).
-- Validator exits non-zero on a partial snippet (root-level "additional properties not allowed") → **INFORMATIONAL** (`snippet_not_archive_shape`).
-- Validator exits zero → still apply the narrative checks below, since `glx validate` enforces schema conformance but not specification-prose accuracy.
-
-**Beyond the structural check**, compare each snippet against `specification/4-entity-types/*.md`:
+Beyond the structural check, compare each snippet against `specification/4-entity-types/*.md`:
 - Check for outdated syntax or deprecated fields
 - Verify field names, types, and structure match what the specification documents
 
