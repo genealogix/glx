@@ -40,11 +40,14 @@ jobs:
 
           # Single source of truth for valid areas: .github/issue-areas.yml
           # (synchronized with the templates' Area dropdowns by
-          # .github/workflows/issue-templates-drift.yml). Kept newline-separated
-          # so we can use `grep -Fxq` (fixed-string, full-line match): -F so AREA
-          # isn't interpreted as a regex, -x so partial matches against
-          # hyphenated labels (e.g. AREA=glx vs go-glx) don't false-positive.
-          VALID_LABELS=$(yq '.areas[]' .github/issue-areas.yml)
+          # .github/workflows/issue-templates-drift.yml). Parsed with Python's
+          # stdlib + PyYAML (both pre-installed on ubuntu-latest images and
+          # more reliably present than yq, which has multiple incompatible
+          # implementations) and emitted newline-separated so we can use
+          # `grep -Fxq` (fixed-string, full-line match): -F so AREA isn't
+          # interpreted as a regex, -x so partial matches against hyphenated
+          # labels (e.g. AREA=glx vs go-glx) don't false-positive.
+          VALID_LABELS=$(python3 -c "import yaml; print('\n'.join(yaml.safe_load(open('.github/issue-areas.yml'))['areas']))")
 
           # Default to needs-triage; only the recognized-area branch overrides.
           LABEL=needs-triage

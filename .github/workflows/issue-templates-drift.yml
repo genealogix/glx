@@ -2,8 +2,14 @@ name: Issue templates — Area drift check
 
 # Fails CI if the Area dropdown options in any issue-form template diverge from
 # the canonical list in .github/issue-areas.yml, or if any template's Area
-# dropdown lacks the stable `id: area` key that .github/workflows/issue-labeler.yml
-# and any future form-aware tooling will key off.
+# dropdown lacks the `id: area` key.
+#
+# The `id: area` key is used by this drift check itself (to locate the Area
+# dropdown by id rather than label-text) and is a prerequisite for any future
+# form-aware labeler action. The existing .github/workflows/issue-labeler.yml
+# does NOT currently consume the field id — it parses the rendered markdown
+# body via awk — but adding the id now means a future swap to a form-aware
+# labeler won't need to touch the templates again.
 
 on:
   pull_request:
@@ -31,47 +37,49 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Compare each template's Area dropdown to the canonical list
+        # Python + PyYAML are both pre-installed on ubuntu-latest images.
+        # Chosen over yq because (a) yq has multiple incompatible
+        # implementations and isn't guaranteed across runner image revisions,
+        # (b) the stdlib+PyYAML combination is universally present.
         run: |
-          set -euo pipefail
+          python3 <<'PY'
+          import sys, yaml
+          SOURCE = '.github/issue-areas.yml'
+          TEMPLATES = [
+              '.github/ISSUE_TEMPLATE/bug_report.yml',
+              '.github/ISSUE_TEMPLATE/feature_request.yml',
+              '.github/ISSUE_TEMPLATE/enhancement.yml',
+          ]
 
-          SOURCE=.github/issue-areas.yml
-          TEMPLATES=(
-            .github/ISSUE_TEMPLATE/bug_report.yml
-            .github/ISSUE_TEMPLATE/feature_request.yml
-            .github/ISSUE_TEMPLATE/enhancement.yml
-          )
+          with open(SOURCE) as f:
+              expected = sorted(yaml.safe_load(f).get('areas') or [])
+          if not expected:
+              print(f'::error file={SOURCE}::canonical .areas list is empty')
+              sys.exit(1)
 
-          expected=$(yq '.areas[]' "$SOURCE" | sort)
-          if [ -z "$expected" ]; then
-            echo "::error file=$SOURCE::canonical .areas list is empty"
-            exit 1
-          fi
+          fail = 0
+          for tpl in TEMPLATES:
+              with open(tpl) as f:
+                  doc = yaml.safe_load(f)
+              area_entries = [
+                  b for b in (doc.get('body') or [])
+                  if isinstance(b, dict) and b.get('id') == 'area'
+              ]
+              if len(area_entries) != 1:
+                  # The drift check locates the Area dropdown by id == "area".
+                  # Without exactly one such entry it cannot compare options;
+                  # also, future form-aware labeler tooling will require the id.
+                  print(f'::error file={tpl}::expected exactly one dropdown with id: area, found {len(area_entries)}')
+                  fail = 1
+                  continue
+              actual = sorted(area_entries[0]['attributes']['options'])
+              if actual != expected:
+                  print(f'::error file={tpl}::Area options diverge from {SOURCE}')
+                  print(f'  expected (from {SOURCE}): {expected}')
+                  print(f'  actual   (from {tpl}):    {actual}')
+                  fail = 1
 
-          fail=0
-          for tpl in "${TEMPLATES[@]}"; do
-            # Defensive: also catches templates missing the id: area dropdown.
-            # If no body entry has id == "area", `yq` emits nothing and the
-            # diff below will flag the divergence.
-            actual=$(yq '.body[] | select(.id == "area") | .attributes.options[]' "$tpl" | sort)
-
-            if [ -z "$actual" ]; then
-              echo "::error file=$tpl::no dropdown with id: area found (the issue-labeler workflow keys off this id)"
-              fail=1
-              continue
-            fi
-
-            if ! diff <(echo "$expected") <(echo "$actual") >/dev/null; then
-              echo "::error file=$tpl::Area options diverge from $SOURCE"
-              echo "--- expected (from $SOURCE)"
-              echo "$expected"
-              echo "--- actual (from $tpl)"
-              echo "$actual"
-              fail=1
-            fi
-          done
-
-          if [ "$fail" -ne 0 ]; then
-            exit 1
-          fi
-
-          echo "All ${#TEMPLATES[@]} templates' Area options match $SOURCE."
+          if fail:
+              sys.exit(1)
+          print(f"All {len(TEMPLATES)} templates' Area options match {SOURCE}.")
+          PY
