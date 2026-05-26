@@ -13,6 +13,7 @@
       "Bash(make lint:*)",
       "Bash(make check-schemas:*)",
       "Bash(mktemp:*)",
+      "Bash(printf:*)",
       "Bash(rm -rf /tmp/glx-drift-*:*)",
       "Bash(tree:*)",
       "Bash(gofmt:*)"

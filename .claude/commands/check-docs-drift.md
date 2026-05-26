@@ -5,6 +5,7 @@ allowed-tools:
   - Grep
   - Glob
   - Bash(mktemp:*)
+  - Bash(printf:*)
   - Bash(./bin/glx validate:*)
   - Bash(rm -rf /tmp/glx-drift-*:*)
 model: claude-opus-4-7
@@ -59,20 +60,23 @@ Compare with **specification/4-entity-types/*.md** and **glx/cmd_*.go** (CLI com
 For each YAML-tagged fenced code block in a documentation markdown file:
 
 1. Extract the YAML body.
-2. Write it to a temp file and run the real validator — do NOT mentally simulate schema validation:
+2. Write it to a temp file, run the real validator, and clean up — do NOT mentally simulate schema validation:
 
 ```bash
 tmpdir=$(mktemp -d /tmp/glx-drift-XXXXXX)
 printf '%s\n' "$snippet" > "$tmpdir/snippet.glx"
 ./bin/glx validate "$tmpdir/snippet.glx"
+rm -rf "$tmpdir"
 ```
+
+Per-snippet cleanup keeps concurrent runs of this command from racing on a shared `/tmp/glx-drift-*` namespace.
 
 3. Classify the result and record the exit code + stderr verbatim:
    - **Exit 0** → snippet validates structurally; still apply the narrative checks below since `glx validate` does not catch specification-prose drift.
    - **Exit non-zero with root-level "additional properties not allowed"** → snippet is a partial fragment, not a full archive file. Record as `category: snippet_not_archive_shape` (informational, not CRITICAL) and apply the narrative checks. *Phase-1 limitation*: `glx validate` requires top-level entity-group wrappers (`persons:` / `events:` / `places:` / etc.); a follow-up issue tracks adding `--stdin --entity-type` so partial snippets validate in-place.
    - **Any other non-zero exit** → **CRITICAL** (a documented example does not validate).
 
-If `./bin/glx` is unavailable in the session, surface `category: validator_unavailable` rather than guessing (build with `make build-cli` if needed). After processing all snippets, clean up once: `rm -rf /tmp/glx-drift-*`.
+If `./bin/glx` is unavailable in the session, surface `category: validator_unavailable` rather than guessing (build with `make build-cli` if needed).
 
 Beyond the structural check, compare each snippet against `specification/4-entity-types/*.md`:
 - Check for outdated syntax or deprecated fields
