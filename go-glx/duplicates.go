@@ -812,13 +812,19 @@ func scorePhoneticSimilarity(personA, personB *Person) (float64, string, bool) {
 	return score, detail, true
 }
 
-// isPhoneticInitial reports whether a given-name component is a single-rune
-// initial after stripping a trailing period (e.g. "J", "J."). Soundex on a
-// single letter cannot meaningfully match a full name's Soundex code, so we
-// skip such sub-comparisons and let scoreNameSimilarity's isInitialMatch
-// handle the case via its existing 0.6 credit on the *name* signal.
+// isPhoneticInitial reports whether a given-name component is a single-letter
+// initial like "J" or "J." Soundex on a single letter ("J000") cannot
+// meaningfully match a full name's code ("J500"), so we skip such
+// sub-comparisons and let scoreNameSimilarity's isInitialMatch handle the
+// case via its existing 0.6 credit on the *name* signal.
+//
+// Empty or period-only inputs are NOT treated as initials here — they fall
+// through to the Soundex-empty check at the sub-comparison call site, which
+// is the canonical place where the "no data on this component" decision
+// lives. Keeping that decision in one place rather than smuggling it into
+// this helper makes the function do exactly what its name says.
 func isPhoneticInitial(s string) bool {
-	return utf8.RuneCountInString(strings.TrimSuffix(s, ".")) <= 1
+	return utf8.RuneCountInString(strings.TrimSuffix(s, ".")) == 1
 }
 
 // splitFullName splits a simple "Given Surname" string into parts.
