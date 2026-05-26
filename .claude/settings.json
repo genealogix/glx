@@ -43,16 +43,14 @@
       "Bash(git show:*)",
       "Bash(git branch:*)",
       "Bash(git rev-parse:*)",
-      "Bash(git remote -v:*)",
+      "Bash(git remote -v)",
       "Bash(git merge-base:*)",
       "Bash(git ls-files:*)",
       "Bash(gh issue view:*)",
       "Bash(gh issue list:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",
-      "Bash(gh search issues:*)",
-      "Bash(gh api repos/genealogix/glx:*)",
-      "Bash(gh api graphql:*)"
+      "Bash(gh search issues:*)"
     ]
   },
   "hooks": {
