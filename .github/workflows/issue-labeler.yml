@@ -47,7 +47,7 @@ jobs:
           LABEL=needs-triage
           if [ -z "$AREA" ]; then
             echo "Empty AREA parsed from body — falling through to needs-triage."
-          elif echo "$VALID_LABELS" | grep -wq "$AREA"; then
+          elif echo "$VALID_LABELS" | grep -wqF "$AREA"; then
             LABEL="$AREA"
           else
             echo "Parsed area '$AREA' is not in VALID_LABELS ($VALID_LABELS) — falling through to needs-triage."
