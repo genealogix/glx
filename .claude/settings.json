@@ -12,7 +12,6 @@
       "Bash(make test-verbose:*)",
       "Bash(make lint:*)",
       "Bash(make check-schemas:*)",
-      "Bash(cat:*)",
       "Bash(mktemp -d /tmp/glx-drift-*:*)",
       "Bash(rm -rf /tmp/glx-drift-*:*)",
       "Bash(tree:*)",

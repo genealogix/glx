@@ -4,8 +4,8 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Write
   - Bash(mktemp -d /tmp/glx-drift-*:*)
-  - Bash(cat:*)
   - Bash(./bin/glx validate:*)
   - Bash(rm -rf /tmp/glx-drift-*:*)
 model: claude-opus-4-7
@@ -60,20 +60,31 @@ Compare with **specification/4-entity-types/*.md** and **glx/cmd_*.go** (CLI com
 For each YAML-tagged fenced code block in a documentation markdown file:
 
 1. Extract the YAML body from the markdown source.
-2. Write the body to a temp file via a single-quoted heredoc (so YAML containing `$`, `` ` ``, or quotes is preserved literally), run the real validator, and clean up — do NOT mentally simulate schema validation. Copy the bash block below verbatim at column 0 (do not indent it — leading whitespace on heredoc lines becomes part of the YAML body and breaks parsing):
+2. Create a unique scratch directory and capture its path:
 
 ```bash
-tmpdir=$(mktemp -d /tmp/glx-drift-XXXXXX)
-cat > "$tmpdir/snippet.glx" <<'GLX_SNIPPET'
-<paste the extracted YAML body here, verbatim, no escaping needed>
-GLX_SNIPPET
-./bin/glx validate "$tmpdir/snippet.glx"
-rm -rf "$tmpdir"
+mktemp -d /tmp/glx-drift-XXXXXX
 ```
 
-Per-snippet cleanup keeps concurrent runs of this command from racing on a shared `/tmp/glx-drift-*` namespace. The single-quoted `'GLX_SNIPPET'` delimiter prevents shell expansion of the YAML body.
+   Read the printed path (e.g. `/tmp/glx-drift-aB3xYz`); substitute it for `<TMPDIR>` in the remaining steps. Bash sessions don't persist between tool calls, so each subsequent command must use the literal path you captured — this is also what makes each command individually match its allow-list entry.
 
-3. Classify the result deterministically by exit code alone — do NOT inspect the snippet's keys to second-guess the validator (that would re-introduce the LLM-simulation anti-pattern this command was rewritten to remove). Record the exit code and full stderr in all cases.
+3. Use the **Write** tool to save the extracted YAML body to `<TMPDIR>/snippet.glx`. Using Write rather than shelling out via `cat`/`printf`/heredoc avoids every shell-quoting concern around YAML bodies that contain `$`, backticks, or quotes.
+
+4. Run the validator on the file — do NOT mentally simulate schema validation:
+
+```bash
+./bin/glx validate <TMPDIR>/snippet.glx
+```
+
+5. Clean up this snippet's scratch directory before moving to the next one:
+
+```bash
+rm -rf <TMPDIR>
+```
+
+   Per-snippet cleanup keeps concurrent runs of this command from racing on the shared `/tmp/glx-drift-*` namespace. Substituting the literal path also keeps the command unambiguously matched against the `Bash(rm -rf /tmp/glx-drift-*:*)` allow-list entry regardless of how the matcher handles variable expansion.
+
+6. Classify the result deterministically by exit code alone — do NOT inspect the snippet's keys to second-guess the validator (that would re-introduce the LLM-simulation anti-pattern this command was rewritten to remove). Record the exit code and full stderr in all cases.
    - **Exit 0** → snippet passed structural + semantic validation (`glx validate` runs both in single-file mode; only cross-reference checks are skipped). Still apply the narrative checks below since the validator does not catch specification-prose drift.
    - **Any non-zero exit** → **CRITICAL**. Report the validator's stderr verbatim so the human reviewer can decide whether the finding is real drift (typoed wrapper like `people:` instead of `persons:`, deprecated field, malformed structure) or a *Phase-1 limitation* artifact: `glx validate` requires archive-shape input at top level, so doc blocks that demonstrate a bare entity fragment, a vocabulary entry, or a properties excerpt will trip `(root): additional properties '<key>', ... not allowed` even when the doc itself is correct. #910 tracks `--stdin --entity-type` to validate fragments directly; until it lands, treat ambiguous root-level errors as a human-review request rather than auto-downgrading them with an LLM heuristic.
 
