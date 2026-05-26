@@ -43,6 +43,6 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11
+          version-file: .golangci-lint-version
           args: --verbose --timeout=5m
           only-new-issues: true
