@@ -377,7 +377,9 @@ func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
 
 	entityFiles := make(map[string][]byte, len(files))
 	for relPath, data := range files {
-		if strings.HasPrefix(relPath, "vocabularies/") || strings.HasPrefix(relPath, "vocabularies\\") {
+		// SerializeMultiFileToMap emits forward-slash keys on every OS
+		// (issue #900) — no need to check for OS-specific separators.
+		if strings.HasPrefix(relPath, "vocabularies/") {
 			continue
 		}
 		if relPath == "metadata.glx" {
