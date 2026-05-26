@@ -8,12 +8,16 @@ on:
       - 'go.mod'
       - 'go.sum'
       - '.golangci.yml'
+      - '.golangci-lint-version'
+      - '.github/workflows/lint.yml'
   pull_request:
     paths:
       - '**.go'
       - 'go.mod'
       - 'go.sum'
       - '.golangci.yml'
+      - '.golangci-lint-version'
+      - '.github/workflows/lint.yml'
 
 permissions:
   contents: read
