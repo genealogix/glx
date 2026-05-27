@@ -90,6 +90,8 @@ func LoadStandardVocabulariesIntoGLX(glx *GLXFile) error {
 	glx.ConfidenceLevels = maps.Clone(cachedVocabs.ConfidenceLevels)
 	glx.SexTypes = maps.Clone(cachedVocabs.SexTypes)
 	glx.GenderTypes = maps.Clone(cachedVocabs.GenderTypes)
+	glx.SearchResultTypes = maps.Clone(cachedVocabs.SearchResultTypes)
+	glx.ResearchLogStatusTypes = maps.Clone(cachedVocabs.ResearchLogStatusTypes)
 	glx.StudyTypes = maps.Clone(cachedVocabs.StudyTypes)
 	glx.StudyStatuses = maps.Clone(cachedVocabs.StudyStatuses)
 	glx.LegalStatuses = maps.Clone(cachedVocabs.LegalStatuses)
@@ -142,6 +144,10 @@ func loadVocabulary(filename string, data []byte, glx *GLXFile) error {
 		return unmarshalVocab(filename, data, "sex_types", &glx.SexTypes)
 	case "gender-types.glx":
 		return unmarshalVocab(filename, data, "gender_types", &glx.GenderTypes)
+	case "search-result-types.glx":
+		return unmarshalVocab(filename, data, "search_result_types", &glx.SearchResultTypes)
+	case "research-log-status-types.glx":
+		return unmarshalVocab(filename, data, "research_log_status_types", &glx.ResearchLogStatusTypes)
 	case "study-types.glx":
 		return unmarshalVocab(filename, data, "study_types", &glx.StudyTypes)
 	case "study-statuses.glx":

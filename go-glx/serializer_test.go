@@ -372,10 +372,11 @@ func TestSerializeMultiFile(t *testing.T) {
 		t.Error("Vocabularies directory not created")
 	}
 
-	// Check deterministic filenames exist in the map
-	personFile1 := filepath.Join("persons", "person-001.glx")
-	personFile2 := filepath.Join("persons", "person-002.glx")
-	eventFile1 := filepath.Join("events", "event-001.glx")
+	// Check deterministic filenames exist in the map. Multi-file map keys are
+	// archive-relative paths (always forward-slash), not OS paths.
+	personFile1 := "persons/person-001.glx"
+	personFile2 := "persons/person-002.glx"
+	eventFile1 := "events/event-001.glx"
 
 	if _, ok := files[personFile1]; !ok {
 		t.Errorf("Expected file %q in map, got keys: %v", personFile1, mapKeys(files))
