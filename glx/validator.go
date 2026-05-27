@@ -175,17 +175,23 @@ func resolveJSONPointerRef(target, root map[string]any, refStr string) error {
 	return nil
 }
 
-// resolveFileRef resolves a file reference and merges it into the target map
+// resolveFileRef resolves a file reference and merges it into the target map.
+// Supports refs with an optional JSON Pointer fragment (e.g.
+// "vocabularies/event-types.schema.json#/definitions/EventTypeDefinition") so
+// the referenced sub-schema can be selected directly, matching standard JSON
+// Schema semantics.
 func resolveFileRef(target map[string]any, refStr string) error {
+	filePath, pointer, _ := strings.Cut(refStr, "#")
+
 	// Load from embedded FS
-	refData, err := schema.EntitySchemas.ReadFile(refStr)
+	refData, err := schema.EntitySchemas.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read referenced schema %s: %w", refStr, err)
+		return fmt.Errorf("failed to read referenced schema %s: %w", filePath, err)
 	}
 
 	var refSchema map[string]any
 	if err := json.Unmarshal(refData, &refSchema); err != nil {
-		return fmt.Errorf("failed to parse referenced schema %s: %w", refStr, err)
+		return fmt.Errorf("failed to parse referenced schema %s: %w", filePath, err)
 	}
 
 	// Resolve any nested refs in the referenced schema
@@ -193,8 +199,22 @@ func resolveFileRef(target map[string]any, refStr string) error {
 		return err
 	}
 
-	// Handle vocabulary schemas specially
-	if strings.Contains(refStr, "vocabularies/") {
+	// If a JSON Pointer fragment was supplied, walk into the schema and merge
+	// the targeted sub-schema rather than the whole document.
+	if pointer != "" {
+		sub, err := resolveJSONPointer(refSchema, "#"+pointer)
+		if err != nil {
+			return fmt.Errorf("failed to resolve fragment %s in %s: %w", pointer, filePath, err)
+		}
+		mergeSchemaIntoTarget(target, sub)
+
+		return nil
+	}
+
+	// Bare $ref to a vocabulary schema (no fragment): fall back to the legacy
+	// behavior of extracting the inner entry shape, so older external schemas
+	// that ref the wrapper file directly still resolve correctly.
+	if strings.Contains(filePath, "vocabularies/") {
 		return resolveVocabularyRef(target, refSchema)
 	}
 
