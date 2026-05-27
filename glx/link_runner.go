@@ -18,7 +18,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -28,12 +27,10 @@ import (
 const (
 	repoFamilySearchID     = "repository-familysearch"
 	citationIDPrefixFS     = "citation-familysearch-"
-	sourceIDPrefix         = "source-"
 	externalIDsPropertyKey = "external_ids"
-	maxEntityIDLength      = 64
 	// citationIDHashLen is the number of hex characters appended as a
 	// disambiguation suffix when a citation slug is too long to fit within
-	// maxEntityIDLength. 8 hex chars = 32 bits of the SHA-256 of the NOID —
+	// glxlib.MaxEntityIDLength. 8 hex chars = 32 bits of the SHA-256 of the NOID —
 	// enough to make collisions between different truncated NOIDs vanishingly
 	// unlikely in practice.
 	citationIDHashLen = 8
@@ -168,24 +165,26 @@ func buildLinkEntities(archive *glxlib.GLXFile, ark *ARK, opts *linkOptions) (*g
 }
 
 // citationIDFor assembles a citation ID for the given ARK, bounded to
-// maxEntityIDLength characters. Short slugs are used as-is; slugs long enough
-// to exceed the limit are truncated and an 8-char SHA-256 hash of the original
-// NOID is appended, so different long NOIDs that share a prefix still produce
-// distinct IDs. The function is deterministic: the same NOID always maps to
-// the same ID.
+// MaxEntityIDLength. Slugs are normalized through glxlib.Slugify so the result
+// always stays within the entity-ID charset, even for an unusual NOID slug.
+// When prefix+slug would exceed the cap, an 8-char SHA-256 hash of the
+// original NOID is appended so different long NOIDs that share a prefix still
+// produce distinct IDs. The function is deterministic: the same NOID always
+// maps to the same ID.
 func citationIDFor(ark *ARK) string {
 	slug := ark.CitationIDSlug()
-	id := citationIDPrefixFS + slug
-	if len(id) <= maxEntityIDLength {
-		return id
+	if len(citationIDPrefixFS)+len(slug) <= glxlib.MaxEntityIDLength {
+		return glxlib.EntityID(citationIDPrefixFS, slug)
 	}
 
 	sum := sha256.Sum256([]byte(ark.NOID))
-	suffix := "-" + hex.EncodeToString(sum[:])[:citationIDHashLen]
-	budget := maxEntityIDLength - len(citationIDPrefixFS) - len(suffix)
-	truncated := strings.TrimRight(slug[:budget], "-")
+	hashSuffix := "-" + hex.EncodeToString(sum[:])[:citationIDHashLen]
 
-	return citationIDPrefixFS + truncated + suffix
+	return glxlib.Slugify(slug,
+		glxlib.WithSlugPrefix(citationIDPrefixFS),
+		glxlib.WithSlugSuffix(hashSuffix),
+		glxlib.WithSlugMaxLength(glxlib.MaxEntityIDLength),
+	)
 }
 
 // resolveSource picks (or creates) the source to attach the new citation to.
@@ -269,45 +268,17 @@ func newOrExisting(isNew bool) string {
 // is taken — realistically unreachable, but cheap insurance against an
 // adversarially-constructed archive.
 func nextUniqueSourceID(title string, archive *glxlib.GLXFile) (string, error) {
-	base := sourceIDPrefix + slugifyForID(title, maxEntityIDLength-len(sourceIDPrefix))
+	base := glxlib.EntityID(glxlib.EntityIDPrefixSource, title)
 	if _, taken := archive.Sources[base]; !taken {
 		return base, nil
 	}
 	for i := 2; i <= maxSourceIDCollisions; i++ {
 		suffix := fmt.Sprintf("-%d", i)
-		candidate := trimToMaxLen(base, maxEntityIDLength-len(suffix)) + suffix
+		candidate := glxlib.Slugify(base, glxlib.WithSlugSuffix(suffix), glxlib.WithSlugMaxLength(glxlib.MaxEntityIDLength))
 		if _, taken := archive.Sources[candidate]; !taken {
 			return candidate, nil
 		}
 	}
 
 	return "", fmt.Errorf("%w: %s", ErrLinkSourceIDExhausted, base)
-}
-
-var slugNonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
-
-// slugifyForID lowercases the input, replaces runs of non-alphanumerics with a
-// single hyphen, trims leading/trailing hyphens, and truncates to maxLen.
-// Produces a value matching the GLX entity ID pattern `[a-zA-Z0-9-]{1,64}`.
-// Falls back to "unknown" if the input contains no alphanumerics.
-func slugifyForID(s string, maxLen int) string {
-	s = strings.ToLower(s)
-	s = slugNonAlphaNum.ReplaceAllString(s, "-")
-	s = strings.Trim(s, "-")
-	if s == "" {
-		return "unknown"
-	}
-
-	return trimToMaxLen(s, maxLen)
-}
-
-func trimToMaxLen(s string, maxLen int) string {
-	if maxLen <= 0 {
-		return s
-	}
-	if len(s) <= maxLen {
-		return s
-	}
-
-	return strings.TrimRight(s[:maxLen], "-")
 }
