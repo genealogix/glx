@@ -4,4 +4,5 @@ sources:
     type: census
     repository: repository-tna
     date: "1851"
-    description: "National census conducted in 1851"
+    properties:
+      description: "National census conducted in 1851"
