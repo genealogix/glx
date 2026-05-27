@@ -161,7 +161,8 @@ sources:
     type: vital_record
     repository: repository-sangamon-county-courthouse
     date: "FROM 1850 TO 1900"
-    description: "Civil birth register maintained by the Sangamon County Clerk"
+    properties:
+      description: "Civil birth register maintained by the Sangamon County Clerk"
 ```
 
 ```yaml
