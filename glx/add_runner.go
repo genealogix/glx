@@ -818,9 +818,11 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 		Type:         opts.Type,
 		Authors:      opts.Authors,
 		Date:         glxlib.DateString(opts.Date),
-		Description:  opts.Description,
 		RepositoryID: opts.Repository,
 		Language:     opts.Language,
+	}
+	if opts.Description != "" {
+		source.Properties = map[string]any{"description": opts.Description}
 	}
 	if len(opts.Notes) > 0 {
 		source.Notes = glxlib.NoteList(opts.Notes)
