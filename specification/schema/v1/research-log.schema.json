@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/research-log.schema.json",
+  "title": "ResearchLog",
+  "description": "A documented research investigation, capturing every search performed (including searches that found nothing) so researchers can avoid duplicating work and document a 'reasonably exhaustive search' per the Genealogical Proof Standard. ID comes from the map key in the parent structure.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Optional human-readable title (e.g., 'Locate Jane Webb in 1860 census')"
+    },
+    "subject": {
+      "description": "Optional typed reference to the entity being investigated (person, event, relationship, or place)",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "person": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to a Person entity"
+            }
+          },
+          "required": ["person"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to an Event entity"
+            }
+          },
+          "required": ["event"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "relationship": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to a Relationship entity"
+            }
+          },
+          "required": ["relationship"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "place": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$",
+              "description": "Reference to a Place entity"
+            }
+          },
+          "required": ["place"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "date": {
+      "type": "string",
+      "description": "Date the research was performed or session started (GLX date format)"
+    },
+    "researcher": {
+      "type": "string",
+      "description": "Name or identifier of the researcher who performed the work"
+    },
+    "objective": {
+      "type": "string",
+      "description": "Research question or goal (e.g., 'Locate Jane Webb in 1860 census to confirm birthplace')"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Lifecycle status (validated against research_log_status_types vocabulary)"
+    },
+    "searches": {
+      "type": "array",
+      "description": "Individual search attempts made for this research log",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Reference to the Repository searched"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Reference to the Source searched (when known to the archive)"
+          },
+          "collection": {
+            "type": "string",
+            "description": "Free-form collection name (used when no Source entity exists yet, e.g., 'United States, Census, 1860')"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search terms used"
+          },
+          "date": {
+            "type": "string",
+            "description": "Date this specific search was performed"
+          },
+          "result": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Outcome of the search (validated against search_result_types vocabulary)"
+          },
+          "citation": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "description": "Reference to the Citation produced when result is 'found'"
+          },
+          "notes": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } }
+            ],
+            "description": "Free-form notes about this specific search attempt"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "citations": {
+      "type": "array",
+      "description": "Citations produced by this research log (denormalized from per-search citation refs for easy roll-up)",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]{1,64}$"
+      },
+      "uniqueItems": true
+    },
+    "conclusions": {
+      "type": "string",
+      "description": "Summary of findings drawn from this research"
+    },
+    "properties": {
+      "type": "object",
+      "description": "Vocabulary-defined properties (extensible)",
+      "additionalProperties": true
+    },
+    "notes": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "Free-form notes about the research log"
+    }
+  },
+  "additionalProperties": false
+}
