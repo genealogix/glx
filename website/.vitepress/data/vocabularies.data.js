@@ -34,7 +34,9 @@ export default {
       'repository-types': readFileSync(resolve(vocabDir, 'repository-types.glx'), 'utf-8'),
       'sex-types': readFileSync(resolve(vocabDir, 'sex-types.glx'), 'utf-8'),
       'source-properties': readFileSync(resolve(vocabDir, 'source-properties.glx'), 'utf-8'),
-      'source-types': readFileSync(resolve(vocabDir, 'source-types.glx'), 'utf-8')
+      'source-types': readFileSync(resolve(vocabDir, 'source-types.glx'), 'utf-8'),
+      'study-statuses': readFileSync(resolve(vocabDir, 'study-statuses.glx'), 'utf-8'),
+      'study-types': readFileSync(resolve(vocabDir, 'study-types.glx'), 'utf-8')
     }
 
     return vocabularies

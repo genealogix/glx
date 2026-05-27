@@ -106,6 +106,14 @@
       },
       "additionalProperties": false
     },
+    "studies": {
+      "type": "object",
+      "description": "Map of study entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "study.schema.json" }
+      },
+      "additionalProperties": false
+    },
     "event_types": {
       "type": "object",
       "description": "Event type vocabulary",
@@ -183,6 +191,22 @@
       "description": "Gender identity vocabulary (self-identified; no direct GEDCOM mapping)",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "study_types": {
+      "type": "object",
+      "description": "Study type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-types.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "study_statuses": {
+      "type": "object",
+      "description": "Study status vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-statuses.schema.json" }
       },
       "additionalProperties": false
     },
