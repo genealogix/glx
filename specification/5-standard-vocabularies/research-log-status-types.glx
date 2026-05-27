@@ -1,0 +1,20 @@
+# Standard Research Log Status Types
+# This file defines the lifecycle states of a ResearchLog investigation.
+# Archives can extend this with custom types by adding additional entries.
+
+research_log_status_types:
+  open:
+    label: "Open"
+    description: "Research objective defined but not yet started."
+
+  in_progress:
+    label: "In Progress"
+    description: "Research is actively being performed."
+
+  complete:
+    label: "Complete"
+    description: "Research objective met and conclusions documented."
+
+  blocked:
+    label: "Blocked"
+    description: "Research cannot proceed (waiting on access, missing records, or other obstacle)."

@@ -236,6 +236,7 @@ func sortedEntityTypes(groups map[string][]glxlib.EntityChange) []string {
 		glxlib.EntityTypeCitations,
 		glxlib.EntityTypeRepositories,
 		glxlib.EntityTypeMedia,
+		glxlib.EntityTypeResearchLogs,
 		glxlib.EntityTypeStudies,
 	}
 	var result []string

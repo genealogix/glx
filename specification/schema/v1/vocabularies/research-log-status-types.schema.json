@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/research-log-status-types.schema.json",
+  "title": "Research Log Status Types Vocabulary",
+  "description": "Defines the lifecycle states of a ResearchLog investigation",
+  "type": "object",
+  "required": ["research_log_status_types"],
+  "properties": {
+    "research_log_status_types": {
+      "type": "object",
+      "description": "Map of research log status type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/ResearchLogStatusTypeDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ResearchLogStatusTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single research log status type",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the status"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the status"
+        }
+      }
+    }
+  }
+}
