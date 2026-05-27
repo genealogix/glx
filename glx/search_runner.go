@@ -227,9 +227,6 @@ func searchSources(archive *glxlib.GLXFile, matchFn func(string) bool) []searchR
 		if matchFn(src.Type) {
 			results = append(results, searchResult{"sources", id, "type", src.Type})
 		}
-		if matchFn(src.Description) {
-			results = append(results, searchResult{"sources", id, "description", truncate(src.Description)})
-		}
 		if matchFn(string(src.Date)) {
 			results = append(results, searchResult{"sources", id, "date", string(src.Date)})
 		}

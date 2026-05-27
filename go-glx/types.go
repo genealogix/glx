@@ -201,12 +201,41 @@ type Source struct {
 	Type         string         `refType:"source_types"       yaml:"type,omitempty"`
 	Authors      []string       `yaml:"authors,omitempty"`
 	Date         DateString     `yaml:"date,omitempty"`
-	Description  string         `yaml:"description,omitempty"`
 	RepositoryID string         `refType:"repositories"       yaml:"repository,omitempty"`
 	Language     string         `yaml:"language,omitempty"`
 	Media        []string       `refType:"media"              yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (abbreviation, call_number, url, etc.)
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, abbreviation, call_number, url, etc.)
 	Notes        NoteList       `yaml:"notes,omitempty"`
+}
+
+// UnmarshalYAML provides backward compatibility for archives written before
+// #667, when `description` was a top-level structural field on Source rather
+// than the `properties.description` vocabulary property it is now. A legacy
+// top-level `description:` is folded into properties.description on load (an
+// explicit properties.description always wins), so no description is ever
+// silently dropped on read. `glx migrate --source-description-to-property`
+// rewrites such archives to the new on-disk form. Remove this shim in a future
+// major release once that migration is well-circulated.
+func (s *Source) UnmarshalYAML(value *yaml.Node) error {
+	type sourceAlias Source // distinct type: does not carry this UnmarshalYAML, so no recursion
+	var aux struct {
+		sourceAlias       `yaml:",inline"`
+		LegacyDescription string `yaml:"description,omitempty"`
+	}
+	if err := value.Decode(&aux); err != nil {
+		return err
+	}
+	*s = Source(aux.sourceAlias)
+	if aux.LegacyDescription != "" {
+		if s.Properties == nil {
+			s.Properties = map[string]any{}
+		}
+		if _, exists := s.Properties["description"]; !exists {
+			s.Properties["description"] = aux.LegacyDescription
+		}
+	}
+
+	return nil
 }
 
 // Citation represents a citation of a source.
