@@ -1,0 +1,5 @@
+places:
+  place-longitude-only:
+    name: "Longitude Only"
+    type: city
+    longitude: -89.0
