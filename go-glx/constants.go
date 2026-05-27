@@ -423,6 +423,7 @@ const (
 	EntityTypeRepositories  = "repositories"
 	EntityTypeAssertions    = "assertions"
 	EntityTypeMedia         = "media"
+	EntityTypeStudies       = "studies"
 )
 
 // Entity ID prefixes - prepended to slugs when minting deterministic IDs.
@@ -458,7 +459,28 @@ const (
 	VocabSourceTypes       = "source_types"
 	VocabSexTypes          = "sex_types"
 	VocabGenderTypes       = "gender_types"
+	VocabStudyTypes        = "study_types"
+	VocabStudyStatuses     = "study_statuses"
 	VocabLegalStatuses     = "legal_statuses"
+)
+
+// Standard Study Types - from study-types.glx vocabulary
+const (
+	StudyTypeOnePlaceStudy        = "one_place_study"
+	StudyTypeOneNameStudy         = "one_name_study"
+	StudyTypeFamilyReconstruction = "family_reconstruction"
+	StudyTypeDescendancyStudy     = "descendancy_study"
+	StudyTypeAncestryStudy        = "ancestry_study"
+	StudyTypeBrickWall            = "brick_wall"
+	StudyTypeOther                = "other"
+)
+
+// Standard Study Statuses - from study-statuses.glx vocabulary
+const (
+	StudyStatusActive    = "active"
+	StudyStatusPaused    = "paused"
+	StudyStatusCompleted = "completed"
+	StudyStatusAbandoned = "abandoned"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile
