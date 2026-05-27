@@ -32,6 +32,8 @@ The standard vocabulary files are:
 - `confidence-levels.glx`
 - `participant-roles.glx`
 - `repository-types.glx`
+- `search-result-types.glx`
+- `research-log-status-types.glx`
 - `person-properties.glx`
 - `event-properties.glx`
 - `relationship-properties.glx`
@@ -42,6 +44,8 @@ The standard vocabulary files are:
 - `citation-properties.glx`
 - `sex-types.glx`
 - `gender-types.glx`
+- `study-types.glx`
+- `study-statuses.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
@@ -601,6 +605,187 @@ Common relationship roles:
 - `child` - Child in parent-child relationship
 - `adoptive_parent`, `adopted_child` - Adoption roles
 - `sibling` - Brother or sister
+
+---
+
+## Search Result Types Vocabulary
+
+**Default file**: `vocabularies/search-result-types.glx`
+
+**Used By**: [ResearchLog Entity](research-log#search-results)
+
+**Purpose**: Defines the outcome of each search recorded in a research log (found, not found, inconclusive, partial, not searched). Negative evidence (`not_found`) is a first-class outcome, supporting the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/) requirement for a "reasonably exhaustive search."
+
+**Standard Templates**: See [Standard Vocabularies - Search Result Types](../5-standard-vocabularies/#search-result-types) for the complete default vocabulary with all standard search result types.
+
+### Structure
+
+```yaml
+search_result_types:
+  found:
+    label: "Found"
+    description: "The target of the search was located in the source."
+
+  not_found:
+    label: "Not Found"
+    description: "The source was searched and the target was not present (negative evidence)."
+
+  inconclusive:
+    label: "Inconclusive"
+    description: "A candidate record was located but cannot be confirmed to identify the target."
+
+  partial:
+    label: "Partial"
+    description: "Some relevant information was located, but the search objective was not fully met."
+
+  not_searched:
+    label: "Not Searched"
+    description: "Search is planned but has not yet been performed."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Search Result Types
+
+See [ResearchLog Entity - Search results](research-log#search-results) for the standard search result types and guidance on when to use each.
+
+---
+
+## Research Log Status Types Vocabulary
+
+**Default file**: `vocabularies/research-log-status-types.glx`
+
+**Used By**: [ResearchLog Entity](research-log#status-lifecycle)
+
+**Purpose**: Defines the lifecycle status of a research investigation (open, in progress, complete, blocked).
+
+**Standard Templates**: See [Standard Vocabularies - Research Log Status Types](../5-standard-vocabularies/#research-log-status-types) for the complete default vocabulary with all standard status values.
+
+### Structure
+
+```yaml
+research_log_status_types:
+  open:
+    label: "Open"
+    description: "Research objective defined but not yet started."
+
+  in_progress:
+    label: "In Progress"
+    description: "Research is actively being performed."
+
+  complete:
+    label: "Complete"
+    description: "Research objective met and conclusions documented."
+
+  blocked:
+    label: "Blocked"
+    description: "Research cannot proceed (waiting on access, missing records, or other obstacle)."
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Research Log Status Types
+
+See [ResearchLog Entity - Status lifecycle](research-log#status-lifecycle) for the standard status values and the investigation lifecycle.
+
+---
+
+## Study Types Vocabulary
+
+**Default file**: `vocabularies/study-types.glx`
+
+**Used By**: [Study Entity](study#type)
+
+**Purpose**: Classifies the kind of research project a Study represents (one place study, one name study, family reconstruction, brick-wall investigation, etc.)
+
+**Standard Templates**: See [Standard Vocabularies - Study Types](../5-standard-vocabularies/#study-types) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+study_types:
+  one_place_study:
+    label: "One Place Study"
+    description: "Systematic research of all records and people associated with a specific place over a defined time range"
+
+  one_name_study:
+    label: "One Name Study"
+    description: "Systematic research of all bearers of a specific surname (and its variants) across places and time"
+
+  family_reconstruction:
+    label: "Family Reconstruction"
+    description: "Reconstruction of the membership and connections of a single family or kin group"
+
+  # Additional study types
+  brick_wall:
+    label: "Brick Wall Research"
+    description: "Focused investigation aimed at resolving a specific genealogical problem or unanswered question"
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Study Types
+
+See [Study Entity](study#type) for the full list of standard types.
+
+---
+
+## Study Statuses Vocabulary
+
+**Default file**: `vocabularies/study-statuses.glx`
+
+**Used By**: [Study Entity](study#status)
+
+**Purpose**: Indicates the current state of a research project (active, paused, completed, abandoned).
+
+**Standard Templates**: See [Standard Vocabularies - Study Statuses](../5-standard-vocabularies/#study-statuses) for the complete default vocabulary.
+
+### Structure
+
+```yaml
+study_statuses:
+  active:
+    label: "Active"
+    description: "Currently being researched"
+
+  paused:
+    label: "Paused"
+    description: "Temporarily on hold, expected to resume"
+
+  completed:
+    label: "Completed"
+    description: "Research goals met; no further work planned"
+
+  abandoned:
+    label: "Abandoned"
+    description: "Research will not be continued"
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Human-readable label |
+| `description` | No | Detailed description |
+
+### Standard Study Statuses
+
+See [Study Entity](study#status) for the full list of standard statuses.
 
 ---
 
@@ -1420,6 +1605,8 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Participant Roles | [participant-roles.schema.json](../schema/v1/vocabularies/participant-roles.schema.json) |
 | Repository Types | [repository-types.schema.json](../schema/v1/vocabularies/repository-types.schema.json) |
 | Confidence Levels | [confidence-levels.schema.json](../schema/v1/vocabularies/confidence-levels.schema.json) |
+| Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
+| Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |
 | Event Properties | [event-properties.schema.json](../schema/v1/vocabularies/event-properties.schema.json) |
 | Relationship Properties | [relationship-properties.schema.json](../schema/v1/vocabularies/relationship-properties.schema.json) |
@@ -1449,5 +1636,6 @@ Vocabulary files are validated by the `glx validate` command using these schemas
 - [Source Entity](source) - Source types vocabulary
 - [Media Entity](media) - Media types vocabulary
 - [Citation Entity](citation) - Citation documentation
+- [ResearchLog Entity](research-log) - Search result types and research log status types vocabularies
 
 ---

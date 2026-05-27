@@ -111,6 +111,7 @@ const (
 	PersonPropertyGender     = "gender" // Self-identified gender identity; no direct GEDCOM mapping
 	PersonPropertyResidence  = "residence"
 	PersonPropertyOccupation = "occupation"
+	PersonPropertyLiving     = "living" // Boolean; opt-in marker honored by export privacy filters
 )
 
 // Deprecated property constants - these properties have been removed from the spec.
@@ -367,6 +368,27 @@ const (
 	ConfidenceLevelLow    = "low"    // Limited evidence, significant uncertainty
 )
 
+// Standard Search Result Types - from search-result-types.glx vocabulary.
+// Used by Search.Result inside a ResearchLog to record whether a search located
+// the target, found nothing (negative evidence), returned an unclear result, or
+// is still queued.
+const (
+	SearchResultFound        = "found"
+	SearchResultNotFound     = "not_found"
+	SearchResultInconclusive = "inconclusive"
+	SearchResultPartial      = "partial"
+	SearchResultNotSearched  = "not_searched"
+)
+
+// Standard Research Log Status Types - from research-log-status-types.glx vocabulary.
+// Used by ResearchLog.Status to record the lifecycle state of a research investigation.
+const (
+	ResearchLogStatusOpen       = "open"
+	ResearchLogStatusInProgress = "in_progress"
+	ResearchLogStatusComplete   = "complete"
+	ResearchLogStatusBlocked    = "blocked"
+)
+
 // Standard Source Types - from source-types.glx vocabulary
 const (
 	SourceTypeVitalRecord        = "vital_record"        // Birth, marriage, death certificates
@@ -423,21 +445,67 @@ const (
 	EntityTypeRepositories  = "repositories"
 	EntityTypeAssertions    = "assertions"
 	EntityTypeMedia         = "media"
+	EntityTypeResearchLogs  = "research_logs"
+	EntityTypeStudies       = "studies"
+)
+
+// Entity ID prefixes - prepended to slugs when minting deterministic IDs.
+// Always reference these constants instead of rebuilding the "<type>-" literal
+// at the call site.
+const (
+	EntityIDPrefixPerson       = "person-"
+	EntityIDPrefixRelationship = "relationship-"
+	EntityIDPrefixEvent        = "event-"
+	EntityIDPrefixPlace        = "place-"
+	EntityIDPrefixSource       = "source-"
+	EntityIDPrefixCitation     = "citation-"
+	EntityIDPrefixRepository   = "repository-"
+	EntityIDPrefixAssertion    = "assertion-"
+	EntityIDPrefixMedia        = "media-"
+)
+
+// Entity ID length bounds, per the GLX entity ID pattern `[a-zA-Z0-9-]{1,64}`.
+const (
+	MinEntityIDLength = 1
+	MaxEntityIDLength = 64
 )
 
 // Vocabulary type constants - used as map keys in GLXFile
 const (
-	VocabRelationshipTypes = "relationship_types"
-	VocabEventTypes        = "event_types"
-	VocabPlaceTypes        = "place_types"
-	VocabRepositoryTypes   = "repository_types"
-	VocabParticipantRoles  = "participant_roles"
-	VocabMediaTypes        = "media_types"
-	VocabConfidenceLevels  = "confidence_levels"
-	VocabSourceTypes       = "source_types"
-	VocabSexTypes          = "sex_types"
-	VocabGenderTypes       = "gender_types"
-	VocabLegalStatuses     = "legal_statuses"
+	VocabRelationshipTypes      = "relationship_types"
+	VocabEventTypes             = "event_types"
+	VocabPlaceTypes             = "place_types"
+	VocabRepositoryTypes        = "repository_types"
+	VocabParticipantRoles       = "participant_roles"
+	VocabMediaTypes             = "media_types"
+	VocabConfidenceLevels       = "confidence_levels"
+	VocabSourceTypes            = "source_types"
+	VocabSexTypes               = "sex_types"
+	VocabGenderTypes            = "gender_types"
+	VocabSearchResultTypes      = "search_result_types"
+	VocabResearchLogStatusTypes = "research_log_status_types"
+	VocabStudyTypes             = "study_types"
+	VocabStudyStatuses          = "study_statuses"
+	VocabLegalStatuses          = "legal_statuses"
+)
+
+// Standard Study Types - from study-types.glx vocabulary
+const (
+	StudyTypeOnePlaceStudy        = "one_place_study"
+	StudyTypeOneNameStudy         = "one_name_study"
+	StudyTypeFamilyReconstruction = "family_reconstruction"
+	StudyTypeDescendancyStudy     = "descendancy_study"
+	StudyTypeAncestryStudy        = "ancestry_study"
+	StudyTypeBrickWall            = "brick_wall"
+	StudyTypeOther                = "other"
+)
+
+// Standard Study Statuses - from study-statuses.glx vocabulary
+const (
+	StudyStatusActive    = "active"
+	StudyStatusPaused    = "paused"
+	StudyStatusCompleted = "completed"
+	StudyStatusAbandoned = "abandoned"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile

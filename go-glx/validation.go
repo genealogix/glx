@@ -78,6 +78,8 @@ func (glx *GLXFile) buildEntityMaps(result *ValidationResult) {
 	result.Entities[EntityTypeRepositories] = buildIDSet(glx.Repositories)
 	result.Entities[EntityTypeAssertions] = buildIDSet(glx.Assertions)
 	result.Entities[EntityTypeMedia] = buildIDSet(glx.Media)
+	result.Entities[EntityTypeResearchLogs] = buildIDSet(glx.ResearchLogs)
+	result.Entities[EntityTypeStudies] = buildIDSet(glx.Studies)
 }
 
 // buildVocabularyMaps builds maps of all vocabulary values for quick lookup.
@@ -92,6 +94,10 @@ func (glx *GLXFile) buildVocabularyMaps(result *ValidationResult) {
 	result.Vocabularies[VocabSourceTypes] = buildIDSet(glx.SourceTypes)
 	result.Vocabularies[VocabSexTypes] = buildIDSet(glx.SexTypes)
 	result.Vocabularies[VocabGenderTypes] = buildIDSet(glx.GenderTypes)
+	result.Vocabularies[VocabSearchResultTypes] = buildIDSet(glx.SearchResultTypes)
+	result.Vocabularies[VocabResearchLogStatusTypes] = buildIDSet(glx.ResearchLogStatusTypes)
+	result.Vocabularies[VocabStudyTypes] = buildIDSet(glx.StudyTypes)
+	result.Vocabularies[VocabStudyStatuses] = buildIDSet(glx.StudyStatuses)
 	result.Vocabularies[VocabLegalStatuses] = buildIDSet(glx.LegalStatuses)
 }
 
@@ -132,6 +138,8 @@ func (glx *GLXFile) validateAllReferences(result *ValidationResult) {
 	glx.validateEntityTypeReferences(EntityTypeRepositories, glx.Repositories, result)
 	glx.validateEntityTypeReferences(EntityTypeAssertions, glx.Assertions, result)
 	glx.validateEntityTypeReferences(EntityTypeMedia, glx.Media, result)
+	glx.validateEntityTypeReferences(EntityTypeResearchLogs, glx.ResearchLogs, result)
+	glx.validateEntityTypeReferences(EntityTypeStudies, glx.Studies, result)
 }
 
 // validateEntityTypeReferences validates all entities of a given type.
@@ -178,9 +186,18 @@ func (glx *GLXFile) validateStructReferences(
 func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, result *ValidationResult) {
 	switch fieldVal.Kind() {
 	case reflect.Ptr:
-		if !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Struct {
-			glx.validateStructReferences(entityType, entityID, fieldVal.Elem(), result)
+		if fieldVal.IsNil() || fieldVal.Elem().Kind() != reflect.Struct {
+			return
 		}
+		// Special handling for *EntityRef (mirrors the value-typed EntityRef case below).
+		// A nil pointer means "no subject" and is allowed; a non-nil pointer must reference
+		// an existing entity.
+		if entityRef, ok := fieldVal.Elem().Interface().(EntityRef); ok {
+			glx.validateEntityRef(entityType, entityID, "Subject", entityRef, result)
+
+			return
+		}
+		glx.validateStructReferences(entityType, entityID, fieldVal.Elem(), result)
 	case reflect.Struct:
 		// Special handling for EntityRef
 		if entityRef, ok := fieldVal.Interface().(EntityRef); ok {
@@ -337,6 +354,7 @@ func isVocabularyType(typeName string) bool {
 		strings.HasSuffix(typeName, "_levels") ||
 		strings.HasSuffix(typeName, "_roles") ||
 		strings.HasSuffix(typeName, "_ratings") ||
+		strings.HasSuffix(typeName, "_statuses") ||
 		strings.HasSuffix(typeName, "_properties")
 }
 
@@ -1157,6 +1175,23 @@ func (glx *GLXFile) validateEntityFieldFormats(result *ValidationResult) {
 	for id, assertion := range glx.Assertions {
 		if assertion.Date != "" {
 			glx.validateDateFormat(EntityTypeAssertions, id, "date", string(assertion.Date), result)
+		}
+	}
+	for id, log := range glx.ResearchLogs {
+		if log.Date != "" {
+			glx.validateDateFormat(EntityTypeResearchLogs, id, "date", string(log.Date), result)
+		}
+		for i := range log.Searches {
+			search := &log.Searches[i]
+			if search.Date != "" {
+				field := fmt.Sprintf("searches[%d].date", i)
+				glx.validateDateFormat(EntityTypeResearchLogs, id, field, string(search.Date), result)
+			}
+		}
+	}
+	for id, study := range glx.Studies {
+		if study != nil && study.DateRange != "" {
+			glx.validateDateFormat(EntityTypeStudies, id, "date_range", string(study.DateRange), result)
 		}
 	}
 

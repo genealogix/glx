@@ -16,7 +16,7 @@ package glx
 
 import (
 	"fmt"
-	"path/filepath"
+	"path"
 
 	"gopkg.in/yaml.v3"
 )
@@ -129,7 +129,7 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 
 	// Add standard vocabularies
 	for filename, content := range StandardVocabularies() {
-		vocabPath := filepath.Join("vocabularies", filename)
+		vocabPath := path.Join("vocabularies", filename)
 		files[vocabPath] = content
 	}
 
@@ -171,6 +171,12 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 	if err := s.serializeEntitiesToMap(glx.Assertions, "assertions", "assertion", files); err != nil {
 		return nil, err
 	}
+	if err := s.serializeEntitiesToMap(glx.ResearchLogs, "research_logs", "research-log", files); err != nil {
+		return nil, err
+	}
+	if err := s.serializeEntitiesToMap(glx.Studies, "studies", "study", files); err != nil {
+		return nil, err
+	}
 
 	return files, nil
 }
@@ -197,6 +203,10 @@ func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entity
 	case map[string]*Media:
 		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*Assertion:
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+	case map[string]*ResearchLog:
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+	case map[string]*Study:
 		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	default:
 		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
@@ -232,7 +242,7 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 		}
 
 		// Add to files map
-		filePath := filepath.Join(dirName, filename)
+		filePath := path.Join(dirName, filename)
 		files[filePath] = yamlBytes
 	}
 
@@ -271,18 +281,24 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		Repositories:  make(map[string]*Repository),
 		Media:         make(map[string]*Media),
 		Assertions:    make(map[string]*Assertion),
+		ResearchLogs:  make(map[string]*ResearchLog),
+		Studies:       make(map[string]*Study),
 
-		EventTypes:        make(map[string]*VocabularyEntry),
-		ParticipantRoles:  make(map[string]*VocabularyEntry),
-		ConfidenceLevels:  make(map[string]*VocabularyEntry),
-		RelationshipTypes: make(map[string]*VocabularyEntry),
-		PlaceTypes:        make(map[string]*VocabularyEntry),
-		SourceTypes:       make(map[string]*VocabularyEntry),
-		RepositoryTypes:   make(map[string]*VocabularyEntry),
-		MediaTypes:        make(map[string]*VocabularyEntry),
-		SexTypes:          make(map[string]*VocabularyEntry),
-		GenderTypes:       make(map[string]*VocabularyEntry),
-		LegalStatuses:     make(map[string]*VocabularyEntry),
+		EventTypes:             make(map[string]*VocabularyEntry),
+		ParticipantRoles:       make(map[string]*VocabularyEntry),
+		ConfidenceLevels:       make(map[string]*VocabularyEntry),
+		RelationshipTypes:      make(map[string]*VocabularyEntry),
+		PlaceTypes:             make(map[string]*VocabularyEntry),
+		SourceTypes:            make(map[string]*VocabularyEntry),
+		RepositoryTypes:        make(map[string]*VocabularyEntry),
+		MediaTypes:             make(map[string]*VocabularyEntry),
+		SexTypes:               make(map[string]*VocabularyEntry),
+		GenderTypes:            make(map[string]*VocabularyEntry),
+		SearchResultTypes:      make(map[string]*VocabularyEntry),
+		ResearchLogStatusTypes: make(map[string]*VocabularyEntry),
+		StudyTypes:             make(map[string]*VocabularyEntry),
+		StudyStatuses:          make(map[string]*VocabularyEntry),
+		LegalStatuses:          make(map[string]*VocabularyEntry),
 
 		PersonProperties:       make(map[string]*PropertyDefinition),
 		EventProperties:        make(map[string]*PropertyDefinition),
@@ -299,14 +315,14 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 	// Each file is a GLXFile fragment — the YAML top-level keys (persons:,
 	// events:, event_types:, etc.) determine what entities it contains,
 	// regardless of which directory the file lives in.
-	for path, data := range files {
-		ext := filepath.Ext(path)
+	for filePath, data := range files {
+		ext := path.Ext(filePath)
 		if ext != FileExtGLX && ext != ".yaml" && ext != ".yml" {
 			continue
 		}
 		var partial GLXFile
 		if err := yaml.Unmarshal(data, &partial); err != nil {
-			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
+			return nil, nil, fmt.Errorf("failed to unmarshal %s: %w", filePath, err)
 		}
 		conflicts, _ := glx.Merge(&partial)
 		allConflicts = append(allConflicts, conflicts...)
@@ -356,6 +372,12 @@ func validateGLXFile(glx *GLXFile) error {
 	}
 	if glx.Assertions == nil {
 		glx.Assertions = make(map[string]*Assertion)
+	}
+	if glx.ResearchLogs == nil {
+		glx.ResearchLogs = make(map[string]*ResearchLog)
+	}
+	if glx.Studies == nil {
+		glx.Studies = make(map[string]*Study)
 	}
 
 	// Run full validation

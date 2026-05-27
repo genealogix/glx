@@ -106,11 +106,27 @@
       },
       "additionalProperties": false
     },
+    "research_logs": {
+      "type": "object",
+      "description": "Map of research log entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "research-log.schema.json" }
+      },
+      "additionalProperties": false
+    },
+    "studies": {
+      "type": "object",
+      "description": "Map of study entities",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]{1,64}$": { "$ref": "study.schema.json" }
+      },
+      "additionalProperties": false
+    },
     "event_types": {
       "type": "object",
       "description": "Event type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-types.schema.json#/definitions/EventTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -118,7 +134,7 @@
       "type": "object",
       "description": "Relationship type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-types.schema.json#/definitions/RelationshipTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -126,7 +142,7 @@
       "type": "object",
       "description": "Place type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-types.schema.json#/definitions/PlaceTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -134,7 +150,7 @@
       "type": "object",
       "description": "Repository type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-types.schema.json#/definitions/RepositoryTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -142,7 +158,7 @@
       "type": "object",
       "description": "Participant role vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/participant-roles.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/participant-roles.schema.json#/definitions/ParticipantRoleDefinition" }
       },
       "additionalProperties": false
     },
@@ -150,7 +166,7 @@
       "type": "object",
       "description": "Media type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-types.schema.json#/definitions/MediaTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -158,7 +174,7 @@
       "type": "object",
       "description": "Confidence level vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/confidence-levels.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/confidence-levels.schema.json#/definitions/ConfidenceLevelDefinition" }
       },
       "additionalProperties": false
     },
@@ -166,7 +182,7 @@
       "type": "object",
       "description": "Source type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-types.schema.json#/definitions/SourceTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -174,7 +190,7 @@
       "type": "object",
       "description": "Sex type vocabulary (as recorded in source documents)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/sex-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/sex-types.schema.json#/definitions/SexTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -182,7 +198,23 @@
       "type": "object",
       "description": "Gender identity vocabulary (self-identified; no direct GEDCOM mapping)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json#/definitions/GenderTypeDefinition" }
+      },
+      "additionalProperties": false
+    },
+    "study_types": {
+      "type": "object",
+      "description": "Study type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-types.schema.json#/definitions/StudyTypeDefinition" }
+      },
+      "additionalProperties": false
+    },
+    "study_statuses": {
+      "type": "object",
+      "description": "Study status vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-statuses.schema.json#/definitions/StudyStatusDefinition" }
       },
       "additionalProperties": false
     },
@@ -190,7 +222,7 @@
       "type": "object",
       "description": "Legal-status vocabulary (forms of coerced labor; primarily for the enslavement relationship type)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/legal-statuses.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/legal-statuses.schema.json#/definitions/LegalStatusDefinition" }
       },
       "additionalProperties": false
     },
@@ -198,7 +230,7 @@
       "type": "object",
       "description": "Person property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/person-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/person-properties.schema.json#/definitions/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -206,7 +238,7 @@
       "type": "object",
       "description": "Event property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-properties.schema.json#/definitions/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -214,7 +246,7 @@
       "type": "object",
       "description": "Relationship property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-properties.schema.json#/definitions/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -222,7 +254,7 @@
       "type": "object",
       "description": "Place property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-properties.schema.json#/definitions/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -230,7 +262,7 @@
       "type": "object",
       "description": "Media property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-properties.schema.json#/definitions/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -238,7 +270,7 @@
       "type": "object",
       "description": "Repository property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-properties.schema.json#/definitions/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -246,7 +278,7 @@
       "type": "object",
       "description": "Citation property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/citation-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/citation-properties.schema.json#/definitions/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -254,7 +286,23 @@
       "type": "object",
       "description": "Source property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-properties.schema.json" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-properties.schema.json#/definitions/PropertyDefinition" }
+      },
+      "additionalProperties": false
+    },
+    "search_result_types": {
+      "type": "object",
+      "description": "Search result type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/search-result-types.schema.json#/definitions/SearchResultTypeDefinition" }
+      },
+      "additionalProperties": false
+    },
+    "research_log_status_types": {
+      "type": "object",
+      "description": "Research log status type vocabulary",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/research-log-status-types.schema.json#/definitions/ResearchLogStatusTypeDefinition" }
       },
       "additionalProperties": false
     }

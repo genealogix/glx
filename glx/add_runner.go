@@ -82,15 +82,15 @@ func mustBeSafeID(id string) error {
 	return nil
 }
 
-// deriveOrOverrideID applies the rule "user-supplied --id wins, otherwise
-// derive from the descriptive slug, otherwise hash fallback". The resulting
-// ID is validated as a safe filename and (unless --force) checked for
-// collisions against `taken`.
+// deriveOrOverrideID applies the rule "user-supplied --id wins, otherwise use
+// the derived base, otherwise -2/-3/… on collision". The resulting ID is
+// validated as a safe filename and (unless --force) checked for collisions
+// against `taken`.
 //
-// prefix is the entity-type prefix ("person-", "place-", ...).
-// slug is the descriptive part (e.g. "johann-peter-jungk"); may be empty,
-// in which case a short hash of fallbackSeed is used.
-func deriveOrOverrideID(prefix, slug, fallbackSeed, overrideID string, taken map[string]struct{}, force bool) (string, error) {
+// base is the already-slugified entity ID, typically produced via
+// glxlib.EntityID(prefix, descriptiveText). The caller is responsible for
+// any prefix, suffix, or length cap.
+func deriveOrOverrideID(base, overrideID string, taken map[string]struct{}, force bool) (string, error) {
 	if overrideID != "" {
 		if err := mustBeSafeID(overrideID); err != nil {
 			return "", err
@@ -102,13 +102,13 @@ func deriveOrOverrideID(prefix, slug, fallbackSeed, overrideID string, taken map
 		return overrideID, nil
 	}
 
-	if slug == "" {
-		slug = shortHash(fallbackSeed)
+	// Defense-in-depth: base is expected to arrive already slugified and capped
+	// via glxlib.EntityID(prefix, userText), so this never fires for a
+	// well-formed caller — but base ultimately derives from user input, so we
+	// fail fast rather than write an uncapped or invalid ID to disk.
+	if err := mustBeSafeID(base); err != nil {
+		return "", err
 	}
-	base := prefix + slug
-	// Cap to the maxEntityIDLength to keep parity with link_runner's source path.
-	base = trimToMaxLen(base, maxEntityIDLength)
-
 	if _, exists := taken[base]; !exists {
 		return base, nil
 	}
@@ -118,7 +118,10 @@ func deriveOrOverrideID(prefix, slug, fallbackSeed, overrideID string, taken map
 	// it only applies when the caller supplied --id.
 	for i := 2; i <= maxAddIDCollisions; i++ {
 		suffix := fmt.Sprintf("-%d", i)
-		candidate := trimToMaxLen(base, maxEntityIDLength-len(suffix)) + suffix
+		candidate := glxlib.Slugify(base, glxlib.WithSlugSuffix(suffix), glxlib.WithSlugMaxLength(glxlib.MaxEntityIDLength))
+		if err := mustBeSafeID(candidate); err != nil {
+			return "", err
+		}
 		if _, exists := taken[candidate]; !exists {
 			return candidate, nil
 		}
@@ -483,12 +486,8 @@ func addPerson(io *IOStreams, opts *addPersonOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(strings.TrimSpace(opts.Given+" "+opts.Surname), maxEntityIDLength-len("person-"))
-	id, err := deriveOrOverrideID(
-		"person-", slug,
-		opts.Given+opts.Surname,
-		opts.OverrideID, idSet(ctx.archive.Persons), opts.Force,
-	)
+	base := glxlib.EntityID(glxlib.EntityIDPrefixPerson, opts.Given+" "+opts.Surname)
+	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Persons), opts.Force)
 	if err != nil {
 		return err
 	}
@@ -588,12 +587,8 @@ func addPlace(io *IOStreams, opts *addPlaceOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(opts.Name, maxEntityIDLength-len("place-"))
-	id, err := deriveOrOverrideID(
-		"place-", slug,
-		opts.Name+opts.Parent,
-		opts.OverrideID, idSet(ctx.archive.Places), opts.Force,
-	)
+	base := glxlib.EntityID(glxlib.EntityIDPrefixPlace, opts.Name)
+	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Places), opts.Force)
 	if err != nil {
 		return err
 	}
@@ -663,12 +658,8 @@ func addEvent(io *IOStreams, opts *addEventOptions) error {
 		descriptor = participants[0].Person
 	}
 	descriptor = stripEntityPrefix(descriptor)
-	slug := slugifyForID(opts.Type+" "+descriptor, maxEntityIDLength-len("event-"))
-	id, err := deriveOrOverrideID(
-		"event-", slug,
-		opts.Type+descriptor,
-		opts.OverrideID, idSet(ctx.archive.Events), opts.Force,
-	)
+	base := glxlib.EntityID(glxlib.EntityIDPrefixEvent, opts.Type+" "+descriptor)
+	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Events), opts.Force)
 	if err != nil {
 		return err
 	}
@@ -759,12 +750,8 @@ func addRepository(io *IOStreams, opts *addRepositoryOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(opts.Name, maxEntityIDLength-len("repository-"))
-	id, err := deriveOrOverrideID(
-		"repository-", slug,
-		opts.Name,
-		opts.OverrideID, idSet(ctx.archive.Repositories), opts.Force,
-	)
+	base := glxlib.EntityID(glxlib.EntityIDPrefixRepository, opts.Name)
+	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Repositories), opts.Force)
 	if err != nil {
 		return err
 	}
@@ -820,12 +807,8 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 		return err
 	}
 
-	slug := slugifyForID(opts.Title, maxEntityIDLength-len("source-"))
-	id, err := deriveOrOverrideID(
-		"source-", slug,
-		opts.Title,
-		opts.OverrideID, idSet(ctx.archive.Sources), opts.Force,
-	)
+	base := glxlib.EntityID(glxlib.EntityIDPrefixSource, opts.Title)
+	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Sources), opts.Force)
 	if err != nil {
 		return err
 	}
@@ -835,9 +818,11 @@ func addSource(io *IOStreams, opts *addSourceOptions) error {
 		Type:         opts.Type,
 		Authors:      opts.Authors,
 		Date:         glxlib.DateString(opts.Date),
-		Description:  opts.Description,
 		RepositoryID: opts.Repository,
 		Language:     opts.Language,
+	}
+	if opts.Description != "" {
+		source.Properties = map[string]any{"description": opts.Description}
 	}
 	if len(opts.Notes) > 0 {
 		source.Notes = glxlib.NoteList(opts.Notes)
@@ -903,16 +888,14 @@ func addCitation(io *IOStreams, opts *addCitationOptions) error {
 	if hashSeed == "" && opts.OverrideID == "" {
 		return ErrAddCitationDistinguisherRequired
 	}
-	sourceSlug := strings.TrimPrefix(opts.Source, "source-")
-	const citationPrefix = "citation-"
+	sourceSlug := strings.TrimPrefix(opts.Source, glxlib.EntityIDPrefixSource)
 	hashSuffix := "-" + shortHash(hashSeed)
-	slugBudget := maxEntityIDLength - len(citationPrefix) - len(hashSuffix)
-	slug := trimToMaxLen(slugifyForID(sourceSlug, slugBudget), slugBudget) + hashSuffix
-	id, err := deriveOrOverrideID(
-		citationPrefix, slug,
-		opts.Source+hashSeed,
-		opts.OverrideID, idSet(ctx.archive.Citations), opts.Force,
+	base := glxlib.Slugify(sourceSlug,
+		glxlib.WithSlugPrefix(glxlib.EntityIDPrefixCitation),
+		glxlib.WithSlugSuffix(hashSuffix),
+		glxlib.WithSlugMaxLength(glxlib.MaxEntityIDLength),
 	)
+	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Citations), opts.Force)
 	if err != nil {
 		return err
 	}
@@ -1017,12 +1000,8 @@ func addRelationship(io *IOStreams, opts *addRelationshipOptions) error {
 	}
 
 	descriptor := stripEntityPrefix(participants[0].Person) + "-" + stripEntityPrefix(participants[1].Person)
-	slug := slugifyForID(opts.Type+" "+descriptor, maxEntityIDLength-len("relationship-"))
-	id, err := deriveOrOverrideID(
-		"relationship-", slug,
-		opts.Type+descriptor,
-		opts.OverrideID, idSet(ctx.archive.Relationships), opts.Force,
-	)
+	base := glxlib.EntityID(glxlib.EntityIDPrefixRelationship, opts.Type+" "+descriptor)
+	id, err := deriveOrOverrideID(base, opts.OverrideID, idSet(ctx.archive.Relationships), opts.Force)
 	if err != nil {
 		return err
 	}
@@ -1224,13 +1203,9 @@ func deriveAssertionID(archive *glxlib.GLXFile, opts *addAssertionOptions, subje
 	if tail == "" {
 		tail = "fact"
 	}
-	slug := slugifyForID(descriptor+" "+tail, maxEntityIDLength-len("assertion-"))
+	base := glxlib.EntityID(glxlib.EntityIDPrefixAssertion, descriptor+" "+tail)
 
-	return deriveOrOverrideID(
-		"assertion-", slug,
-		subjectID+tail+opts.Value,
-		opts.OverrideID, idSet(archive.Assertions), opts.Force,
-	)
+	return deriveOrOverrideID(base, opts.OverrideID, idSet(archive.Assertions), opts.Force)
 }
 
 // buildAssertion assembles the Assertion struct from the validated inputs.
@@ -1320,7 +1295,18 @@ func idSet[T any](m map[string]*T) map[string]struct{} {
 // derived IDs built from references read as "<new-prefix>-<distinguishing>"
 // rather than "<new-prefix>-<old-prefix>-<distinguishing>".
 func stripEntityPrefix(id string) string {
-	for _, prefix := range []string{"person-", "event-", "relationship-", "place-", "source-", "citation-", "repository-", "assertion-", "media-"} {
+	prefixes := []string{
+		glxlib.EntityIDPrefixPerson,
+		glxlib.EntityIDPrefixEvent,
+		glxlib.EntityIDPrefixRelationship,
+		glxlib.EntityIDPrefixPlace,
+		glxlib.EntityIDPrefixSource,
+		glxlib.EntityIDPrefixCitation,
+		glxlib.EntityIDPrefixRepository,
+		glxlib.EntityIDPrefixAssertion,
+		glxlib.EntityIDPrefixMedia,
+	}
+	for _, prefix := range prefixes {
 		if rest, ok := strings.CutPrefix(id, prefix); ok {
 			return rest
 		}
