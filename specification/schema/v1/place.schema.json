@@ -46,7 +46,11 @@
       "description": "Free-form notes about the place"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "dependencies": {
+    "latitude": ["longitude"],
+    "longitude": ["latitude"]
+  }
 }
 
 
