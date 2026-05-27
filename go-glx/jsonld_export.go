@@ -370,9 +370,6 @@ func sourceNode(id string, s *Source) map[string]any {
 	if s.Date != "" {
 		node["datePublished"] = string(s.Date)
 	}
-	if s.Description != "" {
-		node["description"] = s.Description
-	}
 	if s.RepositoryID != "" {
 		node["repository"] = jsonLDRepositoryPrefix + s.RepositoryID
 	}
