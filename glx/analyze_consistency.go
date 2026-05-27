@@ -32,7 +32,10 @@ func extractEventYear(archive *glxlib.GLXFile, personID, eventType string) int {
 	return glxlib.ExtractFirstYear(string(event.Date))
 }
 
-// analyzeConsistency checks for chronological inconsistencies across the archive.
+// analyzeConsistency checks for cross-record consistency issues — chronological
+// (birth-after-death, parent-younger-than-child, event-after-death, implausible
+// lifespan, marriage-before-birth), naming (duplicate sibling given names), and
+// geographic (sibling birthplace outliers).
 func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
 
