@@ -129,7 +129,7 @@ func convertSource(sourRecord *GEDCOMRecord, conv *ConversionContext) error {
 
 	// Combine description
 	if len(description) > 0 {
-		source.Description = strings.Join(description, "\n")
+		source.Properties["description"] = strings.Join(description, "\n")
 	}
 
 	// Store events recorded if any (multi-value property)

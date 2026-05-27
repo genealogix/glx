@@ -1005,10 +1005,11 @@ func TestExportSource_WithNotes(t *testing.T) {
 	}
 
 	source := &Source{
-		Title:       "Family Bible",
-		Description: "Entries in the family Bible of John Smith",
-		Notes:       NoteList{"Handwritten entries, some water damage"},
-		Properties:  make(map[string]any),
+		Title: "Family Bible",
+		Notes: NoteList{"Handwritten entries, some water damage"},
+		Properties: map[string]any{
+			"description": "Entries in the family Bible of John Smith",
+		},
 	}
 
 	record := exportSource("source-1", source, expCtx)
@@ -1387,9 +1388,9 @@ func TestExportGEDCOM_WithSourcesAndMedia(t *testing.T) {
 				Title:        "Census of 1850",
 				Authors:      []string{"U.S. Government"},
 				RepositoryID: "repo-1",
-				Description:  "Population schedules",
 				Media:        []string{"media-1"},
 				Properties: map[string]any{
+					"description":      "Population schedules",
 					"publication_info": "Washington, D.C.",
 				},
 			},
