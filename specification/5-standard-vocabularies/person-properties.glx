@@ -133,4 +133,9 @@ person_properties:
         label: "Identifier Type"
         description: "Authority or system that issued this identifier (e.g., familysearch, ancestry, wikitree). Often a URI, especially when imported from GEDCOM 7 EXID.TYPE."
 
+  living:
+    label: "Living"
+    description: "Opt-in marker that the person is currently living. Honored by `glx export --privatize-living` and any other tooling that redacts living-person data; otherwise informational. When unset, export privacy filters fall back to a heuristic (no recorded death/burial/cremation event AND born less than 100 years ago)."
+    value_type: boolean
+    # No GEDCOM equivalent — GLX-specific privacy marker.
 

@@ -113,6 +113,10 @@ GLX splits "recorded sex" and "gender identity" into two separate properties (is
 
 Both properties are temporal, allowing changes over time. Out-of-vocabulary values produce a **warning**, not an error — archives may use custom values before adding them to the vocabulary.
 
+#### `living` — Privacy Marker
+
+`living` is a non-temporal boolean property used to opt a person into export-time privacy filters such as `glx export --privatize-living`. Setting it to `true` is the explicit way to say "redact this person's data on export"; setting it to `false` is the explicit way to opt out of the date-based heuristic for someone the tool would otherwise guess is living. When the property is absent, privacy filters fall back to a heuristic — no recorded death, burial, or cremation event AND a birth event less than 100 years before the current wall clock implies living. The property has no GEDCOM mapping; it is GLX-specific and never written to a GEDCOM file.
+
 #### Temporal Property Examples
 
 Properties marked as `temporal: true` can hold multiple values. Dates are optional — use them when you know when each value applied, omit them when you don't.
