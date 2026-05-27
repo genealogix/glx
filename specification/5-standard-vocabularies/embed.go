@@ -124,6 +124,16 @@ var SearchResultTypes []byte
 //go:embed research-log-status-types.glx
 var ResearchLogStatusTypes []byte
 
+// StudyTypes contains the embedded study-types.glx vocabulary file.
+//
+//go:embed study-types.glx
+var StudyTypes []byte
+
+// StudyStatuses contains the embedded study-statuses.glx vocabulary file.
+//
+//go:embed study-statuses.glx
+var StudyStatuses []byte
+
 // Files maps output filenames to embedded content
 var Files = map[string][]byte{
 	"relationship-types.glx":        RelationshipTypes,
@@ -136,6 +146,7 @@ var Files = map[string][]byte{
 	"confidence-levels.glx":         ConfidenceLevels,
 	"sex-types.glx":                 SexTypes,
 	"gender-types.glx":              GenderTypes,
+	"legal-statuses.glx":            LegalStatuses,
 	"person-properties.glx":         PersonProperties,
 	"event-properties.glx":          EventProperties,
 	"relationship-properties.glx":   RelationshipProperties,
@@ -146,5 +157,6 @@ var Files = map[string][]byte{
 	"source-properties.glx":         SourceProperties,
 	"search-result-types.glx":       SearchResultTypes,
 	"research-log-status-types.glx": ResearchLogStatusTypes,
-	"legal-statuses.glx":            LegalStatuses,
+	"study-types.glx":               StudyTypes,
+	"study-statuses.glx":            StudyStatuses,
 }

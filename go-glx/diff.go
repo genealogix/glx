@@ -92,6 +92,7 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 	diffEntityMap(result, EntityTypeAssertions, oldArchive.Assertions, newArchive.Assertions, nil, nil)
 	diffEntityMap(result, EntityTypeMedia, oldArchive.Media, newArchive.Media, nil, nil)
 	diffEntityMap(result, EntityTypeResearchLogs, oldArchive.ResearchLogs, newArchive.ResearchLogs, nil, nil)
+	diffEntityMap(result, EntityTypeStudies, oldArchive.Studies, newArchive.Studies, nil, nil)
 
 	// Filter by person if requested (before computing stats)
 	if personFilter != "" {
@@ -126,6 +127,7 @@ func entityTypeOrder(t string) int {
 		EntityTypeRepositories:  7,
 		EntityTypeMedia:         8,
 		EntityTypeResearchLogs:  9,
+		EntityTypeStudies:       10,
 	}
 	if v, ok := order[t]; ok {
 		return v

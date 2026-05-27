@@ -174,6 +174,9 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 	if err := s.serializeEntitiesToMap(glx.ResearchLogs, "research_logs", "research-log", files); err != nil {
 		return nil, err
 	}
+	if err := s.serializeEntitiesToMap(glx.Studies, "studies", "study", files); err != nil {
+		return nil, err
+	}
 
 	return files, nil
 }
@@ -202,6 +205,8 @@ func (s *DefaultSerializer) serializeEntitiesToMap(entities any, dirName, entity
 	case map[string]*Assertion:
 		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	case map[string]*ResearchLog:
+		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
+	case map[string]*Study:
 		return serializeEntitiesWrapped(typedEntities, dirName, entityType, files)
 	default:
 		return fmt.Errorf("%w: %T", ErrUnsupportedEntityType, entities)
@@ -277,6 +282,7 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		Media:         make(map[string]*Media),
 		Assertions:    make(map[string]*Assertion),
 		ResearchLogs:  make(map[string]*ResearchLog),
+		Studies:       make(map[string]*Study),
 
 		EventTypes:             make(map[string]*VocabularyEntry),
 		ParticipantRoles:       make(map[string]*VocabularyEntry),
@@ -290,6 +296,8 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		GenderTypes:            make(map[string]*VocabularyEntry),
 		SearchResultTypes:      make(map[string]*VocabularyEntry),
 		ResearchLogStatusTypes: make(map[string]*VocabularyEntry),
+		StudyTypes:             make(map[string]*VocabularyEntry),
+		StudyStatuses:          make(map[string]*VocabularyEntry),
 		LegalStatuses:          make(map[string]*VocabularyEntry),
 
 		PersonProperties:       make(map[string]*PropertyDefinition),
@@ -367,6 +375,9 @@ func validateGLXFile(glx *GLXFile) error {
 	}
 	if glx.ResearchLogs == nil {
 		glx.ResearchLogs = make(map[string]*ResearchLog)
+	}
+	if glx.Studies == nil {
+		glx.Studies = make(map[string]*Study)
 	}
 
 	// Run full validation

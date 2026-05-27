@@ -111,6 +111,7 @@ const (
 	PersonPropertyGender     = "gender" // Self-identified gender identity; no direct GEDCOM mapping
 	PersonPropertyResidence  = "residence"
 	PersonPropertyOccupation = "occupation"
+	PersonPropertyLiving     = "living" // Boolean; opt-in marker honored by export privacy filters
 )
 
 // Deprecated property constants - these properties have been removed from the spec.
@@ -445,6 +446,7 @@ const (
 	EntityTypeAssertions    = "assertions"
 	EntityTypeMedia         = "media"
 	EntityTypeResearchLogs  = "research_logs"
+	EntityTypeStudies       = "studies"
 )
 
 // Vocabulary type constants - used as map keys in GLXFile
@@ -461,7 +463,28 @@ const (
 	VocabGenderTypes            = "gender_types"
 	VocabSearchResultTypes      = "search_result_types"
 	VocabResearchLogStatusTypes = "research_log_status_types"
+	VocabStudyTypes             = "study_types"
+	VocabStudyStatuses          = "study_statuses"
 	VocabLegalStatuses          = "legal_statuses"
+)
+
+// Standard Study Types - from study-types.glx vocabulary
+const (
+	StudyTypeOnePlaceStudy        = "one_place_study"
+	StudyTypeOneNameStudy         = "one_name_study"
+	StudyTypeFamilyReconstruction = "family_reconstruction"
+	StudyTypeDescendancyStudy     = "descendancy_study"
+	StudyTypeAncestryStudy        = "ancestry_study"
+	StudyTypeBrickWall            = "brick_wall"
+	StudyTypeOther                = "other"
+)
+
+// Standard Study Statuses - from study-statuses.glx vocabulary
+const (
+	StudyStatusActive    = "active"
+	StudyStatusPaused    = "paused"
+	StudyStatusCompleted = "completed"
+	StudyStatusAbandoned = "abandoned"
 )
 
 // Property vocabulary constants - used as map keys in GLXFile

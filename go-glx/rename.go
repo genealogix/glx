@@ -82,6 +82,9 @@ func findEntityType(glx *GLXFile, id string) (string, error) {
 	if v, ok := glx.ResearchLogs[id]; ok && v != nil {
 		return EntityTypeResearchLogs, nil
 	}
+	if v, ok := glx.Studies[id]; ok && v != nil {
+		return EntityTypeStudies, nil
+	}
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
 
@@ -126,6 +129,9 @@ func moveMapKey(glx *GLXFile, entityType, oldID, newID string) {
 	case EntityTypeResearchLogs:
 		glx.ResearchLogs[newID] = glx.ResearchLogs[oldID]
 		delete(glx.ResearchLogs, oldID)
+	case EntityTypeStudies:
+		glx.Studies[newID] = glx.Studies[oldID]
+		delete(glx.Studies, oldID)
 	}
 }
 
@@ -317,6 +323,16 @@ func updateAllRefs(glx *GLXFile, oldID, newID string) int {
 		}
 		count += replaceInSlice(rl.Citations, oldID, newID)
 		count += replaceInProperties(rl.Properties, oldID, newID)
+	}
+
+	// Study refs (places and sources in scope)
+	for _, st := range glx.Studies {
+		if st == nil {
+			continue
+		}
+		count += replaceInSlice(st.Places, oldID, newID)
+		count += replaceInSlice(st.Sources, oldID, newID)
+		count += replaceInProperties(st.Properties, oldID, newID)
 	}
 
 	return count
