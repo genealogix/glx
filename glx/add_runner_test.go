@@ -999,7 +999,7 @@ func TestAdd_SourceHappyPath(t *testing.T) {
 	if !ok {
 		t.Fatalf("source missing")
 	}
-	if source.RepositoryID != "repository-familysearch" || source.Description != "Indexed VA marriages" {
+	if source.RepositoryID != "repository-familysearch" || source.Properties["description"] != "Indexed VA marriages" {
 		t.Errorf("source fields wrong: %+v", source)
 	}
 }

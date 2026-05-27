@@ -92,11 +92,11 @@ func exportSource(sourceID string, source *Source, expCtx *ExportContext) *GEDCO
 		record.SubRecords = append(record.SubRecords, dataRecord)
 	}
 
-	// TEXT from Description
-	if source.Description != "" {
+	// TEXT from description property
+	if desc, ok := getStringProperty(source.Properties, "description"); ok {
 		record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
 			Tag:   GedcomTagText,
-			Value: source.Description,
+			Value: desc,
 		})
 	}
 
