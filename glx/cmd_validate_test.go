@@ -374,17 +374,31 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 }
 
 func TestRunValidate_RespectsQuietFlag(t *testing.T) {
-	// Construct IOStreams directly to mirror SystemIOStreams's shape when --quiet
-	// is set (Out discarded, ErrOut preserved). This avoids mutating the
-	// package-global quietOutput, which SystemIOStreams reads without
-	// synchronization and would race against parallel tests if any are added.
-	// SystemIOStreams's own response to quietOutput is covered by
-	// TestSystemIOStreams_Quiet in iostreams_test.go; here we only need to verify
-	// that validatePaths routes diagnostic output through streams.Out (and so
-	// remains quiet when Out is io.Discard) rather than bypassing it to os.Stdout.
-	streams := &IOStreams{Out: io.Discard, MachineOut: io.Discard, ErrOut: os.Stderr}
+	// Use TestIOStreams() and rebind only Out to io.Discard, matching the
+	// pattern documented in iostreams.go ("dedicated --quiet tests rebind Out
+	// to io.Discard and assert separately on MachineOut"). Constructing the
+	// streams ourselves avoids mutating the package-global quietOutput, which
+	// SystemIOStreams reads without synchronization. SystemIOStreams's own
+	// response to quietOutput is covered end-to-end by TestSystemIOStreams_Quiet
+	// in iostreams_test.go.
+	//
+	// The test asserts the full silencing contract for --quiet: validatePaths
+	// must (a) succeed on a known-good file, (b) write nothing to streams.Out
+	// (trivially, since Out is io.Discard), (c) write nothing to
+	// streams.MachineOut (diagnostic output must not be misrouted to the
+	// machine-consumable stream), and (d) write nothing directly to os.Stdout
+	// (must not bypass the IOStreams abstraction).
+	streams, machineBuf, _ := TestIOStreams()
+	streams.Out = io.Discard
 
 	t.Chdir("../docs/examples/basic-family")
-	err := validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
-	require.NoError(t, err, "validation of a known-good file should succeed when Out is discarded")
+
+	var validateErr error
+	stdout := captureStdout(t, func() {
+		validateErr = validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
+	})
+
+	require.NoError(t, validateErr, "validation of a known-good file should succeed when Out is io.Discard")
+	require.Empty(t, stdout, "validatePaths must not write directly to os.Stdout, bypassing streams.Out")
+	require.Empty(t, machineBuf.String(), "validatePaths must not write diagnostic output to streams.MachineOut")
 }
