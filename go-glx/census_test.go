@@ -609,25 +609,6 @@ func TestValidateCensusTemplate_MemberMissingName(t *testing.T) {
 	assert.Contains(t, err.Error(), "name")
 }
 
-func Test_slugify(t *testing.T) {
-	tests := []struct {
-		prefix string
-		name   string
-		want   string
-	}{
-		{"person", "Daniel Lane", "person-daniel-lane"},
-		{"event", "1860 Census", "event-1860-census"},
-		{"", "Daniel Lane", "daniel-lane"},
-		{"person", "Mary O'Brien", "person-mary-o-brien"},
-		{"person", "  spaces  ", "person-spaces"},
-		{"person", "", "person-unknown"},
-	}
-
-	for _, tt := range tests {
-		got := slugify(tt.prefix, tt.name)
-		assert.Equal(t, tt.want, got, "slugify(%q, %q)", tt.prefix, tt.name)
-	}
-}
 
 func TestBuildCensusEntities_CustomEventTitle(t *testing.T) {
 	tpl := &CensusTemplate{
@@ -797,21 +778,14 @@ func TestBuildCensusEntities_ResolveBirthplaceFromExisting(t *testing.T) {
 		"should resolve birthplace against existing archive places")
 }
 
-func TestTruncateID(t *testing.T) {
-	assert.Equal(t, "short-id", truncateID("short-id"))
-	long := "prefix-1860-census-this-is-a-very-long-place-name-that-exceeds-the-sixty-four-character-limit"
-	result := truncateID(long)
-	assert.LessOrEqual(t, len(result), 64)
-	assert.False(t, result[len(result)-1] == '-', "truncated ID should not end with hyphen")
-}
-
 func TestUniquePersonID_LongBaseID(t *testing.T) {
 	// When baseID > 64 chars and truncated candidate collides, the suffix must
 	// be preserved to avoid an infinite loop.
-	longBase := "person-" + strings.Repeat("a", 60) // 67 chars total
+	longBase := EntityIDPrefixPerson + strings.Repeat("a", 60) // 67 chars total
+	truncated := Slugify(longBase, WithSlugMaxLength(MaxEntityIDLength))
 	existing := &GLXFile{
 		Persons: map[string]*Person{
-			truncateID(longBase): {Properties: map[string]any{PersonPropertyName: "Collider"}},
+			truncated: {Properties: map[string]any{PersonPropertyName: "Collider"}},
 		},
 	}
 	result := &CensusResult{
@@ -819,8 +793,8 @@ func TestUniquePersonID_LongBaseID(t *testing.T) {
 	}
 
 	id := uniquePersonID(longBase, existing, result)
-	assert.NotEqual(t, truncateID(longBase), id, "should disambiguate from colliding ID")
-	assert.LessOrEqual(t, len(id), 64, "result must be within 64-char limit")
+	assert.NotEqual(t, truncated, id, "should disambiguate from colliding ID")
+	assert.LessOrEqual(t, len(id), MaxEntityIDLength, "result must fit MaxEntityIDLength")
 	assert.Contains(t, id, "-2", "should have suffix")
 }
 
