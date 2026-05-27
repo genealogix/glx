@@ -497,7 +497,7 @@ func TestMergeArchives_PreviewReportsPlannedMediaCopies(t *testing.T) {
 
 	before := snapshotDir(t, destDir)
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper")
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper")
 	cmd.Env = append(os.Environ(),
 		"GLX_PREVIEW_HELPER=1",
 		"GLX_SRC_DIR="+srcDir,
