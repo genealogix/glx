@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -33,7 +34,7 @@ const (
 )
 
 // exportToGEDCOM loads a GLX archive and exports it to GEDCOM format
-func exportToGEDCOM(inputPath, outputPath, format string, verbose bool) error {
+func exportToGEDCOM(inputPath, outputPath, format string, verbose, privatizeLiving bool) error {
 	// Parse GEDCOM version
 	version, err := parseGEDCOMVersion(format)
 	if err != nil {
@@ -45,6 +46,8 @@ func exportToGEDCOM(inputPath, outputPath, format string, verbose bool) error {
 	if err != nil {
 		return err
 	}
+
+	applyExportPrivacy(glx, privatizeLiving, verbose)
 
 	// Set up log writer for verbose mode
 	var logWriter *os.File
@@ -92,6 +95,24 @@ func parseGEDCOMVersion(format string) (glxlib.GEDCOMVersion, error) {
 		return glxlib.GEDCOM70, nil
 	default:
 		return glxlib.GEDCOMUnknown, fmt.Errorf("%w: %s (use '551', '70', or 'jsonld')", ErrInvalidExportFormat, format)
+	}
+}
+
+// applyExportPrivacy redacts living persons in the loaded archive in place
+// when privatizeLiving is set, printing a summary in verbose mode. Both the
+// GEDCOM and JSON-LD export paths call this immediately after loading the
+// archive, so the privacy guarantee — and its verbose report — is identical
+// regardless of output format.
+func applyExportPrivacy(glx *glxlib.GLXFile, privatizeLiving, verbose bool) {
+	if !privatizeLiving {
+		return
+	}
+
+	redacted := glxlib.PrivatizeLiving(glx, time.Now(), glxlib.LivingThresholdYears)
+	if verbose {
+		fmt.Printf("Privatized %d living persons before export (events redacted: %d, events scrubbed: %d, relationships redacted: %d, assertions dropped: %d)\n",
+			redacted.PersonsRedacted, redacted.EventsRedacted, redacted.EventsScrubbed,
+			redacted.RelationshipsRedacted, redacted.AssertionsDropped)
 	}
 }
 

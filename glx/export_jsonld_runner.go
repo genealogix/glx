@@ -28,11 +28,13 @@ const jsonLDExtension = ".jsonld"
 // exportToJSONLD loads a GLX archive and exports it to a JSON-LD document
 // aligned with the Schema.org context shipped in
 // specification/jsonld/glx-context.jsonld.
-func exportToJSONLD(inputPath, outputPath string, verbose bool) error {
+func exportToJSONLD(inputPath, outputPath string, verbose, privatizeLiving bool) error {
 	glx, err := loadGLXArchive(inputPath, verbose)
 	if err != nil {
 		return err
 	}
+
+	applyExportPrivacy(glx, privatizeLiving, verbose)
 
 	var logWriter *os.File
 	if verbose {
