@@ -27,6 +27,11 @@ conclusion state (status) per #516. Confidence is cleared on each touched
 assertion; existing non-disputed statuses are preserved with a warning so the
 user can reconcile by hand.
 
+With --source-description-to-property, moves a Source's legacy top-level
+`description` field into `properties.description`, completing the
+structural-field-to-vocabulary-property consolidation from #667. An explicit
+`properties.description` is never overwritten.
+
 ```
 glx migrate [archive] [flags]
 ```
@@ -45,14 +50,18 @@ glx migrate [archive] [flags]
 
   # Also move legacy 'confidence: disputed' to 'status: disputed'
   glx migrate ./my-archive --confidence-disputed-to-status
+
+  # Also move legacy top-level source 'description' into 'properties.description'
+  glx migrate ./my-archive --source-description-to-property
 ```
 
 ### Options
 
 ```
-      --confidence-disputed-to-status   Move legacy 'confidence: disputed' to 'status: disputed' (evidence quality vs conclusion state, #516)
-  -h, --help                            help for migrate
-      --rename-gender-to-sex            Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
+      --confidence-disputed-to-status    Move legacy 'confidence: disputed' to 'status: disputed' (evidence quality vs conclusion state, #516)
+  -h, --help                             help for migrate
+      --rename-gender-to-sex             Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
+      --source-description-to-property   Move legacy top-level source 'description' into 'properties.description' (#667)
 ```
 
 ### Options inherited from parent commands
