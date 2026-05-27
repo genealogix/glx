@@ -180,9 +180,10 @@ func runImport(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	exportOutput  string
-	exportFormat  string
-	exportVerbose bool
+	exportOutput          string
+	exportFormat          string
+	exportVerbose         bool
+	exportPrivatizeLiving bool
 )
 
 var exportCmd = &cobra.Command{
@@ -206,7 +207,34 @@ GEDCOM output (--format 551 or 70) includes:
 JSON-LD output (--format jsonld) emits a single self-contained document
 with an inlined @context aligned with Schema.org (Person, Event, Place,
 CreativeWork, ArchiveOrganization, MediaObject) plus a glx: namespace for
-Citation, Relationship, and Assertion.`,
+Citation, Relationship, and Assertion.
+
+Use --privatize-living (supported for every output format) to redact living
+persons' data on export. A person is treated as living when their ` + "`living: true`" + `
+property is set, or — under the fallback heuristic — when no recorded death,
+burial, or cremation event exists and their most recent known birth year is
+less than 100 years ago. When birth records conflict, the most recent year is
+used so the filter errs toward redaction.
+
+Redaction replaces the person's name with "Living", strips all other
+properties (occupation, residence, religion, etc.), and clears notes.
+On every event whose subject is a living person, dates / places / notes /
+properties are blanked. On every relationship that names any living
+participant, the relationship's notes / properties are cleared and the
+referenced start/end events are fully redacted (this covers marriages
+between living spouses). On every other event that names a living person
+as a non-subject participant, the per-participant Properties and Notes are
+scrubbed so fields like name_as_recorded do not leak. Assertions whose
+subject or participant is a living person are dropped.
+
+Free-text fields on Sources, Citations, Repositories, and Media are NOT
+scanned. If you have included living-person names or contact information
+in those fields, you must redact them by hand before publishing.
+
+Redaction operates on the loaded archive before either exporter runs, so the
+same guarantees apply to GEDCOM and JSON-LD output. Event types and family
+structure are preserved (GEDCOM FAM / FAMS / FAMC still reconstruct; JSON-LD
+Relationship and Participation nodes still link) so the export stays valid.`,
 	Example: `  # Export to GEDCOM 5.5.1 (default)
   glx export family-archive -o family.ged
 
@@ -219,6 +247,9 @@ Citation, Relationship, and Assertion.`,
   # Export to JSON-LD (Schema.org-aligned)
   glx export family-archive -o family.jsonld --format jsonld
 
+  # Redact living persons before exporting (works for any format, e.g. before publishing to a public Git repo)
+  glx export family-archive -o family-public.ged --privatize-living
+
   # Export with verbose output
   glx export family-archive -o family.ged --verbose`,
 	Args: cobra.ExactArgs(1),
@@ -229,6 +260,7 @@ func init() {
 	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (required)")
 	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", ExportFormat551, "Export format: 551, 70, or jsonld")
 	exportCmd.Flags().BoolVarP(&exportVerbose, "verbose", "v", false, "Verbose output")
+	exportCmd.Flags().BoolVar(&exportPrivatizeLiving, "privatize-living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
 
 	_ = exportCmd.MarkFlagRequired("output")
 }
@@ -236,9 +268,9 @@ func init() {
 func runExport(_ *cobra.Command, args []string) error {
 	switch exportFormat {
 	case ExportFormatJSONLD:
-		return exportToJSONLD(args[0], exportOutput, exportVerbose)
+		return exportToJSONLD(args[0], exportOutput, exportVerbose, exportPrivatizeLiving)
 	default:
-		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose)
+		return exportToGEDCOM(args[0], exportOutput, exportFormat, exportVerbose, exportPrivatizeLiving)
 	}
 }
 
