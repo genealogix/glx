@@ -1,8 +1,17 @@
 name: Feature Request
-description: Suggest a new feature or enhancement
+description: Suggest a new feature (to improve an existing capability, use Enhancement)
 type: Feature
 body:
+  - type: markdown
+    attributes:
+      value: |
+        **Proposing a change to the spec, core data model, entity types, validation rules, or file format?**
+        Those require a written proposal and a discussion period before implementation — please start with
+        [Proposing Major Changes](https://github.com/genealogix/glx/blob/main/CONTRIBUTING.md#proposing-major-changes)
+        rather than this form.
+
   - type: dropdown
+    id: area
     attributes:
       label: Area
       description: Which part of the project does this affect?
@@ -37,6 +46,6 @@ body:
   - type: textarea
     attributes:
       label: Context
-      description: Use cases, workarounds, or implementation notes.
+      description: Use cases, alternatives considered, or implementation notes.
     validations:
       required: false
