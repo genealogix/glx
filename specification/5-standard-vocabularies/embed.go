@@ -114,6 +114,16 @@ var CitationProperties []byte
 //go:embed source-properties.glx
 var SourceProperties []byte
 
+// SearchResultTypes contains the embedded search-result-types.glx vocabulary file.
+//
+//go:embed search-result-types.glx
+var SearchResultTypes []byte
+
+// ResearchLogStatusTypes contains the embedded research-log-status-types.glx vocabulary file.
+//
+//go:embed research-log-status-types.glx
+var ResearchLogStatusTypes []byte
+
 // StudyTypes contains the embedded study-types.glx vocabulary file.
 //
 //go:embed study-types.glx
@@ -126,25 +136,27 @@ var StudyStatuses []byte
 
 // Files maps output filenames to embedded content
 var Files = map[string][]byte{
-	"relationship-types.glx":      RelationshipTypes,
-	"event-types.glx":             EventTypes,
-	"place-types.glx":             PlaceTypes,
-	"repository-types.glx":        RepositoryTypes,
-	"source-types.glx":            SourceTypes,
-	"participant-roles.glx":       ParticipantRoles,
-	"media-types.glx":             MediaTypes,
-	"confidence-levels.glx":       ConfidenceLevels,
-	"sex-types.glx":               SexTypes,
-	"gender-types.glx":            GenderTypes,
-	"legal-statuses.glx":          LegalStatuses,
-	"person-properties.glx":       PersonProperties,
-	"event-properties.glx":        EventProperties,
-	"relationship-properties.glx": RelationshipProperties,
-	"place-properties.glx":        PlaceProperties,
-	"media-properties.glx":        MediaProperties,
-	"repository-properties.glx":   RepositoryProperties,
-	"citation-properties.glx":     CitationProperties,
-	"source-properties.glx":       SourceProperties,
-	"study-types.glx":             StudyTypes,
-	"study-statuses.glx":          StudyStatuses,
+	"relationship-types.glx":        RelationshipTypes,
+	"event-types.glx":               EventTypes,
+	"place-types.glx":               PlaceTypes,
+	"repository-types.glx":          RepositoryTypes,
+	"source-types.glx":              SourceTypes,
+	"participant-roles.glx":         ParticipantRoles,
+	"media-types.glx":               MediaTypes,
+	"confidence-levels.glx":         ConfidenceLevels,
+	"sex-types.glx":                 SexTypes,
+	"gender-types.glx":              GenderTypes,
+	"legal-statuses.glx":            LegalStatuses,
+	"person-properties.glx":         PersonProperties,
+	"event-properties.glx":          EventProperties,
+	"relationship-properties.glx":   RelationshipProperties,
+	"place-properties.glx":          PlaceProperties,
+	"media-properties.glx":          MediaProperties,
+	"repository-properties.glx":     RepositoryProperties,
+	"citation-properties.glx":       CitationProperties,
+	"source-properties.glx":         SourceProperties,
+	"search-result-types.glx":       SearchResultTypes,
+	"research-log-status-types.glx": ResearchLogStatusTypes,
+	"study-types.glx":               StudyTypes,
+	"study-statuses.glx":            StudyStatuses,
 }
