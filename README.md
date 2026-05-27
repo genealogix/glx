@@ -52,7 +52,7 @@ Traditional formats like GEDCOM solve file exchange but stop short of modern col
 | **Version Control** | Manual or difficult | Built-in Git integration |
 | **Human Readability** | Don't even try | Clear YAML structure |
 | **Validation** | Syntax only | Schema-based validation |
-| **Extensibility** | Limited | JSON Schema based |
+| **Extensibility** | Limited | JSON Schema-based |
 | **Data Portability** | Vendor lock-in | Open format you own |
 | **Interoperability** | GEDCOM export only | Import/export + Git workflows |
 | **Custom Types** | Fixed schema | Archive-defined vocabularies |
@@ -171,7 +171,7 @@ This specification follows [Semantic Versioning](https://semver.org/). Current r
 
 ## Community
 
-| | |
+| Topic | Where |
 |---|---|
 | **Issues & bug reports** | [github.com/genealogix/glx/issues](https://github.com/genealogix/glx/issues) |
 | **Discussions & Q&A** | [github.com/genealogix/glx/discussions](https://github.com/genealogix/glx/discussions) |
