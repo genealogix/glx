@@ -94,7 +94,24 @@ func loadArchiveForSummary(path string) (*glxlib.GLXFile, error) {
 		return archive, nil
 	}
 
-	return readSingleFileArchive(path, false)
+	archive, err := readSingleFileArchive(path, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Single-file archives don't merge standard vocabularies during load (unlike
+	// directory archives via LoadArchiveWithOptions), so populate them here.
+	// summary is read-only and mergeStandardVocabularies only fills empty
+	// vocabulary maps, so any archive-defined vocabulary is preserved. This lets
+	// place-reference properties (e.g. residence) resolve to place names
+	// regardless of whether the archive is a directory or a single file. Unlike
+	// the directory path, no InvalidateCache call is needed: summary never runs
+	// validation, so there is no cached validation result to invalidate.
+	if err := mergeStandardVocabularies(archive); err != nil {
+		return nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
+	}
+
+	return archive, nil
 }
 
 // showSummary loads an archive and displays a comprehensive person profile.
@@ -380,7 +397,15 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 			raw := person.Properties[key]
 			label := snakeCaseToTitle(key)
 
-			if printTemporalProperty(label, raw) {
+			// Resolve place-reference properties (e.g. residence) to the place
+			// entity's name, matching how event places are displayed. Non-place
+			// properties pass a nil resolver and are shown verbatim.
+			var resolve func(string) string
+			if isPlaceReferenceProperty(key, archive) {
+				resolve = func(id string) string { return resolvePlaceName(id, archive) }
+			}
+
+			if printTemporalProperty(label, raw, resolve) {
 				hasContent = true
 			}
 		}
@@ -394,10 +419,15 @@ func printLifeEventsSection(personID string, person *glxlib.Person, archive *glx
 }
 
 // printTemporalProperty prints a person property value, handling temporal lists.
+// The resolve function transforms each scalar value before display (e.g. mapping
+// a place ID to its place name); a nil resolve leaves values unchanged.
 // Returns true if anything was printed.
-func printTemporalProperty(label string, raw any) bool {
+func printTemporalProperty(label string, raw any, resolve func(string) string) bool {
 	if raw == nil {
 		return false
+	}
+	if resolve == nil {
+		resolve = func(s string) string { return s }
 	}
 
 	// Temporal list
@@ -409,7 +439,7 @@ func printTemporalProperty(label string, raw any) bool {
 			}
 			value := ""
 			if v, exists := m["value"]; exists {
-				value = fmt.Sprint(v)
+				value = resolve(fmt.Sprint(v))
 			}
 			date := ""
 			if d, exists := m["date"]; exists {
@@ -428,7 +458,7 @@ func printTemporalProperty(label string, raw any) bool {
 	// Structured map with "value" key
 	if m, ok := raw.(map[string]any); ok {
 		if v, exists := m["value"]; exists {
-			fmt.Printf("  %-18s%s\n", label+":", fmt.Sprint(v))
+			fmt.Printf("  %-18s%s\n", label+":", resolve(fmt.Sprint(v)))
 
 			return true
 		}
@@ -436,7 +466,7 @@ func printTemporalProperty(label string, raw any) bool {
 
 	// Simple string
 	if s, ok := raw.(string); ok {
-		fmt.Printf("  %-18s%s\n", label+":", s)
+		fmt.Printf("  %-18s%s\n", label+":", resolve(s))
 
 		return true
 	}
@@ -929,6 +959,18 @@ func resolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
 	}
 
 	return placeID
+}
+
+// isPlaceReferenceProperty reports whether a person property is declared as a
+// place reference (reference_type: places) in the loaded vocabulary. Residence
+// is the canonical example. Returns false when the vocabulary isn't loaded
+// (e.g. a single-file archive whose standard vocabularies weren't merged): a
+// read from a nil PersonProperties map is safe in Go and simply reports no
+// definition, so such values are shown verbatim.
+func isPlaceReferenceProperty(key string, archive *glxlib.GLXFile) bool {
+	def, ok := archive.PersonProperties[key]
+
+	return ok && def != nil && def.ReferenceType == glxlib.EntityTypePlaces
 }
 
 // ============================================================================
