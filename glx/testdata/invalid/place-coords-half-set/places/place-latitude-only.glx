@@ -1,0 +1,5 @@
+places:
+  place-latitude-only:
+    name: "Latitude Only"
+    type: city
+    latitude: 40.0
