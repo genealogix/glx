@@ -401,18 +401,20 @@ func TestSourceCitationMediaNodes_FullFields(t *testing.T) {
 		Type:         "parish_register",
 		Authors:      []string{"Holy Trinity"},
 		Date:         "1558",
-		Description:  "Baptisms, marriages, burials",
 		RepositoryID: "shak-trust",
 		Language:     "en",
 		Media:        []string{"img1"},
 		Notes:        NoteList{"hand-written"},
+		Properties:   map[string]any{"description": "Baptisms, marriages, burials"},
 	}
 	srcNode := sourceNode("stratford-register", src)
 	assert.Equal(t, "Stratford Register", srcNode["name"])
 	assert.Equal(t, "parish_register", srcNode["sourceType"])
 	assert.Equal(t, []any{"Holy Trinity"}, srcNode["author"])
 	assert.Equal(t, "1558", srcNode["datePublished"])
-	assert.Equal(t, "Baptisms, marriages, burials", srcNode["description"])
+	// description is now a vocabulary property, emitted via the generic glx: namespace
+	// (matching relationship/event/place), not as schema:description.
+	assert.Equal(t, "Baptisms, marriages, burials", srcNode["glx:description"])
 	assert.Equal(t, "#repository-shak-trust", srcNode["repository"])
 	assert.Equal(t, "en", srcNode["inLanguage"])
 	assert.Equal(t, []any{"#media-img1"}, srcNode["associatedMedia"])

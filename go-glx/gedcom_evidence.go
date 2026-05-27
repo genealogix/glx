@@ -459,8 +459,11 @@ func createSyntheticSourceFromEmbeddedCitation(sourRecord *GEDCOMRecord, conv *C
 		switch sub.Tag {
 		case GedcomTagText:
 			// TEXT directly under SOUR provides source text
-			if source.Description == "" {
-				source.Description = extractTextWithContinuation(sub)
+			if _, ok := getStringProperty(source.Properties, "description"); !ok {
+				if source.Properties == nil {
+					source.Properties = make(map[string]any)
+				}
+				source.Properties["description"] = extractTextWithContinuation(sub)
 			}
 		case GedcomTagNote:
 			// Notes about the source
