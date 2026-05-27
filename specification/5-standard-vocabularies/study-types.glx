@@ -1,0 +1,34 @@
+# Standard Study Types
+# This file defines the standard study types for GENEALOGIX archives.
+# A Study declares the formal scope of a research project (one place study,
+# one name study, family reconstruction, etc.) within an archive.
+# Archives can extend this with custom types by adding additional entries.
+
+study_types:
+  one_place_study:
+    label: "One Place Study"
+    description: "Systematic research of all records and people associated with a specific place over a defined time range"
+
+  one_name_study:
+    label: "One Name Study"
+    description: "Systematic research of all bearers of a specific surname (and its variants) across places and time"
+
+  family_reconstruction:
+    label: "Family Reconstruction"
+    description: "Reconstruction of the membership and connections of a single family or kin group"
+
+  descendancy_study:
+    label: "Descendancy Study"
+    description: "Tracing all known descendants of a specific ancestor or ancestral couple"
+
+  ancestry_study:
+    label: "Ancestry Study"
+    description: "Tracing ancestors of a specific individual or generation back through time"
+
+  brick_wall:
+    label: "Brick Wall Research"
+    description: "Focused investigation aimed at resolving a specific genealogical problem or unanswered question"
+
+  other:
+    label: "Other"
+    description: "Other study type"
