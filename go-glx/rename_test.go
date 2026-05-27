@@ -292,3 +292,89 @@ func TestRenameEntity_AssertionValue(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "place-new", glx.Assertions["a-1"].Value)
 }
+
+func TestRenameEntity_ResearchLogMapKey(t *testing.T) {
+	glx := &GLXFile{
+		ResearchLogs: map[string]*ResearchLog{
+			"rl-old": {Title: "Find John's parents"},
+		},
+	}
+
+	result, err := RenameEntity(glx, "rl-old", "rl-new")
+	require.NoError(t, err)
+	assert.Contains(t, glx.ResearchLogs, "rl-new")
+	assert.NotContains(t, glx.ResearchLogs, "rl-old")
+	assert.Positive(t, result.RefsUpdated)
+	assert.Equal(t, EntityTypeResearchLogs, result.EntityType)
+}
+
+func TestRenameEntity_ResearchLogSubjectRef(t *testing.T) {
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-old": {Properties: map[string]any{"name": "Test"}},
+		},
+		ResearchLogs: map[string]*ResearchLog{
+			"rl-1": {
+				Title:   "Investigate Test",
+				Subject: &EntityRef{Person: "person-old"},
+			},
+		},
+	}
+
+	_, err := RenameEntity(glx, "person-old", "person-new")
+	require.NoError(t, err)
+	assert.Equal(t, "person-new", glx.ResearchLogs["rl-1"].Subject.Person)
+}
+
+func TestRenameEntity_ResearchLogSearchRefs(t *testing.T) {
+	glx := &GLXFile{
+		Repositories: map[string]*Repository{
+			"repo-old": {Name: "Archive"},
+		},
+		Sources: map[string]*Source{
+			"src-old": {Title: "Census"},
+		},
+		Citations: map[string]*Citation{
+			"cit-old": {SourceID: "src-old"},
+		},
+		ResearchLogs: map[string]*ResearchLog{
+			"rl-1": {
+				Searches: []Search{
+					{RepositoryID: "repo-old", SourceID: "src-old", CitationID: "cit-old"},
+					{RepositoryID: "repo-old"},
+				},
+				Citations: []string{"cit-old"},
+			},
+		},
+	}
+
+	_, err := RenameEntity(glx, "repo-old", "repo-new")
+	require.NoError(t, err)
+	assert.Equal(t, "repo-new", glx.ResearchLogs["rl-1"].Searches[0].RepositoryID)
+	assert.Equal(t, "repo-new", glx.ResearchLogs["rl-1"].Searches[1].RepositoryID)
+
+	_, err = RenameEntity(glx, "src-old", "src-new")
+	require.NoError(t, err)
+	assert.Equal(t, "src-new", glx.ResearchLogs["rl-1"].Searches[0].SourceID)
+
+	_, err = RenameEntity(glx, "cit-old", "cit-new")
+	require.NoError(t, err)
+	assert.Equal(t, "cit-new", glx.ResearchLogs["rl-1"].Searches[0].CitationID)
+	assert.Equal(t, "cit-new", glx.ResearchLogs["rl-1"].Citations[0])
+}
+
+func TestRenameEntity_ResearchLogNilSubject(t *testing.T) {
+	// A log with no Subject must not panic when an unrelated rename runs.
+	glx := &GLXFile{
+		Persons: map[string]*Person{
+			"person-old": {},
+		},
+		ResearchLogs: map[string]*ResearchLog{
+			"rl-1": {Title: "No subject", Subject: nil},
+		},
+	}
+
+	_, err := RenameEntity(glx, "person-old", "person-new")
+	require.NoError(t, err)
+	assert.Nil(t, glx.ResearchLogs["rl-1"].Subject)
+}
