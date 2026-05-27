@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -456,25 +457,24 @@ const (
 	severityHigh   = "high"
 )
 
-// buildRelationshipConfidenceIndex walks archive.Assertions once and returns
-// a map from relationship ID to the confidence of the first assertion whose
-// Subject is that relationship. Used by the sibling-birthplace-outlier check
-// to detect "hypothetical" parent-child relationships without re-scanning
-// every assertion per outlier child.
-func buildRelationshipConfidenceIndex(archive *glxlib.GLXFile) map[string]string {
+// buildRelationshipHypotheticalIndex walks archive.Assertions once and returns
+// a map from relationship ID to true if ANY assertion whose Subject is that
+// relationship has a confidence value in hypotheticalConfidence. The OR-aggregate
+// matches the stated semantic ("any assertion about that relationship triggers
+// hypothetical") and avoids the nondeterminism of picking a single
+// representative confidence under Go's randomized map iteration.
+func buildRelationshipHypotheticalIndex(archive *glxlib.GLXFile) map[string]bool {
 	if archive == nil {
 		return nil
 	}
-	index := make(map[string]string)
+	index := make(map[string]bool)
 	for _, a := range archive.Assertions {
 		if a == nil || a.Subject.Type() != glxlib.EntityTypeRelationships {
 			continue
 		}
-		relID := a.Subject.ID()
-		if _, seen := index[relID]; seen {
-			continue
+		if hypotheticalConfidence[a.Confidence] {
+			index[a.Subject.ID()] = true
 		}
-		index[relID] = a.Confidence
 	}
 
 	return index
@@ -585,10 +585,16 @@ func strictMajorityBirthplace(children []siblingChildPlace) (string, int) {
 }
 
 // childRelationshipIsHypothetical returns true if any parent_child relationship
-// involving childID has a confidence value in hypotheticalConfidence.
-func childRelationshipIsHypothetical(childID string, idx parentChildIndex, relConfidence map[string]string) bool {
+// that connects iterationParentID to childID is flagged hypothetical. Restricts
+// to the iteration's parent so that an unrelated relationship (e.g. an
+// adoptive-parent tentative rel) doesn't bump the severity of a flag emitted
+// while analyzing the bio-parent's sibling group.
+func childRelationshipIsHypothetical(childID, iterationParentID string, idx parentChildIndex, relHypo map[string]bool) bool {
 	for _, relID := range idx.childToRelIDs[childID] {
-		if hypotheticalConfidence[relConfidence[relID]] {
+		if !slices.Contains(idx.relParents[relID], iterationParentID) {
+			continue
+		}
+		if relHypo[relID] {
 			return true
 		}
 	}
@@ -598,12 +604,16 @@ func childRelationshipIsHypothetical(childID string, idx parentChildIndex, relCo
 
 // parentBirthplaceReinforces returns true if the majority place matches at
 // least one parent's birth PlaceID, and the outlier place matches none of
-// them. Parents with no birth event or no PlaceID are skipped — missing
-// data is not a match. Parents are gathered across all parent_child
-// relationships involving childID.
-func parentBirthplaceReinforces(archive *glxlib.GLXFile, childID, majorityPlace, outlierPlace string, idx parentChildIndex) bool {
+// them. Parents are gathered only from relationships that connect
+// iterationParentID to childID — so the cross-reference reflects the sibling
+// group being analyzed and isn't influenced by unrelated co-parents. Parents
+// with no birth event or no PlaceID are skipped (missing data is not a match).
+func parentBirthplaceReinforces(archive *glxlib.GLXFile, childID, iterationParentID, majorityPlace, outlierPlace string, idx parentChildIndex) bool {
 	parentSet := make(map[string]bool)
 	for _, relID := range idx.childToRelIDs[childID] {
+		if !slices.Contains(idx.relParents[relID], iterationParentID) {
+			continue
+		}
 		for _, p := range idx.relParents[relID] {
 			parentSet[p] = true
 		}
@@ -626,22 +636,24 @@ func parentBirthplaceReinforces(archive *glxlib.GLXFile, childID, majorityPlace,
 }
 
 // buildSiblingOutlierIssue assembles the AnalysisIssue for a single outlier
-// child, including severity bumps and annotation phrases.
-func buildSiblingOutlierIssue(archive *glxlib.GLXFile, c siblingChildPlace, majorityPlace string, majorityCount, n int, idx parentChildIndex, relConfidence map[string]string) AnalysisIssue {
+// child, including severity bumps and annotation phrases. Severity bumps are
+// computed using only the relationships that connect iterationParentID to the
+// child, so cross-family adoptive/step rels don't bleed in.
+func buildSiblingOutlierIssue(archive *glxlib.GLXFile, c siblingChildPlace, iterationParentID, majorityPlace string, majorityCount, n int, idx parentChildIndex, relHypo map[string]bool) AnalysisIssue {
 	severity := severityMedium
 	var annotations []string
 
-	if childRelationshipIsHypothetical(c.childID, idx, relConfidence) {
+	if childRelationshipIsHypothetical(c.childID, iterationParentID, idx, relHypo) {
 		severity = severityHigh
 		annotations = append(annotations, "parent-child relationship hypothetical")
 	}
-	if parentBirthplaceReinforces(archive, c.childID, majorityPlace, c.placeID, idx) {
+	if parentBirthplaceReinforces(archive, c.childID, iterationParentID, majorityPlace, c.placeID, idx) {
 		severity = severityHigh
 		annotations = append(annotations, "matches parent birthplace")
 	}
 
 	childName := personName(archive, c.childID)
-	msg := fmt.Sprintf("%s — born in %s while %d of %d siblings with recorded birthplaces born in %s",
+	msg := fmt.Sprintf("%s — born in %s while %d of %d children with recorded birthplaces born in %s",
 		childName,
 		resolvePlaceName(c.placeID, archive),
 		majorityCount, n,
@@ -672,11 +684,15 @@ func buildSiblingOutlierIssue(archive *glxlib.GLXFile, c siblingChildPlace, majo
 // outliers.
 func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 	idx := buildParentChildIndex(archive)
-	relConfidence := buildRelationshipConfidenceIndex(archive)
+	relHypo := buildRelationshipHypotheticalIndex(archive)
 
 	// Dedup key for emitted issues: same child, same majority, same outlier
-	// place should produce one flag (a child with two parents would otherwise
-	// be flagged twice via parallel iterations).
+	// place should produce one flag. The iteration parent is intentionally
+	// NOT part of the key — typical two-parent families would otherwise
+	// double-flag the same outlier. Per-parent severity is order-dependent
+	// across truly-separate parent perspectives (e.g. an outlier shared
+	// between two unrelated families with the same NY/VA pattern); sorted
+	// iteration makes the choice deterministic.
 	emitted := make(map[siblingOutlierDedupKey]bool)
 	var issues []AnalysisIssue
 
@@ -703,7 +719,7 @@ func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 				continue
 			}
 			emitted[key] = true
-			issues = append(issues, buildSiblingOutlierIssue(archive, c, majorityPlace, majorityCount, len(withPlace), idx, relConfidence))
+			issues = append(issues, buildSiblingOutlierIssue(archive, c, parentID, majorityPlace, majorityCount, len(withPlace), idx, relHypo))
 		}
 	}
 
