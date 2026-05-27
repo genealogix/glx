@@ -483,6 +483,16 @@ type siblingChildPlace struct {
 	placeID string
 }
 
+// siblingOutlierDedupKey identifies a unique (child, majority-place, outlier-
+// place) flag, so the same outlier isn't emitted twice via parallel iterations
+// over different parents. Uses a struct key rather than a string with delimiters
+// because entity IDs come from YAML and may legally contain any character.
+type siblingOutlierDedupKey struct {
+	childID  string
+	majority string
+	outlier  string
+}
+
 // parentChildIndex holds the three indexes needed for the sibling-birthplace
 // outlier check: per-parent children, per-child relationships, and per-rel
 // parents. Built once per archive.
@@ -664,7 +674,7 @@ func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 	// Dedup key for emitted issues: same child, same majority, same outlier
 	// place should produce one flag (a child with two parents would otherwise
 	// be flagged twice via parallel iterations).
-	emitted := make(map[string]bool)
+	emitted := make(map[siblingOutlierDedupKey]bool)
 	var issues []AnalysisIssue
 
 	for _, parentID := range sortedPersonIDs(archive.Persons) {
@@ -685,7 +695,7 @@ func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
 			if c.placeID == majorityPlace {
 				continue
 			}
-			key := c.childID + "|" + majorityPlace + "|" + c.placeID
+			key := siblingOutlierDedupKey{childID: c.childID, majority: majorityPlace, outlier: c.placeID}
 			if emitted[key] {
 				continue
 			}
