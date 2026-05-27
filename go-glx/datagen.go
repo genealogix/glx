@@ -57,7 +57,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 	}
 
 	// Generate a repository for the sources
-	repoID := "repo-" + gofakeit.UUID()
+	repoID := EntityIDPrefixRepository + gofakeit.UUID()
 	glxFile.Repositories[repoID] = &Repository{
 		Name:    gofakeit.Company(),
 		Address: gofakeit.Address().Address,
@@ -68,7 +68,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 	// Generate people
 	personIDs := make([]string, 0, numPeople)
 	for i := range numPeople {
-		personID := "person-" + gofakeit.UUID()
+		personID := EntityIDPrefixPerson + gofakeit.UUID()
 		personIDs = append(personIDs, personID)
 		living := gofakeit.Bool()
 
@@ -82,7 +82,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 		// Generate a birth event for each person
 		birthDate := gofakeit.DateRange(time.Now().AddDate(-80, 0, 0), time.Now().AddDate(-20, 0, 0))
-		eventID := "event-birth-" + personID
+		eventID := EntityIDPrefixEvent + "birth-" + personID
 		placeID := generatePlace(glxFile)
 
 		participants := []Participant{
@@ -122,7 +122,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 				continue // Don't create a relationship with oneself
 			}
 
-			relID := "rel-" + gofakeit.UUID()
+			relID := EntityIDPrefixRelationship + gofakeit.UUID()
 			relType := relationshipTypes[secureIntn(len(relationshipTypes))]
 
 			var roles []string
@@ -152,7 +152,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 
 // generatePlace creates a new place and adds it to the GLXFile, returning its ID.
 func generatePlace(glxFile *GLXFile) string {
-	placeID := "place-" + gofakeit.UUID()
+	placeID := EntityIDPrefixPlace + gofakeit.UUID()
 	glxFile.Places[placeID] = &Place{
 		Name: fmt.Sprintf("%s, %s", gofakeit.City(), gofakeit.Country()),
 		Type: "city",
@@ -164,7 +164,7 @@ func generatePlace(glxFile *GLXFile) string {
 // generateEvidenceChain creates a source, citation, and assertion for a given event.
 func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID string) {
 	// Source
-	sourceID := "source-" + gofakeit.UUID()
+	sourceID := EntityIDPrefixSource + gofakeit.UUID()
 	glxFile.Sources[sourceID] = &Source{
 		Title:        gofakeit.Word() + " Certificate",
 		Type:         "vital_record",
@@ -172,7 +172,7 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID str
 	}
 
 	// Citation
-	citationID := "citation-" + gofakeit.UUID()
+	citationID := EntityIDPrefixCitation + gofakeit.UUID()
 	glxFile.Citations[citationID] = &Citation{
 		SourceID: sourceID,
 		Properties: map[string]any{
@@ -181,7 +181,7 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID str
 	}
 
 	// Assertion
-	assertionID := "assertion-" + gofakeit.UUID()
+	assertionID := EntityIDPrefixAssertion + gofakeit.UUID()
 	glxFile.Assertions[assertionID] = &Assertion{
 		Subject:   EntityRef{Event: subjectID},
 		Property:  propertyName,
