@@ -380,8 +380,8 @@ func TestCitationIDFor(t *testing.T) {
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
-		if len(got) > maxEntityIDLength {
-			t.Errorf("short NOID produced over-long ID: %d > %d", len(got), maxEntityIDLength)
+		if len(got) > glxlib.MaxEntityIDLength {
+			t.Errorf("short NOID produced over-long ID: %d > %d", len(got), glxlib.MaxEntityIDLength)
 		}
 	})
 
@@ -389,8 +389,8 @@ func TestCitationIDFor(t *testing.T) {
 		long := "1:1:" + strings.Repeat("ABCD-", 20) + "END"
 		ark, _ := ParseFamilySearchARK("ark:/61903/" + long)
 		got := citationIDFor(ark)
-		if len(got) > maxEntityIDLength {
-			t.Errorf("long NOID produced over-long ID: %d > %d (id=%q)", len(got), maxEntityIDLength, got)
+		if len(got) > glxlib.MaxEntityIDLength {
+			t.Errorf("long NOID produced over-long ID: %d > %d (id=%q)", len(got), glxlib.MaxEntityIDLength, got)
 		}
 		if !strings.HasPrefix(got, citationIDPrefixFS) {
 			t.Errorf("missing prefix: %q", got)
@@ -446,26 +446,5 @@ func TestNextUniqueSourceID_CapsAtCollisionLimit(t *testing.T) {
 	}
 	if !errors.Is(err, ErrLinkSourceIDExhausted) {
 		t.Errorf("expected ErrLinkSourceIDExhausted, got %v", err)
-	}
-}
-
-func TestSlugifyForID(t *testing.T) {
-	cases := []struct {
-		in     string
-		maxLen int
-		want   string
-	}{
-		{"Deutschland Geburten und Taufen, 1558-1898", 60, "deutschland-geburten-und-taufen-1558-1898"},
-		{"Hello, World!", 60, "hello-world"},
-		{"   ", 60, "unknown"},
-		{"---abc---", 60, "abc"},
-		{"A Very Long Title That Exceeds Sixty Characters To Test Trimming Behavior", 10, "a-very-lon"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.in, func(t *testing.T) {
-			if got := slugifyForID(tc.in, tc.maxLen); got != tc.want {
-				t.Errorf("slugifyForID(%q, %d) = %q, want %q", tc.in, tc.maxLen, got, tc.want)
-			}
-		})
 	}
 }
