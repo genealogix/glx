@@ -112,6 +112,21 @@ func TestRunValidate_BrokenReferences(t *testing.T) {
 	require.Error(t, err, "should fail when cross-references are broken")
 }
 
+func TestRunValidate_PlaceCoordsHalfSet(t *testing.T) {
+	// A Place may carry both latitude and longitude or neither; setting one
+	// without the other is meaningless and must be rejected by the schema's
+	// dependencies clause (see specification/schema/v1/place.schema.json).
+	// The fixture contains two places — one for each half-set direction —
+	// so a single validation pass covers both.
+	streams, _, errOut := TestIOStreams()
+	err := validatePaths(streams, []string{"testdata/invalid/place-coords-half-set"})
+	require.Error(t, err, "half-set coordinates should be rejected")
+	require.Contains(t, errOut.String(), "latitude",
+		"error should name latitude (for the longitude-only place)")
+	require.Contains(t, errOut.String(), "longitude",
+		"error should name longitude (for the latitude-only place)")
+}
+
 func TestRunValidate_RemovedProperty(t *testing.T) {
 	tmpDir := t.TempDir()
 
