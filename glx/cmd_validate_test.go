@@ -18,13 +18,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-var quietOutputMu sync.Mutex
 
 func TestRunValidate_SingleValidFile(t *testing.T) {
 	// Test validating a single valid GLX file (structure only, no cross-references)
@@ -377,18 +374,17 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 }
 
 func TestRunValidate_RespectsQuietFlag(t *testing.T) {
-	quietOutputMu.Lock()
-	prevQuietOutput := quietOutput
-	quietOutput = true
-	t.Cleanup(func() {
-		quietOutput = prevQuietOutput
-		quietOutputMu.Unlock()
-	})
-
-	streams := SystemIOStreams()
-	require.Equal(t, io.Discard, streams.Out, "stdout must be discarded when --quiet is set")
+	// Construct IOStreams directly to mirror SystemIOStreams's shape when --quiet
+	// is set (Out discarded, ErrOut preserved). This avoids mutating the
+	// package-global quietOutput, which SystemIOStreams reads without
+	// synchronization and would race against parallel tests if any are added.
+	// SystemIOStreams's own response to quietOutput is covered by
+	// TestSystemIOStreams_Quiet in iostreams_test.go; here we only need to verify
+	// that validatePaths routes diagnostic output through streams.Out (and so
+	// remains quiet when Out is io.Discard) rather than bypassing it to os.Stdout.
+	streams := &IOStreams{Out: io.Discard, MachineOut: io.Discard, ErrOut: os.Stderr}
 
 	t.Chdir("../docs/examples/basic-family")
 	err := validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
-	require.NoError(t, err, "validation of a known-good file should succeed under --quiet")
+	require.NoError(t, err, "validation of a known-good file should succeed when Out is discarded")
 }
