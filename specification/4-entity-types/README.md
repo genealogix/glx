@@ -73,6 +73,13 @@ Represents digital or physical media objects associated with genealogical entiti
 - **Key Properties**: Title, URI, MIME type, description
 - **GEDCOM Equivalent**: OBJE (Object/Media Record)
 
+### [Research Log](research-log)
+
+Represents a documented research investigation, capturing every search performed (including searches that found nothing). Supports a "reasonably exhaustive search" per the Genealogical Proof Standard by treating negative evidence as a first-class outcome.
+
+- **Key Properties**: Subject, objective, status, searches, conclusions
+- **GEDCOM Equivalent**: None (no direct mapping)
+
 ### [Study](study)
 
 Represents the formal scope of a research project — One Place Studies, One Name Studies, family reconstructions, and brick-wall investigations. Studies declare which places, sources, and time period a project covers.
@@ -130,6 +137,11 @@ Repository
 Media
   ├── associated with any entity
   └── referenced by assertions/evidence
+
+ResearchLog
+  ├── may have a Subject (Person, Event, Relationship, or Place)
+  ├── contains Search entries that reference Repositories, Sources, and Citations
+  └── may produce Citations
 
 Study
   ├── declares scope across Places (geographic boundary)
