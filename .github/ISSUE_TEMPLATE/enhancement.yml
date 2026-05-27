@@ -1,0 +1,47 @@
+name: Enhancement
+description: Suggest an improvement to an existing capability
+type: Enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Changing the spec, core data model, entity types, validation rules, or file format?**
+        Those require a written proposal and a discussion period first — see
+        [Proposing Major Changes](https://github.com/genealogix/glx/blob/main/CONTRIBUTING.md#proposing-major-changes),
+        not this form.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the project does this affect?
+      options:
+        - cli
+        - spec
+        - go-glx
+        - import-export
+        - ui
+        - tooling
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Current limitation
+      description: What does the existing capability not do well today?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed improvement
+      description: What should change?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Context
+      description: Use cases, alternatives considered, or implementation notes.
+    validations:
+      required: false
