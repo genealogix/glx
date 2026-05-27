@@ -168,11 +168,13 @@ func extractGEDZIP(files []*zip.File, destDir string) error {
 }
 
 // safeExtractPath rejects ZIP entry names that could escape destDir during
-// extraction. The layered checks guard distinct attack surfaces: forward and
-// backslash absolute prefixes (path.IsAbs only sees the spec-mandated forward
-// slash form), and Windows volume prefixes (e.g. "C:\\"). The final
-// isPathWithin check after path.Clean and platform-specific path joining is the
-// authoritative escape validation.
+// extraction. The layered checks guard distinct attack surfaces: empty
+// entry names, embedded NUL bytes, backslashes (illegal per APPNOTE 4.4.17.1
+// and a frequent zip-slip vector on Windows), forward-slash absolute prefixes
+// (which path.IsAbs catches as the spec-mandated form), and Windows volume
+// prefixes (e.g. "C:\\"). After path.Clean and platform-specific path joining,
+// the final isPathWithin check is the authoritative containment validation —
+// it catches any residual escape the per-prefix checks miss.
 func safeExtractPath(destDir, entryName string) (string, error) {
 	if entryName == "" {
 		return "", fmt.Errorf("%w: empty entry name", ErrGEDZIPInvalidEntry)
@@ -239,7 +241,7 @@ func writeZipEntry(f *zip.File, destPath string) error {
 	if written > maxGEDZIPEntryBytes {
 		_ = os.Remove(destPath)
 
-		return fmt.Errorf("extracting zip entry %q: %w", f.Name, fmt.Errorf("%w (limit %d bytes)", ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes))
+		return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", f.Name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
 	}
 	if closeErr != nil {
 		_ = os.Remove(destPath)
