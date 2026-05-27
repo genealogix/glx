@@ -677,6 +677,214 @@ func hasConflictTaggedAs(conflicts []Merge3Conflict, entityType, entityID string
 }
 
 // =============================================================================
+// Data-loss regression: previously-unhandled GLXFile maps must survive a
+// clean structural merge. Copilot review on PR #906 flagged that
+// ResearchLogs / Studies entity maps and SearchResultTypes /
+// ResearchLogStatusTypes / StudyTypes / StudyStatuses vocabulary maps were
+// not wired into ThreeWayMerge and were silently dropped on every successful
+// merge. These tests pin the fix so a future refactor that drops a map
+// reference fails loudly.
+// =============================================================================
+
+func TestThreeWayMerge_ResearchLog_OneSidedAdd_DataLossRegression(t *testing.T) {
+	base := &GLXFile{}
+	ours := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {
+			Title:      "Search for Chiddick birth",
+			Researcher: "isaac",
+			Objective:  "Locate parish record",
+			Status:     "in_progress",
+			Searches: []Search{
+				{RepositoryID: "r-fhl", Collection: "VA Parish Registers", Query: "Chiddick"},
+			},
+			Citations: []string{"citation-fhl-parish"},
+		},
+	}}
+	theirs := &GLXFile{}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("one-sided ResearchLog add should be a clean merge, got %v", conflicts)
+	}
+	rl, ok := merged.ResearchLogs["rl1"]
+	if !ok {
+		t.Fatalf("ResearchLog rl1 dropped from merged output: %+v", merged.ResearchLogs)
+	}
+	if rl.Title != "Search for Chiddick birth" || rl.Researcher != "isaac" {
+		t.Errorf("ResearchLog fields not preserved: %+v", rl)
+	}
+	if len(rl.Searches) != 1 || rl.Searches[0].Query != "Chiddick" {
+		t.Errorf("Searches not preserved: %+v", rl.Searches)
+	}
+	if !reflect.DeepEqual(rl.Citations, []string{"citation-fhl-parish"}) {
+		t.Errorf("Citations not preserved: %v", rl.Citations)
+	}
+}
+
+func TestThreeWayMerge_Study_OneSidedAdd_DataLossRegression(t *testing.T) {
+	base := &GLXFile{}
+	ours := &GLXFile{}
+	theirs := &GLXFile{Studies: map[string]*Study{
+		"st1": {
+			Title:   "Chiddick One-Name Study",
+			Type:    "one_name",
+			Status:  "active",
+			Places:  []string{"place-campbell-co-va"},
+			Sources: []string{"source-1782-tax-list"},
+		},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("one-sided Study add should be a clean merge, got %v", conflicts)
+	}
+	st, ok := merged.Studies["st1"]
+	if !ok {
+		t.Fatalf("Study st1 dropped from merged output: %+v", merged.Studies)
+	}
+	if st.Title != "Chiddick One-Name Study" || st.Type != "one_name" {
+		t.Errorf("Study fields not preserved: %+v", st)
+	}
+	if !reflect.DeepEqual(st.Places, []string{"place-campbell-co-va"}) {
+		t.Errorf("Places not preserved: %v", st.Places)
+	}
+}
+
+func TestThreeWayMerge_ResearchLog_CitationsAdditiveUnion(t *testing.T) {
+	// Both sides cite a new repository on the same log → union; no conflict.
+	base := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith", Citations: []string{"cite-base"}},
+	}}
+	ours := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith", Citations: []string{"cite-base", "cite-ours"}},
+	}}
+	theirs := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith", Citations: []string{"cite-base", "cite-theirs"}},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("additive Citations should not conflict, got %v", conflicts)
+	}
+	got := merged.ResearchLogs["rl1"].Citations
+	if !reflect.DeepEqual(got, []string{"cite-base", "cite-ours", "cite-theirs"}) {
+		t.Errorf("Citations should union, got %v", got)
+	}
+}
+
+func TestThreeWayMerge_Study_PlacesAndSourcesAdditiveUnion(t *testing.T) {
+	// Two researchers each add a new place + new source to the same study →
+	// union; no conflict (reference-list semantics, matching Source.Media).
+	base := &GLXFile{Studies: map[string]*Study{
+		"st1": {Title: "Campbell Co Study", Places: []string{"p-base"}, Sources: []string{"s-base"}},
+	}}
+	ours := &GLXFile{Studies: map[string]*Study{
+		"st1": {Title: "Campbell Co Study", Places: []string{"p-base", "p-ours"}, Sources: []string{"s-base", "s-ours"}},
+	}}
+	theirs := &GLXFile{Studies: map[string]*Study{
+		"st1": {Title: "Campbell Co Study", Places: []string{"p-base", "p-theirs"}, Sources: []string{"s-base", "s-theirs"}},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("additive Places/Sources should not conflict, got %v", conflicts)
+	}
+	st := merged.Studies["st1"]
+	if !reflect.DeepEqual(st.Places, []string{"p-base", "p-ours", "p-theirs"}) {
+		t.Errorf("Places should union, got %v", st.Places)
+	}
+	if !reflect.DeepEqual(st.Sources, []string{"s-base", "s-ours", "s-theirs"}) {
+		t.Errorf("Sources should union, got %v", st.Sources)
+	}
+}
+
+func TestThreeWayMerge_MissingVocabularies_OneSidedAdd_DataLossRegression(t *testing.T) {
+	// One-sided adds to the four vocabulary maps that ThreeWayMerge previously
+	// dropped: search_result_types, research_log_status_types, study_types,
+	// study_statuses. Each must survive.
+	base := &GLXFile{}
+	ours := &GLXFile{
+		SearchResultTypes: map[string]*VocabularyEntry{
+			"found":     {Label: "Found"},
+			"not_found": {Label: "Not found"},
+		},
+		ResearchLogStatusTypes: map[string]*VocabularyEntry{
+			"in_progress": {Label: "In progress"},
+		},
+		StudyTypes: map[string]*VocabularyEntry{
+			"one_name":  {Label: "One-Name Study"},
+			"one_place": {Label: "One-Place Study"},
+		},
+		StudyStatuses: map[string]*VocabularyEntry{
+			"active": {Label: "Active"},
+		},
+	}
+	theirs := &GLXFile{}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("one-sided vocabulary adds should be a clean merge, got %v", conflicts)
+	}
+	if len(merged.SearchResultTypes) != 2 || merged.SearchResultTypes["not_found"] == nil {
+		t.Errorf("SearchResultTypes dropped or partial: %+v", merged.SearchResultTypes)
+	}
+	if len(merged.ResearchLogStatusTypes) != 1 {
+		t.Errorf("ResearchLogStatusTypes dropped: %+v", merged.ResearchLogStatusTypes)
+	}
+	if len(merged.StudyTypes) != 2 {
+		t.Errorf("StudyTypes dropped or partial: %+v", merged.StudyTypes)
+	}
+	if len(merged.StudyStatuses) != 1 {
+		t.Errorf("StudyStatuses dropped: %+v", merged.StudyStatuses)
+	}
+}
+
+func TestThreeWayMerge_ResearchLog_DivergingSearchesConflict(t *testing.T) {
+	// Diverging Searches lists (different queries on each side) must conflict —
+	// Searches have no natural key, so set-merging would discard meaning.
+	base := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith", Searches: []Search{{Query: "Smith"}}},
+	}}
+	ours := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith", Searches: []Search{{Query: "Smith John"}}},
+	}}
+	theirs := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith", Searches: []Search{{Query: "Smith Jane"}}},
+	}}
+
+	_, conflicts := ThreeWayMerge(base, ours, theirs)
+	if !HasUnresolvedConflict(conflicts) {
+		t.Errorf("diverging ResearchLog Searches must conflict, got %v", conflicts)
+	}
+	if !hasConflictTaggedAs(conflicts, "research_logs", "rl1") {
+		t.Errorf("conflict should be tagged with research_logs/rl1, got %+v", conflicts)
+	}
+}
+
+func TestThreeWayMerge_ResearchLog_SubjectPtrChange(t *testing.T) {
+	// One side adds a Subject (pointer flips from nil → set); other side
+	// leaves it nil. Set side wins, no conflict.
+	base := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith"},
+	}}
+	ours := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith", Subject: &EntityRef{Person: "p-smith-john"}},
+	}}
+	theirs := &GLXFile{ResearchLogs: map[string]*ResearchLog{
+		"rl1": {Title: "Find Smith"},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("one-sided Subject add should be a clean merge, got %v", conflicts)
+	}
+	rl := merged.ResearchLogs["rl1"]
+	if rl.Subject == nil || rl.Subject.Person != "p-smith-john" {
+		t.Errorf("expected Subject preserved from ours, got %+v", rl.Subject)
+	}
+}
+
+// =============================================================================
 // Nil-entity-pointer-in-map: Copilot-flagged edge from PR #906
 // =============================================================================
 

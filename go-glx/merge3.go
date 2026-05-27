@@ -99,6 +99,8 @@ func ThreeWayMerge(base, ours, theirs *GLXFile) (*GLXFile, []Merge3Conflict) {
 	merged.Repositories, conflicts = merge3EntityMap(EntityTypeRepositories, base.Repositories, ours.Repositories, theirs.Repositories, mergeOneRepository, conflicts)
 	merged.Assertions, conflicts = merge3EntityMap(EntityTypeAssertions, base.Assertions, ours.Assertions, theirs.Assertions, mergeOneAssertion, conflicts)
 	merged.Media, conflicts = merge3EntityMap(EntityTypeMedia, base.Media, ours.Media, theirs.Media, mergeOneMedia, conflicts)
+	merged.ResearchLogs, conflicts = merge3EntityMap(EntityTypeResearchLogs, base.ResearchLogs, ours.ResearchLogs, theirs.ResearchLogs, mergeOneResearchLog, conflicts)
+	merged.Studies, conflicts = merge3EntityMap(EntityTypeStudies, base.Studies, ours.Studies, theirs.Studies, mergeOneStudy, conflicts)
 
 	// Vocabulary maps and property-definition maps: opaque whole-value 3-way.
 	merged.EventTypes, conflicts = merge3OpaqueMap("event_types", base.EventTypes, ours.EventTypes, theirs.EventTypes, conflicts)
@@ -112,6 +114,10 @@ func ThreeWayMerge(base, ours, theirs *GLXFile) (*GLXFile, []Merge3Conflict) {
 	merged.SexTypes, conflicts = merge3OpaqueMap("sex_types", base.SexTypes, ours.SexTypes, theirs.SexTypes, conflicts)
 	merged.GenderTypes, conflicts = merge3OpaqueMap("gender_types", base.GenderTypes, ours.GenderTypes, theirs.GenderTypes, conflicts)
 	merged.LegalStatuses, conflicts = merge3OpaqueMap("legal_statuses", base.LegalStatuses, ours.LegalStatuses, theirs.LegalStatuses, conflicts)
+	merged.SearchResultTypes, conflicts = merge3OpaqueMap("search_result_types", base.SearchResultTypes, ours.SearchResultTypes, theirs.SearchResultTypes, conflicts)
+	merged.ResearchLogStatusTypes, conflicts = merge3OpaqueMap("research_log_status_types", base.ResearchLogStatusTypes, ours.ResearchLogStatusTypes, theirs.ResearchLogStatusTypes, conflicts)
+	merged.StudyTypes, conflicts = merge3OpaqueMap("study_types", base.StudyTypes, ours.StudyTypes, theirs.StudyTypes, conflicts)
+	merged.StudyStatuses, conflicts = merge3OpaqueMap("study_statuses", base.StudyStatuses, ours.StudyStatuses, theirs.StudyStatuses, conflicts)
 
 	merged.PersonProperties, conflicts = merge3OpaqueMap("person_properties", base.PersonProperties, ours.PersonProperties, theirs.PersonProperties, conflicts)
 	merged.EventProperties, conflicts = merge3OpaqueMap("event_properties", base.EventProperties, ours.EventProperties, theirs.EventProperties, conflicts)
@@ -651,6 +657,66 @@ func mergeOneMedia(entityType, id string, base, ours, theirs *Media) (*Media, []
 	return merged, conflicts
 }
 
+func mergeOneResearchLog(entityType, id string, base, ours, theirs *ResearchLog) (*ResearchLog, []Merge3Conflict) {
+	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
+		return m, nil
+	}
+	base = orZero(base)
+	ours = orZero(ours)
+	theirs = orZero(theirs)
+
+	prefix := entityPath(entityType, id)
+	merged := &ResearchLog{}
+	var conflicts []Merge3Conflict
+
+	merged.Title, conflicts = scalarOrConflict(prefix+".title", base.Title, ours.Title, theirs.Title, conflicts)
+	merged.Subject, conflicts = entityRefPtrOrConflict(prefix+".subject", base.Subject, ours.Subject, theirs.Subject, conflicts)
+	merged.Date, conflicts = dateOrConflict(prefix+".date", base.Date, ours.Date, theirs.Date, conflicts)
+	merged.Researcher, conflicts = scalarOrConflict(prefix+".researcher", base.Researcher, ours.Researcher, theirs.Researcher, conflicts)
+	merged.Objective, conflicts = scalarOrConflict(prefix+".objective", base.Objective, ours.Objective, theirs.Objective, conflicts)
+	merged.Status, conflicts = scalarOrConflict(prefix+".status", base.Status, ours.Status, theirs.Status, conflicts)
+
+	// Searches: ordered list of embedded structs with no natural key — opaque.
+	merged.Searches, conflicts = searchesOrConflict(prefix+".searches", base.Searches, ours.Searches, theirs.Searches, conflicts)
+
+	// Citations is a reference list — additive 3-way set merge.
+	merged.Citations = merge3StringSet(base.Citations, ours.Citations, theirs.Citations)
+
+	merged.Conclusions, conflicts = scalarOrConflict(prefix+".conclusions", base.Conclusions, ours.Conclusions, theirs.Conclusions, conflicts)
+	merged.Properties, conflicts = merge3Properties(prefix+".properties", base.Properties, ours.Properties, theirs.Properties, conflicts)
+	merged.Notes = merge3NoteList(base.Notes, ours.Notes, theirs.Notes)
+
+	return merged, conflicts
+}
+
+func mergeOneStudy(entityType, id string, base, ours, theirs *Study) (*Study, []Merge3Conflict) {
+	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
+		return m, nil
+	}
+	base = orZero(base)
+	ours = orZero(ours)
+	theirs = orZero(theirs)
+
+	prefix := entityPath(entityType, id)
+	merged := &Study{}
+	var conflicts []Merge3Conflict
+
+	merged.Title, conflicts = scalarOrConflict(prefix+".title", base.Title, ours.Title, theirs.Title, conflicts)
+	merged.Type, conflicts = scalarOrConflict(prefix+".type", base.Type, ours.Type, theirs.Type, conflicts)
+	merged.Status, conflicts = scalarOrConflict(prefix+".status", base.Status, ours.Status, theirs.Status, conflicts)
+	merged.DateRange, conflicts = dateOrConflict(prefix+".date_range", base.DateRange, ours.DateRange, theirs.DateRange, conflicts)
+
+	// Places and Sources are reference lists — additive 3-way set merge so
+	// independent scope additions by collaborating researchers union cleanly.
+	merged.Places = merge3StringSet(base.Places, ours.Places, theirs.Places)
+	merged.Sources = merge3StringSet(base.Sources, ours.Sources, theirs.Sources)
+
+	merged.Properties, conflicts = merge3Properties(prefix+".properties", base.Properties, ours.Properties, theirs.Properties, conflicts)
+	merged.Notes = merge3NoteList(base.Notes, ours.Notes, theirs.Notes)
+
+	return merged, conflicts
+}
+
 // mergeAssertionValue merges Value + Confidence as a coupled pair. When both
 // sides change Value differently, the side with strictly higher Confidence
 // wins (auto-resolved). Equal or unknown confidence → unresolved conflict.
@@ -923,6 +989,73 @@ func entityRefOrConflict(path string, base, ours, theirs EntityRef, conflicts []
 	})
 
 	return ours, conflicts
+}
+
+// entityRefPtrOrConflict 3-way merges a *EntityRef (e.g. ResearchLog.Subject).
+// The pointer variant exists so a nil "no subject" stays distinct from a zero
+// EntityRef — both compare unequal under DeepEqual so a one-sided "set" vs
+// "still nil" picks up the set side cleanly.
+func entityRefPtrOrConflict(path string, base, ours, theirs *EntityRef, conflicts []Merge3Conflict) (*EntityRef, []Merge3Conflict) {
+	switch {
+	case reflect.DeepEqual(base, ours):
+		return clonePtrEntityRef(theirs), conflicts
+	case reflect.DeepEqual(base, theirs):
+		return clonePtrEntityRef(ours), conflicts
+	case reflect.DeepEqual(ours, theirs):
+		return clonePtrEntityRef(ours), conflicts
+	}
+
+	conflicts = append(conflicts, Merge3Conflict{
+		Path:        path,
+		BaseValue:   base,
+		OursValue:   ours,
+		TheirsValue: theirs,
+	})
+
+	return clonePtrEntityRef(ours), conflicts
+}
+
+func clonePtrEntityRef(e *EntityRef) *EntityRef {
+	if e == nil {
+		return nil
+	}
+	v := *e
+
+	return &v
+}
+
+// searchesOrConflict 3-way merges a []Search — ResearchLog.Searches. Searches
+// are embedded structs with no natural key, so set-merge isn't safe: order
+// carries meaning and identity-by-content would collide on near-duplicates.
+// Treated opaquely, matching participantsOrConflict.
+func searchesOrConflict(path string, base, ours, theirs []Search, conflicts []Merge3Conflict) ([]Search, []Merge3Conflict) {
+	switch {
+	case reflect.DeepEqual(base, ours):
+		return cloneSearches(theirs), conflicts
+	case reflect.DeepEqual(base, theirs):
+		return cloneSearches(ours), conflicts
+	case reflect.DeepEqual(ours, theirs):
+		return cloneSearches(ours), conflicts
+	}
+
+	conflicts = append(conflicts, Merge3Conflict{
+		Path:        path,
+		BaseValue:   base,
+		OursValue:   ours,
+		TheirsValue: theirs,
+	})
+
+	return cloneSearches(ours), conflicts
+}
+
+func cloneSearches(s []Search) []Search {
+	if s == nil {
+		return nil
+	}
+	out := make([]Search, len(s))
+	copy(out, s)
+
+	return out
 }
 
 // merge3StringSet performs an additive 3-way merge of a string list treated
