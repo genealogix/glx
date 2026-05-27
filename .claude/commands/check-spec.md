@@ -102,7 +102,7 @@ Review standard vocabularies for problems:
 
 ### 9. Glossary Consistency
 
-For each term defined in `6-glossary.md`:
+The glossary (`specification/6-glossary.md`) is owned by this command — `/check-docs-drift` does NOT check it. For each term defined in `6-glossary.md`:
 - Definition matches how the term is actually used in entity type specs
 - "See Also" cross-references point to existing sections/anchors
 - All key terms used in entity specs have glossary entries

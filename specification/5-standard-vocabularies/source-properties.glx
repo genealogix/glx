@@ -5,6 +5,11 @@
 # Archives can extend this with custom properties by adding additional entries.
 
 source_properties:
+  description:
+    label: "Source Description"
+    description: "Detailed description of the source content and scope"
+    value_type: string
+
   abbreviation:
     label: "Abbreviation"
     description: "Short reference name or title for the source (from GEDCOM ABBR tag)"
