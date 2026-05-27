@@ -43,7 +43,6 @@ Analyze the user documentation in **docs/** (excluding `docs/examples/`) and com
 - `docs/guides/best-practices.md`
 - `docs/guides/migration-from-gedcom.md`
 - `docs/use-cases.md`
-- `specification/6-glossary.md` (glossary is part of specification)
 
 Compare with **specification/4-entity-types/*.md** and **glx/cmd_*.go** (CLI commands).
 
@@ -153,3 +152,4 @@ At the end, provide:
 - Minor wording differences are acceptable if meaning is preserved
 - Focus on technical accuracy, not writing style
 - CLI examples should be copy-paste ready
+- The glossary (`specification/6-glossary.md`) is checked by `/check-spec` section 9 (Glossary Consistency). Drift between the glossary and entity specs is **out of scope** for this command.
