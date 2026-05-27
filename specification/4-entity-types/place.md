@@ -172,7 +172,7 @@ places:
           date: "1900"
         - value: 8336817
           date: "2020"
-      existed_from: "1624"
+      existed_from: "1626"
 ```
 
 ### Referencing Places
