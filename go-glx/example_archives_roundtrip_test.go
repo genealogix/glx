@@ -249,6 +249,7 @@ var entitySchemaFiles = map[string]string{
 	EntityTypeRepositories:  "repository.schema.json",
 	EntityTypeMedia:         "media.schema.json",
 	EntityTypeAssertions:    "assertion.schema.json",
+	EntityTypeStudies:       "study.schema.json",
 }
 
 // loadEntitySchemas compiles the per-entity schemas once for reuse across
