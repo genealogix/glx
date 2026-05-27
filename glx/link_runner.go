@@ -165,15 +165,16 @@ func buildLinkEntities(archive *glxlib.GLXFile, ark *ARK, opts *linkOptions) (*g
 }
 
 // citationIDFor assembles a citation ID for the given ARK, bounded to
-// MaxEntityIDLength. Short slugs are used as-is; slugs long enough to exceed
-// the limit are truncated and an 8-char SHA-256 hash of the original NOID is
-// appended, so different long NOIDs that share a prefix still produce distinct
-// IDs. The function is deterministic: the same NOID always maps to the same ID.
+// MaxEntityIDLength. Slugs are normalized through glxlib.Slugify so the result
+// always stays within the entity-ID charset, even for an unusual NOID slug.
+// When prefix+slug would exceed the cap, an 8-char SHA-256 hash of the
+// original NOID is appended so different long NOIDs that share a prefix still
+// produce distinct IDs. The function is deterministic: the same NOID always
+// maps to the same ID.
 func citationIDFor(ark *ARK) string {
 	slug := ark.CitationIDSlug()
-	id := citationIDPrefixFS + slug
-	if len(id) <= glxlib.MaxEntityIDLength {
-		return id
+	if len(citationIDPrefixFS)+len(slug) <= glxlib.MaxEntityIDLength {
+		return glxlib.EntityID(citationIDPrefixFS, slug)
 	}
 
 	sum := sha256.Sum256([]byte(ark.NOID))
