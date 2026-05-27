@@ -527,7 +527,8 @@ func mergeOneSource(entityType, id string, base, ours, theirs *Source) (*Source,
 	merged.Title, conflicts = scalarOrConflict(prefix+".title", base.Title, ours.Title, theirs.Title, conflicts)
 	merged.Type, conflicts = scalarOrConflict(prefix+".type", base.Type, ours.Type, theirs.Type, conflicts)
 	merged.Date, conflicts = dateOrConflict(prefix+".date", base.Date, ours.Date, theirs.Date, conflicts)
-	merged.Description, conflicts = scalarOrConflict(prefix+".description", base.Description, ours.Description, theirs.Description, conflicts)
+	// Source.description was demoted to properties.description in #893 (#667);
+	// it now flows through merge3Properties below as sources[id].properties.description.
 	merged.RepositoryID, conflicts = scalarOrConflict(prefix+".repository", base.RepositoryID, ours.RepositoryID, theirs.RepositoryID, conflicts)
 	merged.Language, conflicts = scalarOrConflict(prefix+".language", base.Language, ours.Language, theirs.Language, conflicts)
 
