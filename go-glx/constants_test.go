@@ -71,7 +71,6 @@ func TestConstants(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.got != tc.want {
 				t.Fatalf("%s = %q, want %q", tc.name, tc.got, tc.want)
