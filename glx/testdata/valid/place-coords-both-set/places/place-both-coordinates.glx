@@ -1,0 +1,5 @@
+places:
+  place-both-coordinates:
+    name: "Both Coordinates"
+    latitude: 40.0
+    longitude: -89.0

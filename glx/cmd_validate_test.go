@@ -18,10 +18,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+var quietOutputMu sync.Mutex
 
 func TestRunValidate_SingleValidFile(t *testing.T) {
 	// Test validating a single valid GLX file (structure only, no cross-references)
@@ -125,6 +128,18 @@ func TestRunValidate_PlaceCoordsHalfSet(t *testing.T) {
 		"error should name latitude (for the longitude-only place)")
 	require.Contains(t, errOut.String(), "longitude",
 		"error should name longitude (for the latitude-only place)")
+}
+
+func TestRunValidate_PlaceCoordsBothSet(t *testing.T) {
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"testdata/valid/place-coords-both-set"})
+	require.NoError(t, err, "place with both latitude and longitude should pass validation")
+}
+
+func TestRunValidate_PlaceCoordsNeitherSet(t *testing.T) {
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"testdata/valid/place-coords-neither-set"})
+	require.NoError(t, err, "place with neither latitude nor longitude should pass validation")
 }
 
 func TestRunValidate_RemovedProperty(t *testing.T) {
@@ -362,8 +377,13 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 }
 
 func TestRunValidate_RespectsQuietFlag(t *testing.T) {
-	t.Cleanup(func() { quietOutput = false })
+	quietOutputMu.Lock()
+	prevQuietOutput := quietOutput
 	quietOutput = true
+	t.Cleanup(func() {
+		quietOutput = prevQuietOutput
+		quietOutputMu.Unlock()
+	})
 
 	streams := SystemIOStreams()
 	require.Equal(t, io.Discard, streams.Out, "stdout must be discarded when --quiet is set")
