@@ -30,6 +30,21 @@ func TestSlugify(t *testing.T) {
 		{name: "german umlauts", in: "ausgewählte Kirchenbücher", want: "ausgewaehlte-kirchenbuecher"},
 		{name: "eszett", in: "Straße", want: "strasse"},
 		{name: "mixed diacritics", in: "Crème brûlée y piñata", want: "creme-brulee-y-pinata"},
+		// Decomposed (NFD) inputs written with the combining diaeresis as an
+		// explicit Go Unicode escape (̈) on the base letter, rather than
+		// as a literal codepoint, so an editor or save round-trip cannot
+		// silently re-normalize the source to the precomposed form and defeat
+		// the test. Slugify must compose to NFC first so these reach
+		// germanSlugReplacer in precomposed form and expand to the digraph;
+		// otherwise the umlaut falls through to NFKD + mark-strip and is
+		// silently reduced to a bare vowel ("u" instead of "ue").
+		{name: "nfd lowercase umlaut", in: "Mu\u0308nchen", want: "muenchen"},
+		{name: "nfd uppercase umlaut", in: "U\u0308bersicht", want: "uebersicht"},
+		{
+			name: "nfd umlauts in long german title",
+			in:   "ausgewa\u0308hlte Kirchenbu\u0308cher",
+			want: "ausgewaehlte-kirchenbuecher",
+		},
 		{name: "unknown default", in: "   ", want: "unknown"},
 		{
 			name: "with prefix",
