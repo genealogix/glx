@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/study-statuses.schema.json",
+  "title": "Study Statuses Vocabulary",
+  "description": "Defines the standard and custom status values for study entities",
+  "type": "object",
+  "required": ["study_statuses"],
+  "properties": {
+    "study_statuses": {
+      "type": "object",
+      "description": "Map of study status definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/StudyStatusDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "StudyStatusDefinition": {
+      "type": "object",
+      "description": "Definition of a single study status",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the study status"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the study status"
+        }
+      }
+    }
+  }
+}
