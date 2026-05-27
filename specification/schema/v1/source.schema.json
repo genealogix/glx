@@ -10,7 +10,6 @@
     "type": { "type": "string", "description": "Source type from vocabulary (validated against source_types vocabulary)" },
     "authors": { "type": "array", "items": { "type": "string" }, "description": "Author(s) or creator(s) of the source" },
     "date": { "type": "string", "description": "Publication date or date range covered by the source" },
-    "description": { "type": "string", "description": "Detailed description of the source content and scope" },
     "repository": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9-]{1,64}$",
@@ -35,7 +34,7 @@
     },
     "properties": {
       "type": "object",
-      "description": "Vocabulary-defined properties (abbreviation, call_number, events_recorded, agency, coverage, external_ids, publication_info, url)",
+      "description": "Vocabulary-defined properties (description, abbreviation, call_number, events_recorded, agency, coverage, external_ids, publication_info, url)",
       "additionalProperties": true
     }
   },
