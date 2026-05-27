@@ -497,7 +497,7 @@ func TestMergeArchives_PreviewReportsPlannedMediaCopies(t *testing.T) {
 
 	before := snapshotDir(t, destDir)
 
-	cmd := exec.Command(os.Args[0], "-test.run=^TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper$")
+	cmd := exec.Command(os.Args[0], "-test.run=TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper")
 	cmd.Env = append(os.Environ(),
 		"GLX_PREVIEW_HELPER=1",
 		"GLX_SRC_DIR="+srcDir,
@@ -523,8 +523,14 @@ func TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper(t *testing.T) {
 	destDir := os.Getenv("GLX_DEST_DIR")
 	require.NotEmpty(t, srcDir)
 	require.NotEmpty(t, destDir)
+	srcInfo, err := os.Stat(srcDir)
+	require.NoError(t, err)
+	require.True(t, srcInfo.IsDir())
+	destInfo, err := os.Stat(destDir)
+	require.NoError(t, err)
+	require.True(t, destInfo.IsDir())
 
-	err := mergeArchives(srcDir, destDir, true, 0.6)
+	err = mergeArchives(srcDir, destDir, true, 0.6)
 	require.NoError(t, err)
 }
 
@@ -557,17 +563,28 @@ func TestMergeArchives_PreviewNoDuplicates(t *testing.T) {
 	before := snapshotDir(t, destDir)
 
 	// Capture preview output
+	stdoutCaptureMu.Lock()
 	oldStdout := os.Stdout
 	r, w, pipeErr := os.Pipe()
 	require.NoError(t, pipeErr)
 	os.Stdout = w
+	wClosed := false
+	defer func() {
+		os.Stdout = oldStdout
+		if !wClosed {
+			_ = w.Close()
+		}
+		_ = r.Close()
+		stdoutCaptureMu.Unlock()
+	}()
 
 	err = mergeArchives(srcDir, destDir, true, 0.8)
 
-	_ = w.Close()
-	os.Stdout = oldStdout
+	require.NoError(t, w.Close())
+	wClosed = true
 	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
 	output := buf.String()
 
 	require.NoError(t, err)
