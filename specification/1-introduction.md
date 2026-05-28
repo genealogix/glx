@@ -124,7 +124,7 @@ GENEALOGIX is open source and welcomes contributions:
 
 - **Issues**: [Bug reports and feature requests](https://github.com/genealogix/glx/issues)
 - **Discussions**: [Community Q&A and collaboration](https://github.com/genealogix/glx/discussions)
-- **Contributing**: See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines
+- **Contributing**: See [Contributing](/development/contributing) for guidelines
 
 ## Version History
 

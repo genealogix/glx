@@ -15,4 +15,5 @@ persons:
             given: "Mary"
             surname: "Smith"
       sex: "female"
+      occupation: "Dressmaker"
     notes: "Wife of John Smith. Dressmaker by trade."

@@ -1,0 +1,13 @@
+studies:
+  study-smith-yorkshire:
+    title: "Smith family in 19th-century Yorkshire"
+    type: family_reconstruction
+    status: active
+    date_range: "FROM 1800 TO 1900"
+    places:
+      - place-yorkshire
+      - place-leeds
+    sources:
+      - source-parish-leeds
+      - source-census-1851
+    notes: "Reconstruction of John Smith's immediate family and descendants in Leeds, drawing on parish registers and the 1851 census."

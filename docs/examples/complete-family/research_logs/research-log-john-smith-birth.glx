@@ -1,0 +1,28 @@
+research_logs:
+  research-log-john-smith-birth:
+    title: "Confirm John Smith's exact birth date"
+    subject:
+      person: person-john-smith-1850
+    objective: "Locate a baptism or birth registration that confirms John Smith was born 15 January 1850 in Leeds."
+    status: complete
+    date: "2026-04-15"
+    researcher: "Demo Researcher"
+    searches:
+      - date: "2026-04-15"
+        repository: repository-leeds-library
+        source: source-parish-leeds
+        query: "John Smith, baptisms January 1850, St Paul's parish"
+        result: found
+        citation: citation-john-birth
+        notes: "Located baptism entry matching the expected date and parents."
+      - date: "2026-04-15"
+        repository: repository-tna
+        source: source-census-1851
+        query: "John Smith age 1, Leeds, 1851 census"
+        result: found
+        citation: citation-census-john
+        notes: "1851 census records John (age 1) in the Smith household, corroborating an 1850 birth."
+    citations:
+      - citation-john-birth
+      - citation-census-john
+    conclusions: "John Smith was baptised 28 January 1850 at St Paul's, Leeds (parish register), and recorded as age 1 in the 1851 census — consistent with a January 1850 birth."

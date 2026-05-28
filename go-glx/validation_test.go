@@ -39,7 +39,7 @@ func TestValidateEntityReferences(t *testing.T) {
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
 		err := result.Errors[0]
-		assert.Equal(t, "events", err.SourceType)
+		assert.Equal(t, EntityTypeEvents, err.SourceType)
 		assert.Equal(t, "event-1", err.SourceID)
 		assert.Equal(t, "PlaceID", err.SourceField)
 		assert.Equal(t, "places", err.TargetType)
@@ -54,7 +54,7 @@ func TestValidateEntityReferences(t *testing.T) {
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
 		err := result.Errors[0]
-		assert.Equal(t, "events", err.SourceType)
+		assert.Equal(t, EntityTypeEvents, err.SourceType)
 		assert.Equal(t, "event-1", err.SourceID)
 		assert.Equal(t, "Type", err.SourceField)
 		assert.Equal(t, "event_types", err.TargetType)
@@ -90,7 +90,7 @@ func TestValidatePropertyReferences(t *testing.T) {
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
 		err := result.Errors[0]
-		assert.Equal(t, "persons", err.SourceType)
+		assert.Equal(t, EntityTypePersons, err.SourceType)
 		assert.Equal(t, "person-1", err.SourceID)
 		assert.Equal(t, "properties.birth_place", err.SourceField)
 		assert.Equal(t, "places", err.TargetType)
@@ -112,7 +112,7 @@ func TestValidatePropertyWarnings(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.shoe_size", warn.Field)
 		assert.Contains(t, warn.Message, "unknown property 'shoe_size'")
@@ -128,7 +128,7 @@ func TestValidatePropertyWarnings(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties", warn.Field)
 		assert.Contains(t, warn.Message, "no person_properties vocabulary was found")
@@ -146,7 +146,7 @@ func TestValidatePropertyWarnings(t *testing.T) {
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
 		ve := result.Errors[0]
-		assert.Equal(t, "persons", ve.SourceType)
+		assert.Equal(t, EntityTypePersons, ve.SourceType)
 		assert.Equal(t, "person-1", ve.SourceID)
 		assert.Equal(t, "properties.born_on", ve.SourceField)
 		assert.Contains(t, ve.Message, "has been removed")
@@ -665,7 +665,7 @@ func TestValidateTemporalPropertyReferences(t *testing.T) {
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
 		err := result.Errors[0]
-		assert.Equal(t, "persons", err.SourceType)
+		assert.Equal(t, EntityTypePersons, err.SourceType)
 		assert.Equal(t, "person-1", err.SourceID)
 		assert.Equal(t, "properties.residence[1].value", err.SourceField)
 		assert.Contains(t, err.Message, "place-missing")
@@ -778,7 +778,7 @@ func TestValidatePlaceHierarchy(t *testing.T) {
 			}
 		}
 		require.Len(t, cycleErrors, 1)
-		assert.Equal(t, "places", cycleErrors[0].SourceType)
+		assert.Equal(t, EntityTypePlaces, cycleErrors[0].SourceType)
 		assert.Equal(t, "place-1", cycleErrors[0].SourceID)
 		assert.Contains(t, cycleErrors[0].Message, "cycle detected")
 	})
@@ -938,7 +938,7 @@ func TestValidateCitationProperties(t *testing.T) {
 		result := archive.Validate()
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
-		assert.Equal(t, "citations", result.Warnings[0].SourceType)
+		assert.Equal(t, EntityTypeCitations, result.Warnings[0].SourceType)
 		assert.Equal(t, "citation-1", result.Warnings[0].SourceID)
 		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
 	})
@@ -1147,7 +1147,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
-		assert.Equal(t, "events", result.Warnings[0].SourceType)
+		assert.Equal(t, EntityTypeEvents, result.Warnings[0].SourceType)
 		assert.Equal(t, "event-1 participants[0]", result.Warnings[0].SourceID)
 	})
 
@@ -1168,7 +1168,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		}
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
-		assert.Equal(t, "events", result.Errors[0].SourceType)
+		assert.Equal(t, EntityTypeEvents, result.Errors[0].SourceType)
 		assert.Equal(t, "event-1 participants[0]", result.Errors[0].SourceID)
 		assert.Contains(t, result.Errors[0].SourceField, "residence")
 	})
@@ -1208,7 +1208,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
-		assert.Equal(t, "assertions", result.Warnings[0].SourceType)
+		assert.Equal(t, EntityTypeAssertions, result.Warnings[0].SourceType)
 		assert.Equal(t, "assert-1 participant", result.Warnings[0].SourceID)
 	})
 
@@ -1251,7 +1251,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, "unknown property 'unknown_prop'")
-		assert.Equal(t, "relationships", result.Warnings[0].SourceType)
+		assert.Equal(t, EntityTypeRelationships, result.Warnings[0].SourceType)
 		assert.Equal(t, "rel-1 participants[0]", result.Warnings[0].SourceID)
 	})
 
@@ -1273,7 +1273,7 @@ func TestValidateParticipantProperties(t *testing.T) {
 		// Should get exactly 1 warning for missing vocab, not 3
 		vocabWarnings := 0
 		for _, w := range result.Warnings {
-			if w.SourceType == "events" {
+			if w.SourceType == EntityTypeEvents {
 				vocabWarnings++
 			}
 		}
@@ -1312,7 +1312,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.gender", warn.Field)
 		assert.Contains(t, warn.Message, "'nonbinary' not found in gender_types")
@@ -1331,7 +1331,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.gender.value", warn.Field)
 		assert.Contains(t, warn.Message, "'invalid' not found in gender_types")
@@ -1356,7 +1356,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.gender[1].value", warn.Field)
 		assert.Contains(t, warn.Message, "'invalid' not found in gender_types")
@@ -1380,7 +1380,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		// "male" is valid, "invalid" should produce a warning
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.gender[1]", warn.Field)
 		assert.Contains(t, warn.Message, "'invalid' not found in gender_types")
@@ -1401,7 +1401,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.custom_field", warn.Field)
 		assert.Contains(t, warn.Message, "vocabulary 'custom_vocab_types' not loaded")
@@ -1426,7 +1426,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.gender", warn.Field)
 		assert.Contains(t, warn.Message, "conflicting type fields")
@@ -1449,7 +1449,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "persons", warn.SourceType)
+		assert.Equal(t, EntityTypePersons, warn.SourceType)
 		assert.Equal(t, "person-1", warn.SourceID)
 		assert.Equal(t, "properties.gender", warn.Field)
 		assert.Contains(t, warn.Message, "conflicting type fields")
@@ -1515,7 +1515,7 @@ func TestValidateStandardLegalStatusesVocab(t *testing.T) {
 		assert.Empty(t, result.Errors)
 		require.Len(t, result.Warnings, 1)
 		warn := result.Warnings[0]
-		assert.Equal(t, "relationships", warn.SourceType)
+		assert.Equal(t, EntityTypeRelationships, warn.SourceType)
 		assert.Equal(t, "rel-1", warn.SourceID)
 		assert.Equal(t, "properties.legal_status", warn.Field)
 		assert.Contains(t, warn.Message, "'foobar' not found in legal_statuses")

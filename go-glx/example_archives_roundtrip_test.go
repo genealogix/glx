@@ -180,7 +180,7 @@ func walkOwnGLXFiles(dir string, fn func(absPath, rel string) error) error {
 
 // roundTripExampleArchive runs the schema and semantic-equality assertions
 // for one example.
-func roundTripExampleArchive(t *testing.T, ex exampleArchive, entitySchemas map[string]*jsonschema.Schema) {
+func roundTripExampleArchive(t *testing.T, ex exampleArchive, entitySchemas map[EntityType]*jsonschema.Schema) {
 	t.Helper()
 
 	serializer := NewSerializer(&SerializerOptions{Validate: false, Pretty: true})
@@ -239,7 +239,7 @@ func roundTripExampleArchive(t *testing.T, ex exampleArchive, entitySchemas map[
 
 // entitySchemaFiles maps a top-level YAML key under a GLX archive to the
 // schema file that validates each entry under that key.
-var entitySchemaFiles = map[string]string{
+var entitySchemaFiles = map[EntityType]string{
 	EntityTypePersons:       "person.schema.json",
 	EntityTypeEvents:        "event.schema.json",
 	EntityTypeRelationships: "relationship.schema.json",
@@ -254,8 +254,8 @@ var entitySchemaFiles = map[string]string{
 
 // loadEntitySchemas compiles the per-entity schemas once for reuse across
 // every sub-test. Failures here halt the parent test before any sub-tests run.
-func loadEntitySchemas() (map[string]*jsonschema.Schema, error) {
-	out := make(map[string]*jsonschema.Schema, len(entitySchemaFiles))
+func loadEntitySchemas() (map[EntityType]*jsonschema.Schema, error) {
+	out := make(map[EntityType]*jsonschema.Schema, len(entitySchemaFiles))
 	compiler := jsonschema.NewCompiler()
 	for entityType, filename := range entitySchemaFiles {
 		schemaBytes, err := schema.EntitySchemas.ReadFile(filename)
@@ -285,11 +285,11 @@ func loadEntitySchemas() (map[string]*jsonschema.Schema, error) {
 // definition blocks (person_properties, …) are intentionally skipped — those
 // would require resolving cross-file $refs from glx-file.schema.json, which
 // is the CLI validator's territory.
-func validateEntitiesAgainstSchemas(t *testing.T, exampleName string, archiveMap map[string]any, schemas map[string]*jsonschema.Schema) {
+func validateEntitiesAgainstSchemas(t *testing.T, exampleName string, archiveMap map[string]any, schemas map[EntityType]*jsonschema.Schema) {
 	t.Helper()
 
 	for entityType, schemaForType := range schemas {
-		raw, ok := archiveMap[entityType]
+		raw, ok := archiveMap[entityType.String()]
 		if !ok {
 			continue
 		}
