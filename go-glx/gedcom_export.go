@@ -236,7 +236,7 @@ type ExportStatistics struct {
 
 // ExportWarning represents a warning during export.
 type ExportWarning struct {
-	EntityType string
+	EntityType EntityType
 	EntityID   string
 	Message    string
 }
@@ -462,7 +462,7 @@ func sortedKeys[T any](m map[string]*T) []string {
 }
 
 // addExportWarning adds a warning to the export context.
-func (expCtx *ExportContext) addExportWarning(entityType, entityID, message string) {
+func (expCtx *ExportContext) addExportWarning(entityType EntityType, entityID, message string) {
 	expCtx.Stats.Warnings = append(expCtx.Stats.Warnings, ExportWarning{
 		EntityType: entityType,
 		EntityID:   entityID,

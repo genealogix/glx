@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 const examplesDir = "../docs/examples"
@@ -107,10 +109,12 @@ func TestExamples(t *testing.T) {
 			doc, err := ParseYAMLFile(data)
 			require.NoError(t, err, "failed to parse YAML in %s", file)
 
-			// Validate entity structure - only check entity type keys
-			entityKeys := map[string]bool{
-				"persons": true, "relationships": true, "events": true, "places": true,
-				"sources": true, "citations": true, "repositories": true, "assertions": true, "media": true,
+			// Validate entity structure - only check entity type keys.
+			// Derived from glxlib.AllEntityTypes so new entity types are covered
+			// automatically.
+			entityKeys := make(map[string]bool, len(glxlib.AllEntityTypes))
+			for _, et := range glxlib.AllEntityTypes {
+				entityKeys[et.String()] = true
 			}
 
 			for pluralKey, entities := range doc {
@@ -182,15 +186,14 @@ func TestExamplesCompleteFamily(t *testing.T) {
 		return
 	}
 
-	// Expected subdirectories for complete-family
-	expectedDirs := []string{
-		"persons", "relationships", "events", "places",
-		"sources", "citations", "repositories", "assertions",
-	}
+	// Expected subdirectories for complete-family — every entity-type directory
+	// (the loop below skips any that are absent, so this remains tolerant of
+	// archives that don't exercise every type).
+	expectedDirs := glxlib.AllEntityTypes
 
 	for _, dir := range expectedDirs {
-		t.Run(dir, func(t *testing.T) {
-			dirPath := filepath.Join(completeFamilyDir, dir)
+		t.Run(dir.String(), func(t *testing.T) {
+			dirPath := filepath.Join(completeFamilyDir, dir.String())
 			info, err := os.Stat(dirPath)
 
 			if os.IsNotExist(err) {

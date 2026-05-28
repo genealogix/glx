@@ -41,7 +41,7 @@ type FieldChange struct {
 // EntityChange describes a single entity-level difference.
 type EntityChange struct {
 	Kind       ChangeKind    `json:"kind"`
-	EntityType string        `json:"entity_type"`
+	EntityType EntityType    `json:"entity_type"`
 	ID         string        `json:"id"`
 	Summary    string        `json:"summary"`
 	Fields     []FieldChange `json:"fields,omitempty"`
@@ -108,6 +108,7 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 		if result.Changes[i].EntityType != result.Changes[j].EntityType {
 			return entityTypeOrder(result.Changes[i].EntityType) < entityTypeOrder(result.Changes[j].EntityType)
 		}
+
 		return result.Changes[i].ID < result.Changes[j].ID
 	})
 
@@ -115,8 +116,8 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 }
 
 // entityTypeOrder returns a sort key for entity types to group them logically.
-func entityTypeOrder(t string) int {
-	order := map[string]int{
+func entityTypeOrder(t EntityType) int {
+	order := map[EntityType]int{
 		EntityTypePersons:       0,
 		EntityTypeEvents:        1,
 		EntityTypeRelationships: 2,
@@ -132,13 +133,14 @@ func entityTypeOrder(t string) int {
 	if v, ok := order[t]; ok {
 		return v
 	}
+
 	return 99
 }
 
 // diffEntityMap compares two entity maps and appends changes to the result.
 // oldArchive/newArchive are optional context for richer person summaries
 // (birth/death dates from events). Removed entities use oldArchive, added use newArchive.
-func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap map[string]*T, oldArchive, newArchive *GLXFile) {
+func diffEntityMap[T any](result *DiffResult, entityType EntityType, oldMap, newMap map[string]*T, oldArchive, newArchive *GLXFile) {
 	// Check for added and modified entities
 	for id, newEntity := range newMap {
 		if oldEntity, exists := oldMap[id]; exists {
@@ -201,6 +203,7 @@ func formatSerializationStatus(err error) string {
 	if err == nil {
 		return "(serializable)"
 	}
+
 	return fmt.Sprintf("(unserializable: %v)", err)
 }
 
@@ -214,6 +217,7 @@ func toYAMLMap(v any) (map[string]any, error) {
 	if err := yaml.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("yaml unmarshal: %w", err)
 	}
+
 	return m, nil
 }
 
@@ -251,6 +255,7 @@ func diffMaps(prefix string, oldMap, newMap map[string]any) []FieldChange {
 				OldValue: "(none)",
 				NewValue: formatValue(newVal),
 			})
+
 			continue
 		}
 		if !newExists {
@@ -259,6 +264,7 @@ func diffMaps(prefix string, oldMap, newMap map[string]any) []FieldChange {
 				OldValue: formatValue(oldVal),
 				NewValue: "(none)",
 			})
+
 			continue
 		}
 
@@ -267,6 +273,7 @@ func diffMaps(prefix string, oldMap, newMap map[string]any) []FieldChange {
 		newSubMap, newIsMap := newVal.(map[string]any)
 		if oldIsMap && newIsMap {
 			changes = append(changes, diffMaps(path, oldSubMap, newSubMap)...)
+
 			continue
 		}
 
@@ -297,6 +304,7 @@ func formatValue(v any) string {
 		for i, item := range val {
 			parts[i] = formatValue(item)
 		}
+
 		return "[" + strings.Join(parts, ", ") + "]"
 	case map[string]any:
 		// Flatten to JSON-like string for display
@@ -304,6 +312,7 @@ func formatValue(v any) string {
 		if err != nil {
 			return fmt.Sprintf("%v", val)
 		}
+
 		return strings.TrimSpace(string(data))
 	default:
 		return fmt.Sprintf("%v", val)
@@ -312,7 +321,7 @@ func formatValue(v any) string {
 
 // summarizeEntity generates a human-readable one-liner for an entity.
 // archive is optional context used for richer person summaries (birth/death dates).
-func summarizeEntity[T any](entityType, id string, entity *T, archive *GLXFile) string {
+func summarizeEntity[T any](entityType EntityType, id string, entity *T, archive *GLXFile) string {
 	m, err := toYAMLMap(entity)
 	if err != nil || m == nil {
 		return id
@@ -333,6 +342,10 @@ func summarizeEntity[T any](entityType, id string, entity *T, archive *GLXFile) 
 		return summarizeRelationship(m)
 	case EntityTypePlaces:
 		return summarizePlace(m)
+	case EntityTypeResearchLogs:
+		return summarizeResearchLog(m)
+	case EntityTypeStudies:
+		return summarizeStudy(m)
 	default:
 		return id
 	}
@@ -363,6 +376,7 @@ func summarizePerson(id string, m map[string]any, archive *GLXFile) string {
 	if len(parts) > 0 {
 		return name + " (" + strings.Join(parts, "; ") + ")"
 	}
+
 	return name
 }
 
@@ -382,6 +396,7 @@ func summarizeEvent(m map[string]any) string {
 	if date != "" {
 		parts = append(parts, date)
 	}
+
 	return strings.Join(parts, ", ")
 }
 
@@ -408,6 +423,7 @@ func summarizeAssertion(m map[string]any) string {
 			sb.WriteString(" confidence")
 		}
 	}
+
 	return sb.String()
 }
 
@@ -416,6 +432,7 @@ func summarizeSource(m map[string]any) string {
 	if title != "" {
 		return fmt.Sprintf("%q", title)
 	}
+
 	return "(untitled source)"
 }
 
@@ -432,6 +449,7 @@ func summarizeCitation(m map[string]any) string {
 	if source != "" {
 		return source
 	}
+
 	return "(citation)"
 }
 
@@ -440,6 +458,7 @@ func summarizeRelationship(m map[string]any) string {
 	if relType == "" {
 		return "(relationship)"
 	}
+
 	return relType
 }
 
@@ -448,15 +467,59 @@ func summarizePlace(m map[string]any) string {
 	if name != "" {
 		return name
 	}
+
 	return "(unnamed place)"
 }
 
+func summarizeResearchLog(m map[string]any) string {
+	objective, _ := m["objective"].(string)
+	title, _ := m["title"].(string)
+	status, _ := m["status"].(string)
+
+	headline := objective
+	if headline == "" {
+		headline = title
+	}
+	if headline == "" {
+		headline = "(research log)"
+	}
+	if status != "" {
+		return headline + " [" + status + "]"
+	}
+
+	return headline
+}
+
+func summarizeStudy(m map[string]any) string {
+	title, _ := m["title"].(string)
+	studyType, _ := m["type"].(string)
+	status, _ := m["status"].(string)
+
+	if title == "" {
+		title = "(study)"
+	}
+	var suffix []string
+	if studyType != "" {
+		suffix = append(suffix, studyType)
+	}
+	if status != "" {
+		suffix = append(suffix, status)
+	}
+	if len(suffix) > 0 {
+		return title + " [" + strings.Join(suffix, "/") + "]"
+	}
+
+	return title
+}
+
 // summarizeModified generates a one-line summary for a modified entity.
-func summarizeModified(entityType, id string, fields []FieldChange) string {
+func summarizeModified(entityType EntityType, id string, fields []FieldChange) string {
 	if len(fields) == 1 {
 		f := fields[0]
+
 		return fmt.Sprintf("%s %s: %s: %s → %s", entityType, id, f.Path, f.OldValue, f.NewValue)
 	}
+
 	return fmt.Sprintf("%s %s: %d fields changed", entityType, id, len(fields))
 }
 
@@ -588,6 +651,7 @@ func eventHasParticipant(ev *Event, personID string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -600,5 +664,6 @@ func relationshipHasParticipant(rel *Relationship, personID string) bool {
 			return true
 		}
 	}
+
 	return false
 }

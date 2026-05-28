@@ -4,6 +4,11 @@
 # Archives can extend this with custom properties by adding additional entries.
 
 media_properties:
+  description:
+    label: "Media Description"
+    description: "Detailed description of the media content"
+    value_type: string
+
   subjects:
     label: "Subjects"
     description: "People depicted in the media"

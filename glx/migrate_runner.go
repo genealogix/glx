@@ -59,6 +59,13 @@ type MigrateReport struct {
 	// properties.description, or, when an explicit properties.description
 	// already existed, simply removed.
 	SourceDescriptionsConverted int
+
+	// media top-level `description` → `properties.description` conversions
+	// (opt-in via --media-description-to-property, #894). Counts media entities
+	// that carried a legacy top-level `description:` — folded into
+	// properties.description, or, when an explicit properties.description
+	// already existed, simply removed.
+	MediaDescriptionsConverted int
 }
 
 const (
@@ -275,6 +282,7 @@ func extractPropertyString(val any) string {
 			}
 		}
 	}
+
 	return ""
 }
 
@@ -333,6 +341,7 @@ func migrateEventProperties(
 		if hasPlace {
 			transferred.place = placeStr != "" || existing.PlaceID != ""
 		}
+
 		return eventID, transferred, nil
 	}
 

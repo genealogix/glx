@@ -6,7 +6,7 @@ layout: doc
 
 # Participant Assertions Example
 
-This example demonstrates how to represent evidence about who participated in events and relationships using participant assertions.
+This example demonstrates how to represent evidence about who participated in events using participant assertions. The same pattern applies to relationship participants (assert against `subject: { relationship: rel-... }` with a `participant`), though this archive focuses on event participants for clarity.
 
 ## Key Concepts
 

@@ -55,6 +55,11 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `confidence-levels.glx` | High, medium, low |
 | `sex-types.glx` | Male, female, unknown, not_recorded, other (recorded sex) |
 | `gender-types.glx` | Male, female, nonbinary, other (self-identified identity) |
+| `legal-statuses.glx` | Chattel, indentured, debt_bondage, apprenticeship (enslavement relationship metadata) |
+| `study-types.glx` | One Place Study, One Name Study, family reconstruction, brick wall, etc. |
+| `study-statuses.glx` | Active, paused, completed, abandoned |
+| `search-result-types.glx` | found, not_found, inconclusive, partial, not_searched |
+| `research-log-status-types.glx` | open, in_progress, complete, blocked |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
 | `relationship-properties.glx` | Relationship properties |
@@ -187,19 +192,21 @@ This flexibility makes GLX suitable for traditional family history, local and co
 
 ## Entity Relationships
 
-GENEALOGIX uses 9 core entity types that form an interconnected web representing genealogical research:
+GENEALOGIX uses 11 core entity types that form an interconnected web representing genealogical research:
 
 ### Core Entities
 
 ```text
 Person ←→ Relationship ←→ Person
 Person ←→ Event ←→ Place
-Source ←→ Citation → Assertion → Person/Event/Place
+Source ←→ Citation → Assertion → Person/Event/Place/Relationship
 Repository → Source
 Media → (any entity)
+ResearchLog → Search → Repository/Source/Citation
+Study → Place/Source (scope declaration)
 ```
 
-**The 9 Entity Types:**
+**The 11 Entity Types:**
 
 1. **Person** - Individuals in the family archive
 2. **Relationship** - Connections between people (marriage, parent-child, etc.)
@@ -210,6 +217,8 @@ Media → (any entity)
 7. **Repository** - Institutions holding sources (archives, libraries, churches)
 8. **Media** - Digital objects (photos, documents, audio, video)
 9. **Assertion** - Evidence-based conclusions about facts
+10. **ResearchLog** - Research investigations and the searches performed (including negative evidence)
+11. **Study** - Research-project scope (One Place Study, One Name Study, family reconstruction, brick-wall investigation)
 
 ### Validation Dependencies
 
@@ -253,8 +262,9 @@ A true/false value.
 **Example:**
 
 ```yaml
-verified: true
-primary_source: false
+# Inside a property definition (vocabulary), value_type: boolean drives the
+# allowed shapes; on an entity, the value is a literal true / false.
+living: true
 ```
 
 #### Date
@@ -376,7 +386,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 
 #### Date Validation
 
-GENEALOGIX validates date formats at two levels:
+GENEALOGIX validates date formats at three levels:
 
 1. **Structure:** Dates must follow the format specifications above
 2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword.

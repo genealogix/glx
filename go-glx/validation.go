@@ -30,7 +30,7 @@ func (glx *GLXFile) Validate() *ValidationResult {
 	}
 
 	result := &ValidationResult{
-		Entities:       make(map[string]map[string]struct{}),
+		Entities:       make(map[EntityType]map[string]struct{}),
 		Vocabularies:   make(map[string]map[string]struct{}),
 		PropertyVocabs: make(map[string]map[string]*PropertyDefinition),
 	}
@@ -144,7 +144,7 @@ func (glx *GLXFile) validateAllReferences(result *ValidationResult) {
 
 // validateEntityTypeReferences validates all entities of a given type.
 func (glx *GLXFile) validateEntityTypeReferences(
-	entityType string,
+	entityType EntityType,
 	entities any,
 	result *ValidationResult,
 ) {
@@ -161,7 +161,7 @@ func (glx *GLXFile) validateEntityTypeReferences(
 
 // validateStructReferences recursively validates all refType tags in a struct.
 func (glx *GLXFile) validateStructReferences(
-	entityType, entityID string,
+	entityType EntityType, entityID string,
 	entityVal reflect.Value,
 	result *ValidationResult,
 ) {
@@ -183,7 +183,7 @@ func (glx *GLXFile) validateStructReferences(
 }
 
 // validateNestedStructs handles recursion into nested structs and slices of structs.
-func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal reflect.Value, result *ValidationResult) {
+func (glx *GLXFile) validateNestedStructs(entityType EntityType, entityID string, fieldVal reflect.Value, result *ValidationResult) {
 	switch fieldVal.Kind() {
 	case reflect.Ptr:
 		if fieldVal.IsNil() || fieldVal.Elem().Kind() != reflect.Struct {
@@ -218,7 +218,7 @@ func (glx *GLXFile) validateNestedStructs(entityType, entityID string, fieldVal 
 
 // validateEntityRef validates an EntityRef, checking that exactly one field is set
 // and that the referenced entity exists.
-func (glx *GLXFile) validateEntityRef(entityType, entityID, fieldName string, ref EntityRef, result *ValidationResult) {
+func (glx *GLXFile) validateEntityRef(entityType EntityType, entityID, fieldName string, ref EntityRef, result *ValidationResult) {
 	refType := ref.Type()
 	refID := ref.ID()
 
@@ -240,7 +240,7 @@ func (glx *GLXFile) validateEntityRef(entityType, entityID, fieldName string, re
 			SourceType:  entityType,
 			SourceID:    entityID,
 			SourceField: fieldName,
-			TargetType:  refType,
+			TargetType:  string(refType),
 			TargetID:    refID,
 			Message: fmt.Sprintf("%s[%s].%s references non-existent %s: %s",
 				entityType, entityID, fieldName, refType, refID),
@@ -250,7 +250,7 @@ func (glx *GLXFile) validateEntityRef(entityType, entityID, fieldName string, re
 
 // validateFieldReference validates a field with a refType tag.
 func (glx *GLXFile) validateFieldReference(
-	entityType, entityID, fieldName string,
+	entityType EntityType, entityID, fieldName string,
 	fieldVal reflect.Value,
 	refType string,
 	result *ValidationResult,
@@ -279,7 +279,7 @@ func (glx *GLXFile) validateFieldReference(
 
 // checkReference validates that a single referenced ID exists.
 func (glx *GLXFile) checkReference(
-	entityType, entityID, fieldName, refType, refID string,
+	entityType EntityType, entityID, fieldName, refType, refID string,
 	result *ValidationResult,
 ) {
 	targetTypes := strings.Split(refType, ",")
@@ -293,7 +293,7 @@ func (glx *GLXFile) checkReference(
 				break
 			}
 		} else {
-			if _, exists := result.Entities[targetType][refID]; exists {
+			if _, exists := result.Entities[EntityType(targetType)][refID]; exists {
 				found = true
 
 				break
@@ -339,7 +339,7 @@ func (glx *GLXFile) suggestReferenceKey(targetTypes []string, refID string, resu
 					return alt
 				}
 			} else {
-				if _, exists := result.Entities[targetType][alt]; exists {
+				if _, exists := result.Entities[EntityType(targetType)][alt]; exists {
 					return alt
 				}
 			}
@@ -399,7 +399,7 @@ func (glx *GLXFile) validateAssertionParticipantProperties(
 // When no vocabulary is loaded, entity-level validation already warns once per entity,
 // so we skip participant-level calls to avoid duplicate "missing vocab" warnings.
 func (glx *GLXFile) validateParticipantProperties(
-	entityType string,
+	entityType EntityType,
 	propVocabKey string,
 	entities any,
 	propVocab map[string]*PropertyDefinition,
@@ -465,7 +465,7 @@ func (glx *GLXFile) validateParticipantProperties(
 
 // validateEntityProperties iterates over entities and validates their properties.
 func (glx *GLXFile) validateEntityProperties(
-	entityType string,
+	entityType EntityType,
 	propVocabKey string,
 	entities any,
 	propVocab map[string]*PropertyDefinition,
@@ -501,7 +501,7 @@ var removedProperties = map[string]string{
 
 // validateProperties validates a single `properties` map against its vocabulary.
 func (glx *GLXFile) validateProperties(
-	entityType, entityID, propVocabKey string,
+	entityType EntityType, entityID, propVocabKey string,
 	properties map[string]any,
 	propVocab map[string]*PropertyDefinition,
 	result *ValidationResult,
@@ -579,7 +579,7 @@ func (glx *GLXFile) validateProperties(
 
 // validatePropertyReference validates a property value that is an entity reference.
 func (glx *GLXFile) validatePropertyReference(
-	entityType, entityID, propName string,
+	entityType EntityType, entityID, propName string,
 	propValue any,
 	referenceType string,
 	result *ValidationResult,
@@ -611,8 +611,8 @@ func (glx *GLXFile) validatePropertyReference(
 }
 
 // checkPropertyRef validates that a single property reference ID exists.
-func (glx *GLXFile) checkPropertyRef(entityType, entityID, field, referenceType, refID string, result *ValidationResult) {
-	if _, exists := result.Entities[referenceType][refID]; !exists {
+func (glx *GLXFile) checkPropertyRef(entityType EntityType, entityID, field, referenceType, refID string, result *ValidationResult) {
+	if _, exists := result.Entities[EntityType(referenceType)][refID]; !exists {
 		result.Errors = append(result.Errors, ValidationError{
 			SourceType:  entityType,
 			SourceID:    entityID,
@@ -628,7 +628,7 @@ func (glx *GLXFile) checkPropertyRef(entityType, entityID, field, referenceType,
 // validatePropertyVocabularyValue validates that a property value exists in the
 // referenced vocabulary. Handles simple strings, temporal objects, and temporal lists.
 func (glx *GLXFile) validatePropertyVocabularyValue(
-	entityType, entityID, propName string,
+	entityType EntityType, entityID, propName string,
 	propValue any,
 	propDef *PropertyDefinition,
 	result *ValidationResult,
@@ -722,7 +722,7 @@ func (glx *GLXFile) validatePropertyVocabularyValue(
 
 // checkVocabValue checks that a single value exists in the given vocabulary.
 func (glx *GLXFile) checkVocabValue(
-	entityType, entityID, field, vocabType, value string,
+	entityType EntityType, entityID, field, vocabType, value string,
 	vocabSet map[string]struct{},
 	result *ValidationResult,
 ) {
@@ -740,7 +740,7 @@ func (glx *GLXFile) checkVocabValue(
 // validatePropertyValue validates a property value against its value_type definition.
 // For temporal properties, it accepts either a simple value OR a list of {value, date} objects.
 func (glx *GLXFile) validatePropertyValue(
-	entityType, entityID, propName string,
+	entityType EntityType, entityID, propName string,
 	propValue any,
 	propDef *PropertyDefinition,
 	result *ValidationResult,
@@ -839,7 +839,7 @@ func (glx *GLXFile) validatePropertyValue(
 // {value: ..., fields: {...}}. This covers non-temporal properties that use the
 // structured format (e.g., name with given/surname fields).
 func (glx *GLXFile) validateStructuredValue(
-	entityType, entityID, propName string,
+	entityType EntityType, entityID, propName string,
 	structuredVal map[string]any,
 	propDef *PropertyDefinition,
 	result *ValidationResult,
@@ -860,7 +860,7 @@ func (glx *GLXFile) validateStructuredValue(
 // validateTemporalItem validates a single temporal item (object with value, optional date and fields).
 // index is -1 for a single object, or >= 0 for list items.
 func (glx *GLXFile) validateTemporalItem(
-	entityType, entityID, propName string,
+	entityType EntityType, entityID, propName string,
 	index int,
 	itemMap map[string]any,
 	propDef *PropertyDefinition,
@@ -912,7 +912,7 @@ func (glx *GLXFile) validateTemporalItem(
 
 // validateTemporalFields validates the fields of a structured temporal property.
 func (glx *GLXFile) validateTemporalFields(
-	entityType, entityID, fieldPath string,
+	entityType EntityType, entityID, fieldPath string,
 	fields any,
 	fieldDefs map[string]*FieldDefinition,
 	result *ValidationResult,
@@ -969,7 +969,7 @@ func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
 					SourceType:  EntityTypePlaces,
 					SourceID:    cycleMembers[0],
 					SourceField: "parent",
-					TargetType:  EntityTypePlaces,
+					TargetType:  string(EntityTypePlaces),
 					TargetID:    current,
 					Message: fmt.Sprintf("places: place hierarchy cycle detected: %s -> %s",
 						strings.Join(cycleMembers, " -> "), current),
@@ -998,7 +998,7 @@ func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
 // validateDateFormat validates a date string against GENEALOGIX date format.
 // GENEALOGIX uses FamilySearch-style keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT)
 // combined with ISO 8601-style dates (YYYY, YYYY-MM, YYYY-MM-DD).
-func (glx *GLXFile) validateDateFormat(entityType, entityID, field, dateStr string, result *ValidationResult) {
+func (glx *GLXFile) validateDateFormat(entityType EntityType, entityID, field, dateStr string, result *ValidationResult) {
 	if dateStr == "" {
 		return // Empty dates are allowed
 	}
@@ -1099,7 +1099,7 @@ func isDigits(s string) bool {
 }
 
 // validateValueType validates a value against its declared value_type
-func (glx *GLXFile) validateValueType(entityType, entityID, field string, value any, valueType string, result *ValidationResult) {
+func (glx *GLXFile) validateValueType(entityType EntityType, entityID, field string, value any, valueType string, result *ValidationResult) {
 	switch valueType {
 	case "string":
 		if _, ok := value.(string); !ok {

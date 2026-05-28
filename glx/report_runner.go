@@ -74,9 +74,9 @@ type reportData struct {
 }
 
 // assertionSummary is a short description of an assertion for display.
-type assertionSummary struct {
+type assertionSummary struct { //nolint:revive // SubjectType field name is part of the JSON wire format
 	ID          string
-	SubjectType string
+	SubjectType glxlib.EntityType
 	SubjectID   string
 	Property    string
 }
@@ -86,7 +86,7 @@ func buildConfidenceReport(archive *glxlib.GLXFile) reportData {
 	report := reportData{
 		ByConfidence: make(map[string]int),
 	}
-	assertedSubjects := make(map[string]map[string]bool)
+	assertedSubjects := make(map[glxlib.EntityType]map[string]bool)
 
 	for id, assertion := range archive.Assertions {
 		report.TotalAssertions++

@@ -54,7 +54,7 @@ func TestValidatePropertyValue_NonTemporalWithList(t *testing.T) {
 		if !strings.Contains(warning.Message, "gender") && !strings.Contains(warning.Field, "gender") {
 			t.Errorf("Warning should reference 'gender' property, got: %+v", warning)
 		}
-		if warning.SourceType != "persons" {
+		if warning.SourceType != EntityTypePersons {
 			t.Errorf("Warning should have source type 'persons', got: %s", warning.SourceType)
 		}
 		if warning.SourceID != "person-1" {
@@ -99,7 +99,7 @@ func TestValidatePropertyValue_TemporalListMissingValue(t *testing.T) {
 	} else {
 		// Verify error details
 		err := result.Errors[0]
-		if err.SourceType != "persons" {
+		if err.SourceType != EntityTypePersons {
 			t.Errorf("Error should have source type 'persons', got: %s", err.SourceType)
 		}
 		if err.SourceID != "person-1" {
@@ -144,7 +144,7 @@ func TestValidatePropertyValue_TemporalListNotObject(t *testing.T) {
 	} else {
 		// Verify both errors have correct source info
 		for i, err := range result.Errors {
-			if err.SourceType != "persons" {
+			if err.SourceType != EntityTypePersons {
 				t.Errorf("Error %d should have source type 'persons', got: %s", i, err.SourceType)
 			}
 			if err.SourceID != "person-1" {
