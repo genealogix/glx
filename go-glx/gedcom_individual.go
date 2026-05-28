@@ -21,7 +21,7 @@ import (
 
 // convertIndividual converts a GEDCOM INDI record to a GLX Person
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func convertIndividual(indiRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if indiRecord.Tag != GedcomTagIndi {
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRecordType, GedcomTagIndi, indiRecord.Tag)
@@ -628,7 +628,7 @@ func convertCensus(personID string, person *Person, censRecord *GEDCOMRecord, co
 // This is separated from applyCensusData so that family-level CENS can extract once and apply
 // to both spouses without creating duplicate sources.
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func extractCensusData(censRecord *GEDCOMRecord, conv *ConversionContext) censusData {
 	var dateStr string
 	var placeID string
