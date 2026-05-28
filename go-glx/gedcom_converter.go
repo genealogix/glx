@@ -20,7 +20,7 @@ import (
 
 // Convert performs the main GEDCOM to GLX conversion with dependency-ordered processing
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func (conv *ConversionContext) Convert(records []*GEDCOMRecord) error {
 	conv.Logger.LogInfo("Starting conversion")
 

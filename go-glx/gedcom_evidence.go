@@ -41,7 +41,7 @@ type sourResult struct {
 // Returns a sourResult: either a citation ID (if the SOUR has detail) or
 // a bare source ID (if it only references a source with no added value).
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func createCitationFromSOUR(sourRecord *GEDCOMRecord, conv *ConversionContext) (sourResult, error) {
 	var sourceID string
 

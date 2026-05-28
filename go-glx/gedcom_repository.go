@@ -21,7 +21,7 @@ import (
 
 // convertRepository converts a GEDCOM REPO record to a GLX Repository
 //
-//nolint:gocyclo
+//nolint:gocyclo // GEDCOM conversion has inherent branching complexity
 func convertRepository(repoRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if repoRecord.Tag != GedcomTagRepo {
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRepoRecord, GedcomTagRepo, repoRecord.Tag)

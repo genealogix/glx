@@ -733,7 +733,7 @@ func buildRecords(lines []*GEDCOMLine) []*GEDCOMRecord {
 
 // detectGEDCOMVersion detects GEDCOM version from header
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit // GEDCOM conversion has inherent branching complexity
 func detectGEDCOMVersion(records []*GEDCOMRecord) (GEDCOMVersion, string) {
 	for _, record := range records {
 		if record.Tag == GedcomTagHead {
