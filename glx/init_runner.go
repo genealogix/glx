@@ -158,6 +158,8 @@ func writeTestData(data *glxlib.GLXFile) error {
 		"repositories":  mustMarshal(data.Repositories),
 		"assertions":    mustMarshal(data.Assertions),
 		"media":         mustMarshal(data.Media),
+		"research_logs": mustMarshal(data.ResearchLogs),
+		"studies":       mustMarshal(data.Studies),
 	}
 
 	for dir, entities := range entityTypes {

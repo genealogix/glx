@@ -54,6 +54,8 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		Repositories:  make(map[string]*Repository),
 		Assertions:    make(map[string]*Assertion),
 		Media:         make(map[string]*Media),
+		ResearchLogs:  make(map[string]*ResearchLog),
+		Studies:       make(map[string]*Study),
 	}
 
 	// Generate a repository for the sources
@@ -147,7 +149,75 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		}
 	}
 
+	generateStudy(glxFile)
+	generateResearchLog(glxFile, repoID)
+
 	return glxFile, nil
+}
+
+// generateStudy adds one umbrella Study scoping the generated archive — a
+// family-reconstruction covering every place and source generated above.
+// Demonstrates the Study entity shape; tooling can use this to exercise
+// Study-aware features against test data.
+func generateStudy(glxFile *GLXFile) {
+	if len(glxFile.Persons) == 0 {
+		return
+	}
+
+	studyID := "study-" + gofakeit.UUID()
+
+	placeRefs := make([]string, 0, len(glxFile.Places))
+	for id := range glxFile.Places {
+		placeRefs = append(placeRefs, id)
+	}
+
+	sourceRefs := make([]string, 0, len(glxFile.Sources))
+	for id := range glxFile.Sources {
+		sourceRefs = append(sourceRefs, id)
+	}
+
+	glxFile.Studies[studyID] = &Study{
+		Title:     gofakeit.LastName() + " family reconstruction",
+		Type:      "family_reconstruction",
+		Status:    "active",
+		DateRange: DateString("FROM 1900 TO 2000"),
+		Places:    placeRefs,
+		Sources:   sourceRefs,
+	}
+}
+
+// generateResearchLog adds one ResearchLog with a Search entry paired with the
+// first generated citation, demonstrating the "documented search" workflow.
+func generateResearchLog(glxFile *GLXFile, repoID string) {
+	var firstCitationID, firstSourceID string
+	for id, c := range glxFile.Citations {
+		firstCitationID = id
+		firstSourceID = c.SourceID
+
+		break
+	}
+
+	if firstCitationID == "" {
+		return
+	}
+
+	logID := "research-log-" + gofakeit.UUID()
+	glxFile.ResearchLogs[logID] = &ResearchLog{
+		Title:      "Birth record search for generated test data",
+		Objective:  "Locate the birth record cited in the generated evidence chain",
+		Status:     "complete",
+		Researcher: gofakeit.Name(),
+		Searches: []Search{
+			{
+				RepositoryID: repoID,
+				SourceID:     firstSourceID,
+				Query:        "birth records",
+				Result:       "found",
+				CitationID:   firstCitationID,
+			},
+		},
+		Conclusions: "Citation produced and attached to the corresponding birth event assertion.",
+	}
 }
 
 // generatePlace creates a new place and adds it to the GLXFile, returning its ID.
