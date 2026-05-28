@@ -83,6 +83,10 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 
 ## Fields
 
+### Required Fields
+
+None. A log with only an `objective` and an empty `searches` list represents a planned investigation.
+
 ### Optional Fields
 
 | Field | Type | Description |
@@ -99,8 +103,6 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 | `conclusions` | string | Summary of findings |
 | `properties` | object | Vocabulary-defined properties |
 | `notes` | string \| string[] | Free-form notes about the log |
-
-No fields are required. A log with only an `objective` and an empty `searches` list represents a planned investigation.
 
 ### Search entry fields
 

@@ -46,6 +46,7 @@ The standard vocabulary files are:
 - `gender-types.glx`
 - `study-types.glx`
 - `study-statuses.glx`
+- `legal-statuses.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
@@ -786,6 +787,70 @@ study_statuses:
 ### Standard Study Statuses
 
 See [Study Entity](study#status) for the full list of standard statuses.
+
+---
+
+## Sex Types Vocabulary
+
+**Default file**: `vocabularies/sex-types.glx`
+
+**Used By**: [Person Entity](person) via the `sex` person property.
+
+**Purpose**: Defines the recorded-sex values used in source documents (GEDCOM `SEX`, census enumerations, vital records). For self-identified gender identity, see the Gender Types Vocabulary below.
+
+**Standard Templates**: See [Standard Vocabularies — Sex Types](../5-standard-vocabularies/sex-types.glx).
+
+### Standard Sex Types
+
+| Key | Label | GEDCOM | Description |
+|-----|-------|--------|-------------|
+| `male` | Male | `M` | Recorded as male in source documents |
+| `female` | Female | `F` | Recorded as female in source documents |
+| `unknown` | Unknown | `U` | Source was consulted but sex could not be determined |
+| `not_recorded` | Not Recorded | — | Source does not contain a sex field |
+| `other` | Other | `X` | Recorded value outside the male/female/unknown categories |
+
+---
+
+## Gender Types Vocabulary
+
+**Default file**: `vocabularies/gender-types.glx`
+
+**Used By**: [Person Entity](person) via the `gender` person property.
+
+**Purpose**: Defines self-identified gender identity values, primarily relevant for modern records and living persons. For sex as recorded in historical sources, see the Sex Types Vocabulary above. GEDCOM has no direct mapping for gender identity (it defers to `FACT`); archives may extend entries with a `gedcom:` field if they choose to export identity to a specific tag.
+
+**Standard Templates**: See [Standard Vocabularies — Gender Types](../5-standard-vocabularies/gender-types.glx).
+
+### Standard Gender Types
+
+| Key | Label | Description |
+|-----|-------|-------------|
+| `male` | Male | Self-identified as male |
+| `female` | Female | Self-identified as female |
+| `nonbinary` | Non-binary | Self-identified as non-binary |
+| `other` | Other | Self-identified gender outside the male/female/non-binary categories |
+
+---
+
+## Legal Statuses Vocabulary
+
+**Default file**: `vocabularies/legal-statuses.glx`
+
+**Used By**: [Relationship Entity](relationship) via the `legal_status` relationship property, primarily for distinguishing forms of coerced labor on the `enslavement` relationship type.
+
+**Purpose**: Captures the legal form under which a relationship operated when the distinction is historically meaningful (e.g., chattel slavery vs. indentured servitude vs. debt bondage).
+
+**Standard Templates**: See [Standard Vocabularies — Legal Statuses](../5-standard-vocabularies/legal-statuses.glx).
+
+### Standard Legal Statuses
+
+| Key | Label | Description |
+|-----|-------|-------------|
+| `chattel` | Chattel Slavery | Lifelong, hereditary enslavement with the enslaved person treated as transferable property |
+| `indentured` | Indentured Servitude | Fixed-term labor contract; may have been entered voluntarily or under coercion |
+| `debt_bondage` | Debt Bondage | Servitude pledged against a debt, lasting until the debt is repaid |
+| `apprenticeship` | Apprenticeship | Trade-learning contract; in some jurisdictions used post-emancipation as a euphemism for continued enslavement of free children of color |
 
 ---
 

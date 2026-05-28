@@ -14,7 +14,7 @@ Every GENEALOGIX file uses the same universal structure:
 
 ### Structure Requirements
 
-1. **Top-level keys are entity type plurals**: `persons`, `relationships`, `events`, `places`, `sources`, `citations`, `repositories`, `assertions`, `media`
+1. **Top-level keys are entity type plurals**: `persons`, `relationships`, `events`, `places`, `sources`, `citations`, `repositories`, `assertions`, `media`, `research_logs`, `studies`
 2. **Each key contains a map** where:
    - Keys are entity IDs (e.g., `person-abc12345`)
    - Values are entity objects

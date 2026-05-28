@@ -6,7 +6,7 @@ layout: doc
 
 # GENEALOGIX Specification
 
-Version 0.0.0-beta.10
+Version 0.0.0-beta.11
 
 ## Table of Contents
 
@@ -38,6 +38,8 @@ Version 0.0.0-beta.10
    - [Citation](4-entity-types/citation) - References to specific evidence
    - [Repository](4-entity-types/repository) - Institutions holding sources
    - [Media](4-entity-types/media) - Photographs, documents, etc.
+   - [ResearchLog](4-entity-types/research-log) - Research investigations and search history
+   - [Study](4-entity-types/study) - Research-project scope (One Place / One Name / family reconstruction)
    - [Vocabularies](4-entity-types/vocabularies) - Controlled type definitions (not an entity type)
 
 5. [Standard Vocabularies](5-standard-vocabularies/)
@@ -50,7 +52,7 @@ Version 0.0.0-beta.10
 
 This specification is under active development.
 
-- **Version**: 0.0.0-beta.10
+- **Version**: 0.0.0-beta.11
 - **Status**: Beta
 - **Stability**: Unstable API (breaking changes possible)
 

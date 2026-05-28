@@ -212,6 +212,12 @@ Evidence that requires interpretation or additional information to support a con
 
 ## L
 
+### Legal Statuses
+
+Standard vocabulary (`legal_statuses`) backing the `legal_status` relationship property. Distinguishes forms of coerced labor on enslavement relationships: `chattel`, `indentured`, `debt_bondage`, `apprenticeship`. Archives may extend with custom values.
+
+> **See Also:** [Legal Statuses Vocabulary](4-entity-types/vocabularies#legal-statuses-vocabulary), [Relationship Entity](4-entity-types/relationship)
+
 ### Locator
 
 A specific reference to a location within a source document, such as page number, entry number, film number, or URL.
@@ -245,6 +251,14 @@ An archive organization strategy where each entity is stored in a separate file,
 A property that can have multiple values, either as a simple list or as temporal values with associated dates (e.g., multiple occupations or residences over time).
 
 > **See Also:** [Temporal Property](#temporal-property)
+
+## N
+
+### Negative Evidence
+
+A documented search that did not find the expected record, which itself constitutes evidence. Required by the Genealogical Proof Standard's "reasonably exhaustive search" criterion. In GLX, modeled via the [ResearchLog](#researchlog) entity with `Search` entries whose `result` is `not_found`.
+
+> **See Also:** [ResearchLog](#researchlog), [Search](#search)
 
 ## O
 
@@ -362,7 +376,25 @@ A Git branch dedicated to investigating a specific research question or time per
 
 Documented analysis and decision-making process for genealogical conclusions, including conflicting evidence resolution and future research plans.
 
+### ResearchLog
+
+First-class entity that records research investigations: an objective, a status, and an embedded list of `Search` entries documenting every query performed (including searches that found nothing). Backs the Genealogical Proof Standard requirement for a "reasonably exhaustive search" by making negative evidence machine-readable.
+
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log), [Search](#search), [Negative Evidence](#negative-evidence)
+
 ## S
+
+### Search
+
+A single query performed during a research investigation, embedded as a sub-entity within a [ResearchLog](#researchlog). Records the repository / source / citation searched, the date, the query, the `result` (see [Search Result](#search-result)), and — when something was located — the citation produced.
+
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log), [Negative Evidence](#negative-evidence)
+
+### Search Result
+
+Outcome of a [Search](#search) within a [ResearchLog](#researchlog). One of: `found`, `not_found`, `inconclusive`, `partial`, `not_searched`. Backed by the standard `search_result_types` vocabulary.
+
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log)
 
 ### Schema
 

@@ -55,6 +55,11 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `confidence-levels.glx` | High, medium, low |
 | `sex-types.glx` | Male, female, unknown, not_recorded, other (recorded sex) |
 | `gender-types.glx` | Male, female, nonbinary, other (self-identified identity) |
+| `legal-statuses.glx` | Chattel, indentured, debt_bondage, apprenticeship (enslavement relationship metadata) |
+| `study-types.glx` | One Place Study, One Name Study, family reconstruction, brick wall, etc. |
+| `study-statuses.glx` | Active, paused, completed, abandoned |
+| `search-result-types.glx` | found, not_found, inconclusive, partial, not_searched |
+| `research-log-status-types.glx` | active, paused, completed, abandoned |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
 | `relationship-properties.glx` | Relationship properties |
@@ -187,7 +192,7 @@ This flexibility makes GLX suitable for traditional family history, local and co
 
 ## Entity Relationships
 
-GENEALOGIX uses 9 core entity types that form an interconnected web representing genealogical research:
+GENEALOGIX uses 11 core entity types that form an interconnected web representing genealogical research:
 
 ### Core Entities
 
@@ -197,9 +202,11 @@ Person ←→ Event ←→ Place
 Source ←→ Citation → Assertion → Person/Event/Place
 Repository → Source
 Media → (any entity)
+ResearchLog → Search → Repository/Source/Citation
+Study → Place/Source (scope declaration)
 ```
 
-**The 9 Entity Types:**
+**The 11 Entity Types:**
 
 1. **Person** - Individuals in the family archive
 2. **Relationship** - Connections between people (marriage, parent-child, etc.)
@@ -210,6 +217,8 @@ Media → (any entity)
 7. **Repository** - Institutions holding sources (archives, libraries, churches)
 8. **Media** - Digital objects (photos, documents, audio, video)
 9. **Assertion** - Evidence-based conclusions about facts
+10. **ResearchLog** - Research investigations and the searches performed (including negative evidence)
+11. **Study** - Research-project scope (One Place Study, One Name Study, family reconstruction, brick-wall investigation)
 
 ### Validation Dependencies
 
