@@ -811,7 +811,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 | `male` | Male | `M` | Recorded as male in source documents |
 | `female` | Female | `F` | Recorded as female in source documents |
 | `unknown` | Unknown | `U` | Source was consulted but sex could not be determined |
-| `not_recorded` | Not Recorded | — | Source does not contain a sex field |
+| `not_recorded` | Not Recorded | — (import-only `N` from GEDCOM 5.5.x; export emits `U` on 7.0 and `N` on 5.5.x) | Source does not contain a sex field |
 | `other` | Other | `X` | Recorded value outside the male/female/unknown categories |
 
 ---

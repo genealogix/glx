@@ -388,6 +388,12 @@ First-class entity that records research investigations: an objective, a status,
 
 > **See Also:** [ResearchLog Entity](4-entity-types/research-log), [Search](#search), [Negative Evidence](#negative-evidence)
 
+### Research Log Status
+
+Lifecycle state of a [ResearchLog](#researchlog), validated against the `research_log_status_types` vocabulary. Standard values: `open`, `in_progress`, `complete`, `blocked`.
+
+> **See Also:** [Research Log Status Types Vocabulary](4-entity-types/vocabularies#research-log-status-types-vocabulary)
+
 ## S
 
 ### Search
@@ -471,12 +477,6 @@ Lifecycle state of a Study, validated against the `study_statuses` vocabulary. S
 Classification of a Study, validated against the `study_types` vocabulary. Standard values: `one_place_study`, `one_name_study`, `family_reconstruction`, `descendancy_study`, `ancestry_study`, `brick_wall`, `other`.
 
 > **See Also:** [Study Types Vocabulary](4-entity-types/vocabularies#study-types-vocabulary)
-
-### Research Log Status
-
-Lifecycle state of a [ResearchLog](#researchlog), validated against the `research_log_status_types` vocabulary. Standard values: `open`, `in_progress`, `complete`, `blocked`.
-
-> **See Also:** [Research Log Status Types Vocabulary](4-entity-types/vocabularies#research-log-status-types-vocabulary)
 
 ### Status (Assertion)
 
