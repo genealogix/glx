@@ -621,7 +621,7 @@ For conflicting evidence where sources disagree and resolution is unclear, set t
 - All source references must point to existing Source entities
 - All media references must point to existing Media entities
 - `property` values should match properties defined in the appropriate [property vocabulary](vocabularies#property-vocabularies) (unknown properties generate warnings)
-- Confidence should be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary); out-of-vocabulary values generate a warning, not an error, so archives can extend the vocabulary with custom levels.
+- Confidence must be from the [confidence levels vocabulary](vocabularies#confidence-levels-vocabulary); out-of-vocabulary values are a hard error. To use a custom level, add it to the archive's `confidence-levels.glx` first.
 
 ## File Organization
 

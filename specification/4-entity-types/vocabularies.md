@@ -596,8 +596,8 @@ participant_roles:
 
 Common event roles:
 
-- `principal` - Primary person in the event
-- `subject` - Subject of the event (preferred over 'principal')
+- `principal` - Primary person in the event. Canonical role; this is what `glx init` and GEDCOM import emit.
+- `subject` - Accepted synonym of `principal`. Tooling treats both as equivalent (no data migration needed).
 - `groom`, `bride` - Marriage participants
 - `witness` - Event witness
 - `officiant` - Ceremony officiant
@@ -1469,22 +1469,14 @@ The `glx validate` command performs comprehensive validation with different seve
 
 The following issues cause validation to fail:
 
-1. **Missing vocabulary types**: All types used in entities must be defined in vocabularies
-   - Event types (`event_types`)
-   - Relationship types (`relationship_types`)
-   - Place types (`place_types`)
-   - Source types (`source_types`)
-   - Repository types (`repository_types`)
-   - Media types (`media_types`)
-   - Participant roles (`participant_roles`)
-   - Confidence levels (`confidence_levels`)
-   - Sex types (`sex_types`)
-   - Gender types (`gender_types`)
-   - Legal statuses (`legal_statuses`)
-   - Study types (`study_types`)
-   - Study statuses (`study_statuses`)
-   - Search result types (`search_result_types`)
-   - Research log status types (`research_log_status_types`)
+1. **Unknown vocabulary values on top-level entity type fields**: Values used on structural entity fields (`event.type`, `relationship.type`, `place.type`, `source.type`, `repository.type`, `media.type`, `participant.role`, `assertion.confidence`, `study.type`, `study.status`, `research_log.status`, `search.result`) must resolve in the corresponding vocabulary. Out-of-vocabulary values here are hard errors so that misspelled or unknown structural types fail loudly.
+
+   ```yaml
+   # Error: bogus_event_type not in event_types vocabulary
+   events:
+     event-test:
+       type: bogus_event_type  # ERROR
+   ```
 
 2. **Broken entity references**: All entity references must point to existing entities
 
@@ -1498,7 +1490,9 @@ The following issues cause validation to fail:
          residence: place-nonexistent  # ERROR if residence has reference_type: places
    ```
 
-4. **Structural validation**: Files must follow proper YAML/JSON structure and schema
+4. **Structural validation**: Files must follow proper YAML/JSON structure and schema (JSON Schema pass).
+
+Note: this hard-error rule covers *structural* type fields. Unknown values on properties declared with `vocabulary_type:` (e.g. the `gender` person property pointing at `gender_types`) are warnings, not errors — see the next section — so archives can experiment with new identity terms before formally adding them to the vocabulary.
 
 ### Validation Warnings (Soft Failures)
 

@@ -210,7 +210,7 @@ type Source struct {
 	RepositoryID string         `refType:"repositories"       yaml:"repository,omitempty"`
 	Language     string         `yaml:"language,omitempty"`
 	Media        []string       `refType:"media"              yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, abbreviation, call_number, url, etc.)
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, abbreviation, call_number, events_recorded, agency, coverage, external_ids, publication_info, url)
 	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
@@ -249,7 +249,7 @@ type Citation struct {
 	SourceID     string         `refType:"sources"           yaml:"source"`
 	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed)
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed, url, external_ids)
 	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
