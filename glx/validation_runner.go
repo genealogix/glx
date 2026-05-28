@@ -79,9 +79,9 @@ func validatePaths(streams *IOStreams, args []string) error {
 		streams.Printf("%d files validated.\n", fileCount)
 
 		if len(semanticWarnings) > 0 {
-			streams.Printf("Found %d warnings:\n", len(semanticWarnings))
+			streams.Errorf("Found %d warnings:\n", len(semanticWarnings))
 			for _, warn := range semanticWarnings {
-				streams.Printf("- ⚠️  %s\n", warn)
+				streams.Errorf("- ⚠️  %s\n", warn)
 			}
 		}
 
@@ -136,9 +136,9 @@ func validatePaths(streams *IOStreams, args []string) error {
 		streams.Printf("Validated %d files.\n", fileCount)
 	}
 	if len(allWarnings) > 0 {
-		streams.Printf("Found %d warnings:\n", len(allWarnings))
+		streams.Errorf("Found %d warnings:\n", len(allWarnings))
 		for _, warn := range allWarnings {
-			streams.Printf("- ⚠️  %s\n", warn)
+			streams.Errorf("- ⚠️  %s\n", warn)
 		}
 	}
 
