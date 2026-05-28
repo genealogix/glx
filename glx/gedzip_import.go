@@ -189,7 +189,7 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 		return "", fmt.Errorf("%w: backslash in entry name %q", ErrGEDZIPInvalidEntry, entryName)
 	}
 
-	if path.IsAbs(entryName) || strings.HasPrefix(entryName, "/") {
+	if path.IsAbs(entryName) {
 		return "", fmt.Errorf("%w: absolute path %q", ErrGEDZIPInvalidEntry, entryName)
 	}
 	if filepath.VolumeName(filepath.FromSlash(entryName)) != "" {
@@ -210,6 +210,31 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 // decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
 // when that size limit is exceeded, the partially written destination is
 // removed so the next caller cannot observe a truncated or oversized file.
+type entrySizeLimitReader struct {
+	r         io.Reader
+	remaining int64
+}
+
+func (l *entrySizeLimitReader) Read(p []byte) (int, error) {
+	if l.remaining <= 0 {
+		return 0, ErrGEDZIPEntryTooLarge
+	}
+
+	if int64(len(p)) > l.remaining {
+		p = p[:l.remaining]
+	}
+
+	n, err := l.r.Read(p)
+	l.remaining -= int64(n)
+
+	if l.remaining == 0 && err == nil {
+		// Surface oversize deterministically on the next read attempt.
+		return n, ErrGEDZIPEntryTooLarge
+	}
+
+	return n, err
+}
+
 func writeZipEntry(f *zip.File, destPath string) error {
 	src, err := f.Open()
 	if err != nil {
@@ -229,19 +254,18 @@ func writeZipEntry(f *zip.File, destPath string) error {
 		return fmt.Errorf("creating destination file for %q: %w", f.Name, err)
 	}
 
-	limitedSrc := io.LimitReader(src, maxGEDZIPEntryBytes+1)
-	written, copyErr := io.Copy(dst, limitedSrc)
+	limitedSrc := &entrySizeLimitReader{r: src, remaining: maxGEDZIPEntryBytes}
+	_, copyErr := io.Copy(dst, limitedSrc)
 	closeErr := dst.Close()
 
 	if copyErr != nil {
 		_ = os.Remove(destPath)
 
-		return fmt.Errorf("extracting zip entry %q: %w", f.Name, copyErr)
-	}
-	if written > maxGEDZIPEntryBytes {
-		_ = os.Remove(destPath)
+		if errors.Is(copyErr, ErrGEDZIPEntryTooLarge) {
+			return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", f.Name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
+		}
 
-		return fmt.Errorf("extracting zip entry %q: %w (limit %d bytes)", f.Name, ErrGEDZIPEntryTooLarge, maxGEDZIPEntryBytes)
+		return fmt.Errorf("extracting zip entry %q: %w", f.Name, copyErr)
 	}
 	if closeErr != nil {
 		_ = os.Remove(destPath)
