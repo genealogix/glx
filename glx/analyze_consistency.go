@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -32,7 +33,10 @@ func extractEventYear(archive *glxlib.GLXFile, personID, eventType string) int {
 	return glxlib.ExtractFirstYear(string(event.Date))
 }
 
-// analyzeConsistency checks for chronological inconsistencies across the archive.
+// analyzeConsistency checks for cross-record consistency issues — chronological
+// (birth-after-death, parent-younger-than-child, event-after-death, implausible
+// lifespan, marriage-before-birth), naming (duplicate sibling given names), and
+// geographic (sibling birthplace outliers).
 func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	var issues []AnalysisIssue
 
@@ -42,6 +46,7 @@ func analyzeConsistency(archive *glxlib.GLXFile) []AnalysisIssue {
 	issues = append(issues, checkImplausibleLifespan(archive)...)
 	issues = append(issues, checkMarriageBeforeBirth(archive)...)
 	issues = append(issues, checkDuplicateSiblingNames(archive)...)
+	issues = append(issues, checkSiblingBirthplaceOutlier(archive)...)
 
 	return issues
 }
@@ -431,4 +436,292 @@ func dedupeStrings(ss []string) []string {
 		}
 	}
 	return result
+}
+
+// hypotheticalConfidence is the set of confidence values that mark a
+// parent-child relationship as "hypothetical" for outlier-severity bumping.
+// "tentative" is the literal spec match; "low" and "disputed" are included
+// because low-confidence or disputed parentage is genealogically equivalent
+// — the link is not established. If false positives surface, narrow this set.
+var hypotheticalConfidence = map[string]bool{
+	"tentative": true,
+	"low":       true,
+	"disputed":  true,
+}
+
+// Severity levels used by the sibling-birthplace-outlier check. Extracted to
+// avoid goconst-flagged string repetition; the global severity vocabulary
+// otherwise lives inline at the AnalysisIssue call sites.
+const (
+	severityMedium = "medium"
+	severityHigh   = "high"
+)
+
+// buildRelationshipHypotheticalIndex walks archive.Assertions once and returns
+// a map from relationship ID to true if ANY assertion whose Subject is that
+// relationship has a confidence value in hypotheticalConfidence. The OR-aggregate
+// matches the stated semantic ("any assertion about that relationship triggers
+// hypothetical") and avoids the nondeterminism of picking a single
+// representative confidence under Go's randomized map iteration.
+func buildRelationshipHypotheticalIndex(archive *glxlib.GLXFile) map[string]bool {
+	if archive == nil {
+		return nil
+	}
+	index := make(map[string]bool)
+	for _, a := range archive.Assertions {
+		if a == nil || a.Subject.Type() != glxlib.EntityTypeRelationships {
+			continue
+		}
+		if hypotheticalConfidence[a.Confidence] {
+			index[a.Subject.ID()] = true
+		}
+	}
+
+	return index
+}
+
+// siblingChildPlace pairs a child ID with its recorded birth PlaceID.
+type siblingChildPlace struct {
+	childID string
+	placeID string
+}
+
+// siblingOutlierDedupKey identifies a unique (child, majority-place, outlier-
+// place) flag, so the same outlier isn't emitted twice via parallel iterations
+// over different parents. Uses a struct key rather than a string with delimiters
+// because entity IDs come from YAML and may legally contain any character.
+type siblingOutlierDedupKey struct {
+	childID  string
+	majority string
+	outlier  string
+}
+
+// parentChildIndex holds the three indexes needed for the sibling-birthplace
+// outlier check: per-parent children, per-child relationships, and per-rel
+// parents. Built once per archive.
+type parentChildIndex struct {
+	parentChildren map[string][]string // parentID → child person IDs (may duplicate)
+	childToRelIDs  map[string][]string // childID → relIDs the child appears in as child
+	relParents     map[string][]string // relID → parent person IDs in that relationship
+}
+
+// buildParentChildIndex walks the archive's relationships once and builds
+// the three indexes used by checkSiblingBirthplaceOutlier.
+func buildParentChildIndex(archive *glxlib.GLXFile) parentChildIndex {
+	idx := parentChildIndex{
+		parentChildren: make(map[string][]string),
+		childToRelIDs:  make(map[string][]string),
+		relParents:     make(map[string][]string),
+	}
+	for relID, rel := range archive.Relationships {
+		if rel == nil || !isParentChildType(rel.Type) {
+			continue
+		}
+		var parents, children []string
+		for _, p := range rel.Participants {
+			switch p.Role {
+			case glxlib.ParticipantRoleParent:
+				parents = append(parents, p.Person)
+			case glxlib.ParticipantRoleChild:
+				children = append(children, p.Person)
+			}
+		}
+		idx.relParents[relID] = parents
+		for _, cid := range children {
+			idx.childToRelIDs[cid] = append(idx.childToRelIDs[cid], relID)
+		}
+		for _, pid := range parents {
+			idx.parentChildren[pid] = append(idx.parentChildren[pid], children...)
+		}
+	}
+
+	return idx
+}
+
+// childrenWithBirthPlace returns the subset of childIDs that have a birth
+// event with a non-empty PlaceID, sorted by childID for deterministic output.
+func childrenWithBirthPlace(archive *glxlib.GLXFile, childIDs []string) []siblingChildPlace {
+	var withPlace []siblingChildPlace
+	for _, cid := range childIDs {
+		_, birth := glxlib.FindPersonEvent(archive, cid, glxlib.EventTypeBirth)
+		if birth == nil || birth.PlaceID == "" {
+			continue
+		}
+		withPlace = append(withPlace, siblingChildPlace{childID: cid, placeID: birth.PlaceID})
+	}
+	sort.Slice(withPlace, func(i, j int) bool { return withPlace[i].childID < withPlace[j].childID })
+
+	return withPlace
+}
+
+// strictMajorityBirthplace returns the PlaceID shared by a strict majority
+// (>50%) of the given children, and its count. If no strict majority exists,
+// returns ("", 0). Ties at the maximum are broken by sorted PlaceID order
+// for deterministic test output (a tie can't pass the strict-majority filter).
+func strictMajorityBirthplace(children []siblingChildPlace) (string, int) {
+	counts := make(map[string]int)
+	for _, c := range children {
+		counts[c.placeID]++
+	}
+	placeIDs := make([]string, 0, len(counts))
+	for pid := range counts {
+		placeIDs = append(placeIDs, pid)
+	}
+	sort.Strings(placeIDs)
+
+	var majorityPlace string
+	var majorityCount int
+	for _, pid := range placeIDs {
+		if counts[pid] > majorityCount {
+			majorityCount = counts[pid]
+			majorityPlace = pid
+		}
+	}
+	if majorityCount*2 <= len(children) {
+		return "", 0
+	}
+
+	return majorityPlace, majorityCount
+}
+
+// childRelationshipIsHypothetical returns true if any parent_child relationship
+// that connects iterationParentID to childID is flagged hypothetical. Restricts
+// to the iteration's parent so that an unrelated relationship (e.g. an
+// adoptive-parent tentative rel) doesn't bump the severity of a flag emitted
+// while analyzing the bio-parent's sibling group.
+func childRelationshipIsHypothetical(childID, iterationParentID string, idx parentChildIndex, relHypo map[string]bool) bool {
+	for _, relID := range idx.childToRelIDs[childID] {
+		if !slices.Contains(idx.relParents[relID], iterationParentID) {
+			continue
+		}
+		if relHypo[relID] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// parentBirthplaceReinforces returns true if the majority place matches at
+// least one parent's birth PlaceID, and the outlier place matches none of
+// them. Parents are gathered only from relationships that connect
+// iterationParentID to childID — so the cross-reference reflects the sibling
+// group being analyzed and isn't influenced by unrelated co-parents. Parents
+// with no birth event or no PlaceID are skipped (missing data is not a match).
+func parentBirthplaceReinforces(archive *glxlib.GLXFile, childID, iterationParentID, majorityPlace, outlierPlace string, idx parentChildIndex) bool {
+	parentSet := make(map[string]bool)
+	for _, relID := range idx.childToRelIDs[childID] {
+		if !slices.Contains(idx.relParents[relID], iterationParentID) {
+			continue
+		}
+		for _, p := range idx.relParents[relID] {
+			parentSet[p] = true
+		}
+	}
+	var majorityMatches, outlierMatches bool
+	for pid := range parentSet {
+		_, parentBirth := glxlib.FindPersonEvent(archive, pid, glxlib.EventTypeBirth)
+		if parentBirth == nil || parentBirth.PlaceID == "" {
+			continue
+		}
+		if parentBirth.PlaceID == majorityPlace {
+			majorityMatches = true
+		}
+		if parentBirth.PlaceID == outlierPlace {
+			outlierMatches = true
+		}
+	}
+
+	return majorityMatches && !outlierMatches
+}
+
+// buildSiblingOutlierIssue assembles the AnalysisIssue for a single outlier
+// child, including severity bumps and annotation phrases. Severity bumps are
+// computed using only the relationships that connect iterationParentID to the
+// child, so cross-family adoptive/step rels don't bleed in.
+func buildSiblingOutlierIssue(archive *glxlib.GLXFile, c siblingChildPlace, iterationParentID, majorityPlace string, majorityCount, n int, idx parentChildIndex, relHypo map[string]bool) AnalysisIssue {
+	severity := severityMedium
+	var annotations []string
+
+	if childRelationshipIsHypothetical(c.childID, iterationParentID, idx, relHypo) {
+		severity = severityHigh
+		annotations = append(annotations, "parent-child relationship hypothetical")
+	}
+	if parentBirthplaceReinforces(archive, c.childID, iterationParentID, majorityPlace, c.placeID, idx) {
+		severity = severityHigh
+		annotations = append(annotations, "matches parent birthplace")
+	}
+
+	childName := personName(archive, c.childID)
+	msg := fmt.Sprintf("%s — born in %s while %d of %d children with recorded birthplaces born in %s",
+		childName,
+		resolvePlaceName(c.placeID, archive),
+		majorityCount, n,
+		resolvePlaceName(majorityPlace, archive),
+	)
+	if len(annotations) > 0 {
+		msg += " (" + strings.Join(annotations, "; ") + ")"
+	}
+
+	return AnalysisIssue{
+		Category: "consistency",
+		Severity: severity,
+		Person:   c.childID,
+		Message:  msg,
+	}
+}
+
+// checkSiblingBirthplaceOutlier flags children whose birthplace differs from
+// the strict majority shared by their siblings. Severity is "medium" by
+// default, elevated to "high" when the outlier's parent-child relationship
+// is hypothetical or when the majority is reinforced by a parent's birthplace.
+//
+// The check runs per parent in the archive. A parent's child set must have at
+// least 3 children with recorded birth PlaceIDs, and a strict majority (>50%)
+// must share a single PlaceID, before any outliers are flagged. Place
+// comparison is exact PlaceID equality — siblings born in distinct but
+// related places (e.g. different counties of the same state) are treated as
+// outliers.
+func checkSiblingBirthplaceOutlier(archive *glxlib.GLXFile) []AnalysisIssue {
+	idx := buildParentChildIndex(archive)
+	relHypo := buildRelationshipHypotheticalIndex(archive)
+
+	// Dedup key for emitted issues: same child, same majority, same outlier
+	// place should produce one flag. The iteration parent is intentionally
+	// NOT part of the key — typical two-parent families would otherwise
+	// double-flag the same outlier. Per-parent severity is order-dependent
+	// across truly-separate parent perspectives (e.g. an outlier shared
+	// between two unrelated families with the same NY/VA pattern); sorted
+	// iteration makes the choice deterministic.
+	emitted := make(map[siblingOutlierDedupKey]bool)
+	var issues []AnalysisIssue
+
+	for _, parentID := range sortedPersonIDs(archive.Persons) {
+		childIDs := dedupeStrings(idx.parentChildren[parentID])
+		if len(childIDs) < 3 {
+			continue
+		}
+		withPlace := childrenWithBirthPlace(archive, childIDs)
+		if len(withPlace) < 3 {
+			continue
+		}
+		majorityPlace, majorityCount := strictMajorityBirthplace(withPlace)
+		if majorityPlace == "" {
+			continue
+		}
+
+		for _, c := range withPlace {
+			if c.placeID == majorityPlace {
+				continue
+			}
+			key := siblingOutlierDedupKey{childID: c.childID, majority: majorityPlace, outlier: c.placeID}
+			if emitted[key] {
+				continue
+			}
+			emitted[key] = true
+			issues = append(issues, buildSiblingOutlierIssue(archive, c, parentID, majorityPlace, majorityCount, len(withPlace), idx, relHypo))
+		}
+	}
+
+	return issues
 }

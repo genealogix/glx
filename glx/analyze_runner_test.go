@@ -715,6 +715,288 @@ func TestAnalyzeConsistency_NoFalsePositiveOnUniqueNames(t *testing.T) {
 	}
 }
 
+// --- Sibling Birthplace Outlier ---
+
+// siblingBirthplaceArchive builds an archive of one parent with the given
+// children (each {personID, birthPlaceID}) under parent_child relationships
+// named "rel-<childID>". Children with empty placeID get no birth event.
+// An optional parent birth place can be set via parentPlace ("" for none).
+func siblingBirthplaceArchive(parentID, parentPlace string, children []struct{ id, place string }) *glxlib.GLXFile {
+	archive := &glxlib.GLXFile{
+		Persons:       map[string]*glxlib.Person{parentID: {Properties: map[string]any{"name": parentID}}},
+		Relationships: map[string]*glxlib.Relationship{},
+		Events:        map[string]*glxlib.Event{},
+		Places: map[string]*glxlib.Place{
+			"place-ny": {Name: "New York"},
+			"place-va": {Name: "Virginia"},
+			"place-pa": {Name: "Pennsylvania"},
+		},
+	}
+	if parentPlace != "" {
+		archive.Events["event-birth-"+parentID] = &glxlib.Event{
+			Type:    glxlib.EventTypeBirth,
+			Date:    "1820",
+			PlaceID: parentPlace,
+			Participants: []glxlib.Participant{
+				{Person: parentID, Role: "principal"},
+			},
+		}
+	}
+	for _, c := range children {
+		archive.Persons[c.id] = &glxlib.Person{Properties: map[string]any{"name": c.id}}
+		archive.Relationships["rel-"+c.id] = &glxlib.Relationship{
+			Type: "parent_child",
+			Participants: []glxlib.Participant{
+				{Person: parentID, Role: "parent"},
+				{Person: c.id, Role: "child"},
+			},
+		}
+		if c.place == "" {
+			continue
+		}
+		archive.Events["event-birth-"+c.id] = &glxlib.Event{
+			Type:    glxlib.EventTypeBirth,
+			Date:    "1850",
+			PlaceID: c.place,
+			Participants: []glxlib.Participant{
+				{Person: c.id, Role: "principal"},
+			},
+		}
+	}
+
+	return archive
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_FlagsOutlier(t *testing.T) {
+	// James Green family: 5 of 6 children born in NY, Mary in VA.
+	archive := siblingBirthplaceArchive("person-james", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-4", "place-ny"},
+		{"person-child-5", "place-ny"},
+		{"person-mary", "place-va"},
+	})
+
+	issues := analyzeConsistency(archive)
+	found := findIssueByMessage(issues, "person-mary", "born in Virginia")
+	if found == nil {
+		t.Fatal("expected sibling-birthplace-outlier issue for person-mary")
+	}
+	if found.Severity != "medium" {
+		t.Errorf("got severity=%s, want medium", found.Severity)
+	}
+	if !containsSubstring(found.Message, "5 of 6") {
+		t.Errorf("expected '5 of 6' in message: %s", found.Message)
+	}
+	if !containsSubstring(found.Message, "New York") {
+		t.Errorf("expected resolved majority place name in message: %s", found.Message)
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_NoMajority(t *testing.T) {
+	// 3 NY, 3 VA — no strict majority, no flag.
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-4", "place-va"},
+		{"person-child-5", "place-va"},
+		{"person-child-6", "place-va"},
+	})
+
+	issues := analyzeConsistency(archive)
+	for _, issue := range issues {
+		if containsSubstring(issue.Message, "children with recorded birthplaces") {
+			t.Errorf("should not flag without strict majority, got: %s", issue.Message)
+		}
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_HypotheticalRelationship(t *testing.T) {
+	// 4 of 5 in NY, Mary in VA, with a tentative-confidence assertion about
+	// Mary's parent-child relationship → severity bumped to high.
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-4", "place-ny"},
+		{"person-mary", "place-va"},
+	})
+	archive.Assertions = map[string]*glxlib.Assertion{
+		"assert-mary-parent": {
+			Subject:    glxlib.EntityRef{Relationship: "rel-person-mary"},
+			Confidence: "tentative",
+		},
+	}
+
+	issues := analyzeConsistency(archive)
+	found := findIssueByMessage(issues, "person-mary", "born in Virginia")
+	if found == nil {
+		t.Fatal("expected sibling-birthplace-outlier issue for person-mary")
+	}
+	if found.Severity != "high" {
+		t.Errorf("got severity=%s, want high (hypothetical relationship)", found.Severity)
+	}
+	if !containsSubstring(found.Message, "hypothetical") {
+		t.Errorf("expected 'hypothetical' annotation in message: %s", found.Message)
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_MultipleAssertionsOneHypothetical(t *testing.T) {
+	// The relationship has TWO assertions: one "high" and one "tentative".
+	// Either order in archive.Assertions' map should produce severity="high",
+	// because ANY hypothetical assertion about the rel triggers the bump.
+	// Regression guard for the nondeterministic first-seen-confidence bug.
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-4", "place-ny"},
+		{"person-mary", "place-va"},
+	})
+	archive.Assertions = map[string]*glxlib.Assertion{
+		"assert-mary-parent-high": {
+			Subject:    glxlib.EntityRef{Relationship: "rel-person-mary"},
+			Confidence: "high",
+		},
+		"assert-mary-parent-tentative": {
+			Subject:    glxlib.EntityRef{Relationship: "rel-person-mary"},
+			Confidence: "tentative",
+		},
+	}
+
+	issues := analyzeConsistency(archive)
+	found := findIssueByMessage(issues, "person-mary", "born in Virginia")
+	if found == nil {
+		t.Fatal("expected sibling-birthplace-outlier issue for person-mary")
+	}
+	if found.Severity != "high" {
+		t.Errorf("got severity=%s, want high (any hypothetical assertion should bump regardless of co-existing higher-confidence assertions)", found.Severity)
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_UnrelatedHypotheticalRelIgnored(t *testing.T) {
+	// Mary has TWO parent-child rels: a bio rel to person-parent (5 of 6
+	// NY siblings, Mary VA) which is NOT hypothetical, and an adoptive rel
+	// to person-adopter (unrelated tiny family) which IS tentative.
+	// When analyzing person-parent's sibling group, the bump from the
+	// unrelated adoptive rel should NOT apply — severity should stay
+	// "medium" because person-parent's own rel to Mary is not hypothetical.
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-4", "place-ny"},
+		{"person-child-5", "place-ny"},
+		{"person-mary", "place-va"},
+	})
+	// Add an adoptive parent and the tentative-confidence rel to Mary.
+	archive.Persons["person-adopter"] = &glxlib.Person{Properties: map[string]any{"name": "person-adopter"}}
+	archive.Relationships["rel-adopter-mary"] = &glxlib.Relationship{
+		Type: "parent_child",
+		Participants: []glxlib.Participant{
+			{Person: "person-adopter", Role: "parent"},
+			{Person: "person-mary", Role: "child"},
+		},
+	}
+	archive.Assertions = map[string]*glxlib.Assertion{
+		"assert-adopter-mary": {
+			Subject:    glxlib.EntityRef{Relationship: "rel-adopter-mary"},
+			Confidence: "tentative",
+		},
+	}
+
+	issues := analyzeConsistency(archive)
+	found := findIssueByMessage(issues, "person-mary", "born in Virginia")
+	if found == nil {
+		t.Fatal("expected sibling-birthplace-outlier issue for person-mary")
+	}
+	if found.Severity != "medium" {
+		t.Errorf("got severity=%s, want medium (the tentative rel is to an unrelated parent and should not bump severity)", found.Severity)
+	}
+	if containsSubstring(found.Message, "hypothetical") {
+		t.Errorf("did not expect 'hypothetical' annotation when the only hypothetical rel is to an unrelated parent: %s", found.Message)
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_ParentReinforces(t *testing.T) {
+	// 4 of 5 in NY, parent also born in NY, Mary in VA → severity high
+	// because majority matches parent and outlier doesn't.
+	archive := siblingBirthplaceArchive("person-parent", "place-ny", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-4", "place-ny"},
+		{"person-mary", "place-va"},
+	})
+
+	issues := analyzeConsistency(archive)
+	found := findIssueByMessage(issues, "person-mary", "born in Virginia")
+	if found == nil {
+		t.Fatal("expected sibling-birthplace-outlier issue for person-mary")
+	}
+	if found.Severity != "high" {
+		t.Errorf("got severity=%s, want high (parent reinforces majority)", found.Severity)
+	}
+	if !containsSubstring(found.Message, "matches parent birthplace") {
+		t.Errorf("expected 'matches parent birthplace' annotation in message: %s", found.Message)
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_TooFewChildren(t *testing.T) {
+	// Only 2 children with known birthplaces → no check.
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-va"},
+	})
+
+	issues := analyzeConsistency(archive)
+	for _, issue := range issues {
+		if containsSubstring(issue.Message, "children with recorded birthplaces") {
+			t.Errorf("should not flag with fewer than 3 children, got: %s", issue.Message)
+		}
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_AllMatch(t *testing.T) {
+	// All 4 children share the same birthplace → no outlier flag.
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-4", "place-ny"},
+	})
+
+	issues := analyzeConsistency(archive)
+	for _, issue := range issues {
+		if containsSubstring(issue.Message, "children with recorded birthplaces") {
+			t.Errorf("should not flag when all siblings share birthplace, got: %s", issue.Message)
+		}
+	}
+}
+
+func TestAnalyzeConsistency_SiblingBirthplaceOutlier_MissingBirthPlacesExcluded(t *testing.T) {
+	// 3 children with recorded NY, 1 child with no birth event, 1 outlier
+	// in VA. Denominator should reflect only the 4 with known birthplaces.
+	archive := siblingBirthplaceArchive("person-parent", "", []struct{ id, place string }{
+		{"person-child-1", "place-ny"},
+		{"person-child-2", "place-ny"},
+		{"person-child-3", "place-ny"},
+		{"person-child-noplace", ""}, // no birth event
+		{"person-mary", "place-va"},
+	})
+
+	issues := analyzeConsistency(archive)
+	found := findIssueByMessage(issues, "person-mary", "born in Virginia")
+	if found == nil {
+		t.Fatal("expected outlier issue when some siblings have no birthplace")
+	}
+	if !containsSubstring(found.Message, "3 of 4") {
+		t.Errorf("expected '3 of 4' (excluding the no-birthplace child) in message: %s", found.Message)
+	}
+}
+
 // --- Child Census Suggestions (brickwall research) ---
 
 func TestSuggestChildCensus_PersonWithParentsNotBrickwall(t *testing.T) {
