@@ -89,6 +89,10 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 - `assertions/assertion-john-birth-place.glx` - Birth place
 - `assertions/assertion-marriage-date.glx` - Marriage date
 
+### Media (1 file)
+
+- `media/media-john-portrait.glx` - Studio portrait of John Smith, c.1880 (URI only; binary not bundled with the example)
+
 ### Studies (1 file)
 
 - `studies/study-smith-yorkshire.glx` - Family reconstruction scope for Smith family in 19th-c. Yorkshire
@@ -141,7 +145,7 @@ Should validate successfully with no errors.
 
 ## Key Features Demonstrated
 
-- **8 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions
+- **11 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions, media, studies, research_logs
 - **Descriptive IDs**: Human-readable entity identifiers
 - **Evidence Chains**: Complete provenance from repository to conclusion
 - **Confidence Levels**: Assertions express certainty

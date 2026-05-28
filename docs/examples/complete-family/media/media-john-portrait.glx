@@ -1,0 +1,9 @@
+media:
+  media-john-portrait:
+    title: "Portrait of John Smith, c.1880"
+    type: photograph
+    uri: "media/files/john-smith-1880.jpg"
+    description: "Studio portrait taken in Leeds, c.1880. Subject identified by handwritten note on the verso."
+    properties:
+      original_filename: "john-smith-1880.jpg"
+    notes: "Demonstrates a Media entity; the binary itself would live under `media/files/` (not shipped with this example)."

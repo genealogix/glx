@@ -1478,6 +1478,13 @@ The following issues cause validation to fail:
    - Media types (`media_types`)
    - Participant roles (`participant_roles`)
    - Confidence levels (`confidence_levels`)
+   - Sex types (`sex_types`)
+   - Gender types (`gender_types`)
+   - Legal statuses (`legal_statuses`)
+   - Study types (`study_types`)
+   - Study statuses (`study_statuses`)
+   - Search result types (`search_result_types`)
+   - Research log status types (`research_log_status_types`)
 
 2. **Broken entity references**: All entity references must point to existing entities
 

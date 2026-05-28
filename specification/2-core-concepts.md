@@ -262,8 +262,9 @@ A true/false value.
 **Example:**
 
 ```yaml
-verified: true
-primary_source: false
+# Inside a property definition (vocabulary), value_type: boolean drives the
+# allowed shapes; on an entity, the value is a literal true / false.
+living: true
 ```
 
 #### Date

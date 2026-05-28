@@ -83,7 +83,7 @@ A single `metadata` block may appear at the top level of any `.glx` file (typica
 | `copyright` | string | Copyright statement for the archive's data |
 | `language` | string | BCP-47 language tag for the archive's primary natural language |
 | `notes` | string \| string[] | Free-form notes about the archive as a whole |
-| `submitter` | object | Submitter contact details: `name`, `address`, `email`, `phone`, `url` |
+| `submitter` | object | Submitter contact details: `name`, `address`, `email`, `phone`, `website` |
 
 Example:
 
