@@ -278,10 +278,9 @@ GENEALOGIX is an open-source project that thrives on community participation:
 
 **For Developers:**
 
-1. Read [CLAUDE.md](CLAUDE.md) for project context
-2. Review the [Contributing Guide](/development/contributing)
-3. Check [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions)
-4. Follow [Best Practices](/guides/best-practices)
+1. Review the [Contributing Guide](/development/contributing)
+2. Check [GitHub Issues](https://github.com/genealogix/glx/issues) and [Discussions](https://github.com/genealogix/glx/discussions)
+3. Follow [Best Practices](/guides/best-practices)
 
 ### 🔒 Security & Compliance
 

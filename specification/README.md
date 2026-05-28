@@ -113,7 +113,7 @@ relationships:
 
 ## Contributing
 
-Major changes are discussed via GitHub issues and discussions. See [CONTRIBUTING.md](../CONTRIBUTING.md)
+Major changes are discussed via GitHub issues and discussions. See [Contributing](/development/contributing)
 
 ## License
 
