@@ -50,7 +50,11 @@
       "Bash(gh issue list:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",
-      "Bash(gh search issues:*)"
+      "Bash(gh search issues:*)",
+      "Bash(mktemp -d /tmp/glx-drift-*:*)",
+      "Bash(rm -rf /tmp/glx-drift-*:*)",
+      "Bash(tree:*)",
+      "Bash(gofmt:*)"
     ]
   },
   "hooks": {
