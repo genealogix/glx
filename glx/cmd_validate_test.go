@@ -260,7 +260,7 @@ func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
 	streams, out, _ := TestIOStreams()
 	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "directory with no GLX files should validate successfully")
-	require.Contains(t, out.String(), "No GLX files", "should report that zero GLX files were processed")
+	require.Contains(t, out.String(), "Validated 0 file", "should report that no GLX files were validated")
 }
 
 func TestRunValidate_NestedDirectories(t *testing.T) {
