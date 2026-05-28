@@ -386,7 +386,7 @@ date: "FRENCH_R 1 VEND 0012"    # 1 Vendemiaire Year 12
 
 #### Date Validation
 
-GENEALOGIX validates date formats at two levels:
+GENEALOGIX validates date formats at three levels:
 
 1. **Structure:** Dates must follow the format specifications above
 2. **Keywords:** Only the defined keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) are recognized. `AND` is a connector used inside the `BET YYYY AND YYYY` range form, not a standalone keyword.

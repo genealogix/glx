@@ -1019,6 +1019,7 @@ Standard properties include:
 
 Standard properties include:
 
+- `description` - Free-text description of the source (round-trips through GEDCOM `SOUR.TEXT`/`SOUR.NOTE`; demoted from a top-level Source field in #667)
 - `abbreviation` - Short reference name or title for the source (from GEDCOM ABBR)
 - `call_number` - Repository catalog or call number (from GEDCOM CALN)
 - `events_recorded` - Types of events this source documents (from GEDCOM EVEN)
