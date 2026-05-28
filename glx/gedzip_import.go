@@ -228,9 +228,9 @@ func (l *entrySizeLimitReader) Read(p []byte) (int, error) {
 	l.remaining -= int64(n)
 
 	if l.remaining == 0 {
-		// We've consumed all allowed bytes; the entry is oversized.
-		// remaining starts at maxGEDZIPEntryBytes+1, so this fires only
-		// after reading more than maxGEDZIPEntryBytes bytes.
+		// remaining starts at maxGEDZIPEntryBytes+1, so this fires after
+		// reading the (maxGEDZIPEntryBytes+1)th byte, meaning the entry
+		// exceeds the limit.
 		return n, ErrGEDZIPEntryTooLarge
 	}
 
