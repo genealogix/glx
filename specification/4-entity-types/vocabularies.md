@@ -802,7 +802,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Purpose**: Defines the recorded-sex values used in source documents (GEDCOM `SEX`, census enumerations, vital records). For self-identified gender identity, see the Gender Types Vocabulary below.
 
-**Standard Templates**: See [Standard Vocabularies — Sex Types](../5-standard-vocabularies/sex-types.glx).
+**Standard Templates**: See [Standard Vocabularies — Sex Types](../5-standard-vocabularies/#sex-types) for the complete default vocabulary.
 
 ### Standard Sex Types
 
@@ -824,7 +824,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Purpose**: Defines self-identified gender identity values, primarily relevant for modern records and living persons. For sex as recorded in historical sources, see the Sex Types Vocabulary above. GEDCOM has no direct mapping for gender identity (it defers to `FACT`); archives may extend entries with a `gedcom:` field if they choose to export identity to a specific tag.
 
-**Standard Templates**: See [Standard Vocabularies — Gender Types](../5-standard-vocabularies/gender-types.glx).
+**Standard Templates**: See [Standard Vocabularies — Gender Types](../5-standard-vocabularies/#gender-types) for the complete default vocabulary.
 
 ### Standard Gender Types
 
@@ -845,7 +845,7 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 **Purpose**: Captures the legal form under which a relationship operated when the distinction is historically meaningful (e.g., chattel slavery vs. indentured servitude vs. debt bondage).
 
-**Standard Templates**: See [Standard Vocabularies — Legal Statuses](../5-standard-vocabularies/legal-statuses.glx).
+**Standard Templates**: See [Standard Vocabularies — Legal Statuses](../5-standard-vocabularies/#legal-statuses) for the complete default vocabulary.
 
 ### Standard Legal Statuses
 
