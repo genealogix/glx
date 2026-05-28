@@ -14,10 +14,13 @@ install-deps: ## Install Go modules and npm packages
 	@echo "Installing website dependencies..."
 	cd website && npm install
 
+# lefthook version pin — bump alongside any hook-compatibility changes
+LEFTHOOK_VERSION ?= v2.1.8
+
 install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	@if ! command -v lefthook >/dev/null 2>&1; then \
-		echo "Installing lefthook via 'go install'..."; \
-		go install github.com/evilmartians/lefthook@latest; \
+		echo "Installing lefthook $(LEFTHOOK_VERSION) via 'go install'..."; \
+		go install github.com/evilmartians/lefthook@$(LEFTHOOK_VERSION); \
 		GO_BIN_DIR="$$(go env GOBIN)"; \
 		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$$(go env GOPATH)/bin"; fi; \
 		export PATH="$$GO_BIN_DIR:$$PATH"; \

@@ -76,7 +76,7 @@ The easiest way to get started is with the included [Dev Container](https://cont
 # GitHub Codespaces: Click "Code" → "Codespaces" → "Create codespace on main"
 ```
 
-The container includes Go, Node.js, golangci-lint, and all other tooling pre-configured.
+The container includes Go, Node.js, golangci-lint, and lefthook (pre-commit hooks installed automatically at create time). `goreleaser` is **not** installed in the container — it's only needed for `make release-snapshot` (maintainer/release work) and should be [installed manually](https://goreleaser.com/install/) on demand.
 
 ### Manual Setup
 
