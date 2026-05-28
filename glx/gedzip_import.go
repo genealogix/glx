@@ -227,8 +227,10 @@ func (l *entrySizeLimitReader) Read(p []byte) (int, error) {
 	n, err := l.r.Read(p)
 	l.remaining -= int64(n)
 
-	if l.remaining == 0 && err == nil {
-		// Surface oversize deterministically on the next read attempt.
+	if l.remaining == 0 {
+		// We've consumed all allowed bytes; the entry is oversized.
+		// remaining starts at maxGEDZIPEntryBytes+1, so this fires only
+		// after reading more than maxGEDZIPEntryBytes bytes.
 		return n, ErrGEDZIPEntryTooLarge
 	}
 
@@ -254,7 +256,7 @@ func writeZipEntry(f *zip.File, destPath string) error {
 		return fmt.Errorf("creating destination file for %q: %w", f.Name, err)
 	}
 
-	limitedSrc := &entrySizeLimitReader{r: src, remaining: maxGEDZIPEntryBytes}
+	limitedSrc := &entrySizeLimitReader{r: src, remaining: maxGEDZIPEntryBytes + 1}
 	_, copyErr := io.Copy(dst, limitedSrc)
 	closeErr := dst.Close()
 
