@@ -4,6 +4,10 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Write
+  - Bash(mktemp -d /tmp/glx-drift-*:*)
+  - Bash(./bin/glx validate:*)
+  - Bash(rm -rf /tmp/glx-drift-*:*)
 model: claude-opus-4-7
 ---
 
@@ -51,10 +55,43 @@ Compare with **specification/4-entity-types/*.md** and **glx/cmd_*.go** (CLI com
 - Check field types are accurately described
 
 ### 2. Example Code Blocks in Documentation
-- Extract YAML examples from markdown prose
-- Verify they would pass schema validation
+
+For each YAML-tagged fenced code block in a documentation markdown file:
+
+1. Extract the YAML body from the markdown source.
+2. Create a unique scratch directory and capture its path:
+
+```bash
+mktemp -d /tmp/glx-drift-XXXXXX
+```
+
+   Read the printed path (e.g. `/tmp/glx-drift-aB3xYz`); substitute it for `<TMPDIR>` in the remaining steps. Bash sessions don't persist between tool calls, so each subsequent command must use the literal path you captured — this is also what makes each command individually match its allow-list entry.
+
+3. Use the **Write** tool to save the extracted YAML body to `<TMPDIR>/snippet.glx`. Using Write rather than shelling out via `cat`/`printf`/heredoc avoids every shell-quoting concern around YAML bodies that contain `$`, backticks, or quotes.
+
+4. Run the validator on the file — do NOT mentally simulate schema validation:
+
+```bash
+./bin/glx validate <TMPDIR>/snippet.glx
+```
+
+5. Clean up this snippet's scratch directory before moving to the next one:
+
+```bash
+rm -rf <TMPDIR>
+```
+
+   Per-snippet cleanup keeps concurrent runs of this command from racing on the shared `/tmp/glx-drift-*` namespace. Substituting the literal path also keeps the command unambiguously matched against the `Bash(rm -rf /tmp/glx-drift-*:*)` allow-list entry regardless of how the matcher handles variable expansion.
+
+6. Classify the result deterministically by exit code alone — do NOT inspect the snippet's keys to second-guess the validator (that would re-introduce the LLM-simulation anti-pattern this command was rewritten to remove). Record the exit code and full stderr in all cases.
+   - **Exit 0** → snippet passed structural + semantic validation (`glx validate` runs both in single-file mode; only cross-reference checks are skipped). Still apply the narrative checks below since the validator does not catch specification-prose drift.
+   - **Any non-zero exit** → **CRITICAL**. Report the validator's stderr verbatim so the human reviewer can decide whether the finding is real drift (typoed wrapper like `people:` instead of `persons:`, deprecated field, malformed structure) or a *Phase-1 limitation* artifact: `glx validate` requires archive-shape input at top level, so doc blocks that demonstrate a bare entity fragment, a vocabulary entry, or a properties excerpt will trip `(root): additional properties '<key>', ... not allowed` even when the doc itself is correct. #910 tracks `--stdin --entity-type` to validate fragments directly; until it lands, treat ambiguous root-level errors as a human-review request rather than auto-downgrading them with an LLM heuristic.
+
+If `./bin/glx` is unavailable in the session, surface `category: validator_unavailable` rather than guessing (build with `make build-cli` — or directly `go build -o bin/glx ./glx` on systems without `make` — if needed).
+
+Beyond the structural check, compare each snippet against `specification/4-entity-types/*.md`:
 - Check for outdated syntax or deprecated fields
-- Verify field names, types, and structure match specification
+- Verify field names, types, and structure match what the specification documents
 
 ### 3. CLI Command Examples
 - Verify documented commands exist in glx/cmd_*.go
