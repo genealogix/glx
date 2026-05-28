@@ -27,7 +27,7 @@ import (
 // validatePaths performs comprehensive validation on the specified paths.
 // Output goes to the provided IOStreams (stdout for results, stderr for errors).
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // path-validation orchestration has many branches
 func validatePaths(streams *IOStreams, args []string) error {
 	paths := args
 	if len(paths) == 0 {
