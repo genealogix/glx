@@ -59,7 +59,7 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `study-types.glx` | One Place Study, One Name Study, family reconstruction, brick wall, etc. |
 | `study-statuses.glx` | Active, paused, completed, abandoned |
 | `search-result-types.glx` | found, not_found, inconclusive, partial, not_searched |
-| `research-log-status-types.glx` | active, paused, completed, abandoned |
+| `research-log-status-types.glx` | open, in_progress, complete, blocked |
 | `person-properties.glx` | Person properties (name, occupation, etc.) |
 | `event-properties.glx` | Event properties |
 | `relationship-properties.glx` | Relationship properties |
@@ -199,7 +199,7 @@ GENEALOGIX uses 11 core entity types that form an interconnected web representin
 ```text
 Person ←→ Relationship ←→ Person
 Person ←→ Event ←→ Place
-Source ←→ Citation → Assertion → Person/Event/Place
+Source ←→ Citation → Assertion → Person/Event/Place/Relationship
 Repository → Source
 Media → (any entity)
 ResearchLog → Search → Repository/Source/Citation

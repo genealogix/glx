@@ -324,9 +324,10 @@ relationship_types:
 
 ```yaml
 # events/event-1851-census.glx
-# Note: `household_number` and `literacy` are not in the standard event_properties
-# vocabulary; add them to your archive's `event-properties.glx` to silence the
-# unknown-property warnings, or omit them.
+# Note: `occupation`, `household_number`, and `literacy` are not in the standard
+# event_properties vocabulary (`occupation` is a person property). Add them to
+# your archive's `event-properties.glx` to silence the unknown-property
+# warnings, or omit them.
 events:
   event-1851-census-district12:
     type: census

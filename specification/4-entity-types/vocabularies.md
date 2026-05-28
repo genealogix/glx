@@ -911,7 +911,9 @@ GENEALOGIX provides standard person properties:
 | `nationality` | string | Yes | NATI | National citizenship |
 | `caste` | string | Yes | CAST | Caste, tribe, or social group |
 | `ssn` | string | No | SSN | Social Security Number |
+| `primary_name` | string | No | | Simple display name for the person, used as a fallback when the structured `name` property is not available |
 | `external_ids` | string (multi) | No | EXID | External identifiers from other systems |
+| `living` | boolean | No | | Opt-in marker that the person is currently living; honored by `glx export --privatize-living` (see [#288](https://github.com/genealogix/glx/issues/288)) |
 
 ### Event Properties Vocabulary
 
@@ -1670,6 +1672,11 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Participant Roles | [participant-roles.schema.json](../schema/v1/vocabularies/participant-roles.schema.json) |
 | Repository Types | [repository-types.schema.json](../schema/v1/vocabularies/repository-types.schema.json) |
 | Confidence Levels | [confidence-levels.schema.json](../schema/v1/vocabularies/confidence-levels.schema.json) |
+| Sex Types | [sex-types.schema.json](../schema/v1/vocabularies/sex-types.schema.json) |
+| Gender Types | [gender-types.schema.json](../schema/v1/vocabularies/gender-types.schema.json) |
+| Legal Statuses | [legal-statuses.schema.json](../schema/v1/vocabularies/legal-statuses.schema.json) |
+| Study Types | [study-types.schema.json](../schema/v1/vocabularies/study-types.schema.json) |
+| Study Statuses | [study-statuses.schema.json](../schema/v1/vocabularies/study-statuses.schema.json) |
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
 | Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |

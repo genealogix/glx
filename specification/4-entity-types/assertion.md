@@ -83,7 +83,7 @@ The `subject` field uses a typed reference to avoid entity ID collisions. Exactl
 | `properties` | object | No | Per-participant properties (validated against `event_properties` vocabulary for event subjects, `relationship_properties` for relationship subjects) |
 | `notes` | string \| string[] | No | Notes about this participant |
 
-## Required Fields
+## Required Field Details
 
 ### Entity ID (map key)
 
@@ -177,7 +177,7 @@ media:
   - media-gravestone-photo
 ```
 
-## Optional Fields
+## Optional Field Details
 
 ### `participant`
 
@@ -189,9 +189,13 @@ Structure:
 
 ```yaml
 participant:
-  person: "person-id"    # Reference to the person (required)
+  person: "person-id"       # Reference to the person (required)
   role: "participant-role"  # Role of the participant (optional)
-  notes: "string"        # Notes about the participant (optional)
+  properties:               # Per-participant properties (optional; validated against
+    age_at_event: "32"      # event_properties for event subjects or
+    name_as_recorded:       # relationship_properties for relationship subjects)
+      surname: "Smyth"
+  notes: "string"           # Notes about the participant (optional)
 ```
 
 **Key Points:**

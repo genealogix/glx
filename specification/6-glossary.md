@@ -96,7 +96,7 @@ Common organizational pattern for GENEALOGIX files (not required). Files can be 
 
 ### Entity
 
-A typed record in a GENEALOGIX archive representing a person, event, place, relationship, source, citation, repository, assertion, or media file.
+A typed record in a GENEALOGIX archive representing a person, event, place, relationship, source, citation, repository, assertion, media file, research log, or study.
 
 > **See Also:** [Entity Types](4-entity-types/)
 

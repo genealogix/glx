@@ -135,7 +135,7 @@ glx validate
 **Expected output:**
 
 ```text
-Validated 21 files.
+Validated 26 files.
 ✅ Archive is valid.
 ```
 
