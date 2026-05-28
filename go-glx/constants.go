@@ -482,7 +482,11 @@ var AllEntityTypes = []EntityType{
 // entityTypeSingular maps each EntityType to its singular form. Singulars use
 // hyphens (`research-log`) rather than underscores (`research_logs`) because
 // they participate in entity IDs (e.g., `research-log-john-smith`), which are
-// constrained to `[a-zA-Z0-9-]{1,64}`.
+// constrained to `[a-zA-Z0-9-]{1,64}`. This map IS the source of truth — the
+// values are inherently string literals tied to the entity-type vocabulary,
+// so goconst's "extract a constant" suggestion is misplaced here.
+//
+//nolint:goconst // the literal values are the source of truth for singular names
 var entityTypeSingular = map[EntityType]string{
 	EntityTypePersons:       "person",
 	EntityTypeRelationships: "relationship",

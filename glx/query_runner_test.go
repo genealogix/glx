@@ -166,8 +166,8 @@ func TestQueryResearchLogs_DirectFunction(t *testing.T) {
 	// branches (status fallback, title-or-objective fallback, count).
 	archive := &glxlib.GLXFile{
 		ResearchLogs: map[string]*glxlib.ResearchLog{
-			"research-log-with-status":      {Title: "With status", Status: "complete"},
-			"research-log-no-status":        {Title: "No status"},
+			"research-log-with-status":        {Title: "With status", Status: "complete"},
+			"research-log-no-status":          {Title: "No status"},
 			"research-log-objective-fallback": {Objective: "Find baptism"},
 		},
 	}
@@ -177,8 +177,8 @@ func TestQueryResearchLogs_DirectFunction(t *testing.T) {
 func TestQueryStudies_DirectFunction(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Studies: map[string]*glxlib.Study{
-			"study-typed":    {Title: "Typed", Type: "family_reconstruction", Status: "active"},
-			"study-bare":     {Title: "Bare"},
+			"study-typed":     {Title: "Typed", Type: "family_reconstruction", Status: "active"},
+			"study-bare":      {Title: "Bare"},
 			"study-type-only": {Title: "Just typed", Type: "one_name_study"},
 		},
 	}

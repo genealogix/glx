@@ -179,8 +179,8 @@ func generateStudy(glxFile *GLXFile) {
 
 	glxFile.Studies[studyID] = &Study{
 		Title:     gofakeit.LastName() + " family reconstruction",
-		Type:      "family_reconstruction",
-		Status:    "active",
+		Type:      StudyTypeFamilyReconstruction,
+		Status:    StudyStatusActive,
 		DateRange: DateString("FROM 1900 TO 2000"),
 		Places:    placeRefs,
 		Sources:   sourceRefs,
@@ -213,7 +213,7 @@ func generateResearchLog(glxFile *GLXFile, repoID string) {
 				RepositoryID: repoID,
 				SourceID:     firstSourceID,
 				Query:        "birth records",
-				Result:       "found",
+				Result:       SearchResultFound,
 				CitationID:   firstCitationID,
 			},
 		},
