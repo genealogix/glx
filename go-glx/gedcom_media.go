@@ -157,7 +157,7 @@ func appendMediaID(props map[string]any, mediaID string) {
 // When a relative FILE path is found, it creates a MediaFileSource entry and rewrites
 // the URI to point to media/files/<filename>. BLOB data is also captured for the CLI to write.
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *ConversionContext) *Media {
 	media := &Media{
 		Properties: make(map[string]any),

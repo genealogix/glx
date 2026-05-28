@@ -20,7 +20,7 @@ import (
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	if famRecord.Tag != GedcomTagFam {
 		return fmt.Errorf("%w: expected %s, got %s", ErrUnexpectedRecordType, GedcomTagFam, famRecord.Tag)
