@@ -127,7 +127,10 @@ func (s *DefaultSerializer) SerializeMultiFileToMap(glx *GLXFile) (map[string][]
 
 	files := make(map[string][]byte)
 
-	// Add standard vocabularies
+	// Add standard vocabularies.
+	// path.Join (forward slashes), not filepath.Join: these are logical
+	// archive keys, not disk paths, and must be OS-independent so the same
+	// GLXFile produces the same map on Linux and Windows. See issue #900.
 	for filename, content := range StandardVocabularies() {
 		vocabPath := path.Join("vocabularies", filename)
 		files[vocabPath] = content
@@ -241,7 +244,8 @@ func serializeEntitiesWrapped[T any](entities map[string]T, dirName, entityType 
 			return fmt.Errorf("failed to marshal %s %s: %w", entityType, entityID, err)
 		}
 
-		// Add to files map
+		// path.Join, not filepath.Join — same rationale as vocabPath in
+		// SerializeMultiFileToMap above (issue #900).
 		filePath := path.Join(dirName, filename)
 		files[filePath] = yamlBytes
 	}
