@@ -30,7 +30,6 @@ func extractEventYear(archive *glxlib.GLXFile, personID, eventType string) int {
 	if event == nil {
 		return 0
 	}
-
 	return glxlib.ExtractFirstYear(string(event.Date))
 }
 
@@ -291,10 +290,9 @@ func checkDuplicateSiblingNames(archive *glxlib.GLXFile) []AnalysisIssue {
 		}
 		var parents, children []string
 		for _, p := range rel.Participants {
-			switch p.Role {
-			case glxlib.ParticipantRoleParent:
+			if p.Role == glxlib.ParticipantRoleParent {
 				parents = append(parents, p.Person)
-			case glxlib.ParticipantRoleChild:
+			} else if p.Role == glxlib.ParticipantRoleChild {
 				children = append(children, p.Person)
 			}
 		}
@@ -388,7 +386,6 @@ func extractGivenName(person *glxlib.Person) string {
 	if len(parts) > 0 {
 		return parts[0]
 	}
-
 	return ""
 }
 
@@ -413,7 +410,7 @@ func allReplacementPattern(siblings []siblingInfo, archive *glxlib.GLXFile) bool
 
 	sort.Slice(pairs, func(i, j int) bool { return pairs[i].birth < pairs[j].birth })
 
-	for i := range len(pairs) - 1 {
+	for i := 0; i < len(pairs)-1; i++ {
 		if pairs[i].death == 0 || pairs[i+1].birth == 0 {
 			return false
 		}
@@ -425,7 +422,6 @@ func allReplacementPattern(siblings []siblingInfo, archive *glxlib.GLXFile) bool
 			return false
 		}
 	}
-
 	return true
 }
 
@@ -439,7 +435,6 @@ func dedupeStrings(ss []string) []string {
 			result = append(result, s)
 		}
 	}
-
 	return result
 }
 

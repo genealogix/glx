@@ -19,9 +19,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
-
 	glxlib "github.com/genealogix/glx/go-glx"
+	"gopkg.in/yaml.v3"
 )
 
 // censusAdd reads a census template, loads the archive, generates entities,
@@ -56,7 +55,6 @@ func censusAdd(templatePath, archivePath string, dryRun, verbose bool) error {
 
 	if dryRun {
 		fmt.Println("\n(dry run — no files written)")
-
 		return nil
 	}
 
@@ -67,7 +65,6 @@ func censusAdd(templatePath, archivePath string, dryRun, verbose bool) error {
 	}
 
 	fmt.Printf("Wrote %d entity files to %s\n", count, archivePath)
-
 	return nil
 }
 
@@ -106,7 +103,6 @@ func loadArchiveForCensus(path string) (*glxlib.GLXFile, error) {
 	for _, d := range duplicates {
 		fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 	}
-
 	return archive, nil
 }
 

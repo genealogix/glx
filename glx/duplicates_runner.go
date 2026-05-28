@@ -54,7 +54,6 @@ func findDuplicates(archivePath string, threshold float64, personFilter string, 
 	}
 
 	printDuplicatesText(result, archive)
-
 	return nil
 }
 
@@ -73,7 +72,6 @@ func loadArchiveForDuplicates(path string) (*glxlib.GLXFile, error) {
 		for _, d := range duplicates {
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
-
 		return archive, nil
 	}
 
@@ -84,7 +82,6 @@ func loadArchiveForDuplicates(path string) (*glxlib.GLXFile, error) {
 func printDuplicatesText(result *glxlib.DuplicateResult, archive *glxlib.GLXFile) {
 	if len(result.Pairs) == 0 {
 		fmt.Printf("No potential duplicates found (threshold: %.2f).\n", result.Threshold)
-
 		return
 	}
 
@@ -123,7 +120,6 @@ func personLabel(archive *glxlib.GLXFile, personID string) string {
 	if _, birthEvent := glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth); birthEvent != nil && birthEvent.Date != "" {
 		return fmt.Sprintf("%s (b. %s)", name, string(birthEvent.Date))
 	}
-
 	return name
 }
 
@@ -134,6 +130,5 @@ func printDuplicatesJSON(result *glxlib.DuplicateResult) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 	fmt.Println(string(data))
-
 	return nil
 }

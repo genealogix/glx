@@ -513,7 +513,6 @@ func generateCandidatePairs(archive *GLXFile, idx *duplicateIndex, personFilter 
 			}
 			pairs = append(pairs, [2]string{a, b})
 		}
-
 		return pairs
 	}
 
@@ -528,7 +527,6 @@ func generateCandidatePairs(archive *GLXFile, idx *duplicateIndex, personFilter 
 				pairs = append(pairs, [2]string{ids[i], ids[j]})
 			}
 		}
-
 		return pairs
 	}
 
@@ -552,7 +550,7 @@ func generateCandidatePairs(archive *GLXFile, idx *duplicateIndex, personFilter 
 
 	seen := make(map[[2]string]bool)
 	for _, block := range blocks {
-		for i := range block {
+		for i := 0; i < len(block); i++ {
 			for j := i + 1; j < len(block); j++ {
 				a, b := block[i], block[j]
 				if a > b {
@@ -573,7 +571,6 @@ func generateCandidatePairs(archive *GLXFile, idx *duplicateIndex, personFilter 
 		if pairs[i][0] != pairs[j][0] {
 			return pairs[i][0] < pairs[j][0]
 		}
-
 		return pairs[i][1] < pairs[j][1]
 	})
 
@@ -741,7 +738,6 @@ func splitFullName(name string) (given, surname string) {
 	if len(parts) == 1 {
 		return parts[0], ""
 	}
-
 	return strings.Join(parts[:len(parts)-1], " "), parts[len(parts)-1]
 }
 
@@ -755,7 +751,6 @@ func compareSurnames(a, b string) float64 {
 	if a == b {
 		return 1.0
 	}
-
 	return normalizedLevenshtein(a, b)
 }
 
@@ -871,7 +866,10 @@ func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, st
 		return 0, "no overlap", true
 	}
 
-	maxPeers := max(len(peersB), len(peersA))
+	maxPeers := len(peersA)
+	if len(peersB) > maxPeers {
+		maxPeers = len(peersB)
+	}
 
 	score := float64(common) / float64(maxPeers)
 
@@ -905,7 +903,10 @@ func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string, b
 		return 0, "no overlap", true
 	}
 
-	maxEvents := max(len(eventsB), len(eventsA))
+	maxEvents := len(eventsA)
+	if len(eventsB) > maxEvents {
+		maxEvents = len(eventsB)
+	}
 
 	score := float64(common) / float64(maxEvents)
 
@@ -916,7 +917,6 @@ func pluralize(count int, label string) string {
 	if count == 1 {
 		return "1 " + label
 	}
-
 	return fmt.Sprintf("%d %s", count, label)
 }
 
@@ -971,7 +971,6 @@ func normalizedLevenshtein(a, b string) float64 {
 	if maxLen == 0 {
 		return 1.0
 	}
-
 	return 1.0 - float64(levenshteinDistance(a, b))/float64(maxLen)
 }
 
@@ -1040,7 +1039,6 @@ func areNicknameVariants(a, b string) bool {
 	if okA && okB {
 		return canonA == canonB
 	}
-
 	return false
 }
 
@@ -1057,6 +1055,5 @@ func isInitialMatch(a, b string) bool {
 	if utf8.RuneCountInString(cleanB) == 1 && utf8.RuneCountInString(cleanA) > 1 {
 		return strings.HasPrefix(cleanA, cleanB)
 	}
-
 	return false
 }

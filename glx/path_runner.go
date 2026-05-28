@@ -85,7 +85,6 @@ func showPath(archivePath, fromQuery, toQuery string, maxHops int, jsonOutput bo
 	}
 
 	printPathText(result)
-
 	return nil
 }
 
@@ -104,7 +103,6 @@ func loadArchiveForPath(path string) (*glxlib.GLXFile, error) {
 		for _, d := range duplicates {
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
-
 		return archive, nil
 	}
 
@@ -143,7 +141,6 @@ func resolvePersonForPath(archive *glxlib.GLXFile, query string) (string, error)
 			name := extractPersonName(archive.Persons[id])
 			lines = append(lines, fmt.Sprintf("  %s  %s", id, name))
 		}
-
 		return "", fmt.Errorf("multiple persons match %q:\n%s\nUse exact person ID", query, strings.Join(lines, "\n"))
 	}
 }
@@ -262,7 +259,6 @@ func buildPathResult(fromID, toID string, path []*bfsNode, archive *glxlib.GLXFi
 	if path == nil {
 		result.Message = "No path found"
 		result.Path = []pathHop{}
-
 		return result
 	}
 
@@ -297,7 +293,6 @@ func pathPersonName(archive *glxlib.GLXFile, personID string) string {
 	if len(names) == 0 {
 		return personID
 	}
-
 	return names[0]
 }
 
@@ -305,7 +300,6 @@ func pathPersonName(archive *glxlib.GLXFile, personID string) string {
 func printPathText(result *pathResult) {
 	if result.Message != "" {
 		fmt.Printf("\n  %s between %s and %s\n\n", result.Message, result.From, result.To)
-
 		return
 	}
 
@@ -328,7 +322,6 @@ func formatRelLabel(relType, role string) string {
 	if role != "" {
 		return role + " in " + relType
 	}
-
 	return relType
 }
 
@@ -339,6 +332,5 @@ func printPathJSON(result *pathResult) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 	fmt.Println(string(data))
-
 	return nil
 }

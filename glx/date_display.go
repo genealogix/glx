@@ -32,7 +32,6 @@ func displayDate(date string) string {
 	if date == "" {
 		return "(no date)"
 	}
-
 	return formatReadableDate(date)
 }
 
@@ -53,7 +52,6 @@ func formatReadableDate(s string) string {
 		if day == "" {
 			day = "0"
 		}
-
 		return month + " " + day + ", " + s[:4]
 	}
 	// Year-month: YYYY-MM
@@ -63,7 +61,6 @@ func formatReadableDate(s string) string {
 			return month + " " + s[:4]
 		}
 	}
-
 	return s
 }
 

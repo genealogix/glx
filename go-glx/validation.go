@@ -345,7 +345,6 @@ func (glx *GLXFile) suggestReferenceKey(targetTypes []string, refID string, resu
 			}
 		}
 	}
-
 	return ""
 }
 
@@ -426,7 +425,6 @@ func (glx *GLXFile) validateParticipantProperties(
 				if pf.IsValid() && !pf.IsNil() {
 					if props, ok := pf.Interface().(map[string]any); ok && len(props) > 0 {
 						hasParticipantProps = true
-
 						break
 					}
 				}
@@ -449,7 +447,6 @@ func (glx *GLXFile) validateParticipantProperties(
 					})
 				}
 			}
-
 			continue
 		}
 		for i := range participantsField.Len() {
@@ -645,7 +642,6 @@ func (glx *GLXFile) validatePropertyVocabularyValue(
 			Message: fmt.Sprintf("%s[%s].properties.%s: vocabulary '%s' not loaded, cannot validate value",
 				entityType, entityID, propName, propDef.VocabularyType),
 		})
-
 		return
 	}
 
@@ -758,7 +754,7 @@ func (glx *GLXFile) validatePropertyValue(
 			for i, item := range listVal {
 				fieldPath := fmt.Sprintf("properties.%s[%d]", propName, i)
 				if structuredVal, isMap := item.(map[string]any); isMap {
-					glx.validateStructuredValue(entityType, entityID, propName+"["+strconv.Itoa(i)+"]", structuredVal, propDef, result)
+					glx.validateStructuredValue(entityType, entityID, propName+"["+fmt.Sprint(i)+"]", structuredVal, propDef, result)
 				} else {
 					glx.validateValueType(entityType, entityID, fieldPath, item, propDef.ValueType, result)
 				}
@@ -1254,6 +1250,5 @@ func isValidMediaURI(s string) bool {
 // isValidMIMEType checks if a string follows the standard type/subtype MIME format.
 func isValidMIMEType(s string) bool {
 	parts := strings.SplitN(s, "/", 2)
-
 	return len(parts) == 2 && len(parts[0]) > 0 && len(parts[1]) > 0
 }

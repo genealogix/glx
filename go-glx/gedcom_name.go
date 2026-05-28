@@ -241,7 +241,6 @@ func ExtractNameFields(nameProperty any) (given, surname string) {
 		if len(nameList) > 0 {
 			return ExtractNameFields(nameList[0])
 		}
-
 		return "", ""
 	}
 
@@ -275,7 +274,6 @@ func GetFullName(nameProperty any) string {
 		if len(nameList) > 0 {
 			return GetFullName(nameList[0])
 		}
-
 		return ""
 	}
 

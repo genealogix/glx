@@ -62,13 +62,11 @@ func renameEntities(archivePath, oldID, newID string, dryRun bool) error {
 
 	if dryRun {
 		fmt.Println("\n(dry run — no files written)")
-
 		return nil
 	}
 
 	if isDir {
 		return safeWriteMultiFileArchive(archivePath, archive)
 	}
-
 	return writeSingleFileArchive(archivePath, archive, false)
 }

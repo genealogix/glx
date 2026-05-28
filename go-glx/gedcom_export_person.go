@@ -253,7 +253,6 @@ func exportNameRecords(personID string, nameVal any, expCtx *ExportContext) []*G
 				}
 			}
 		}
-
 		return records
 	}
 
@@ -384,7 +383,6 @@ func formatGEDCOMNameValue(value string, fields map[string]any) string {
 		}
 
 		result := strings.Join(parts, " ")
-
 		return strings.TrimSpace(result)
 	}
 
@@ -819,7 +817,6 @@ func exportPersonSourceRefs(personID string, person *Person, expCtx *ExportConte
 			if !exists {
 				expCtx.addExportWarning(EntityTypePersons, personID,
 					fmt.Sprintf("citation %s not found", citationID))
-
 				continue
 			}
 
@@ -951,7 +948,6 @@ func extractStringList(val any) []string {
 				result = append(result, s)
 			}
 		}
-
 		return result
 	case string:
 		return []string{v}

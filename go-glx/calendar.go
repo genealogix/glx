@@ -33,9 +33,9 @@ var knownCalendars = map[string]string{
 // gedcomEscapeToCalendar maps GEDCOM calendar escape names to GLX prefixes.
 // The key is the text between @#D and @ (e.g., "JULIAN", "HEBREW", "FRENCH R").
 var gedcomEscapeToCalendar = map[string]string{
-	"JULIAN":    CalendarJulian,
-	"HEBREW":    CalendarHebrew,
-	"FRENCH R":  CalendarFrenchR,
+	"JULIAN":   CalendarJulian,
+	"HEBREW":   CalendarHebrew,
+	"FRENCH R": CalendarFrenchR,
 	"GREGORIAN": "", // Gregorian is the default — no prefix needed
 }
 
@@ -56,13 +56,13 @@ func extractCalendar(date string) (string, string) {
 
 	// Find the closing @. Search from after "@#D" (3 chars).
 	rest := trimmed[3:]
-	before, after, ok := strings.Cut(rest, "@")
-	if !ok {
+	endIdx := strings.Index(rest, "@")
+	if endIdx == -1 {
 		return "", date
 	}
 
-	escapeName := before
-	remainder := strings.TrimSpace(after)
+	escapeName := rest[:endIdx]
+	remainder := strings.TrimSpace(rest[endIdx+1:])
 
 	calendar, known := gedcomEscapeToCalendar[escapeName]
 	if !known {
@@ -89,21 +89,21 @@ func ExtractCalendarPrefix(date DateString) (string, DateString) {
 		return "", date
 	}
 
-	before, after, ok := strings.Cut(s, " ")
-	if !ok {
+	spaceIdx := strings.IndexByte(s, ' ')
+	if spaceIdx == -1 {
 		return "", date
 	}
 
-	candidate := before
+	candidate := s[:spaceIdx]
 
 	// Check if the candidate is a known calendar prefix.
 	if _, ok := knownCalendars[candidate]; ok {
-		return candidate, DateString(after)
+		return candidate, DateString(s[spaceIdx+1:])
 	}
 
 	// Also check for unknown calendars: all-uppercase, no digits, not a known qualifier.
 	if isCalendarPrefix(candidate) {
-		return candidate, DateString(after)
+		return candidate, DateString(s[spaceIdx+1:])
 	}
 
 	return "", date

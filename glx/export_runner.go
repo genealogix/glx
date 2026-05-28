@@ -123,7 +123,6 @@ func loadGLXArchive(inputPath string, verbose bool) (*glxlib.GLXFile, error) {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("%w: %s", ErrInputNotFound, inputPath)
 		}
-
 		return nil, fmt.Errorf("failed to access input path: %w", err)
 	}
 

@@ -66,7 +66,6 @@ func loadArchiveForDiff(path string) (*glxlib.GLXFile, error) {
 		for _, d := range duplicates {
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
-
 		return archive, nil
 	}
 
@@ -77,7 +76,6 @@ func loadArchiveForDiff(path string) (*glxlib.GLXFile, error) {
 func printDiffSummary(result *glxlib.DiffResult) {
 	if len(result.Changes) == 0 {
 		fmt.Println("No changes.")
-
 		return
 	}
 
@@ -96,7 +94,10 @@ func printDiffSummary(result *glxlib.DiffResult) {
 			// For modified entities, show field changes inline (up to 3).
 			// Skip when only 1 field changed — the summary already shows it.
 			if c.Kind == glxlib.ChangeModified && len(c.Fields) > 1 {
-				limit := min(len(c.Fields), 3)
+				limit := 3
+				if len(c.Fields) < limit {
+					limit = len(c.Fields)
+				}
 				for _, f := range c.Fields[:limit] {
 					fmt.Printf("    %-36s  %s → %s\n", f.Path+":", f.OldValue, f.NewValue)
 				}
@@ -115,7 +116,6 @@ func printDiffSummary(result *glxlib.DiffResult) {
 func printDiffVerbose(result *glxlib.DiffResult) {
 	if len(result.Changes) == 0 {
 		fmt.Println("No changes.")
-
 		return
 	}
 
@@ -174,7 +174,6 @@ func printDiffJSON(result *glxlib.DiffResult) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 	fmt.Println(string(data))
-
 	return nil
 }
 
@@ -222,7 +221,6 @@ func groupByEntityType(changes []glxlib.EntityChange) map[string][]glxlib.Entity
 	for _, c := range changes {
 		groups[c.EntityType] = append(groups[c.EntityType], c)
 	}
-
 	return groups
 }
 
@@ -247,6 +245,5 @@ func sortedEntityTypes(groups map[string][]glxlib.EntityChange) []string {
 			result = append(result, t)
 		}
 	}
-
 	return result
 }

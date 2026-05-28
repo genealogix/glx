@@ -342,13 +342,11 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 		resolved, err := loadAndResolveSchema("glx-file.schema.json")
 		if err != nil {
 			compiledSchemaErr = err
-
 			return
 		}
 		compiler := jsonschema.NewCompiler()
 		if err := compiler.AddResource("glx-file.schema.json", resolved); err != nil {
 			compiledSchemaErr = fmt.Errorf("failed to add schema resource: %w", err)
-
 			return
 		}
 		compiledSchema, compiledSchemaErr = compiler.Compile("glx-file.schema.json")

@@ -15,8 +15,8 @@
 package glx
 
 import (
+	"fmt"
 	"sort"
-	"strconv"
 )
 
 // mimeToGEDCOMFormat maps MIME types back to GEDCOM 5.5.1 FORM values.
@@ -187,9 +187,9 @@ func buildCropRecord(cropVal any) *GEDCOMRecord {
 func formatCropValue(val any) string {
 	switch v := val.(type) {
 	case int:
-		return strconv.Itoa(v)
+		return fmt.Sprintf("%d", v)
 	case float64:
-		return strconv.Itoa(int(v))
+		return fmt.Sprintf("%d", int(v))
 	case string:
 		return v
 	default:

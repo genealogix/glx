@@ -63,14 +63,14 @@ func loadArchiveForReport(path string) (*glxlib.GLXFile, error) {
 
 // reportData holds the analyzed confidence report data.
 type reportData struct {
-	TotalAssertions   int
-	ByConfidence      map[string]int     // confidence level -> count
-	NoConfidence      []assertionSummary // assertions with no confidence set
-	NoCitations       []assertionSummary // assertions with no citations
-	UnbackedPersons   []string           // person IDs with no assertions
-	UnbackedEvents    []string           // event IDs with no assertions
-	UnbackedRelations []string           // relationship IDs with no assertions
-	ConfidenceOrder   []string           // ordered confidence levels for display
+	TotalAssertions    int
+	ByConfidence       map[string]int            // confidence level -> count
+	NoConfidence       []assertionSummary        // assertions with no confidence set
+	NoCitations        []assertionSummary        // assertions with no citations
+	UnbackedPersons    []string                  // person IDs with no assertions
+	UnbackedEvents     []string                  // event IDs with no assertions
+	UnbackedRelations  []string                  // relationship IDs with no assertions
+	ConfidenceOrder    []string                  // ordered confidence levels for display
 }
 
 // assertionSummary is a short description of an assertion for display.
