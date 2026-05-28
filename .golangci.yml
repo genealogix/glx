@@ -65,6 +65,7 @@ linters:
     - importas # Check for consistent import aliases
     - modernize # Suggest modern Go usage patterns
     - grouper # Ensure imports, vars, and consts are grouped
+    - nolintlint # Enforce that //nolint directives are specific and explained
 
     # Bugs
     - bodyclose # Check HTTP response body is closed
@@ -183,6 +184,13 @@ linters:
     grouper:
       import-require-single-import: true
       import-require-grouping: true
+
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      # allow-unused deferred: the unused-directive check surfaces 15 pre-existing
+      # redundant //nolint:mnd directives, cleaned up separately in #902.
+      allow-unused: true
 
   exclusions:
     generated: lax

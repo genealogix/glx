@@ -131,7 +131,7 @@ func appendExtensionTag(props map[string]any, sub *GEDCOMRecord) {
 // and added to event.Properties[PropertyCitations].
 // Returns the place ID if one was extracted (for callers that need it for additional processing).
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func extractEventDetails(eventID string, eventRecord *GEDCOMRecord, event *Event, conv *ConversionContext, includeCitations bool) string {
 	// Ensure Properties map is initialized before writing to it
 	if event.Properties == nil {

@@ -137,6 +137,10 @@ func extractGEDZIP(files []*zip.File, destDir string) error {
 			return err
 		}
 
+		// safeExtractPath already canonicalizes the archive path (including
+		// cleaning dot segments), so dot-segment aliases resolve to the same
+		// destination path in `dest`. Lowercasing here additionally collapses
+		// case-only variants on case-insensitive filesystems.
 		key := strings.ToLower(dest)
 		if _, dup := seen[key]; dup {
 			return fmt.Errorf("%w: %q", ErrGEDZIPDuplicateEntry, f.Name)
@@ -164,11 +168,13 @@ func extractGEDZIP(files []*zip.File, destDir string) error {
 }
 
 // safeExtractPath rejects ZIP entry names that could escape destDir during
-// extraction. The layered checks guard distinct attack surfaces: forward and
-// backslash absolute prefixes (path.IsAbs only sees the spec-mandated forward
-// slash form), Windows volume prefixes (e.g. "C:\\"), and any cleaned path that
-// still resolves to "..". The final isPathWithin check catches cases the
-// per-prefix checks miss after platform-specific path joining.
+// extraction. The layered checks guard distinct attack surfaces: empty
+// entry names, embedded NUL bytes, backslashes (illegal per APPNOTE 4.4.17.1
+// and a frequent zip-slip vector on Windows), forward-slash absolute prefixes
+// (which path.IsAbs catches as the spec-mandated form), and Windows volume
+// prefixes (e.g. "C:\\"). After path.Clean and platform-specific path joining,
+// the final isPathWithin check is the authoritative containment validation —
+// it catches any residual escape the per-prefix checks miss.
 func safeExtractPath(destDir, entryName string) (string, error) {
 	if entryName == "" {
 		return "", fmt.Errorf("%w: empty entry name", ErrGEDZIPInvalidEntry)
@@ -191,9 +197,6 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 	}
 
 	cleaned := path.Clean(entryName)
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return "", fmt.Errorf("%w: path traversal in %q", ErrGEDZIPInvalidEntry, entryName)
-	}
 
 	dest := filepath.Join(destDir, filepath.FromSlash(cleaned))
 	if !isPathWithin(dest, destDir) {

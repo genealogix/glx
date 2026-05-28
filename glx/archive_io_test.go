@@ -935,14 +935,9 @@ func TestSafeWriteMultiFileArchive(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Save and restore cwd
-		origCwd, _ := os.Getwd()
-		defer os.Chdir(origCwd) //nolint:errcheck
-
-		// Change into parent so we can use a relative path
-		if err := os.Chdir(tmpDir); err != nil {
-			t.Fatal(err)
-		}
+		// Change into the temp dir so we can use a relative path;
+		// t.Chdir restores the original working directory during cleanup.
+		t.Chdir(tmpDir)
 
 		if err := safeWriteMultiFileArchive("rel-archive", makeArchive()); err != nil {
 			t.Fatalf("safeWriteMultiFileArchive(relative) error = %v", err)
