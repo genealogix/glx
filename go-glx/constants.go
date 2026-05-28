@@ -449,6 +449,24 @@ const (
 	EntityTypeStudies       = "studies"
 )
 
+// AllEntityTypes lists every GLX entity type in canonical order. Consumers that
+// need to enumerate entity directories (init scaffolding, archive-managed
+// top-level set, etc.) MUST derive their list from this slice so that adding
+// a new entity type updates every consumer in one place.
+var AllEntityTypes = []string{
+	EntityTypePersons,
+	EntityTypeRelationships,
+	EntityTypeEvents,
+	EntityTypePlaces,
+	EntityTypeSources,
+	EntityTypeCitations,
+	EntityTypeRepositories,
+	EntityTypeAssertions,
+	EntityTypeMedia,
+	EntityTypeResearchLogs,
+	EntityTypeStudies,
+}
+
 // Entity ID prefixes - prepended to slugs when minting deterministic IDs.
 // Always reference these constants instead of rebuilding the "<type>-" literal
 // at the call site.

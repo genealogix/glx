@@ -276,7 +276,9 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 			Subject: glxlib.EntityRef{Person: "person-1"},
 			Sources: []string{"source-1"},
 		}},
-		Media: map[string]*glxlib.Media{"media-1": {}},
+		Media:        map[string]*glxlib.Media{"media-1": {}},
+		ResearchLogs: map[string]*glxlib.ResearchLog{"research-log-1": {}},
+		Studies:      map[string]*glxlib.Study{"study-1": {}},
 	}
 
 	serializer := glxlib.NewSerializer(&glxlib.SerializerOptions{
@@ -299,13 +301,10 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 	err = splitArchive(inputPath, outputDir, true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
-	// Verify all entity directories were created
-	entityDirs := []string{
-		"persons", "events", "relationships", "places",
-		"sources", "citations", "repositories", "assertions", "media",
-	}
-
-	for _, dir := range entityDirs {
+	// Verify all entity directories were created — drawn from the same canonical
+	// list the serializer uses, so a new entity type fails this test until it's
+	// wired in everywhere.
+	for _, dir := range glxlib.AllEntityTypes {
 		dirPath := filepath.Join(outputDir, dir)
 		_, err := os.Stat(dirPath)
 		require.NoError(t, err, "%s directory should exist", dir)
