@@ -127,6 +127,18 @@ func TestRunValidate_PlaceCoordsHalfSet(t *testing.T) {
 		"error should name longitude (for the latitude-only place)")
 }
 
+func TestRunValidate_PlaceCoordsBothSet(t *testing.T) {
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"testdata/valid/place-coords-both-set"})
+	require.NoError(t, err, "place with both latitude and longitude should pass validation")
+}
+
+func TestRunValidate_PlaceCoordsNeitherSet(t *testing.T) {
+	streams, _, _ := TestIOStreams()
+	err := validatePaths(streams, []string{"testdata/valid/place-coords-neither-set"})
+	require.NoError(t, err, "place with neither latitude nor longitude should pass validation")
+}
+
 func TestRunValidate_RemovedProperty(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -362,13 +374,31 @@ func TestRunValidate_YAMLAndYMLExtensions(t *testing.T) {
 }
 
 func TestRunValidate_RespectsQuietFlag(t *testing.T) {
-	t.Cleanup(func() { quietOutput = false })
-	quietOutput = true
-
-	streams := SystemIOStreams()
-	require.Equal(t, io.Discard, streams.Out, "stdout must be discarded when --quiet is set")
+	// Use TestIOStreams() and rebind only Out to io.Discard, matching the
+	// pattern documented in iostreams.go ("dedicated --quiet tests rebind Out
+	// to io.Discard and assert separately on MachineOut"). Constructing the
+	// streams ourselves avoids mutating the package-global quietOutput, which
+	// SystemIOStreams reads without synchronization. SystemIOStreams's own
+	// response to quietOutput is covered end-to-end by TestSystemIOStreams_Quiet
+	// in iostreams_test.go.
+	//
+	// The test asserts the full silencing contract for --quiet: validatePaths
+	// must (a) succeed on a known-good file, (b) write nothing to streams.Out
+	// (trivially, since Out is io.Discard), (c) write nothing to
+	// streams.MachineOut (diagnostic output must not be misrouted to the
+	// machine-consumable stream), and (d) write nothing directly to os.Stdout
+	// (must not bypass the IOStreams abstraction).
+	streams, machineBuf, _ := TestIOStreams()
+	streams.Out = io.Discard
 
 	t.Chdir("../docs/examples/basic-family")
-	err := validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
-	require.NoError(t, err, "validation of a known-good file should succeed under --quiet")
+
+	var validateErr error
+	stdout := captureStdout(t, func() {
+		validateErr = validatePaths(streams, []string{"persons/person-robert-thompson.glx"})
+	})
+
+	require.NoError(t, validateErr, "validation of a known-good file should succeed when Out is io.Discard")
+	require.Empty(t, stdout, "validatePaths must not write directly to os.Stdout, bypassing streams.Out")
+	require.Empty(t, machineBuf.String(), "validatePaths must not write diagnostic output to streams.MachineOut")
 }

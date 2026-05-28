@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +28,8 @@ import (
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
+
+var stdoutCaptureMu sync.Mutex
 
 func TestMergeArchives_NewEntities(t *testing.T) {
 	dest := &glxlib.GLXFile{
@@ -268,6 +272,7 @@ func TestMergeArchives_PreviewShowsDuplicates(t *testing.T) {
 	before := snapshotDir(t, destDir)
 
 	// Capture stdout to verify duplicate detection output
+	stdoutCaptureMu.Lock()
 	oldStdout := os.Stdout
 	r, w, pipeErr := os.Pipe()
 	require.NoError(t, pipeErr)
@@ -276,6 +281,7 @@ func TestMergeArchives_PreviewShowsDuplicates(t *testing.T) {
 		os.Stdout = oldStdout
 		_ = w.Close()
 		_ = r.Close()
+		stdoutCaptureMu.Unlock()
 	})
 
 	err = mergeArchives(srcDir, destDir, true, 0.2)
@@ -491,27 +497,41 @@ func TestMergeArchives_PreviewReportsPlannedMediaCopies(t *testing.T) {
 
 	before := snapshotDir(t, destDir)
 
-	// Capture preview output
-	oldStdout := os.Stdout
-	r, w, pipeErr := os.Pipe()
-	require.NoError(t, pipeErr)
-	os.Stdout = w
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper")
+	cmd.Env = append(os.Environ(),
+		"GLX_PREVIEW_HELPER=1",
+		"GLX_SRC_DIR="+srcDir,
+		"GLX_DEST_DIR="+destDir,
+	)
+	outputBytes, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(outputBytes))
+	output := string(outputBytes)
 
-	err = mergeArchives(srcDir, destDir, true, 0.6)
-
-	_ = w.Close()
-	os.Stdout = oldStdout
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-	output := buf.String()
-
-	require.NoError(t, err)
 	assert.Contains(t, output, "Would copy 2 media file(s)")
 	assert.Contains(t, output, "1 renamed to avoid name collisions")
 
 	// Preview must not modify the destination
 	after := snapshotDir(t, destDir)
 	assert.Equal(t, before, after, "preview must not write any files")
+}
+
+func TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper(t *testing.T) {
+	if os.Getenv("GLX_PREVIEW_HELPER") != "1" {
+		t.Skip("helper test only")
+	}
+	srcDir := os.Getenv("GLX_SRC_DIR")
+	destDir := os.Getenv("GLX_DEST_DIR")
+	require.NotEmpty(t, srcDir)
+	require.NotEmpty(t, destDir)
+	srcInfo, err := os.Stat(srcDir)
+	require.NoError(t, err)
+	require.True(t, srcInfo.IsDir())
+	destInfo, err := os.Stat(destDir)
+	require.NoError(t, err)
+	require.True(t, destInfo.IsDir())
+
+	err = mergeArchives(srcDir, destDir, true, 0.6)
+	require.NoError(t, err)
 }
 
 func TestMergeArchives_PreviewNoDuplicates(t *testing.T) {
@@ -540,6 +560,36 @@ func TestMergeArchives_PreviewNoDuplicates(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
 
+	before := snapshotDir(t, destDir)
+
+	// Capture preview output
+	stdoutCaptureMu.Lock()
+	oldStdout := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	require.NoError(t, pipeErr)
+	os.Stdout = w
+	wClosed := false
+	defer func() {
+		os.Stdout = oldStdout
+		if !wClosed {
+			_ = w.Close()
+		}
+		_ = r.Close()
+		stdoutCaptureMu.Unlock()
+	}()
+
 	err = mergeArchives(srcDir, destDir, true, 0.8)
+
+	require.NoError(t, w.Close())
+	wClosed = true
+	var buf bytes.Buffer
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
+	output := buf.String()
+
 	require.NoError(t, err)
+	assert.Contains(t, output, "No potential cross-archive duplicates found")
+
+	after := snapshotDir(t, destDir)
+	assert.Equal(t, before, after, "preview must not write any files")
 }

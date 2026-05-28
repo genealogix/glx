@@ -36,3 +36,7 @@ dist/ export-ignore
 # Go module files — Go tools always write LF (golang/go#31870)
 go.mod text eol=lf
 go.sum text eol=lf linguist-generated
+
+# Tool-version pins — read by both CI and the devcontainer's bash; trailing
+# CRLF would corrupt the version string when interpolated into a download URL
+.golangci-lint-version text eol=lf

@@ -8,12 +8,16 @@ on:
       - 'go.mod'
       - 'go.sum'
       - '.golangci.yml'
+      - '.golangci-lint-version'
+      - '.github/workflows/lint.yml'
   pull_request:
     paths:
       - '**.go'
       - 'go.mod'
       - 'go.sum'
       - '.golangci.yml'
+      - '.golangci-lint-version'
+      - '.github/workflows/lint.yml'
 
 permissions:
   contents: read
@@ -43,6 +47,6 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11
+          version-file: .golangci-lint-version
           args: --verbose --timeout=5m
           only-new-issues: true
