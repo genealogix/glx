@@ -3,7 +3,7 @@ media:
     title: "Portrait of John Smith, c.1880"
     type: photograph
     uri: "media/files/john-smith-1880.jpg"
-    description: "Studio portrait taken in Leeds, c.1880. Subject identified by handwritten note on the verso."
     properties:
+      description: "Studio portrait taken in Leeds, c.1880. Subject identified by handwritten note on the verso."
       original_filename: "john-smith-1880.jpg"
     notes: "Demonstrates a Media entity. A tiny placeholder lives at `media/files/john-smith-1880.jpg` so `glx validate` can confirm the URI resolves; substitute the real image when adapting this archive."

@@ -428,9 +428,6 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 		if matchFn(m.Hash) {
 			results = append(results, searchResult{"media", id, "hash", m.Hash})
 		}
-		if matchFn(m.Description) {
-			results = append(results, searchResult{"media", id, "description", truncate(m.Description)})
-		}
 		if matchFn(string(m.Date)) {
 			results = append(results, searchResult{"media", id, "date", string(m.Date)})
 		}

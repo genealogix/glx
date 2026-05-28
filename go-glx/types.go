@@ -204,12 +204,12 @@ type Place struct {
 // Source represents a source of information.
 type Source struct {
 	Title        string         `yaml:"title"`
-	Type         string         `refType:"source_types"       yaml:"type,omitempty"`
+	Type         string         `refType:"source_types"      yaml:"type,omitempty"`
 	Authors      []string       `yaml:"authors,omitempty"`
 	Date         DateString     `yaml:"date,omitempty"`
-	RepositoryID string         `refType:"repositories"       yaml:"repository,omitempty"`
+	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
 	Language     string         `yaml:"language,omitempty"`
-	Media        []string       `refType:"media"              yaml:"media,omitempty"`
+	Media        []string       `refType:"media"             yaml:"media,omitempty"`
 	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, abbreviation, call_number, events_recorded, agency, coverage, external_ids, publication_info, url)
 	Notes        NoteList       `yaml:"notes,omitempty"`
 }
@@ -376,16 +376,45 @@ type Assertion struct {
 
 // Media represents a media object, like a photo or document.
 type Media struct {
-	URI         string         `yaml:"uri"`
-	Type        string         `refType:"media_types"        yaml:"type,omitempty"`
-	MimeType    string         `yaml:"mime_type,omitempty"`
-	Hash        string         `yaml:"hash,omitempty"`
-	Title       string         `yaml:"title,omitempty"`
-	Description string         `yaml:"description,omitempty"`
-	Date        DateString     `yaml:"date,omitempty"`
-	Source      string         `refType:"sources"            yaml:"source,omitempty"`
-	Properties  map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes       NoteList       `yaml:"notes,omitempty"`
+	URI        string         `yaml:"uri"`
+	Type       string         `refType:"media_types"       yaml:"type,omitempty"`
+	MimeType   string         `yaml:"mime_type,omitempty"`
+	Hash       string         `yaml:"hash,omitempty"`
+	Title      string         `yaml:"title,omitempty"`
+	Date       DateString     `yaml:"date,omitempty"`
+	Source     string         `refType:"sources"           yaml:"source,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size)
+	Notes      NoteList       `yaml:"notes,omitempty"`
+}
+
+// UnmarshalYAML provides backward compatibility for archives written before
+// #894, when `description` was a top-level structural field on Media rather
+// than the `properties.description` vocabulary property it is now. A legacy
+// top-level `description:` is folded into properties.description on load (an
+// explicit properties.description always wins), so no description is ever
+// silently dropped on read. `glx migrate --media-description-to-property`
+// rewrites such archives to the new on-disk form. Remove this shim in a future
+// major release once that migration is well-circulated.
+func (m *Media) UnmarshalYAML(value *yaml.Node) error {
+	type mediaAlias Media // distinct type: does not carry this UnmarshalYAML, so no recursion
+	var aux struct {
+		mediaAlias        `yaml:",inline"`
+		LegacyDescription string `yaml:"description,omitempty"`
+	}
+	if err := value.Decode(&aux); err != nil {
+		return err
+	}
+	*m = Media(aux.mediaAlias)
+	if aux.LegacyDescription != "" {
+		if m.Properties == nil {
+			m.Properties = map[string]any{}
+		}
+		if _, exists := m.Properties["description"]; !exists {
+			m.Properties["description"] = aux.LegacyDescription
+		}
+	}
+
+	return nil
 }
 
 // ============================================================================

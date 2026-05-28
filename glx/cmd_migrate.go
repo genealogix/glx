@@ -27,6 +27,7 @@ var (
 	migrateRenameGenderToSex           bool
 	migrateConfidenceDisputedToStatus  bool
 	migrateSourceDescriptionToProperty bool
+	migrateMediaDescriptionToProperty  bool
 )
 
 var migrateCmd = &cobra.Command{
@@ -53,7 +54,13 @@ user can reconcile by hand.
 With --source-description-to-property, moves a Source's legacy top-level
 ` + "`description`" + ` field into ` + "`properties.description`" + `, completing the
 structural-field-to-vocabulary-property consolidation from #667. An explicit
-` + "`properties.description`" + ` is never overwritten.`,
+` + "`properties.description`" + ` is never overwritten.
+
+With --media-description-to-property, moves a Media's legacy top-level
+` + "`description`" + ` field into ` + "`properties.description`" + `, mirroring the
+Source treatment from #667 for the remaining structural-vs-property
+inconsistency on Media (#894). An explicit ` + "`properties.description`" + ` is
+never overwritten.`,
 	Example: `  # Migrate a multi-file archive
   glx migrate ./my-archive
 
@@ -67,7 +74,10 @@ structural-field-to-vocabulary-property consolidation from #667. An explicit
   glx migrate ./my-archive --confidence-disputed-to-status
 
   # Also move legacy top-level source 'description' into 'properties.description'
-  glx migrate ./my-archive --source-description-to-property`,
+  glx migrate ./my-archive --source-description-to-property
+
+  # Also move legacy top-level media 'description' into 'properties.description'
+  glx migrate ./my-archive --media-description-to-property`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMigrate,
 }
@@ -79,6 +89,8 @@ func init() {
 		"Move legacy 'confidence: disputed' to 'status: disputed' (evidence quality vs conclusion state, #516)")
 	migrateCmd.Flags().BoolVar(&migrateSourceDescriptionToProperty, "source-description-to-property", false,
 		"Move legacy top-level source 'description' into 'properties.description' (#667)")
+	migrateCmd.Flags().BoolVar(&migrateMediaDescriptionToProperty, "media-description-to-property", false,
+		"Move legacy top-level media 'description' into 'properties.description' (#894)")
 }
 
 func runMigrate(_ *cobra.Command, args []string) error {
@@ -137,6 +149,12 @@ func migrateArchive(archivePath string) error {
 		report.SourceDescriptionsConverted += migrateSourceDescriptions(archivePath, isDir)
 	}
 
+	if migrateMediaDescriptionToProperty {
+		// The shim folds the legacy field on load; this re-scan only counts
+		// (which also triggers the save that persists the new on-disk form).
+		report.MediaDescriptionsConverted += migrateMediaDescriptions(archivePath, isDir)
+	}
+
 	// If the gender→sex rename was skipped, count any remaining legacy
 	// `gender:` person properties so the user knows whether the skip was
 	// benign (post-migration re-run, no legacy left) or worrying (manual
@@ -167,7 +185,8 @@ func migrateArchive(archivePath string) error {
 		report.PropertiesRenamed == 0 && report.AssertionsRenamed == 0 &&
 		report.VocabEntriesRenamed == 0 &&
 		report.ConfidenceDisputedConverted == 0 &&
-		report.SourceDescriptionsConverted == 0 {
+		report.SourceDescriptionsConverted == 0 &&
+		report.MediaDescriptionsConverted == 0 {
 		if report.GenderRenameSkipped {
 			if legacyGenderRemaining > 0 {
 				noun, verb := "properties", "remain"
@@ -230,6 +249,9 @@ func migrateArchive(archivePath string) error {
 	}
 	if migrateSourceDescriptionToProperty {
 		fmt.Printf("  %-27s%d\n", "Source descriptions migrated:", report.SourceDescriptionsConverted)
+	}
+	if migrateMediaDescriptionToProperty {
+		fmt.Printf("  %-27s%d\n", "Media descriptions migrated:", report.MediaDescriptionsConverted)
 	}
 
 	return nil
