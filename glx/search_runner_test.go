@@ -17,6 +17,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -296,6 +297,160 @@ func TestSearchArchive_FindsMapShapedPropertyValue(t *testing.T) {
 	assert.Equal(t, "person-mapshaped", results[0].EntityID)
 	assert.Equal(t, "properties.religion", results[0].Field)
 	assert.Equal(t, "Methodist", results[0].Value)
+}
+
+func TestSearchArchive_FindsResearchLogFields(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"research-log-1": {
+				Title:       "Smith family birth records",
+				Researcher:  "I. Schepp",
+				Objective:   "Locate baptism for William Smith b. 1812",
+				Status:      "in_progress",
+				Date:        "2024-03",
+				Conclusions: "Inconclusive after parish-register sweep",
+				Notes:       glxlib.NoteList{"Cross-reference Hartford registry"},
+				Citations:   []string{"cit-smith-baptism"},
+				Searches: []glxlib.Search{
+					{
+						RepositoryID: "repo-hartford",
+						SourceID:     "source-parish-register",
+						Collection:   "Baptisms 1810-1820",
+						Query:        "Smith William",
+						Result:       "not_found",
+						CitationID:   "cit-smith-baptism",
+						Date:         "2024-03-15",
+						Notes:        glxlib.NoteList{"checked all 1812 entries"},
+					},
+				},
+				Properties: map[string]any{"priority": "high"},
+			},
+		},
+	}
+
+	// Top-level scalar fields.
+	for _, q := range []string{"Smith family birth records", "Schepp", "Locate baptism", "in_progress", "Inconclusive", "Hartford registry"} {
+		results := searchArchive(archive, q, false, "")
+		require.NotEmpty(t, results, "should match %q", q)
+		assert.Equal(t, glxlib.EntityTypeResearchLogs, results[0].EntityType)
+	}
+
+	// Citation slice.
+	results := searchArchive(archive, "cit-smith-baptism", false, "")
+	require.NotEmpty(t, results)
+
+	// Embedded Search fields use searches[i]. prefix.
+	results = searchArchive(archive, "Smith William", false, "")
+	require.NotEmpty(t, results)
+	var foundQuery bool
+	for _, r := range results {
+		if r.Field == "searches[0].query" {
+			foundQuery = true
+
+			break
+		}
+	}
+	assert.True(t, foundQuery, "expected searches[0].query match, got %+v", results)
+
+	// Properties.
+	results = searchArchive(archive, "high", false, "")
+	require.NotEmpty(t, results)
+	assert.Contains(t, results[0].Field, "properties.priority")
+}
+
+func TestSearchArchive_FindsStudyFields(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Studies: map[string]*glxlib.Study{
+			"study-yorkshire-ops": {
+				Title:      "Yorkshire One Place Study",
+				Type:       "one_place_study",
+				Status:     "active",
+				DateRange:  "FROM 1750 TO 1900",
+				Places:     []string{"place-yorkshire"},
+				Sources:    []string{"source-yorkshire-register"},
+				Notes:      glxlib.NoteList{"Coverage: 1750-1900"},
+				Properties: map[string]any{"surname_variants": "Smyth, Smith"},
+			},
+		},
+	}
+
+	for _, q := range []string{"Yorkshire One Place", "one_place_study", "active", "FROM 1750", "Coverage", "place-yorkshire", "source-yorkshire-register", "Smyth"} {
+		results := searchArchive(archive, q, false, "")
+		require.NotEmpty(t, results, "should match %q", q)
+		assert.Equal(t, glxlib.EntityTypeStudies, results[0].EntityType)
+	}
+}
+
+func TestSearchSearchEntry_EveryFieldMatches(t *testing.T) {
+	// Per-field coverage of the embedded Search struct: a permissive matchFn
+	// triggers every if-branch so the field-path constants stay covered.
+	archive := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"research-log-coverage": {
+				Searches: []glxlib.Search{
+					{
+						RepositoryID: "repo-x",
+						SourceID:     "source-x",
+						Collection:   "Collection X",
+						Query:        "Query X",
+						Date:         "2024-01",
+						Result:       "found",
+						CitationID:   "cit-x",
+						Notes:        glxlib.NoteList{"Notes X"},
+					},
+				},
+			},
+		},
+	}
+
+	matchAll := func(_ string) bool { return true }
+	results := searchResearchLogs(archive, matchAll)
+
+	// Map field path → expected, so any future Search field that's added must
+	// also get a path here or the test fails informatively.
+	got := make(map[string]string)
+	for _, r := range results {
+		if strings.HasPrefix(r.Field, "searches[0].") {
+			got[r.Field] = r.Value
+		}
+	}
+	wantFields := []string{
+		"searches[0].repository",
+		"searches[0].source",
+		"searches[0].collection",
+		"searches[0].query",
+		"searches[0].result",
+		"searches[0].citation",
+		"searches[0].date",
+		"searches[0].notes",
+	}
+	for _, f := range wantFields {
+		_, ok := got[f]
+		assert.Truef(t, ok, "expected match for field %s, got %+v", f, got)
+	}
+}
+
+func TestSearchArchive_TypeFilterIncludesResearchLogsAndStudies(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"research-log-1": {Title: "Common term", Status: "open"},
+		},
+		Studies: map[string]*glxlib.Study{
+			"study-1": {Title: "Common term", Type: "one_name_study", Status: "active"},
+		},
+	}
+
+	logsOnly := searchArchive(archive, "Common", false, "research_logs")
+	require.NotEmpty(t, logsOnly, "should match research_logs with type filter")
+	for _, r := range logsOnly {
+		assert.Equal(t, glxlib.EntityTypeResearchLogs, r.EntityType)
+	}
+
+	studiesOnly := searchArchive(archive, "Common", false, "studies")
+	require.NotEmpty(t, studiesOnly, "should match studies with type filter")
+	for _, r := range studiesOnly {
+		assert.Equal(t, glxlib.EntityTypeStudies, r.EntityType)
+	}
 }
 
 func TestSearchArchive_DeterministicOrdering(t *testing.T) {
