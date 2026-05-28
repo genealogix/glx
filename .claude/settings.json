@@ -12,6 +12,8 @@
       "Bash(make test-verbose:*)",
       "Bash(make lint:*)",
       "Bash(make check-schemas:*)",
+      "Bash(mktemp -d /tmp/glx-drift-*:*)",
+      "Bash(rm -rf /tmp/glx-drift-*:*)",
       "Bash(tree:*)",
       "Bash(gofmt:*)"
     ]
