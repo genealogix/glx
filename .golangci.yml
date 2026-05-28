@@ -135,6 +135,53 @@ linters:
 
     misspell:
       locale: US
+      # GEDCOM 5.5/7 tag tokens that the misspell linter would otherwise
+      # "correct" to ordinary English words. They are part of the GEDCOM
+      # specification — see https://gedcom.io/specifications/FamilySearchGEDCOMv7.html
+      # and the 5.5.1 spec under docs/gedcom-spec/. Without this allow-list,
+      # an editor-driven `golangci-lint --fix` pass silently rewrites e.g.
+      # `"WITN"` → `"WITH"` and breaks GEDCOM import compatibility.
+      ignore-rules:
+        - WITN # ASSO.ROLE — witness
+        - RELA # ASSO.RELA — relationship descriptor
+        - STAE # ADDR.STAE — state/province (5.5.1 spelling)
+        - FAMS # INDI.FAMS — family as spouse
+        - FAMC # INDI.FAMC — family as child
+        - HUSB # FAM.HUSB — husband participant
+        - CHIL # FAM.CHIL — child participant
+        - OBJE # multimedia object record
+        - REPO # repository record
+        - SOUR # source record / pointer
+        - SUBM # submitter record
+        - PUBL # SOUR.PUBL — publication facts
+        - PLAC # event place
+        - CONT # continuation (newline-preserving)
+        - CONC # concatenation (no newline)
+        - TITL # SOUR.TITL — source title
+        - AUTH # SOUR.AUTH — source author
+        - NCHI # FAM.NCHI — number of children
+        - NMRC # FAM.NMRC — number of marriages
+        - BIRT # birth event
+        - DEAT # death event
+        - MARR # marriage event
+        - BURI # burial event
+        - BAPM # baptism event
+        - CHR  # christening event
+        - CONF # confirmation event
+        - CREM # cremation event
+        - CENS # census event
+        - IMMI # immigration event
+        - EMIG # emigration event
+        - NATU # naturalization event
+        - OCCU # occupation fact
+        - RESI # residence fact
+        - INDI # individual record
+        - GEDC # GEDCOM header
+        - VERS # GEDC.VERS
+        - DEST # HEAD.DEST
+        - COPR # copyright
+        - CHAR # character set
+        - LANG # language
 
     goconst:
       min-len: 3

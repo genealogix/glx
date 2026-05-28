@@ -382,14 +382,8 @@ func ValidateGLXFileStructure(doc map[string]any) []string {
 	}
 
 	// Validate entity ID formats (only for entity types, not vocabularies or property definitions)
-	entityTypes := []string{
-		glxlib.EntityTypePersons, glxlib.EntityTypeEvents, glxlib.EntityTypeRelationships,
-		glxlib.EntityTypePlaces, glxlib.EntityTypeSources, glxlib.EntityTypeCitations,
-		glxlib.EntityTypeRepositories, glxlib.EntityTypeAssertions, glxlib.EntityTypeMedia,
-	}
-
-	for _, entityType := range entityTypes {
-		if entities, ok := doc[entityType].(map[string]any); ok {
+	for _, entityType := range glxlib.AllEntityTypes {
+		if entities, ok := doc[entityType.String()].(map[string]any); ok {
 			for entityID := range entities {
 				if !isValidEntityID(entityID) {
 					issues = append(issues, fmt.Sprintf("%s[%s]: invalid entity ID (must be alphanumeric/hyphens, 1-64 chars)", entityType, entityID))

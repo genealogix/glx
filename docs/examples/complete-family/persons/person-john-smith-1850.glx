@@ -7,4 +7,5 @@ persons:
           given: "John"
           surname: "Smith"
       sex: "male"
+      occupation: "Blacksmith"
     notes: "Blacksmith in Leeds, Yorkshire. Married Mary Brown in 1875."

@@ -7,4 +7,5 @@ persons:
           given: "Jane"
           surname: "Smith"
       sex: "female"
+      occupation: "Dressmaker"
     notes: "Daughter of John Smith and Mary Brown."

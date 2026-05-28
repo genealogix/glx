@@ -18,8 +18,8 @@ import "fmt"
 
 // RenameResult holds the outcome of a rename operation.
 type RenameResult struct {
-	EntityType  string // which entity map contained the ID (e.g., "persons")
-	RefsUpdated int    // number of reference fields updated
+	EntityType  EntityType // which entity map contained the ID (e.g., EntityTypePersons)
+	RefsUpdated int        // number of reference fields updated
 }
 
 // RenameEntity renames an entity ID throughout the archive, updating all
@@ -50,41 +50,41 @@ func RenameEntity(glx *GLXFile, oldID, newID string) (*RenameResult, error) {
 	}, nil
 }
 
-// findEntityType returns which entity map contains the given ID.
-func findEntityType(glx *GLXFile, id string) (string, error) {
-	if v, ok := glx.Persons[id]; ok && v != nil {
-		return EntityTypePersons, nil
+// nonNilEntry reports whether m has a non-nil entry under id.
+func nonNilEntry[T any](m map[string]*T, id string) bool {
+	v, ok := m[id]
+
+	return ok && v != nil
+}
+
+// entityIDProbes maps each EntityType to a closure that reports whether the
+// archive's entity map for that type holds a non-nil entry for the given ID.
+// Driving lookups through this table keeps findEntityType a single loop and
+// localizes the per-type map-access boilerplate to one declaration.
+var entityIDProbes = map[EntityType]func(*GLXFile, string) bool{
+	EntityTypePersons:       func(g *GLXFile, id string) bool { return nonNilEntry(g.Persons, id) },
+	EntityTypeEvents:        func(g *GLXFile, id string) bool { return nonNilEntry(g.Events, id) },
+	EntityTypeRelationships: func(g *GLXFile, id string) bool { return nonNilEntry(g.Relationships, id) },
+	EntityTypePlaces:        func(g *GLXFile, id string) bool { return nonNilEntry(g.Places, id) },
+	EntityTypeSources:       func(g *GLXFile, id string) bool { return nonNilEntry(g.Sources, id) },
+	EntityTypeCitations:     func(g *GLXFile, id string) bool { return nonNilEntry(g.Citations, id) },
+	EntityTypeRepositories:  func(g *GLXFile, id string) bool { return nonNilEntry(g.Repositories, id) },
+	EntityTypeAssertions:    func(g *GLXFile, id string) bool { return nonNilEntry(g.Assertions, id) },
+	EntityTypeMedia:         func(g *GLXFile, id string) bool { return nonNilEntry(g.Media, id) },
+	EntityTypeResearchLogs:  func(g *GLXFile, id string) bool { return nonNilEntry(g.ResearchLogs, id) },
+	EntityTypeStudies:       func(g *GLXFile, id string) bool { return nonNilEntry(g.Studies, id) },
+}
+
+// findEntityType returns which entity map contains the given ID. Iterates
+// AllEntityTypes in canonical order so a new entity type is picked up
+// automatically when added to that list and entityIDProbes.
+func findEntityType(glx *GLXFile, id string) (EntityType, error) {
+	for _, t := range AllEntityTypes {
+		if probe, ok := entityIDProbes[t]; ok && probe(glx, id) {
+			return t, nil
+		}
 	}
-	if v, ok := glx.Events[id]; ok && v != nil {
-		return EntityTypeEvents, nil
-	}
-	if v, ok := glx.Relationships[id]; ok && v != nil {
-		return EntityTypeRelationships, nil
-	}
-	if v, ok := glx.Places[id]; ok && v != nil {
-		return EntityTypePlaces, nil
-	}
-	if v, ok := glx.Sources[id]; ok && v != nil {
-		return EntityTypeSources, nil
-	}
-	if v, ok := glx.Citations[id]; ok && v != nil {
-		return EntityTypeCitations, nil
-	}
-	if v, ok := glx.Repositories[id]; ok && v != nil {
-		return EntityTypeRepositories, nil
-	}
-	if v, ok := glx.Assertions[id]; ok && v != nil {
-		return EntityTypeAssertions, nil
-	}
-	if v, ok := glx.Media[id]; ok && v != nil {
-		return EntityTypeMedia, nil
-	}
-	if v, ok := glx.ResearchLogs[id]; ok && v != nil {
-		return EntityTypeResearchLogs, nil
-	}
-	if v, ok := glx.Studies[id]; ok && v != nil {
-		return EntityTypeStudies, nil
-	}
+
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
 
@@ -97,7 +97,7 @@ func checkTargetFree(glx *GLXFile, id string) error {
 }
 
 // moveMapKey moves an entity from oldID to newID in its entity map.
-func moveMapKey(glx *GLXFile, entityType, oldID, newID string) {
+func moveMapKey(glx *GLXFile, entityType EntityType, oldID, newID string) {
 	switch entityType {
 	case EntityTypePersons:
 		glx.Persons[newID] = glx.Persons[oldID]

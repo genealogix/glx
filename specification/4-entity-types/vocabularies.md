@@ -46,6 +46,7 @@ The standard vocabulary files are:
 - `gender-types.glx`
 - `study-types.glx`
 - `study-statuses.glx`
+- `legal-statuses.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
@@ -181,11 +182,11 @@ relationship_types:
   # ... standard types ...
 
   # Additional types
-  blood-brother:
+  blood_brother:
     label: "Blood Brother"
     description: "Non-biological brotherhood bond through ceremony"
 
-  chosen-family:
+  chosen_family:
     label: "Chosen Family"
     description: "Close familial bond without biological or legal tie"
 ```
@@ -310,6 +311,7 @@ source_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
+| `gedcom` | No | GEDCOM `SOUR.TYPE` tag value emitted/consumed for round-trip (#561) |
 
 ### Standard Source Types
 
@@ -380,6 +382,7 @@ media_types:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `mime_type` | No | Default MIME type for this media type |
+| `gedcom` | No | GEDCOM `MEDI` tag value emitted/consumed for round-trip |
 
 ### Standard Media Types
 
@@ -452,7 +455,7 @@ confidence_levels:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `rank` | No | Numeric ordering used by `glx diff` to detect confidence upgrades vs downgrades. Higher values rank above lower; standard levels supply ranks 0–3 (low=0, medium=2, high=3). Custom levels without a rank are skipped by upgrade-detection. |
+| `rank` | No | Numeric ordering used by `glx diff` to detect confidence upgrades vs downgrades. Higher values rank above lower. Standard levels supply ranks `low=0, medium=2, high=3`; rank 1 is intentionally reserved for a custom level (e.g. `tentative`). Custom levels without a rank are skipped by upgrade-detection. |
 | `gedcom` | No | Reserved for the corresponding GEDCOM QUAY value (`0`-`3`) for import/export mapping. The standard levels do not currently populate this field; defined in the JSON schema for forward compatibility with QUAY round-tripping. |
 
 ### Important Notes
@@ -511,6 +514,7 @@ repository_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
+| `gedcom` | No | GEDCOM repository-type tag value emitted/consumed for round-trip (#555) |
 
 ### Standard Repository Types
 
@@ -586,13 +590,14 @@ participant_roles:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of entity types (event, relationship) |
+| `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
 
 ### Standard Participant Roles
 
 Common event roles:
 
-- `principal` - Primary person in the event
-- `subject` - Subject of the event (preferred over 'principal')
+- `principal` - Primary person in the event. Canonical role; this is what `glx init` and GEDCOM import emit.
+- `subject` - Accepted synonym of `principal`. Tooling treats both as equivalent (no data migration needed).
 - `groom`, `bride` - Marriage participants
 - `witness` - Event witness
 - `officiant` - Ceremony officiant
@@ -789,6 +794,70 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 ---
 
+## Sex Types Vocabulary
+
+**Default file**: `vocabularies/sex-types.glx`
+
+**Used By**: [Person Entity](person) via the `sex` person property.
+
+**Purpose**: Defines the recorded-sex values used in source documents (GEDCOM `SEX`, census enumerations, vital records). For self-identified gender identity, see the Gender Types Vocabulary below.
+
+**Standard Templates**: See [Standard Vocabularies — Sex Types](../5-standard-vocabularies/#sex-types) for the complete default vocabulary.
+
+### Standard Sex Types
+
+| Key | Label | GEDCOM | Description |
+|-----|-------|--------|-------------|
+| `male` | Male | `M` | Recorded as male in source documents |
+| `female` | Female | `F` | Recorded as female in source documents |
+| `unknown` | Unknown | `U` | Source was consulted but sex could not be determined |
+| `not_recorded` | Not Recorded | — (import-only `N` from GEDCOM 5.5.x; export emits `U` on 7.0 and `N` on 5.5.x) | Source does not contain a sex field |
+| `other` | Other | `X` | Recorded value outside the male/female/unknown categories |
+
+---
+
+## Gender Types Vocabulary
+
+**Default file**: `vocabularies/gender-types.glx`
+
+**Used By**: [Person Entity](person) via the `gender` person property.
+
+**Purpose**: Defines self-identified gender identity values, primarily relevant for modern records and living persons. For sex as recorded in historical sources, see the Sex Types Vocabulary above. GEDCOM has no direct mapping for gender identity (it defers to `FACT`); archives may extend entries with a `gedcom:` field if they choose to export identity to a specific tag.
+
+**Standard Templates**: See [Standard Vocabularies — Gender Types](../5-standard-vocabularies/#gender-types) for the complete default vocabulary.
+
+### Standard Gender Types
+
+| Key | Label | Description |
+|-----|-------|-------------|
+| `male` | Male | Self-identified as male |
+| `female` | Female | Self-identified as female |
+| `nonbinary` | Non-binary | Self-identified as non-binary |
+| `other` | Other | Self-identified gender outside the male/female/non-binary categories |
+
+---
+
+## Legal Statuses Vocabulary
+
+**Default file**: `vocabularies/legal-statuses.glx`
+
+**Used By**: [Relationship Entity](relationship) via the `legal_status` relationship property, primarily for distinguishing forms of coerced labor on the `enslavement` relationship type.
+
+**Purpose**: Captures the legal form under which a relationship operated when the distinction is historically meaningful (e.g., chattel slavery vs. indentured servitude vs. debt bondage).
+
+**Standard Templates**: See [Standard Vocabularies — Legal Statuses](../5-standard-vocabularies/#legal-statuses) for the complete default vocabulary.
+
+### Standard Legal Statuses
+
+| Key | Label | Description |
+|-----|-------|-------------|
+| `chattel` | Chattel Slavery | Lifelong, hereditary enslavement with the enslaved person treated as transferable property |
+| `indentured` | Indentured Servitude | Fixed-term labor contract; may have been entered voluntarily or under coercion |
+| `debt_bondage` | Debt Bondage | Servitude pledged against a debt, lasting until the debt is repaid |
+| `apprenticeship` | Apprenticeship | Trade-learning contract; in some jurisdictions used post-emancipation as a euphemism for continued enslavement of free children of color |
+
+---
+
 ## Property Vocabularies
 
 Property vocabularies define the custom properties available for each entity type. These properties represent "concluded" or "accepted" values and support flexible, extensible data modeling beyond the standard entity fields.
@@ -846,7 +915,9 @@ GENEALOGIX provides standard person properties:
 | `nationality` | string | Yes | NATI | National citizenship |
 | `caste` | string | Yes | CAST | Caste, tribe, or social group |
 | `ssn` | string | No | SSN | Social Security Number |
+| `primary_name` | string | No | | Simple display name for the person, used as a fallback when the structured `name` property is not available |
 | `external_ids` | string (multi) | No | EXID | External identifiers from other systems |
+| `living` | boolean | No | | Opt-in marker that the person is currently living; honored by `glx export --privatize-living` (see [#288](https://github.com/genealogix/glx/issues/288)) |
 
 ### Event Properties Vocabulary
 
@@ -948,6 +1019,7 @@ Standard properties include:
 
 Standard properties include:
 
+- `description` - Free-text description of the source (round-trips through GEDCOM `SOUR.TEXT`/`SOUR.NOTE`; demoted from a top-level Source field in #667)
 - `abbreviation` - Short reference name or title for the source (from GEDCOM ABBR)
 - `call_number` - Repository catalog or call number (from GEDCOM CALN)
 - `events_recorded` - Types of events this source documents (from GEDCOM EVEN)
@@ -1398,15 +1470,14 @@ The `glx validate` command performs comprehensive validation with different seve
 
 The following issues cause validation to fail:
 
-1. **Missing vocabulary types**: All types used in entities must be defined in vocabularies
-   - Event types (`event_types`)
-   - Relationship types (`relationship_types`)
-   - Place types (`place_types`)
-   - Source types (`source_types`)
-   - Repository types (`repository_types`)
-   - Media types (`media_types`)
-   - Participant roles (`participant_roles`)
-   - Confidence levels (`confidence_levels`)
+1. **Unknown vocabulary values on top-level entity type fields**: Values used on structural entity fields (`event.type`, `relationship.type`, `place.type`, `source.type`, `repository.type`, `media.type`, `participant.role`, `assertion.confidence`, `study.type`, `study.status`, `research_log.status`, `search.result`) must resolve in the corresponding vocabulary. Out-of-vocabulary values here are hard errors so that misspelled or unknown structural types fail loudly.
+
+   ```yaml
+   # Error: bogus_event_type not in event_types vocabulary
+   events:
+     event-test:
+       type: bogus_event_type  # ERROR
+   ```
 
 2. **Broken entity references**: All entity references must point to existing entities
 
@@ -1420,7 +1491,9 @@ The following issues cause validation to fail:
          residence: place-nonexistent  # ERROR if residence has reference_type: places
    ```
 
-4. **Structural validation**: Files must follow proper YAML/JSON structure and schema
+4. **Structural validation**: Files must follow proper YAML/JSON structure and schema (JSON Schema pass).
+
+Note: this hard-error rule covers *structural* type fields. Unknown values on properties declared with `vocabulary_type:` (e.g. the `gender` person property pointing at `gender_types`) are warnings, not errors — see the next section — so archives can experiment with new identity terms before formally adding them to the vocabulary.
 
 ### Validation Warnings (Soft Failures)
 
@@ -1605,6 +1678,11 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Participant Roles | [participant-roles.schema.json](../schema/v1/vocabularies/participant-roles.schema.json) |
 | Repository Types | [repository-types.schema.json](../schema/v1/vocabularies/repository-types.schema.json) |
 | Confidence Levels | [confidence-levels.schema.json](../schema/v1/vocabularies/confidence-levels.schema.json) |
+| Sex Types | [sex-types.schema.json](../schema/v1/vocabularies/sex-types.schema.json) |
+| Gender Types | [gender-types.schema.json](../schema/v1/vocabularies/gender-types.schema.json) |
+| Legal Statuses | [legal-statuses.schema.json](../schema/v1/vocabularies/legal-statuses.schema.json) |
+| Study Types | [study-types.schema.json](../schema/v1/vocabularies/study-types.schema.json) |
+| Study Statuses | [study-statuses.schema.json](../schema/v1/vocabularies/study-statuses.schema.json) |
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
 | Research Log Status Types | [research-log-status-types.schema.json](../schema/v1/vocabularies/research-log-status-types.schema.json) |
 | Person Properties | [person-properties.schema.json](../schema/v1/vocabularies/person-properties.schema.json) |

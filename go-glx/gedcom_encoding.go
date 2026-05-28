@@ -16,6 +16,7 @@ package glx
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"strings"
 	"unicode/utf8"
@@ -64,7 +65,7 @@ func decodingReader(reader io.Reader) (io.Reader, error) {
 	// Read a small prefix to detect charset (CHAR is always near the top)
 	prefix := make([]byte, 2048)
 	n, err := io.ReadFull(reader, prefix)
-	if err != nil && err != io.ErrUnexpectedEOF {
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return nil, err
 	}
 	prefix = prefix[:n]
@@ -87,6 +88,7 @@ func decodingReader(reader io.Reader) (io.Reader, error) {
 		if readErr != nil {
 			return nil, readErr
 		}
+
 		return bytes.NewReader(convertANSELToUTF8(data)), nil
 	default:
 		// UTF-8, ASCII, or unknown — stream as-is
@@ -99,16 +101,16 @@ func decodingReader(reader io.Reader) (io.Reader, error) {
 // detectGEDCOMCharset scans the first ~20 lines for "1 CHAR <value>" and
 // returns the charset string. The CHAR line is always in the HEAD record near
 // the top of the file, so a limited scan is sufficient.
+// charsetScanLimit caps the prefix scanned for the GEDCOM `1 CHAR` line —
+// `HEAD.CHAR` always appears in the first record, so 2 KiB is plenty.
+const charsetScanLimit = 2048
+
 func detectGEDCOMCharset(data []byte) string {
-	// Scan up to 2KB or end of data for the CHAR line
-	limit := 2048
-	if len(data) < limit {
-		limit = len(data)
-	}
+	limit := min(len(data), charsetScanLimit)
 
 	chunk := string(data[:limit])
 
-	for _, line := range strings.Split(chunk, "\n") {
+	for line := range strings.SplitSeq(chunk, "\n") {
 		line = strings.TrimRight(line, "\r")
 		fields := strings.Fields(line)
 		if len(fields) >= 3 && fields[0] == "1" && strings.EqualFold(fields[1], "CHAR") {
@@ -210,6 +212,7 @@ func convertANSELToUTF8(data []byte) []byte {
 		if b < 0x80 {
 			buf.WriteByte(b)
 			i++
+
 			continue
 		}
 
@@ -233,6 +236,7 @@ func convertANSELToUTF8(data []byte) []byte {
 			for _, r := range combiningRunes {
 				buf.WriteRune(r)
 			}
+
 			continue
 		}
 
@@ -240,6 +244,7 @@ func convertANSELToUTF8(data []byte) []byte {
 		if r, ok := anselToUTF8[b]; ok {
 			buf.WriteRune(r)
 			i++
+
 			continue
 		}
 

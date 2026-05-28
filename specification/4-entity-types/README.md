@@ -1,6 +1,6 @@
 ---
 title: Entity Types
-description: Core entity types in GENEALOGIX - person, relationship, event, place, source, citation, assertion, media, repository
+description: Core entity types in GENEALOGIX - person, relationship, event, place, source, citation, assertion, media, repository, research log, study
 layout: doc
 ---
 
@@ -73,7 +73,7 @@ Represents digital or physical media objects associated with genealogical entiti
 - **Key Properties**: Title, URI, MIME type, description
 - **GEDCOM Equivalent**: OBJE (Object/Media Record)
 
-### [Research Log](research-log)
+### [ResearchLog](research-log)
 
 Represents a documented research investigation, capturing every search performed (including searches that found nothing). Supports a "reasonably exhaustive search" per the Genealogical Proof Standard by treating negative evidence as a first-class outcome.
 

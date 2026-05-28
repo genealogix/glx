@@ -225,6 +225,19 @@ Defines status values for Study entities indicating the current state of a resea
 
 ---
 
+### Legal Statuses
+
+Defines legal-status values for relationships, primarily for distinguishing forms of coerced labor on the `enslavement` relationship type (chattel slavery, indentured servitude, debt bondage, apprenticeship).
+
+<YamlFile
+  :content="vocabularies['legal-statuses']"
+  title="vocabularies/legal-statuses.glx"
+/>
+
+**View Source:** [legal-statuses.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/legal-statuses.glx) | **See Also:** [Relationship Entity Documentation](../4-entity-types/relationship) | [Vocabularies Specification](../4-entity-types/vocabularies#legal-statuses-vocabulary)
+
+---
+
 ## Property Vocabularies
 
 Property vocabularies define the custom properties available for each entity type. These enable flexible, extensible data modeling for person, event, relationship, and place entities.
