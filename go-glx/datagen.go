@@ -111,7 +111,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		}
 
 		// Generate a source, citation, and assertion for the birth
-		generateEvidenceChain(glxFile, eventID, "birth", repoID)
+		generateEvidenceChain(glxFile, eventID, repoID)
 	}
 
 	// Generate some relationships
@@ -231,8 +231,10 @@ func generatePlace(glxFile *GLXFile) string {
 	return placeID
 }
 
-// generateEvidenceChain creates a source, citation, and assertion for a given event.
-func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID string) {
+// generateEvidenceChain creates a source, citation, and an existential
+// assertion attesting the given event (no property/value pair — the assertion
+// records that the event happened and is backed by the citation).
+func generateEvidenceChain(glxFile *GLXFile, subjectID, repoID string) {
 	// Source
 	sourceID := EntityIDPrefixSource + gofakeit.UUID()
 	glxFile.Sources[sourceID] = &Source{
@@ -250,11 +252,12 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID str
 		},
 	}
 
-	// Assertion
+	// Existential assertion — attests that the subject event occurred.
+	// (A property/value pair would also be schema-valid, but existential
+	// matches the semantics of "the birth happened, here's the source".)
 	assertionID := EntityIDPrefixAssertion + gofakeit.UUID()
 	glxFile.Assertions[assertionID] = &Assertion{
 		Subject:   EntityRef{Event: subjectID},
-		Property:  propertyName,
 		Citations: []string{citationID},
 	}
 }

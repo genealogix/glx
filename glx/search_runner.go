@@ -51,6 +51,8 @@ var searchEntityTypes = []searchEntityType{
 	{"assertions", "Assertions"},
 	{"relationships", "Relationships"},
 	{"media", "Media"},
+	{"research_logs", "Research Logs"},
+	{"studies", "Studies"},
 }
 
 // searchEntityTypeMap provides O(1) lookup by key.
@@ -444,6 +446,108 @@ func searchMedia(archive *glxlib.GLXFile, matchFn func(string) bool) []searchRes
 	return results
 }
 
+// searchResearchLogs searches all ResearchLog entities in the archive.
+// Each Search entry inside a log is searched as a separate result so that
+// matches on the query/result/citation fields are addressable.
+func searchResearchLogs(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
+	for _, id := range sortedKeys(archive.ResearchLogs) {
+		log := archive.ResearchLogs[id]
+		if log == nil {
+			continue
+		}
+		if matchFn(id) {
+			results = append(results, searchResult{"research_logs", id, "id", id})
+		}
+		if matchFn(log.Title) {
+			results = append(results, searchResult{"research_logs", id, "title", log.Title})
+		}
+		if matchFn(log.Researcher) {
+			results = append(results, searchResult{"research_logs", id, "researcher", log.Researcher})
+		}
+		if matchFn(log.Objective) {
+			results = append(results, searchResult{"research_logs", id, "objective", truncate(log.Objective)})
+		}
+		if matchFn(log.Status) {
+			results = append(results, searchResult{"research_logs", id, "status", log.Status})
+		}
+		if matchFn(string(log.Date)) {
+			results = append(results, searchResult{"research_logs", id, "date", string(log.Date)})
+		}
+		if matchFn(log.Conclusions) {
+			results = append(results, searchResult{"research_logs", id, "conclusions", truncate(log.Conclusions)})
+		}
+		if matchFn(log.Notes.String()) {
+			results = append(results, searchResult{"research_logs", id, "notes", truncate(log.Notes.String())})
+		}
+		results = append(results, searchSlice("research_logs", id, "citations", log.Citations, matchFn)...)
+		for i, s := range log.Searches {
+			prefix := fmt.Sprintf("searches[%d].", i)
+			if matchFn(s.RepositoryID) {
+				results = append(results, searchResult{"research_logs", id, prefix + "repository", s.RepositoryID})
+			}
+			if matchFn(s.SourceID) {
+				results = append(results, searchResult{"research_logs", id, prefix + "source", s.SourceID})
+			}
+			if matchFn(s.Collection) {
+				results = append(results, searchResult{"research_logs", id, prefix + "collection", s.Collection})
+			}
+			if matchFn(s.Query) {
+				results = append(results, searchResult{"research_logs", id, prefix + "query", truncate(s.Query)})
+			}
+			if matchFn(s.Result) {
+				results = append(results, searchResult{"research_logs", id, prefix + "result", s.Result})
+			}
+			if matchFn(s.CitationID) {
+				results = append(results, searchResult{"research_logs", id, prefix + "citation", s.CitationID})
+			}
+			if matchFn(string(s.Date)) {
+				results = append(results, searchResult{"research_logs", id, prefix + "date", string(s.Date)})
+			}
+			if matchFn(s.Notes.String()) {
+				results = append(results, searchResult{"research_logs", id, prefix + "notes", truncate(s.Notes.String())})
+			}
+		}
+		results = append(results, searchProps("research_logs", id, "properties.", log.Properties, matchFn)...)
+	}
+
+	return results
+}
+
+// searchStudies searches all Study entities in the archive.
+func searchStudies(archive *glxlib.GLXFile, matchFn func(string) bool) []searchResult {
+	var results []searchResult
+	for _, id := range sortedKeys(archive.Studies) {
+		s := archive.Studies[id]
+		if s == nil {
+			continue
+		}
+		if matchFn(id) {
+			results = append(results, searchResult{"studies", id, "id", id})
+		}
+		if matchFn(s.Title) {
+			results = append(results, searchResult{"studies", id, "title", s.Title})
+		}
+		if matchFn(s.Type) {
+			results = append(results, searchResult{"studies", id, "type", s.Type})
+		}
+		if matchFn(s.Status) {
+			results = append(results, searchResult{"studies", id, "status", s.Status})
+		}
+		if matchFn(string(s.DateRange)) {
+			results = append(results, searchResult{"studies", id, "date_range", string(s.DateRange)})
+		}
+		if matchFn(s.Notes.String()) {
+			results = append(results, searchResult{"studies", id, "notes", truncate(s.Notes.String())})
+		}
+		results = append(results, searchSlice("studies", id, "places", s.Places, matchFn)...)
+		results = append(results, searchSlice("studies", id, "sources", s.Sources, matchFn)...)
+		results = append(results, searchProps("studies", id, "properties.", s.Properties, matchFn)...)
+	}
+
+	return results
+}
+
 // searchFuncs maps entity type keys to their search functions.
 var searchFuncs = map[string]func(*glxlib.GLXFile, func(string) bool) []searchResult{
 	"persons":       searchPersons,
@@ -455,6 +559,8 @@ var searchFuncs = map[string]func(*glxlib.GLXFile, func(string) bool) []searchRe
 	"assertions":    searchAssertions,
 	"relationships": searchRelationships,
 	"media":         searchMedia,
+	"research_logs": searchResearchLogs,
+	"studies":       searchStudies,
 }
 
 // searchArchive searches entities for the given query string. If typeFilter is

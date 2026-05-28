@@ -52,7 +52,7 @@ var errPhoneticRequiresName = errors.New("--phonetic requires --name to be speci
 var queryEntityTypes = []string{
 	"persons", "events", "assertions", "sources",
 	"relationships", "places", "citations",
-	"repositories", "media",
+	"repositories", "media", "research_logs", "studies",
 }
 
 // validateQueryFlags checks that the given filter flags are applicable to the
@@ -144,6 +144,10 @@ func queryEntities(entityType string, opts *queryOpts) error {
 		return queryRepositories(archive, opts)
 	case "media":
 		return queryMedia(archive)
+	case "research_logs":
+		return queryResearchLogs(archive)
+	case "studies":
+		return queryStudies(archive)
 	default:
 		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
@@ -488,6 +492,50 @@ func queryMedia(archive *glxlib.GLXFile) error {
 	}
 
 	fmt.Printf("\n%d media found\n", len(ids))
+
+	return nil
+}
+
+// queryResearchLogs lists all research logs with their objective and status.
+func queryResearchLogs(archive *glxlib.GLXFile) error {
+	ids := sortedKeys(archive.ResearchLogs)
+
+	for _, id := range ids {
+		log := archive.ResearchLogs[id]
+		summary := log.Title
+		if summary == "" {
+			summary = log.Objective
+		}
+		status := log.Status
+		if status == "" {
+			status = "-"
+		}
+		fmt.Printf("  %s  [%s]  %s\n", id, status, summary)
+	}
+
+	fmt.Printf("\n%d research logs found\n", len(ids))
+
+	return nil
+}
+
+// queryStudies lists all studies with their type and status.
+func queryStudies(archive *glxlib.GLXFile) error {
+	ids := sortedKeys(archive.Studies)
+
+	for _, id := range ids {
+		s := archive.Studies[id]
+		studyType := s.Type
+		if studyType == "" {
+			studyType = "-"
+		}
+		status := s.Status
+		if status == "" {
+			status = "-"
+		}
+		fmt.Printf("  %s  [%s/%s]  %s\n", id, studyType, status, s.Title)
+	}
+
+	fmt.Printf("\n%d studies found\n", len(ids))
 
 	return nil
 }

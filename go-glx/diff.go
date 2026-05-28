@@ -333,6 +333,10 @@ func summarizeEntity[T any](entityType, id string, entity *T, archive *GLXFile) 
 		return summarizeRelationship(m)
 	case EntityTypePlaces:
 		return summarizePlace(m)
+	case EntityTypeResearchLogs:
+		return summarizeResearchLog(m)
+	case EntityTypeStudies:
+		return summarizeStudy(m)
 	default:
 		return id
 	}
@@ -449,6 +453,45 @@ func summarizePlace(m map[string]any) string {
 		return name
 	}
 	return "(unnamed place)"
+}
+
+func summarizeResearchLog(m map[string]any) string {
+	objective, _ := m["objective"].(string)
+	title, _ := m["title"].(string)
+	status, _ := m["status"].(string)
+
+	headline := objective
+	if headline == "" {
+		headline = title
+	}
+	if headline == "" {
+		headline = "(research log)"
+	}
+	if status != "" {
+		return headline + " [" + status + "]"
+	}
+	return headline
+}
+
+func summarizeStudy(m map[string]any) string {
+	title, _ := m["title"].(string)
+	studyType, _ := m["type"].(string)
+	status, _ := m["status"].(string)
+
+	if title == "" {
+		title = "(study)"
+	}
+	var suffix []string
+	if studyType != "" {
+		suffix = append(suffix, studyType)
+	}
+	if status != "" {
+		suffix = append(suffix, status)
+	}
+	if len(suffix) > 0 {
+		return title + " [" + strings.Join(suffix, "/") + "]"
+	}
+	return title
 }
 
 // summarizeModified generates a one-line summary for a modified entity.
