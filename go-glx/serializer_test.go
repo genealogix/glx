@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -372,8 +373,10 @@ func TestSerializeMultiFile(t *testing.T) {
 		t.Error("Vocabularies directory not created")
 	}
 
-	// Check deterministic filenames exist in the map. Multi-file map keys are
-	// archive-relative paths (always forward-slash), not OS paths.
+	// Check deterministic filenames exist in the map. Keys are logical
+	// archive paths with forward slashes regardless of host OS (issue #900) —
+	// using filepath.Join here would build OS-specific lookup keys and mask
+	// regressions of the serializer's forward-slash contract on Windows.
 	personFile1 := "persons/person-001.glx"
 	personFile2 := "persons/person-002.glx"
 	eventFile1 := "events/event-001.glx"
@@ -386,6 +389,20 @@ func TestSerializeMultiFile(t *testing.T) {
 	}
 	if _, ok := files[eventFile1]; !ok {
 		t.Errorf("Expected file %q in map, got keys: %v", eventFile1, mapKeys(files))
+	}
+
+	// Vocabulary keys must also use forward slashes — locks in the fix for
+	// the second filepath.Join site in SerializeMultiFileToMap (issue #900).
+	foundVocab := false
+	for k := range files {
+		if strings.HasPrefix(k, "vocabularies/") {
+			foundVocab = true
+
+			break
+		}
+	}
+	if !foundVocab {
+		t.Errorf("Expected at least one vocabularies/* key, got: %v", mapKeys(files))
 	}
 
 	// Verify person file content
