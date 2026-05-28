@@ -85,7 +85,7 @@ func printDiffSummary(result *glxlib.DiffResult) {
 
 	for _, entityType := range entityTypes {
 		changes := groups[entityType]
-		fmt.Printf("\n%s\n", strings.ToUpper(entityType))
+		fmt.Printf("\n%s\n", strings.ToUpper(entityType.String()))
 
 		for _, c := range changes {
 			prefix := changePrefix(c.Kind)
@@ -124,7 +124,7 @@ func printDiffVerbose(result *glxlib.DiffResult) {
 
 	for _, entityType := range entityTypes {
 		changes := groups[entityType]
-		fmt.Printf("\n%s\n", strings.ToUpper(entityType))
+		fmt.Printf("\n%s\n", strings.ToUpper(entityType.String()))
 
 		for _, c := range changes {
 			prefix := changePrefix(c.Kind)
@@ -216,8 +216,8 @@ func changePrefix(kind glxlib.ChangeKind) string {
 }
 
 // groupByEntityType groups changes by entity type, preserving order within each group.
-func groupByEntityType(changes []glxlib.EntityChange) map[string][]glxlib.EntityChange {
-	groups := make(map[string][]glxlib.EntityChange)
+func groupByEntityType(changes []glxlib.EntityChange) map[glxlib.EntityType][]glxlib.EntityChange {
+	groups := make(map[glxlib.EntityType][]glxlib.EntityChange)
 	for _, c := range changes {
 		groups[c.EntityType] = append(groups[c.EntityType], c)
 	}
@@ -225,8 +225,8 @@ func groupByEntityType(changes []glxlib.EntityChange) map[string][]glxlib.Entity
 }
 
 // sortedEntityTypes returns entity types sorted in display order.
-func sortedEntityTypes(groups map[string][]glxlib.EntityChange) []string {
-	order := []string{
+func sortedEntityTypes(groups map[glxlib.EntityType][]glxlib.EntityChange) []glxlib.EntityType {
+	order := []glxlib.EntityType{
 		glxlib.EntityTypePersons,
 		glxlib.EntityTypeEvents,
 		glxlib.EntityTypeRelationships,
@@ -239,7 +239,7 @@ func sortedEntityTypes(groups map[string][]glxlib.EntityChange) []string {
 		glxlib.EntityTypeResearchLogs,
 		glxlib.EntityTypeStudies,
 	}
-	var result []string
+	var result []glxlib.EntityType
 	for _, t := range order {
 		if _, ok := groups[t]; ok {
 			result = append(result, t)

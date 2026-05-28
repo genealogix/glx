@@ -111,8 +111,8 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 // ValidationResult holds the complete validation state of the archive.
 type ValidationResult struct {
 	// Entities contains maps of all existing entity IDs, keyed by entity type.
-	// Example: "persons" -> {"person-1": {}}
-	Entities map[string]map[string]struct{}
+	// Example: EntityTypePersons -> {"person-1": {}}
+	Entities map[EntityType]map[string]struct{}
 
 	// Vocabularies contains maps of all existing vocabulary values, keyed by vocabulary type.
 	// Example: "event_types" -> {"birth": {}}
@@ -132,21 +132,23 @@ type ValidationResult struct {
 }
 
 // ValidationError represents a hard validation failure that makes the archive invalid.
+// SourceType is always an entity type; TargetType may be an entity type OR a
+// vocabulary name (e.g., "participant_roles") for reference-into-vocab checks.
 type ValidationError struct {
-	SourceType  string `json:"source_type"`  // e.g., "events"
-	SourceID    string `json:"source_id"`    // e.g., "event-123"
-	SourceField string `json:"source_field"` // e.g., "place" or "participants[0].role"
-	TargetType  string `json:"target_type"`  // e.g., "places" or "participant_roles"
-	TargetID    string `json:"target_id"`    // e.g., "place-nonexistent"
-	Message     string `json:"message"`      // Human-readable error message
+	SourceType  EntityType `json:"source_type"`  // e.g., EntityTypeEvents
+	SourceID    string     `json:"source_id"`    // e.g., "event-123"
+	SourceField string     `json:"source_field"` // e.g., "place" or "participants[0].role"
+	TargetType  string     `json:"target_type"`  // entity type or vocab name
+	TargetID    string     `json:"target_id"`    // e.g., "place-nonexistent"
+	Message     string     `json:"message"`      // Human-readable error message
 }
 
 // ValidationWarning represents a soft validation issue that does not invalidate the archive.
 type ValidationWarning struct {
-	SourceType string `json:"source_type"` // e.g., "persons"
-	SourceID   string `json:"source_id"`   // e.g., "person-123"
-	Field      string `json:"field"`       // e.g., "properties.unknown_prop"
-	Message    string `json:"message"`     // Human-readable warning message
+	SourceType EntityType `json:"source_type"` // e.g., EntityTypePersons
+	SourceID   string     `json:"source_id"`   // e.g., "person-123"
+	Field      string     `json:"field"`       // e.g., "properties.unknown_prop"
+	Message    string     `json:"message"`     // Human-readable warning message
 }
 
 // ============================================================================
@@ -327,7 +329,7 @@ type EntityRef struct {
 
 // Type returns the entity type being referenced (using EntityType* constants).
 // Returns empty string if no field is set.
-func (e *EntityRef) Type() string {
+func (e *EntityRef) Type() EntityType {
 	switch {
 	case e.Person != "":
 		return EntityTypePersons

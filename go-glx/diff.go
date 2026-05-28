@@ -41,7 +41,7 @@ type FieldChange struct {
 // EntityChange describes a single entity-level difference.
 type EntityChange struct {
 	Kind       ChangeKind    `json:"kind"`
-	EntityType string        `json:"entity_type"`
+	EntityType EntityType    `json:"entity_type"`
 	ID         string        `json:"id"`
 	Summary    string        `json:"summary"`
 	Fields     []FieldChange `json:"fields,omitempty"`
@@ -116,8 +116,8 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 }
 
 // entityTypeOrder returns a sort key for entity types to group them logically.
-func entityTypeOrder(t string) int {
-	order := map[string]int{
+func entityTypeOrder(t EntityType) int {
+	order := map[EntityType]int{
 		EntityTypePersons:       0,
 		EntityTypeEvents:        1,
 		EntityTypeRelationships: 2,
@@ -140,7 +140,7 @@ func entityTypeOrder(t string) int {
 // diffEntityMap compares two entity maps and appends changes to the result.
 // oldArchive/newArchive are optional context for richer person summaries
 // (birth/death dates from events). Removed entities use oldArchive, added use newArchive.
-func diffEntityMap[T any](result *DiffResult, entityType string, oldMap, newMap map[string]*T, oldArchive, newArchive *GLXFile) {
+func diffEntityMap[T any](result *DiffResult, entityType EntityType, oldMap, newMap map[string]*T, oldArchive, newArchive *GLXFile) {
 	// Check for added and modified entities
 	for id, newEntity := range newMap {
 		if oldEntity, exists := oldMap[id]; exists {
@@ -321,7 +321,7 @@ func formatValue(v any) string {
 
 // summarizeEntity generates a human-readable one-liner for an entity.
 // archive is optional context used for richer person summaries (birth/death dates).
-func summarizeEntity[T any](entityType, id string, entity *T, archive *GLXFile) string {
+func summarizeEntity[T any](entityType EntityType, id string, entity *T, archive *GLXFile) string {
 	m, err := toYAMLMap(entity)
 	if err != nil || m == nil {
 		return id
@@ -513,7 +513,7 @@ func summarizeStudy(m map[string]any) string {
 }
 
 // summarizeModified generates a one-line summary for a modified entity.
-func summarizeModified(entityType, id string, fields []FieldChange) string {
+func summarizeModified(entityType EntityType, id string, fields []FieldChange) string {
 	if len(fields) == 1 {
 		f := fields[0]
 

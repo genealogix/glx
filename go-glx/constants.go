@@ -434,30 +434,38 @@ var gedcomSourceTypeMapping = map[string]string{
 	"population": SourceTypePopulationRegister,
 }
 
-// Entity type constants - plural form used as map keys in GLXFile
+// EntityType identifies a kind of GLX entity. The string value is the canonical
+// PLURAL form, which doubles as the top-level YAML key, the multi-file archive
+// directory name, and the map key in GLXFile (e.g., `persons:`, `persons/`).
+// Use the Singular method for the singular form (entity ID prefixes, per-entity
+// YAML wrappers, display labels).
+type EntityType string
+
+// Plural entity-type values. The string value is the canonical plural form.
 const (
-	EntityTypePersons       = "persons"
-	EntityTypeRelationships = "relationships"
-	EntityTypeEvents        = "events"
-	EntityTypePlaces        = "places"
-	EntityTypeSources       = "sources"
-	EntityTypeCitations     = "citations"
-	EntityTypeRepositories  = "repositories"
-	EntityTypeAssertions    = "assertions"
-	EntityTypeMedia         = "media"
-	EntityTypeResearchLogs  = "research_logs"
-	EntityTypeStudies       = "studies"
+	EntityTypePersons       EntityType = "persons"
+	EntityTypeRelationships EntityType = "relationships"
+	EntityTypeEvents        EntityType = "events"
+	EntityTypePlaces        EntityType = "places"
+	EntityTypeSources       EntityType = "sources"
+	EntityTypeCitations     EntityType = "citations"
+	EntityTypeRepositories  EntityType = "repositories"
+	EntityTypeAssertions    EntityType = "assertions"
+	EntityTypeMedia         EntityType = "media"
+	EntityTypeResearchLogs  EntityType = "research_logs"
+	EntityTypeStudies       EntityType = "studies"
 )
 
 // ArchiveDirVocabularies is the top-level directory name (and YAML key) for
-// archive-owned vocabulary files in a multi-file GLX archive.
+// archive-owned vocabulary files in a multi-file GLX archive. (Vocabularies
+// are not entities, so this is intentionally not an EntityType.)
 const ArchiveDirVocabularies = "vocabularies"
 
 // AllEntityTypes lists every GLX entity type in canonical order. Consumers that
 // need to enumerate entity directories (init scaffolding, archive-managed
 // top-level set, etc.) MUST derive their list from this slice so that adding
 // a new entity type updates every consumer in one place.
-var AllEntityTypes = []string{
+var AllEntityTypes = []EntityType{
 	EntityTypePersons,
 	EntityTypeRelationships,
 	EntityTypeEvents,
@@ -469,6 +477,46 @@ var AllEntityTypes = []string{
 	EntityTypeMedia,
 	EntityTypeResearchLogs,
 	EntityTypeStudies,
+}
+
+// entityTypeSingular maps each EntityType to its singular form. Singulars use
+// hyphens (`research-log`) rather than underscores (`research_logs`) because
+// they participate in entity IDs (e.g., `research-log-john-smith`), which are
+// constrained to `[a-zA-Z0-9-]{1,64}`.
+var entityTypeSingular = map[EntityType]string{
+	EntityTypePersons:       "person",
+	EntityTypeRelationships: "relationship",
+	EntityTypeEvents:        "event",
+	EntityTypePlaces:        "place",
+	EntityTypeSources:       "source",
+	EntityTypeCitations:     "citation",
+	EntityTypeRepositories:  "repository",
+	EntityTypeAssertions:    "assertion",
+	EntityTypeMedia:         "media",
+	EntityTypeResearchLogs:  "research-log",
+	EntityTypeStudies:       "study",
+}
+
+// String returns the plural form (the canonical wire-format value).
+func (t EntityType) String() string { return string(t) }
+
+// Plural returns the plural form (the canonical YAML key / directory name).
+func (t EntityType) Plural() string { return string(t) }
+
+// Singular returns the singular form used in entity ID prefixes (e.g.,
+// `person`) and per-entity YAML wrappers (`{ person: { ... } }`).
+func (t EntityType) Singular() string { return entityTypeSingular[t] }
+
+// IDPrefix returns `Singular() + "-"` — the prefix used when minting
+// deterministic entity IDs (e.g., `person-john-smith`).
+func (t EntityType) IDPrefix() string { return t.Singular() + "-" }
+
+// IsValidEntityType reports whether s is one of the recognized plural-form
+// entity-type values.
+func IsValidEntityType(s string) bool {
+	_, ok := entityTypeSingular[EntityType(s)]
+
+	return ok
 }
 
 // Entity ID prefixes - prepended to slugs when minting deterministic IDs.

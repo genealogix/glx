@@ -114,7 +114,7 @@ func TestExamples(t *testing.T) {
 			// automatically.
 			entityKeys := make(map[string]bool, len(glxlib.AllEntityTypes))
 			for _, et := range glxlib.AllEntityTypes {
-				entityKeys[et] = true
+				entityKeys[et.String()] = true
 			}
 
 			for pluralKey, entities := range doc {
@@ -192,8 +192,8 @@ func TestExamplesCompleteFamily(t *testing.T) {
 	expectedDirs := glxlib.AllEntityTypes
 
 	for _, dir := range expectedDirs {
-		t.Run(dir, func(t *testing.T) {
-			dirPath := filepath.Join(completeFamilyDir, dir)
+		t.Run(dir.String(), func(t *testing.T) {
+			dirPath := filepath.Join(completeFamilyDir, dir.String())
 			info, err := os.Stat(dirPath)
 
 			if os.IsNotExist(err) {

@@ -34,7 +34,7 @@ var archiveManagedTopLevel = func() map[string]bool {
 		glxlib.ArchiveDirVocabularies: true,
 	}
 	for _, entityType := range glxlib.AllEntityTypes {
-		m[entityType] = true
+		m[entityType.String()] = true
 	}
 
 	return m

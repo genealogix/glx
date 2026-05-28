@@ -97,7 +97,11 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 	// Create directory structure for a GENEALOGIX repository — every entity-type
 	// directory plus vocabularies/, derived from glxlib.AllEntityTypes so new
 	// entity types are scaffolded automatically.
-	dirs := append([]string{glxlib.ArchiveDirVocabularies}, glxlib.AllEntityTypes...)
+	dirs := make([]string, 0, 1+len(glxlib.AllEntityTypes))
+	dirs = append(dirs, glxlib.ArchiveDirVocabularies)
+	for _, et := range glxlib.AllEntityTypes {
+		dirs = append(dirs, et.String())
+	}
 
 	if err := createDirectoryStructure(dirs); err != nil {
 		return err
@@ -146,36 +150,34 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 	return nil
 }
 
-// writeTestData writes test data to entity files
+// writeTestData writes test data to entity files.
 func writeTestData(data *glxlib.GLXFile) error {
-	entityTypes := map[string]map[string]any{
-		"persons":                     mustMarshal(data.Persons),
-		"relationships":               mustMarshal(data.Relationships),
-		"events":                      mustMarshal(data.Events),
-		"places":                      mustMarshal(data.Places),
-		"sources":                     mustMarshal(data.Sources),
-		"citations":                   mustMarshal(data.Citations),
-		"repositories":                mustMarshal(data.Repositories),
-		"assertions":                  mustMarshal(data.Assertions),
-		glxlib.EntityTypeMedia:        mustMarshal(data.Media),
-		glxlib.EntityTypeResearchLogs: mustMarshal(data.ResearchLogs),
-		glxlib.EntityTypeStudies:      mustMarshal(data.Studies),
+	entityMaps := []struct {
+		entityType glxlib.EntityType
+		source     any
+	}{
+		{glxlib.EntityTypePersons, data.Persons},
+		{glxlib.EntityTypeRelationships, data.Relationships},
+		{glxlib.EntityTypeEvents, data.Events},
+		{glxlib.EntityTypePlaces, data.Places},
+		{glxlib.EntityTypeSources, data.Sources},
+		{glxlib.EntityTypeCitations, data.Citations},
+		{glxlib.EntityTypeRepositories, data.Repositories},
+		{glxlib.EntityTypeAssertions, data.Assertions},
+		{glxlib.EntityTypeMedia, data.Media},
+		{glxlib.EntityTypeResearchLogs, data.ResearchLogs},
+		{glxlib.EntityTypeStudies, data.Studies},
 	}
 
-	for dir, entities := range entityTypes {
+	for _, m := range entityMaps {
+		entities, err := structToMap(m.source)
+		if err != nil {
+			return fmt.Errorf("marshal %s for test data: %w", m.entityType, err)
+		}
+		dirStr := m.entityType.String()
 		for id, entity := range entities {
-			fileName := filepath.Join(dir, id+".glx")
-			fileContent := map[string]any{
-				dir: map[string]any{
-					id: entity,
-				},
-			}
-			yamlData, err := yaml.Marshal(fileContent)
-			if err != nil {
-				return fmt.Errorf("failed to marshal %s: %w", id, err)
-			}
-			if err := os.WriteFile(fileName, yamlData, filePermissions); err != nil {
-				return fmt.Errorf("failed to write file %s: %w", fileName, err)
+			if err := writeTestDataFile(dirStr, id, entity); err != nil {
+				return err
 			}
 		}
 	}
@@ -183,18 +185,38 @@ func writeTestData(data *glxlib.GLXFile) error {
 	return nil
 }
 
-// mustMarshal converts a struct to map[string]any
-func mustMarshal(v any) map[string]any {
-	// A bit of a hack to convert struct to map[string]any
-	// for easy file writing.
+// writeTestDataFile marshals a single entity wrapped under its plural type key
+// and writes it to `<dir>/<id>.glx`. Errors carry both the entity ID and the
+// underlying cause so failures point straight at the offending record.
+func writeTestDataFile(dir, id string, entity any) error {
+	fileName := filepath.Join(dir, id+".glx")
+	yamlData, err := yaml.Marshal(map[string]any{
+		dir: map[string]any{id: entity},
+	})
+	if err != nil {
+		return fmt.Errorf("marshal %s: %w", id, err)
+	}
+	if err := os.WriteFile(fileName, yamlData, filePermissions); err != nil {
+		return fmt.Errorf("write %s: %w", fileName, err)
+	}
+
+	return nil
+}
+
+// structToMap converts a struct (typically a typed entity map like
+// `map[string]*Person`) to a generic `map[string]any` via a YAML round-trip.
+// Returns the surfaced error rather than panicking — callers are I/O paths
+// that already propagate errors, so panicking would needlessly abort the
+// process when surfacing the failure works fine.
+func structToMap(v any) (map[string]any, error) {
 	data, err := yaml.Marshal(v)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("yaml marshal: %w", err)
 	}
 	var m map[string]any
 	if err := yaml.Unmarshal(data, &m); err != nil {
-		panic(err)
+		return nil, fmt.Errorf("yaml unmarshal: %w", err)
 	}
 
-	return m
+	return m, nil
 }

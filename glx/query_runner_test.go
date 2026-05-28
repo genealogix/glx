@@ -171,7 +171,7 @@ func TestQueryUnknownEntityType(t *testing.T) {
 func TestQueryUnsupportedFlag(t *testing.T) {
 	tests := []struct {
 		name       string
-		entityType string
+		entityType glxlib.EntityType
 		opts       queryOpts
 	}{
 		{"born-before on events", "events", queryOpts{Archive: "../docs/examples/basic-family", BornBefore: 1850}},

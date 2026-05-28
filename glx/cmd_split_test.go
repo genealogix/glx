@@ -305,7 +305,7 @@ func TestSplitArchive_AllEntityTypes(t *testing.T) {
 	// list the serializer uses, so a new entity type fails this test until it's
 	// wired in everywhere.
 	for _, dir := range glxlib.AllEntityTypes {
-		dirPath := filepath.Join(outputDir, dir)
+		dirPath := filepath.Join(outputDir, dir.String())
 		_, err := os.Stat(dirPath)
 		require.NoError(t, err, "%s directory should exist", dir)
 	}

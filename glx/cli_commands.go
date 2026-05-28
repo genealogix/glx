@@ -589,8 +589,19 @@ All entity types support --archive to specify the archive path.`,
   # List all sources
   glx query sources`,
 	Args:      cobra.ExactValidArgs(1),
-	ValidArgs: queryEntityTypes,
+	ValidArgs: queryEntityTypeStrings(),
 	RunE:      runQuery,
+}
+
+// queryEntityTypeStrings returns the queryable entity-type names as plain
+// strings for cobra's ValidArgs slot (which expects `[]string`).
+func queryEntityTypeStrings() []string {
+	out := make([]string, len(queryEntityTypes))
+	for i, t := range queryEntityTypes {
+		out[i] = t.String()
+	}
+
+	return out
 }
 
 func init() {
@@ -611,7 +622,7 @@ func init() {
 }
 
 func runQuery(_ *cobra.Command, args []string) error {
-	return queryEntities(args[0], &queryOpts{
+	return queryEntities(glxlib.EntityType(args[0]), &queryOpts{
 		Archive:    queryArchive,
 		Name:       queryName,
 		Phonetic:   queryPhonetic,

@@ -82,7 +82,7 @@ func TestSearchArchive_FindsPersonName(t *testing.T) {
 
 	hasPersonMatch := false
 	for _, r := range results {
-		if r.EntityType == "persons" && r.EntityID == "person-jane" {
+		if r.EntityType == glxlib.EntityTypePersons && r.EntityID == "person-jane" {
 			hasPersonMatch = true
 		}
 	}
@@ -110,7 +110,7 @@ func TestSearchArchive_FindsPlaceName(t *testing.T) {
 
 	hasPlaceMatch := false
 	for _, r := range results {
-		if r.EntityType == "places" && r.EntityID == "place-millbrook" {
+		if r.EntityType == glxlib.EntityTypePlaces && r.EntityID == "place-millbrook" {
 			hasPlaceMatch = true
 		}
 	}
@@ -123,7 +123,7 @@ func TestSearchArchive_FindsEventTitle(t *testing.T) {
 
 	hasEventMatch := false
 	for _, r := range results {
-		if r.EntityType == "events" && r.EntityID == "event-census" {
+		if r.EntityType == glxlib.EntityTypeEvents && r.EntityID == "event-census" {
 			hasEventMatch = true
 		}
 	}
@@ -136,7 +136,7 @@ func TestSearchArchive_FindsSourceTitle(t *testing.T) {
 
 	hasSourceMatch := false
 	for _, r := range results {
-		if r.EntityType == "sources" && r.EntityID == "source-1860" {
+		if r.EntityType == glxlib.EntityTypeSources && r.EntityID == "source-1860" {
 			hasSourceMatch = true
 		}
 	}
@@ -149,7 +149,7 @@ func TestSearchArchive_FindsAssertionNotes(t *testing.T) {
 
 	hasAssertionMatch := false
 	for _, r := range results {
-		if r.EntityType == "assertions" && r.EntityID == "a-1" {
+		if r.EntityType == glxlib.EntityTypeAssertions && r.EntityID == "a-1" {
 			hasAssertionMatch = true
 		}
 	}
@@ -174,7 +174,7 @@ func TestSearchArchive_FindsRepositoryAddressFields(t *testing.T) {
 
 			found := false
 			for _, r := range results {
-				if r.EntityType == "repositories" && r.EntityID == "repo-archives" && r.Field == tc.wantField {
+				if r.EntityType == glxlib.EntityTypeRepositories && r.EntityID == "repo-archives" && r.Field == tc.wantField {
 					found = true
 
 					break
@@ -222,13 +222,13 @@ func TestSearchArchive_TypeFilter(t *testing.T) {
 	placesOnly := searchArchive(archive, "Millbrook", false, "places")
 	require.NotEmpty(t, placesOnly, "should have place matches")
 	for _, r := range placesOnly {
-		assert.Equal(t, "places", r.EntityType, "filtered results should only contain places")
+		assert.Equal(t, glxlib.EntityTypePlaces, r.EntityType, "filtered results should only contain places")
 	}
 
 	// Non-place results should exist in unfiltered
 	hasNonPlace := false
 	for _, r := range allResults {
-		if r.EntityType != "places" {
+		if r.EntityType != glxlib.EntityTypePlaces {
 			hasNonPlace = true
 		}
 	}
@@ -274,7 +274,7 @@ func TestSearchArchive_FindsTemporalListPropertyValue(t *testing.T) {
 	results := searchArchive(archive, "blacksmith", false, "")
 
 	require.Len(t, results, 1, "should find one match for 'blacksmith' in temporal-list property")
-	assert.Equal(t, "persons", results[0].EntityType)
+	assert.Equal(t, glxlib.EntityTypePersons, results[0].EntityType)
 	assert.Equal(t, "person-temporal", results[0].EntityID)
 	assert.Equal(t, "properties.occupation", results[0].Field)
 	assert.Equal(t, "blacksmith", results[0].Value)
@@ -292,7 +292,7 @@ func TestSearchArchive_FindsMapShapedPropertyValue(t *testing.T) {
 	results := searchArchive(archive, "Methodist", false, "")
 
 	require.Len(t, results, 1, "should find one match for 'Methodist' in map-shaped property")
-	assert.Equal(t, "persons", results[0].EntityType)
+	assert.Equal(t, glxlib.EntityTypePersons, results[0].EntityType)
 	assert.Equal(t, "person-mapshaped", results[0].EntityID)
 	assert.Equal(t, "properties.religion", results[0].Field)
 	assert.Equal(t, "Methodist", results[0].Value)
