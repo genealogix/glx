@@ -94,6 +94,8 @@ func WithSlugFallback(fallback string) SlugOption {
 
 // Slugify normalizes s into a URL/ID-safe identifier:
 //
+//   - composes to NFC so decomposed input (base letter + combining diaeresis,
+//     etc.) reaches the digraph layer in precomposed form
 //   - applies German digraph transliteration (ä→ae, ß→ss, …) before NFKD
 //     normalization so umlauts produce the canonical German digraph form
 //     rather than bare ASCII
@@ -142,11 +144,17 @@ func slugifyBody(s, fallback string) string {
 	return slugFallback
 }
 
-// slugifyOnce runs the slug normalization pipeline — German digraph
-// transliteration, NFKD, combining-mark stripping, lowercasing, collapsing
-// non-alphanumeric runs to hyphens, and trimming hyphens — returning "" when
-// nothing survives.
+// slugifyOnce runs the slug normalization pipeline — NFC normalization,
+// German digraph transliteration, NFKD, combining-mark stripping,
+// lowercasing, collapsing non-alphanumeric runs to hyphens, and trimming
+// hyphens — returning "" when nothing survives.
 func slugifyOnce(s string) string {
+	// Compose to NFC first so decomposed input (e.g. "u" + U+0308 combining
+	// diaeresis, as produced by some macOS/filesystem sources) matches the
+	// precomposed umlauts in germanSlugReplacer and expands to the conventional
+	// digraph (ue) — otherwise the digraph layer would miss the umlaut and the
+	// subsequent NFKD + mark-strip would silently reduce it to a bare vowel (u).
+	s = norm.NFC.String(s)
 	s = germanSlugReplacer.Replace(s)
 	s = stripCombiningMarks(norm.NFKD.String(s))
 	s = strings.ToLower(s)
