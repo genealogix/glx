@@ -85,7 +85,8 @@ citations:
       text_from_source: "J. Smith - Blacksmith, 42 Oxford Street, London"
 
 # Assertions providing evidence for the temporal properties
-# The date field on each assertion matches the temporal entry it supports
+# The date on each assertion is the date of the source evidence; it falls within
+# the temporal range of the property entry it supports.
 assertions:
   # The 1851 census records John as age 1 in Leeds — it supports his early
   # residence, not the later occupations. There is no documented source for
