@@ -45,7 +45,7 @@ func analyzeGaps(archive *glxlib.GLXFile) []AnalysisIssue {
 				Category: "gap",
 				Severity: "medium",
 				Person:   id,
-				Message:  fmt.Sprintf("%s — no parents (no parent_child relationship as child)", name),
+				Message:  name + " — no parents (no parent_child relationship as child)",
 			})
 		}
 		issues = append(issues, checkNoEvents(id, name, personEvents)...)
@@ -82,6 +82,7 @@ func buildChildHasParentsIndex(archive *glxlib.GLXFile) map[string]bool {
 			}
 		}
 	}
+
 	return index
 }
 
@@ -111,6 +112,7 @@ func buildSpouseRelIndex(archive *glxlib.GLXFile) map[string][]spouseRef {
 			}
 		}
 	}
+
 	return index
 }
 
@@ -168,6 +170,7 @@ func marriagePairKey(a, b string) string {
 	if a < b {
 		return a + "|" + b
 	}
+
 	return b + "|" + a
 }
 
@@ -182,7 +185,7 @@ func checkMissingBirth(archive *glxlib.GLXFile, id, name string) []AnalysisIssue
 		Category: "gap",
 		Severity: "high",
 		Person:   id,
-		Message:  fmt.Sprintf("%s — no birth date or place", name),
+		Message:  name + " — no birth date or place",
 		Property: "birth_event",
 	}}
 }
@@ -211,7 +214,7 @@ func checkMissingDeath(archive *glxlib.GLXFile, id, name string) []AnalysisIssue
 		Category: "gap",
 		Severity: "high",
 		Person:   id,
-		Message:  fmt.Sprintf("%s — no death date or place", name),
+		Message:  name + " — no death date or place",
 		Property: "death_event",
 	}}
 }
@@ -226,7 +229,7 @@ func checkNoEvents(id, name string, personEvents map[string]int) []AnalysisIssue
 		Category: "gap",
 		Severity: "high",
 		Person:   id,
-		Message:  fmt.Sprintf("%s — no events (person participates in zero events)", name),
+		Message:  name + " — no events (person participates in zero events)",
 	}}
 }
 
@@ -241,6 +244,6 @@ func buildPersonEventIndex(archive *glxlib.GLXFile) map[string]int {
 			counts[p.Person]++
 		}
 	}
+
 	return counts
 }
-

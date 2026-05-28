@@ -37,14 +37,14 @@ type timelineEntry struct {
 // familyRelationshipTypes defines which relationship types count as "family"
 // for the purpose of timeline event collection.
 var familyRelationshipTypes = map[string]bool{
-	"marriage":                  true,
-	"partner":                   true,
-	"parent_child":              true,
-	"biological_parent_child":   true,
-	"adoptive_parent_child":     true,
-	"foster_parent_child":       true,
-	"step_parent":               true,
-	"guardian":                   true,
+	"marriage":                true,
+	"partner":                 true,
+	"parent_child":            true,
+	"biological_parent_child": true,
+	"adoptive_parent_child":   true,
+	"foster_parent_child":     true,
+	"step_parent":             true,
+	"guardian":                true,
 }
 
 // showTimeline loads an archive and displays a chronological timeline for a person.
@@ -94,6 +94,7 @@ func findPersonForTimeline(archive *glxlib.GLXFile, query string) (string, *glxl
 		if person == nil {
 			return "", nil, fmt.Errorf("person %q exists in archive but has no data", query)
 		}
+
 		return query, person, nil
 	}
 
@@ -409,11 +410,13 @@ func dateSortKey(dateStr string) string {
 		for len(year) < 4 {
 			year = "0" + year
 		}
+
 		return year + rest
 	}
 	for len(match) < 4 {
 		match = "0" + match
 	}
+
 	return match
 }
 

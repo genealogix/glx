@@ -32,7 +32,6 @@ var temporalYearRegexp = regexp.MustCompile(`\b(\d{1,4})\b`)
 // lastYearRegexp matches 1–5 digit sequences (supports Hebrew years like 5765).
 var lastYearRegexp = regexp.MustCompile(`\b(\d{1,5})\b`)
 
-
 // validateTemporalConsistency checks for logical inconsistencies in dates
 // across persons, events, and relationships. All issues are reported as
 // warnings since dates are often estimates (ABT, BEF, etc.).
@@ -49,6 +48,7 @@ func extractEventYear(archive *GLXFile, personID, eventType string) int {
 	if event == nil {
 		return 0
 	}
+
 	return ExtractFirstYear(string(event.Date))
 }
 
@@ -230,12 +230,13 @@ func ExtractFirstYear(dateStr string) int {
 // "FROM 1900 TO 1950" → "FROM 1900"
 // "ABT 1850" → "ABT 1850" (unchanged)
 func extractFirstDateComponent(dateStr string) string {
-	if idx := strings.Index(dateStr, " AND "); idx != -1 {
-		return dateStr[:idx]
+	if before, _, ok := strings.Cut(dateStr, " AND "); ok {
+		return before
 	}
-	if idx := strings.Index(dateStr, " TO "); idx != -1 {
-		return dateStr[:idx]
+	if before, _, ok := strings.Cut(dateStr, " TO "); ok {
+		return before
 	}
+
 	return dateStr
 }
 

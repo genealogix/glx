@@ -282,6 +282,7 @@ func extractPropertyString(val any) string {
 			}
 		}
 	}
+
 	return ""
 }
 
@@ -340,6 +341,7 @@ func migrateEventProperties(
 		if hasPlace {
 			transferred.place = placeStr != "" || existing.PlaceID != ""
 		}
+
 		return eventID, transferred, nil
 	}
 

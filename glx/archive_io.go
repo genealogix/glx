@@ -30,8 +30,8 @@ import (
 // are picked up automatically.
 var archiveManagedTopLevel = func() map[string]bool {
 	m := map[string]bool{
-		"metadata.glx": true,
-		"vocabularies": true,
+		"metadata.glx":                true,
+		glxlib.ArchiveDirVocabularies: true,
 	}
 	for _, entityType := range glxlib.AllEntityTypes {
 		m[entityType] = true
@@ -397,7 +397,7 @@ func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
 // mergeStandardVocabularies loads standard vocabularies into a GLXFile,
 // filling only empty maps. User-defined vocabularies are preserved.
 //
-//nolint:gocyclo
+//nolint:gocyclo // 21 vocab fields with identical empty-map guards; splitting hurts readability
 func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
 	std := &glxlib.GLXFile{}
 	if err := glxlib.LoadStandardVocabulariesIntoGLX(std); err != nil {

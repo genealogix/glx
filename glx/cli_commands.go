@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -42,6 +43,7 @@ func versionString() string {
 	if date != "" {
 		v += " " + date
 	}
+
 	return v
 }
 
@@ -328,7 +330,10 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 // Validate Command
 // ============================================================================
 
-var validateReport bool
+var (
+	validateReport       bool
+	errReportTooManyArgs = errors.New("--report accepts at most one path argument")
+)
 
 var validateCmd = &cobra.Command{
 	Use:   "validate [paths...]",
@@ -375,7 +380,7 @@ func init() {
 func runValidate(_ *cobra.Command, args []string) error {
 	if validateReport {
 		if len(args) > 1 {
-			return fmt.Errorf("--report accepts at most one path argument")
+			return errReportTooManyArgs
 		}
 		path := "."
 		if len(args) == 1 {
@@ -1141,6 +1146,7 @@ func runDuplicates(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		personFilter = args[0]
 	}
+
 	return findDuplicates(duplicatesArchive, duplicatesThreshold, personFilter, duplicatesJSON)
 }
 
@@ -1250,6 +1256,7 @@ func runAnalyze(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		person = args[0]
 	}
+
 	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
 }
 

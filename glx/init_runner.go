@@ -97,7 +97,7 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 	// Create directory structure for a GENEALOGIX repository — every entity-type
 	// directory plus vocabularies/, derived from glxlib.AllEntityTypes so new
 	// entity types are scaffolded automatically.
-	dirs := append([]string{"vocabularies"}, glxlib.AllEntityTypes...)
+	dirs := append([]string{glxlib.ArchiveDirVocabularies}, glxlib.AllEntityTypes...)
 
 	if err := createDirectoryStructure(dirs); err != nil {
 		return err
@@ -149,17 +149,17 @@ func createMultiFileArchive(targetDir string, numTestData int) error {
 // writeTestData writes test data to entity files
 func writeTestData(data *glxlib.GLXFile) error {
 	entityTypes := map[string]map[string]any{
-		"persons":       mustMarshal(data.Persons),
-		"relationships": mustMarshal(data.Relationships),
-		"events":        mustMarshal(data.Events),
-		"places":        mustMarshal(data.Places),
-		"sources":       mustMarshal(data.Sources),
-		"citations":     mustMarshal(data.Citations),
-		"repositories":  mustMarshal(data.Repositories),
-		"assertions":    mustMarshal(data.Assertions),
-		"media":         mustMarshal(data.Media),
-		"research_logs": mustMarshal(data.ResearchLogs),
-		"studies":       mustMarshal(data.Studies),
+		"persons":                     mustMarshal(data.Persons),
+		"relationships":               mustMarshal(data.Relationships),
+		"events":                      mustMarshal(data.Events),
+		"places":                      mustMarshal(data.Places),
+		"sources":                     mustMarshal(data.Sources),
+		"citations":                   mustMarshal(data.Citations),
+		"repositories":                mustMarshal(data.Repositories),
+		"assertions":                  mustMarshal(data.Assertions),
+		glxlib.EntityTypeMedia:        mustMarshal(data.Media),
+		glxlib.EntityTypeResearchLogs: mustMarshal(data.ResearchLogs),
+		glxlib.EntityTypeStudies:      mustMarshal(data.Studies),
 	}
 
 	for dir, entities := range entityTypes {

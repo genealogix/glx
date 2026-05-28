@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -34,7 +35,7 @@ type associate struct {
 
 // associateLink describes one connection between the target and an associate.
 type associateLink struct {
-	Type    string `json:"type"`               // "census_household", "event_coparticipant", "place_overlap"
+	Type    string `json:"type"` // "census_household", "event_coparticipant", "place_overlap"
 	EventID string `json:"event_id,omitempty"`
 	PlaceID string `json:"place_id,omitempty"`
 	Label   string `json:"label"`
@@ -50,7 +51,7 @@ type clusterResult struct {
 }
 
 // showCluster loads an archive and displays FAN club analysis for a person.
-func showCluster(archivePath, personQuery string, filterPlace string, beforeYear, afterYear int, jsonOutput bool) error {
+func showCluster(archivePath, personQuery, filterPlace string, beforeYear, afterYear int, jsonOutput bool) error {
 	archive, err := loadArchiveForCluster(archivePath)
 	if err != nil {
 		return err
@@ -68,6 +69,7 @@ func showCluster(archivePath, personQuery string, filterPlace string, beforeYear
 	}
 
 	printClusterText(result)
+
 	return nil
 }
 
@@ -86,6 +88,7 @@ func loadArchiveForCluster(path string) (*glxlib.GLXFile, error) {
 		for _, d := range duplicates {
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", d)
 		}
+
 		return archive, nil
 	}
 
@@ -124,6 +127,7 @@ func resolvePersonForCluster(archive *glxlib.GLXFile, query string) (string, err
 			name := extractPersonName(archive.Persons[id])
 			lines = append(lines, fmt.Sprintf("  %s  %s", id, name))
 		}
+
 		return "", fmt.Errorf("multiple persons match %q:\n%s\nUse exact person ID", query, strings.Join(lines, "\n"))
 	}
 }
@@ -323,7 +327,7 @@ func collectPlaceLinks(personID string, archive *glxlib.GLXFile, linkMap map[str
 				linkMap[otherID] = append(linkMap[otherID], associateLink{
 					Type:    "place_overlap",
 					PlaceID: placeID,
-					Label: fmt.Sprintf("Same place: %s (%s)", placeName, yearRange),
+					Label:   fmt.Sprintf("Same place: %s (%s)", placeName, yearRange),
 				})
 			}
 		}
@@ -351,6 +355,7 @@ func buildPlaceYearIndex(excludeID string, archive *glxlib.GLXFile) map[string]p
 			index[p.Person][event.PlaceID] = append(index[p.Person][event.PlaceID], year)
 		}
 	}
+
 	return index
 }
 
@@ -367,6 +372,7 @@ func filterPlaceYears(pys placeYearSet, beforeYear, afterYear int) placeYearSet 
 			filtered[placeID] = fy
 		}
 	}
+
 	return filtered
 }
 
@@ -381,6 +387,7 @@ func filterYears(years []int, beforeYear, afterYear int) []int {
 			filtered = append(filtered, y)
 		}
 	}
+
 	return filtered
 }
 
@@ -421,6 +428,7 @@ func yearsOverlap(a, b []int) bool {
 			}
 		}
 	}
+
 	return false
 }
 
@@ -432,6 +440,7 @@ func hasEventLinkAtPlace(personID, placeID string, linkMap map[string][]associat
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -459,6 +468,7 @@ func buildAssociateList(linkMap map[string][]associateLink, archive *glxlib.GLXF
 		if associates[i].Score != associates[j].Score {
 			return associates[i].Score > associates[j].Score
 		}
+
 		return associates[i].PersonID < associates[j].PersonID
 	})
 
@@ -479,6 +489,7 @@ func computeScore(links []associateLink) int {
 			score += 1
 		}
 	}
+
 	return score
 }
 
@@ -492,6 +503,7 @@ func clusterEventHasParticipant(personID string, event *glxlib.Event) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -510,6 +522,7 @@ func placeIsDescendant(placeID, ancestorID string, archive *glxlib.GLXFile) bool
 		}
 		current = place.ParentID
 	}
+
 	return false
 }
 
@@ -525,6 +538,7 @@ func yearInRange(year, beforeYear, afterYear int) bool {
 	if afterYear > 0 && year <= afterYear {
 		return false
 	}
+
 	return true
 }
 
@@ -536,8 +550,9 @@ func formatYearRange(years []int) string {
 	copy(sorted, years)
 	sort.Ints(sorted)
 	if sorted[0] == sorted[len(sorted)-1] {
-		return fmt.Sprintf("%d", sorted[0])
+		return strconv.Itoa(sorted[0])
 	}
+
 	return fmt.Sprintf("%d–%d", sorted[0], sorted[len(sorted)-1])
 }
 
@@ -545,6 +560,7 @@ func clusterResolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
 	if place, ok := archive.Places[placeID]; ok && place != nil {
 		return place.Name
 	}
+
 	return placeID
 }
 
@@ -554,6 +570,7 @@ func printClusterText(result *clusterResult) {
 
 	if len(result.Associates) == 0 {
 		fmt.Println("\n  No associates found.")
+
 		return
 	}
 
@@ -575,7 +592,7 @@ func printClusterText(result *clusterResult) {
 				if link.Type == group.key {
 					line := fmt.Sprintf("    %s (%s)", assoc.PersonName, assoc.PersonID)
 					if link.Role != "" {
-						line += fmt.Sprintf(" — %s", link.Role)
+						line += " — " + link.Role
 					}
 					line += fmt.Sprintf("  [%s]", link.Label)
 					if assoc.Score > 0 {
@@ -603,5 +620,6 @@ func printClusterJSON(result *clusterResult) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 	fmt.Println(string(data))
+
 	return nil
 }

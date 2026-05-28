@@ -461,8 +461,10 @@ func parseGEDCOM(reader io.Reader, logger *ImportLogger) ([]*GEDCOMRecord, GEDCO
 				} else {
 					lastRecord.Value += "\n" + text
 				}
+
 				continue
 			}
+
 			return nil, GEDCOMUnknown, "", fmt.Errorf("line %d: %w", lineNum, parseErr)
 		}
 

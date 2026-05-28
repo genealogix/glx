@@ -314,6 +314,7 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 			if propertyKey, ok := conv.GEDCOMIndex.EventProperties[sub.Tag]; ok {
 				event.Properties[propertyKey] = sub.Value
 			}
+
 			break
 		}
 	}

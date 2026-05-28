@@ -62,7 +62,7 @@ func TestRunInit_MultiFile(t *testing.T) {
 
 	// Check that directories were created — every entity-type directory plus
 	// vocabularies/, derived from the same source `runInit` uses.
-	expectedDirs := append([]string{"vocabularies"}, glxlib.AllEntityTypes...)
+	expectedDirs := append([]string{glxlib.ArchiveDirVocabularies}, glxlib.AllEntityTypes...)
 
 	for _, dir := range expectedDirs {
 		dirPath := filepath.Join(tmpDir, dir)

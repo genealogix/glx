@@ -202,6 +202,7 @@ func migrateArchive(archivePath string) error {
 			return nil
 		}
 		fmt.Println("No deprecated properties found. Archive is already up to date.")
+
 		return nil
 	}
 

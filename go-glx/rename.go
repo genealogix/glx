@@ -85,6 +85,7 @@ func findEntityType(glx *GLXFile, id string) (string, error) {
 	if v, ok := glx.Studies[id]; ok && v != nil {
 		return EntityTypeStudies, nil
 	}
+
 	return "", fmt.Errorf("entity %q not found in archive", id)
 }
 
@@ -93,6 +94,7 @@ func checkTargetFree(glx *GLXFile, id string) error {
 	if _, err := findEntityType(glx, id); err == nil {
 		return fmt.Errorf("entity %q already exists in archive", id)
 	}
+
 	return nil
 }
 
@@ -348,6 +350,7 @@ func replaceInSlice(s []string, oldID, newID string) int {
 			count++
 		}
 	}
+
 	return count
 }
 
@@ -379,5 +382,6 @@ func replaceInProperties(props map[string]any, oldID, newID string) int {
 			}
 		}
 	}
+
 	return count
 }

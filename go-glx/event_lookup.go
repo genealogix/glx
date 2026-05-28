@@ -43,6 +43,7 @@ func FindPersonEvent(archive *GLXFile, personID, eventType string) (string, *Eve
 			}
 		}
 	}
+
 	return "", nil
 }
 

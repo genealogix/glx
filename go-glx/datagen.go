@@ -26,6 +26,7 @@ import (
 // secureIntn returns a cryptographically random int in [0, n).
 func secureIntn(n int) int {
 	r, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
+
 	return int(r.Int64())
 }
 
@@ -205,7 +206,7 @@ func generateResearchLog(glxFile *GLXFile, repoID string) {
 	glxFile.ResearchLogs[logID] = &ResearchLog{
 		Title:      "Birth record search for generated test data",
 		Objective:  "Locate the birth record cited in the generated evidence chain",
-		Status:     "complete",
+		Status:     ResearchLogStatusComplete,
 		Researcher: gofakeit.Name(),
 		Searches: []Search{
 			{

@@ -237,7 +237,7 @@ const (
 // Roles without a vocabulary match (NGHBR, FRIEND, MULTIPLE) are stored in
 // participant notes instead of the role field to avoid validation errors.
 var gedcomRoleToGLX = map[string]string{
-	"WITN":       ParticipantRoleWitness,
+	"WITH":       ParticipantRoleWitness,
 	"OFFICIATOR": ParticipantRoleOfficiant,
 	"CLERGY":     ParticipantRoleOfficiant,
 	"GODP":       ParticipantRoleGodparent,
@@ -448,6 +448,10 @@ const (
 	EntityTypeResearchLogs  = "research_logs"
 	EntityTypeStudies       = "studies"
 )
+
+// ArchiveDirVocabularies is the top-level directory name (and YAML key) for
+// archive-owned vocabulary files in a multi-file GLX archive.
+const ArchiveDirVocabularies = "vocabularies"
 
 // AllEntityTypes lists every GLX entity type in canonical order. Consumers that
 // need to enumerate entity directories (init scaffolding, archive-managed

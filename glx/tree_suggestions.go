@@ -68,6 +68,7 @@ func buildPersonCensusIndex(archive *glxlib.GLXFile) personCensusIndex {
 			index[p.Person][year] = true
 		}
 	}
+
 	return index
 }
 
@@ -93,7 +94,7 @@ func collectAncestorSuggestions(tc *treeContext, personID string, archive *glxli
 			PersonID: personID,
 			Category: "gap",
 			Priority: "high",
-			Message:  fmt.Sprintf("%s — no parent_child relationship found", name),
+			Message:  name + " — no parent_child relationship found",
 		})
 
 		// Suggest census records that could reveal parents
@@ -167,7 +168,7 @@ func suggestParentCensusRecords(personID string, person *glxlib.Person, archive 
 
 		location := ""
 		if placeName != "" {
-			location = fmt.Sprintf(", %s", placeName)
+			location = ", " + placeName
 		}
 
 		suggestions = append(suggestions, ancestorSuggestion{

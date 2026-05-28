@@ -52,7 +52,8 @@ var errPhoneticRequiresName = errors.New("--phonetic requires --name to be speci
 var queryEntityTypes = []string{
 	"persons", "events", "assertions", "sources",
 	"relationships", "places", "citations",
-	"repositories", "media", "research_logs", "studies",
+	"repositories", glxlib.EntityTypeMedia,
+	glxlib.EntityTypeResearchLogs, glxlib.EntityTypeStudies,
 }
 
 // validateQueryFlags checks that the given filter flags are applicable to the
@@ -142,11 +143,11 @@ func queryEntities(entityType string, opts *queryOpts) error {
 		return queryCitations(archive)
 	case "repositories":
 		return queryRepositories(archive, opts)
-	case "media":
+	case glxlib.EntityTypeMedia:
 		return queryMedia(archive)
-	case "research_logs":
+	case glxlib.EntityTypeResearchLogs:
 		return queryResearchLogs(archive)
-	case "studies":
+	case glxlib.EntityTypeStudies:
 		return queryStudies(archive)
 	default:
 		return fmt.Errorf("unknown entity type: %s", entityType)
@@ -556,6 +557,7 @@ func assertionMatchesSubject(a *glxlib.Assertion, lowerQuery string, archive *gl
 			}
 		}
 	}
+
 	return false
 }
 
@@ -603,6 +605,7 @@ func extractAllNames(person *glxlib.Person) []string {
 	if names := extractNamesFromProperty(person.Properties, "name"); len(names) > 0 {
 		return names
 	}
+
 	return extractNamesFromProperty(person.Properties, "primary_name")
 }
 
@@ -618,6 +621,7 @@ func extractNamesFromProperty(props map[string]any, key string) []string {
 		if s == "" {
 			return nil
 		}
+
 		return []string{s}
 	}
 
@@ -628,6 +632,7 @@ func extractNamesFromProperty(props map[string]any, key string) []string {
 				return []string{s}
 			}
 		}
+
 		return nil
 	}
 
@@ -643,6 +648,7 @@ func extractNamesFromProperty(props map[string]any, key string) []string {
 				}
 			}
 		}
+
 		return names
 	}
 
@@ -707,6 +713,7 @@ func personMatchesBirthplace(personID, query string, archive *glxlib.GLXFile) bo
 			return true
 		}
 	}
+
 	return false
 }
 

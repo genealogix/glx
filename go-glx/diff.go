@@ -108,6 +108,7 @@ func DiffArchives(oldArchive, newArchive *GLXFile, personFilter string) *DiffRes
 		if result.Changes[i].EntityType != result.Changes[j].EntityType {
 			return entityTypeOrder(result.Changes[i].EntityType) < entityTypeOrder(result.Changes[j].EntityType)
 		}
+
 		return result.Changes[i].ID < result.Changes[j].ID
 	})
 
@@ -132,6 +133,7 @@ func entityTypeOrder(t string) int {
 	if v, ok := order[t]; ok {
 		return v
 	}
+
 	return 99
 }
 
@@ -201,6 +203,7 @@ func formatSerializationStatus(err error) string {
 	if err == nil {
 		return "(serializable)"
 	}
+
 	return fmt.Sprintf("(unserializable: %v)", err)
 }
 
@@ -214,6 +217,7 @@ func toYAMLMap(v any) (map[string]any, error) {
 	if err := yaml.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("yaml unmarshal: %w", err)
 	}
+
 	return m, nil
 }
 
@@ -251,6 +255,7 @@ func diffMaps(prefix string, oldMap, newMap map[string]any) []FieldChange {
 				OldValue: "(none)",
 				NewValue: formatValue(newVal),
 			})
+
 			continue
 		}
 		if !newExists {
@@ -259,6 +264,7 @@ func diffMaps(prefix string, oldMap, newMap map[string]any) []FieldChange {
 				OldValue: formatValue(oldVal),
 				NewValue: "(none)",
 			})
+
 			continue
 		}
 
@@ -267,6 +273,7 @@ func diffMaps(prefix string, oldMap, newMap map[string]any) []FieldChange {
 		newSubMap, newIsMap := newVal.(map[string]any)
 		if oldIsMap && newIsMap {
 			changes = append(changes, diffMaps(path, oldSubMap, newSubMap)...)
+
 			continue
 		}
 
@@ -297,6 +304,7 @@ func formatValue(v any) string {
 		for i, item := range val {
 			parts[i] = formatValue(item)
 		}
+
 		return "[" + strings.Join(parts, ", ") + "]"
 	case map[string]any:
 		// Flatten to JSON-like string for display
@@ -304,6 +312,7 @@ func formatValue(v any) string {
 		if err != nil {
 			return fmt.Sprintf("%v", val)
 		}
+
 		return strings.TrimSpace(string(data))
 	default:
 		return fmt.Sprintf("%v", val)
@@ -367,6 +376,7 @@ func summarizePerson(id string, m map[string]any, archive *GLXFile) string {
 	if len(parts) > 0 {
 		return name + " (" + strings.Join(parts, "; ") + ")"
 	}
+
 	return name
 }
 
@@ -386,6 +396,7 @@ func summarizeEvent(m map[string]any) string {
 	if date != "" {
 		parts = append(parts, date)
 	}
+
 	return strings.Join(parts, ", ")
 }
 
@@ -412,6 +423,7 @@ func summarizeAssertion(m map[string]any) string {
 			sb.WriteString(" confidence")
 		}
 	}
+
 	return sb.String()
 }
 
@@ -420,6 +432,7 @@ func summarizeSource(m map[string]any) string {
 	if title != "" {
 		return fmt.Sprintf("%q", title)
 	}
+
 	return "(untitled source)"
 }
 
@@ -436,6 +449,7 @@ func summarizeCitation(m map[string]any) string {
 	if source != "" {
 		return source
 	}
+
 	return "(citation)"
 }
 
@@ -444,6 +458,7 @@ func summarizeRelationship(m map[string]any) string {
 	if relType == "" {
 		return "(relationship)"
 	}
+
 	return relType
 }
 
@@ -452,6 +467,7 @@ func summarizePlace(m map[string]any) string {
 	if name != "" {
 		return name
 	}
+
 	return "(unnamed place)"
 }
 
@@ -470,6 +486,7 @@ func summarizeResearchLog(m map[string]any) string {
 	if status != "" {
 		return headline + " [" + status + "]"
 	}
+
 	return headline
 }
 
@@ -491,6 +508,7 @@ func summarizeStudy(m map[string]any) string {
 	if len(suffix) > 0 {
 		return title + " [" + strings.Join(suffix, "/") + "]"
 	}
+
 	return title
 }
 
@@ -498,8 +516,10 @@ func summarizeStudy(m map[string]any) string {
 func summarizeModified(entityType, id string, fields []FieldChange) string {
 	if len(fields) == 1 {
 		f := fields[0]
+
 		return fmt.Sprintf("%s %s: %s: %s → %s", entityType, id, f.Path, f.OldValue, f.NewValue)
 	}
+
 	return fmt.Sprintf("%s %s: %d fields changed", entityType, id, len(fields))
 }
 
@@ -631,6 +651,7 @@ func eventHasParticipant(ev *Event, personID string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -643,5 +664,6 @@ func relationshipHasParticipant(rel *Relationship, personID string) bool {
 			return true
 		}
 	}
+
 	return false
 }

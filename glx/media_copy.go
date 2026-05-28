@@ -99,6 +99,7 @@ func isPathWithin(child, parent string) bool {
 	if err != nil {
 		return false
 	}
+
 	return !strings.HasPrefix(rel, "..") && rel != "."
 }
 
@@ -168,12 +169,15 @@ func copyFile(src, dst string) error {
 
 	if copyErr != nil {
 		_ = os.Remove(dst) // best-effort cleanup of corrupted file
+
 		return copyErr
 	}
 	if closeErr != nil {
 		_ = os.Remove(dst) // best-effort cleanup of truncated file
+
 		return closeErr
 	}
+
 	return nil
 }
 
@@ -198,7 +202,7 @@ func decodeGEDCOMBlob(blobText string) ([]byte, error) {
 	for i := 0; i < fullGroups; i += 4 {
 		// Validate each character is in valid GEDCOM BLOB range (0x2E '.' to 0x6D 'm')
 		// This gives 6-bit values (0-63) after subtracting 0x2E
-		for j := 0; j < 4; j++ {
+		for j := range 4 {
 			char := cleaned[i+j]
 			if char < '.' || char > 'm' {
 				return nil, fmt.Errorf("invalid BLOB character at position %d: %q (must be in range '.' to 'm')", i+j, char)
