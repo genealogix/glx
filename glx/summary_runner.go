@@ -970,7 +970,7 @@ func resolvePlaceName(placeID string, archive *glxlib.GLXFile) string {
 func isPlaceReferenceProperty(key string, archive *glxlib.GLXFile) bool {
 	def, ok := archive.PersonProperties[key]
 
-	return ok && def != nil && def.ReferenceType == glxlib.EntityTypePlaces
+	return ok && def != nil && def.ReferenceType == glxlib.EntityTypePlaces.String()
 }
 
 // ============================================================================

@@ -107,7 +107,7 @@ func TestStudyValidation(t *testing.T) {
 		result := archive.Validate()
 		require.Len(t, result.Errors, 1)
 		err := result.Errors[0]
-		assert.Equal(t, "studies", err.SourceType)
+		assert.Equal(t, EntityTypeStudies, err.SourceType)
 		assert.Equal(t, "study-1", err.SourceID)
 		assert.Equal(t, "places", err.TargetType)
 		assert.Equal(t, "place-does-not-exist", err.TargetID)
@@ -178,7 +178,7 @@ func TestStudyValidation(t *testing.T) {
 		require.NotEmpty(t, result.Warnings, "expected a date-format warning")
 		var found bool
 		for _, w := range result.Warnings {
-			if w.SourceType == "studies" && w.SourceID == "study-1" && w.Field == "date_range" {
+			if w.SourceType == EntityTypeStudies && w.SourceID == "study-1" && w.Field == "date_range" {
 				found = true
 
 				break

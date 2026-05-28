@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -62,6 +63,7 @@ func reconstructFamilies(expCtx *ExportContext) {
 		if len(spouseIDs) == 0 {
 			expCtx.addExportWarning(EntityTypeRelationships, relID,
 				"marriage relationship has no spouse participants")
+
 			continue
 		}
 
@@ -132,6 +134,7 @@ func reconstructFamilies(expCtx *ExportContext) {
 		if parentID == "" || childID == "" {
 			expCtx.addExportWarning(EntityTypeRelationships, relID,
 				"parent-child relationship missing parent or child participant")
+
 			continue
 		}
 
@@ -190,6 +193,7 @@ func reconstructFamilies(expCtx *ExportContext) {
 		for _, pedi := range parentIDs {
 			if pedi != "" {
 				bestPedi = pedi
+
 				break
 			}
 		}
@@ -203,7 +207,7 @@ func reconstructFamilies(expCtx *ExportContext) {
 		for pid := range parentIDs {
 			parentList = append(parentList, pid)
 		}
-		for i := 0; i < len(parentList); i++ {
+		for i := range parentList {
 			for j := i + 1; j < len(parentList); j++ {
 				pairKey := makeParentPairKey(parentList[i], parentList[j])
 				if idx, ok := parentPairToFamily[pairKey]; ok {
@@ -224,6 +228,7 @@ func reconstructFamilies(expCtx *ExportContext) {
 						continue
 					}
 					matchedFamilies[idx] = true
+
 					break
 				}
 				if len(matchedFamilies) > 0 {
@@ -342,9 +347,7 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 			// Other family events: events where both spouses participate with role "spouse"
 			familyEvents := findFamilyEvents(family.HusbandID, family.WifeID,
 				rel.StartEvent, rel.EndEvent, expCtx)
-			for _, fe := range familyEvents {
-				record.SubRecords = append(record.SubRecords, fe)
-			}
+			record.SubRecords = append(record.SubRecords, familyEvents...)
 
 			// NOTE from relationship
 			for _, note := range rel.Notes {
@@ -611,6 +614,7 @@ func extractParentChildIDs(rel *Relationship) (parentID, childID string) {
 			childID = p.Person
 		}
 	}
+
 	return parentID, childID
 }
 
@@ -640,15 +644,11 @@ func makeParentPairKey(idA, idB string) string {
 	if idA < idB {
 		return idA + "|" + idB
 	}
+
 	return idB + "|" + idA
 }
 
 // containsString checks if a slice contains a string.
 func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, s)
 }

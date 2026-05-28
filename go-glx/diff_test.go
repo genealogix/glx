@@ -480,6 +480,76 @@ func TestSummarizeModified_MultipleFields(t *testing.T) {
 	assert.Contains(t, s, "2 fields changed")
 }
 
+func TestSummarizeResearchLog(t *testing.T) {
+	t.Run("objective and status", func(t *testing.T) {
+		s := summarizeResearchLog(map[string]any{
+			"objective": "Locate William's birth record",
+			"status":    "in_progress",
+		})
+		assert.Contains(t, s, "Locate William's birth record")
+		assert.Contains(t, s, "[in_progress]")
+	})
+	t.Run("falls back to title when objective is empty", func(t *testing.T) {
+		s := summarizeResearchLog(map[string]any{
+			"title":  "FAN cluster sweep",
+			"status": "complete",
+		})
+		assert.Contains(t, s, "FAN cluster sweep")
+		assert.Contains(t, s, "[complete]")
+	})
+	t.Run("placeholder when title and objective both empty", func(t *testing.T) {
+		s := summarizeResearchLog(map[string]any{"status": "open"})
+		assert.Contains(t, s, "(research log)")
+		assert.Contains(t, s, "[open]")
+	})
+	t.Run("no status renders without brackets", func(t *testing.T) {
+		s := summarizeResearchLog(map[string]any{"objective": "Test"})
+		assert.Equal(t, "Test", s)
+	})
+}
+
+func TestSummarizeStudy(t *testing.T) {
+	t.Run("title with type and status", func(t *testing.T) {
+		s := summarizeStudy(map[string]any{
+			"title":  "Smith family reconstruction",
+			"type":   "family_reconstruction",
+			"status": "active",
+		})
+		assert.Contains(t, s, "Smith family reconstruction")
+		assert.Contains(t, s, "[family_reconstruction/active]")
+	})
+	t.Run("title only", func(t *testing.T) {
+		s := summarizeStudy(map[string]any{"title": "Untyped Study"})
+		assert.Equal(t, "Untyped Study", s)
+	})
+	t.Run("placeholder when title missing", func(t *testing.T) {
+		s := summarizeStudy(map[string]any{"type": "one_name_study"})
+		assert.Contains(t, s, "(study)")
+		assert.Contains(t, s, "[one_name_study]")
+	})
+	t.Run("type only", func(t *testing.T) {
+		s := summarizeStudy(map[string]any{
+			"title": "Yorkshire OPS",
+			"type":  "one_place_study",
+		})
+		assert.Contains(t, s, "Yorkshire OPS")
+		assert.Contains(t, s, "[one_place_study]")
+	})
+}
+
+func TestSummarizeEntity_DispatchesResearchLogAndStudy(t *testing.T) {
+	// Exercise the summarizeEntity dispatch path for the new entity types so
+	// the EntityTypeResearchLogs / EntityTypeStudies branches are covered.
+	log := &ResearchLog{Objective: "Find the source", Status: "open"}
+	s := summarizeEntity(EntityTypeResearchLogs, "research-log-1", log, nil)
+	assert.Contains(t, s, "Find the source")
+
+	study := &Study{Title: "Test Study", Type: "brick_wall", Status: "active"}
+	s = summarizeEntity(EntityTypeStudies, "study-1", study, nil)
+	assert.Contains(t, s, "Test Study")
+	assert.Contains(t, s, "[brick_wall/active]")
+}
+
 func TestDiffArchives_PersonFilter_StatsReflectFilteredSet(t *testing.T) {
 	old := &GLXFile{
 		Persons: map[string]*Person{},

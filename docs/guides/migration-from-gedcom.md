@@ -241,7 +241,7 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | `PUBL` | `source.properties.publication_info` | |
 | `ABBR` | `source.properties.abbreviation` | |
 | `REPO` | `source.repository` | With `CALN` stored as `call_number` |
-| `TEXT` | `source.description` | |
+| `TEXT` | `source.properties.description` | |
 | `NOTE` | `source.notes` | |
 | `DATA.EVEN` | `source.properties.events_recorded` | Event types this source records |
 | `DATA.AGNC` | `source.properties.agency` | Responsible agency |

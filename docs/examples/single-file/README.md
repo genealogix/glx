@@ -27,7 +27,7 @@ The archive.glx file contains all entity types:
 - events (4): John's birth, marriage, two deaths
 - places (3): England, Yorkshire, Leeds (hierarchical)
 - sources (1): Parish register
-- citations (1): Birth certificate citation
+- citations (1): Parish-register birth entry
 - repositories (1): Leeds Library
 - assertions (1): Birth date assertion
 

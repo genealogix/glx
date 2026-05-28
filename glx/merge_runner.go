@@ -95,6 +95,8 @@ func entityCounts(g *glxlib.GLXFile) counts {
 }
 
 // mergeArchives loads two archives, merges src into dest, and saves.
+//
+//nolint:gocognit,gocyclo // top-level orchestrator: load + path-resolve + preview branch + merge + media plan + save
 func mergeArchives(srcPath, destPath string, preview bool, threshold float64) error {
 	// Resolve to absolute paths so "." becomes a real path that os.Rename can
 	// operate on. POSIX forbids renaming "." (EINVAL) and Windows rejects it

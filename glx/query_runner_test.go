@@ -147,6 +147,44 @@ func TestQueryPlaces(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestQueryResearchLogs_CompleteFamily(t *testing.T) {
+	err := queryEntities("research_logs", &queryOpts{
+		Archive: "../docs/examples/complete-family",
+	})
+	require.NoError(t, err)
+}
+
+func TestQueryStudies_CompleteFamily(t *testing.T) {
+	err := queryEntities("studies", &queryOpts{
+		Archive: "../docs/examples/complete-family",
+	})
+	require.NoError(t, err)
+}
+
+func TestQueryResearchLogs_DirectFunction(t *testing.T) {
+	// Exercise queryResearchLogs directly so coverage reflects the listing
+	// branches (status fallback, title-or-objective fallback, count).
+	archive := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"research-log-with-status":        {Title: "With status", Status: "complete"},
+			"research-log-no-status":          {Title: "No status"},
+			"research-log-objective-fallback": {Objective: "Find baptism"},
+		},
+	}
+	require.NoError(t, queryResearchLogs(archive))
+}
+
+func TestQueryStudies_DirectFunction(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Studies: map[string]*glxlib.Study{
+			"study-typed":     {Title: "Typed", Type: "family_reconstruction", Status: "active"},
+			"study-bare":      {Title: "Bare"},
+			"study-type-only": {Title: "Just typed", Type: "one_name_study"},
+		},
+	}
+	require.NoError(t, queryStudies(archive))
+}
+
 func TestQueryCitations(t *testing.T) {
 	err := queryEntities("citations", &queryOpts{Archive: "../docs/examples/complete-family"})
 	require.NoError(t, err)
@@ -171,7 +209,7 @@ func TestQueryUnknownEntityType(t *testing.T) {
 func TestQueryUnsupportedFlag(t *testing.T) {
 	tests := []struct {
 		name       string
-		entityType string
+		entityType glxlib.EntityType
 		opts       queryOpts
 	}{
 		{"born-before on events", "events", queryOpts{Archive: "../docs/examples/basic-family", BornBefore: 1850}},

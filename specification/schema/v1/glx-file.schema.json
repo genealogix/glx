@@ -20,7 +20,13 @@
         "source_corporation": { "type": "string" },
         "gedcom_version": { "type": "string" },
         "character_set": { "type": "string" },
-        "notes": { "type": "string" },
+        "notes": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Free-form notes. Either a single string or an array of strings."
+        },
         "submitter": {
           "type": "object",
           "additionalProperties": false,
