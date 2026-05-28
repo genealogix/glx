@@ -1,3 +1,9 @@
+---
+title: Glossary
+description: Definitions for key GENEALOGIX terms — entities, relationships, evidence, and validation vocabulary
+layout: doc
+---
+
 # Glossary
 
 This glossary defines key terms used in the GENEALOGIX specification.
@@ -192,7 +198,7 @@ A validation error that must be fixed before the archive is considered valid. Ex
 
 ### ID (Identifier)
 
-A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens.
+A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens. Compared case-insensitively, so `Person-A` and `person-a` collide and only one may exist.
 
 **Examples:**
 
@@ -453,6 +459,24 @@ A property with structured fields that break down complex values into named comp
 A formal declaration of the scope of a research project within an archive — for example a One Place Study, One Name Study, family reconstruction, or brick-wall investigation. A Study collects the places, sources, and date range that bound the project so tooling can report coverage and progress. GLX-native; no GEDCOM equivalent.
 
 > **See Also:** [Study Entity](4-entity-types/study)
+
+### Study Status
+
+Lifecycle state of a Study, validated against the `study_statuses` vocabulary. Standard values: `active`, `paused`, `completed`, `abandoned`.
+
+> **See Also:** [Study Statuses Vocabulary](4-entity-types/vocabularies#study-statuses-vocabulary)
+
+### Study Type
+
+Classification of a Study, validated against the `study_types` vocabulary. Standard values: `one_place_study`, `one_name_study`, `family_reconstruction`, `descendancy_study`, `ancestry_study`, `brick_wall`, `other`.
+
+> **See Also:** [Study Types Vocabulary](4-entity-types/vocabularies#study-types-vocabulary)
+
+### Research Log Status
+
+Lifecycle state of a [ResearchLog](#researchlog), validated against the `research_log_status_types` vocabulary. Standard values: `open`, `in_progress`, `complete`, `blocked`.
+
+> **See Also:** [Research Log Status Types Vocabulary](4-entity-types/vocabularies#research-log-status-types-vocabulary)
 
 ### Status (Assertion)
 

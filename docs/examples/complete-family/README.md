@@ -91,7 +91,7 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 
 ### Media (1 file)
 
-- `media/media-john-portrait.glx` - Studio portrait of John Smith, c.1880 (URI only; binary not bundled with the example)
+- `media/media-john-portrait.glx` - Studio portrait of John Smith, c.1880 (a small placeholder binary is bundled at `media/files/john-smith-1880.jpg`)
 
 ### Studies (1 file)
 

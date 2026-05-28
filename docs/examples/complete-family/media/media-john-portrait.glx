@@ -6,4 +6,4 @@ media:
     description: "Studio portrait taken in Leeds, c.1880. Subject identified by handwritten note on the verso."
     properties:
       original_filename: "john-smith-1880.jpg"
-    notes: "Demonstrates a Media entity; the binary itself would live under `media/files/` (not shipped with this example)."
+    notes: "Demonstrates a Media entity. A tiny placeholder lives at `media/files/john-smith-1880.jpg` so `glx validate` can confirm the URI resolves; substitute the real image when adapting this archive."
