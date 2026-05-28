@@ -26,6 +26,7 @@ import (
 // secureIntn returns a cryptographically random int in [0, n).
 func secureIntn(n int) int {
 	r, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
+
 	return int(r.Int64())
 }
 
@@ -54,6 +55,8 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		Repositories:  make(map[string]*Repository),
 		Assertions:    make(map[string]*Assertion),
 		Media:         make(map[string]*Media),
+		ResearchLogs:  make(map[string]*ResearchLog),
+		Studies:       make(map[string]*Study),
 	}
 
 	// Generate a repository for the sources
@@ -109,7 +112,7 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		}
 
 		// Generate a source, citation, and assertion for the birth
-		generateEvidenceChain(glxFile, eventID, "birth", repoID)
+		generateEvidenceChain(glxFile, eventID, repoID)
 	}
 
 	// Generate some relationships
@@ -147,7 +150,75 @@ func GenerateTestData(numPeople int) (*GLXFile, error) {
 		}
 	}
 
+	generateStudy(glxFile)
+	generateResearchLog(glxFile, repoID)
+
 	return glxFile, nil
+}
+
+// generateStudy adds one umbrella Study scoping the generated archive — a
+// family-reconstruction covering every place and source generated above.
+// Demonstrates the Study entity shape; tooling can use this to exercise
+// Study-aware features against test data.
+func generateStudy(glxFile *GLXFile) {
+	if len(glxFile.Persons) == 0 {
+		return
+	}
+
+	studyID := "study-" + gofakeit.UUID()
+
+	placeRefs := make([]string, 0, len(glxFile.Places))
+	for id := range glxFile.Places {
+		placeRefs = append(placeRefs, id)
+	}
+
+	sourceRefs := make([]string, 0, len(glxFile.Sources))
+	for id := range glxFile.Sources {
+		sourceRefs = append(sourceRefs, id)
+	}
+
+	glxFile.Studies[studyID] = &Study{
+		Title:     gofakeit.LastName() + " family reconstruction",
+		Type:      StudyTypeFamilyReconstruction,
+		Status:    StudyStatusActive,
+		DateRange: DateString("FROM 1900 TO 2000"),
+		Places:    placeRefs,
+		Sources:   sourceRefs,
+	}
+}
+
+// generateResearchLog adds one ResearchLog with a Search entry paired with the
+// first generated citation, demonstrating the "documented search" workflow.
+func generateResearchLog(glxFile *GLXFile, repoID string) {
+	var firstCitationID, firstSourceID string
+	for id, c := range glxFile.Citations {
+		firstCitationID = id
+		firstSourceID = c.SourceID
+
+		break
+	}
+
+	if firstCitationID == "" {
+		return
+	}
+
+	logID := "research-log-" + gofakeit.UUID()
+	glxFile.ResearchLogs[logID] = &ResearchLog{
+		Title:      "Birth record search for generated test data",
+		Objective:  "Locate the birth record cited in the generated evidence chain",
+		Status:     ResearchLogStatusComplete,
+		Researcher: gofakeit.Name(),
+		Searches: []Search{
+			{
+				RepositoryID: repoID,
+				SourceID:     firstSourceID,
+				Query:        "birth records",
+				Result:       SearchResultFound,
+				CitationID:   firstCitationID,
+			},
+		},
+		Conclusions: "Citation produced and attached to the corresponding birth event assertion.",
+	}
 }
 
 // generatePlace creates a new place and adds it to the GLXFile, returning its ID.
@@ -161,8 +232,10 @@ func generatePlace(glxFile *GLXFile) string {
 	return placeID
 }
 
-// generateEvidenceChain creates a source, citation, and assertion for a given event.
-func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID string) {
+// generateEvidenceChain creates a source, citation, and an existential
+// assertion attesting the given event (no property/value pair — the assertion
+// records that the event happened and is backed by the citation).
+func generateEvidenceChain(glxFile *GLXFile, subjectID, repoID string) {
 	// Source
 	sourceID := EntityIDPrefixSource + gofakeit.UUID()
 	glxFile.Sources[sourceID] = &Source{
@@ -180,11 +253,12 @@ func generateEvidenceChain(glxFile *GLXFile, subjectID, propertyName, repoID str
 		},
 	}
 
-	// Assertion
+	// Existential assertion — attests that the subject event occurred.
+	// (A property/value pair would also be schema-valid, but existential
+	// matches the semantics of "the birth happened, here's the source".)
 	assertionID := EntityIDPrefixAssertion + gofakeit.UUID()
 	glxFile.Assertions[assertionID] = &Assertion{
 		Subject:   EntityRef{Event: subjectID},
-		Property:  propertyName,
 		Citations: []string{citationID},
 	}
 }

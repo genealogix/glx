@@ -464,9 +464,6 @@ func mediaNode(id string, m *Media) map[string]any {
 	if m.Title != "" {
 		node["name"] = m.Title
 	}
-	if m.Description != "" {
-		node["description"] = m.Description
-	}
 	if m.Date != "" {
 		node["datePublished"] = string(m.Date)
 	}

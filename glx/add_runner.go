@@ -191,7 +191,7 @@ func pickVocab(archive *glxlib.GLXFile, vocabName string) map[string]*glxlib.Voc
 
 // validateRefExists ensures `id` is a key in the archive's named entity map.
 // An empty id is a no-op.
-func validateRefExists(archive *glxlib.GLXFile, entityType, id string) error {
+func validateRefExists(archive *glxlib.GLXFile, entityType glxlib.EntityType, id string) error {
 	if id == "" {
 		return nil
 	}
@@ -205,7 +205,7 @@ func validateRefExists(archive *glxlib.GLXFile, entityType, id string) error {
 // entityIDExists returns whether `id` is present in the entity map for
 // `entityType`. Unknown entity types return false so callers see a typed
 // ErrAddRefNotFound rather than a panic.
-func entityIDExists(archive *glxlib.GLXFile, entityType, id string) bool {
+func entityIDExists(archive *glxlib.GLXFile, entityType glxlib.EntityType, id string) bool {
 	switch entityType {
 	case glxlib.EntityTypePersons:
 		return mapHas(archive.Persons, id)
@@ -336,7 +336,7 @@ func installPartial(archive, partial *glxlib.GLXFile) []addedEntity {
 }
 
 type addedEntity struct {
-	entityType string
+	entityType glxlib.EntityType
 	id         string
 	// previous holds the pointer that lived at archive.<Map>[id] before
 	// installPartial overwrote it, so uninstallPartial can restore the
@@ -349,7 +349,7 @@ type addedEntity struct {
 // returns the addedEntity list. Generic over the value type so each entity
 // kind can use it. If a key already exists in dest, the prior pointer is
 // captured in addedEntity.previous so uninstall can restore it.
-func copyEntities[T any](dest *map[string]*T, src map[string]*T, entityType string) []addedEntity {
+func copyEntities[T any](dest *map[string]*T, src map[string]*T, entityType glxlib.EntityType) []addedEntity {
 	if len(src) == 0 {
 		return nil
 	}
@@ -422,7 +422,7 @@ func restoreOrDelete[T any](m map[string]*T, e addedEntity) {
 // finalizeAdd is the tail of every add subcommand: optionally run whole-archive
 // validation, print a summary, write the partial (unless --dry-run), and echo
 // the created ID on its own line so `$(glx add …)` shell substitution works.
-func finalizeAdd(io *IOStreams, opts *addCommonOptions, ctx *addContext, entityType, entityID string, partial *glxlib.GLXFile) error {
+func finalizeAdd(io *IOStreams, opts *addCommonOptions, ctx *addContext, entityType glxlib.EntityType, entityID string, partial *glxlib.GLXFile) error {
 	if !opts.SkipValidate {
 		if err := runWholeArchiveValidate(ctx.archive, partial); err != nil {
 			return err
@@ -1209,7 +1209,7 @@ func deriveAssertionID(archive *glxlib.GLXFile, opts *addAssertionOptions, subje
 }
 
 // buildAssertion assembles the Assertion struct from the validated inputs.
-func buildAssertion(opts *addAssertionOptions, subjectType, subjectID string, participant *glxlib.Participant) *glxlib.Assertion {
+func buildAssertion(opts *addAssertionOptions, subjectType glxlib.EntityType, subjectID string, participant *glxlib.Participant) *glxlib.Assertion {
 	assertion := &glxlib.Assertion{
 		Subject:     assertionSubjectRef(subjectType, subjectID),
 		Property:    opts.Property,
@@ -1233,14 +1233,20 @@ func buildAssertion(opts *addAssertionOptions, subjectType, subjectID string, pa
 // entity type + ID. Each non-empty subject flag is also reference-checked.
 // Iterated as an ordered slice (not a map) so error messages, future
 // conflict-reporting extensions, and tests stay deterministic across runs.
-func resolveAssertionSubject(archive *glxlib.GLXFile, opts *addAssertionOptions) (string, string, error) {
-	subjects := []struct{ entityType, id string }{
+func resolveAssertionSubject(archive *glxlib.GLXFile, opts *addAssertionOptions) (glxlib.EntityType, string, error) {
+	subjects := []struct {
+		entityType glxlib.EntityType
+		id         string
+	}{
 		{glxlib.EntityTypePersons, opts.SubjectPerson},
 		{glxlib.EntityTypeEvents, opts.SubjectEvent},
 		{glxlib.EntityTypeRelationships, opts.SubjectRelationship},
 		{glxlib.EntityTypePlaces, opts.SubjectPlace},
 	}
-	var chosenType, chosenID string
+	var (
+		chosenType glxlib.EntityType
+		chosenID   string
+	)
 	for _, s := range subjects {
 		if s.id == "" {
 			continue
@@ -1261,7 +1267,7 @@ func resolveAssertionSubject(archive *glxlib.GLXFile, opts *addAssertionOptions)
 }
 
 // assertionSubjectRef builds an EntityRef from the resolved subject type/id.
-func assertionSubjectRef(entityType, id string) glxlib.EntityRef {
+func assertionSubjectRef(entityType glxlib.EntityType, id string) glxlib.EntityRef {
 	switch entityType {
 	case glxlib.EntityTypePersons:
 		return glxlib.EntityRef{Person: id}

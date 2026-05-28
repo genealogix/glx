@@ -111,8 +111,8 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 // ValidationResult holds the complete validation state of the archive.
 type ValidationResult struct {
 	// Entities contains maps of all existing entity IDs, keyed by entity type.
-	// Example: "persons" -> {"person-1": {}}
-	Entities map[string]map[string]struct{}
+	// Example: EntityTypePersons -> {"person-1": {}}
+	Entities map[EntityType]map[string]struct{}
 
 	// Vocabularies contains maps of all existing vocabulary values, keyed by vocabulary type.
 	// Example: "event_types" -> {"birth": {}}
@@ -132,21 +132,23 @@ type ValidationResult struct {
 }
 
 // ValidationError represents a hard validation failure that makes the archive invalid.
+// SourceType is always an entity type; TargetType may be an entity type OR a
+// vocabulary name (e.g., "participant_roles") for reference-into-vocab checks.
 type ValidationError struct {
-	SourceType  string `json:"source_type"`  // e.g., "events"
-	SourceID    string `json:"source_id"`    // e.g., "event-123"
-	SourceField string `json:"source_field"` // e.g., "place" or "participants[0].role"
-	TargetType  string `json:"target_type"`  // e.g., "places" or "participant_roles"
-	TargetID    string `json:"target_id"`    // e.g., "place-nonexistent"
-	Message     string `json:"message"`      // Human-readable error message
+	SourceType  EntityType `json:"source_type"`  // e.g., EntityTypeEvents
+	SourceID    string     `json:"source_id"`    // e.g., "event-123"
+	SourceField string     `json:"source_field"` // e.g., "place" or "participants[0].role"
+	TargetType  string     `json:"target_type"`  // entity type or vocab name
+	TargetID    string     `json:"target_id"`    // e.g., "place-nonexistent"
+	Message     string     `json:"message"`      // Human-readable error message
 }
 
 // ValidationWarning represents a soft validation issue that does not invalidate the archive.
 type ValidationWarning struct {
-	SourceType string `json:"source_type"` // e.g., "persons"
-	SourceID   string `json:"source_id"`   // e.g., "person-123"
-	Field      string `json:"field"`       // e.g., "properties.unknown_prop"
-	Message    string `json:"message"`     // Human-readable warning message
+	SourceType EntityType `json:"source_type"` // e.g., EntityTypePersons
+	SourceID   string     `json:"source_id"`   // e.g., "person-123"
+	Field      string     `json:"field"`       // e.g., "properties.unknown_prop"
+	Message    string     `json:"message"`     // Human-readable warning message
 }
 
 // ============================================================================
@@ -204,13 +206,13 @@ type Place struct {
 // Source represents a source of information.
 type Source struct {
 	Title        string         `yaml:"title"`
-	Type         string         `refType:"source_types"       yaml:"type,omitempty"`
+	Type         string         `refType:"source_types"      yaml:"type,omitempty"`
 	Authors      []string       `yaml:"authors,omitempty"`
 	Date         DateString     `yaml:"date,omitempty"`
-	RepositoryID string         `refType:"repositories"       yaml:"repository,omitempty"`
+	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
 	Language     string         `yaml:"language,omitempty"`
-	Media        []string       `refType:"media"              yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, abbreviation, call_number, url, etc.)
+	Media        []string       `refType:"media"             yaml:"media,omitempty"`
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, abbreviation, call_number, events_recorded, agency, coverage, external_ids, publication_info, url)
 	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
@@ -249,7 +251,7 @@ type Citation struct {
 	SourceID     string         `refType:"sources"           yaml:"source"`
 	RepositoryID string         `refType:"repositories"      yaml:"repository,omitempty"`
 	Media        []string       `refType:"media"             yaml:"media,omitempty"`
-	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed)
+	Properties   map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (locator, text_from_source, source_date, accessed, url, external_ids)
 	Notes        NoteList       `yaml:"notes,omitempty"`
 }
 
@@ -327,7 +329,7 @@ type EntityRef struct {
 
 // Type returns the entity type being referenced (using EntityType* constants).
 // Returns empty string if no field is set.
-func (e *EntityRef) Type() string {
+func (e *EntityRef) Type() EntityType {
 	switch {
 	case e.Person != "":
 		return EntityTypePersons
@@ -376,16 +378,45 @@ type Assertion struct {
 
 // Media represents a media object, like a photo or document.
 type Media struct {
-	URI         string         `yaml:"uri"`
-	Type        string         `refType:"media_types"        yaml:"type,omitempty"`
-	MimeType    string         `yaml:"mime_type,omitempty"`
-	Hash        string         `yaml:"hash,omitempty"`
-	Title       string         `yaml:"title,omitempty"`
-	Description string         `yaml:"description,omitempty"`
-	Date        DateString     `yaml:"date,omitempty"`
-	Source      string         `refType:"sources"            yaml:"source,omitempty"`
-	Properties  map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties
-	Notes       NoteList       `yaml:"notes,omitempty"`
+	URI        string         `yaml:"uri"`
+	Type       string         `refType:"media_types"       yaml:"type,omitempty"`
+	MimeType   string         `yaml:"mime_type,omitempty"`
+	Hash       string         `yaml:"hash,omitempty"`
+	Title      string         `yaml:"title,omitempty"`
+	Date       DateString     `yaml:"date,omitempty"`
+	Source     string         `refType:"sources"           yaml:"source,omitempty"`
+	Properties map[string]any `yaml:"properties,omitempty"` // Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size)
+	Notes      NoteList       `yaml:"notes,omitempty"`
+}
+
+// UnmarshalYAML provides backward compatibility for archives written before
+// #894, when `description` was a top-level structural field on Media rather
+// than the `properties.description` vocabulary property it is now. A legacy
+// top-level `description:` is folded into properties.description on load (an
+// explicit properties.description always wins), so no description is ever
+// silently dropped on read. `glx migrate --media-description-to-property`
+// rewrites such archives to the new on-disk form. Remove this shim in a future
+// major release once that migration is well-circulated.
+func (m *Media) UnmarshalYAML(value *yaml.Node) error {
+	type mediaAlias Media // distinct type: does not carry this UnmarshalYAML, so no recursion
+	var aux struct {
+		mediaAlias        `yaml:",inline"`
+		LegacyDescription string `yaml:"description,omitempty"`
+	}
+	if err := value.Decode(&aux); err != nil {
+		return err
+	}
+	*m = Media(aux.mediaAlias)
+	if aux.LegacyDescription != "" {
+		if m.Properties == nil {
+			m.Properties = map[string]any{}
+		}
+		if _, exists := m.Properties["description"]; !exists {
+			m.Properties["description"] = aux.LegacyDescription
+		}
+	}
+
+	return nil
 }
 
 // ============================================================================

@@ -459,7 +459,7 @@ Media
 - If `repository` is specified, it must reference an existing Repository entity
 - If `media` array is present, all IDs must reference existing Media entities
 - `date` should follow standard date formats (YYYY, YYYY-MM-DD, or `FROM YYYY TO YYYY` for ranges)
-- Type must be from the [source types vocabulary](vocabularies#source-types-vocabulary)
+- If `type` is specified, it must be from the [source types vocabulary](vocabularies#source-types-vocabulary)
 
 ## GEDCOM Mapping
 

@@ -143,8 +143,8 @@ event_types:
 
 **Best Practice:** For collaborative archives, document vocabulary decisions:
 
-```yaml
-# vocabularies/README.md
+```markdown
+<!-- vocabularies/README.md -->
 # Vocabulary Change Policy
 
 All vocabulary changes require:

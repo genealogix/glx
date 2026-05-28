@@ -216,7 +216,7 @@ Use the participant role when recording event details; use the relationship type
 ```yaml
 relationships:
   rel-john-james-blood:
-    type: blood-brother  # Custom type from vocabulary
+    type: blood_brother  # Custom type from vocabulary
     participants:
       - person: person-john-smith
       - person: person-james-brown

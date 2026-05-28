@@ -15,8 +15,18 @@
 package glx
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+)
+
+// Sentinel errors for census-template validation.
+var (
+	ErrCensusTemplateRequired        = errors.New("census template is required")
+	ErrCensusYearRequired            = errors.New("census.year is required")
+	ErrCensusLocationRequired        = errors.New("census.location.place or census.location.place_id is required")
+	ErrCensusHouseholdMembersMissing = errors.New("census.household.members is required (at least one member)")
 )
 
 // CensusTemplate represents a census record template for generating GLX entities.
@@ -26,14 +36,14 @@ type CensusTemplate struct {
 
 // CensusData holds the top-level census record data.
 type CensusData struct {
-	Year      int              `yaml:"year"`
-	Type      string           `yaml:"type,omitempty"` // federal, state
-	Date      string           `yaml:"date,omitempty"`
-	Location  CensusLocation   `yaml:"location"`
-	Source    CensusSourceRef  `yaml:"source"`
+	Year      int                `yaml:"year"`
+	Type      string             `yaml:"type,omitempty"` // federal, state
+	Date      string             `yaml:"date,omitempty"`
+	Location  CensusLocation     `yaml:"location"`
+	Source    CensusSourceRef    `yaml:"source"`
 	Citation  CensusCitationData `yaml:"citation"`
-	Household CensusHousehold  `yaml:"household"`
-	FAN       *CensusFAN       `yaml:"fan,omitempty"`
+	Household CensusHousehold    `yaml:"household"`
+	FAN       *CensusFAN         `yaml:"fan,omitempty"`
 }
 
 // CensusLocation specifies the census enumeration place.
@@ -71,11 +81,11 @@ type CensusHousehold struct {
 // CensusHouseholdMember represents one person on the census schedule.
 type CensusHouseholdMember struct {
 	Name         string         `yaml:"name"`
-	PersonID     string         `yaml:"person_id,omitempty"`   // Explicit person ID
-	Role         string         `yaml:"role,omitempty"`        // Participant role (default: subject)
-	Age          *int           `yaml:"age,omitempty"`         // Age at census (pointer to distinguish 0 from absent)
-	Sex          string         `yaml:"sex,omitempty"`         // male, female
-	Birthplace   string         `yaml:"birthplace,omitempty"`  // Free text or place name
+	PersonID     string         `yaml:"person_id,omitempty"`     // Explicit person ID
+	Role         string         `yaml:"role,omitempty"`          // Participant role (default: subject)
+	Age          *int           `yaml:"age,omitempty"`           // Age at census (pointer to distinguish 0 from absent)
+	Sex          string         `yaml:"sex,omitempty"`           // male, female
+	Birthplace   string         `yaml:"birthplace,omitempty"`    // Free text or place name
 	BirthplaceID string         `yaml:"birthplace_id,omitempty"` // Explicit place ID for birthplace
 	Occupation   string         `yaml:"occupation,omitempty"`
 	Notes        string         `yaml:"notes,omitempty"`
@@ -89,12 +99,12 @@ type CensusFAN struct {
 
 // CensusResult holds all entities generated from a census template.
 type CensusResult struct {
-	Source     map[string]*Source     // 0 or 1 new source
-	Citation   map[string]*Citation   // 1 new citation
-	Place      map[string]*Place      // 0+ new places
-	Event      map[string]*Event      // 1 census event
-	Persons    map[string]*Person     // 0+ new persons
-	Assertions map[string]*Assertion  // generated assertions
+	Source     map[string]*Source    // 0 or 1 new source
+	Citation   map[string]*Citation  // 1 new citation
+	Place      map[string]*Place     // 0+ new places
+	Event      map[string]*Event     // 1 census event
+	Persons    map[string]*Person    // 0+ new persons
+	Assertions map[string]*Assertion // generated assertions
 
 	SourceID     string   // Source ID used (new or existing)
 	CitationID   string   // New citation ID
@@ -167,17 +177,17 @@ func BuildCensusEntities(template *CensusTemplate, existing *GLXFile) (*CensusRe
 // validateCensusTemplate checks for required fields.
 func validateCensusTemplate(template *CensusTemplate) error {
 	if template == nil {
-		return fmt.Errorf("census template is required")
+		return ErrCensusTemplateRequired
 	}
 	c := &template.Census
 	if c.Year == 0 {
-		return fmt.Errorf("census.year is required")
+		return ErrCensusYearRequired
 	}
 	if strings.TrimSpace(c.Location.Place) == "" && c.Location.PlaceID == "" {
-		return fmt.Errorf("census.location.place or census.location.place_id is required")
+		return ErrCensusLocationRequired
 	}
 	if len(c.Household.Members) == 0 {
-		return fmt.Errorf("census.household.members is required (at least one member)")
+		return ErrCensusHouseholdMembersMissing
 	}
 	for i := range c.Household.Members {
 		m := &c.Household.Members[i]
@@ -185,6 +195,7 @@ func validateCensusTemplate(template *CensusTemplate) error {
 			return fmt.Errorf("census.household.members[%d].name is required", i)
 		}
 	}
+
 	return nil
 }
 
@@ -199,6 +210,7 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 				return loc.PlaceID, nil
 			}
 		}
+
 		return "", fmt.Errorf("census.location.place_id %q does not exist in the loaded archive", loc.PlaceID)
 	}
 
@@ -214,6 +226,7 @@ func resolveCensusPlace(census *CensusData, existing *GLXFile, result *CensusRes
 	// Create new place with collision check
 	placeID := uniquePlaceID(EntityID(EntityIDPrefixPlace, loc.Place), existing, result)
 	result.Place[placeID] = &Place{Name: loc.Place}
+
 	return placeID, nil
 }
 
@@ -227,6 +240,7 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 				return src.SourceID, nil
 			}
 		}
+
 		return "", fmt.Errorf("source_id %q not found in archive", src.SourceID)
 	}
 
@@ -286,6 +300,7 @@ func resolveCensusSource(census *CensusData, existing *GLXFile, result *CensusRe
 		newSource.Properties = map[string]any{"call_number": src.CallNumber}
 	}
 	result.Source[sourceID] = newSource
+
 	return sourceID, nil
 }
 
@@ -383,6 +398,7 @@ func resolveCensusPerson(member *CensusHouseholdMember, existing *GLXFile, resul
 		if v, ok := result.Persons[member.PersonID]; ok && v != nil {
 			return member.PersonID, true, nil
 		}
+
 		return "", false, fmt.Errorf("person_id %q not found in archive", member.PersonID)
 	}
 
@@ -422,6 +438,7 @@ func resolveCensusPerson(member *CensusHouseholdMember, existing *GLXFile, resul
 	}
 
 	result.Persons[personID] = person
+
 	return personID, true, nil
 }
 
@@ -436,7 +453,7 @@ func buildCensusEvent(census *CensusData, placeID string, participants []Partici
 
 	date := DateString(census.Date)
 	if date == "" {
-		date = DateString(fmt.Sprintf("%d", census.Year))
+		date = DateString(strconv.Itoa(census.Year))
 	}
 
 	var eventNotes NoteList
@@ -464,7 +481,7 @@ func buildCensusEvent(census *CensusData, placeID string, participants []Partici
 // resolvedIDs contains the actual person ID for each member (resolved during
 // person resolution), avoiding re-derivation that could mismatch existing IDs.
 func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID, citationID string, existing *GLXFile, result *CensusResult) error {
-	yearStr := fmt.Sprintf("%d", census.Year)
+	yearStr := strconv.Itoa(census.Year)
 
 	for i := range census.Household.Members {
 		member := &census.Household.Members[i]
@@ -583,6 +600,7 @@ func generateCensusAssertions(census *CensusData, resolvedIDs []string, placeID,
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -593,6 +611,7 @@ func birthplaceNote(censusYear int, birthplace, birthplaceID string) string {
 	if display == "" {
 		display = birthplaceID
 	}
+
 	return fmt.Sprintf("%d census lists birthplace as %q.", censusYear, display)
 }
 
@@ -624,6 +643,7 @@ func resolveBirthplace(name string, existing *GLXFile, result *CensusResult) str
 	// many census imports this can accumulate bare-bones place stubs.
 	placeID := uniquePlaceID(EntityID(EntityIDPrefixPlace, name), existing, result)
 	result.Place[placeID] = &Place{Name: name}
+
 	return placeID
 }
 
@@ -728,6 +748,7 @@ func findOrCreateBirthEvent(personID, pidSlug string, existing *GLXFile, result 
 			{Person: personID, Role: ParticipantRolePrincipal},
 		},
 	}
+
 	return birthEventID
 }
 
@@ -764,5 +785,6 @@ func lastWord(s string) string {
 	if len(parts) == 0 {
 		return s
 	}
+
 	return parts[len(parts)-1]
 }

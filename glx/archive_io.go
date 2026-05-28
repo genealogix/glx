@@ -26,20 +26,19 @@ import (
 // archiveManagedTopLevel is the set of top-level paths written by the multi-file
 // serializer. Anything in an archive directory that isn't in this set is foreign
 // (user docs, .git, dotfiles, etc.) and must be preserved across a safe-write swap.
-// See genealogix/glx#692.
-var archiveManagedTopLevel = map[string]bool{
-	"metadata.glx":  true,
-	"vocabularies":  true,
-	"persons":       true,
-	"events":        true,
-	"relationships": true,
-	"places":        true,
-	"sources":       true,
-	"citations":     true,
-	"repositories":  true,
-	"media":         true,
-	"assertions":    true,
-}
+// See genealogix/glx#692. Derived from glxlib.AllEntityTypes so new entity types
+// are picked up automatically.
+var archiveManagedTopLevel = func() map[string]bool {
+	m := map[string]bool{
+		"metadata.glx":                true,
+		glxlib.ArchiveDirVocabularies: true,
+	}
+	for _, entityType := range glxlib.AllEntityTypes {
+		m[entityType.String()] = true
+	}
+
+	return m
+}()
 
 // safeWriteMultiFileArchive writes a multi-file archive to a temporary directory
 // first, then swaps it into place. This prevents archive destruction if the write
@@ -398,7 +397,7 @@ func writePartialArchive(dirPath string, partial *glxlib.GLXFile) (int, error) {
 // mergeStandardVocabularies loads standard vocabularies into a GLXFile,
 // filling only empty maps. User-defined vocabularies are preserved.
 //
-//nolint:gocyclo
+//nolint:gocyclo // 21 vocab fields with identical empty-map guards; splitting hurts readability
 func mergeStandardVocabularies(glx *glxlib.GLXFile) error {
 	std := &glxlib.GLXFile{}
 	if err := glxlib.LoadStandardVocabulariesIntoGLX(std); err != nil {

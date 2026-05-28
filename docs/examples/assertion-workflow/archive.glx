@@ -48,8 +48,10 @@ places:
 
 persons:
   # ---------------------------------------------------------------------
-  # Person with DIRECT PROPERTIES only (no assertions yet)
-  # Valid and useful, but lacks documented evidence chain
+  # Person whose primary fields are stored as DIRECT PROPERTIES.
+  # The archive also contains a property-level assertion about her middle
+  # name further down (assertion-alice-middle-name) to show the two styles
+  # coexisting on the same person.
   # ---------------------------------------------------------------------
   person-alice-chen:
     properties:
