@@ -237,7 +237,7 @@ const (
 // Roles without a vocabulary match (NGHBR, FRIEND, MULTIPLE) are stored in
 // participant notes instead of the role field to avoid validation errors.
 var gedcomRoleToGLX = map[string]string{
-	"WITH":       ParticipantRoleWitness,
+	"WITN":       ParticipantRoleWitness, //nolint:misspell // GEDCOM 5.5/7 spec tag, not a typo of WITH
 	"OFFICIATOR": ParticipantRoleOfficiant,
 	"CLERGY":     ParticipantRoleOfficiant,
 	"GODP":       ParticipantRoleGodparent,
