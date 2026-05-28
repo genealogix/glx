@@ -6,7 +6,7 @@ layout: doc
 
 # Complete Family Example
 
-This example demonstrates 8 GENEALOGIX entity types with proper cross-references, evidence chains, and descriptive entity IDs.
+This example demonstrates all 11 GENEALOGIX entity types (Person, Event, Relationship, Place, Source, Citation, Repository, Assertion, Media, Study, ResearchLog) with proper cross-references, evidence chains, and descriptive entity IDs.
 
 ## Family Structure
 

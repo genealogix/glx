@@ -470,8 +470,8 @@ Create a `vocabularies/README.md` explaining:
 
 ## Need Help?
 
-- [Best Practices Guide](guides/best-practices) - Vocabulary design guidelines
-- [Core Concepts](../specification/2-core-concepts) - Repository-owned vocabularies
+- [Best Practices Guide](/guides/best-practices) - Vocabulary design guidelines
+- [Core Concepts](/specification/2-core-concepts) - Repository-owned vocabularies
 - [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Share your use case
 
 **Have a unique use case?** Share it with the community! GLX is designed to be infinitely extensible.

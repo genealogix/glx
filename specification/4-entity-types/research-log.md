@@ -85,13 +85,16 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 
 ### Required Fields
 
-None. A log with only an `objective` and an empty `searches` list represents a planned investigation.
+| Field | Type | Description |
+|-------|------|-------------|
+| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
+
+A log with only an entity ID is a valid, minimal placeholder; `objective` and a populated `searches` list typically follow.
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
 | `title` | string | Optional human-readable title for the log |
 | `subject` | object | Typed reference (`person` / `event` / `relationship` / `place`) to what is being investigated |
 | `date` | date | Date the research was performed (or session start) |

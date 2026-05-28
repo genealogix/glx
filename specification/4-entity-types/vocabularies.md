@@ -311,6 +311,7 @@ source_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
+| `gedcom` | No | GEDCOM `SOUR.TYPE` tag value emitted/consumed for round-trip (#561) |
 
 ### Standard Source Types
 
@@ -381,6 +382,7 @@ media_types:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `mime_type` | No | Default MIME type for this media type |
+| `gedcom` | No | GEDCOM `MEDI` tag value emitted/consumed for round-trip |
 
 ### Standard Media Types
 
@@ -512,6 +514,7 @@ repository_types:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
+| `gedcom` | No | GEDCOM repository-type tag value emitted/consumed for round-trip (#555) |
 
 ### Standard Repository Types
 
@@ -587,6 +590,7 @@ participant_roles:
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
 | `applies_to` | No | Array of entity types (event, relationship) |
+| `gedcom` | No | GEDCOM `ASSO ROLE` tag value emitted/consumed for round-trip (#524) |
 
 ### Standard Participant Roles
 

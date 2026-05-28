@@ -87,16 +87,19 @@ citations:
 # Assertions providing evidence for the temporal properties
 # The date field on each assertion matches the temporal entry it supports
 assertions:
-  assertion-occupation-1851:
+  # The 1851 census records John as age 1 in Leeds — it supports his early
+  # residence, not the later occupations. There is no documented source for
+  # his teenage occupation as a farm laborer (date 1865) in this example.
+  assertion-residence-leeds:
     subject:
       person: person-john-smith-1850
-    property: occupation
-    value: "farm laborer"
-    date: "1865"
+    property: residence
+    value: "place-leeds"
+    date: "1851"
     citations:
       - citation-1851-census
     confidence: high
-    notes: "Census lists father's occupation; John was age 1"
+    notes: "1851 census records John (age 1) at the Smith household in Leeds."
 
   assertion-occupation-1881:
     subject:

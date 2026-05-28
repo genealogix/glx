@@ -20,6 +20,7 @@ Every GENEALOGIX file uses the same universal structure:
    - Values are entity objects
 3. **Files may contain any combination** of entity types
 4. **Empty sections** can be omitted or left as `{}`
+5. **Optional top-level `metadata` object** carries archive-level provenance and submitter information (see [Archive Metadata](#archive-metadata) below); when present it sits alongside the entity plurals.
 
 ### Basic Example
 
@@ -64,6 +65,42 @@ persons:
         fields:
           given: "John"
           surname: "Smith"
+```
+
+### Archive Metadata
+
+A single `metadata` block may appear at the top level of any `.glx` file (typically the archive's root file). It captures provenance and submitter information for the archive as a whole and is preserved through GEDCOM import/export. All fields are optional; when the block is omitted entirely the archive validates the same as before.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `export_date` | string | ISO-8601 timestamp recording when the archive was last exported |
+| `source_file` | string | Original source filename (e.g., the imported GEDCOM file) |
+| `source_system` | string | Name of the tool that produced the source data (GEDCOM `HEAD.SOUR`) |
+| `source_version` | string | Version of the source tool (GEDCOM `HEAD.SOUR.VERS`) |
+| `source_corporation` | string | Vendor or organisation behind the source tool (GEDCOM `HEAD.SOUR.CORP`) |
+| `gedcom_version` | string | GEDCOM specification version when the archive was imported from GEDCOM (e.g., `5.5.1`, `7.0`) |
+| `character_set` | string | GEDCOM character set declaration when relevant |
+| `copyright` | string | Copyright statement for the archive's data |
+| `language` | string | BCP-47 language tag for the archive's primary natural language |
+| `notes` | string \| string[] | Free-form notes about the archive as a whole |
+| `submitter` | object | Submitter contact details: `name`, `address`, `email`, `phone`, `url` |
+
+Example:
+
+```yaml
+metadata:
+  source_system: "MyGenealogyApp"
+  source_version: "3.2.1"
+  gedcom_version: "7.0"
+  export_date: "2026-05-27T12:00:00Z"
+  language: "en"
+  submitter:
+    name: "Researcher Name"
+    email: "researcher@example.org"
+
+persons:
+  person-abc12345:
+    ...
 ```
 
 ## Validation Levels
@@ -482,3 +519,5 @@ See the `docs/examples/` directory for complete working examples:
 - `docs/examples/minimal/` - Minimal archive example
 - `docs/examples/temporal-properties/` - Temporal property examples
 - `docs/examples/participant-assertions/` - Participant assertion examples
+- `docs/examples/assertion-workflow/` - Evidence-chain and conflicting-evidence workflow
+- `docs/examples/westeros/` - Pointer to the external `glx-archive-westeros` demonstration repository
