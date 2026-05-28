@@ -16,6 +16,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -433,6 +434,71 @@ func TestWriteZipEntry_RejectsEntryExceedingDecompressedLimit(t *testing.T) {
 
 	_, statErr := os.Stat(destPath)
 	require.True(t, os.IsNotExist(statErr), "oversized extracted file should be removed")
+}
+
+func TestWriteZipEntry_AcceptsEntryAtExactLimit(t *testing.T) {
+	// An entry whose decompressed size equals exactly maxGEDZIPEntryBytes
+	// must be accepted (not treated as oversized).
+	orig := maxGEDZIPEntryBytes
+	maxGEDZIPEntryBytes = 1024
+	t.Cleanup(func() { maxGEDZIPEntryBytes = orig })
+
+	zipPath := filepath.Join(t.TempDir(), "exact.gdz")
+	f, err := os.Create(filepath.Clean(zipPath))
+	require.NoError(t, err)
+
+	zw := zip.NewWriter(f)
+	w, err := zw.Create("media/exact.bin")
+	require.NoError(t, err)
+	_, err = io.CopyN(w, repeatedByteReader{b: 'B'}, maxGEDZIPEntryBytes)
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	zr, err := zip.OpenReader(filepath.Clean(zipPath))
+	require.NoError(t, err)
+	defer func() { _ = zr.Close() }()
+	require.Len(t, zr.File, 1)
+
+	destPath := filepath.Join(t.TempDir(), "exact.bin")
+	err = writeZipEntry(zr.File[0], destPath)
+	require.NoError(t, err, "entry at exactly the size limit should be accepted")
+
+	info, statErr := os.Stat(destPath)
+	require.NoError(t, statErr, "extracted file must exist")
+	require.Equal(t, int64(maxGEDZIPEntryBytes), info.Size())
+}
+
+func TestEntrySizeLimitReader(t *testing.T) {
+	t.Run("under limit passes through", func(t *testing.T) {
+		data := []byte("hello")
+		r := &entrySizeLimitReader{r: strings.NewReader(string(data)), remaining: 10}
+		got, err := io.ReadAll(r)
+		require.NoError(t, err)
+		require.Equal(t, data, got)
+	})
+
+	t.Run("exactly at limit passes through", func(t *testing.T) {
+		data := bytes.Repeat([]byte("x"), 8)
+		r := &entrySizeLimitReader{r: bytes.NewReader(data), remaining: int64(len(data)) + 1}
+		got, err := io.ReadAll(r)
+		require.NoError(t, err)
+		require.Equal(t, data, got)
+	})
+
+	t.Run("over limit returns ErrGEDZIPEntryTooLarge", func(t *testing.T) {
+		data := bytes.Repeat([]byte("y"), 12)
+		r := &entrySizeLimitReader{r: bytes.NewReader(data), remaining: 10 + 1}
+		_, err := io.ReadAll(r)
+		require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+	})
+
+	t.Run("second read on exhausted limit returns ErrGEDZIPEntryTooLarge", func(t *testing.T) {
+		r := &entrySizeLimitReader{r: strings.NewReader(""), remaining: 0}
+		n, err := r.Read(make([]byte, 4))
+		require.Equal(t, 0, n)
+		require.ErrorIs(t, err, ErrGEDZIPEntryTooLarge)
+	})
 }
 
 func TestImportGEDZIP_MkdirAllFailsWhenFileOccupiesDirectoryPath(t *testing.T) {
