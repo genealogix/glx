@@ -418,7 +418,7 @@ assertions:
 
 ## Existential Assertions
 
-An assertion with neither `property` nor `participant` is an **existential assertion** — it asserts that the subject entity exists, backed by evidence. This is the simplest form of assertion: "this entity is evidenced by these sources."
+An assertion with no `property`, `value`, or `participant` is an **existential assertion** — it asserts that the subject entity exists, backed by evidence. This is the simplest form of assertion: "this entity is evidenced by these sources."
 
 ### Basic Existential Assertion
 

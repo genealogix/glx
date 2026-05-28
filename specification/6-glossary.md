@@ -366,7 +366,7 @@ A physical or digital archive, library, church, or institution that holds geneal
 
 ### Required Fields
 
-Varies by entity type. Common required fields include `title` (sources), `name` (places, repositories), and entity-specific fields. See individual entity specifications for details.
+Varies by entity type. Required fields by entity: `title` (Source, Study), `name` (Place, Repository), `uri` (Media), `source` (Citation), `type` and `participants` (Event, Relationship), `subject` plus at least one evidence reference (Assertion), entity ID for everything. Person has no required content fields beyond the map-key ID. See individual entity specifications for details.
 
 ### Research Branch
 

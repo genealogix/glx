@@ -182,11 +182,11 @@ relationship_types:
   # ... standard types ...
 
   # Additional types
-  blood-brother:
+  blood_brother:
     label: "Blood Brother"
     description: "Non-biological brotherhood bond through ceremony"
 
-  chosen-family:
+  chosen_family:
     label: "Chosen Family"
     description: "Close familial bond without biological or legal tie"
 ```
@@ -455,7 +455,7 @@ confidence_levels:
 |-------|----------|-------------|
 | `label` | Yes | Human-readable label |
 | `description` | No | Detailed description |
-| `rank` | No | Numeric ordering used by `glx diff` to detect confidence upgrades vs downgrades. Higher values rank above lower; standard levels supply ranks 0–3 (low=0, medium=2, high=3). Custom levels without a rank are skipped by upgrade-detection. |
+| `rank` | No | Numeric ordering used by `glx diff` to detect confidence upgrades vs downgrades. Higher values rank above lower. Standard levels supply ranks `low=0, medium=2, high=3`; rank 1 is intentionally reserved for a custom level (e.g. `tentative`). Custom levels without a rank are skipped by upgrade-detection. |
 | `gedcom` | No | Reserved for the corresponding GEDCOM QUAY value (`0`-`3`) for import/export mapping. The standard levels do not currently populate this field; defined in the JSON schema for forward compatibility with QUAY round-tripping. |
 
 ### Important Notes
