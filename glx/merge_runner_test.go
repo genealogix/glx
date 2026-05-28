@@ -189,7 +189,10 @@ func snapshotDir(t *testing.T, root string) map[string]int64 {
 			return err
 		}
 		if !info.IsDir() {
-			rel, _ := filepath.Rel(root, path)
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
 			snapshot[rel] = info.Size()
 		}
 		return nil
@@ -228,7 +231,11 @@ func TestMergeArchives_DotDestination(t *testing.T) {
 	// Save original cwd, chdir into dest, merge with "."
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(origDir) })
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory to %q: %v", origDir, err)
+		}
+	})
 
 	require.NoError(t, os.Chdir(destDir))
 	err = mergeArchives(srcDir, ".", false, 0.6)
@@ -497,7 +504,7 @@ func TestMergeArchives_PreviewReportsPlannedMediaCopies(t *testing.T) {
 
 	before := snapshotDir(t, destDir)
 
-	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper")
+	cmd := exec.Command(os.Args[0], "-test.run=TestMergeArchives_PreviewReportsPlannedMediaCopies_Helper")
 	cmd.Env = append(os.Environ(),
 		"GLX_PREVIEW_HELPER=1",
 		"GLX_SRC_DIR="+srcDir,
