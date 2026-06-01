@@ -44,6 +44,17 @@ const pluginPrefix = "glx-"
 // to find.
 const osWindows = "windows"
 
+// pluginsFlag and quietFlag are the long-form CLI flag tokens recognized by the
+// pre-cobra interception path in Execute(). Hoisted to named constants to
+// satisfy the goconst linter (each token recurs across this file and its tests)
+// and to keep the flag-string spellings single-sourced. The `=`-attached forms
+// used for value-bearing parses are derived as `pluginsFlag + "="` /
+// `quietFlag + "="` at the call sites.
+const (
+	pluginsFlag = "--plugins"
+	quietFlag   = "--quiet"
+)
+
 // exitPluginStartFailure is the exit code returned when the plugin executable
 // cannot be started at all (vs. starting and exiting non-zero). 127 matches the
 // shell convention for "command not found / not executable".
@@ -371,10 +382,10 @@ func pluginsFlagRequested(args []string) bool {
 		return false
 	}
 	for _, a := range args {
-		if a == "--plugins" {
+		if a == pluginsFlag {
 			return true
 		}
-		if rest, ok := strings.CutPrefix(a, "--plugins="); ok {
+		if rest, ok := strings.CutPrefix(a, pluginsFlag+"="); ok {
 			if b, err := strconv.ParseBool(rest); err == nil && b {
 				return true
 			}
@@ -390,10 +401,10 @@ func pluginsFlagRequested(args []string) bool {
 // runs before cobra parses flags into the package-level quietOutput variable.
 func quietFlagRequested(args []string) bool {
 	for _, a := range args {
-		if a == "-q" || a == "--quiet" {
+		if a == "-q" || a == quietFlag {
 			return true
 		}
-		if rest, ok := strings.CutPrefix(a, "--quiet="); ok {
+		if rest, ok := strings.CutPrefix(a, quietFlag+"="); ok {
 			if b, err := strconv.ParseBool(rest); err == nil && b {
 				return true
 			}
