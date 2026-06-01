@@ -82,6 +82,22 @@ const (
 // sides' values + assertion evidence while resolving. The fall-back also
 // writes git's own messages to errOut.
 func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode {
+	// Refuse to operate when %A is a symlink. Git's merge-driver protocol
+	// always hands us a regular-file path inside the worktree; a *.glx
+	// symlink at %A can only come from a hostile branch trying to make the
+	// driver clobber a target outside the repo (e.g. ours -> /etc/passwd).
+	// Both write paths below would follow such a symlink — the structural
+	// merge via os.WriteFile and the text-merge fallback via `git merge-file`
+	// (which writes to its first argv). Reject at function entry so neither
+	// runs. Lstat returning ErrNotExist is fine — git can legitimately
+	// invoke a driver on a path it has yet to create on disk during
+	// three-way add/add merges.
+	if fi, lerr := os.Lstat(in.OursPath); lerr == nil && fi.Mode()&os.ModeSymlink != 0 {
+		fprintf(errOut, "[glx merge-driver] refusing to write through symlink %q\n", in.OursPath)
+
+		return mergeDriverExitConflict
+	}
+
 	baseBytes, oursBytes, theirsBytes, readErr := readAllInputs(in, errOut)
 	if readErr != nil {
 		// Size-cap rejection means the files exist and are readable; we
@@ -130,19 +146,10 @@ func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode 
 	// Only touch OursPath now that we know we have a clean structural merge.
 	// Up to this point OursPath still holds the original "ours" bytes that
 	// git invoked us with, so if anything fails above we hand a pristine
-	// %A off to `git merge-file`.
-	//
-	// Refuse to write through a symlink. Git's merge-driver protocol always
-	// hands us a regular-file path inside the worktree; a *.glx symlink at
-	// %A can only come from a hostile branch trying to make the driver
-	// clobber a target outside the repo (e.g. ours -> /etc/passwd). Lstat
-	// returning ErrNotExist is fine — git can legitimately invoke a driver
-	// on a path it has yet to create on disk.
-	if fi, lerr := os.Lstat(in.OursPath); lerr == nil && fi.Mode()&os.ModeSymlink != 0 {
-		fprintf(errOut, "[glx merge-driver] refusing to write through symlink %q\n", in.OursPath)
-
-		return mergeDriverExitConflict
-	}
+	// %A off to `git merge-file`. The symlink guard at the top of this
+	// function has already rejected the case where %A is a symlink, so
+	// os.WriteFile here writes to a regular file (or fails if the path
+	// was destroyed mid-merge).
 	if err := os.WriteFile(in.OursPath, mergedBytes, mergedFilePerm); err != nil {
 		fprintf(errOut, "[glx merge-driver] write ours %q: %v\n", in.OursPath, err)
 
