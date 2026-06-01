@@ -202,7 +202,7 @@ glx check-schemas
 The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, and analysis. The full per-command reference (flags, examples, aliases) is regenerated on demand by `make docs-cli` from the live Cobra command tree, and CI fails on any drift between the source and the committed pages:
 
 - Browse online: <https://genealogix.dev/cli/>
-- Read in this repo: [`docs/cli/glx.md`](../docs/cli/glx.md)
+- Read in this repo: [`docs/cli/glx.md`](https://github.com/genealogix/glx/blob/main/docs/cli/glx.md)
 - Regenerate locally: `make docs-cli`
 
 CI fails on any drift between the Cobra command tree (as defined across the `glx/` package) and the committed pages under `docs/cli/`. To change the docs for a command, edit its `Use`/`Short`/`Long`/`Example` strings — typically in `glx/cli_commands.go` — and re-run `make docs-cli`.

@@ -11,7 +11,6 @@
     "mime_type": { "type": "string", "description": "MIME type of the media" },
     "hash": { "type": "string", "description": "Content hash for verification" },
     "title": { "type": "string", "description": "Title of the media" },
-    "description": { "type": "string", "description": "Description of the media" },
     "date": { "type": "string", "description": "Date the media was created" },
     "source": {
       "type": "string",
@@ -21,7 +20,7 @@
     "properties": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Vocabulary-defined properties (validated against media_properties vocabulary)"
+      "description": "Vocabulary-defined properties (description, subjects, width, height, duration, file_size, crop, medium, photographer, location, original_filename, blob_size; validated against media_properties vocabulary)"
     },
     "notes": {
       "oneOf": [

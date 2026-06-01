@@ -6,7 +6,7 @@ layout: doc
 
 # Complete Family Example
 
-This example demonstrates 8 GENEALOGIX entity types with proper cross-references, evidence chains, and descriptive entity IDs.
+This example demonstrates all 11 GENEALOGIX entity types (Person, Event, Relationship, Place, Source, Citation, Repository, Assertion, Media, Study, ResearchLog) with proper cross-references, evidence chains, and descriptive entity IDs.
 
 ## Family Structure
 
@@ -46,13 +46,13 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 
 ### Persons (3 files)
 
-- `persons/person-john-smith.glx` - John Smith (b. 1850)
-- `persons/person-mary-brown.glx` - Mary Brown (b. 1852)
-- `persons/person-jane-smith.glx` - Jane Smith (b. 1876)
+- `persons/person-john-smith-1850.glx` - John Smith (b. 1850)
+- `persons/person-mary-brown-1852.glx` - Mary Brown (b. 1852)
+- `persons/person-jane-smith-1876.glx` - Jane Smith (b. 1876)
 
 ### Relationships (2 files)
 
-- `relationships/rel-marriage.glx` - Marriage relationship
+- `relationships/rel-marriage-john-mary.glx` - Marriage relationship
 - `relationships/rel-parent-child.glx` - Parent-child relationships (2 relationships in one file)
 
 ### Events (3 files)
@@ -69,25 +69,37 @@ This example uses **descriptive IDs** to make the archive more human-readable:
 
 ### Sources (2 files)
 
-- `sources/source-parish-register.glx` - St. Paul's Parish Register
-- `sources/source-census.glx` - 1851 Census
+- `sources/source-parish-leeds.glx` - St. Paul's Parish Register
+- `sources/source-census-1851.glx` - 1851 Census
 
 ### Citations (3 files)
 
 - `citations/citation-john-birth.glx` - Birth citation with transcription
 - `citations/citation-marriage.glx` - Marriage citation with transcription
-- `citations/citation-census.glx` - Census citation with locator
+- `citations/citation-census-john.glx` - Census citation with locator
 
 ### Repositories (2 files)
 
 - `repositories/repository-leeds-library.glx` - Leeds Library
-- `repositories/repository-national-archives.glx` - The National Archives
+- `repositories/repository-tna.glx` - The National Archives
 
 ### Assertions (3 files)
 
-- `assertions/assertion-john-birth.glx` - Birth date with multiple citations
-- `assertions/assertion-john-birthplace.glx` - Birth place
-- `assertions/assertion-marriage.glx` - Marriage date
+- `assertions/assertion-john-birth-date.glx` - Birth date with multiple citations
+- `assertions/assertion-john-birth-place.glx` - Birth place
+- `assertions/assertion-marriage-date.glx` - Marriage date
+
+### Media (1 file)
+
+- `media/media-john-portrait.glx` - Studio portrait of John Smith, c.1880 (a small placeholder binary is bundled at `media/files/john-smith-1880.jpg`)
+
+### Studies (1 file)
+
+- `studies/study-smith-yorkshire.glx` - Family reconstruction scope for Smith family in 19th-c. Yorkshire
+
+### Research Logs (1 file)
+
+- `research_logs/research-log-john-smith-birth.glx` - Investigation that confirmed John Smith's birth date, with two `Search` entries
 
 ## Evidence Chain in This Example
 
@@ -104,7 +116,7 @@ Repository → Source → Citation → Assertion
 All files use the unified GENEALOGIX format:
 
 ```yaml
-# persons/person-john-smith.glx
+# persons/person-john-smith-1850.glx
 persons:
   person-john-smith-1850:
     properties:
@@ -133,7 +145,7 @@ Should validate successfully with no errors.
 
 ## Key Features Demonstrated
 
-- **8 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions
+- **11 Entity Types**: Persons, relationships, events, places, sources, citations, repositories, assertions, media, studies, research_logs
 - **Descriptive IDs**: Human-readable entity identifiers
 - **Evidence Chains**: Complete provenance from repository to conclusion
 - **Confidence Levels**: Assertions express certainty

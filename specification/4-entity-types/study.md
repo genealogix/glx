@@ -104,7 +104,7 @@ Array of Source entity IDs that are explicitly within scope. Useful when a study
 
 ### `properties`
 
-Free-form metadata. There is no `study_properties` vocabulary in this revision, so property names are not validated and unknown keys do not produce warnings. Suggested uses:
+Free-form metadata. There is no `study_properties` vocabulary in this revision, so keys inside `properties` are not validated and unknown keys do not produce warnings. (Note: the `type` and `status` fields on the Study itself *are* validated against the `study_types` and `study_statuses` vocabularies as hard errors — see [Vocabularies → Validation Errors](vocabularies#validation-errors-hard-failures).) Suggested uses:
 
 - `source_types` — Source-type categories in scope, when individual sources are not enumerated
 - `surname_variants` — For one-name studies, the spellings/variants in scope

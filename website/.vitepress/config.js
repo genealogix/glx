@@ -16,14 +16,35 @@ export default defineConfig({
   // This allows VitePress to access all markdown files in the repo
   srcDir: '..',
 
-  // Exclude vendored markdown so the build (and sitemap) only indexes our own pages
-  srcExclude: ['**/node_modules/**'],
+  // Exclude vendored markdown so the build (and sitemap) only indexes our own
+  // pages. Specifically:
+  // - node_modules: vendored deps.
+  // - CLAUDE.md files anywhere: internal Claude collaboration guides; the
+  //   `feedback_no_claude_artifacts` rule keeps these out of public output.
+  // - docs/superpowers/**: internal planning and implementation specs that
+  //   should not be served from the public site.
+  // - docs/gedcom-spec/**: bundled GEDCOM specification PDFs and per-version
+  //   README files that reference those PDFs via local relative paths. The
+  //   PDFs are large binaries we don't publish to the website (they live in
+  //   git for local reference); excluding the READMEs avoids 80+ dead
+  //   `<version>/part_NN_pages_X-Y.pdf` links in the rendered site.
+  // - glx/testdata/**: internal test-fixture READMEs documenting the
+  //   GEDCOM corpora used by `make test`; not user-facing content.
+  // - glx/defaults/README.md: developer note for the embedded vocab defaults.
+  srcExclude: [
+    '**/node_modules/**',
+    '**/CLAUDE.md',
+    'docs/superpowers/**',
+    'docs/gedcom-spec/**',
+    'glx/testdata/**',
+    'glx/defaults/**',
+  ],
 
   // Head configuration
   head: [
     ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
     ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
-    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-N2YJJJFE6K');"]
+    ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
   ],
 
   // Sitemap generation
