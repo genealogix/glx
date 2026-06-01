@@ -553,19 +553,19 @@ func TestCitationSourceLabel_FallsBackToCitationID(t *testing.T) {
 			"src-untitled": {},
 		},
 		Citations: map[string]*glxlib.Citation{
-			"cit-with-title":     {SourceID: "src-titled"},
-			"cit-untitled-src":   {SourceID: "src-untitled"},
-			"cit-missing-src":    {SourceID: "src-does-not-exist"},
-			"cit-no-source-id":   {},
+			"cit-with-title":   {SourceID: "src-titled"},
+			"cit-untitled-src": {SourceID: "src-untitled"},
+			"cit-missing-src":  {SourceID: "src-does-not-exist"},
+			"cit-no-source-id": {},
 		},
 	}
 
 	cases := map[string]string{
-		"cit-with-title":   "1880 US Census",       // happy path: title resolves
-		"cit-untitled-src": "cit-untitled-src",     // source exists but no title → citation ID
-		"cit-missing-src":  "cit-missing-src",      // source ID set but unknown → citation ID
-		"cit-no-source-id": "cit-no-source-id",     // citation has no SourceID → citation ID
-		"cit-unknown":      "cit-unknown",          // citation itself missing → echo input
+		"cit-with-title":   "1880 US Census",   // happy path: title resolves
+		"cit-untitled-src": "cit-untitled-src", // source exists but no title → citation ID
+		"cit-missing-src":  "cit-missing-src",  // source ID set but unknown → citation ID
+		"cit-no-source-id": "cit-no-source-id", // citation has no SourceID → citation ID
+		"cit-unknown":      "cit-unknown",      // citation itself missing → echo input
 	}
 	for citID, want := range cases {
 		got := citationSourceLabel(citID, archive)
