@@ -64,9 +64,30 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 	},
 }
 
-// Execute runs the root command
+// silentExitError is returned from a Cobra RunE to terminate the process with
+// a specific exit code without printing an error message. The git merge-driver
+// protocol uses the exit code itself to signal "conflicts remain"; an extra
+// error line on stderr would pollute git's own output. Keeping the os.Exit
+// call out of RunE also lets the command return normally for unit tests.
+type silentExitError struct {
+	code int
+}
+
+func (e *silentExitError) Error() string {
+	return fmt.Sprintf("silent exit %d", e.code)
+}
+
+// Execute runs the root command.
+//
+// A *silentExitError returned by a RunE means "exit with this code, do not
+// print a message" — see runMergeDriverCmd for the canonical use. Any other
+// non-nil error is printed to stderr before exiting with code 1.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		var silent *silentExitError
+		if errors.As(err, &silent) {
+			os.Exit(silent.code)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -1495,9 +1516,9 @@ func runMergeDriverCmd(_ *cobra.Command, args []string) error {
 	}
 	// Exit nonzero without printing a "command failed" line — git interprets
 	// the exit code itself as "conflicts remain" and prints its own message.
-	os.Exit(int(code))
-
-	return nil
+	// Returning *silentExitError (rather than calling os.Exit here) keeps this
+	// RunE testable and lets Cobra's post-run hooks fire normally.
+	return &silentExitError{code: int(code)}
 }
 
 // ============================================================================
