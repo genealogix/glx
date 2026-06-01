@@ -203,7 +203,7 @@ func TestCollectEvidence_ValueResolution(t *testing.T) {
 			"place-richmond": {Name: "Richmond, Virginia"},
 		},
 		PersonProperties: map[string]*glxlib.PropertyDefinition{
-			"named_for": {Label: "Named For", ReferenceType: glxlib.EntityTypePersons},
+			"named_for": {Label: "Named For", ReferenceType: glxlib.EntityTypePersons.String()},
 		},
 		Assertions: map[string]*glxlib.Assertion{
 			// residence is a built-in place-ref property (placeRefProperties).

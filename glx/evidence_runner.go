@@ -308,12 +308,15 @@ func resolveAssertionValue(value, property string, archive *glxlib.GLXFile) stri
 	}
 
 	if def, ok := archive.PersonProperties[property]; ok && def != nil {
+		// PropertyDefinition.ReferenceType is an untyped string from YAML;
+		// bridge to EntityType via .String() to match the convention used by
+		// isPlaceReferenceProperty in summary_runner.go.
 		switch def.ReferenceType {
-		case glxlib.EntityTypePlaces:
+		case glxlib.EntityTypePlaces.String():
 			return resolvePlaceName(value, archive)
-		case glxlib.EntityTypePersons:
+		case glxlib.EntityTypePersons.String():
 			return personName(archive, value)
-		case glxlib.EntityTypeEvents:
+		case glxlib.EntityTypeEvents.String():
 			if ev, ok := archive.Events[value]; ok && ev != nil && ev.Title != "" {
 				return ev.Title
 			}
