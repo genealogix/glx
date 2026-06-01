@@ -370,6 +370,61 @@ func TestMergeDriver_ConflictWithAnsiEscapeInValue_StderrSanitized(t *testing.T)
 	}
 }
 
+// TestMergeDriver_ConflictWithNewlineInValue_StderrEscaped pins the
+// log-injection guard added in response to Copilot review on PR #906: a
+// hostile YAML value can contain a newline that, if rendered literally,
+// would forge a "  conflict at <smuggled-path>" line in the conflict
+// summary, fooling a researcher into thinking there was a real conflict at
+// a path of the attacker's choosing. formatValue must escape the newline
+// so the value stays on one physical line — the smuggled token must only
+// appear as a substring of theirs's escaped value, never as a stand-alone
+// summary line.
+func TestMergeDriver_ConflictWithNewlineInValue_StderrEscaped(t *testing.T) {
+	requireGit(t)
+	dst := t.TempDir()
+	// Both branches modify the same property to different values; theirs
+	// embeds a newline followed by a fake summary line. Pre-fix, that line
+	// would survive verbatim in stderr; post-fix it appears only as the
+	// escaped substring `\n  conflict at /etc/secret`.
+	base := "persons:\n  person-john-smith:\n    properties:\n      note: \"original\"\n"
+	ours := "persons:\n  person-john-smith:\n    properties:\n      note: \"ours-version\"\n"
+	theirs := "persons:\n  person-john-smith:\n    properties:\n      note: \"theirs\\n  conflict at /etc/secret\"\n"
+	if err := os.WriteFile(filepath.Join(dst, "base.glx"), []byte(base), 0o644); err != nil {
+		t.Fatalf("write base: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "ours.glx"), []byte(ours), 0o644); err != nil {
+		t.Fatalf("write ours: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "theirs.glx"), []byte(theirs), 0o644); err != nil {
+		t.Fatalf("write theirs: %v", err)
+	}
+	in := mergeDriverInputs{
+		BasePath:   filepath.Join(dst, "base.glx"),
+		OursPath:   filepath.Join(dst, "ours.glx"),
+		TheirsPath: filepath.Join(dst, "theirs.glx"),
+		OrigPath:   "person-john-smith.glx",
+	}
+	var errBuf bytes.Buffer
+	_ = runMergeDriver(in, &errBuf)
+	out := errBuf.String()
+
+	// Positive: the escaping must have fired, so the literal two-character
+	// sequence `\n  conflict at /etc/secret` is present.
+	if !strings.Contains(out, `\n  conflict at /etc/secret`) {
+		t.Errorf("expected newline in theirs's value to be escaped to literal \\n, got stderr:\n%s", out)
+	}
+
+	// Anti-injection: the smuggled string must never appear at the start of
+	// a physical line (which is the shape of a real conflict-summary entry).
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.HasPrefix(line, "  conflict at /etc/secret") {
+			t.Errorf("smuggled '  conflict at /etc/secret' appeared as a standalone line — escaping failed:\n%s", out)
+
+			break
+		}
+	}
+}
+
 // TestMergeDriver_ConflictOnAssertion_StderrIncludesEvidence drives an
 // assertion-value conflict with equal confidence on both sides (so neither
 // wins) and citations set on both sides. The stderr summary should include

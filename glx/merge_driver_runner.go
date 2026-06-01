@@ -361,16 +361,32 @@ func assertionMetaSuffix(a *glxlib.Assertion) string {
 	return "  " + strings.Join(parts, "  ")
 }
 
+// stderrValueEscape converts whitespace controls that safeForStderr lets
+// through (newline, tab) into visible escape sequences. Those characters are
+// fine inside path/ID call sites — which is why safeForStderr keeps them —
+// but in user-controlled conflict-value display they could be used to
+// inject extra log lines or break the one-conflict-per-line layout
+// (e.g., a YAML note of "foo\n  conflict at /etc/secret"). Anything else
+// safeForStderr already strips downstream.
+var stderrValueEscape = strings.NewReplacer(
+	"\n", `\n`,
+	"\t", `\t`,
+)
+
 // formatValue stringifies a conflict's value for stderr display. Designed
 // for stderr-readability, not round-trippability — long structured values
-// (entire entities, large maps) are still shown but trimmed. The result is
-// sanitized of ANSI escapes and Unicode bidi controls so a hostile branch
-// can't inject misleading terminal output.
+// (entire entities, large maps) are still shown but trimmed. Newlines and
+// tabs in the value are escaped (so the value stays on a single physical
+// line and can't smuggle a fake "  conflict at …" follow-on line into the
+// summary); ANSI escapes and Unicode bidi controls are stripped by the
+// safeForStderr pass so a hostile branch can't inject misleading terminal
+// output.
 func formatValue(v any) string {
 	if v == nil {
 		return "<absent>"
 	}
 	s := fmt.Sprintf("%v", v)
+	s = stderrValueEscape.Replace(s)
 	if len(s) > maxConflictValueDisplay {
 		s = s[:maxConflictValueDisplay] + "…"
 	}
