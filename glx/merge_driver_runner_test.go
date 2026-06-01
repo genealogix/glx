@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -466,5 +467,68 @@ func TestMergeDriver_ParseOrEmpty_TreatsEmptyInputAsEmptyGLXFile(t *testing.T) {
 	}
 	if g2 == nil {
 		t.Fatalf("parseOrEmpty whitespace returned nil GLXFile")
+	}
+}
+
+// TestMergeDriver_RefusesToWriteThroughSymlink pins the symlink guard added
+// in response to Copilot review on PR #906: if %A (ours) is a symlink — the
+// realistic shape of which is a hostile branch placing a *.glx symlink at a
+// tracked path so a merge would clobber a file outside the worktree — the
+// driver must refuse the write, return a nonzero exit code, leave the
+// symlink target untouched, and surface the refusal to stderr.
+func TestMergeDriver_RefusesToWriteThroughSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// os.Symlink on Windows needs SeCreateSymbolicLinkPrivilege (admin
+		// or Developer Mode), which CI test envs don't reliably grant. The
+		// Lstat guard itself is portable; the integration check skips here.
+		t.Skip("symlink creation requires elevated permissions on Windows")
+	}
+
+	in := stageMergeFixture(t, "clean-one-sided")
+
+	// Replace OursPath with a symlink to an attacker-controlled file living
+	// outside the staged tempdir, simulating "ours -> /etc/passwd".
+	victim := filepath.Join(t.TempDir(), "victim.txt")
+	victimContent := []byte("untouched\n")
+	if err := os.WriteFile(victim, victimContent, 0o644); err != nil {
+		t.Fatalf("write victim: %v", err)
+	}
+	if err := os.Remove(in.OursPath); err != nil {
+		t.Fatalf("remove staged ours: %v", err)
+	}
+	if err := os.Symlink(victim, in.OursPath); err != nil {
+		t.Fatalf("create ours -> victim symlink: %v", err)
+	}
+
+	var errBuf bytes.Buffer
+	code := runMergeDriver(in, &errBuf)
+
+	if code == mergeDriverExitClean {
+		t.Fatalf("expected nonzero exit when ours is a symlink, got clean")
+	}
+
+	// The victim must be byte-for-byte unchanged — the write must not have
+	// been followed through the symlink.
+	after, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatalf("read victim after merge: %v", err)
+	}
+	if !bytes.Equal(after, victimContent) {
+		t.Errorf("victim file modified through symlink:\nbefore: %q\nafter:  %q",
+			victimContent, after)
+	}
+
+	// The symlink itself must still be a symlink — we must not have replaced
+	// it with a regular file via WriteFile.
+	fi, err := os.Lstat(in.OursPath)
+	if err != nil {
+		t.Fatalf("lstat ours after merge: %v", err)
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("ours is no longer a symlink — guard should preserve it")
+	}
+
+	if !strings.Contains(errBuf.String(), "refusing to write through symlink") {
+		t.Errorf("expected symlink-refusal diagnostic in stderr, got:\n%s", errBuf.String())
 	}
 }
