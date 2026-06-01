@@ -291,23 +291,23 @@ func merge3OpaqueID[V any](vocabType, id string, base, ours, theirs map[string]*
 			return o, nil, true
 		}
 
-		return o, []Merge3Conflict{{Path: path, EntityType: EntityType(vocabType), EntityID: id, OursValue: o, TheirsValue: t}}, true
+		return o, []Merge3Conflict{{Path: path, OursValue: o, TheirsValue: t}}, true
 	case bOK && oOK && !tOK:
 		if reflect.DeepEqual(b, o) {
 			return nil, nil, false
 		}
 
-		return o, []Merge3Conflict{{Path: path, EntityType: EntityType(vocabType), EntityID: id, BaseValue: b, OursValue: o}}, true
+		return o, []Merge3Conflict{{Path: path, BaseValue: b, OursValue: o}}, true
 	case bOK && !oOK && tOK:
 		if reflect.DeepEqual(b, t) {
 			return nil, nil, false
 		}
 
-		return t, []Merge3Conflict{{Path: path, EntityType: EntityType(vocabType), EntityID: id, BaseValue: b, TheirsValue: t}}, true
+		return t, []Merge3Conflict{{Path: path, BaseValue: b, TheirsValue: t}}, true
 	case bOK && !oOK && !tOK:
 		return nil, nil, false
 	default:
-		val, sub := opaqueAllPresent(path, vocabType, id, b, o, t)
+		val, sub := opaqueAllPresent(path, b, o, t)
 
 		return val, sub, true
 	}
@@ -317,7 +317,12 @@ func merge3OpaqueID[V any](vocabType, id string, base, ours, theirs map[string]*
 // merge: take whichever side diverged from base, or report a conflict if
 // both diverged differently. The boolean "emit this" return is unconditional
 // at this point (the entry is present everywhere), so callers append true.
-func opaqueAllPresent[V any](path, vocabType, id string, b, o, t *V) (*V, []Merge3Conflict) {
+//
+// EntityType/EntityID stay empty on the returned conflict — vocabulary maps
+// aren't entities, so per the Merge3Conflict field doc those fields belong to
+// the entity-level tagging path (tagConflicts). The Path string carries
+// "{vocab_type}[{key}]" so the runner still has unambiguous context.
+func opaqueAllPresent[V any](path string, b, o, t *V) (*V, []Merge3Conflict) {
 	switch {
 	case reflect.DeepEqual(b, o):
 		return t, nil
@@ -328,8 +333,6 @@ func opaqueAllPresent[V any](path, vocabType, id string, b, o, t *V) (*V, []Merg
 	default:
 		return o, []Merge3Conflict{{
 			Path:        path,
-			EntityType:  EntityType(vocabType),
-			EntityID:    id,
 			BaseValue:   b,
 			OursValue:   o,
 			TheirsValue: t,
