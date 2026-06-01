@@ -649,7 +649,7 @@ func TestThreeWayMerge_Media_FieldLevelMerge(t *testing.T) {
 		"m1": {URI: "/a.jpg", Title: "New title"},
 	}}
 	theirs := &GLXFile{Media: map[string]*Media{
-		"m1": {URI: "/a.jpg", Title: "Old title", Description: "Family photo"},
+		"m1": {URI: "/a.jpg", Title: "Old title", Properties: map[string]any{"description": "Family photo"}},
 	}}
 
 	merged, conflicts := ThreeWayMerge(base, ours, theirs)
@@ -657,7 +657,7 @@ func TestThreeWayMerge_Media_FieldLevelMerge(t *testing.T) {
 		t.Fatalf("disjoint Media edits should not conflict, got %v", conflicts)
 	}
 	m := merged.Media["m1"]
-	if m.Title != "New title" || m.Description != "Family photo" {
+	if m.Title != "New title" || m.Properties["description"] != "Family photo" {
 		t.Errorf("expected both edits preserved, got %+v", m)
 	}
 }
@@ -666,7 +666,7 @@ func TestThreeWayMerge_Media_FieldLevelMerge(t *testing.T) {
 // EntityType and EntityID match the given values. Used by per-entity tests to
 // confirm conflicts produced by field-level helpers are tagged by the
 // orchestrator (see tagConflicts in merge3.go).
-func hasConflictTaggedAs(conflicts []Merge3Conflict, entityType, entityID string) bool {
+func hasConflictTaggedAs(conflicts []Merge3Conflict, entityType EntityType, entityID string) bool {
 	for i := range conflicts {
 		if conflicts[i].EntityType == entityType && conflicts[i].EntityID == entityID {
 			return true

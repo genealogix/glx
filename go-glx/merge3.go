@@ -32,7 +32,7 @@ type Merge3Conflict struct {
 
 	// EntityType is the GLX entity type ("persons", "events", …). Empty for
 	// non-entity conflicts (vocabularies, top-level metadata).
-	EntityType string
+	EntityType EntityType
 
 	// EntityID is the entity ID being merged. Empty for non-entity conflicts.
 	EntityID string
@@ -152,9 +152,9 @@ func HasUnresolvedConflict(conflicts []Merge3Conflict) bool {
 // 3-way logic per ID. mergeOne handles the per-entity property merge when an
 // ID exists in more than one side.
 func merge3EntityMap[V any](
-	entityType string,
+	entityType EntityType,
 	base, ours, theirs map[string]*V,
-	mergeOne func(entityType, id string, base, ours, theirs *V) (*V, []Merge3Conflict),
+	mergeOne func(entityType EntityType, id string, base, ours, theirs *V) (*V, []Merge3Conflict),
 	conflicts []Merge3Conflict,
 ) (map[string]*V, []Merge3Conflict) {
 	ids := unionMapKeys(base, ours, theirs)
@@ -182,7 +182,7 @@ func merge3EntityMap[V any](
 // uses EntityType / EntityID to look up assertion-level context (confidence,
 // citations) for stderr conflict summaries, so we backfill them here, where
 // we know both.
-func tagConflicts(entityType, id string, conflicts []Merge3Conflict) []Merge3Conflict {
+func tagConflicts(entityType EntityType, id string, conflicts []Merge3Conflict) []Merge3Conflict {
 	for i := range conflicts {
 		if conflicts[i].EntityType == "" {
 			conflicts[i].EntityType = entityType
@@ -206,9 +206,9 @@ func tagConflicts(entityType, id string, conflicts []Merge3Conflict) []Merge3Con
 //
 //nolint:gocyclo // 7-case finite presence enumeration; splitting further hurts readability.
 func merge3EntityID[V any](
-	entityType, id string,
+	entityType EntityType, id string,
 	base, ours, theirs map[string]*V,
-	mergeOne func(entityType, id string, base, ours, theirs *V) (*V, []Merge3Conflict),
+	mergeOne func(entityType EntityType, id string, base, ours, theirs *V) (*V, []Merge3Conflict),
 ) (*V, []Merge3Conflict, bool) {
 	b, bOK := lookupNonNil(base, id)
 	o, oOK := lookupNonNil(ours, id)
@@ -249,7 +249,7 @@ func merge3EntityID[V any](
 // (i.e. the only change was the delete), the delete proceeds quietly;
 // otherwise we record a delete-vs-modify conflict and keep the surviving
 // side in the merged output so the diagnostic file remains well-formed.
-func mergeDeleteVsKeep[V any](entityType, id string, b, ours, theirs *V) (*V, []Merge3Conflict, bool) {
+func mergeDeleteVsKeep[V any](entityType EntityType, id string, b, ours, theirs *V) (*V, []Merge3Conflict, bool) {
 	surviving := ours
 	if surviving == nil {
 		surviving = theirs
@@ -291,19 +291,19 @@ func merge3OpaqueID[V any](vocabType, id string, base, ours, theirs map[string]*
 			return o, nil, true
 		}
 
-		return o, []Merge3Conflict{{Path: path, EntityType: vocabType, EntityID: id, OursValue: o, TheirsValue: t}}, true
+		return o, []Merge3Conflict{{Path: path, EntityType: EntityType(vocabType), EntityID: id, OursValue: o, TheirsValue: t}}, true
 	case bOK && oOK && !tOK:
 		if reflect.DeepEqual(b, o) {
 			return nil, nil, false
 		}
 
-		return o, []Merge3Conflict{{Path: path, EntityType: vocabType, EntityID: id, BaseValue: b, OursValue: o}}, true
+		return o, []Merge3Conflict{{Path: path, EntityType: EntityType(vocabType), EntityID: id, BaseValue: b, OursValue: o}}, true
 	case bOK && !oOK && tOK:
 		if reflect.DeepEqual(b, t) {
 			return nil, nil, false
 		}
 
-		return t, []Merge3Conflict{{Path: path, EntityType: vocabType, EntityID: id, BaseValue: b, TheirsValue: t}}, true
+		return t, []Merge3Conflict{{Path: path, EntityType: EntityType(vocabType), EntityID: id, BaseValue: b, TheirsValue: t}}, true
 	case bOK && !oOK && !tOK:
 		return nil, nil, false
 	default:
@@ -328,7 +328,7 @@ func opaqueAllPresent[V any](path, vocabType, id string, b, o, t *V) (*V, []Merg
 	default:
 		return o, []Merge3Conflict{{
 			Path:        path,
-			EntityType:  vocabType,
+			EntityType:  EntityType(vocabType),
 			EntityID:    id,
 			BaseValue:   b,
 			OursValue:   o,
@@ -426,7 +426,7 @@ func orZero[V any](p *V) *V {
 	return p
 }
 
-func mergeOnePerson(entityType, id string, base, ours, theirs *Person) (*Person, []Merge3Conflict) {
+func mergeOnePerson(entityType EntityType, id string, base, ours, theirs *Person) (*Person, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -445,7 +445,7 @@ func mergeOnePerson(entityType, id string, base, ours, theirs *Person) (*Person,
 	return merged, conflicts
 }
 
-func mergeOneRelationship(entityType, id string, base, ours, theirs *Relationship) (*Relationship, []Merge3Conflict) {
+func mergeOneRelationship(entityType EntityType, id string, base, ours, theirs *Relationship) (*Relationship, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -470,7 +470,7 @@ func mergeOneRelationship(entityType, id string, base, ours, theirs *Relationshi
 	return merged, conflicts
 }
 
-func mergeOneEvent(entityType, id string, base, ours, theirs *Event) (*Event, []Merge3Conflict) {
+func mergeOneEvent(entityType EntityType, id string, base, ours, theirs *Event) (*Event, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -495,7 +495,7 @@ func mergeOneEvent(entityType, id string, base, ours, theirs *Event) (*Event, []
 	return merged, conflicts
 }
 
-func mergeOnePlace(entityType, id string, base, ours, theirs *Place) (*Place, []Merge3Conflict) {
+func mergeOnePlace(entityType EntityType, id string, base, ours, theirs *Place) (*Place, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -518,7 +518,7 @@ func mergeOnePlace(entityType, id string, base, ours, theirs *Place) (*Place, []
 	return merged, conflicts
 }
 
-func mergeOneSource(entityType, id string, base, ours, theirs *Source) (*Source, []Merge3Conflict) {
+func mergeOneSource(entityType EntityType, id string, base, ours, theirs *Source) (*Source, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -550,7 +550,7 @@ func mergeOneSource(entityType, id string, base, ours, theirs *Source) (*Source,
 	return merged, conflicts
 }
 
-func mergeOneCitation(entityType, id string, base, ours, theirs *Citation) (*Citation, []Merge3Conflict) {
+func mergeOneCitation(entityType EntityType, id string, base, ours, theirs *Citation) (*Citation, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -573,7 +573,7 @@ func mergeOneCitation(entityType, id string, base, ours, theirs *Citation) (*Cit
 	return merged, conflicts
 }
 
-func mergeOneRepository(entityType, id string, base, ours, theirs *Repository) (*Repository, []Merge3Conflict) {
+func mergeOneRepository(entityType EntityType, id string, base, ours, theirs *Repository) (*Repository, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -599,7 +599,7 @@ func mergeOneRepository(entityType, id string, base, ours, theirs *Repository) (
 	return merged, conflicts
 }
 
-func mergeOneAssertion(entityType, id string, base, ours, theirs *Assertion) (*Assertion, []Merge3Conflict) {
+func mergeOneAssertion(entityType EntityType, id string, base, ours, theirs *Assertion) (*Assertion, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -631,7 +631,7 @@ func mergeOneAssertion(entityType, id string, base, ours, theirs *Assertion) (*A
 	return merged, conflicts
 }
 
-func mergeOneMedia(entityType, id string, base, ours, theirs *Media) (*Media, []Merge3Conflict) {
+func mergeOneMedia(entityType EntityType, id string, base, ours, theirs *Media) (*Media, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -648,7 +648,9 @@ func mergeOneMedia(entityType, id string, base, ours, theirs *Media) (*Media, []
 	merged.MimeType, conflicts = scalarOrConflict(prefix+".mime_type", base.MimeType, ours.MimeType, theirs.MimeType, conflicts)
 	merged.Hash, conflicts = scalarOrConflict(prefix+".hash", base.Hash, ours.Hash, theirs.Hash, conflicts)
 	merged.Title, conflicts = scalarOrConflict(prefix+".title", base.Title, ours.Title, theirs.Title, conflicts)
-	merged.Description, conflicts = scalarOrConflict(prefix+".description", base.Description, ours.Description, theirs.Description, conflicts)
+	// Media.description was demoted to properties.description in #894;
+	// it now flows through merge3Properties below as media[id].properties.description,
+	// mirroring the Source.description demotion handled earlier in mergeOneSource.
 	merged.Date, conflicts = dateOrConflict(prefix+".date", base.Date, ours.Date, theirs.Date, conflicts)
 	merged.Source, conflicts = scalarOrConflict(prefix+".source", base.Source, ours.Source, theirs.Source, conflicts)
 	merged.Properties, conflicts = merge3Properties(prefix+".properties", base.Properties, ours.Properties, theirs.Properties, conflicts)
@@ -657,7 +659,7 @@ func mergeOneMedia(entityType, id string, base, ours, theirs *Media) (*Media, []
 	return merged, conflicts
 }
 
-func mergeOneResearchLog(entityType, id string, base, ours, theirs *ResearchLog) (*ResearchLog, []Merge3Conflict) {
+func mergeOneResearchLog(entityType EntityType, id string, base, ours, theirs *ResearchLog) (*ResearchLog, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -689,7 +691,7 @@ func mergeOneResearchLog(entityType, id string, base, ours, theirs *ResearchLog)
 	return merged, conflicts
 }
 
-func mergeOneStudy(entityType, id string, base, ours, theirs *Study) (*Study, []Merge3Conflict) {
+func mergeOneStudy(entityType EntityType, id string, base, ours, theirs *Study) (*Study, []Merge3Conflict) {
 	if m, ok := shortCircuitEntity(base, ours, theirs); ok {
 		return m, nil
 	}
@@ -1274,8 +1276,8 @@ func unionMapKeys[V any](maps ...map[string]*V) []string {
 	return out
 }
 
-func entityPath(entityType, id string) string {
-	return entityType + "[" + id + "]"
+func entityPath(entityType EntityType, id string) string {
+	return string(entityType) + "[" + id + "]"
 }
 
 // lookupNonNil reads m[id] and reports presence only when the stored pointer
