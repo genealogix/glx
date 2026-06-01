@@ -476,3 +476,101 @@ func TestShowEvidence_EndToEnd(t *testing.T) {
 		}
 	})
 }
+
+// TestLoadArchiveForEvidence_SingleFileMergesVocabularies directly verifies
+// the merge: a single-file archive without a vocabularies block leaves
+// PersonProperties empty until mergeStandardVocabularies runs. After load,
+// the standard "residence" definition must be present, otherwise the
+// reference-type resolution path in resolveAssertionValue is dead code on
+// single-file archives.
+func TestLoadArchiveForEvidence_SingleFileMergesVocabularies(t *testing.T) {
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "archive.glx")
+	// Minimal single-file archive with no vocabularies block.
+	if err := os.WriteFile(archivePath, []byte("persons: {}\n"), 0o600); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+
+	streams, _, _ := TestIOStreams()
+	archive, err := loadArchiveForEvidence(streams, archivePath)
+	if err != nil {
+		t.Fatalf("loadArchiveForEvidence: %v", err)
+	}
+	if _, ok := archive.PersonProperties["residence"]; !ok {
+		t.Errorf("PersonProperties[residence] missing — standard vocabularies not merged on single-file path")
+	}
+}
+
+// TestShowEvidence_SingleFileResolvesPlaceReference exercises
+// loadArchiveForEvidence's single-file path end-to-end: standard vocabularies
+// are merged on load, so a place-reference property (residence) resolves to
+// the place name rather than printing the raw place ID — matching the
+// directory-archive behavior and loadArchiveForSummary.
+func TestShowEvidence_SingleFileResolvesPlaceReference(t *testing.T) {
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "archive.glx")
+	content := `persons:
+  person-johannes-schepp:
+    properties:
+      name: "Johannes Schepp"
+assertions:
+  a1:
+    subject:
+      person: person-johannes-schepp
+    property: residence
+    value: place-pohlgoens
+    confidence: high
+places:
+  place-pohlgoens:
+    name: "Pohl-Göns"
+    type: town
+`
+	if err := os.WriteFile(archivePath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+
+	streams, out, _ := TestIOStreams()
+	if err := showEvidence(streams, archivePath, "person-johannes-schepp", "residence", "text"); err != nil {
+		t.Fatalf("showEvidence: %v", err)
+	}
+	if !strings.Contains(out.String(), "Pohl-Göns") {
+		t.Errorf("expected resolved place name in output, got %q", out.String())
+	}
+	if strings.Contains(out.String(), "place-pohlgoens") {
+		t.Errorf("raw place ID leaked into output: %q", out.String())
+	}
+}
+
+// TestCitationSourceLabel_FallsBackToCitationID pins the citation→source-title
+// resolution contract: when the citation's source is missing, untitled, or
+// the SourceID is empty, the label falls back to the citation ID rather than
+// the source ID (which would duplicate identifier noise next to the citation
+// column).
+func TestCitationSourceLabel_FallsBackToCitationID(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Sources: map[string]*glxlib.Source{
+			"src-titled":   {Title: "1880 US Census"},
+			"src-untitled": {},
+		},
+		Citations: map[string]*glxlib.Citation{
+			"cit-with-title":     {SourceID: "src-titled"},
+			"cit-untitled-src":   {SourceID: "src-untitled"},
+			"cit-missing-src":    {SourceID: "src-does-not-exist"},
+			"cit-no-source-id":   {},
+		},
+	}
+
+	cases := map[string]string{
+		"cit-with-title":   "1880 US Census",       // happy path: title resolves
+		"cit-untitled-src": "cit-untitled-src",     // source exists but no title → citation ID
+		"cit-missing-src":  "cit-missing-src",      // source ID set but unknown → citation ID
+		"cit-no-source-id": "cit-no-source-id",     // citation has no SourceID → citation ID
+		"cit-unknown":      "cit-unknown",          // citation itself missing → echo input
+	}
+	for citID, want := range cases {
+		got := citationSourceLabel(citID, archive)
+		if got != want {
+			t.Errorf("citationSourceLabel(%q) = %q, want %q", citID, got, want)
+		}
+	}
+}

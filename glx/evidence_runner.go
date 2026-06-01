@@ -109,7 +109,23 @@ func loadArchiveForEvidence(io *IOStreams, path string) (*glxlib.GLXFile, error)
 		return archive, nil
 	}
 
-	return readSingleFileArchive(path, false)
+	archive, err := readSingleFileArchive(path, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Single-file archives don't merge standard vocabularies during load (unlike
+	// directory archives via LoadArchiveWithOptions), so populate them here.
+	// evidence is read-only and mergeStandardVocabularies only fills empty
+	// vocabulary maps, so any archive-defined vocabulary is preserved. This
+	// lets reference-type properties (e.g. residence) resolve to place/person/
+	// event names regardless of whether the archive is a directory or a single
+	// file — matching loadArchiveForSummary's behavior.
+	if err := mergeStandardVocabularies(archive); err != nil {
+		return nil, fmt.Errorf("failed to load standard vocabularies: %w", err)
+	}
+
+	return archive, nil
 }
 
 // noteConfidence raises the group's best confidence to c when c outranks the
@@ -264,14 +280,21 @@ func assertionItems(a *glxlib.Assertion, archive *glxlib.GLXFile) []EvidenceItem
 }
 
 // citationSourceLabel resolves a citation to its source title, falling back to
-// the citation ID when the citation or its source is missing.
+// the citation ID when the citation, its source, or the source's title is
+// missing. Note: this deliberately does NOT delegate to sourceLabel, which
+// falls back to the source ID — appropriate where no citation column exists,
+// but here the citation ID already occupies its own column and surfacing a
+// raw source ID alongside would duplicate identifier noise without adding
+// information.
 func citationSourceLabel(citID string, archive *glxlib.GLXFile) string {
 	cit, ok := archive.Citations[citID]
 	if !ok || cit == nil {
 		return citID
 	}
-	if label := sourceLabel(cit.SourceID, archive); label != "" {
-		return label
+	if cit.SourceID != "" {
+		if src, ok := archive.Sources[cit.SourceID]; ok && src != nil && src.Title != "" {
+			return src.Title
+		}
 	}
 
 	return citID
