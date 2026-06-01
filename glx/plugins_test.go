@@ -368,10 +368,13 @@ func TestKnownCommandNames_ContainsBuiltinsAndAutoAdded(t *testing.T) {
 func TestPluginDispatchTarget(t *testing.T) {
 	ensureBuiltinSubcommands(rootCmd)
 	dir := t.TempDir()
-	// Two fixture plugins: one shadows the built-in `validate` (must not be
-	// dispatched), one is a genuine new subcommand (must be dispatched).
+	// Three fixture plugins: one shadows the built-in `validate` (must not be
+	// dispatched), one is a genuine new subcommand (must be dispatched), and
+	// `glx-__foo` exercises the regression guard that the `__complete` prefix
+	// reservation does not block arbitrary `__`-prefixed plugin names.
 	makeFakePluginFile(t, dir, "glx-validate", "echo shadowed")
 	makeFakePluginFile(t, dir, "glx-mycmd", "echo mycmd")
+	makeFakePluginFile(t, dir, "glx-__foo", "echo dunder")
 	ext := defaultPathExtForTest()
 
 	cases := []struct {
@@ -387,6 +390,13 @@ func TestPluginDispatchTarget(t *testing.T) {
 		{"unix: unknown name with no plugin", []string{"definitely-not-a-plugin"}, false, false, "", nil},
 		{"unix: unknown name with plugin → dispatch", []string{"mycmd", "--x", "y"}, false, true, "mycmd", []string{"--x", "y"}},
 		{"cobra __complete falls through", []string{"__complete", "validate"}, false, false, "", nil},
+		{"cobra __completeNoDesc falls through", []string{"__completeNoDesc", "validate"}, false, false, "", nil},
+		// Regression: only the `__complete` prefix is reserved, so a plugin
+		// whose name starts with `__` but is not a cobra completion command
+		// remains dispatchable. Without this guard, `glx __foo` would silently
+		// fall through to cobra's "unknown command" error even with the plugin
+		// installed.
+		{"unix: __foo dispatches to plugin", []string{"__foo", "arg"}, false, true, "__foo", []string{"arg"}},
 		{"no subcommand (only flags) falls through", []string{"--plugins"}, false, false, "", nil},
 		{"empty args falls through", []string{}, false, false, "", nil},
 

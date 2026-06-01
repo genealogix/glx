@@ -419,8 +419,15 @@ func quietFlagRequested(args []string) bool {
 // to invoke and the args to forward, or ok=false if Execute() should fall
 // through to cobra (which will handle the built-in, print "unknown command",
 // or render help). Cobra-internal completion commands (the `__complete*`
-// family) and built-in commands always win — built-ins take precedence so a
-// `glx-validate` plugin can never preempt the bundled `validate` command.
+// family — `__complete` and `__completeNoDesc` in cobra v1.10) and built-in
+// commands always win — built-ins take precedence so a `glx-validate` plugin
+// can never preempt the bundled `validate` command.
+//
+// Only the `__complete` prefix is reserved (matching cobra's actual
+// `ShellCompRequestCmd` / `ShellCompNoDescRequestCmd`), not the broader `__`
+// space, so a hypothetical `glx-__foo` plugin remains dispatchable. If cobra
+// ever introduces another reserved completion command outside this prefix,
+// add it to knownCommandNames so it falls through to cobra normally.
 //
 // On Windows (isWindows=true) the lookup name is lowercased before checking
 // against built-ins and discovered plugins. discoverPlugins also stores
@@ -433,7 +440,7 @@ func pluginDispatchTarget(root *cobra.Command, args []string, pathEnv, pathExt s
 	if !ok {
 		return Plugin{}, nil, false
 	}
-	if strings.HasPrefix(name, "__") {
+	if strings.HasPrefix(name, "__complete") {
 		return Plugin{}, nil, false
 	}
 	lookup := name
