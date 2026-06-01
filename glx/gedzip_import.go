@@ -206,10 +206,11 @@ func safeExtractPath(destDir, entryName string) (string, error) {
 	return dest, nil
 }
 
-// writeZipEntry copies one ZIP entry to destPath, rejecting any entry whose
-// decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
-// when that size limit is exceeded, the partially written destination is
-// removed so the next caller cannot observe a truncated or oversized file.
+// entrySizeLimitReader wraps an io.Reader and returns ErrGEDZIPEntryTooLarge
+// once it has read `remaining` bytes from r (and on every Read thereafter).
+// To accept entries of up to N bytes, callers initialize remaining to N+1: the
+// sentinel then fires only after the (N+1)th byte, so an entry of exactly N
+// bytes passes through unchanged.
 type entrySizeLimitReader struct {
 	r         io.Reader
 	remaining int64
@@ -228,15 +229,17 @@ func (l *entrySizeLimitReader) Read(p []byte) (int, error) {
 	l.remaining -= int64(n)
 
 	if l.remaining == 0 {
-		// remaining starts at maxGEDZIPEntryBytes+1, so this fires after
-		// reading the (maxGEDZIPEntryBytes+1)th byte, meaning the entry
-		// exceeds the limit.
+		// Budget exhausted — see the type doc for the N+1 convention.
 		return n, ErrGEDZIPEntryTooLarge
 	}
 
 	return n, err
 }
 
+// writeZipEntry copies one ZIP entry to destPath, rejecting any entry whose
+// decompressed size exceeds maxGEDZIPEntryBytes. On a copy or close failure, or
+// when that size limit is exceeded, the partially written destination is
+// removed so the next caller cannot observe a truncated or oversized file.
 func writeZipEntry(f *zip.File, destPath string) error {
 	src, err := f.Open()
 	if err != nil {
