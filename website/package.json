@@ -1,11 +1,12 @@
 {
   "name": "genealogix-docs",
-  "version": "0.0.0-beta.10",
+  "version": "0.0.0-beta.11",
   "description": "GENEALOGIX Specification Documentation Site",
   "scripts": {
-    "dev": "vitepress dev -v --host 0.0.0.0",
-    "build": "vitepress build",
+    "dev": "npm run copy-static && vitepress dev -v --host 0.0.0.0",
+    "build": "npm run copy-static && vitepress build",
     "preview": "vitepress preview",
+    "copy-static": "node scripts/copy-static.mjs",
     "lint": "eslint '.vitepress/**/*.{js,vue}'",
     "lint:fix": "eslint '.vitepress/**/*.{js,vue}' --fix",
     "format": "prettier --write \"**/*.{js,vue,json,md}\""

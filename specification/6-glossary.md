@@ -1,3 +1,9 @@
+---
+title: Glossary
+description: Definitions for key GENEALOGIX terms — entities, relationships, evidence, and validation vocabulary
+layout: doc
+---
+
 # Glossary
 
 This glossary defines key terms used in the GENEALOGIX specification.
@@ -96,7 +102,7 @@ Common organizational pattern for GENEALOGIX files (not required). Files can be 
 
 ### Entity
 
-A typed record in a GENEALOGIX archive representing a person, event, place, relationship, source, citation, repository, assertion, or media file.
+A typed record in a GENEALOGIX archive representing a person, event, place, relationship, source, citation, repository, assertion, media file, research log, or study.
 
 > **See Also:** [Entity Types](4-entity-types/)
 
@@ -192,7 +198,7 @@ A validation error that must be fixed before the archive is considered valid. Ex
 
 ### ID (Identifier)
 
-A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens.
+A unique identifier for each entity, used as the map key in YAML. Format: 1-64 alphanumeric characters with hyphens. Compared case-insensitively, so `Person-A` and `person-a` collide and only one may exist.
 
 **Examples:**
 
@@ -211,6 +217,12 @@ A unique identifier for each entity, used as the map key in YAML. Format: 1-64 a
 Evidence that requires interpretation or additional information to support a conclusion.
 
 ## L
+
+### Legal Statuses
+
+Standard vocabulary (`legal_statuses`) backing the `legal_status` relationship property. Distinguishes forms of coerced labor on enslavement relationships: `chattel`, `indentured`, `debt_bondage`, `apprenticeship`. Archives may extend with custom values.
+
+> **See Also:** [Legal Statuses Vocabulary](4-entity-types/vocabularies#legal-statuses-vocabulary), [Relationship Entity](4-entity-types/relationship)
 
 ### Locator
 
@@ -245,6 +257,14 @@ An archive organization strategy where each entity is stored in a separate file,
 A property that can have multiple values, either as a simple list or as temporal values with associated dates (e.g., multiple occupations or residences over time).
 
 > **See Also:** [Temporal Property](#temporal-property)
+
+## N
+
+### Negative Evidence
+
+A documented search that did not find the expected record, which itself constitutes evidence. Required by the Genealogical Proof Standard's "reasonably exhaustive search" criterion. In GLX, modeled via the [ResearchLog](#researchlog) entity with `Search` entries whose `result` is `not_found`.
+
+> **See Also:** [ResearchLog](#researchlog), [Search](#search)
 
 ## O
 
@@ -352,7 +372,7 @@ A physical or digital archive, library, church, or institution that holds geneal
 
 ### Required Fields
 
-Varies by entity type. Common required fields include `title` (sources), `name` (places, repositories), and entity-specific fields. See individual entity specifications for details.
+Varies by entity type. Required fields by entity: `title` (Source, Study), `name` (Place, Repository), `uri` (Media), `source` (Citation), `type` and `participants` (Event, Relationship), `subject` plus at least one evidence reference (Assertion), entity ID for everything. Person has no required content fields beyond the map-key ID. See individual entity specifications for details.
 
 ### Research Branch
 
@@ -362,7 +382,31 @@ A Git branch dedicated to investigating a specific research question or time per
 
 Documented analysis and decision-making process for genealogical conclusions, including conflicting evidence resolution and future research plans.
 
+### ResearchLog
+
+First-class entity that records research investigations: an objective, a status, and an embedded list of `Search` entries documenting every query performed (including searches that found nothing). Backs the Genealogical Proof Standard requirement for a "reasonably exhaustive search" by making negative evidence machine-readable.
+
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log), [Search](#search), [Negative Evidence](#negative-evidence)
+
+### Research Log Status
+
+Lifecycle state of a [ResearchLog](#researchlog), validated against the `research_log_status_types` vocabulary. Standard values: `open`, `in_progress`, `complete`, `blocked`.
+
+> **See Also:** [Research Log Status Types Vocabulary](4-entity-types/vocabularies#research-log-status-types-vocabulary)
+
 ## S
+
+### Search
+
+A single query performed during a research investigation, embedded as a sub-entity within a [ResearchLog](#researchlog). Records the repository / source / citation searched, the date, the query, the `result` (see [Search Result](#search-result)), and — when something was located — the citation produced.
+
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log), [Negative Evidence](#negative-evidence)
+
+### Search Result
+
+Outcome of a [Search](#search) within a [ResearchLog](#researchlog). One of: `found`, `not_found`, `inconclusive`, `partial`, `not_searched`. Backed by the standard `search_result_types` vocabulary.
+
+> **See Also:** [ResearchLog Entity](4-entity-types/research-log)
 
 ### Schema
 
@@ -421,6 +465,18 @@ A property with structured fields that break down complex values into named comp
 A formal declaration of the scope of a research project within an archive — for example a One Place Study, One Name Study, family reconstruction, or brick-wall investigation. A Study collects the places, sources, and date range that bound the project so tooling can report coverage and progress. GLX-native; no GEDCOM equivalent.
 
 > **See Also:** [Study Entity](4-entity-types/study)
+
+### Study Status
+
+Lifecycle state of a Study, validated against the `study_statuses` vocabulary. Standard values: `active`, `paused`, `completed`, `abandoned`.
+
+> **See Also:** [Study Statuses Vocabulary](4-entity-types/vocabularies#study-statuses-vocabulary)
+
+### Study Type
+
+Classification of a Study, validated against the `study_types` vocabulary. Standard values: `one_place_study`, `one_name_study`, `family_reconstruction`, `descendancy_study`, `ancestry_study`, `brick_wall`, `other`.
+
+> **See Also:** [Study Types Vocabulary](4-entity-types/vocabularies#study-types-vocabulary)
 
 ### Status (Assertion)
 

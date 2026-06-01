@@ -32,6 +32,12 @@ With --source-description-to-property, moves a Source's legacy top-level
 structural-field-to-vocabulary-property consolidation from #667. An explicit
 `properties.description` is never overwritten.
 
+With --media-description-to-property, moves a Media's legacy top-level
+`description` field into `properties.description`, mirroring the
+Source treatment from #667 for the remaining structural-vs-property
+inconsistency on Media (#894). An explicit `properties.description` is
+never overwritten.
+
 ```
 glx migrate [archive] [flags]
 ```
@@ -53,6 +59,9 @@ glx migrate [archive] [flags]
 
   # Also move legacy top-level source 'description' into 'properties.description'
   glx migrate ./my-archive --source-description-to-property
+
+  # Also move legacy top-level media 'description' into 'properties.description'
+  glx migrate ./my-archive --media-description-to-property
 ```
 
 ### Options
@@ -60,6 +69,7 @@ glx migrate [archive] [flags]
 ```
       --confidence-disputed-to-status    Move legacy 'confidence: disputed' to 'status: disputed' (evidence quality vs conclusion state, #516)
   -h, --help                             help for migrate
+      --media-description-to-property    Move legacy top-level media 'description' into 'properties.description' (#894)
       --rename-gender-to-sex             Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
       --source-description-to-property   Move legacy top-level source 'description' into 'properties.description' (#667)
 ```

@@ -39,7 +39,7 @@ jobs:
         run: go mod download
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4.1.2   # pin: action only publishes vX.Y.Z tags, no floating v4 (see #779 for the same lesson on scorecard-action)
         with:
           cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
 

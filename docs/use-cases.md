@@ -23,9 +23,9 @@ GENEALOGIX is designed to be flexible and extensible beyond traditional genealog
 
 **Example Types:**
 
-```yaml
-# Standard vocabularies
-event_types: birth, death, marriage, baptism, burial
+```text
+# Standard vocabularies (illustrative listing — see the vocabulary files for the full YAML shape)
+event_types:        birth, death, marriage, baptism, burial
 relationship_types: parent_child, marriage, sibling
 ```
 
@@ -324,6 +324,10 @@ relationship_types:
 
 ```yaml
 # events/event-1851-census.glx
+# Note: `occupation`, `household_number`, and `literacy` are not in the standard
+# event_properties vocabulary (`occupation` is a person property). Add them to
+# your archive's `event-properties.glx` to silence the unknown-property
+# warnings, or omit them.
 events:
   event-1851-census-district12:
     type: census
@@ -466,8 +470,8 @@ Create a `vocabularies/README.md` explaining:
 
 ## Need Help?
 
-- [Best Practices Guide](guides/best-practices) - Vocabulary design guidelines
-- [Core Concepts](../specification/2-core-concepts) - Repository-owned vocabularies
+- [Best Practices Guide](/guides/best-practices) - Vocabulary design guidelines
+- [Core Concepts](/specification/2-core-concepts) - Repository-owned vocabularies
 - [GitHub Discussions](https://github.com/genealogix/glx/discussions) - Share your use case
 
 **Have a unique use case?** Share it with the community! GLX is designed to be infinitely extensible.

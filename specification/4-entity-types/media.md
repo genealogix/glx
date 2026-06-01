@@ -32,7 +32,8 @@ media:
     uri: "media/files/birth-certificate-john-smith.jpg"
     mime_type: "image/jpeg"
     title: "Birth Certificate - John Smith"
-    description: "Scan of original birth certificate"
+    properties:
+      description: "Scan of original birth certificate"
 ```
 
 **Key Points:**
@@ -57,7 +58,6 @@ media:
 | `mime_type` | string | MIME type of the media |
 | `hash` | string | Content hash for verification |
 | `title` | string | Title of the media |
-| `description` | string | Description of the media |
 | `date` | string | Date the media was created |
 | `source` | string | Reference to Source entity this media documents |
 | `properties` | object | Vocabulary-defined properties (see Properties section) |
@@ -126,21 +126,6 @@ Example:
 mime_type: "image/jpeg"
 ```
 
-### `description`
-
-- Type: String
-- Required: No
-- Description: Detailed description of the media content
-
-Example:
-
-```yaml
-description: |
-  Original birth certificate for John Smith, born January 15, 1850
-  in Leeds, Yorkshire, England. Issued by the General Register Office.
-  Certificate shows parents as Thomas Smith and Elizabeth Brown.
-```
-
 ### `hash`
 
 - Type: String
@@ -190,6 +175,7 @@ Media entities support vocabulary-defined properties through the `properties` fi
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `description` | string | Detailed description of the media content |
 | `subjects` | reference (persons) | People depicted or referenced in the media |
 | `width` | integer | Width in pixels (for images and video) |
 | `height` | integer | Height in pixels (for images and video) |
@@ -248,8 +234,9 @@ media:
     uri: "media/files/birth-certificate-john-smith-1850.pdf"
     mime_type: "application/pdf"
     title: "Birth Certificate - John Smith"
-    description: "Original birth certificate from General Register Office, scanned 2024-01-15"
     hash: "sha256:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"
+    properties:
+      description: "Original birth certificate from General Register Office, scanned 2024-01-15"
 ```
 
 ### Family Photograph
@@ -260,15 +247,16 @@ media:
     uri: "media/files/smith-family-portrait-1890.jpg"
     mime_type: "image/jpeg"
     title: "Smith Family Portrait, 1890"
-    description: |
-      Studio portrait of John and Mary Smith with their children.
-      Taken at Leeds Portrait Studio, June 1890.
+    properties:
+      description: |
+        Studio portrait of John and Mary Smith with their children.
+        Taken at Leeds Portrait Studio, June 1890.
 
-      People in photo (left to right):
-      - Alice Smith (daughter)
-      - John Smith (father)
-      - Mary Smith (mother)
-      - Thomas Smith (son)
+        People in photo (left to right):
+        - Alice Smith (daughter)
+        - John Smith (father)
+        - Mary Smith (mother)
+        - Thomas Smith (son)
 ```
 
 ### Audio Recording
@@ -279,11 +267,12 @@ media:
     uri: "media/files/interview-mary-smith-2020-03-15.mp3"
     mime_type: "audio/mpeg"
     title: "Oral History Interview - Mary Smith"
-    description: |
-      Interview with Mary Smith about her memories of growing up
-      in Leeds in the 1940s and 1950s. Discusses family traditions,
-      local history, and genealogical information.
-      Recorded 2020-03-15, duration 60 minutes.
+    properties:
+      description: |
+        Interview with Mary Smith about her memories of growing up
+        in Leeds in the 1940s and 1950s. Discusses family traditions,
+        local history, and genealogical information.
+        Recorded 2020-03-15, duration 60 minutes.
 ```
 
 ### Online Resource
@@ -294,7 +283,8 @@ media:
     uri: "https://ancestry.com/imageviewer/1851-census-yorkshire-page-234"
     mime_type: "image/jpeg"
     title: "1851 Census - Yorkshire, Page 234"
-    description: "Census page showing Smith family at Wellington Street, Leeds (1851-04-06)"
+    properties:
+      description: "Census page showing Smith family at Wellington Street, Leeds (1851-04-06)"
 ```
 
 ### Historical Document
@@ -305,12 +295,13 @@ media:
     uri: "media/files/st-pauls-marriage-register-1875-page-45.tiff"
     mime_type: "image/tiff"
     title: "Marriage Register - St Paul's Church, 1875"
-    description: |
-      Parish register page showing marriage of John Smith and Mary Brown
-      on May 10, 1875 at St Paul's Cathedral, Leeds.
     date: "2024-02-10"  # Date photographed
     hash: "sha256:9f3d4c2e7a8b1f6d5c4e3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e"
     notes: "High-resolution scan for archival preservation"
+    properties:
+      description: |
+        Parish register page showing marriage of John Smith and Mary Brown
+        on May 10, 1875 at St Paul's Cathedral, Leeds.
 ```
 
 ## Media Types
@@ -423,7 +414,9 @@ Media entities map to GEDCOM multimedia objects:
 | `uri` | `OBJE.FILE` | File path or URL |
 | `mime_type` | `OBJE.FORM` | File format |
 | `title` | `OBJE.TITL` | Media title |
-| `description` | `OBJE.NOTE` | Description/notes |
+| `notes` | `OBJE.NOTE` | Free-form notes |
+| `properties.medium` | `OBJE.FORM.MEDI` | Physical medium type (GEDCOM 5.5.1) |
+| `properties.crop` | `OBJE.CROP` | Crop coordinates (GEDCOM 7.0) |
 | `uri` | `OBJE.BLOB` | Decoded to file in `media/files/` |
 
 GEDCOM Example:
@@ -444,7 +437,7 @@ media:
     uri: "media/files/john-smith.jpg"
     mime_type: "image/jpeg"
     title: "Portrait of John Smith"
-    description: "Studio portrait, circa 1890"
+    notes: "Studio portrait, circa 1890"
 ```
 
 ### GEDCOM Import: Media File Handling

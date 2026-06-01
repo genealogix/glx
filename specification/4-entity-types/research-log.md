@@ -83,11 +83,18 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 
 ## Fields
 
-### Optional Fields
+### Required Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | Entity ID (map key) | string | Unique identifier (alphanumeric/hyphens, 1-64 chars) |
+
+A log with only an entity ID is a valid, minimal placeholder; `objective` and a populated `searches` list typically follow.
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
 | `title` | string | Optional human-readable title for the log |
 | `subject` | object | Typed reference (`person` / `event` / `relationship` / `place`) to what is being investigated |
 | `date` | date | Date the research was performed (or session start) |
@@ -99,8 +106,6 @@ Each `Search` records one query and its outcome. The standard outcomes are:
 | `conclusions` | string | Summary of findings |
 | `properties` | object | Vocabulary-defined properties |
 | `notes` | string \| string[] | Free-form notes about the log |
-
-No fields are required. A log with only an `objective` and an empty `searches` list represents a planned investigation.
 
 ### Search entry fields
 
@@ -204,7 +209,7 @@ research_logs/
 ResearchLog tracks individual searches and their outcomes. It is intentionally distinct from related concepts being designed in parallel:
 
 - **Research investigation** ([#660](https://github.com/genealogix/glx/issues/660)): a higher-level workflow tracker for a research question — leads, hypotheses, next steps. ResearchLog records *what was searched*; Research records *what we are trying to figure out*.
-- **Study/Project** ([#226](https://github.com/genealogix/glx/issues/226)): defines the scope of a research project (e.g., a One Place Study). A Study contains many ResearchLogs.
+- **[Study](study)** (issue #226, shipped in beta.11): defines the scope of a research project (e.g., a One Place Study). A Study contains many ResearchLogs.
 
 CLI commands for adding and querying logs (`glx log add`, `glx log list`, `glx log report`) are out of scope for the entity-spec PR and tracked separately.
 

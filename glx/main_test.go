@@ -60,10 +60,12 @@ func TestRunInit_MultiFile(t *testing.T) {
 	err := runInit(tmpDir, false, 0)
 	require.NoError(t, err)
 
-	// Check that directories were created
-	expectedDirs := []string{
-		"persons", "relationships", "events", "places",
-		"sources", "citations", "repositories", "assertions", "media", "vocabularies",
+	// Check that directories were created — every entity-type directory plus
+	// vocabularies/, derived from the same source `runInit` uses.
+	expectedDirs := make([]string, 0, 1+len(glxlib.AllEntityTypes))
+	expectedDirs = append(expectedDirs, glxlib.ArchiveDirVocabularies)
+	for _, et := range glxlib.AllEntityTypes {
+		expectedDirs = append(expectedDirs, et.String())
 	}
 
 	for _, dir := range expectedDirs {

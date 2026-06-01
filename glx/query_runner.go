@@ -49,15 +49,23 @@ type queryOpts struct {
 var errPhoneticRequiresName = errors.New("--phonetic requires --name to be specified")
 
 // queryEntityTypes lists the entity types supported by the query command.
-var queryEntityTypes = []string{
-	"persons", "events", "assertions", "sources",
-	"relationships", "places", "citations",
-	"repositories", "media",
+var queryEntityTypes = []glxlib.EntityType{
+	glxlib.EntityTypePersons,
+	glxlib.EntityTypeEvents,
+	glxlib.EntityTypeAssertions,
+	glxlib.EntityTypeSources,
+	glxlib.EntityTypeRelationships,
+	glxlib.EntityTypePlaces,
+	glxlib.EntityTypeCitations,
+	glxlib.EntityTypeRepositories,
+	glxlib.EntityTypeMedia,
+	glxlib.EntityTypeResearchLogs,
+	glxlib.EntityTypeStudies,
 }
 
 // validateQueryFlags checks that the given filter flags are applicable to the
 // entity type and returns an error for any unsupported combination.
-func validateQueryFlags(entityType string, opts *queryOpts) error {
+func validateQueryFlags(entityType glxlib.EntityType, opts *queryOpts) error {
 	type check struct {
 		flag  string
 		value bool
@@ -80,16 +88,18 @@ func validateQueryFlags(entityType string, opts *queryOpts) error {
 	}
 
 	// Map each entity type to its supported flags.
-	supported := map[string]map[string]bool{
-		"persons":       {"--name": true, "--phonetic": true, "--born-before": true, "--born-after": true, "--birthplace": true},
-		"events":        {"--type": true, "--before": true, "--after": true},
-		"assertions":    {"--confidence": true, "--status": true, "--source": true, "--citation": true, "--subject": true},
-		"sources":       {"--name": true, "--type": true},
-		"relationships": {"--type": true},
-		"places":        {"--name": true},
-		"repositories":  {"--name": true},
-		"citations":     {},
-		"media":         {},
+	supported := map[glxlib.EntityType]map[string]bool{
+		glxlib.EntityTypePersons:       {"--name": true, "--phonetic": true, "--born-before": true, "--born-after": true, "--birthplace": true},
+		glxlib.EntityTypeEvents:        {"--type": true, "--before": true, "--after": true},
+		glxlib.EntityTypeAssertions:    {"--confidence": true, "--status": true, "--source": true, "--citation": true, "--subject": true},
+		glxlib.EntityTypeSources:       {"--name": true, "--type": true},
+		glxlib.EntityTypeRelationships: {"--type": true},
+		glxlib.EntityTypePlaces:        {"--name": true},
+		glxlib.EntityTypeRepositories:  {"--name": true},
+		glxlib.EntityTypeCitations:     {},
+		glxlib.EntityTypeMedia:         {},
+		glxlib.EntityTypeResearchLogs:  {},
+		glxlib.EntityTypeStudies:       {},
 	}
 
 	allowed := supported[entityType]
@@ -108,7 +118,7 @@ func validateQueryFlags(entityType string, opts *queryOpts) error {
 }
 
 // queryEntities validates the entity type, loads the archive, and dispatches.
-func queryEntities(entityType string, opts *queryOpts) error {
+func queryEntities(entityType glxlib.EntityType, opts *queryOpts) error {
 	if !slices.Contains(queryEntityTypes, entityType) {
 		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
@@ -126,24 +136,28 @@ func queryEntities(entityType string, opts *queryOpts) error {
 	opts.Name = strings.ToLower(opts.Name)
 
 	switch entityType {
-	case "persons":
+	case glxlib.EntityTypePersons:
 		return queryPersons(archive, *opts)
-	case "events":
+	case glxlib.EntityTypeEvents:
 		return queryEvents(archive, opts)
-	case "assertions":
+	case glxlib.EntityTypeAssertions:
 		return queryAssertions(archive, opts)
-	case "sources":
+	case glxlib.EntityTypeSources:
 		return querySources(archive, opts)
-	case "relationships":
+	case glxlib.EntityTypeRelationships:
 		return queryRelationships(archive, opts)
-	case "places":
+	case glxlib.EntityTypePlaces:
 		return queryPlaces(archive, opts)
-	case "citations":
+	case glxlib.EntityTypeCitations:
 		return queryCitations(archive)
-	case "repositories":
+	case glxlib.EntityTypeRepositories:
 		return queryRepositories(archive, opts)
-	case "media":
+	case glxlib.EntityTypeMedia:
 		return queryMedia(archive)
+	case glxlib.EntityTypeResearchLogs:
+		return queryResearchLogs(archive)
+	case glxlib.EntityTypeStudies:
+		return queryStudies(archive)
 	default:
 		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
@@ -347,7 +361,7 @@ func queryAssertions(archive *glxlib.GLXFile, opts *queryOpts) error {
 
 		subject := a.Subject.ID()
 		subjectType := a.Subject.Type()
-		detail := subjectType + ":" + subject
+		detail := subjectType.String() + ":" + subject
 		if a.Property != "" {
 			detail += "  " + a.Property + "=" + a.Value
 		} else if a.Participant != nil {
@@ -492,6 +506,50 @@ func queryMedia(archive *glxlib.GLXFile) error {
 	return nil
 }
 
+// queryResearchLogs lists all research logs with their objective and status.
+func queryResearchLogs(archive *glxlib.GLXFile) error {
+	ids := sortedKeys(archive.ResearchLogs)
+
+	for _, id := range ids {
+		log := archive.ResearchLogs[id]
+		summary := log.Title
+		if summary == "" {
+			summary = log.Objective
+		}
+		status := log.Status
+		if status == "" {
+			status = "-"
+		}
+		fmt.Printf("  %s  [%s]  %s\n", id, status, summary)
+	}
+
+	fmt.Printf("\n%d research logs found\n", len(ids))
+
+	return nil
+}
+
+// queryStudies lists all studies with their type and status.
+func queryStudies(archive *glxlib.GLXFile) error {
+	ids := sortedKeys(archive.Studies)
+
+	for _, id := range ids {
+		s := archive.Studies[id]
+		studyType := s.Type
+		if studyType == "" {
+			studyType = "-"
+		}
+		status := s.Status
+		if status == "" {
+			status = "-"
+		}
+		fmt.Printf("  %s  [%s/%s]  %s\n", id, studyType, status, s.Title)
+	}
+
+	fmt.Printf("\n%d studies found\n", len(ids))
+
+	return nil
+}
+
 // assertionMatchesSubject checks if an assertion's subject matches the query.
 // Matches by exact entity ID or by person name substring (case-insensitive).
 func assertionMatchesSubject(a *glxlib.Assertion, lowerQuery string, archive *glxlib.GLXFile) bool {
@@ -508,6 +566,7 @@ func assertionMatchesSubject(a *glxlib.Assertion, lowerQuery string, archive *gl
 			}
 		}
 	}
+
 	return false
 }
 
@@ -555,6 +614,7 @@ func extractAllNames(person *glxlib.Person) []string {
 	if names := extractNamesFromProperty(person.Properties, "name"); len(names) > 0 {
 		return names
 	}
+
 	return extractNamesFromProperty(person.Properties, "primary_name")
 }
 
@@ -570,6 +630,7 @@ func extractNamesFromProperty(props map[string]any, key string) []string {
 		if s == "" {
 			return nil
 		}
+
 		return []string{s}
 	}
 
@@ -580,6 +641,7 @@ func extractNamesFromProperty(props map[string]any, key string) []string {
 				return []string{s}
 			}
 		}
+
 		return nil
 	}
 
@@ -595,6 +657,7 @@ func extractNamesFromProperty(props map[string]any, key string) []string {
 				}
 			}
 		}
+
 		return names
 	}
 
@@ -659,6 +722,7 @@ func personMatchesBirthplace(personID, query string, archive *glxlib.GLXFile) bo
 			return true
 		}
 	}
+
 	return false
 }
 
