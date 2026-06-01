@@ -466,7 +466,7 @@ func TestWriteZipEntry_AcceptsEntryAtExactLimit(t *testing.T) {
 
 	info, statErr := os.Stat(destPath)
 	require.NoError(t, statErr, "extracted file must exist")
-	require.Equal(t, int64(maxGEDZIPEntryBytes), info.Size())
+	require.Equal(t, maxGEDZIPEntryBytes, info.Size())
 }
 
 func TestEntrySizeLimitReader(t *testing.T) {
