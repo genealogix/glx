@@ -34,6 +34,8 @@ addFormats(ajv);
 const validate = ajv.compile(JSON.parse(readFileSync(SCHEMA, "utf8")));
 
 const entries = yaml.load(readFileSync(ALLOWLIST, "utf8"));
+const makeKeyComponent = (value) =>
+  typeof value === "string" ? ["string", value] : ["non-string", typeof value, String(value)];
 
 if (!validate(entries)) {
   console.error(`${ALLOWLIST} INVALID:`);
@@ -46,12 +48,8 @@ if (!validate(entries)) {
   // [file, symbol] tuple so values containing a separator can't collide.
   const seen = new Set();
   for (const e of entries) {
-    const fileKey =
-      typeof e.file === "string" ? ["string", e.file] : ["non-string", typeof e.file, String(e.file)];
-    const symbolKey =
-      typeof e.symbol === "string"
-        ? ["string", e.symbol]
-        : ["non-string", typeof e.symbol, String(e.symbol)];
+    const fileKey = makeKeyComponent(e.file);
+    const symbolKey = makeKeyComponent(e.symbol);
     const key = JSON.stringify([fileKey, symbolKey]);
     if (seen.has(key)) {
       console.error(`${ALLOWLIST}: duplicate entry for ${e.file} :: ${e.symbol}`);
