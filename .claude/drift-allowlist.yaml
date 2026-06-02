@@ -1,0 +1,41 @@
+# Drift allowlist for the /check-*-drift slash commands (genealogix/glx#797).
+#
+# Each entry suppresses ONE known, per-symbol drift finding so the drift
+# checkers don't re-report it. Validated by `make check-drift-allowlist`
+# against drift-allowlist.schema.json. There are two kinds of entry:
+#
+#   * permanent: true     — by-design; will never be "fixed" (no tracking_issue).
+#   * tracking_issue: <n>  — temporary deferral; MUST reference an OPEN issue.
+#
+# This file holds only genuine PER-SYMBOL exceptions. Class-level methodology
+# (e.g. "the Go validator intentionally does not duplicate JSON-schema
+# constraints") stays in the prompt text — it is not a per-symbol suppression.
+#
+# A future deterministic checker (genealogix/glx#673, #295) will also fail loud
+# when a temporary entry's tracking_issue is CLOSED — i.e. the drift was fixed
+# but the entry was never removed. (That staleness gate is intentionally NOT in
+# the offline `make check-drift-allowlist` validator yet; it needs issue-state
+# lookups that those issues already scope.)
+#
+# Template for a temporary entry (copy, uncomment, fill in):
+#   - file: go-glx/types.go
+#     symbol: Some.Field
+#     go_type: SomeType
+#     schema_type: string
+#     schema_path: some.schema.json#/properties/some/properties/field
+#     reason: "why this drift is deferred rather than fixed now"
+#     tracking_issue: 1234
+#     added: "2026-06-01"
+
+- file: go-glx/types.go
+  symbol: GLXFile.ImportMetadata
+  yaml_tag: metadata
+  reason: >-
+    Go field GLXFile.ImportMetadata is deliberately named differently from its
+    yaml tag `metadata` (which correctly matches the schema's `metadata`
+    property); the name reflects that it holds archive metadata imported from
+    GEDCOM HEAD/SUBM. A naive Go-field-name vs schema-property comparison would
+    false-flag it as an extra/missing field, but the yaml tag is correct, so
+    there is no real drift.
+  permanent: true
+  added: "2026-06-01"
