@@ -1,0 +1,45 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if .PageTitle}}{{.PageTitle}} · {{end}}{{.Title}}</title>
+<link rel="stylesheet" href="{{.RootPrefix}}css/style.css">
+<script>
+(function () {
+  try {
+    var stored = localStorage.getItem('glx-theme');
+    if (stored) {
+      document.documentElement.setAttribute('data-theme', stored);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) { /* localStorage unavailable (e.g. file://) */ }
+})();
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="{{.RootPrefix}}index.html">{{.Title}}</a>
+    <nav class="site-nav">
+      <a href="{{.RootPrefix}}index.html"{{if eq .Active "home"}} class="active"{{end}}>People</a>
+      <a href="{{.RootPrefix}}sources/index.html"{{if eq .Active "sources"}} class="active"{{end}}>Sources</a>
+      <a href="{{.RootPrefix}}places/index.html"{{if eq .Active "places"}} class="active"{{end}}>Places</a>
+      <a href="{{.RootPrefix}}search.html"{{if eq .Active "search"}} class="active"{{end}}>Search</a>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">◐</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap content">
+{{block "content" .}}{{end}}
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>{{if .Generated}}Generated {{.Generated}} with {{else}}Generated with {{end}}<a href="https://github.com/genealogix/glx" rel="noopener" target="_blank">GLX</a>.</p>
+  </div>
+</footer>
+<script src="{{.RootPrefix}}js/theme.js"></script>
+{{block "scripts" .}}{{end}}
+</body>
+</html>{{end}}

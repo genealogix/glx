@@ -1,0 +1,80 @@
+{{define "content"}}
+{{with .Person}}
+<article class="person">
+  <header class="person-head">
+    <h1>{{.Name}}{{if .Living}} <span class="badge">Living</span>{{end}}</h1>
+    {{if .LifeSpan}}<p class="lifespan">{{.LifeSpan}}</p>{{end}}
+    {{if .AltNames}}<p class="muted">Also known as: {{range $i, $n := .AltNames}}{{if $i}}, {{end}}{{$n}}{{end}}</p>{{end}}
+  </header>
+
+  <dl class="facts">
+    {{if .Sex}}<dt>Sex</dt><dd>{{humanize .Sex}}</dd>{{end}}
+    {{if .Gender}}<dt>Gender</dt><dd>{{humanize .Gender}}</dd>{{end}}
+    {{if or .BirthDate .BirthPlace}}<dt>Born</dt><dd>{{.BirthDate}}{{if and .BirthDate .BirthPlace}} · {{end}}{{.BirthPlace}}</dd>{{end}}
+    {{if or .DeathDate .DeathPlace}}<dt>Died</dt><dd>{{.DeathDate}}{{if and .DeathDate .DeathPlace}} · {{end}}{{.DeathPlace}}</dd>{{end}}
+  </dl>
+
+  {{if .Media}}
+  <section class="media-gallery">
+    <h2>Media</h2>
+    <div class="gallery-grid">
+      {{range .Media}}
+        {{if .Missing}}
+          <div class="media-missing">Missing media: {{.RawURI}}</div>
+        {{else if .IsImage}}
+          <figure><img src="{{mediaURL .Src}}" alt="{{if .Title}}{{.Title}}{{else}}Photo{{end}}" loading="lazy">{{if .Caption}}<figcaption>{{.Caption}}</figcaption>{{end}}</figure>
+        {{else}}
+          <a class="media-file" href="{{mediaURL .Src}}" rel="noopener" target="_blank">{{if .Title}}{{.Title}}{{else}}{{.RawURI}}{{end}}</a>
+        {{end}}
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  {{if .Timeline}}
+  <section>
+    <h2>Timeline</h2>
+    <ol class="timeline">
+      {{range .Timeline}}
+      <li{{if .Undated}} class="undated"{{end}}><span class="t-date">{{.Date}}</span> <span class="t-label">{{.Label}}</span>{{if .Detail}} <span class="t-detail">{{.Detail}}</span>{{end}}</li>
+      {{end}}
+    </ol>
+  </section>
+  {{end}}
+
+  {{if or .Parents .Spouses .Children .Siblings}}
+  <section>
+    <h2>Family</h2>
+    {{if .Parents}}<div class="fam-group"><h3>Parents</h3><ul>{{range .Parents}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Spouses}}<div class="fam-group"><h3>Spouses &amp; partners</h3><ul>{{range .Spouses}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Children}}<div class="fam-group"><h3>Children</h3><ul>{{range .Children}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Siblings}}<div class="fam-group"><h3>Siblings</h3><ul>{{range .Siblings}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+  </section>
+  {{end}}
+
+  {{if .Sources}}
+  <section>
+    <h2>Sources</h2>
+    <ul class="sources">
+      {{range .Sources}}
+      <li>
+        {{if .URL}}<a href="{{.URL}}" rel="noopener" target="_blank">{{.Title}}</a>{{else}}{{.Title}}{{end}}
+        {{if .Detail}}<div class="src-detail">{{.Detail}}</div>{{end}}
+        {{if or .Confidence .Status}}<div class="src-meta muted">{{if .Confidence}}confidence: {{.Confidence}}{{end}}{{if and .Confidence .Status}} · {{end}}{{if .Status}}status: {{.Status}}{{end}}</div>{{end}}
+      </li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+
+  {{if .Notes}}
+  <section>
+    <h2>Notes</h2>
+    {{range .Notes}}<p class="note">{{.}}</p>{{end}}
+  </section>
+  {{end}}
+
+  <p class="backlink"><a href="../index.html">← All people</a></p>
+</article>
+{{end}}
+{{end}}

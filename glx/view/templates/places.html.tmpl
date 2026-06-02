@@ -1,0 +1,20 @@
+{{define "content"}}
+<h1>Places</h1>
+{{if .Places}}
+<table class="index-table">
+  <thead><tr><th>Place</th><th>Type</th><th>Events</th><th>Map</th></tr></thead>
+  <tbody>
+    {{range .Places}}
+    <tr id="{{.ID}}">
+      <td>{{.FullName}}</td>
+      <td>{{.Type}}</td>
+      <td>{{if .EventCount}}{{.EventCount}}{{end}}</td>
+      <td>{{if .HasCoords}}<a href="{{.MapURL}}" rel="noopener" target="_blank">map</a>{{end}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="muted">No places in this archive.</p>
+{{end}}
+{{end}}

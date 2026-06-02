@@ -1,0 +1,8 @@
+{{define "content"}}
+<h1>Search</h1>
+<input type="search" id="search-box" class="search-box" placeholder="Search people, sources, and places…" autocomplete="off" autofocus>
+<p id="search-status" class="muted"></p>
+<ul id="search-results" class="search-results"></ul>
+{{end}}
+{{define "scripts"}}<script src="{{.RootPrefix}}js/search-index.js"></script>
+<script src="{{.RootPrefix}}js/search.js"></script>{{end}}

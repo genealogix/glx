@@ -38,13 +38,14 @@ export default defineConfig({
     'docs/gedcom-spec/**',
     'glx/testdata/**',
     'glx/defaults/**',
+    'glx/view/**',
   ],
 
   // Head configuration
   head: [
     ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
     ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
-    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-N2YJJJFE6K');"]
+    ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
   ],
 
   // Sitemap generation
@@ -318,6 +319,12 @@ export default defineConfig({
           items: [
             { text: 'glx import', link: '/cli/glx_import' },
             { text: 'glx export', link: '/cli/glx_export' }
+          ]
+        },
+        {
+          text: 'Publishing',
+          items: [
+            { text: 'glx view', link: '/cli/glx_view' }
           ]
         },
         {

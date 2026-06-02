@@ -52,5 +52,6 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx summary](/cli/glx_summary)	 - Show a comprehensive profile for a person
 * [glx timeline](/cli/glx_timeline)	 - Show chronological timeline of events for a person
 * [glx validate](/cli/glx_validate)	 - Validate GLX files and cross-references
+* [glx view](/cli/glx_view)	 - Generate a browsable static HTML site from an archive
 * [glx vitals](/cli/glx_vitals)	 - Show vital records for a person
 

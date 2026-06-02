@@ -105,6 +105,7 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(viewCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
@@ -839,6 +840,77 @@ func init() {
 
 func runSummary(_ *cobra.Command, args []string) error {
 	return showSummary(summaryArchive, args[0])
+}
+
+// ============================================================================
+// View Command
+// ============================================================================
+
+// defaultViewPort is the default port for `glx view --serve`.
+const defaultViewPort = 8080
+
+var (
+	viewArchive    string
+	viewOutput     string
+	viewTitle      string
+	viewServe      bool
+	viewPort       int
+	viewEmbedMedia bool
+	viewLiving     bool
+)
+
+var viewCmd = &cobra.Command{
+	Use:   "view",
+	Short: "Generate a browsable static HTML site from an archive",
+	Long: `Export a GLX archive as a self-contained static HTML site for sharing
+with family who won't install tools or read YAML.
+
+The site includes a person profile page for everyone in the archive (with
+vital facts, a life timeline, linked family members, supporting sources, and
+a media gallery), plus source and place indexes and a client-side search.
+The output is a plain directory of HTML/CSS/JS with no server, database, or
+build tooling required — open index.html directly with file:// or host it
+anywhere (GitHub Pages, S3, Netlify).
+
+Use --serve to preview the site locally over HTTP. Use --living to redact
+people who are likely still alive (no death date and born less than 100 years
+ago) before publishing. Use --embed-media to inline images as base64 for a
+fully self-contained set of pages.`,
+	Example: `  # Generate a site in ./site
+  glx view --archive . --output ./site
+
+  # Generate and preview locally
+  glx view --serve
+
+  # Redact living people and embed media for sharing
+  glx view --output ./public --living --embed-media
+
+  # Custom site title
+  glx view --output ./site --title "The Webb Family Archive"`,
+	Args: cobra.NoArgs,
+	RunE: runView,
+}
+
+func init() {
+	viewCmd.Flags().StringVarP(&viewArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	viewCmd.Flags().StringVarP(&viewOutput, "output", "o", "./site", "Output directory for the generated site")
+	viewCmd.Flags().StringVar(&viewTitle, "title", "", "Site title (default \"GLX Family Archive\")")
+	viewCmd.Flags().BoolVar(&viewServe, "serve", false, "Serve the generated site locally over HTTP")
+	viewCmd.Flags().IntVar(&viewPort, "port", defaultViewPort, "Port for --serve")
+	viewCmd.Flags().BoolVar(&viewEmbedMedia, "embed-media", false, "Embed images as base64 for fully self-contained pages")
+	viewCmd.Flags().BoolVar(&viewLiving, "living", false, "Redact likely-living people before publishing")
+}
+
+func runView(_ *cobra.Command, _ []string) error {
+	return generateView(SystemIOStreams(), viewOptions{
+		ArchivePath: viewArchive,
+		OutputDir:   viewOutput,
+		Title:       viewTitle,
+		Serve:       viewServe,
+		Port:        viewPort,
+		EmbedMedia:  viewEmbedMedia,
+		Living:      viewLiving,
+	})
 }
 
 // ============================================================================

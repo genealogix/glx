@@ -1,0 +1,24 @@
+{{define "content"}}
+<section class="hero">
+  <h1>{{.Title}}</h1>
+  <ul class="stats">
+    <li><strong>{{.Stats.Persons}}</strong> people</li>
+    <li><strong>{{.Stats.Events}}</strong> events</li>
+    <li><strong>{{.Stats.Places}}</strong> places</li>
+    <li><strong>{{.Stats.Sources}}</strong> sources</li>
+    <li><strong>{{.Stats.Relationships}}</strong> relationships</li>
+  </ul>
+</section>
+<section>
+  <h2>People</h2>
+  {{if .Persons}}
+  <ul class="person-list">
+    {{range .Persons}}
+    <li><a href="persons/{{personFile .ID}}">{{.Name}}</a>{{if .LifeSpan}} <span class="muted">({{.LifeSpan}})</span>{{end}}{{if .Living}} <span class="badge">Living</span>{{end}}</li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="muted">No people in this archive.</p>
+  {{end}}
+</section>
+{{end}}

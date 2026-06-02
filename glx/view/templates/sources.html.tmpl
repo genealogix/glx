@@ -1,0 +1,21 @@
+{{define "content"}}
+<h1>Sources</h1>
+{{if .Sources}}
+<table class="index-table">
+  <thead><tr><th>Title</th><th>Type</th><th>Author</th><th>Date</th><th>Repository</th></tr></thead>
+  <tbody>
+    {{range .Sources}}
+    <tr id="{{.ID}}">
+      <td>{{if .URL}}<a href="{{.URL}}" rel="noopener" target="_blank">{{.Title}}</a>{{else}}{{.Title}}{{end}}</td>
+      <td>{{.Type}}</td>
+      <td>{{.Authors}}</td>
+      <td>{{.Date}}</td>
+      <td>{{.Repository}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="muted">No sources in this archive.</p>
+{{end}}
+{{end}}
