@@ -36,6 +36,8 @@ type mergeResult struct {
 	NewCitations      int
 	NewRepositories   int
 	NewAssertions     int
+	NewResearchLogs   int
+	NewStudies        int
 	NewMedia          int
 	MediaFilesPlanned int // binaries scheduled to copy from src into dest
 	MediaFilesRenamed int // planned binaries that needed a dedup rename
@@ -46,7 +48,8 @@ type mergeResult struct {
 // TotalNew returns the total number of new entities merged.
 func (r *mergeResult) TotalNew() int {
 	return r.NewPersons + r.NewEvents + r.NewRelationships + r.NewPlaces +
-		r.NewSources + r.NewCitations + r.NewRepositories + r.NewAssertions + r.NewMedia
+		r.NewSources + r.NewCitations + r.NewRepositories + r.NewAssertions +
+		r.NewResearchLogs + r.NewStudies + r.NewMedia
 }
 
 // mergeArchivesInMemory merges src into dest, returning statistics.
@@ -70,6 +73,8 @@ func mergeArchivesInMemory(dest, src *glxlib.GLXFile) *mergeResult {
 		NewCitations:     after.citations - before.citations,
 		NewRepositories:  after.repositories - before.repositories,
 		NewAssertions:    after.assertions - before.assertions,
+		NewResearchLogs:  after.researchLogs - before.researchLogs,
+		NewStudies:       after.studies - before.studies,
 		NewMedia:         after.media - before.media,
 	}
 }
@@ -77,7 +82,8 @@ func mergeArchivesInMemory(dest, src *glxlib.GLXFile) *mergeResult {
 type counts struct {
 	persons, events, relationships, places int
 	sources, citations, repositories       int
-	assertions, media                      int
+	assertions, researchLogs, studies      int
+	media                                  int
 }
 
 func entityCounts(g *glxlib.GLXFile) counts {
@@ -90,6 +96,8 @@ func entityCounts(g *glxlib.GLXFile) counts {
 		citations:     len(g.Citations),
 		repositories:  len(g.Repositories),
 		assertions:    len(g.Assertions),
+		researchLogs:  len(g.ResearchLogs),
+		studies:       len(g.Studies),
 		media:         len(g.Media),
 	}
 }
@@ -274,6 +282,8 @@ func printMergeReport(result *mergeResult) {
 		printEntityCount("citations", result.NewCitations)
 		printEntityCount("repositories", result.NewRepositories)
 		printEntityCount("assertions", result.NewAssertions)
+		printEntityCount("research logs", result.NewResearchLogs)
+		printEntityCount("studies", result.NewStudies)
 		printEntityCount("media", result.NewMedia)
 	} else {
 		fmt.Println("  No new entities to merge.")
