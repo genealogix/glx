@@ -75,6 +75,9 @@ func TestClassifyMedia(t *testing.T) {
 		// External URLs: images inline, everything else a link (separate origin).
 		{"", "https://example.org/p.jpg", true, mediaKindImage},
 		{"", "https://example.org/page.html", true, mediaKindLink},
+		// URL query/fragment must not defeat extension-based classification.
+		{"", "https://example.org/photo.jpg?raw=1", true, mediaKindImage},
+		{"", "https://example.org/a.png#frag", true, mediaKindImage},
 	}
 	for _, tc := range cases {
 		if got := classifyMedia(tc.mime, tc.uri, tc.isURL); got != tc.want {

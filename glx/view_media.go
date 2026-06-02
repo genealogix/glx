@@ -116,7 +116,7 @@ func newMediaItem(mediaID string, media *glxlib.Media) *mediaItem {
 // is never written out, closing the stored-XSS vector where an attacker-supplied
 // active document is served from the site origin.
 func classifyMedia(mimeType, uri string, isURL bool) string {
-	ext := strings.ToLower(filepath.Ext(uri))
+	ext := uriExtension(uri)
 
 	if isURL {
 		if strings.HasPrefix(strings.ToLower(mimeType), "image/") ||
@@ -135,6 +135,17 @@ func classifyMedia(mimeType, uri string, isURL bool) string {
 	default:
 		return mediaKindUnshown
 	}
+}
+
+// uriExtension returns the lower-cased file extension of a URI, ignoring any
+// query string or fragment so URL media like "…/photo.jpg?raw=1" or
+// "…/a.png#x" still classify by their real extension.
+func uriExtension(uri string) string {
+	if i := strings.IndexAny(uri, "?#"); i >= 0 {
+		uri = uri[:i]
+	}
+
+	return strings.ToLower(filepath.Ext(uri))
 }
 
 // isHTTPURL reports whether a URI is an absolute http(s) URL.
@@ -270,14 +281,15 @@ func (r *mediaResolver) copyMedia(srcPath, uri string, data []byte) (string, err
 	return name, nil
 }
 
-// sourcePath resolves a media URI to a filesystem path confined to baseDir,
-// returning ok=false for URIs that escape it. Go's filepath.Join treats every
-// element after the first as relative — a leading "/" or drive/UNC prefix is
-// joined under baseDir rather than replacing it (unlike, e.g., Python's
-// os.path.join) — so absolute URIs cannot escape via Join. isPathWithin is the
-// authoritative containment check and is what rejects any "../" that climbs out
-// of baseDir. Mirrors copyMediaFile's guard in media_copy.go so the viewer never
-// reads files outside the archive directory, even from an untrusted archive.
+// sourcePath resolves a media URI to a filesystem path under baseDir, returning
+// ok=false for any URI that does not stay within it. The authoritative
+// containment guarantee is isPathWithin (which compares cleaned, absolute
+// paths). filepath.Join is used only to combine the URI with baseDir; whatever
+// path it produces — for relative, absolute, "..", drive, or UNC inputs, whose
+// exact handling is platform-specific — is accepted ONLY if isPathWithin
+// confirms it is inside baseDir. Do not rely on Join alone for confinement.
+// Mirrors copyMediaFile's guard in media_copy.go so the viewer never reads
+// files outside the archive directory, even from an untrusted archive.
 func (r *mediaResolver) sourcePath(uri string) (string, bool) {
 	normalized := strings.ReplaceAll(uri, "\\", "/")
 	srcPath := filepath.Join(r.baseDir, normalized)
