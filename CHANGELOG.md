@@ -12,6 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [Unreleased]
 
+### Added
+
+- **`.claude/drift-allowlist.yaml`** — Machine-readable, self-validating allowlist of known, per-symbol drift suppressions for the `/check-*-drift` slash commands, replacing inline "known drift" prose with an auditable file. Each entry is either permanent (by-design) or a temporary deferral that must reference a tracking issue; this is enforced by `.claude/drift-allowlist.schema.json` via the new `make check-drift-allowlist` target, wired into `make check` and the `validate-spec` CI workflow. The closed-issue staleness gate (failing when a temporary entry's tracking issue is closed) is left to the deterministic drift checkers tracked by #673 / #295. (#797)
+
+### Changed
+
+- **`/check-code-drift` and `/check-schema-drift` now read the drift allowlist** instead of hardcoding known-drift notes inline. Removed the stale `Metadata.Notes` "known drift point" note — that drift was already resolved by widening `glx-file.schema.json` `metadata.notes` to `oneOf[string, array]`, which is exactly the go-stale-and-mislead failure mode #797 targets. (#797)
+
 ## [0.0.0-beta.11] - 2026-05-27
 
 ### Added
