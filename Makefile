@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-links validate-examples docs-cli release-snapshot
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-drift-allowlist check-links validate-examples docs-cli release-snapshot
 
 .DEFAULT_GOAL := help
 
@@ -32,7 +32,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	lefthook install
 
 ## Verification
-check: tidy-check lint test check-schemas check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check lint test check-schemas check-drift-allowlist check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -109,6 +109,9 @@ tidy-check: ## Verify go.mod and go.sum are tidy
 ## Specification
 check-schemas: ## Validate JSON schema files
 	@node specification/validate-schemas.mjs
+
+check-drift-allowlist: ## Validate .claude/drift-allowlist.yaml against its schema
+	@node specification/validate-drift-allowlist.mjs
 
 ## Example Validation
 validate-examples: build-cli ## Validate all example archives
