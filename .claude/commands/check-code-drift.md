@@ -9,6 +9,31 @@ model: claude-opus-4-7
 
 You are tasked with identifying any drift between the GLX Go code implementation and the JSON schemas/specification.
 
+## Allowlisted Drift (read this first)
+
+Before analyzing, read **`.claude/drift-allowlist.yaml`** (validated by
+`.claude/drift-allowlist.schema.json`). It is the single source of truth for
+known, per-symbol drift that has already been triaged. Check every finding you
+would otherwise report against it:
+
+- If a finding concerns the same `file` and Go symbol as an allowlist entry,
+  **suppress it** — do not report it as drift. Match on symbol *identity*, not
+  exact string: an entry's `symbol` is written qualified (e.g.
+  `GLXFile.ImportMetadata`), so a finding that names the field bare
+  (`ImportMetadata`) or by its yaml tag (`metadata`) still matches it.
+  - `permanent: true` entries are by-design and will never be "fixed" (e.g. a Go
+    field name that intentionally differs from its yaml tag). Treat them as *not
+    drift*.
+  - Entries with a `tracking_issue` are temporary deferrals. Don't re-report them
+    as new findings; refer to the tracking issue instead.
+- Anything **not** in the allowlist is reported normally.
+
+Only genuine *per-symbol* exceptions live in the allowlist. Class-level
+methodology (e.g. "the Go validator intentionally does not duplicate JSON-schema
+constraints", below) stays in this prompt — it is not an allowlist entry. The
+allowlist is human-curated: do **not** invent entries. If you believe a new
+exception is warranted, report the drift and recommend adding an allowlist entry.
+
 ## Source of Truth Flow
 
 **IMPORTANT**: The source of truth hierarchy is:
@@ -125,12 +150,11 @@ Compare Go types with JSON schema types:
 #### Metadata and Submitter
 - `Metadata` struct has 11 fields — check against `glx-file.schema.json` property `metadata`
 - `Submitter` is nested via `*Submitter` pointer — check against schema's submitter object
-- **Note**: `Metadata.Notes` is `NoteList` in Go but `string` in schema — this is a known drift point
 
 #### GLXFile Top-Level
 - Check that GLXFile struct has all entity type maps
 - Verify yaml tags match schema (e.g., `persons`, `events`, etc.)
-- Check `ImportMetadata *Metadata` field against `metadata` property in schema (Go field name differs from yaml tag)
+- Check `ImportMetadata *Metadata` field against `metadata` property in schema (the Go field name vs yaml-tag difference is allowlisted — see "Allowlisted Drift" above)
 - Check all vocabulary definition maps (10 type vocabs + 8 property vocabs)
 
 ### 8. Vocabulary Struct Types
