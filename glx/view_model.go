@@ -20,6 +20,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -65,6 +67,7 @@ type siteStats struct {
 // personLink is a minimal person reference used for navigation between pages.
 type personLink struct {
 	ID    string
+	File  string // unique HTML filename of the target page (collision-safe)
 	Name  string
 	Dates string // e.g. "1850–1920", "b. 1850", or "" when unknown
 }
@@ -72,6 +75,7 @@ type personLink struct {
 // personPage is the presentation model for a single person profile page.
 type personPage struct {
 	ID         string
+	File       string // unique HTML filename for this page (collision-safe)
 	Name       string
 	SortName   string // surname-first key for alphabetical ordering
 	AltNames   []string
@@ -133,7 +137,9 @@ type placeRow struct {
 	EventCount int
 }
 
-// searchEntry is one record in the client-side search index (search-index.json).
+// searchEntry is one record in the client-side search index, emitted as
+// js/search-index.js (a window.GLX_SEARCH_INDEX assignment) so it loads under
+// file:// where fetch is blocked.
 type searchEntry struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
@@ -209,9 +215,13 @@ type viewIndex struct {
 	assertionsByPerson map[string][]*glxlib.Assertion
 	// eventsByPlace counts events referencing each place ID.
 	eventsByPlace map[string]int
+	// files maps a person ID to its unique, collision-safe HTML filename.
+	// Built once over all person IDs so page filenames and every cross-link
+	// or search URL agree and can never point at a clobbered page.
+	files map[string]string
 }
 
-// newViewIndex precomputes relationship, assertion, and place lookups.
+// newViewIndex precomputes relationship, assertion, place, and filename lookups.
 func newViewIndex(archive *glxlib.GLXFile) *viewIndex {
 	idx := &viewIndex{
 		archive:            archive,
@@ -220,6 +230,7 @@ func newViewIndex(archive *glxlib.GLXFile) *viewIndex {
 		spouses:            map[string][]string{},
 		assertionsByPerson: map[string][]*glxlib.Assertion{},
 		eventsByPlace:      map[string]int{},
+		files:              assignPersonFiles(sortedKeys(archive.Persons)),
 	}
 
 	for _, relID := range sortedKeys(archive.Relationships) {
@@ -330,6 +341,7 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 
 	page := &personPage{
 		ID:       id,
+		File:     idx.files[id],
 		Name:     name,
 		SortName: personSortName(name),
 		AltNames: alt,
@@ -351,10 +363,10 @@ func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, 
 	page.LifeSpan = lifeSpan(birth, death)
 
 	page.Timeline = buildTimelineRows(id, archive)
-	page.Parents = personLinks(idx.parents[id], archive)
-	page.Spouses = personLinks(idx.spouses[id], archive)
-	page.Children = personLinks(idx.children[id], archive)
-	page.Siblings = personLinks(siblingIDs(id, idx), archive)
+	page.Parents = personLinks(idx.parents[id], archive, idx.files)
+	page.Spouses = personLinks(idx.spouses[id], archive, idx.files)
+	page.Children = personLinks(idx.children[id], archive, idx.files)
+	page.Siblings = personLinks(siblingIDs(id, idx), archive, idx.files)
 	page.Sources = buildPersonSources(id, archive, idx)
 	page.Media = buildPersonMedia(id, archive, idx)
 
@@ -533,7 +545,7 @@ func buildSearchIndex(model *siteModel) []searchEntry {
 	for _, p := range model.Persons {
 		entries = append(entries, searchEntry{
 			Name: p.Name,
-			URL:  "persons/" + personFileName(p.ID),
+			URL:  "persons/" + p.File,
 			Kind: searchKindPerson,
 			Sub:  p.LifeSpan,
 		})
@@ -563,7 +575,8 @@ func buildSearchIndex(model *siteModel) []searchEntry {
 // ----------------------------------------------------------------------------
 
 // personLinks resolves a list of person IDs to navigation links, sorted by name.
-func personLinks(ids []string, archive *glxlib.GLXFile) []personLink {
+// files maps each person ID to its collision-safe HTML filename.
+func personLinks(ids []string, archive *glxlib.GLXFile, files map[string]string) []personLink {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -576,6 +589,7 @@ func personLinks(ids []string, archive *glxlib.GLXFile) []personLink {
 		birth, death := vitalEvents(id, archive)
 		links = append(links, personLink{
 			ID:    id,
+			File:  files[id],
 			Name:  extractPersonName(person),
 			Dates: lifeSpan(birth, death),
 		})
@@ -608,25 +622,14 @@ func siblingIDs(personID string, idx *viewIndex) []string {
 	return out
 }
 
-// vitalEvents returns the person's birth and death events, if present. The
-// first matching event of each type (in sorted ID order) is used.
+// vitalEvents returns the person's birth and death events, if present. It uses
+// the shared glxlib.FindPersonEvent lookup, which matches only events where the
+// person is the subject (principal/subject role) — so a person who merely
+// witnessed or informed on someone else's birth/death does NOT inherit that
+// event's date or place.
 func vitalEvents(personID string, archive *glxlib.GLXFile) (birth, death *glxlib.Event) {
-	for _, id := range sortedKeys(archive.Events) {
-		ev := archive.Events[id]
-		if !timelineIsParticipant(personID, ev) {
-			continue
-		}
-		switch strings.ToLower(ev.Type) {
-		case glxlib.EventTypeBirth:
-			if birth == nil {
-				birth = ev
-			}
-		case glxlib.EventTypeDeath:
-			if death == nil {
-				death = ev
-			}
-		}
-	}
+	_, birth = glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeBirth)
+	_, death = glxlib.FindPersonEvent(archive, personID, glxlib.EventTypeDeath)
 
 	return birth, death
 }
@@ -661,13 +664,9 @@ func eventYear(date string) string {
 	if i := strings.Index(key, "-"); i >= 0 {
 		key = key[:i]
 	}
-	// Strip zero-padding added by dateSortKey, keeping at least one digit.
-	trimmed := strings.TrimLeft(key, "0")
-	if trimmed == "" {
-		return "0"
-	}
-
-	return trimmed
+	// Strip zero-padding added by dateSortKey. An all-zero year is a
+	// placeholder/malformed date, not year 0 — treat it as unknown ("").
+	return strings.TrimLeft(key, "0")
 }
 
 // placeFullName builds a hierarchical place name by walking parent places,
@@ -729,14 +728,17 @@ func isLivingProperty(person *glxlib.Person) bool {
 }
 
 // humanizeToken converts a vocabulary token like "vital_record" to "Vital record".
+// The first letter is upper-cased rune-aware so non-ASCII tokens (e.g. "état")
+// are not corrupted by byte slicing.
 func humanizeToken(token string) string {
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return ""
 	}
 	spaced := strings.ReplaceAll(token, "_", " ")
+	r, size := utf8.DecodeRuneInString(spaced)
 
-	return strings.ToUpper(spaced[:1]) + spaced[1:]
+	return string(unicode.ToUpper(r)) + spaced[size:]
 }
 
 // displayDateOrBlank formats a date for display but returns "" (not "(no date)")

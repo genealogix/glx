@@ -25,6 +25,9 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// mediaDirName is the site subdirectory copied media files are written to.
+const mediaDirName = "media"
+
 // imageExtensions lists file extensions rendered inline as images.
 var imageExtensions = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
@@ -87,11 +90,16 @@ func newMediaItem(mediaID string, media *glxlib.Media) *mediaItem {
 	return item
 }
 
-// isImageMedia reports whether a media item should render inline as an image,
-// preferring an explicit MIME type and falling back to the URI extension.
+// isImageMedia reports whether a media item should render inline as an <img>.
+// It returns true when EITHER the MIME type is image/* OR the URI extension is
+// a known image type. Erring toward <img> is a security choice: an item that
+// is NOT classified as an image renders as a clickable link, and a browser
+// (or http.FileServer) may serve that file as an active document — notably an
+// SVG with a non-image MIME, whose embedded scripts would then run in the
+// site's origin. Rendering via <img> instead disables SVG scripting entirely.
 func isImageMedia(mimeType, uri string) bool {
-	if mimeType != "" {
-		return strings.HasPrefix(strings.ToLower(mimeType), "image/")
+	if strings.HasPrefix(strings.ToLower(mimeType), "image/") {
+		return true
 	}
 
 	return imageExtensions[strings.ToLower(filepath.Ext(uri))]
@@ -109,13 +117,21 @@ func isHTTPURL(uri string) bool {
 // directory deep), copied-file sources are written with the "../" prefix
 // baked in so templates can use Src directly.
 type mediaResolver struct {
-	baseDir   string            // directory media URIs are resolved relative to
-	outputDir string            // site output root
-	embed     bool              // base64-embed images instead of copying
-	mediaDir  string            // <outputDir>/media, created lazily
-	assigned  map[string]string // absolute source path -> output basename
-	usedNames map[string]bool   // output basenames already taken
+	baseDir   string                 // directory media URIs are resolved relative to
+	outputDir string                 // site output root
+	embed     bool                   // base64-embed images instead of copying
+	mediaDir  string                 // <outputDir>/media, created lazily
+	assigned  map[string]string      // absolute source path -> output basename
+	usedNames map[string]bool        // output basenames already taken
+	resolved  map[string]mediaResult // source path -> already-resolved result
 	copied    int
+}
+
+// mediaResult caches the outcome of resolving one source file so a file shared
+// by several persons is read and base64-encoded (or copied) only once.
+type mediaResult struct {
+	src     string
+	missing bool
 }
 
 // resolveSiteMedia resolves every media reference in the model, copying or
@@ -125,9 +141,10 @@ func resolveSiteMedia(model *siteModel, baseDir, outputDir string, embed bool) (
 		baseDir:   baseDir,
 		outputDir: outputDir,
 		embed:     embed,
-		mediaDir:  filepath.Join(outputDir, "media"),
+		mediaDir:  filepath.Join(outputDir, mediaDirName),
 		assigned:  map[string]string{},
 		usedNames: map[string]bool{},
+		resolved:  map[string]mediaResult{},
 	}
 
 	for _, page := range model.Persons {
@@ -150,50 +167,86 @@ func (r *mediaResolver) resolve(item *mediaItem) error {
 		return nil
 	}
 
-	srcPath := r.sourcePath(item.RawURI)
-	// srcPath is built from the archive's own media URIs; a missing or
-	// unreadable file is recorded as non-fatal just below.
-	data, err := os.ReadFile(srcPath) // #nosec G304
-	if err != nil {
-		// A missing or unreadable media file is non-fatal: record it so the
-		// template can show a placeholder rather than aborting the whole site.
+	srcPath, ok := r.sourcePath(item.RawURI)
+	if !ok {
+		// The URI escapes the archive directory (an absolute path or ../
+		// traversal). Refuse to read arbitrary local files into the generated
+		// site — treat it as missing media. This is the trust boundary: only
+		// files under the archive directory are ever read.
 		item.Missing = true
-
-		return nil //nolint:nilerr // missing media is intentionally non-fatal
-	}
-
-	if r.embed && item.IsImage {
-		item.Src = dataURI(item.MimeType, item.RawURI, data)
 
 		return nil
 	}
 
-	return r.copyMedia(item, srcPath, data)
-}
+	// A file shared by multiple persons is read/encoded/copied only once.
+	if cached, hit := r.resolved[srcPath]; hit {
+		item.Src, item.Missing = cached.src, cached.missing
 
-// copyMedia writes a media file into <outputDir>/media and sets its Src.
-func (r *mediaResolver) copyMedia(item *mediaItem, srcPath string, data []byte) error {
-	name := r.outputName(srcPath, item.RawURI)
-	if err := os.MkdirAll(r.mediaDir, dirPermissions); err != nil {
-		return fmt.Errorf("failed to create media directory: %w", err)
+		return nil
 	}
-	if err := os.WriteFile(filepath.Join(r.mediaDir, name), data, filePermissions); err != nil {
-		return fmt.Errorf("failed to write media file %q: %w", name, err)
+
+	result, err := r.resolveFile(item, srcPath)
+	if err != nil {
+		return err
 	}
-	r.copied++
-	// Person pages are one directory deep, so reference media via "../media/".
-	item.Src = "../media/" + name
+	r.resolved[srcPath] = result
+	item.Src, item.Missing = result.src, result.missing
 
 	return nil
 }
 
-// sourcePath resolves a media URI to an absolute filesystem path.
-func (r *mediaResolver) sourcePath(uri string) string {
-	if filepath.IsAbs(uri) {
-		return filepath.Clean(uri)
+// resolveFile reads a confined source file and produces its resolved result
+// (an embedded data URI, a copied-file reference, or a missing marker).
+func (r *mediaResolver) resolveFile(item *mediaItem, srcPath string) (mediaResult, error) {
+	// srcPath is confined to baseDir (checked by sourcePath); a missing or
+	// unreadable file is non-fatal and recorded so the template shows a
+	// placeholder.
+	data, err := os.ReadFile(srcPath) // #nosec G304 -- confined to baseDir by sourcePath
+	if err != nil {
+		return mediaResult{missing: true}, nil //nolint:nilerr // missing media is non-fatal
 	}
 
-	return filepath.Join(r.baseDir, filepath.FromSlash(uri))
+	if r.embed && item.IsImage {
+		return mediaResult{src: dataURI(item.MimeType, item.RawURI, data)}, nil
+	}
+
+	name, err := r.copyMedia(srcPath, item.RawURI, data)
+	if err != nil {
+		return mediaResult{}, err
+	}
+
+	// Person pages are one directory deep, so reference media via "../media/".
+	return mediaResult{src: "../" + mediaDirName + "/" + name}, nil
+}
+
+// copyMedia writes a media file into <outputDir>/media and returns its basename.
+func (r *mediaResolver) copyMedia(srcPath, uri string, data []byte) (string, error) {
+	name := r.outputName(srcPath, uri)
+	if err := os.MkdirAll(r.mediaDir, dirPermissions); err != nil {
+		return "", fmt.Errorf("failed to create media directory: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(r.mediaDir, name), data, filePermissions); err != nil {
+		return "", fmt.Errorf("failed to write media file %q: %w", name, err)
+	}
+	r.copied++
+
+	return name, nil
+}
+
+// sourcePath resolves a media URI to a filesystem path confined to baseDir,
+// returning ok=false for URIs that escape it — absolute paths or ../ traversal.
+// filepath.Join neutralizes a leading "/" (the URI is always treated as
+// relative to the archive), and isPathWithin rejects any ../ that climbs out.
+// Mirrors copyMediaFile's guard in media_copy.go so the viewer never reads
+// files outside the archive directory, even from an untrusted archive.
+func (r *mediaResolver) sourcePath(uri string) (string, bool) {
+	normalized := strings.ReplaceAll(uri, "\\", "/")
+	srcPath := filepath.Join(r.baseDir, normalized)
+	if !isPathWithin(srcPath, r.baseDir) {
+		return "", false
+	}
+
+	return srcPath, true
 }
 
 // outputName returns a collision-free output basename for a source file,
@@ -203,17 +256,10 @@ func (r *mediaResolver) outputName(srcPath, uri string) string {
 		return name
 	}
 
-	base := sanitizeFileName(filepath.Base(filepath.FromSlash(uri)))
-	if base == "" {
-		base = "media"
-	}
-	name := base
+	base := safeMediaBase(filepath.Base(filepath.FromSlash(uri)))
 	ext := filepath.Ext(base)
 	stem := strings.TrimSuffix(base, ext)
-	for i := 2; r.usedNames[name]; i++ {
-		name = fmt.Sprintf("%s-%d%s", stem, i, ext)
-	}
-	r.usedNames[name] = true
+	name := uniqueFileName(stem, ext, r.usedNames)
 	r.assigned[srcPath] = name
 
 	return name
@@ -231,7 +277,20 @@ func dataURI(mimeType, uri string, data []byte) string {
 	return "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
 
-// sanitizeFileName reduces an arbitrary basename to a safe, lowercase filename.
+// reservedFileStems are Windows device names that are invalid as filenames even
+// with an extension (mirrors go-glx's windowsReservedNames). A sanitized name
+// whose stem is one of these falls back to a safe default.
+var reservedFileStems = map[string]bool{
+	"con": true, "prn": true, "aux": true, "nul": true,
+	"com1": true, "com2": true, "com3": true, "com4": true, "com5": true,
+	"com6": true, "com7": true, "com8": true, "com9": true,
+	"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true, "lpt5": true,
+	"lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
+}
+
+// sanitizeFileName reduces an arbitrary basename to a safe, lowercase filename,
+// keeping dots so file extensions survive. Characters outside [a-z0-9-_.] become
+// '-'. Returns the trimmed result (may be empty or dot-only; callers normalize).
 func sanitizeFileName(name string) string {
 	name = strings.ToLower(strings.TrimSpace(name))
 	var b strings.Builder
@@ -247,12 +306,59 @@ func sanitizeFileName(name string) string {
 	return strings.Trim(b.String(), "-")
 }
 
-// personFileName returns the HTML filename for a person page.
-func personFileName(personID string) string {
-	name := sanitizeFileName(personID)
-	if name == "" {
-		name = searchKindPerson
+// safeMediaBase returns a filesystem-safe media basename (extension preserved),
+// falling back to "media" for empty, dot-only, leading-dot (hidden), or
+// reserved-device-name results so a crafted URI cannot produce a dotfile or an
+// invalid filename.
+func safeMediaBase(base string) string {
+	clean := strings.TrimLeft(sanitizeFileName(base), ".")
+	if clean == "" || strings.Trim(clean, ".") == "" {
+		return mediaDirName
+	}
+	ext := filepath.Ext(clean)
+	stem := strings.TrimSuffix(clean, ext)
+	if stem == "" || reservedFileStems[stem] {
+		return mediaDirName + ext
 	}
 
-	return name + ".html"
+	return clean
+}
+
+// safePersonStem returns a collision-resistant, dot-free filename stem for a
+// person ID, falling back to "person" for empty or reserved results. Dots are
+// collapsed to '-' because a person ID carries no meaningful file extension.
+func safePersonStem(personID string) string {
+	clean := strings.Trim(strings.ReplaceAll(sanitizeFileName(personID), ".", "-"), "-_")
+	if clean == "" || reservedFileStems[clean] {
+		return searchKindPerson
+	}
+
+	return clean
+}
+
+// uniqueFileName returns stem+ext, appending -2, -3, … until it is unused, and
+// records the chosen name in used.
+func uniqueFileName(stem, ext string, used map[string]bool) string {
+	name := stem + ext
+	for i := 2; used[name]; i++ {
+		name = fmt.Sprintf("%s-%d%s", stem, i, ext)
+	}
+	used[name] = true
+
+	return name
+}
+
+// assignPersonFiles maps each person ID (given in sorted order for determinism)
+// to a unique, collision-safe HTML filename. Distinct IDs that sanitize to the
+// same stem — including case-only and punctuation-only differences the viewer's
+// loader does not reject — are disambiguated with a numeric suffix so a page is
+// never silently overwritten and links never resolve to the wrong person.
+func assignPersonFiles(sortedIDs []string) map[string]string {
+	used := map[string]bool{}
+	files := make(map[string]string, len(sortedIDs))
+	for _, id := range sortedIDs {
+		files[id] = uniqueFileName(safePersonStem(id), ".html", used)
+	}
+
+	return files
 }

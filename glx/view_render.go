@@ -56,9 +56,8 @@ type renderContext struct {
 
 // viewTemplateFuncs are the helpers available inside templates.
 var viewTemplateFuncs = template.FuncMap{
-	"personFile": personFileName,
-	"humanize":   humanizeToken,
-	"mediaURL":   mediaURL,
+	"humanize": humanizeToken,
+	"mediaURL": mediaURL,
 }
 
 // mediaURL marks a resolved media source as trusted so html/template does not
@@ -172,7 +171,7 @@ func renderPersonPages(model *siteModel, base *renderContext, outputDir string) 
 		ctx.RootPrefix = rootPrefixNested
 		ctx.PageTitle = person.Name
 		ctx.Person = person
-		dest := filepath.Join(outputDir, "persons", personFileName(person.ID))
+		dest := filepath.Join(outputDir, "persons", person.File)
 		if err := writeRendered(tmpl, dest, &ctx); err != nil {
 			return err
 		}

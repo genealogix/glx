@@ -293,18 +293,8 @@ func TestSiteHandler(t *testing.T) {
 
 func johnMedia(t *testing.T, model *siteModel) *mediaItem {
 	t.Helper()
-	for _, p := range model.Persons {
-		if p.ID == "person-john-smith" {
-			if len(p.Media) == 0 {
-				t.Fatal("John has no media")
-			}
 
-			return p.Media[0]
-		}
-	}
-	t.Fatal("John page not found")
-
-	return nil
+	return personMediaItem(t, model, "person-john-smith")
 }
 
 func readFile(t *testing.T, path string) string {

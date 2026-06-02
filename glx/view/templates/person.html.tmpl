@@ -24,7 +24,7 @@
         {{else if .IsImage}}
           <figure><img src="{{mediaURL .Src}}" alt="{{if .Title}}{{.Title}}{{else}}Photo{{end}}" loading="lazy">{{if .Caption}}<figcaption>{{.Caption}}</figcaption>{{end}}</figure>
         {{else}}
-          <a class="media-file" href="{{mediaURL .Src}}" rel="noopener" target="_blank">{{if .Title}}{{.Title}}{{else}}{{.RawURI}}{{end}}</a>
+          <a class="media-file" href="{{mediaURL .Src}}" download rel="noopener">{{if .Title}}{{.Title}}{{else}}{{.RawURI}}{{end}}</a>
         {{end}}
       {{end}}
     </div>
@@ -45,10 +45,10 @@
   {{if or .Parents .Spouses .Children .Siblings}}
   <section>
     <h2>Family</h2>
-    {{if .Parents}}<div class="fam-group"><h3>Parents</h3><ul>{{range .Parents}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
-    {{if .Spouses}}<div class="fam-group"><h3>Spouses &amp; partners</h3><ul>{{range .Spouses}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
-    {{if .Children}}<div class="fam-group"><h3>Children</h3><ul>{{range .Children}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
-    {{if .Siblings}}<div class="fam-group"><h3>Siblings</h3><ul>{{range .Siblings}}<li><a href="{{personFile .ID}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Parents}}<div class="fam-group"><h3>Parents</h3><ul>{{range .Parents}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Spouses}}<div class="fam-group"><h3>Spouses &amp; partners</h3><ul>{{range .Spouses}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Children}}<div class="fam-group"><h3>Children</h3><ul>{{range .Children}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
+    {{if .Siblings}}<div class="fam-group"><h3>Siblings</h3><ul>{{range .Siblings}}<li><a href="{{.File}}">{{.Name}}</a>{{if .Dates}} <span class="muted">({{.Dates}})</span>{{end}}</li>{{end}}</ul></div>{{end}}
   </section>
   {{end}}
 

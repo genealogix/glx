@@ -17,6 +17,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -24,6 +25,8 @@ import (
 // buildModelTestArchive constructs an in-memory archive exercising names,
 // vital events, place hierarchy, family relationships, evidence, and media.
 func buildModelTestArchive() *glxlib.GLXFile {
+	lat, lng := 42.36, -71.06
+
 	return &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-john-smith": {
@@ -74,7 +77,7 @@ func buildModelTestArchive() *glxlib.GLXFile {
 		Places: map[string]*glxlib.Place{
 			"place-boston": {
 				Name: "Boston", ParentID: "place-mass", Type: "city",
-				Latitude: new(42.36), Longitude: new(-71.06),
+				Latitude: &lat, Longitude: &lng,
 			},
 			"place-mass": {Name: "Massachusetts", ParentID: "place-us", Type: "state"},
 			"place-us":   {Name: "United States", Type: "country"},
@@ -367,6 +370,46 @@ func TestIsLivingProperty(t *testing.T) {
 				t.Errorf("isLivingProperty(%v) = %v, want %v", tc.val, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestVitalEvents_IgnoresWitnessRole(t *testing.T) {
+	// A person who only witnessed someone else's birth must NOT inherit it.
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-subject": {Properties: map[string]any{"name": "Subject"}},
+			"person-witness": {Properties: map[string]any{"name": "Witness"}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-birth": {
+				Type: "birth", Date: "1850", PlaceID: "place-town",
+				Participants: []glxlib.Participant{
+					{Person: "person-subject", Role: "principal"},
+					{Person: "person-witness", Role: "witness"},
+				},
+			},
+		},
+		Places: map[string]*glxlib.Place{"place-town": {Name: "Town"}},
+	}
+	model := buildSiteModel(archive, viewModelOptions{})
+
+	if subj := findPage(t, model, "person-subject"); subj.LifeSpan != "b. 1850" {
+		t.Errorf("subject LifeSpan = %q, want %q", subj.LifeSpan, "b. 1850")
+	}
+	wit := findPage(t, model, "person-witness")
+	if wit.LifeSpan != "" || wit.BirthDate != "" || wit.BirthPlace != "" {
+		t.Errorf("witness wrongly inherited birth: LifeSpan=%q BirthDate=%q BirthPlace=%q",
+			wit.LifeSpan, wit.BirthDate, wit.BirthPlace)
+	}
+}
+
+func TestHumanizeToken_Multibyte(t *testing.T) {
+	got := humanizeToken("état_civil")
+	if !utf8.ValidString(got) {
+		t.Errorf("humanizeToken produced invalid UTF-8: %q", got)
+	}
+	if got != "État civil" {
+		t.Errorf("humanizeToken(\"état_civil\") = %q, want %q", got, "État civil")
 	}
 }
 

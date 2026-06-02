@@ -14,7 +14,7 @@
   {{if .Persons}}
   <ul class="person-list">
     {{range .Persons}}
-    <li><a href="persons/{{personFile .ID}}">{{.Name}}</a>{{if .LifeSpan}} <span class="muted">({{.LifeSpan}})</span>{{end}}{{if .Living}} <span class="badge">Living</span>{{end}}</li>
+    <li><a href="persons/{{.File}}">{{.Name}}</a>{{if .LifeSpan}} <span class="muted">({{.LifeSpan}})</span>{{end}}{{if .Living}} <span class="badge">Living</span>{{end}}</li>
     {{end}}
   </ul>
   {{else}}
