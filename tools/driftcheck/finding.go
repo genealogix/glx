@@ -18,9 +18,14 @@ import (
 	"sort"
 )
 
-// catInternal marks findings about the checker itself (e.g. an unresolved
-// schema $ref) rather than genuine schema/code drift.
-const catInternal = "Internal"
+// Finding categories. catInternal marks findings about the checker itself
+// (e.g. an unresolved schema $ref) rather than genuine schema/code drift.
+const (
+	catInternal      = "Internal"
+	catFieldPresence = "Field Presence"
+	catFieldTypes    = "Field Types"
+	catRequiredOpt   = "Required vs Optional"
+)
 
 // severity mirrors the Severity Rubric in .claude/commands/check-code-drift.md.
 type severity string

@@ -72,7 +72,7 @@ func (c *checker) compareStruct(entity string, goType reflect.Type, node *schema
 			qualifier = "required"
 		}
 		c.add(&finding{
-			Severity: sev, Entity: entity, Category: "Field Presence",
+			Severity: sev, Entity: entity, Category: catFieldPresence,
 			File: c.typesFile, Symbol: entity + "." + propName, YamlTag: propName,
 			Message: fmt.Sprintf("schema %s has %s property %q with no matching Go field",
 				schemaDesc(loc), qualifier, propName),
@@ -89,7 +89,7 @@ func (c *checker) compareStruct(entity string, goType reflect.Type, node *schema
 		if !ok {
 			if closed {
 				c.add(&finding{
-					Severity: severityCritical, Entity: entity, Category: "Field Presence",
+					Severity: severityCritical, Entity: entity, Category: catFieldPresence,
 					File: c.typesFile, Symbol: symbol, Field: f.Name, YamlTag: yamlName,
 					Message: fmt.Sprintf("Go field %s (yaml %q) has no schema property and %s sets additionalProperties:false",
 						symbol, yamlName, schemaDesc(loc)),
@@ -112,13 +112,13 @@ func (c *checker) checkRequiredness(entity, symbol, field, yamlName string, requ
 	switch {
 	case required && omitempty:
 		c.add(&finding{
-			Severity: severityCritical, Entity: entity, Category: "Required vs Optional",
+			Severity: severityCritical, Entity: entity, Category: catRequiredOpt,
 			File: c.typesFile, Symbol: symbol, Field: field, YamlTag: yamlName,
 			Message: fmt.Sprintf("Go field %s is schema-required but has omitempty (remove omitempty)", symbol),
 		})
 	case !required && !omitempty:
 		c.add(&finding{
-			Severity: severityMajor, Entity: entity, Category: "Required vs Optional",
+			Severity: severityMajor, Entity: entity, Category: catRequiredOpt,
 			File: c.typesFile, Symbol: symbol, Field: field, YamlTag: yamlName,
 			Message: fmt.Sprintf("Go field %s is schema-optional but missing omitempty (add omitempty)", symbol),
 		})
@@ -165,17 +165,17 @@ func (c *checker) compareType(entity, symbol string, goType reflect.Type, prop *
 func (c *checker) compareScalar(entity, symbol string, goType reflect.Type, prop *schemaNode, loc ref) {
 	switch goType.Kind() {
 	case reflect.String:
-		c.expectType(entity, symbol, goType, prop, loc, "string")
+		c.expectType(entity, symbol, goType, prop, loc, schemaTypeString)
 	case reflect.Bool:
-		c.expectType(entity, symbol, goType, prop, loc, "boolean")
+		c.expectType(entity, symbol, goType, prop, loc, schemaTypeBoolean)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		c.expectType(entity, symbol, goType, prop, loc, "integer", "number")
+		c.expectType(entity, symbol, goType, prop, loc, schemaTypeInteger, schemaTypeNumber)
 	case reflect.Float32, reflect.Float64:
-		c.expectType(entity, symbol, goType, prop, loc, "number")
+		c.expectType(entity, symbol, goType, prop, loc, schemaTypeNumber)
 	default:
 		c.add(&finding{
-			Severity: severityInfo, Entity: entity, Category: "Field Types",
+			Severity: severityInfo, Entity: entity, Category: catFieldTypes,
 			File: c.typesFile, Symbol: symbol,
 			Message: fmt.Sprintf("Go field %s has unhandled kind %s", symbol, goType.Kind()),
 		})
@@ -184,7 +184,7 @@ func (c *checker) compareScalar(entity, symbol string, goType reflect.Type, prop
 
 // compareSlice checks an array field and recurses into struct element types.
 func (c *checker) compareSlice(entity, symbol string, goType reflect.Type, prop *schemaNode, loc ref) {
-	if !c.expectType(entity, symbol, goType, prop, loc, "array") || prop.Items == nil {
+	if !c.expectType(entity, symbol, goType, prop, loc, schemaTypeArray) || prop.Items == nil {
 		return
 	}
 	elem := derefType(goType.Elem())
@@ -233,7 +233,7 @@ func (c *checker) compareMapValue(entity, symbol string, valType reflect.Type, p
 // when the type matched.
 func (c *checker) expectType(entity, symbol string, goType reflect.Type, prop *schemaNode, loc ref, allowed ...string) bool {
 	got := effectiveSchemaType(prop)
-	if got == "" || got == "oneof" {
+	if got == "" || got == schemaTypeOneOf {
 		// Untyped or union schema: not a plain-type mismatch we can assert on.
 		return true
 	}
@@ -247,7 +247,7 @@ func (c *checker) expectType(entity, symbol string, goType reflect.Type, prop *s
 
 func (c *checker) typeMismatch(entity, symbol, goTypeName string, prop *schemaNode, loc ref) {
 	c.add(&finding{
-		Severity: severityCritical, Entity: entity, Category: "Field Types",
+		Severity: severityCritical, Entity: entity, Category: catFieldTypes,
 		File: c.typesFile, Symbol: symbol,
 		Message: fmt.Sprintf("Go field %s has type %s but %s defines type %q",
 			symbol, goTypeName, schemaDesc(loc), effectiveSchemaType(prop)),
@@ -342,10 +342,10 @@ func isNoteListOneOf(n *schemaNode) bool {
 	var hasString, hasStringArray bool
 	for _, b := range n.OneOf {
 		switch b.Type {
-		case "string":
+		case schemaTypeString:
 			hasString = true
-		case "array":
-			if b.Items != nil && b.Items.Type == "string" {
+		case schemaTypeArray:
+			if b.Items != nil && b.Items.Type == schemaTypeString {
 				hasStringArray = true
 			}
 		}
@@ -362,11 +362,11 @@ func effectiveSchemaType(n *schemaNode) string {
 	}
 	switch {
 	case len(n.OneOf) > 0 || len(n.AnyOf) > 0:
-		return "oneof"
+		return schemaTypeOneOf
 	case len(n.Properties) > 0 || len(n.PatternProperties) > 0 || n.additionalPropsSchema() != nil:
 		return schemaTypeObject
 	case n.Items != nil:
-		return "array"
+		return schemaTypeArray
 	default:
 		return ""
 	}

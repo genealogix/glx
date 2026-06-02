@@ -28,9 +28,17 @@ var (
 	errPointerNotFound     = errors.New("json pointer target not found")
 )
 
+// JSON Schema type tokens (the values of a node's "type" keyword), plus the
+// synthetic "oneof" token effectiveSchemaType returns for union schemas.
 const (
-	// schemaTypeObject is the JSON Schema "object" type token.
-	schemaTypeObject = "object"
+	schemaTypeObject  = "object"
+	schemaTypeArray   = "array"
+	schemaTypeString  = "string"
+	schemaTypeNumber  = "number"
+	schemaTypeInteger = "integer"
+	schemaTypeBoolean = "boolean"
+	schemaTypeOneOf   = "oneof"
+
 	// jsonFalse is the literal additionalProperties:false marker.
 	jsonFalse = "false"
 )
