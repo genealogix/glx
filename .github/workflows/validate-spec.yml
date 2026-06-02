@@ -35,6 +35,22 @@ jobs:
       - name: Verify go.mod is tidy
         run: go mod tidy -diff
 
+  check-code-drift:
+    name: Schema vs Go-code drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Detect schema/code drift
+        run: make check-code-drift
+
   validate-schemas:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -105,7 +121,7 @@ jobs:
           # Run all tests for both CLI and core library packages
           # Includes slow/large file tests (habsburg.ged with 34,020 persons)
           # Capture stderr — fail if any "Warning:" lines are emitted
-          go test ./glx/... ./go-glx/... -v -timeout 15m -coverprofile=coverage.out 2> >(tee /tmp/test-stderr.log >&2)
+          go test ./glx/... ./go-glx/... ./tools/... -v -timeout 15m -coverprofile=coverage.out 2> >(tee /tmp/test-stderr.log >&2)
           if grep -qi "^Warning:" /tmp/test-stderr.log 2>/dev/null; then
             echo "::error::Tests emitted warnings on stderr — see log above"
             exit 1
