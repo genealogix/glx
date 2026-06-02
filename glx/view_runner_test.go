@@ -198,6 +198,25 @@ func TestGenerateView_EndToEnd(t *testing.T) {
 	}
 }
 
+func TestGenerateView_DirectoryArchive(t *testing.T) {
+	const dirArchive = "testdata/valid/minimal-example"
+	if _, err := os.Stat(dirArchive); err != nil {
+		t.Skipf("directory archive fixture not available: %v", err)
+	}
+	out := filepath.Join(t.TempDir(), "site")
+	streams, _, _ := TestIOStreams()
+
+	// Exercises the directory-load path and archiveMediaBaseDir's dir branch.
+	if err := generateView(streams, viewOptions{ArchivePath: dirArchive, OutputDir: out}); err != nil {
+		t.Fatalf("generateView: %v", err)
+	}
+	for _, rel := range []string{"index.html", "sources/index.html", "places/index.html", "search.html"} {
+		if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("expected %q: %v", rel, err)
+		}
+	}
+}
+
 func TestGenerateView_Living(t *testing.T) {
 	requireExample(t)
 	out := filepath.Join(t.TempDir(), "site")
@@ -222,6 +241,29 @@ func TestGenerateView_Living(t *testing.T) {
 	}
 	if !strings.Contains(index, "Living") {
 		t.Error("expected redacted 'Living' label in output")
+	}
+}
+
+func TestRunView(t *testing.T) {
+	requireExample(t)
+	out := filepath.Join(t.TempDir(), "site")
+
+	// Drive the cobra wrapper through its package-level flag vars, restoring
+	// them afterward so other tests are unaffected.
+	prevArchive, prevOutput, prevTitle := viewArchive, viewOutput, viewTitle
+	prevServe, prevEmbed, prevLiving := viewServe, viewEmbedMedia, viewLiving
+	t.Cleanup(func() {
+		viewArchive, viewOutput, viewTitle = prevArchive, prevOutput, prevTitle
+		viewServe, viewEmbedMedia, viewLiving = prevServe, prevEmbed, prevLiving
+	})
+	viewArchive, viewOutput, viewTitle = exampleArchive, out, "Test Family"
+	viewServe, viewEmbedMedia, viewLiving = false, false, false
+
+	if err := runView(nil, nil); err != nil {
+		t.Fatalf("runView: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "index.html")); err != nil {
+		t.Errorf("index not generated: %v", err)
 	}
 }
 

@@ -51,18 +51,6 @@ type siteModel struct {
 	Search    []searchEntry
 }
 
-// HasMedia reports whether any person page references media, used to decide
-// whether the media directory needs to be created/populated.
-func (s *siteModel) HasMedia() bool {
-	for _, p := range s.Persons {
-		if len(p.Media) > 0 {
-			return true
-		}
-	}
-
-	return false
-}
-
 // siteStats holds entity counts for the landing page.
 type siteStats struct {
 	Persons       int

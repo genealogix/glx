@@ -68,7 +68,7 @@ var viewTemplateFuncs = template.FuncMap{
 // passed isHTTPURL. Any other scheme (javascript:, etc.) fails the file read
 // and is rendered as missing media rather than reaching this helper.
 func mediaURL(src string) template.URL {
-	return template.URL(src) //nolint:gosec // src is generated/validated by resolveSiteMedia, never raw archive input
+	return template.URL(src) // #nosec G203
 }
 
 // renderSite writes the complete static site (assets, search index, and all

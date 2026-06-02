@@ -32,6 +32,14 @@ func siteHandler(dir string) http.Handler {
 	return http.FileServer(http.Dir(dir))
 }
 
+// newSiteServer builds the HTTP server that serves the generated site from dir.
+func newSiteServer(dir string) *http.Server {
+	return &http.Server{
+		Handler:           siteHandler(dir),
+		ReadHeaderTimeout: serverReadHeaderTimeout,
+	}
+}
+
 // serveSite serves the generated site on 127.0.0.1:port until interrupted.
 // A port of 0 selects an available ephemeral port. The chosen address is
 // printed to streams.Out before the blocking serve loop begins.
@@ -42,14 +50,16 @@ func serveSite(streams *IOStreams, dir string, port int) error {
 		return fmt.Errorf("failed to start server on port %d: %w", port, err)
 	}
 
-	server := &http.Server{
-		Handler:           siteHandler(dir),
-		ReadHeaderTimeout: serverReadHeaderTimeout,
-	}
-
+	server := newSiteServer(dir)
 	streams.Printf("\nServing %s\n  → http://%s/\nPress Ctrl+C to stop.\n", dir, listener.Addr().String())
 
-	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	return ignoreServerClosed(server.Serve(listener))
+}
+
+// ignoreServerClosed treats http.ErrServerClosed (the result of a graceful
+// shutdown) as success and wraps any other error.
+func ignoreServerClosed(err error) error {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server error: %w", err)
 	}
 

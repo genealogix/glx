@@ -151,7 +151,9 @@ func (r *mediaResolver) resolve(item *mediaItem) error {
 	}
 
 	srcPath := r.sourcePath(item.RawURI)
-	data, err := os.ReadFile(srcPath) //nolint:gosec // path derives from the user's own archive
+	// srcPath is built from the archive's own media URIs; a missing or
+	// unreadable file is recorded as non-fatal just below.
+	data, err := os.ReadFile(srcPath) // #nosec G304
 	if err != nil {
 		// A missing or unreadable media file is non-fatal: record it so the
 		// template can show a placeholder rather than aborting the whole site.
