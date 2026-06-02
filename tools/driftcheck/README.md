@@ -43,9 +43,16 @@ Anything ambiguous is left to the LLM `/check-code-drift` command.
 
 Known, by-design drift is suppressed by reading
 [`.claude/drift-allowlist.yaml`](../../.claude/drift-allowlist.yaml). A finding
-is suppressed when its `file` and per-symbol identity match an entry — the same
-matching the slash commands use, so an entry naming a field by its Go name also
-matches a finding that names it by yaml tag (within the same owning type).
+is suppressed when its `file` matches and, within the same owning type, the
+entry's qualified `symbol` matches the finding exactly, or the entry's symbol
+leaf matches the finding's Go field name or yaml tag, or the entry's `yaml_tag`
+matches the finding's yaml tag.
+
+Note that Go-field-name ↔ yaml-tag aliasing is not automatic: a "missing Go
+field" finding (a schema property with no Go counterpart) carries only the yaml
+tag, so an entry whose Go-field name differs from the property name must set
+`yaml_tag` to suppress it — exactly what the `GLXFile.ImportMetadata` entry does
+with `yaml_tag: metadata`.
 
 Run `go run ./tools/driftcheck -v` to list which findings the allowlist
 suppressed.

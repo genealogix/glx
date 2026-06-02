@@ -89,9 +89,18 @@ func (a *allowlist) match(f *finding) (allowlistEntry, bool) {
 }
 
 // symbolMatches implements per-symbol identity matching. An exact qualified
-// match always wins. Otherwise, within the SAME owning type, an entry may name
-// a field by its Go name while a finding names it by yaml tag (or vice versa);
-// those alias to the same symbol.
+// `Type.Symbol` match always wins. Otherwise, within the SAME owning type, a
+// match is allowed when:
+//   - the entry's symbol leaf equals the finding's Go field name (f.Field), or
+//   - the entry's symbol leaf equals the finding's yaml tag (f.YamlTag), or
+//   - the entry's yaml_tag equals the finding's yaml tag.
+//
+// The aliasing between a Go field name and a yaml tag is therefore NOT
+// automatic: a "missing Go field" finding (a schema property with no Go
+// counterpart) carries only a yaml tag and no Go field name, so to suppress one
+// whose property name differs from the intended Go field name the entry must
+// either name the symbol by that property/yaml name or set `yaml_tag` (this is
+// why the GLXFile.ImportMetadata allowlist entry sets `yaml_tag: metadata`).
 func symbolMatches(e *allowlistEntry, f *finding) bool {
 	if e.Symbol == f.Symbol {
 		return true
