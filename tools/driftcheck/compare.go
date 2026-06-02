@@ -43,16 +43,29 @@ func (c *checker) add(f *finding) {
 // compareStruct compares a Go struct type against an object schema node:
 // field/property presence (both directions), omitempty vs required, and (when
 // recurse is true) the type of every matched field.
-func (c *checker) compareStruct(entity string, goType reflect.Type, node *schemaNode, loc ref, recurse bool) {
+//
+// The label argument seeds the owning-type name for report grouping and
+// per-symbol allowlist identity, but the actual Go type name takes precedence
+// whenever it is available. That distinction matters during recursion: a nested
+// type (Participant, EntityRef, Submitter, Search, …) is reported and
+// allowlisted under its own Go type (e.g. "Participant.role"), not the parent
+// entity it was reached through. For a top-level binding the label already
+// equals the type name, so behavior there is unchanged.
+func (c *checker) compareStruct(label string, goType reflect.Type, node *schemaNode, loc ref, recurse bool) {
 	goType = derefType(goType)
 	if goType.Kind() != reflect.Struct {
 		c.add(&finding{
-			Severity: severityCritical, Entity: entity, Category: catInternal,
-			File: c.typesFile, Symbol: entity,
-			Message: fmt.Sprintf("expected struct for %s, got %s", entity, goType.Kind()),
+			Severity: severityCritical, Entity: label, Category: catInternal,
+			File: c.typesFile, Symbol: label,
+			Message: fmt.Sprintf("expected struct for %s, got %s", label, goType.Kind()),
 		})
 
 		return
+	}
+
+	owner := goType.Name()
+	if owner == "" {
+		owner = label // anonymous struct: fall back to the caller's label
 	}
 
 	props := node.Properties
@@ -72,8 +85,8 @@ func (c *checker) compareStruct(entity string, goType reflect.Type, node *schema
 			qualifier = "required"
 		}
 		c.add(&finding{
-			Severity: sev, Entity: entity, Category: catFieldPresence,
-			File: c.typesFile, Symbol: entity + "." + propName, YamlTag: propName,
+			Severity: sev, Entity: owner, Category: catFieldPresence,
+			File: c.typesFile, Symbol: owner + "." + propName, YamlTag: propName,
 			Message: fmt.Sprintf("schema %s has %s property %q with no matching Go field",
 				schemaDesc(loc), qualifier, propName),
 		})
@@ -83,13 +96,13 @@ func (c *checker) compareStruct(entity string, goType reflect.Type, node *schema
 	for _, yamlName := range goFields.order {
 		f := goFields.m[yamlName]
 		_, omitempty, _, _ := parseYAMLTag(f.Tag.Get("yaml"))
-		symbol := entity + "." + f.Name
+		symbol := owner + "." + f.Name
 
 		prop, ok := props[yamlName]
 		if !ok {
 			if closed {
 				c.add(&finding{
-					Severity: severityCritical, Entity: entity, Category: catFieldPresence,
+					Severity: severityCritical, Entity: owner, Category: catFieldPresence,
 					File: c.typesFile, Symbol: symbol, Field: f.Name, YamlTag: yamlName,
 					Message: fmt.Sprintf("Go field %s (yaml %q) has no schema property and %s sets additionalProperties:false",
 						symbol, yamlName, schemaDesc(loc)),
@@ -99,10 +112,10 @@ func (c *checker) compareStruct(entity string, goType reflect.Type, node *schema
 			continue
 		}
 
-		c.checkRequiredness(entity, symbol, f.Name, yamlName, required[yamlName], omitempty)
+		c.checkRequiredness(owner, symbol, f.Name, yamlName, required[yamlName], omitempty)
 
 		if recurse {
-			c.compareType(entity, symbol, f.Type, prop, loc)
+			c.compareType(owner, symbol, f.Type, prop, loc)
 		}
 	}
 }
@@ -182,18 +195,17 @@ func (c *checker) compareScalar(entity, symbol string, goType reflect.Type, prop
 	}
 }
 
-// compareSlice checks an array field and recurses into struct element types.
+// compareSlice checks an array field and recurses into its element type —
+// whether that element is a struct ([]Participant), a scalar ([]string vs
+// items.type), or any other shape compareType understands. Validating scalar
+// items catches drift like []string vs schema items {type: integer}.
 func (c *checker) compareSlice(entity, symbol string, goType reflect.Type, prop *schemaNode, loc ref) {
 	if !c.expectType(entity, symbol, goType, prop, loc, schemaTypeArray) || prop.Items == nil {
 		return
 	}
-	elem := derefType(goType.Elem())
-	if elem.Kind() != reflect.Struct {
-		return
-	}
 	items, itemsLoc := c.derefNode(symbol, prop.Items, loc)
 	if items != nil {
-		c.compareStruct(entity, elem, items, itemsLoc, true)
+		c.compareType(entity, symbol, goType.Elem(), items, itemsLoc)
 	}
 }
 
@@ -210,21 +222,20 @@ func (c *checker) compareStructOrOneOf(entity, symbol string, goType reflect.Typ
 	}
 }
 
-// compareMapValue recurses into the value type of a map[string]*T field by
-// resolving the schema's per-value subschema (patternProperties or
-// additionalProperties). map[string]any (free-form Properties) is a leaf.
+// compareMapValue checks the value type of a map[string]T field against the
+// schema's per-value subschema (patternProperties or additionalProperties).
+// It handles struct values (map[string]*VocabularyEntry), scalar values
+// (map[string]string vs a typed additionalProperties), and anything else
+// compareType understands. A free-form object — map[string]any whose schema
+// is `additionalProperties: true` — has no per-value subschema and is a leaf.
 func (c *checker) compareMapValue(entity, symbol string, valType reflect.Type, prop *schemaNode, loc ref) {
-	valType = derefType(valType)
-	if valType.Kind() != reflect.Struct {
-		return // map[string]any and similar: free-form object, nothing to recurse.
-	}
 	valSchema := singleValueSchema(prop)
 	if valSchema == nil {
-		return
+		return // free-form object (e.g. map[string]any Properties): nothing to compare.
 	}
 	valSchema, valLoc := c.derefNode(symbol, valSchema, loc)
 	if valSchema != nil {
-		c.compareStruct(entity, valType, valSchema, valLoc, true)
+		c.compareType(entity, symbol, valType, valSchema, valLoc)
 	}
 }
 

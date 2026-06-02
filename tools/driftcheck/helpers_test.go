@@ -34,6 +34,21 @@ func TestSeverityRankAndFails(t *testing.T) {
 	}
 }
 
+func TestDedupeFindings(t *testing.T) {
+	a := finding{Severity: severityMajor, Entity: "X", Symbol: "X.a", Message: "m"}
+	dup := finding{Severity: severityMajor, Entity: "X", Symbol: "X.a", Message: "m"}
+	other := finding{Severity: severityMajor, Entity: "X", Symbol: "X.b", Message: "m2"}
+	out := dedupeFindings([]finding{a, dup, other})
+	if len(out) != 2 {
+		t.Fatalf("expected 2 findings after dedupe, got %d: %+v", len(out), out)
+	}
+	// A finding differing only in severity is NOT a duplicate.
+	diff := finding{Severity: severityCritical, Entity: "X", Symbol: "X.a", Message: "m"}
+	if got := dedupeFindings([]finding{a, diff}); len(got) != 2 {
+		t.Fatalf("findings differing by severity must not dedupe, got %d", len(got))
+	}
+}
+
 func TestHasFailures(t *testing.T) {
 	if hasFailures([]finding{{Severity: severityMinor}, {Severity: severityInfo}}) {
 		t.Error("minor+info should not fail")

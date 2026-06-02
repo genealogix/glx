@@ -90,6 +90,25 @@ func byEntityThenSeverity(findings []finding) {
 	})
 }
 
+// dedupeFindings drops exact-duplicate findings, preserving first-seen order. A
+// nested type reachable from several parents (e.g. Participant via Event,
+// Relationship, and Assertion) is compared once per parent and — now that
+// findings are keyed by the owning Go type rather than the parent — yields
+// identical findings each time; collapsing them keeps the report honest.
+func dedupeFindings(findings []finding) []finding {
+	seen := make(map[finding]struct{}, len(findings))
+	out := make([]finding, 0, len(findings))
+	for i := range findings {
+		if _, dup := seen[findings[i]]; dup {
+			continue
+		}
+		seen[findings[i]] = struct{}{}
+		out = append(out, findings[i])
+	}
+
+	return out
+}
+
 // hasFailures reports whether any finding is at a gating severity.
 func hasFailures(findings []finding) bool {
 	for i := range findings {

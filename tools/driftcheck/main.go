@@ -105,7 +105,7 @@ func run(opts options, out io.Writer) (int, error) {
 	c := newChecker(schemas, filepath.ToSlash(opts.typesFile))
 	c.run()
 
-	surviving, suppressed := allow.partition(c.findings)
+	surviving, suppressed := allow.partition(dedupeFindings(c.findings))
 	byEntityThenSeverity(surviving)
 
 	if _, writeErr := io.WriteString(out, buildReport(surviving, suppressed, len(files), opts.verbose)); writeErr != nil {
