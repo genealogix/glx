@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 - **`/check-code-drift` and `/check-schema-drift` now read the drift allowlist** instead of hardcoding known-drift notes inline. Removed the stale `Metadata.Notes` "known drift point" note — that drift was already resolved by widening `glx-file.schema.json` `metadata.notes` to `oneOf[string, array]`, which is exactly the go-stale-and-mislead failure mode #797 targets. (#797)
 
+- **`README.md` restructured to surface Install/Quick Start above the fold** — Installation and Quick Start now sit immediately under the badges, so first-time visitors see "how to use it" before "why to use it" (the previous order buried Quick Start at line 143 behind a 90-line marketing section). The "Why GENEALOGIX?" comparison was shortened — the comparison table is kept, but the inline GEDCOM-vs-GLX code blocks and the three "Beyond Exchange" subsections were dropped or linked out to [Core Concepts](/specification/2-core-concepts). The redundant "What is GENEALOGIX?" section was renamed "Features" (bullet list preserved). A new flat "Documentation" link list replaces the old "Quick Links" header and absorbs the doc-related entries that were buried under "Community & Support". "Community & Support" itself was compacted from eight emoji-headed subsections into a single table covering Issues, Discussions, Chat, Mailing list, Contributing, Code of Conduct, Security, and Releases. The "Getting Help" walkthrough (numbered For-Users / For-Developers steps), the "Project Status" beta-10 feature checklist, and the "Acknowledgments" prose were dropped outright rather than folded into the table. Length dropped from 335 to 201 lines (-40%). No link contracts removed except a pre-existing broken link to `glx/tests` (that directory does not exist; the Go tests live alongside their source as `*_test.go`). Closes #472.
+
 ## [0.0.0-beta.11] - 2026-05-27
 
 ### Added
@@ -251,13 +253,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
-#### CLI
-
 - **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
 
 ### Fixed
-
-#### GEDCOM Import
 
 - **Unrecognized SEX values preserved** — Non-standard or extension GEDCOM SEX values (e.g., custom values, or values such as `N` whose meaning varies between GEDCOM 5.5.5 `Not Recorded` and 7.0 `Nonbinary`) are now lowercased and preserved as-is instead of being silently mapped to `unknown`. Validation will warn about out-of-vocabulary values (#588)
 - **Correct year extraction from Hebrew and French Republican dates** — `ExtractFirstYear` now uses calendar-aware extraction, finding the last digit sequence for HEBREW and FRENCH_R dates where the year appears last. Previously, `HEBREW 15 TSH 5765` would extract `15` (the day) instead of `5765`. Also handles range dates (`BET...AND`, `FROM...TO`) correctly (#590)
