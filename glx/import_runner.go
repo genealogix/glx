@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -32,14 +33,22 @@ import (
 // as-is on the media URI — neither copied nor downloaded. For single-file output
 // media/files/ is a sibling directory of the output file; for multi-file output
 // it lives within the archive layout.
-func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool, showFirstErrors int) error {
+func outputWriter(out ...io.Writer) io.Writer {
+	if len(out) > 0 && out[0] != nil {
+		return out[0]
+	}
+
+	return os.Stdout
+}
+
+func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
 	// Validate format flag
 	if format != FormatSingle && format != FormatMulti {
 		return fmt.Errorf("%w: %s", ErrInvalidFormat, format)
 	}
 
 	if isGEDZIPPath(gedcomPath) {
-		return importGEDZIP(gedcomPath, outputPath, format, validate, verbose, showFirstErrors)
+		return importGEDZIP(gedcomPath, outputPath, format, validate, verbose, showFirstErrors, out...)
 	}
 
 	// Check if GEDCOM file exists
@@ -49,7 +58,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Import GEDCOM file
 	if verbose {
-		fmt.Printf("Importing GEDCOM file: %s\n", gedcomPath)
+		_, _ = fmt.Fprintf(outputWriter(out...), "Importing GEDCOM file: %s\n", gedcomPath)
 	}
 
 	// Open GEDCOM file

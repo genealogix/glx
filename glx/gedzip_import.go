@@ -48,9 +48,9 @@ var maxGEDZIPEntryBytes int64 = 512 << 20
 // importGEDZIP extracts a .gdz archive into a temporary directory and delegates
 // to the existing GEDCOM import pipeline. The temp directory is removed when
 // the function returns, regardless of outcome.
-func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool, showFirstErrors int) error {
+func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
 	if verbose {
-		fmt.Printf("Extracting GEDZIP archive: %s\n", gedzipPath)
+		_, _ = fmt.Fprintf(outputWriter(out...), "Extracting GEDZIP archive: %s\n", gedzipPath)
 	}
 
 	zr, err := zip.OpenReader(filepath.Clean(gedzipPath))
@@ -93,7 +93,7 @@ func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool,
 		return err
 	}
 
-	return importGEDCOM(filepath.Join(tempDir, gedzipGedcomEntry), outputPath, format, validate, verbose, showFirstErrors)
+	return importGEDCOM(filepath.Join(tempDir, gedzipGedcomEntry), outputPath, format, validate, verbose, showFirstErrors, out...)
 }
 
 // hasGedcomEntry reports whether the archive contains a gedcom.ged entry that
