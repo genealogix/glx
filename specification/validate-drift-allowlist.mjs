@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Runtime/dependency notes:
-// - Expected to run with the repository's supported Node.js version (ESM-enabled).
-// - External packages required by this script: `ajv`, `ajv-formats`, `js-yaml`.
-// - These dependencies are provided by `specification/package.json` (install there).
+// - Runs on Node.js 24 (ESM); CI pins this via actions/setup-node in
+//   .github/workflows/validate-spec.yml.
+// - Requires the `ajv`, `ajv-formats`, and `js-yaml` packages, declared in
+//   specification/package.json. Install them with `npm ci --prefix specification`.
 // - Preferred invocation is via `make check-drift-allowlist`.
 //
 // Validate .claude/drift-allowlist.yaml against .claude/drift-allowlist.schema.json.
@@ -34,8 +35,13 @@ addFormats(ajv);
 const validate = ajv.compile(JSON.parse(readFileSync(SCHEMA, "utf8")));
 
 const entries = yaml.load(readFileSync(ALLOWLIST, "utf8"));
-// Include a type discriminator in duplicate-key components so any unexpected
-// non-string values do not collapse to the same serialized tuple.
+// Tag each duplicate-key component as "string" or "non-string" so a string
+// `file`/`symbol` can never collide with a non-string that stringifies to the
+// same text. Among non-strings we key on `typeof` plus `String(value)`, which
+// keeps distinct primitives (undefined, null, numbers, booleans) apart. This is
+// best-effort, not a guarantee: two different objects both stringify to
+// "[object Object]" and would still collapse. Schema validation runs first and
+// already requires these to be strings, so this only guards malformed input.
 const makeKeyComponent = (value) =>
   typeof value === "string" ? ["string", value] : ["non-string", typeof value, String(value)];
 
