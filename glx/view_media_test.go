@@ -50,6 +50,11 @@ func TestDataURI(t *testing.T) {
 	if got := dataURI("", "noext", []byte("data")); !strings.HasPrefix(got, "data:application/octet-stream;base64,") {
 		t.Errorf("octet-stream fallback: %q", got)
 	}
+	// A bogus non-image archive MIME must not override the extension-derived
+	// image type for an inline image.
+	if got := dataURI("text/html", "photo.png", []byte("data")); !strings.HasPrefix(got, "data:image/png;base64,") {
+		t.Errorf("extension should win over bogus archive MIME: %q", got)
+	}
 }
 
 func TestClassifyMedia(t *testing.T) {

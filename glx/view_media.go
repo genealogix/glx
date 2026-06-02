@@ -271,11 +271,13 @@ func (r *mediaResolver) copyMedia(srcPath, uri string, data []byte) (string, err
 }
 
 // sourcePath resolves a media URI to a filesystem path confined to baseDir,
-// returning ok=false for URIs that escape it — absolute paths or ../ traversal.
-// filepath.Join neutralizes a leading "/" (the URI is always treated as
-// relative to the archive), and isPathWithin rejects any ../ that climbs out.
-// Mirrors copyMediaFile's guard in media_copy.go so the viewer never reads
-// files outside the archive directory, even from an untrusted archive.
+// returning ok=false for URIs that escape it. Go's filepath.Join treats every
+// element after the first as relative — a leading "/" or drive/UNC prefix is
+// joined under baseDir rather than replacing it (unlike, e.g., Python's
+// os.path.join) — so absolute URIs cannot escape via Join. isPathWithin is the
+// authoritative containment check and is what rejects any "../" that climbs out
+// of baseDir. Mirrors copyMediaFile's guard in media_copy.go so the viewer never
+// reads files outside the archive directory, even from an untrusted archive.
 func (r *mediaResolver) sourcePath(uri string) (string, bool) {
 	normalized := strings.ReplaceAll(uri, "\\", "/")
 	srcPath := filepath.Join(r.baseDir, normalized)
@@ -302,16 +304,31 @@ func (r *mediaResolver) outputName(srcPath, uri string) string {
 	return name
 }
 
-// dataURI builds a base64 data URI for embedded image content.
+// dataURI builds a base64 data URI for embedded image content. Only raster
+// images reach this path, so the media type is taken from the file extension
+// (via Go's mime table) rather than the archive-provided MIME — a bogus archive
+// MIME like text/html would otherwise yield data:text/html for an inline image,
+// which would not render. The archive MIME is used only as an image/* fallback.
 func dataURI(mimeType, uri string, data []byte) string {
-	if mimeType == "" {
-		mimeType = mime.TypeByExtension(filepath.Ext(uri))
+	return "data:" + imageMediaType(uri, mimeType) + ";base64," + base64.StdEncoding.EncodeToString(data)
+}
+
+// imageMediaType returns an image/* media type for an embedded image, preferring
+// the extension-derived type and falling back to an image/* archive MIME, then
+// application/octet-stream.
+func imageMediaType(uri, archiveMIME string) string {
+	if byExt := mime.TypeByExtension(strings.ToLower(filepath.Ext(uri))); strings.HasPrefix(byExt, "image/") {
+		if i := strings.IndexByte(byExt, ';'); i >= 0 {
+			byExt = strings.TrimSpace(byExt[:i]) // drop any "; charset=..." suffix
+		}
+
+		return byExt
 	}
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
+	if strings.HasPrefix(strings.ToLower(archiveMIME), "image/") {
+		return archiveMIME
 	}
 
-	return "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(data)
+	return "application/octet-stream"
 }
 
 // reservedFileStems are Windows device names that are invalid as filenames even
