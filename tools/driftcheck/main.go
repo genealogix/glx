@@ -159,6 +159,7 @@ func readSchemaFiles(dir string) (map[string][]byte, error) {
 		if d.IsDir() || !strings.HasSuffix(d.Name(), ".schema.json") {
 			return nil
 		}
+		// #nosec G304 -- path is a repo schema file discovered by WalkDir, not user input.
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
@@ -178,6 +179,7 @@ func readSchemaFiles(dir string) (map[string][]byte, error) {
 // loadAllowlist reads and parses the allowlist; a missing file is treated as an
 // empty allowlist so the tool still runs in a checkout without one.
 func loadAllowlist(path string) (*allowlist, error) {
+	// #nosec G304 -- path is the repo-relative drift allowlist, not user input.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {

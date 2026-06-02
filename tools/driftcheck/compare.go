@@ -47,7 +47,7 @@ func (c *checker) compareStruct(entity string, goType reflect.Type, node *schema
 	goType = derefType(goType)
 	if goType.Kind() != reflect.Struct {
 		c.add(&finding{
-			Severity: severityCritical, Entity: entity, Category: "Internal",
+			Severity: severityCritical, Entity: entity, Category: catInternal,
 			File: c.typesFile, Symbol: entity,
 			Message: fmt.Sprintf("expected struct for %s, got %s", entity, goType.Kind()),
 		})
@@ -149,7 +149,7 @@ func (c *checker) compareType(entity, symbol string, goType reflect.Type, prop *
 		c.compareSlice(entity, symbol, goType, prop, loc)
 	case reflect.Map:
 		// All GLX maps are keyed by entity/vocab ID and serialize as objects.
-		if c.expectType(entity, symbol, goType, prop, loc, "object") {
+		if c.expectType(entity, symbol, goType, prop, loc, schemaTypeObject) {
 			c.compareMapValue(entity, symbol, goType.Elem(), prop, loc)
 		}
 	case reflect.Struct:
@@ -205,7 +205,7 @@ func (c *checker) compareStructOrOneOf(entity, symbol string, goType reflect.Typ
 
 		return
 	}
-	if c.expectType(entity, symbol, goType, prop, loc, "object") && len(prop.Properties) > 0 {
+	if c.expectType(entity, symbol, goType, prop, loc, schemaTypeObject) && len(prop.Properties) > 0 {
 		c.compareStruct(entity, goType, prop, loc, true)
 	}
 }
@@ -259,7 +259,7 @@ func (c *checker) derefNode(symbol string, n *schemaNode, loc ref) (*schemaNode,
 	out, newLoc, err := c.schemas.deref(n, loc)
 	if err != nil {
 		c.add(&finding{
-			Severity: severityCritical, Entity: "schema", Category: "Internal",
+			Severity: severityCritical, Entity: "schema", Category: catInternal,
 			File: c.typesFile, Symbol: symbol,
 			Message: fmt.Sprintf("unresolved schema reference for %s: %v", symbol, err),
 		})
@@ -364,7 +364,7 @@ func effectiveSchemaType(n *schemaNode) string {
 	case len(n.OneOf) > 0 || len(n.AnyOf) > 0:
 		return "oneof"
 	case len(n.Properties) > 0 || len(n.PatternProperties) > 0 || n.additionalPropsSchema() != nil:
-		return "object"
+		return schemaTypeObject
 	case n.Items != nil:
 		return "array"
 	default:
@@ -389,9 +389,9 @@ func singleValueSchema(n *schemaNode) *schemaNode {
 // field is set per instance but the struct carries all of them as optional.
 func mergeOneOfObjects(branches []*schemaNode) *schemaNode {
 	merged := &schemaNode{
-		Type:                 "object",
+		Type:                 schemaTypeObject,
 		Properties:           map[string]*schemaNode{},
-		AdditionalProperties: []byte("false"),
+		AdditionalProperties: []byte(jsonFalse),
 	}
 	for _, b := range branches {
 		maps.Copy(merged.Properties, b.Properties)

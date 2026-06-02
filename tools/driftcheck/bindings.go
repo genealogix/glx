@@ -72,7 +72,7 @@ func (c *checker) run() {
 		node, loc, err := c.schemas.resolve(b.refStr, "")
 		if err != nil {
 			c.add(&finding{
-				Severity: severityCritical, Entity: b.entity, Category: "Internal",
+				Severity: severityCritical, Entity: b.entity, Category: catInternal,
 				File: c.typesFile, Symbol: b.entity,
 				Message: fmt.Sprintf("cannot resolve schema %q: %v", b.refStr, err),
 			})
@@ -97,7 +97,7 @@ func (c *checker) checkGLXFileTopLevel() {
 	root, loc, err := c.schemas.resolve(glxFileSchema, "")
 	if err != nil {
 		c.add(&finding{
-			Severity: severityCritical, Entity: "GLXFile", Category: "Internal",
+			Severity: severityCritical, Entity: "GLXFile", Category: catInternal,
 			File: c.typesFile, Symbol: "GLXFile",
 			Message: fmt.Sprintf("cannot resolve %s: %v", glxFileSchema, err),
 		})
@@ -122,9 +122,9 @@ func (c *checker) checkVocabularyEntry() {
 	glxFields := structFieldsByYAML(reflect.TypeFor[glxlib.GLXFile]())
 
 	merged := &schemaNode{
-		Type:                 "object",
+		Type:                 schemaTypeObject,
 		Properties:           map[string]*schemaNode{},
-		AdditionalProperties: []byte("false"),
+		AdditionalProperties: []byte(jsonFalse),
 	}
 	var requiredSets [][]string
 	var contributed int
@@ -149,7 +149,7 @@ func (c *checker) checkVocabularyEntry() {
 
 	if contributed == 0 {
 		c.add(&finding{
-			Severity: severityMajor, Entity: "VocabularyEntry", Category: "Internal",
+			Severity: severityMajor, Entity: "VocabularyEntry", Category: catInternal,
 			File: c.typesFile, Symbol: "VocabularyEntry",
 			Message: "no type-vocabulary schemas resolved for VocabularyEntry union check",
 		})

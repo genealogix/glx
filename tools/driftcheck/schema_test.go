@@ -19,6 +19,7 @@ import (
 )
 
 func TestResolveCrossFileAndPointer(t *testing.T) {
+	const personSchema = "person.schema.json"
 	files := map[string][]byte{
 		"glx-file.schema.json": []byte(`{
 			"type":"object",
@@ -27,7 +28,7 @@ func TestResolveCrossFileAndPointer(t *testing.T) {
 				"event_types":{"type":"object","patternProperties":{"^x$":{"$ref":"vocabularies/v.schema.json#/definitions/Def"}}}
 			}
 		}`),
-		"person.schema.json": []byte(`{"type":"object","properties":{"name":{"type":"string"}}}`),
+		personSchema: []byte(`{"type":"object","properties":{"name":{"type":"string"}}}`),
 		"vocabularies/v.schema.json": []byte(`{
 			"definitions":{"Def":{"type":"object","properties":{"label":{"type":"string"}}}}
 		}`),
@@ -38,11 +39,11 @@ func TestResolveCrossFileAndPointer(t *testing.T) {
 	}
 
 	// Cross-file ref relative to root dir.
-	node, loc, err := set.resolve("person.schema.json", "")
+	node, loc, err := set.resolve(personSchema, "")
 	if err != nil {
 		t.Fatalf("resolve person: %v", err)
 	}
-	if node.Properties["name"] == nil || loc.file != "person.schema.json" {
+	if node.Properties["name"] == nil || loc.file != personSchema {
 		t.Fatalf("unexpected person node/loc: %+v %+v", node, loc)
 	}
 

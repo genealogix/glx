@@ -28,6 +28,13 @@ var (
 	errPointerNotFound     = errors.New("json pointer target not found")
 )
 
+const (
+	// schemaTypeObject is the JSON Schema "object" type token.
+	schemaTypeObject = "object"
+	// jsonFalse is the literal additionalProperties:false marker.
+	jsonFalse = "false"
+)
+
 // schemaNode is the subset of JSON Schema (draft-07) the drift checker needs.
 // Only structural keywords are modeled; constraint keywords (minLength,
 // pattern, enum, …) are intentionally ignored because the deterministic checker
@@ -56,7 +63,7 @@ func (n *schemaNode) additionalPropsSchema() *schemaNode {
 	}
 	// A boolean additionalProperties (`true`/`false`) is not an object schema.
 	trimmed := strings.TrimSpace(string(n.AdditionalProperties))
-	if trimmed == "true" || trimmed == "false" {
+	if trimmed == "true" || trimmed == jsonFalse {
 		return nil
 	}
 	var sub schemaNode
@@ -70,7 +77,7 @@ func (n *schemaNode) additionalPropsSchema() *schemaNode {
 // additionalPropsClosed reports whether additionalProperties is explicitly
 // false (i.e. the object is closed and extra Go fields are real drift).
 func (n *schemaNode) additionalPropsClosed() bool {
-	return strings.TrimSpace(string(n.AdditionalProperties)) == "false"
+	return strings.TrimSpace(string(n.AdditionalProperties)) == jsonFalse
 }
 
 // schemaSet holds every parsed schema file, keyed by its path relative to the
