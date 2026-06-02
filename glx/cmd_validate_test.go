@@ -197,12 +197,12 @@ func TestRunValidate_SingleFileInvalidDateFormat(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	streams, out, _ := TestIOStreams()
+	streams, _, errOut := TestIOStreams()
 	err = validatePaths(streams, []string{eventFile})
 
 	require.NoError(t, err,
 		"invalid date format is a warning, not an error — should not fail validation")
-	require.Contains(t, out.String(), "should be in format",
+	require.Contains(t, errOut.String(), "should be in format",
 		"warning output should mention expected date format")
 }
 
@@ -260,7 +260,7 @@ func TestRunValidate_OnlyNonGLXFiles(t *testing.T) {
 	streams, out, _ := TestIOStreams()
 	err = validatePaths(streams, []string{tmpDir})
 	require.NoError(t, err, "directory with no GLX files should validate successfully")
-	require.Contains(t, out.String(), "No GLX files", "should report that zero GLX files were processed")
+	require.Contains(t, out.String(), "Validated 0 file", "should report that no GLX files were validated")
 }
 
 func TestRunValidate_NestedDirectories(t *testing.T) {
@@ -301,11 +301,11 @@ func TestRunValidate_MediaFileMissing(t *testing.T) {
 `), 0o644)
 	require.NoError(t, err)
 
-	streams, out, _ := TestIOStreams()
+	streams, _, errOut := TestIOStreams()
 	err = validatePaths(streams, []string{tmpDir})
 
 	require.NoError(t, err, "missing media file should produce warning, not error")
-	require.Contains(t, out.String(), "media[media-photo]: referenced file does not exist: media/files/nonexistent.jpg",
+	require.Contains(t, errOut.String(), "media[media-photo]: referenced file does not exist: media/files/nonexistent.jpg",
 		"should produce warning about missing media file")
 }
 
