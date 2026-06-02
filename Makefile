@@ -36,9 +36,14 @@ check: tidy-check lint test check-schemas check-drift-allowlist check-links vali
 	@echo "All checks passed."
 
 ## Build
-build-cli: ## Build the glx binary to bin/
+# Version injected into the binary via ldflags. Override for a local release-like
+# build: `make build-cli VERSION=0.1.0-local`. Defaults to "dev" (matches the
+# fallback in glx/cli_commands.go). GoReleaser sets this from the git tag instead.
+VERSION ?= dev
+
+build-cli: ## Build the glx binary to bin/ (override version with VERSION=...)
 	@mkdir -p bin
-	go build -o bin/glx ./glx
+	go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o bin/glx ./glx
 
 build-website: ## Build the documentation site
 	@echo "Building website..."
