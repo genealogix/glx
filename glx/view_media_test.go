@@ -52,25 +52,28 @@ func TestDataURI(t *testing.T) {
 	}
 }
 
-func TestIsImageMedia(t *testing.T) {
+func TestClassifyMedia(t *testing.T) {
 	cases := []struct {
 		mime, uri string
-		want      bool
+		isURL     bool
+		want      string
 	}{
-		{"image/jpeg", "weird.bin", true},        // image mime -> image
-		{"application/pdf", "report.pdf", false}, // neither image
-		{"", "scan.PNG", true},                   // extension, case-insensitive
-		{"", "doc.pdf", false},
-		{"", "noext", false},
-		// Security: an SVG with a non-image MIME must still classify as an
-		// image so it renders via <img> (scripting disabled) rather than as a
-		// clickable link a browser would open as an active document.
-		{"application/xml", "drawing.svg", true},
-		{"text/html", "evil.svg", true},
+		// Local files: only inert raster images and PDFs are publishable.
+		{"image/png", "scan.PNG", false, mediaKindImage},
+		{"", "photo.jpg", false, mediaKindImage},
+		{"application/pdf", "deed.pdf", false, mediaKindDoc},
+		// Active-document / unknown local types are never published.
+		{"image/svg+xml", "drawing.svg", false, mediaKindUnshown},
+		{"text/html", "evil.html", false, mediaKindUnshown},
+		{"application/xml", "data.xml", false, mediaKindUnshown},
+		{"image/png", "noext", false, mediaKindUnshown}, // no safe extension
+		// External URLs: images inline, everything else a link (separate origin).
+		{"", "https://example.org/p.jpg", true, mediaKindImage},
+		{"", "https://example.org/page.html", true, mediaKindLink},
 	}
 	for _, tc := range cases {
-		if got := isImageMedia(tc.mime, tc.uri); got != tc.want {
-			t.Errorf("isImageMedia(%q,%q) = %v, want %v", tc.mime, tc.uri, got, tc.want)
+		if got := classifyMedia(tc.mime, tc.uri, tc.isURL); got != tc.want {
+			t.Errorf("classifyMedia(%q,%q,%v) = %q, want %q", tc.mime, tc.uri, tc.isURL, got, tc.want)
 		}
 	}
 }
@@ -104,7 +107,9 @@ func TestSourcePath(t *testing.T) {
 func TestResolveSiteMedia_RejectsTraversal(t *testing.T) {
 	base := t.TempDir()
 	outside := t.TempDir()
-	secret := filepath.Join(outside, "secret.txt")
+	// Use a publishable (raster) extension so the item is NOT skipped as an
+	// unshown type — isolating the path-containment defense itself.
+	secret := filepath.Join(outside, "secret.jpg")
 	writeFile(t, secret, []byte("TOP SECRET"))
 
 	rel, err := filepath.Rel(base, secret)
@@ -120,7 +125,7 @@ func TestResolveSiteMedia_RejectsTraversal(t *testing.T) {
 				"person-x": {Properties: map[string]any{"name": "X"}},
 			},
 			Media: map[string]*glxlib.Media{
-				"media-evil": {URI: uri, MimeType: "text/plain"},
+				"media-evil": {URI: uri, MimeType: "image/jpeg"},
 			},
 			Assertions: map[string]*glxlib.Assertion{
 				"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-evil"}},

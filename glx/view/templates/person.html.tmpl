@@ -21,10 +21,14 @@
       {{range .Media}}
         {{if .Missing}}
           <div class="media-missing">Missing media: {{.RawURI}}</div>
-        {{else if .IsImage}}
+        {{else if eq .Kind "image"}}
           <figure><img src="{{mediaURL .Src}}" alt="{{if .Title}}{{.Title}}{{else}}Photo{{end}}" loading="lazy">{{if .Caption}}<figcaption>{{.Caption}}</figcaption>{{end}}</figure>
-        {{else}}
+        {{else if eq .Kind "doc"}}
           <a class="media-file" href="{{mediaURL .Src}}" download rel="noopener">{{if .Title}}{{.Title}}{{else}}{{.RawURI}}{{end}}</a>
+        {{else if eq .Kind "link"}}
+          <a class="media-file" href="{{mediaURL .Src}}" rel="noopener" target="_blank">{{if .Title}}{{.Title}}{{else}}{{.RawURI}}{{end}}</a>
+        {{else}}
+          <div class="media-note">Media not shown{{if .Title}}: {{.Title}}{{end}}</div>
         {{end}}
       {{end}}
     </div>

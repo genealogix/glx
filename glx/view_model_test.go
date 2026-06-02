@@ -245,8 +245,8 @@ func TestBuildPersonPage_Media(t *testing.T) {
 		t.Fatalf("Media = %d, want 1", len(john.Media))
 	}
 	m := john.Media[0]
-	if !m.IsImage {
-		t.Error("portrait should be classified as image")
+	if m.Kind != mediaKindImage {
+		t.Errorf("portrait Kind = %q, want %q", m.Kind, mediaKindImage)
 	}
 	if m.Caption != "Studio portrait, c. 1900" {
 		t.Errorf("caption = %q", m.Caption)

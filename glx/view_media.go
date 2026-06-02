@@ -28,10 +28,22 @@ import (
 // mediaDirName is the site subdirectory copied media files are written to.
 const mediaDirName = "media"
 
-// imageExtensions lists file extensions rendered inline as images.
-var imageExtensions = map[string]bool{
+// Media kinds. They decide both whether a local file is published into the
+// site and how it is rendered.
+const (
+	mediaKindImage   = "image"   // inline <img> (raster, inert)
+	mediaKindDoc     = "doc"     // downloadable file (PDF)
+	mediaKindLink    = "link"    // external URL, rendered as a link
+	mediaKindUnshown = "unshown" // local file type unsafe to publish; not written
+)
+
+// rasterImageExtensions are the inert raster image types safe to publish into
+// the site and render inline. SVG is deliberately excluded: a published .svg is
+// served as image/svg+xml and, when navigated to directly, runs embedded
+// scripts in the site's origin — so SVG is never written to the output tree.
+var rasterImageExtensions = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
-	".webp": true, ".svg": true, ".bmp": true, ".tif": true, ".tiff": true,
+	".webp": true, ".bmp": true, ".tif": true, ".tiff": true,
 }
 
 // buildPersonMedia gathers and classifies the media attached to a person via
@@ -77,32 +89,52 @@ func newMediaItem(mediaID string, media *glxlib.Media) *mediaItem {
 		caption = media.Title
 	}
 
+	isURL := isHTTPURL(media.URI)
 	item := &mediaItem{
 		MediaID:  mediaID,
 		RawURI:   media.URI,
 		Title:    media.Title,
 		Caption:  caption,
 		MimeType: media.MimeType,
-		IsURL:    isHTTPURL(media.URI),
+		IsURL:    isURL,
+		Kind:     classifyMedia(media.MimeType, media.URI, isURL),
 	}
-	item.IsImage = isImageMedia(media.MimeType, media.URI)
 
 	return item
 }
 
-// isImageMedia reports whether a media item should render inline as an <img>.
-// It returns true when EITHER the MIME type is image/* OR the URI extension is
-// a known image type. Erring toward <img> is a security choice: an item that
-// is NOT classified as an image renders as a clickable link, and a browser
-// (or http.FileServer) may serve that file as an active document — notably an
-// SVG with a non-image MIME, whose embedded scripts would then run in the
-// site's origin. Rendering via <img> instead disables SVG scripting entirely.
-func isImageMedia(mimeType, uri string) bool {
-	if strings.HasPrefix(strings.ToLower(mimeType), "image/") {
-		return true
+// classifyMedia decides how a media reference is published and rendered.
+//
+// For an external http(s) URL (a separate origin), images render inline and
+// everything else is a plain link.
+//
+// For a LOCAL file — which would be published into the site's OWN origin and
+// served by http.FileServer / static hosts according to its extension — only an
+// inert allowlist is published: raster images (rendered inline) and PDFs
+// (rendered as a download). Every other local type (HTML, SVG, XML, unknown, or
+// extension-less files that would be content-sniffed) is mediaKindUnshown and
+// is never written out, closing the stored-XSS vector where an attacker-supplied
+// active document is served from the site origin.
+func classifyMedia(mimeType, uri string, isURL bool) string {
+	ext := strings.ToLower(filepath.Ext(uri))
+
+	if isURL {
+		if strings.HasPrefix(strings.ToLower(mimeType), "image/") ||
+			rasterImageExtensions[ext] || ext == ".svg" {
+			return mediaKindImage
+		}
+
+		return mediaKindLink
 	}
 
-	return imageExtensions[strings.ToLower(filepath.Ext(uri))]
+	switch {
+	case rasterImageExtensions[ext]:
+		return mediaKindImage
+	case ext == ".pdf":
+		return mediaKindDoc
+	default:
+		return mediaKindUnshown
+	}
 }
 
 // isHTTPURL reports whether a URI is an absolute http(s) URL.
@@ -167,6 +199,11 @@ func (r *mediaResolver) resolve(item *mediaItem) error {
 		return nil
 	}
 
+	// Local file types outside the inert allowlist are never published.
+	if item.Kind == mediaKindUnshown {
+		return nil
+	}
+
 	srcPath, ok := r.sourcePath(item.RawURI)
 	if !ok {
 		// The URI escapes the archive directory (an absolute path or ../
@@ -206,7 +243,7 @@ func (r *mediaResolver) resolveFile(item *mediaItem, srcPath string) (mediaResul
 		return mediaResult{missing: true}, nil //nolint:nilerr // missing media is non-fatal
 	}
 
-	if r.embed && item.IsImage {
+	if r.embed && item.Kind == mediaKindImage {
 		return mediaResult{src: dataURI(item.MimeType, item.RawURI, data)}, nil
 	}
 

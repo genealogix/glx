@@ -147,17 +147,21 @@ type searchEntry struct {
 	Sub  string `json:"sub,omitempty"`
 }
 
-// mediaItem is a media reference attached to a person. Src/Embedded/Missing are
-// filled in by the media-resolution stage (view_media.go); the model build only
-// records the raw reference and classification.
+// mediaItem is a media reference attached to a person. Src/Missing are filled
+// in by the media-resolution stage (view_media.go); the model build only records
+// the raw reference and its Kind.
 type mediaItem struct {
 	MediaID  string
 	RawURI   string
 	Title    string
 	Caption  string
 	MimeType string
-	IsImage  bool
-	IsURL    bool // RawURI is an http(s) URL — link/embed directly, never copied
+	// Kind drives both publishing and rendering: mediaKindImage (inline <img>),
+	// mediaKindDoc (downloadable file, e.g. PDF), mediaKindLink (external URL),
+	// or mediaKindUnshown (a local file type that is NOT safe to publish into
+	// the site's origin — e.g. HTML/SVG — and is therefore never written out).
+	Kind  string
+	IsURL bool // RawURI is an http(s) URL — referenced directly, never copied
 
 	// Resolved by the media stage. Because media only renders on person
 	// pages (one directory deep), copied-file sources already carry the

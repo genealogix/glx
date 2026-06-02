@@ -97,39 +97,52 @@ func TestSearchIndexScriptSafety(t *testing.T) {
 	}
 }
 
-// TestSVGMediaRendersAsImage verifies an SVG with a non-image MIME renders via
-// <img> (scripting disabled) rather than a clickable link a browser would open
-// as an active document.
-func TestSVGMediaRendersAsImage(t *testing.T) {
+// TestActiveDocumentMediaNotPublished verifies that local SVG/HTML media — which
+// a browser or http.FileServer would serve as an active, scriptable document —
+// are NEVER written into the site and render only as a "not shown" note. This
+// closes the stored-XSS vector where an attacker-supplied archive publishes an
+// executable document into the site's origin.
+func TestActiveDocumentMediaNotPublished(t *testing.T) {
 	base := t.TempDir()
-	writeFile(t, filepath.Join(base, "drawing.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`))
+	writeFile(t, filepath.Join(base, "evil.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`))
+	writeFile(t, filepath.Join(base, "evil.html"), []byte(`<script>alert(1)</script>`))
 
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
 			"person-x": {Properties: map[string]any{"name": "X"}},
 		},
 		Media: map[string]*glxlib.Media{
-			"media-svg": {URI: "drawing.svg", MimeType: "application/xml"},
+			"media-svg":  {URI: "evil.svg", MimeType: "image/svg+xml"},
+			"media-html": {URI: "evil.html", MimeType: "text/html"},
 		},
 		Assertions: map[string]*glxlib.Assertion{
-			"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-svg"}},
+			"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-svg", "media-html"}},
 		},
 	}
 	model := buildSiteModel(archive, viewModelOptions{})
 	out := t.TempDir()
-	if _, err := resolveSiteMedia(model, base, out, false); err != nil {
+	copied, err := resolveSiteMedia(model, base, out, false)
+	if err != nil {
 		t.Fatalf("resolveSiteMedia: %v", err)
+	}
+	if copied != 0 {
+		t.Errorf("expected 0 files published, got %d", copied)
 	}
 	if err := renderSite(model, out); err != nil {
 		t.Fatalf("renderSite: %v", err)
 	}
 
-	page := readFile(t, filepath.Join(out, "persons", model.Persons[0].File))
-	if !strings.Contains(page, `<img src="../media/drawing.svg"`) {
-		t.Error("SVG should render via <img>, not a clickable link")
+	// Nothing was written into the site's media directory.
+	if entries, _ := os.ReadDir(filepath.Join(out, mediaDirName)); len(entries) > 0 {
+		t.Errorf("active-document media must not be published; found %d files", len(entries))
 	}
-	if strings.Contains(page, `class="media-file"`) {
-		t.Error("SVG must not render as an openable media-file link")
+
+	page := readFile(t, filepath.Join(out, "persons", model.Persons[0].File))
+	if strings.Contains(page, "media/evil.svg") || strings.Contains(page, "media/evil.html") {
+		t.Error("page links to an unpublished active-document file")
+	}
+	if !strings.Contains(page, "Media not shown") {
+		t.Error("expected a 'Media not shown' note for the active-document media")
 	}
 }
 

@@ -27,9 +27,17 @@ import (
 // headers, guarding against slow-client resource exhaustion.
 const serverReadHeaderTimeout = 10 * time.Second
 
-// siteHandler serves the generated static site from dir.
+// siteHandler serves the generated static site from dir. It sets
+// X-Content-Type-Options: nosniff as defense-in-depth so the preview server
+// never MIME-sniffs a media file into an active document. (The primary defense
+// is the publish-time allowlist, which also protects file:// and static hosts.)
 func siteHandler(dir string) http.Handler {
-	return http.FileServer(http.Dir(dir))
+	fileServer := http.FileServer(http.Dir(dir))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		fileServer.ServeHTTP(w, r)
+	})
 }
 
 // newSiteServer builds the HTTP server that serves the generated site from dir.
