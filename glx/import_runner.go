@@ -33,7 +33,7 @@ import (
 // as-is on the media URI — neither copied nor downloaded. For single-file output
 // media/files/ is a sibling directory of the output file; for multi-file output
 // it lives within the archive layout.
-func outputWriter(out ...io.Writer) io.Writer {
+func resolveOutputWriter(out ...io.Writer) io.Writer {
 	if len(out) > 0 && out[0] != nil {
 		return out[0]
 	}
@@ -58,7 +58,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Import GEDCOM file
 	if verbose {
-		_, _ = fmt.Fprintf(outputWriter(out...), "Importing GEDCOM file: %s\n", gedcomPath)
+		fmt.Fprintf(resolveOutputWriter(out...), "Importing GEDCOM file: %s\n", gedcomPath)
 	}
 
 	// Open GEDCOM file
