@@ -50,7 +50,7 @@ var maxGEDZIPEntryBytes int64 = 512 << 20
 // the function returns, regardless of outcome.
 func importGEDZIP(gedzipPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
 	if verbose {
-		fmt.Fprintf(resolveOutputWriter(out...), "Extracting GEDZIP archive: %s\n", gedzipPath)
+		_, _ = fmt.Fprintf(resolveOutputWriter(out...), "Extracting GEDZIP archive: %s\n", gedzipPath)
 	}
 
 	zr, err := zip.OpenReader(filepath.Clean(gedzipPath))

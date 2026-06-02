@@ -58,7 +58,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Import GEDCOM file
 	if verbose {
-		fmt.Fprintf(resolveOutputWriter(out...), "Importing GEDCOM file: %s\n", gedcomPath)
+		_, _ = fmt.Fprintf(resolveOutputWriter(out...), "Importing GEDCOM file: %s\n", gedcomPath)
 	}
 
 	// Open GEDCOM file
