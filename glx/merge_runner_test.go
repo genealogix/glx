@@ -226,7 +226,10 @@ func snapshotDir(t *testing.T, root string) map[string]int64 {
 			return err
 		}
 		if !info.IsDir() {
-			rel, _ := filepath.Rel(root, path)
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
 			snapshot[rel] = info.Size()
 		}
 		return nil
@@ -262,12 +265,9 @@ func TestMergeArchives_DotDestination(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writeFilesToDir(srcDir, srcFiles))
 
-	// Save original cwd, chdir into dest, merge with "."
-	origDir, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { os.Chdir(origDir) })
-
-	require.NoError(t, os.Chdir(destDir))
+	// chdir into dest and merge with ".". t.Chdir restores the original cwd
+	// via t.Cleanup automatically.
+	t.Chdir(destDir)
 	err = mergeArchives(srcDir, ".", false, 0.6)
 	require.NoError(t, err)
 
