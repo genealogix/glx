@@ -64,6 +64,43 @@ func TestMergeArchives_NewEntities(t *testing.T) {
 	assert.Contains(t, dest.Persons, "person-b")
 }
 
+// TestMergeArchives_CountsNewResearchLogsAndStudies guards the regression
+// fixed in genealogix/glx#942: ResearchLogs and Studies were missing from
+// both entityCounts and TotalNew(), so merges that only added those entity
+// types silently reported zero new entities and hit the "No new entities to
+// merge." branch. The test seeds dest with one pre-existing ResearchLog so
+// the assertion exercises the delta path (not just len(after.researchLogs)),
+// and asserts on TotalNew() so a future drop of either field from the sum
+// also fails the test.
+func TestMergeArchives_CountsNewResearchLogsAndStudies(t *testing.T) {
+	dest := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"researchlog-existing": {Title: "Existing log"},
+		},
+		Studies: map[string]*glxlib.Study{},
+	}
+
+	src := &glxlib.GLXFile{
+		ResearchLogs: map[string]*glxlib.ResearchLog{
+			"researchlog-new": {Title: "New log", Objective: "Find ancestor X"},
+		},
+		Studies: map[string]*glxlib.Study{
+			"study-new": {Title: "One Place Study"},
+		},
+	}
+
+	result := mergeArchivesInMemory(dest, src)
+
+	assert.Empty(t, result.Conflicts, "no conflicts expected")
+	assert.Equal(t, 1, result.NewResearchLogs, "new ResearchLog must be counted")
+	assert.Equal(t, 1, result.NewStudies, "new Study must be counted")
+	assert.Equal(t, 2, result.TotalNew(), "TotalNew() must include ResearchLogs and Studies")
+	assert.Len(t, dest.ResearchLogs, 2)
+	assert.Contains(t, dest.ResearchLogs, "researchlog-new")
+	assert.Len(t, dest.Studies, 1)
+	assert.Contains(t, dest.Studies, "study-new")
+}
+
 func TestMergeArchives_Conflicts(t *testing.T) {
 	dest := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
