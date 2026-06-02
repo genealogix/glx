@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GLX drift allowlist",
+  "description": "Schema for .claude/drift-allowlist.yaml — known, per-symbol drift suppressions consumed by the /check-*-drift slash commands (and future deterministic checkers, see genealogix/glx#673 and #295). Each list entry suppresses exactly one drift finding and is either PERMANENT (by-design; permanent:true, no tracking_issue) or TEMPORARY (a deferral that must reference an open tracking issue). This schema is NOT a GLX archive-format schema, so it lives under .claude/ rather than specification/schema/v1/ and is validated by specification/validate-drift-allowlist.mjs, not the entity meta-schema.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["file", "symbol", "reason", "added"],
+    "properties": {
+      "file": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Repo-relative path of the file containing the drifting symbol (e.g. go-glx/types.go)."
+      },
+      "symbol": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Qualified symbol the suppression applies to (e.g. GLXFile.ImportMetadata, Metadata.Notes)."
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Why this drift is suppressed — enough context for a reviewer to judge whether it still applies."
+      },
+      "added": {
+        "type": "string",
+        "format": "date",
+        "description": "ISO date (YYYY-MM-DD) the entry was added to the allowlist. Quote it in YAML (e.g. \"2026-06-01\") so it parses as a string, not a timestamp."
+      },
+      "permanent": {
+        "type": "boolean",
+        "description": "true for by-design suppressions that will never be fixed. Omit (or false) for temporary deferrals."
+      },
+      "tracking_issue": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "GitHub issue number tracking the fix. Required for temporary deferrals; forbidden for permanent entries. A future deterministic checker (genealogix/glx#673, #295) fails loud when a referenced issue is CLOSED but the entry remains."
+      },
+      "go_type": {
+        "type": "string",
+        "description": "Optional: the Go type, when the drift is a type mismatch."
+      },
+      "schema_type": {
+        "type": "string",
+        "description": "Optional: the JSON-schema type, when the drift is a type mismatch."
+      },
+      "yaml_tag": {
+        "type": "string",
+        "description": "Optional: the Go field's yaml tag, when the drift is a name mismatch."
+      },
+      "schema_path": {
+        "type": "string",
+        "description": "Optional: path to the schema location (e.g. glx-file.schema.json#/properties/metadata/properties/notes)."
+      }
+    },
+    "oneOf": [
+      {
+        "title": "Temporary deferral — must reference a tracking issue",
+        "type": "object",
+        "properties": {
+          "permanent": { "const": false },
+          "tracking_issue": { "type": "integer", "minimum": 1 }
+        },
+        "required": ["tracking_issue"]
+      },
+      {
+        "title": "Permanent, by-design suppression — no tracking issue",
+        "type": "object",
+        "properties": {
+          "permanent": { "const": true },
+          "tracking_issue": false
+        },
+        "required": ["permanent"]
+      }
+    ]
+  },
+  "examples": [
+    [
+      {
+        "file": "go-glx/types.go",
+        "symbol": "GLXFile.ImportMetadata",
+        "yaml_tag": "metadata",
+        "reason": "Go field name differs from its yaml tag by design; the tag matches the schema, so there is no real drift.",
+        "permanent": true,
+        "added": "2026-06-01"
+      },
+      {
+        "file": "go-glx/types.go",
+        "symbol": "Some.Field",
+        "go_type": "SomeType",
+        "schema_type": "string",
+        "schema_path": "some.schema.json#/properties/some/properties/field",
+        "reason": "Deferred until the schema is widened to match the Go marshaler.",
+        "tracking_issue": 1234,
+        "added": "2026-06-01"
+      }
+    ]
+  ]
+}
