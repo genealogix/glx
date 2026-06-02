@@ -34,12 +34,15 @@ addFormats(ajv);
 const validate = ajv.compile(JSON.parse(readFileSync(SCHEMA, "utf8")));
 
 const entries = yaml.load(readFileSync(ALLOWLIST, "utf8"));
+// Include a type discriminator in duplicate-key components so any unexpected
+// non-string values do not collapse to the same serialized tuple.
 const makeKeyComponent = (value) =>
   typeof value === "string" ? ["string", value] : ["non-string", typeof value, String(value)];
 
 if (!validate(entries)) {
   console.error(`${ALLOWLIST} INVALID:`);
   console.error(validate.errors);
+  // Defensive fallback: if ajv ever reports invalid without populated errors.
   errors += validate.errors?.length ?? 1;
 } else {
   // Schema validation has confirmed `entries` is an array of well-formed objects.
