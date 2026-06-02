@@ -65,6 +65,8 @@ When a feature is added and then enhanced/refined in the same version, combine t
 
 The result should read as if the feature was implemented correctly the first time.
 
+**Preserve every reference.** This is the highest-risk part of compaction: a careless merge can silently drop a `(#688)` or swap it for `(#687)`, and `CONTRIBUTING.md` requires every changelog entry to carry an issue or PR reference. When consolidating bullets, the merged bullet MUST carry the **union** of every reference from every source bullet — never drop, renumber, or invent one. "Reference" means any `#NNN`, in any form: bare/inline (`tracked by #673`), parenthesized (`(#681)`), or prefixed (`Fixes #NNN`, `Closes #NNN`, `(PR #NNN)`), plus any bare commit SHA. This matches what the step 4a/4c grep inventories — the prose rule and the deterministic check cover exactly the same set. For example, an Added entry `(#681)` merged with a Fixed entry `(#688, Fixes #687)` becomes a single entry carrying `(#681, Fixes #687, fix in #688)`. Reference preservation is verified deterministically after the rewrite is computed and before it is written to disk (see Process steps 4a–4c).
+
 ### 4. Preserve Structure
 
 - Keep the VitePress frontmatter and preamble unchanged
@@ -82,12 +84,28 @@ The result should read as if the feature was implemented correctly the first tim
 
 1. Run pre-flight checks (1-3 above). Stop if any check fails.
 2. Read `CHANGELOG.md`
-3. Extract ONLY the latest version section
-4. Apply rules 1-5 to that section
-5. Write the compacted changelog back
+3. Extract ONLY the latest version section. Save this verbatim original to a temporary file (e.g. `"${TMPDIR:-/tmp}/glx-section.before"`) — it is the baseline for the reference check below. The extraction is the latest section from its `## [` header to the line before the next `## [` header:
+
+       awk '/^## \[/{n++} n==1' CHANGELOG.md > "${TMPDIR:-/tmp}/glx-section.before"
+
+4. Apply rules 1-5 to that section to produce the rewritten section **in memory** — do not write `CHANGELOG.md` yet. Save the rewritten section to a second temporary file (e.g. `"${TMPDIR:-/tmp}/glx-section.after"`).
+4a. **Reference inventory (pre-compaction).** Extract the reference set from the *original* section:
+
+       grep -oE '#[0-9]+|[0-9a-f]{7,40}' "${TMPDIR:-/tmp}/glx-section.before" | sort -u
+
+    The `#[0-9]+` alternative catches `(#NNN)`, `Fixes #NNN`, `Closes #NNN`, and `(PR #NNN)`; the `[0-9a-f]{7,40}` alternative catches bare commit SHAs. (Bare-hex matching can rarely match a prose word like `feedbac`; that only ever causes the check to *over*-refuse, never to miss a real ref, so it fails safe.) Call this set **R_pre**.
+4b. **Account for intentional removals.** Some rules legitimately remove a whole entry, taking its references out of the section — most commonly a self-cancelling pair under Rule 2. Build **R_drop** = the references that appear *only* inside entries you deliberately removed in full (they do not also appear in any retained entry). The expected surviving set is **R_expected = R_pre − R_drop**, and every reference in **R_drop** must be named in the summary (step 6) alongside the entry it left with. Rule 5 normally contributes nothing here: it strips audit *prose* and **regroups** the underlying item into a normal section, so the item's `#NNN`/SHA references move with it and survive. Only if a Rule 5 cleanup ever deletes an entire ref-bearing bullet do that bullet's exclusive references enter **R_drop** — and, like any deliberate removal, they must be listed.
+4c. **Reference inventory (post-compaction) + hard error.** Extract the reference set from the rewritten section:
+
+       grep -oE '#[0-9]+|[0-9a-f]{7,40}' "${TMPDIR:-/tmp}/glx-section.after" | sort -u
+
+    Call this **R_post**. If any reference in **R_expected** is missing from **R_post**, **refuse to write `CHANGELOG.md`.** Report each dropped reference, the source entry it came from, and the entry it should have landed in. The user can then either (a) fix the consolidation and re-run, or (b) explicitly waive the check by re-running and stating that reference loss is acceptable — the command has no `--allow-ref-loss` flag, so this override is given in natural language and the agent must treat it as a deliberate instruction, proceed, and list every waived reference in the summary.
+4d. **Per-entry union rule.** Restating Rule 3 as the operational guard for 4c: whenever two bullets merge, the merged bullet carries the union of both bullets' references. This is what keeps **R_post ⊇ R_expected** by construction; steps 4a–4c are the deterministic backstop for when it silently fails.
+5. Write the compacted changelog back **only if step 4c passed** (or was explicitly waived).
 6. Show a summary of what changed:
    - Pre-flight check results (tag verified, previous section status, date updated)
    - Sections merged
    - Entries removed (self-cancelling)
    - Entries consolidated
+   - **Reference check**: count of references preserved (e.g. `12/12`), plus any in `R_drop` (intentionally removed with self-cancelling entries) or explicitly waived
    - Net reduction in line count
