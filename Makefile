@@ -36,9 +36,12 @@ check: tidy-check lint test check-schemas check-drift-allowlist check-links vali
 	@echo "All checks passed."
 
 ## Build
-# Version injected into the binary via ldflags. Override for a local release-like
-# build: `make build-cli VERSION=0.1.0-local`. Defaults to "dev" (matches the
-# fallback in glx/cli_commands.go). GoReleaser sets this from the git tag instead.
+# Version injected into the binary via ldflags, mirroring GoReleaser's -trimpath and
+# stripped ldflags. Override for a local release-like build:
+# `make build-cli VERSION=0.1.0-local`. Defaults to "dev" (matches the fallback in
+# glx/cli_commands.go); GoReleaser sets it from the git tag. GoReleaser also injects
+# main.commit/main.date (#384) -- the Makefile keeps to version-only so it stays
+# git-independent.
 VERSION ?= dev
 
 build-cli: ## Build the glx binary to bin/ (override version with VERSION=...)

@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
-- **`make build-cli` now matches GoReleaser's build flags** — the target builds with `-trimpath` and `-ldflags "-s -w -X main.version=$(VERSION)"` instead of a bare `go build`, so local binaries report a version (`glx --version`), strip debug symbols (~27% smaller), and drop local filesystem paths for reproducibility. A new `VERSION` variable defaults to `dev` (matching the `glx/cli_commands.go` fallback) and can be overridden, e.g. `make build-cli VERSION=0.1.0-local`. Aligning `commit`/`date` injection is tracked separately in #384. (#440)
+- **`make build-cli` now builds with GoReleaser's `-trimpath` and stripped ldflags** — the target builds with `-trimpath` and `-ldflags "-s -w -X main.version=$(VERSION)"` instead of a bare `go build`, so local binaries report a version (`glx --version`), strip debug symbols (~27% smaller), and drop local filesystem paths for reproducibility. A new `VERSION` variable defaults to `dev` (matching the `glx/cli_commands.go` fallback) and can be overridden, e.g. `make build-cli VERSION=0.1.0-local`. This aligns the target on stripping, `-trimpath`, and version injection; GoReleaser additionally injects `commit`/`date` (added in #384), which the Makefile omits to keep local builds git-independent. (#440)
 
 - **`/check-code-drift` and `/check-schema-drift` now read the drift allowlist** instead of hardcoding known-drift notes inline. Removed the stale `Metadata.Notes` "known drift point" note — that drift was already resolved by widening `glx-file.schema.json` `metadata.notes` to `oneOf[string, array]`, which is exactly the go-stale-and-mislead failure mode #797 targets. (#797)
 
