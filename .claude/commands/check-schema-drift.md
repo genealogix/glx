@@ -9,6 +9,18 @@ model: claude-opus-4-7
 
 You are tasked with identifying any drift between the GLX specification markdown files and the JSON schemas.
 
+## Allowlisted Drift (read this first)
+
+Before analyzing, read **`.claude/drift-allowlist.yaml`** (validated by
+`.claude/drift-allowlist.schema.json`) — the single source of truth for known,
+triaged drift, shared with `/check-code-drift`. If a finding concerns the same
+`file` and symbol as an entry (match on symbol identity, not exact string),
+suppress it: `permanent: true` is by-design (not drift); an
+entry with a `tracking_issue` is a temporary deferral (refer to the issue rather
+than re-reporting). Everything not in the allowlist is reported normally. The
+allowlist holds only per-symbol exceptions — not class-level methodology — and is
+human-curated, so don't invent entries.
+
 ## Source of Truth Flow
 
 **IMPORTANT**: The source of truth hierarchy is:
