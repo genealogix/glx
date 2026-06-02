@@ -950,6 +950,7 @@ Standard properties include:
 - `ended_on` - When the relationship ended
 - `location` - Location of the relationship
 - `description` - Relationship description
+- `number_of_children` - Recorded number of children of a couple (GEDCOM `FAM.NCHI`)
 
 ### Place Properties Vocabulary
 

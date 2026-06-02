@@ -1181,6 +1181,76 @@ func TestExportFamily_MarriageWithoutStartEvent_NoMarr(t *testing.T) {
 	}
 }
 
+func TestExportFamily_NumberOfChildren(t *testing.T) {
+	// A marriage relationship with a number_of_children property should emit
+	// a FAM.NCHI subrecord.
+	glxFile := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"sex": "male", "name": map[string]any{"value": "John"}}},
+			"person-2": {Properties: map[string]any{"sex": "female", "name": map[string]any{"value": "Jane"}}},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeMarriage,
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRoleSpouse},
+					{Person: "person-2", Role: ParticipantRoleSpouse},
+				},
+				Properties: map[string]any{
+					RelationshipPropertyNumberOfChildren: 3,
+				},
+			},
+		},
+		Events:            make(map[string]*Event),
+		EventTypes:        make(map[string]*VocabularyEntry),
+		PersonProperties:  make(map[string]*PropertyDefinition),
+		RelationshipTypes: make(map[string]*VocabularyEntry),
+		Sources:           make(map[string]*Source),
+		Citations:         make(map[string]*Citation),
+		Repositories:      make(map[string]*Repository),
+		Media:             make(map[string]*Media),
+		Assertions:        make(map[string]*Assertion),
+	}
+
+	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
+		t.Fatal(err)
+	}
+
+	expCtx := &ExportContext{
+		GLX:                      glxFile,
+		Version:                  GEDCOM551,
+		Logger:                   NewImportLogger(nil),
+		ExportIndex:              buildExportIndex(glxFile),
+		PersonXRefMap:            map[string]string{"person-1": "@I1@", "person-2": "@I2@"},
+		SourceXRefMap:            make(map[string]string),
+		RepositoryXRefMap:        make(map[string]string),
+		MediaXRefMap:             make(map[string]string),
+		PlaceStrings:             make(map[string]string),
+		PersonEvents:             make(map[string][]string),
+		PersonSpouseFamilies:     make(map[string][]string),
+		PersonChildFamilies:      make(map[string][]childFamilyRef),
+		PersonPropertyAssertions: make(map[string]map[string][]*Assertion),
+		Families:                 []*ExportFamily{},
+		FamilyXRefMap:            make(map[string]string),
+	}
+
+	reconstructFamilies(expCtx)
+	require.Len(t, expCtx.Families, 1)
+
+	record := exportFamily(expCtx.Families[0], expCtx)
+
+	var nchiValue string
+	var foundNCHI bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagNchi {
+			foundNCHI = true
+			nchiValue = sub.Value
+		}
+	}
+	assert.True(t, foundNCHI, "FAM should emit NCHI from number_of_children property")
+	assert.Equal(t, "3", nchiValue)
+}
+
 // ============================================================================
 // Marriage TYPE export tests
 // ============================================================================

@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"strconv"
 )
 
 // convertFamily converts a GEDCOM FAM record to GLX Relationships and Events
@@ -40,6 +41,7 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 	var objeRecords []*GEDCOMRecord
 	var extensionRecords []*GEDCOMRecord
 	var noteTexts []string
+	var nchiRecord *GEDCOMRecord
 
 	for _, sub := range famRecord.SubRecords {
 		switch sub.Tag {
@@ -78,6 +80,10 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			familyEventRecords = append(familyEventRecords, sub)
 		case GedcomTagObje:
 			objeRecords = append(objeRecords, sub)
+		case GedcomTagNchi:
+			// Number of children — a FAM-level family attribute, distinct from
+			// the count of CHIL pointers. Stored on the marriage relationship.
+			nchiRecord = sub
 		default:
 			if isExtensionTag(sub.Tag) {
 				extensionRecords = append(extensionRecords, sub)
@@ -141,6 +147,11 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 			appendExtensionTag(relationship.Properties, ext)
 		}
 
+		// Store NCHI (number of children) as a relationship property
+		if nchiRecord != nil {
+			applyNumberOfChildren(relationship.Properties, nchiRecord, conv)
+		}
+
 		conv.GLX.Relationships[relationshipID] = relationship
 		conv.Stats.RelationshipsCreated++
 
@@ -162,6 +173,9 @@ func convertFamily(famRecord *GEDCOMRecord, conv *ConversionContext) error {
 		// tags have no entity owner. Warn instead of silently dropping.
 		for _, ext := range extensionRecords {
 			conv.addWarning(ext.Line, ext.Tag, "Extension tag dropped: FAM has no spouses")
+		}
+		if nchiRecord != nil {
+			conv.addWarning(nchiRecord.Line, nchiRecord.Tag, "NCHI dropped: FAM has no spouses")
 		}
 	}
 
@@ -427,6 +441,32 @@ func convertFamilyCensus(husbandID, wifeID string, censRecord *GEDCOMRecord, con
 		}
 		applyCensusData(spouseID, person, &data, conv)
 	}
+}
+
+// applyNumberOfChildren stores a FAM-level NCHI record as the number_of_children
+// relationship property. The payload is parsed to an integer so it validates
+// against the property's integer value_type; a non-numeric payload is preserved
+// verbatim with a warning rather than silently dropped.
+func applyNumberOfChildren(props map[string]any, nchiRecord *GEDCOMRecord, conv *ConversionContext) {
+	if nchiRecord.Value == "" {
+		return
+	}
+
+	propertyKey, ok := conv.GEDCOMIndex.RelationshipProperties[GedcomTagNchi]
+	if !ok {
+		// No vocabulary mapping (e.g., custom vocabulary without NCHI) —
+		// fall back to the standard property key.
+		propertyKey = RelationshipPropertyNumberOfChildren
+	}
+
+	if count, err := strconv.Atoi(nchiRecord.Value); err == nil {
+		props[propertyKey] = count
+
+		return
+	}
+
+	conv.addWarning(nchiRecord.Line, nchiRecord.Tag, "NCHI value is not an integer: "+nchiRecord.Value)
+	props[propertyKey] = nchiRecord.Value
 }
 
 // mapFamilyEventType maps GEDCOM family event tags to GLX event types using the vocabulary index.

@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- **GEDCOM import/export: FAM.NCHI (number of children)** — The GEDCOM `FAM.NCHI` tag, previously parsed but silently dropped, is now stored as a new `number_of_children` relationship property (integer) on the marriage relationship and round-trips back to `FAM.NCHI` on export. NCHI captures the recorded child count, which can legitimately differ from the number of individually-linked children. A non-numeric payload is preserved verbatim with a warning rather than dropped; NCHI on a spouseless FAM (no relationship to attach to) now warns instead of disappearing silently. Adds the `number_of_children` entry to the `relationship-properties` standard vocabulary. (#490)
 - **`.claude/drift-allowlist.yaml`** — Machine-readable, self-validating allowlist of known, per-symbol drift suppressions for the `/check-*-drift` slash commands, replacing inline "known drift" prose with an auditable file. Each entry is either permanent (by-design) or a temporary deferral that must reference a tracking issue; this is enforced by `.claude/drift-allowlist.schema.json` via the new `make check-drift-allowlist` target, wired into `make check` and the `validate-spec` CI workflow. The closed-issue staleness gate (failing when a temporary entry's tracking issue is closed) is left to the deterministic drift checkers tracked by #673 / #295. (#797)
 
 ### Changed

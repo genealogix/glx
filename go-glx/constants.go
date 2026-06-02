@@ -114,6 +114,11 @@ const (
 	PersonPropertyLiving     = "living" // Boolean; opt-in marker honored by export privacy filters
 )
 
+// Standard Relationship Property Names - commonly used properties on Relationship entities
+const (
+	RelationshipPropertyNumberOfChildren = "number_of_children" // Known child count; maps to GEDCOM FAM.NCHI
+)
+
 // Deprecated property constants - these properties have been removed from the spec.
 // Use birth/death/burial events instead. Kept for validation error messages and migration tooling.
 const (
@@ -224,6 +229,7 @@ const (
 	GedcomTagHusb = "HUSB" // Husband reference
 	GedcomTagWife = "WIFE" // Wife reference
 	GedcomTagChil = "CHIL" // Child reference
+	GedcomTagNchi = "NCHI" // Number of children (FAM-level family attribute)
 )
 
 // GEDCOM Tags - Associations

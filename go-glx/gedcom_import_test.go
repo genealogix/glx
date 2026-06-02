@@ -1275,6 +1275,119 @@ func TestImportFamilyNote_PreservedOnRelationship(t *testing.T) {
 	assert.True(t, foundNote, "FAM-level NOTE should be stored on relationship.Notes")
 }
 
+func TestImportFamilyNCHI_StoredOnRelationship(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI 3
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var foundNCHI bool
+	for _, rel := range glxFile.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, 3, val, "NCHI should be stored as an integer on the relationship")
+			foundNCHI = true
+		}
+	}
+	assert.True(t, foundNCHI, "FAM-level NCHI should be stored on the marriage relationship")
+
+	// The registered number_of_children property (integer) must validate cleanly —
+	// no "unknown property" or "expected integer" warnings.
+	for _, w := range glxFile.Validate().Warnings {
+		assert.NotContains(t, w.Message, RelationshipPropertyNumberOfChildren,
+			"number_of_children should not produce a validation warning")
+	}
+}
+
+func TestImportFamilyNCHI_NonNumericPreservedWithWarning(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI many
+0 TRLR
+`
+	glxFile, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var foundNCHI bool
+	for _, rel := range glxFile.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, "many", val, "non-numeric NCHI should be preserved verbatim")
+			foundNCHI = true
+		}
+	}
+	assert.True(t, foundNCHI, "non-numeric NCHI should still be preserved on the relationship")
+
+	var warned bool
+	for _, w := range result.Statistics.Warnings {
+		if strings.Contains(w.Message, "NCHI value is not an integer") {
+			warned = true
+		}
+	}
+	assert.True(t, warned, "non-numeric NCHI should emit a warning")
+}
+
+func TestImportFamilyNCHI_NoSpouseWarns(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Child /Smith/
+1 FAMC @F1@
+0 @F1@ FAM
+1 CHIL @I1@
+1 NCHI 1
+0 TRLR
+`
+	_, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var warned bool
+	for _, w := range result.Statistics.Warnings {
+		if strings.Contains(w.Message, "NCHI dropped: FAM has no spouses") {
+			warned = true
+		}
+	}
+	assert.True(t, warned, "NCHI on a spouseless FAM should warn instead of dropping silently")
+}
+
 func TestImportFamilyRESI_DistributedToSpouses(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC

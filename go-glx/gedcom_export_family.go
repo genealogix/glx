@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 )
 
 // ExportFamily represents a reconstructed GEDCOM FAM record from GLX relationships.
@@ -349,6 +350,11 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 				rel.StartEvent, rel.EndEvent, expCtx)
 			record.SubRecords = append(record.SubRecords, familyEvents...)
 
+			// NCHI (number of children) from the number_of_children property
+			if nchiRecord := exportNumberOfChildren(rel, expCtx); nchiRecord != nil {
+				record.SubRecords = append(record.SubRecords, nchiRecord)
+			}
+
 			// NOTE from relationship
 			for _, note := range rel.Notes {
 				record.SubRecords = append(record.SubRecords, &GEDCOMRecord{
@@ -363,6 +369,45 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 	}
 
 	return record
+}
+
+// exportNumberOfChildren emits a FAM.NCHI subrecord from a marriage
+// relationship's number_of_children property, when the property is set and the
+// loaded vocabulary maps it to a GEDCOM tag.
+func exportNumberOfChildren(rel *Relationship, expCtx *ExportContext) *GEDCOMRecord {
+	gedcomTag, ok := expCtx.ExportIndex.RelationshipProperties[RelationshipPropertyNumberOfChildren]
+	if !ok || gedcomTag == "" {
+		return nil
+	}
+
+	value := formatCountProperty(rel.Properties[RelationshipPropertyNumberOfChildren])
+	if value == "" {
+		return nil
+	}
+
+	return &GEDCOMRecord{
+		Tag:   gedcomTag,
+		Value: value,
+	}
+}
+
+// formatCountProperty renders an integer-typed property value as a GEDCOM
+// payload. YAML decoding yields int (or int64/float64 depending on source), and
+// a non-numeric value imported from a malformed NCHI is preserved as a string.
+// Returns "" for absent or unsupported value shapes.
+func formatCountProperty(value any) string {
+	switch v := value.(type) {
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case float64:
+		return strconv.FormatInt(int64(v), 10)
+	case string:
+		return v
+	default:
+		return ""
+	}
 }
 
 // exportFamilyEvent creates a family event subrecord (MARR, DIV, etc.)

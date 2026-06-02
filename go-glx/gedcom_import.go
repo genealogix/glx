@@ -182,6 +182,9 @@ type GEDCOMIndex struct {
 	// EventProperties maps GEDCOM event detail tags to GLX property keys (e.g., "AGE" → "age_at_event")
 	EventProperties map[string]string
 
+	// RelationshipProperties maps GEDCOM family attribute tags to GLX property keys (e.g., "NCHI" → "number_of_children")
+	RelationshipProperties map[string]string
+
 	// CitationProperties maps GEDCOM citation tags to GLX property keys (e.g., "PAGE" → "locator")
 	CitationProperties map[string]string
 
@@ -198,14 +201,15 @@ type GEDCOMIndex struct {
 // buildGEDCOMIndex constructs reverse lookup indices from vocabularies in the GLXFile.
 func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 	index := &GEDCOMIndex{
-		EventTypes:           make(map[string]string),
-		RepositoryTypes:      make(map[string]string),
-		PersonProperties:     make(map[string]string),
-		EventProperties:      make(map[string]string),
-		CitationProperties:   make(map[string]string),
-		SourceProperties:     make(map[string]string),
-		RepositoryProperties: make(map[string]string),
-		MediaProperties:      make(map[string]string),
+		EventTypes:             make(map[string]string),
+		RepositoryTypes:        make(map[string]string),
+		PersonProperties:       make(map[string]string),
+		EventProperties:        make(map[string]string),
+		RelationshipProperties: make(map[string]string),
+		CitationProperties:     make(map[string]string),
+		SourceProperties:       make(map[string]string),
+		RepositoryProperties:   make(map[string]string),
+		MediaProperties:        make(map[string]string),
 	}
 
 	// Build event type index from vocabulary
@@ -238,6 +242,12 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 	for key, propDef := range glx.EventProperties {
 		if propDef.GEDCOM != "" {
 			index.EventProperties[propDef.GEDCOM] = key
+		}
+	}
+
+	for key, propDef := range glx.RelationshipProperties {
+		if propDef.GEDCOM != "" {
+			index.RelationshipProperties[propDef.GEDCOM] = key
 		}
 	}
 
