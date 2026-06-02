@@ -53,6 +53,9 @@ jobs:
 
       - name: Validate JSON Schemas
         run: make check-schemas
+
+      - name: Validate drift allowlist
+        run: make check-drift-allowlist
   
   validate-examples:
     runs-on: ubuntu-latest
