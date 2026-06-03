@@ -350,10 +350,8 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 				rel.StartEvent, rel.EndEvent, expCtx)
 			record.SubRecords = append(record.SubRecords, familyEvents...)
 
-			// NCHI (number of children) from the number_of_children property
-			if nchiRecord := exportNumberOfChildren(rel, expCtx); nchiRecord != nil {
-				record.SubRecords = append(record.SubRecords, nchiRecord)
-			}
+			// FAM-level relationship properties mapped to GEDCOM tags (e.g. NCHI)
+			record.SubRecords = append(record.SubRecords, exportMappedRelationshipProperties(rel, expCtx)...)
 
 			// NOTE from relationship
 			for _, note := range rel.Notes {
@@ -371,24 +369,41 @@ func exportFamily(family *ExportFamily, expCtx *ExportContext) *GEDCOMRecord {
 	return record
 }
 
-// exportNumberOfChildren emits a FAM.NCHI subrecord from a marriage
-// relationship's number_of_children property, when the property is set and the
-// loaded vocabulary maps it to a GEDCOM tag.
-func exportNumberOfChildren(rel *Relationship, expCtx *ExportContext) *GEDCOMRecord {
-	gedcomTag, ok := expCtx.ExportIndex.RelationshipProperties[RelationshipPropertyNumberOfChildren]
-	if !ok || gedcomTag == "" {
+// exportMappedRelationshipProperties emits FAM-level subrecords for any
+// relationship property that the loaded vocabulary maps to a GEDCOM tag
+// (currently number_of_children -> NCHI). Driving emission off the same
+// vocabulary mapping used on import keeps the two sides symmetric: whatever
+// property key the vocabulary assigns to a GEDCOM tag on import is the key
+// export reads back, so a custom vocabulary that renames the property still
+// round-trips. Keys are sorted for deterministic output.
+func exportMappedRelationshipProperties(rel *Relationship, expCtx *ExportContext) []*GEDCOMRecord {
+	if len(rel.Properties) == 0 || len(expCtx.ExportIndex.RelationshipProperties) == 0 {
 		return nil
 	}
 
-	value := formatCountProperty(rel.Properties[RelationshipPropertyNumberOfChildren])
-	if value == "" {
-		return nil
+	keys := make([]string, 0, len(rel.Properties))
+	for key := range rel.Properties {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var records []*GEDCOMRecord
+	for _, key := range keys {
+		gedcomTag, ok := expCtx.ExportIndex.RelationshipProperties[key]
+		if !ok || gedcomTag == "" {
+			continue
+		}
+		value := formatCountProperty(rel.Properties[key])
+		if value == "" {
+			continue
+		}
+		records = append(records, &GEDCOMRecord{
+			Tag:   gedcomTag,
+			Value: value,
+		})
 	}
 
-	return &GEDCOMRecord{
-		Tag:   gedcomTag,
-		Value: value,
-	}
+	return records
 }
 
 // formatCountProperty renders an integer-typed property value as a GEDCOM
@@ -402,7 +417,11 @@ func formatCountProperty(value any) string {
 	case int64:
 		return strconv.FormatInt(v, 10)
 	case float64:
-		return strconv.FormatInt(int64(v), 10)
+		// Render losslessly rather than truncating: an integral float (3.0)
+		// becomes "3", while a fractional value (3.5) keeps its precision
+		// instead of being silently truncated to "3". Fractional counts are
+		// malformed for NCHI, but preserving the value beats silent data loss.
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	case string:
 		return v
 	default:

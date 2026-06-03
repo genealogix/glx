@@ -449,6 +449,10 @@ func convertFamilyCensus(husbandID, wifeID string, censRecord *GEDCOMRecord, con
 // verbatim with a warning rather than silently dropped.
 func applyNumberOfChildren(props map[string]any, nchiRecord *GEDCOMRecord, conv *ConversionContext) {
 	if nchiRecord.Value == "" {
+		// An NCHI tag with no payload is malformed — warn for parity with the
+		// non-numeric branch below rather than dropping it silently.
+		conv.addWarning(nchiRecord.Line, nchiRecord.Tag, "NCHI has no value")
+
 		return
 	}
 

@@ -1388,6 +1388,109 @@ func TestImportFamilyNCHI_NoSpouseWarns(t *testing.T) {
 	assert.True(t, warned, "NCHI on a spouseless FAM should warn instead of dropping silently")
 }
 
+func TestImportFamilyNCHI_Zero(t *testing.T) {
+	// NCHI 0 ("zero children recorded") is a valid, distinct value from an
+	// absent NCHI ("count unknown") and must be stored, not skipped.
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI 0
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var found bool
+	for _, rel := range glxFile.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, 0, val, "NCHI 0 should be stored as integer zero, not skipped")
+			found = true
+		}
+	}
+	assert.True(t, found, "NCHI 0 should be stored on the relationship")
+}
+
+func TestImportFamilyNCHI_DuplicateKeepsLast(t *testing.T) {
+	// GEDCOM allows at most one NCHI per FAM; if a malformed file repeats it,
+	// the last occurrence wins (matching the DIV handling pattern).
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI 2
+1 NCHI 7
+0 TRLR
+`
+	glxFile, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var found bool
+	for _, rel := range glxFile.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, 7, val, "duplicate NCHI tags should keep the last value")
+			found = true
+		}
+	}
+	assert.True(t, found, "duplicate NCHI should still be stored")
+}
+
+func TestImportFamilyNCHI_EmptyWarns(t *testing.T) {
+	// An NCHI tag with no payload is malformed; it should warn rather than be
+	// dropped silently (parity with the non-numeric NCHI warning).
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME John /Smith/\n1 SEX M\n1 FAMS @F1@\n" +
+		"0 @I2@ INDI\n1 NAME Mary /Jones/\n1 SEX F\n1 FAMS @F1@\n" +
+		"0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n1 NCHI\n0 TRLR\n"
+
+	glxFile, result, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err)
+
+	var warned bool
+	for _, w := range result.Statistics.Warnings {
+		if strings.Contains(w.Message, "NCHI has no value") {
+			warned = true
+		}
+	}
+	assert.True(t, warned, "empty NCHI should emit a warning")
+
+	// And nothing should be stored for an empty value.
+	for _, rel := range glxFile.Relationships {
+		_, ok := rel.Properties[RelationshipPropertyNumberOfChildren]
+		assert.False(t, ok, "empty NCHI should not store a number_of_children property")
+	}
+}
+
 func TestImportFamilyRESI_DistributedToSpouses(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC

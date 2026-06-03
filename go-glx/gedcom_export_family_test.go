@@ -1251,6 +1251,110 @@ func TestExportFamily_NumberOfChildren(t *testing.T) {
 	assert.Equal(t, "3", nchiValue)
 }
 
+// TestExportFamily_NumberOfChildren_CustomVocabularyKey verifies export is
+// driven by the vocabulary's GEDCOM mapping, not a hardcoded standard key. When
+// a custom vocabulary maps NCHI to a non-standard property key, import stores
+// the value under that key — export must read it back via the same mapping so
+// the value still round-trips to FAM.NCHI.
+func TestExportFamily_NumberOfChildren_CustomVocabularyKey(t *testing.T) {
+	const customKey = "child_count"
+
+	glxFile := &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{"sex": "male", "name": map[string]any{"value": "John"}}},
+			"person-2": {Properties: map[string]any{"sex": "female", "name": map[string]any{"value": "Jane"}}},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeMarriage,
+				Participants: []Participant{
+					{Person: "person-1", Role: ParticipantRoleSpouse},
+					{Person: "person-2", Role: ParticipantRoleSpouse},
+				},
+				Properties: map[string]any{
+					customKey: 4,
+				},
+			},
+		},
+		Events:            make(map[string]*Event),
+		EventTypes:        make(map[string]*VocabularyEntry),
+		PersonProperties:  make(map[string]*PropertyDefinition),
+		RelationshipTypes: make(map[string]*VocabularyEntry),
+		Sources:           make(map[string]*Source),
+		Citations:         make(map[string]*Citation),
+		Repositories:      make(map[string]*Repository),
+		Media:             make(map[string]*Media),
+		Assertions:        make(map[string]*Assertion),
+	}
+
+	if err := LoadStandardVocabulariesIntoGLX(glxFile); err != nil {
+		t.Fatal(err)
+	}
+
+	// Replace the relationship-properties vocabulary with one that maps NCHI to
+	// a custom key — exactly the case where a hardcoded standard key would fail.
+	glxFile.RelationshipProperties = map[string]*PropertyDefinition{
+		customKey: {Label: "Children", ValueType: "integer", GEDCOM: GedcomTagNchi},
+	}
+
+	expCtx := &ExportContext{
+		GLX:                      glxFile,
+		Version:                  GEDCOM551,
+		Logger:                   NewImportLogger(nil),
+		ExportIndex:              buildExportIndex(glxFile),
+		PersonXRefMap:            map[string]string{"person-1": "@I1@", "person-2": "@I2@"},
+		SourceXRefMap:            make(map[string]string),
+		RepositoryXRefMap:        make(map[string]string),
+		MediaXRefMap:             make(map[string]string),
+		PlaceStrings:             make(map[string]string),
+		PersonEvents:             make(map[string][]string),
+		PersonSpouseFamilies:     make(map[string][]string),
+		PersonChildFamilies:      make(map[string][]childFamilyRef),
+		PersonPropertyAssertions: make(map[string]map[string][]*Assertion),
+		Families:                 []*ExportFamily{},
+		FamilyXRefMap:            make(map[string]string),
+	}
+
+	reconstructFamilies(expCtx)
+	require.Len(t, expCtx.Families, 1)
+
+	record := exportFamily(expCtx.Families[0], expCtx)
+
+	var nchiValue string
+	var foundNCHI bool
+	for _, sub := range record.SubRecords {
+		if sub.Tag == GedcomTagNchi {
+			foundNCHI = true
+			nchiValue = sub.Value
+		}
+	}
+	assert.True(t, foundNCHI, "FAM should emit NCHI even when the vocabulary maps it to a custom property key")
+	assert.Equal(t, "4", nchiValue)
+}
+
+func TestFormatCountProperty(t *testing.T) {
+	tests := []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{"int", 3, "3"},
+		{"int zero", 0, "0"},
+		{"int64", int64(7), "7"},
+		{"float64 integral", float64(5), "5"},  // YAML "5.0" — no decimal point in output
+		{"float64 fractional", 3.5, "3.5"},     // preserved, not truncated to "3"
+		{"string passthrough", "many", "many"}, // malformed value preserved from import
+		{"nil dropped", nil, ""},
+		{"unsupported map dropped", map[string]any{"value": 2}, ""},
+		{"unsupported slice dropped", []any{1, 2}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, formatCountProperty(tt.value))
+		})
+	}
+}
+
 // ============================================================================
 // Marriage TYPE export tests
 // ============================================================================
