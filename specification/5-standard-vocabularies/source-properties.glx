@@ -12,26 +12,26 @@ source_properties:
 
   abbreviation:
     label: "Abbreviation"
-    description: "Short reference name or title for the source (from GEDCOM ABBR tag)"
+    description: "Short reference name used in citations when the source's full title is too long to repeat"
     value_type: string
     gedcom: "ABBR"
 
   call_number:
     label: "Call Number"
-    description: "Repository catalog or call number where this source is held (from GEDCOM CALN tag)"
+    description: "Repository catalog identifier used to locate this source within a specific archive or library, such as a shelf mark or accession number"
     value_type: string
     gedcom: "CALN"
 
   events_recorded:
     label: "Events Recorded"
-    description: "Types of events this source documents (e.g., births, marriages, deaths) (from GEDCOM EVEN tag)"
+    description: "Types of life events documented by this source, such as births, marriages, or deaths"
     value_type: string
     multi_value: true
     gedcom: "EVEN"
 
   agency:
     label: "Responsible Agency"
-    description: "Agency or organization responsible for creating or maintaining this source (from GEDCOM AGNC tag)"
+    description: "Organization responsible for creating or maintaining this source, such as a government office, church, or archive"
     value_type: string
     gedcom: "AGNC"
 
@@ -53,7 +53,7 @@ source_properties:
 
   publication_info:
     label: "Publication Information"
-    description: "Publication details including publisher, place, date, and edition (from GEDCOM PUBL tag)"
+    description: "Publication details for the source, including publisher, place of publication, date, and edition"
     value_type: string
     gedcom: "PUBL"
 
