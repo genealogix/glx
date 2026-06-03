@@ -31,9 +31,15 @@ jobs:
         with:
           go-version: '1.26'
           cache: true
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
 
       - name: Verify go.mod is tidy
         run: go mod tidy -diff
+
+      - name: Verify tools/go.mod is tidy
+        run: go -C tools mod tidy -diff
 
   validate-schemas:
     runs-on: ubuntu-latest

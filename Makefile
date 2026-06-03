@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-drift-allowlist check-links validate-examples docs-cli release-snapshot
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check tools-tidy-check clean fmt check-schemas check-drift-allowlist check-links validate-examples docs-cli release-snapshot gosec vulncheck security
 
 .DEFAULT_GOAL := help
 
@@ -32,7 +32,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	lefthook install
 
 ## Verification
-check: tidy-check lint test check-schemas check-drift-allowlist check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check tools-tidy-check lint test check-schemas check-drift-allowlist check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -113,6 +113,22 @@ mod-verify: ## Verify Go module integrity
 
 tidy-check: ## Verify go.mod and go.sum are tidy
 	go mod tidy -diff
+
+tools-tidy-check: ## Verify tools/go.mod and tools/go.sum are tidy
+	go -C tools mod tidy -diff
+
+## Security
+# gosec and govulncheck are pinned via the tool directive in tools/go.mod (single
+# source of truth, shared with .github/workflows/security.yml). -modfile keeps the
+# tools' heavy dependency graph out of the main module.
+gosec: ## Run gosec static security analysis (pinned via tools/go.mod)
+	go tool -modfile=tools/go.mod gosec -quiet ./...
+
+vulncheck: ## Run govulncheck against the Go vulnerability DB (pinned via tools/go.mod)
+	go tool -modfile=tools/go.mod govulncheck ./...
+
+security: gosec vulncheck ## Run all Go security tools (gosec + govulncheck)
+	@echo "Security checks passed."
 
 ## Specification
 check-schemas: ## Validate JSON schema files
