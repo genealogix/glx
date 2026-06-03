@@ -1,8 +1,11 @@
 # `tools/` — pinned development tools
 
-This is a **separate Go module** (`github.com/genealogix/glx/tools`) that exists
-only to pin the versions of CI/development tools via the Go 1.24+
-[`tool` directive](https://go.dev/doc/go1.24#tool-tracking). It is **not**
+This is a **separate Go module** (`github.com/genealogix/glx/tools`) that pins the
+versions of *selected* CI/development tools via the Go 1.24+
+[`tool` directive](https://go.dev/doc/go1.24#tool-tracking). It does **not** track
+every CI tool — only those listed under [Tools pinned here](#tools-pinned-here);
+others are intentionally pinned elsewhere (see
+[Tools deliberately NOT here](#tools-deliberately-not-here)). It is **not**
 imported by, and shares no dependency graph with, the main module — so a tool's
 transitive dependencies never pollute the root `go.mod`/`go.sum` and are never
 inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
