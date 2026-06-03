@@ -709,6 +709,14 @@ func buildTreeRelIndex(a *glxlib.GLXFile) *treeRelIndex {
 		sort.SliceStable(kids, func(i, j int) bool {
 			yi, yj := birthYear(a, kids[i]), birthYear(a, kids[j])
 			if yi != yj {
+				// Unknown birth year (0) sorts last, matching findChildIDs.
+				if yi == 0 {
+					return false
+				}
+				if yj == 0 {
+					return true
+				}
+
 				return yi < yj
 			}
 

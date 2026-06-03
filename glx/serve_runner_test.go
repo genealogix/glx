@@ -288,6 +288,40 @@ func TestServeTreeDescendants(t *testing.T) {
 	assert.ElementsMatch(t, []string{"person-self", "person-sib"}, childIDs(got.Root))
 }
 
+// TestServeTreeChildOrderUnknownYearLast verifies the descendancy chart orders
+// children by birth year with unknown-year children last — matching findChildIDs
+// (the order glx summary uses), not year-0-first.
+func TestServeTreeChildOrderUnknownYearLast(t *testing.T) {
+	a := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-p":       {Properties: map[string]any{"name": "Parent"}},
+			"person-dated":   {Properties: map[string]any{"name": "Dated Child"}},
+			"person-undated": {Properties: map[string]any{"name": "Undated Child"}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-b": {Type: "birth", Date: "1850", Participants: []glxlib.Participant{{Person: "person-dated", Role: "principal"}}},
+		},
+		Relationships: map[string]*glxlib.Relationship{
+			"relationship-pc": {Type: "parent_child", Participants: []glxlib.Participant{
+				{Person: "person-p", Role: "parent"},
+				{Person: "person-undated", Role: "child"},
+				{Person: "person-dated", Role: "child"},
+			}},
+		},
+	}
+	sub, err := fs.Sub(webAssets, "web")
+	require.NoError(t, err)
+	srv := &viewerServer{archive: a, archivePath: "t", assets: sub}
+
+	var got struct {
+		Root *treeNodeDTO `json:"root"`
+	}
+	doServeRequest(t, srv, "/api/persons/person-p/tree?dir=descendants&gen=2", &got)
+
+	require.NotNil(t, got.Root)
+	require.Equal(t, []string{"person-dated", "person-undated"}, childIDs(got.Root))
+}
+
 func TestServeTreeGenClampedToDefault(t *testing.T) {
 	srv := newServeTestServer(t)
 	var got struct {
