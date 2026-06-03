@@ -453,3 +453,120 @@ func TestFirstLine(t *testing.T) {
 	assert.Empty(t, firstLine(""))
 	assert.Equal(t, "only", firstLine("only"))
 }
+
+func TestIsMarriageEventType(t *testing.T) {
+	assert.True(t, isMarriageEventType(glxlib.EventTypeMarriage))
+	assert.True(t, isMarriageEventType(glxlib.EventTypeEngagement))
+	assert.True(t, isMarriageEventType(glxlib.EventTypeMarriageLicense))
+	assert.False(t, isMarriageEventType(glxlib.EventTypeBirth))
+	assert.False(t, isMarriageEventType(""))
+}
+
+func TestDeriveProofAnswer(t *testing.T) {
+	archive := newTestArchiveForProof()
+
+	ans, found := deriveProofAnswer("marriage", "person-robert", archive)
+	assert.True(t, found)
+	assert.Contains(t, ans, "Mary Webb")
+
+	_, found = deriveProofAnswer("marriage", "person-lonely", archive)
+	assert.False(t, found, "no spouse relationship")
+
+	ans, found = deriveProofAnswer("identity", "person-jane", archive)
+	assert.True(t, found)
+	assert.Contains(t, ans, "Jane Webb")
+
+	_, found = deriveProofAnswer("birth", "person-lonely", archive)
+	assert.False(t, found, "no birth event")
+
+	_, found = deriveProofAnswer("death", "person-jane", archive)
+	assert.False(t, found, "no death event")
+
+	_, found = deriveProofAnswer("unknown-topic", "person-jane", archive)
+	assert.False(t, found)
+}
+
+func TestSpouseNames(t *testing.T) {
+	archive := newTestArchiveForProof()
+	assert.Equal(t, []string{"Mary Webb"}, spouseNames("person-robert", archive))
+	assert.Empty(t, spouseNames("person-lonely", archive))
+}
+
+func TestBuildProof_MarriageWithoutEvidence(t *testing.T) {
+	archive := newTestArchiveForProof()
+	// A spouse relationship exists, but no assertion backs the marriage, so the
+	// conclusion is insufficient even though the spouse can be named.
+	result := buildProof("person-robert", archive.Persons["person-robert"], "marriage", archive)
+
+	assert.Empty(t, result.Evidence)
+	assert.Equal(t, proofConclusionInsufficient, result.Conclusion)
+	assert.Contains(t, result.Summary, "No marriage established")
+}
+
+// TestRenderProof_FullResult exercises the text and Markdown renderers across
+// every branch: multi-citation and uncited evidence, high-priority gaps, logged
+// searches (with and without targets), and an unresolved subject-scoped conflict.
+func TestRenderProof_FullResult(t *testing.T) {
+	result := &proofResult{
+		PersonID:     "person-x",
+		PersonName:   "Test Person",
+		Question:     "death",
+		QuestionText: "When and where did Test Person die?",
+		Evidence: []proofEvidence{
+			{
+				AssertionID: "a-cited",
+				Subject:     "death event (1890)",
+				Property:    "date",
+				Value:       "1890",
+				Confidence:  "high",
+				Status:      "proven",
+				Notes:       "From death certificate.",
+				Support: []proofSupport{
+					{Ref: "cit-1", SourceID: "src-1", SourceTitle: "Death Certificate", Locator: "p.3"},
+					{Ref: "cit-2"},
+				},
+			},
+			{AssertionID: "a-uncited", Property: "place", Value: "Boston"},
+		},
+		Gaps: []proofGap{
+			{Label: "Probate/will", Priority: "high", Description: "names heirs"},
+			{Label: "Church records"},
+		},
+		Searches: []proofSearch{
+			{Query: "Test 1890 death", Source: "src-1", Result: "found"},
+			{Collection: "Vital Index", Repository: "repo-1", Result: "not_found"},
+			{},
+		},
+		Conflicts: []proofConflict{
+			{
+				Subject:  "death event (1890)",
+				Property: "date",
+				Values: []proofConflictValue{
+					{Value: "1890", Confidence: "high"},
+					{Value: "1891", Confidence: "medium"},
+				},
+				Resolved: false,
+			},
+		},
+		Conclusion: proofConclusionConflicted,
+		Summary:    "Conflicting evidence remains unresolved.",
+	}
+
+	text := captureStdout(t, func() { printProofText(result) })
+	assert.Contains(t, text, "Death Certificate (cit-1) +1 more")
+	assert.Contains(t, text, "Uncited assertion (a-uncited)")
+	assert.Contains(t, text, "-- HIGH PRIORITY")
+	assert.Contains(t, text, "Reasonably Exhaustive Search")
+	assert.Contains(t, text, "Test 1890 death @ src-1 -> found")
+	assert.Contains(t, text, "(search)")
+	assert.Contains(t, text, "death event (1890) date:")
+	assert.Contains(t, text, "UNRESOLVED")
+
+	md := captureStdout(t, func() { printProofMarkdown(result) })
+	assert.Contains(t, md, "## Reasonably Exhaustive Search")
+	assert.Contains(t, md, "Vital Index")
+	assert.Contains(t, md, "## Conflicts")
+	assert.Contains(t, md, "death event (1890) date")
+	assert.Contains(t, md, "Unresolved")
+	assert.Contains(t, md, "**HIGH PRIORITY**")
+}
