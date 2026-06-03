@@ -72,6 +72,31 @@ func readMerged(t *testing.T, in mergeDriverInputs) string {
 	return string(data)
 }
 
+// writeLargeTextFile streams `size` bytes of filler text to path using a small
+// reusable buffer, so tests can create files larger than the merge-driver cap
+// without allocating the whole (64+ MiB) payload in memory. The content is
+// plain 'x' bytes so git merge-file treats the file as text.
+func writeLargeTextFile(t *testing.T, path string, size int) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		t.Fatalf("create %q: %v", path, err)
+	}
+
+	chunk := bytes.Repeat([]byte("x"), 64*1024)
+	for remaining := size; remaining > 0; {
+		n := min(len(chunk), remaining)
+		if _, werr := f.Write(chunk[:n]); werr != nil {
+			f.Close()
+			t.Fatalf("write %q: %v", path, werr)
+		}
+		remaining -= n
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close %q: %v", path, err)
+	}
+}
+
 func TestMergeDriver_CleanAdditive_UnionsCitations(t *testing.T) {
 	in := stageMergeFixture(t, "clean-additive")
 	var errBuf bytes.Buffer
@@ -255,15 +280,11 @@ func TestMergeDriver_OversizedInputFallsBackToTextMerge(t *testing.T) {
 	dst := t.TempDir()
 
 	// theirs is over the cap; ours and base are small with diverging content
-	// so git merge-file's line-based merge has something to chew on. Using
-	// 1 KiB beyond the cap keeps the test cheap; the threshold itself is
-	// exercised regardless of how much we exceed it by.
+	// so git merge-file's line-based merge has something to chew on. 1 KiB
+	// beyond the cap is enough — the threshold is exercised regardless of how
+	// much we exceed it by. The oversized file is streamed to disk rather than
+	// built in memory (see writeLargeTextFile) to keep the test cheap.
 	const overage = 1024
-	big := make([]byte, maxMergeInputBytes+overage)
-	// Make it valid-looking text content so git merge-file treats it as text.
-	for i := range big {
-		big[i] = 'x'
-	}
 
 	if err := os.WriteFile(filepath.Join(dst, "base.glx"), []byte("base content\n"), 0o644); err != nil {
 		t.Fatalf("write base: %v", err)
@@ -271,9 +292,7 @@ func TestMergeDriver_OversizedInputFallsBackToTextMerge(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dst, "ours.glx"), []byte("ours content\n"), 0o644); err != nil {
 		t.Fatalf("write ours: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dst, "theirs.glx"), big, 0o644); err != nil {
-		t.Fatalf("write big theirs: %v", err)
-	}
+	writeLargeTextFile(t, filepath.Join(dst, "theirs.glx"), maxMergeInputBytes+overage)
 
 	originalOurs, err := os.ReadFile(filepath.Join(dst, "ours.glx"))
 	if err != nil {
