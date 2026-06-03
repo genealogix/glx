@@ -219,7 +219,7 @@ assertions:
 
 Corroboration is the easy case. The harder — and more important — case is when sources **disagree**. Record each claim as its own assertion on the same property, then resolve the conflict by marking which claim the evidence supports. This keeps disagreements visible instead of silently overwriting one value with another, and it is exactly what the [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) means by *resolution of conflicting evidence*.
 
-In this archive, Robert's birth year is disputed: his **birth certificate says 1955**, but **family oral history (cousin Sarah) remembers him as a "1956 baby."** Both claims are recorded as separate assertions on `event-robert-birth`'s `date` property, then resolved in favor of the primary source:
+In this archive, two sources conflict on Robert's birth year: his **birth certificate says 1955**, but **family oral history (cousin Sarah) remembers him as a "1956 baby."** Both claims are recorded as separate assertions on `event-robert-birth`'s `date` property, then resolved in favor of the primary source:
 
 ```yaml
 assertions:
@@ -252,7 +252,7 @@ Both assertions point at the **same property of the same event** but carry **dif
 - `status: disproven` — evidence was found that contradicts the claim
 - `status: disputed` — sources conflict and the resolution is still unclear
 
-> **Not yet resolved?** If you have analysed the conflict but cannot yet decide, leave both competing assertions in place, or record a single assertion citing the conflicting sources with `status: disputed`. Reserve `proven`/`disproven` for conflicts you have actually resolved. See [Assertion Entity — `status`](/specification/4-entity-types/assertion#status) for the full pattern.
+> **Not yet resolved?** If you have analyzed the conflict but cannot yet decide, leave both competing assertions in place, or record a single assertion citing the conflicting sources with `status: disputed`. Reserve `proven`/`disproven` for conflicts you have actually resolved. See [Assertion Entity — `status`](/specification/4-entity-types/assertion#status) for the full pattern.
 
 ## Temporal Properties with Assertions
 
