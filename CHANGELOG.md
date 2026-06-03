@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- **`NOTICE` file for Apache 2.0 third-party attribution** — Adds a top-level `NOTICE` file declaring the GENEALOGIX (GLX) copyright and attributing the third-party Go components statically linked into the distributed `glx` binary, grouped by direct vs. transitive dependency with each component's SPDX license, copyright holder(s), and source URL. The component list is derived from the modules actually compiled into the binary (`go version -m`), not the source-tree `go.mod`, so test-only dependencies such as `github.com/stretchr/testify` (which are not redistributed) are intentionally omitted. The file is also added to the GoReleaser archive `files` list so it ships alongside `LICENSE` in every release archive. (#427)
+
 - **`.claude/drift-allowlist.yaml`** — Machine-readable, self-validating allowlist of known, per-symbol drift suppressions for the `/check-*-drift` slash commands, replacing inline "known drift" prose with an auditable file. Each entry is either permanent (by-design) or a temporary deferral that must reference a tracking issue; this is enforced by `.claude/drift-allowlist.schema.json` via the new `make check-drift-allowlist` target, wired into `make check` and the `validate-spec` CI workflow. The closed-issue staleness gate (failing when a temporary entry's tracking issue is closed) is left to the deterministic drift checkers tracked by #673 / #295. (#797)
 
 ### Changed

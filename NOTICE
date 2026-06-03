@@ -1,0 +1,77 @@
+GENEALOGIX (GLX)
+Copyright 2025 Oracynth, Inc.
+
+This product includes software developed at Oracynth, Inc.
+(https://oracynth.io/).
+
+Licensed under the Apache License, Version 2.0 (the "License"); see the
+LICENSE file in the project root for the full license text.
+
+================================================================================
+Third-party components
+================================================================================
+
+GLX is distributed in binary form (for example, the `glx` release archives)
+with the following third-party Go components statically linked in. This list
+covers the modules compiled into the distributed binary, as reported by
+`go version -m`; test-only dependencies that are not incorporated into the
+distributed artifacts (e.g. github.com/stretchr/testify) are omitted. Each
+component's full license text is available in its respective source repository.
+
+Direct dependencies
+-------------------
+
+  github.com/brianvoe/gofakeit/v7
+    License: MIT
+    Copyright (c) Brian Voe
+    https://github.com/brianvoe/gofakeit
+
+  github.com/santhosh-tekuri/jsonschema/v6
+    License: Apache-2.0
+    Copyright Santhosh Kumar Tekuri
+    https://github.com/santhosh-tekuri/jsonschema
+
+  github.com/spf13/cobra
+    License: Apache-2.0
+    Copyright 2013-2023 The Cobra Authors
+    https://github.com/spf13/cobra
+
+  golang.org/x/text
+    License: BSD-3-Clause
+    Copyright 2009 The Go Authors
+    https://pkg.go.dev/golang.org/x/text
+
+  gopkg.in/yaml.v3
+    License: MIT and Apache-2.0
+    Copyright (c) 2011-2019 Canonical Ltd
+    Copyright (c) 2006-2011 Kirill Simonov
+    https://gopkg.in/yaml.v3
+
+Transitive dependencies
+-----------------------
+
+  github.com/cpuguy83/go-md2man/v2
+    License: MIT
+    Copyright (c) 2014 Brian Goff
+    https://github.com/cpuguy83/go-md2man
+
+  github.com/inconshreveable/mousetrap
+    License: Apache-2.0
+    Copyright 2022 Alan Shreve (@inconshreveable)
+    https://github.com/inconshreveable/mousetrap
+
+  github.com/russross/blackfriday/v2
+    License: BSD-2-Clause
+    Copyright (c) 2011 Russ Ross
+    https://github.com/russross/blackfriday
+
+  github.com/spf13/pflag
+    License: BSD-3-Clause
+    Copyright (c) 2012 Alex Ogier and The Go Authors
+    https://github.com/spf13/pflag
+
+  go.yaml.in/yaml/v3
+    License: MIT and Apache-2.0
+    Copyright (c) 2011-2019 Canonical Ltd
+    Copyright (c) 2006-2011 Kirill Simonov
+    https://github.com/yaml/go-yaml
