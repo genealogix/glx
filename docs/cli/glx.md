@@ -47,7 +47,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx query](/cli/glx_query)	 - Query entities in a GLX archive
 * [glx rename](/cli/glx_rename)	 - Rename an entity ID and update all references
 * [glx search](/cli/glx_search)	 - Full-text search across all entities
-* [glx serve](/cli/glx_serve)	 - Launch a local browser-based viewer for a GLX archive
+* [glx serve](/cli/glx_serve)	 - Serve a local browser-based viewer for a GLX archive (prints a URL to open)
 * [glx split](/cli/glx_split)	 - Split a single-file GLX archive into multi-file format
 * [glx stats](/cli/glx_stats)	 - Show summary statistics for a GLX archive
 * [glx summary](/cli/glx_summary)	 - Show a comprehensive profile for a person

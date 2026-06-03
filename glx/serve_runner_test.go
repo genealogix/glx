@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -434,6 +435,34 @@ func TestServeHandlesNilEntries(t *testing.T) {
 	// A nil entity addressed directly resolves to 404, not a panic.
 	assert.Equal(t, http.StatusNotFound, doServeRequest(t, srv, "/api/persons/person-nil", nil).Code)
 	assert.Equal(t, http.StatusNotFound, doServeRequest(t, srv, "/api/sources/source-nil", nil).Code)
+}
+
+func TestViewerURL(t *testing.T) {
+	addr := &net.TCPAddr{IP: net.IPv4zero, Port: 8080} // "0.0.0.0:8080"
+	// Wildcard / empty hosts are not browser-usable, so loopback is substituted.
+	assert.Equal(t, "http://127.0.0.1:8080", viewerURL("0.0.0.0", addr))
+	assert.Equal(t, "http://127.0.0.1:8080", viewerURL("", addr))
+	assert.Equal(t, "http://127.0.0.1:8080", viewerURL("::", addr))
+	// An explicit, routable host is preserved.
+	assert.Equal(t, "http://192.168.1.5:8080", viewerURL("192.168.1.5", addr))
+	assert.Equal(t, "http://127.0.0.1:8080", viewerURL("127.0.0.1", addr))
+}
+
+func TestServeStaticHEAD(t *testing.T) {
+	srv := newServeTestServer(t)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodHead, "/", nil)
+	rec := httptest.NewRecorder()
+	srv.routes().ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestServeStaticRejectsNonGetHead(t *testing.T) {
+	srv := newServeTestServer(t)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
+	rec := httptest.NewRecorder()
+	srv.routes().ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Equal(t, "GET, HEAD", rec.Header().Get("Allow"))
 }
 
 func TestClampGen(t *testing.T) {

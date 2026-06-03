@@ -66,6 +66,23 @@ function showError(message) {
   render(h("div", { class: "error" }, message));
 }
 
+// navRow builds a table row that navigates to a hash route on click or on
+// Enter/Space, and is keyboard-focusable (tabindex/role) so keyboard-only and
+// assistive-tech users can use the list, not just mouse users.
+function navRow(hash, cells) {
+  return h("tr", {
+    tabindex: "0",
+    role: "link",
+    onclick: () => navigate(hash),
+    onkeydown: (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        navigate(hash);
+      }
+    },
+  }, cells);
+}
+
 async function api(path) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
   if (!res.ok) {
@@ -171,10 +188,11 @@ async function viewPersons() {
 
   const tbody = h("tbody");
   const rows = persons.map((p) => {
-    const tr = h("tr", { onclick: () => navigate(`#/person/${encodeURIComponent(p.id)}`) },
+    const tr = navRow(`#/person/${encodeURIComponent(p.id)}`, [
       h("td", null, p.name),
       h("td", { class: "years" }, lifespan(p.birthYear, p.deathYear)),
-      h("td", { class: "muted" }, p.sex || ""));
+      h("td", { class: "muted" }, p.sex || ""),
+    ]);
     tr.dataset.name = (p.name || "").toLowerCase();
     return tr;
   });
@@ -466,11 +484,12 @@ async function viewSources() {
 
   const tbody = h("tbody");
   appendChildren(tbody, sources.map((s) =>
-    h("tr", { onclick: () => navigate(`#/source/${encodeURIComponent(s.id)}`) },
+    navRow(`#/source/${encodeURIComponent(s.id)}`, [
       h("td", null, s.title),
       h("td", { class: "muted" }, s.type || ""),
       h("td", { class: "years" }, s.date || ""),
-      h("td", { class: "years" }, String(s.citationCount)))));
+      h("td", { class: "years" }, String(s.citationCount)),
+    ])));
 
   const table = h("table", null,
     h("thead", null, h("tr", null,

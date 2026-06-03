@@ -45,6 +45,7 @@ var webAssets embed.FS
 // malicious or cyclic archive cannot drive unbounded recursion. The default
 // depth balances a useful chart against payload size.
 const (
+	serveDefaultHost    = "127.0.0.1"
 	serveDefaultPort    = 8080
 	serveDefaultTreeGen = 4
 	serveMaxTreeGen     = 10
@@ -115,7 +116,7 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 		_ = httpSrv.Shutdown(shutdownCtx)
 	}()
 
-	url := "http://" + listener.Addr().String()
+	url := viewerURL(opts.Host, listener.Addr())
 	streams.Printf("GLX viewer for %s\n", opts.ArchivePath)
 	streams.Printf("  %d persons, %d sources, %d events\n",
 		len(archive.Persons), len(archive.Sources), len(archive.Events))
@@ -139,12 +140,30 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 	return nil
 }
 
+// viewerURL builds a browser-usable URL for the running server. When bound to a
+// wildcard or empty host (0.0.0.0, ::, ""), listener.Addr() is a non-routable
+// address that cannot be opened in a browser, so loopback is substituted while
+// the real port is preserved.
+func viewerURL(requestedHost string, addr net.Addr) string {
+	_, port, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return "http://" + addr.String()
+	}
+	host := requestedHost
+	switch host {
+	case "", "0.0.0.0", "::", "[::]":
+		host = serveDefaultHost
+	}
+
+	return "http://" + net.JoinHostPort(host, port)
+}
+
 // isLoopbackHost reports whether host binds only to the local machine. An empty
 // host is NOT loopback: net.JoinHostPort("", port) produces ":port", which binds
 // every interface — so `--host ""` must still trigger the exposure warning.
 func isLoopbackHost(host string) bool {
 	switch host {
-	case "localhost", "127.0.0.1", "::1":
+	case "localhost", serveDefaultHost, "::1":
 		return true
 	case "":
 		return false
@@ -167,9 +186,27 @@ func (s *viewerServer) routes() http.Handler {
 	mux.HandleFunc("GET /api/persons/{id}/tree", s.handleTree)
 	mux.HandleFunc("GET /api/sources", s.handleSources)
 	mux.HandleFunc("GET /api/sources/{id}", s.handleSource)
-	mux.Handle("GET /", http.FileServerFS(s.assets))
+	// Serve the embedded UI for GET and HEAD. A method-less "/" is used (rather
+	// than separate "GET /" and "HEAD /") because Go's ServeMux treats a
+	// method-bound catch-all as conflicting with the method-specific /api routes;
+	// the GET/HEAD constraint is enforced inside staticHandler instead.
+	mux.Handle("/", staticHandler(http.FileServerFS(s.assets)))
 
 	return mux
+}
+
+// staticHandler serves the embedded read-only UI for GET and HEAD requests and
+// rejects other methods with 405, matching the viewer's read-only nature.
+func staticHandler(fileServer http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	}
 }
 
 // ============================================================================

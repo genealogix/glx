@@ -1604,10 +1604,11 @@ var (
 
 var serveCmd = &cobra.Command{
 	Use:   "serve [path]",
-	Short: "Launch a local browser-based viewer for a GLX archive",
+	Short: "Serve a local browser-based viewer for a GLX archive (prints a URL to open)",
 	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
 
-Starts a small local web server and renders an interactive viewer with:
+Starts a small local web server and prints a URL to open in your browser
+(it does not open the browser for you). The viewer is interactive and shows:
   - Dashboard: entity counts, assertion confidence, and coverage
   - Person profiles: names, vitals, event timeline, assertions with evidence
   - Family tree: interactive pedigree and descendancy charts
@@ -1635,7 +1636,7 @@ If no path is given, the current directory is used.`,
 }
 
 func init() {
-	serveCmd.Flags().StringVar(&serveHost, "host", "127.0.0.1", "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
+	serveCmd.Flags().StringVar(&serveHost, "host", serveDefaultHost, "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
 }
 
