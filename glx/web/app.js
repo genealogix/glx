@@ -32,12 +32,14 @@ function h(tag, attrs, ...children) {
 function appendChildren(el, children) {
   for (const child of children.flat()) {
     if (child == null || child === false) continue;
-    if (typeof child === "string" || typeof child === "number") {
-      // Strings/numbers are always inserted as text — never parsed as HTML.
-      el.appendChild(document.createTextNode(String(child)));
-    } else {
-      // Anything else is a DOM node we constructed ourselves.
+    if (child instanceof Node) {
+      // Already a DOM node we constructed ourselves (element or text node).
       el.appendChild(child);
+    } else {
+      // Everything else (strings, numbers) is inserted as text, so it can
+      // never be parsed as HTML — this is the only path user/exception text
+      // can take into the DOM.
+      el.appendChild(document.createTextNode(String(child)));
     }
   }
 }
