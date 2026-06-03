@@ -215,6 +215,45 @@ assertions:
     notes: "Multiple sources confirm career change in 1995"
 ```
 
+## Conflicting Evidence (and Its Resolution)
+
+Corroboration is the easy case. The harder — and more important — case is when sources **disagree**. Record each claim as its own assertion on the same property, then resolve the conflict by marking which claim the evidence supports. This keeps disagreements visible instead of silently overwriting one value with another, and it is exactly what the [Genealogical Proof Standard](https://www.bcgcertification.org/resources/standard.html) means by *resolution of conflicting evidence*.
+
+In this archive, two sources conflict on Robert's birth year: his **birth certificate says 1955**, but **family oral history (cousin Sarah) remembers him as a "1956 baby."** Both claims are recorded as separate assertions on `event-robert-birth`'s `date` property, then resolved in favor of the primary source:
+
+```yaml
+assertions:
+  # Winning assertion — primary source resolves the conflict
+  assertion-robert-birth:
+    subject:
+      event: event-robert-birth
+    property: date
+    value: "1955-03-22"
+    citations: [citation-robert-birth-cert]
+    confidence: high
+    status: proven
+    notes: "Birth certificate takes precedence over the 1956 recollection."
+
+  # Conflicting assertion — secondary source, contradicted by the certificate
+  assertion-robert-birth-lore:
+    subject:
+      event: event-robert-birth
+    property: date
+    value: "1956"
+    citations: [citation-robert-birth-lore]
+    confidence: low
+    status: disproven
+    notes: "Family recollection; contradicted by the birth certificate."
+```
+
+Both assertions point at the **same property of the same event** but carry **different values** — that is what makes this a conflict rather than [corroboration](#multiple-evidence-for-same-property). The `status` field records the outcome of the analysis:
+
+- `status: proven` — the claim survived analysis (here, backed by a primary source)
+- `status: disproven` — evidence was found that contradicts the claim
+- `status: disputed` — sources conflict and the resolution is still unclear
+
+> **Not yet resolved?** If you have analyzed the conflict but cannot yet decide, leave both competing assertions in place, or record a single assertion citing the conflicting sources with `status: disputed`. Reserve `proven`/`disproven` for conflicts you have actually resolved. See [Assertion Entity — `status`](/specification/4-entity-types/assertion#status) for the full pattern.
+
 ## Temporal Properties with Assertions
 
 For properties that change over time, create separate assertions for each time period:
