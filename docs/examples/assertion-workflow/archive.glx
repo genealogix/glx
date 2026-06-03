@@ -217,6 +217,13 @@ citations:
       text_from_source: "Financial Advisor at Chen Financial Services (1995-2020)"
       accessed: "2024-01-15"
 
+  # Secondary source that CONFLICTS with the birth certificate on Robert's
+  # birth year. Used by assertion-robert-birth-lore below.
+  citation-robert-birth-lore:
+    source: source-chen-family-lore
+    properties:
+      text_from_source: "Cousin Sarah: 'Grandpa Robert always said he was a 1956 baby.'"
+
 # ---------------------------------------------------------------------
 # ASSERTIONS - Evidence-backed claims about properties
 # ---------------------------------------------------------------------
@@ -225,7 +232,16 @@ citations:
 # or conflict with each other (disputed evidence).
 
 assertions:
-  # --- Robert's birth date supported by primary evidence ---
+  # --- CONFLICTING EVIDENCE: two assertions disagree on Robert's birth year ---
+  # The birth certificate (primary source) and family oral history (secondary,
+  # recalled from memory) give DIFFERENT birth years. Both claims are recorded
+  # as separate assertions on the SAME property of the SAME event, then resolved:
+  # the primary source is marked `proven` and the contradicted recollection
+  # `disproven`. This demonstrates GPS element 4 — resolution of conflicting
+  # evidence — and keeps the disagreement visible instead of silently dropping
+  # the losing value.
+
+  # Winning assertion: primary source resolves the conflict.
   assertion-robert-birth:
     subject:
       event: event-robert-birth
@@ -235,7 +251,25 @@ assertions:
       - citation-robert-birth-cert
     confidence: high
     status: proven
-    notes: "Primary source: original birth certificate"
+    notes: |
+      Primary source: original birth certificate, March 22, 1955.
+      Takes precedence over cousin Sarah's "1956 baby" recollection
+      (assertion-robert-birth-lore), which it disproves.
+
+  # Conflicting assertion: secondary source, contradicted by the certificate.
+  assertion-robert-birth-lore:
+    subject:
+      event: event-robert-birth
+    property: date
+    value: "1956"
+    citations:
+      - citation-robert-birth-lore
+    confidence: low
+    status: disproven
+    notes: |
+      Family oral history (cousin Sarah) places Robert's birth in 1956.
+      Contradicted by the birth certificate (assertion-robert-birth); kept
+      on record so the conflicting evidence stays visible rather than hidden.
 
   # --- Robert's occupation history supported by multiple sources ---
   assertion-robert-accountant:
