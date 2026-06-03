@@ -540,8 +540,12 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 		subject  string
 		property string
 	}
+	type conflictGroup struct {
+		label      string // human-readable subject label, "" for the person subject
+		assertions []*glxlib.Assertion
+	}
 
-	groups := make(map[conflictKey][]*glxlib.Assertion)
+	groups := make(map[conflictKey]*conflictGroup)
 	var order []conflictKey
 	for i := range relevant {
 		pa := &relevant[i]
@@ -549,10 +553,13 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 			continue
 		}
 		key := conflictKey{subject: pa.subjectID, property: pa.a.Property}
-		if _, seen := groups[key]; !seen {
+		g, seen := groups[key]
+		if !seen {
+			g = &conflictGroup{label: describeProofSubject(pa, archive)}
+			groups[key] = g
 			order = append(order, key)
 		}
-		groups[key] = append(groups[key], pa.a)
+		g.assertions = append(g.assertions, pa.a)
 	}
 
 	sort.Slice(order, func(i, j int) bool {
@@ -565,13 +572,23 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 
 	var conflicts []proofConflict
 	for _, key := range order {
-		values := distinctProofValues(groups[key], archive)
+		g := groups[key]
+		values := distinctProofValues(g.assertions, archive)
 		if len(values) < 2 {
 			continue
 		}
 
+		// Disambiguate which subject the conflict belongs to. Fall back to the
+		// raw subject ID when there is no descriptive label (e.g. the person
+		// subject) so machine consumers can always tell groups apart.
+		subject := g.label
+		if subject == "" && key.subject != "" {
+			subject = key.subject
+		}
+
 		resolved, resolution := resolveConflict(values)
 		conflicts = append(conflicts, proofConflict{
+			Subject:    subject,
 			Property:   key.property,
 			Values:     values,
 			Resolved:   resolved,
@@ -583,8 +600,8 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 }
 
 // distinctProofValues returns the distinct values asserted for a
-// subject/property, keeping the highest-confidence and most-decisive status for
-// each (a `disproven` status is preserved so resolution can detect it).
+// subject/property, keeping the highest-confidence value and combining the
+// statuses of every assertion for that value (see combineStatus).
 func distinctProofValues(assertions []*glxlib.Assertion, archive *glxlib.GLXFile) []proofConflictValue {
 	type agg struct {
 		confidence string
@@ -605,11 +622,7 @@ func distinctProofValues(assertions []*glxlib.Assertion, archive *glxlib.GLXFile
 		if confidenceRank(a.Confidence) < confidenceRank(cur.confidence) {
 			cur.confidence = a.Confidence
 		}
-		// Prefer a decisive status (disproven/proven) over an empty one so the
-		// resolver can see that a value was ruled out.
-		if cur.status == "" && a.Status != "" {
-			cur.status = a.Status
-		}
+		cur.status = combineStatus(cur.status, a.Status)
 	}
 
 	sort.Strings(order)
@@ -619,6 +632,24 @@ func distinctProofValues(assertions []*glxlib.Assertion, archive *glxlib.GLXFile
 	}
 
 	return out
+}
+
+// combineStatus merges the status of another assertion for the same value into
+// the running aggregate. An explicitly `disputed` status, or two differing
+// non-empty statuses (e.g. one assertion says `proven`, another `disproven`),
+// escalate to `disputed` so resolveConflict never auto-resolves a value whose
+// own evidence disagrees. An empty status carries no information and is ignored.
+func combineStatus(current, next string) string {
+	switch {
+	case next == "":
+		return current
+	case current == "":
+		return next
+	case strings.EqualFold(current, next):
+		return current
+	default:
+		return statusDisputed
+	}
 }
 
 // resolveConflict decides whether a set of competing values has been resolved.
@@ -1105,12 +1136,21 @@ func claimTags(confidence, status string) string {
 
 // printProofConflictText prints one conflict entry.
 func printProofConflictText(c *proofConflict) {
-	fmt.Printf("    ! %s: %s\n", c.Property, conflictValuesString(c))
+	fmt.Printf("    ! %s: %s\n", conflictLabel(c), conflictValuesString(c))
 	if c.Resolved {
 		fmt.Printf("      RESOLVED: %s\n", c.Resolution)
 	} else {
 		fmt.Printf("      UNRESOLVED — resolution needed\n")
 	}
+}
+
+// conflictLabel renders the conflict's subject (when known) and property.
+func conflictLabel(c *proofConflict) string {
+	if c.Subject != "" {
+		return c.Subject + " " + c.Property
+	}
+
+	return c.Property
 }
 
 // conflictValuesString renders the competing values of a conflict.
@@ -1243,7 +1283,7 @@ func printMarkdownConflicts(conflicts []proofConflict) {
 	}
 	for i := range conflicts {
 		c := &conflicts[i]
-		fmt.Printf("- **%s:** %s\n", c.Property, conflictValuesString(c))
+		fmt.Printf("- **%s:** %s\n", conflictLabel(c), conflictValuesString(c))
 		if c.Resolved {
 			fmt.Printf("  - _Resolved:_ %s\n", c.Resolution)
 		} else {

@@ -233,6 +233,7 @@ func TestBuildProof_UnresolvedConflict(t *testing.T) {
 
 	require.Len(t, result.Conflicts, 1)
 	assert.False(t, result.Conflicts[0].Resolved)
+	assert.Equal(t, "birth event", result.Conflicts[0].Subject, "conflict is attributed to its subject")
 	assert.Equal(t, proofConclusionConflicted, result.Conclusion)
 }
 
@@ -306,6 +307,34 @@ func TestResolveConflict(t *testing.T) {
 		{Value: "B", Status: "disproven"},
 	})
 	assert.False(t, disputed, "a disputed value is never auto-resolved")
+}
+
+func TestCombineStatus(t *testing.T) {
+	assert.Equal(t, "proven", combineStatus("", "proven"))
+	assert.Equal(t, "proven", combineStatus("proven", ""))
+	assert.Equal(t, "proven", combineStatus("proven", "proven"))
+	assert.Empty(t, combineStatus("", ""))
+	// Conflicting decisive statuses for the same value escalate to disputed.
+	assert.Equal(t, statusDisputed, combineStatus("proven", "disproven"))
+	assert.Equal(t, statusDisputed, combineStatus("proven", "disputed"))
+}
+
+// TestDetectProofConflicts_StatusEscalation verifies that when one assertion for
+// a value marks it disputed (or two assertions give conflicting decisive
+// statuses), the conflict is reported unresolved even if the competing value is
+// disproven — distinctProofValues must not let a disproven sibling auto-resolve.
+func TestDetectProofConflicts_StatusEscalation(t *testing.T) {
+	relevant := []proofAssertion{
+		{id: "a1", subjectID: "event-x", eventType: glxlib.EventTypeBirth, a: &glxlib.Assertion{Property: "date", Value: "1900", Confidence: "high", Status: "proven"}},
+		{id: "a2", subjectID: "event-x", eventType: glxlib.EventTypeBirth, a: &glxlib.Assertion{Property: "date", Value: "1900", Confidence: "medium", Status: "disputed"}},
+		{id: "a3", subjectID: "event-x", eventType: glxlib.EventTypeBirth, a: &glxlib.Assertion{Property: "date", Value: "1901", Status: "disproven"}},
+	}
+	conflicts := detectProofConflicts(relevant, &glxlib.GLXFile{})
+
+	require.Len(t, conflicts, 1)
+	assert.False(t, conflicts[0].Resolved, "value 1900 is itself disputed, so the conflict must stay unresolved")
+	// The conflict is attributed to its subject (GPS disambiguation).
+	assert.Equal(t, "birth event", conflicts[0].Subject)
 }
 
 func TestSupportLevel(t *testing.T) {
