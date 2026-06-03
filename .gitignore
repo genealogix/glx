@@ -5,6 +5,9 @@ bin/
 dist/
 *.exe
 *.test
+# Stray CLI binary from building inside the source dir (e.g. `cd glx && go build`).
+# Canonical output is bin/glx (see Makefile); this prevents re-committing the binary.
+/glx/glx
 
 # Go profiling, coverage, and benchmarks
 coverage/
