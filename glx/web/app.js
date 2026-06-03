@@ -32,10 +32,28 @@ function h(tag, attrs, ...children) {
 function appendChildren(el, children) {
   for (const child of children.flat()) {
     if (child == null || child === false) continue;
-    el.appendChild(typeof child === "string" || typeof child === "number"
-      ? document.createTextNode(String(child))
-      : child);
+    if (typeof child === "string" || typeof child === "number") {
+      // Strings/numbers are always inserted as text — never parsed as HTML.
+      el.appendChild(document.createTextNode(String(child)));
+    } else {
+      // Anything else is a DOM node we constructed ourselves.
+      el.appendChild(child);
+    }
   }
+}
+
+// safeHref returns url only if it uses a safe, non-script scheme. Archive data
+// (e.g. imported from GEDCOM) can contain arbitrary URLs, so reject anything
+// that isn't http(s)/mailto to avoid javascript: and data: URL injection.
+function safeHref(url) {
+  return typeof url === "string" && /^(https?:|mailto:)/i.test(url.trim()) ? url : null;
+}
+
+// externalLink builds a new-tab anchor for an archive-supplied URL, or returns
+// null when the URL is missing or uses an unsafe scheme.
+function externalLink(url, label) {
+  const href = safeHref(url);
+  return href ? h("a", { href, target: "_blank", rel: "noopener noreferrer" }, label || href) : null;
 }
 
 function render(node) {
@@ -290,9 +308,10 @@ function evidenceRow(ev) {
     ? h("a", { href: `#/source/${encodeURIComponent(ev.sourceId)}` }, text)
     : document.createTextNode(text);
   const li = h("li", null, link);
-  if (ev.url) {
+  const url = safeHref(ev.url);
+  if (url) {
     li.appendChild(document.createTextNode(" "));
-    li.appendChild(h("a", { href: ev.url, target: "_blank", rel: "noopener noreferrer" }, "↗"));
+    li.appendChild(h("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, "↗"));
   }
   return li;
 }
@@ -477,7 +496,7 @@ async function viewSource(id) {
     h("div", { class: "crumbs" }, h("a", { href: "#/sources" }, "Sources"), " / ", s.title),
     h("h1", null, s.title),
     meta.length ? h("p", { class: "subtitle" }, meta.join(" · ")) : null,
-    s.url ? h("p", null, h("a", { href: s.url, target: "_blank", rel: "noopener noreferrer" }, s.url)) : null,
+    safeHref(s.url) ? h("p", null, externalLink(s.url, s.url)) : null,
   ];
 
   if (s.notes && s.notes.length) {
@@ -501,7 +520,8 @@ function citationRow(c) {
   const sub = [];
   if (c.accessed) sub.push(`accessed ${c.accessed}`);
   if (sub.length) parts.push(h("div", { class: "meta" }, sub.join(" · ")));
-  if (c.url) parts.push(h("div", null, h("a", { href: c.url, target: "_blank", rel: "noopener noreferrer" }, c.url)));
+  const cUrl = externalLink(c.url, c.url);
+  if (cUrl) parts.push(h("div", null, cUrl));
   if (!parts.length) parts.push(h("div", { class: "meta" }, c.id));
   return h("div", { class: "assertion" }, parts);
 }
