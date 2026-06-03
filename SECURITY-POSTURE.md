@@ -48,7 +48,7 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 |---|---|---|
 | Release artifact signing | ✓ | [`.goreleaser.yml`](https://github.com/genealogix/glx/blob/main/.goreleaser.yml) signs `checksums.txt` with cosign keyless (Sigstore / OIDC), publishing `checksums.txt.sigstore.json`. Signing the checksum manifest transitively covers every release artifact via SHA-256. See [Release signing verification details](#release-signing-verification-details). ([#387](https://github.com/genealogix/glx/issues/387)) |
 | SBOM with compiled releases | ☐ | Tracked in [#269](https://github.com/genealogix/glx/issues/269) — GoReleaser v2 native SBOM via `sboms:` config |
-| Build provenance / SLSA attestations | ☐ | Tracked in [#256](https://github.com/genealogix/glx/issues/256) |
+| Build provenance / SLSA attestations | ✓ | [`release.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/release.yml) runs `actions/attest` (pinned `v4.1.0`) after GoReleaser with `subject-checksums: ./dist/checksums.txt`, producing a keyless-signed SLSA provenance attestation that covers every release artifact via SHA-256. See [Build-provenance verification details](#build-provenance-verification-details). ([#256](https://github.com/genealogix/glx/issues/256)) |
 
 #### Release signing verification details
 
@@ -58,13 +58,20 @@ Verification command:
 
 The `--certificate-*` flags constrain which OIDC identity the Fulcio certificate was issued to and which OIDC provider issued the underlying token, binding verification to this repository's release workflow. Without these constraints, `verify-blob` would still validate the Fulcio chain, signature, and Rekor inclusion proof, but it would accept any valid keyless signature from any workflow.
 
+#### Build-provenance verification details
+
+Verification command (run against any downloaded release archive):
+
+`gh attestation verify --owner genealogix <downloaded-file>`
+
+This checks the artifact's SHA-256 against the SLSA provenance attestation GitHub stores for this repository, confirming the binary was produced by `release.yml` running in GitHub Actions. The attestation is signed keyless via the workflow's OIDC token (`id-token: write`) and stored with the `attestations: write` permission. It is complementary to the cosign signature above: cosign proves the integrity of the `checksums.txt` manifest, while the attestation proves the build provenance of each artifact per SLSA.
+
 ## Outstanding gaps
 
 The following issues are blocking full Level 2 / Level 3 self-attestation:
 
 - [#424](https://github.com/genealogix/glx/issues/424) — Safe-harbor clause and embargo policy in `SECURITY.md` (Level 2)
 - [#269](https://github.com/genealogix/glx/issues/269) — SBOM emission alongside compiled releases (Level 3)
-- [#256](https://github.com/genealogix/glx/issues/256) — SLSA build provenance attestations (Level 3)
 
 This document is updated when any of these close.
 

@@ -22,7 +22,8 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
-      id-token: write   # OIDC for cosign keyless signing
+      id-token: write       # OIDC for cosign keyless signing + Sigstore attestation
+      attestations: write   # store the build-provenance attestation (issue #256)
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -50,6 +51,17 @@ jobs:
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # SLSA build provenance for every released artifact (issue #256). Reads the
+      # sha256 checksums GoReleaser wrote (name_template "checksums.txt") so one
+      # attestation covers all archives. actions/attest-build-provenance is just a
+      # composite wrapper around actions/attest with empty predicate inputs, so we
+      # call actions/attest directly; with no predicate it emits the SLSA
+      # provenance predicate. Verify: gh attestation verify --owner genealogix <file>
+      - name: Attest build provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-checksums: ./dist/checksums.txt
 
       - name: Announce release on Discord
         if: success() && env.DISCORD_WEBHOOK != ''
