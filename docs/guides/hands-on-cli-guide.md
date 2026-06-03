@@ -148,6 +148,54 @@ glx analyze --check consistency
 glx analyze --format json
 ```
 
+### `glx proof` — Structured proof summary for a research question
+
+Where `glx analyze` scans the whole archive for problems, `glx proof` answers one
+question about one person and assembles the evidence into a proof argument
+following the [Genealogical Proof Standard](https://bcgcertification.org/ethics-standards/)
+(GPS). Supported questions are `parentage`, `birth`, `death`, `marriage`, and
+`identity`:
+
+```bash
+glx proof "Eddard Stark" --question parentage
+```
+
+```text
+Proof Summary: Who are the parents of Eddard Stark? (person-eddard-stark)
+
+  Question: Who are the parents of Eddard Stark?
+
+  Evidence Collected:
+    1. Histories & Lore of Winterfell (citation-winterfell-lore)
+       -> parent_child relationship: existence asserted [confidence: high]
+       -> Lists Rickard Stark as father.
+
+  Evidence Gaps:
+    [ ] Birth record
+    [ ] Church records
+
+  Conflicts: None identified
+
+  Conclusion: PROVEN
+    Parents identified: Rickard Stark.
+```
+
+The command gathers every assertion relevant to the question (including
+assertions on the person's events and relationships), resolves their citations
+(GPS element 2), draws evidence gaps from the coverage checklist (element 1),
+flags conflicting assertions and whether they have been resolved via the
+assertion `status` field — `proven` over `disproven` (element 4), and ends with a
+conclusion of `PROVEN`, `PROBABLE`, `POSSIBLE`, `INSUFFICIENT EVIDENCE`, or
+`CONFLICTED` (element 5).
+
+```bash
+# Proof for a death, with Markdown output for a research report
+glx proof "Eddard Stark" --question death --format markdown
+
+# JSON output for tooling
+glx proof "Eddard Stark" --question parentage --format json
+```
+
 ## Searching and Querying
 
 ### `glx search` — Full-text search

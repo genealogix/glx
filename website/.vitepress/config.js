@@ -44,7 +44,7 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
     ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
-    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-N2YJJJFE6K');"]
+    ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
   ],
 
   // Sitemap generation
@@ -360,6 +360,7 @@ export default defineConfig({
             { text: 'glx analyze', link: '/cli/glx_analyze' },
             { text: 'glx duplicates', link: '/cli/glx_duplicates' },
             { text: 'glx coverage', link: '/cli/glx_coverage' },
+            { text: 'glx proof', link: '/cli/glx_proof' },
             { text: 'glx diff', link: '/cli/glx_diff' }
           ]
         },

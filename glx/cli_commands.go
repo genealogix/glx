@@ -97,6 +97,7 @@ func init() {
 	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
+	rootCmd.AddCommand(proofCmd)
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(renameCmd)
@@ -1269,6 +1270,64 @@ func runAnalyze(_ *cobra.Command, args []string) error {
 	}
 
 	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
+}
+
+// ============================================================================
+// Proof Command
+// ============================================================================
+
+var (
+	proofArchive  string
+	proofQuestion string
+	proofFormat   string
+)
+
+var proofCmd = &cobra.Command{
+	Use:   "proof <person>",
+	Short: "Compile evidence into a structured proof summary for a research question",
+	Long: `Assemble the evidence bearing on a specific research question about a person
+into a structured proof argument, following the BCG Genealogical Proof Standard
+(GPS).
+
+The proof gathers every assertion relevant to the question (including assertions
+on the person's events and relationships), resolves their citations and sources,
+surfaces evidence gaps from the coverage checklist, flags conflicting assertions
+(and whether they have been resolved via the assertion ` + "`status`" + ` field), lists any
+logged searches that document a reasonably exhaustive search, and ends with a
+conclusion: PROVEN, PROBABLE, POSSIBLE, INSUFFICIENT EVIDENCE, or CONFLICTED.
+
+Supported research questions:
+  parentage   Who are the person's parents?
+  birth       When and where was the person born?
+  death       When and where did the person die?
+  marriage    Whom did the person marry?
+  identity    Who was the person (name)?
+
+The person argument can be an exact entity ID or a name substring.`,
+	Example: `  # Proof summary for a person's parentage
+  glx proof person-jane-webb --question parentage
+
+  # Proof for a death, by name
+  glx proof "Robert Webb" --question death
+
+  # Machine-readable output
+  glx proof person-jane-webb --question parentage --format json
+
+  # Markdown for a research report
+  glx proof person-jane-webb --question parentage --format markdown`,
+	Args: cobra.ExactArgs(1),
+	RunE: runProof,
+}
+
+func init() {
+	proofCmd.Flags().StringVarP(&proofArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	proofCmd.Flags().StringVar(&proofQuestion, "question", "", "Research question (parentage, birth, death, marriage, identity)")
+	proofCmd.Flags().StringVarP(&proofFormat, "format", "f", "", "Output format (text, json, markdown)")
+	_ = proofCmd.MarkFlagRequired("question")
+}
+
+func runProof(_ *cobra.Command, args []string) error {
+	return showProof(proofArchive, args[0], proofQuestion, proofFormat)
 }
 
 // ============================================================================
