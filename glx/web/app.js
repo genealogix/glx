@@ -32,15 +32,10 @@ function h(tag, attrs, ...children) {
 function appendChildren(el, children) {
   for (const child of children.flat()) {
     if (child == null || child === false) continue;
-    if (child instanceof Node) {
-      // Already a DOM node we constructed ourselves (element or text node).
-      el.appendChild(child);
-    } else {
-      // Everything else (strings, numbers) is inserted as text, so it can
-      // never be parsed as HTML — this is the only path user/exception text
-      // can take into the DOM.
-      el.appendChild(document.createTextNode(String(child)));
-    }
+    // Element.append() inserts strings/numbers as plain text (never parsed as
+    // HTML) and appends DOM nodes as-is. No value passed here can become
+    // markup, so user/URL/exception text reaching the DOM is always escaped.
+    el.append(child);
   }
 }
 
