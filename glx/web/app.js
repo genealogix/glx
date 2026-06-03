@@ -21,7 +21,6 @@ function h(tag, attrs, ...children) {
     for (const [k, v] of Object.entries(attrs)) {
       if (v == null || v === false) continue;
       if (k === "class") el.className = v;
-      else if (k === "html") el.innerHTML = v; // only for trusted, data-free markup
       else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2), v);
       else el.setAttribute(k, v);
     }
