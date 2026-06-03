@@ -18,7 +18,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
+- **`make build-cli` now builds with GoReleaser's `-trimpath` and stripped ldflags** — the target builds with `-trimpath` and `-ldflags "-s -w -X main.version=$(VERSION)"` instead of a bare `go build`, so local binaries report a version (`glx --version`), strip debug symbols (~27% smaller), and drop local filesystem paths for reproducibility. A new `VERSION` variable defaults to `dev` (matching the `glx/cli_commands.go` fallback) and can be overridden, e.g. `make build-cli VERSION=0.1.0-local`. This aligns the target on stripping, `-trimpath`, and version injection; GoReleaser additionally injects `commit`/`date` (added in #384), which the Makefile omits to keep local builds git-independent. (#440)
+
 - **`/check-code-drift` and `/check-schema-drift` now read the drift allowlist** instead of hardcoding known-drift notes inline. Removed the stale `Metadata.Notes` "known drift point" note — that drift was already resolved by widening `glx-file.schema.json` `metadata.notes` to `oneOf[string, array]`, which is exactly the go-stale-and-mislead failure mode #797 targets. (#797)
+
+- **`README.md` restructured to surface Install/Quick Start above the fold** — Installation and Quick Start now sit immediately under the badges, so first-time visitors see "how to use it" before "why to use it" (the previous order buried Quick Start at line 143 behind a 90-line marketing section). The "Why GENEALOGIX?" comparison was shortened — the comparison table is kept, but the inline GEDCOM-vs-GLX code blocks and the three "Beyond Exchange" subsections were dropped or linked out to [Core Concepts](/specification/2-core-concepts). The redundant "What is GENEALOGIX?" section was renamed "Features" (bullet list preserved). A new flat "Documentation" link list replaces the old "Quick Links" header and absorbs the doc-related entries that were buried under "Community & Support". "Community & Support" itself was compacted from eight emoji-headed subsections into a single table covering Issues, Discussions, Chat, Mailing list, Contributing, Code of Conduct, Security, and Releases. The "Getting Help" walkthrough (numbered For-Users / For-Developers steps), the "Project Status" beta-10 feature checklist, and the "Acknowledgments" prose were dropped outright rather than folded into the table. Length dropped from 335 to 201 lines (-40%). No link contracts removed except a pre-existing broken link to `glx/tests` (that directory does not exist; the Go tests live alongside their source as `*_test.go`). Closes #472.
+
+- **Pinned six third-party GitHub Actions to release commit SHAs** — `golangci/golangci-lint-action` (`lint.yml`), `lycheeverse/lychee-action` and `peter-evans/create-issue-from-file` (`lychee.yml`), `goreleaser/goreleaser-action` (`release.yml`), `DavidAnson/markdownlint-cli2-action` (`lint-markdown.yml`), and `codecov/codecov-action` (`validate-spec.yml`) were floating on bare `@vN` major tags; each is now pinned to its latest release's 40-character commit SHA with a trailing `# vX.Y.Z` comment, matching the repo's existing SHA pins (`golang/govulncheck-action`, `amannn/action-semantic-pull-request`) and the `.github/CLAUDE.md` "always pin to `vX.Y.Z`, never `@vN`" policy. (`codecov/codecov-action` was not in #963's enumerated list but surfaced during the repo-wide sweep the issue calls for, and the OpenSSF Scorecard Pinned-Dependencies check scores it too.) Mutable tags were the attack vector in the March 2025 `tj-actions/changed-files` (CVE-2025-30066, ~23k repos) and `reviewdog/action-setup` (CVE-2025-30154) supply-chain compromises, where existing tags were rewritten to point at malicious commits; SHA pins are immutable and were untouched. The existing Dependabot `github-actions` entry keeps the pinned SHAs (and their version comments) current. First-party `actions/*` floats remain the repo's accepted convention and are out of scope. Closes #963.
 
 ## [0.0.0-beta.11] - 2026-05-27
 
@@ -251,13 +257,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
-#### CLI
-
 - **`glx coverage` JSON output keys renamed** — `born_on`/`born_at`/`died_on`/`died_at` renamed to `birth_date`/`birth_place`/`death_date`/`death_place` to match event-based data model. This is a breaking change for scripts parsing the JSON output (#568)
 
 ### Fixed
-
-#### GEDCOM Import
 
 - **Unrecognized SEX values preserved** — Non-standard or extension GEDCOM SEX values (e.g., custom values, or values such as `N` whose meaning varies between GEDCOM 5.5.5 `Not Recorded` and 7.0 `Nonbinary`) are now lowercased and preserved as-is instead of being silently mapped to `unknown`. Validation will warn about out-of-vocabulary values (#588)
 - **Correct year extraction from Hebrew and French Republican dates** — `ExtractFirstYear` now uses calendar-aware extraction, finding the last digit sequence for HEBREW and FRENCH_R dates where the year appears last. Previously, `HEBREW 15 TSH 5765` would extract `15` (the day) instead of `5765`. Also handles range dates (`BET...AND`, `FROM...TO`) correctly (#590)
