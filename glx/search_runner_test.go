@@ -73,7 +73,15 @@ func newTestArchiveForSearch() *glxlib.GLXFile {
 				Country:    "USA",
 			},
 		},
-		Media: map[string]*glxlib.Media{},
+		Media: map[string]*glxlib.Media{
+			"media-portrait": {
+				URI:      "media/files/portrait-001.jpg",
+				Type:     "photo",
+				MimeType: "image/jpeg",
+				Hash:     "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				Title:    "Studio Portrait",
+			},
+		},
 	}
 }
 
@@ -182,6 +190,38 @@ func TestSearchArchive_FindsRepositoryAddressFields(t *testing.T) {
 				}
 			}
 			assert.True(t, found, "should find %q in repository %s field", tc.query, tc.wantField)
+		})
+	}
+}
+
+// Regression guard: searchArchive must match the scalar Media fields. The hash
+// field in particular regressed in #620 (Copilot review of #252 flagged that
+// media checksums were unsearchable), so it is covered explicitly here.
+func TestSearchArchive_FindsMediaFields(t *testing.T) {
+	cases := []struct {
+		name      string
+		query     string
+		wantField string
+	}{
+		{"uri", "portrait-001.jpg", "uri"},
+		{"mime_type", "image/jpeg", "mime_type"},
+		{"hash", "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "hash"},
+		{"title", "Studio Portrait", "title"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := newTestArchiveForSearch()
+			results := searchArchive(archive, tc.query, false, "")
+
+			found := false
+			for _, r := range results {
+				if r.EntityType == glxlib.EntityTypeMedia && r.EntityID == "media-portrait" && r.Field == tc.wantField {
+					found = true
+
+					break
+				}
+			}
+			assert.True(t, found, "should find %q in media %s field", tc.query, tc.wantField)
 		})
 	}
 }
