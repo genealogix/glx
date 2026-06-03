@@ -93,6 +93,8 @@ type GLXFile struct { //nolint:revive // GLXFile is the established name across 
 	StudyTypes             map[string]*VocabularyEntry `yaml:"study_types,omitempty"`
 	StudyStatuses          map[string]*VocabularyEntry `yaml:"study_statuses,omitempty"`
 	LegalStatuses          map[string]*VocabularyEntry `yaml:"legal_statuses,omitempty"`
+	SourceNatures          map[string]*VocabularyEntry `yaml:"source_natures,omitempty"`
+	InformationTypes       map[string]*VocabularyEntry `yaml:"information_types,omitempty"`
 
 	// Property vocabularies
 	PersonProperties       map[string]*PropertyDefinition `yaml:"person_properties,omitempty"`
@@ -522,6 +524,8 @@ func (g *GLXFile) Merge(other *GLXFile) (conflicts []string, identicalSkipped in
 	addDedup(mergeMapDedup("sex_types", g.SexTypes, other.SexTypes))
 	addDedup(mergeMapDedup("gender_types", g.GenderTypes, other.GenderTypes))
 	addDedup(mergeMapDedup("legal_statuses", g.LegalStatuses, other.LegalStatuses))
+	addDedup(mergeMapDedup("source_natures", g.SourceNatures, other.SourceNatures))
+	addDedup(mergeMapDedup("information_types", g.InformationTypes, other.InformationTypes))
 	addDedup(mergeMapDedup("participant_roles", g.ParticipantRoles, other.ParticipantRoles))
 	addDedup(mergeMapDedup("confidence_levels", g.ConfidenceLevels, other.ConfidenceLevels))
 	addDedup(mergeMapDedup("search_result_types", g.SearchResultTypes, other.SearchResultTypes))
@@ -618,6 +622,12 @@ func (g *GLXFile) initMaps() {
 	}
 	if g.LegalStatuses == nil {
 		g.LegalStatuses = make(map[string]*VocabularyEntry)
+	}
+	if g.SourceNatures == nil {
+		g.SourceNatures = make(map[string]*VocabularyEntry)
+	}
+	if g.InformationTypes == nil {
+		g.InformationTypes = make(map[string]*VocabularyEntry)
 	}
 	if g.ParticipantRoles == nil {
 		g.ParticipantRoles = make(map[string]*VocabularyEntry)

@@ -229,6 +229,8 @@ The following are standard properties from the default vocabulary; archives can 
 | `external_ids` | string[] | External system identifiers |
 | `publication_info` | string | Publication details: publisher, place, edition (from GEDCOM PUBL) |
 | `url` | string | Web address where the source can be accessed online |
+| `source_nature` | string | Evidence Explained source classification (validated against `source_natures`): `original`, `derivative`, `authored` |
+| `information_type` | string | Evidence Explained information classification (validated against `information_types`): `primary`, `secondary`, `indeterminate` |
 
 Example:
 
@@ -250,6 +252,50 @@ sources:
 ```
 
 **See [Vocabularies - Source Properties](vocabularies#source-properties-vocabulary) for the full vocabulary definition.**
+
+## Source Classification (Evidence Explained)
+
+[Evidence Explained](https://www.evidenceexplained.com/) (Elizabeth Shown Mills, 4th ed., 2024) — the de-facto standard for genealogical source analysis — classifies evidence along two independent axes. GENEALOGIX captures both as standard source properties so the analysis is structured and queryable rather than buried in free-text notes.
+
+- **Source nature** (`source_nature`, validated against the [`source_natures`](vocabularies#source-natures-vocabulary) vocabulary) — how the source was *produced*:
+  - `original` — first-recorded or first-issued form, created at or near the event (an original vital register, a deed as filed).
+  - `derivative` — produced from an earlier source by copying, abstracting, transcribing, indexing, or translating (a published transcription, a database index, a later certified copy).
+  - `authored` — selects, analyzes, narrates, or synthesizes other sources into a new work (a compiled genealogy, a county history, a journal article).
+- **Information type** (`information_type`, validated against the [`information_types`](vocabularies#information-types-vocabulary) vocabulary) — the informant's relationship to the event:
+  - `primary` — reported by someone with firsthand knowledge.
+  - `secondary` — reported by someone without firsthand knowledge.
+  - `indeterminate` — informant or origin unknown (Evidence Explained: "undetermined").
+
+The two axes are independent: an original civil death register (`source_nature: original`) records the death itself firsthand but the deceased's birth date secondhand, so a single source can carry both primary and secondary information. At the source level, `information_type` records the **predominant or default** information quality; where individual facts diverge, classify them on the [Citation](citation) that draws each fact. The third Evidence Explained axis — *evidence* (direct / indirect / negative), which is relative to a research question rather than intrinsic to the source — is expressed per [Assertion](assertion) rather than on the Source.
+
+```yaml
+sources:
+  source-death-cert-john-smith:
+    title: "Death Certificate - John Smith, 1921"
+    type: vital_record
+    authors:
+      - "General Register Office"
+    date: "1921-04-02"
+    repository: repository-gro
+    properties:
+      description: "Civil death registration for John Smith, Leeds registration district"
+      source_nature: original
+      information_type: primary
+
+  source-smith-family-history:
+    title: "The Smith Family of Yorkshire: A Genealogy"
+    type: book
+    authors:
+      - "Elizabeth Brown"
+    date: "1985"
+    properties:
+      # A compiled genealogy synthesizing other sources, reporting events
+      # the author did not witness.
+      source_nature: authored
+      information_type: secondary
+```
+
+Out-of-vocabulary values produce a validation warning (not an error); archives may extend either vocabulary with custom values.
 
 ## Usage Patterns
 
@@ -528,12 +574,12 @@ Use consistent citation styles within your archive:
 
 ### Source Characteristics
 
-Documenting source characteristics in notes helps researchers evaluate evidence:
+Documenting source characteristics helps researchers evaluate evidence:
 
-- Primary vs. secondary nature
-- Original vs. derivative
-- Completeness and condition
-- Known limitations or biases
+- Original vs. derivative vs. authored — record structurally with `source_nature` (see [Source Classification](#source-classification-evidence-explained))
+- Primary vs. secondary vs. indeterminate information — record structurally with `information_type`
+- Completeness and condition — note free-form in `notes`
+- Known limitations or biases — note free-form in `notes`
 
 ### Digital Preservation
 

@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/information-types.schema.json",
+  "title": "Information Types Vocabulary",
+  "description": "Defines the standard and custom information-type values available for sources (Evidence Explained: primary, secondary, indeterminate)",
+  "type": "object",
+  "required": ["information_types"],
+  "properties": {
+    "information_types": {
+      "type": "object",
+      "description": "Map of information-type definitions",
+      "additionalProperties": {
+        "$ref": "#/definitions/InformationTypeDefinition"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "InformationTypeDefinition": {
+      "type": "object",
+      "description": "Definition of a single information-type value",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for the information type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the information type"
+        }
+      }
+    }
+  }
+}

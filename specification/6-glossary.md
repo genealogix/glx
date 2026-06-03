@@ -216,6 +216,12 @@ A unique identifier for each entity, used as the map key in YAML. Format: 1-64 a
 
 Evidence that requires interpretation or additional information to support a conclusion.
 
+### Information Types
+
+Standard vocabulary (`information_types`) backing the `information_type` source property. Following Evidence Explained, classifies the information a source conveys by the informant's relationship to the event: `primary` (firsthand), `secondary` (secondhand), `indeterminate` (origin unknown). At the source level this records the predominant or default quality; fact-level variation is classified per citation. Archives may extend with custom values.
+
+> **See Also:** [Information Types Vocabulary](4-entity-types/vocabularies#information-types-vocabulary), [Source Entity — Source Classification](4-entity-types/source#source-classification-evidence-explained)
+
 ## L
 
 ### Legal Statuses
@@ -443,6 +449,12 @@ An original document, record, publication, or material containing genealogical i
 ### Source Analysis
 
 Examining original documents for content, context, and credibility to extract genealogical information.
+
+### Source Nature
+
+Standard vocabulary (`source_natures`) backing the `source_nature` source property. Following Evidence Explained, classifies a source by how it was produced relative to the event it documents: `original` (first-recorded form), `derivative` (copy, abstract, transcription, or index of an earlier source), `authored` (a work synthesizing other sources). Independent of the `information_type` axis. Archives may extend with custom values.
+
+> **See Also:** [Source Natures Vocabulary](4-entity-types/vocabularies#source-natures-vocabulary), [Source Entity — Source Classification](4-entity-types/source#source-classification-evidence-explained)
 
 ### Source Type
 

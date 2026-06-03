@@ -303,6 +303,8 @@ func (s *DefaultSerializer) DeserializeMultiFileFromMap(files map[string][]byte)
 		StudyTypes:             make(map[string]*VocabularyEntry),
 		StudyStatuses:          make(map[string]*VocabularyEntry),
 		LegalStatuses:          make(map[string]*VocabularyEntry),
+		SourceNatures:          make(map[string]*VocabularyEntry),
+		InformationTypes:       make(map[string]*VocabularyEntry),
 
 		PersonProperties:       make(map[string]*PropertyDefinition),
 		EventProperties:        make(map[string]*PropertyDefinition),

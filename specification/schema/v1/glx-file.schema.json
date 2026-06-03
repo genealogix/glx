@@ -232,6 +232,22 @@
       },
       "additionalProperties": false
     },
+    "source_natures": {
+      "type": "object",
+      "description": "Source-nature vocabulary (Evidence Explained: original, derivative, authored)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-natures.schema.json#/definitions/SourceNatureDefinition" }
+      },
+      "additionalProperties": false
+    },
+    "information_types": {
+      "type": "object",
+      "description": "Information-type vocabulary (Evidence Explained: primary, secondary, indeterminate)",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/information-types.schema.json#/definitions/InformationTypeDefinition" }
+      },
+      "additionalProperties": false
+    },
     "person_properties": {
       "type": "object",
       "description": "Person property vocabulary",
