@@ -73,17 +73,20 @@ jobs:
         with:
           go-version: '1.26'
           cache: true
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
 
       - name: Download Go modules
         run: go mod download
 
+      - name: Install gosec
+        # gosec is NOT in tools/go.mod on purpose: its autofix package pulls the
+        # Google generative-ai-go / Cloud SDK / grpc / otel tree, whose (unreachable,
+        # build-time-only) advisories would otherwise trip Dependency Review on every
+        # PR. A version-pinned `go install` keeps it reproducible without committing
+        # that graph. See tools/README.md.
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
+
       - name: Run gosec
-        # gosec is pinned via the tool directive in tools/go.mod (single source of
-        # truth, shared with `make gosec`); -modfile keeps the main module's graph clean.
-        run: go tool -modfile=tools/go.mod gosec -quiet ./...
+        run: gosec -quiet ./...
 
   npm-audit:
     name: npm Audit

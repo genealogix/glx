@@ -127,7 +127,7 @@ files. Skip once with `LEFTHOOK=0 git commit ...` if needed.
 | `make lint` | Run Go and website linters |
 | `make lint-fix` | Run linters with auto-fix |
 | `make fmt` | Format Go and website code |
-| `make security` | Run Go security tools (gosec + govulncheck) |
+| `make vulncheck` | Run govulncheck (pinned via tools/go.mod) |
 | `make build` | Build CLI and website |
 | `make build-cli` | Build just the `glx` binary to `bin/` |
 | `make check-schemas` | Validate JSON schema files |

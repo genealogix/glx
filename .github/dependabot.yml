@@ -3,7 +3,7 @@ updates:
   - package-ecosystem: gomod
     directories:
       - /
-      - /tools   # pinned dev/CI tools (gosec, govulncheck) — see tools/README.md
+      - /tools   # pinned dev/CI tools (govulncheck) — see tools/README.md
     schedule:
       interval: daily
     commit-message:

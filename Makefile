@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check tools-tidy-check clean fmt check-schemas check-drift-allowlist check-links validate-examples docs-cli release-snapshot gosec vulncheck security
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check tools-tidy-check clean fmt check-schemas check-drift-allowlist check-links validate-examples docs-cli release-snapshot vulncheck
 
 .DEFAULT_GOAL := help
 
@@ -118,17 +118,14 @@ tools-tidy-check: ## Verify tools/go.mod and tools/go.sum are tidy
 	go -C tools mod tidy -diff
 
 ## Security
-# gosec and govulncheck are pinned via the tool directive in tools/go.mod (single
-# source of truth, shared with .github/workflows/security.yml). -modfile keeps the
-# tools' heavy dependency graph out of the main module.
-gosec: ## Run gosec static security analysis (pinned via tools/go.mod)
-	go tool -modfile=tools/go.mod gosec -quiet ./...
-
+# govulncheck is pinned via the tool directive in tools/go.mod (single source of
+# truth, shared with .github/workflows/security.yml); -modfile keeps its graph out
+# of the main module. gosec is intentionally NOT here — its autofix package drags in
+# a heavy Cloud-SDK/grpc/otel tree, so CI keeps it on a version-pinned `go install`
+# (see tools/README.md). Run gosec ad hoc with:
+#   go run github.com/securego/gosec/v2/cmd/gosec@v2.22.4 -quiet ./...
 vulncheck: ## Run govulncheck against the Go vulnerability DB (pinned via tools/go.mod)
 	go tool -modfile=tools/go.mod govulncheck ./...
-
-security: gosec vulncheck ## Run all Go security tools (gosec + govulncheck)
-	@echo "Security checks passed."
 
 ## Specification
 check-schemas: ## Validate JSON schema files
