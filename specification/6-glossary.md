@@ -218,7 +218,7 @@ Evidence that requires interpretation or additional information to support a con
 
 ### Information Types
 
-Standard vocabulary (`information_types`) backing the `information_type` source property. Following Evidence Explained, classifies the information a source conveys by the informant's relationship to the event: `primary` (firsthand), `secondary` (secondhand), `indeterminate` (origin unknown). At the source level this records the predominant or default quality; fact-level variation is classified per citation. Archives may extend with custom values.
+Standard vocabulary (`information_types`) backing the `information_type` source property. Following Evidence Explained, classifies the information a source conveys by the informant's relationship to the event: `primary` (firsthand), `secondary` (secondhand), `indeterminate` (origin unknown). At the source level this records the predominant or default quality; because Evidence Explained treats information as a property of each item, fact-level variation is better expressed per item. There is no standard citation property for this yet, so an archive needing per-fact classification extends `citation_properties` with a custom property (`vocabulary_type: information_types`); standardizing it is tracked in [#988](https://github.com/genealogix/glx/issues/988). Archives may extend with custom values.
 
 > **See Also:** [Information Types Vocabulary](4-entity-types/vocabularies#information-types-vocabulary), [Source Entity — Source Classification](4-entity-types/source#source-classification-evidence-explained)
 
