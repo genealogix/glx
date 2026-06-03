@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!--
+ Copyright 2025 Oracynth, Inc.
+ Licensed under the Apache License, Version 2.0.
+ Embedded read-only viewer shell for `glx serve` (issue #93, Phase 1).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GLX Viewer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#/">GLX <span>Viewer</span></a>
+      <nav class="nav">
+        <a href="#/" data-nav="dashboard">Dashboard</a>
+        <a href="#/persons" data-nav="persons">People</a>
+        <a href="#/sources" data-nav="sources">Sources</a>
+      </nav>
+    </header>
+    <main id="app" class="content">
+      <p class="muted">Loading…</p>
+    </main>
+    <footer class="footer">
+      <span class="muted">Read-only viewer · <code>glx serve</code></span>
+    </footer>
+    <script src="app.js"></script>
+  </body>
+</html>

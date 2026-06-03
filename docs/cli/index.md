@@ -34,6 +34,7 @@ For installation instructions, see [`glx/README.md`](https://github.com/genealog
 - [`glx descendants`](/cli/glx_descendants) — descendant tree
 - [`glx cite`](/cli/glx_cite) — formatted citation text
 - [`glx path`](/cli/glx_path) — shortest relationship path between two people
+- [`glx serve`](/cli/glx_serve) — local browser-based read-only archive viewer
 
 ### Data Entry
 

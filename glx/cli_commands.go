@@ -105,6 +105,7 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
@@ -1589,6 +1590,65 @@ func runLink(_ *cobra.Command, args []string) error {
 		Text:              linkText,
 		Locator:           linkLocator,
 		DryRun:            linkDryRun,
+	})
+}
+
+// ============================================================================
+// Serve Command
+// ============================================================================
+
+var (
+	serveHost string
+	servePort int
+)
+
+var serveCmd = &cobra.Command{
+	Use:   "serve [path]",
+	Short: "Launch a local browser-based viewer for a GLX archive",
+	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+
+Starts a small local web server and renders an interactive viewer with:
+  - Dashboard: entity counts, assertion confidence, and coverage
+  - Person profiles: names, vitals, event timeline, assertions with evidence
+  - Family tree: interactive pedigree and descendancy charts
+  - Sources: every source with its citations and locators
+
+The server binds to localhost by default so the archive stays on your machine.
+The archive is loaded once at startup; restart the server to pick up external
+edits made by the CLI or a text editor.
+
+Accepts either a multi-file directory or a single .glx file.
+If no path is given, the current directory is used.`,
+	Example: `  # Serve the current directory on the default port
+  glx serve
+
+  # Serve a specific archive
+  glx serve my-family-archive
+
+  # Serve a single-file archive on a custom port
+  glx serve family.glx --port 9000
+
+  # Pick any free port (printed on startup)
+  glx serve --port 0`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runServe,
+}
+
+func init() {
+	serveCmd.Flags().StringVar(&serveHost, "host", "127.0.0.1", "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
+	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
+}
+
+func runServe(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	return serveArchive(SystemIOStreams(), serveOptions{
+		ArchivePath: path,
+		Host:        serveHost,
+		Port:        servePort,
 	})
 }
 

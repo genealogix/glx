@@ -20,7 +20,7 @@ export default [
     rules: {
       'indent': ['error', 2],
       'linebreak-style': ['error', 'unix'],
-      'quotes': ['error', 'single'],
+      'quotes': ['error', 'single', { avoidEscape: true }],
       'semi': ['error', 'never'],
       'no-unused-vars': ['warn'],
       'vue/multi-word-component-names': 'off'

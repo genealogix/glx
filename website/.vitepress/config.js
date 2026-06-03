@@ -331,7 +331,8 @@ export default defineConfig({
             { text: 'glx ancestors', link: '/cli/glx_ancestors' },
             { text: 'glx descendants', link: '/cli/glx_descendants' },
             { text: 'glx cite', link: '/cli/glx_cite' },
-            { text: 'glx path', link: '/cli/glx_path' }
+            { text: 'glx path', link: '/cli/glx_path' },
+            { text: 'glx serve', link: '/cli/glx_serve' }
           ]
         },
         {
