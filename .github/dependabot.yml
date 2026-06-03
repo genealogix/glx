@@ -5,7 +5,10 @@ updates:
       - /
       - /tools   # pinned dev/CI tools (govulncheck) — see tools/README.md
     schedule:
-      interval: daily
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Chicago
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -16,7 +19,10 @@ updates:
       - /website
       - /specification
     schedule:
-      interval: daily
+      interval: weekly
+      day: tuesday
+      time: "09:00"
+      timezone: America/Chicago
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -25,7 +31,10 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
+      day: wednesday
+      time: "09:00"
+      timezone: America/Chicago
     commit-message:
       prefix: "chore(deps)"
     labels:
