@@ -61,6 +61,9 @@ jobs:
     name: Go Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v6
 
@@ -77,7 +80,14 @@ jobs:
         run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
 
       - name: Run gosec
-        run: gosec -quiet ./...
+        run: gosec -quiet -fmt sarif -out gosec.sarif ./...
+
+      - name: Upload SARIF to Code Scanning
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: gosec.sarif
+          category: gosec
 
   npm-audit:
     name: npm Audit
