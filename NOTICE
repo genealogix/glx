@@ -39,13 +39,14 @@ Direct dependencies
   golang.org/x/text
     License: BSD-3-Clause
     Copyright 2009 The Go Authors
-    https://pkg.go.dev/golang.org/x/text
+    https://github.com/golang/text
 
   gopkg.in/yaml.v3
     License: MIT and Apache-2.0
-    Copyright (c) 2011-2019 Canonical Ltd
+    Copyright (c) 2006-2010 Kirill Simonov
     Copyright (c) 2006-2011 Kirill Simonov
-    https://gopkg.in/yaml.v3
+    Copyright (c) 2011-2019 Canonical Ltd
+    https://github.com/go-yaml/yaml/tree/v3
 
 Transitive dependencies
 -----------------------
@@ -67,11 +68,13 @@ Transitive dependencies
 
   github.com/spf13/pflag
     License: BSD-3-Clause
-    Copyright (c) 2012 Alex Ogier and The Go Authors
+    Copyright (c) 2012 Alex Ogier
+    Copyright (c) 2012 The Go Authors
     https://github.com/spf13/pflag
 
   go.yaml.in/yaml/v3
     License: MIT and Apache-2.0
-    Copyright (c) 2011-2019 Canonical Ltd
+    Copyright (c) 2006-2010 Kirill Simonov
     Copyright (c) 2006-2011 Kirill Simonov
+    Copyright (c) 2011-2019 Canonical Ltd
     https://github.com/yaml/go-yaml
