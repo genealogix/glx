@@ -168,7 +168,7 @@ Before the findings, record a provenance header at the top of the report so a ru
 - **Commit SHA** being checked — `git rev-parse HEAD`
 - **Run timestamp** — `date -u +%Y-%m-%dT%H:%M:%SZ`
 - **Schema files actually visited** — the concrete list of `*.schema.json` paths you compared, not just the file-list spec above. Listing what you visited (vs. what you were told to visit) catches the case where a file was silently dropped.
-- **`make check-schemas` exit status** — run it and record the exit code. This target validates that the schema files are themselves well-formed JSON Schema (and that `.glx` vocabulary templates validate). A **non-zero** status means schema-level validity is broken, so spec↔schema comparison on top of malformed schemas is unreliable — note this prominently and treat findings with lower confidence. Full delegation of `$ref` resolution and vocabulary `.glx` validation to this target is tracked separately in #839.
+- **`make check-schemas` exit status** — run it and record the exit code. This target (`node specification/validate-schemas.mjs`) validates every entity and vocabulary `*.schema.json` against the JSON-Schema meta-schema, compiles each under ajv strict mode, and compiles `glx-file.schema.json` with all entity/vocabulary schemas registered as `$ref` targets (so a broken cross-schema reference fails here). It does **not** read or validate the `specification/5-standard-vocabularies/*.glx` template files — checking those `.glx` templates against their schemas is a manual step (see "Vocabulary Schemas" above) and the proposed delegation is the separate scope of #839. A **non-zero** status means schema-level validity is broken, so spec↔schema comparison on top of malformed schemas is unreliable — note this prominently and treat findings with lower confidence.
 
 These values also populate the `commit`, `timestamp`, and `checked_schemas` fields of the machine-readable block below.
 
@@ -178,14 +178,14 @@ Produce the report in two parts, in this order: (1) a human-readable prose repor
 
 ### Part 1 — Human-readable report
 
-Group findings by scope using the **exact** heading for each scope, so every finding is addressable by `scope` + `target`. Do NOT invent section structure for the non-entity schemas — these four headings cover every schema in scope:
+Group findings by scope using the **exact** heading for each scope, so every finding is addressable by `scope` + `target`. Emit one section per schema you actually visited (see "Schemas to Check" for the scope inventory). Do NOT invent section structure for the non-entity schemas — these four headings cover every schema in scope:
 
-| Scope (`scope` enum value)        | Count | Heading to use               |
-|-----------------------------------|-------|------------------------------|
-| Entities (`entity`)               | 9     | `## Entity: [name]`          |
-| Archive root (`archive_root`)     | 1     | `## Archive Root: glx-file`  |
-| Type vocabularies (`vocabulary_type`)     | 10 | `## Vocabulary (type): [name]`     |
-| Property vocabularies (`vocabulary_property`) | 8 | `## Vocabulary (property): [name]` |
+| Scope (`scope` enum value)                    | Heading to use                    |
+|-----------------------------------------------|-----------------------------------|
+| Entities (`entity`)                           | `## Entity: [name]`               |
+| Archive root (`archive_root`)                 | `## Archive Root: glx-file`       |
+| Type vocabularies (`vocabulary_type`)         | `## Vocabulary (type): [name]`    |
+| Property vocabularies (`vocabulary_property`) | `## Vocabulary (property): [name]` |
 
 Under each heading, emit either a no-drift line or a drift block:
 
@@ -227,7 +227,7 @@ Field contract:
 
 - `command` — always `"check-schema-drift"`.
 - `commit` / `timestamp` — copied from the Provenance header.
-- `checked_schemas` — the schemas you actually visited, grouped by scope key (`entity`, `archive_root`, `vocabulary_type`, `vocabulary_property`).
+- `checked_schemas` — the schemas you **actually visited** this run, grouped by scope key (`entity`, `archive_root`, `vocabulary_type`, `vocabulary_property`). Populate it from the `*.schema.json` glob, not a memorized list — the schema set grows over time.
 - `findings[]` — one object per drift:
   - `scope` — enum: `entity | archive_root | vocabulary_type | vocabulary_property | meta`. (`meta` is for file-level / cross-cutting findings such as an orphaned schema.)
   - `target` — schema name without extension (e.g., `person`, `glx-file`, `event-types`).
@@ -240,7 +240,7 @@ Field contract:
   - `message` — one sentence, framed as "what the schema needs to change".
 - `summary` — `total_findings`, the four per-severity counts, and `suppressed_as_duplicate_of_known_issue` (incremented per the Cross-Reference section below).
 
-Example (a single illustrative finding — emit `"findings": []` when clean):
+Example (the `checked_schemas` lists and the single finding are **illustrative** — populate them from the schemas you actually visited; emit `"findings": []` when clean):
 
 ```findings-json
 {
