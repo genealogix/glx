@@ -359,12 +359,47 @@ func TestServeStaticIndex(t *testing.T) {
 }
 
 func TestIsLoopbackHost(t *testing.T) {
-	for _, host := range []string{"localhost", "127.0.0.1", "::1", "", "127.0.0.5"} {
+	for _, host := range []string{"localhost", "127.0.0.1", "::1", "127.0.0.5"} {
 		assert.True(t, isLoopbackHost(host), host)
 	}
-	for _, host := range []string{"0.0.0.0", "192.168.1.10", "example.com"} {
+	// Empty host binds all interfaces (":port"), so it must NOT be loopback.
+	for _, host := range []string{"", "0.0.0.0", "192.168.1.10", "example.com"} {
 		assert.False(t, isLoopbackHost(host), host)
 	}
+}
+
+// TestServeHandlesNilEntries ensures a malformed archive with nil map values
+// (e.g. `person-id: null` in YAML) does not panic any endpoint.
+func TestServeHandlesNilEntries(t *testing.T) {
+	a := serveTestArchive()
+	a.Persons["person-nil"] = nil
+	a.Events["event-nil"] = nil
+	a.Assertions["assertion-nil"] = nil
+	a.Sources["source-nil"] = nil
+	a.Citations["citation-nil"] = nil
+	a.Relationships["relationship-nil"] = nil
+
+	sub, err := fs.Sub(webAssets, "web")
+	require.NoError(t, err)
+	srv := &viewerServer{archive: a, archivePath: "nil-archive", assets: sub}
+
+	// List/overview/tree endpoints iterate the maps (including the nil entries).
+	for _, path := range []string{
+		"/api/overview",
+		"/api/persons",
+		"/api/persons/person-self",
+		"/api/persons/person-self/tree?dir=ancestors&gen=4",
+		"/api/persons/person-self/tree?dir=descendants&gen=4",
+		"/api/sources",
+		"/api/sources/source-census",
+	} {
+		rec := doServeRequest(t, srv, path, nil)
+		assert.Equalf(t, http.StatusOK, rec.Code, "path %s should not panic/error", path)
+	}
+
+	// A nil entity addressed directly resolves to 404, not a panic.
+	assert.Equal(t, http.StatusNotFound, doServeRequest(t, srv, "/api/persons/person-nil", nil).Code)
+	assert.Equal(t, http.StatusNotFound, doServeRequest(t, srv, "/api/sources/source-nil", nil).Code)
 }
 
 func TestClampGen(t *testing.T) {

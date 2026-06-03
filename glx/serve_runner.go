@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/http"
 	"os/signal"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,9 +41,9 @@ import (
 //go:embed web
 var webAssets embed.FS
 
-// serveDefaultMaxTreeGen bounds pedigree/descendancy depth so a malicious or
-// cyclic archive cannot drive unbounded recursion. The default depth balances
-// a useful chart against payload size.
+// serveDefaultTreeGen / serveMaxTreeGen bound pedigree/descendancy depth so a
+// malicious or cyclic archive cannot drive unbounded recursion. The default
+// depth balances a useful chart against payload size.
 const (
 	serveDefaultPort    = 8080
 	serveDefaultTreeGen = 4
@@ -118,10 +119,15 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 	streams.Printf("GLX viewer for %s\n", opts.ArchivePath)
 	streams.Printf("  %d persons, %d sources, %d events\n",
 		len(archive.Persons), len(archive.Sources), len(archive.Events))
-	streams.Printf("\n  Serving at %s\n  Press Ctrl-C to stop.\n\n", url)
+	streams.Printf("\n  Open this URL in your browser: %s\n  Press Ctrl-C to stop.\n\n", url)
 	if !isLoopbackHost(opts.Host) {
+		hostLabel := opts.Host
+		if hostLabel == "" {
+			// net.JoinHostPort("", port) binds every interface (":port").
+			hostLabel = "all interfaces"
+		}
 		streams.Errorf("Warning: binding to %s exposes this archive to your network. "+
-			"Use --host 127.0.0.1 to keep it local.\n", opts.Host)
+			"Use --host 127.0.0.1 to keep it local.\n", hostLabel)
 	}
 
 	if err := httpSrv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -133,11 +139,15 @@ func serveArchive(streams *IOStreams, opts serveOptions) error {
 	return nil
 }
 
-// isLoopbackHost reports whether host binds only to the local machine.
+// isLoopbackHost reports whether host binds only to the local machine. An empty
+// host is NOT loopback: net.JoinHostPort("", port) produces ":port", which binds
+// every interface — so `--host ""` must still trigger the exposure warning.
 func isLoopbackHost(host string) bool {
 	switch host {
-	case "localhost", "127.0.0.1", "::1", "":
+	case "localhost", "127.0.0.1", "::1":
 		return true
+	case "":
+		return false
 	}
 	if ip := net.ParseIP(host); ip != nil {
 		return ip.IsLoopback()
@@ -235,12 +245,20 @@ func confidenceRows(a *glxlib.GLXFile) []confidenceRowDTO {
 
 	const unset = "(unset)"
 	counts := map[string]int{}
+	valid := 0
 	for _, assertion := range a.Assertions {
+		if assertion == nil {
+			continue
+		}
+		valid++
 		level := assertion.Confidence
 		if level == "" {
 			level = unset
 		}
 		counts[level]++
+	}
+	if valid == 0 {
+		return []confidenceRowDTO{}
 	}
 
 	var levels []string
@@ -265,7 +283,7 @@ func confidenceRows(a *glxlib.GLXFile) []confidenceRowDTO {
 		levels = append(levels, unset)
 	}
 
-	total := float64(len(a.Assertions))
+	total := float64(valid)
 	rows := make([]confidenceRowDTO, 0, len(levels))
 	for _, level := range levels {
 		rows = append(rows, confidenceRowDTO{
@@ -290,6 +308,9 @@ func coverageRows(a *glxlib.GLXFile) []coverageRowDTO {
 	rels := map[string]struct{}{}
 	places := map[string]struct{}{}
 	for _, assertion := range a.Assertions {
+		if assertion == nil {
+			continue
+		}
 		if assertion.Subject.Person != "" {
 			persons[assertion.Subject.Person] = struct{}{}
 		}
@@ -339,10 +360,17 @@ func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
 	for _, id := range sortedKeys(a.Persons) {
 		person := a.Persons[id]
 		birth, death := personVitalYears(a, id)
+		// person may be nil for a malformed archive entry (e.g. `person-x: null`);
+		// extractPersonName already tolerates nil, so only the property read needs
+		// guarding.
+		sex := ""
+		if person != nil {
+			sex = propertyString(person.Properties, glxlib.PersonPropertySex)
+		}
 		items = append(items, personListItemDTO{
 			ID:        id,
 			Name:      extractPersonName(person),
-			Sex:       propertyString(person.Properties, glxlib.PersonPropertySex),
+			Sex:       sex,
 			BirthYear: birth,
 			DeathYear: death,
 		})
@@ -484,6 +512,9 @@ func (s *viewerServer) personEvents(id string) []eventDTO {
 	out := []eventDTO{}
 	for _, eventID := range sortedKeys(a.Events) {
 		event := a.Events[eventID]
+		if event == nil {
+			continue
+		}
 		role := participantRole(id, event.Participants)
 		if role == roleAbsent {
 			continue
@@ -553,7 +584,7 @@ func (s *viewerServer) personAssertions(id string) []assertionDTO {
 	out := []assertionDTO{}
 	for _, assertID := range sortedKeys(a.Assertions) {
 		assertion := a.Assertions[assertID]
-		if assertion.Subject.Person != id {
+		if assertion == nil || assertion.Subject.Person != id {
 			continue
 		}
 		dto := assertionDTO{
@@ -627,7 +658,10 @@ func (s *viewerServer) handleTree(w http.ResponseWriter, r *http.Request) {
 	}
 	gen := clampGen(r.URL.Query().Get("gen"))
 
-	root := s.buildTree(id, direction, 0, gen, map[string]bool{})
+	// Build the parent/child adjacency once per request so buildTree does not
+	// rescan (and re-sort) archive.Relationships for every node.
+	idx := buildTreeRelIndex(a)
+	root := s.buildTree(idx, id, direction, 0, gen, map[string]bool{})
 	writeJSON(w, http.StatusOK, map[string]any{
 		"direction": direction,
 		"gen":       gen,
@@ -635,11 +669,70 @@ func (s *viewerServer) handleTree(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// treeRelIndex holds the parent/child adjacency of an archive, built once so a
+// whole-tree traversal is O(nodes) instead of O(nodes × relationships).
+type treeRelIndex struct {
+	parents  map[string][]string // child ID -> parent IDs
+	children map[string][]string // parent ID -> child IDs
+}
+
+// buildTreeRelIndex scans the parent-child relationships once and records both
+// directions. It mirrors findParentIDs/findChildIDs: parents keep first-seen
+// order; children are ordered by birth year (then ID) for a stable chart.
+func buildTreeRelIndex(a *glxlib.GLXFile) *treeRelIndex {
+	idx := &treeRelIndex{parents: map[string][]string{}, children: map[string][]string{}}
+	for _, relID := range sortedKeys(a.Relationships) {
+		rel := a.Relationships[relID]
+		if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] {
+			continue
+		}
+
+		var parents, children []string
+		for _, p := range rel.Participants {
+			switch strings.ToLower(p.Role) {
+			case glxlib.ParticipantRoleParent:
+				parents = append(parents, p.Person)
+			case glxlib.ParticipantRoleChild:
+				children = append(children, p.Person)
+			}
+		}
+		for _, childID := range children {
+			for _, parentID := range parents {
+				idx.children[parentID] = appendUniqueString(idx.children[parentID], childID)
+				idx.parents[childID] = appendUniqueString(idx.parents[childID], parentID)
+			}
+		}
+	}
+
+	for parentID := range idx.children {
+		kids := idx.children[parentID]
+		sort.SliceStable(kids, func(i, j int) bool {
+			yi, yj := birthYear(a, kids[i]), birthYear(a, kids[j])
+			if yi != yj {
+				return yi < yj
+			}
+
+			return kids[i] < kids[j]
+		})
+	}
+
+	return idx
+}
+
+func appendUniqueString(s []string, v string) []string {
+	if slices.Contains(s, v) {
+		return s
+	}
+
+	return append(s, v)
+}
+
 // buildTree recursively assembles a pedigree (ancestors) or descendancy
-// (descendants) chart. `path` provides backtracking cycle detection so the same
-// person can legitimately appear in two branches (cousin marriage / pedigree
-// collapse) without looping forever on a malformed self-ancestor cycle.
-func (s *viewerServer) buildTree(id, direction string, depth, maxGen int, path map[string]bool) *treeNodeDTO {
+// (descendants) chart from a prebuilt adjacency index. `path` provides
+// backtracking cycle detection so the same person can legitimately appear in two
+// branches (cousin marriage / pedigree collapse) without looping forever on a
+// malformed self-ancestor cycle.
+func (s *viewerServer) buildTree(idx *treeRelIndex, id, direction string, depth, maxGen int, path map[string]bool) *treeNodeDTO {
 	a := s.archive
 	person := a.Persons[id]
 	birth, death := personVitalYears(a, id)
@@ -658,14 +751,12 @@ func (s *viewerServer) buildTree(id, direction string, depth, maxGen int, path m
 	path[id] = true
 	defer delete(path, id)
 
-	var nextIDs []string
+	nextIDs := idx.parents[id]
 	if direction == "descendants" {
-		nextIDs = findChildIDs(id, a)
-	} else {
-		nextIDs = findParentIDs(id, a)
+		nextIDs = idx.children[id]
 	}
 	for _, nextID := range nextIDs {
-		node.Children = append(node.Children, s.buildTree(nextID, direction, depth+1, maxGen, path))
+		node.Children = append(node.Children, s.buildTree(idx, nextID, direction, depth+1, maxGen, path))
 	}
 
 	return node
@@ -699,19 +790,27 @@ func (s *viewerServer) handleSources(w http.ResponseWriter, _ *http.Request) {
 	a := s.archive
 	citationCounts := map[string]int{}
 	for _, citation := range a.Citations {
+		if citation == nil {
+			continue
+		}
 		citationCounts[citation.SourceID]++
 	}
 
 	items := make([]sourceListItemDTO, 0, len(a.Sources))
 	for _, id := range sortedKeys(a.Sources) {
 		source := a.Sources[id]
-		items = append(items, sourceListItemDTO{
+		// sourceDisplayTitle already falls back to the ID for a nil source; only
+		// the type/date reads need a nil guard.
+		item := sourceListItemDTO{
 			ID:            id,
 			Title:         sourceDisplayTitle(id, source),
-			Type:          source.Type,
-			Date:          string(source.Date),
 			CitationCount: citationCounts[id],
-		})
+		}
+		if source != nil {
+			item.Type = source.Type
+			item.Date = string(source.Date)
+		}
+		items = append(items, item)
 	}
 
 	sort.SliceStable(items, func(i, j int) bool {
@@ -772,7 +871,7 @@ func (s *viewerServer) handleSource(w http.ResponseWriter, r *http.Request) {
 
 	for _, cid := range sortedKeys(a.Citations) {
 		citation := a.Citations[cid]
-		if citation.SourceID != id {
+		if citation == nil || citation.SourceID != id {
 			continue
 		}
 		detail.Citations = append(detail.Citations, sourceCitationDTO{

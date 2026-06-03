@@ -138,7 +138,6 @@ select { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius:
 .tree-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
 .tree-node rect { fill: #fff; stroke: var(--border); stroke-width: 1.5; rx: 6; cursor: pointer; }
 .tree-node:hover rect { stroke: var(--accent); }
-.tree-node.sex-male rect { stroke-left: var(--male); }
 .tree-node .tn-name { font-weight: 600; font-size: 12px; fill: var(--ink); }
 .tree-node .tn-years { font-size: 11px; fill: var(--muted); }
 .tree-edge { fill: none; stroke: #c3c9d2; stroke-width: 1.5; }

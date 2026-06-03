@@ -43,7 +43,11 @@ function appendChildren(el, children) {
 // (e.g. imported from GEDCOM) can contain arbitrary URLs, so reject anything
 // that isn't http(s)/mailto to avoid javascript: and data: URL injection.
 function safeHref(url) {
-  return typeof url === "string" && /^(https?:|mailto:)/i.test(url.trim()) ? url : null;
+  if (typeof url !== "string") return null;
+  const trimmed = url.trim();
+  // Return the trimmed value so imported data with surrounding whitespace still
+  // produces a working link rather than one that validates but won't navigate.
+  return /^(https?:|mailto:)/i.test(trimmed) ? trimmed : null;
 }
 
 // externalLink builds a new-tab anchor for an archive-supplied URL, or returns

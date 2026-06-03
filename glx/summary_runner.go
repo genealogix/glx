@@ -577,7 +577,7 @@ func findSpouses(personID string, archive *glxlib.GLXFile) []spouseInfo {
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
 		rel := archive.Relationships[relID]
-		if !marriageRelTypes[strings.ToLower(rel.Type)] {
+		if rel == nil || !marriageRelTypes[strings.ToLower(rel.Type)] {
 			continue
 		}
 
@@ -666,7 +666,7 @@ func findParentIDs(personID string, archive *glxlib.GLXFile) []string {
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
 		rel := archive.Relationships[relID]
-		if !parentChildRelTypes[strings.ToLower(rel.Type)] {
+		if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] {
 			continue
 		}
 
@@ -770,7 +770,7 @@ func findSiblingIDs(personID string, parentIDs []string, archive *glxlib.GLXFile
 		ids := sortedKeys(archive.Relationships)
 		for _, relID := range ids {
 			rel := archive.Relationships[relID]
-			if !parentChildRelTypes[strings.ToLower(rel.Type)] || strings.EqualFold(rel.Type, "sibling") {
+			if rel == nil || !parentChildRelTypes[strings.ToLower(rel.Type)] || strings.EqualFold(rel.Type, "sibling") {
 				continue
 			}
 
@@ -798,7 +798,7 @@ func findSiblingIDs(personID string, parentIDs []string, archive *glxlib.GLXFile
 	ids := sortedKeys(archive.Relationships)
 	for _, relID := range ids {
 		rel := archive.Relationships[relID]
-		if !strings.EqualFold(rel.Type, "sibling") {
+		if rel == nil || !strings.EqualFold(rel.Type, "sibling") {
 			continue
 		}
 		if !hasParticipant(personID, rel.Participants) {
