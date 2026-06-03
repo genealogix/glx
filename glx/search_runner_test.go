@@ -80,6 +80,8 @@ func newTestArchiveForSearch() *glxlib.GLXFile {
 				MimeType: "image/jpeg",
 				Hash:     "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 				Title:    "Studio Portrait",
+				Date:     "1905",
+				Source:   "source-1860",
 			},
 		},
 	}
@@ -194,19 +196,27 @@ func TestSearchArchive_FindsRepositoryAddressFields(t *testing.T) {
 	}
 }
 
-// Regression guard: searchArchive must match the scalar Media fields. The hash
-// field in particular regressed in #620 (Copilot review of #252 flagged that
-// media checksums were unsearchable), so it is covered explicitly here.
+// Regression guard: searchArchive must match the scalar Media fields. #620
+// (raised in the Copilot review of #252) reported the hash field as
+// unsearchable; in fact searchMedia() had matched it since #252, so the real
+// gap was the absence of any Media coverage in this test. This guard exercises
+// every scalar field searchMedia() matches — keeping the hash case explicit so
+// a future refactor can't silently drop it.
 func TestSearchArchive_FindsMediaFields(t *testing.T) {
+	// One case per scalar field searchMedia() matches, in Media struct order
+	// (uri, type, mime_type, hash, title, date, source).
 	cases := []struct {
 		name      string
 		query     string
 		wantField string
 	}{
 		{"uri", "portrait-001.jpg", "uri"},
+		{"type", "photo", "type"},
 		{"mime_type", "image/jpeg", "mime_type"},
 		{"hash", "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "hash"},
 		{"title", "Studio Portrait", "title"},
+		{"date", "1905", "date"},
+		{"source", "source-1860", "source"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
