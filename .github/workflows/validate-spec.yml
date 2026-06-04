@@ -57,12 +57,14 @@ jobs:
       - name: Validate drift allowlist
         run: make check-drift-allowlist
   
-  validate-examples:
+  build-cli:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      examples: ${{ steps.discover.outputs.examples }}
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -74,17 +76,73 @@ jobs:
 
       - name: Build glx CLI
         run: |
-          # Build Go-based CLI tool
+          # Build the CLI once and share it with the matrix via an artifact,
+          # so each example job doesn't pay the build cost again.
           go build -o bin/glx ./glx
           chmod +x bin/glx
-      
-      - name: Validate All Examples
+
+      - name: Upload glx binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: glx-binary
+          path: bin/glx
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Discover examples
+        id: discover
         run: |
-          for dir in docs/examples/*/; do
-            echo "Validating $dir"
-            ./bin/glx validate "$dir"
-          done
-  
+          # Build the matrix dynamically so newly added example directories are
+          # validated automatically — no need to edit this workflow.
+          examples=$(find docs/examples -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+            | sort | jq -Rsc 'split("\n") | map(select(length > 0))')
+          echo "examples=$examples" >> "$GITHUB_OUTPUT"
+          echo "Discovered examples: $examples"
+
+  validate-example:
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      # Validate every example even if one fails, so the UI shows the full picture.
+      fail-fast: false
+      matrix:
+        example: ${{ fromJSON(needs.build-cli.outputs.examples) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download glx binary
+        uses: actions/download-artifact@v8
+        with:
+          name: glx-binary
+          path: bin
+
+      - name: Validate ${{ matrix.example }}
+        env:
+          # Stage matrix value in env to avoid shell injection via ${{ }} in run.
+          EXAMPLE: ${{ matrix.example }}
+        run: |
+          chmod +x bin/glx
+          ./bin/glx validate "docs/examples/$EXAMPLE/"
+
+  # Aggregator: keeps a stable `validate-examples` status check (required by the
+  # repo ruleset) regardless of how many entries the matrix expands to.
+  validate-examples:
+    needs: validate-example
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check matrix results
+        env:
+          RESULT: ${{ needs.validate-example.result }}
+        run: |
+          echo "Example validation matrix result: $RESULT"
+          if [ "$RESULT" != "success" ]; then
+            echo "::error::One or more example validations failed"
+            exit 1
+          fi
+
   test-conformance:
     runs-on: ubuntu-latest
     timeout-minutes: 20

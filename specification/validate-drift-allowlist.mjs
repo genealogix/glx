@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+// Runtime/dependency notes:
+// - Runs on Node.js 24 (ESM); CI pins this via actions/setup-node in
+//   .github/workflows/validate-spec.yml.
+// - Requires the `ajv`, `ajv-formats`, and `js-yaml` packages, declared in
+//   specification/package.json. Install them with `npm ci --prefix specification`.
+// - Preferred invocation is via `make check-drift-allowlist`.
+//
 // Validate .claude/drift-allowlist.yaml against .claude/drift-allowlist.schema.json.
 //
 // This is the OFFLINE structural check: JSON-schema conformance (incl. the
@@ -28,11 +35,21 @@ addFormats(ajv);
 const validate = ajv.compile(JSON.parse(readFileSync(SCHEMA, "utf8")));
 
 const entries = yaml.load(readFileSync(ALLOWLIST, "utf8"));
+// Tag each duplicate-key component as "string" or "non-string" so a string
+// `file`/`symbol` can never collide with a non-string that stringifies to the
+// same text. Among non-strings we key on `typeof` plus `String(value)`, which
+// keeps distinct primitives (undefined, null, numbers, booleans) apart. This is
+// best-effort, not a guarantee: two different objects both stringify to
+// "[object Object]" and would still collapse. Schema validation runs first and
+// already requires these to be strings, so this only guards malformed input.
+const makeKeyComponent = (value) =>
+  typeof value === "string" ? ["string", value] : ["non-string", typeof value, String(value)];
 
 if (!validate(entries)) {
   console.error(`${ALLOWLIST} INVALID:`);
   console.error(validate.errors);
-  errors++;
+  // Defensive fallback: if ajv ever reports invalid without populated errors.
+  errors += validate.errors?.length ?? 1;
 } else {
   // Schema validation has confirmed `entries` is an array of well-formed objects.
   // Guard against the "allowlist becomes a dumping ground" risk (genealogix/glx#797):
@@ -40,7 +57,9 @@ if (!validate(entries)) {
   // [file, symbol] tuple so values containing a separator can't collide.
   const seen = new Set();
   for (const e of entries) {
-    const key = JSON.stringify([e.file, e.symbol]);
+    const fileKey = makeKeyComponent(e.file);
+    const symbolKey = makeKeyComponent(e.symbol);
+    const key = JSON.stringify([fileKey, symbolKey]);
     if (seen.has(key)) {
       console.error(`${ALLOWLIST}: duplicate entry for ${e.file} :: ${e.symbol}`);
       errors++;
