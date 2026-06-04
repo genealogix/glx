@@ -34,6 +34,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx descendants](/cli/glx_descendants)	 - Show descendant tree for a person
 * [glx diff](/cli/glx_diff)	 - Compare two GLX archive states
 * [glx duplicates](/cli/glx_duplicates)	 - Detect potential duplicate persons in a GLX archive
+* [glx evidence](/cli/glx_evidence)	 - Show all evidence for a property, grouped by value
 * [glx export](/cli/glx_export)	 - Export a GLX archive to GEDCOM or JSON-LD format
 * [glx import](/cli/glx_import)	 - Import a GEDCOM or GEDZIP file to GLX format
 * [glx init](/cli/glx_init)	 - Initialize a new GENEALOGIX archive in the specified directory
