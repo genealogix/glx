@@ -131,6 +131,7 @@ func init() {
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
 	rootCmd.AddCommand(vitalsCmd)
+	rootCmd.AddCommand(evidenceCmd)
 	rootCmd.AddCommand(censusCmd)
 	rootCmd.AddCommand(clusterCmd)
 	rootCmd.AddCommand(pathCmd)
@@ -963,6 +964,57 @@ func init() {
 
 func runVitals(_ *cobra.Command, args []string) error {
 	return showVitals(vitalsArchive, args[0])
+}
+
+// ============================================================================
+// Evidence Command
+// ============================================================================
+
+var (
+	evidenceArchive string
+	evidenceFormat  string
+)
+
+var evidenceCmd = &cobra.Command{
+	Use:   "evidence <person> <property>",
+	Short: "Show all evidence for a property, grouped by value",
+	Long: `Display every assertion for one person+property side-by-side, grouped by
+value, with the supporting citations and confidence for each.
+
+Where "glx analyze" emits a one-line conflict warning and "glx proof" summarizes
+a resolved question, "glx evidence" is for questions still in active research:
+it lays out the conflicting answers so you can weigh them. For each value it
+shows the supporting reports (citation and source), counts them, and reports the
+best confidence; the closing line highlights the best-supported value, or notes
+when the leading values tie.
+
+The person argument can be an exact entity ID (e.g., person-jane-webb) or a
+name to search for (e.g., "Jane Miller"). If the name matches multiple persons,
+all matches are listed for disambiguation. The property is matched exactly, with
+a case-insensitive fallback when no exact match exists. Place, person, and event
+reference values resolve to the referenced entity's name.`,
+	Example: `  # All recorded values for a birthplace property, by ID
+  glx evidence person-jane-webb born_at
+
+  # Look the person up by name
+  glx evidence "Jane Miller" residence
+
+  # Machine-readable output
+  glx evidence person-jane-webb born_at --format json
+
+  # Specify archive path
+  glx evidence person-jane-webb occupation --archive my-archive`,
+	Args: cobra.ExactArgs(2),
+	RunE: runEvidence,
+}
+
+func init() {
+	evidenceCmd.Flags().StringVarP(&evidenceArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	evidenceCmd.Flags().StringVar(&evidenceFormat, "format", "text", "Output format: text or json")
+}
+
+func runEvidence(_ *cobra.Command, args []string) error {
+	return showEvidence(SystemIOStreams(), evidenceArchive, args[0], args[1], evidenceFormat)
 }
 
 // ============================================================================
