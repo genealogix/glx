@@ -9,6 +9,18 @@ model: claude-opus-4-7
 
 You are tasked with identifying any drift between the GLX Go code implementation and the JSON schemas/specification.
 
+## Relationship to the deterministic checker
+
+A deterministic Go tool, `make check-code-drift` (`tools/driftcheck`, #673), now
+runs in CI and catches *structural* drift mechanically: missing/extra fields,
+yaml-tag mismatches, `omitempty`-vs-`required` mismatches, and type-family
+mismatches. Assume those are already covered. Spend your effort on what it
+cannot decide deterministically: semantic/validation drift (Section 9), GEDCOM
+converter round-trip drift (Section 11), documentation/comment mismatches, and
+any structural case the tool deliberately skips (it does not assert value
+constraints like `minLength`/`pattern`/`enum`). Both tools read the same
+allowlist below.
+
 ## Allowlisted Drift (read this first)
 
 Before analyzing, read **`.claude/drift-allowlist.yaml`** (validated by
