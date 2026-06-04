@@ -53,6 +53,7 @@
       "Bash(gh search issues:*)",
       "Bash(mktemp -d /tmp/glx-drift-*:*)",
       "Bash(rm -rf /tmp/glx-drift-*:*)",
+      "Bash(date -u:*)",
       "Bash(tree:*)",
       "Bash(gofmt:*)"
     ]
