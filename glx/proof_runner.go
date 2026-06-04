@@ -791,6 +791,16 @@ func concludeProof(topic, personID string, archive *glxlib.GLXFile, relevant []p
 
 	answer, found := deriveProofAnswer(topic, personID, archive)
 	if !found {
+		// The archive's structural data (events/relationships/name) yields no
+		// answer, but relevant assertions may still carry one — e.g. legacy
+		// person-subject born_on/born_at/died_on/died_at assertions (which have
+		// no event to denormalize onto), or an event whose Date/PlaceID was
+		// never filled in while an assertion records the value. Fall back to the
+		// gathered evidence so collected assertions can still drive a conclusion
+		// instead of a spurious INSUFFICIENT EVIDENCE.
+		answer, found = answerFromAssertions(relevant, archive)
+	}
+	if !found {
 		return proofConclusionInsufficient, insufficientSummary(topic, gaps)
 	}
 
@@ -891,6 +901,36 @@ func eventAnswer(personID string, archive *glxlib.GLXFile, eventType, label stri
 	}
 
 	return label + ": " + strings.Join(parts, ", ") + ".", true
+}
+
+// answerFromAssertions derives a fallback answer from the gathered evidence when
+// deriveProofAnswer finds none in the archive's structural data. It joins the
+// distinct, non-disproven asserted values relevant to the question so that
+// legacy person-subject assertions, and events lacking denormalized
+// Date/PlaceID, can still yield a conclusion rather than INSUFFICIENT EVIDENCE.
+// The topic context is already carried by the result's question text, so the
+// summary only needs the supporting values.
+func answerFromAssertions(relevant []proofAssertion, archive *glxlib.GLXFile) (string, bool) {
+	seen := make(map[string]bool)
+	var values []string
+	for i := range relevant {
+		a := relevant[i].a
+		if strings.EqualFold(a.Status, statusDisproven) {
+			continue
+		}
+		value := resolveProofValue(a.Value, archive)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		values = append(values, value)
+	}
+	if len(values) == 0 {
+		return "", false
+	}
+	sort.Strings(values)
+
+	return "Supported by evidence: " + strings.Join(values, ", ") + ".", true
 }
 
 // parentNames returns the display names of a person's parents, drawn from

@@ -516,6 +516,78 @@ func TestSpouseNames(t *testing.T) {
 	assert.Empty(t, spouseNames("person-lonely", archive))
 }
 
+// TestConcludeProof_EvidenceFallback verifies that gathered assertions drive the
+// conclusion even when the archive's structural data yields no answer — a legacy
+// person-subject born_on assertion with no birth event, or an event whose
+// Date/PlaceID was never denormalized. Before the fallback these concluded
+// INSUFFICIENT EVIDENCE despite evidence being collected and shown.
+func TestConcludeProof_EvidenceFallback(t *testing.T) {
+	t.Run("legacy person-subject born_on, no birth event", func(t *testing.T) {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-legacy": {Properties: map[string]any{glxlib.PersonPropertyName: "Legacy Person"}},
+			},
+			Sources:   map[string]*glxlib.Source{"src": {Title: "Family Bible"}},
+			Citations: map[string]*glxlib.Citation{"cit": {SourceID: "src"}},
+			Assertions: map[string]*glxlib.Assertion{
+				"a-born": {
+					Subject:  glxlib.EntityRef{Person: "person-legacy"},
+					Property: glxlib.DeprecatedPropertyBornOn, Value: "1888",
+					Citations: []string{"cit"}, Confidence: "high",
+				},
+			},
+		}
+		result := buildProof("person-legacy", archive.Persons["person-legacy"], "birth", archive)
+
+		require.Len(t, result.Evidence, 1, "the legacy born_on assertion is collected as evidence")
+		assert.Equal(t, proofConclusionProven, result.Conclusion, "high-confidence legacy birth assertion should prove birth")
+		assert.Contains(t, result.Summary, "1888")
+	})
+
+	t.Run("birth event lacking Date/PlaceID, backed by a date assertion", func(t *testing.T) {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-x": {Properties: map[string]any{glxlib.PersonPropertyName: "Person X"}},
+			},
+			Events: map[string]*glxlib.Event{
+				"event-x-birth": {
+					Type:         glxlib.EventTypeBirth,
+					Participants: []glxlib.Participant{{Person: "person-x", Role: "subject"}},
+				},
+			},
+			Assertions: map[string]*glxlib.Assertion{
+				"a-date": {
+					Subject:  glxlib.EntityRef{Event: "event-x-birth"},
+					Property: "date", Value: "1890", Confidence: "low",
+				},
+			},
+		}
+		result := buildProof("person-x", archive.Persons["person-x"], "birth", archive)
+
+		require.NotEmpty(t, result.Evidence, "the date assertion on the dateless event is collected as evidence")
+		assert.Equal(t, proofConclusionPossible, result.Conclusion, "low-confidence evidence yields POSSIBLE, not INSUFFICIENT")
+		assert.Contains(t, result.Summary, "1890")
+	})
+
+	t.Run("only disproven evidence stays INSUFFICIENT", func(t *testing.T) {
+		archive := &glxlib.GLXFile{
+			Persons: map[string]*glxlib.Person{
+				"person-d": {Properties: map[string]any{glxlib.PersonPropertyName: "Person D"}},
+			},
+			Assertions: map[string]*glxlib.Assertion{
+				"a-bad": {
+					Subject:  glxlib.EntityRef{Person: "person-d"},
+					Property: glxlib.DeprecatedPropertyBornOn, Value: "1700",
+					Confidence: "low", Status: "disproven",
+				},
+			},
+		}
+		result := buildProof("person-d", archive.Persons["person-d"], "birth", archive)
+
+		assert.Equal(t, proofConclusionInsufficient, result.Conclusion, "disproven-only evidence must not derive an answer")
+	})
+}
+
 func TestBuildProof_MarriageWithoutEvidence(t *testing.T) {
 	archive := newTestArchiveForProof()
 	// A spouse relationship exists, but no assertion backs the marriage, so the
