@@ -105,13 +105,20 @@ The result should read as if the feature was implemented correctly the first tim
 
        grep -oE '#[0-9]+|[0-9a-f]{7,40}' "${TMPDIR:-/tmp}/glx-section.before" | sort -u > "${TMPDIR:-/tmp}/glx-refs.pre"   # R_pre
        grep -oE '#[0-9]+|[0-9a-f]{7,40}' "${TMPDIR:-/tmp}/glx-section.after"  | sort -u > "${TMPDIR:-/tmp}/glx-refs.post"  # R_post
-       comm -13 "${TMPDIR:-/tmp}/glx-refs.pre" "${TMPDIR:-/tmp}/glx-refs.post"
+       comm -13 "${TMPDIR:-/tmp}/glx-refs.pre" "${TMPDIR:-/tmp}/glx-refs.post" > "${TMPDIR:-/tmp}/glx-refs.added"           # R_post − R_pre
 
-    (`comm -13` prints only the lines unique to the second file — i.e. **R_post − R_pre**.) By default this set must be **empty**: every reference in the rewritten section must have existed in the original (`R_post ⊆ R_pre`).
+    (`comm -13` keeps only the lines unique to the second file, so `glx-refs.added` holds **R_post − R_pre** — every reference present in the rewrite but absent from the original.) By default this set must be **empty**: every reference in the rewritten section must have existed in the original (`R_post ⊆ R_pre`).
 
-    **Intentional additions (R_add).** Occasionally an addition is legitimate — most often backfilling a reference the original entry omitted in violation of `CONTRIBUTING.md`. Such additions are never made silently: the agent surfaces each proposed addition and the user must explicitly approve it (the same natural-language override path as the 4c waiver — there is no `--allow-ref-add` flag). Let **R_add** be the set of references the user has approved adding during this run (default empty). The invented set is then **R_invented = (R_post − R_pre) − R_add**.
+    **Intentional additions (R_add).** Occasionally an addition is legitimate — most often backfilling a reference the original entry omitted in violation of `CONTRIBUTING.md`. Such additions are never made silently: the agent surfaces each proposed addition and the user must explicitly approve it (the same natural-language override path as the 4c waiver — there is no `--allow-ref-add` flag). Let **R_add** be the set of references the user has approved adding during this run (default empty). Subtract it from the added set to get the invented set deterministically — no manual, error-prone filtering:
 
-    **If R_invented is non-empty, refuse to write `CHANGELOG.md`.** Report each invented reference and the rewritten entry that introduced it, so the user can either correct the consolidation and re-run, or approve the addition (moving it into **R_add**) and re-run. Like the forward check, this fails safe: the bare-hex alternative can occasionally match a hex-like prose word (e.g. `feedbac`) that appears only in the rewrite and flag a spurious "invented reference" — but that merely forces a human confirmation, it never lets a real hallucinated reference through. Rule 3's "never … invent one" is the construction-side guarantee; this step is the deterministic backstop for when it silently fails.
+       : > "${TMPDIR:-/tmp}/glx-refs.add"                                          # R_add — default: no approved additions
+       # ...after approving an addition, list each approved reference (one per line) instead, e.g.:
+       #   printf '%s\n' '#689' | sort -u > "${TMPDIR:-/tmp}/glx-refs.add"
+       comm -23 "${TMPDIR:-/tmp}/glx-refs.added" "${TMPDIR:-/tmp}/glx-refs.add"     # R_invented = (R_post − R_pre) − R_add
+
+    (`comm -23` keeps the lines unique to the first file — the added references *not* present in the approved-additions list. When `glx-refs.add` is empty this is just `glx-refs.added`, so the default behaviour is unchanged.) This output is **R_invented = (R_post − R_pre) − R_add**.
+
+    **If R_invented (the `comm -23` output) is non-empty, refuse to write `CHANGELOG.md`.** Report each invented reference and the rewritten entry that introduced it, so the user can either correct the consolidation and re-run, or approve the addition (moving it into **R_add**) and re-run. Like the forward check, this fails safe: the bare-hex alternative can occasionally match a hex-like prose word (e.g. `feedbac`) that appears only in the rewrite and flag a spurious "invented reference" — but that merely forces a human confirmation, it never lets a real hallucinated reference through. Rule 3's "never … invent one" is the construction-side guarantee; this step is the deterministic backstop for when it silently fails.
 5. Write the compacted changelog back **only if both the forward check (4c) and the reverse check (4e) passed** (or were explicitly waived/approved).
 6. Show a summary of what changed:
    - Pre-flight check results (tag verified, previous section status, date updated)
