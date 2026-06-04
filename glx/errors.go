@@ -80,4 +80,7 @@ var (
 	ErrAddCitationSourceRequired           = errors.New("--source is required")
 	ErrAddCitationDistinguisherRequired    = errors.New("at least one of --url, --locator, --text-from-source, or --id is required (otherwise citation IDs would not be idempotent)")
 	ErrAddRelationshipTypeRequired         = errors.New("--type is required")
+
+	// `glx evidence` errors
+	ErrEvidenceUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
 )
