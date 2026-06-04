@@ -242,6 +242,26 @@ linters:
   exclusions:
     generated: lax
     warn-unused: true
+    presets:
+      # std-error-handling drops errcheck's complaints about unchecked
+      # Close/Flush/print/Remove/Setenv returns. Ignoring these is idiomatic
+      # Go (e.g. `defer f.Close()` on a read-only handle), and the codebase
+      # already works around the absence of this preset by hand with
+      # `_ = f.Close()` and `//nolint:errcheck // CLI output` on fmt.Fprint*
+      # calls. Enabling the preset makes those manual workarounds unnecessary
+      # going forward.
+      #
+      # The other three v2 presets are intentionally NOT enabled:
+      #   - common-false-positives only suppresses gosec noise, but gosec is
+      #     not enabled in golangci-lint yet (#374). Adding it now would be a
+      #     dead exclusion — the kind of cruft the #378 audit removed — so it
+      #     belongs with the gosec enablement in #374. (warn-unused does not
+      #     police presets, only the rules below, so it would not flag it.)
+      #   - comments is redundant: revive's package-comments rule is already
+      #     disabled and `exported` is the only comment check we want kept.
+      #   - legacy only covers unsafe.Pointer cast false positives, and the
+      #     codebase has no unsafe.Pointer usage.
+      - std-error-handling
     rules:
       # Exclude some linters for test files
       - path: _test\.go
