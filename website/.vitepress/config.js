@@ -31,6 +31,8 @@ export default defineConfig({
   // - glx/testdata/**: internal test-fixture READMEs documenting the
   //   GEDCOM corpora used by `make test`; not user-facing content.
   // - glx/defaults/README.md: developer note for the embedded vocab defaults.
+  // - tools/**: developer docs for build/CI tooling (e.g. tools/driftcheck);
+  //   its README links to .claude/ files that VitePress doesn't build.
   srcExclude: [
     '**/node_modules/**',
     '**/CLAUDE.md',
@@ -38,13 +40,14 @@ export default defineConfig({
     'docs/gedcom-spec/**',
     'glx/testdata/**',
     'glx/defaults/**',
+    'tools/**',
   ],
 
   // Head configuration
   head: [
     ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
     ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-N2YJJJFE6K' }],
-    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-N2YJJJFE6K');"]
+    ['script', {}, 'window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag(\'js\', new Date());\ngtag(\'config\', \'G-N2YJJJFE6K\');']
   ],
 
   // Sitemap generation
