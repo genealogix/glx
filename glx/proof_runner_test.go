@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -391,47 +393,68 @@ func TestParentNames(t *testing.T) {
 // --- End-to-end tests of showProof against the maintained example archive ---
 
 func TestShowProof_JSON(t *testing.T) {
-	out := captureStdout(t, func() {
-		require.NoError(t, showProof(exampleArchive, "person-robert-chen", "birth", "json"))
-	})
-	assert.Contains(t, out, `"conclusion": "PROVEN"`)
-	assert.Contains(t, out, `"resolution": "1955-03-22"`)
+	streams, out, _ := TestIOStreams()
+	require.NoError(t, showProof(streams, exampleArchive, "person-robert-chen", "birth", "json"))
+	assert.Contains(t, out.String(), `"conclusion": "PROVEN"`)
+	assert.Contains(t, out.String(), `"resolution": "1955-03-22"`)
 }
 
 func TestShowProof_Markdown(t *testing.T) {
-	out := captureStdout(t, func() {
-		require.NoError(t, showProof(exampleArchive, "person-alice-chen", "parentage", "markdown"))
-	})
-	assert.Contains(t, out, "# Proof Summary:")
-	assert.Contains(t, out, "## Evidence Collected")
+	streams, out, _ := TestIOStreams()
+	require.NoError(t, showProof(streams, exampleArchive, "person-alice-chen", "parentage", "markdown"))
+	assert.Contains(t, out.String(), "# Proof Summary:")
+	assert.Contains(t, out.String(), "## Evidence Collected")
 }
 
 func TestShowProof_Text(t *testing.T) {
-	out := captureStdout(t, func() {
-		require.NoError(t, showProof(exampleArchive, "person-robert-chen", "birth", ""))
+	streams, out, _ := TestIOStreams()
+	require.NoError(t, showProof(streams, exampleArchive, "person-robert-chen", "birth", ""))
+	assert.Contains(t, out.String(), "Proof Summary:")
+	assert.Contains(t, out.String(), "Conclusion: PROVEN")
+	assert.Contains(t, out.String(), "RESOLVED: 1955-03-22")
+}
+
+// TestShowProof_StreamRouting verifies the IOStreams contract: human-readable
+// text routes to the diagnostic stream (Out, silenced by --quiet), while
+// machine-consumable JSON routes to MachineOut (survives --quiet for shell
+// capture). Neither stream may leak into the other.
+func TestShowProof_StreamRouting(t *testing.T) {
+	t.Run("json to MachineOut", func(t *testing.T) {
+		diag, machine := &bytes.Buffer{}, &bytes.Buffer{}
+		streams := &IOStreams{Out: diag, MachineOut: machine, ErrOut: io.Discard}
+		require.NoError(t, showProof(streams, exampleArchive, "person-robert-chen", "birth", "json"))
+		assert.Contains(t, machine.String(), `"conclusion": "PROVEN"`)
+		assert.Empty(t, diag.String(), "JSON must not leak to the diagnostic stream")
 	})
-	assert.Contains(t, out, "Proof Summary:")
-	assert.Contains(t, out, "Conclusion: PROVEN")
-	assert.Contains(t, out, "RESOLVED: 1955-03-22")
+
+	t.Run("text to Out", func(t *testing.T) {
+		diag, machine := &bytes.Buffer{}, &bytes.Buffer{}
+		streams := &IOStreams{Out: diag, MachineOut: machine, ErrOut: io.Discard}
+		require.NoError(t, showProof(streams, exampleArchive, "person-robert-chen", "birth", "text"))
+		assert.Contains(t, diag.String(), "Conclusion: PROVEN")
+		assert.Empty(t, machine.String(), "diagnostic text must not leak to the machine stream")
+	})
 }
 
 func TestShowProof_Errors(t *testing.T) {
+	streams, _, _ := TestIOStreams()
+
 	// Unknown question is rejected before loading the archive.
-	err := showProof(exampleArchive, "person-robert-chen", "spaceflight", "")
+	err := showProof(streams, exampleArchive, "person-robert-chen", "spaceflight", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown research question")
 
 	// Unknown format is rejected after a successful load.
-	err = showProof(exampleArchive, "person-robert-chen", "birth", "xml")
+	err = showProof(streams, exampleArchive, "person-robert-chen", "birth", "xml")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown format")
 
 	// Unknown person.
-	err = showProof(exampleArchive, "person-nobody", "birth", "")
+	err = showProof(streams, exampleArchive, "person-nobody", "birth", "")
 	require.Error(t, err)
 
 	// Empty question.
-	err = showProof(exampleArchive, "person-robert-chen", "", "")
+	err = showProof(streams, exampleArchive, "person-robert-chen", "", "")
 	require.Error(t, err)
 }
 
@@ -442,10 +465,11 @@ func TestPrintProofText_NoEvidence(t *testing.T) {
 		Conclusion:   proofConclusionInsufficient,
 		Summary:      "Nothing known.",
 	}
-	out := captureStdout(t, func() { printProofText(result) })
-	assert.Contains(t, out, "(none)")
-	assert.Contains(t, out, "None identified")
-	assert.Contains(t, out, "INSUFFICIENT EVIDENCE")
+	streams, out, _ := TestIOStreams()
+	printProofText(streams, result)
+	assert.Contains(t, out.String(), "(none)")
+	assert.Contains(t, out.String(), "None identified")
+	assert.Contains(t, out.String(), "INSUFFICIENT EVIDENCE")
 }
 
 func TestFirstLine(t *testing.T) {
@@ -552,21 +576,23 @@ func TestRenderProof_FullResult(t *testing.T) {
 		Summary:    "Conflicting evidence remains unresolved.",
 	}
 
-	text := captureStdout(t, func() { printProofText(result) })
-	assert.Contains(t, text, "Death Certificate (cit-1) +1 more")
-	assert.Contains(t, text, "Uncited assertion (a-uncited)")
-	assert.Contains(t, text, "-- HIGH PRIORITY")
-	assert.Contains(t, text, "Reasonably Exhaustive Search")
-	assert.Contains(t, text, "Test 1890 death @ src-1 -> found")
-	assert.Contains(t, text, "(search)")
-	assert.Contains(t, text, "death event (1890) date:")
-	assert.Contains(t, text, "UNRESOLVED")
+	textStreams, text, _ := TestIOStreams()
+	printProofText(textStreams, result)
+	assert.Contains(t, text.String(), "Death Certificate (cit-1) +1 more")
+	assert.Contains(t, text.String(), "Uncited assertion (a-uncited)")
+	assert.Contains(t, text.String(), "-- HIGH PRIORITY")
+	assert.Contains(t, text.String(), "Reasonably Exhaustive Search")
+	assert.Contains(t, text.String(), "Test 1890 death @ src-1 -> found")
+	assert.Contains(t, text.String(), "(search)")
+	assert.Contains(t, text.String(), "death event (1890) date:")
+	assert.Contains(t, text.String(), "UNRESOLVED")
 
-	md := captureStdout(t, func() { printProofMarkdown(result) })
-	assert.Contains(t, md, "## Reasonably Exhaustive Search")
-	assert.Contains(t, md, "Vital Index")
-	assert.Contains(t, md, "## Conflicts")
-	assert.Contains(t, md, "death event (1890) date")
-	assert.Contains(t, md, "Unresolved")
-	assert.Contains(t, md, "**HIGH PRIORITY**")
+	mdStreams, md, _ := TestIOStreams()
+	printProofMarkdown(mdStreams, result)
+	assert.Contains(t, md.String(), "## Reasonably Exhaustive Search")
+	assert.Contains(t, md.String(), "Vital Index")
+	assert.Contains(t, md.String(), "## Conflicts")
+	assert.Contains(t, md.String(), "death event (1890) date")
+	assert.Contains(t, md.String(), "Unresolved")
+	assert.Contains(t, md.String(), "**HIGH PRIORITY**")
 }

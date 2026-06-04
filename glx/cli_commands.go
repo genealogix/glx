@@ -1379,7 +1379,7 @@ func init() {
 }
 
 func runProof(_ *cobra.Command, args []string) error {
-	return showProof(proofArchive, args[0], proofQuestion, proofFormat)
+	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat)
 }
 
 // ============================================================================

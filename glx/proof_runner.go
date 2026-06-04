@@ -44,6 +44,14 @@ const (
 	topicIdentity  = "identity"
 )
 
+// Output format keys accepted by the proof command.
+const (
+	proofFormatText     = "text"
+	proofFormatJSON     = "json"
+	proofFormatMarkdown = "markdown"
+	proofFormatMD       = "md"
+)
+
 // Assertion status values that drive conflict resolution. These are free-text
 // in the spec but the standard vocabulary uses these tokens. (statusDisputed is
 // declared in migrate_confidence_runner.go and reused here.)
@@ -141,7 +149,10 @@ type proofResult struct {
 
 // showProof loads an archive and prints a structured proof summary for a person
 // and research question, following the BCG Genealogical Proof Standard format.
-func showProof(archivePath, personQuery, question, format string) error {
+// Human-readable text/markdown is written to io.Out (silenced by --quiet); JSON,
+// which is machine-consumable, is written to io.MachineOut so it survives --quiet
+// for shell capture.
+func showProof(io *IOStreams, archivePath, personQuery, question, format string) error {
 	topic, ok := canonicalQuestion(question)
 	if !ok {
 		return fmt.Errorf("%w %q (valid: %s)", errUnknownQuestion, question, strings.Join(proofQuestionKeys(), ", "))
@@ -160,12 +171,12 @@ func showProof(archivePath, personQuery, question, format string) error {
 	result := buildProof(personID, person, topic, archive)
 
 	switch format {
-	case "json":
-		return printProofJSON(result)
-	case "markdown", "md":
-		printProofMarkdown(result)
-	case "", "text":
-		printProofText(result)
+	case proofFormatJSON:
+		return printProofJSON(io, result)
+	case proofFormatMarkdown, proofFormatMD:
+		printProofMarkdown(io, result)
+	case "", proofFormatText:
+		printProofText(io, result)
 	default:
 		return fmt.Errorf("%w %q (valid: text, json, markdown)", errUnknownFormat, format)
 	}
@@ -997,70 +1008,71 @@ func firstLine(s string) string {
 // Output rendering
 // ============================================================================
 
-// printProofJSON outputs the proof result as JSON.
-func printProofJSON(result *proofResult) error {
+// printProofJSON outputs the proof result as JSON. JSON is machine-consumable, so
+// it goes to MachineOut — which, unlike Out, survives --quiet for shell capture.
+func printProofJSON(io *IOStreams, result *proofResult) error {
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(data))
+	fmt.Fprintln(io.MachineOut, string(data)) //nolint:errcheck // CLI output
 
 	return nil
 }
 
 // printProofText renders the proof result as human-readable terminal output.
-func printProofText(result *proofResult) {
-	fmt.Printf("Proof Summary: %s (%s)\n\n", result.QuestionText, result.PersonID)
-	fmt.Printf("  Question: %s\n", result.QuestionText)
+func printProofText(io *IOStreams, result *proofResult) {
+	io.Printf("Proof Summary: %s (%s)\n\n", result.QuestionText, result.PersonID)
+	io.Printf("  Question: %s\n", result.QuestionText)
 
-	fmt.Printf("\n  Evidence Collected:\n")
+	io.Printf("\n  Evidence Collected:\n")
 	if len(result.Evidence) == 0 {
-		fmt.Println("    (none)")
+		io.Println("    (none)")
 	}
 	for i := range result.Evidence {
-		printProofEvidenceText(i+1, &result.Evidence[i])
+		printProofEvidenceText(io, i+1, &result.Evidence[i])
 	}
 
-	fmt.Printf("\n  Evidence Gaps:\n")
+	io.Printf("\n  Evidence Gaps:\n")
 	if len(result.Gaps) == 0 {
-		fmt.Println("    (none identified)")
+		io.Println("    (none identified)")
 	}
 	for i := range result.Gaps {
-		fmt.Println("    [ ] " + gapLine(&result.Gaps[i], " -- ", "HIGH PRIORITY"))
+		io.Println("    [ ] " + gapLine(&result.Gaps[i], " -- ", "HIGH PRIORITY"))
 	}
 
 	if len(result.Searches) > 0 {
-		fmt.Printf("\n  Reasonably Exhaustive Search:\n")
+		io.Printf("\n  Reasonably Exhaustive Search:\n")
 		for i := range result.Searches {
-			fmt.Println("    " + formatSearchLine(&result.Searches[i]))
+			io.Println("    " + formatSearchLine(&result.Searches[i]))
 		}
 	}
 
-	fmt.Printf("\n  Conflicts: ")
+	io.Printf("\n  Conflicts: ")
 	if len(result.Conflicts) == 0 {
-		fmt.Println("None identified")
+		io.Println("None identified")
 	} else {
-		fmt.Println()
+		io.Println("")
 		for i := range result.Conflicts {
-			printProofConflictText(&result.Conflicts[i])
+			printProofConflictText(io, &result.Conflicts[i])
 		}
 	}
 
-	fmt.Printf("\n  Conclusion: %s\n", result.Conclusion)
+	io.Printf("\n  Conclusion: %s\n", result.Conclusion)
 	if result.Summary != "" {
-		fmt.Printf("    %s\n", result.Summary)
+		io.Printf("    %s\n", result.Summary)
 	}
 }
 
 // printProofEvidenceText prints one numbered evidence entry.
-func printProofEvidenceText(n int, ev *proofEvidence) {
-	fmt.Printf("    %d. %s\n", n, evidenceHeader(ev))
+func printProofEvidenceText(io *IOStreams, n int, ev *proofEvidence) {
+	io.Printf("    %d. %s\n", n, evidenceHeader(ev))
 
 	if detail := evidenceDetail(ev); detail != "" {
-		fmt.Printf("       -> %s\n", detail)
+		io.Printf("       -> %s\n", detail)
 	}
 	if ev.Notes != "" {
-		fmt.Printf("       -> %s\n", ev.Notes)
+		io.Printf("       -> %s\n", ev.Notes)
 	}
 }
 
@@ -1135,12 +1147,12 @@ func claimTags(confidence, status string) string {
 }
 
 // printProofConflictText prints one conflict entry.
-func printProofConflictText(c *proofConflict) {
-	fmt.Printf("    ! %s: %s\n", conflictLabel(c), conflictValuesString(c))
+func printProofConflictText(io *IOStreams, c *proofConflict) {
+	io.Printf("    ! %s: %s\n", conflictLabel(c), conflictValuesString(c))
 	if c.Resolved {
-		fmt.Printf("      RESOLVED: %s\n", c.Resolution)
+		io.Printf("      RESOLVED: %s\n", c.Resolution)
 	} else {
-		fmt.Printf("      UNRESOLVED — resolution needed\n")
+		io.Printf("      UNRESOLVED — resolution needed\n")
 	}
 }
 
@@ -1220,74 +1232,74 @@ func formatSearchLine(s *proofSearch) string {
 }
 
 // printProofMarkdown renders the proof result as Markdown.
-func printProofMarkdown(result *proofResult) {
-	fmt.Printf("# Proof Summary: %s\n\n", result.QuestionText)
-	fmt.Printf("- **Person:** %s (`%s`)\n", result.PersonName, result.PersonID)
-	fmt.Printf("- **Question:** %s\n", result.QuestionText)
-	fmt.Printf("- **Conclusion:** %s\n", result.Conclusion)
+func printProofMarkdown(io *IOStreams, result *proofResult) {
+	io.Printf("# Proof Summary: %s\n\n", result.QuestionText)
+	io.Printf("- **Person:** %s (`%s`)\n", result.PersonName, result.PersonID)
+	io.Printf("- **Question:** %s\n", result.QuestionText)
+	io.Printf("- **Conclusion:** %s\n", result.Conclusion)
 	if result.Summary != "" {
-		fmt.Printf("- **Summary:** %s\n", result.Summary)
+		io.Printf("- **Summary:** %s\n", result.Summary)
 	}
 
-	printMarkdownEvidence(result.Evidence)
-	printMarkdownGaps(result.Gaps)
-	printMarkdownSearches(result.Searches)
-	printMarkdownConflicts(result.Conflicts)
+	printMarkdownEvidence(io, result.Evidence)
+	printMarkdownGaps(io, result.Gaps)
+	printMarkdownSearches(io, result.Searches)
+	printMarkdownConflicts(io, result.Conflicts)
 }
 
 // printMarkdownEvidence renders the evidence section as Markdown.
-func printMarkdownEvidence(evidence []proofEvidence) {
-	fmt.Printf("\n## Evidence Collected\n\n")
+func printMarkdownEvidence(io *IOStreams, evidence []proofEvidence) {
+	io.Printf("\n## Evidence Collected\n\n")
 	if len(evidence) == 0 {
-		fmt.Println("_No evidence collected._")
+		io.Println("_No evidence collected._")
 	}
 	for i := range evidence {
 		ev := &evidence[i]
-		fmt.Printf("%d. **%s**\n", i+1, evidenceHeader(ev))
+		io.Printf("%d. **%s**\n", i+1, evidenceHeader(ev))
 		if detail := evidenceDetail(ev); detail != "" {
-			fmt.Printf("   - %s\n", detail)
+			io.Printf("   - %s\n", detail)
 		}
 		if ev.Notes != "" {
-			fmt.Printf("   - %s\n", ev.Notes)
+			io.Printf("   - %s\n", ev.Notes)
 		}
 	}
 }
 
 // printMarkdownGaps renders the evidence-gaps section as Markdown.
-func printMarkdownGaps(gaps []proofGap) {
-	fmt.Printf("\n## Evidence Gaps\n\n")
+func printMarkdownGaps(io *IOStreams, gaps []proofGap) {
+	io.Printf("\n## Evidence Gaps\n\n")
 	if len(gaps) == 0 {
-		fmt.Println("_None identified._")
+		io.Println("_None identified._")
 	}
 	for i := range gaps {
-		fmt.Println("- [ ] " + gapLine(&gaps[i], " — ", "**HIGH PRIORITY**"))
+		io.Println("- [ ] " + gapLine(&gaps[i], " — ", "**HIGH PRIORITY**"))
 	}
 }
 
 // printMarkdownSearches renders the logged-searches section as Markdown.
-func printMarkdownSearches(searches []proofSearch) {
+func printMarkdownSearches(io *IOStreams, searches []proofSearch) {
 	if len(searches) == 0 {
 		return
 	}
-	fmt.Printf("\n## Reasonably Exhaustive Search\n\n")
+	io.Printf("\n## Reasonably Exhaustive Search\n\n")
 	for i := range searches {
-		fmt.Println("- " + formatSearchLine(&searches[i]))
+		io.Println("- " + formatSearchLine(&searches[i]))
 	}
 }
 
 // printMarkdownConflicts renders the conflicts section as Markdown.
-func printMarkdownConflicts(conflicts []proofConflict) {
-	fmt.Printf("\n## Conflicts\n\n")
+func printMarkdownConflicts(io *IOStreams, conflicts []proofConflict) {
+	io.Printf("\n## Conflicts\n\n")
 	if len(conflicts) == 0 {
-		fmt.Println("_None identified._")
+		io.Println("_None identified._")
 	}
 	for i := range conflicts {
 		c := &conflicts[i]
-		fmt.Printf("- **%s:** %s\n", conflictLabel(c), conflictValuesString(c))
+		io.Printf("- **%s:** %s\n", conflictLabel(c), conflictValuesString(c))
 		if c.Resolved {
-			fmt.Printf("  - _Resolved:_ %s\n", c.Resolution)
+			io.Printf("  - _Resolved:_ %s\n", c.Resolution)
 		} else {
-			fmt.Printf("  - _Unresolved — resolution needed._\n")
+			io.Printf("  - _Unresolved — resolution needed._\n")
 		}
 	}
 }
