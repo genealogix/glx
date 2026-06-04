@@ -1,4 +1,9 @@
-# Drift allowlist for the /check-*-drift slash commands (genealogix/glx#797).
+# Drift allowlist for the drift checkers (genealogix/glx#797).
+#
+# Consumed by BOTH the LLM-based /check-*-drift slash commands AND the
+# deterministic `make check-code-drift` tool (tools/driftcheck, #673), which
+# suppresses any structural finding whose file + per-symbol identity matches an
+# entry here.
 #
 # Each entry suppresses ONE known, per-symbol drift finding so the drift
 # checkers don't re-report it. Validated by `make check-drift-allowlist`
@@ -11,11 +16,12 @@
 # (e.g. "the Go validator intentionally does not duplicate JSON-schema
 # constraints") stays in the prompt text — it is not a per-symbol suppression.
 #
-# A future deterministic checker (genealogix/glx#673, #295) will also fail loud
-# when a temporary entry's tracking_issue is CLOSED — i.e. the drift was fixed
-# but the entry was never removed. (That staleness gate is intentionally NOT in
-# the offline `make check-drift-allowlist` validator yet; it needs issue-state
-# lookups that those issues already scope.)
+# The deterministic checker (#673) covers structural drift today. The
+# closed-issue staleness gate (failing loud when a temporary entry's
+# tracking_issue is CLOSED — i.e. the drift was fixed but the entry was never
+# removed) is still future work: it needs issue-state lookups, which neither the
+# offline `make check-drift-allowlist` validator nor the offline, API-key-free
+# `make check-code-drift` tool performs yet (tracked by #673 / #295).
 #
 # Template for a temporary entry (copy, uncomment, fill in):
 #   - file: go-glx/types.go
