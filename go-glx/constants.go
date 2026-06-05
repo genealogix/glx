@@ -415,6 +415,13 @@ const (
 	SourceTypePopulationRegister = "population_register" // Civil population registers
 	SourceTypeTaxRecord          = "tax_record"          // Tax rolls, assessments, tithes
 	SourceTypeNotarialRecord     = "notarial_record"     // Notarial acts and contracts
+	SourceTypeFamilyBible        = "family_bible"        // Family Bible births, marriages, deaths
+	SourceTypeGravestone         = "gravestone"          // Tombstone and headstone inscriptions
+	SourceTypeDNATest            = "dna_test"            // Genetic test results (autosomal, Y-DNA, mtDNA)
+	SourceTypeMemoir             = "memoir"              // Autobiographies, diaries, personal journals
+	SourceTypeManuscript         = "manuscript"          // Unpublished manuscripts or typescripts
+	SourceTypeMap                = "map"                 // Historical maps, atlases, survey plats
+	SourceTypeSocialMedia        = "social_media"        // Social media posts and profiles
 	SourceTypeOther              = "other"               // Other source types
 )
 
@@ -438,6 +445,25 @@ var gedcomSourceTypeMapping = map[string]string{
 	"tax":        SourceTypeTaxRecord,
 	"notarial":   SourceTypeNotarialRecord,
 	"population": SourceTypePopulationRegister,
+	"bible":      SourceTypeFamilyBible,
+	"gravestone": SourceTypeGravestone,
+	"tombstone":  SourceTypeGravestone,
+	"headstone":  SourceTypeGravestone,
+	"dna":        SourceTypeDNATest,
+	"memoir":     SourceTypeMemoir,
+	"diary":      SourceTypeMemoir,
+	"manuscript": SourceTypeManuscript,
+	"map":        SourceTypeMap,
+	"social":     SourceTypeSocialMedia,
+	// Identity mappings for canonical GLX keys whose GEDCOM alias differs from
+	// the key itself. Our GEDCOM 7.0 exporter writes Source.Type verbatim as the
+	// TYPE value, so without these a GLX->GEDCOM->GLX round-trip would downgrade
+	// these types to "other" on re-import (#563). Identity mappings carry no
+	// false-positive risk. (gravestone/memoir/manuscript/map already round-trip
+	// because their GEDCOM alias equals the canonical key.)
+	SourceTypeFamilyBible: SourceTypeFamilyBible,
+	SourceTypeDNATest:     SourceTypeDNATest,
+	SourceTypeSocialMedia: SourceTypeSocialMedia,
 }
 
 // EntityType identifies a kind of GLX entity. The string value is the canonical
