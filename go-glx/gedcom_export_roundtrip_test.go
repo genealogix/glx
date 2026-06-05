@@ -264,6 +264,50 @@ func TestRoundtrip_SourcesAndRepositories(t *testing.T) {
 	assert.Equal(t, len(glx1.Repositories), len(glx2.Repositories), "repository count mismatch")
 }
 
+// TestRoundtrip_NewSourceTypesPreserved verifies that each source type added in
+// #563 survives a GLX -> GEDCOM 7.0 -> GLX round-trip. The exporter writes
+// Source.Type verbatim as the GEDCOM TYPE value and the importer maps it back
+// via mapSourceType; without identity mappings for the canonical keys, types
+// like family_bible / dna_test / social_media would downgrade to "other".
+func TestRoundtrip_NewSourceTypesPreserved(t *testing.T) {
+	cases := []struct {
+		id    string
+		title string
+		typ   string
+	}{
+		{"source-fb", "rt-source-family-bible", SourceTypeFamilyBible},
+		{"source-gs", "rt-source-gravestone", SourceTypeGravestone},
+		{"source-dna", "rt-source-dna", SourceTypeDNATest},
+		{"source-mem", "rt-source-memoir", SourceTypeMemoir},
+		{"source-ms", "rt-source-manuscript", SourceTypeManuscript},
+		{"source-map", "rt-source-map", SourceTypeMap},
+		{"source-sm", "rt-source-social-media", SourceTypeSocialMedia},
+	}
+
+	sources := make(map[string]*Source, len(cases))
+	for _, c := range cases {
+		sources[c.id] = &Source{Title: c.title, Type: c.typ}
+	}
+	glx1 := &GLXFile{Sources: sources}
+
+	// TYPE is a GEDCOM 7.0-only tag, so the round-trip must use GEDCOM70.
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM70, nil)
+	require.NoError(t, err)
+
+	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+	require.NoError(t, err)
+	require.Len(t, glx2.Sources, len(cases))
+
+	// Source IDs are regenerated on import, so match by the preserved title.
+	gotByTitle := make(map[string]string, len(glx2.Sources))
+	for _, s := range glx2.Sources {
+		gotByTitle[s.Title] = s.Type
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.typ, gotByTitle[c.title], "source %q type must survive GLX->GEDCOM->GLX round-trip", c.title)
+	}
+}
+
 // TestRoundtrip_MultipleRelationshipTypes tests various relationship types
 func TestRoundtrip_MultipleRelationshipTypes(t *testing.T) {
 	gedcom := `0 HEAD
