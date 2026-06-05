@@ -262,7 +262,7 @@ Defines standard and custom properties for person entities (name, sex, gender, o
 - `race` - Racial classification as recorded in historical documents (temporal)
 - `nationality` - National citizenship (temporal, GEDCOM: NATI)
 - `caste` - Caste, tribe, or social group (temporal, GEDCOM: CAST)
-- `national_id` - National identification number, e.g. US SSN, UK NI number, Canadian SIN (GEDCOM: SSN)
+- `national_id` - National identification number, e.g. US SSN, UK NI number, Canadian SIN, Australian TFN (GEDCOM: SSN)
 - `external_ids` - External identifiers from other systems (multi-value, GEDCOM: EXID)
 
 **See Also:** [Person Entity Documentation](../4-entity-types/person#properties) | [Vocabularies Specification](../4-entity-types/vocabularies#person-properties-vocabulary)
