@@ -52,10 +52,19 @@ jobs:
         # govulncheck exits 0 even when vulnerabilities are found, so findings surface
         # as Code Scanning alerts (uploaded below) rather than failing this job —
         # matching the prior action's behavior.
-        run: go tool -modfile=ci-tools/go.mod govulncheck -format sarif ./... > govulncheck.sarif
+        #
+        # Write to a temp file and rename into place only on success. A plain
+        # `> govulncheck.sarif` redirection truncates the target before govulncheck
+        # runs, so a build/load error (non-zero exit under bash's `-eo pipefail`)
+        # would leave an empty/partial SARIF behind. With the staged rename, a failed
+        # run produces no govulncheck.sarif, so the upload step below (guarded by
+        # hashFiles) is skipped instead of shipping a truncated file.
+        run: |
+          go tool -modfile=ci-tools/go.mod govulncheck -format sarif ./... > govulncheck.sarif.tmp
+          mv govulncheck.sarif.tmp govulncheck.sarif
 
       - name: Upload SARIF to Code Scanning
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && hashFiles('govulncheck.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v4.36.1
         with:
           sarif_file: govulncheck.sarif
