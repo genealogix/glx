@@ -15,14 +15,86 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
+	"gopkg.in/yaml.v3"
 )
+
+// errStdinUnknownEntityType is returned when --entity-type is missing or not in
+// the allow-list derived from glxlib.AllEntityTypes (plus "vocabulary-entry").
+var errStdinUnknownEntityType = errors.New("--stdin requires a valid --entity-type")
+
+// collectionForEntityType maps a singular --entity-type flag value to the
+// top-level GLXFile collection key it lives under. Entity singulars are taken
+// from glxlib so the allow-list stays in sync as entity types are added; the
+// "vocabulary-entry" pseudo-type maps to any VocabularyEntry collection
+// (their structural shape is identical) so vocab snippets can be checked too.
+func collectionForEntityType(flag string) (string, bool) {
+	flag = strings.TrimSpace(strings.ToLower(flag))
+	if flag == "" {
+		return "", false
+	}
+	if flag == "vocabulary-entry" {
+		return glxlib.EntityTypeEvents.Singular() + "_types", true // "event_types"
+	}
+	for _, et := range glxlib.AllEntityTypes {
+		if et.Singular() == flag {
+			return et.String(), true
+		}
+	}
+	return "", false
+}
+
+// validateStdinEntity reads one entity as YAML from stdin and structurally
+// validates it against its entity-type schema, without any archive/cross-ref
+// context. It exists so drift tooling can pipe a bare snippet in (issue #910)
+// instead of the mktemp/cat/rm temp-file dance.
+func validateStdinEntity(streams *IOStreams, entityType string, args []string) error {
+	if len(args) > 0 {
+		return errors.New("--stdin does not take path arguments")
+	}
+	collection, ok := collectionForEntityType(entityType)
+	if !ok {
+		return fmt.Errorf("%w: got %q", errStdinUnknownEntityType, entityType)
+	}
+
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return fmt.Errorf("reading stdin: %w", err)
+	}
+	if len(strings.TrimSpace(string(data))) == 0 {
+		return errors.New("--stdin: no YAML on stdin")
+	}
+
+	var entity any
+	if err := yaml.Unmarshal(data, &entity); err != nil {
+		return fmt.Errorf("parsing stdin YAML: %w", err)
+	}
+
+	// Wrap the bare entity under its collection so the existing whole-archive
+	// structural validator (which resolves the schema $refs) can check it.
+	doc := map[string]any{collection: map[string]any{"stdin": entity}}
+	issues := ValidateGLXFileStructure(doc)
+	if len(issues) > 0 {
+		streams.Errorf("Found %d structural error(s) in the %s entity:\n", len(issues), entityType)
+		for _, issue := range issues {
+			streams.Errorf("- %s\n", issue)
+		}
+
+		return ErrStructuralValidationFailed
+	}
+
+	streams.Printf("%s entity is structurally valid.\n", entityType)
+
+	return nil
+}
 
 // validatePaths performs comprehensive validation on the specified paths.
 // Output goes to the provided IOStreams (stdout for results, stderr for errors).

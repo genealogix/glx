@@ -333,6 +333,8 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 
 var (
 	validateReport       bool
+	validateStdin        bool
+	validateEntityType   string
 	errReportTooManyArgs = errors.New("--report accepts at most one path argument")
 )
 
@@ -376,9 +378,17 @@ and highlighting unsupported claims.`,
 
 func init() {
 	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+	validateCmd.Flags().BoolVar(&validateStdin, "stdin", false,
+		"Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)")
+	validateCmd.Flags().StringVar(&validateEntityType, "entity-type", "",
+		"Entity type for --stdin: person, event, place, source, citation, repository, media, "+
+			"relationship, assertion, research-log, study, or vocabulary-entry")
 }
 
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateStdin {
+		return validateStdinEntity(SystemIOStreams(), validateEntityType, args)
+	}
 	if validateReport {
 		if len(args) > 1 {
 			return errReportTooManyArgs
