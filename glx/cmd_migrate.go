@@ -28,6 +28,7 @@ var (
 	migrateConfidenceDisputedToStatus  bool
 	migrateSourceDescriptionToProperty bool
 	migrateMediaDescriptionToProperty  bool
+	migrateRenameSsnToNationalID       bool
 )
 
 var migrateCmd = &cobra.Command{
@@ -60,7 +61,13 @@ With --media-description-to-property, moves a Media's legacy top-level
 ` + "`description`" + ` field into ` + "`properties.description`" + `, mirroring the
 Source treatment from #667 for the remaining structural-vs-property
 inconsistency on Media (#894). An explicit ` + "`properties.description`" + ` is
-never overwritten.`,
+never overwritten.
+
+With --rename-ssn-to-national-id, renames the legacy US-centric ` + "`ssn`" + `
+person property (and any related person-subject assertions and inlined
+vocabulary definition) to the internationalized ` + "`national_id`" + ` per #532.
+Both keys map to the GEDCOM SSN tag, so GEDCOM import/export is unaffected. A
+person or vocabulary already carrying ` + "`national_id`" + ` is never overwritten.`,
 	Example: `  # Migrate a multi-file archive
   glx migrate ./my-archive
 
@@ -77,7 +84,10 @@ never overwritten.`,
   glx migrate ./my-archive --source-description-to-property
 
   # Also move legacy top-level media 'description' into 'properties.description'
-  glx migrate ./my-archive --media-description-to-property`,
+  glx migrate ./my-archive --media-description-to-property
+
+  # Also rename the legacy US-centric 'ssn' person property to 'national_id'
+  glx migrate ./my-archive --rename-ssn-to-national-id`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMigrate,
 }
@@ -91,6 +101,8 @@ func init() {
 		"Move legacy top-level source 'description' into 'properties.description' (#667)")
 	migrateCmd.Flags().BoolVar(&migrateMediaDescriptionToProperty, "media-description-to-property", false,
 		"Move legacy top-level media 'description' into 'properties.description' (#894)")
+	migrateCmd.Flags().BoolVar(&migrateRenameSsnToNationalID, "rename-ssn-to-national-id", false,
+		"Rename the legacy US-centric 'ssn' person property to 'national_id' (#532)")
 }
 
 func runMigrate(_ *cobra.Command, args []string) error {
@@ -155,6 +167,13 @@ func migrateArchive(archivePath string) error {
 		report.MediaDescriptionsConverted += migrateMediaDescriptions(archivePath, isDir)
 	}
 
+	if migrateRenameSsnToNationalID {
+		ssnReport := migrateSsnToNationalID(archive, os.Stderr)
+		report.SsnPropertiesRenamed += ssnReport.SsnPropertiesRenamed
+		report.SsnAssertionsRenamed += ssnReport.SsnAssertionsRenamed
+		report.SsnVocabEntriesRenamed += ssnReport.SsnVocabEntriesRenamed
+	}
+
 	// If the gender→sex rename was skipped, count any remaining legacy
 	// `gender:` person properties so the user knows whether the skip was
 	// benign (post-migration re-run, no legacy left) or worrying (manual
@@ -186,7 +205,10 @@ func migrateArchive(archivePath string) error {
 		report.VocabEntriesRenamed == 0 &&
 		report.ConfidenceDisputedConverted == 0 &&
 		report.SourceDescriptionsConverted == 0 &&
-		report.MediaDescriptionsConverted == 0 {
+		report.MediaDescriptionsConverted == 0 &&
+		report.SsnPropertiesRenamed == 0 &&
+		report.SsnAssertionsRenamed == 0 &&
+		report.SsnVocabEntriesRenamed == 0 {
 		if report.GenderRenameSkipped {
 			if legacyGenderRemaining > 0 {
 				noun, verb := "properties", "remain"
@@ -253,6 +275,11 @@ func migrateArchive(archivePath string) error {
 	}
 	if migrateMediaDescriptionToProperty {
 		fmt.Printf("  %-27s%d\n", "Media descriptions migrated:", report.MediaDescriptionsConverted)
+	}
+	if migrateRenameSsnToNationalID {
+		fmt.Printf("  %-27s%d\n", "Ssn→national_id properties:", report.SsnPropertiesRenamed)
+		fmt.Printf("  %-27s%d\n", "Ssn→national_id assertions:", report.SsnAssertionsRenamed)
+		fmt.Printf("  %-27s%d\n", "Ssn→national_id vocab:", report.SsnVocabEntriesRenamed)
 	}
 
 	return nil
