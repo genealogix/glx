@@ -16,4 +16,4 @@ if [ -n "$PY" ] && [ -f "$GATE" ]; then
   exec "$PY" "$GATE"
 fi
 
-printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"gh-api gate unavailable (no Python on PATH or gate script missing); gating gh api for manual review."}}'
+printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"gh-api gate unavailable (no Python on PATH or gate script missing); gating gh api for manual review."}}'

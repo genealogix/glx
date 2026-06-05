@@ -340,10 +340,6 @@ def _classify_gh_api(tokens):
             return ASK
         return READ if all(_graphql_is_readonly(q) for q in queries) else ASK
 
-    if args["endpoint_dynamic"]:
-        # Path is built by the shell ($VAR / $(...) / `...`); can't verify it.
-        return ASK
-
     method = args["method"]
     if method in READ_METHODS:
         is_write = False
@@ -354,12 +350,18 @@ def _classify_gh_api(tokens):
         is_write = args["has_body"]
 
     if _path_is_refs(norm):
-        # Listing refs with GET/HEAD is a read; any write — or an unparsed flag
-        # when the method is implicit — is hard-blocked.
-        if is_write or (method is None and args["has_unparsed"]):
+        # Git-ref tampering is hard-blocked, not merely prompted. Only a
+        # provably-static read of a ref is allowed through; a write, an
+        # unparsed flag, OR a shell-computed endpoint (which could word-split
+        # into `-X DELETE`, e.g. `…/git/refs/heads/$BRANCH -X DELETE`) all deny.
+        if is_write or args["endpoint_dynamic"] or args["has_unparsed"]:
             return DENY
         return READ
 
+    if args["endpoint_dynamic"]:
+        # Non-refs path built by the shell ($VAR / $(...) / `...`); can't
+        # verify it — prompt rather than auto-approve.
+        return ASK
     if args["has_unparsed"]:
         return ASK
     return ASK if is_write else READ

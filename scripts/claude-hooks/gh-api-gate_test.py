@@ -147,7 +147,9 @@ CASES = [
     ("gh api repos/genealogix/glx/issues/$NUM", "ask"),                          # dynamic read path -> ask (conservative)
     ("gh api `cat f`/git/refs/heads/main -X DELETE", "ask"),
     ("gh api $(echo repos/genealogix/glx/issues/1)", "ask"),
-    ("gh api repos/genealogix/glx/git/refs/heads/${BRANCH} -X DELETE", "ask"),   # dynamic refs path: can't confirm -> ask
+    ("gh api repos/genealogix/glx/git/refs/heads/${BRANCH} -X DELETE", "deny"),  # ref write w/ dynamic operand -> hard block
+    ("gh api repos/genealogix/glx/git/refs/heads/${BRANCH}", "deny"),            # dynamic operand could word-split a write onto a ref path
+    ("gh api repos/genealogix/glx/issues/${NUM}", "ask"),                        # non-refs dynamic endpoint -> prompt
 
     # -- deeper GraphQL scanner / normalization probes (round 2) --
     ('gh api graphql -f query=\'query { a } """desc""" mutation { evil }\'', "ask"),   # mutation after closed block-string desc
