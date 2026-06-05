@@ -29,7 +29,8 @@ is the granular gate the prefix matcher can't be, so the rules can be re-enabled
 
 ### What it does
 
-A `PreToolUse` hook (matcher `Bash(gh api*)`) that is a **pure restrictor** — it never
+A `PreToolUse` hook — `matcher: "Bash"` with the handler gated by `if: "Bash(gh api:*)"`
+so it spawns only for `gh api` commands — that is a **pure restrictor**: it never
 emits `allow`, only subtracts the dangerous subset of what the allow-list grants:
 
 | `gh api` call | Verdict | Effect |
@@ -69,11 +70,18 @@ workflow, is hard-blocked.
   arguments at runtime — a `$` or backtick outside single quotes, or an unquoted `{a,b}`
   brace expansion — a would-be read is floored to `ask` (the static parse can't see what it
   expands to). GraphQL `$variables` inside a single-quoted query are *not* treated as dynamic,
-  so parameterized read queries stay prompt-free.
+  so parameterized read queries stay prompt-free. **Consequence:** a read whose *output* is
+  captured via command substitution — e.g. `ISSUE_ID=$(gh api graphql -f query='…')`, the
+  capture idiom the PR-review workflow uses — contains a `$(` and therefore prompts, even
+  though the inner query is read-only. This is deliberate conservatism, and the prompt is a
+  one-keystroke approval; pipe to a file or run the bare query if you want it prompt-free.
 - **Fail-closed.** Any parse error, malformed input, or internal exception resolves to
   `ask`, never to silent approval. The [`gh-api-gate.sh`](gh-api-gate.sh) wrapper emits
   `ask` if no Python interpreter is available, and `.claude/settings.json` blocks (`exit 2`)
-  if the wrapper itself is missing.
+  if the wrapper itself is missing. The gate restricts an otherwise auto-approved call by
+  emitting a `PreToolUse` `permissionDecision` of `ask`/`deny`, which relies on a hook
+  decision taking precedence over a matching allow rule — the documented purpose of
+  `PreToolUse` decisions, and verified live against the `Bash(gh api …:*)` allow rules.
 
 ### Scope boundary
 
@@ -111,6 +119,10 @@ A matcher filters on tool name only; the command pattern belongs in the per-hand
   }]
 }
 ```
+
+`Bash(git commit:*)` is a literal-prefix match, so it also matches the rarely-used
+`git commit-tree` / `git commit-graph`. That over-fire is harmless here: the hook is
+advisory and the script no-ops unless the index stages a `*.go` file.
 
 ### What it does
 

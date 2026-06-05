@@ -56,8 +56,7 @@
       "Bash(mktemp -d /tmp/glx-drift-*:*)",
       "Bash(rm -rf /tmp/glx-drift-*:*)",
       "Bash(date -u:*)",
-      "Bash(tree:*)",
-      "Bash(gofmt:*)"
+      "Bash(tree:*)"
     ]
   },
   "hooks": {
@@ -69,15 +68,11 @@
             "type": "command",
             "if": "Bash(git commit:*)",
             "command": "bash -c 'bash \"${CLAUDE_PROJECT_DIR:-.}/scripts/claude-hooks/pre-commit-golangci.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash(gh api*)",
-        "hooks": [
+          },
           {
             "type": "command",
-            "command": "bash -c 'cd \"${CLAUDE_PROJECT_DIR:-${CLAUDE_WORKING_DIRECTORY:-.}}\" 2>/dev/null; bash scripts/claude-hooks/gh-api-gate.sh || exit 2'"
+            "if": "Bash(gh api:*)",
+            "command": "bash -c 'bash \"${CLAUDE_PROJECT_DIR:-.}/scripts/claude-hooks/gh-api-gate.sh\" || exit 2'"
           }
         ]
       }
