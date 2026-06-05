@@ -110,9 +110,9 @@ person_properties:
     temporal: true
     gedcom: "CAST"
 
-  ssn:
-    label: "Social Security Number"
-    description: "National identification number"
+  national_id:
+    label: "National Identification Number"
+    description: "National identification number (e.g., US SSN, UK NI number, Canadian SIN, Australian TFN). The GEDCOM SSN tag (a US Social Security Number) maps here on import/export."
     value_type: string
     gedcom: "SSN"
 

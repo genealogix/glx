@@ -168,7 +168,7 @@ func TestBuildGEDCOMIndex(t *testing.T) {
 		"EDUC": "education",
 		"NATI": "nationality",
 		"CAST": "caste",
-		"SSN":  "ssn",
+		"SSN":  "national_id",
 		"TITL": "title",
 		"EXID": "external_ids",
 	}
