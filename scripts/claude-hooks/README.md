@@ -87,3 +87,48 @@ permission prompt regardless of this gate.
 ```bash
 python scripts/claude-hooks/gh-api-gate_test.py
 ```
+
+## `pre-commit-golangci.sh` — pre-commit lint gate (genealogix/glx#869)
+
+### Why
+
+`#655` added a `PreToolUse` hook intended to run `golangci-lint` before a Claude
+Code session creates a `git commit`. Its matcher was `"Bash(git commit*)"`, which —
+because it contains `(`, `)`, `*` — is compiled as a JavaScript regex and tested
+against the **tool name** (`"Bash"`), not the command. `"Bash"` never matches that
+regex, so the hook was dead code and the Claude-side lint pass never ran (#869).
+
+A matcher filters on tool name only; the command pattern belongs in the per-handler
+`if` field, which uses [permission-rule syntax](https://code.claude.com/docs/en/permissions):
+
+```jsonc
+{
+  "matcher": "Bash",                      // tool name (exact match)
+  "hooks": [{
+    "type": "command",
+    "if": "Bash(git commit:*)",           // command pattern (permission-rule syntax)
+    "command": "bash -c 'bash \"${CLAUDE_PROJECT_DIR:-.}/scripts/claude-hooks/pre-commit-golangci.sh\"'"
+  }]
+}
+```
+
+### What it does
+
+When a `git commit` stages Go source, it runs `golangci-lint` scoped to the new
+code (`--new-from-rev=$(git merge-base HEAD main)`, falling back to `HEAD~1`) and
+prints any findings. It is **advisory only**: findings surface via golangci-lint's
+exit code, which Claude Code treats as a *non-blocking* error for `PreToolUse`
+(only `exit 2` blocks a tool call), so the commit still proceeds. `lefthook`
+(`#280`) remains the effective local gate. Whether to promote this to a hard,
+blocking gate — and how it should relate to the lefthook and CI lint passes — is
+the strategy decision tracked in `#870`; this script deliberately stays advisory.
+
+### Run it standalone
+
+```bash
+bash scripts/claude-hooks/pre-commit-golangci.sh
+```
+
+It no-ops (exit 0) unless the index stages a `*.go` file, so it is safe to run any
+time. A regression test that exercises the hook end-to-end (matcher firing, exit
+semantics) depends on the eval-harness infrastructure tracked in `#796`.
