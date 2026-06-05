@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genealogix.github.io/glx/schemas/check-suite/findings.schema.json",
+  "title": "check-* skill findings report",
+  "description": "Shared machine-readable output contract emitted by every .claude/skills/check-* drift skill (check-schema-drift, check-code-drift, check-docs-drift, check-examples, check-spec). The fenced block in each skill's report MUST use the info-string `findings-json` so the eval harness (#796) can grep-extract it. Epic #1016 — one object-wrapper report per run.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command", "commit", "checked_files", "findings"],
+  "properties": {
+    "command": {
+      "type": "string",
+      "enum": ["check-schema-drift", "check-code-drift", "check-docs-drift", "check-examples", "check-spec"],
+      "description": "Which check-* skill produced this report."
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$",
+      "description": "Git commit SHA the check ran against (skill captures `git rev-parse HEAD`)."
+    },
+    "checked_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Repo-relative paths actually examined this run (so reviewers can see scope, and the eval harness can detect under-scoping)."
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" },
+      "description": "Every drift finding. Empty array = no drift detected."
+    },
+    "positive_notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Things verified as correct/aligned. Kept out of `findings` so a clean run is an empty findings array, not a list of severity:info items."
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "major": { "type": "integer", "minimum": 0 },
+        "minor": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 },
+        "suppressed_as_duplicate_of_known_issue": {
+          "type": "integer", "minimum": 0,
+          "description": "Count of findings suppressed because they match an already-open GitHub issue (per the cross-reference step). Recorded, not silently dropped."
+        }
+      },
+      "required": ["critical", "major", "minor", "info"]
+    },
+    "telemetry": {
+      "type": "object",
+      "description": "Injected by the runner (Claude Code), NOT self-reported by the model — an LLM cannot measure its own token use or wall-clock. Optional; present when run via the eval harness.",
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string" },
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 },
+        "wall_clock_ms": { "type": "integer", "minimum": 0 },
+        "ran_at": { "type": "string", "description": "ISO-8601 timestamp, runner-supplied." }
+      }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "severity", "category", "message", "validator_caught", "llm_only"],
+      "properties": {
+        "file": { "type": "string", "description": "Repo-relative path of the drifting artifact." },
+        "line": { "type": ["integer", "null"], "minimum": 1, "description": "1-based line in `file`, or null when not line-addressable." },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "major", "minor", "info"],
+          "description": "Per the shared severity-rubric.md. When uncertain, assign `info`."
+        },
+        "category": {
+          "type": "string",
+          "description": "Skill-specific finding category. Each skill documents its own enum in SKILL.md; common values: field_presence, field_type, required_optional, yaml_tag, ref_type, validation, vocabulary, cross_reference, normative_language, example_validation, pedagogical."
+        },
+        "message": { "type": "string", "description": "What drifted and why it matters." },
+        "fix": { "type": "string", "description": "Concrete suggested remediation." },
+        "validator_caught": {
+          "type": "boolean",
+          "description": "true if a deterministic tool (glx validate / validate-schemas.mjs / a CI check / go test) already flags this. Lets reviewers see what the LLM added beyond the deterministic layer."
+        },
+        "llm_only": {
+          "type": "boolean",
+          "description": "true if only the LLM semantic pass surfaced this (no deterministic check covers it). MUST be the logical inverse of validator_caught."
+        },
+        "location": {
+          "type": "object",
+          "description": "Optional precise source coordinates. When the skill can supply line numbers (e.g. fed by the #795 AST extractor), findings without them are dropped rather than emitted as low-confidence noise.",
+          "additionalProperties": false,
+          "properties": {
+            "go_line": { "type": ["integer", "null"], "minimum": 1 },
+            "schema_line": { "type": ["integer", "null"], "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}
