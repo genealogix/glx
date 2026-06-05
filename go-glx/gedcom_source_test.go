@@ -34,11 +34,27 @@ func TestMapSourceType(t *testing.T) {
 		})
 	}
 
-	// Spot-check the #563 additions against their expected GLX types so the
-	// pairings are pinned independently of the mapping table.
+	// Spot-check the #563 GEDCOM aliases against their expected GLX types so the
+	// alias pairings are pinned independently of the mapping table.
 	assert.Equal(t, SourceTypeFamilyBible, mapSourceType("bible"))
 	assert.Equal(t, SourceTypeDNATest, mapSourceType("dna"))
 	assert.Equal(t, SourceTypeSocialMedia, mapSourceType("social"))
+
+	// GLX -> GEDCOM -> GLX round-trip: the GEDCOM 7.0 exporter writes
+	// Source.Type verbatim as the TYPE value, so feeding each canonical key back
+	// through mapSourceType must return the same type rather than downgrading to
+	// "other" (#563).
+	for _, glxType := range []string{
+		SourceTypeFamilyBible,
+		SourceTypeGravestone,
+		SourceTypeDNATest,
+		SourceTypeMemoir,
+		SourceTypeManuscript,
+		SourceTypeMap,
+		SourceTypeSocialMedia,
+	} {
+		assert.Equal(t, glxType, mapSourceType(glxType), "canonical GLX key %q should round-trip", glxType)
+	}
 
 	// Unknown and empty values fall back to "other".
 	assert.Equal(t, SourceTypeOther, mapSourceType("interpretive dance"))

@@ -449,6 +449,15 @@ var gedcomSourceTypeMapping = map[string]string{
 	"manuscript": SourceTypeManuscript,
 	"map":        SourceTypeMap,
 	"social":     SourceTypeSocialMedia,
+	// Identity mappings for canonical GLX keys whose GEDCOM alias differs from
+	// the key itself. Our GEDCOM 7.0 exporter writes Source.Type verbatim as the
+	// TYPE value, so without these a GLX->GEDCOM->GLX round-trip would downgrade
+	// these types to "other" on re-import (#563). Identity mappings carry no
+	// false-positive risk. (gravestone/memoir/manuscript/map already round-trip
+	// because their GEDCOM alias equals the canonical key.)
+	SourceTypeFamilyBible: SourceTypeFamilyBible,
+	SourceTypeDNATest:     SourceTypeDNATest,
+	SourceTypeSocialMedia: SourceTypeSocialMedia,
 }
 
 // EntityType identifies a kind of GLX entity. The string value is the canonical
