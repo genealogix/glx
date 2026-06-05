@@ -318,7 +318,7 @@ func TestPrivatizeLiving_RedactsLivingPerson(t *testing.T) {
 					},
 					PersonPropertyOccupation: "engineer",
 					PersonPropertyResidence:  "place-x",
-					"ssn":                    "123-45-6789",
+					"national_id":            "123-45-6789",
 				},
 				Notes: NoteList{"private note"},
 			},
