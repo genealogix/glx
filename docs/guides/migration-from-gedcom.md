@@ -190,7 +190,7 @@ Relative file paths in the GEDCOM are resolved from the directory containing the
 | `EDUC` | `education` | |
 | `NATI` | `nationality` | |
 | `CAST` | `caste` | |
-| `SSN` | `ssn` | |
+| `SSN` | `national_id` | GEDCOM's US-specific Social Security Number maps to the generic `national_id` property |
 | `TITL` | `title` | Handles CONT/CONC for long values |
 | `RESI` | `residence` | With `PLAC` → temporal person property; without `PLAC` → residence Event entity (preserves date/type/notes) |
 | `FACT` | (varies) | Mapped to properties or generic events based on content |
