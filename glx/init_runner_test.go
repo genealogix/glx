@@ -75,7 +75,9 @@ func TestWriteTestDataFileBadDir(t *testing.T) {
 
 	err := writeTestDataFile("does/not/exist", "person-x", map[string]any{})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "does/not/exist")
+	// writeTestDataFile builds the path with filepath.Join, so the wrapped
+	// error uses the OS separator ("\" on Windows). Assert separator-agnostically.
+	assert.Contains(t, err.Error(), filepath.Join("does", "not", "exist"))
 }
 
 // chdirTo cds to dir and restores the previous cwd at test teardown.
