@@ -15,6 +15,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,30 +30,30 @@ import (
 func TestBuildCacheAndStatus(t *testing.T) {
 	dir := miniArchive(t, 3)
 
-	var buildErr error
-	out := captureStdout(t, func() { buildErr = buildCache(dir, false) })
-	require.NoError(t, buildErr)
-	assert.Contains(t, out, "Built binary cache")
-	assert.Contains(t, out, "3 entities")
+	io, out, _ := TestIOStreams()
+	require.NoError(t, buildCache(io, dir, false))
+	assert.Contains(t, out.String(), "Built binary cache")
+	assert.Contains(t, out.String(), "3 entities")
 	require.FileExists(t, cachePath(dir))
 
-	var statusErr error
-	statusOut := captureStdout(t, func() { statusErr = statusCache(dir) })
-	require.NoError(t, statusErr)
-	assert.Contains(t, statusOut, "fresh")
-	assert.Contains(t, statusOut, "Persons:")
-	assert.Contains(t, statusOut, "3 total")
+	statusIO, statusOut, _ := TestIOStreams()
+	require.NoError(t, statusCache(statusIO, dir))
+	assert.Contains(t, statusOut.String(), "fresh")
+	assert.Contains(t, statusOut.String(), "Persons:")
+	assert.Contains(t, statusOut.String(), "3 total")
 }
 
 func TestBuildCacheNoForceIsNoOp(t *testing.T) {
 	dir := miniArchive(t, 1)
-	require.NoError(t, buildCache(dir, false))
+	io, _, _ := TestIOStreams()
+	require.NoError(t, buildCache(io, dir, false))
 	info, err := os.Stat(cachePath(dir))
 	require.NoError(t, err)
 	modBefore := info.ModTime()
 
-	out := captureStdout(t, func() { require.NoError(t, buildCache(dir, false)) })
-	assert.Contains(t, out, "already fresh")
+	io2, out, _ := TestIOStreams()
+	require.NoError(t, buildCache(io2, dir, false))
+	assert.Contains(t, out.String(), "already fresh")
 
 	info2, err := os.Stat(cachePath(dir))
 	require.NoError(t, err)
@@ -61,43 +62,61 @@ func TestBuildCacheNoForceIsNoOp(t *testing.T) {
 
 func TestBuildCacheForceRebuilds(t *testing.T) {
 	dir := miniArchive(t, 1)
-	require.NoError(t, buildCache(dir, false))
+	io, _, _ := TestIOStreams()
+	require.NoError(t, buildCache(io, dir, false))
 
-	out := captureStdout(t, func() { require.NoError(t, buildCache(dir, true)) })
-	assert.Contains(t, out, "Built binary cache")
+	io2, out, _ := TestIOStreams()
+	require.NoError(t, buildCache(io2, dir, true))
+	assert.Contains(t, out.String(), "Built binary cache")
+}
+
+// TestBuildCacheQuietSilencesOutput verifies the cache commands honor the global
+// --quiet flag: with Out bound to io.Discard, no status text is emitted but the
+// cache is still built.
+func TestBuildCacheQuietSilencesOutput(t *testing.T) {
+	dir := miniArchive(t, 1)
+	quiet := &IOStreams{Out: io.Discard, MachineOut: io.Discard, ErrOut: io.Discard}
+	require.NoError(t, buildCache(quiet, dir, false))
+	require.FileExists(t, cachePath(dir))
 }
 
 func TestCleanCache(t *testing.T) {
 	dir := miniArchive(t, 1)
-	require.NoError(t, buildCache(dir, false))
+	io, _, _ := TestIOStreams()
+	require.NoError(t, buildCache(io, dir, false))
 	require.FileExists(t, cachePath(dir))
 
-	out := captureStdout(t, func() { require.NoError(t, cleanCache(dir)) })
-	assert.Contains(t, out, "Removed binary cache")
+	cleanIO, out, _ := TestIOStreams()
+	require.NoError(t, cleanCache(cleanIO, dir))
+	assert.Contains(t, out.String(), "Removed binary cache")
 	assert.NoFileExists(t, cachePath(dir))
 	// .glx directory removed when empty.
 	_, err := os.Stat(cacheDir(dir))
 	assert.True(t, os.IsNotExist(err), ".glx dir should be removed when empty")
 
-	out2 := captureStdout(t, func() { require.NoError(t, cleanCache(dir)) })
-	assert.Contains(t, out2, "No binary cache to remove")
+	again, out2, _ := TestIOStreams()
+	require.NoError(t, cleanCache(again, dir))
+	assert.Contains(t, out2.String(), "No binary cache to remove")
 }
 
 func TestCleanCacheKeepsNonEmptyDir(t *testing.T) {
 	dir := miniArchive(t, 1)
-	require.NoError(t, buildCache(dir, false))
+	io, _, _ := TestIOStreams()
+	require.NoError(t, buildCache(io, dir, false))
 	// Drop a sibling file into .glx so the directory is not empty after cleanup.
 	require.NoError(t, os.WriteFile(filepath.Join(cacheDir(dir), "keep.txt"), []byte("x"), 0o644))
 
-	require.NoError(t, cleanCache(dir))
+	cleanIO, _, _ := TestIOStreams()
+	require.NoError(t, cleanCache(cleanIO, dir))
 	assert.NoFileExists(t, cachePath(dir))
 	assert.DirExists(t, cacheDir(dir), "non-empty .glx dir must be preserved")
 }
 
 func TestStatusNoCache(t *testing.T) {
 	dir := miniArchive(t, 1)
-	out := captureStdout(t, func() { require.NoError(t, statusCache(dir)) })
-	assert.Contains(t, out, "No binary cache")
+	io, out, _ := TestIOStreams()
+	require.NoError(t, statusCache(io, dir))
+	assert.Contains(t, out.String(), "No binary cache")
 }
 
 func TestCacheCommandsRejectSingleFile(t *testing.T) {
@@ -105,9 +124,10 @@ func TestCacheCommandsRejectSingleFile(t *testing.T) {
 	file := filepath.Join(dir, "archive.glx")
 	require.NoError(t, os.WriteFile(file, []byte("persons: {}\n"), 0o644))
 
-	require.ErrorIs(t, buildCache(file, false), ErrCacheNotDirectory)
-	require.ErrorIs(t, cleanCache(file), ErrCacheNotDirectory)
-	require.ErrorIs(t, statusCache(file), ErrCacheNotDirectory)
+	io, _, _ := TestIOStreams()
+	require.ErrorIs(t, buildCache(io, file, false), ErrCacheNotDirectory)
+	require.ErrorIs(t, cleanCache(io, file), ErrCacheNotDirectory)
+	require.ErrorIs(t, statusCache(io, file), ErrCacheNotDirectory)
 }
 
 func TestStatusShowsGitCommit(t *testing.T) {
@@ -116,13 +136,15 @@ func TestStatusShowsGitCommit(t *testing.T) {
 	}
 	dir := miniArchive(t, 2)
 	runGitInit(t, dir)
-	require.NoError(t, buildCache(dir, false))
+	io, _, _ := TestIOStreams()
+	require.NoError(t, buildCache(io, dir, false))
 
-	out := captureStdout(t, func() { require.NoError(t, statusCache(dir)) })
-	assert.Contains(t, out, "Git commit:")
-	assert.Contains(t, out, "clean work tree")
+	statusIO, out, _ := TestIOStreams()
+	require.NoError(t, statusCache(statusIO, dir))
+	assert.Contains(t, out.String(), "Git commit:")
+	assert.Contains(t, out.String(), "clean work tree")
 	// The short SHA is 7 hex chars; confirm one is present in the git line.
-	assert.Regexp(t, `Git commit:\s+[0-9a-f]{7} `, out)
+	assert.Regexp(t, `Git commit:\s+[0-9a-f]{7} `, out.String())
 }
 
 func TestWriteCacheRejectsNonDir(t *testing.T) {
@@ -134,11 +156,13 @@ func TestWriteCacheRejectsNonDir(t *testing.T) {
 
 func TestStatusReportsStale(t *testing.T) {
 	dir := miniArchive(t, 1)
-	require.NoError(t, buildCache(dir, false))
+	io, _, _ := TestIOStreams()
+	require.NoError(t, buildCache(io, dir, false))
 	writePersonFile(t, dir, "person-new", "Newcomer")
 
-	out := captureStdout(t, func() { require.NoError(t, statusCache(dir)) })
-	assert.Contains(t, out, "stale")
+	statusIO, out, _ := TestIOStreams()
+	require.NoError(t, statusCache(statusIO, dir))
+	assert.Contains(t, out.String(), "stale")
 }
 
 func TestCacheCobraRunners(t *testing.T) {

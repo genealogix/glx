@@ -39,7 +39,9 @@ func resolveCacheRoot(path string) (string, error) {
 // buildCache implements `glx cache build`. Without force it is a no-op when a
 // fresh cache already exists. The build always parses YAML (never reads an
 // existing cache) so the result reflects the current archive on disk.
-func buildCache(path string, force bool) error {
+//
+// Status output goes through io.Out so the global --quiet flag can silence it.
+func buildCache(io *IOStreams, path string, force bool) error {
 	root, err := resolveCacheRoot(path)
 	if err != nil {
 		return err
@@ -47,7 +49,7 @@ func buildCache(path string, force bool) error {
 
 	if !force {
 		if header, herr := readCacheHeader(root); herr == nil && cacheIsFresh(root, header) {
-			fmt.Printf("Cache already fresh (%d entities, built %s). Use --force to rebuild.\n",
+			io.Printf("Cache already fresh (%d entities, built %s). Use --force to rebuild.\n",
 				header.Counts.Total(), header.CreatedAt.Local().Format(time.RFC822))
 
 			return nil
@@ -65,15 +67,15 @@ func buildCache(path string, force bool) error {
 
 	counts := countEntities(archive)
 	size := cacheFileSize(root)
-	fmt.Printf("Built binary cache: %s\n", cachePath(root))
-	fmt.Printf("  %d entities, %s\n", counts.Total(), humanizeBytes(size))
+	io.Printf("Built binary cache: %s\n", cachePath(root))
+	io.Printf("  %d entities, %s\n", counts.Total(), humanizeBytes(size))
 
 	return nil
 }
 
 // cleanCache implements `glx cache clean`. It removes the cache file and, when
 // the .glx directory is left empty, the directory too.
-func cleanCache(path string) error {
+func cleanCache(io *IOStreams, path string) error {
 	root, err := resolveCacheRoot(path)
 	if err != nil {
 		return err
@@ -82,9 +84,9 @@ func cleanCache(path string) error {
 	target := cachePath(root)
 	switch err := os.Remove(target); {
 	case err == nil:
-		fmt.Printf("Removed binary cache: %s\n", target)
+		io.Printf("Removed binary cache: %s\n", target)
 	case os.IsNotExist(err):
-		fmt.Println("No binary cache to remove.")
+		io.Println("No binary cache to remove.")
 
 		return nil
 	default:
@@ -103,7 +105,7 @@ func cleanCache(path string) error {
 }
 
 // statusCache implements `glx cache status`.
-func statusCache(path string) error {
+func statusCache(io *IOStreams, path string) error {
 	root, err := resolveCacheRoot(path)
 	if err != nil {
 		return err
@@ -113,13 +115,13 @@ func statusCache(path string) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrCacheNotFound):
-			fmt.Printf("No binary cache for %s\n", root)
-			fmt.Println("Run 'glx cache build' to create one.")
+			io.Printf("No binary cache for %s\n", root)
+			io.Println("Run 'glx cache build' to create one.")
 
 			return nil
 		case errors.Is(err, ErrNotCacheFile), errors.Is(err, ErrCacheVersion):
-			fmt.Printf("Cache present but unusable (%v); it will be ignored.\n", err)
-			fmt.Println("Run 'glx cache build' to replace it.")
+			io.Printf("Cache present but unusable (%v); it will be ignored.\n", err)
+			io.Println("Run 'glx cache build' to replace it.")
 
 			return nil
 		default:
@@ -133,26 +135,26 @@ func statusCache(path string) error {
 		freshLabel = "fresh"
 	}
 
-	fmt.Printf("Binary cache: %s\n", cachePath(root))
-	fmt.Printf("  Status:      %s\n", freshLabel)
-	fmt.Printf("  Size:        %s\n", humanizeBytes(cacheFileSize(root)))
-	fmt.Printf("  Built:       %s\n", header.CreatedAt.Local().Format(time.RFC1123))
-	fmt.Printf("  glx version: %s\n", header.GLXVersion)
+	io.Printf("Binary cache: %s\n", cachePath(root))
+	io.Printf("  Status:      %s\n", freshLabel)
+	io.Printf("  Size:        %s\n", humanizeBytes(cacheFileSize(root)))
+	io.Printf("  Built:       %s\n", header.CreatedAt.Local().Format(time.RFC1123))
+	io.Printf("  glx version: %s\n", header.GLXVersion)
 	if header.GitCommitSHA != "" {
 		state := "dirty work tree"
 		if header.GitClean {
 			state = "clean work tree"
 		}
-		fmt.Printf("  Git commit:  %s (%s)\n", shortSHA(header.GitCommitSHA), state)
+		io.Printf("  Git commit:  %s (%s)\n", shortSHA(header.GitCommitSHA), state)
 	}
-	fmt.Printf("  Entities:    %d total\n", header.Counts.Total())
-	printCacheCounts(&header.Counts)
+	io.Printf("  Entities:    %d total\n", header.Counts.Total())
+	printCacheCounts(io, &header.Counts)
 
 	return nil
 }
 
 // printCacheCounts prints the non-zero entity counts from a cache header.
-func printCacheCounts(c *EntityCounts) {
+func printCacheCounts(io *IOStreams, c *EntityCounts) {
 	rows := []struct {
 		name  string
 		count int
@@ -171,7 +173,7 @@ func printCacheCounts(c *EntityCounts) {
 	}
 	for _, r := range rows {
 		if r.count > 0 {
-			fmt.Printf("    %-14s %d\n", r.name+":", r.count)
+			io.Printf("    %-14s %d\n", r.name+":", r.count)
 		}
 	}
 }

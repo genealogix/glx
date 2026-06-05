@@ -1759,15 +1759,15 @@ func cacheArgPath(args []string) string {
 }
 
 func runCacheBuild(_ *cobra.Command, args []string) error {
-	return buildCache(cacheArgPath(args), cacheBuildForce)
+	return buildCache(SystemIOStreams(), cacheArgPath(args), cacheBuildForce)
 }
 
 func runCacheClean(_ *cobra.Command, args []string) error {
-	return cleanCache(cacheArgPath(args))
+	return cleanCache(SystemIOStreams(), cacheArgPath(args))
 }
 
 func runCacheStatus(_ *cobra.Command, args []string) error {
-	return statusCache(cacheArgPath(args))
+	return statusCache(SystemIOStreams(), cacheArgPath(args))
 }
 
 // ============================================================================

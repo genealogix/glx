@@ -88,5 +88,5 @@ var (
 	ErrCacheNotDirectory = errors.New("binary cache is only supported for multi-file (directory) archives")
 	ErrCacheNotFound     = errors.New("no binary cache found (run 'glx cache build' first)")
 	ErrNotCacheFile      = errors.New("file is not a glx binary cache")
-	ErrCacheVersion      = errors.New("binary cache was written by an incompatible glx version")
+	ErrCacheVersion      = errors.New("binary cache uses an incompatible cache format version")
 )
