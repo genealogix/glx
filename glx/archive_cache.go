@@ -235,7 +235,10 @@ func runGit(root string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...) //nolint:gosec // fixed args, root is a local path
+	// #nosec G204 -- git is invoked with fixed subcommands; only the archive
+	// root (a local path the user already passed to the command) is variable,
+	// and it is an argument to `-C`, never shell-interpreted.
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...)
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = io.Discard

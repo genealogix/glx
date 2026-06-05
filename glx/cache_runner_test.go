@@ -16,11 +16,14 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestBuildCacheAndStatus(t *testing.T) {
@@ -107,6 +110,28 @@ func TestCacheCommandsRejectSingleFile(t *testing.T) {
 	require.ErrorIs(t, statusCache(file), ErrCacheNotDirectory)
 }
 
+func TestStatusShowsGitCommit(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	dir := miniArchive(t, 2)
+	runGitInit(t, dir)
+	require.NoError(t, buildCache(dir, false))
+
+	out := captureStdout(t, func() { require.NoError(t, statusCache(dir)) })
+	assert.Contains(t, out, "Git commit:")
+	assert.Contains(t, out, "clean work tree")
+	// The short SHA is 7 hex chars; confirm one is present in the git line.
+	assert.Regexp(t, `Git commit:\s+[0-9a-f]{7} `, out)
+}
+
+func TestWriteCacheRejectsNonDir(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "archive.glx")
+	require.NoError(t, os.WriteFile(file, []byte("persons: {}\n"), 0o644))
+	require.ErrorIs(t, writeCache(file, &glxlib.GLXFile{}, nil), ErrCacheNotDirectory)
+}
+
 func TestStatusReportsStale(t *testing.T) {
 	dir := miniArchive(t, 1)
 	require.NoError(t, buildCache(dir, false))
@@ -114,6 +139,18 @@ func TestStatusReportsStale(t *testing.T) {
 
 	out := captureStdout(t, func() { require.NoError(t, statusCache(dir)) })
 	assert.Contains(t, out, "stale")
+}
+
+func TestCacheCobraRunners(t *testing.T) {
+	dir := miniArchive(t, 1)
+	_ = captureStdout(t, func() {
+		require.NoError(t, runCacheBuild(nil, []string{dir}))
+		require.NoError(t, runCacheStatus(nil, []string{dir}))
+		require.NoError(t, runCacheClean(nil, []string{dir}))
+	})
+
+	assert.Equal(t, ".", cacheArgPath(nil))
+	assert.Equal(t, "x", cacheArgPath([]string{"x"}))
 }
 
 func TestHumanizeBytes(t *testing.T) {
