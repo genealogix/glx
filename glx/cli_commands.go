@@ -1666,8 +1666,11 @@ a fresh cache when one is present. Set GLX_CACHE=auto to also build the cache on
 the first run that misses, or GLX_CACHE=off to ignore the cache entirely.
 
 The cache is derived and disposable. Staleness is detected from the archive's
-git commit and a filesystem fingerprint; a stale cache is silently ignored and
-the YAML parse runs instead, so the cache can never serve outdated data. Only
+git commit and a filesystem (path, size, mtime) fingerprint; a cache that is
+missing, stale, or unreadable is silently ignored and the YAML parse runs
+instead. Like any mtime-based cache, a content edit that preserves a file's
+size and mtime is the one change it cannot detect — use git, or
+'glx cache build'/'glx cache clean', to force a refresh in that case. Only
 multi-file (directory) archives are supported.`,
 	Example: `  # Build a cache for the current archive
   glx cache build

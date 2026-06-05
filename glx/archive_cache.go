@@ -47,10 +47,14 @@ const gitCommandTimeout = 5 * time.Second
 // *glxlib.GLXFile to disk with `encoding/gob`; subsequent loads deserialize the
 // blob instead of re-parsing YAML.
 //
-// The cache is strictly disposable and best-effort: any problem reading it
+// The cache is strictly disposable and best-effort: any detected problem
 // (missing, stale, corrupt, version mismatch, decode failure) silently falls
-// back to the authoritative YAML parse. A cache can never cause a command to
-// return wrong data — at worst it is ignored and the slow path runs.
+// back to the authoritative YAML parse. Staleness is detected from the git
+// commit and a (path, size, mtime) fingerprint, so — like any mtime-based
+// cache — a content edit that preserves a file's size and mtime is the one
+// change it cannot see; a git-tracked workflow, or `glx cache build`/`clean`,
+// forces freshness in that corner case. Outside it, a cached load mirrors the
+// YAML parse exactly.
 
 const (
 	// cacheDirName is the per-archive directory that holds derived, disposable
@@ -307,20 +311,28 @@ func writeCache(root string, archive *glxlib.GLXFile, duplicates []string) error
 		Duplicates:    duplicates,
 	}
 
-	var buf bytes.Buffer
-	buf.Write(cacheMagic[:])
-	enc := gob.NewEncoder(&buf)
-	if err := enc.Encode(&header); err != nil {
-		return fmt.Errorf("encoding cache header: %w", err)
-	}
-	if err := enc.Encode(archive); err != nil {
-		return fmt.Errorf("encoding cache body: %w", err)
-	}
-
 	if err := os.MkdirAll(cacheDir(root), dirPermissions); err != nil {
 		return fmt.Errorf("creating cache directory: %w", err)
 	}
-	if err := atomicWriteFile(cachePath(root), buf.Bytes(), filePermissions); err != nil {
+
+	// Stream the magic prefix and gob payload straight to the temp file rather
+	// than buffering the whole serialized archive in RAM first — on a large
+	// archive the gob blob is hundreds of MB, and that buffer would land on top
+	// of the already-resident parsed archive at peak.
+	if err := atomicWriteStream(cachePath(root), filePermissions, func(w io.Writer) error {
+		if _, err := w.Write(cacheMagic[:]); err != nil {
+			return err
+		}
+		enc := gob.NewEncoder(w)
+		if err := enc.Encode(&header); err != nil {
+			return fmt.Errorf("encoding cache header: %w", err)
+		}
+		if err := enc.Encode(archive); err != nil {
+			return fmt.Errorf("encoding cache body: %w", err)
+		}
+
+		return nil
+	}); err != nil {
 		return fmt.Errorf("writing cache file: %w", err)
 	}
 

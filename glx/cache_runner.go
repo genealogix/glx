@@ -118,7 +118,8 @@ func statusCache(path string) error {
 
 			return nil
 		case errors.Is(err, ErrNotCacheFile), errors.Is(err, ErrCacheVersion):
-			fmt.Printf("Cache present but unusable (%v); it will be rebuilt on demand.\n", err)
+			fmt.Printf("Cache present but unusable (%v); it will be ignored.\n", err)
+			fmt.Println("Run 'glx cache build' to replace it.")
 
 			return nil
 		default:

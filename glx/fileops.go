@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/fs"
@@ -220,6 +221,20 @@ func writeFilesToDir(rootDir string, files map[string][]byte) error {
 // write. The temp file is created in the same directory to ensure same-filesystem
 // rename.
 func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	return atomicWriteStream(path, perm, func(w io.Writer) error {
+		_, err := w.Write(data)
+
+		return err
+	})
+}
+
+// atomicWriteStream atomically writes to path by streaming through write into a
+// temp file (created in the same directory for a same-filesystem rename), then
+// renaming it into place. The writer passed to write is buffered, so callers
+// that emit a large payload incrementally (e.g. a gob encoder) never have to
+// hold the whole serialized form in memory. The target file ends up with either
+// the old content or the new content, never a partial write.
+func atomicWriteStream(path string, perm os.FileMode, write func(w io.Writer) error) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".glx-tmp-*")
 	if err != nil {
@@ -236,8 +251,12 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 		}
 	}()
 
-	if _, err := tmp.Write(data); err != nil {
+	bw := bufio.NewWriter(tmp)
+	if err := write(bw); err != nil {
 		return fmt.Errorf("writing temp file: %w", err)
+	}
+	if err := bw.Flush(); err != nil {
+		return fmt.Errorf("flushing temp file: %w", err)
 	}
 	if err := tmp.Sync(); err != nil {
 		return fmt.Errorf("syncing temp file: %w", err)
@@ -253,6 +272,7 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	}
 
 	success = true
+
 	return nil
 }
 
