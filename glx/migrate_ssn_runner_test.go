@@ -83,23 +83,44 @@ func TestMigrateSsnToNationalID_VocabEntryRename(t *testing.T) {
 
 func TestMigrateSsnToNationalID_DoesNotOverwriteExistingNationalID(t *testing.T) {
 	// A person carrying BOTH keys signals a manual conflict: the legacy `ssn`
-	// must be left in place rather than clobbering `national_id`.
+	// property must be left in place rather than clobbering `national_id`, AND
+	// that person's `ssn` assertions must NOT be repointed to `national_id`
+	// (otherwise legacy evidence is misattributed and the kept property is
+	// inconsistent with its assertions). person-clean carries only `ssn` and is
+	// fully migrated in the same run, proving the skip is targeted at the
+	// conflicted person rather than disabling assertion renaming globally.
 	archive := &glxlib.GLXFile{
 		Persons: map[string]*glxlib.Person{
-			"person-1": {Properties: map[string]any{
+			"person-conflict": {Properties: map[string]any{
 				"ssn":         "OLD",
 				"national_id": "KEEP",
 			}},
+			"person-clean": {Properties: map[string]any{"ssn": "123-45-6789"}},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-conflict": {Subject: glxlib.EntityRef{Person: "person-conflict"}, Property: "ssn", Value: "OLD"},
+			"a-clean":    {Subject: glxlib.EntityRef{Person: "person-clean"}, Property: "ssn", Value: "123-45-6789"},
 		},
 	}
 
 	warn := &bytes.Buffer{}
 	report := migrateSsnToNationalID(archive, warn)
 
-	assert.Equal(t, 0, report.SsnPropertiesRenamed)
-	assert.Equal(t, "OLD", archive.Persons["person-1"].Properties["ssn"])
-	assert.Equal(t, "KEEP", archive.Persons["person-1"].Properties["national_id"])
-	assert.Contains(t, warn.String(), "person-1")
+	// Conflicted person: property AND assertion both left as `ssn`.
+	assert.Equal(t, "OLD", archive.Persons["person-conflict"].Properties["ssn"])
+	assert.Equal(t, "KEEP", archive.Persons["person-conflict"].Properties["national_id"])
+	assert.Equal(t, "ssn", archive.Assertions["a-conflict"].Property,
+		"conflicted person's ssn assertion must NOT be repointed to national_id")
+
+	// Clean person: property and assertion both migrated.
+	assert.Equal(t, "123-45-6789", archive.Persons["person-clean"].Properties["national_id"])
+	assert.NotContains(t, archive.Persons["person-clean"].Properties, "ssn")
+	assert.Equal(t, "national_id", archive.Assertions["a-clean"].Property)
+
+	// Only the clean person's property and assertion are counted.
+	assert.Equal(t, 1, report.SsnPropertiesRenamed)
+	assert.Equal(t, 1, report.SsnAssertionsRenamed)
+	assert.Contains(t, warn.String(), "person-conflict")
 	assert.Contains(t, warn.String(), "national_id")
 }
 
