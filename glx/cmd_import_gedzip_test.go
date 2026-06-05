@@ -155,7 +155,7 @@ func TestImportGEDZIP_MultiFile(t *testing.T) {
 	})
 	outDir := filepath.Join(t.TempDir(), "archive")
 
-	err := importGEDCOM(gdz, outDir, FormatMulti, true, false, defaultShowFirstErrors)
+	err := importGEDZIP(gdz, outDir, FormatMulti, true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	require.True(t, dirExists(outDir), "archive directory should exist")
@@ -168,7 +168,7 @@ func TestImportGEDZIP_SingleFile(t *testing.T) {
 	})
 	outPath := filepath.Join(t.TempDir(), "out.glx")
 
-	err := importGEDCOM(gdz, outPath, FormatSingle, true, false, defaultShowFirstErrors)
+	err := importGEDZIP(gdz, outPath, FormatSingle, true, false, defaultShowFirstErrors)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(filepath.Clean(outPath))
@@ -341,19 +341,11 @@ func TestImportGEDZIP_VerboseEmitsExtractionMessage(t *testing.T) {
 	})
 	outDir := filepath.Join(t.TempDir(), "archive")
 
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	origStdout := os.Stdout
-	os.Stdout = w
-	t.Cleanup(func() { os.Stdout = origStdout })
-
-	importErr := importGEDCOM(gdz, outDir, FormatMulti, true, true, defaultShowFirstErrors)
-	require.NoError(t, w.Close())
-	out, readErr := io.ReadAll(r)
-	require.NoError(t, readErr)
+	var out bytes.Buffer
+	importErr := importGEDCOM(gdz, outDir, FormatMulti, true, true, defaultShowFirstErrors, &out)
 
 	require.NoError(t, importErr)
-	require.Contains(t, string(out), "Extracting GEDZIP archive")
+	require.Contains(t, out.String(), "Extracting GEDZIP archive")
 }
 
 func TestImportGEDZIP_SkipsDirectoryEntry(t *testing.T) {
