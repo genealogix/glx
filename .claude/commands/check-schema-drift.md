@@ -4,6 +4,10 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Bash(git rev-parse:*)
+  - Bash(date -u:*)
+  - Bash(make check-schemas:*)
+  - Bash(gh issue list:*)
 model: claude-opus-4-7
 ---
 
@@ -79,13 +83,24 @@ For each vocabulary schema, verify:
 - For property vocabulary schemas specifically, property definition schemas enforce `value_type`/`reference_type`/`vocabulary_type` mutual exclusivity per spec
 - All vocabulary `.glx` template files validate against their corresponding schema
 
+### Files to ignore
+
+These files live in the schema directories but are **not** subject to drift analysis. Always enumerate schemas with the glob `specification/schema/v1/*.schema.json` (and `specification/schema/v1/vocabularies/*.schema.json`) rather than a bare `ls`/`Glob specification/schema/v1/*` — the glob skips these automatically, but if you list the directory directly, exclude them explicitly:
+
+- `specification/schema/v1/embed.go` — Go embed file for binary distribution (also present at `specification/5-standard-vocabularies/embed.go`)
+- Any `README.md` that may live in a schema directory — directory readme, no spec counterpart
+- Any file not ending in `.schema.json`
+
+An agent that compares one of these (e.g., `embed.go`) against a non-existent spec section will emit a pure false positive. Do not.
+
 ## What to Check
 
 For each entity type, verify:
 
 ### 1. Required Fields Alignment
 - Compare "Required Fields" table in markdown with `required` array in JSON schema
-- Check that all markdown-listed required fields appear in schema
+- **EXCLUDE rows whose field name reads "Entity ID (map key)"** — that row documents the parent-map keying constraint (the entity is keyed by its ID in the parent map, enforced via `patternProperties` in `glx-file.schema.json`), not a property on the entity itself. The entity schema's `required` array MUST NOT contain it, so a naive "schema missing required field 'Entity ID (map key)'" comparison is a pure false positive on every entity. Do not flag it.
+- Check that all remaining markdown-listed required fields appear in schema
 - Check that schema doesn't have additional required fields not documented
 
 ### 2. Optional Fields Alignment
@@ -98,8 +113,14 @@ For each entity type, verify:
 - Check for type mismatches (e.g., markdown says "string", schema says "array")
 
 ### 4. Field Descriptions
-- Check that descriptions in markdown tables roughly match schema descriptions
-- Flag significant discrepancies
+
+Use a **two-tier rule** rather than a free-form "do these roughly match?" judgment — paraphrase scored as drift is the dominant false-positive source in description comparison.
+
+1. **Structural mismatch (flag, severity `major`)** — the schema description states a constraint **not** in the spec (e.g., "must be unique" appears only in the schema), OR **omits** a constraint the spec documents (e.g., spec says "ISO 8601 date", schema says only "date"). A constraint is anything that changes what values validate or how a consumer must treat the field.
+2. **Wording-only (do NOT flag)** — pure rewording, expanded examples, or added length when no constraint changes. Natural-language paraphrase is not drift.
+
+If unsure which tier applies, treat it as wording-only — false positives in description comparison degrade the entire report's signal-to-noise.
+
 - **IGNORE** inline lists of vocabulary-defined values in description strings (e.g., a `properties` field description listing common property names like "locator, text_from_source, ..."). These are informational hints, not normative. They do not need to be updated every time a vocabulary entry is added.
 
 ### 5. Special Constraints
@@ -140,12 +161,36 @@ These patterns are known to be complex and drift-prone:
 - For specification-internal issues (contradictions, ambiguity), use `/check-spec` instead
 - Schema-related issues found by `/check-spec` should be redirected here
 
+## Provenance
+
+Before the findings, record a provenance header at the top of the report so a run is reproducible and silent coverage gaps are detectable:
+
+- **Commit SHA** being checked — `git rev-parse HEAD`
+- **Run timestamp** — `date -u +%Y-%m-%dT%H:%M:%SZ`
+- **Schema files actually visited** — the concrete list of `*.schema.json` paths you compared, not just the file-list spec above. Listing what you visited (vs. what you were told to visit) catches the case where a file was silently dropped.
+- **`make check-schemas` exit status** — run it and record the exit code. This target (`node specification/validate-schemas.mjs`) validates every entity and vocabulary `*.schema.json` against the JSON-Schema meta-schema, compiles each under ajv strict mode, and compiles `glx-file.schema.json` with all entity/vocabulary schemas registered as `$ref` targets (so a broken cross-schema reference fails here). It does **not** read or validate the `specification/5-standard-vocabularies/*.glx` template files — checking those `.glx` templates against their schemas is a manual step (see "Vocabulary Schemas" above) and the proposed delegation is the separate scope of #839. A **non-zero** status means schema-level validity is broken, so spec↔schema comparison on top of malformed schemas is unreliable — note this prominently and treat findings with lower confidence.
+
+These values also populate the `commit`, `timestamp`, and `checked_schemas` fields of the machine-readable block below.
+
 ## Output Format
 
-For each entity type, report:
+Produce the report in two parts, in this order: (1) a human-readable prose report grouped by scope, then (2) a single machine-readable `findings-json` block.
+
+### Part 1 — Human-readable report
+
+Group findings by scope using the **exact** heading for each scope, so every finding is addressable by `scope` + `target`. Emit one section per schema you actually visited (see "Schemas to Check" for the scope inventory). Do NOT invent section structure for the non-entity schemas — these four headings cover every schema in scope:
+
+| Scope (`scope` enum value)                    | Heading to use                    |
+|-----------------------------------------------|-----------------------------------|
+| Entities (`entity`)                           | `## Entity: [name]`               |
+| Archive root (`archive_root`)                 | `## Archive Root: glx-file`       |
+| Type vocabularies (`vocabulary_type`)         | `## Vocabulary (type): [name]`    |
+| Property vocabularies (`vocabulary_property`) | `## Vocabulary (property): [name]` |
+
+Under each heading, emit either a no-drift line or a drift block:
 
 ```
-## [Entity Type]
+## Entity: [name]
 
 ✅ No drift detected - Schema matches specification
 
@@ -165,7 +210,7 @@ OR
 - Schema has `field_name` as type X but specification documents it as type Y
 
 ### Descriptions
-- Schema description for `field_name` doesn't match specification
+- Schema description for `field_name` adds or drops a constraint vs. the spec (per the two-tier rule)
 
 ### Constraints
 - Specification documents constraint X but schema doesn't enforce it
@@ -174,14 +219,74 @@ OR
 
 **Remember**: Frame all drift as "what the schema needs to change" to match the specification.
 
+### Part 2 — Machine-readable findings block
+
+After the prose, append **exactly one** fenced block with the info-string `findings-json` so the eval harness (#796) can grep for it deterministically and compute precision/recall. It MUST be **valid JSON** — not pseudo-YAML, no comments, no trailing commas. Always emit it, even on a fully clean run (`"findings": []`).
+
+Field contract:
+
+- `command` — always `"check-schema-drift"`.
+- `commit` / `timestamp` — copied from the Provenance header.
+- `checked_schemas` — the schemas you **actually visited** this run, grouped by scope key (`entity`, `archive_root`, `vocabulary_type`, `vocabulary_property`). Populate it from the `*.schema.json` glob, not a memorized list — the schema set grows over time.
+- `findings[]` — one object per drift:
+  - `scope` — enum: `entity | archive_root | vocabulary_type | vocabulary_property | meta`. (`meta` is for file-level / cross-cutting findings such as an orphaned schema.)
+  - `target` — schema name without extension (e.g., `person`, `glx-file`, `event-types`).
+  - `schema_path` — path to the `.schema.json`.
+  - `spec_path` — path to the governing spec markdown, or `null` for an orphaned schema with no spec.
+  - `json_pointer` — JSON Pointer into the schema (e.g., `#/properties/notes`), or `null` if not field-scoped.
+  - `category` — enum: `required_field | optional_field | field_type | description | constraint | entity_id_pattern | additional_properties | ref_resolution | file_existence | special_focus`.
+  - `severity` — enum: `critical | major | minor | info` (the precise rubric is defined in #838).
+  - `drift_direction` — enum: `spec_to_schema` (spec documents it, schema lacks it) | `schema_to_spec` (schema has it, spec doesn't). This is the same split section 7 uses to assign `additionalProperties: false` severity; surfacing it here makes the distinction queryable.
+  - `message` — one sentence, framed as "what the schema needs to change".
+- `summary` — `total_findings`, the four per-severity counts, and `suppressed_as_duplicate_of_known_issue` (incremented per the Cross-Reference section below).
+
+Example (the `checked_schemas` lists and the single finding are **illustrative** — populate them from the schemas you actually visited; emit `"findings": []` when clean):
+
+```findings-json
+{
+  "command": "check-schema-drift",
+  "commit": "<HEAD SHA>",
+  "timestamp": "<ISO 8601>",
+  "checked_schemas": {
+    "entity": ["assertion", "citation", "event", "media", "person", "place", "relationship", "repository", "source"],
+    "archive_root": ["glx-file"],
+    "vocabulary_type": ["event-types", "relationship-types", "place-types", "source-types", "media-types", "repository-types", "confidence-levels", "participant-roles", "sex-types", "gender-types"],
+    "vocabulary_property": ["person-properties", "event-properties", "relationship-properties", "place-properties", "media-properties", "repository-properties", "source-properties", "citation-properties"]
+  },
+  "findings": [
+    {
+      "scope": "entity",
+      "target": "person",
+      "schema_path": "specification/schema/v1/person.schema.json",
+      "spec_path": "specification/4-entity-types/person.md",
+      "json_pointer": "#/properties/notes",
+      "category": "field_type",
+      "severity": "major",
+      "drift_direction": "spec_to_schema",
+      "message": "Spec marks `notes` as `string | string[]`; schema needs a `oneOf` to accept the array form."
+    }
+  ],
+  "summary": {
+    "total_findings": 1,
+    "critical": 0,
+    "major": 1,
+    "minor": 0,
+    "info": 0,
+    "suppressed_as_duplicate_of_known_issue": 0
+  }
+}
+```
+
 ## Summary
 
 At the end, provide:
-- Total entity types checked
-- Count of entity types with drift
+- Total schemas checked, broken down by scope (entities, archive root, type vocabularies, property vocabularies)
+- Count of schemas with drift
 - List of schemas that need updates to match specification
-- Severity assessment (minor/major/critical)
+- Severity assessment (`critical | major | minor | info`)
 - Recommended actions: "Update [schema files] to match specification"
+
+These counts must agree with the `summary` block in the `findings-json` output.
 
 ## Notes
 
@@ -189,4 +294,17 @@ At the end, provide:
 - Be thorough but practical - focus on structural and semantic differences that could cause confusion or validation issues
 - If a field is marked as "required" but has a complex `anyOf` constraint, document this clearly
 - Check both directions: specification → schema (missing in schema) AND schema → specification (undocumented in spec)
-- **Description comparison guidance**: Acceptable differences include minor rewording, added examples, or extra detail in the schema. Flag differences where the schema description contradicts the spec, omits a key constraint, or describes different behavior
+- **Description comparison**: apply the two-tier rule in "What to Check → 4. Field Descriptions" — flag only structural mismatches (a constraint added or omitted), never pure rewording. When unsure, treat as wording-only.
+
+## Cross-Reference with Known Issues
+
+Two layers suppress already-known drift; apply both before finalizing:
+
+1. **File-backed allowlist (per-symbol).** The "Allowlisted Drift" section at the top of this command already consults `.claude/drift-allowlist.yaml` for known, triaged drift on a specific `file` + symbol. Those are suppressed there and need no further action here.
+2. **Open GitHub issues (this section).** For drift that is *not* yet in the allowlist but may already be tracked as an open issue:
+   1. Run `gh issue list -R genealogix/glx --state open --limit 100 --json number,title --jq '.[] | "#\(.number) \(.title)"'`.
+   2. For each finding, scan titles for overlap on the schema file path or the field/entity name.
+   3. If already tracked: omit it from the prose report and increment `suppressed_as_duplicate_of_known_issue` in the `findings-json` summary (do not also add it to `findings[]`).
+   4. If NOT tracked: include it in full, in both the prose and `findings[]`.
+
+This keeps the report focused on newly discovered drift. As `.claude/drift-allowlist.yaml` accumulates entries (#797), more drift is caught by layer 1, reducing the `gh issue list` scans in layer 2.
