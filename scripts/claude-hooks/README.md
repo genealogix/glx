@@ -29,7 +29,8 @@ is the granular gate the prefix matcher can't be, so the rules can be re-enabled
 
 ### What it does
 
-A `PreToolUse` hook (matcher `Bash(gh api*)`) that is a **pure restrictor** — it never
+A `PreToolUse` hook — `matcher: "Bash"` with the handler gated by `if: "Bash(gh api:*)"`
+so it spawns only for `gh api` commands — that is a **pure restrictor**: it never
 emits `allow`, only subtracts the dangerous subset of what the allow-list grants:
 
 | `gh api` call | Verdict | Effect |
@@ -69,11 +70,18 @@ workflow, is hard-blocked.
   arguments at runtime — a `$` or backtick outside single quotes, or an unquoted `{a,b}`
   brace expansion — a would-be read is floored to `ask` (the static parse can't see what it
   expands to). GraphQL `$variables` inside a single-quoted query are *not* treated as dynamic,
-  so parameterized read queries stay prompt-free.
+  so parameterized read queries stay prompt-free. **Consequence:** a read whose *output* is
+  captured via command substitution — e.g. `ISSUE_ID=$(gh api graphql -f query='…')`, the
+  capture idiom the PR-review workflow uses — contains a `$(` and therefore prompts, even
+  though the inner query is read-only. This is deliberate conservatism, and the prompt is a
+  one-keystroke approval; pipe to a file or run the bare query if you want it prompt-free.
 - **Fail-closed.** Any parse error, malformed input, or internal exception resolves to
   `ask`, never to silent approval. The [`gh-api-gate.sh`](gh-api-gate.sh) wrapper emits
   `ask` if no Python interpreter is available, and `.claude/settings.json` blocks (`exit 2`)
-  if the wrapper itself is missing.
+  if the wrapper itself is missing. The gate restricts an otherwise auto-approved call by
+  emitting a `PreToolUse` `permissionDecision` of `ask`/`deny`, which relies on a hook
+  decision taking precedence over a matching allow rule — the documented purpose of
+  `PreToolUse` decisions, and verified live against the `Bash(gh api …:*)` allow rules.
 
 ### Scope boundary
 
@@ -87,3 +95,52 @@ permission prompt regardless of this gate.
 ```bash
 python scripts/claude-hooks/gh-api-gate_test.py
 ```
+
+## `pre-commit-golangci.sh` — pre-commit lint gate (genealogix/glx#869)
+
+### Why
+
+`#655` added a `PreToolUse` hook intended to run `golangci-lint` before a Claude
+Code session creates a `git commit`. Its matcher was `"Bash(git commit*)"`, which —
+because it contains `(`, `)`, `*` — is compiled as a JavaScript regex and tested
+against the **tool name** (`"Bash"`), not the command. `"Bash"` never matches that
+regex, so the hook was dead code and the Claude-side lint pass never ran (#869).
+
+A matcher filters on tool name only; the command pattern belongs in the per-handler
+`if` field, which uses [permission-rule syntax](https://code.claude.com/docs/en/permissions):
+
+```jsonc
+{
+  "matcher": "Bash",                      // tool name (exact match)
+  "hooks": [{
+    "type": "command",
+    "if": "Bash(git commit:*)",           // command pattern (permission-rule syntax)
+    "command": "bash -c 'bash \"${CLAUDE_PROJECT_DIR:-.}/scripts/claude-hooks/pre-commit-golangci.sh\"'"
+  }]
+}
+```
+
+`Bash(git commit:*)` is a literal-prefix match, so it also matches the rarely-used
+`git commit-tree` / `git commit-graph`. That over-fire is harmless here: the hook is
+advisory and the script no-ops unless the index stages a `*.go` file.
+
+### What it does
+
+When a `git commit` stages Go source, it runs `golangci-lint` scoped to the new
+code (`--new-from-rev=$(git merge-base HEAD main)`, falling back to `HEAD~1`) and
+prints any findings. It is **advisory only**: findings surface via golangci-lint's
+exit code, which Claude Code treats as a *non-blocking* error for `PreToolUse`
+(only `exit 2` blocks a tool call), so the commit still proceeds. `lefthook`
+(`#280`) remains the effective local gate. Whether to promote this to a hard,
+blocking gate — and how it should relate to the lefthook and CI lint passes — is
+the strategy decision tracked in `#870`; this script deliberately stays advisory.
+
+### Run it standalone
+
+```bash
+bash scripts/claude-hooks/pre-commit-golangci.sh
+```
+
+It no-ops (exit 0) unless the index stages a `*.go` file, so it is safe to run any
+time. A regression test that exercises the hook end-to-end (matcher firing, exit
+semantics) depends on the eval-harness infrastructure tracked in `#796`.

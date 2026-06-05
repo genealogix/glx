@@ -56,27 +56,23 @@
       "Bash(mktemp -d /tmp/glx-drift-*:*)",
       "Bash(rm -rf /tmp/glx-drift-*:*)",
       "Bash(date -u:*)",
-      "Bash(tree:*)",
-      "Bash(gofmt:*)"
+      "Bash(tree:*)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash(git commit*)",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'cd \"${CLAUDE_WORKING_DIRECTORY:-.}\" && STAGED_GO=$(git diff --cached --name-only --diff-filter=ACMR -- \"*.go\" | head -1) && if [ -n \"$STAGED_GO\" ]; then UNSTAGED_GO=$(git diff --name-only -- \"*.go\" | head -1) && if [ -n \"$UNSTAGED_GO\" ]; then echo \"Warning: unstaged Go changes detected — lint may flag code not in this commit\" >&2; fi && BASE=$(git merge-base HEAD main 2>/dev/null || echo HEAD~1) && golangci-lint run --new-from-rev=\"$BASE\" --timeout=5m 2>&1; fi'"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash(gh api*)",
-        "hooks": [
+            "if": "Bash(git commit:*)",
+            "command": "bash -c 'bash \"${CLAUDE_PROJECT_DIR:-.}/scripts/claude-hooks/pre-commit-golangci.sh\"'"
+          },
           {
             "type": "command",
-            "command": "bash -c 'cd \"${CLAUDE_PROJECT_DIR:-${CLAUDE_WORKING_DIRECTORY:-.}}\" 2>/dev/null; bash scripts/claude-hooks/gh-api-gate.sh || exit 2'"
+            "if": "Bash(gh api:*)",
+            "command": "bash -c 'bash \"${CLAUDE_PROJECT_DIR:-.}/scripts/claude-hooks/gh-api-gate.sh\" || exit 2'"
           }
         ]
       }
