@@ -1,6 +1,6 @@
-# `tools/` — pinned development tools
+# `ci-tools/` — pinned development tools
 
-This is a **separate Go module** (`github.com/genealogix/glx/tools`) that pins the
+This is a **separate Go module** (`github.com/genealogix/glx/ci-tools`) that pins the
 versions of *selected* CI/development tools via the Go 1.24+
 [`tool` directive](https://go.dev/doc/go1.24#tool-tracking). It does **not** track
 every CI tool — only those listed under [Tools pinned here](#tools-pinned-here);
@@ -9,6 +9,13 @@ others are intentionally pinned elsewhere (see
 imported by, and shares no dependency graph with, the main module — so a tool's
 transitive dependencies never pollute the root `go.mod`/`go.sum` and are never
 inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
+
+> **Why `ci-tools/` and not `tools/`?** `tools/` already holds the first-party
+> `tools/driftcheck` package, which *is* part of the main module (it imports
+> `go-glx`). Placing this module's `go.mod` at `tools/` would have swallowed
+> `driftcheck` into the isolated tool module — breaking `go run ./tools/driftcheck`,
+> `go test ./tools/...`, and `make check-code-drift`. Keeping the two concerns in
+> separate top-level directories avoids that collision.
 
 ## Tools pinned here
 
@@ -36,7 +43,7 @@ Invoke from the **repository root** with `-modfile` so the tool builds from this
 module's pinned versions while analyzing the main module's packages:
 
 ```bash
-go tool -modfile=tools/go.mod govulncheck ./...
+go tool -modfile=ci-tools/go.mod govulncheck ./...
 ```
 
 Or use the Makefile wrapper: `make vulncheck`.
@@ -44,13 +51,13 @@ Or use the Makefile wrapper: `make vulncheck`.
 ## Bumping or adding a tool
 
 ```bash
-cd tools
+cd ci-tools
 go get -tool golang.org/x/vuln/cmd/govulncheck@vX.Y.Z   # bump
 go get -tool example.com/some/new/tool@vX.Y.Z           # add
 go mod tidy
 ```
 
-Commit the resulting `tools/go.mod` and `tools/go.sum`. The pinned version is the
+Commit the resulting `ci-tools/go.mod` and `ci-tools/go.sum`. The pinned version is the
 single source of truth for both CI and local runs. Prefer tools with a lean
 dependency graph here; heavyweight trees belong on a pinned `go install` (see
 gosec above) to avoid `dependency-review` noise.

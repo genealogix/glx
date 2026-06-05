@@ -33,13 +33,13 @@ jobs:
           cache: true
           cache-dependency-path: |
             go.sum
-            tools/go.sum
+            ci-tools/go.sum
 
       - name: Verify go.mod is tidy
         run: go mod tidy -diff
 
-      - name: Verify tools/go.mod is tidy
-        run: go -C tools mod tidy -diff
+      - name: Verify ci-tools/go.mod is tidy
+        run: go -C ci-tools mod tidy -diff
 
   check-code-drift:
     name: Schema vs Go-code drift

@@ -40,19 +40,19 @@ jobs:
           cache: true
           cache-dependency-path: |
             go.sum
-            tools/go.sum
+            ci-tools/go.sum
 
       - name: Download Go modules
         run: go mod download
 
       - name: Run govulncheck
-        # govulncheck is pinned via the tool directive in tools/go.mod (single source
+        # govulncheck is pinned via the tool directive in ci-tools/go.mod (single source
         # of truth, shared with `make vulncheck`), replacing the unpinned
         # `go install ...@latest` the govulncheck-action used. With -format sarif,
         # govulncheck exits 0 even when vulnerabilities are found, so findings surface
         # as Code Scanning alerts (uploaded below) rather than failing this job —
         # matching the prior action's behavior.
-        run: go tool -modfile=tools/go.mod govulncheck -format sarif ./... > govulncheck.sarif
+        run: go tool -modfile=ci-tools/go.mod govulncheck -format sarif ./... > govulncheck.sarif
 
       - name: Upload SARIF to Code Scanning
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -81,11 +81,11 @@ jobs:
         run: go mod download
 
       - name: Install gosec
-        # gosec is NOT in tools/go.mod on purpose: its autofix package pulls the
+        # gosec is NOT in ci-tools/go.mod on purpose: its autofix package pulls the
         # Google generative-ai-go / Cloud SDK / grpc / otel tree, whose (unreachable,
         # build-time-only) advisories would otherwise trip Dependency Review on every
         # PR. A version-pinned `go install` keeps it reproducible without committing
-        # that graph. See tools/README.md.
+        # that graph. See ci-tools/README.md.
         run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
 
       - name: Run gosec

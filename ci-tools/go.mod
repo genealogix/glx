@@ -1,4 +1,4 @@
-module github.com/genealogix/glx/tools
+module github.com/genealogix/glx/ci-tools
 
 go 1.26.0
 
