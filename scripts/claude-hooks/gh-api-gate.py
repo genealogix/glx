@@ -95,10 +95,14 @@ DENY, ASK, READ = "deny", "ask", "read"
 
 
 def _strip_graphql_noise(s):
-    """Return the document with comments and string literals removed (replaced
-    by spaces) so brace/keyword structure can be scanned without being fooled by
-    text inside strings or `#` comments. Handles block strings (`\"\"\"…\"\"\"`),
-    quoted strings with `\\` escapes, and line comments."""
+    """Return the document with `#` comments and ordinary `"…"` string literals
+    removed (replaced by a space) so brace/keyword structure can be scanned
+    without being fooled by text inside them.
+
+    Block strings (`\"\"\"…\"\"\"`) are intentionally NOT handled here: their
+    `\\\"\"\"` escape rules make static lexing risky, so `_graphql_is_readonly`
+    gates any document containing one before calling this — the input here never
+    contains a `\"\"\"`."""
     out = []
     i, n = 0, len(s)
     while i < n:
@@ -108,18 +112,10 @@ def _strip_graphql_noise(s):
                 i += 1
             continue
         if c == '"':
-            if s[i:i + 3] == '"""':
-                i += 3
-                while i < n and s[i:i + 3] != '"""':
-                    # `\"""` is the one block-string escape: it is literal
-                    # content, not a terminator (GraphQL spec 2.9.4).
-                    i += 4 if (s[i] == "\\" and s[i + 1:i + 4] == '"""') else 1
-                i += 3
-            else:
-                i += 1
-                while i < n and s[i] != '"':
-                    i += 2 if s[i] == "\\" else 1
-                i += 1
+            i += 1
+            while i < n and s[i] != '"':
+                i += 2 if s[i] == "\\" else 1
+            i += 1
             out.append(" ")
             continue
         out.append(c)
@@ -321,24 +317,29 @@ def _path_is_refs(norm):
 
 
 def _classify_gh_api(tokens):
-    """Classify one `gh api` command (full token list incl. `gh api`)."""
+    """Classify one `gh api` command (full token list incl. `gh api`).
+
+    Returns `(verdict, touches_refs)` — `touches_refs` lets `decide()` upgrade a
+    shell-dynamic command that targets a git-refs endpoint to a hard `deny`
+    (a substitution elsewhere in the line could inject `-X DELETE`/`-f …`)."""
     args = _parse_gh_api_args(tokens[2:])
     endpoint = args["endpoint"]
     if endpoint is None:
-        return ASK
+        return ASK, False
     norm = _normalize_endpoint(endpoint)
+    refs = _path_is_refs(norm)
 
     if norm == "graphql":
         # GraphQL is always POST under the hood; classify by the operation type
         # of the inline query, never by HTTP method.
         if args["has_unparsed"]:
-            return ASK
+            return ASK, False
         queries = [v[len("query="):] for v in args["field_values"]
                    if v.startswith("query=")]
         if not queries:
             # Query supplied via --input/stdin/@file or not at all: can't verify.
-            return ASK
-        return READ if all(_graphql_is_readonly(q) for q in queries) else ASK
+            return ASK, False
+        return (READ if all(_graphql_is_readonly(q) for q in queries) else ASK), False
 
     method = args["method"]
     if method in READ_METHODS:
@@ -349,22 +350,22 @@ def _classify_gh_api(tokens):
         # No explicit method: gh defaults to POST when a body is attached.
         is_write = args["has_body"]
 
-    if _path_is_refs(norm):
+    if refs:
         # Git-ref tampering is hard-blocked, not merely prompted. Only a
         # provably-static read of a ref is allowed through; a write, an
         # unparsed flag, OR a shell-computed endpoint (which could word-split
         # into `-X DELETE`, e.g. `…/git/refs/heads/$BRANCH -X DELETE`) all deny.
         if is_write or args["endpoint_dynamic"] or args["has_unparsed"]:
-            return DENY
-        return READ
+            return DENY, True
+        return READ, True
 
     if args["endpoint_dynamic"]:
         # Non-refs path built by the shell ($VAR / $(...) / `...`); can't
         # verify it — prompt rather than auto-approve.
-        return ASK
+        return ASK, False
     if args["has_unparsed"]:
-        return ASK
-    return ASK if is_write else READ
+        return ASK, False
+    return (ASK if is_write else READ), False
 
 
 def _segments(tokens):
@@ -486,9 +487,12 @@ def decide(command):
         # Unbalanced quotes etc. — fail closed.
         return ASK, "Could not parse the shell command; gating for manual review."
 
-    verdicts = [_classify_gh_api(seg) for seg in _segments(tokens)]
-    if not verdicts:
+    results = [_classify_gh_api(seg) for seg in _segments(tokens)]
+    if not results:
         return None, None  # No gh api command found; defer to normal flow.
+    verdicts = [v for v, _ in results]
+    dynamic = _is_shell_dynamic(command)
+    touches_refs = any(r for _, r in results)
 
     if DENY in verdicts:
         return DENY, (
@@ -496,7 +500,16 @@ def decide(command):
             "of a branch/tag pointer) is irreversible and never part of a "
             "routine gh api workflow. Run it manually if you truly intend to."
         )
-    if ASK in verdicts or _is_shell_dynamic(command):
+    if dynamic and touches_refs:
+        # A git-refs endpoint plus shell expansion that could word-split a
+        # write ($VAR / $(...) / backtick / brace) onto it — hard-block rather
+        # than prompt, since ref tampering must be un-runnable through the gate.
+        return DENY, (
+            "Blocked: a git-refs endpoint combined with shell expansion that "
+            "could inject a ref write (e.g. -X DELETE). Run it manually if you "
+            "truly intend to."
+        )
+    if ASK in verdicts or dynamic:
         # Either a statically-detected write, or shell expansion that could be
         # hiding/injecting one — confirm before it runs.
         return ASK, (

@@ -177,10 +177,10 @@ CASES = [
     # -- shell substitution / $VAR / brace expansion in ARGUMENT position can
     #    inject flags at runtime; must floor at ask (never silent). --
     ("gh api repos/genealogix/glx/issues $(printf -- '-X DELETE')", "ask"),
-    ("gh api repos/genealogix/glx/git/refs/heads/x $(printf -- '-X DELETE')", "ask"),
+    ("gh api repos/genealogix/glx/git/refs/heads/x $(printf -- '-X DELETE')", "deny"),  # refs endpoint + substitution -> hard block
     ("gh api repos/genealogix/glx/issues $METHOD", "ask"),
     ("gh api repos/genealogix/glx/issues {-X,DELETE}", "ask"),
-    ("gh api repos/genealogix/glx/git/refs/heads/x {-X,DELETE}", "ask"),
+    ("gh api repos/genealogix/glx/git/refs/heads/x {-X,DELETE}", "deny"),       # refs endpoint + brace expansion -> hard block
     ("gh api repos/genealogix/glx/issues `printf -- '-X DELETE'`", "ask"),
     ("gh api repos/genealogix/glx/issues `printf -- '-f title=x'`", "ask"),
 
@@ -211,6 +211,17 @@ CASES = [
     ("gh api repositories/1300192/git/refs/heads/main -X DELETE", "deny"),
     ("gh api repositories/1300192/git/refs/heads/main", None),   # GET a ref = read
     ("gh api repositories/1300192", None),                        # plain GET
+
+    # ==== Copilot round-2: refs endpoint + shell-dynamic -> hard deny ====
+    # A refs endpoint plus any shell expansion that could word-split a write
+    # ($VAR / $(...) / backtick / brace) onto it is denied, not merely prompted.
+    ("gh api repos/genealogix/glx/git/refs/heads/main $METHOD", "deny"),
+    ("gh api repos/genealogix/glx/git/refs/heads/main $(echo -X DELETE)", "deny"),
+    ("gh api repos/genealogix/glx/git/refs/heads/main `echo -X DELETE`", "deny"),
+    ("gh api repos/genealogix/glx/git/refs/heads/main -f sha=$NEW", "deny"),
+    # non-refs dynamic endpoints still only prompt
+    ("gh api repos/genealogix/glx/issues/$NUM", "ask"),
+    ("gh api repos/genealogix/glx/issues $(echo -X DELETE)", "ask"),
 ]
 
 
