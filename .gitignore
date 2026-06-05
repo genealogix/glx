@@ -24,6 +24,10 @@ bench.txt
 *.tmp
 *.bak
 
+# Python (e.g. scripts/claude-hooks/ bytecode)
+__pycache__/
+*.pyc
+
 # Node.js
 node_modules/
 npm-debug.log*
