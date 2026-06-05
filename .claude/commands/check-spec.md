@@ -118,7 +118,7 @@ Check version-related issues:
 
 ## Severity Levels
 
-Every finding is assigned exactly one severity:
+Every finding is assigned exactly one severity. Critical, major, and minor are reported; `info` is reserved for by-design cases that are not reported:
 
 - 🔴 **critical** — Makes the specification unusable or dangerously misleading; implementers will write incompatible or broken code.
 - 🟡 **major** — Significantly impacts usability or clarity; implementers must guess or will likely diverge.
@@ -147,7 +147,7 @@ This table is the authoritative source for severity — don't invent severities 
 | completeness | Field appears in an example but missing from the field tables | **major** |
 | completeness | Section marked `TODO` / `XXX` / `FIXME` / "Coming soon" in published spec | **major** |
 | completeness | Missing example for a complex feature (e.g., assertion with mutually exclusive `property`/`participant` branches) | **minor** |
-| ambiguous_language | Validation rule states "should" without further constraint (and spec has not adopted RFC 2119 — verified) — prose softness is fixable, not breaking | **minor** |
+| ambiguous_language | Validation rule states "should" without further constraint (and spec has not adopted RFC 2119) — prose softness is fixable, not breaking | **minor** |
 | ambiguous_language | Field description uses "depends on context" or "as appropriate" without a rule — implementers must guess | **major** |
 | ambiguous_language | Multiple possible field semantics described without a canonical choice — interop failure | **critical** |
 | example_invalid | YAML example fails `glx validate` (deterministic, see companion delegation ticket) — shipped example is broken | **critical** |
