@@ -91,6 +91,10 @@ func TestInferSourceType(t *testing.T) {
 		{"typescript draft", "Typescript Draft of Family History", SourceTypeManuscript},
 		{"survey plat", "1872 Survey Plat of Section 12", SourceTypeMap},
 		{"plat map", "Plat Map of Springfield Township", SourceTypeMap},
+		// A plat title that also contains "land" must still classify as map:
+		// the survey-plat phrase is checked before the broad "land" keyword.
+		{"land survey plat beats land keyword", "Land Survey Plat of Section 12", SourceTypeMap},
+		{"township plat map with land office", "Township Plat Map, County Land Office", SourceTypeMap},
 
 		// Negative cases: a bare "map" substring must not classify as map.
 		{"bare map word is not map", "Map of Yorkshire, 1850", SourceTypeOther},
