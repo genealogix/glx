@@ -98,7 +98,7 @@ func loadArchiveForEvidence(io *IOStreams, path string) (*glxlib.GLXFile, error)
 	}
 
 	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveWithOptions(path, false)
+		archive, duplicates, err := LoadArchiveCached(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
 		}
@@ -115,7 +115,7 @@ func loadArchiveForEvidence(io *IOStreams, path string) (*glxlib.GLXFile, error)
 	}
 
 	// Single-file archives don't merge standard vocabularies during load (unlike
-	// directory archives via LoadArchiveWithOptions), so populate them here.
+	// directory archives via LoadArchiveCached), so populate them here.
 	// evidence is read-only and mergeStandardVocabularies only fills empty
 	// vocabulary maps, so any archive-defined vocabulary is preserved. This
 	// lets reference-type properties (e.g. residence) resolve to place/person/

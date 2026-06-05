@@ -88,7 +88,7 @@ func loadArchiveForCoverage(path string) (*glxlib.GLXFile, error) {
 	}
 
 	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveWithOptions(path, false)
+		archive, duplicates, loadErr := LoadArchiveCached(path)
 		if loadErr != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", loadErr)
 		}

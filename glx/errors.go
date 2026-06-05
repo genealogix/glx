@@ -83,4 +83,10 @@ var (
 
 	// `glx evidence` errors
 	ErrEvidenceUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
+
+	// `glx cache` errors
+	ErrCacheNotDirectory = errors.New("binary cache is only supported for multi-file (directory) archives")
+	ErrCacheNotFound     = errors.New("no binary cache found (run 'glx cache build' first)")
+	ErrNotCacheFile      = errors.New("file is not a glx binary cache")
+	ErrCacheVersion      = errors.New("binary cache was written by an incompatible glx version")
 )

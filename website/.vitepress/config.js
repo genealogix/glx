@@ -313,7 +313,11 @@ export default defineConfig({
             { text: 'glx join', link: '/cli/glx_join' },
             { text: 'glx merge', link: '/cli/glx_merge' },
             { text: 'glx migrate', link: '/cli/glx_migrate' },
-            { text: 'glx rename', link: '/cli/glx_rename' }
+            { text: 'glx rename', link: '/cli/glx_rename' },
+            { text: 'glx cache', link: '/cli/glx_cache' },
+            { text: 'glx cache build', link: '/cli/glx_cache_build' },
+            { text: 'glx cache clean', link: '/cli/glx_cache_clean' },
+            { text: 'glx cache status', link: '/cli/glx_cache_status' }
           ]
         },
         {

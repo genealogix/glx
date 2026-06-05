@@ -57,6 +57,10 @@ public/specification/
 docs/superpowers/
 test-import/
 
+# GLX binary archive cache (derived, disposable) — keeps stray caches from
+# `glx cache build` runs against example archives out of version control.
+.glx/
+
 # OS generated files
 .DS_Store
 ._*
