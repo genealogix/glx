@@ -190,6 +190,12 @@ func inferSourceType(title string) string {
 	if strings.Contains(titleLower, "will") || strings.Contains(titleLower, "probate") {
 		return SourceTypeProbate
 	}
+	// Survey plats / plat maps are checked before the broad "land" keyword
+	// below: a plat is a land document, so its title often also contains
+	// "land", but #563 classifies survey plats as maps. Most-specific wins.
+	if strings.Contains(titleLower, "survey plat") || strings.Contains(titleLower, "plat map") {
+		return SourceTypeMap
+	}
 	if strings.Contains(titleLower, "deed") || strings.Contains(titleLower, "land") {
 		return SourceTypeLand
 	}
@@ -201,6 +207,21 @@ func inferSourceType(title string) string {
 	}
 	if strings.Contains(titleLower, "notarial") || strings.Contains(titleLower, "notary") {
 		return SourceTypeNotarialRecord
+	}
+	if strings.Contains(titleLower, "family bible") || strings.Contains(titleLower, "bible record") {
+		return SourceTypeFamilyBible
+	}
+	if strings.Contains(titleLower, "gravestone") || strings.Contains(titleLower, "headstone") || strings.Contains(titleLower, "tombstone") {
+		return SourceTypeGravestone
+	}
+	if strings.Contains(titleLower, "dna test") || strings.Contains(titleLower, "y-dna") || strings.Contains(titleLower, "mtdna") || strings.Contains(titleLower, "autosomal") {
+		return SourceTypeDNATest
+	}
+	if strings.Contains(titleLower, "memoir") || strings.Contains(titleLower, "diary") {
+		return SourceTypeMemoir
+	}
+	if strings.Contains(titleLower, "manuscript") || strings.Contains(titleLower, "typescript") {
+		return SourceTypeManuscript
 	}
 
 	// Default
