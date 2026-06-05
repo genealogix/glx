@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **golangci-lint now enables the `std-error-handling` exclusion preset** — golangci-lint v2 ships its built-in exclusion presets disabled by default (v1's `exclude-use-default: true` has no direct v2 equivalent), so without the preset errcheck flags any unchecked `Close`/`Flush`/`print`/`Remove`/`Setenv` return that isn't manually suppressed. The `std-error-handling` preset suppresses those — ignoring them is idiomatic Go (e.g. `defer f.Close()` on a read-only handle) — making the manual `_ = f.Close()` and `//nolint:errcheck // CLI output` workarounds the codebase had accumulated unnecessary going forward. The change is behavior-neutral on the current tree (errcheck already reported zero issues, because every such call was hand-suppressed); it only removes future friction. The other three v2 presets are intentionally left off: `common-false-positives` filters only gosec and is deferred to the gosec-enablement work in #374, `comments` is redundant with revive's already-disabled `package-comments`, and `legacy` covers only `unsafe.Pointer` casts the codebase does not use.
+time: 2026-06-05T12:00:06Z
+custom:
+  Issue: "#630"

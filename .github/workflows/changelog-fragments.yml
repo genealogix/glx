@@ -1,0 +1,50 @@
+name: Changelog fragments
+
+# Validates changie changelog fragments on every PR (#858, implements #321):
+# fragments parse/render and carry an issue/PR reference, and a user-facing PR
+# adds at least one fragment (escape with the 'no-changelog' label). Replaces the
+# advisory CHANGELOG.md reminder now that changes are file-per-change fragments.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  fragments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Install changie
+        run: go install github.com/miniscruff/changie@v1.24.0
+
+      - name: Validate fragments parse and carry a reference
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          bash scripts/check-changelog-fragments.sh
+
+      - name: Require a changelog fragment (unless 'no-changelog' label)
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          ADDED=$(git diff --name-only --diff-filter=A "origin/${BASE}...HEAD" -- '.changes/unreleased/' \
+            | grep -vE '/\.gitkeep$' || true)
+          if [ -z "$ADDED" ]; then
+            echo "::error::This PR adds no changelog fragment. Run 'make changelog' (changie new) to add one, or apply the 'no-changelog' label if the change is not user-facing." >&2
+            exit 1
+          fi
+          echo "Changelog fragment(s) added:"
+          echo "$ADDED"

@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`/check-code-drift` and `/check-schema-drift` now read the drift allowlist** instead of hardcoding known-drift notes inline. Removed the stale `Metadata.Notes` "known drift point" note — that drift was already resolved by widening `glx-file.schema.json` `metadata.notes` to `oneOf[string, array]`, which is exactly the go-stale-and-mislead failure mode #797 targets.
+time: 2026-06-05T12:00:09Z
+custom:
+  Issue: "#797"

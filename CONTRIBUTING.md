@@ -270,7 +270,7 @@ npx --yes markdownlint-cli2 --fix
 3. Ensure all CI checks pass
 4. Add tests for new features and bug fixes
 5. Update documentation if behavior changes
-6. Update `CHANGELOG.md` for user-facing changes (add to the unreleased section). Every entry must include an issue or PR reference — e.g. `(#123)`, `Fixes #123`, `Closes #123`, `(PR #456)`
+6. Add a changelog fragment for user-facing changes — run `make changelog` (or `changie new`) to create one file under `.changes/unreleased/`. Do **not** hand-edit `CHANGELOG.md`; it is regenerated from fragments at release time. Every fragment must carry an issue or PR reference in its required `Issue` field — e.g. `#123` or `PR #456`. For a multi-reference value containing a comma, pass it via the environment (the `-m`/`--custom` flag comma-splits): `CHANGIE_CUSTOM_Issue="#41, #775" changie new -k Added -b "..." --interactive=false`
 
 ### Review Process
 

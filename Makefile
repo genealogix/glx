@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-links validate-examples docs-cli release-snapshot
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-links validate-examples docs-cli release-snapshot changelog changelog-check
 
 .DEFAULT_GOAL := help
 
@@ -138,6 +138,30 @@ docs-cli: build-cli ## Regenerate per-command CLI reference under docs/cli/
 ## Release
 release-snapshot: ## Build cross-platform binaries locally (no publish)
 	goreleaser release --snapshot --clean
+
+## Changelog
+# changie version pin — bump alongside any .changie.yaml format changes.
+CHANGIE_VERSION ?= v1.24.0
+
+# Ensure changie is runnable, installing the pinned version on demand, then add
+# the Go bin dir to PATH (mirrors the install-hooks lefthook pattern).
+define ensure_changie
+	if ! command -v changie >/dev/null 2>&1; then \
+		echo "Installing changie $(CHANGIE_VERSION) via 'go install'..."; \
+		go install github.com/miniscruff/changie@$(CHANGIE_VERSION); \
+	fi; \
+	GO_BIN_DIR="$$(go env GOBIN)"; \
+	if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$$(go env GOPATH)/bin"; fi; \
+	export PATH="$$GO_BIN_DIR:$$PATH";
+endef
+
+changelog: ## Add a changelog fragment for a change (interactive `changie new`)
+	@$(ensure_changie) \
+	changie new
+
+changelog-check: ## Validate changie fragments parse and carry an issue/PR reference
+	@$(ensure_changie) \
+	bash scripts/check-changelog-fragments.sh
 
 ## Link Checking
 check-links: ## Validate internal markdown links

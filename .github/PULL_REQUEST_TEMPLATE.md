@@ -25,4 +25,4 @@
 
 <!-- None, or describe the migration path. -->
 
-<!-- Reminder: update CHANGELOG.md for user-facing changes (Added/Changed/Fixed/Removed). -->
+<!-- Reminder: for user-facing changes add a changie fragment (`make changelog` / `changie new`), not a CHANGELOG.md edit. Kinds: Added/Changed/Deprecated/Removed/Fixed/Security; each fragment needs an issue/PR reference. -->

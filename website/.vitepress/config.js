@@ -33,6 +33,9 @@ export default defineConfig({
   // - glx/defaults/README.md: developer note for the embedded vocab defaults.
   // - tools/**: developer docs for build/CI tooling (e.g. tools/driftcheck);
   //   its README links to .claude/ files that VitePress doesn't build.
+  // - .changes/**: changie changelog fragments and per-version files (#858).
+  //   The assembled CHANGELOG.md is the published page; the fragment sources,
+  //   the header template, and the per-version build inputs are not.
   srcExclude: [
     '**/node_modules/**',
     '**/CLAUDE.md',
@@ -42,6 +45,7 @@ export default defineConfig({
     'glx/defaults/**',
     'tools/**',
     'scripts/**',
+    '.changes/**',
   ],
 
   // Head configuration

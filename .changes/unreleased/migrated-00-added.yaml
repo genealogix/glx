@@ -1,0 +1,6 @@
+kind: Added
+body: |-
+  **`glx migrate --rename-ssn-to-national-id`** — New opt-in flag on `glx migrate` that renames the legacy US-centric `ssn` person property to the internationalized `national_id` (the vocabulary rename in #532), so pre-rename archives can adopt the new key without hand-editing. It moves `person.properties.ssn` → `national_id`, re-points person-subject assertions, and renames an inlined `person_properties.ssn` definition (multi-file archives also pick up the corrected key when the standard vocabulary file is regenerated on write). A person or vocabulary already carrying `national_id` is never overwritten — the legacy `ssn` is left in place with a warning so the user can reconcile by hand. Non-person-subject assertions (an event/relationship may legitimately carry a custom `ssn` property) are untouched. Idempotent. GEDCOM compatibility is unaffected: both keys map to the `SSN` tag.
+time: 2026-06-05T12:00:00Z
+custom:
+  Issue: "#532"

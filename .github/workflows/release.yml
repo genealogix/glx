@@ -43,11 +43,29 @@ jobs:
         with:
           cosign-release: 'v3.0.6'   # pin: --bundle output format is part of our release verification contract
 
+      # The GitHub Release body comes from changie's curated per-version notes
+      # (#391), not from commit scraping (disabled in .goreleaser.yml). The file
+      # is produced by `changie batch` on the prepare-release PR and committed
+      # before the tag is pushed (see prepare-release.yml). Stage the tag via
+      # env before use in run: per the .github/CLAUDE.md workflow-injection rule.
+      - name: Resolve changie release notes
+        id: notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          NOTES_FILE=".changes/${VERSION}.md"
+          if [ ! -f "$NOTES_FILE" ]; then
+            echo "::error::Release notes file $NOTES_FILE not found at the tagged commit. Run the 'Prepare release' workflow (changie batch + merge) and merge that PR before tagging." >&2
+            exit 1
+          fi
+          echo "file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
         with:
           version: '~> v2'
-          args: release
+          args: release --release-notes=${{ steps.notes.outputs.file }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

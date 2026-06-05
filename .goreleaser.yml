@@ -49,9 +49,10 @@ signs:
       - "--yes"
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
+# Changelog is owned by changie (#858), not generated from commit messages.
+# release.yml passes the curated per-version notes to GoReleaser via
+# `--release-notes .changes/<version>.md`, so disable GoReleaser's own
+# commit-scraping changelog (resolves #391, moots #386). The assembled
+# CHANGELOG.md is still bundled in the release archive (see archives.files).
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
+  disable: true

@@ -1,0 +1,83 @@
+name: Prepare release
+
+# Assembles the next changelog version from changie fragments and opens a PR
+# (#858). Run this BEFORE tagging: it batches .changes/unreleased/* into
+# .changes/<version>.md, regenerates CHANGELOG.md, and opens a review PR. Merging
+# that PR lands the version files on main so the release tag points at a commit
+# whose .changes/<version>.md exists (release.yml feeds it to GoReleaser via
+# --release-notes). This keeps batch/merge off the tag job, per the
+# .github/CLAUDE.md "release.yml runs from the YAML at the tagged commit" rule.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to batch — X.Y.Z or X.Y.Z-beta.N, no v prefix (e.g. 0.0.0-beta.12)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
+
+      # Validate untrusted input against a strict pattern before it is used
+      # anywhere in run: / git commands (per .github/CLAUDE.md injection rule).
+      - name: Validate version input
+        env:
+          VERSION_IN: ${{ github.event.inputs.version }}
+        run: |
+          if ! printf '%s' "$VERSION_IN" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$'; then
+            echo "::error::Invalid version '$VERSION_IN'. Expected X.Y.Z or X.Y.Z-beta.N with no v prefix." >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION_IN" >> "$GITHUB_ENV"
+
+      - name: Install changie
+        run: go install github.com/miniscruff/changie@v1.24.0
+
+      - name: Batch fragments and regenerate CHANGELOG.md
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          changie batch "$VERSION"
+          changie merge
+
+      - name: Open release-preparation PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="chore/prepare-release-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .changes CHANGELOG.md
+          git commit -m "chore: Prepare release ${VERSION}"
+          git push -u origin "$BRANCH"
+          {
+            echo "Automated changelog assembly for ${VERSION} (changie batch + merge)."
+            echo
+            echo "Review the assembled CHANGELOG.md section and .changes/${VERSION}.md, then:"
+            echo
+            echo "1. Optionally run /compact-changelog to fold self-cancelling / follow-up entries and verify reference integrity."
+            echo "2. Merge this PR."
+            echo "3. Tag v${VERSION} on the merge commit to trigger release.yml."
+          } > /tmp/pr-body.md
+          gh pr create \
+            --title "chore: Prepare release ${VERSION}" \
+            --body-file /tmp/pr-body.md \
+            --base main \
+            --head "$BRANCH"

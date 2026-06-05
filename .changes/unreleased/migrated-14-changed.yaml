@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`gosec` security job now uploads SARIF to Code Scanning** — The `gosec` job in the `Security` workflow ran `gosec -quiet ./...` and emitted findings only to the Actions log, so warnings never reached the GitHub Security tab or showed as PR annotations. It now runs `gosec -fmt sarif -out gosec.sarif ./...` and uploads the result via `github/codeql-action/upload-sarif` (SHA-pinned to `v4.36.1` per the repo's action-pinning policy), gaining a `security-events: write` permission and the same `if: always() && (…head.repo.full_name == github.repository)` guard as the `govulncheck` job in the same workflow — making the two security tools consistent and surfacing gosec findings inline on changed files and in the Security tab. The pre-existing floating `upload-sarif@v4` reference in the `govulncheck` job was SHA-pinned to the same commit in the same pass so both references stay consistent.
+time: 2026-06-05T12:00:14Z
+custom:
+  Issue: "#343"
