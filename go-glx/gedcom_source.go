@@ -202,6 +202,24 @@ func inferSourceType(title string) string {
 	if strings.Contains(titleLower, "notarial") || strings.Contains(titleLower, "notary") {
 		return SourceTypeNotarialRecord
 	}
+	if strings.Contains(titleLower, "family bible") || strings.Contains(titleLower, "bible record") {
+		return SourceTypeFamilyBible
+	}
+	if strings.Contains(titleLower, "gravestone") || strings.Contains(titleLower, "headstone") || strings.Contains(titleLower, "tombstone") {
+		return SourceTypeGravestone
+	}
+	if strings.Contains(titleLower, "dna test") || strings.Contains(titleLower, "y-dna") || strings.Contains(titleLower, "mtdna") || strings.Contains(titleLower, "autosomal") {
+		return SourceTypeDNATest
+	}
+	if strings.Contains(titleLower, "memoir") || strings.Contains(titleLower, "diary") {
+		return SourceTypeMemoir
+	}
+	if strings.Contains(titleLower, "manuscript") || strings.Contains(titleLower, "typescript") {
+		return SourceTypeManuscript
+	}
+	if strings.Contains(titleLower, "survey plat") || strings.Contains(titleLower, "plat map") {
+		return SourceTypeMap
+	}
 
 	// Default
 	return SourceTypeOther

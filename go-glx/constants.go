@@ -409,6 +409,13 @@ const (
 	SourceTypePopulationRegister = "population_register" // Civil population registers
 	SourceTypeTaxRecord          = "tax_record"          // Tax rolls, assessments, tithes
 	SourceTypeNotarialRecord     = "notarial_record"     // Notarial acts and contracts
+	SourceTypeFamilyBible        = "family_bible"        // Family Bible births, marriages, deaths
+	SourceTypeGravestone         = "gravestone"          // Tombstone and headstone inscriptions
+	SourceTypeDNATest            = "dna_test"            // Genetic test results (autosomal, Y-DNA, mtDNA)
+	SourceTypeMemoir             = "memoir"              // Autobiographies, diaries, personal journals
+	SourceTypeManuscript         = "manuscript"          // Unpublished manuscripts or typescripts
+	SourceTypeMap                = "map"                 // Historical maps, atlases, survey plats
+	SourceTypeSocialMedia        = "social_media"        // Social media posts and profiles
 	SourceTypeOther              = "other"               // Other source types
 )
 
@@ -432,6 +439,16 @@ var gedcomSourceTypeMapping = map[string]string{
 	"tax":        SourceTypeTaxRecord,
 	"notarial":   SourceTypeNotarialRecord,
 	"population": SourceTypePopulationRegister,
+	"bible":      SourceTypeFamilyBible,
+	"gravestone": SourceTypeGravestone,
+	"tombstone":  SourceTypeGravestone,
+	"headstone":  SourceTypeGravestone,
+	"dna":        SourceTypeDNATest,
+	"memoir":     SourceTypeMemoir,
+	"diary":      SourceTypeMemoir,
+	"manuscript": SourceTypeManuscript,
+	"map":        SourceTypeMap,
+	"social":     SourceTypeSocialMedia,
 }
 
 // EntityType identifies a kind of GLX entity. The string value is the canonical
