@@ -70,7 +70,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["file", "severity", "category", "message", "validator_caught", "llm_only"],
-      "comment": "validator_caught and llm_only must be logical inverses — the oneOf below enforces it so both-true / both-false cannot validate.",
+      "$comment": "validator_caught and llm_only must be logical inverses — the oneOf below enforces it so both-true / both-false cannot validate.",
       "oneOf": [
         { "properties": { "validator_caught": { "const": true }, "llm_only": { "const": false } } },
         { "properties": { "validator_caught": { "const": false }, "llm_only": { "const": true } } }

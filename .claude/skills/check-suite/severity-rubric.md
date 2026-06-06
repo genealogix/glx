@@ -23,7 +23,7 @@ Generalised from the `check-code-drift` rubric established in #827; widened to t
 
 ## Per-skill category tables
 
-Each skill appends its own category→severity rows here-or-in-its-SKILL.md as it migrates. Placeholder until the per-command PRs land:
+Each skill carries its own category→severity table in its `SKILL.md` (added during the migration in this PR); this file defines the shared four-level scale they all reference:
 
 - `check-schema-drift` — see #838 (rubric rows for field_presence / field_type / required_optional / ref_type / vocabulary).
 - `check-code-drift` — established in #827.

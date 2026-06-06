@@ -5,6 +5,7 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Write
   - Bash(git rev-parse:*)
   - Bash(date -u:*)
   - Bash(gh issue list:*)
@@ -12,7 +13,6 @@ allowed-tools:
   - Bash(./bin/glx validate:*)
   - Bash(mktemp -d /tmp/check-spec-*:*)
   - Bash(rm -rf /tmp/check-spec-*:*)
-  - Bash(printf:*)
 model: claude-opus-4-8
 ---
 
@@ -61,17 +61,16 @@ Then continue without Section 8 bullet 3.
 For every fenced YAML code block in `specification/4-entity-types/*.md`:
 
 1. Extract the block body (between ` ```yaml ` and ` ``` ` markers).
-2. Create a temp directory for this run (once, reused for all snippets):
+2. Create a temp directory for this run (once, reused for all snippets) and note the **literal** path it prints (e.g. `/tmp/check-spec-ab12cd`). Use that literal path in the steps below — a shell variable like `$WORKDIR` does **not** persist across separate Bash tool calls:
 
    ```bash
-   WORKDIR="$(mktemp -d /tmp/check-spec-XXXXXX)"
+   mktemp -d /tmp/check-spec-XXXXXX
    ```
 
-3. Write each snippet and validate:
+3. For each snippet, save it with the **Write** tool to `<TMPDIR>/snippet.glx` (substituting the literal path from step 2). The Write tool sidesteps shell-quoting for YAML bodies containing `$`, backticks, or quotes — do not `printf` the snippet. Then validate:
 
    ```bash
-   printf '%s' "$block" > "$WORKDIR/snippet.glx"
-   ./bin/glx validate "$WORKDIR/snippet.glx"
+   ./bin/glx validate <TMPDIR>/snippet.glx
    ```
 
 4. Record exit code and stderr in the findings array under `category: example_invalid`. If `glx validate` rejects the snippet, severity is **critical** (`validator_caught: true, llm_only: false`).
@@ -92,13 +91,13 @@ For every fenced YAML code block in `specification/4-entity-types/*.md`:
 
    Then continue with Section 6 bullets 4 and 5 only.
 
-6. **Cleanup**: after all snippets are processed, delete only the specific directory created this run:
+6. **Cleanup**: after all snippets are processed, delete the literal directory created this run:
 
    ```bash
-   rm -rf "$WORKDIR"
+   rm -rf <TMPDIR>
    ```
 
-   Do not use a glob pattern such as `/tmp/check-spec-*` — that would delete directories from other concurrent runs.
+   Use the literal path from step 2, not a glob such as `/tmp/check-spec-*` — a glob would delete directories from other concurrent runs.
 
 After both pre-flights, LLM analysis is responsible for:
 
