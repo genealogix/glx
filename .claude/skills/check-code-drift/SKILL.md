@@ -74,17 +74,16 @@ For each entity in scope, before invoking LLM reasoning:
 
 If field counts match AND all yaml tags match property names, record the entity as "no structural drift detected" and skip deep LLM analysis for it. Only apply full LLM reasoning to entities where a count or tag mismatch is found, or where the entity type is `Assertion` or involves custom marshaling.
 
-## Step 5 — Per-entity analysis (fan-out)
+## Step 5 — Per-entity analysis (fan-out when available, inline otherwise)
 
-For each entity that requires full analysis, spawn one read-only subagent. Each subagent receives:
+For each entity that requires full analysis, run the checks below against that entity's slice of context:
 - The relevant Go struct excerpt from `go-glx/types.go`
 - The corresponding JSON schema (`specification/schema/v1/<entity>.schema.json`)
 - The relevant section from `specification/4-entity-types/<entity>.md`
 - The relevant section from `go-glx/validation.go` (and `go-glx/validation_temporal.go` if needed)
 - The allowlist (from step 2)
-- These instructions for what to check
 
-The parent agent merges all subagent findings and deduplicates.
+**If the runner supports subagent fan-out** (the `Agent`/`Task` tool is available in this context), spawn one read-only subagent per entity, each receiving exactly that entity's slice above plus these check instructions, then merge and deduplicate their findings — keeping each context small is tied to fewer false positives by the research cited in #676. **Otherwise, analyze each entity inline**, one at a time, in this context. The per-entity checks and the merged `findings-json` output are identical either way; fan-out is a performance/isolation optimization, not a correctness requirement.
 
 ## Source of truth flow
 
