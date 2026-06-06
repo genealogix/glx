@@ -38,6 +38,12 @@ Source treatment from #667 for the remaining structural-vs-property
 inconsistency on Media (#894). An explicit `properties.description` is
 never overwritten.
 
+With --rename-ssn-to-national-id, renames the legacy US-centric `ssn`
+person property (and any related person-subject assertions and inlined
+vocabulary definition) to the internationalized `national_id` per #532.
+Both keys map to the GEDCOM SSN tag, so GEDCOM import/export is unaffected. A
+person or vocabulary already carrying `national_id` is never overwritten.
+
 ```
 glx migrate [archive] [flags]
 ```
@@ -62,6 +68,9 @@ glx migrate [archive] [flags]
 
   # Also move legacy top-level media 'description' into 'properties.description'
   glx migrate ./my-archive --media-description-to-property
+
+  # Also rename the legacy US-centric 'ssn' person property to 'national_id'
+  glx migrate ./my-archive --rename-ssn-to-national-id
 ```
 
 ### Options
@@ -71,6 +80,7 @@ glx migrate [archive] [flags]
   -h, --help                             help for migrate
       --media-description-to-property    Move legacy top-level media 'description' into 'properties.description' (#894)
       --rename-gender-to-sex             Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
+      --rename-ssn-to-national-id        Rename the legacy US-centric 'ssn' person property to 'national_id' (#532)
       --source-description-to-property   Move legacy top-level source 'description' into 'properties.description' (#667)
 ```
 
