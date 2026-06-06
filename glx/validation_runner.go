@@ -21,45 +21,73 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// entityTypeVocabularyEntry is the --entity-type value for a generic vocabulary entry.
-const entityTypeVocabularyEntry = "vocabulary-entry"
-
 // Sentinel errors for the --stdin path (static, per err113: no inline dynamic errors).
 var (
 	// errStdinUnknownEntityType is returned when --entity-type is missing or not
-	// in the allow-list derived from glxlib.AllEntityTypes (plus vocabulary-entry).
+	// in the allow-list (entity singulars from glxlib.AllEntityTypes plus the
+	// GLXFile vocabulary collection keys).
 	errStdinUnknownEntityType = errors.New("--stdin requires a valid --entity-type")
 	errStdinPathArgs          = errors.New("--stdin does not take path arguments")
 	errStdinEmpty             = errors.New("--stdin: no YAML provided")
 )
 
-// collectionForEntityType maps a singular --entity-type flag value to the
-// top-level GLXFile collection key it lives under. Entity singulars are taken
-// from glxlib so the allow-list stays in sync as entity types are added. The
-// "vocabulary-entry" pseudo-type validates the common VocabularyEntry shape
-// against the event_types schema specifically — that schema constrains
-// `category` to event-type values, so a vocab entry from a different vocabulary
-// (e.g. a place type) may report a spurious category error; validate those
-// inside a full archive instead.
+// vocabKeysOnce memoizes the GLXFile reflection done by vocabularyCollectionKeys.
+var (
+	vocabKeysOnce sync.Once
+	vocabKeys     map[string]bool
+)
+
+// vocabularyCollectionKeys returns the set of GLXFile yaml keys whose values are
+// map[string]*VocabularyEntry — every vocabulary a --stdin snippet can be
+// validated against. It reflects over GLXFile so vocabularies added there are
+// accepted automatically, with no parallel list to drift (the same
+// source-of-truth the drift skills read).
+func vocabularyCollectionKeys() map[string]bool {
+	vocabKeysOnce.Do(func() {
+		vocabKeys = map[string]bool{}
+		want := reflect.TypeFor[map[string]*glxlib.VocabularyEntry]()
+		for _, f := range reflect.VisibleFields(reflect.TypeFor[glxlib.GLXFile]()) {
+			if f.Type != want {
+				continue
+			}
+			name, _, _ := strings.Cut(f.Tag.Get("yaml"), ",")
+			if name != "" && name != "-" {
+				vocabKeys[name] = true
+			}
+		}
+	})
+
+	return vocabKeys
+}
+
+// collectionForEntityType maps an --entity-type flag value to the top-level
+// GLXFile collection key it lives under, or returns false if unrecognized. Two
+// forms are accepted: an entity singular (person, event, …), mapped to its
+// plural collection via glxlib.AllEntityTypes; and a vocabulary collection key
+// (event_types, place_types, …), validated as itself so each vocabulary entry
+// is checked against its own schema — e.g. a place_types entry against the
+// place-type category enum rather than the event-type one.
 func collectionForEntityType(flag string) (string, bool) {
 	flag = strings.TrimSpace(strings.ToLower(flag))
 	if flag == "" {
 		return "", false
 	}
-	if flag == entityTypeVocabularyEntry {
-		return glxlib.EntityTypeEvents.Singular() + "_types", true // "event_types"
-	}
 	for _, et := range glxlib.AllEntityTypes {
 		if et.Singular() == flag {
 			return et.String(), true
 		}
+	}
+	if vocabularyCollectionKeys()[flag] {
+		return flag, true
 	}
 
 	return "", false
@@ -72,6 +100,11 @@ func collectionForEntityType(flag string) (string, bool) {
 func validateStdinEntity(streams *IOStreams, entityType string, args []string, in io.Reader) error {
 	if len(args) > 0 {
 		return errStdinPathArgs
+	}
+	// Validate the entity type before consuming stdin, so a typo'd --entity-type
+	// fails fast instead of reading and buffering the whole stream first.
+	if _, ok := collectionForEntityType(entityType); !ok {
+		return fmt.Errorf("%w: got %q", errStdinUnknownEntityType, entityType)
 	}
 	data, err := io.ReadAll(in)
 	if err != nil {

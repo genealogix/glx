@@ -110,15 +110,20 @@ func TestCollectionForEntityType(t *testing.T) {
 		{"relationship", "relationships", true},
 		{"research-log", "research_logs", true},
 		{"study", "studies", true},
-		// vocabulary-entry must map to the SINGULAR-derived "event_types",
-		// not the plural "events_types" — regression guard.
-		{entityTypeVocabularyEntry, "event_types", true},
+		// Vocabulary collection keys validate as themselves, each against its own
+		// schema (per-vocabulary — replaces the old event_types-only pseudo-type).
+		{"event_types", "event_types", true},
+		{"place_types", "place_types", true},
+		{"confidence_levels", "confidence_levels", true},
+		{"participant_roles", "participant_roles", true},
 		// case/space tolerant
 		{"  Person ", "persons", true},
+		{"  Place_Types ", "place_types", true},
 		// rejects
 		{"nonsense", "", false},
 		{"", "", false},
-		{"persons", "", false}, // plural form is not a valid --entity-type
+		{"persons", "", false},          // plural entity form is not a valid --entity-type
+		{"vocabulary-entry", "", false}, // the old generic pseudo-type is gone
 	}
 	for _, c := range cases {
 		got, ok := collectionForEntityType(c.flag)
@@ -139,8 +144,13 @@ func TestValidateEntitySnippet(t *testing.T) {
 	}{
 		{"valid person", "person", "properties: {}", false, false},
 		{"invalid person field", "person", "bogus_field: 1", false, true},
-		{"valid vocab entry", entityTypeVocabularyEntry, "label: Birth", false, false},
-		{"vocab missing required label", entityTypeVocabularyEntry, "description: no label", false, true},
+		// Per-vocabulary validation: each entry is checked against ITS OWN schema.
+		{"valid event type", "event_types", "label: Birth\ncategory: lifecycle", false, false},
+		// `administrative` is valid only for place types — proves the entry is
+		// validated against the place-type schema, not the old event_types one.
+		{"valid place type, place-only category", "place_types", "label: City\ncategory: administrative", false, false},
+		{"event type rejects place category", "event_types", "label: Birth\ncategory: administrative", false, true},
+		{"vocab missing required label", "event_types", "description: no label", false, true},
 		{"unknown entity-type", "nonsense", "x: 1", true, false},
 		{"blank entity-type", "", "x: 1", true, false},
 		{"empty stdin", "person", "   \n  ", true, false},

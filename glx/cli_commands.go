@@ -402,8 +402,10 @@ func init() {
 	validateCmd.Flags().BoolVar(&validateStdin, "stdin", false,
 		"Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)")
 	validateCmd.Flags().StringVar(&validateEntityType, "entity-type", "",
-		"Entity type for --stdin: person, event, place, source, citation, repository, media, "+
-			"relationship, assertion, research-log, study, or vocabulary-entry")
+		"Entity or vocabulary type for --stdin — an entity singular (person, event, place, "+
+			"source, citation, repository, media, relationship, assertion, research-log, study) "+
+			"or a vocabulary collection key (e.g. event_types, place_types, confidence_levels, "+
+			"participant_roles)")
 }
 
 func runValidate(_ *cobra.Command, args []string) error {
