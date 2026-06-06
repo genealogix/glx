@@ -11,6 +11,7 @@
 // so it resolves json-schema-diff-validator from specification/node_modules.
 
 import { readFileSync } from "fs";
+import { join } from "path";
 import { execFileSync } from "child_process";
 import { createRequire } from "module";
 
@@ -27,6 +28,10 @@ const base = process.env.GITHUB_BASE_REF
 function git(args) {
   return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
+
+// git emits repo-root-relative paths; resolve reads against the repo root so the
+// script works regardless of the directory it is invoked from (e.g. specification/).
+const repoRoot = git(["rev-parse", "--show-toplevel"]).trim();
 
 let changed = [];
 try {
@@ -60,7 +65,7 @@ for (const path of changed) {
   }
   let newContent;
   try {
-    newContent = readFileSync(path, "utf8");
+    newContent = readFileSync(join(repoRoot, path), "utf8");
   } catch (e) {
     if (e.code === "ENOENT") {
       // The schema was deleted in this PR. Removing a v1 schema makes every

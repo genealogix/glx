@@ -32,6 +32,7 @@ import (
 	"go/token"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -206,7 +207,14 @@ func yamlKey(tag *ast.BasicLit) string {
 	if tag == nil {
 		return ""
 	}
-	raw := strings.Trim(tag.Value, "`")
+	// tag.Value is the raw literal text including its delimiters. Unquote handles
+	// both backtick raw strings (`yaml:"x"`) and double-quoted interpreted ones
+	// ("yaml:\"x\""); fall back to trimming backticks if it somehow isn't a valid
+	// Go string literal.
+	raw, err := strconv.Unquote(tag.Value)
+	if err != nil {
+		raw = strings.Trim(tag.Value, "`")
+	}
 	v := reflect.StructTag(raw).Get("yaml")
 	if v == "" {
 		return ""

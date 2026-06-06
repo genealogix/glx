@@ -3,9 +3,10 @@ name: Drift checks
 # Deterministic drift detection (no LLM). The on-demand check-* skills handle
 # the semantic remainder locally; this workflow catches the mechanical cases.
 
+# Pull-request only: both checks are PR-diff gates (schema-compat diffs against
+# the PR base; spec-schema-parity reports on the changed tree). A push-to-main run
+# has no meaningful base — origin/main...HEAD is empty — so it would be a no-op.
 on:
-  push:
-    branches: [main]
   pull_request:
     paths:
       - "specification/**"

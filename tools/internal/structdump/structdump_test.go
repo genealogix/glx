@@ -60,6 +60,7 @@ func TestYamlKeyAndHelpers(t *testing.T) {
 		"type GLXFile struct {\n\tPersons map[string]*Person `yaml:\"persons\"`\n}\n" +
 		"type Person struct {\n" +
 		"\tTagged   string `yaml:\"tagged\"`\n" +
+		"\tInterp   string \"yaml:\\\"interp\\\"\"\n" + // interpreted-string tag (not backtick) -> must still parse
 		"\tJSONOnly string `json:\"x\"`\n" + // tag present but no yaml key -> skipped
 		"\tNoTag    string\n" + // no tag at all -> skipped
 		"}\n")
@@ -68,8 +69,17 @@ func TestYamlKeyAndHelpers(t *testing.T) {
 		t.Fatalf("Extract: %v", err)
 	}
 	p, ok := d.CollectionType("persons")
-	if !ok || len(p.Fields) != 1 || p.Fields[0].YAMLTag != "tagged" {
-		t.Errorf("only 'tagged' should remain, got %+v (ok=%v)", p.Fields, ok)
+	if !ok {
+		t.Fatalf("CollectionType(persons) not found")
+	}
+	gotTags := map[string]bool{}
+	for _, f := range p.Fields {
+		gotTags[f.YAMLTag] = true
+	}
+	// Both the backtick tag (tagged) and the interpreted-string tag (interp) must
+	// be parsed; json-only and untagged fields are skipped.
+	if len(p.Fields) != 2 || !gotTags["tagged"] || !gotTags["interp"] {
+		t.Errorf("want fields tagged+interp, got %+v", p.Fields)
 	}
 	if _, ok := d.CollectionType("nope"); ok {
 		t.Error("CollectionType(nope) should be false")
