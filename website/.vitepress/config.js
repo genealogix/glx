@@ -42,6 +42,7 @@ export default defineConfig({
     'glx/defaults/**',
     'glx/view/**',
     'tools/**',
+    'scripts/**',
   ],
 
   // Head configuration
