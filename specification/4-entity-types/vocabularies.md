@@ -315,7 +315,7 @@ source_types:
 
 ### Standard Source Types
 
-**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, and other.
+**Standard Source Types**: GENEALOGIX provides standardized source type codes including vital records, census, church registers, military records, newspapers, probate, land records, court records, immigration records, directories, books, databases, oral history, correspondence, photograph collections, population registers, tax records, notarial records, family Bibles, gravestones, DNA tests, memoirs, manuscripts, maps, social media, and other.
 
 **Complete List**: See [Standard Vocabularies - Source Types](../5-standard-vocabularies/#source-types) for the complete default vocabulary file with all standard types.
 
@@ -914,7 +914,7 @@ GENEALOGIX provides standard person properties:
 | `race` | string | Yes | | Racial classification as recorded in historical documents |
 | `nationality` | string | Yes | NATI | National citizenship |
 | `caste` | string | Yes | CAST | Caste, tribe, or social group |
-| `ssn` | string | No | SSN | Social Security Number |
+| `national_id` | string | No | SSN | National identification number (e.g., US SSN, UK NI number, Canadian SIN, Australian TFN). GEDCOM `SSN` maps here. |
 | `primary_name` | string | No | | Simple display name for the person, used as a fallback when the structured `name` property is not available |
 | `external_ids` | string (multi) | No | EXID | External identifiers from other systems |
 | `living` | boolean | No | | Opt-in marker that the person is currently living; honored by `glx export --privatize-living` (see [#288](https://github.com/genealogix/glx/issues/288)) |

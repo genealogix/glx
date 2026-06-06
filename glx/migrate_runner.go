@@ -66,6 +66,16 @@ type MigrateReport struct {
 	// properties.description, or, when an explicit properties.description
 	// already existed, simply removed.
 	MediaDescriptionsConverted int
+
+	// ssn → national_id rename counts (opt-in via --rename-ssn-to-national-id,
+	// #532). The US-centric `ssn` person-property key was renamed to the generic
+	// `national_id`; both still map to the GEDCOM SSN tag. SsnPropertiesRenamed
+	// counts person properties moved, SsnAssertionsRenamed counts person-subject
+	// assertions re-pointed, and SsnVocabEntriesRenamed counts inlined vocabulary
+	// definitions renamed.
+	SsnPropertiesRenamed   int
+	SsnAssertionsRenamed   int
+	SsnVocabEntriesRenamed int
 }
 
 const (
