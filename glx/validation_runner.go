@@ -23,13 +23,22 @@ import (
 	"path/filepath"
 	"strings"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"gopkg.in/yaml.v3"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// errStdinUnknownEntityType is returned when --entity-type is missing or not in
-// the allow-list derived from glxlib.AllEntityTypes (plus "vocabulary-entry").
-var errStdinUnknownEntityType = errors.New("--stdin requires a valid --entity-type")
+// entityTypeVocabularyEntry is the --entity-type value for a generic vocabulary entry.
+const entityTypeVocabularyEntry = "vocabulary-entry"
+
+// Sentinel errors for the --stdin path (static, per err113: no inline dynamic errors).
+var (
+	// errStdinUnknownEntityType is returned when --entity-type is missing or not
+	// in the allow-list derived from glxlib.AllEntityTypes (plus vocabulary-entry).
+	errStdinUnknownEntityType = errors.New("--stdin requires a valid --entity-type")
+	errStdinPathArgs          = errors.New("--stdin does not take path arguments")
+	errStdinEmpty             = errors.New("--stdin: no YAML provided")
+)
 
 // collectionForEntityType maps a singular --entity-type flag value to the
 // top-level GLXFile collection key it lives under. Entity singulars are taken
@@ -44,7 +53,7 @@ func collectionForEntityType(flag string) (string, bool) {
 	if flag == "" {
 		return "", false
 	}
-	if flag == "vocabulary-entry" {
+	if flag == entityTypeVocabularyEntry {
 		return glxlib.EntityTypeEvents.Singular() + "_types", true // "event_types"
 	}
 	for _, et := range glxlib.AllEntityTypes {
@@ -52,18 +61,19 @@ func collectionForEntityType(flag string) (string, bool) {
 			return et.String(), true
 		}
 	}
+
 	return "", false
 }
 
-// validateStdinEntity reads one entity as YAML from stdin and structurally
-// validates it against its entity-type schema, without any archive/cross-ref
-// context. It exists so drift tooling can pipe a bare snippet in (issue #910)
-// instead of the mktemp/cat/rm temp-file dance.
-func validateStdinEntity(streams *IOStreams, entityType string, args []string) error {
+// validateStdinEntity reads one entity as YAML from in (stdin, in production)
+// and structurally validates it against its entity-type schema, without any
+// archive/cross-ref context. It exists so drift tooling can pipe a bare snippet
+// in (issue #910) instead of the mktemp/cat/rm temp-file dance.
+func validateStdinEntity(streams *IOStreams, entityType string, args []string, in io.Reader) error {
 	if len(args) > 0 {
-		return errors.New("--stdin does not take path arguments")
+		return errStdinPathArgs
 	}
-	data, err := io.ReadAll(os.Stdin)
+	data, err := io.ReadAll(in)
 	if err != nil {
 		return fmt.Errorf("reading stdin: %w", err)
 	}
@@ -97,7 +107,7 @@ func validateEntitySnippet(entityType string, data []byte) ([]string, error) {
 		return nil, fmt.Errorf("%w: got %q", errStdinUnknownEntityType, entityType)
 	}
 	if len(strings.TrimSpace(string(data))) == 0 {
-		return nil, errors.New("no YAML provided")
+		return nil, errStdinEmpty
 	}
 
 	var entity any
@@ -108,6 +118,7 @@ func validateEntitySnippet(entityType string, data []byte) ([]string, error) {
 	// Wrap the bare entity under its collection so the existing whole-archive
 	// structural validator (which resolves the schema $refs) can check it.
 	doc := map[string]any{collection: map[string]any{"stdin": entity}}
+
 	return ValidateGLXFileStructure(doc), nil
 }
 

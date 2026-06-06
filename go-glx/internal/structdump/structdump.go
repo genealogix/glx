@@ -26,6 +26,7 @@
 package structdump
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -34,6 +35,9 @@ import (
 	"sort"
 	"strings"
 )
+
+// ErrNoGLXFile is returned by Extract when the source has no GLXFile struct.
+var ErrNoGLXFile = errors.New("GLXFile struct not found")
 
 // Field is one struct field: its Go name, its yaml tag key (sans options like
 // ",omitempty"), and the 1-based line it is declared on.
@@ -71,9 +75,11 @@ func (d *Dump) CollectionType(yamlKey string) (TypeInfo, bool) {
 	for _, c := range d.Collections {
 		if c.YAMLKey == yamlKey {
 			t, ok := d.Types[c.GoType]
+
 			return t, ok
 		}
 	}
+
 	return TypeInfo{}, false
 }
 
@@ -116,9 +122,10 @@ func Extract(filename string, src []byte) (*Dump, error) {
 	}
 
 	if glxFile == nil {
-		return nil, fmt.Errorf("%s: GLXFile struct not found", filename)
+		return nil, fmt.Errorf("%s: %w", filename, ErrNoGLXFile)
 	}
 	d.Collections = collectionsOf(glxFile, fset)
+
 	return d, nil
 }
 
@@ -144,6 +151,7 @@ func fieldsOf(st *ast.StructType, fset *token.FileSet) []Field {
 			out = append(out, Field{Name: n.Name, YAMLTag: tag, Line: line})
 		}
 	}
+
 	return out
 }
 
@@ -169,6 +177,7 @@ func collectionsOf(st *ast.StructType, fset *token.FileSet) []Collection {
 			Line:    fset.Position(f.Pos()).Line,
 		})
 	}
+
 	return out
 }
 
@@ -189,6 +198,7 @@ func mapStringPointerElem(expr ast.Expr) (string, bool) {
 	if !ok {
 		return "", false
 	}
+
 	return id.Name, true
 }
 
@@ -202,6 +212,7 @@ func yamlKey(tag *ast.BasicLit) string {
 	if v == "" {
 		return ""
 	}
+
 	return strings.TrimSpace(strings.SplitN(v, ",", 2)[0])
 }
 
@@ -212,5 +223,6 @@ func (d *Dump) SortedTypeNames() []string {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+
 	return names
 }

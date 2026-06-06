@@ -14,7 +14,49 @@
 
 package main
 
-import "testing"
+import (
+	"bytes"
+	"strings"
+	"testing"
+)
+
+func newTestStreams() (*IOStreams, *bytes.Buffer, *bytes.Buffer) {
+	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+
+	return &IOStreams{Out: out, MachineOut: out, ErrOut: errOut}, out, errOut
+}
+
+func TestValidateStdinEntity(t *testing.T) {
+	// valid entity → success message, no error.
+	s, out, _ := newTestStreams()
+	if err := validateStdinEntity(s, "person", nil, strings.NewReader("properties: {}")); err != nil {
+		t.Fatalf("valid person: unexpected error %v", err)
+	}
+	if !strings.Contains(out.String(), "structurally valid") {
+		t.Errorf("expected success message, got %q", out.String())
+	}
+
+	// invalid entity → ErrStructuralValidationFailed + error output.
+	s, _, errOut := newTestStreams()
+	if err := validateStdinEntity(s, "person", nil, strings.NewReader("bogus_field: 1")); err == nil {
+		t.Error("expected error for invalid person")
+	}
+	if !strings.Contains(errOut.String(), "structural error") {
+		t.Errorf("expected error output, got %q", errOut.String())
+	}
+
+	// positional args are rejected with --stdin.
+	s, _, _ = newTestStreams()
+	if err := validateStdinEntity(s, "person", []string{"file.glx"}, strings.NewReader("")); err == nil {
+		t.Error("expected error when path args are passed with --stdin")
+	}
+
+	// unknown entity-type is rejected.
+	s, _, _ = newTestStreams()
+	if err := validateStdinEntity(s, "nope", nil, strings.NewReader("x: 1")); err == nil {
+		t.Error("expected error for unknown entity-type")
+	}
+}
 
 func TestCollectionForEntityType(t *testing.T) {
 	cases := []struct {
@@ -30,7 +72,7 @@ func TestCollectionForEntityType(t *testing.T) {
 		{"study", "studies", true},
 		// vocabulary-entry must map to the SINGULAR-derived "event_types",
 		// not the plural "events_types" — regression guard.
-		{"vocabulary-entry", "event_types", true},
+		{entityTypeVocabularyEntry, "event_types", true},
 		// case/space tolerant
 		{"  Person ", "persons", true},
 		// rejects
@@ -57,8 +99,8 @@ func TestValidateEntitySnippet(t *testing.T) {
 	}{
 		{"valid person", "person", "properties: {}", false, false},
 		{"invalid person field", "person", "bogus_field: 1", false, true},
-		{"valid vocab entry", "vocabulary-entry", "label: Birth", false, false},
-		{"vocab missing required label", "vocabulary-entry", "description: no label", false, true},
+		{"valid vocab entry", entityTypeVocabularyEntry, "label: Birth", false, false},
+		{"vocab missing required label", entityTypeVocabularyEntry, "description: no label", false, true},
 		{"unknown entity-type", "nonsense", "x: 1", true, false},
 		{"blank entity-type", "", "x: 1", true, false},
 		{"empty stdin", "person", "   \n  ", true, false},

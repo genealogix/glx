@@ -32,6 +32,7 @@ func loadTypes(t *testing.T) *Dump {
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
+
 	return d
 }
 
@@ -118,7 +119,7 @@ func TestSkipsUntaggedAndDashFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	var got []string
+	got := make([]string, 0, len(d.Types["Person"].Fields))
 	for _, f := range d.Types["Person"].Fields {
 		got = append(got, f.YAMLTag)
 	}

@@ -387,7 +387,7 @@ func init() {
 
 func runValidate(_ *cobra.Command, args []string) error {
 	if validateStdin {
-		return validateStdinEntity(SystemIOStreams(), validateEntityType, args)
+		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin)
 	}
 	if validateReport {
 		if len(args) > 1 {

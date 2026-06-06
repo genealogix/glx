@@ -54,8 +54,10 @@ glx validate [paths...] [flags]
 ### Options
 
 ```
-  -h, --help     help for validate
-      --report   Generate confidence summary report
+      --entity-type string   Entity type for --stdin: person, event, place, source, citation, repository, media, relationship, assertion, research-log, study, or vocabulary-entry
+  -h, --help                 help for validate
+      --report               Generate confidence summary report
+      --stdin                Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)
 ```
 
 ### Options inherited from parent commands
