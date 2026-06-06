@@ -15,9 +15,70 @@
 package structdump
 
 import (
+	"errors"
 	"os"
 	"testing"
 )
+
+func TestExtractErrors(t *testing.T) {
+	// Source with no GLXFile struct.
+	if _, err := Extract("x.go", []byte("package p\ntype Foo struct {\n\tA string `yaml:\"a\"`\n}\n")); !errors.Is(err, ErrNoGLXFile) {
+		t.Errorf("no-GLXFile: want ErrNoGLXFile, got %v", err)
+	}
+	// Unparseable source.
+	if _, err := Extract("x.go", []byte("package p\nfunc (")); err == nil {
+		t.Error("malformed source: want a parse error, got nil")
+	}
+}
+
+// TestNonCollectionFieldsSkipped exercises every mapStringPointerElem branch:
+// only map[string]*X with a yaml tag is a collection.
+func TestNonCollectionFieldsSkipped(t *testing.T) {
+	src := []byte("package p\n" +
+		"type GLXFile struct {\n" +
+		"\tPersons  map[string]*Person `yaml:\"persons\"`\n" + // collection
+		"\tMeta     *Person            `yaml:\"meta\"`\n" + // pointer, not a map
+		"\tIntKey   map[int]*Person    `yaml:\"intkey\"`\n" + // non-string key
+		"\tValueMap map[string]Person  `yaml:\"valuemap\"`\n" + // non-pointer value
+		"\tNoTag    map[string]*Person\n" + // map but no yaml tag
+		"\tplain    string\n" + // unexported
+		"}\n" +
+		"type Person struct {\n\tA string `yaml:\"a\"`\n}\n")
+	d, err := Extract("x.go", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	if len(d.Collections) != 1 || d.Collections[0].YAMLKey != "persons" {
+		t.Errorf("only 'persons' should be a collection, got %+v", d.Collections)
+	}
+}
+
+// TestYamlKeyAndHelpers covers yamlKey edge cases (no tag, non-yaml tag),
+// CollectionType's not-found path, and SortedTypeNames.
+func TestYamlKeyAndHelpers(t *testing.T) {
+	src := []byte("package p\n" +
+		"type GLXFile struct {\n\tPersons map[string]*Person `yaml:\"persons\"`\n}\n" +
+		"type Person struct {\n" +
+		"\tTagged   string `yaml:\"tagged\"`\n" +
+		"\tJSONOnly string `json:\"x\"`\n" + // tag present but no yaml key -> skipped
+		"\tNoTag    string\n" + // no tag at all -> skipped
+		"}\n")
+	d, err := Extract("x.go", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	p, ok := d.CollectionType("persons")
+	if !ok || len(p.Fields) != 1 || p.Fields[0].YAMLTag != "tagged" {
+		t.Errorf("only 'tagged' should remain, got %+v (ok=%v)", p.Fields, ok)
+	}
+	if _, ok := d.CollectionType("nope"); ok {
+		t.Error("CollectionType(nope) should be false")
+	}
+	names := d.SortedTypeNames()
+	if len(names) != 2 || names[0] != "GLXFile" || names[1] != "Person" {
+		t.Errorf("SortedTypeNames = %v, want [GLXFile Person]", names)
+	}
+}
 
 const typesGo = "../../types.go"
 
