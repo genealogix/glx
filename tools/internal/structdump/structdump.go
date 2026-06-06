@@ -15,14 +15,13 @@
 // Package structdump deterministically extracts the entity/vocabulary
 // collections and their struct fields from go-glx/types.go using the Go AST.
 //
-// It exists so the check-* drift tooling never hand-maintains a list of
-// entities/fields: the GLXFile struct is the single source of truth. The
-// deterministic spec/code-drift checks consume Collections (which yaml key
-// maps to which Go type) and Fields (name, yaml tag, source line) instead of
-// asking an LLM to read types.go and hope.
+// It exists so the drift tooling never hand-maintains a list of entities/fields:
+// the GLXFile struct is the single source of truth. tools/driftcheck consumes
+// Fields' source lines to attach file:line to its (reflection-based) findings,
+// which reflection alone cannot report.
 //
-// Pure: Extract parses caller-provided source bytes and performs NO filesystem
-// I/O, per the go-glx no-I/O rule — the caller reads the file.
+// Pure: Extract parses caller-provided source bytes and performs no filesystem
+// I/O — the caller reads the file, which keeps it trivially testable.
 package structdump
 
 import (

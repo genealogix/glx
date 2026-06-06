@@ -80,7 +80,7 @@ func TestYamlKeyAndHelpers(t *testing.T) {
 	}
 }
 
-const typesGo = "../../types.go"
+const typesGo = "../../../go-glx/types.go"
 
 // loadTypes reads types.go (I/O lives in the test, not the package) and extracts it.
 func loadTypes(t *testing.T) *Dump {

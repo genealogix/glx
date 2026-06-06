@@ -12,9 +12,10 @@ Enabler for the skills' "defer to deterministic tooling" pre-flight: validate a 
 - **Done:** `echo '<yaml>' | glx validate --stdin --entity-type person` validates one entity and exits non-zero on failure. Unit (`validation_stdin_test.go`) + manual E2E.
 
 ### 2. AST field extractor (#795) — Go
-Deterministic extraction of `(field name, yaml tag, line)` from `go-glx/types.go` entity structs, via `go/ast` + `go/parser`. Feeds (a) future spec/code comparisons and (b) the skills' `file:line` requirement (#676 item 11).
-- **Where:** `go-glx/internal/structdump/`. `Extract(filename, src []byte)` is **I/O-free** (the caller reads the file), per the go-glx no-I/O rule. Being under `internal/`, it is importable only by other `go-glx/...` packages and its tests — **not** by the top-level `glx/` CLI.
-- **Done:** returns every `map[string]*X` collection of `GLXFile` (yaml key → Go type) and each struct's serialized fields, skipping untagged / `yaml:"-"` fields. Table-tested.
+Deterministic extraction of `(field name, yaml tag, line)` from `go-glx/types.go` entity structs, via `go/ast` + `go/parser`. Reflection (used by `driftcheck`) can't report source positions; the AST can.
+- **Where:** `tools/internal/structdump/`. `Extract(filename, src []byte)` is **I/O-free** (the caller reads the file), which keeps it trivially testable.
+- **Consumer:** `tools/driftcheck` (#673) calls it to attach `go-glx/types.go:NN` to each finding, so `make check-code-drift` — and the `check-code-drift` skill that defers to it — now emit `file:line` (satisfying #676 item 11).
+- **Done:** returns every `map[string]*X` collection of `GLXFile` (yaml key → Go type) and each struct's serialized fields, skipping untagged / `yaml:"-"` fields. Table-tested; line attachment verified end-to-end against injected drift.
 
 ### 3. Spec ↔ schema parity (#309) — Node, **warn-first**
 Parses the top-level field tables (under `### Required Fields` / `### Optional Fields`) in `specification/4-entity-types/*.md` and compares them against `specification/schema/v1/*.schema.json` on **both** axes: **field presence** (documented but missing from the schema — dangerous under `additionalProperties: false` — and in-schema-but-undocumented) and **required/optional** (a field under "Required Fields" must be in the schema's `required[]`; one under "Optional Fields" must not be).
