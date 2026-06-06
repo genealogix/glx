@@ -12,6 +12,7 @@ allowed-tools:
   - Bash(mktemp -d /tmp/check-spec-*:*)
   - Bash(rm -rf /tmp/check-spec-*:*)
   - Bash(printf:*)
+model: claude-opus-4-8
 ---
 
 You are tasked with conducting a comprehensive audit of the GLX specification to identify issues, contradictions, ambiguities, and areas for improvement.

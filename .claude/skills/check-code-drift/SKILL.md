@@ -11,7 +11,7 @@ allowed-tools:
   - Bash(rg:*)
   - Bash(make check-code-drift:*)
   - Bash(make check-drift-allowlist:*)
-model: claude-opus-4-7
+model: claude-opus-4-8
 ---
 
 <!-- last-verified: 8709e09 -->

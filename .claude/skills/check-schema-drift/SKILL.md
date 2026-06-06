@@ -9,6 +9,7 @@ allowed-tools:
   - Bash(date -u:*)
   - Bash(make check-schemas:*)
   - Bash(gh issue list:*)
+model: claude-opus-4-8
 ---
 
 You are tasked with identifying any drift between the GLX specification markdown files and the JSON schemas.

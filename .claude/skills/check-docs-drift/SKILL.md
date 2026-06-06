@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(rm -rf /tmp/glx-drift-*:*)
   - Bash(git rev-parse:*)
   - Bash(gh issue list:*)
+model: claude-opus-4-8
 ---
 
 You are tasked with identifying any drift between the GLX user documentation and the source of truth (specification, schemas, and code).

@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(./bin/glx validate:*)
   - Bash(./bin/glx --version:*)
   - Bash(date:*)
+model: claude-opus-4-8
 ---
 
 # check-examples
