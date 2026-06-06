@@ -75,6 +75,34 @@ source_types:
     label: "Notarial Record"
     description: "Notarial acts, contracts, and legal instruments recorded by a notary"
 
+  family_bible:
+    label: "Family Bible"
+    description: "Family Bible records of births, marriages, and deaths"
+
+  gravestone:
+    label: "Gravestone"
+    description: "Tombstone and headstone inscriptions, cemetery memorials"
+
+  dna_test:
+    label: "DNA Test"
+    description: "Genetic test results (autosomal, Y-DNA, mitochondrial DNA)"
+
+  memoir:
+    label: "Memoir"
+    description: "Autobiographies, diaries, and personal journals"
+
+  manuscript:
+    label: "Manuscript"
+    description: "Unpublished manuscripts or typescripts"
+
+  map:
+    label: "Map"
+    description: "Historical maps, atlases, and survey plats"
+
+  social_media:
+    label: "Social Media"
+    description: "Social media posts and profiles"
+
   other:
     label: "Other"
     description: "Other source types"
