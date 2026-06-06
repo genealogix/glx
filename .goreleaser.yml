@@ -34,6 +34,7 @@ archives:
         formats: [zip]
     files:
       - LICENSE
+      - NOTICE
       - README.md
       - CHANGELOG.md
 checksum:
