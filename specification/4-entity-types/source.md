@@ -121,6 +121,13 @@ Common source types:
 - `population_register` - Civil population registers, household registration records
 - `tax_record` - Tax rolls, assessments, tithes
 - `notarial_record` - Notarial acts, contracts, legal instruments
+- `family_bible` - Family Bible records of births, marriages, deaths
+- `gravestone` - Tombstone and headstone inscriptions, cemetery memorials
+- `dna_test` - Genetic test results (autosomal, Y-DNA, mitochondrial DNA)
+- `memoir` - Autobiographies, diaries, personal journals
+- `manuscript` - Unpublished manuscripts or typescripts
+- `map` - Historical maps, atlases, survey plats
+- `social_media` - Social media posts and profiles
 - `other` - Other source types
 
 Example:
