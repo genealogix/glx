@@ -68,7 +68,27 @@ Use GLX to initialize new archives, validate files, and ensure data quality.`,
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(exitCodeForError(err))
+	}
+}
+
+// exitBadInvocation is the process exit code for CLI misuse on the --stdin path
+// (issue #910) — distinct from exit 1, which signals a structural/semantic
+// validation failure on otherwise well-formed input.
+const exitBadInvocation = 2
+
+// exitCodeForError maps a root-command error to a process exit code. The
+// --stdin invocation sentinels yield 2 so callers and CI can tell "you invoked
+// validate wrong" apart from "the entity itself failed validation" (1).
+func exitCodeForError(err error) int {
+	switch {
+	case errors.Is(err, errStdinUnknownEntityType),
+		errors.Is(err, errStdinPathArgs),
+		errors.Is(err, errStdinEmpty),
+		errors.Is(err, errStdinReportExclusive):
+		return exitBadInvocation
+	default:
+		return 1
 	}
 }
 
@@ -332,10 +352,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	validateReport       bool
-	validateStdin        bool
-	validateEntityType   string
-	errReportTooManyArgs = errors.New("--report accepts at most one path argument")
+	validateReport          bool
+	validateStdin           bool
+	validateEntityType      string
+	errReportTooManyArgs    = errors.New("--report accepts at most one path argument")
+	errStdinReportExclusive = errors.New("--stdin and --report are mutually exclusive")
 )
 
 var validateCmd = &cobra.Command{
@@ -386,6 +407,9 @@ func init() {
 }
 
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateStdin && validateReport {
+		return errStdinReportExclusive
+	}
 	if validateStdin {
 		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin)
 	}

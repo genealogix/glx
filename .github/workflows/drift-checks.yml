@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
       # Warn-first: reports field drift but does not block. Set DRIFT_STRICT=1
       # here to make it blocking once the table parser is proven in practice.
       - run: node scripts/drift-checks/spec-schema-drift.mjs
@@ -43,7 +43,7 @@ jobs:
           fetch-depth: 0 # need the base branch to diff schemas against
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
       - run: npm ci
         working-directory: specification
       # Hard-fail: a backward-incompatible schema change would invalidate

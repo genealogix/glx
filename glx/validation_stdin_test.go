@@ -16,6 +16,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -24,6 +26,44 @@ func newTestStreams() (*IOStreams, *bytes.Buffer, *bytes.Buffer) {
 	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
 
 	return &IOStreams{Out: out, MachineOut: out, ErrOut: errOut}, out, errOut
+}
+
+// errGenericTest is a static non-sentinel error used to exercise the default
+// (exit 1) branch of exitCodeForError (err113: no inline dynamic errors).
+var errGenericTest = errors.New("some unrecognized error")
+
+func TestExitCodeForError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"unknown entity type", errStdinUnknownEntityType, exitBadInvocation},
+		{"path args", errStdinPathArgs, exitBadInvocation},
+		{"empty stdin", errStdinEmpty, exitBadInvocation},
+		{"stdin+report", errStdinReportExclusive, exitBadInvocation},
+		{"wrapped sentinel", fmt.Errorf("context: %w", errStdinUnknownEntityType), exitBadInvocation},
+		{"structural failure is exit 1", ErrStructuralValidationFailed, 1},
+		{"unrecognized error is exit 1", errGenericTest, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := exitCodeForError(tc.err); got != tc.want {
+				t.Errorf("exitCodeForError(%v) = %d, want %d", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunValidateStdinReportExclusive(t *testing.T) {
+	defer func(stdin, report bool) {
+		validateStdin, validateReport = stdin, report
+	}(validateStdin, validateReport)
+
+	validateStdin, validateReport = true, true
+	if err := runValidate(nil, nil); !errors.Is(err, errStdinReportExclusive) {
+		t.Errorf("runValidate with --stdin and --report: got %v, want errStdinReportExclusive", err)
+	}
 }
 
 func TestValidateStdinEntity(t *testing.T) {

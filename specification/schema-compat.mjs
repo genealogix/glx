@@ -53,9 +53,29 @@ for (const path of changed) {
   let oldSchema, newSchema;
   try {
     oldSchema = JSON.parse(baseContent);
-    newSchema = JSON.parse(readFileSync(path, "utf8"));
   } catch (e) {
-    console.error(`✗ ${path}: could not parse schema (${e.message})`);
+    console.error(`✗ ${path}: base version is not valid JSON (${e.message})`);
+    breaking++;
+    continue;
+  }
+  let newContent;
+  try {
+    newContent = readFileSync(path, "utf8");
+  } catch (e) {
+    if (e.code === "ENOENT") {
+      // The schema was deleted in this PR. Removing a v1 schema makes every
+      // archive that referenced it invalid — a backward-incompatible change.
+      console.error(`✗ ${path}: schema deleted — removing a v1 schema is breaking (bump the schema version directory instead)`);
+    } else {
+      console.error(`✗ ${path}: could not read schema (${e.message})`);
+    }
+    breaking++;
+    continue;
+  }
+  try {
+    newSchema = JSON.parse(newContent);
+  } catch (e) {
+    console.error(`✗ ${path}: new version is not valid JSON (${e.message})`);
     breaking++;
     continue;
   }
