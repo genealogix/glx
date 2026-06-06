@@ -40,11 +40,14 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: |
-          ADDED=$(git diff --name-only --diff-filter=A "origin/${BASE}...HEAD" -- '.changes/unreleased/' \
+          # Count added (A) AND modified (M) fragments: editing an existing
+          # sibling fragment to fold in a follow-up (the consolidation discipline
+          # this PR documents) is a modification, and must satisfy the gate too.
+          TOUCHED=$(git diff --name-only --diff-filter=AM "origin/${BASE}...HEAD" -- '.changes/unreleased/' \
             | grep -vE '/\.gitkeep$' || true)
-          if [ -z "$ADDED" ]; then
-            echo "::error::This PR adds no changelog fragment. Run 'make changelog' (changie new) to add one, or apply the 'no-changelog' label if the change is not user-facing." >&2
+          if [ -z "$TOUCHED" ]; then
+            echo "::error::This PR adds or updates no changelog fragment. Run 'make changelog' (changie new) to add one (or edit an existing sibling fragment), or apply the 'no-changelog' label if the change is not user-facing." >&2
             exit 1
           fi
-          echo "Changelog fragment(s) added:"
-          echo "$ADDED"
+          echo "Changelog fragment(s) added/updated:"
+          echo "$TOUCHED"

@@ -23,11 +23,19 @@ fi
 #    real next version; --dry-run does not delete fragments or write files.
 changie batch 9999.0.0 --dry-run >/dev/null
 
-# 2. Each fragment must carry an Issue reference like #NNN.
+# 2. Each fragment must carry a `#NNN` reference in its top-level `custom.Issue`
+#    field — which is what `changeFormat` renders. Scope the check to the
+#    `custom:` block so an `Issue:`-like line inside the `body: |-` block scalar
+#    cannot satisfy it. A top-level key (no leading whitespace) opens a block;
+#    only while the open block is `custom:` does an indented `Issue:` count.
 fail=0
 for f in "${frags[@]}"; do
-  if ! grep -Eq '^[[:space:]]*Issue:[[:space:]]*.*#[0-9]+' "$f"; then
-    echo "::error file=$f::changelog fragment is missing an issue/PR reference (expected an 'Issue:' field containing #NNN)"
+  if ! awk '
+    /^[A-Za-z_][A-Za-z0-9_]*:/ { in_custom = ($1 == "custom:") ; next }
+    in_custom && /^[[:space:]]+Issue:[[:space:]]*.*#[0-9]+/ { found = 1 }
+    END { exit(found ? 0 : 1) }
+  ' "$f"; then
+    echo "::error file=$f::changelog fragment is missing an issue/PR reference (expected an 'Issue:' field with #NNN under the top-level 'custom:' block)"
     fail=1
   fi
 done

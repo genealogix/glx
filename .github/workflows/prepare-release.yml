@@ -64,7 +64,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add .changes CHANGELOG.md
+          # -A so the fragment files that `changie batch` deletes/moves out of
+          # .changes/unreleased/ are staged as removals, not just the new
+          # .changes/<version>.md and the regenerated CHANGELOG.md.
+          git add -A .changes CHANGELOG.md
           git commit -m "chore: Prepare release ${VERSION}"
           git push -u origin "$BRANCH"
           {
