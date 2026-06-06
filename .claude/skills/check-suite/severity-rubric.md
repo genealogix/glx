@@ -19,7 +19,7 @@ Generalised from the `check-code-drift` rubric established in #827; widened to t
 2. **Default to `info` when uncertain.** A false `critical` costs more reviewer trust than a missed `minor`. (#676 false-positive-reduction.)
 3. **`additionalProperties: false` raises the stakes.** Any field-presence drift on a schema with `additionalProperties: false` is at least **major**, and **critical** if it means valid data is rejected.
 4. **Deterministic-caught ≠ free.** If a deterministic check (`glx validate`, `validate-schemas.mjs`, CI) already flags it, set `validator_caught: true` — but keep the finding so the report is complete; severity is unchanged by who caught it.
-5. **Allow-listed differences are `info`.** Anything in `.claude/drift-allowlist.yaml` is intentional; never escalate it.
+5. **Allow-listed differences are `info`.** Entries in `.claude/drift-allowlist.yaml` are already triaged: `permanent: true` entries are by-design (treat as `info` / not drift), while entries with a `tracking_issue` are *temporary deferrals* — don't re-report them as new findings, refer to the tracking issue. Never escalate an allow-listed item.
 
 ## Per-skill category tables
 

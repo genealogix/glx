@@ -9,8 +9,8 @@ allowed-tools:
   - Bash(gh issue list:*)
   - Bash(make check-schemas:*)
   - Bash(./bin/glx validate:*)
-  - Bash(mktemp:*)
-  - Bash(rm -rf:*)
+  - Bash(mktemp -d /tmp/check-spec-*:*)
+  - Bash(rm -rf /tmp/check-spec-*:*)
   - Bash(printf:*)
 ---
 
@@ -28,7 +28,7 @@ At the top of your report, record:
 
 ## Pre-flight: defer to deterministic tooling
 
-Before LLM-based semantic analysis, run two deterministic checks. Their findings flow into the same `findings-json` block with `validator_caught: true, llm_only: false`.
+Before LLM-based semantic analysis, run two deterministic checks. Their findings normally flow into the `findings-json` block with `validator_caught: true, llm_only: false` — except a check that cannot run yet, which is reported as an `llm_only` deferral (see below).
 
 ### Pre-flight 1: vocabulary structure (delegates Section 8 bullet 3)
 
@@ -36,7 +36,7 @@ Before LLM-based semantic analysis, run two deterministic checks. Their findings
 make check-schemas
 ```
 
-This validates every `specification/5-standard-vocabularies/*.glx` file against its schema. If the exit code is non-zero, emit each reported error as a finding with `category: vocabulary`, `severity: critical`, `validator_caught: true`, `llm_only: false`, and skip the LLM work for Section 8 bullet 3 ("Vocabulary structure inconsistent with documented format").
+When `make check-schemas` includes vocabulary `.glx` validation (#839), it validates every `specification/5-standard-vocabularies/*.glx` file against its schema. If the exit code is non-zero, emit each reported error as a finding with `category: vocabulary`, `severity: critical`, `validator_caught: true`, `llm_only: false`, and skip the LLM work for Section 8 bullet 3 ("Vocabulary structure inconsistent with documented format").
 
 If `make check-schemas` does not yet include vocabulary structure validation for `.glx` files, emit one finding:
 
@@ -62,7 +62,7 @@ For every fenced YAML code block in `specification/4-entity-types/*.md`:
 2. Create a temp directory for this run (once, reused for all snippets):
 
    ```bash
-   WORKDIR="$(mktemp -d)"
+   WORKDIR="$(mktemp -d /tmp/check-spec-XXXXXX)"
    ```
 
 3. Write each snippet and validate:

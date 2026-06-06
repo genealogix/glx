@@ -154,7 +154,7 @@ File findings here as `minor` if the README is misleading; `info` if everything 
 Before writing findings, run:
 
 ```bash
-gh issue list --state open --limit 50 --json number,title
+gh issue list -R genealogix/glx --state open --limit 50 --json number,title --jq '.[] | "#\(.number) \(.title)"'
 ```
 
 For each finding you would emit, check whether it matches an already-open GitHub issue. If it does, suppress the finding from the `findings` array and increment `suppressed_as_duplicate_of_known_issue` in the summary. Record what you suppressed and why in the prose report, so reviewers can see what was filtered.

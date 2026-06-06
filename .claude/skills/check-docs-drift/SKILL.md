@@ -94,7 +94,7 @@ Use the Glob tool to enumerate `docs/**/*.md`. **Exclude** the following paths �
 
 **Additionally include** these files that live outside `docs/` but are user-facing:
 
-- `specification/6-glossary.md` — The glossary is included here (and not in `check-spec`) because users consume it alongside `quickstart.md` and the guides. Specification entity-type files remain the responsibility of `check-spec`.
+- (The glossary `specification/6-glossary.md` is **owned by `check-spec`**, which has the dedicated glossary-consistency checks — it is intentionally *not* checked here. Specification entity-type files are also `check-spec`'s responsibility.)
 
 **Also read** these cross-reference surfaces when checking CLI examples and sidebar coverage. Do NOT flag these as drifting documentation — they are source-of-truth surfaces, not documentation files:
 
@@ -102,7 +102,7 @@ Use the Glob tool to enumerate `docs/**/*.md`. **Exclude** the following paths �
 - `glx/*_runner.go` — handler implementations where flags and runtime behaviour are defined
 - `website/.vitepress/config.js` — sidebar navigation; cross-check that every published doc appears
 
-The complete post-exclusion glob result, plus `specification/6-glossary.md`, forms `checked_files` in the JSON output.
+The complete post-exclusion glob result forms `checked_files` in the JSON output.
 
 This dynamic enumeration means new guides added to `docs/` are automatically in scope on the next run without any prompt edits (resolving the recurring defect class tracked in GitHub issue #829).
 
@@ -144,7 +144,7 @@ rm -rf <TMPDIR>
    Per-snippet cleanup keeps concurrent runs from racing on the `/tmp/glx-drift-*` namespace.
 
 6. Classify the result deterministically by exit code alone:
-   - **Exit 0** → snippet passed structural + semantic validation. Set `validator_caught: false`, `llm_only: false` for this structural dimension. Still apply the narrative checks in steps 2 and 4 — the validator does not catch specification-prose drift.
+   - **Exit 0** → snippet passed structural + semantic validation. Record this as a `positive_notes` entry — do **not** emit a finding (a clean validation is not drift, and `validator_caught: false` + `llm_only: false` is not a valid finding combination). Still apply the narrative checks in steps 2 and 4 — the validator does not catch specification-prose drift.
    - **Any non-zero exit** → **`category: example_validation`, default severity `critical`**. Report the validator's stderr verbatim in `message`. Set `validator_caught: true`, `llm_only: false`.
 
    **Fragment validation caveat:** `glx validate` requires archive-shape input at the top level. Documentation blocks that demonstrate a bare entity fragment, a vocabulary entry, or a properties excerpt will trip `(root): additional properties '<key>', ... not allowed` even when the documentation itself is correct. GitHub issue #910 tracks `--stdin --entity-type` to validate fragments directly; until it lands, treat ambiguous root-level errors as human-review requests: keep the finding at `critical` (the validator did reject it) but add a `fix` note explaining the Phase-1 limitation so the reviewer can make the final call. Do not auto-downgrade with an LLM heuristic.
@@ -258,6 +258,6 @@ Then emit the machine-readable block (the eval harness greps for the info-string
 - Minor wording differences are acceptable if technical accuracy is preserved
 - Focus on technical accuracy, not writing style
 - CLI examples should be copy-paste ready
-- The glossary (`specification/6-glossary.md`) is owned by this skill, not `check-spec` — it is user-facing and consumed like the guides
+- The glossary (`specification/6-glossary.md`) is owned by `check-spec`, not this skill — do not check it here
 - See `.claude/skills/check-suite/severity-rubric.md` for the full shared severity scale; do not redefine it here
 - See `.claude/skills/check-suite/findings.schema.json` for the complete output schema

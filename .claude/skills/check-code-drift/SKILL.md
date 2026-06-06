@@ -5,7 +5,12 @@ allowed-tools:
   - Read
   - Grep
   - Glob
-  - Bash
+  - Bash(git rev-parse:*)
+  - Bash(git diff:*)
+  - Bash(grep:*)
+  - Bash(rg:*)
+  - Bash(make check-code-drift:*)
+  - Bash(make check-drift-allowlist:*)
 model: claude-opus-4-7
 ---
 

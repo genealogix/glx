@@ -2,10 +2,10 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://genealogix.github.io/glx/schemas/check-suite/findings.schema.json",
   "title": "check-* skill findings report",
-  "description": "Shared machine-readable output contract emitted by every .claude/skills/check-* drift skill (check-schema-drift, check-code-drift, check-docs-drift, check-examples, check-spec). The fenced block in each skill's report MUST use the info-string `findings-json` so the eval harness (#796) can grep-extract it. Epic #1016 — one object-wrapper report per run.",
+  "description": "Shared machine-readable output contract emitted by every .claude/skills/check-* drift skill (check-schema-drift, check-code-drift, check-docs-drift, check-examples, check-spec). The fenced block in each skill's report MUST use the info-string `findings-json` so the eval harness can grep-extract it. Epic #1016 — one object-wrapper report per run.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["command", "commit", "checked_files", "findings"],
+  "required": ["command", "commit", "checked_files", "findings", "summary"],
   "properties": {
     "command": {
       "type": "string",
@@ -17,6 +17,11 @@
       "pattern": "^[0-9a-f]{7,40}$",
       "description": "Git commit SHA the check ran against (skill captures `git rev-parse HEAD`)."
     },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional RFC 3339 timestamp of the run, for reproducible reports."
+    },
     "checked_files": {
       "type": "array",
       "items": { "type": "string" },
@@ -24,7 +29,7 @@
     },
     "findings": {
       "type": "array",
-      "items": { "$ref": "#/$defs/finding" },
+      "items": { "$ref": "#/definitions/finding" },
       "description": "Every drift finding. Empty array = no drift detected."
     },
     "positive_notes": {
@@ -42,10 +47,10 @@
         "info": { "type": "integer", "minimum": 0 },
         "suppressed_as_duplicate_of_known_issue": {
           "type": "integer", "minimum": 0,
-          "description": "Count of findings suppressed because they match an already-open GitHub issue (per the cross-reference step). Recorded, not silently dropped."
+          "description": "Count of findings suppressed because they match an already-open GitHub issue (per the cross-reference step). Recorded, not silently dropped — 0 when nothing was suppressed."
         }
       },
-      "required": ["critical", "major", "minor", "info"]
+      "required": ["critical", "major", "minor", "info", "suppressed_as_duplicate_of_known_issue"]
     },
     "telemetry": {
       "type": "object",
@@ -56,15 +61,20 @@
         "prompt_tokens": { "type": "integer", "minimum": 0 },
         "completion_tokens": { "type": "integer", "minimum": 0 },
         "wall_clock_ms": { "type": "integer", "minimum": 0 },
-        "ran_at": { "type": "string", "description": "ISO-8601 timestamp, runner-supplied." }
+        "ran_at": { "type": "string", "format": "date-time", "description": "RFC 3339 timestamp, runner-supplied." }
       }
     }
   },
-  "$defs": {
+  "definitions": {
     "finding": {
       "type": "object",
       "additionalProperties": false,
       "required": ["file", "severity", "category", "message", "validator_caught", "llm_only"],
+      "comment": "validator_caught and llm_only must be logical inverses — the oneOf below enforces it so both-true / both-false cannot validate.",
+      "oneOf": [
+        { "properties": { "validator_caught": { "const": true }, "llm_only": { "const": false } } },
+        { "properties": { "validator_caught": { "const": false }, "llm_only": { "const": true } } }
+      ],
       "properties": {
         "file": { "type": "string", "description": "Repo-relative path of the drifting artifact." },
         "line": { "type": ["integer", "null"], "minimum": 1, "description": "1-based line in `file`, or null when not line-addressable." },
@@ -85,11 +95,11 @@
         },
         "llm_only": {
           "type": "boolean",
-          "description": "true if only the LLM semantic pass surfaced this (no deterministic check covers it). MUST be the logical inverse of validator_caught."
+          "description": "true if only the LLM semantic pass surfaced this (no deterministic check covers it). The logical inverse of validator_caught (enforced by the oneOf above)."
         },
         "location": {
           "type": "object",
-          "description": "Optional precise source coordinates. When the skill can supply line numbers (e.g. fed by the #795 AST extractor), findings without them are dropped rather than emitted as low-confidence noise.",
+          "description": "Optional precise source coordinates. When the skill can supply line numbers (e.g. fed by the AST extractor), findings without them are dropped rather than emitted as low-confidence noise.",
           "additionalProperties": false,
           "properties": {
             "go_line": { "type": ["integer", "null"], "minimum": 1 },
