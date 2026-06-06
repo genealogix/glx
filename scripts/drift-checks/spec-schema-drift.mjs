@@ -33,26 +33,28 @@ const NON_FIELD_ROWS = new Set(["entity id (map key)"]);
 const TOP_LEVEL_FIELD_HEADINGS = new Set(["required fields", "optional fields"]);
 
 function parseSpecFields(md) {
-  // rowFields: field named in the first column (precise — the field is a row).
-  // mentioned: every backtick token anywhere in a field-table row, so a
-  // combined row like "| Evidence reference | array | one of `citations`,
-  // `sources`, or `media` |" still counts those three as documented.
-  const rowFields = new Set();
+  // requiredFields / optionalFields: first-column field names, split by whether
+  // the row sits under "### Required Fields" or "### Optional Fields" — this is
+  // what lets us compare required-vs-optional against the schema's required[].
+  // mentioned: every backtick token anywhere in a field-table row, so a combined
+  // row like "| Evidence reference | array | one of `citations`, `sources`, or
+  // `media` |" still counts those three as documented.
+  const requiredFields = new Set();
+  const optionalFields = new Set();
   const mentioned = new Set();
   const lines = md.split("\n");
-  let underTopLevel = false;
+  let section = null; // "required" | "optional" | null
   let inTable = false;
   for (const raw of lines) {
     const line = raw.trim();
     const heading = line.match(/^#{2,4}\s+(.*)$/);
     if (heading) {
-      underTopLevel = TOP_LEVEL_FIELD_HEADINGS.has(
-        heading[1].trim().toLowerCase().replace(/[`*]/g, ""),
-      );
+      const h = heading[1].trim().toLowerCase().replace(/[`*]/g, "");
+      section = TOP_LEVEL_FIELD_HEADINGS.has(h) ? h.split(" ")[0] : null; // "required"|"optional"
       inTable = false;
       continue;
     }
-    if (!underTopLevel) continue;
+    if (!section) continue;
     if (/^\|\s*Field\s*\|\s*Type\s*\|/i.test(line)) {
       inTable = true;
       continue;
@@ -67,9 +69,9 @@ function parseSpecFields(md) {
     const firstCell = (line.split("|")[1] || "").trim();
     if (NON_FIELD_ROWS.has(firstCell.toLowerCase())) continue;
     const m = firstCell.match(/^`([^`]+)`$/);
-    if (m) rowFields.add(m[1]);
+    if (m) (section === "required" ? requiredFields : optionalFields).add(m[1]);
   }
-  return { rowFields, mentioned };
+  return { requiredFields, optionalFields, mentioned };
 }
 
 function schemaProps(schema) {
@@ -98,8 +100,12 @@ for (const file of specFiles) {
   }
   checked++;
 
-  const { rowFields, mentioned } = parseSpecFields(readFileSync(join(SPEC_DIR, file), "utf8"));
+  const { requiredFields, optionalFields, mentioned } = parseSpecFields(
+    readFileSync(join(SPEC_DIR, file), "utf8"),
+  );
+  const rowFields = new Set([...requiredFields, ...optionalFields]);
   const schemaFields = schemaProps(schema);
+  const schemaRequired = new Set(schema.required || []);
   const apFalse = schema.additionalProperties === false;
 
   // Spec documents a field as its own row, but the schema lacks it.
@@ -107,9 +113,17 @@ for (const file of specFiles) {
   // Schema has a field the spec never mentions in its field tables (combined
   // rows count, so this is genuine "undocumented", not a formatting artifact).
   const inSchemaNotSpec = diff(schemaFields, mentioned);
+  // Required/optional drift (only for fields present in both).
+  const specRequiredNotSchema = [...requiredFields]
+    .filter((f) => schemaFields.has(f) && !schemaRequired.has(f)).sort();
+  const specOptionalButSchemaRequired = [...optionalFields]
+    .filter((f) => schemaRequired.has(f)).sort();
 
-  if (inSpecNotSchema.length === 0 && inSchemaNotSpec.length === 0) {
-    console.log(`✓ ${stem}: ${schemaFields.size} fields match`);
+  if (
+    inSpecNotSchema.length === 0 && inSchemaNotSpec.length === 0 &&
+    specRequiredNotSchema.length === 0 && specOptionalButSchemaRequired.length === 0
+  ) {
+    console.log(`✓ ${stem}: ${schemaFields.size} fields match (presence + required/optional)`);
     continue;
   }
 
@@ -122,6 +136,14 @@ for (const file of specFiles) {
   }
   for (const f of inSchemaNotSpec) {
     console.error(`✗ ${stem}: field \`${f}\` is in the schema but undocumented in the spec`);
+    mismatches++;
+  }
+  for (const f of specRequiredNotSchema) {
+    console.error(`✗ ${stem}: field \`${f}\` is under "Required Fields" in the spec but is not in the schema's required[]`);
+    mismatches++;
+  }
+  for (const f of specOptionalButSchemaRequired) {
+    console.error(`✗ ${stem}: field \`${f}\` is under "Optional Fields" in the spec but the schema marks it required`);
     mismatches++;
   }
 }

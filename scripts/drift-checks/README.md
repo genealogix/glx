@@ -17,7 +17,7 @@ Deterministic extraction of `(field name, yaml tag, line)` from `go-glx/types.go
 - **Done:** returns every `map[string]*X` collection of `GLXFile` (yaml key → Go type) and each struct's serialized fields, skipping untagged / `yaml:"-"` fields. Table-tested.
 
 ### 3. Spec ↔ schema parity (#309) — Node, **warn-first**
-Parses the top-level field tables (under `### Required Fields` / `### Optional Fields`) in `specification/4-entity-types/*.md` and compares **field presence** against the `properties` of `specification/schema/v1/*.schema.json`: fields documented in the spec but missing from a schema (dangerous under `additionalProperties: false`), and fields in a schema undocumented in the spec. It does **not** yet compare required-vs-optional.
+Parses the top-level field tables (under `### Required Fields` / `### Optional Fields`) in `specification/4-entity-types/*.md` and compares them against `specification/schema/v1/*.schema.json` on **both** axes: **field presence** (documented but missing from the schema — dangerous under `additionalProperties: false` — and in-schema-but-undocumented) and **required/optional** (a field under "Required Fields" must be in the schema's `required[]`; one under "Optional Fields" must not be).
 - **Where:** `scripts/drift-checks/spec-schema-drift.mjs` (no npm deps — pure parsing).
 - **Policy:** **warn** (exit 0); `DRIFT_STRICT=1` makes it blocking. Reports 0 findings on the current tree.
 
