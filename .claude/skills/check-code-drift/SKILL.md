@@ -298,8 +298,8 @@ The `telemetry` block is injected by the runner (Claude Code harness), not self-
       "category": "yaml_tag",
       "message": "Go field State has yaml tag `state` but schema property is `state_province`.",
       "fix": "Change yaml tag to `yaml:\"state_province,omitempty\"`.",
-      "validator_caught": false,
-      "llm_only": true,
+      "validator_caught": true,
+      "llm_only": false,
       "location": {
         "go_line": 152,
         "schema_line": 34

@@ -79,7 +79,7 @@ Compare `specification/4-entity-types/vocabularies.md` and `specification/5-stan
 - Schema structure matches the vocabulary format documented in `vocabularies.md` (label, description, gedcom, fields, etc.)
 - Required fields in the schema match what the spec says is required for vocabulary entries
 - For property vocabulary schemas specifically, property definition schemas enforce `value_type`/`reference_type`/`vocabulary_type` mutual exclusivity per spec
-- All vocabulary `.glx` template files validate against their corresponding schema
+- All vocabulary `.glx` template files conform to their corresponding schema. **On this branch** `make check-schemas` validates the JSON *schemas* only — `.glx` template validation lands with #839 (PR #1018). Until it does, treat this bullet as an LLM-simulated structural check (`llm_only: true`, conservative severity), not a tool-backed one
 
 ## What to Check
 
@@ -269,7 +269,7 @@ The block MUST conform to `.claude/skills/check-suite/findings.schema.json`. The
 - `checked_files` — flat array of repo-relative paths actually examined this run: all `.schema.json` paths opened plus the spec `.md` files and any `.glx` templates you read. Derived from the glob, not a memorized list.
 - `findings` — array of finding objects (empty array on a clean run).
 - `positive_notes` — optional array of strings for things verified as correctly aligned. Route no-drift confirmations here rather than as `info` findings.
-- `summary` — `critical`, `major`, `minor`, `info` (integer counts, all required), and optionally `suppressed_as_duplicate_of_known_issue`.
+- `summary` — `critical`, `major`, `minor`, `info`, and `suppressed_as_duplicate_of_known_issue` (integer counts; all five are required by the shared schema).
 
 **Per-finding required fields** — these are the only fields the schema accepts on a finding:
 - `file` — repo-relative path of the drifting artifact (the `.schema.json`).

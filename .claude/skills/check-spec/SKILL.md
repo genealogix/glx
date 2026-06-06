@@ -6,6 +6,7 @@ allowed-tools:
   - Grep
   - Glob
   - Bash(git rev-parse:*)
+  - Bash(date -u:*)
   - Bash(gh issue list:*)
   - Bash(make check-schemas:*)
   - Bash(./bin/glx validate:*)
@@ -24,7 +25,7 @@ You are tasked with conducting a comprehensive audit of the GLX specification to
 At the top of your report, record:
 
 - Commit SHA: run `git rev-parse HEAD`
-- Run timestamp: current UTC datetime
+- Run timestamp: `date -u +%Y-%m-%dT%H:%M:%SZ`, recorded in the shared schema's optional top-level `generated_at` field
 - Files visited: the complete list goes in `checked_files` in the JSON block; the prose summary can compress to a count
 
 ## Pre-flight: defer to deterministic tooling
@@ -230,7 +231,7 @@ Individual entity specs can each look correct in isolation while contradicting e
 
 **a. Temporal properties**
 Files: `person.md`, `event.md`, `2-core-concepts.md`, `vocabularies.md`
-Verify: The temporal structure (`start_date`/`end_date`/`value`) is described with the same field names, types, and constraints everywhere it appears.
+Verify: The temporal structure (a `value` plus an optional `date`, per the dated/undated list formats in `2-core-concepts.md`) is described with the same field names, types, and constraints everywhere it appears.
 
 **b. Participant pattern**
 Files: `event.md`, `relationship.md`, `assertion.md`
@@ -349,7 +350,7 @@ After the prose report, emit exactly one fenced `findings-json` block. The block
 - `positive_notes`: array of strings (things verified as correct)
 - `summary`: object with integer counts for `critical`, `major`, `minor`, `info` (all required), and `suppressed_as_duplicate_of_known_issue`
 
-Do NOT include: `timestamp` at the top level, `telemetry` (runner-injected only, never self-reported), `total_findings`, `section` as a per-finding field, or any other fields not in the schema.
+Do NOT include: `telemetry` (runner-injected only, never self-reported), `total_findings`, `section` as a per-finding field, or any other fields not in the schema. The only optional top-level timestamp the schema accepts is `generated_at` (RFC 3339) — use that for the run timestamp; do not invent a bare `timestamp` field.
 
 Each finding object requires these fields:
 - `file`: repo-relative path of the drifting artifact

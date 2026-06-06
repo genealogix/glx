@@ -13,11 +13,11 @@ Each skill lives in its own sibling directory as `check-<name>/SKILL.md` and ref
 
 | Skill | From | Folds in | Status |
 |-------|------|----------|--------|
-| check-docs-drift | `commands/check-docs-drift.md` | #829 (dynamic `docs/**` glob, ADRs excluded), #800 (glob fix), #831 (cross-ref + findings-json); closes #298 | ☐ |
-| check-schema-drift | `commands/check-schema-drift.md` | #838 (shared rubric), #986 (dynamic enumeration) | ☐ |
-| check-code-drift | `commands/check-code-drift.md` | all of #676 (1–12), #771 (six bugs) | ☐ |
-| check-examples | `commands/check-examples.md` | #834 (keep Step 1), #835 (Step 4→CI), #303 (westeros pointer), #836 (findings-json) | ☐ |
-| check-spec | `commands/check-spec.md` | #314 (RFC 2119 tooling-only), #315, #847 (findings-json), #849 (delegate + mktemp-safe cleanup) | ☐ |
+| check-docs-drift | `commands/check-docs-drift.md` | #829 (dynamic `docs/**` glob, ADRs excluded), #800 (glob fix), #831 (cross-ref + findings-json); closes #298 | ✅ |
+| check-schema-drift | `commands/check-schema-drift.md` | #838 (shared rubric), #986 (dynamic enumeration) | ✅ |
+| check-code-drift | `commands/check-code-drift.md` | all of #676 (1–12), #771 (six bugs) | ✅ |
+| check-examples | `commands/check-examples.md` | #834 (keep Step 1), #835 (Step 4→CI), #303 (westeros pointer), #836 (findings-json) | ✅ |
+| check-spec | `commands/check-spec.md` | #314 (RFC 2119 tooling-only), #315, #847 (findings-json), #849 (delegate + mktemp-safe cleanup) | ✅ |
 
 Shared assets (contract + rubric): ☑ landed in this commit.
 

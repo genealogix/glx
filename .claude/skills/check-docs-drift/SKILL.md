@@ -103,7 +103,7 @@ Use the Glob tool to enumerate `docs/**/*.md`. **Exclude** the following paths �
 - `glx/*_runner.go` — handler implementations where flags and runtime behaviour are defined
 - `website/.vitepress/config.js` — sidebar navigation; cross-check that every published doc appears
 
-The complete post-exclusion glob result forms `checked_files` in the JSON output.
+The `checked_files` array is the complete post-exclusion glob result **plus** every cross-reference surface you actually open above (`glx/cli_commands.go`, the `glx/*_runner.go` files, `website/.vitepress/config.js`) — list what you read, so the provenance is complete and the eval harness can detect under-scoping.
 
 This dynamic enumeration means new guides added to `docs/` are automatically in scope on the next run without any prompt edits (resolving the recurring defect class tracked in GitHub issue #829).
 
