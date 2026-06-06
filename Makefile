@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-links validate-examples docs-cli release-snapshot
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-links validate-examples docs-cli release-snapshot vulncheck
 
 .DEFAULT_GOAL := help
 
@@ -32,7 +32,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	lefthook install
 
 ## Verification
-check: tidy-check lint test check-schemas check-drift-allowlist check-code-drift check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check ci-tools-tidy-check lint test check-schemas check-drift-allowlist check-code-drift check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -113,6 +113,19 @@ mod-verify: ## Verify Go module integrity
 
 tidy-check: ## Verify go.mod and go.sum are tidy
 	go mod tidy -diff
+
+ci-tools-tidy-check: ## Verify ci-tools/go.mod and ci-tools/go.sum are tidy
+	go -C ci-tools mod tidy -diff
+
+## Security
+# govulncheck is pinned via the tool directive in ci-tools/go.mod (single source of
+# truth, shared with .github/workflows/security.yml); -modfile keeps its graph out
+# of the main module. gosec is intentionally NOT here — its autofix package drags in
+# a heavy Cloud-SDK/grpc/otel tree, so CI keeps it on a version-pinned `go install`
+# (see ci-tools/README.md). Run gosec ad hoc with:
+#   go run github.com/securego/gosec/v2/cmd/gosec@v2.22.4 -quiet ./...
+vulncheck: ## Run govulncheck against the Go vulnerability DB (pinned via ci-tools/go.mod)
+	go tool -modfile=ci-tools/go.mod govulncheck ./...
 
 ## Specification
 check-schemas: ## Validate JSON schema files

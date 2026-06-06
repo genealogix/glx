@@ -1,7 +1,9 @@
 version: 2
 updates:
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /ci-tools   # pinned dev/CI tools (govulncheck) — see ci-tools/README.md
     schedule:
       interval: weekly
       day: monday
