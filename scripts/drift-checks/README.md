@@ -1,40 +1,43 @@
 # Deterministic drift checks (CI, no LLM)
 
-Implementation spec for **PR 1 of epic #1016** — the deterministic half of the drift strategy.
+**PR 1 of epic #1016** — the deterministic half of the drift strategy.
 
 **No LLMs run in CI.** CI catches the mechanical, decidable drift classes here; the on-demand `check-*` skills (PR 2) handle the semantic remainder locally.
 
 ## Pieces
 
 ### 1. `glx validate --stdin --entity-type` (#910) — Go
-Enabler for the skills' "defer to deterministic tooling" pre-flight. Adds two flags to the `validate` command so a single entity snippet can be validated from stdin without writing a temp file.
-- **Where:** `glx/validation_runner.go` (thin cobra wrapper) + `go-glx` validation entry (pure, no I/O).
-- **Done when:** `echo '<yaml>' | glx validate --stdin --entity-type person` validates one entity and exits non-zero on failure. Unit + E2E test.
+Enabler for the skills' "defer to deterministic tooling" pre-flight: validate a single entity snippet from stdin without the mktemp/cat/rm temp-file dance.
+- **Where:** the command + `--stdin`/`--entity-type` flags are wired in `glx/cli_commands.go` (the cobra command lives there); the logic is in `glx/validation_runner.go` — `validateStdinEntity` reads stdin and delegates to the testable `validateEntitySnippet`, which wraps the snippet under its collection key and reuses `ValidateGLXFileStructure`.
+- **Done:** `echo '<yaml>' | glx validate --stdin --entity-type person` validates one entity and exits non-zero on failure. Unit (`validation_stdin_test.go`) + manual E2E.
 
 ### 2. AST field extractor (#795) — Go
-Deterministic extraction of `(field name, yaml tag, line)` from `go-glx/types.go` entity structs, via `go/ast` + `go/parser`. Feeds (a) the spec↔schema parser and (b) the skills' mandatory `file:line` (#676 item 11).
-- **Where:** `go-glx/internal/structdump/` (library package, importable by tests and the CLI).
-- **Done when:** extractor returns every `map[string]*X` entity/vocabulary field of `GLXFile` with struct field names, yaml tags, and source lines. Table test.
+Deterministic extraction of `(field name, yaml tag, line)` from `go-glx/types.go` entity structs, via `go/ast` + `go/parser`. Feeds (a) future spec/code comparisons and (b) the skills' `file:line` requirement (#676 item 11).
+- **Where:** `go-glx/internal/structdump/`. `Extract(filename, src []byte)` is **I/O-free** (the caller reads the file), per the go-glx no-I/O rule. Being under `internal/`, it is importable only by other `go-glx/...` packages and its tests — **not** by the top-level `glx/` CLI.
+- **Done:** returns every `map[string]*X` collection of `GLXFile` (yaml key → Go type) and each struct's serialized fields, skipping untagged / `yaml:"-"` fields. Table-tested.
 
 ### 3. Spec ↔ schema parity (#309) — Node, **warn-first**
-Parses the `| Field | Type | ... |` tables in `specification/4-entity-types/*.md` and compares field names / required-ness against `specification/schema/v1/*.schema.json`. Flags fields present in spec but missing from schema (and vice versa) — the dangerous case under `additionalProperties: false`.
-- **Where:** `scripts/drift-checks/spec-schema-drift.mjs`, wired to `.github/workflows/drift-checks.yml`.
-- **Tooling:** Node, custom markdown-table parser (no off-the-shelf tool exists for prose→schema). Runs alongside the existing `validate-schemas.mjs`.
-- **Policy:** **warn** (non-blocking) until the table parser is proven against the full entity set, then flip to blocking.
+Parses the top-level field tables (under `### Required Fields` / `### Optional Fields`) in `specification/4-entity-types/*.md` and compares **field presence** against the `properties` of `specification/schema/v1/*.schema.json`: fields documented in the spec but missing from a schema (dangerous under `additionalProperties: false`), and fields in a schema undocumented in the spec. It does **not** yet compare required-vs-optional.
+- **Where:** `scripts/drift-checks/spec-schema-drift.mjs` (no npm deps — pure parsing).
+- **Policy:** **warn** (exit 0); `DRIFT_STRICT=1` makes it blocking. Reports 0 findings on the current tree.
 
 ### 4. Schema ↔ schema backward-compat (#311) — Node, **hard-fail**
-On a PR that edits a `specification/schema/v1/*.schema.json`, diffs it against the base branch and fails if a change is backward-incompatible (removed property under `additionalProperties:false`, tightened pattern, new `required`).
-- **Where:** `scripts/drift-checks/schema-compat.mjs` + workflow job.
-- **Tooling:** Node `json-schema-diff-validator` (Atlassian origin), **not** getsentry/json-schema-diff. Before wiring, confirm the chosen package has a pinnable release (repo policy on pinning third-party actions/deps).
+On a PR that edits a `specification/schema/v1/*.schema.json`, diffs it against the base branch and fails on backward-incompatible changes (removed property under `additionalProperties:false`, tightened pattern, new `required`).
+- **Where:** `specification/schema-compat.mjs` — it lives under `specification/` so it resolves `json-schema-diff-validator` from `specification/node_modules` (the script the workflow runs).
+- **Tooling:** `json-schema-diff-validator` (Atlassian origin, a `devDependency`), **not** getsentry/json-schema-diff. git is invoked via `execFileSync` argument arrays (no shell).
 - **Policy:** **hard-fail** — its whole job is blocking data-breaking merges.
 
 ### 5. `validate-schemas.mjs` Step 4 (#839) — Node
-Extends the existing `specification/validate-schemas.mjs` to also validate every vocabulary `.glx` file in `specification/5-standard-vocabularies/` against its schema, and to resolve/validate `$ref`s. Deterministic; replaces the equivalent LLM-simulated steps in the skills.
-- **Done when:** `make check-schemas` (or the script directly) fails on a malformed vocabulary `.glx`. No new heavy deps (reuse existing AJV; add `eemeli/yaml` only if no YAML parser is already present — see #839/#849 judgment note).
+Extends `specification/validate-schemas.mjs` to validate every vocabulary `.glx` file in `specification/5-standard-vocabularies/` against its `vocabularies/<stem>.schema.json`, reusing the already ref-resolved AJV instance from Step 3 (so `$ref`s resolve). Uses the existing `js-yaml` dependency — no new deps.
+- **Done:** `make check-schemas` fails on a malformed/non-conforming vocabulary `.glx`. All 23 vocabularies pass today.
 
 ## CI wiring
 
-New workflow `.github/workflows/drift-checks.yml` with jobs `spec-schema-parity` (#309, warn) and `schema-compat` (#311, fail), path-filtered to `specification/**` and `go-glx/*.go`. The `validate-schemas.mjs` Step 4 rides the existing schema-validation workflow.
+`.github/workflows/drift-checks.yml`, path-filtered to `specification/**`, `scripts/drift-checks/**`, and the workflow file itself:
+- **`spec-schema-parity`** (#309, warn) — runs `scripts/drift-checks/spec-schema-drift.mjs`.
+- **`schema-compat`** (#311, hard-fail) — `fetch-depth: 0` + `npm ci` (specification), then runs `specification/schema-compat.mjs`.
+
+The Step 4 vocabulary validation (#839) rides the existing `make check-schemas` rather than this workflow.
 
 ## Closes
 #910, #795, #309, #311, #839.

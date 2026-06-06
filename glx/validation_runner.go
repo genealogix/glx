@@ -33,9 +33,12 @@ var errStdinUnknownEntityType = errors.New("--stdin requires a valid --entity-ty
 
 // collectionForEntityType maps a singular --entity-type flag value to the
 // top-level GLXFile collection key it lives under. Entity singulars are taken
-// from glxlib so the allow-list stays in sync as entity types are added; the
-// "vocabulary-entry" pseudo-type maps to any VocabularyEntry collection
-// (their structural shape is identical) so vocab snippets can be checked too.
+// from glxlib so the allow-list stays in sync as entity types are added. The
+// "vocabulary-entry" pseudo-type validates the common VocabularyEntry shape
+// against the event_types schema specifically — that schema constrains
+// `category` to event-type values, so a vocab entry from a different vocabulary
+// (e.g. a place type) may report a spurious category error; validate those
+// inside a full archive instead.
 func collectionForEntityType(flag string) (string, bool) {
 	flag = strings.TrimSpace(strings.ToLower(flag))
 	if flag == "" {
@@ -60,28 +63,15 @@ func validateStdinEntity(streams *IOStreams, entityType string, args []string) e
 	if len(args) > 0 {
 		return errors.New("--stdin does not take path arguments")
 	}
-	collection, ok := collectionForEntityType(entityType)
-	if !ok {
-		return fmt.Errorf("%w: got %q", errStdinUnknownEntityType, entityType)
-	}
-
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return fmt.Errorf("reading stdin: %w", err)
 	}
-	if len(strings.TrimSpace(string(data))) == 0 {
-		return errors.New("--stdin: no YAML on stdin")
-	}
 
-	var entity any
-	if err := yaml.Unmarshal(data, &entity); err != nil {
-		return fmt.Errorf("parsing stdin YAML: %w", err)
+	issues, err := validateEntitySnippet(entityType, data)
+	if err != nil {
+		return err
 	}
-
-	// Wrap the bare entity under its collection so the existing whole-archive
-	// structural validator (which resolves the schema $refs) can check it.
-	doc := map[string]any{collection: map[string]any{"stdin": entity}}
-	issues := ValidateGLXFileStructure(doc)
 	if len(issues) > 0 {
 		streams.Errorf("Found %d structural error(s) in the %s entity:\n", len(issues), entityType)
 		for _, issue := range issues {
@@ -94,6 +84,31 @@ func validateStdinEntity(streams *IOStreams, entityType string, args []string) e
 	streams.Printf("%s entity is structurally valid.\n", entityType)
 
 	return nil
+}
+
+// validateEntitySnippet is the testable core of --stdin validation: it maps the
+// entity-type to its collection, parses one entity from the YAML bytes, wraps
+// it as a single-entity archive, and runs the structural validator. It returns
+// the structural issues (empty == valid) or an error for unusable input
+// (unknown entity-type, empty, or malformed YAML).
+func validateEntitySnippet(entityType string, data []byte) ([]string, error) {
+	collection, ok := collectionForEntityType(entityType)
+	if !ok {
+		return nil, fmt.Errorf("%w: got %q", errStdinUnknownEntityType, entityType)
+	}
+	if len(strings.TrimSpace(string(data))) == 0 {
+		return nil, errors.New("no YAML provided")
+	}
+
+	var entity any
+	if err := yaml.Unmarshal(data, &entity); err != nil {
+		return nil, fmt.Errorf("parsing YAML: %w", err)
+	}
+
+	// Wrap the bare entity under its collection so the existing whole-archive
+	// structural validator (which resolves the schema $refs) can check it.
+	doc := map[string]any{collection: map[string]any{"stdin": entity}}
+	return ValidateGLXFileStructure(doc), nil
 }
 
 // validatePaths performs comprehensive validation on the specified paths.

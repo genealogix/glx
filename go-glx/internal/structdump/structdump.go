@@ -1,3 +1,17 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package structdump deterministically extracts the entity/vocabulary
 // collections and their struct fields from go-glx/types.go using the Go AST.
 //
@@ -7,7 +21,8 @@
 // maps to which Go type) and Fields (name, yaml tag, source line) instead of
 // asking an LLM to read types.go and hope.
 //
-// Pure: no I/O beyond reading the single file path passed to Extract.
+// Pure: Extract parses caller-provided source bytes and performs NO filesystem
+// I/O, per the go-glx no-I/O rule — the caller reads the file.
 package structdump
 
 import (
@@ -62,13 +77,14 @@ func (d *Dump) CollectionType(yamlKey string) (TypeInfo, bool) {
 	return TypeInfo{}, false
 }
 
-// Extract parses the given Go source file (expected: go-glx/types.go) and
-// returns its struct types and the GLXFile collections.
-func Extract(path string) (*Dump, error) {
+// Extract parses the given Go source (the contents of go-glx/types.go, read by
+// the caller) and returns its struct types and the GLXFile collections.
+// filename is used only for error messages and source positions.
+func Extract(filename string, src []byte) (*Dump, error) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+	file, err := parser.ParseFile(fset, filename, src, parser.SkipObjectResolution)
 	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+		return nil, fmt.Errorf("parse %s: %w", filename, err)
 	}
 
 	d := &Dump{Types: map[string]TypeInfo{}}
@@ -100,14 +116,16 @@ func Extract(path string) (*Dump, error) {
 	}
 
 	if glxFile == nil {
-		return nil, fmt.Errorf("%s: GLXFile struct not found", path)
+		return nil, fmt.Errorf("%s: GLXFile struct not found", filename)
 	}
 	d.Collections = collectionsOf(glxFile, fset)
 	return d, nil
 }
 
-// fieldsOf returns the named fields of a struct with their yaml tag keys.
-// Unnamed (embedded) fields are skipped.
+// fieldsOf returns the serialized named fields of a struct with their yaml tag
+// keys. Embedded fields, unexported fields, and fields with no yaml tag or
+// `yaml:"-"` are skipped — they are not serialized, so they are not schema
+// fields the drift tooling should compare against.
 func fieldsOf(st *ast.StructType, fset *token.FileSet) []Field {
 	var out []Field
 	for _, f := range st.Fields.List {
@@ -115,6 +133,9 @@ func fieldsOf(st *ast.StructType, fset *token.FileSet) []Field {
 			continue // embedded field
 		}
 		tag := yamlKey(f.Tag)
+		if tag == "" || tag == "-" {
+			continue // not serialized
+		}
 		line := fset.Position(f.Pos()).Line
 		for _, n := range f.Names {
 			if !n.IsExported() {
@@ -126,7 +147,8 @@ func fieldsOf(st *ast.StructType, fset *token.FileSet) []Field {
 	return out
 }
 
-// collectionsOf returns the map[string]*X fields of GLXFile.
+// collectionsOf returns the map[string]*X fields of GLXFile that serialize
+// under a yaml key (skips no-tag / `yaml:"-"` fields).
 func collectionsOf(st *ast.StructType, fset *token.FileSet) []Collection {
 	var out []Collection
 	for _, f := range st.Fields.List {
@@ -137,8 +159,12 @@ func collectionsOf(st *ast.StructType, fset *token.FileSet) []Collection {
 		if !ok {
 			continue // not a map[string]*X collection (e.g. *Metadata, validation)
 		}
+		key := yamlKey(f.Tag)
+		if key == "" || key == "-" {
+			continue // not serialized under a yaml key
+		}
 		out = append(out, Collection{
-			YAMLKey: yamlKey(f.Tag),
+			YAMLKey: key,
 			GoType:  goType,
 			Line:    fset.Position(f.Pos()).Line,
 		})

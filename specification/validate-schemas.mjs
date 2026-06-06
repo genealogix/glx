@@ -110,8 +110,14 @@ for (const glxName of readdirSync(VOCAB_GLX_DIR).filter((f) => f.endsWith(".glx"
   let schema;
   try {
     schema = loadJSON(join(VOCAB_DIR, `${stem}.schema.json`));
-  } catch {
-    console.error(`${glxName} INVALID: no matching schema at vocabularies/${stem}.schema.json`);
+  } catch (e) {
+    if (e.code === "ENOENT") {
+      console.error(`${glxName} INVALID: no matching schema at vocabularies/${stem}.schema.json`);
+    } else {
+      // A malformed schema file (JSON parse error) is a different failure than
+      // a missing one — don't hide it behind "no matching schema".
+      console.error(`${glxName} INVALID: schema vocabularies/${stem}.schema.json could not be read: ${formatError(e)}`);
+    }
     errors++;
     continue;
   }
