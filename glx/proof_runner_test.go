@@ -172,6 +172,10 @@ func TestCanonicalQuestion(t *testing.T) {
 	}
 }
 
+func TestProofFormatKeys(t *testing.T) {
+	assert.Equal(t, []string{"text", "json", "markdown", "md"}, proofFormatKeys())
+}
+
 func TestProofQuestionKeys(t *testing.T) {
 	keys := proofQuestionKeys()
 	assert.Equal(t, []string{"parentage", "birth", "death", "marriage", "identity"}, keys)
@@ -339,6 +343,33 @@ func TestDetectProofConflicts_StatusEscalation(t *testing.T) {
 	assert.Equal(t, "birth event", conflicts[0].Subject)
 }
 
+// TestDetectProofConflicts_DistinctPlacesSameName verifies that two different
+// place IDs sharing a display name stay distinct (so the conflict is detected)
+// and are qualified by their raw ID in the output, instead of collapsing into a
+// single "Springfield" value that would hide the disagreement.
+func TestDetectProofConflicts_DistinctPlacesSameName(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Places: map[string]*glxlib.Place{
+			"place-il-springfield": {Name: "Springfield"},
+			"place-mo-springfield": {Name: "Springfield"},
+		},
+	}
+	relevant := []proofAssertion{
+		{id: "a1", subjectID: "event-x", eventType: glxlib.EventTypeBirth, a: &glxlib.Assertion{Property: "place", Value: "place-il-springfield", Confidence: "high"}},
+		{id: "a2", subjectID: "event-x", eventType: glxlib.EventTypeBirth, a: &glxlib.Assertion{Property: "place", Value: "place-mo-springfield", Confidence: "high"}},
+	}
+	conflicts := detectProofConflicts(relevant, archive)
+
+	require.Len(t, conflicts, 1, "two distinct places must not collapse into one value")
+	require.Len(t, conflicts[0].Values, 2)
+	assert.False(t, conflicts[0].Resolved)
+	assert.ElementsMatch(t,
+		[]string{"Springfield (place-il-springfield)", "Springfield (place-mo-springfield)"},
+		[]string{conflicts[0].Values[0].Value, conflicts[0].Values[1].Value},
+		"colliding display names are disambiguated by raw ID",
+	)
+}
+
 func TestSupportLevel(t *testing.T) {
 	proven := []proofAssertion{{a: &glxlib.Assertion{Status: "proven"}}}
 	assert.Equal(t, supportStrong, supportLevel(proven))
@@ -444,10 +475,12 @@ func TestShowProof_Errors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown research question")
 
-	// Unknown format is rejected after a successful load.
+	// Unknown format is rejected after a successful load, and the error advertises
+	// the full accepted set including the `md` alias.
 	err = showProof(streams, exampleArchive, "person-robert-chen", "birth", "xml")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown format")
+	assert.Contains(t, err.Error(), "markdown, md", "the md alias must be advertised in the valid-format set")
 
 	// Unknown person.
 	err = showProof(streams, exampleArchive, "person-nobody", "birth", "")
@@ -586,6 +619,39 @@ func TestConcludeProof_EvidenceFallback(t *testing.T) {
 
 		assert.Equal(t, proofConclusionInsufficient, result.Conclusion, "disproven-only evidence must not derive an answer")
 	})
+}
+
+// TestBuildProof_DisputedSingleAssertion verifies that a lone assertion flagged
+// `disputed` concludes CONFLICTED even though only one value is recorded — the
+// spec allows a single disputed assertion citing conflicting sources, so the
+// disagreement must not silently fall through to PROVEN/PROBABLE/POSSIBLE.
+func TestBuildProof_DisputedSingleAssertion(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-d": {Properties: map[string]any{glxlib.PersonPropertyName: "Disputed Dan"}},
+		},
+		Events: map[string]*glxlib.Event{
+			"event-d-birth": {
+				Type:         glxlib.EventTypeBirth,
+				Participants: []glxlib.Participant{{Person: "person-d", Role: "subject"}},
+			},
+		},
+		Sources:   map[string]*glxlib.Source{"src": {Title: "Family Bible"}},
+		Citations: map[string]*glxlib.Citation{"cit": {SourceID: "src"}},
+		Assertions: map[string]*glxlib.Assertion{
+			"a-disputed": {
+				Subject:  glxlib.EntityRef{Event: "event-d-birth"},
+				Property: "date", Value: "1850",
+				Citations: []string{"cit"}, Confidence: "medium", Status: "disputed",
+			},
+		},
+	}
+	result := buildProof("person-d", archive.Persons["person-d"], "birth", archive)
+
+	require.Len(t, result.Evidence, 1, "the disputed assertion is still collected as evidence")
+	assert.Empty(t, result.Conflicts, "a single disputed value produces no multi-value conflict entry")
+	assert.Equal(t, proofConclusionConflicted, result.Conclusion, "disputed status must conclude CONFLICTED")
+	assert.Contains(t, result.Summary, "unresolved")
 }
 
 func TestBuildProof_MarriageWithoutEvidence(t *testing.T) {

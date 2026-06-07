@@ -185,10 +185,17 @@ func showProof(io *IOStreams, archivePath, personQuery, question, format string)
 	case "", proofFormatText:
 		printProofText(io, result)
 	default:
-		return fmt.Errorf("%w %q (valid: text, json, markdown)", errUnknownFormat, format)
+		return fmt.Errorf("%w %q (valid: %s)", errUnknownFormat, format, strings.Join(proofFormatKeys(), ", "))
 	}
 
 	return nil
+}
+
+// proofFormatKeys returns the accepted output format tokens, in display order,
+// for error messages. Kept in lockstep with the format switch in showProof so
+// the valid set advertised to users never drifts from what is actually accepted.
+func proofFormatKeys() []string {
+	return []string{proofFormatText, proofFormatJSON, proofFormatMarkdown, proofFormatMD}
 }
 
 // buildProof assembles the proof argument for a person and research topic.
@@ -619,9 +626,14 @@ func detectProofConflicts(relevant []proofAssertion, archive *glxlib.GLXFile) []
 
 // distinctProofValues returns the distinct values asserted for a
 // subject/property, keeping the highest-confidence value and combining the
-// statuses of every assertion for that value (see combineStatus).
+// statuses of every assertion for that value (see combineStatus). De-duplication
+// keys on the raw asserted value, not its resolved display form, so two distinct
+// IDs that resolve to the same name (e.g. two "Springfield" places) remain
+// separate and the conflict is still detected — matching analyze_conflicts.go,
+// which keeps raw IDs distinct and resolves only for display.
 func distinctProofValues(assertions []*glxlib.Assertion, archive *glxlib.GLXFile) []proofConflictValue {
 	type agg struct {
+		display    string
 		confidence string
 		status     string
 	}
@@ -629,11 +641,10 @@ func distinctProofValues(assertions []*glxlib.Assertion, archive *glxlib.GLXFile
 	var order []string
 
 	for _, a := range assertions {
-		val := resolveProofValue(a.Value, archive)
-		cur, exists := seen[val]
+		cur, exists := seen[a.Value]
 		if !exists {
-			seen[val] = &agg{confidence: a.Confidence, status: a.Status}
-			order = append(order, val)
+			seen[a.Value] = &agg{display: resolveProofValue(a.Value, archive), confidence: a.Confidence, status: a.Status}
+			order = append(order, a.Value)
 
 			continue
 		}
@@ -645,11 +656,28 @@ func distinctProofValues(assertions []*glxlib.Assertion, archive *glxlib.GLXFile
 
 	sort.Strings(order)
 	out := make([]proofConflictValue, len(order))
-	for i, val := range order {
-		out[i] = proofConflictValue{Value: val, Confidence: seen[val].confidence, Status: seen[val].status}
+	for i, raw := range order {
+		out[i] = proofConflictValue{Value: seen[raw].display, Confidence: seen[raw].confidence, Status: seen[raw].status}
 	}
+	disambiguateConflictValues(out, order)
 
 	return out
+}
+
+// disambiguateConflictValues qualifies any display value shared by more than one
+// distinct raw value with its raw ID, so two entities with the same name (e.g.
+// two "Springfield" places) stay distinguishable, e.g. "Springfield (place-il)".
+// Values whose display already equals the raw value are left untouched.
+func disambiguateConflictValues(values []proofConflictValue, raw []string) {
+	counts := make(map[string]int, len(values))
+	for i := range values {
+		counts[values[i].Value]++
+	}
+	for i := range values {
+		if counts[values[i].Value] > 1 && values[i].Value != raw[i] {
+			values[i].Value = fmt.Sprintf("%s (%s)", values[i].Value, raw[i])
+		}
+	}
 }
 
 // combineStatus merges the status of another assertion for the same value into
@@ -787,12 +815,27 @@ func collectProofSearches(personID string, archive *glxlib.GLXFile) []proofSearc
 // Conclusion
 // ============================================================================
 
+// conflictedSummary is the one-line summary returned whenever the evidence is
+// judged to contain an unresolved conflict.
+const conflictedSummary = "Conflicting evidence remains unresolved — resolve before drawing a conclusion."
+
 // concludeProof determines the conclusion level and a one-line summary.
 func concludeProof(topic, personID string, archive *glxlib.GLXFile, relevant []proofAssertion, conflicts []proofConflict, gaps []proofGap) (string, string) {
 	for i := range conflicts {
 		if !conflicts[i].Resolved {
-			return proofConclusionConflicted,
-				"Conflicting evidence remains unresolved — resolve before drawing a conclusion."
+			return proofConclusionConflicted, conflictedSummary
+		}
+	}
+
+	// A relevant assertion explicitly flagged `disputed` represents unresolved
+	// conflicting evidence even when only a single value was recorded — the spec
+	// allows a lone disputed assertion citing conflicting sources (see the
+	// assertion-disputed-birth example in specification/2-core-concepts.md).
+	// detectProofConflicts only emits multi-value disagreements, so the status
+	// must be checked directly here.
+	for i := range relevant {
+		if strings.EqualFold(relevant[i].a.Status, statusDisputed) {
+			return proofConclusionConflicted, conflictedSummary
 		}
 	}
 
