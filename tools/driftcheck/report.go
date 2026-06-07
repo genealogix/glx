@@ -51,7 +51,11 @@ func buildReport(surviving []finding, suppressed []suppression, schemaFiles int,
 			currentEntity = f.Entity
 			parts = append(parts, fmt.Sprintf("\n## %s\n", currentEntity))
 		}
-		parts = append(parts, fmt.Sprintf("- **%s** [%s] %s\n", f.Severity, f.Category, f.Message))
+		loc := ""
+		if f.Line > 0 {
+			loc = fmt.Sprintf(" (%s:%d)", f.File, f.Line)
+		}
+		parts = append(parts, fmt.Sprintf("- **%s** [%s] %s%s\n", f.Severity, f.Category, f.Message, loc))
 	}
 
 	summary := fmt.Sprintf("\nSummary: %d critical, %d major, %d minor, %d info",
