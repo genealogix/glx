@@ -27,7 +27,7 @@ const (
 	catRequiredOpt   = "Required vs Optional"
 )
 
-// severity mirrors the Severity Rubric in .claude/commands/check-code-drift.md.
+// severity mirrors the Severity Rubric in .claude/skills/check-code-drift/SKILL.md.
 type severity string
 
 const (

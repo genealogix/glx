@@ -48,6 +48,8 @@ docs/short-description
 
 Always push with `-u` flag. Retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s).
 
+**Commit proactively — do NOT wait to be asked.** The default "commit/push only when the user asks" does NOT apply in this repo: when you finish a logical unit of work on a branch (a fix, a review-feedback pass, a doc update), commit it right away with a conventional-commit message and push with `-u`. Don't pause to ask "should I commit?" or end a turn with uncommitted work offering to commit later. Guardrails still hold: never commit directly to `main` (branch first), and never force-push or skip hooks unless explicitly told to.
+
 ## Commit Messages and PRs
 
 - Conventional commits: `type: Subject` (types: feat, fix, docs, chore, refactor, test, perf, ci)
