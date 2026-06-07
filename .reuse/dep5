@@ -29,6 +29,12 @@ Files: Makefile .goreleaser.yml renovate.json .gitattributes .gitignore .npmrc
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
+Files: NOTICE
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+Comment: Apache 2.0 attribution notice; the file itself also reproduces the
+ copyright notices of bundled third-party components.
+
 Files: .github/*
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
