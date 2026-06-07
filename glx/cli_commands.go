@@ -104,7 +104,30 @@ func Execute() {
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(exitCodeForError(err))
+	}
+}
+
+// exitBadInvocation is the process exit code for CLI misuse on the --stdin path
+// (issue #910) — distinct from exit 1, which signals a structural/semantic
+// validation failure on otherwise well-formed input.
+const exitBadInvocation = 2
+
+// exitCodeForError maps a root-command error to a process exit code. The
+// --stdin invocation sentinels yield 2 so callers and CI can tell "you invoked
+// validate wrong" apart from "the entity itself failed validation" (1). Empty
+// stdin is a usage error (2 — nothing was piped); malformed YAML is a content
+// failure (1 — garbage was piped), grouped with structural failures. See the
+// errStdinEmpty comment in validation_runner.go for the rationale.
+func exitCodeForError(err error) int {
+	switch {
+	case errors.Is(err, errStdinUnknownEntityType),
+		errors.Is(err, errStdinPathArgs),
+		errors.Is(err, errStdinEmpty),
+		errors.Is(err, errStdinReportExclusive):
+		return exitBadInvocation
+	default:
+		return 1
 	}
 }
 
@@ -372,8 +395,11 @@ func runInitCmd(_ *cobra.Command, args []string) error {
 // ============================================================================
 
 var (
-	validateReport       bool
-	errReportTooManyArgs = errors.New("--report accepts at most one path argument")
+	validateReport          bool
+	validateStdin           bool
+	validateEntityType      string
+	errReportTooManyArgs    = errors.New("--report accepts at most one path argument")
+	errStdinReportExclusive = errors.New("--stdin and --report are mutually exclusive")
 )
 
 var validateCmd = &cobra.Command{
@@ -416,9 +442,22 @@ and highlighting unsupported claims.`,
 
 func init() {
 	validateCmd.Flags().BoolVar(&validateReport, "report", false, "Generate confidence summary report")
+	validateCmd.Flags().BoolVar(&validateStdin, "stdin", false,
+		"Read one entity as YAML on stdin and validate it against its entity-type schema (no path args)")
+	validateCmd.Flags().StringVar(&validateEntityType, "entity-type", "",
+		"Entity or vocabulary type for --stdin — an entity singular (person, event, place, "+
+			"source, citation, repository, media, relationship, assertion, research-log, study) "+
+			"or a vocabulary collection key (e.g. event_types, place_types, confidence_levels, "+
+			"participant_roles)")
 }
 
 func runValidate(_ *cobra.Command, args []string) error {
+	if validateStdin && validateReport {
+		return errStdinReportExclusive
+	}
+	if validateStdin {
+		return validateStdinEntity(SystemIOStreams(), validateEntityType, args, os.Stdin)
+	}
 	if validateReport {
 		if len(args) > 1 {
 			return errReportTooManyArgs
