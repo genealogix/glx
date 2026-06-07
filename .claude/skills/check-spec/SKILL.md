@@ -38,9 +38,9 @@ Before LLM-based semantic analysis, run two deterministic checks. Their findings
 make check-schemas
 ```
 
-When `make check-schemas` includes vocabulary `.glx` validation (#839), it validates every `specification/5-standard-vocabularies/*.glx` file against its schema. If the exit code is non-zero, emit each reported error as a finding with `category: vocabulary`, `severity: critical`, `validator_caught: true`, `llm_only: false`, and skip the LLM work for Section 8 bullet 3 ("Vocabulary structure inconsistent with documented format").
+`make check-schemas` validates every `specification/5-standard-vocabularies/*.glx` file against its schema **deterministically** (`validate-schemas.mjs` Step 4, #839). On a non-zero exit, emit each reported error as a finding with `category: vocabulary`, `severity: critical`, `validator_caught: true`, `llm_only: false`, and skip the LLM work for Section 8 bullet 3 ("Vocabulary structure inconsistent with documented format").
 
-If `make check-schemas` does not yet include vocabulary structure validation for `.glx` files, emit one finding:
+Only if `make check-schemas` cannot run at all (Node/toolchain unavailable) emit one deferral finding, then continue without Section 8 bullet 3:
 
 ```json
 {
@@ -48,13 +48,11 @@ If `make check-schemas` does not yet include vocabulary structure validation for
   "line": null,
   "severity": "info",
   "category": "vocabulary",
-  "message": "Vocabulary structure validation deferred — make check-schemas does not yet include .glx schema validation. Skipping Section 8 bullet 3.",
+  "message": "Vocabulary structure validation skipped — make check-schemas could not run (Node/toolchain unavailable).",
   "validator_caught": false,
   "llm_only": true
 }
 ```
-
-Then continue without Section 8 bullet 3.
 
 ### Pre-flight 2: YAML examples embedded in entity specs (delegates Section 6 bullets 1–3)
 
@@ -67,13 +65,28 @@ For every fenced YAML code block in `specification/4-entity-types/*.md`:
    mktemp -d /tmp/check-spec-XXXXXX
    ```
 
-3. For each snippet, save it with the **Write** tool to `<TMPDIR>/snippet.glx` (substituting the literal path from step 2). The Write tool sidesteps shell-quoting for YAML bodies containing `$`, backticks, or quotes — do not `printf` the snippet. Then validate:
+3. For each snippet, save it with the **Write** tool to `<TMPDIR>/snippet.glx` (substituting the literal path from step 2). The Write tool sidesteps shell-quoting for YAML bodies containing `$`, backticks, or quotes — do not `printf` the snippet.
 
-   ```bash
-   ./bin/glx validate <TMPDIR>/snippet.glx
-   ```
+   Then **classify the snippet by intent** and validate accordingly — only blocks that present a *complete* entity or archive get deterministically validated; partial illustrations must **not** be forced through validation (they would false-fail and produce phantom `critical` example errors). Many entity-spec examples are intentionally partial (e.g. a bare `properties:` block in `person.md`, or a lone `participants:` list in `event.md`):
 
-4. Record exit code and stderr in the findings array under `category: example_invalid`. If `glx validate` rejects the snippet, severity is **critical** (`validator_caught: true, llm_only: false`).
+   - **Archive-shaped** (top-level keys are entity-collection names or `metadata:`, including a single entity keyed by its ID under its collection) — validate as a whole archive:
+
+     ```bash
+     ./bin/glx validate <TMPDIR>/snippet.glx
+     ```
+
+   - **Complete single entity / vocabulary entry** (the *full* body of one entity or vocabulary entry) — validate directly with `--stdin --entity-type` (#910), redirecting the file into stdin so the body is never re-quoted. `<type>` is the spec file's entity singular (`person.md` → `person`, `event.md` → `event`, …) or, in `vocabularies.md`, the vocabulary-collection key the block illustrates (`event_types`, `place_types`, …). If the block is keyed by a bare entity ID with no collection wrapper (e.g. `person-jane:` → body), feed the value *under* that ID, not the ID wrapper (the ID would otherwise become an unknown top-level property):
+
+     ```bash
+     ./bin/glx validate --stdin --entity-type <type> < <TMPDIR>/snippet.glx
+     ```
+
+   - **Focused / partial illustration** (shows only part of an entity — a lone `participants:` list, a `properties:` excerpt, a single `date:` field — omitting other required fields by design) or a **non-object snippet** (a scalar, a bare sequence, or a sub-map that is not a whole entity/vocabulary entry) — do **not** structurally validate it; record a `positive_notes` note ("illustrative partial fragment — not structurally validated") and rely on the LLM checks for Section 6 bullets 4–5.
+
+4. Record the result under `category: example_invalid`, by exit code:
+   - **Exit 0** → passed; record a `positive_notes` entry (a clean validation is not drift).
+   - **Exit 1** → normally the validator rejected a snippet it could parse → severity **critical** (`validator_caught: true, llm_only: false`); put the validator's stderr verbatim in `message`. **Carve-out for partial illustrations:** if the *only* errors are `missing property '<field>'` / `missing properties …` **and** the block is a focused/partial illustration, it was mis-classified as complete — this is **not** spec drift; record a `positive_notes` "illustrative partial fragment" note instead. Keep `critical` for `additional properties … not allowed`, type mismatches, pattern or array-length (`minItems`) violations, or a missing-required field on a block presented as the spec's *complete* canonical example.
+   - **Exit 2** (only on the `--stdin` path: unknown/missing `--entity-type`, or empty body) → the skill mis-classified the block or chose the wrong type, *not* spec drift. Re-classify (usually it was a sub-object excerpt to skip) and re-run; do **not** emit it as a `critical` example finding.
 
 5. If `./bin/glx validate` is unavailable (binary missing), emit one finding:
 

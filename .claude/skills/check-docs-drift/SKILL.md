@@ -120,7 +120,14 @@ Compare documented fields with `specification/4-entity-types/*.md`:
 For each YAML-tagged fenced code block in a documentation markdown file:
 
 1. Extract the YAML body from the markdown source.
-2. Create a unique scratch directory and capture its path:
+
+2. **Classify the block by intent** — only blocks that present a *complete* archive or entity get deterministically validated; partial illustrations must NOT be forced through validation (they would false-fail). `glx validate <file>` validates archive-shape input; `glx validate --stdin --entity-type <type>` (#910) validates a complete bare entity/vocabulary-entry body:
+   - **Archive-shaped** — top-level keys are entity-collection names (`persons:`, `events:`, …), vocabulary-collection keys, or `metadata:`. This also covers a single entity keyed by its ID *under* its collection (e.g. `persons:` → `person-jane:` → body). Validate as a whole archive (step 4a).
+   - **Complete single entity / vocabulary entry** — the block shows the *full* body of one entity or vocabulary entry (the fields a real one carries; type clear from context). If it is keyed by a bare entity ID with **no** collection wrapper (e.g. `person-jane:` → body), use the value *under* that ID key as the body — do not feed the `person-jane:` wrapper to `--stdin` (the ID would become an unknown top-level property). Validate via `--stdin --entity-type <type>` (step 4b).
+   - **Focused / partial illustration** — the block deliberately shows only *part* of an entity to illustrate one field or sub-shape (e.g. a lone `participants:` list, a `properties:` excerpt, a single `date:` field), omitting other required fields on purpose. **This is the dominant false-positive source.** Do **not** run structural validation — record a `positive_notes` note ("illustrative partial fragment — not structurally validated") and rely on the narrative checks in Steps 2 and 4.
+   - **Non-object snippet** — a scalar or bare sequence that is not an entity/vocabulary entry at all. Skip structural validation the same way.
+
+3. Create a unique scratch directory and capture its path:
 
 ```bash
 mktemp -d /tmp/glx-drift-XXXXXX
@@ -128,13 +135,21 @@ mktemp -d /tmp/glx-drift-XXXXXX
 
    Read the printed path (e.g. `/tmp/glx-drift-aB3xYz`); substitute it for `<TMPDIR>` in the remaining steps. Bash sessions don't persist between tool calls, so each subsequent command must use the literal path you captured.
 
-3. Use the **Write** tool to save the extracted YAML body to `<TMPDIR>/snippet.glx`. Using Write rather than shelling out via `cat`/`printf`/heredoc avoids every shell-quoting concern around YAML bodies that contain `$`, backticks, or quotes.
+4. Use the **Write** tool to save the extracted YAML body to `<TMPDIR>/snippet.glx`. Using Write rather than shelling out via `cat`/`printf`/heredoc avoids every shell-quoting concern around YAML bodies that contain `$`, backticks, or quotes — for both paths below. Then run the validator (do NOT mentally simulate schema validation):
 
-4. Run the validator — do NOT mentally simulate schema validation:
+   **4a — archive-shaped block:**
 
 ```bash
 ./bin/glx validate <TMPDIR>/snippet.glx
 ```
+
+   **4b — entity / vocabulary fragment** (redirect the file into stdin so the body is never re-quoted on a pipe):
+
+```bash
+./bin/glx validate --stdin --entity-type <type> < <TMPDIR>/snippet.glx
+```
+
+   `<type>` is the entity singular (`person`, `event`, …) or vocabulary-collection key (`event_types`, `place_types`, …) inferred from the block's context. `--stdin` runs Pass-1 structural validation only (no cross-reference resolution), which is exactly right for a context-free fragment.
 
 5. Clean up this snippet's scratch directory before moving to the next one:
 
@@ -145,10 +160,9 @@ rm -rf <TMPDIR>
    Per-snippet cleanup keeps concurrent runs from racing on the `/tmp/glx-drift-*` namespace.
 
 6. Classify the result deterministically by exit code alone:
-   - **Exit 0** → snippet passed structural + semantic validation. Record this as a `positive_notes` entry — do **not** emit a finding (a clean validation is not drift, and `validator_caught: false` + `llm_only: false` is not a valid finding combination). Still apply the narrative checks in steps 2 and 4 — the validator does not catch specification-prose drift.
-   - **Any non-zero exit** → **`category: example_validation`, default severity `critical`**. Report the validator's stderr verbatim in `message`. Set `validator_caught: true`, `llm_only: false`.
-
-   **Fragment validation caveat:** `glx validate` requires archive-shape input at the top level. Documentation blocks that demonstrate a bare entity fragment, a vocabulary entry, or a properties excerpt will trip `(root): additional properties '<key>', ... not allowed` even when the documentation itself is correct. GitHub issue #910 tracks `--stdin --entity-type` to validate fragments directly; until it lands, treat ambiguous root-level errors as human-review requests: keep the finding at `critical` (the validator did reject it) but add a `fix` note explaining the Phase-1 limitation so the reviewer can make the final call. Do not auto-downgrade with an LLM heuristic.
+   - **Exit 0** → snippet passed validation. Record this as a `positive_notes` entry — do **not** emit a finding (a clean validation is not drift, and `validator_caught: false` + `llm_only: false` is not a valid finding combination). Still apply the narrative checks in steps 2 and 4 — the validator does not catch specification-prose drift.
+   - **Exit 1** (structural/semantic failure) → normally **`category: example_validation`, default severity `critical`** (`validator_caught: true`, `llm_only: false`); put the validator's stderr verbatim in `message`. **Carve-out for partial illustrations:** if the *only* errors are `missing property '<field>'` / `missing properties …` **and** the block is a focused/partial illustration (step 2), it was mis-classified as complete — this is **not** drift. Record a `positive_notes` "illustrative partial fragment" note instead of a finding. Keep `critical` when the failure shows `additional properties … not allowed`, a type mismatch, a pattern or array-length (`minItems`) violation, or a missing-required field on a block the page presents as its *complete* canonical example.
+   - **Exit 2** (bad invocation — only reachable on the `--stdin` path: unknown/missing `--entity-type`, or an empty body) → this means *the skill picked the wrong `--entity-type` or mis-classified the block*, not documentation drift. Re-classify (the block was usually a sub-object excerpt that step 2 should skip) and re-run, or record one `category: validator_unavailable, severity: info` note. **Never** emit an exit-2 result as a `critical` example finding.
 
    If `./bin/glx` is unavailable, emit one `category: validator_unavailable, severity: info` finding and build with `make build-cli` (or `go build -o bin/glx ./glx`) if needed before proceeding.
 

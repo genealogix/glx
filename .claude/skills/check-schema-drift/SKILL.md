@@ -79,7 +79,7 @@ Compare `specification/4-entity-types/vocabularies.md` and `specification/5-stan
 - Schema structure matches the vocabulary format documented in `vocabularies.md` (label, description, gedcom, fields, etc.)
 - Required fields in the schema match what the spec says is required for vocabulary entries
 - For property vocabulary schemas specifically, property definition schemas enforce `value_type`/`reference_type`/`vocabulary_type` mutual exclusivity per spec
-- All vocabulary `.glx` template files conform to their corresponding schema. **On this branch** `make check-schemas` validates the JSON *schemas* only — `.glx` template validation lands with #839 (PR #1018). Until it does, treat this bullet as an LLM-simulated structural check (`llm_only: true`, conservative severity), not a tool-backed one
+- All vocabulary `.glx` template files conform to their corresponding schema. This is now **deterministic**: `make check-schemas` runs `validate-schemas.mjs` Step 4 (#839), which validates every `specification/5-standard-vocabularies/*.glx` against its `vocabularies/<stem>.schema.json` (with `$ref`s resolved against the Step-3 AJV instance). So a non-conforming `.glx` is tool-backed, not LLM-simulated: run `make check-schemas`, and on a non-zero exit emit each reported error as a `category: vocabulary` finding with `validator_caught: true`, `llm_only: false`. Reserve `llm_only: true` for the semantic checks the validator cannot make (e.g. a schema's structure not matching the format documented in `vocabularies.md`)
 
 ## What to Check
 
@@ -210,7 +210,7 @@ Before the findings, record a provenance header at the top of the report so a ru
 - **Commit SHA** being checked — `git rev-parse HEAD`
 - **Run timestamp** — `date -u +%Y-%m-%dT%H:%M:%SZ`
 - **Schema files actually visited** — the concrete list of `*.schema.json` paths you compared (derived from the glob at scan time, not a memorized list). Listing what you visited versus what you were told to visit catches the case where a file was silently dropped.
-- **`make check-schemas` exit status** — run it and record the exit code. This target (`node specification/validate-schemas.mjs`) validates every entity and vocabulary `*.schema.json` against the JSON Schema meta-schema, compiles each under ajv strict mode, and compiles `glx-file.schema.json` with all entity/vocabulary schemas registered as `$ref` targets (so a broken cross-schema reference fails here). It does **not** read or validate the `specification/5-standard-vocabularies/*.glx` template files — checking those `.glx` templates against their schemas is a separate manual step. A **non-zero** status means schema-level validity is broken; note this prominently and treat findings with lower confidence.
+- **`make check-schemas` exit status** — run it and record the exit code. This target (`node specification/validate-schemas.mjs`) validates every entity and vocabulary `*.schema.json` against the JSON Schema meta-schema, compiles each under ajv strict mode, compiles `glx-file.schema.json` with all entity/vocabulary schemas registered as `$ref` targets (so a broken cross-schema reference fails here), and (Step 4, #839) validates every `specification/5-standard-vocabularies/*.glx` template file against its `vocabularies/<stem>.schema.json`. A **non-zero** status means schema-level or vocabulary-template validity is broken; note this prominently and treat findings with lower confidence.
 
 The commit SHA and schema file list also populate the `commit` and `checked_files` fields of the machine-readable block below.
 

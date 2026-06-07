@@ -8,8 +8,8 @@ Generalised from the `check-code-drift` rubric established in #827; widened to t
 
 | Level | Meaning | Rule of thumb |
 |-------|---------|---------------|
-| **critical** | Drift that makes previously-valid data invalid, or makes the validator reject valid data. Silent data loss / corruption. | A field exists in spec but is missing from a schema with `additionalProperties: false` → the validator rejects archives the spec says are valid. Ship-blocker. |
-| **major** | Drift that misleads users or tools, or breaks a documented contract, but does not corrupt data. | Documentation describes a removed/renamed command; a schema requires a field the spec marks optional; a CLI example that no longer runs. |
+| **critical** | Drift that makes previously-valid data invalid, or makes the validator reject valid data. Silent data loss / corruption. | A field exists in spec but is missing from a schema with `additionalProperties: false`, **or** a schema marks a field `required` that the spec says is optional → either way the validator rejects archives the spec says are valid. Ship-blocker. |
+| **major** | Drift that misleads users or tools, or breaks a documented contract, but does not corrupt data. | Documentation describes a removed/renamed command; a CLI example that no longer runs. |
 | **minor** | Cosmetic or low-impact inconsistency. Correct to fix, safe to defer. | Description wording mismatch; an omitted `omitempty`; stale-but-harmless cross-reference. |
 | **info** | Not drift. An idiomatic/intentional difference, or a positive confirmation. Also the **default when uncertain**. | A field deliberately absent from a derived doc; a known, allow-listed difference. Prefer `info` over guessing a higher level. |
 
