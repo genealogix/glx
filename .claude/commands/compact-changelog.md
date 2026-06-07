@@ -63,12 +63,19 @@ When a feature is added and then enhanced, refined, or fixed within the same ver
 
        comm -13 "${TMPDIR:-/tmp}/glx-refs.pre" "${TMPDIR:-/tmp}/glx-refs.post" > "${TMPDIR:-/tmp}/glx-refs.added"   # R_post − R_pre
 
-   By default this must be **empty** (`R_post ⊆ R_pre`). If the user has approved any intentional additions (e.g. backfilling a reference an original entry omitted), list them in `glx-refs.add` and subtract:
+   By default this must be **empty** (`R_post ⊆ R_pre`). If the user has approved any intentional additions (e.g. backfilling a reference an original entry omitted), list them in `glx-refs.add` and subtract — capturing the result to a file so the gate below has something concrete to test:
 
-       : > "${TMPDIR:-/tmp}/glx-refs.add"                                         # approved additions, default none
-       comm -23 "${TMPDIR:-/tmp}/glx-refs.added" "${TMPDIR:-/tmp}/glx-refs.add"   # R_invented
+       : > "${TMPDIR:-/tmp}/glx-refs.add"                                                                             # approved additions, default none
+       comm -23 "${TMPDIR:-/tmp}/glx-refs.added" "${TMPDIR:-/tmp}/glx-refs.add" > "${TMPDIR:-/tmp}/glx-refs.invented"  # R_invented
 
-   If R_invented is non-empty, **refuse to write the file.** Report each invented reference and the rewritten entry that introduced it. Like the forward check, this fails safe.
+   Then gate explicitly on that file being non-empty:
+
+       if [ -s "${TMPDIR:-/tmp}/glx-refs.invented" ]; then
+         echo "Invented references (refusing to write):"; cat "${TMPDIR:-/tmp}/glx-refs.invented"
+         # refuse — do NOT write .changes/<version>.md
+       fi
+
+   If `glx-refs.invented` is non-empty, **refuse to write the file.** Report each invented reference and the rewritten entry that introduced it. Like the forward check, this fails safe.
 7. Write the consolidated section back to `.changes/<version>.md` **only if both checks passed** (or were explicitly waived/approved).
 8. Regenerate the changelog so `CHANGELOG.md` reflects the consolidation:
 
