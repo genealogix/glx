@@ -106,6 +106,8 @@ func run(opts options, out io.Writer) (int, error) {
 	c.run()
 
 	surviving, suppressed := allow.partition(dedupeFindings(c.findings))
+	// Best-effort: attach go-glx/types.go source lines via the AST extractor.
+	_ = attachLines(surviving, resolveUnderRoot(root, opts.typesFile))
 	byEntityThenSeverity(surviving)
 
 	if _, writeErr := io.WriteString(out, buildReport(surviving, suppressed, len(files), opts.verbose)); writeErr != nil {
