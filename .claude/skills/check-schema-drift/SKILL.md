@@ -16,7 +16,7 @@ You are tasked with identifying any drift between the GLX specification markdown
 
 ## Allowlisted Drift (read this first)
 
-Before analyzing, read **`.claude/drift-allowlist.yaml`** (validated by `.claude/drift-allowlist.schema.json`) — the single source of truth for known, triaged drift, shared with `/check-code-drift`. If a finding concerns the same `file` and symbol as an entry (match on symbol identity, not exact string), suppress it: `permanent: true` is by-design (not drift); an entry with a `tracking_issue` is a temporary deferral (refer to the issue rather than re-reporting). Everything not in the allowlist is reported normally. The allowlist holds only per-symbol exceptions — not class-level methodology — and is human-curated, so don't invent entries.
+Before analyzing, read **`.claude/drift-allowlist.yaml`** (validated by `.claude/drift-allowlist.schema.json`) — the single source of truth for known, triaged drift, shared with the `check-code-drift` skill. If a finding concerns the same `file` and symbol as an entry (match on symbol identity, not exact string), suppress it: `permanent: true` is by-design (not drift); an entry with a `tracking_issue` is a temporary deferral (refer to the issue rather than re-reporting). Everything not in the allowlist is reported normally. The allowlist holds only per-symbol exceptions — not class-level methodology — and is human-curated, so don't invent entries.
 
 ## Source of Truth Flow
 
@@ -322,9 +322,9 @@ Example (illustrative — populate from actual glob and analysis; emit `"finding
 
 ## Cross-References
 
-- If drift is found in a schema, it likely also affects Go code — see `/check-code-drift` for downstream impact.
-- For specification-internal issues (contradictions, ambiguity), use `/check-spec` instead.
-- Schema-related issues found by `/check-spec` should be redirected here.
+- If drift is found in a schema, it likely also affects Go code — see the `check-code-drift` skill for downstream impact.
+- For specification-internal issues (contradictions, ambiguity), use the `check-spec` skill instead.
+- Schema-related issues found by the `check-spec` skill should be redirected here.
 
 ## Cross-Reference with Known Issues
 

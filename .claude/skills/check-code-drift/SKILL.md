@@ -20,6 +20,8 @@ model: claude-opus-4-8
 
 Identify drift between the GLX Go implementation and JSON schemas/specification. Emit one `findings-json` block per run, conforming to `.claude/skills/check-suite/findings.schema.json`. Severity levels follow `.claude/skills/check-suite/severity-rubric.md` — default to `info` when uncertain.
 
+> **Runner-dependent behaviors degrade gracefully.** Three behaviors below assume an eval-harness runner that does not exist yet: per-entity subagent fan-out (step 5), the runner-injected `telemetry` block (output format), and native structured-output emission (output discipline). Run as a plain inline skill today, all three fall back automatically — inline per-entity analysis, no `telemetry` block, and a hand-emitted-then-validated `findings-json` fence. Do not expect fan-out, telemetry, or `response_format` output until that runner ships; the findings and their schema are identical either way.
+
 ## Relationship to the deterministic checker
 
 `make check-code-drift` (`tools/driftcheck`, #673) runs in CI and mechanically catches structural drift: missing/extra fields, yaml-tag mismatches, `omitempty`-vs-`required` mismatches, and type-family mismatches. Those are already covered. Focus on what the deterministic tool cannot decide: semantic/validation drift (section 9), GEDCOM converter round-trip drift (section 11), documentation/comment mismatches, and structural cases the tool deliberately skips (value constraints like `minLength`/`pattern`/`enum`). Both tools read the same allowlist.
