@@ -229,7 +229,7 @@ func convertMarriageEvent(husbandID, wifeID, relationshipID string, marrRecord *
 	if wifeID != "" {
 		marrNames = append(marrNames, PersonDisplayName(conv.GLX.Persons[wifeID]))
 	}
-	event.Title = GenerateEventTitle(EventTypeMarriage, marrNames, event.Date)
+	event.Title = GenerateEventTitle(EventTypeMarriage, marrNames)
 
 	// Store event
 	conv.GLX.Events[eventID] = event
@@ -281,7 +281,7 @@ func convertDivorceEvent(husbandID, wifeID, relationshipID string, divRecord *GE
 	if wifeID != "" {
 		divNames = append(divNames, PersonDisplayName(conv.GLX.Persons[wifeID]))
 	}
-	event.Title = GenerateEventTitle(EventTypeDivorce, divNames, event.Date)
+	event.Title = GenerateEventTitle(EventTypeDivorce, divNames)
 
 	// Store event
 	conv.GLX.Events[eventID] = event
@@ -345,7 +345,7 @@ func convertFamilyEvent(husbandID, wifeID string, eventRecord *GEDCOMRecord, con
 	if wifeID != "" {
 		names = append(names, PersonDisplayName(conv.GLX.Persons[wifeID]))
 	}
-	event.Title = GenerateEventTitle(eventType, names, event.Date)
+	event.Title = GenerateEventTitle(eventType, names)
 
 	// Store event
 	conv.GLX.Events[eventID] = event

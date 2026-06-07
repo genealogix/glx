@@ -20,44 +20,44 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateEventTitle_IndividualWithDateAndName(t *testing.T) {
-	title := GenerateEventTitle("birth", []string{"Robert Webb"}, "1815")
-	assert.Equal(t, "Birth of Robert Webb (1815)", title)
+func TestGenerateEventTitle_IndividualWithName(t *testing.T) {
+	title := GenerateEventTitle("birth", []string{"Robert Webb"})
+	assert.Equal(t, "Birth of Robert Webb", title)
 }
 
 func TestGenerateEventTitle_IndividualWithNameOnly(t *testing.T) {
-	title := GenerateEventTitle("death", []string{"Jane Miller"}, "")
+	title := GenerateEventTitle("death", []string{"Jane Miller"})
 	assert.Equal(t, "Death of Jane Miller", title)
 }
 
-func TestGenerateEventTitle_IndividualWithDateOnly(t *testing.T) {
-	title := GenerateEventTitle("burial", []string{""}, "1863")
-	assert.Equal(t, "Burial (1863)", title)
+func TestGenerateEventTitle_IndividualNoName(t *testing.T) {
+	title := GenerateEventTitle("burial", []string{""})
+	assert.Equal(t, "Burial", title)
 }
 
 func TestGenerateEventTitle_IndividualNoInfo(t *testing.T) {
-	title := GenerateEventTitle("christening", nil, "")
+	title := GenerateEventTitle("christening", nil)
 	assert.Equal(t, "Christening", title)
 }
 
-func TestGenerateEventTitle_CoupleWithDate(t *testing.T) {
-	title := GenerateEventTitle("marriage", []string{"Robert Webb", "Jane Miller"}, "ABT 1850")
-	assert.Equal(t, "Marriage of Robert Webb and Jane Miller (1850)", title)
+func TestGenerateEventTitle_Couple(t *testing.T) {
+	title := GenerateEventTitle("marriage", []string{"Robert Webb", "Jane Miller"})
+	assert.Equal(t, "Marriage of Robert Webb and Jane Miller", title)
 }
 
-func TestGenerateEventTitle_CoupleNoDate(t *testing.T) {
-	title := GenerateEventTitle("divorce", []string{"John Smith", "Jane Doe"}, "")
+func TestGenerateEventTitle_CoupleDivorce(t *testing.T) {
+	title := GenerateEventTitle("divorce", []string{"John Smith", "Jane Doe"})
 	assert.Equal(t, "Divorce of John Smith and Jane Doe", title)
 }
 
 func TestGenerateEventTitle_CoupleOneSpouseEmpty(t *testing.T) {
-	title := GenerateEventTitle("marriage", []string{"Robert Webb", ""}, "1850")
-	assert.Equal(t, "Marriage of Robert Webb (1850)", title)
+	title := GenerateEventTitle("marriage", []string{"Robert Webb", ""})
+	assert.Equal(t, "Marriage of Robert Webb", title)
 }
 
 func TestGenerateEventTitle_SnakeCaseFallback(t *testing.T) {
-	title := GenerateEventTitle("military_service", []string{"Robert Webb"}, "1862")
-	assert.Equal(t, "Military Service of Robert Webb (1862)", title)
+	title := GenerateEventTitle("military_service", []string{"Robert Webb"})
+	assert.Equal(t, "Military Service of Robert Webb", title)
 }
 
 func TestGenerateEventTitle_AllEventTypes(t *testing.T) {
@@ -92,34 +92,8 @@ func TestGenerateEventTitle_AllEventTypes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.eventType, func(t *testing.T) {
-			title := GenerateEventTitle(tt.eventType, nil, "")
+			title := GenerateEventTitle(tt.eventType, nil)
 			assert.Equal(t, tt.wantLabel, title)
-		})
-	}
-}
-
-func TestExtractYear(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"1850", "1850"},
-		{"ABT 1850", "1850"},
-		{"BEF 1920", "1920"},
-		{"AFT 1880", "1880"},
-		{"BET 1850 AND 1860", "1850"},
-		{"15 MAR 1850", "1850"},
-		{"800", "800"},
-		{"476", "476"},
-		{"ABT 476", "476"},
-		{"BET 900 AND 1000", "900"},
-		{"15 MAR 800", "800"},
-		{"", ""},
-		{"unknown", ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			assert.Equal(t, tt.want, extractYear(DateString(tt.input)))
 		})
 	}
 }

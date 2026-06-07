@@ -288,7 +288,7 @@ func convertIndividualEvent(personID string, person *Person, eventRecord *GEDCOM
 	appendASSOParticipants(event, eventRecord, conv)
 
 	// Generate event title
-	event.Title = GenerateEventTitle(eventType, []string{PersonDisplayName(person)}, event.Date)
+	event.Title = GenerateEventTitle(eventType, []string{PersonDisplayName(person)})
 
 	// Store event
 	conv.GLX.Events[eventID] = event
@@ -596,7 +596,7 @@ func convertResidence(personID string, person *Person, resiRecord *GEDCOMRecord,
 		}
 
 		// Generate title for consistency with other imported events
-		event.Title = GenerateEventTitle(EventTypeResidence, []string{PersonDisplayName(person)}, event.Date)
+		event.Title = GenerateEventTitle(EventTypeResidence, []string{PersonDisplayName(person)})
 
 		conv.GLX.Events[eventID] = event
 		conv.Stats.EventsCreated++
