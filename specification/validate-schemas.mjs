@@ -4,6 +4,7 @@
 
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
+import yaml from "js-yaml";
 import { readFileSync, readdirSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -94,6 +95,53 @@ try {
 } catch (e) {
   console.error(`schema glx-file.schema.json FAILED: ${formatError(e)}`);
   errors++;
+}
+
+// --- Step 4: Validate vocabulary .glx instance files against their schemas ---
+// The standard vocabularies are the data the schemas describe; this catches
+// drift between a vocabulary .glx and its schema deterministically (issue #839),
+// reusing refAjv so $refs to other schemas resolve.
+console.log("\nValidating vocabulary .glx files against their schemas...");
+
+const VOCAB_GLX_DIR = join(ROOT, "specification/5-standard-vocabularies");
+
+for (const glxName of readdirSync(VOCAB_GLX_DIR).filter((f) => f.endsWith(".glx"))) {
+  const stem = basename(glxName, ".glx");
+  let schema;
+  try {
+    schema = loadJSON(join(VOCAB_DIR, `${stem}.schema.json`));
+  } catch (e) {
+    if (e.code === "ENOENT") {
+      console.error(`${glxName} INVALID: no matching schema at vocabularies/${stem}.schema.json`);
+    } else {
+      // A malformed schema file (JSON parse error) is a different failure than
+      // a missing one — don't hide it behind "no matching schema".
+      console.error(`${glxName} INVALID: schema vocabularies/${stem}.schema.json could not be read: ${formatError(e)}`);
+    }
+    errors++;
+    continue;
+  }
+  const validate = refAjv.getSchema(schema.$id);
+  if (!validate) {
+    console.error(`${glxName} INVALID: schema ${stem}.schema.json ($id ${schema.$id}) is not registered`);
+    errors++;
+    continue;
+  }
+  let data;
+  try {
+    data = yaml.load(readFileSync(join(VOCAB_GLX_DIR, glxName), "utf8"));
+  } catch (e) {
+    console.error(`${glxName} INVALID: YAML parse failed: ${formatError(e)}`);
+    errors++;
+    continue;
+  }
+  if (validate(data)) {
+    console.log(`${glxName} valid against ${stem}.schema.json`);
+  } else {
+    console.error(`${glxName} INVALID against ${stem}.schema.json:`);
+    console.error(validate.errors);
+    errors++;
+  }
 }
 
 if (errors > 0) {
