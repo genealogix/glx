@@ -74,6 +74,10 @@ type finding struct {
 	Field   string
 	YamlTag string
 	Message string
+	// Line is the 1-based source line of the field in File, attached after the
+	// reflection-based comparison by the AST extractor (structdump, #795).
+	// Reflection cannot give source positions; 0 means unknown.
+	Line int
 }
 
 // byEntityThenSeverity sorts findings for stable, readable report output.
