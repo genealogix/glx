@@ -43,4 +43,6 @@ The Step 4 vocabulary validation (#839) rides the existing `make check-schemas` 
 The two Node scripts' unit tests (`*.test.mjs`) run via `make test-scripts` (`node --test`, no test framework) — wired into `make check` and the `validate-schemas` job of `validate-spec.yml`, where the specification deps are already installed.
 
 ## Closes
-#910, #795, #309, #311, #839.
+#910, #795, #311, #839.
+
+`#309` is intentionally **not** closed: its acceptance criterion is failing CI on drift, but the spec↔schema parity check ships **warn-only**. It stays open to track the flip to blocking (`DRIFT_STRICT=1`) once the parser is proven — see the warn-first note under *Spec ↔ schema parity* above.
