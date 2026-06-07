@@ -53,6 +53,33 @@ func TestNonCollectionFieldsSkipped(t *testing.T) {
 	}
 }
 
+// TestSelectorExprCollection proves a map[string]*pkg.Type collection (an
+// externally-typed value, e.g. map[string]*ext.Thing) is recognized and carries
+// its qualified Go type name, rather than being silently skipped. All current
+// GLXFile collections are package-local, so this guards the forward-looking case.
+func TestSelectorExprCollection(t *testing.T) {
+	src := []byte("package p\n" +
+		"type GLXFile struct {\n" +
+		"\tPersons map[string]*Person    `yaml:\"persons\"`\n" + // local type
+		"\tThings  map[string]*ext.Thing `yaml:\"things\"`\n" + // qualified external type
+		"}\n" +
+		"type Person struct {\n\tA string `yaml:\"a\"`\n}\n")
+	d, err := Extract("x.go", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	got := map[string]string{}
+	for _, c := range d.Collections {
+		got[c.YAMLKey] = c.GoType
+	}
+	if got["persons"] != "Person" {
+		t.Errorf("persons: got Go type %q, want Person", got["persons"])
+	}
+	if got["things"] != "ext.Thing" {
+		t.Errorf("things: got Go type %q, want ext.Thing (external collection must not be dropped)", got["things"])
+	}
+}
+
 // TestYamlKeyAndHelpers covers yamlKey edge cases (no tag, non-yaml tag),
 // CollectionType's not-found path, and SortedTypeNames.
 func TestYamlKeyAndHelpers(t *testing.T) {

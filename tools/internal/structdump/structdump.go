@@ -181,7 +181,12 @@ func collectionsOf(st *ast.StructType, fset *token.FileSet) []Collection {
 	return out
 }
 
-// mapStringPointerElem reports whether expr is `map[string]*Ident` and returns Ident.
+// mapStringPointerElem reports whether expr is `map[string]*T` and returns T's
+// name. T may be a package-local type (*ast.Ident, e.g. *Person → "Person") or a
+// qualified external type (*ast.SelectorExpr, e.g. *pkg.Type → "pkg.Type"). All
+// current GLXFile collections are package-local, but recognizing the qualified
+// form keeps a future external-typed collection from being silently dropped from
+// the dump (and thus from line attribution).
 func mapStringPointerElem(expr ast.Expr) (string, bool) {
 	m, ok := expr.(*ast.MapType)
 	if !ok {
@@ -194,12 +199,19 @@ func mapStringPointerElem(expr ast.Expr) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	id, ok := star.X.(*ast.Ident)
-	if !ok {
+	switch t := star.X.(type) {
+	case *ast.Ident:
+		return t.Name, true
+	case *ast.SelectorExpr:
+		// pkg.Type: X is the package ident, Sel is the type name.
+		if pkg, ok := t.X.(*ast.Ident); ok {
+			return pkg.Name + "." + t.Sel.Name, true
+		}
+
+		return t.Sel.Name, true
+	default:
 		return "", false
 	}
-
-	return id.Name, true
 }
 
 // yamlKey parses a struct tag literal and returns the yaml key without options.

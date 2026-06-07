@@ -37,7 +37,11 @@ var (
 	// GLXFile vocabulary collection keys).
 	errStdinUnknownEntityType = errors.New("--stdin requires a valid --entity-type")
 	errStdinPathArgs          = errors.New("--stdin does not take path arguments")
-	errStdinEmpty             = errors.New("--stdin: no YAML provided")
+	// errStdinEmpty is a usage error (exit 2): nothing was piped, so the caller
+	// invoked --stdin without feeding it anything. This is deliberately distinct
+	// from malformed YAML (exit 1) — there content *was* piped but is unparseable,
+	// which is a content failure on a par with a structural validation failure.
+	errStdinEmpty = errors.New("--stdin: no YAML provided")
 )
 
 // vocabKeysOnce memoizes the GLXFile reflection done by vocabularyCollectionKeys.
@@ -101,9 +105,12 @@ func validateStdinEntity(streams *IOStreams, entityType string, args []string, i
 	if len(args) > 0 {
 		return errStdinPathArgs
 	}
-	// Validate the entity type before consuming stdin, so a typo'd --entity-type
-	// fails fast instead of reading and buffering the whole stream first.
-	if _, ok := collectionForEntityType(entityType); !ok {
+	// Resolve the entity type before consuming stdin, so a typo'd --entity-type
+	// fails fast instead of reading and buffering the whole stream first. The
+	// resolved collection is then handed to validateSnippetInCollection so the
+	// success path does not look it up a second time.
+	collection, ok := collectionForEntityType(entityType)
+	if !ok {
 		return fmt.Errorf("%w: got %q", errStdinUnknownEntityType, entityType)
 	}
 	data, err := io.ReadAll(in)
@@ -111,7 +118,7 @@ func validateStdinEntity(streams *IOStreams, entityType string, args []string, i
 		return fmt.Errorf("reading stdin: %w", err)
 	}
 
-	issues, err := validateEntitySnippet(entityType, data)
+	issues, err := validateSnippetInCollection(collection, data)
 	if err != nil {
 		return err
 	}
@@ -129,16 +136,30 @@ func validateStdinEntity(streams *IOStreams, entityType string, args []string, i
 	return nil
 }
 
-// validateEntitySnippet is the testable core of --stdin validation: it maps the
-// entity-type to its collection, parses one entity from the YAML bytes, wraps
-// it as a single-entity archive, and runs the structural validator. It returns
-// the structural issues (empty == valid) or an error for unusable input
-// (unknown entity-type, empty, or malformed YAML).
+// validateEntitySnippet is the entity-type-keyed entry point to --stdin
+// validation: it maps the entity-type to its collection and delegates to
+// validateSnippetInCollection. It returns the structural issues (empty == valid)
+// or an error for unusable input (unknown entity-type, empty, or malformed YAML).
+// validateStdinEntity resolves the collection itself (to fail fast before
+// reading stdin) and calls validateSnippetInCollection directly, so it never
+// re-resolves; this wrapper exists for callers — including tests — that hold
+// only the type name.
 func validateEntitySnippet(entityType string, data []byte) ([]string, error) {
 	collection, ok := collectionForEntityType(entityType)
 	if !ok {
 		return nil, fmt.Errorf("%w: got %q", errStdinUnknownEntityType, entityType)
 	}
+
+	return validateSnippetInCollection(collection, data)
+}
+
+// validateSnippetInCollection is the resolution-free core: given an
+// already-resolved top-level GLXFile collection key, it parses one entity from
+// the YAML bytes, wraps it as a single-entity archive, and runs the structural
+// validator. Empty input is a usage error (errStdinEmpty); malformed YAML is a
+// content error (wrapped parse error). Splitting collection resolution out lets
+// validateStdinEntity reuse the collection it already resolved for its fast-fail.
+func validateSnippetInCollection(collection string, data []byte) ([]string, error) {
 	if len(strings.TrimSpace(string(data))) == 0 {
 		return nil, errStdinEmpty
 	}

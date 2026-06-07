@@ -6,6 +6,9 @@ name: Drift checks
 # Pull-request only: both checks are PR-diff gates (schema-compat diffs against
 # the PR base; spec-schema-parity reports on the changed tree). A push-to-main run
 # has no meaningful base — origin/main...HEAD is empty — so it would be a no-op.
+# A direct push to main therefore bypasses the backward-compat gate; that is
+# acceptable because the repo ruleset requires changes to land via PR (where this
+# gate runs), so no schema change reaches main without passing it.
 on:
   pull_request:
     paths:
@@ -30,8 +33,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      # Warn-first: reports field drift but does not block. Set DRIFT_STRICT=1
-      # here to make it blocking once the table parser is proven in practice.
+      # Warn-first: reports field drift but does not block. #309 stays open to
+      # track the flip to blocking — set DRIFT_STRICT=1 here once the table parser
+      # is proven (the spec-schema-drift.test.mjs fixtures are that proof in
+      # progress). The flip is intentionally a separate, reviewable change.
       - run: node scripts/drift-checks/spec-schema-drift.mjs
 
   schema-compat:

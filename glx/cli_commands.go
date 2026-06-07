@@ -79,7 +79,10 @@ const exitBadInvocation = 2
 
 // exitCodeForError maps a root-command error to a process exit code. The
 // --stdin invocation sentinels yield 2 so callers and CI can tell "you invoked
-// validate wrong" apart from "the entity itself failed validation" (1).
+// validate wrong" apart from "the entity itself failed validation" (1). Empty
+// stdin is a usage error (2 — nothing was piped); malformed YAML is a content
+// failure (1 — garbage was piped), grouped with structural failures. See the
+// errStdinEmpty comment in validation_runner.go for the rationale.
 func exitCodeForError(err error) int {
 	switch {
 	case errors.Is(err, errStdinUnknownEntityType),

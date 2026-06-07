@@ -9,11 +9,17 @@
 //
 // WARN-FIRST: this is deterministic but the markdown-table parser can have
 // edge cases, so it reports and exits 0 by default. Set DRIFT_STRICT=1 to make
-// it exit non-zero on any mismatch (flip the CI job to blocking once proven).
+// it exit non-zero on any mismatch. #309 stays OPEN until the parser is proven
+// and this flips to blocking; the parser is unit-tested in
+// spec-schema-drift.test.mjs, which is the "prove it" step toward that flip.
+//
+// The parsing/comparison core (parseSpecFields, compareEntity) is exported and
+// has no I/O, so it is exercised directly by fixtures in the test file; main()
+// is the thin filesystem/console wrapper, run only when invoked as a script.
 
 import { readFileSync, readdirSync } from "fs";
 import { join, dirname, basename } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SPEC_DIR = join(ROOT, "specification/4-entity-types");
@@ -32,7 +38,7 @@ const NON_FIELD_ROWS = new Set(["entity id (map key)"]);
 // class.
 const TOP_LEVEL_FIELD_HEADINGS = new Set(["required fields", "optional fields"]);
 
-function parseSpecFields(md) {
+export function parseSpecFields(md) {
   // requiredFields / optionalFields: first-column field names, split by whether
   // the row sits under "### Required Fields" or "### Optional Fields" — this is
   // what lets us compare required-vs-optional against the schema's required[].
@@ -74,35 +80,20 @@ function parseSpecFields(md) {
   return { requiredFields, optionalFields, mentioned };
 }
 
-function schemaProps(schema) {
+export function schemaProps(schema) {
   return new Set(Object.keys(schema.properties || {}));
 }
 
-function diff(a, b) {
+export function diff(a, b) {
   return [...a].filter((x) => !b.has(x)).sort();
 }
 
-const specFiles = readdirSync(SPEC_DIR)
-  .filter((f) => f.endsWith(".md") && f !== "README.md");
-
-let mismatches = 0;
-let checked = 0;
-
-for (const file of specFiles) {
-  const stem = basename(file, ".md");
-  const schemaPath = join(SCHEMA_DIR, `${stem}.schema.json`);
-  let schema;
-  try {
-    schema = JSON.parse(readFileSync(schemaPath, "utf8"));
-  } catch {
-    console.warn(`⚠️  ${stem}: spec file has no matching schema (${stem}.schema.json) — skipped`);
-    continue;
-  }
-  checked++;
-
-  const { requiredFields, optionalFields, mentioned } = parseSpecFields(
-    readFileSync(join(SPEC_DIR, file), "utf8"),
-  );
+// compareEntity is the testable core: given the spec markdown and the parsed
+// schema for one entity, it returns the four drift classes (each a sorted
+// array) plus apFalse, so callers can phrase the additionalProperties:false
+// consequence. No I/O — every input is in memory.
+export function compareEntity(specMd, schema) {
+  const { requiredFields, optionalFields, mentioned } = parseSpecFields(specMd);
   const rowFields = new Set([...requiredFields, ...optionalFields]);
   const schemaFields = schemaProps(schema);
   const schemaRequired = new Set(schema.required || []);
@@ -119,39 +110,77 @@ for (const file of specFiles) {
   const specOptionalButSchemaRequired = [...optionalFields]
     .filter((f) => schemaRequired.has(f)).sort();
 
-  if (
-    inSpecNotSchema.length === 0 && inSchemaNotSpec.length === 0 &&
-    specRequiredNotSchema.length === 0 && specOptionalButSchemaRequired.length === 0
-  ) {
-    console.log(`✓ ${stem}: ${schemaFields.size} fields match (presence + required/optional)`);
-    continue;
+  return {
+    inSpecNotSchema,
+    inSchemaNotSpec,
+    specRequiredNotSchema,
+    specOptionalButSchemaRequired,
+    apFalse,
+    schemaFieldCount: schemaFields.size,
+  };
+}
+
+function main() {
+  const specFiles = readdirSync(SPEC_DIR)
+    .filter((f) => f.endsWith(".md") && f !== "README.md");
+
+  let mismatches = 0;
+  let checked = 0;
+
+  for (const file of specFiles) {
+    const stem = basename(file, ".md");
+    const schemaPath = join(SCHEMA_DIR, `${stem}.schema.json`);
+    let schema;
+    try {
+      schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+    } catch {
+      console.warn(`⚠️  ${stem}: spec file has no matching schema (${stem}.schema.json) — skipped`);
+      continue;
+    }
+    checked++;
+
+    const r = compareEntity(readFileSync(join(SPEC_DIR, file), "utf8"), schema);
+
+    if (
+      r.inSpecNotSchema.length === 0 && r.inSchemaNotSpec.length === 0 &&
+      r.specRequiredNotSchema.length === 0 && r.specOptionalButSchemaRequired.length === 0
+    ) {
+      console.log(`✓ ${stem}: ${r.schemaFieldCount} fields match (presence + required/optional)`);
+      continue;
+    }
+
+    for (const f of r.inSpecNotSchema) {
+      console.error(
+        `✗ ${stem}: field \`${f}\` is documented in the spec but missing from the schema` +
+          (r.apFalse ? " (additionalProperties:false → the validator rejects it)" : ""),
+      );
+      mismatches++;
+    }
+    for (const f of r.inSchemaNotSpec) {
+      console.error(`✗ ${stem}: field \`${f}\` is in the schema but undocumented in the spec`);
+      mismatches++;
+    }
+    for (const f of r.specRequiredNotSchema) {
+      console.error(`✗ ${stem}: field \`${f}\` is under "Required Fields" in the spec but is not in the schema's required[]`);
+      mismatches++;
+    }
+    for (const f of r.specOptionalButSchemaRequired) {
+      console.error(`✗ ${stem}: field \`${f}\` is under "Optional Fields" in the spec but the schema marks it required`);
+      mismatches++;
+    }
   }
 
-  for (const f of inSpecNotSchema) {
-    console.error(
-      `✗ ${stem}: field \`${f}\` is documented in the spec but missing from the schema` +
-        (apFalse ? " (additionalProperties:false → the validator rejects it)" : ""),
-    );
-    mismatches++;
-  }
-  for (const f of inSchemaNotSpec) {
-    console.error(`✗ ${stem}: field \`${f}\` is in the schema but undocumented in the spec`);
-    mismatches++;
-  }
-  for (const f of specRequiredNotSchema) {
-    console.error(`✗ ${stem}: field \`${f}\` is under "Required Fields" in the spec but is not in the schema's required[]`);
-    mismatches++;
-  }
-  for (const f of specOptionalButSchemaRequired) {
-    console.error(`✗ ${stem}: field \`${f}\` is under "Optional Fields" in the spec but the schema marks it required`);
-    mismatches++;
+  console.log(
+    `\nspec↔schema parity: ${checked} entity types checked, ${mismatches} field mismatch(es).`,
+  );
+
+  if (mismatches > 0 && process.env.DRIFT_STRICT === "1") {
+    process.exit(1);
   }
 }
 
-console.log(
-  `\nspec↔schema parity: ${checked} entity types checked, ${mismatches} field mismatch(es).`,
-);
-
-if (mismatches > 0 && process.env.DRIFT_STRICT === "1") {
-  process.exit(1);
+// Run the filesystem walk only when invoked as a script, not when imported by
+// the test file (which calls the exported pure functions against fixtures).
+if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+  main();
 }
