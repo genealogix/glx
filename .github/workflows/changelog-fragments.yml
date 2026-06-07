@@ -40,10 +40,26 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: |
-          # Count added (A) AND modified (M) fragments: editing an existing
-          # sibling fragment to fold in a follow-up (the consolidation discipline
-          # this PR documents) is a modification, and must satisfy the gate too.
-          TOUCHED=$(git diff --name-only --diff-filter=AM "origin/${BASE}...HEAD" -- '.changes/unreleased/' \
+          # Fetch the base branch explicitly so the diff base is always present,
+          # even on shallow checkouts; FETCH_HEAD then points at the base tip and
+          # "FETCH_HEAD...HEAD" diffs from the merge-base.
+          git fetch --no-tags origin "$BASE"
+          # A release-prep PR (changie batch) deletes the unreleased fragments and
+          # adds a per-version file .changes/<version>.md instead of a new fragment;
+          # the changelog-migration PR likewise adds the per-version files. In both
+          # cases an added .changes/<version>.md (anything but header.tpl.md) means
+          # the changelog was updated, so waive the new-fragment requirement.
+          VERSION_FILE=$(git diff --name-only --diff-filter=A "FETCH_HEAD...HEAD" -- '.changes/*.md' \
+            | grep -vE '(^|/)header\.tpl\.md$' || true)
+          if [ -n "$VERSION_FILE" ]; then
+            echo "Per-version changelog file(s) added (release batch / migration) — new-fragment requirement waived:"
+            echo "$VERSION_FILE"
+            exit 0
+          fi
+          # Count added (A) AND modified (M) fragments: editing an existing sibling
+          # fragment to fold in a follow-up (the consolidation discipline this PR
+          # documents) is a modification, and must satisfy the gate too.
+          TOUCHED=$(git diff --name-only --diff-filter=AM "FETCH_HEAD...HEAD" -- '.changes/unreleased/' \
             | grep -vE '/\.gitkeep$' || true)
           if [ -z "$TOUCHED" ]; then
             echo "::error::This PR adds or updates no changelog fragment. Run 'make changelog' (changie new) to add one (or edit an existing sibling fragment), or apply the 'no-changelog' label if the change is not user-facing." >&2
