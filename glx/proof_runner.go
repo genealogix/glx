@@ -74,11 +74,18 @@ var (
 	errUnknownFormat   = errors.New("unknown format")
 )
 
+// proofSupport.Kind values, distinguishing how a piece of support was attached
+// to the assertion (a citation referencing a source, or a source directly).
+const (
+	proofKindCitation = "citation"
+	proofKindSource   = "source"
+)
+
 // proofSupport is a single citation or source backing an assertion, resolved to
 // human-readable form (GPS element 2 — complete citations).
 type proofSupport struct {
 	Ref         string `json:"ref"`                    // citation or source ID
-	Kind        string `json:"kind"`                   // "citation" or "source"
+	Kind        string `json:"kind"`                   // proofKindCitation or proofKindSource
 	SourceID    string `json:"source_id,omitempty"`    // resolved source ID (citations only)
 	SourceTitle string `json:"source_title,omitempty"` // resolved source title
 	Locator     string `json:"locator,omitempty"`      // citation locator (page, entry, certificate no.)
@@ -506,7 +513,7 @@ func buildProofSupport(a *glxlib.Assertion, archive *glxlib.GLXFile) []proofSupp
 	support := make([]proofSupport, 0, len(a.Citations)+len(a.Sources))
 
 	for _, citID := range a.Citations {
-		s := proofSupport{Ref: citID, Kind: "citation"}
+		s := proofSupport{Ref: citID, Kind: proofKindCitation}
 		if cit, ok := archive.Citations[citID]; ok && cit != nil {
 			s.SourceID = cit.SourceID
 			s.SourceTitle = resolveSourceTitle(cit.SourceID, archive)
@@ -518,7 +525,7 @@ func buildProofSupport(a *glxlib.Assertion, archive *glxlib.GLXFile) []proofSupp
 	for _, srcID := range a.Sources {
 		support = append(support, proofSupport{
 			Ref:         srcID,
-			Kind:        "source",
+			Kind:        proofKindSource,
 			SourceID:    srcID,
 			SourceTitle: resolveSourceTitle(srcID, archive),
 		})
