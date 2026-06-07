@@ -27,7 +27,7 @@ const (
 	catRequiredOpt   = "Required vs Optional"
 )
 
-// severity mirrors the Severity Rubric in .claude/commands/check-code-drift.md.
+// severity mirrors the Severity Rubric in .claude/skills/check-code-drift/SKILL.md.
 type severity string
 
 const (
@@ -74,6 +74,10 @@ type finding struct {
 	Field   string
 	YamlTag string
 	Message string
+	// Line is the 1-based source line of the field in File, attached after the
+	// reflection-based comparison by the AST extractor (structdump, #795).
+	// Reflection cannot give source positions; 0 means unknown.
+	Line int
 }
 
 // byEntityThenSeverity sorts findings for stable, readable report output.
