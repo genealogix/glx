@@ -125,17 +125,20 @@ Verify that any custom vocabularies referenced within the examples are properly 
 
 Roundtrip serialization (YAML deserialize → Go struct → re-serialize → re-validate against per-entity JSON schemas) is checked deterministically by `go-glx/example_archives_roundtrip_test.go` (`TestExampleArchivesRoundTrip`), which runs in CI as the `test-conformance` job in `.github/workflows/validate-spec.yml`.
 
-Check the latest CI run on HEAD:
+Check the CI run **for the current HEAD commit** — not merely the newest run, which may belong to a different commit and would report a misleading conclusion. Select the run whose `headSha` equals the full HEAD SHA from Step 1 (`git rev-parse HEAD`):
 
 ```bash
-gh run list --workflow validate-spec.yml --limit 1 \
-   --json conclusion,headSha,databaseId \
-   --jq '.[0]'
+gh run list --workflow validate-spec.yml --limit 50 \
+   --json headSha,status,conclusion,databaseId \
+   --jq '[.[] | select(.headSha == "<HEAD_SHA>")][0]'
 ```
 
-If `conclusion` is `"success"`, roundtrip alignment is verified — record this as a positive note.
+Interpret the selected run (substitute the literal full SHA for `<HEAD_SHA>`):
 
-If `conclusion` is `"failure"` or `"cancelled"`, fetch the failing test output from the `test-conformance` job and include it verbatim in the report. The per-entity diff produced by the test is more actionable than any LLM-simulated drift claim. File each failing test case as a `critical` finding with `validator_caught: true, llm_only: false`.
+- **No object returned** (HEAD has no `validate-spec.yml` run yet — e.g., HEAD isn't pushed, or CI hasn't started, or it's older than the last 50 runs) → roundtrip is **unverified for HEAD**. Do **not** infer success from an unrelated newer run. Record a `positive_notes` entry stating roundtrip CI status is unavailable for this commit, and push HEAD / wait for CI if a definitive answer is needed.
+- **`status` is not `"completed"`** (`"in_progress"`, `"queued"`) → the run for HEAD hasn't finished; treat as unverified, exactly as above.
+- **`conclusion` is `"success"`** → roundtrip alignment is verified — record this as a positive note.
+- **`conclusion` is `"failure"` or `"cancelled"`** → fetch the failing test output from the `test-conformance` job of **that run** (use its `databaseId`) and include it verbatim in the report. The per-entity diff produced by the test is more actionable than any LLM-simulated drift claim. File each failing test case as a `critical` finding with `validator_caught: true, llm_only: false`.
 
 Do not re-verify type definitions or YAML marshaling by hand. The test exercises every entity in every example against its real schema — reading `types.go` adds no information the test does not have, and the LLM cannot detect omitempty drops at the YAML level in any case.
 
