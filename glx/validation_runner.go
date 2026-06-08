@@ -197,9 +197,6 @@ func validatePaths(streams *IOStreams, args []string) error {
 				shouldValidateCrossRefs = true
 			}
 		}
-	} else if len(paths) == 0 {
-		archiveRoot = "."
-		shouldValidateCrossRefs = true
 	} else {
 		if info, err := os.Stat(paths[0]); err == nil {
 			if info.IsDir() {
