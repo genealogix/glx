@@ -50,6 +50,7 @@ func realMain() int {
 	code, err := run(opts, os.Stdout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+
 		return 2
 	}
 
