@@ -968,7 +968,7 @@ func personVitalYears(a *glxlib.GLXFile, personID string) (birth, death int) {
 }
 
 func eventLabel(eventType string) string {
-	return glxlib.GenerateEventTitle(eventType, nil, "")
+	return glxlib.GenerateEventTitle(eventType, nil)
 }
 
 func sourceTitle(a *glxlib.GLXFile, sourceID string) string {
