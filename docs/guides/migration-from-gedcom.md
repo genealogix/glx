@@ -118,12 +118,11 @@ The importer processes records in dependency order across multiple passes, handl
 
 **Events**: Each imported event receives an auto-generated `title` field for human readability. The format varies by event type:
 
-- Individual events: "Birth of Robert Webb (1815)"
-- Couple events: "Marriage of John Smith and Jane Doe (1850)"
-- Date-only: "Census (1860)"
-- Name-only: "Death of Jane Miller"
+- Individual events: "Birth of Robert Webb"
+- Couple events: "Marriage of John Smith and Jane Doe"
+- No participant names: "Census"
 
-Unknown event types fall back to Title Case of the snake_case type (e.g., `military_service` → "Military Service"). Titles are generated from participant names and the event date — they are not extracted from the GEDCOM source.
+Unknown event types fall back to Title Case of the snake_case type (e.g., `military_service` → "Military Service"). Titles are generated from participant names — the event date is omitted because it is already carried by the event's `date` field. Titles are not extracted from the GEDCOM source.
 
 **Families**: Spouse relationships, parent-child relationships (with pedigree types), 9 family event types, media
 
