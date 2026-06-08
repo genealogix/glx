@@ -78,7 +78,13 @@ jobs:
 
       - name: Validate drift allowlist
         run: make check-drift-allowlist
-  
+
+      # Unit-test the Node drift-check scripts (spec-schema parser, schema-compat
+      # classifier). Runs here because specification deps (json-schema-diff-validator)
+      # are already installed above and Node is set up.
+      - name: Unit-test drift-check scripts
+        run: make test-scripts
+
   build-cli:
     runs-on: ubuntu-latest
     timeout-minutes: 10

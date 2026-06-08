@@ -15,7 +15,7 @@
 // Command driftcheck deterministically detects drift between the GLX Go type
 // definitions (go-glx/types.go, compared via reflection) and the JSON Schemas
 // in specification/schema/v1. It is the deterministic counterpart to the
-// LLM-based /check-code-drift slash command: it catches structural drift
+// LLM-based check-code-drift skill: it catches structural drift
 // (missing/extra fields, yaml-tag mismatches, required/omitempty mismatches,
 // type-family mismatches) on every PR, with no API keys and zero false
 // positives, deferring ambiguous/semantic cases to the LLM checker.
@@ -106,6 +106,8 @@ func run(opts options, out io.Writer) (int, error) {
 	c.run()
 
 	surviving, suppressed := allow.partition(dedupeFindings(c.findings))
+	// Best-effort: attach go-glx/types.go source lines via the AST extractor.
+	_ = attachLines(surviving, resolveUnderRoot(root, opts.typesFile))
 	byEntityThenSeverity(surviving)
 
 	if _, writeErr := io.WriteString(out, buildReport(surviving, suppressed, len(files), opts.verbose)); writeErr != nil {

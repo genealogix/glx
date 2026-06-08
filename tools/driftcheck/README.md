@@ -2,8 +2,8 @@
 
 `driftcheck` compares the `go-glx` Go type definitions against the GLX JSON
 Schemas and fails when they have structurally drifted. It is the deterministic
-counterpart to the LLM-based [`/check-code-drift`](../../.claude/commands/check-code-drift.md)
-slash command (genealogix/glx#673).
+counterpart to the LLM-based [`check-code-drift` skill](../../.claude/skills/check-code-drift/SKILL.md)
+(genealogix/glx#673).
 
 ```bash
 make check-code-drift        # or: go run ./tools/driftcheck
@@ -37,7 +37,7 @@ and vocabulary type, it compares:
 It deliberately does **not** check value constraints (`minLength`, `pattern`,
 `enum`, cross-reference existence, …). Those are enforced at runtime by the
 two-layer validator, and asserting on them here would produce false positives.
-Anything ambiguous is left to the LLM `/check-code-drift` command.
+Anything ambiguous is left to the LLM `check-code-drift` skill.
 
 ## Allowlist
 
