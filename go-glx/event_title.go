@@ -16,7 +16,6 @@ package glx
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -63,25 +62,21 @@ var eventTypeLabels = map[string]string{
 }
 
 // GenerateEventTitle builds a human-readable title for an event.
-// For individual events: "Birth of John Smith (1850)"
-// For couple events: "Marriage of John Smith and Jane Doe (1850)"
+// For individual events: "Birth of John Smith"
+// For couple events: "Marriage of John Smith and Jane Doe"
 // Falls back to just the event type label if no names are available.
-func GenerateEventTitle(eventType string, personNames []string, date DateString) string {
+//
+// The event's date is intentionally omitted: it is already carried by the
+// event's `date` field, so repeating it in the title would be redundant.
+func GenerateEventTitle(eventType string, personNames []string) string {
 	label := eventTypeLabel(eventType)
 	names := filterNonEmpty(personNames)
-	dateYear := extractYear(date)
 
-	switch {
-	case len(names) == 0 && dateYear != "":
-		return fmt.Sprintf("%s (%s)", label, dateYear)
-	case len(names) == 0:
+	switch len(names) {
+	case 0:
 		return label
-	case len(names) == 1 && dateYear != "":
-		return fmt.Sprintf("%s of %s (%s)", label, names[0], dateYear)
-	case len(names) == 1:
+	case 1:
 		return fmt.Sprintf("%s of %s", label, names[0])
-	case dateYear != "":
-		return fmt.Sprintf("%s of %s and %s (%s)", label, names[0], names[1], dateYear)
 	default:
 		return fmt.Sprintf("%s of %s and %s", label, names[0], names[1])
 	}
@@ -145,21 +140,4 @@ func filterNonEmpty(ss []string) []string {
 		}
 	}
 	return result
-}
-
-// extractYear extracts the start year from a DateString as a string.
-// Calendar-aware: handles Gregorian, Julian, Hebrew, and French Republican formats.
-// Delegates to ExtractFirstYear for the actual extraction logic.
-func extractYear(date DateString) string {
-	s := string(date)
-	if s == "" {
-		return ""
-	}
-
-	// Use calendar-aware extraction (delegates to ExtractFirstYear logic)
-	year := ExtractFirstYear(s)
-	if year == 0 {
-		return ""
-	}
-	return strconv.Itoa(year)
 }
