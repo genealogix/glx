@@ -275,6 +275,44 @@ func TestServeTreeAncestors(t *testing.T) {
 	assert.Equal(t, []string{"person-grandpa"}, childIDs(dad))
 }
 
+// TestServeTreeGenCountsRoot verifies that "N generations" counts the root as
+// the first generation: gen=2 ancestors render the root plus one parent level
+// and stop there, so grandparents (generation 3) are excluded. Guards the
+// off-by-one where stopping at depth >= maxGen rendered maxGen+1 generations.
+func TestServeTreeGenCountsRoot(t *testing.T) {
+	srv := newServeTestServer(t)
+	var got struct {
+		Root *treeNodeDTO `json:"root"`
+	}
+	doServeRequest(t, srv, "/api/persons/person-self/tree?dir=ancestors&gen=2", &got)
+
+	require.NotNil(t, got.Root)
+	// Generation 2: parents are present.
+	assert.ElementsMatch(t, []string{"person-dad", "person-mom"}, childIDs(got.Root))
+	// Generation 3 (grandpa, dad's parent) must NOT appear at gen=2.
+	for _, c := range got.Root.Children {
+		assert.Empty(t, childIDs(c), "gen=2 must stop at parents, not reach grandparents")
+	}
+}
+
+// TestBuildVitalYearIndexLowestIDWins verifies the index reproduces
+// glxlib.FindPersonEvent's tie-break: with multiple birth events for one person,
+// the lowest event ID supplies the year, and a "subject"-role death is counted.
+func TestBuildVitalYearIndexLowestIDWins(t *testing.T) {
+	a := &glxlib.GLXFile{
+		Events: map[string]*glxlib.Event{
+			// Map order is irrelevant; ascending-ID iteration picks event-b1 (1700).
+			"event-b2": {Type: "birth", Date: "1800", Participants: []glxlib.Participant{{Person: "person-x", Role: "principal"}}},
+			"event-b1": {Type: "birth", Date: "1700", Participants: []glxlib.Participant{{Person: "person-x", Role: "principal"}}},
+			"event-d1": {Type: "death", Date: "1770", Participants: []glxlib.Participant{{Person: "person-x", Role: "subject"}}},
+		},
+	}
+
+	idx := buildVitalYearIndex(a)
+	assert.Equal(t, 1700, idx["person-x"].birth)
+	assert.Equal(t, 1770, idx["person-x"].death)
+}
+
 func TestServeTreeDescendants(t *testing.T) {
 	srv := newServeTestServer(t)
 	var got struct {

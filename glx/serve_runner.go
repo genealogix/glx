@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -43,7 +44,9 @@ var webAssets embed.FS
 
 // serveDefaultTreeGen / serveMaxTreeGen bound pedigree/descendancy depth so a
 // malicious or cyclic archive cannot drive unbounded recursion. The default
-// depth balances a useful chart against payload size.
+// depth balances a useful chart against payload size. The count is the number
+// of generations including the root (gen=4 renders the root plus three
+// ancestor/descendant levels), matching the UI's "N generations" label.
 const (
 	serveDefaultHost    = "127.0.0.1"
 	serveDefaultPort    = 8080
@@ -68,6 +71,13 @@ type viewerServer struct {
 	archive     *glxlib.GLXFile
 	archivePath string
 	assets      fs.FS
+
+	// vitalIndex maps a person ID to their birth/death years, built once on
+	// first use from a single pass over the archive's events. The archive is
+	// immutable for the server's lifetime, so the index is computed lazily and
+	// reused across requests. vitalOnce guards concurrent first requests.
+	vitalOnce  sync.Once
+	vitalIndex map[string]vitalYears
 }
 
 // serveArchive loads an archive and serves the browser viewer until the process
@@ -396,7 +406,7 @@ func (s *viewerServer) handlePersons(w http.ResponseWriter, _ *http.Request) {
 	items := make([]personListItemDTO, 0, len(a.Persons))
 	for _, id := range sortedKeys(a.Persons) {
 		person := a.Persons[id]
-		birth, death := personVitalYears(a, id)
+		birth, death := s.personVitalYears(id)
 		// person may be nil for a malformed archive entry (e.g. `person-x: null`);
 		// extractPersonName already tolerates nil, so only the property read needs
 		// guarding.
@@ -605,7 +615,7 @@ func (s *viewerServer) personRefs(ids []string) []personRefDTO {
 
 func (s *viewerServer) personRef(id string) personRefDTO {
 	a := s.archive
-	birth, death := personVitalYears(a, id)
+	birth, death := s.personVitalYears(id)
 	name := id
 	if person, ok := a.Persons[id]; ok && person != nil {
 		name = extractPersonName(person)
@@ -780,7 +790,7 @@ func appendUniqueString(s []string, v string) []string {
 func (s *viewerServer) buildTree(idx *treeRelIndex, id, direction string, depth, maxGen int, path map[string]bool) *treeNodeDTO {
 	a := s.archive
 	person := a.Persons[id]
-	birth, death := personVitalYears(a, id)
+	birth, death := s.personVitalYears(id)
 	name := id
 	sex := ""
 	if person != nil {
@@ -789,7 +799,11 @@ func (s *viewerServer) buildTree(idx *treeRelIndex, id, direction string, depth,
 	}
 	node := &treeNodeDTO{ID: id, Name: name, BirthYear: birth, DeathYear: death, Sex: sex}
 
-	if depth >= maxGen || path[id] {
+	// depth is 0-based and the root counts as the first generation, so a request
+	// for maxGen generations renders nodes at depths 0..maxGen-1. Stopping at
+	// depth >= maxGen would render maxGen+1 generations (one more than the UI's
+	// "N generations" label promises).
+	if depth >= maxGen-1 || path[id] {
 		return node
 	}
 
@@ -955,16 +969,78 @@ func participantRole(personID string, participants []glxlib.Participant) string 
 	return roleAbsent
 }
 
+// vitalYears holds a person's birth and death years (0 when unknown).
+type vitalYears struct {
+	birth int
+	death int
+}
+
 // personVitalYears returns the person's birth and death years (0 when unknown).
-func personVitalYears(a *glxlib.GLXFile, personID string) (birth, death int) {
-	if _, event := glxlib.FindPersonEvent(a, personID, glxlib.EventTypeBirth); event != nil {
-		birth = glxlib.ExtractFirstYear(string(event.Date))
-	}
-	if _, event := glxlib.FindPersonEvent(a, personID, glxlib.EventTypeDeath); event != nil {
-		death = glxlib.ExtractFirstYear(string(event.Date))
+// It reads from an index built once per server rather than calling
+// glxlib.FindPersonEvent twice per person — that helper re-sorts every event ID
+// on each call, so the person list, refs, and tree nodes would otherwise be
+// O(persons x events log events).
+func (s *viewerServer) personVitalYears(personID string) (birth, death int) {
+	s.vitalOnce.Do(func() { s.vitalIndex = buildVitalYearIndex(s.archive) })
+	vy := s.vitalIndex[personID]
+
+	return vy.birth, vy.death
+}
+
+// buildVitalYearIndex makes a single pass over the archive's events and records,
+// per person, their birth and death years. Event IDs are visited in ascending
+// order and the first birth (and first death) seen for a person wins, matching
+// glxlib.FindPersonEvent's "lowest event ID wins" tie-break so the displayed
+// years are identical to the per-call lookup it replaces.
+func buildVitalYearIndex(a *glxlib.GLXFile) map[string]vitalYears {
+	idx := map[string]vitalYears{}
+	if a == nil {
+		return idx
 	}
 
-	return birth, death
+	haveBirth := map[string]bool{}
+	haveDeath := map[string]bool{}
+	for _, id := range sortedKeys(a.Events) {
+		event := a.Events[id]
+		if event == nil {
+			continue
+		}
+		isBirth := event.Type == glxlib.EventTypeBirth
+		isDeath := event.Type == glxlib.EventTypeDeath
+		if !isBirth && !isDeath {
+			continue
+		}
+		for _, p := range event.Participants {
+			if !isServeSubjectRole(p.Role) {
+				continue
+			}
+			vy := idx[p.Person]
+			switch {
+			case isBirth && !haveBirth[p.Person]:
+				vy.birth = glxlib.ExtractFirstYear(string(event.Date))
+				haveBirth[p.Person] = true
+			case isDeath && !haveDeath[p.Person]:
+				vy.death = glxlib.ExtractFirstYear(string(event.Date))
+				haveDeath[p.Person] = true
+			}
+			idx[p.Person] = vy
+		}
+	}
+
+	return idx
+}
+
+// isServeSubjectRole mirrors go-glx's unexported isSubjectRole: a principal,
+// subject, or unset participant role marks the person as the event's subject.
+// It is replicated here (as in vitals_runner.go) because the helper is not
+// exported from go-glx.
+func isServeSubjectRole(role string) bool {
+	switch role {
+	case glxlib.ParticipantRolePrincipal, glxlib.ParticipantRoleSubject, "":
+		return true
+	default:
+		return false
+	}
 }
 
 func eventLabel(eventType string) string {
