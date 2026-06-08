@@ -42,13 +42,18 @@ var (
 )
 
 func main() {
+	os.Exit(realMain())
+}
+
+func realMain() int {
 	opts := parseFlags()
 	code, err := run(opts, os.Stdout)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "driftcheck:", err)
-		os.Exit(2)
+		fmt.Fprintln(os.Stderr, err)
+		return 2
 	}
-	os.Exit(code)
+
+	return code
 }
 
 type options struct {
@@ -67,6 +72,8 @@ func parseFlags() options {
 	flag.StringVar(&o.allowlistFile, "allowlist", ".claude/drift-allowlist.yaml", "drift allowlist, relative to root")
 	flag.BoolVar(&o.verbose, "v", false, "list allowlist-suppressed findings")
 	flag.Parse()
+
+	o.typesFile = filepath.ToSlash(filepath.Clean(o.typesFile))
 
 	return o
 }
