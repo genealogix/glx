@@ -1,9 +1,11 @@
 <!--
   PR title must follow Conventional Commits: type: Description
   Examples: feat: Add person search, fix: Handle nil map in merge
-  Description should start with an uppercase letter (style convention; not enforced by CI).
-  The lint-pr-title check enforces only the allowed types (feat, fix, docs, chore,
-  refactor, test, perf, ci) — it is the source of truth for that list.
+  The lint-pr-title check enforces the Conventional Commits header structure
+  (type: subject, with an optional scope) and that the type is one of the allowed
+  values (feat, fix, docs, chore, refactor, test, perf, ci) — it is the source of truth.
+  It does NOT enforce the description's casing; starting with an uppercase letter is
+  a style convention only.
   On squash-merge this title is normally used as the commit subject, so keep it accurate.
 -->
 
