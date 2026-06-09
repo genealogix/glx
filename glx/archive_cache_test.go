@@ -419,6 +419,42 @@ func TestCacheRejectsOversizedFile(t *testing.T) {
 	assert.False(t, ok, "oversized cache must not be treated as a hit")
 }
 
+// TestCacheGitOpsOutsideRepo checks that the git helpers report "unavailable"
+// (empty SHA / ok=false) when the archive is not inside a git repository, so
+// callers fall back to the filesystem fingerprint. No git binary is needed —
+// go-git simply finds no repository.
+func TestCacheGitOpsOutsideRepo(t *testing.T) {
+	dir := miniArchive(t, 1) // a plain directory, not a git repo
+
+	assert.Empty(t, gitHeadSHA(dir), "no git repo -> empty SHA")
+	clean, ok := gitWorkingTreeClean(dir)
+	assert.False(t, ok, "no git repo -> not ok")
+	assert.False(t, clean)
+}
+
+// TestCacheIsFreshRejectsForeignGLXVersion confirms a cache written by a
+// different glx version is treated as stale up front (its gob layout may not
+// match the current structs), independent of the filesystem fingerprint.
+func TestCacheIsFreshRejectsForeignGLXVersion(t *testing.T) {
+	dir := miniArchive(t, 2)
+	arch, dups, err := LoadArchiveWithOptions(dir, false)
+	require.NoError(t, err)
+	require.NoError(t, writeCache(dir, arch, dups))
+
+	header, err := readCacheHeader(dir)
+	require.NoError(t, err)
+	require.True(t, cacheIsFresh(dir, header), "freshly built cache should be fresh")
+
+	// An unwalkable archive root (computeFSFingerprint error) is treated as
+	// stale, never fresh.
+	assert.False(t, cacheIsFresh(filepath.Join(t.TempDir(), "does-not-exist"), header),
+		"an unwalkable archive root must not be reported fresh")
+
+	header.GLXVersion += "-other"
+	assert.False(t, cacheIsFresh(dir, header),
+		"a cache written by a different glx version must be treated as stale")
+}
+
 func runGitInit(t *testing.T, dir string) {
 	t.Helper()
 	for _, args := range [][]string{
