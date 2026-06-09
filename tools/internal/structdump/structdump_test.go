@@ -17,6 +17,8 @@ package structdump
 import (
 	"errors"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -117,11 +119,16 @@ func TestYamlKeyAndHelpers(t *testing.T) {
 	}
 }
 
-const typesGo = "../../../go-glx/types.go"
-
 // loadTypes reads types.go (I/O lives in the test, not the package) and extracts it.
 func loadTypes(t *testing.T) *Dump {
 	t.Helper()
+
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller(0) failed")
+	}
+	typesGo := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "go-glx", "types.go"))
+
 	src, err := os.ReadFile(typesGo)
 	if err != nil {
 		t.Fatalf("read %s: %v", typesGo, err)
@@ -129,6 +136,12 @@ func loadTypes(t *testing.T) *Dump {
 	d, err := Extract(typesGo, src)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
+	}
+	if d == nil {
+		t.Fatalf("Extract returned nil Dump for %s", typesGo)
+	}
+	if len(d.Collections) == 0 && len(d.Types) == 0 {
+		t.Fatalf("Extract returned empty Dump for %s: no collections or types found", typesGo)
 	}
 
 	return d
