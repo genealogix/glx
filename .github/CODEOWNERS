@@ -1,29 +1,24 @@
 # GENEALOGIX Repository Code Owners
 #
-# This file defines individuals responsible for reviewing specific areas
-# of the codebase. Pull requests will automatically request reviews from
-# the designated code owners.
+# These owners are AUTO-REQUESTED on matching PRs. They are ALSO a merge gate:
+# the "Main Protection" ruleset sets require_code_owner_review = true (see #258),
+# so a PR cannot merge without an approving review from a listed owner of every
+# changed path. CODEOWNERS is last-match-wins and a matched owner set REPLACES
+# earlier matches; the catch-all stays FIRST and any narrower rule must list
+# EVERY owner it wants, not just the extra one.
 #
 # Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Default owners for everything in the repository
+# Both maintainers on the default so EITHER is auto-requested on any PR --
+# deliberate cross-review / bus-factor insurance for a 2-person team. This
+# covers go-glx/, glx/, specification/, docs/, website/, .github/, ci-tools/,
+# scripts/, tools/, public/, LICENSES/, and root manifests. Do NOT add
+# per-directory rules that just re-list these two owners (no-ops + drift).
 * @noahbjohnson @isaacschepp
 
-# Core Specification Documents
-/specification/ @noahbjohnson
-
-# JSON Schemas
-/specification/schema/ @noahbjohnson
-
-# Go library (pure, no I/O)
-/go-glx/ @noahbjohnson @isaacschepp
-
-# CLI Tool
-/glx/ @noahbjohnson @isaacschepp
-
-# Documentation and Examples
-/docs/ @noahbjohnson
-/website/ @noahbjohnson
-
-# GitHub Configuration and CI
-/.github/ @noahbjohnson @isaacschepp
+# Add narrower rules below ONLY when they CHANGE the owner set (a different/
+# additional owner). A same-owner line changes nothing. See #258 before
+# adding a security tier on .github/workflows/ -- a CODEOWNERS line there is
+# meaningful only after a distinct owner (third maintainer / org team) exists
+# to escalate to; with the current 2-person roster every path resolves to the
+# same two owners, so a narrower rule would only risk sole-owner deadlock.
