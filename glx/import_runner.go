@@ -23,6 +23,16 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
+// resolveOutputWriter returns the first provided non-nil writer, or os.Stdout
+// when no optional writer is supplied.
+func resolveOutputWriter(out ...io.Writer) io.Writer {
+	if len(out) > 0 && out[0] != nil {
+		return out[0]
+	}
+
+	return os.Stdout
+}
+
 // importGEDCOM imports a GEDCOM or GEDZIP file and converts it to GLX format.
 // GEDZIP archives (.gdz) are detected by extension and routed through
 // importGEDZIP, which extracts to a temp directory before delegating back here.
@@ -33,15 +43,9 @@ import (
 // as-is on the media URI — neither copied nor downloaded. For single-file output
 // media/files/ is a sibling directory of the output file; for multi-file output
 // it lives within the archive layout.
-func resolveOutputWriter(out ...io.Writer) io.Writer {
-	if len(out) > 0 && out[0] != nil {
-		return out[0]
-	}
-
-	return os.Stdout
-}
-
 func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool, showFirstErrors int, out ...io.Writer) error {
+	output := resolveOutputWriter(out...)
+
 	// Validate format flag
 	if format != FormatSingle && format != FormatMulti {
 		return fmt.Errorf("%w: %s", ErrInvalidFormat, format)
@@ -58,7 +62,7 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Import GEDCOM file
 	if verbose {
-		_, _ = fmt.Fprintf(resolveOutputWriter(out...), "Importing GEDCOM file: %s\n", gedcomPath)
+		_, _ = fmt.Fprintf(output, "Importing GEDCOM file: %s\n", gedcomPath)
 	}
 
 	// Open GEDCOM file
@@ -80,16 +84,16 @@ func importGEDCOM(gedcomPath, outputPath, format string, validate, verbose bool,
 
 	// Serialize based on format
 	if format == FormatSingle {
-		return importToSingleFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, gedcomDir)
+		return importToSingleFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, gedcomDir, output)
 	}
 
-	return importToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, gedcomDir)
+	return importToMultiFile(glx, outputPath, validate, verbose, showFirstErrors, result.MediaFiles, gedcomDir, output)
 }
 
 // importToSingleFile writes the imported GLX data to a single file
-func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string) error {
+func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string, out io.Writer) error {
 	if verbose {
-		fmt.Printf("Writing single-file archive: %s\n", outputPath)
+		_, _ = fmt.Fprintf(out, "Writing single-file archive: %s\n", outputPath)
 	}
 
 	// Ensure .glx extension
@@ -113,9 +117,9 @@ func importToSingleFile(glx *glxlib.GLXFile, outputPath string, validate, verbos
 }
 
 // importToMultiFile writes the imported GLX data to a multi-file directory
-func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string) error {
+func importToMultiFile(glx *glxlib.GLXFile, outputPath string, validate, verbose bool, showFirstErrors int, mediaFiles []glxlib.MediaFileSource, gedcomDir string, out io.Writer) error {
 	if verbose {
-		fmt.Printf("Writing multi-file archive: %s\n", outputPath)
+		_, _ = fmt.Fprintf(out, "Writing multi-file archive: %s\n", outputPath)
 	}
 
 	// Write archive
