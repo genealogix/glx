@@ -364,6 +364,40 @@ func TestCacheGitMetadataAndFreshness(t *testing.T) {
 	assert.False(t, cacheIsFresh(dir, header), "dirty tracked file should invalidate cache")
 }
 
+// TestCacheGitHeadSHAUnbornHead checks that a repository with no commits (an
+// unborn HEAD) yields an empty SHA rather than an error or panic.
+func TestCacheGitHeadSHAUnbornHead(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	dir := miniArchive(t, 1)
+	cmd := exec.CommandContext(context.Background(), "git", "-C", dir, "init")
+	out, err := cmd.CombinedOutput()
+	require.NoErrorf(t, err, "git init: %s", out)
+
+	assert.Empty(t, gitHeadSHA(dir), "unborn HEAD should yield an empty SHA")
+}
+
+// TestCacheGitOpTimeoutFallback shrinks the go-git deadline so the in-process
+// lookups give up, confirming they fall back to the safe "git unavailable"
+// result (empty SHA / ok=false) rather than blocking the command.
+func TestCacheGitOpTimeoutFallback(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	dir := miniArchive(t, 1)
+	runGitInit(t, dir)
+
+	orig := gitOpTimeout
+	gitOpTimeout = time.Nanosecond
+	t.Cleanup(func() { gitOpTimeout = orig })
+
+	assert.Empty(t, gitHeadSHA(dir), "timed-out HEAD lookup should yield an empty SHA")
+	clean, ok := gitWorkingTreeClean(dir)
+	assert.False(t, ok, "timed-out status should report not-ok")
+	assert.False(t, clean)
+}
+
 func runGitInit(t *testing.T, dir string) {
 	t.Helper()
 	for _, args := range [][]string{

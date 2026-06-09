@@ -238,8 +238,9 @@ func computeFSFingerprint(root string) (string, error) {
 // decided by the filesystem fingerprint. The abandoned goroutine finishes on
 // its own and sends to a buffered (capacity-1) channel, so it never blocks or
 // leaks, and the result is passed through the channel rather than a shared
-// variable, so there is no data race with a late-finishing goroutine.
-const gitOpTimeout = 5 * time.Second
+// variable, so there is no data race with a late-finishing goroutine. It is a
+// var (not a const) only so tests can shrink it to exercise the timeout path.
+var gitOpTimeout = 5 * time.Second
 
 // openArchiveRepo opens the git repository that contains root using the pure-Go
 // go-git library (no `git` binary on PATH required). DetectDotGit walks parent
