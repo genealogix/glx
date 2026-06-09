@@ -71,10 +71,3 @@ Transitive dependencies
     Copyright (c) 2012 Alex Ogier
     Copyright (c) 2012 The Go Authors
     https://github.com/spf13/pflag
-
-  go.yaml.in/yaml/v3
-    License: MIT AND Apache-2.0
-    Copyright (c) 2006-2010 Kirill Simonov
-    Copyright (c) 2006-2011 Kirill Simonov
-    Copyright (c) 2011-2019 Canonical Ltd
-    https://github.com/yaml/go-yaml
