@@ -27,12 +27,12 @@ If you discover a security vulnerability in GLX, please report it responsibly:
 
 ## Safe Harbor
 
-We want security researchers to feel safe reporting vulnerabilities in GLX, and we will not pursue or support legal action against anyone who discovers and reports a vulnerability in good faith and in accordance with this policy. For research conducted under this policy, we consider it:
+We want security researchers to feel safe reporting vulnerabilities in GLX. We will not pursue or support legal action against anyone who discovers and reports a vulnerability in good faith and substantially in accordance with this policy — and that protection still applies to accidental, good-faith deviations from it. For such research, we consider it:
 
-- **Authorized** under applicable anti-hacking laws (such as the US Computer Fraud and Abuse Act and equivalents elsewhere), and we will not initiate or support legal action against you for accidental, good-faith violations of this policy; and
+- **Authorized** under applicable anti-hacking laws (such as the US Computer Fraud and Abuse Act and equivalents elsewhere); and
 - **Lawful**, helpful to the overall security of the project and its users, and conducted in good faith.
 
-If a third party initiates legal action against you for activity that complied with this policy, we will take steps to make it known that your actions were authorized under it.
+If a third party initiates legal action against you for activity conducted in good faith and substantially in accordance with this policy — including accidental, good-faith deviations from it — we will, to the extent we reasonably can, make it publicly known that your actions were authorized under it.
 
 To stay within this safe harbor, please:
 
@@ -41,13 +41,13 @@ To stay within this safe harbor, please:
 - use a vulnerability only to the extent necessary to confirm it, and never to access, modify, or exfiltrate data that is not yours; and
 - report promptly through the channel above and allow a reasonable opportunity to fix the issue before public disclosure (see [Coordinated Disclosure and Embargo](#coordinated-disclosure-and-embargo) below).
 
-This language is adapted from the [disclose.io](https://disclose.io/) Core Terms — the same safe-harbor framework used by GitHub, GitLab, Cloudflare, and CNCF projects. If you are unsure whether a particular action is authorized, ask first in a private report before proceeding.
+This language is adapted from the [disclose.io](https://disclose.io/) Core Terms, a widely used open-source safe-harbor framework. Many major programs — including GitHub, GitLab, and Cloudflare — extend comparable good-faith safe-harbor protections through their own policies or platform frameworks (for example, HackerOne's Gold Standard Safe Harbor) rather than identical text. If you are unsure whether a particular action is authorized, ask first in a private report before proceeding.
 
 ## Coordinated Disclosure and Embargo
 
 GLX follows coordinated (formerly "responsible") disclosure: we ask that you keep vulnerability details private until a fix is available and an advisory is published, and in return we commit to fixing reported issues promptly, keeping you informed, and crediting your work.
 
-**Disclosure timeline.** Our target is to ship a fix and publish a public advisory as quickly as the [fix timelines above](#what-to-expect) allow — within 72 hours for Critical issues and within a week for High-severity issues. In all cases we aim to publicly disclose **within 90 days** of the initial report, or when a fix is released, whichever comes first. Ninety days is the widely used industry default (e.g. [Google Project Zero](https://googleprojectzero.blogspot.com/p/vulnerability-disclosure-policy.html)). If a fix legitimately needs more time, we will agree on a revised disclosure date with you rather than letting the embargo lapse silently.
+**Disclosure timeline.** We publish the advisory when the fix ships, which — given the [fix timelines above](#what-to-expect) — is normally within 72 hours for Critical issues and within a week for High-severity ones. We treat **90 days** from the initial report as a backstop, not a hard auto-publish date: it is the widely used industry default (e.g. [Google Project Zero](https://googleprojectzero.blogspot.com/p/vulnerability-disclosure-policy.html)) beyond which a vulnerability should not stay embargoed indefinitely. If a fix legitimately needs longer than 90 days, we will agree on a revised disclosure date with you rather than either publishing without a remedy or letting the embargo lapse silently.
 
 **Who is informed during the embargo.** GLX is a small project. While an issue is embargoed, the details are shared only with:
 
