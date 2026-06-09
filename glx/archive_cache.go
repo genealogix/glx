@@ -512,22 +512,27 @@ func cacheIsFresh(root string, header *CacheHeader) bool {
 // any miss (no cache, stale, corrupt, wrong version) it returns false so the
 // caller can fall back to the YAML parse.
 func tryLoadFreshCache(root string) (*glxlib.GLXFile, []string, bool) {
-	header, err := readCacheHeader(root)
+	// Open once: openCache leaves the decoder positioned just after the header,
+	// so on a hit the body is decoded from the same stream — no second file open
+	// and no redundant header decode (and no TOCTOU window between two opens).
+	f, dec, header, err := openCache(root)
 	if err != nil {
 		return nil, nil, false
 	}
+	defer f.Close() //nolint:errcheck // read-only handle
+
 	if !cacheIsFresh(root, header) {
 		return nil, nil, false
 	}
 
-	archive, _, err := loadCache(root)
-	if err != nil {
+	var archive glxlib.GLXFile
+	if err := dec.Decode(&archive); err != nil {
 		// Header looked fine but the body is unreadable (e.g. a struct change in
 		// a dev build). Ignore and fall back to the authoritative YAML parse.
 		return nil, nil, false
 	}
 
-	return archive, header.Duplicates, true
+	return &archive, header.Duplicates, true
 }
 
 // LoadArchiveCached loads a multi-file archive, transparently using a fresh
