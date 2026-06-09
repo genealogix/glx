@@ -86,8 +86,11 @@ func byEntityThenSeverity(findings []finding) {
 		if findings[i].Entity != findings[j].Entity {
 			return findings[i].Entity < findings[j].Entity
 		}
-		if findings[i].Severity.rank() != findings[j].Severity.rank() {
-			return findings[i].Severity.rank() < findings[j].Severity.rank()
+
+		rankI := findings[i].Severity.rank()
+		rankJ := findings[j].Severity.rank()
+		if rankI != rankJ {
+			return rankI < rankJ
 		}
 
 		return findings[i].Symbol < findings[j].Symbol
