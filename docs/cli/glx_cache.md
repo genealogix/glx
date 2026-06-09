@@ -20,13 +20,14 @@ Read commands (summary, query, timeline, analyze, stats, ...) automatically use
 a fresh cache when one is present. Set GLX_CACHE=auto to also build the cache on
 the first run that misses, or GLX_CACHE=off to ignore the cache entirely.
 
-The cache is derived and disposable. Staleness is detected from the archive's
-git commit and a filesystem (path, size, mtime) fingerprint; a cache that is
-missing, stale, or unreadable is silently ignored and the YAML parse runs
-instead. Like any mtime-based cache, a content edit that preserves a file's
-size and mtime is the one change it cannot detect — use git, or
-'glx cache build'/'glx cache clean', to force a refresh in that case. Only
-multi-file (directory) archives are supported.
+The cache is derived and disposable. Staleness is detected from a filesystem
+(path, size, mtime) fingerprint; a cache that is missing, stale, or unreadable
+is silently ignored and the YAML parse runs instead. Like any mtime-based
+cache, a content edit that preserves a file's size and mtime is the one change
+it cannot detect — use 'glx cache build'/'glx cache clean' to force a refresh
+in that case. The archive's git commit and clean state are also recorded and
+shown by 'glx cache status', but do not affect staleness. Only multi-file
+(directory) archives are supported.
 
 ### Examples
 

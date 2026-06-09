@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -327,9 +328,13 @@ func TestCacheDuplicatesPreserved(t *testing.T) {
 	assert.Equal(t, dups, gotDups)
 }
 
-// TestCacheGitFastPath exercises the git-based freshness fast path. Skipped when
-// git is unavailable.
-func TestCacheGitFastPath(t *testing.T) {
+// TestCacheGitMetadataAndFreshness verifies that the cache header records the
+// git HEAD commit and clean state (read in-process via go-git, against a repo
+// created by the real git binary), and that staleness is decided solely by the
+// filesystem fingerprint — the recorded git metadata never makes a changed
+// archive look fresh. The git binary is used only for fixture setup, so the
+// test self-skips when it is unavailable.
+func TestCacheGitMetadataAndFreshness(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}
@@ -342,12 +347,18 @@ func TestCacheGitFastPath(t *testing.T) {
 
 	header, err := readCacheHeader(dir)
 	require.NoError(t, err)
-	require.NotEmpty(t, header.GitCommitSHA, "HEAD SHA should be recorded")
-	require.True(t, header.GitClean, "clean tree should be recorded")
-	assert.True(t, cacheIsFresh(dir, header), "clean tree at recorded HEAD should be fresh")
+	require.NotEmpty(t, header.GitCommitSHA, "HEAD SHA should be recorded via go-git")
+	require.True(t, header.GitClean, "clean tree should be recorded via go-git")
+	assert.True(t, cacheIsFresh(dir, header), "matching fingerprint should be fresh")
 
-	// Modify a tracked file without committing → dirty tree → FS fingerprint
-	// catches the change even though HEAD is unchanged.
+	// The git metadata is informational only: a fingerprint mismatch must
+	// invalidate the cache even though the recorded clean HEAD still matches.
+	stale := *header
+	stale.FSFingerprint = strings.Repeat("0", 64)
+	assert.False(t, cacheIsFresh(dir, &stale),
+		"fingerprint is the sole authority; a recorded clean git HEAD must not override it")
+
+	// Modify a tracked file without committing → fingerprint changes → stale.
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "persons", "person-a.glx"),
 		[]byte("persons:\n  person-a:\n    properties:\n      primary_name: \"Changed Name\"\n"), 0o644))
 	assert.False(t, cacheIsFresh(dir, header), "dirty tracked file should invalidate cache")

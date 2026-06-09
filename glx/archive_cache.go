@@ -15,8 +15,6 @@
 package main
 
 import (
-	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/gob"
 	"encoding/hex"
@@ -24,19 +22,16 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-git/go-git/v5"
+
 	glxlib "github.com/genealogix/glx/go-glx"
 )
-
-// gitCommandTimeout bounds each git invocation so a hung or pathological repo
-// can never stall a glx command — git is only ever an optimization here.
-const gitCommandTimeout = 5 * time.Second
 
 // Binary archive cache (genealogix/glx#197).
 //
@@ -49,12 +44,15 @@ const gitCommandTimeout = 5 * time.Second
 //
 // The cache is strictly disposable and best-effort: any detected problem
 // (missing, stale, corrupt, version mismatch, decode failure) silently falls
-// back to the authoritative YAML parse. Staleness is detected from the git
-// commit and a (path, size, mtime) fingerprint, so — like any mtime-based
-// cache — a content edit that preserves a file's size and mtime is the one
-// change it cannot see; a git-tracked workflow, or `glx cache build`/`clean`,
-// forces freshness in that corner case. Outside it, a cached load mirrors the
-// YAML parse exactly.
+// back to the authoritative YAML parse. Staleness is decided solely by a
+// stat-only (path, size, mtime) SHA-256 fingerprint over every .glx file, so —
+// like any mtime-based cache — a content edit that preserves a file's size and
+// mtime is the one change it cannot see; `glx cache build`/`clean` forces a
+// refresh in that corner case. Outside it, a cached load mirrors the YAML parse
+// exactly. The git HEAD commit and work-tree-clean state are also recorded in
+// the header (read in-process via the pure-Go go-git library), but only as
+// informational metadata for `glx cache status`; they never decide freshness,
+// because go-git's index-based clean check is weaker than the fingerprint.
 
 const (
 	// cacheDirName is the per-archive directory that holds derived, disposable
@@ -232,48 +230,108 @@ func computeFSFingerprint(root string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// runGit runs a git subcommand rooted at root and returns its stdout. Every
-// caller treats a non-nil error as "git unavailable" — git is only ever used to
-// skip the filesystem walk, never to validate freshness on its own.
-func runGit(root string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
-	defer cancel()
+// gitOpTimeout bounds each go-git lookup so a pathological or very large
+// enclosing repository can never stall a glx command. go-git exposes no
+// context-aware API in v5, so the work runs in a goroutine and the caller
+// abandons it after the deadline, treating the result as "git unavailable" —
+// the safe direction, since the git data is only informational and staleness is
+// decided by the filesystem fingerprint. The abandoned goroutine finishes on
+// its own and sends to a buffered (capacity-1) channel, so it never blocks or
+// leaks, and the result is passed through the channel rather than a shared
+// variable, so there is no data race with a late-finishing goroutine.
+const gitOpTimeout = 5 * time.Second
 
-	// #nosec G204 -- git is invoked with fixed subcommands; only the archive
-	// root (a local path the user already passed to the command) is variable,
-	// and it is an argument to `-C`, never shell-interpreted.
-	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...)
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
-		return "", err
+// openArchiveRepo opens the git repository that contains root using the pure-Go
+// go-git library (no `git` binary on PATH required). DetectDotGit walks parent
+// directories for the enclosing .git, so an archive nested inside a larger repo
+// resolves to that repo — mirroring `git -C root`. Note that, as with `git -C`,
+// go-git's Worktree.Status() then walks the entire enclosing repository, so for
+// an archive that is a small subdirectory of a large monorepo the work-tree
+// check can be costlier than the bounded filesystem fingerprint; that only
+// affects cache-build time, never the read path. The second return is false
+// when root is not inside a git repository.
+func openArchiveRepo(root string) (*git.Repository, bool) {
+	repo, err := git.PlainOpenWithOptions(root, &git.PlainOpenOptions{DetectDotGit: true})
+	if err != nil {
+		return nil, false
 	}
 
-	return stdout.String(), nil
+	return repo, true
 }
 
-// gitHeadSHA returns the current HEAD commit, or "" if root is not a git repo
-// (or git is unavailable).
+// gitHeadSHA returns the current HEAD commit, or "" if root is not in a git
+// repository, HEAD is unborn (a freshly initialized repo with no commits), or
+// the lookup exceeds gitOpTimeout. The result is recorded in the cache header
+// for `glx cache status`; it does not affect staleness detection.
 func gitHeadSHA(root string) string {
-	out, err := runGit(root, "rev-parse", "HEAD")
-	if err != nil {
+	ch := make(chan string, 1)
+	go func() {
+		repo, ok := openArchiveRepo(root)
+		if !ok {
+			ch <- ""
+
+			return
+		}
+		head, err := repo.Head()
+		if err != nil {
+			ch <- ""
+
+			return
+		}
+		ch <- head.Hash().String()
+	}()
+
+	select {
+	case sha := <-ch:
+		return sha
+	case <-time.After(gitOpTimeout):
 		return ""
 	}
-
-	return strings.TrimSpace(out)
 }
 
-// gitWorkingTreeClean reports whether the work tree has no changes. The second
-// return is false when git is unavailable or root is not a repo, in which case
-// the boolean result is meaningless and callers must fall back.
+// gitWorkingTreeClean reports whether the work tree has no changes, for the
+// informational GitClean field of the cache header (`glx cache status`). The
+// second return is false when root is not in a git repository, the status
+// cannot be computed, or the check exceeds gitOpTimeout. Like
+// `git status --porcelain`, go-git honors .gitignore (so the git-ignored .glx
+// cache dir never counts as a change). NOTE: go-git's clean check trusts the
+// git index's size+mtime stat cache and does not consult ctime/inode the way
+// the `git` binary does, so it is strictly weaker — a same-size content edit
+// whose mtime is reset to the index value can read clean here. That is exactly
+// why this result is never trusted for freshness: cacheIsFresh relies solely on
+// the filesystem fingerprint.
 func gitWorkingTreeClean(root string) (clean, ok bool) {
-	out, err := runGit(root, "status", "--porcelain")
-	if err != nil {
+	type result struct{ clean, ok bool }
+
+	ch := make(chan result, 1)
+	go func() {
+		repo, repoOK := openArchiveRepo(root)
+		if !repoOK {
+			ch <- result{}
+
+			return
+		}
+		wt, err := repo.Worktree()
+		if err != nil {
+			ch <- result{}
+
+			return
+		}
+		status, err := wt.Status()
+		if err != nil {
+			ch <- result{}
+
+			return
+		}
+		ch <- result{status.IsClean(), true}
+	}()
+
+	select {
+	case r := <-ch:
+		return r.clean, r.ok
+	case <-time.After(gitOpTimeout):
 		return false, false
 	}
-
-	return strings.TrimSpace(out) == "", true
 }
 
 // writeCache builds the cache header and gob-encodes the header plus archive to
@@ -404,20 +462,15 @@ func loadCache(root string) (*glxlib.GLXFile, *CacheHeader, error) {
 }
 
 // cacheIsFresh reports whether a cache with the given header still matches the
-// on-disk archive. The filesystem fingerprint is authoritative; the git check
-// is only an optimization that can skip the fingerprint walk when it can prove
-// freshness (built clean at a commit we are still on, with a still-clean tree).
+// on-disk archive. The stat-only filesystem fingerprint is the sole authority:
+// the git HEAD/clean metadata in the header is informational only and is never
+// consulted here, because go-git's index-based clean check is weaker than the
+// fingerprint and could otherwise confirm a changed tree as fresh.
 func cacheIsFresh(root string, header *CacheHeader) bool {
 	// A cache written by a different glx version may not gob-decode into the
 	// current struct layout; treat it as stale up front.
 	if header.GLXVersion != version {
 		return false
-	}
-
-	if header.GitClean && header.GitCommitSHA != "" && gitHeadSHA(root) == header.GitCommitSHA {
-		if clean, ok := gitWorkingTreeClean(root); ok && clean {
-			return true
-		}
 	}
 
 	fingerprint, err := computeFSFingerprint(root)
