@@ -1,19 +1,25 @@
 # GENEALOGIX Repository Code Owners
 #
-# These owners are AUTO-REQUESTED on matching PRs. They are ALSO a merge gate:
-# the "Main Protection" ruleset sets require_code_owner_review = true (see #258),
-# so a PR cannot merge without an approving review from a listed owner of every
-# changed path. CODEOWNERS is last-match-wins and a matched owner set REPLACES
-# earlier matches; the catch-all stays FIRST and any narrower rule must list
-# EVERY owner it wants, not just the extra one.
+# GitHub auto-requests every listed owner of a changed path as a reviewer on
+# each PR. Whether a code-owner approval is ALSO required to merge depends on
+# the org-internal "Main Protection" ruleset's require_code_owner_review
+# setting, which is not represented in this repo and can change independently.
+# (SECURITY-POSTURE.md maintainer-verifies the ruleset's existence and general
+# posture, but NOT this flag; this specific flag's value and the decision to
+# enable it are tracked in #258.) This file deliberately does not assert the
+# flag's current value, to avoid the stale-state drift trap. CODEOWNERS is
+# last-match-wins and a matched owner set REPLACES earlier matches; the
+# catch-all stays FIRST and any narrower rule must list EVERY owner it wants,
+# not just the extra one.
 #
 # Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Both maintainers on the default so EITHER is auto-requested on any PR --
+# Both maintainers are code owners of every path, so GitHub auto-requests both
+# as reviewers on each PR (minus the PR author, who cannot review their own) --
 # deliberate cross-review / bus-factor insurance for a 2-person team. This
-# covers go-glx/, glx/, specification/, docs/, website/, .github/, ci-tools/,
-# scripts/, tools/, public/, LICENSES/, and root manifests. Do NOT add
-# per-directory rules that just re-list these two owners (no-ops + drift).
+# covers the whole tree: go-glx/, glx/, specification/, docs/, website/,
+# .github/, the tooling dirs, and root manifests. Do NOT add per-directory
+# rules that just re-list these two owners (no-ops + drift).
 * @noahbjohnson @isaacschepp
 
 # Add narrower rules below ONLY when they CHANGE the owner set (a different/
