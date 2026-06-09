@@ -5,6 +5,10 @@ on:
     workflows: ["Auto-update PR branches"]
     types: [completed]
 
+# Least-privilege default; the single job below elevates to the writes it needs.
+permissions:
+  contents: read
+
 env:
   GIT_CONFIG_COUNT: 2
   GIT_CONFIG_KEY_0: init.defaultBranch
