@@ -398,6 +398,27 @@ func TestCacheGitOpTimeoutFallback(t *testing.T) {
 	assert.False(t, clean)
 }
 
+// TestCacheRejectsOversizedFile shrinks the decode ceiling below any real cache
+// so the size guard fires, confirming an oversized (potentially hostile) cache
+// is reported unusable and the transparent loader falls back rather than
+// gob-decoding it.
+func TestCacheRejectsOversizedFile(t *testing.T) {
+	dir := miniArchive(t, 2)
+	arch, dups, err := LoadArchiveWithOptions(dir, false)
+	require.NoError(t, err)
+	require.NoError(t, writeCache(dir, arch, dups))
+
+	orig := maxCacheFileBytes
+	maxCacheFileBytes = 8 // below any real cache (the magic prefix alone is 8 bytes)
+	t.Cleanup(func() { maxCacheFileBytes = orig })
+
+	_, err = readCacheHeader(dir)
+	require.ErrorIs(t, err, ErrCacheTooLarge, "oversized cache must be rejected before decoding")
+
+	_, _, ok := tryLoadFreshCache(dir)
+	assert.False(t, ok, "oversized cache must not be treated as a hit")
+}
+
 func runGitInit(t *testing.T, dir string) {
 	t.Helper()
 	for _, args := range [][]string{

@@ -119,7 +119,7 @@ func statusCache(io *IOStreams, path string) error {
 			io.Println("Run 'glx cache build' to create one.")
 
 			return nil
-		case errors.Is(err, ErrNotCacheFile), errors.Is(err, ErrCacheVersion):
+		case errors.Is(err, ErrNotCacheFile), errors.Is(err, ErrCacheVersion), errors.Is(err, ErrCacheTooLarge):
 			io.Printf("Cache present but unusable (%v); it will be ignored.\n", err)
 			io.Println("Run 'glx cache build' to replace it.")
 

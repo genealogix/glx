@@ -89,4 +89,5 @@ var (
 	ErrCacheNotFound     = errors.New("no binary cache found (run 'glx cache build' first)")
 	ErrNotCacheFile      = errors.New("file is not a glx binary cache")
 	ErrCacheVersion      = errors.New("binary cache uses an incompatible cache format version")
+	ErrCacheTooLarge     = errors.New("binary cache file exceeds the maximum decodable size")
 )

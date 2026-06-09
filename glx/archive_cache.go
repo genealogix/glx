@@ -69,6 +69,19 @@ const (
 // truncated file is rejected cheaply, without attempting a gob decode.
 var cacheMagic = [8]byte{'G', 'L', 'X', 'C', 'A', 'C', 'H', 'E'}
 
+// maxCacheFileBytes is a sanity ceiling on a cache file before it is gob-decoded.
+// The cache is derived, disposable, git-ignored local state, but it could in
+// principle be a hostile file planted in a shared/cloned repo, and gob is not
+// hardened for untrusted input. Go's gob already bounds speculative allocation
+// to the bytes actually read (internal/saferio), so a small crafted file cannot
+// amplify into a huge allocation; this ceiling additionally bounds the "very
+// large file" vector. Legitimate caches are far smaller — the gob blob roughly
+// tracks the parsed archive, which must fit in memory to be usable at all — so
+// the limit never rejects a real cache; an oversized file is treated as unusable
+// and the authoritative YAML parse runs instead. It is a var (not a const) only
+// so tests can shrink it to exercise the limit. (genealogix/glx#999 review.)
+var maxCacheFileBytes int64 = 8 << 30 // 8 GiB
+
 func init() {
 	// Property maps (map[string]any) carry values whose concrete types come from
 	// the YAML decoder: nested maps, sequences, and !!timestamp scalars. gob
@@ -412,6 +425,15 @@ func openCache(root string) (*os.File, *gob.Decoder, *CacheHeader, error) {
 		return nil, nil, nil, err
 	}
 
+	// Refuse an implausibly large cache before decoding any of it (the cache may
+	// be a hostile file in a shared repo, and gob is not safe for untrusted
+	// input); the YAML parse runs instead.
+	if info, statErr := f.Stat(); statErr == nil && info.Size() > maxCacheFileBytes {
+		_ = f.Close()
+
+		return nil, nil, nil, ErrCacheTooLarge
+	}
+
 	var magic [8]byte
 	if _, err := io.ReadFull(f, magic[:]); err != nil || magic != cacheMagic {
 		_ = f.Close()
@@ -419,7 +441,10 @@ func openCache(root string) (*os.File, *gob.Decoder, *CacheHeader, error) {
 		return nil, nil, nil, ErrNotCacheFile
 	}
 
-	dec := gob.NewDecoder(f)
+	// Decode through a LimitReader so neither the header nor the body can ever
+	// drive gob to read (and allocate for) more than the sanity ceiling, even if
+	// the file grew after the stat above.
+	dec := gob.NewDecoder(io.LimitReader(f, maxCacheFileBytes))
 	var header CacheHeader
 	if err := dec.Decode(&header); err != nil {
 		_ = f.Close()
