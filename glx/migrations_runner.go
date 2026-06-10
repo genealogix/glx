@@ -109,16 +109,22 @@ func showMigrations(io *IOStreams, archivePath, personQuery, pattern string, inc
 		return fmt.Errorf("%w: %q", ErrMigrationsUnknownFormat, format)
 	}
 
+	// Validate the pattern before loading the archive: a malformed
+	// invocation shouldn't pay for a full archive parse.
+	var terms []string
+	if pattern != "" {
+		terms = splitMigrationPattern(pattern)
+		if len(terms) < 2 {
+			return fmt.Errorf("%w: %q", ErrMigrationsPatternTooShort, pattern)
+		}
+	}
+
 	archive, err := loadArchiveForEvidence(io, archivePath)
 	if err != nil {
 		return err
 	}
 
 	if pattern != "" {
-		terms := splitMigrationPattern(pattern)
-		if len(terms) < 2 {
-			return fmt.Errorf("%w: %q", ErrMigrationsPatternTooShort, pattern)
-		}
 		report := matchMigrationPattern(archive, terms)
 		if format == migrationsFormatJSON {
 			return printMigrationsJSON(io, report)

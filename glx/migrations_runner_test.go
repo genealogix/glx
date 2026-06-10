@@ -447,7 +447,10 @@ func TestShowMigrations_ValidationErrors(t *testing.T) {
 	if err := showMigrations(io, ".", "x", "", false, "yaml"); !errors.Is(err, ErrMigrationsUnknownFormat) {
 		t.Errorf("bad format error = %v, want ErrMigrationsUnknownFormat", err)
 	}
-	if err := showMigrations(io, t.TempDir(), "", "Florida", false, "text"); !errors.Is(err, ErrMigrationsPatternTooShort) {
+	// A nonexistent archive path proves invocation errors surface before
+	// the archive is loaded.
+	missing := filepath.Join(t.TempDir(), "does-not-exist")
+	if err := showMigrations(io, missing, "", "Florida", false, "text"); !errors.Is(err, ErrMigrationsPatternTooShort) {
 		t.Errorf("short pattern error = %v, want ErrMigrationsPatternTooShort", err)
 	}
 }
