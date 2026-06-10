@@ -30,6 +30,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
 - 🔌 **Plugins** - Discover and run third-party `glx-<name>` executables from PATH (git-style fallback); list with `glx --plugins`
+- ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
 - 📚 **Examples Validation** - Automatically validates documentation examples
@@ -323,4 +324,3 @@ Apache License 2.0 - See [LICENSE](https://github.com/genealogix/glx/blob/main/L
 - 💡 [Examples](/examples/)
 - 🐛 [Issue Tracker](https://github.com/genealogix/glx/issues)
 - 💬 [Discussions](https://github.com/genealogix/glx/discussions)
-
