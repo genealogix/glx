@@ -153,3 +153,136 @@ func TestPersonDisplayName(t *testing.T) {
 		})
 	}
 }
+
+func TestStripStaleEventTitleYear(t *testing.T) {
+	tests := []struct {
+		name      string
+		title     string
+		eventType string
+		names     []string
+		want      string
+	}{
+		// Stale suffixes that must be stripped.
+		{
+			name:      "redundant year on individual event",
+			title:     "Birth of John Smith (1850)",
+			eventType: "birth",
+			names:     []string{"John Smith"},
+			want:      "Birth of John Smith",
+		},
+		{
+			name:      "buggy day-as-year suffix",
+			title:     "Birth of John Smith (15)",
+			eventType: "birth",
+			names:     []string{"John Smith"},
+			want:      "Birth of John Smith",
+		},
+		{
+			name:      "couple event",
+			title:     "Marriage of Robert Webb and Jane Miller (1850)",
+			eventType: "marriage",
+			names:     []string{"Robert Webb", "Jane Miller"},
+			want:      "Marriage of Robert Webb and Jane Miller",
+		},
+		{
+			name:      "bare label with no participant names",
+			title:     "Burial (1863)",
+			eventType: "burial",
+			names:     nil,
+			want:      "Burial",
+		},
+		{
+			name:      "bare label even when names are known",
+			title:     "Burial (1863)",
+			eventType: "burial",
+			names:     []string{"John Smith"},
+			want:      "Burial",
+		},
+		{
+			name:      "snake_case fallback label",
+			title:     "Military Service of Robert Webb (1850)",
+			eventType: "military_service",
+			names:     []string{"Robert Webb"},
+			want:      "Military Service of Robert Webb",
+		},
+		{
+			name:      "empty names are skipped like GenerateEventTitle does",
+			title:     "Marriage of Jane Miller (1850)",
+			eventType: "marriage",
+			names:     []string{"", "Jane Miller"},
+			want:      "Marriage of Jane Miller",
+		},
+		// Titles that must be left untouched.
+		{
+			name:      "no trailing parenthetical",
+			title:     "1860 Census — Webb Household",
+			eventType: "census",
+			names:     []string{"John Smith"},
+			want:      "1860 Census — Webb Household",
+		},
+		{
+			name:      "custom title with trailing year fails the gate",
+			title:     "Family reunion (1955)",
+			eventType: "event",
+			names:     []string{"John Smith"},
+			want:      "Family reunion (1955)",
+		},
+		{
+			name:      "non-digit parenthetical",
+			title:     "Census (Webb Household)",
+			eventType: "census",
+			names:     []string{"John Smith"},
+			want:      "Census (Webb Household)",
+		},
+		{
+			name:      "more than four digits",
+			title:     "Reunion (10543)",
+			eventType: "event",
+			names:     nil,
+			want:      "Reunion (10543)",
+		},
+		{
+			name:      "participant name mismatch fails the gate",
+			title:     "Birth of John Smith (1850)",
+			eventType: "birth",
+			names:     []string{"Jane Doe"},
+			want:      "Birth of John Smith (1850)",
+		},
+		{
+			name:      "event type mismatch fails the gate",
+			title:     "Birth of John Smith (1850)",
+			eventType: "death",
+			names:     []string{"John Smith"},
+			want:      "Birth of John Smith (1850)",
+		},
+		{
+			name:      "of-shape with no participant names fails the gate",
+			title:     "Birth of John Smith (1850)",
+			eventType: "birth",
+			names:     nil,
+			want:      "Birth of John Smith (1850)",
+		},
+		{
+			name:      "no space before the parenthetical",
+			title:     "Birth of John Smith(1850)",
+			eventType: "birth",
+			names:     []string{"John Smith"},
+			want:      "Birth of John Smith(1850)",
+		},
+		{
+			name:      "empty title",
+			title:     "",
+			eventType: "birth",
+			names:     []string{"John Smith"},
+			want:      "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := StripStaleEventTitleYear(tt.title, tt.eventType, tt.names)
+			assert.Equal(t, tt.want, got)
+			// Stripping is idempotent: a cleaned title no longer matches the gate.
+			assert.Equal(t, got, StripStaleEventTitleYear(got, tt.eventType, tt.names))
+		})
+	}
+}

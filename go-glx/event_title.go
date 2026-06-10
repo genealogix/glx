@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -80,6 +81,53 @@ func GenerateEventTitle(eventType string, personNames []string) string {
 	default:
 		return fmt.Sprintf("%s of %s and %s", label, names[0], names[1])
 	}
+}
+
+// staleTitleYearSuffix matches the trailing " (YEAR)" suffix that pre-#1026
+// GEDCOM imports appended to auto-generated event titles. The captured digits
+// are 1–4 ASCII digits because the suffix was derived by ExtractFirstYear,
+// which never emitted more — this also covers its buggy day-as-year output
+// (e.g. "(15)", see #1025).
+var staleTitleYearSuffix = regexp.MustCompile(` \([0-9]{1,4}\)$`)
+
+// StripStaleEventTitleYear removes the stale " (YEAR)" suffix that GEDCOM
+// imports before #1026 appended to auto-generated event titles, returning the
+// title unchanged when no stale suffix is recognized.
+//
+// A hand-authored title must never be altered, so a bare "strip trailing
+// digits in parentheses" is not enough. The suffix is removed only when the
+// remaining body is byte-for-byte identical to a title GenerateEventTitle
+// would produce for this event from its type and participant names — the
+// exact shapes import generated ("Burial", "Birth of John Smith",
+// "Marriage of Robert Webb and Jane Miller"). Titles like
+// "Family reunion (1955)" or "Census (Webb Household)" fail that gate and
+// are preserved.
+//
+// participantNames are the display names of the event's principal/spouse
+// participants in stored order — the names import titled the event with.
+//
+// Known residual: a user who hand-typed a title identical to the auto-shape
+// including the year is indistinguishable from a stale auto-title and will be
+// stripped; the result equals the current canonical title and the year
+// remains in the event's date field.
+func StripStaleEventTitleYear(title, eventType string, participantNames []string) string {
+	loc := staleTitleYearSuffix.FindStringIndex(title)
+	if loc == nil {
+		return title
+	}
+	body := title[:loc[0]]
+
+	names := filterNonEmpty(participantNames)
+	if len(names) > 2 {
+		names = names[:2] // GenerateEventTitle only ever used the first two
+	}
+	for i := 0; i <= len(names); i++ {
+		if body == GenerateEventTitle(eventType, names[:i]) {
+			return body
+		}
+	}
+
+	return title
 }
 
 // PersonDisplayName extracts a display name from a Person's properties.
