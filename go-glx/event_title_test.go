@@ -192,11 +192,11 @@ func TestStripStaleEventTitleYear(t *testing.T) {
 			want:      "Burial",
 		},
 		{
-			name:      "bare label even when names are known",
-			title:     "Burial (1863)",
-			eventType: "burial",
-			names:     []string{"John Smith"},
-			want:      "Burial",
+			name:      "extra participant names beyond two are ignored",
+			title:     "Marriage of Robert Webb and Jane Miller (1850)",
+			eventType: "marriage",
+			names:     []string{"Robert Webb", "Jane Miller", "Willa Witness"},
+			want:      "Marriage of Robert Webb and Jane Miller",
 		},
 		{
 			name:      "snake_case fallback label",
@@ -261,6 +261,20 @@ func TestStripStaleEventTitleYear(t *testing.T) {
 			eventType: "birth",
 			names:     nil,
 			want:      "Birth of John Smith (1850)",
+		},
+		{
+			name:      "partial-name shape fails the gate",
+			title:     "Marriage of Robert Webb (1850)",
+			eventType: "marriage",
+			names:     []string{"Robert Webb", "Jane Miller"},
+			want:      "Marriage of Robert Webb (1850)",
+		},
+		{
+			name:      "bare label fails the gate when names are known",
+			title:     "Burial (1863)",
+			eventType: "burial",
+			names:     []string{"John Smith"},
+			want:      "Burial (1863)",
 		},
 		{
 			name:      "no space before the parenthetical",

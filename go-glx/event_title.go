@@ -84,9 +84,9 @@ func GenerateEventTitle(eventType string, personNames []string) string {
 }
 
 // staleTitleYearSuffix matches the trailing " (YEAR)" suffix that pre-#1026
-// GEDCOM imports appended to auto-generated event titles. The captured digits
-// are 1–4 ASCII digits because the suffix was derived by ExtractFirstYear,
-// which never emitted more — this also covers its buggy day-as-year output
+// GEDCOM imports appended to auto-generated event titles. It matches 1–4
+// ASCII digits because the suffix was derived by ExtractFirstYear, which
+// never emitted more — this also covers its buggy day-as-year output
 // (e.g. "(15)", see #1025).
 var staleTitleYearSuffix = regexp.MustCompile(` \([0-9]{1,4}\)$`)
 
@@ -96,12 +96,20 @@ var staleTitleYearSuffix = regexp.MustCompile(` \([0-9]{1,4}\)$`)
 //
 // A hand-authored title must never be altered, so a bare "strip trailing
 // digits in parentheses" is not enough. The suffix is removed only when the
-// remaining body is byte-for-byte identical to a title GenerateEventTitle
-// would produce for this event from its type and participant names — the
-// exact shapes import generated ("Burial", "Birth of John Smith",
-// "Marriage of Robert Webb and Jane Miller"). Titles like
-// "Family reunion (1955)" or "Census (Webb Household)" fail that gate and
-// are preserved.
+// remaining body is byte-for-byte identical to the one title
+// GenerateEventTitle would produce for this event from its type and full
+// participant-name list — the exact shapes import generated ("Burial",
+// "Birth of John Smith", "Marriage of Robert Webb and Jane Miller"). Titles
+// like "Family reunion (1955)" or "Census (Webb Household)" fail that gate
+// and are preserved.
+//
+// Deliberately, no partial-name shape is accepted: for an event whose
+// participants are Robert Webb and Jane Miller, "Marriage of Robert Webb
+// (1850)" is NOT stripped — it doesn't match the auto title for the event's
+// current participant set, so it is treated as hand-authored. A stale title
+// whose participant set changed after import (a spouse added, a person
+// renamed) is likewise left alone; leaving a stale suffix in place is benign,
+// while stripping a hand-authored title is not.
 //
 // participantNames are the display names of the event's principal/spouse
 // participants in stored order — the names import titled the event with.
@@ -121,10 +129,8 @@ func StripStaleEventTitleYear(title, eventType string, participantNames []string
 	if len(names) > 2 {
 		names = names[:2] // GenerateEventTitle only ever used the first two
 	}
-	for i := 0; i <= len(names); i++ {
-		if body == GenerateEventTitle(eventType, names[:i]) {
-			return body
-		}
+	if body == GenerateEventTitle(eventType, names) {
+		return body
 	}
 
 	return title

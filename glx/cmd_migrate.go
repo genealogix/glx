@@ -75,8 +75,11 @@ GEDCOM imports before #1026 appended to auto-generated event titles — includin
 the buggy day-as-year form (e.g. ` + "`Birth of John Smith (15)`" + `, #1025).
 A title is only touched when, with the suffix removed, it exactly matches the
 title import would auto-generate for that event from its type and participant
-names; hand-authored titles are never modified. The year stays in the event's
-` + "`date`" + ` field, where it belongs (#1032).`,
+names; other titles are never modified. One caveat: a hand-typed title that is
+identical to that auto-generated shape *including* the year is
+indistinguishable from a stale import title and will also be stripped — the
+year remains recoverable from the event's ` + "`date`" + ` field, where it
+belongs (#1032).`,
 	Example: `  # Migrate a multi-file archive
   glx migrate ./my-archive
 
