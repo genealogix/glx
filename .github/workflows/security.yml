@@ -133,7 +133,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           pinned="$(tr -d '[:space:]' < .gosec-version)"
-          latest="$(gh api repos/securego/gosec/releases/latest --jq .tag_name)"
+          printf '%s' "$pinned" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error file=.gosec-version::invalid .gosec-version: $pinned (expected vMAJOR.MINOR.PATCH)"; exit 1; }
+          latest="$(gh api repos/securego/gosec/releases/latest --jq .tag_name)" || { echo "::error::could not query the latest securego/gosec release from the GitHub API"; exit 1; }
           if [ "$pinned" != "$latest" ]; then
             echo "::error file=.gosec-version::pinned gosec $pinned is behind the latest release $latest — bump .gosec-version (and re-run gosec locally with 'make gosec' to catch findings from new analyzers)"
             exit 1

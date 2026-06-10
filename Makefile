@@ -128,7 +128,9 @@ vulncheck: ## Run govulncheck against the Go vulnerability DB (pinned via ci-too
 	go tool -modfile=ci-tools/go.mod govulncheck ./...
 
 gosec: ## Run gosec static security analysis (pinned via .gosec-version)
-	go run github.com/securego/gosec/v2/cmd/gosec@$$(tr -d '[:space:]' < .gosec-version) -quiet ./...
+	@v="$$(tr -d '[:space:]' < .gosec-version)"; \
+	printf '%s' "$$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "invalid .gosec-version: $$v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }; \
+	go run "github.com/securego/gosec/v2/cmd/gosec@$$v" -quiet ./...
 
 ## Specification
 check-schemas: ## Validate JSON schema files
