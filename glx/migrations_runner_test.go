@@ -286,6 +286,87 @@ func TestPrintMigrationReportText(t *testing.T) {
 	}
 }
 
+func TestResidenceMigrationEntries_Shapes(t *testing.T) {
+	archive := migrationArchive()
+
+	tests := []struct {
+		name      string
+		raw       any
+		wantPlace string
+		wantDate  string
+	}{
+		{"plain string place ID", "place-millbrook", "Millbrook, Hartford Co., Wisconsin, United States", ""},
+		{"structured map", map[string]any{"value": "place-millbrook", "date": "1855"}, "Millbrook, Hartford Co., Wisconsin, United States", "1855"},
+		{"freeform string in list", []any{"Millbrook, Hartford Co., WI"}, "Millbrook, Hartford Co., WI", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entries := residenceMigrationEntries(tt.raw, archive)
+			if len(entries) != 1 {
+				t.Fatalf("len(entries) = %d, want 1", len(entries))
+			}
+			if entries[0].Place != tt.wantPlace || entries[0].Date != tt.wantDate {
+				t.Errorf("entry = {%q, %q}, want {%q, %q}",
+					entries[0].Place, entries[0].Date, tt.wantPlace, tt.wantDate)
+			}
+		})
+	}
+
+	if entries := residenceMigrationEntries(nil, archive); entries != nil {
+		t.Errorf("nil property produced entries: %+v", entries)
+	}
+	if entries := residenceMigrationEntries(map[string]any{"date": "1855"}, archive); entries != nil {
+		t.Errorf("valueless map produced entries: %+v", entries)
+	}
+}
+
+func TestPrintMigrationReportText_UndatedSection(t *testing.T) {
+	archive := migrationArchive()
+	archive.Persons["person-jane-webb"].Properties["residence"] = "place-wisconsin" // undated
+
+	report := buildMigrationReport(archive, "person-jane-webb", "")
+
+	io, out, _ := TestIOStreams()
+	printMigrationReportText(io, &report)
+
+	output := out.String()
+	if !strings.Contains(output, "Undated:") || !strings.Contains(output, "(no date)") {
+		t.Errorf("undated section missing from output:\n%s", output)
+	}
+}
+
+func TestPrintMigrationReportText_NoObservations(t *testing.T) {
+	report := buildMigrationReport(migrationArchive(), "person-anna-lane", "")
+	// Anna only appears in the 1860 census; strip it to make her observation-free
+	report.Entries = nil
+	report.Movements = nil
+
+	io, out, _ := TestIOStreams()
+	printMigrationReportText(io, &report)
+
+	if !strings.Contains(out.String(), "No place observations found.") {
+		t.Errorf("empty-report message missing:\n%s", out.String())
+	}
+}
+
+func TestPrintMigrationPatternText_Matches(t *testing.T) {
+	report := matchMigrationPattern(migrationArchive(), []string{"Florida", "Wisconsin"})
+
+	io, out, _ := TestIOStreams()
+	printMigrationPatternText(io, report)
+
+	output := out.String()
+	for _, want := range []string{
+		"People with Florida → Wisconsin migration:",
+		"Jane Miller (person-jane-webb) — Florida ABT 1832, Wisconsin ABT 1852",
+		"1 match",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output missing %q:\n%s", want, output)
+		}
+	}
+}
+
 func TestPrintMigrationPatternText_NoMatches(t *testing.T) {
 	report := matchMigrationPattern(migrationArchive(), []string{"Texas", "Oregon"})
 
