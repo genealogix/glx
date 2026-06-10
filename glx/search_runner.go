@@ -713,7 +713,7 @@ func showSearch(archivePath, query string, caseSensitive bool, typeFilter string
 
 	var archive *glxlib.GLXFile
 	if info.IsDir() {
-		loaded, duplicates, loadErr := LoadArchiveWithOptions(archivePath, false)
+		loaded, duplicates, loadErr := LoadArchiveCached(archivePath)
 		if loadErr != nil {
 			return fmt.Errorf("failed to load archive: %w", loadErr)
 		}

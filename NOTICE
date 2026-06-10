@@ -26,6 +26,11 @@ Direct dependencies
     Copyright (c) Brian Voe
     https://github.com/brianvoe/gofakeit
 
+  github.com/go-git/go-git/v5
+    License: Apache-2.0
+    Copyright 2018 Sourced Technologies, S.L.
+    https://github.com/go-git/go-git
+
   github.com/santhosh-tekuri/jsonschema/v6
     License: Apache-2.0
     Copyright Santhosh Kumar Tekuri
@@ -51,23 +56,132 @@ Direct dependencies
 Transitive dependencies
 -----------------------
 
+  dario.cat/mergo
+    License: BSD-3-Clause
+    Copyright (c) 2013 Dario Castañé
+    Copyright (c) 2012 The Go Authors
+    https://github.com/imdario/mergo
+
+  github.com/Microsoft/go-winio
+    License: MIT
+    Copyright (c) 2015 Microsoft
+    https://github.com/Microsoft/go-winio
+
+  github.com/ProtonMail/go-crypto
+    License: BSD-3-Clause
+    Copyright (c) 2009 The Go Authors
+    https://github.com/ProtonMail/go-crypto
+
+  github.com/cloudflare/circl
+    License: BSD-3-Clause
+    Copyright (c) 2019 Cloudflare
+    Copyright (c) 2009 The Go Authors
+    Copyright (c) 2018 Brendan McMillion
+    https://github.com/cloudflare/circl
+
   github.com/cpuguy83/go-md2man/v2
     License: MIT
     Copyright (c) 2014 Brian Goff
     https://github.com/cpuguy83/go-md2man
+
+  github.com/cyphar/filepath-securejoin
+    License: BSD-3-Clause AND MPL-2.0
+    Copyright (c) 2014-2015 Docker Inc & Go Authors
+    Copyright (c) 2017-2024 SUSE LLC
+    https://github.com/cyphar/filepath-securejoin
+
+  github.com/emirpasic/gods
+    License: BSD-2-Clause AND ISC
+    Copyright (c) 2015 Emir Pasic
+    Copyright (c) 2017 Benjamin Scher Purcell
+    https://github.com/emirpasic/gods
+
+  github.com/go-git/gcfg
+    License: BSD-3-Clause
+    Copyright (c) 2012 Péter Surányi
+    Copyright (c) 2009 The Go Authors
+    https://github.com/go-git/gcfg
+
+  github.com/go-git/go-billy/v5
+    License: Apache-2.0
+    Copyright 2017 Sourced Technologies S.L.
+    https://github.com/go-git/go-billy
+
+  github.com/golang/groupcache
+    License: Apache-2.0
+    Copyright 2012 Google Inc.
+    https://github.com/golang/groupcache
 
   github.com/inconshreveable/mousetrap
     License: Apache-2.0
     Copyright 2022 Alan Shreve (@inconshreveable)
     https://github.com/inconshreveable/mousetrap
 
+  github.com/jbenet/go-context
+    License: MIT
+    Copyright (c) 2014 Juan Batiz-Benet
+    https://github.com/jbenet/go-context
+
+  github.com/kevinburke/ssh_config
+    License: MIT
+    Copyright (c) 2017 Kevin Burke
+    Copyright (c) 2013-2017 Thomas Pelletier, Eric Anderton
+    https://github.com/kevinburke/ssh_config
+
+  github.com/klauspost/cpuid/v2
+    License: MIT
+    Copyright (c) 2015 Klaus Post
+    https://github.com/klauspost/cpuid
+
+  github.com/pjbgf/sha1cd
+    License: Apache-2.0
+    Copyright 2023 pjbgf
+    https://github.com/pjbgf/sha1cd
+
   github.com/russross/blackfriday/v2
     License: BSD-2-Clause
     Copyright (c) 2011 Russ Ross
     https://github.com/russross/blackfriday
+
+  github.com/sergi/go-diff
+    License: MIT AND Apache-2.0
+    Copyright (c) 2012-2016 The go-diff Authors
+    Copyright (c) 2006 Google Inc.
+    https://github.com/sergi/go-diff
+
+  github.com/skeema/knownhosts
+    License: Apache-2.0
+    Copyright 2025 Skeema LLC and the Skeema Knownhosts authors
+    https://github.com/skeema/knownhosts
 
   github.com/spf13/pflag
     License: BSD-3-Clause
     Copyright (c) 2012 Alex Ogier
     Copyright (c) 2012 The Go Authors
     https://github.com/spf13/pflag
+
+  github.com/xanzy/ssh-agent
+    License: Apache-2.0 AND MIT
+    Copyright 2015 Sander van Harmelen
+    Copyright (c) 2014 David Mzareulyan
+    https://github.com/xanzy/ssh-agent
+
+  golang.org/x/crypto
+    License: BSD-3-Clause
+    Copyright 2009 The Go Authors
+    https://github.com/golang/crypto
+
+  golang.org/x/net
+    License: BSD-3-Clause
+    Copyright 2009 The Go Authors
+    https://github.com/golang/net
+
+  golang.org/x/sys
+    License: BSD-3-Clause
+    Copyright 2009 The Go Authors
+    https://github.com/golang/sys
+
+  gopkg.in/warnings.v0
+    License: BSD-2-Clause
+    Copyright (c) 2016 Péter Surányi
+    https://github.com/go-warnings/warnings

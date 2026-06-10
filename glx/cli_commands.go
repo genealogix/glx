@@ -151,6 +151,7 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(cacheCmd)
 	rootCmd.AddCommand(docsCmd)
 }
 
@@ -1748,6 +1749,132 @@ func runLink(_ *cobra.Command, args []string) error {
 		Locator:           linkLocator,
 		DryRun:            linkDryRun,
 	})
+}
+
+// ============================================================================
+// Cache Command
+// ============================================================================
+
+var cacheBuildForce bool
+
+var cacheCmd = &cobra.Command{
+	Use:   "cache",
+	Short: "Manage the binary archive cache for fast repeated loading",
+	Long: `Build and manage a binary cache (.glx/cache.bin) of a multi-file archive.
+
+Every command that loads an archive parses YAML on each run. For large archives
+that cost grows to tens of seconds and gigabytes of memory. The binary cache
+persists the fully parsed archive so later commands deserialize a blob instead
+of re-parsing YAML.
+
+Read commands (summary, query, timeline, analyze, stats, ...) automatically use
+a fresh cache when one is present. Set GLX_CACHE=auto to also build the cache on
+the first run that misses, or GLX_CACHE=off to ignore the cache entirely.
+
+The cache is derived and disposable. Staleness is detected from a filesystem
+(path, size, mtime) fingerprint; a cache that is missing, stale, or unreadable
+is silently ignored and the YAML parse runs instead. Like any mtime-based
+cache, a content edit that preserves a file's size and mtime is the one change
+it cannot detect — use 'glx cache build'/'glx cache clean' to force a refresh
+in that case. The archive's git commit and clean state are also recorded and
+shown by 'glx cache status', but do not affect staleness. Only multi-file
+(directory) archives are supported.`,
+	Example: `  # Build a cache for the current archive
+  glx cache build
+
+  # Force a rebuild even if the cache is fresh
+  glx cache build --force
+
+  # Show cache status (exists, fresh/stale, size, contents)
+  glx cache status
+
+  # Remove the cache
+  glx cache clean
+
+  # Run a command with auto-build on cache miss
+  GLX_CACHE=auto glx summary "Jane Webb"`,
+}
+
+var cacheBuildCmd = &cobra.Command{
+	Use:   "build [archive-path]",
+	Short: "Build (or rebuild) the binary cache for an archive",
+	Long: `Parse the archive and write a fresh binary cache to .glx/cache.bin.
+
+Without --force this is a no-op when the cache is already fresh. The build
+always reads the YAML files (never an existing cache) so the result reflects
+the archive's current on-disk state.
+
+If no path is given, the current directory is used.`,
+	Example: `  # Build a cache for the current directory
+  glx cache build
+
+  # Build a cache for a specific archive
+  glx cache build my-family-archive
+
+  # Force a rebuild
+  glx cache build --force`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runCacheBuild,
+}
+
+var cacheCleanCmd = &cobra.Command{
+	Use:   "clean [archive-path]",
+	Short: "Remove the binary cache for an archive",
+	Long: `Delete .glx/cache.bin and, when it is left empty, the .glx directory.
+
+If no path is given, the current directory is used.`,
+	Example: `  # Remove the cache in the current directory
+  glx cache clean
+
+  # Remove the cache for a specific archive
+  glx cache clean my-family-archive`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runCacheClean,
+}
+
+var cacheStatusCmd = &cobra.Command{
+	Use:   "status [archive-path]",
+	Short: "Show binary cache status (exists, fresh/stale, size, contents)",
+	Long: `Report whether a binary cache exists, whether it is fresh or stale, its
+size and build time, and the entity counts captured in its header.
+
+If no path is given, the current directory is used.`,
+	Example: `  # Show cache status for the current directory
+  glx cache status
+
+  # Show cache status for a specific archive
+  glx cache status my-family-archive`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runCacheStatus,
+}
+
+func init() {
+	cacheCmd.AddCommand(cacheBuildCmd)
+	cacheCmd.AddCommand(cacheCleanCmd)
+	cacheCmd.AddCommand(cacheStatusCmd)
+
+	cacheBuildCmd.Flags().BoolVarP(&cacheBuildForce, "force", "f", false, "Rebuild even if the cache is already fresh")
+}
+
+// cacheArgPath returns the archive path from args, defaulting to ".".
+func cacheArgPath(args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+
+	return "."
+}
+
+func runCacheBuild(_ *cobra.Command, args []string) error {
+	return buildCache(SystemIOStreams(), cacheArgPath(args), cacheBuildForce)
+}
+
+func runCacheClean(_ *cobra.Command, args []string) error {
+	return cleanCache(SystemIOStreams(), cacheArgPath(args))
+}
+
+func runCacheStatus(_ *cobra.Command, args []string) error {
+	return statusCache(SystemIOStreams(), cacheArgPath(args))
 }
 
 // ============================================================================
