@@ -372,10 +372,10 @@ func sanitizeFileName(name string) string {
 	return strings.Trim(b.String(), "-")
 }
 
-// safeMediaBase returns a filesystem-safe media basename (extension preserved),
-// falling back to "media" for empty, dot-only, leading-dot (hidden), or
-// reserved-device-name results so a crafted URI cannot produce a dotfile or an
-// invalid filename.
+// safeMediaBase returns a filesystem-safe media basename (extension preserved).
+// Leading dots are stripped so a crafted URI cannot produce a dotfile, and
+// empty, dot-only, or reserved-device-name results fall back to "media" so the
+// output is always a valid, visible filename.
 func safeMediaBase(base string) string {
 	clean := strings.TrimLeft(sanitizeFileName(base), ".")
 	if clean == "" || strings.Trim(clean, ".") == "" {
