@@ -2,18 +2,27 @@
 # regression guard for the staleness that hit #330/#600):
 #
 #   - codeowners-validator: syntax, duplicate patterns, rules whose paths no
-#     longer match any file, owner existence/permissions (catches a renamed or
-#     departed @handle), and experimental avoid-shadowing (last-match-wins
+#     longer match any file, and experimental avoid-shadowing (last-match-wins
 #     ordering mistakes -- a matched owner set REPLACES earlier matches).
+#     These checks are purely local; no token.
+#   - "owners still exist": every @owner resolves to a live GitHub account via
+#     the API (catches a renamed or departed handle). User existence needs no
+#     special scopes, so the default GITHUB_TOKEN suffices.
+#   - codeowners-validator's full `owners` check (existence AND write access)
+#     hard-requires a classic-PAT `read:org` scope in its CheckSatisfied
+#     preflight, which Actions' GITHUB_TOKEN (an installation token, no
+#     classic scopes) can never satisfy -- it fails with
+#     `missing scopes: "read:org"`. It therefore runs only when the optional
+#     CODEOWNERS_VALIDATOR_TOKEN secret (classic PAT, read:org) is configured.
 #   - make lint-codeowners: every file in the tree resolves to at least one
 #     owner (hmarr/codeowners, pinned via ci-tools/go.mod; no token needed).
 #
 # The `notowned` experimental check is deliberately NOT enabled: with the
 # catch-all-only file (#1055), NOT_OWNED_CHECKER_SKIP_PATTERNS='*' would
 # ignore the only rule and flag every file as unowned. Coverage is the
-# lint-codeowners job's job.
+# lint-codeowners step's job.
 #
-# Known limits (documented in #354): no tool catches a mistyped-but-existing
+# Known limits (documented in #354): no tool catches a mistyped-but-EXISTING
 # username or a functionally-redundant same-owner rule. Confirm auto-request
 # behavior on a real PR after any owner-set change.
 name: Validate CODEOWNERS
@@ -48,18 +57,52 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      OWNERS_PAT: ${{ secrets.CODEOWNERS_VALIDATOR_TOKEN }}
     steps:
       - uses: actions/checkout@v6
 
-      - name: Validate CODEOWNERS (syntax, owners, duppatterns, files, shadowing)
+      - name: Validate CODEOWNERS (syntax, duppatterns, files, shadowing)
         uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4 -- only vX.Y.Z tags published, no floating v0; do not "tidy" to @v0.7
         with:
-          checks: 'files,owners,duppatterns,syntax'
+          checks: 'files,duppatterns,syntax'
           experimental_checks: 'avoid-shadowing'
-          # Default GITHUB_TOKEN suffices for the owners check here: the repo
-          # is public and all owners are individual users (no org teams, which
-          # would need read:org).
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check every @owner still exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Strip comments, pull @handles (handle charset is [A-Za-z0-9-], plus /
+        # for org teams, so nothing here can inject into the gh call). Teams
+        # need read:org to verify, which only the gated full check below has.
+        run: |
+          set -euo pipefail
+          owners="$(sed 's/#.*//' .github/CODEOWNERS | grep -oE '(^|[[:space:]])@[A-Za-z0-9][A-Za-z0-9/-]*' | tr -d ' \t' | sort -u)"
+          if [ -z "$owners" ]; then
+            echo "::error::no owners found in .github/CODEOWNERS"
+            exit 1
+          fi
+          fail=0
+          for owner in $owners; do
+            handle="${owner#@}"
+            if [[ "$handle" == */* ]]; then
+              echo "::notice::skipping team $owner (verifying a team needs the read:org PAT used by the gated owners check)"
+              continue
+            fi
+            if gh api "users/$handle" --silent; then
+              echo "$owner exists"
+            else
+              echo "::error::CODEOWNERS lists $owner, but no such GitHub user exists (renamed or deleted?)"
+              fail=1
+            fi
+          done
+          exit "$fail"
+
+      - name: Validate owners have write access (needs read:org PAT)
+        if: env.OWNERS_PAT != ''
+        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4 -- only vX.Y.Z tags published, no floating v0; do not "tidy" to @v0.7
+        with:
+          checks: 'owners'
+          github_access_token: ${{ env.OWNERS_PAT }}
 
       - uses: actions/setup-go@v6
         with:
