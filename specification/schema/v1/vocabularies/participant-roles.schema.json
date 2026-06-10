@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/participant-roles.schema.json",
   "title": "Participant Roles Vocabulary",
   "description": "Defines the standard and custom participant roles available for events, relationships, and assertions",
@@ -10,12 +10,12 @@
       "type": "object",
       "description": "Map of participant role definitions",
       "additionalProperties": {
-        "$ref": "#/definitions/ParticipantRoleDefinition"
+        "$ref": "#/$defs/ParticipantRoleDefinition"
       }
     }
   },
   "additionalProperties": false,
-  "definitions": {
+  "$defs": {
     "ParticipantRoleDefinition": {
       "type": "object",
       "description": "Definition of a single participant role",
