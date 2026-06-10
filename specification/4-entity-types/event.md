@@ -6,7 +6,7 @@ layout: doc
 
 # Event Entity
 
-[← Back to Entity Types](README)
+[← Back to Entity Types](README.md)
 
 ## Overview
 
