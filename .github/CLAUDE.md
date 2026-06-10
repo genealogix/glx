@@ -80,3 +80,12 @@ Full guide: <https://github.blog/security/vulnerability-research/how-to-catch-gi
   — see `SECURITY-POSTURE.md` for the full command.
 - Discord announcement is gated on `secrets.DISCORD_RELEASE_WEBHOOK`; the
   step skips cleanly when the secret isn't set.
+- **`id-token: write` must never coexist with a cache (or any other
+  untrusted-code execution path) reachable from `pull_request`.** The release
+  job is privileged — it signs binaries with the project's real OIDC identity —
+  so it must not restore a Go build cache that `pull_request`-triggered
+  workflows (`security.yml`, `validate-spec.yml`) can populate; a poisoned
+  cache entry would taint the build *upstream* of signing, and provenance/
+  signatures won't catch it. Hence `cache: false` on `actions/setup-go` in
+  `release.yml` (#1051) — do not "tidy" it back to `true`. Wiring zizmor's
+  `cache-poisoning` audit into CI (#928) would catch regressions generically.
