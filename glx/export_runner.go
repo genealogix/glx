@@ -132,7 +132,7 @@ func loadGLXArchive(inputPath string, verbose bool) (*glxlib.GLXFile, error) {
 			fmt.Printf("Loading multi-file archive: %s\n", inputPath)
 		}
 
-		glx, _, err := LoadArchiveWithOptions(inputPath, false)
+		glx, _, err := LoadArchiveCached(inputPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
 		}
