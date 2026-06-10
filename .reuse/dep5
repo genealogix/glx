@@ -29,6 +29,30 @@ Files: Makefile .goreleaser.yml renovate.json .gitattributes .gitignore .npmrc
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
+Files: .golangci.yml .golangci-lint-version .markdownlint-cli2.jsonc codecov.yml lefthook.yml
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: ci-tools/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: tools/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: scripts/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: public/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
+Files: glx/defaults/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
 Files: NOTICE
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0

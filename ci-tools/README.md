@@ -33,6 +33,13 @@ inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
   dependencies picks up a new advisory. `go install` keeps gosec reproducible
   without exposing that tree. Run it ad hoc with
   `go run github.com/securego/gosec/v2/cmd/gosec@v2.22.4 -quiet ./...`.
+- **go-licenses** stays on a version-pinned
+  `go install github.com/google/go-licenses/v2@v2.0.1` in
+  `.github/workflows/license-compliance.yml` (and a matching `go run` in
+  `make license-check`). Its tree pulls `go.opencensus.io`, `golang.org/x/net`,
+  and `licenseclassifier` — committing that graph here would make
+  `dependency-review` block PRs on advisories in build-time-only code, the
+  same trade-off as gosec.
 - **golangci-lint** is pinned via `.golangci-lint-version` and run through
   `golangci-lint-action` (for `only-new-issues` support — see #272).
 - **goreleaser** runs through `goreleaser-action`.
