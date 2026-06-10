@@ -25,12 +25,12 @@ func TestResolveCrossFileAndPointer(t *testing.T) {
 			"type":"object",
 			"properties":{
 				"persons":{"type":"object","patternProperties":{"^x$":{"$ref":"person.schema.json"}}},
-				"event_types":{"type":"object","patternProperties":{"^x$":{"$ref":"vocabularies/v.schema.json#/definitions/Def"}}}
+				"event_types":{"type":"object","patternProperties":{"^x$":{"$ref":"vocabularies/v.schema.json#/$defs/Def"}}}
 			}
 		}`),
 		personSchema: []byte(`{"type":"object","properties":{"name":{"type":"string"}}}`),
 		"vocabularies/v.schema.json": []byte(`{
-			"definitions":{"Def":{"type":"object","properties":{"label":{"type":"string"}}}}
+			"$defs":{"Def":{"type":"object","properties":{"label":{"type":"string"}}}}
 		}`),
 	}
 	set, err := newSchemaSet(files)
@@ -49,14 +49,14 @@ func TestResolveCrossFileAndPointer(t *testing.T) {
 
 	// Ref with a JSON pointer into a subdirectory file, resolved relative to
 	// the referencing file's directory.
-	node, loc, err = set.resolve("vocabularies/v.schema.json#/definitions/Def", "glx-file.schema.json")
+	node, loc, err = set.resolve("vocabularies/v.schema.json#/$defs/Def", "glx-file.schema.json")
 	if err != nil {
 		t.Fatalf("resolve vocab def: %v", err)
 	}
 	if node.Properties["label"] == nil {
 		t.Fatalf("expected Def with label, got %+v", node)
 	}
-	if loc.file != "vocabularies/v.schema.json" || loc.pointer != "/definitions/Def" {
+	if loc.file != "vocabularies/v.schema.json" || loc.pointer != "/$defs/Def" {
 		t.Fatalf("unexpected loc: %+v", loc)
 	}
 }

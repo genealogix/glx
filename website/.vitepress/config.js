@@ -415,7 +415,8 @@ export default defineConfig({
             { text: 'ADR-0003: Archive-owned vocabularies', link: '/decisions/0003-archive-owned-vocabularies' },
             { text: 'ADR-0004: Git-native archives', link: '/decisions/0004-git-native-archives' },
             { text: 'ADR-0005: Flexible entity IDs', link: '/decisions/0005-flexible-entity-ids' },
-            { text: 'ADR-0006: go-glx library is pure', link: '/decisions/0006-go-glx-library-pure' }
+            { text: 'ADR-0006: go-glx library is pure', link: '/decisions/0006-go-glx-library-pure' },
+            { text: 'ADR-0007: JSON Schema 2020-12', link: '/decisions/0007-json-schema-2020-12' }
           ]
         }
       ],
