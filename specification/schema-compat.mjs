@@ -24,6 +24,56 @@ import { pathToFileURL } from "url";
 const require = createRequire(import.meta.url);
 const { validateSchemaCompatibility } = require("json-schema-diff-validator");
 
+// json-schema-diff-validator predates JSON Schema 2020-12 and treats the
+// dialect migration (#794) — `definitions` → `$defs`, `dependencies` →
+// `dependentRequired`, the `$schema` URL bump, and `#/$defs/` refs — as node
+// removals, i.e. breaking. Those renames are semantically identity-preserving,
+// so before diffing we canonicalize BOTH sides to the tool's native draft-07
+// keywords. Real structural changes (removed properties, new required fields,
+// tightened patterns) survive normalization and still fail the gate.
+//
+// Keyword values that are name→schema maps (properties, $defs, …): the KEYS
+// are data names, not schema keywords, so renaming must not recurse into them
+// (a property literally named "$defs" stays "$defs"). Keyword values that are
+// plain data (enum, const, required, …) are copied verbatim for the same reason.
+const MAP_VALUED_KEYWORDS = new Set([
+  "properties",
+  "patternProperties",
+  "definitions",
+  "$defs",
+  "dependentSchemas",
+]);
+const DATA_VALUED_KEYWORDS = new Set(["enum", "const", "required", "examples", "default"]);
+
+export function normalizeDialect(node, isSchema = true) {
+  if (Array.isArray(node)) return node.map((n) => normalizeDialect(n, isSchema));
+  if (node === null || typeof node !== "object") return node;
+  const out = {};
+  for (const [key, value] of Object.entries(node)) {
+    if (!isSchema) {
+      // Name→schema map: keep the key, the value is a schema again.
+      out[key] = normalizeDialect(value, true);
+      continue;
+    }
+    if (key === "$schema") continue; // dialect declaration, not a constraint
+    if (key === "$ref" && typeof value === "string") {
+      out[key] = value.split("#/$defs/").join("#/definitions/");
+      continue;
+    }
+    let outKey = key;
+    if (key === "$defs") outKey = "definitions";
+    else if (key === "dependentRequired") outKey = "dependencies";
+    if (DATA_VALUED_KEYWORDS.has(key) || key === "dependentRequired") {
+      out[outKey] = value; // plain data (dependentRequired maps to string arrays)
+    } else if (MAP_VALUED_KEYWORDS.has(key) && value && typeof value === "object" && !Array.isArray(value)) {
+      out[outKey] = normalizeDialect(value, false);
+    } else {
+      out[outKey] = normalizeDialect(value, true);
+    }
+  }
+  return out;
+}
+
 // classifySchemaChange decides whether one schema's change is backward-compatible
 // from the base text and current text alone (each a string, or null to signal
 // "absent": baseContent === null means the schema is new; currentContent === null
@@ -64,7 +114,7 @@ export function classifySchemaChange({ path, baseContent, currentContent }) {
     };
   }
   try {
-    validateSchemaCompatibility(oldSchema, newSchema);
+    validateSchemaCompatibility(normalizeDialect(oldSchema), normalizeDialect(newSchema));
     return { path, status: "compatible", breaking: false, message: `✓ ${path}: backward compatible` };
   } catch (e) {
     return { path, status: "breaking", breaking: true, message: `✗ ${path}: BREAKING change — ${e.message}` };

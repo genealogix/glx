@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/research-log.schema.json",
   "title": "ResearchLog",
   "description": "A documented research investigation, capturing every search performed (including searches that found nothing) so researchers can avoid duplicating work and document a 'reasonably exhaustive search' per the Genealogical Proof Standard. ID comes from the map key in the parent structure.",
