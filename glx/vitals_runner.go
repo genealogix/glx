@@ -54,7 +54,7 @@ func loadArchiveForVitals(path string) (*glxlib.GLXFile, error) {
 	}
 
 	if info.IsDir() {
-		archive, duplicates, err := LoadArchiveWithOptions(path, false)
+		archive, duplicates, err := LoadArchiveCached(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load archive: %w", err)
 		}

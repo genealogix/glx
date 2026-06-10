@@ -36,6 +36,18 @@ func runValidate(_ *cobra.Command, args []string) error {
 - `archive_io.go` — single/multi-file archive read/write
 - `testdata/gedcom/` — 180+ GEDCOM test files
 
+## Git Operations — never shell out to the `git` binary
+
+The CLI must have **no runtime dependency on `git` being on `PATH`**. For any git
+operation (reading HEAD, checking whether the work tree is clean, etc.), use the
+pure-Go library `github.com/go-git/go-git/v5` instead of `os/exec`-ing `git`.
+See `archive_cache.go` (`openArchiveRepo`, `gitHeadSHA`, `gitWorkingTreeClean`)
+for the pattern: open with `git.PlainOpenWithOptions(root, &git.PlainOpenOptions{DetectDotGit: true})`
+so an archive nested in a larger repo still resolves, and treat any error as
+"not a git repo / can't tell" so callers fall back gracefully. Shelling out to
+`git` in **test fixtures** (e.g. to construct a real repo) is fine and even
+preferable — it verifies go-git interoperates with real-git output.
+
 ## Serialization Gotchas
 
 - Multi-file archive filenames are derived deterministically from entity IDs (lowercased, `.glx` suffix) — see `go-glx/id_generator.go::EntityIDToFilename`
