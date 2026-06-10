@@ -419,6 +419,41 @@ const (
 	SourceTypeOther              = "other"               // Other source types
 )
 
+// standardSourceTypes is the set of canonical GLX source type keys from the
+// source-types.glx vocabulary. mapSourceType consults this before the GEDCOM
+// alias table so that a TYPE value which already is a canonical key passes
+// through unchanged — making every current and future standard type survive a
+// GLX -> GEDCOM 7.0 -> GLX round-trip without per-key alias maintenance
+// (#1005). Keep in step with the Standard Source Types constants above.
+var standardSourceTypes = map[string]bool{
+	SourceTypeVitalRecord:        true,
+	SourceTypeCensus:             true,
+	SourceTypeChurchRegister:     true,
+	SourceTypeMilitary:           true,
+	SourceTypeNewspaper:          true,
+	SourceTypeProbate:            true,
+	SourceTypeLand:               true,
+	SourceTypeCourt:              true,
+	SourceTypeImmigration:        true,
+	SourceTypeDirectory:          true,
+	SourceTypeBook:               true,
+	SourceTypeDatabase:           true,
+	SourceTypeOralHistory:        true,
+	SourceTypeCorrespondence:     true,
+	SourceTypePhotograph:         true,
+	SourceTypePopulationRegister: true,
+	SourceTypeTaxRecord:          true,
+	SourceTypeNotarialRecord:     true,
+	SourceTypeFamilyBible:        true,
+	SourceTypeGravestone:         true,
+	SourceTypeDNATest:            true,
+	SourceTypeMemoir:             true,
+	SourceTypeManuscript:         true,
+	SourceTypeMap:                true,
+	SourceTypeSocialMedia:        true,
+	SourceTypeOther:              true,
+}
+
 // gedcomSourceTypeMapping maps GEDCOM source type values to GLX source types.
 // Package-level to avoid allocation on every call.
 var gedcomSourceTypeMapping = map[string]string{
@@ -449,15 +484,6 @@ var gedcomSourceTypeMapping = map[string]string{
 	"manuscript": SourceTypeManuscript,
 	"map":        SourceTypeMap,
 	"social":     SourceTypeSocialMedia,
-	// Identity mappings for canonical GLX keys whose GEDCOM alias differs from
-	// the key itself. Our GEDCOM 7.0 exporter writes Source.Type verbatim as the
-	// TYPE value, so without these a GLX->GEDCOM->GLX round-trip would downgrade
-	// these types to "other" on re-import (#563). Identity mappings carry no
-	// false-positive risk. (gravestone/memoir/manuscript/map already round-trip
-	// because their GEDCOM alias equals the canonical key.)
-	SourceTypeFamilyBible: SourceTypeFamilyBible,
-	SourceTypeDNATest:     SourceTypeDNATest,
-	SourceTypeSocialMedia: SourceTypeSocialMedia,
 }
 
 // EntityType identifies a kind of GLX entity. The string value is the canonical
