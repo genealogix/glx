@@ -37,16 +37,16 @@ type timelineEntry struct {
 // familyRelationshipTypes defines which relationship types count as "family"
 // for the purpose of timeline event collection.
 var familyRelationshipTypes = map[string]bool{
-	"marriage":                true,
-	"civil_union":             true,
-	"common_law_marriage":     true,
-	"partner":                 true,
-	"parent_child":            true,
-	"biological_parent_child": true,
-	"adoptive_parent_child":   true,
-	"foster_parent_child":     true,
-	"step_parent":             true,
-	"guardian":                true,
+	glxlib.RelationshipTypeMarriage:              true,
+	glxlib.RelationshipTypeCivilUnion:            true,
+	glxlib.RelationshipTypeCommonLawMarriage:     true,
+	glxlib.RelationshipTypePartner:               true,
+	glxlib.RelationshipTypeParentChild:           true,
+	glxlib.RelationshipTypeBiologicalParentChild: true,
+	glxlib.RelationshipTypeAdoptiveParentChild:   true,
+	glxlib.RelationshipTypeFosterParentChild:     true,
+	glxlib.RelationshipTypeStepParent:            true,
+	glxlib.RelationshipTypeGuardian:              true,
 }
 
 // showTimeline loads an archive and displays a chronological timeline for a person.
