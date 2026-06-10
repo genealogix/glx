@@ -144,6 +144,7 @@ export default defineConfig({
         items: [
           { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
           { text: 'Best Practices', link: '/guides/best-practices' },
+          { text: 'Git Workflow', link: '/guides/git-workflow' },
           { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
         ]
       },
@@ -384,6 +385,7 @@ export default defineConfig({
           items: [
             { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
             { text: 'Best Practices', link: '/guides/best-practices' },
+            { text: 'Git Workflow', link: '/guides/git-workflow' },
             { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
           ]
         }

@@ -61,6 +61,8 @@ citations:
 
 ## Git Workflow
 
+> **See also:** The [Git Workflow Guide](/guides/git-workflow) covers this topic in depth — branching strategies, collaboration patterns, merging, and conflict resolution.
+
 ### Validation Before Commit
 
 Always validate before committing:
@@ -262,3 +264,4 @@ glx validate
 
 - [Entity Types](/specification/4-entity-types/) - Entity specifications
 - [CLI Documentation](/cli) - Command reference
+- [Git Workflow Guide](/guides/git-workflow) - Branching strategies and collaboration patterns

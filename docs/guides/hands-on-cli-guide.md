@@ -718,3 +718,4 @@ Now that you've explored the Westeros archive, try these on your own data:
 - [CLI Reference](/cli) — Full documentation for every command and flag
 - [Quickstart Guide](/quickstart) — Create your first archive from scratch
 - [Migration from GEDCOM](/guides/migration-from-gedcom) — Import existing GEDCOM files
+- [Git Workflow Guide](/guides/git-workflow) — Branching strategies and collaboration patterns
