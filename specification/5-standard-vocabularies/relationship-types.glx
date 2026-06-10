@@ -7,7 +7,17 @@ relationship_types:
     label: "Marriage"
     description: "Legal or religious union of two people"
     gedcom: "MARR"
-  
+
+  civil_union:
+    label: "Civil Union"
+    description: "Legally recognized union distinct from marriage in its jurisdiction (GEDCOM X CivilUnion, Gramps CIVIL UNION)"
+    # No direct GEDCOM equivalent — GEDCOM 7.0 expresses this as MARR with TYPE "civil union", which rounds back to a marriage relationship in this implementation; no gedcom mapping is declared so the reverse MARR lookup stays unambiguous
+
+  common_law_marriage:
+    label: "Common-Law Marriage"
+    description: "Marriage established by cohabitation and repute rather than ceremony or registration, where the jurisdiction recognizes it (GEDCOM X CommonLawMarriage)"
+    # No direct GEDCOM equivalent — GEDCOM 7.0 expresses this as MARR with TYPE "common law", which rounds back to a marriage relationship in this implementation; no gedcom mapping is declared so the reverse MARR lookup stays unambiguous
+
   parent_child:
     label: "Parent-Child"
     description: "Parent-child relationship (unspecified type)"
