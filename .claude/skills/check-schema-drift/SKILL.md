@@ -33,6 +33,8 @@ Specification (*.md) → Schema (*.schema.json) → Go Code (types.go)
 - Any drift detected means the **schema needs to be updated** to match the specification
 - When reporting drift, frame it as "Schema X needs to be updated because specification says Y"
 
+**Schema dialect:** the schemas are JSON Schema **2020-12** (#794). Subschemas live under `$defs` (not draft-07 `definitions`), and property co-requirements use `dependentRequired` (not `dependencies`). Do not suggest draft-07 idioms when proposing schema fixes.
+
 ## Task
 
 Analyze all entity types and compare:
