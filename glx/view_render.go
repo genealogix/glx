@@ -39,6 +39,12 @@ const (
 	navSearch  = "search"
 )
 
+// Titles of the entity index pages.
+const (
+	pageTitleSources = "Sources"
+	pageTitlePlaces  = "Places"
+)
+
 // renderContext is the data passed to every page template. The base layout and
 // page templates read only the fields relevant to the page being rendered.
 type renderContext struct {
@@ -125,7 +131,7 @@ func renderSourcesPage(model *siteModel, base *renderContext, outputDir string) 
 	ctx := *base
 	ctx.RootPrefix = rootPrefixNested
 	ctx.Active = navSources
-	ctx.PageTitle = "Sources"
+	ctx.PageTitle = pageTitleSources
 	ctx.Sources = model.Sources
 
 	return writeRendered(tmpl, filepath.Join(outputDir, "sources", "index.html"), &ctx)
@@ -140,7 +146,7 @@ func renderPlacesPage(model *siteModel, base *renderContext, outputDir string) e
 	ctx := *base
 	ctx.RootPrefix = rootPrefixNested
 	ctx.Active = navPlaces
-	ctx.PageTitle = "Places"
+	ctx.PageTitle = pageTitlePlaces
 	ctx.Places = model.Places
 
 	return writeRendered(tmpl, filepath.Join(outputDir, "places", "index.html"), &ctx)
