@@ -104,9 +104,11 @@ func TestCollectMigrationEntries_OrderAndSources(t *testing.T) {
 	}
 }
 
-func TestCollectMigrationEntries_ChildBirthNotDuplicatedWhenParentParticipates(t *testing.T) {
+func TestCollectMigrationEntries_ChildBirthDirectParticipationLabeled(t *testing.T) {
 	archive := migrationArchive()
-	// Jane participates in her child's birth event directly (as parent role)
+	// Jane participates in her child's birth event directly (as parent role).
+	// The event must appear once and keep its child-birth provenance label —
+	// a bare "Birth" would read as Jane's own birth.
 	archive.Events["event-robert-birth"].Participants = append(
 		archive.Events["event-robert-birth"].Participants,
 		glxlib.Participant{Person: "person-jane-webb", Role: "parent"},
@@ -114,14 +116,17 @@ func TestCollectMigrationEntries_ChildBirthNotDuplicatedWhenParentParticipates(t
 
 	entries := collectMigrationEntries("person-jane-webb", archive)
 
-	count := 0
+	var matched []migrationEntry
 	for _, e := range entries {
 		if e.Date == "ABT 1852" {
-			count++
+			matched = append(matched, e)
 		}
 	}
-	if count != 1 {
-		t.Errorf("child birth event appears %d times, want 1", count)
+	if len(matched) != 1 {
+		t.Fatalf("child birth event appears %d times, want 1: %+v", len(matched), matched)
+	}
+	if matched[0].Label != "Birth of child (Robert Webb)" {
+		t.Errorf("label = %q, want Birth of child (Robert Webb)", matched[0].Label)
 	}
 }
 
@@ -317,6 +322,40 @@ func TestResidenceMigrationEntries_Shapes(t *testing.T) {
 	}
 	if entries := residenceMigrationEntries(map[string]any{"date": "1855"}, archive); entries != nil {
 		t.Errorf("valueless map produced entries: %+v", entries)
+	}
+}
+
+func TestPadPlaceColumn(t *testing.T) {
+	long := strings.Repeat("Pohl-Göns, ", 8) // 88 runes, multibyte
+	got := padPlaceColumn(long, migrationsPlaceColumnCap)
+	if n := len([]rune(got)); n != migrationsPlaceColumnCap {
+		t.Errorf("truncated rune length = %d, want %d (%q)", n, migrationsPlaceColumnCap, got)
+	}
+	if !strings.HasSuffix(got, "…") {
+		t.Errorf("truncated place missing ellipsis: %q", got)
+	}
+
+	if got := padPlaceColumn("Köln", 10); len([]rune(got)) != 10 {
+		t.Errorf("padded rune length = %d, want 10 (%q)", len([]rune(got)), got)
+	}
+}
+
+func TestPrintMigrationReportText_TruncatesLongPlaces(t *testing.T) {
+	report := migrationReport{
+		Person:     "person-x",
+		PersonName: "X",
+		Entries: []migrationEntry{
+			{Date: "1850", Place: strings.Repeat("Very Long Place Name, ", 5), Label: "Census", sortKey: dateSortKey("1850")},
+		},
+	}
+
+	io, out, _ := TestIOStreams()
+	printMigrationReportText(io, &report)
+
+	for line := range strings.SplitSeq(out.String(), "\n") {
+		if strings.Contains(line, "Very Long") && !strings.Contains(line, "…") {
+			t.Errorf("long place not truncated: %q", line)
+		}
 	}
 }
 

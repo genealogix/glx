@@ -20,6 +20,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -170,34 +171,34 @@ func buildMigrationReport(archive *glxlib.GLXFile, personID, relation string) mi
 // values. Entries are deduplicated and sorted chronologically, undated last.
 func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrationEntry {
 	var entries []migrationEntry
-	seenEvents := make(map[string]bool)
 
-	// Direct events with a place
-	for _, id := range sortedKeys(archive.Events) {
-		event := archive.Events[id]
-		if event == nil || event.PlaceID == "" || !timelineIsParticipant(personID, event) {
-			continue
+	// childID -> display name, for recognizing and labeling child births
+	children := make(map[string]string)
+	for _, rel := range findRelatedPersons(personID, archive) {
+		if rel.Relation == migrationsRelationChild {
+			children[rel.PersonID] = rel.Name
 		}
-		seenEvents[id] = true
-		entries = append(entries, newMigrationEntry(string(event.Date), event.PlaceID, migrationEventLabel(event), archive))
 	}
 
-	// Children's birth events the person isn't already a participant in
-	for _, rel := range findRelatedPersons(personID, archive) {
-		if rel.Relation != migrationsRelationChild {
+	// Single pass over events: direct participation, plus children's births
+	// the person isn't a participant in. A birth where one of the person's
+	// children participates is the child's birth, never the person's own, so
+	// it's labeled "Birth of child (...)" even on direct participation (e.g.
+	// a `parent` role) — a bare event-type label would read as the person's
+	// own birth.
+	for _, id := range sortedKeys(archive.Events) {
+		event := archive.Events[id]
+		if event == nil || event.PlaceID == "" {
 			continue
 		}
-		for _, id := range sortedKeys(archive.Events) {
-			event := archive.Events[id]
-			if event == nil || event.PlaceID == "" || seenEvents[id] {
-				continue
-			}
-			if !strings.EqualFold(event.Type, glxlib.EventTypeBirth) || !timelineIsParticipant(rel.PersonID, event) {
-				continue
-			}
-			seenEvents[id] = true
+		childName, isChildBirth := childBirthOf(event, personID, children)
+
+		switch {
+		case isChildBirth:
 			entries = append(entries, newMigrationEntry(
-				string(event.Date), event.PlaceID, fmt.Sprintf("Birth of child (%s)", rel.Name), archive))
+				string(event.Date), event.PlaceID, fmt.Sprintf("Birth of child (%s)", childName), archive))
+		case timelineIsParticipant(personID, event):
+			entries = append(entries, newMigrationEntry(string(event.Date), event.PlaceID, migrationEventLabel(event), archive))
 		}
 	}
 
@@ -212,6 +213,25 @@ func collectMigrationEntries(personID string, archive *glxlib.GLXFile) []migrati
 	})
 
 	return entries
+}
+
+// childBirthOf reports whether an event is the birth of one of the person's
+// children, returning the child's display name. A participant other than the
+// person who is in the children map identifies the event.
+func childBirthOf(event *glxlib.Event, personID string, children map[string]string) (string, bool) {
+	if len(children) == 0 || !strings.EqualFold(event.Type, glxlib.EventTypeBirth) {
+		return "", false
+	}
+	for _, p := range event.Participants {
+		if p.Person == personID {
+			continue
+		}
+		if name, ok := children[p.Person]; ok {
+			return name, true
+		}
+	}
+
+	return "", false
 }
 
 // migrationEventLabel picks a display label for an event observation: the
@@ -539,8 +559,8 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 
 	placeWidth := 0
 	for _, e := range report.Entries {
-		if len(e.Place) > placeWidth {
-			placeWidth = len(e.Place)
+		if n := utf8.RuneCountInString(e.Place); n > placeWidth {
+			placeWidth = n
 		}
 	}
 	if placeWidth > migrationsPlaceColumnCap {
@@ -554,14 +574,14 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 
 			continue
 		}
-		io.Printf("  %-18s  %-*s  (%s)\n", displayDate(e.Date), placeWidth, e.Place, e.Label)
+		io.Printf("  %-18s  %s  (%s)\n", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), e.Label)
 	}
 
 	if len(undated) > 0 {
 		io.Println("")
 		io.Println("  Undated:")
 		for _, e := range undated {
-			io.Printf("  %-18s  %-*s  (%s)\n", displayDate(e.Date), placeWidth, e.Place, e.Label)
+			io.Printf("  %-18s  %s  (%s)\n", displayDate(e.Date), padPlaceColumn(e.Place, placeWidth), e.Label)
 		}
 	}
 
@@ -574,6 +594,24 @@ func printMigrationReportText(io *IOStreams, report *migrationReport) {
 	}
 
 	io.Println("")
+}
+
+// padPlaceColumn truncates a place string to migrationsPlaceColumnCap runes
+// (replacing the tail with "…") and pads it to the column width. Both
+// truncation and padding count runes, not bytes — fmt's %-*s pads by byte
+// length and never truncates, so a long or multibyte hierarchy path would
+// break the column alignment the cap exists to protect.
+func padPlaceColumn(place string, width int) string {
+	runes := []rune(place)
+	if len(runes) > migrationsPlaceColumnCap {
+		place = string(runes[:migrationsPlaceColumnCap-1]) + "…"
+		runes = []rune(place)
+	}
+	if pad := width - len(runes); pad > 0 {
+		place += strings.Repeat(" ", pad)
+	}
+
+	return place
 }
 
 // formatMovement renders one movement as "Florida → Wisconsin (ABT 1832 – ABT 1852)".
