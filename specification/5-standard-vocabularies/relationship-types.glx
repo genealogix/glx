@@ -7,7 +7,17 @@ relationship_types:
     label: "Marriage"
     description: "Legal or religious union of two people"
     gedcom: "MARR"
-  
+
+  civil_union:
+    label: "Civil Union"
+    description: "Legally formalized civil union or registered partnership, distinct from marriage in jurisdictions that define both"
+    # No dedicated GEDCOM tag — GEDCOM X defines a CivilUnion couple fact and Gramps uses CIVIL_UNION; GEDCOM 5.5.1/7.0 record these as MARR with a free-text TYPE (e.g. "civil union"), which imports as a marriage relationship carrying the marriage_type property in this implementation
+
+  common_law_marriage:
+    label: "Common-Law Marriage"
+    description: "Marriage established by cohabitation and public repute rather than ceremony or registration, in jurisdictions that recognize it"
+    # No dedicated GEDCOM tag — GEDCOM X defines a CommonLawMarriage couple fact; GEDCOM 5.5.1/7.0 record these as MARR with a free-text TYPE (e.g. "common law"), which imports as a marriage relationship carrying the marriage_type property in this implementation
+
   parent_child:
     label: "Parent-Child"
     description: "Parent-child relationship (unspecified type)"
@@ -50,7 +60,7 @@ relationship_types:
 
   partner:
     label: "Partner"
-    description: "Domestic partnership or cohabitation"
+    description: "Domestic partnership or cohabitation. Distinct from `civil_union` (a legally formalized union) and `common_law_marriage` (a marriage formed by cohabitation and repute where the law recognizes it)."
     # No direct GEDCOM equivalent — GEDCOM has no standard tag for non-marital partnership; MARR with TYPE "domestic partnership" rounds back to a marriage relationship in this implementation
 
   neighbor:
