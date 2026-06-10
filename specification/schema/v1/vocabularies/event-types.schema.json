@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/event-types.schema.json",
   "title": "Event Types Vocabulary",
   "description": "Defines the standard and custom event types available for event entities",
@@ -10,12 +10,12 @@
       "type": "object",
       "description": "Map of event type definitions",
       "additionalProperties": {
-        "$ref": "#/definitions/EventTypeDefinition"
+        "$ref": "#/$defs/EventTypeDefinition"
       }
     }
   },
   "additionalProperties": false,
-  "definitions": {
+  "$defs": {
     "EventTypeDefinition": {
       "type": "object",
       "description": "Definition of a single event type",

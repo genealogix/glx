@@ -157,7 +157,7 @@ func resolveMapValues(m, root map[string]any) error {
 	return nil
 }
 
-// resolveJSONPointerRef resolves a JSON Pointer reference like #/definitions/Something
+// resolveJSONPointerRef resolves a JSON Pointer reference like #/$defs/Something
 func resolveJSONPointerRef(target, root map[string]any, refStr string) error {
 	resolved, err := resolveJSONPointer(root, refStr)
 	if err != nil {
@@ -177,7 +177,7 @@ func resolveJSONPointerRef(target, root map[string]any, refStr string) error {
 
 // resolveFileRef resolves a file reference and merges it into the target map.
 // Supports refs with an optional JSON Pointer fragment (e.g.
-// "vocabularies/event-types.schema.json#/definitions/EventTypeDefinition") so
+// "vocabularies/event-types.schema.json#/$defs/EventTypeDefinition") so
 // the referenced sub-schema can be selected directly, matching standard JSON
 // Schema semantics.
 func resolveFileRef(target map[string]any, refStr string) error {
@@ -301,7 +301,7 @@ func mergeSchemaIntoTarget(target, refSchema map[string]any) {
 	}
 }
 
-// resolveJSONPointer resolves a JSON Pointer reference like #/definitions/PropertyDefinition
+// resolveJSONPointer resolves a JSON Pointer reference like #/$defs/PropertyDefinition
 func resolveJSONPointer(root map[string]any, pointer string) (map[string]any, error) {
 	// Remove the leading #/
 	path := strings.TrimPrefix(pointer, "#/")

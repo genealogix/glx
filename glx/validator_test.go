@@ -22,7 +22,7 @@ import (
 )
 
 // TestValidateGLXFileStructure_VocabularyEntryRejectsMissingLabel verifies that
-// the fragment-style $ref ("vocabularies/X.schema.json#/definitions/Y") in
+// the fragment-style $ref ("vocabularies/X.schema.json#/$defs/Y") in
 // glx-file.schema.json resolves correctly through resolveFileRef, so each
 // vocabulary entry is validated against the inner type-definition schema (which
 // requires `label`) rather than the outer wrapper schema.

@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GLX drift allowlist",
   "description": "Schema for .claude/drift-allowlist.yaml — known, per-symbol drift suppressions consumed by the /check-*-drift slash commands (and future deterministic checkers, see genealogix/glx#673 and #295). Each list entry suppresses exactly one drift finding and is either PERMANENT (by-design; permanent:true, no tracking_issue) or TEMPORARY (a deferral that must reference an open tracking issue). This schema is NOT a GLX archive-format schema, so it lives under .claude/ rather than specification/schema/v1/ and is validated by specification/validate-drift-allowlist.mjs, not the entity meta-schema.",
   "type": "array",

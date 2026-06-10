@@ -12,7 +12,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classifySchemaChange } from "./schema-compat.mjs";
+import { classifySchemaChange, normalizeDialect } from "./schema-compat.mjs";
 
 const PATH = "specification/schema/v1/thing.schema.json";
 
@@ -95,4 +95,67 @@ test("malformed current JSON is reported, not silently passed", () => {
   const r = classifySchemaChange({ path: PATH, baseContent: json(BASE), currentContent: "{not json" });
   assert.equal(r.status, "invalid-current");
   assert.equal(r.breaking, true);
+});
+
+// --- 2020-12 dialect normalization (#794) ---
+// The draft-07 → 2020-12 migration renames keywords without changing what
+// validates; the gate must treat that rename as compatible while still
+// catching real structural breaks expressed in either dialect.
+
+const DRAFT07 = {
+  $schema: "http://json-schema.org/draft-07/schema#",
+  $id: "https://genealogix.org/schema/v1/thing.schema.json",
+  type: "object",
+  additionalProperties: false,
+  required: ["id"],
+  properties: {
+    id: { type: "string" },
+    entry: { $ref: "#/definitions/Entry" },
+    lat: { type: "number" },
+    lon: { type: "number" },
+  },
+  dependencies: { lat: ["lon"], lon: ["lat"] },
+  definitions: { Entry: { type: "object", properties: { label: { type: "string" } } } },
+};
+
+// The same schema, mechanically migrated to 2020-12.
+const MIGRATED = {
+  ...DRAFT07,
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  properties: { ...DRAFT07.properties, entry: { $ref: "#/$defs/Entry" } },
+  dependentRequired: DRAFT07.dependencies,
+  $defs: DRAFT07.definitions,
+};
+delete MIGRATED.dependencies;
+delete MIGRATED.definitions;
+
+test("pure draft-07 → 2020-12 keyword migration is backward compatible", () => {
+  const r = classifySchemaChange({ path: PATH, baseContent: json(DRAFT07), currentContent: json(MIGRATED) });
+  assert.equal(r.status, "compatible");
+  assert.equal(r.breaking, false);
+});
+
+test("removing a property during the dialect migration is still breaking", () => {
+  const next = { ...MIGRATED, properties: { ...MIGRATED.properties } };
+  delete next.properties.id;
+  const r = classifySchemaChange({ path: PATH, baseContent: json(DRAFT07), currentContent: json(next) });
+  assert.equal(r.status, "breaking");
+  assert.equal(r.breaking, true);
+});
+
+test("adding a required field during the dialect migration is still breaking", () => {
+  const next = { ...MIGRATED, required: ["id", "lat"] };
+  const r = classifySchemaChange({ path: PATH, baseContent: json(DRAFT07), currentContent: json(next) });
+  assert.equal(r.status, "breaking");
+  assert.equal(r.breaking, true);
+});
+
+test("normalizeDialect leaves property NAMES that look like keywords alone", () => {
+  const s = { type: "object", properties: { $defs: { type: "string" } } };
+  assert.deepEqual(normalizeDialect(s), s);
+});
+
+test("normalizeDialect copies enum/const values verbatim", () => {
+  const s = { type: "object", enum: [{ $defs: 1 }], const: { dependentRequired: true } };
+  assert.deepEqual(normalizeDialect(s), s);
 });

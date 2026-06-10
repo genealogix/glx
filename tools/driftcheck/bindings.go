@@ -28,7 +28,7 @@ const glxFileSchema = "glx-file.schema.json"
 
 // binding pairs a Go type with the schema node it must conform to. refStr is
 // resolved relative to the schema root directory and may carry a JSON pointer
-// (e.g. "#/definitions/PropertyDefinition").
+// (e.g. "#/$defs/PropertyDefinition").
 type binding struct {
 	entity  string
 	goType  reflect.Type
@@ -57,11 +57,11 @@ func entityBindings() []binding {
 		{"Metadata", t(glxlib.Metadata{}), glxFileSchema + "#/properties/metadata", true},
 		{
 			"PropertyDefinition", t(glxlib.PropertyDefinition{}),
-			"vocabularies/person-properties.schema.json#/definitions/PropertyDefinition", true,
+			"vocabularies/person-properties.schema.json#/$defs/PropertyDefinition", true,
 		},
 		{
 			"FieldDefinition", t(glxlib.FieldDefinition{}),
-			"vocabularies/person-properties.schema.json#/definitions/FieldDefinition", true,
+			"vocabularies/person-properties.schema.json#/$defs/FieldDefinition", true,
 		},
 	}
 }
