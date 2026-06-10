@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://genealogix.github.io/glx/schemas/check-suite/findings.schema.json",
   "title": "check-* skill findings report",
   "description": "Shared machine-readable output contract emitted by every .claude/skills/check-* drift skill (check-schema-drift, check-code-drift, check-docs-drift, check-examples, check-spec). The fenced block in each skill's report MUST use the info-string `findings-json` so the eval harness can grep-extract it. Epic #1016 — one object-wrapper report per run.",
@@ -29,7 +29,7 @@
     },
     "findings": {
       "type": "array",
-      "items": { "$ref": "#/definitions/finding" },
+      "items": { "$ref": "#/$defs/finding" },
       "description": "Every drift finding. Empty array = no drift detected."
     },
     "positive_notes": {
@@ -65,7 +65,7 @@
       }
     }
   },
-  "definitions": {
+  "$defs": {
     "finding": {
       "type": "object",
       "additionalProperties": false,

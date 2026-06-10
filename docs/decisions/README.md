@@ -41,5 +41,6 @@ See the [Contributing Guide](/development/contributing#architecture-decision-rec
 | [0004](0004-git-native-archives) | Archives are Git repositories of plain-text files | Accepted |
 | [0005](0005-flexible-entity-ids) | Flexible entity IDs, with 8-character hex as the recommended default | Accepted |
 | [0006](0006-go-glx-library-pure) | The go-glx library never performs filesystem I/O | Accepted |
+| [0007](0007-json-schema-2020-12) | JSON schemas use the 2020-12 dialect | Accepted |
 
 Numbers are assigned in the order ADRs are proposed, not by topic — this prevents merge conflicts when two ADRs are proposed at the same time.

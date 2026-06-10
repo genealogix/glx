@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/repository-types.schema.json",
   "title": "Repository Types Vocabulary",
   "description": "Defines the standard and custom repository types available for repository entities",
@@ -10,12 +10,12 @@
       "type": "object",
       "description": "Map of repository type definitions",
       "additionalProperties": {
-        "$ref": "#/definitions/RepositoryTypeDefinition"
+        "$ref": "#/$defs/RepositoryTypeDefinition"
       }
     }
   },
   "additionalProperties": false,
-  "definitions": {
+  "$defs": {
     "RepositoryTypeDefinition": {
       "type": "object",
       "description": "Definition of a single repository type",
