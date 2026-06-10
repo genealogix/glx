@@ -342,6 +342,22 @@ The timeline includes direct events (battles, coronations, trials) and family ev
 glx timeline "Eddard Stark" --no-family
 ```
 
+### `glx migrations` — Geographic movement
+
+Trace where a person was over time and when they moved. Observations come from the person's events, their children's birth events (a child's birthplace is evidence of the parent's residence), and `residence` property values; each change of region is reported as a movement:
+
+```bash
+glx migrations "Eddard Stark"
+```
+
+Migration patterns are evidence: people who made the same move at the same time are often kin. Search the whole archive for everyone who moved between two places, in order:
+
+```bash
+glx migrations --pattern "Winterfell,King's Landing"
+```
+
+Use `--family` to also print timelines for the person's immediate family, and `--format json` for machine-readable output.
+
 ### `glx summary` — Full person profile
 
 Get a comprehensive profile with identity, vital events, life events, family, relationships, and an auto-generated life history:

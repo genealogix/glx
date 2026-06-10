@@ -113,6 +113,7 @@ func init() {
 	rootCmd.AddCommand(descendantsCmd)
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
+	rootCmd.AddCommand(migrationsCmd)
 	rootCmd.AddCommand(vitalsCmd)
 	rootCmd.AddCommand(evidenceCmd)
 	rootCmd.AddCommand(censusCmd)
@@ -927,6 +928,90 @@ func init() {
 
 func runTimeline(_ *cobra.Command, args []string) error {
 	return showTimeline(timelineArchive, args[0], !timelineNoFamily)
+}
+
+// ============================================================================
+// Migrations Command
+// ============================================================================
+
+var (
+	migrationsArchive string
+	migrationsPattern string
+	migrationsFamily  bool
+	migrationsFormat  string
+)
+
+var migrationsCmd = &cobra.Command{
+	Use:   "migrations [person]",
+	Short: "Track a person's geographic movement over time",
+	Long: `Trace a person's geographic movement over time by collecting every dated
+place observation: events they participated in (birth, census, marriage, ...),
+their children's birth events (a child's birthplace is evidence of the
+parent's residence), and residence property values.
+
+Observations are sorted chronologically and each change of region is reported
+as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
+state/region level of the place hierarchy, and pre-statehood territories
+match their successor states ("Florida Territory" equals "Florida").
+
+With --pattern, searches all persons in the archive for a migration pattern
+instead: a comma-separated list of places that must appear in chronological
+order in a person's region sequence. Knowing who else made the same move
+narrows the search for a person's family.
+
+The person argument can be an exact entity ID (e.g., person-jane-webb) or a
+name to search for (e.g., "Jane Miller"). If the name matches multiple
+persons, all matches are listed for disambiguation.
+
+Use --family to also show the timelines of the person's immediate family
+(spouses, parents, children). Use --format json for machine-readable output.
+
+Not to be confused with "glx migrate", which upgrades archive data to newer
+spec conventions.`,
+	Example: `  # Migration timeline by person ID
+  glx migrations person-jane-webb
+
+  # Find everyone who moved from Florida to Wisconsin
+  glx migrations --pattern "Florida,Wisconsin"
+
+  # Include immediate family timelines
+  glx migrations "Jane Miller" --family
+
+  # Machine-readable output
+  glx migrations person-jane-webb --format json`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runMigrations,
+}
+
+func init() {
+	migrationsCmd.Flags().StringVarP(&migrationsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	migrationsCmd.Flags().StringVar(&migrationsPattern, "pattern", "", "Find persons matching a migration pattern (comma-separated places, in order)")
+	migrationsCmd.Flags().BoolVar(&migrationsFamily, "family", false, "Also show timelines for the person's immediate family")
+	migrationsCmd.Flags().StringVar(&migrationsFormat, "format", migrationsFormatText, "Output format: text or json")
+}
+
+func runMigrations(_ *cobra.Command, args []string) error {
+	return migrationsCommand(args, migrationsArchive, migrationsPattern, migrationsFamily, migrationsFormat)
+}
+
+// migrationsCommand validates the person/pattern flag combination before
+// delegating to showMigrations.
+func migrationsCommand(args []string, archive, pattern string, family bool, format string) error {
+	person := ""
+	if len(args) > 0 {
+		person = args[0]
+	}
+
+	switch {
+	case person == "" && pattern == "":
+		return ErrMigrationsPersonOrPattern
+	case person != "" && pattern != "":
+		return ErrMigrationsPersonAndPattern
+	case family && pattern != "":
+		return ErrMigrationsFamilyWithPattern
+	}
+
+	return showMigrations(SystemIOStreams(), archive, person, pattern, family, format)
 }
 
 // ============================================================================
