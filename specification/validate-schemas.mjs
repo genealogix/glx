@@ -2,7 +2,9 @@
 // Schema validation script — replaces abandoned ajv-cli with direct ajv usage.
 // Validates all GLX JSON schemas against the meta-schema and compiles them.
 
-import Ajv from "ajv";
+// GLX schemas declare JSON Schema 2020-12 (#794); the default ajv export only
+// speaks draft-07, so import the 2020-12 dialect class explicitly.
+import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import yaml from "js-yaml";
 import { readFileSync, readdirSync } from "fs";
