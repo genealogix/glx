@@ -37,14 +37,16 @@ type timelineEntry struct {
 // familyRelationshipTypes defines which relationship types count as "family"
 // for the purpose of timeline event collection.
 var familyRelationshipTypes = map[string]bool{
-	"marriage":                  true,
-	"partner":                   true,
-	"parent_child":              true,
-	"biological_parent_child":   true,
-	"adoptive_parent_child":     true,
-	"foster_parent_child":       true,
-	"step_parent":               true,
-	"guardian":                   true,
+	"marriage":                true,
+	"civil_union":             true,
+	"common_law_marriage":     true,
+	"partner":                 true,
+	"parent_child":            true,
+	"biological_parent_child": true,
+	"adoptive_parent_child":   true,
+	"foster_parent_child":     true,
+	"step_parent":             true,
+	"guardian":                true,
 }
 
 // showTimeline loads an archive and displays a chronological timeline for a person.
@@ -280,7 +282,7 @@ func inferRelation(relType, targetRole, otherRole string) string {
 }
 
 func isMarriageType(relType string) bool {
-	return relType == "marriage" || relType == "partner"
+	return glxlib.IsCoupleRelationshipType(relType)
 }
 
 func isParentChildType(relType string) bool {

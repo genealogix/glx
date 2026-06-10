@@ -58,8 +58,10 @@ var parentChildRelTypes = map[string]bool{
 
 // marriageRelTypes maps relationship types that represent spouse/partner connections.
 var marriageRelTypes = map[string]bool{
-	"marriage": true,
-	"partner":  true,
+	"marriage":            true,
+	"civil_union":         true,
+	"common_law_marriage": true,
+	"partner":             true,
 }
 
 // summarySkippedEventTypes are event types excluded from the life events section.
