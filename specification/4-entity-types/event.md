@@ -64,11 +64,13 @@ Domain-specific events can be added via vocabularies:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `title` | string | Short label for the event (e.g., "1860 Census — Webb Household"). On GEDCOM import, titles are auto-generated from the event type and participant names (e.g., "Birth of Robert Webb"); the date is not included, since it is already carried by the `date` field. Archives imported before this change may still contain auto-generated titles that end in a parenthetical value derived from the date (e.g., "Birth of John Smith (1850)"); that value came from the date parser and is not guaranteed to be a correct year — for dates not stored in ISO form it may instead be the day of the month. Distinct from `properties.description`, which is a longer narrative |
+| `title` | string | Short label for the event (e.g., "1860 Census — Webb Household"). Distinct from `properties.description`, which is a longer narrative |
 | `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
 | `notes` | string \| string[] | Free-form notes |
+
+**GEDCOM import note:** Titles are auto-generated from the event type and participant names (for example, "Birth of Robert Webb"). The date is not included because it is already represented by the `date` field. Archives imported before this change may still contain auto-generated titles ending in a parenthetical value derived from date parsing (for example, "Birth of John Smith (1850)"); that value is not guaranteed to be a correct year and may be a day-of-month for non-ISO dates.
 
 ### Participant Object Fields
 
