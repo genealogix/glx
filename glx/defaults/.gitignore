@@ -6,6 +6,9 @@
 .DS_Store
 Thumbs.db
 
+# GLX derived data (binary archive cache — disposable, rebuilt on demand)
+.glx/
+
 # IDE files
 .vscode/
 .idea/

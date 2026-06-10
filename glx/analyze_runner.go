@@ -48,7 +48,7 @@ func loadArchiveForAnalyze(path string) (*glxlib.GLXFile, error) {
 	}
 
 	if info.IsDir() {
-		archive, duplicates, loadErr := LoadArchiveWithOptions(path, false)
+		archive, duplicates, loadErr := LoadArchiveCached(path)
 		if loadErr != nil {
 			return nil, loadErr
 		}
