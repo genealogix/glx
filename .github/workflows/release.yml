@@ -34,7 +34,13 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
-          cache: true
+          # cache-poisoning guard (#1051): this privileged job holds id-token: write
+          # for cosign keyless signing, so it must NOT restore a Go build cache that
+          # pull_request-triggered workflows (security.yml, validate-spec.yml) can
+          # populate — a poisoned cache entry would taint the binaries upstream of
+          # signing. The clean `go mod download` below makes the cache near-worthless
+          # on a cold tagged build anyway. Keep this false; do not "optimize" it back.
+          cache: false
 
       - name: Download Go modules
         run: go mod download
