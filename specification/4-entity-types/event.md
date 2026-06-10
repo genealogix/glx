@@ -64,7 +64,7 @@ Domain-specific events can be added via vocabularies:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `title` | string | Short label for the event (e.g., "1860 Census — Webb Household"). Auto-generated on GEDCOM import from participant names (e.g., "Birth of Robert Webb"); the date is omitted because it is already carried by the `date` field. Distinct from `properties.description`, which is a longer narrative |
+| `title` | string | Short label for the event (e.g., "1860 Census — Webb Household"). On GEDCOM import, titles are auto-generated from the event type and participant names (e.g., "Birth of Robert Webb"); the date is not included, since it is already carried by the `date` field. Archives imported before this change may still contain auto-generated titles that end in a parenthetical value derived from the date (e.g., "Birth of John Smith (1850)"); that value came from the date parser and is not guaranteed to be a correct year — for dates not stored in ISO form it may instead be the day of the month. Distinct from `properties.description`, which is a longer narrative |
 | `date` | string | Date or date range (see [Date Format](../2-core-concepts#date-format-standard)) |
 | `place` | string | Reference to Place entity |
 | `properties` | object | Vocabulary-defined properties |
@@ -213,7 +213,7 @@ Most events map directly to GEDCOM tags:
 | `baptism` | INDI.BAPM/CHR | Baptism or christening |
 | `burial` | INDI.BURI | Burial |
 
-**Note:** GEDCOM attributes like OCCU (occupation) and RELI (religion) are imported as temporal properties on Person entities, not events. RESI is imported as either a temporal residence property (when a `PLAC` is present) or as a `residence` event (when no `PLAC` is present, e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`).
+**Note:** GEDCOM attributes like OCCU (occupation) and RELI (religion) are imported as temporal properties on Person entities, not events. RESI is imported either as a temporal residence property on the Person entity (when a `PLAC` is present) or, when no `PLAC` is present (e.g., bare `RESI Y` or `RESI` with only `DATE`/`TYPE`), as a separate Event entity whose `type` field is `residence`.
 
 ### Multi-Participant Events
 
