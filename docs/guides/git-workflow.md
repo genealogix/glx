@@ -14,7 +14,7 @@ This is not a general Git tutorial — it assumes you know `clone`, `add`, `comm
 
 ## Setting Up an Archive Repository
 
-`glx init` creates the archive layout, a `.gitignore` (which excludes the disposable `.glx/` cache directory), and a `README.md` — but it does not create the Git repository itself. Do that immediately after:
+`glx init` creates the default multi-file archive layout, a `.gitignore` (which excludes the disposable `.glx/` cache directory), and a `README.md` — but it does not create the Git repository itself. (With `--single-file`, only `archive.glx` is written, so add the `.gitignore` yourself.) Do that immediately after:
 
 ```bash
 glx init my-family-archive
