@@ -1,0 +1,70 @@
+# Validates .github/CODEOWNERS so it cannot silently go stale again (#354,
+# regression guard for the staleness that hit #330/#600):
+#
+#   - codeowners-validator: syntax, duplicate patterns, rules whose paths no
+#     longer match any file, owner existence/permissions (catches a renamed or
+#     departed @handle), and experimental avoid-shadowing (last-match-wins
+#     ordering mistakes -- a matched owner set REPLACES earlier matches).
+#   - make lint-codeowners: every file in the tree resolves to at least one
+#     owner (hmarr/codeowners, pinned via ci-tools/go.mod; no token needed).
+#
+# The `notowned` experimental check is deliberately NOT enabled: with the
+# catch-all-only file (#1055), NOT_OWNED_CHECKER_SKIP_PATTERNS='*' would
+# ignore the only rule and flag every file as unowned. Coverage is the
+# lint-codeowners job's job.
+#
+# Known limits (documented in #354): no tool catches a mistyped-but-existing
+# username or a functionally-redundant same-owner rule. Confirm auto-request
+# behavior on a real PR after any owner-set change.
+name: Validate CODEOWNERS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/CODEOWNERS'
+      - 'CODEOWNERS'
+      - 'docs/CODEOWNERS'
+      - 'ci-tools/go.mod'
+      - 'ci-tools/go.sum'
+      - '.github/workflows/codeowners.yml'
+  pull_request:
+    paths:
+      - '.github/CODEOWNERS'
+      - 'CODEOWNERS'
+      - 'docs/CODEOWNERS'
+      - 'ci-tools/go.mod'
+      - 'ci-tools/go.sum'
+      - '.github/workflows/codeowners.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeowners-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate CODEOWNERS (syntax, owners, duppatterns, files, shadowing)
+        uses: mszostok/codeowners-validator@7f3f5e28c6d7b8dfae5731e54ce2272ca384592f # v0.7.4 -- only vX.Y.Z tags published, no floating v0; do not "tidy" to @v0.7
+        with:
+          checks: 'files,owners,duppatterns,syntax'
+          experimental_checks: 'avoid-shadowing'
+          # Default GITHUB_TOKEN suffices for the owners check here: the repo
+          # is public and all owners are individual users (no org teams, which
+          # would need read:org).
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: false
+
+      - name: Check CODEOWNERS coverage (every file owned)
+        run: make lint-codeowners
