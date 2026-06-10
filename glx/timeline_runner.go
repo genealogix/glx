@@ -257,21 +257,21 @@ func inferRelation(relType, targetRole, otherRole string) string {
 		return "spouse"
 	case isParentChildType(relType):
 		switch {
-		case targetRole == "parent":
+		case targetRole == glxlib.ParticipantRoleParent:
 			return "child"
-		case targetRole == "child":
+		case targetRole == glxlib.ParticipantRoleChild:
 			return "parent"
-		case otherRole == "parent":
+		case otherRole == glxlib.ParticipantRoleParent:
 			return "parent"
-		case otherRole == "child":
+		case otherRole == glxlib.ParticipantRoleChild:
 			return "child"
 		default:
 			// Ambiguous — skip
 			return ""
 		}
-	case relType == "guardian":
+	case relType == glxlib.RelationshipTypeGuardian:
 		// In standard archives, guardians use the "parent" participant role.
-		if targetRole == "parent" {
+		if targetRole == glxlib.ParticipantRoleParent {
 			return "child"
 		}
 
@@ -287,8 +287,9 @@ func isMarriageType(relType string) bool {
 
 func isParentChildType(relType string) bool {
 	switch relType {
-	case "parent_child", "biological_parent_child", "adoptive_parent_child",
-		"foster_parent_child", "step_parent":
+	case glxlib.RelationshipTypeParentChild, glxlib.RelationshipTypeBiologicalParentChild,
+		glxlib.RelationshipTypeAdoptiveParentChild, glxlib.RelationshipTypeFosterParentChild,
+		glxlib.RelationshipTypeStepParent:
 		return true
 	}
 
