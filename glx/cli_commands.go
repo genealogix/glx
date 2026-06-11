@@ -914,9 +914,13 @@ build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
 
 Use --serve to preview the site locally over HTTP. Use --living to redact
-people who are likely still alive (no death date and born less than 100 years
-ago) before publishing. Use --embed-media to inline images as base64 for a
-fully self-contained set of pages.`,
+people who are likely still alive before publishing; it applies the same
+rules as export --privatize-living: a person is treated as living when their
+living: true property is set, or — under the fallback heuristic — when no
+recorded death, burial, or cremation event exists (regardless of whether the
+event has a date) and their most recent known birth year is less than 100
+years ago. Use --embed-media to inline images as base64 for a fully
+self-contained set of pages.`,
 	Example: `  # Generate a site in ./site
   glx view --archive . --output ./site
 
@@ -939,7 +943,7 @@ func init() {
 	viewCmd.Flags().BoolVar(&viewServe, "serve", false, "Serve the generated site locally over HTTP")
 	viewCmd.Flags().IntVar(&viewPort, "port", defaultViewPort, "Port for --serve")
 	viewCmd.Flags().BoolVar(&viewEmbedMedia, "embed-media", false, "Embed images as base64 for fully self-contained pages")
-	viewCmd.Flags().BoolVar(&viewLiving, "living", false, "Redact likely-living people before publishing")
+	viewCmd.Flags().BoolVar(&viewLiving, "living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
 }
 
 func runView(_ *cobra.Command, _ []string) error {

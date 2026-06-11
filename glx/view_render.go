@@ -225,6 +225,7 @@ func renderPersonPages(model *siteModel, base *renderContext, outputDir string) 
 	for _, person := range model.Persons {
 		ctx := *base
 		ctx.RootPrefix = rootPrefixNested
+		ctx.Active = navHome // person profiles live under the "People" nav section
 		ctx.PageTitle = person.Name
 		ctx.Person = person
 		dest := filepath.Join(outputDir, "persons", person.File)

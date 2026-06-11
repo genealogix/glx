@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -244,38 +245,63 @@ func (r *mediaResolver) resolve(item *mediaItem) error {
 	return nil
 }
 
-// resolveFile reads a confined source file and produces its resolved result
-// (an embedded data URI, a copied-file reference, or a missing marker).
+// resolveFile resolves a confined source file into either an embedded data
+// URI (which needs the bytes in memory for base64 encoding) or a streamed
+// copy in the site's media directory. A missing or unreadable source is
+// non-fatal and recorded so the template shows a placeholder.
 func (r *mediaResolver) resolveFile(item *mediaItem, srcPath string) (mediaResult, error) {
-	// srcPath is confined to baseDir (checked by sourcePath); a missing or
-	// unreadable file is non-fatal and recorded so the template shows a
-	// placeholder.
-	data, err := os.ReadFile(srcPath) // #nosec G304 -- confined to baseDir by sourcePath
-	if err != nil {
-		return mediaResult{missing: true}, nil //nolint:nilerr // missing media is non-fatal
-	}
-
 	if r.embed && item.Kind == mediaKindImage {
+		// srcPath is confined to baseDir (checked by sourcePath).
+		data, err := os.ReadFile(srcPath) // #nosec G304 -- confined to baseDir by sourcePath
+		if err != nil {
+			return mediaResult{missing: true}, nil //nolint:nilerr // missing media is non-fatal
+		}
+
 		return mediaResult{src: dataURI(item.MimeType, item.RawURI, data)}, nil
 	}
 
-	name, err := r.copyMedia(srcPath, item.RawURI, data)
+	name, err := r.copyMedia(srcPath, item.RawURI)
 	if err != nil {
 		return mediaResult{}, err
+	}
+	if name == "" {
+		return mediaResult{missing: true}, nil
 	}
 
 	// Person pages are one directory deep, so reference media via "../media/".
 	return mediaResult{src: "../" + mediaDirName + "/" + name}, nil
 }
 
-// copyMedia writes a media file into <outputDir>/media and returns its basename.
-func (r *mediaResolver) copyMedia(srcPath, uri string, data []byte) (string, error) {
-	name := r.outputName(srcPath, uri)
+// copyMedia streams a media file into <outputDir>/media — large scans and
+// PDFs are never loaded fully into memory — and returns its output basename.
+// An unopenable source returns ("", nil) so the caller records the item as
+// missing media; failures creating or writing the output are fatal.
+func (r *mediaResolver) copyMedia(srcPath, uri string) (string, error) {
+	src, err := os.Open(srcPath) // #nosec G304 -- confined to baseDir by sourcePath
+	if err != nil {
+		return "", nil //nolint:nilerr // missing media is non-fatal
+	}
+	defer func() { _ = src.Close() }()
+
 	if err := os.MkdirAll(r.mediaDir, dirPermissions); err != nil {
 		return "", fmt.Errorf("failed to create media directory: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(r.mediaDir, name), data, filePermissions); err != nil {
-		return "", fmt.Errorf("failed to write media file %q: %w", name, err)
+	name := r.outputName(srcPath, uri)
+	destPath := filepath.Join(r.mediaDir, name)
+	dest, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions) // #nosec G304 -- sanitized basename under outputDir
+	if err != nil {
+		return "", fmt.Errorf("failed to create media file %q: %w", name, err)
+	}
+
+	_, copyErr := io.Copy(dest, src)
+	closeErr := dest.Close()
+	if copyErr == nil {
+		copyErr = closeErr
+	}
+	if copyErr != nil {
+		_ = os.Remove(destPath) // best-effort cleanup of a partial file
+
+		return "", fmt.Errorf("failed to write media file %q: %w", name, copyErr)
 	}
 	r.copied++
 

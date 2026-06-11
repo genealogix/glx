@@ -20,9 +20,13 @@ build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
 
 Use --serve to preview the site locally over HTTP. Use --living to redact
-people who are likely still alive (no death date and born less than 100 years
-ago) before publishing. Use --embed-media to inline images as base64 for a
-fully self-contained set of pages.
+people who are likely still alive before publishing; it applies the same
+rules as export --privatize-living: a person is treated as living when their
+living: true property is set, or — under the fallback heuristic — when no
+recorded death, burial, or cremation event exists (regardless of whether the
+event has a date) and their most recent known birth year is less than 100
+years ago. Use --embed-media to inline images as base64 for a fully
+self-contained set of pages.
 
 ```
 glx view [flags]
@@ -50,7 +54,7 @@ glx view [flags]
   -a, --archive string   Archive path (directory or single file) (default ".")
       --embed-media      Embed images as base64 for fully self-contained pages
   -h, --help             help for view
-      --living           Redact likely-living people before publishing
+      --living           Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)
   -o, --output string    Output directory for the generated site (default "./site")
       --port int         Port for --serve (default 8080)
       --serve            Serve the generated site locally over HTTP

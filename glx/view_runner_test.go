@@ -68,6 +68,9 @@ func TestRenderSite_WritesAllFiles(t *testing.T) {
 			t.Errorf("John's profile missing %q", want)
 		}
 	}
+	if !strings.Contains(john, `<a href="../index.html" class="active">People</a>`) {
+		t.Error("person profile nav does not highlight the People section")
+	}
 
 	searchIdx := readFile(t, filepath.Join(out, "js", "search-index.js"))
 	if !strings.HasPrefix(searchIdx, "window.GLX_SEARCH_INDEX =") {
