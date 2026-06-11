@@ -43,7 +43,7 @@ const (
 	jsonFalse = "false"
 )
 
-// schemaNode is the subset of JSON Schema (draft-07) the drift checker needs.
+// schemaNode is the subset of JSON Schema (2020-12) the drift checker needs.
 // Only structural keywords are modeled; constraint keywords (minLength,
 // pattern, enum, …) are intentionally ignored because the deterministic checker
 // compares *shape*, not value constraints (those are enforced at runtime by the
@@ -58,7 +58,7 @@ type schemaNode struct {
 	OneOf                []*schemaNode          `json:"oneOf"`
 	AnyOf                []*schemaNode          `json:"anyOf"`
 	AllOf                []*schemaNode          `json:"allOf"`
-	Definitions          map[string]*schemaNode `json:"definitions"`
+	Defs                 map[string]*schemaNode `json:"$defs"`
 	AdditionalProperties json.RawMessage        `json:"additionalProperties"`
 }
 
@@ -91,7 +91,7 @@ func (n *schemaNode) additionalPropsClosed() bool {
 // schemaSet holds every parsed schema file, keyed by its path relative to the
 // schema root directory (e.g. "person.schema.json",
 // "vocabularies/event-types.schema.json"). It resolves cross-file and
-// in-file ($ref: "#/definitions/X") references.
+// in-file ($ref: "#/$defs/X") references.
 type schemaSet struct {
 	roots map[string]*schemaNode
 }
@@ -115,7 +115,7 @@ func newSchemaSet(files map[string][]byte) (*schemaSet, error) {
 // JSON pointer within that file ("" for the file root).
 type ref struct {
 	file    string // relative path, e.g. "vocabularies/event-types.schema.json"
-	pointer string // e.g. "/definitions/EventTypeDefinition", or "" for root
+	pointer string // e.g. "/$defs/EventTypeDefinition", or "" for root
 }
 
 // resolve follows a $ref string interpreted relative to baseFile and returns
@@ -154,8 +154,8 @@ func (s *schemaSet) deref(node *schemaNode, loc ref) (*schemaNode, ref, error) {
 	return s.resolve(node.Ref, loc.file)
 }
 
-// walkPointer resolves a JSON pointer ("/definitions/Foo",
-// "/properties/bar") against root. Container tokens ("definitions",
+// walkPointer resolves a JSON pointer ("/$defs/Foo",
+// "/properties/bar") against root. Container tokens ("$defs",
 // "properties") select the corresponding map; the following token is the key
 // within it.
 func walkPointer(root *schemaNode, pointer string) (*schemaNode, error) {
@@ -184,8 +184,8 @@ func walkPointer(root *schemaNode, pointer string) (*schemaNode, error) {
 // selectChild looks up key inside the named container map of node.
 func selectChild(node *schemaNode, container, key string) (*schemaNode, bool) {
 	switch container {
-	case "definitions":
-		child, ok := node.Definitions[key]
+	case "$defs":
+		child, ok := node.Defs[key]
 
 		return child, ok
 	case "properties":

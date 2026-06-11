@@ -346,6 +346,7 @@ The runner uses the sentinel to detect truncation and restart on the remaining s
 ## Notes
 
 - Schema is the source of truth. Go code is updated to match it, not the reverse.
+- Schemas are JSON Schema **2020-12** (#794): subschemas live under `$defs` (not draft-07 `definitions`), and property co-requirements use `dependentRequired` (not `dependencies`). Do not suggest draft-07 idioms or flag 2020-12 keywords as drift.
 - Two-layer validation: JSON schema (pass 1) handles structural constraints; Go validator (pass 2) handles cross-references and semantic checks. Do not flag schema-covered constraints as missing from Go code.
 - Internal fields (`validation *ValidationResult` in `GLXFile`) are expected to be absent from schemas.
 - Comment differences are informational only.

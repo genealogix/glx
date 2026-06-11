@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/vocabularies/legal-statuses.schema.json",
   "title": "Legal Statuses Vocabulary",
   "description": "Defines the standard and custom legal-status values available for relationships (primarily the enslavement relationship type)",
@@ -10,12 +10,12 @@
       "type": "object",
       "description": "Map of legal-status definitions",
       "additionalProperties": {
-        "$ref": "#/definitions/LegalStatusDefinition"
+        "$ref": "#/$defs/LegalStatusDefinition"
       }
     }
   },
   "additionalProperties": false,
-  "definitions": {
+  "$defs": {
     "LegalStatusDefinition": {
       "type": "object",
       "description": "Definition of a single legal-status value",

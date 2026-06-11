@@ -59,6 +59,8 @@ const (
 // Standard Relationship Types - from relationship-types.glx vocabulary
 const (
 	RelationshipTypeMarriage              = "marriage"
+	RelationshipTypeCivilUnion            = "civil_union"
+	RelationshipTypeCommonLawMarriage     = "common_law_marriage"
 	RelationshipTypeParentChild           = "parent_child"
 	RelationshipTypeBiologicalParentChild = "biological_parent_child"
 	RelationshipTypeAdoptiveParentChild   = "adoptive_parent_child"

@@ -15,7 +15,9 @@
 // deterministic drift checkers tracked by genealogix/glx#673 and #295, which
 // need GitHub issue-state lookups this offline validator deliberately avoids.
 
-import Ajv from "ajv";
+// The allowlist schema declares JSON Schema 2020-12 (#794); the default ajv
+// export only speaks draft-07, so import the 2020-12 dialect class explicitly.
+import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
