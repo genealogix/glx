@@ -80,9 +80,11 @@ type MigrateReport struct {
 	// EventTitleYearsStripped counts event titles whose stale " (YEAR)" suffix
 	// (appended by GEDCOM imports before #1026, including the buggy day-as-year
 	// form from #1025) was removed (opt-in via --strip-event-title-year, #1032).
-	// Only titles that, with the suffix removed, byte-for-byte match an
-	// auto-generated shape for their event are touched, so hand-authored titles
-	// are never counted or changed.
+	// Only titles that, with the suffix removed, byte-for-byte match the
+	// auto-generated title for their event are touched. The one residual
+	// (documented on glxlib.StripStaleEventTitleYear): a hand-typed title
+	// identical to that auto shape including the year is indistinguishable from
+	// a stale import title and is stripped — and counted — too.
 	EventTitleYearsStripped int
 }
 

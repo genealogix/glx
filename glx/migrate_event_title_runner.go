@@ -30,8 +30,11 @@ import (
 // Safety: the strip is gated by glxlib.StripStaleEventTitleYear — a title is
 // only touched when, with the suffix removed, it is byte-for-byte identical to
 // the title import would auto-generate for that event from its type and
-// participant names. Hand-authored titles are never modified, and a second run
-// is a no-op (a cleaned title no longer carries a suffix to match).
+// participant names. Titles failing that gate are never modified; the one
+// residual (documented on the gate function) is a hand-typed title identical
+// to the auto shape including the year, which is indistinguishable from a
+// stale import title and is stripped too. A second run is a no-op (a cleaned
+// title no longer carries a suffix to match).
 func migrateStripStaleEventTitles(archive *glxlib.GLXFile) *MigrateReport {
 	report := &MigrateReport{}
 
