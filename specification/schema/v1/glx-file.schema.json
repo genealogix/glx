@@ -236,7 +236,7 @@
       "type": "object",
       "description": "Source-nature vocabulary (Evidence Explained: original, derivative, authored)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-natures.schema.json#/definitions/SourceNatureDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-natures.schema.json#/$defs/SourceNatureDefinition" }
       },
       "additionalProperties": false
     },
@@ -244,7 +244,7 @@
       "type": "object",
       "description": "Information-type vocabulary (Evidence Explained: primary, secondary, indeterminate)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/information-types.schema.json#/definitions/InformationTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/information-types.schema.json#/$defs/InformationTypeDefinition" }
       },
       "additionalProperties": false
     },
