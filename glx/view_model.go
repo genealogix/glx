@@ -565,7 +565,8 @@ func buildSearchIndex(model *siteModel) []searchEntry {
 			Sub:  p.LifeSpan,
 		})
 	}
-	for _, s := range model.Sources {
+	for i := range model.Sources {
+		s := &model.Sources[i]
 		entries = append(entries, searchEntry{
 			Name: s.Title,
 			URL:  "sources/index.html#" + s.Anchor,
@@ -573,7 +574,8 @@ func buildSearchIndex(model *siteModel) []searchEntry {
 			Sub:  s.Type,
 		})
 	}
-	for _, pl := range model.Places {
+	for i := range model.Places {
+		pl := &model.Places[i]
 		entries = append(entries, searchEntry{
 			Name: pl.FullName,
 			URL:  "places/index.html#" + pl.Anchor,
