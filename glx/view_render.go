@@ -19,8 +19,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 // templateRootPrefixes documents the relative path back to the site root from
@@ -66,14 +69,61 @@ var viewTemplateFuncs = template.FuncMap{
 	"mediaURL": mediaURL,
 }
 
-// mediaURL marks a resolved media source as trusted so html/template does not
-// neutralize it. This is safe because every media Src is produced by us, not
-// taken raw from the archive: it is either a relative "../media/..." path, a
-// base64 "data:" URI we built from a local image, or an http(s) URL that
-// passed isHTTPURL. Any other scheme (javascript:, etc.) fails the file read
-// and is rendered as missing media rather than reaching this helper.
+// rejectedMediaURL is rendered in place of any media source that fails
+// safeMediaSrc validation. about:invalid is the standard inert URL (per CSP);
+// an <img> or <a> pointing at it loads nothing and executes nothing.
+const rejectedMediaURL = template.URL("about:invalid#glx-rejected")
+
+// copiedMediaPrefix is how person pages (one directory deep) reference media
+// files copied into the site output.
+const copiedMediaPrefix = "../" + mediaDirName + "/"
+
+var (
+	// copiedMediaNamePattern matches output basenames produced by
+	// safeMediaBase + uniqueFileName: lowercase [a-z0-9._-] with no leading dot.
+	copiedMediaNamePattern = regexp.MustCompile(`^[a-z0-9_-][a-z0-9._-]*$`)
+	// generatedDataURIPattern matches data URIs produced by dataURI: a media
+	// type from imageMediaType followed by standard base64 payload.
+	generatedDataURIPattern = regexp.MustCompile(`^data:(?:image/[a-z0-9.+-]+|application/octet-stream);base64,[A-Za-z0-9+/]*={0,2}$`)
+)
+
+// mediaURL admits a resolved media source into html/template's trusted
+// template.URL type. Because template.URL disables the package's URL
+// filtering, nothing is trusted on provenance alone: the source must
+// re-validate as one of the exact forms the generator produces (see
+// safeMediaSrc), and http(s) URLs are normalized so characters that could
+// break out of an HTML attribute are percent-encoded. Anything else renders
+// as an inert about:invalid URL.
 func mediaURL(src string) template.URL {
-	return template.URL(src) // #nosec G203
+	safe, ok := safeMediaSrc(src)
+	if !ok {
+		return rejectedMediaURL
+	}
+
+	return template.URL(safe) // #nosec G203 -- validated/normalized by safeMediaSrc
+}
+
+// safeMediaSrc validates (and for URLs, normalizes) a media source against the
+// three forms resolveSiteMedia produces: a copied "../media/<name>" path, a
+// generated base64 data URI, or an absolute http(s) URL. The URL branch
+// re-serializes through net/url, which percent-encodes quotes, angle brackets,
+// and whitespace, so a hostile archive URI cannot inject HTML attributes.
+func safeMediaSrc(src string) (string, bool) {
+	switch {
+	case strings.HasPrefix(src, copiedMediaPrefix):
+		return src, copiedMediaNamePattern.MatchString(strings.TrimPrefix(src, copiedMediaPrefix))
+	case strings.HasPrefix(src, "data:"):
+		return src, generatedDataURIPattern.MatchString(src)
+	case isHTTPURL(src):
+		u, err := url.Parse(src)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+			return "", false
+		}
+
+		return u.String(), true
+	default:
+		return "", false
+	}
 }
 
 // renderSite writes the complete static site (assets, search index, and all

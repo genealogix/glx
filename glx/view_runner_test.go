@@ -96,6 +96,48 @@ func TestRenderSite_EscapesHTML(t *testing.T) {
 	}
 }
 
+func TestMediaURL(t *testing.T) {
+	cases := []struct {
+		src  string
+		want string
+	}{
+		// The three generator-produced forms pass through unchanged.
+		{"../media/portrait.jpg", "../media/portrait.jpg"},
+		{"../media/photo-2.jpg", "../media/photo-2.jpg"},
+		{"data:image/jpeg;base64,aGVsbG8=", "data:image/jpeg;base64,aGVsbG8="},
+		{"data:application/octet-stream;base64,", "data:application/octet-stream;base64,"},
+		{"https://example.org/photo.jpg", "https://example.org/photo.jpg"},
+		{"http://example.org/photo.jpg?raw=1", "http://example.org/photo.jpg?raw=1"},
+		// Everything else renders as the inert about:invalid URL.
+		{"", string(rejectedMediaURL)},
+		{"javascript:alert(1)", string(rejectedMediaURL)},
+		{"media/photo.jpg", string(rejectedMediaURL)},                    // wrong prefix
+		{"../media/../../etc/passwd", string(rejectedMediaURL)},          // traversal
+		{"../media/.hidden", string(rejectedMediaURL)},                   // dotfile
+		{"../media/UPPER.JPG", string(rejectedMediaURL)},                 // generator only emits lowercase
+		{"data:text/html;base64,PHNjcmlwdD4=", string(rejectedMediaURL)}, // active document
+		{`data:image/png" onerror="x;base64,`, string(rejectedMediaURL)}, // injected media type
+		{"https://example.org/%zz", string(rejectedMediaURL)},            // unparseable URL
+	}
+	for _, tc := range cases {
+		if got := string(mediaURL(tc.src)); got != tc.want {
+			t.Errorf("mediaURL(%q) = %q, want %q", tc.src, got, tc.want)
+		}
+	}
+}
+
+func TestMediaURL_NormalizesHostileHTTPURL(t *testing.T) {
+	// An archive-supplied http(s) URL with attribute-breaking characters must
+	// come back percent-encoded, never verbatim.
+	got := string(mediaURL(`https://example.org/x.jpg" onerror="alert(1)`))
+	if strings.ContainsAny(got, "\"'<> ") {
+		t.Errorf("normalized URL still contains attribute-breaking characters: %q", got)
+	}
+	if !strings.HasPrefix(got, "https://example.org/x.jpg%22") {
+		t.Errorf("unexpected normalization: %q", got)
+	}
+}
+
 func TestResolveSiteMedia_CopyMode(t *testing.T) {
 	base := t.TempDir()
 	writeFile(t, filepath.Join(base, "portrait.jpg"), []byte("\xff\xd8\xff\xe0JFIF-fake"))

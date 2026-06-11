@@ -97,6 +97,40 @@ func TestSearchIndexScriptSafety(t *testing.T) {
 	}
 }
 
+// TestRenderSite_HostileMediaURLDoesNotInjectAttributes verifies that an
+// archive-supplied external media URL carrying attribute-breaking characters
+// reaches the page only in percent-encoded form: mediaURL re-validates and
+// normalizes every Src before it is admitted as a trusted template.URL.
+func TestRenderSite_HostileMediaURLDoesNotInjectAttributes(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-x": {Properties: map[string]any{"name": "X"}},
+		},
+		Media: map[string]*glxlib.Media{
+			"media-evil": {URI: `https://example.org/x.jpg" onerror="alert(1)`, MimeType: "image/jpeg"},
+		},
+		Assertions: map[string]*glxlib.Assertion{
+			"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-evil"}},
+		},
+	}
+	model := buildSiteModel(archive, viewModelOptions{})
+	out := t.TempDir()
+	if _, err := resolveSiteMedia(model, t.TempDir(), out, false); err != nil {
+		t.Fatalf("resolveSiteMedia: %v", err)
+	}
+	if err := renderSite(model, out); err != nil {
+		t.Fatalf("renderSite: %v", err)
+	}
+
+	page := readFile(t, filepath.Join(out, "persons", "person-x.html"))
+	if strings.Contains(page, `onerror="alert`) {
+		t.Error("hostile media URL injected an attribute into the page")
+	}
+	if !strings.Contains(page, "https://example.org/x.jpg%22") {
+		t.Error("expected the hostile URL to render percent-encoded")
+	}
+}
+
 // TestActiveDocumentMediaNotPublished verifies that local SVG/HTML media — which
 // a browser or http.FileServer would serve as an active, scriptable document —
 // are NEVER written into the site and render only as a "not shown" note. This

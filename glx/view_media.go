@@ -20,6 +20,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -325,6 +326,12 @@ func dataURI(mimeType, uri string, data []byte) string {
 	return "data:" + imageMediaType(uri, mimeType) + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
 
+// archiveImageMIMEPattern is the shape an archive-provided MIME must have to be
+// used in a generated data URI: a plain image/* type with no parameters and no
+// characters outside the token alphabet, so an archive value can never inject
+// content into the URI (which mediaURL later trusts).
+var archiveImageMIMEPattern = regexp.MustCompile(`^image/[a-z0-9.+-]+$`)
+
 // imageMediaType returns an image/* media type for an embedded image, preferring
 // the extension-derived type and falling back to an image/* archive MIME, then
 // application/octet-stream.
@@ -336,8 +343,8 @@ func imageMediaType(uri, archiveMIME string) string {
 
 		return byExt
 	}
-	if strings.HasPrefix(strings.ToLower(archiveMIME), "image/") {
-		return archiveMIME
+	if m := strings.ToLower(strings.TrimSpace(archiveMIME)); archiveImageMIMEPattern.MatchString(m) {
+		return m
 	}
 
 	return "application/octet-stream"

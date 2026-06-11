@@ -55,6 +55,16 @@ func TestDataURI(t *testing.T) {
 	if got := dataURI("text/html", "photo.png", []byte("data")); !strings.HasPrefix(got, "data:image/png;base64,") {
 		t.Errorf("extension should win over bogus archive MIME: %q", got)
 	}
+	// An image/* archive MIME with characters outside the token alphabet must
+	// never reach the generated URI (extensionless file, so the archive MIME is
+	// the only candidate).
+	if got := dataURI(`image/png" onerror="x`, "noext", []byte("data")); !strings.HasPrefix(got, "data:application/octet-stream;base64,") {
+		t.Errorf("hostile archive MIME must fall back to octet-stream: %q", got)
+	}
+	// A clean image/* archive MIME still works as the fallback (case-folded).
+	if got := dataURI("IMAGE/PNG", "noext", []byte("data")); !strings.HasPrefix(got, "data:image/png;base64,") {
+		t.Errorf("clean archive MIME fallback: %q", got)
+	}
 }
 
 func TestClassifyMedia(t *testing.T) {
