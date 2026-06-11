@@ -107,7 +107,6 @@ jobs:
           # Build the CLI once and share it with the matrix via an artifact,
           # so each example job doesn't pay the build cost again.
           go build -o bin/glx ./glx
-          chmod +x bin/glx
 
       - name: Upload glx binary
         uses: actions/upload-artifact@v7
@@ -150,6 +149,7 @@ jobs:
           # Stage matrix value in env to avoid shell injection via ${{ }} in run.
           EXAMPLE: ${{ matrix.example }}
         run: |
+          # upload-artifact zips and strips the exec bit; restore it before running
           chmod +x bin/glx
           ./bin/glx validate "docs/examples/$EXAMPLE/"
 
