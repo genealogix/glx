@@ -9,13 +9,23 @@ layout: doc
 This directory contains JSON Schema definitions for validating
 GENEALOGIX archives.
 
+## Schema Dialect
+
+All schemas declare [JSON Schema 2020-12](https://json-schema.org/draft/2020-12)
+(`"$schema": "https://json-schema.org/draft/2020-12/schema"`) — see
+[ADR-0007](/decisions/0007-json-schema-2020-12). Subschemas live
+under `$defs`, and property co-requirements use `dependentRequired`. Use a
+2020-12-capable validator; draft-07 idioms (`definitions`, array-form
+`dependencies`) are not accepted by the meta-schema.
+
 ## Usage
 
 ### With ajv (JavaScript)
 
 ```javascript
-const Ajv = require('ajv');
-const ajv = new Ajv();
+// The default `ajv` export is draft-07-only; use the 2020-12 dialect class.
+const Ajv2020 = require('ajv/dist/2020');
+const ajv = new Ajv2020();
 
 const schema = require('./v1/person.schema.json');
 const data = require('./persons/person-123.glx');

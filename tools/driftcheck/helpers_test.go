@@ -149,7 +149,7 @@ func TestSchemaDesc(t *testing.T) {
 	if got := schemaDesc(ref{file: "a.json"}); got != "a.json" {
 		t.Errorf("schemaDesc root = %q", got)
 	}
-	if got := schemaDesc(ref{file: "a.json", pointer: "/definitions/X"}); got != "a.json#/definitions/X" {
+	if got := schemaDesc(ref{file: "a.json", pointer: "/$defs/X"}); got != "a.json#/$defs/X" {
 		t.Errorf("schemaDesc pointer = %q", got)
 	}
 }
