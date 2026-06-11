@@ -397,16 +397,23 @@ func safeMediaBase(base string) string {
 	return clean
 }
 
-// safePersonStem returns a collision-resistant, dot-free filename stem for a
-// person ID, falling back to "person" for empty or reserved results. Dots are
-// collapsed to '-' because a person ID carries no meaningful file extension.
-func safePersonStem(personID string) string {
-	clean := strings.Trim(strings.ReplaceAll(sanitizeFileName(personID), ".", "-"), "-_")
+// safeAnchorStem reduces an arbitrary entity ID to a dot-free token safe for
+// use as a filename stem, an HTML id attribute, and a URL fragment, falling
+// back to the given token for empty or reserved results. Dots are collapsed to
+// '-' because an entity ID carries no meaningful file extension.
+func safeAnchorStem(id, fallback string) string {
+	clean := strings.Trim(strings.ReplaceAll(sanitizeFileName(id), ".", "-"), "-_")
 	if clean == "" || reservedFileStems[clean] {
-		return searchKindPerson
+		return fallback
 	}
 
 	return clean
+}
+
+// safePersonStem returns a collision-resistant filename stem for a person ID,
+// falling back to "person" for empty or reserved results.
+func safePersonStem(personID string) string {
+	return safeAnchorStem(personID, searchKindPerson)
 }
 
 // uniqueFileName returns stem+ext, appending -2, -3, … until it is unused, and

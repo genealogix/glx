@@ -5,7 +5,7 @@
   <thead><tr><th>Place</th><th>Type</th><th>Events</th><th>Map</th></tr></thead>
   <tbody>
     {{range .Places}}
-    <tr id="{{.ID}}">
+    <tr id="{{.Anchor}}">
       <td>{{.FullName}}</td>
       <td>{{.Type}}</td>
       <td>{{if .EventCount}}{{.EventCount}}{{end}}</td>

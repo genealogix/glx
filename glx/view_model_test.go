@@ -15,6 +15,7 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -275,6 +276,59 @@ func TestBuildSearchIndex(t *testing.T) {
 		if e.Kind == "person" && e.Name == "John Smith" {
 			if e.URL != "persons/person-john-smith.html" {
 				t.Errorf("John search URL = %q", e.URL)
+			}
+		}
+	}
+}
+
+func TestBuildRows_AnchorsSanitizedAndUnique(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Sources: map[string]*glxlib.Source{
+			"Source-A":             {Title: "Alpha"},
+			"source-a":             {Title: "Beta"}, // collides with Source-A after sanitization
+			`id "quoted" & spaced`: {Title: "Gamma"},
+		},
+		Places: map[string]*glxlib.Place{
+			"Place With Spaces": {Name: "X"},
+			"世界":                {Name: "Y"}, // sanitizes to empty -> kind fallback
+		},
+	}
+	model := buildSiteModel(archive, viewModelOptions{})
+
+	anchorPattern := regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+	sourceAnchors := map[string]bool{}
+	for _, s := range model.Sources {
+		if !anchorPattern.MatchString(s.Anchor) {
+			t.Errorf("source %q anchor %q is not fragment-safe", s.ID, s.Anchor)
+		}
+		if sourceAnchors[s.Anchor] {
+			t.Errorf("duplicate source anchor %q", s.Anchor)
+		}
+		sourceAnchors[s.Anchor] = true
+	}
+	placeAnchors := map[string]bool{}
+	for _, p := range model.Places {
+		if !anchorPattern.MatchString(p.Anchor) {
+			t.Errorf("place %q anchor %q is not fragment-safe", p.ID, p.Anchor)
+		}
+		if placeAnchors[p.Anchor] {
+			t.Errorf("duplicate place anchor %q", p.Anchor)
+		}
+		placeAnchors[p.Anchor] = true
+	}
+
+	// Search-index fragments must reference the sanitized anchors, never raw IDs.
+	for _, e := range model.Search {
+		switch e.Kind {
+		case searchKindSource:
+			frag := strings.TrimPrefix(e.URL, "sources/index.html#")
+			if frag == e.URL || !sourceAnchors[frag] {
+				t.Errorf("source search URL %q does not target a row anchor", e.URL)
+			}
+		case searchKindPlace:
+			frag := strings.TrimPrefix(e.URL, "places/index.html#")
+			if frag == e.URL || !placeAnchors[frag] {
+				t.Errorf("place search URL %q does not target a row anchor", e.URL)
 			}
 		}
 	}

@@ -118,6 +118,7 @@ type personSourceRef struct {
 // sourceRow is a row in the global source index.
 type sourceRow struct {
 	ID         string
+	Anchor     string // sanitized, collision-free HTML id / URL fragment for this row
 	Title      string
 	Type       string
 	Authors    string
@@ -129,6 +130,7 @@ type sourceRow struct {
 // placeRow is a row in the global place index.
 type placeRow struct {
 	ID         string
+	Anchor     string // sanitized, collision-free HTML id / URL fragment for this row
 	Name       string
 	FullName   string // hierarchical "Boston, Massachusetts, United States"
 	Type       string
@@ -476,8 +478,13 @@ func sourceRefFromCitation(citID string, a *glxlib.Assertion, archive *glxlib.GL
 }
 
 // buildSourceRows builds the global source index, ordered by title then ID.
+// Each row gets a sanitized, collision-free Anchor (assigned in sorted-ID
+// order for determinism) used as both the row's HTML id and the search-index
+// URL fragment, so arbitrary entity IDs can never produce broken or ambiguous
+// fragment links.
 func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 	rows := make([]sourceRow, 0, len(archive.Sources))
+	usedAnchors := map[string]bool{}
 	for _, id := range sortedKeys(archive.Sources) {
 		src := archive.Sources[id]
 		if src == nil {
@@ -489,6 +496,7 @@ func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 		}
 		rows = append(rows, sourceRow{
 			ID:         id,
+			Anchor:     uniqueFileName(safeAnchorStem(id, searchKindSource), "", usedAnchors),
 			Title:      src.Title,
 			Type:       humanizeToken(src.Type),
 			Authors:    strings.Join(src.Authors, ", "),
@@ -509,9 +517,11 @@ func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 	return rows
 }
 
-// buildPlaceRows builds the global place index, ordered by full hierarchical name.
+// buildPlaceRows builds the global place index, ordered by full hierarchical
+// name. Anchors are assigned the same way as in buildSourceRows.
 func buildPlaceRows(archive *glxlib.GLXFile, idx *viewIndex) []placeRow {
 	rows := make([]placeRow, 0, len(archive.Places))
+	usedAnchors := map[string]bool{}
 	for _, id := range sortedKeys(archive.Places) {
 		place := archive.Places[id]
 		if place == nil {
@@ -519,6 +529,7 @@ func buildPlaceRows(archive *glxlib.GLXFile, idx *viewIndex) []placeRow {
 		}
 		row := placeRow{
 			ID:         id,
+			Anchor:     uniqueFileName(safeAnchorStem(id, searchKindPlace), "", usedAnchors),
 			Name:       place.Name,
 			FullName:   placeFullName(id, archive),
 			Type:       humanizeToken(place.Type),
@@ -557,7 +568,7 @@ func buildSearchIndex(model *siteModel) []searchEntry {
 	for _, s := range model.Sources {
 		entries = append(entries, searchEntry{
 			Name: s.Title,
-			URL:  "sources/index.html#" + s.ID,
+			URL:  "sources/index.html#" + s.Anchor,
 			Kind: searchKindSource,
 			Sub:  s.Type,
 		})
@@ -565,7 +576,7 @@ func buildSearchIndex(model *siteModel) []searchEntry {
 	for _, pl := range model.Places {
 		entries = append(entries, searchEntry{
 			Name: pl.FullName,
-			URL:  "places/index.html#" + pl.ID,
+			URL:  "places/index.html#" + pl.Anchor,
 			Kind: searchKindPlace,
 			Sub:  pl.Type,
 		})
