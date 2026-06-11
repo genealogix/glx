@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/genealogix/glx/main/specification/schema/v1/glx-file.schema.json",
   "title": "GENEALOGIX File",
   "description": "A GENEALOGIX file can contain any combination of entities, vocabularies, and property definitions.",
@@ -132,7 +132,7 @@
       "type": "object",
       "description": "Event type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-types.schema.json#/definitions/EventTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-types.schema.json#/$defs/EventTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -140,7 +140,7 @@
       "type": "object",
       "description": "Relationship type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-types.schema.json#/definitions/RelationshipTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-types.schema.json#/$defs/RelationshipTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -148,7 +148,7 @@
       "type": "object",
       "description": "Place type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-types.schema.json#/definitions/PlaceTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-types.schema.json#/$defs/PlaceTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -156,7 +156,7 @@
       "type": "object",
       "description": "Repository type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-types.schema.json#/definitions/RepositoryTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-types.schema.json#/$defs/RepositoryTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -164,7 +164,7 @@
       "type": "object",
       "description": "Participant role vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/participant-roles.schema.json#/definitions/ParticipantRoleDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/participant-roles.schema.json#/$defs/ParticipantRoleDefinition" }
       },
       "additionalProperties": false
     },
@@ -172,7 +172,7 @@
       "type": "object",
       "description": "Media type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-types.schema.json#/definitions/MediaTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-types.schema.json#/$defs/MediaTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -180,7 +180,7 @@
       "type": "object",
       "description": "Confidence level vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/confidence-levels.schema.json#/definitions/ConfidenceLevelDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/confidence-levels.schema.json#/$defs/ConfidenceLevelDefinition" }
       },
       "additionalProperties": false
     },
@@ -188,7 +188,7 @@
       "type": "object",
       "description": "Source type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-types.schema.json#/definitions/SourceTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-types.schema.json#/$defs/SourceTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -196,7 +196,7 @@
       "type": "object",
       "description": "Sex type vocabulary (as recorded in source documents)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/sex-types.schema.json#/definitions/SexTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/sex-types.schema.json#/$defs/SexTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -204,7 +204,7 @@
       "type": "object",
       "description": "Gender identity vocabulary (self-identified; no direct GEDCOM mapping)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json#/definitions/GenderTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/gender-types.schema.json#/$defs/GenderTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -212,7 +212,7 @@
       "type": "object",
       "description": "Study type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-types.schema.json#/definitions/StudyTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-types.schema.json#/$defs/StudyTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -220,7 +220,7 @@
       "type": "object",
       "description": "Study status vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-statuses.schema.json#/definitions/StudyStatusDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/study-statuses.schema.json#/$defs/StudyStatusDefinition" }
       },
       "additionalProperties": false
     },
@@ -228,7 +228,7 @@
       "type": "object",
       "description": "Legal-status vocabulary (forms of coerced labor; primarily for the enslavement relationship type)",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/legal-statuses.schema.json#/definitions/LegalStatusDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/legal-statuses.schema.json#/$defs/LegalStatusDefinition" }
       },
       "additionalProperties": false
     },
@@ -252,7 +252,7 @@
       "type": "object",
       "description": "Person property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/person-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/person-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -260,7 +260,7 @@
       "type": "object",
       "description": "Event property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/event-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -268,7 +268,7 @@
       "type": "object",
       "description": "Relationship property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/relationship-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -276,7 +276,7 @@
       "type": "object",
       "description": "Place property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/place-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -284,7 +284,7 @@
       "type": "object",
       "description": "Media property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/media-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -292,7 +292,7 @@
       "type": "object",
       "description": "Repository property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/repository-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -300,7 +300,7 @@
       "type": "object",
       "description": "Citation property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/citation-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/citation-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -308,7 +308,7 @@
       "type": "object",
       "description": "Source property vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-properties.schema.json#/definitions/PropertyDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/source-properties.schema.json#/$defs/PropertyDefinition" }
       },
       "additionalProperties": false
     },
@@ -316,7 +316,7 @@
       "type": "object",
       "description": "Search result type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/search-result-types.schema.json#/definitions/SearchResultTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/search-result-types.schema.json#/$defs/SearchResultTypeDefinition" }
       },
       "additionalProperties": false
     },
@@ -324,7 +324,7 @@
       "type": "object",
       "description": "Research log status type vocabulary",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/research-log-status-types.schema.json#/definitions/ResearchLogStatusTypeDefinition" }
+        "^[a-zA-Z0-9_-]+$": { "$ref": "vocabularies/research-log-status-types.schema.json#/$defs/ResearchLogStatusTypeDefinition" }
       },
       "additionalProperties": false
     }
