@@ -25,14 +25,17 @@ inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
 
 ## Tools deliberately NOT here
 
-- **gosec** stays on a version-pinned `go install ...@v2.22.4` in
-  `.github/workflows/security.yml`. Its `autofix` package imports the Google
+- **gosec** stays on a version-pinned `go install` in
+  `.github/workflows/security.yml`, with the version pinned by the top-level
+  `.gosec-version` file (single source of truth, also consumed by `make gosec`).
+  Its `autofix` package imports the Google
   `generative-ai-go` SDK, which transitively pulls the Google Cloud SDK, gRPC,
   and OpenTelemetry. Committing that graph to a scanned `go.mod` would make
   `dependency-review` block PRs whenever any of those (unreachable, build-time-only)
   dependencies picks up a new advisory. `go install` keeps gosec reproducible
-  without exposing that tree. Run it ad hoc with
-  `go run github.com/securego/gosec/v2/cmd/gosec@v2.22.4 -quiet ./...`.
+  without exposing that tree. Run it locally with `make gosec`. Because neither
+  Dependabot ecosystem can see this pin, the weekly `gosec-pin-currency` job in
+  `security.yml` fails when `.gosec-version` falls behind the latest gosec release.
 - **golangci-lint** is pinned via `.golangci-lint-version` and run through
   `golangci-lint-action` (for `only-new-issues` support — see #272).
 - **goreleaser** runs through `goreleaser-action`.
