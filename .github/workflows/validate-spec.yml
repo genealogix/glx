@@ -107,7 +107,6 @@ jobs:
           # Build the CLI once and share it with the matrix via an artifact,
           # so each example job doesn't pay the build cost again.
           go build -o bin/glx ./glx
-          chmod +x bin/glx
 
       - name: Upload glx binary
         uses: actions/upload-artifact@v7
@@ -150,6 +149,7 @@ jobs:
           # Stage matrix value in env to avoid shell injection via ${{ }} in run.
           EXAMPLE: ${{ matrix.example }}
         run: |
+          # upload-artifact zips and strips the exec bit; restore it before running
           chmod +x bin/glx
           ./bin/glx validate "docs/examples/$EXAMPLE/"
 
@@ -202,9 +202,18 @@ jobs:
         run: |
           # Run all tests for both CLI and core library packages
           # Includes slow/large file tests (habsburg.ged with 34,020 persons)
-          # Capture stderr — fail if any "Warning:" lines are emitted
-          go test ./glx/... ./go-glx/... ./tools/... -v -timeout 15m -coverprofile=coverage.out 2> >(tee /tmp/test-stderr.log >&2)
-          if grep -qi "^Warning:" /tmp/test-stderr.log 2>/dev/null; then
+          # Capture stderr — fail if any "Warning:" text is emitted.
+          # A plain synchronous redirect (not an async process-substitution
+          # tee) guarantees the log is complete before it is inspected; the
+          # exit code is captured explicitly so a test failure still fails
+          # the step after stderr has been surfaced (#1033).
+          status=0
+          go test ./glx/... ./go-glx/... ./tools/... -v -timeout 15m -coverprofile=coverage.out 2> /tmp/test-stderr.log || status=$?
+          cat /tmp/test-stderr.log >&2
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          if grep -qiE '(^|[[:space:]])Warning:' /tmp/test-stderr.log; then
             echo "::error::Tests emitted warnings on stderr — see log above"
             exit 1
           fi
