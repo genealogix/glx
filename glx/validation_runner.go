@@ -322,6 +322,8 @@ func validateSingleFilePaths(paths []string) (int, []string) {
 
 			fileCount++
 			filePath = filepath.Clean(filePath)
+			// #nosec G122 -- TOCTOU between WalkDir's lstat and this read of a
+			// user-supplied validation path; root-scoped (os.Root) reads tracked in #1090.
 			data, err := os.ReadFile(filePath)
 			if err != nil {
 				allErrors = append(allErrors, fmt.Sprintf("Error reading %s: %v", filePath, err))
