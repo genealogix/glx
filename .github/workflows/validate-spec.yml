@@ -155,21 +155,33 @@ jobs:
 
   # Aggregator: keeps a stable `validate-examples` status check (required by the
   # repo ruleset) regardless of how many entries the matrix expands to.
+  # Needs build-cli too, so a build break is reported as a build break instead
+  # of being misattributed to example validation (validate-example is skipped
+  # when build-cli fails, and `skipped` is not `failure`).
   validate-examples:
-    needs: validate-example
+    needs: [build-cli, validate-example]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check matrix results
         env:
+          BUILD_RESULT: ${{ needs.build-cli.result }}
           RESULT: ${{ needs.validate-example.result }}
         run: |
+          echo "build-cli result: $BUILD_RESULT"
           echo "Example validation matrix result: $RESULT"
-          if [ "$RESULT" != "success" ]; then
+          if [ "$BUILD_RESULT" != "success" ]; then
+            echo "::error::build-cli did not succeed (result: $BUILD_RESULT) — example validation never ran"
+            exit 1
+          fi
+          if [ "$RESULT" = "failure" ] || [ "$RESULT" = "cancelled" ]; then
             echo "::error::One or more example validations failed"
             exit 1
           fi
+          # success, or skipped with a green build (empty matrix): nothing to
+          # validate counts as a pass.
+          echo "Example validation passed"
 
   test-conformance:
     runs-on: ubuntu-latest
