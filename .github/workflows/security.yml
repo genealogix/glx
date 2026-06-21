@@ -95,7 +95,14 @@ jobs:
         # build-time-only) advisories would otherwise trip Dependency Review on every
         # PR. A version-pinned `go install` keeps it reproducible without committing
         # that graph. See ci-tools/README.md.
-        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
+        #
+        # The pinned version lives in .gosec-version (single source of truth, shared
+        # with `make gosec`). Neither Dependabot ecosystem sees a `go install ...@vX.Y.Z`
+        # pin, so the weekly gosec-pin-currency job below is what keeps it from rotting.
+        run: |
+          v="$(tr -d '[:space:]' < .gosec-version)"
+          printf '%s' "$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "invalid .gosec-version: $v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }
+          go install "github.com/securego/gosec/v2/cmd/gosec@${v}"
 
       - name: Run gosec
         run: gosec -fmt sarif -out gosec.sarif ./...
@@ -106,6 +113,33 @@ jobs:
         with:
           sarif_file: gosec.sarif
           category: gosec
+
+  gosec-pin-currency:
+    name: gosec Pin Currency
+    # Weekly run only: gosec's pin is invisible to Dependabot (deliberately not in
+    # ci-tools/go.mod — see the Install gosec comment above — and the github-actions
+    # ecosystem doesn't parse `go install ...@vX.Y.Z` run lines), so without this
+    # check the hand-managed .gosec-version pin rots silently. Failing the weekly
+    # scheduled run notifies maintainers; PR runs are unaffected, so an upstream
+    # gosec release never blocks unrelated PRs.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compare .gosec-version against the latest gosec release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pinned="$(tr -d '[:space:]' < .gosec-version)"
+          printf '%s' "$pinned" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error file=.gosec-version::invalid .gosec-version: $pinned (expected vMAJOR.MINOR.PATCH)"; exit 1; }
+          latest="$(gh api repos/securego/gosec/releases/latest --jq .tag_name)" || { echo "::error::could not query the latest securego/gosec release from the GitHub API"; exit 1; }
+          if [ "$pinned" != "$latest" ]; then
+            echo "::error file=.gosec-version::pinned gosec $pinned is behind the latest release $latest — bump .gosec-version (and re-run gosec locally with 'make gosec' to catch findings from new analyzers)"
+            exit 1
+          fi
+          echo "gosec pin $pinned is current"
 
   npm-audit:
     name: npm Audit
