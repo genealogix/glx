@@ -409,7 +409,7 @@ func buildMarriageRecords(personID string, archive *glxlib.GLXFile, events []per
 		if rel == nil {
 			continue
 		}
-		if rel.Type != glxlib.RelationshipTypeMarriage && rel.Type != glxlib.RelationshipTypePartner {
+		if !glxlib.IsCoupleRelationshipType(rel.Type) {
 			continue
 		}
 
@@ -747,7 +747,7 @@ func hasFamily(personID string, archive *glxlib.GLXFile) bool {
 
 		// Check for spouse/partner relationship — require spouse role to avoid
 		// counting witnesses/officiants as family
-		if rel.Type == glxlib.RelationshipTypeMarriage || rel.Type == glxlib.RelationshipTypePartner {
+		if glxlib.IsCoupleRelationshipType(rel.Type) {
 			for _, p := range rel.Participants {
 				if p.Person == personID && p.Role == glxlib.ParticipantRoleSpouse {
 					return true
