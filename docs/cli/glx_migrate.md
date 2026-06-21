@@ -44,6 +44,17 @@ vocabulary definition) to the internationalized `national_id` per #532.
 Both keys map to the GEDCOM SSN tag, so GEDCOM import/export is unaffected. A
 person or vocabulary already carrying `national_id` is never overwritten.
 
+With --strip-event-title-year, removes the stale `(YEAR)` suffix that
+GEDCOM imports before #1026 appended to auto-generated event titles — including
+the buggy day-as-year form (e.g. `Birth of John Smith (15)`, #1025).
+A title is only touched when, with the suffix removed, it exactly matches the
+title import would auto-generate for that event from its type and participant
+names; other titles are never modified. One caveat: a hand-typed title that is
+identical to that auto-generated shape *including* the year is
+indistinguishable from a stale import title and will also be stripped — the
+year remains recoverable from the event's `date` field, where it
+belongs (#1032).
+
 ```
 glx migrate [archive] [flags]
 ```
@@ -71,6 +82,9 @@ glx migrate [archive] [flags]
 
   # Also rename the legacy US-centric 'ssn' person property to 'national_id'
   glx migrate ./my-archive --rename-ssn-to-national-id
+
+  # Also strip the stale (YEAR) suffix from previously-imported event titles
+  glx migrate ./my-archive --strip-event-title-year
 ```
 
 ### Options
@@ -82,6 +96,7 @@ glx migrate [archive] [flags]
       --rename-gender-to-sex             Rename the legacy 'gender' person property to 'sex' (two-field-model split, #528)
       --rename-ssn-to-national-id        Rename the legacy US-centric 'ssn' person property to 'national_id' (#532)
       --source-description-to-property   Move legacy top-level source 'description' into 'properties.description' (#667)
+      --strip-event-title-year           Strip the stale '(YEAR)' suffix pre-#1026 imports appended to auto-generated event titles (#1032)
 ```
 
 ### Options inherited from parent commands
