@@ -135,6 +135,8 @@ func collectGLXFilesFromDir(rootDir string) (map[string][]byte, error) {
 		}
 
 		path = filepath.Clean(path)
+		// #nosec G122 -- a symlink inside the archive can redirect this read outside
+		// the walked root; containment via root-scoped (os.Root) reads is tracked in #1090.
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", path, err)
