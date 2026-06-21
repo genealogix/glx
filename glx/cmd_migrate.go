@@ -29,6 +29,7 @@ var (
 	migrateSourceDescriptionToProperty bool
 	migrateMediaDescriptionToProperty  bool
 	migrateRenameSsnToNationalID       bool
+	migrateStripEventTitleYear         bool
 )
 
 var migrateCmd = &cobra.Command{
@@ -67,7 +68,18 @@ With --rename-ssn-to-national-id, renames the legacy US-centric ` + "`ssn`" + `
 person property (and any related person-subject assertions and inlined
 vocabulary definition) to the internationalized ` + "`national_id`" + ` per #532.
 Both keys map to the GEDCOM SSN tag, so GEDCOM import/export is unaffected. A
-person or vocabulary already carrying ` + "`national_id`" + ` is never overwritten.`,
+person or vocabulary already carrying ` + "`national_id`" + ` is never overwritten.
+
+With --strip-event-title-year, removes the stale ` + "`(YEAR)`" + ` suffix that
+GEDCOM imports before #1026 appended to auto-generated event titles — including
+the buggy day-as-year form (e.g. ` + "`Birth of John Smith (15)`" + `, #1025).
+A title is only touched when, with the suffix removed, it exactly matches the
+title import would auto-generate for that event from its type and participant
+names; other titles are never modified. One caveat: a hand-typed title that is
+identical to that auto-generated shape *including* the year is
+indistinguishable from a stale import title and will also be stripped — the
+year remains recoverable from the event's ` + "`date`" + ` field, where it
+belongs (#1032).`,
 	Example: `  # Migrate a multi-file archive
   glx migrate ./my-archive
 
@@ -87,7 +99,10 @@ person or vocabulary already carrying ` + "`national_id`" + ` is never overwritt
   glx migrate ./my-archive --media-description-to-property
 
   # Also rename the legacy US-centric 'ssn' person property to 'national_id'
-  glx migrate ./my-archive --rename-ssn-to-national-id`,
+  glx migrate ./my-archive --rename-ssn-to-national-id
+
+  # Also strip the stale (YEAR) suffix from previously-imported event titles
+  glx migrate ./my-archive --strip-event-title-year`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMigrate,
 }
@@ -103,6 +118,8 @@ func init() {
 		"Move legacy top-level media 'description' into 'properties.description' (#894)")
 	migrateCmd.Flags().BoolVar(&migrateRenameSsnToNationalID, "rename-ssn-to-national-id", false,
 		"Rename the legacy US-centric 'ssn' person property to 'national_id' (#532)")
+	migrateCmd.Flags().BoolVar(&migrateStripEventTitleYear, "strip-event-title-year", false,
+		"Strip the stale '(YEAR)' suffix pre-#1026 imports appended to auto-generated event titles (#1032)")
 }
 
 func runMigrate(_ *cobra.Command, args []string) error {
@@ -174,6 +191,11 @@ func migrateArchive(archivePath string) error {
 		report.SsnVocabEntriesRenamed += ssnReport.SsnVocabEntriesRenamed
 	}
 
+	if migrateStripEventTitleYear {
+		titleReport := migrateStripStaleEventTitles(archive)
+		report.EventTitleYearsStripped += titleReport.EventTitleYearsStripped
+	}
+
 	// If the gender→sex rename was skipped, count any remaining legacy
 	// `gender:` person properties so the user knows whether the skip was
 	// benign (post-migration re-run, no legacy left) or worrying (manual
@@ -208,7 +230,8 @@ func migrateArchive(archivePath string) error {
 		report.MediaDescriptionsConverted == 0 &&
 		report.SsnPropertiesRenamed == 0 &&
 		report.SsnAssertionsRenamed == 0 &&
-		report.SsnVocabEntriesRenamed == 0 {
+		report.SsnVocabEntriesRenamed == 0 &&
+		report.EventTitleYearsStripped == 0 {
 		if report.GenderRenameSkipped {
 			if legacyGenderRemaining > 0 {
 				noun, verb := "properties", "remain"
@@ -280,6 +303,9 @@ func migrateArchive(archivePath string) error {
 		fmt.Printf("  %-27s%d\n", "Ssn→national_id properties:", report.SsnPropertiesRenamed)
 		fmt.Printf("  %-27s%d\n", "Ssn→national_id assertions:", report.SsnAssertionsRenamed)
 		fmt.Printf("  %-27s%d\n", "Ssn→national_id vocab:", report.SsnVocabEntriesRenamed)
+	}
+	if migrateStripEventTitleYear {
+		fmt.Printf("  %-27s%d\n", "Event title years stripped:", report.EventTitleYearsStripped)
 	}
 
 	return nil
