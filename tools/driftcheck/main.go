@@ -169,7 +169,8 @@ func readSchemaFiles(dir string) (map[string][]byte, error) {
 		if d.IsDir() || !strings.HasSuffix(d.Name(), ".schema.json") {
 			return nil
 		}
-		// #nosec G304 -- path is a repo schema file discovered by WalkDir, not user input.
+		// #nosec G304 G122 -- path is a repo schema file discovered by WalkDir, not user
+		// input; root-scoped (os.Root) reads for walk callbacks are tracked in #1090.
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
