@@ -53,7 +53,7 @@ export default defineConfig({
 
   // Sitemap generation
   sitemap: {
-    hostname: 'https://genealogix.dev'
+    hostname: 'https://genealogix.io'
   },
 
   // Vite configuration for file watching in Docker/WSL
