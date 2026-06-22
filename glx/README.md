@@ -25,6 +25,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
+- ⚖️ **Proof** - Compile evidence for a research question into a structured proof summary following the Genealogical Proof Standard (GPS)
 - 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
