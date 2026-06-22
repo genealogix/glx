@@ -27,8 +27,12 @@ const highlightCode = async () => {
     })
   } catch (error) {
     console.error('Failed to highlight code:', error)
-    // Fallback to plain text
-    highlightedCode.value = `<pre><code>${props.content}</code></pre>`
+    // Fallback to plain text, escaped so the YAML can't be parsed as markup
+    const escaped = props.content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    highlightedCode.value = `<pre><code>${escaped}</code></pre>`
   }
 }
 
@@ -59,6 +63,9 @@ watch(
           class="copy"
         />
         <span class="lang">yaml</span>
+        <!-- content is build-time YAML from this repo rendered through Shiki
+             (or HTML-escaped on fallback), never user input -->
+        <!-- eslint-disable-next-line vue/no-v-html -->
         <div v-html="highlightedCode" />
       </div>
     </div>
