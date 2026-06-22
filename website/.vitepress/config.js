@@ -53,7 +53,7 @@ export default defineConfig({
 
   // Sitemap generation
   sitemap: {
-    hostname: 'https://genealogix.dev'
+    hostname: 'https://genealogix.io'
   },
 
   // Vite configuration for file watching in Docker/WSL
@@ -368,6 +368,7 @@ export default defineConfig({
             { text: 'glx analyze', link: '/cli/glx_analyze' },
             { text: 'glx duplicates', link: '/cli/glx_duplicates' },
             { text: 'glx coverage', link: '/cli/glx_coverage' },
+            { text: 'glx proof', link: '/cli/glx_proof' },
             { text: 'glx diff', link: '/cli/glx_diff' }
           ]
         },
