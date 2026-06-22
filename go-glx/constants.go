@@ -82,6 +82,18 @@ const (
 	RelationshipTypeBoarder               = "boarder"
 )
 
+// IsCoupleRelationshipType reports whether a relationship type represents a
+// spouse/partner (couple) connection between two people.
+func IsCoupleRelationshipType(relType string) bool {
+	switch relType {
+	case RelationshipTypeMarriage, RelationshipTypeCivilUnion,
+		RelationshipTypeCommonLawMarriage, RelationshipTypePartner:
+		return true
+	}
+
+	return false
+}
+
 // Standard Participant Roles - from participant-roles.glx vocabulary
 const (
 	ParticipantRolePrincipal      = "principal"
