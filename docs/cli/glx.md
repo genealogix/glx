@@ -47,6 +47,7 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx migrations](/cli/glx_migrations)	 - Track a person's geographic movement over time
 * [glx path](/cli/glx_path)	 - Find the shortest relationship path between two people
 * [glx places](/cli/glx_places)	 - Analyze places for ambiguity and completeness
+* [glx proof](/cli/glx_proof)	 - Compile evidence into a structured proof summary for a research question
 * [glx query](/cli/glx_query)	 - Query entities in a GLX archive
 * [glx rename](/cli/glx_rename)	 - Rename an entity ID and update all references
 * [glx search](/cli/glx_search)	 - Full-text search across all entities
