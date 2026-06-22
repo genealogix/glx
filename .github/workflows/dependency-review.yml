@@ -29,6 +29,21 @@ jobs:
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
+          # Explicitly state the action's current defaults so the workflow
+          # is auditable in isolation and a future major-version default
+          # flip can't change our security posture silently (#930).
+          vulnerability-check: true
+          license-check: true
+          show-openssf-scorecard: true
+          # Default warn level is 3; many maintained projects score 5-7,
+          # so 5 surfaces barely-maintained deps without noise from
+          # healthy ones. Informational only - never fails the check.
+          warn-on-openssf-scorecard-level: 5
+          # Poll the dependency-graph API until the snapshot is indexed,
+          # avoiding incomplete diffs from the Go dependency-submission
+          # timing race. Recommended for Go projects per the action README.
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 120
           # PR comments require write access; on forked PRs the token is
           # read-only so the comment is silently skipped. The check still
           # blocks the PR regardless.
