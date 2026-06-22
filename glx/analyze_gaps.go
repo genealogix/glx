@@ -100,7 +100,7 @@ func buildSpouseRelIndex(archive *glxlib.GLXFile) map[string][]spouseRef {
 		if rel == nil {
 			continue
 		}
-		if rel.Type != glxlib.RelationshipTypeMarriage && rel.Type != glxlib.RelationshipTypePartner {
+		if !glxlib.IsCoupleRelationshipType(rel.Type) {
 			continue
 		}
 		for i, p := range rel.Participants {
@@ -141,7 +141,7 @@ func buildMarriagePairIndex(archive *glxlib.GLXFile) map[string]bool {
 		if rel == nil || rel.StartEvent == "" {
 			continue
 		}
-		if rel.Type != glxlib.RelationshipTypeMarriage && rel.Type != glxlib.RelationshipTypePartner {
+		if !glxlib.IsCoupleRelationshipType(rel.Type) {
 			continue
 		}
 		ev, ok := archive.Events[rel.StartEvent]
@@ -243,4 +243,3 @@ func buildPersonEventIndex(archive *glxlib.GLXFile) map[string]int {
 	}
 	return counts
 }
-

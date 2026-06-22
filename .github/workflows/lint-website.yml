@@ -1,0 +1,51 @@
+name: Lint Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/lint-website.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - '.github/workflows/lint-website.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-website-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  GIT_CONFIG_KEY_1: advice.detachedHead
+  GIT_CONFIG_VALUE_1: "false"
+
+jobs:
+  eslint:
+    name: eslint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run eslint
+        # Same command `make lint` runs; --max-warnings 0 lives in the npm
+        # script itself so local and CI strictness can't drift.
+        run: npm run lint

@@ -58,8 +58,10 @@ var parentChildRelTypes = map[string]bool{
 
 // marriageRelTypes maps relationship types that represent spouse/partner connections.
 var marriageRelTypes = map[string]bool{
-	"marriage": true,
-	"partner":  true,
+	glxlib.RelationshipTypeMarriage:          true,
+	glxlib.RelationshipTypeCivilUnion:        true,
+	glxlib.RelationshipTypeCommonLawMarriage: true,
+	glxlib.RelationshipTypePartner:           true,
 }
 
 // summarySkippedEventTypes are event types excluded from the life events section.
