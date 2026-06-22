@@ -40,6 +40,7 @@ func (glx *GLXFile) validateTemporalConsistency(result *ValidationResult) {
 	glx.validateDeathBeforeBirth(result)
 	glx.validateParentChildAges(result)
 	glx.validateMarriageBeforeBirth(result)
+	glx.validateRelationshipEventOrder(result)
 }
 
 // extractEventYear finds a person's event of the given type and returns the
@@ -170,6 +171,47 @@ func (glx *GLXFile) validateMarriageBeforeBirth(result *ValidationResult) {
 			}
 		}
 	}
+}
+
+// validateRelationshipEventOrder checks that a relationship's start event does
+// not occur after its end event. Relationships where either event reference is
+// missing, unresolvable, or has no parseable year are skipped.
+func (glx *GLXFile) validateRelationshipEventOrder(result *ValidationResult) {
+	for relID, rel := range glx.Relationships {
+		if rel == nil {
+			continue
+		}
+		if rel.StartEvent == "" || rel.EndEvent == "" {
+			continue
+		}
+
+		startYear := resolveEventYear(glx, rel.StartEvent)
+		endYear := resolveEventYear(glx, rel.EndEvent)
+		if startYear == 0 || endYear == 0 {
+			continue
+		}
+
+		if endYear < startYear {
+			result.Warnings = append(result.Warnings, ValidationWarning{
+				SourceType: EntityTypeRelationships,
+				SourceID:   relID,
+				Field:      "end_event",
+				Message: fmt.Sprintf("%s[%s]: end event %s year (%d) is before start event %s year (%d)",
+					EntityTypeRelationships, relID, rel.EndEvent, endYear, rel.StartEvent, startYear),
+			})
+		}
+	}
+}
+
+// resolveEventYear resolves an event reference to the year of its date, or 0
+// if the event does not exist or its date has no parseable year.
+func resolveEventYear(archive *GLXFile, eventID string) int {
+	event, ok := archive.Events[eventID]
+	if !ok || event == nil {
+		return 0
+	}
+
+	return ExtractFirstYear(string(event.Date))
 }
 
 // isParentChildRelType returns true for relationship types that model a

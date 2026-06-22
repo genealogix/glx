@@ -479,6 +479,7 @@ Participant roles (spouse, parent, child, etc.) are defined in the archive's `vo
 - All person references must point to existing Person entities
 - Participant roles should be from the [participant roles vocabulary](vocabularies#participant-roles-vocabulary) (unknown roles generate warnings)
 - If `start_event` or `end_event` is specified, it must reference an existing Event entity
+- If both `start_event` and `end_event` are specified and both reference events with known dates, the start event's date should precede the end event's date. Reversed ordering generates a warning (not an error) because fuzzy dates and data-entry errors are common; relationships where either date is missing or unparseable are not checked
 
 ## File Organization
 

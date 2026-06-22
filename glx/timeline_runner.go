@@ -37,14 +37,16 @@ type timelineEntry struct {
 // familyRelationshipTypes defines which relationship types count as "family"
 // for the purpose of timeline event collection.
 var familyRelationshipTypes = map[string]bool{
-	"marriage":                  true,
-	"partner":                   true,
-	"parent_child":              true,
-	"biological_parent_child":   true,
-	"adoptive_parent_child":     true,
-	"foster_parent_child":       true,
-	"step_parent":               true,
-	"guardian":                   true,
+	glxlib.RelationshipTypeMarriage:              true,
+	glxlib.RelationshipTypeCivilUnion:            true,
+	glxlib.RelationshipTypeCommonLawMarriage:     true,
+	glxlib.RelationshipTypePartner:               true,
+	glxlib.RelationshipTypeParentChild:           true,
+	glxlib.RelationshipTypeBiologicalParentChild: true,
+	glxlib.RelationshipTypeAdoptiveParentChild:   true,
+	glxlib.RelationshipTypeFosterParentChild:     true,
+	glxlib.RelationshipTypeStepParent:            true,
+	glxlib.RelationshipTypeGuardian:              true,
 }
 
 // showTimeline loads an archive and displays a chronological timeline for a person.
@@ -255,21 +257,21 @@ func inferRelation(relType, targetRole, otherRole string) string {
 		return "spouse"
 	case isParentChildType(relType):
 		switch {
-		case targetRole == "parent":
+		case targetRole == glxlib.ParticipantRoleParent:
 			return "child"
-		case targetRole == "child":
+		case targetRole == glxlib.ParticipantRoleChild:
 			return "parent"
-		case otherRole == "parent":
+		case otherRole == glxlib.ParticipantRoleParent:
 			return "parent"
-		case otherRole == "child":
+		case otherRole == glxlib.ParticipantRoleChild:
 			return "child"
 		default:
 			// Ambiguous — skip
 			return ""
 		}
-	case relType == "guardian":
+	case relType == glxlib.RelationshipTypeGuardian:
 		// In standard archives, guardians use the "parent" participant role.
-		if targetRole == "parent" {
+		if targetRole == glxlib.ParticipantRoleParent {
 			return "child"
 		}
 
@@ -280,13 +282,14 @@ func inferRelation(relType, targetRole, otherRole string) string {
 }
 
 func isMarriageType(relType string) bool {
-	return relType == "marriage" || relType == "partner"
+	return glxlib.IsCoupleRelationshipType(relType)
 }
 
 func isParentChildType(relType string) bool {
 	switch relType {
-	case "parent_child", "biological_parent_child", "adoptive_parent_child",
-		"foster_parent_child", "step_parent":
+	case glxlib.RelationshipTypeParentChild, glxlib.RelationshipTypeBiologicalParentChild,
+		glxlib.RelationshipTypeAdoptiveParentChild, glxlib.RelationshipTypeFosterParentChild,
+		glxlib.RelationshipTypeStepParent:
 		return true
 	}
 
