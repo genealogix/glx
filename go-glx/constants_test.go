@@ -98,6 +98,26 @@ func TestConstants(t *testing.T) {
 	}
 }
 
+func TestIsCoupleRelationshipType(t *testing.T) {
+	for _, relType := range []string{
+		RelationshipTypeMarriage,
+		RelationshipTypeCivilUnion,
+		RelationshipTypeCommonLawMarriage,
+		RelationshipTypePartner,
+	} {
+		assert.True(t, IsCoupleRelationshipType(relType), "%s should be a couple type", relType)
+	}
+
+	for _, relType := range []string{
+		RelationshipTypeParentChild,
+		RelationshipTypeSibling,
+		RelationshipTypeAssociate,
+		"",
+	} {
+		assert.False(t, IsCoupleRelationshipType(relType), "%q should not be a couple type", relType)
+	}
+}
+
 func TestEntityTypeString(t *testing.T) {
 	assert.Equal(t, "persons", EntityTypePersons.String())
 	assert.Equal(t, "events", EntityTypeEvents.String())
