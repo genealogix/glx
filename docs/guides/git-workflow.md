@@ -19,7 +19,7 @@ This is not a general Git tutorial — it assumes you know `clone`, `add`, `comm
 ```bash
 glx init my-family-archive
 cd my-family-archive
-git init
+git init -b main
 git add .
 git commit -m "Initial archive structure"
 ```
