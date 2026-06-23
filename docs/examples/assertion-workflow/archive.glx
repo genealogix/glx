@@ -163,6 +163,13 @@ sources:
     title: "New York City Birth Certificates"
     type: vital_record
     repository: repository-nyc-records
+    # Evidence Explained classification (see specification source.md). An
+    # original certificate filed at the time of birth, recording firsthand
+    # knowledge — the primary-information source that wins the birth-year
+    # conflict below.
+    properties:
+      source_nature: original
+      information_type: primary
 
   source-1990-census:
     title: "1990 United States Census"
@@ -181,6 +188,15 @@ sources:
   source-chen-family-lore:
     title: "Chen family oral history (cousin Sarah)"
     type: oral_history
+    # The two Evidence Explained axes are independent: this recorded interview
+    # is itself an `original` source (a firsthand recording of Sarah), yet the
+    # information it carries about Robert's 1956 birth is `secondary` — Sarah
+    # was not present at the birth and is relaying what Grandpa said. Both
+    # sources here are `original`; they differ on information_type, which is why
+    # the certificate's claim outranks the lore in the conflict resolution.
+    properties:
+      source_nature: original
+      information_type: secondary
 
 # ---------------------------------------------------------------------
 # CITATIONS - Specific references within sources

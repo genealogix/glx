@@ -1,0 +1,21 @@
+# Standard Source Natures
+# This file classifies sources by how they were produced relative to the event
+# they document, following the Evidence Explained (Elizabeth Shown Mills, 4th ed.,
+# 2024) "source" axis: original, derivative, or authored. The classification is
+# independent of the information-quality axis (see information-types.glx) — a
+# single source carries one nature but may convey both primary and secondary
+# information. Archives can extend this with custom values by adding additional
+# entries.
+
+source_natures:
+  original:
+    label: "Original Source"
+    description: "A record in its first-recorded or first-issued form, created at or near the time of the event — e.g., an original vital register, a deed as filed, a held-in-hand letter, or a first-generation photograph. A high-quality image of an original is conventionally treated as original."
+
+  derivative:
+    label: "Derivative Source"
+    description: "A source produced from an earlier one by copying, abstracting, transcribing, extracting, indexing, or translating — e.g., a published transcription, a database index, a typescript abstract, or a later certified copy. Each derivation step adds opportunity for error."
+
+  authored:
+    label: "Authored Work"
+    description: "A source that selects, analyzes, narrates, or synthesizes information from other sources into a new work — e.g., a compiled genealogy, a county history, a journal article, or a biography. Distinguished in the 4th edition from a mechanical derivative by its interpretive authorship."
