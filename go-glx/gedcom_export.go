@@ -192,14 +192,15 @@ type ExportContext struct {
 // ExportIndex provides forward lookups from GLX keys to GEDCOM tags.
 // This is the reverse of GEDCOMIndex (which maps GEDCOM tags to GLX keys).
 type ExportIndex struct {
-	EventTypes           map[string]string // "birth" -> "BIRT"
-	PersonProperties     map[string]string
-	EventProperties      map[string]string
-	CitationProperties   map[string]string
-	SourceProperties     map[string]string
-	RepositoryProperties map[string]string
-	MediaProperties      map[string]string
-	RelationshipTypes    map[string]string // "marriage" -> "MARR"
+	EventTypes             map[string]string // "birth" -> "BIRT"
+	PersonProperties       map[string]string
+	EventProperties        map[string]string
+	RelationshipProperties map[string]string // "number_of_children" -> "NCHI"
+	CitationProperties     map[string]string
+	SourceProperties       map[string]string
+	RepositoryProperties   map[string]string
+	MediaProperties        map[string]string
+	RelationshipTypes      map[string]string // "marriage" -> "MARR"
 }
 
 // ExportResult contains statistics about the export.
@@ -245,14 +246,15 @@ type ExportWarning struct {
 // This is the reverse of buildGEDCOMIndex: maps GLX keys to GEDCOM tags.
 func buildExportIndex(glx *GLXFile) *ExportIndex {
 	index := &ExportIndex{
-		EventTypes:           make(map[string]string),
-		PersonProperties:     make(map[string]string),
-		EventProperties:      make(map[string]string),
-		CitationProperties:   make(map[string]string),
-		SourceProperties:     make(map[string]string),
-		RepositoryProperties: make(map[string]string),
-		MediaProperties:      make(map[string]string),
-		RelationshipTypes:    make(map[string]string),
+		EventTypes:             make(map[string]string),
+		PersonProperties:       make(map[string]string),
+		EventProperties:        make(map[string]string),
+		RelationshipProperties: make(map[string]string),
+		CitationProperties:     make(map[string]string),
+		SourceProperties:       make(map[string]string),
+		RepositoryProperties:   make(map[string]string),
+		MediaProperties:        make(map[string]string),
+		RelationshipTypes:      make(map[string]string),
 	}
 
 	// Build event type index: GLX key -> GEDCOM tag
@@ -279,6 +281,12 @@ func buildExportIndex(glx *GLXFile) *ExportIndex {
 	for key, propDef := range glx.EventProperties {
 		if propDef.GEDCOM != "" {
 			index.EventProperties[key] = propDef.GEDCOM
+		}
+	}
+
+	for key, propDef := range glx.RelationshipProperties {
+		if propDef.GEDCOM != "" {
+			index.RelationshipProperties[key] = propDef.GEDCOM
 		}
 	}
 
