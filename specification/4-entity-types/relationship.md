@@ -61,6 +61,7 @@ Relationship properties capture additional details that don't fit into the stand
 | `ended_on` | date | When the relationship ended |
 | `location` | reference | Location where the relationship occurred (reference to Place) |
 | `description` | string | Detailed description of the relationship |
+| `number_of_children` | integer | Recorded number of children of a couple (from GEDCOM `FAM.NCHI`); may differ from the count of individually-linked children |
 
 Example:
 
