@@ -56,6 +56,8 @@ When you create an archive with `glx init` or `glx import`, standard vocabulary 
 | `sex-types.glx` | Male, female, unknown, not_recorded, other (recorded sex) |
 | `gender-types.glx` | Male, female, nonbinary, other (self-identified identity) |
 | `legal-statuses.glx` | Chattel, indentured, debt_bondage, apprenticeship (enslavement relationship metadata) |
+| `source-natures.glx` | Original, derivative, authored (Evidence Explained source classification) |
+| `information-types.glx` | Primary, secondary, indeterminate (Evidence Explained information classification) |
 | `study-types.glx` | One Place Study, One Name Study, family reconstruction, brick wall, etc. |
 | `study-statuses.glx` | Active, paused, completed, abandoned |
 | `search-result-types.glx` | found, not_found, inconclusive, partial, not_searched |
