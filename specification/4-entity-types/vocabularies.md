@@ -47,6 +47,8 @@ The standard vocabulary files are:
 - `study-types.glx`
 - `study-statuses.glx`
 - `legal-statuses.glx`
+- `source-natures.glx`
+- `information-types.glx`
 
 When creating an archive with `glx init` or `glx import`, these files are automatically copied from the [Standard Vocabularies](../5-standard-vocabularies/) templates into a `vocabularies/` directory. You can reorganize or relocate them as you see fit — the parser discovers vocabulary definitions by their top-level keys, not by file path.
 
@@ -858,6 +860,46 @@ See [Study Entity](study#status) for the full list of standard statuses.
 
 ---
 
+## Source Natures Vocabulary
+
+**Default file**: `vocabularies/source-natures.glx`
+
+**Used By**: [Source Entity](source#source-classification-evidence-explained) via the `source_nature` source property.
+
+**Purpose**: Classifies a source by how it was produced relative to the event it documents, following the "source" axis of [Evidence Explained](https://www.evidenceexplained.com/) (Elizabeth Shown Mills, 4th ed., 2024). This axis is independent of the information-quality axis below — a source carries one nature but may convey both primary and secondary information.
+
+**Standard Templates**: See [Standard Vocabularies — Source Natures](../5-standard-vocabularies/#source-natures) for the complete default vocabulary.
+
+### Standard Source Natures
+
+| Key | Label | Description |
+|-----|-------|-------------|
+| `original` | Original Source | A record in its first-recorded or first-issued form, created at or near the time of the event (e.g., an original vital register, a deed as filed, a first-generation photograph) |
+| `derivative` | Derivative Source | A source produced from an earlier one by copying, abstracting, transcribing, indexing, or translating (e.g., a published transcription, a database index, a later certified copy) |
+| `authored` | Authored Work | A source that selects, analyzes, narrates, or synthesizes information from other sources into a new work (e.g., a compiled genealogy, a county history, a journal article) |
+
+---
+
+## Information Types Vocabulary
+
+**Default file**: `vocabularies/information-types.glx`
+
+**Used By**: [Source Entity](source#source-classification-evidence-explained) via the `information_type` source property.
+
+**Purpose**: Classifies the information a source conveys by the informant's relationship to the event, following the "information" axis of Evidence Explained. A single source can carry both primary and secondary information (a death certificate records the death firsthand but the deceased's birth date secondhand); at the source level this records the predominant or default quality, with fact-level variation expressed per item.
+
+**Standard Templates**: See [Standard Vocabularies — Information Types](../5-standard-vocabularies/#information-types) for the complete default vocabulary.
+
+### Standard Information Types
+
+| Key | Label | Description |
+|-----|-------|-------------|
+| `primary` | Primary Information | Reported by someone with firsthand knowledge — an eyewitness or participant recording at or near the time of the event |
+| `secondary` | Secondary Information | Reported by someone without firsthand knowledge — secondhand, hearsay, or recorded substantially after the event |
+| `indeterminate` | Indeterminate Information | The informant or origin of the information cannot be determined, so its primary/secondary character is unknown (Evidence Explained: "undetermined") |
+
+---
+
 ## Property Vocabularies
 
 Property vocabularies define the custom properties available for each entity type. These properties represent "concluded" or "accepted" values and support flexible, extensible data modeling beyond the standard entity fields.
@@ -1028,6 +1070,8 @@ Standard properties include:
 - `external_ids` - External identifiers from other systems
 - `publication_info` - Publication details: publisher, place, edition (from GEDCOM PUBL)
 - `url` - Web address where the source can be accessed online (e.g., FamilySearch, Ancestry)
+- `source_nature` - Evidence Explained source classification: original, derivative, or authored (validated against `source_natures`)
+- `information_type` - Evidence Explained information classification: primary, secondary, or indeterminate (validated against `information_types`)
 
 ### Citation Properties Vocabulary
 
@@ -1681,6 +1725,8 @@ Each vocabulary type has a corresponding JSON Schema for validation:
 | Sex Types | [sex-types.schema.json](../schema/v1/vocabularies/sex-types.schema.json) |
 | Gender Types | [gender-types.schema.json](../schema/v1/vocabularies/gender-types.schema.json) |
 | Legal Statuses | [legal-statuses.schema.json](../schema/v1/vocabularies/legal-statuses.schema.json) |
+| Source Natures | [source-natures.schema.json](../schema/v1/vocabularies/source-natures.schema.json) |
+| Information Types | [information-types.schema.json](../schema/v1/vocabularies/information-types.schema.json) |
 | Study Types | [study-types.schema.json](../schema/v1/vocabularies/study-types.schema.json) |
 | Study Statuses | [study-statuses.schema.json](../schema/v1/vocabularies/study-statuses.schema.json) |
 | Search Result Types | [search-result-types.schema.json](../schema/v1/vocabularies/search-result-types.schema.json) |
