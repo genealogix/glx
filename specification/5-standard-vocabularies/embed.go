@@ -74,6 +74,16 @@ var GenderTypes []byte
 //go:embed legal-statuses.glx
 var LegalStatuses []byte
 
+// SourceNatures contains the embedded source-natures.glx vocabulary file.
+//
+//go:embed source-natures.glx
+var SourceNatures []byte
+
+// InformationTypes contains the embedded information-types.glx vocabulary file.
+//
+//go:embed information-types.glx
+var InformationTypes []byte
+
 // PersonProperties contains the embedded person-properties.glx vocabulary file.
 //
 //go:embed person-properties.glx
@@ -147,6 +157,8 @@ var Files = map[string][]byte{
 	"sex-types.glx":                 SexTypes,
 	"gender-types.glx":              GenderTypes,
 	"legal-statuses.glx":            LegalStatuses,
+	"source-natures.glx":            SourceNatures,
+	"information-types.glx":         InformationTypes,
 	"person-properties.glx":         PersonProperties,
 	"event-properties.glx":          EventProperties,
 	"relationship-properties.glx":   RelationshipProperties,
