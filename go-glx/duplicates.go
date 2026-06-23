@@ -68,8 +68,15 @@ type DuplicateOptions struct {
 }
 
 // Signal weights for the scoring model.
+//
+// Sum: 0.20 + 0.10 + 0.20 + 0.15 + 0.10 + 0.10 + 0.10 + 0.05 = 1.00. Keep that
+// invariant when adjusting any of these — the weighted-sum renormalization
+// path in scorePair (#716) sums effectiveWeight across signals with
+// HasData=true, and `TestFindDuplicates_FullData_RegressionUnchanged` asserts
+// it equals 1.0 on the all-dimensions-populated fixture.
 const (
-	weightName         = 0.30
+	weightName         = 0.20
+	weightPhonetic     = 0.10
 	weightBirthYear    = 0.20
 	weightBirthPlace   = 0.15
 	weightDeathYear    = 0.10
@@ -595,6 +602,10 @@ func scorePair(idA, idB string, personA, personB *Person, archive *GLXFile, idx 
 	nameScore, nameDetail, nameHas := scoreNameSimilarity(personA, personB)
 	signals = append(signals, DuplicateSignal{"Name similarity", weightName, nameScore, nameDetail, nameHas})
 
+	// Phonetic similarity (#704)
+	phonScore, phonDetail, phonHas := scorePhoneticSimilarity(personA, personB)
+	signals = append(signals, DuplicateSignal{"Phonetic", weightPhonetic, phonScore, phonDetail, phonHas})
+
 	// Birth year and place
 	birthA := idx.personBirthEvent[idA]
 	birthB := idx.personBirthEvent[idB]
@@ -727,6 +738,93 @@ func scoreNameSimilarity(personA, personB *Person) (float64, string, bool) {
 	}
 
 	return score, detail, true
+}
+
+// scorePhoneticSimilarity compares two persons' names by Soundex (#704). The
+// third return is true iff at least one sub-comparison (surname or given)
+// could actually run — i.e. Soundex yielded a non-empty code on both sides
+// for that component. Sub-comparisons that can't run are dropped from the
+// average rather than scored 0, so a pair where only surnames are recorded
+// scores phonetically on the surname alone.
+//
+// This signal is independent of and additive to scoreNameSimilarity: a
+// Schneider/Snider pair earns Levenshtein-credit on the name signal AND a
+// 1.0 on this signal. Single-rune given names (e.g. "J." vs "John") are
+// treated as missing data on the given sub-comparison, since Soundex on a
+// single letter ("J000") cannot phonetically match a full name ("J500") and
+// scoring such a pair 0 here would silently regress the 0.6 credit
+// scoreNameSimilarity already awards via isInitialMatch.
+func scorePhoneticSimilarity(personA, personB *Person) (float64, string, bool) {
+	givenA, surnameA := ExtractNameFields(personA.Properties[PersonPropertyName])
+	givenB, surnameB := ExtractNameFields(personB.Properties[PersonPropertyName])
+
+	if givenA == "" && surnameA == "" {
+		givenA, surnameA = splitFullName(PersonDisplayName(personA))
+	}
+	if givenB == "" && surnameB == "" {
+		givenB, surnameB = splitFullName(PersonDisplayName(personB))
+	}
+
+	var (
+		ran   int
+		hits  int
+		parts []string
+	)
+
+	// Soundex already strips everything but ASCII letters internally, so no
+	// surrounding TrimSpace is needed here. The given-name branch below still
+	// needs a trimmed string to feed isPhoneticInitial.
+	surnameCodeA := Soundex(surnameA)
+	surnameCodeB := Soundex(surnameB)
+	if surnameCodeA != "" && surnameCodeB != "" {
+		ran++
+		if surnameCodeA == surnameCodeB {
+			hits++
+			parts = append(parts, "surname phonetic")
+		}
+	}
+
+	givenTrimA := strings.TrimSpace(givenA)
+	givenTrimB := strings.TrimSpace(givenB)
+	if !isPhoneticInitial(givenTrimA) && !isPhoneticInitial(givenTrimB) {
+		givenCodeA := Soundex(givenTrimA)
+		givenCodeB := Soundex(givenTrimB)
+		if givenCodeA != "" && givenCodeB != "" {
+			ran++
+			if givenCodeA == givenCodeB {
+				hits++
+				parts = append(parts, "given phonetic")
+			}
+		}
+	}
+
+	if ran == 0 {
+		return 0, noDataDetail, false
+	}
+
+	score := float64(hits) / float64(ran)
+
+	detail := strings.Join(parts, ", ")
+	if detail == "" {
+		detail = "no match"
+	}
+
+	return score, detail, true
+}
+
+// isPhoneticInitial reports whether a given-name component is a single-letter
+// initial like "J" or "J." Soundex on a single letter ("J000") cannot
+// meaningfully match a full name's code ("J500"), so we skip such
+// sub-comparisons and let scoreNameSimilarity's isInitialMatch handle the
+// case via its existing 0.6 credit on the *name* signal.
+//
+// Empty or period-only inputs are NOT treated as initials here — they fall
+// through to the Soundex-empty check at the sub-comparison call site, which
+// is the canonical place where the "no data on this component" decision
+// lives. Keeping that decision in one place rather than smuggling it into
+// this helper makes the function do exactly what its name says.
+func isPhoneticInitial(s string) bool {
+	return utf8.RuneCountInString(strings.TrimSuffix(s, ".")) == 1
 }
 
 // splitFullName splits a simple "Given Surname" string into parts.

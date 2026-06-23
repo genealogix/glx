@@ -1521,3 +1521,59 @@ func TestValidateStandardLegalStatusesVocab(t *testing.T) {
 		assert.Contains(t, warn.Message, "'foobar' not found in legal_statuses")
 	})
 }
+
+// TestValidateStandardSourceClassificationVocabs guards the source_natures and
+// information_types registrations in buildVocabularyMaps. Dropping either
+// VocabSourceNatures or VocabInformationTypes from validation.go would flip the
+// "value not found in <vocab>" warning into "vocabulary '<vocab>' not loaded",
+// and the canonical-value case would also start producing the not-loaded
+// warning — the assertions below would fail in that scenario. Mirrors the shape
+// of TestValidateStandardLegalStatusesVocab directly above.
+func TestValidateStandardSourceClassificationVocabs(t *testing.T) {
+	makeArchive := func(props map[string]any) *GLXFile {
+		var archive GLXFile
+		if err := LoadStandardVocabulariesIntoGLX(&archive); err != nil {
+			t.Fatalf("LoadStandardVocabulariesIntoGLX: %v", err)
+		}
+		archive.Sources = map[string]*Source{
+			"source-death-cert": {
+				Title:      "Death Certificate - John Smith, 1921",
+				Properties: props,
+			},
+		}
+
+		return &archive
+	}
+
+	t.Run("canonical values accepted", func(t *testing.T) {
+		result := makeArchive(map[string]any{
+			"source_nature":    "original",
+			"information_type": "primary",
+		}).Validate()
+		assert.Empty(t, result.Errors)
+		assert.Empty(t, result.Warnings,
+			"source_nature: original and information_type: primary should validate against the standard vocabularies")
+	})
+
+	t.Run("unknown source_nature warns", func(t *testing.T) {
+		result := makeArchive(map[string]any{"source_nature": "foobar"}).Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		warn := result.Warnings[0]
+		assert.Equal(t, EntityTypeSources, warn.SourceType)
+		assert.Equal(t, "source-death-cert", warn.SourceID)
+		assert.Equal(t, "properties.source_nature", warn.Field)
+		assert.Contains(t, warn.Message, "'foobar' not found in source_natures")
+	})
+
+	t.Run("unknown information_type warns", func(t *testing.T) {
+		result := makeArchive(map[string]any{"information_type": "foobar"}).Validate()
+		assert.Empty(t, result.Errors)
+		require.Len(t, result.Warnings, 1)
+		warn := result.Warnings[0]
+		assert.Equal(t, EntityTypeSources, warn.SourceType)
+		assert.Equal(t, "source-death-cert", warn.SourceID)
+		assert.Equal(t, "properties.information_type", warn.Field)
+		assert.Contains(t, warn.Message, "'foobar' not found in information_types")
+	})
+}
