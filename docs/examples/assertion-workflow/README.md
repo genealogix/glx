@@ -246,6 +246,22 @@ assertions:
     notes: "Family recollection; contradicted by the birth certificate."
 ```
 
+The "primary" vs "secondary" framing above is not just prose — it is recorded structurally on the two sources using the [Evidence Explained](https://www.evidenceexplained.com/) classification (`source_nature` / `information_type`):
+
+```yaml
+sources:
+  source-nyc-birth-records: # the birth certificate
+    properties:
+      source_nature: original # a record filed at the time of the event…
+      information_type: primary # …reporting firsthand knowledge
+  source-chen-family-lore: # the oral history
+    properties:
+      source_nature: original # a firsthand recording of the interview…
+      information_type: secondary # …but Sarah relays the birth secondhand
+```
+
+Both sources are `original` in **nature** — the two axes are independent — yet they differ in **information** quality, and it is that `primary` vs `secondary` distinction that justifies resolving the conflict in the certificate's favor. See [Source — Source Classification](/specification/4-entity-types/source#source-classification-evidence-explained).
+
 Both assertions point at the **same property of the same event** but carry **different values** — that is what makes this a conflict rather than [corroboration](#multiple-evidence-for-same-property). The `status` field records the outcome of the analysis:
 
 - `status: proven` — the claim survived analysis (here, backed by a primary source)

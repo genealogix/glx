@@ -601,6 +601,8 @@ const (
 	VocabStudyTypes             = "study_types"
 	VocabStudyStatuses          = "study_statuses"
 	VocabLegalStatuses          = "legal_statuses"
+	VocabSourceNatures          = "source_natures"
+	VocabInformationTypes       = "information_types"
 )
 
 // Standard Study Types - from study-types.glx vocabulary
