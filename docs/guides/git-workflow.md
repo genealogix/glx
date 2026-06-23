@@ -208,9 +208,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          curl -sL https://github.com/genealogix/glx/releases/latest/download/glx_Linux_x86_64.tar.gz | tar xz
-          ./glx validate
-```
+          mkdir -p .bin
+          curl -sL https://github.com/genealogix/glx/releases/latest/download/glx_Linux_x86_64.tar.gz | tar -xz -C .bin glx
+          ./.bin/glx validate
 
 For shared archives, also agree on vocabulary governance — who may add custom event or relationship types, and how. See [Best Practices — Vocabulary Governance](/guides/best-practices#vocabulary-governance).
 
