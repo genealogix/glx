@@ -238,6 +238,32 @@ Defines legal-status values for relationships, primarily for distinguishing form
 
 ---
 
+### Source Natures
+
+Classifies a source by how it was produced relative to the event it documents, following the Evidence Explained "source" axis (original, derivative, authored). Set on a source via the `source_nature` property.
+
+<YamlFile
+  :content="vocabularies['source-natures']"
+  title="vocabularies/source-natures.glx"
+/>
+
+**View Source:** [source-natures.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/source-natures.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#source-natures-vocabulary)
+
+---
+
+### Information Types
+
+Classifies the information a source conveys by the informant's relationship to the event, following the Evidence Explained "information" axis (primary, secondary, indeterminate). Set on a source via the `information_type` property.
+
+<YamlFile
+  :content="vocabularies['information-types']"
+  title="vocabularies/information-types.glx"
+/>
+
+**View Source:** [information-types.glx](https://github.com/genealogix/glx/blob/main/specification/5-standard-vocabularies/information-types.glx) | **See Also:** [Source Entity Documentation](../4-entity-types/source) | [Vocabularies Specification](../4-entity-types/vocabularies#information-types-vocabulary)
+
+---
+
 ## Property Vocabularies
 
 Property vocabularies define the custom properties available for each entity type. These enable flexible, extensible data modeling for person, event, relationship, and place entities.
