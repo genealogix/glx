@@ -24,6 +24,16 @@ relationship_properties:
     description: "Detailed description of the relationship"
     value_type: string
 
+  number_of_children:
+    label: "Number of Children"
+    description: |
+      Known number of children of this couple, as recorded in the source.
+      May differ from the count of individually-linked parent-child
+      relationships when some children are not recorded as separate persons.
+      Imported from and exported to the GEDCOM FAM.NCHI tag.
+    value_type: integer
+    gedcom: "NCHI"
+
   name_as_recorded:
     label: "Name As Recorded"
     description: |
