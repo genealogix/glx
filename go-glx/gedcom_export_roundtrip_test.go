@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -136,6 +137,111 @@ func TestRoundtrip_MinimalFamily(t *testing.T) {
 		}
 	}
 	assert.True(t, foundMarriage, "marriage event not found after roundtrip")
+}
+
+// TestRoundtrip_FamilyNCHI verifies the FAM.NCHI (number of children) tag
+// survives an import → export → re-import cycle.
+func TestRoundtrip_FamilyNCHI(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI 5
+0 TRLR
+`
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err, "first import failed")
+
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err, "export failed")
+	assert.Contains(t, string(exported), "1 NCHI 5", "exported GEDCOM should contain NCHI")
+
+	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+	require.NoError(t, err, "re-import failed")
+
+	var foundNCHI bool
+	for _, rel := range glx2.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, 5, val, "NCHI value should survive roundtrip as an integer")
+			foundNCHI = true
+		}
+	}
+	assert.True(t, foundNCHI, "NCHI should be present on the relationship after roundtrip")
+}
+
+// assertNCHIRoundtrip imports a 5.5.1 FAM carrying the given NCHI value, exports
+// to the target version, and re-imports — asserting the value survives intact.
+func assertNCHIRoundtrip(t *testing.T, targetVersion GEDCOMVersion, nchi int) {
+	t.Helper()
+
+	gedcom := fmt.Sprintf(`0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI %d
+0 TRLR
+`, nchi)
+
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err, "first import failed")
+
+	exported, _, err := ExportGEDCOM(glx1, targetVersion, nil)
+	require.NoError(t, err, "export failed")
+	assert.Contains(t, string(exported), fmt.Sprintf("1 NCHI %d", nchi), "exported GEDCOM should contain NCHI")
+
+	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+	require.NoError(t, err, "re-import failed")
+
+	var found bool
+	for _, rel := range glx2.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, nchi, val, "NCHI value should survive roundtrip as an integer")
+			found = true
+		}
+	}
+	assert.True(t, found, "NCHI should be present on the relationship after roundtrip")
+}
+
+// TestRoundtrip_FamilyNCHI_Zero verifies NCHI 0 (a valid, distinct value)
+// survives the round-trip rather than being dropped as if absent.
+func TestRoundtrip_FamilyNCHI_Zero(t *testing.T) {
+	assertNCHIRoundtrip(t, GEDCOM551, 0)
+}
+
+// TestRoundtrip_FamilyNCHI_GEDCOM70 verifies NCHI round-trips through GEDCOM 7.0
+// export, which supports NCHI with identical semantics to 5.5.1.
+func TestRoundtrip_FamilyNCHI_GEDCOM70(t *testing.T) {
+	assertNCHIRoundtrip(t, GEDCOM70, 3)
 }
 
 // TestRoundtrip_GEDCOM70 tests roundtrip with GEDCOM 7.0 output
