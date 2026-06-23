@@ -1,0 +1,23 @@
+# Standard Information Types
+# This file classifies the information within a source by the informant's
+# relationship to the event, following the Evidence Explained (Elizabeth Shown
+# Mills, 4th ed., 2024) "information" axis: primary, secondary, or indeterminate.
+# This axis is independent of source nature (see source-natures.glx): a single
+# source can carry both primary and secondary information (e.g., a death
+# certificate records the death firsthand but the deceased's birth date
+# secondhand). When set on a source this property records the predominant or
+# default information quality; fact-level variation is better expressed per item.
+# Archives can extend this with custom values by adding additional entries.
+
+information_types:
+  primary:
+    label: "Primary Information"
+    description: "Reported by someone with firsthand knowledge — an eyewitness or participant recording at or near the time of the event."
+
+  secondary:
+    label: "Secondary Information"
+    description: "Reported by someone without firsthand knowledge — secondhand, hearsay, or recorded substantially after the event."
+
+  indeterminate:
+    label: "Indeterminate Information"
+    description: "The informant, or the origin of the information, cannot be determined, so its primary/secondary character is unknown. (Evidence Explained calls this 'undetermined'.)"

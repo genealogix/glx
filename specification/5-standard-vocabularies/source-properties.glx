@@ -61,3 +61,24 @@ source_properties:
     label: "URL"
     description: "Web address for the source collection or database. For URLs to specific records within the source, use the citation url property instead."
     value_type: string
+
+  source_nature:
+    label: "Source Nature"
+    description: |
+      Evidence Explained classification of how this source was produced
+      relative to the event it documents: original, derivative, or authored.
+      Values are validated against the source_natures vocabulary; archives may
+      extend that vocabulary with custom values.
+    vocabulary_type: source_natures
+
+  information_type:
+    label: "Information Type"
+    description: |
+      Evidence Explained classification of the information this source conveys,
+      by the informant's relationship to the event: primary, secondary, or
+      indeterminate. A single source may carry both primary and secondary
+      information; at the source level this records the predominant or default
+      quality, with fact-level variation expressed per item. Values are
+      validated against the information_types vocabulary; archives may extend it
+      with custom values.
+    vocabulary_type: information_types
