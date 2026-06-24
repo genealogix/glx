@@ -1,5 +1,22 @@
 ---
 description: Compact the latest changelog entry by merging duplicates, removing self-cancelling changes, and consolidating follow-ups
+allowed-tools:
+  - Read
+  - Edit
+  - Write
+  - Grep
+  - Bash(git fetch:*)
+  - Bash(git tag:*)
+  - Bash(git show:*)
+  - Bash(awk:*)
+  - Bash(grep:*)
+  - Bash(head:*)
+  - Bash(sort:*)
+  - Bash(comm:*)
+  - Bash(printf:*)
+model: claude-opus-4-8
+disable-model-invocation: true
+argument-hint: "[target-version]"
 ---
 
 Compact the latest version entry in `CHANGELOG.md`. Read the file, identify the latest `## [version]` section (everything from the first `## [` to the next `## [` or end of file), and apply the following compaction rules:
