@@ -22,7 +22,7 @@ import addFormats from "ajv-formats";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import yaml from "js-yaml";
+import { load as loadYAML } from "js-yaml";
 
 // Resolve paths relative to the repo root (script lives in specification/).
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -36,7 +36,7 @@ const ajv = new Ajv({ strict: true, allErrors: true });
 addFormats(ajv);
 const validate = ajv.compile(JSON.parse(readFileSync(SCHEMA, "utf8")));
 
-const entries = yaml.load(readFileSync(ALLOWLIST, "utf8"));
+const entries = loadYAML(readFileSync(ALLOWLIST, "utf8"));
 // Tag each duplicate-key component as "string" or "non-string" so a string
 // `file`/`symbol` can never collide with a non-string that stringifies to the
 // same text. Among non-strings we key on `typeof` plus `String(value)`, which
