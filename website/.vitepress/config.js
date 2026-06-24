@@ -336,11 +336,13 @@ export default defineConfig({
             { text: 'glx query', link: '/cli/glx_query' },
             { text: 'glx vitals', link: '/cli/glx_vitals' },
             { text: 'glx timeline', link: '/cli/glx_timeline' },
+            { text: 'glx migrations', link: '/cli/glx_migrations' },
             { text: 'glx summary', link: '/cli/glx_summary' },
             { text: 'glx ancestors', link: '/cli/glx_ancestors' },
             { text: 'glx descendants', link: '/cli/glx_descendants' },
             { text: 'glx cite', link: '/cli/glx_cite' },
-            { text: 'glx path', link: '/cli/glx_path' }
+            { text: 'glx path', link: '/cli/glx_path' },
+            { text: 'glx serve', link: '/cli/glx_serve' }
           ]
         },
         {
