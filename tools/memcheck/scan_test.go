@@ -229,8 +229,10 @@ func TestImportFindings(t *testing.T) {
 		{"sibling repo slug", "see `github.com/genealogix/glx-archive-westeros`", clean, 0},
 		{"sibling repo url", "clone https://github.com/genealogix/homebrew-tap here", clean, 0},
 		{"sibling repo url subpath", "[site](https://github.com/genealogix/glx-website/tree/main)", clean, 0},
-		// A longer hostname must not match on its `github.com/...` suffix.
-		{"hostname suffix not matched", "see `notgithub.com/genealogix/glx-core/pkg`", clean, 0},
+		// A longer hostname must not match on its `github.com/...` suffix —
+		// neither a prefix label nor a subdomain of github.com.
+		{"hostname prefix label", "see `notgithub.com/genealogix/glx-core/pkg`", clean, 0},
+		{"github.com subdomain", "see `evil.github.com/genealogix/glx-core/pkg`", clean, 0},
 		{
 			"go.mod renamed, doc stale",
 			"import `github.com/genealogix/glx/go-glx`",

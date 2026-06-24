@@ -71,12 +71,17 @@ var (
 	// prompt). Anchoring here keeps a shell comment such as `# make sure to
 	// rebuild` from being read as the target "sure".
 	makeLineRe = regexp.MustCompile(`^\s*(?:[$>]\s+)?make\s+([A-Za-z][A-Za-z0-9_-]{2,})`)
-	// importRe matches a github.com import/module path. The leading `\b` anchors
-	// the host so a longer hostname (e.g. `notgithub.com/org/repo`) can't match on
-	// its `github.com/...` suffix. The trailing class excludes '@' and backslash
-	// so version suffixes and regex-escaped doc strings terminate the match
+	// importRe matches a github.com import/module path, captured in group 1. The
+	// host is anchored on its left by `(?:^|[^A-Za-z0-9.-])` — start-of-line or a
+	// non-hostname character — so a longer hostname can never match on its
+	// `github.com/...` suffix: neither a prefix label (`notgithub.com/...`) nor a
+	// subdomain (`evil.github.com/...`) matches, since both put a hostname char
+	// immediately before `github`. (`https://github.com/...` still matches: the
+	// preceding `/` is a non-hostname char, and the `://` web-URL guard in
+	// importFindings sorts those out.) The trailing class excludes '@' and
+	// backslash so version suffixes and regex-escaped doc strings terminate
 	// cleanly.
-	importRe = regexp.MustCompile(`\bgithub\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+`)
+	importRe = regexp.MustCompile(`(?:^|[^A-Za-z0-9.-])(github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+)`)
 )
 
 // scanFile runs every check over one memory file's content and returns the
@@ -184,9 +189,9 @@ func pathFindings(file, memDir string, line int, span string, r repo) []finding 
 func importFindings(file, content string, r repo) []finding {
 	var out []finding
 	for idx, line := range strings.Split(content, "\n") {
-		for _, loc := range importRe.FindAllStringIndex(line, -1) {
-			start := loc[0]
-			tok := strings.TrimRight(line[start:loc[1]], "./-")
+		for _, loc := range importRe.FindAllStringSubmatchIndex(line, -1) {
+			start := loc[2] // group 1: the github.com path, sans any boundary char
+			tok := strings.TrimRight(line[start:loc[3]], "./-")
 			if !strings.HasPrefix(tok, r.orgPrefix) {
 				continue // third-party (or different-org) import: not our concern
 			}
