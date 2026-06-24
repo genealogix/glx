@@ -21,13 +21,16 @@ import (
 
 // buildReport renders the human-readable memory-drift report. It is pure
 // (returns a string) so callers do a single write and tests can assert on text.
-// findings are expected pre-sorted by byFileLineToken.
-func buildReport(memFiles int, findings []finding, suppressed []suppression, verbose bool) string {
+// findings are expected pre-sorted by byFileLineToken. allowlistPath is the
+// effective allowlist file (the -allowlist value, default
+// .claude/memory-drift-allowlist.yaml) so the report points at the file actually
+// in use rather than a hard-coded default.
+func buildReport(memFiles int, allowlistPath string, findings []finding, suppressed []suppression, verbose bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "memcheck: checked %d memory file(s) (CLAUDE.md/AGENTS.md) against the repository\n", memFiles)
 
 	if verbose && len(suppressed) > 0 {
-		fmt.Fprintf(&b, "\nSuppressed by .claude/memory-drift-allowlist.yaml (%d):\n", len(suppressed))
+		fmt.Fprintf(&b, "\nSuppressed by %s (%d):\n", allowlistPath, len(suppressed))
 		for i := range suppressed {
 			s := &suppressed[i]
 			fmt.Fprintf(&b, "  - %s:%d [%s] %s — %s\n",
@@ -64,9 +67,9 @@ func buildReport(memFiles int, findings []finding, suppressed []suppression, ver
 	if len(suppressed) > 0 {
 		fmt.Fprintf(&b, " (%d suppressed by allowlist)", len(suppressed))
 	}
-	b.WriteString("\n\nThe repository is the source of truth — update the memory file to match,\n" +
-		"or add a triaged entry to .claude/memory-drift-allowlist.yaml if the\n" +
-		"reference is an intentional, non-existent example.\n")
+	fmt.Fprintf(&b, "\n\nThe repository is the source of truth — update the memory file to match,\n"+
+		"or add a triaged entry to %s if the\n"+
+		"reference is an intentional, non-existent example.\n", allowlistPath)
 
 	return b.String()
 }

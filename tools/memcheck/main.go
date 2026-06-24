@@ -129,7 +129,7 @@ func run(opts options, out io.Writer) (int, error) {
 	surviving, suppressed := allow.partition(dedupe(findings))
 	byFileLineToken(surviving)
 
-	if _, writeErr := io.WriteString(out, buildReport(len(memFiles), surviving, suppressed, opts.verbose)); writeErr != nil {
+	if _, writeErr := io.WriteString(out, buildReport(len(memFiles), opts.allowlistFile, surviving, suppressed, opts.verbose)); writeErr != nil {
 		return 2, writeErr
 	}
 
