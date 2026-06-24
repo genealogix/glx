@@ -84,6 +84,13 @@ var (
 	// `glx evidence` errors
 	ErrEvidenceUnknownFormat = errors.New("unknown output format (must be 'text' or 'json')")
 
+	// `glx migrations` errors
+	ErrMigrationsUnknownFormat     = errors.New("unknown output format (must be 'text' or 'json')")
+	ErrMigrationsPersonOrPattern   = errors.New("a person argument or --pattern is required")
+	ErrMigrationsPersonAndPattern  = errors.New("a person argument and --pattern are mutually exclusive")
+	ErrMigrationsFamilyWithPattern = errors.New("--family requires a person argument and cannot be combined with --pattern")
+	ErrMigrationsPatternTooShort   = errors.New("--pattern needs at least two comma-separated place names")
+
 	// `glx cache` errors
 	ErrCacheNotDirectory = errors.New("binary cache is only supported for multi-file (directory) archives")
 	ErrCacheNotFound     = errors.New("no binary cache found (run 'glx cache build' first)")
