@@ -370,29 +370,19 @@ func TestRoundtrip_SourcesAndRepositories(t *testing.T) {
 	assert.Equal(t, len(glx1.Repositories), len(glx2.Repositories), "repository count mismatch")
 }
 
-// TestRoundtrip_NewSourceTypesPreserved verifies that each source type added in
-// #563 survives a GLX -> GEDCOM 7.0 -> GLX round-trip. The exporter writes
-// Source.Type verbatim as the GEDCOM TYPE value and the importer maps it back
-// via mapSourceType; without identity mappings for the canonical keys, types
-// like family_bible / dna_test / social_media would downgrade to "other".
-func TestRoundtrip_NewSourceTypesPreserved(t *testing.T) {
-	cases := []struct {
-		id    string
-		title string
-		typ   string
-	}{
-		{"source-fb", "rt-source-family-bible", SourceTypeFamilyBible},
-		{"source-gs", "rt-source-gravestone", SourceTypeGravestone},
-		{"source-dna", "rt-source-dna", SourceTypeDNATest},
-		{"source-mem", "rt-source-memoir", SourceTypeMemoir},
-		{"source-ms", "rt-source-manuscript", SourceTypeManuscript},
-		{"source-map", "rt-source-map", SourceTypeMap},
-		{"source-sm", "rt-source-social-media", SourceTypeSocialMedia},
-	}
-
-	sources := make(map[string]*Source, len(cases))
-	for _, c := range cases {
-		sources[c.id] = &Source{Title: c.title, Type: c.typ}
+// TestRoundtrip_StandardSourceTypesPreserved verifies that every standard
+// source type survives a GLX -> GEDCOM 7.0 -> GLX round-trip. The exporter
+// writes Source.Type verbatim as the GEDCOM TYPE value and the importer maps
+// it back via mapSourceType; before mapSourceType recognized canonical GLX
+// keys, types whose GEDCOM alias differs from the key (vital_record,
+// church_register, tax_record, ...) or that have no alias at all (immigration,
+// directory, oral_history, correspondence) downgraded to "other" (#563,
+// #1005). Driven from standardSourceTypes so future vocabulary additions stay
+// covered automatically.
+func TestRoundtrip_StandardSourceTypesPreserved(t *testing.T) {
+	sources := make(map[string]*Source, len(standardSourceTypes))
+	for typ := range standardSourceTypes {
+		sources["source-"+typ] = &Source{Title: "rt-source-" + typ, Type: typ}
 	}
 	glx1 := &GLXFile{Sources: sources}
 
@@ -402,15 +392,15 @@ func TestRoundtrip_NewSourceTypesPreserved(t *testing.T) {
 
 	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
 	require.NoError(t, err)
-	require.Len(t, glx2.Sources, len(cases))
+	require.Len(t, glx2.Sources, len(standardSourceTypes))
 
 	// Source IDs are regenerated on import, so match by the preserved title.
 	gotByTitle := make(map[string]string, len(glx2.Sources))
 	for _, s := range glx2.Sources {
 		gotByTitle[s.Title] = s.Type
 	}
-	for _, c := range cases {
-		assert.Equal(t, c.typ, gotByTitle[c.title], "source %q type must survive GLX->GEDCOM->GLX round-trip", c.title)
+	for typ := range standardSourceTypes {
+		assert.Equal(t, typ, gotByTitle["rt-source-"+typ], "source type %q must survive GLX->GEDCOM->GLX round-trip", typ)
 	}
 }
 
