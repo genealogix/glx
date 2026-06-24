@@ -57,8 +57,9 @@ obscure reference than flag a false one, because this check gates CI:
 ## Allowlist
 
 A deliberately-documented reference that should *not* resolve (an illustrative
-example path, or a `make` target inside a fenced shell comment) can be suppressed
-by adding an entry to `.claude/memory-drift-allowlist.yaml`:
+example path, or a `make` target that is documented before it exists in the
+`Makefile`) can be suppressed by adding an entry to
+`.claude/memory-drift-allowlist.yaml`:
 
 ```yaml
 - token: path/to/example.go      # the reference, verbatim

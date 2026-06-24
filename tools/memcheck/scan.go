@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -70,10 +71,12 @@ var (
 	// prompt). Anchoring here keeps a shell comment such as `# make sure to
 	// rebuild` from being read as the target "sure".
 	makeLineRe = regexp.MustCompile(`^\s*(?:[$>]\s+)?make\s+([A-Za-z][A-Za-z0-9_-]{2,})`)
-	// importRe matches a github.com import/module path. The trailing class
-	// excludes '@' and backslash so version suffixes and regex-escaped doc
-	// strings terminate the match cleanly.
-	importRe = regexp.MustCompile(`github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+`)
+	// importRe matches a github.com import/module path. The leading `\b` anchors
+	// the host so a longer hostname (e.g. `notgithub.com/org/repo`) can't match on
+	// its `github.com/...` suffix. The trailing class excludes '@' and backslash
+	// so version suffixes and regex-escaped doc strings terminate the match
+	// cleanly.
+	importRe = regexp.MustCompile(`\bgithub\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+`)
 )
 
 // scanFile runs every check over one memory file's content and returns the
@@ -160,7 +163,7 @@ func pathFindings(file, memDir string, line int, span string, r repo) []finding 
 	}
 	checkedAgainst := "the repo root"
 	if memDir != "" {
-		checkedAgainst = "the repo root and to " + memDir + "/"
+		checkedAgainst = "the repo root and " + memDir + "/"
 	}
 
 	return []finding{{
@@ -243,6 +246,13 @@ func classifyPathClaim(tok string) (candidate string, isFile, isDir bool) {
 	}
 	if strings.HasPrefix(tok, "github.com/") {
 		return "", false, false // import path, handled by importFindings
+	}
+	// Reject any token carrying a `..` path segment. memcheck only ever needs to
+	// confirm paths *inside* the checkout; a parent traversal resolved via
+	// filepath.Join(root, …) could stat a file outside the repository, so treat
+	// it as a non-claim rather than follow it.
+	if slices.Contains(strings.Split(tok, "/"), "..") {
+		return "", false, false
 	}
 
 	// Directory claim: an explicit trailing slash on a multi-segment path. The
