@@ -33,6 +33,7 @@ make test-verbose    # Verbose test output
 make lint            # golangci-lint + website lint
 make check-schemas   # Validate JSON schema files
 make check-links     # Validate internal markdown links
+make check-memory-drift  # CLAUDE.md/AGENTS.md vs reality (paths, make targets, module path)
 make clean           # Remove build artifacts
 ```
 
@@ -87,7 +88,7 @@ Person, Event, Relationship, Place, Source, Citation, Repository, Media, Asserti
 ## Testing
 
 - Unit tests for all new functions; integration tests for conversion paths; E2E for CLI commands
-- Key test files: `testdata/gedcom/shakespeare.ged` (31 persons), `testdata/gedcom/minimal-70.ged`
+- Key test files: `glx/testdata/gedcom/5.5.1/shakespeare-family/shakespeare.ged` (31 persons), `glx/testdata/gedcom/7.0/minimal-valid/minimal70.ged`
 
 ## Common Tasks
 

@@ -57,6 +57,22 @@ jobs:
       - name: Detect schema/code drift
         run: make check-code-drift
 
+  check-memory-drift:
+    name: Memory-file drift (CLAUDE.md vs reality)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Detect memory-file drift
+        run: make check-memory-drift
+
   validate-schemas:
     runs-on: ubuntu-latest
     timeout-minutes: 10
