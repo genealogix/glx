@@ -79,9 +79,10 @@ func parseFlags() options {
 	return o
 }
 
-// run performs the check and returns the process exit code (0 = clean,
-// 1 = gating drift found). It writes the human-readable report to out; an
-// operational failure is returned as an error and mapped to exit 2 by realMain.
+// run performs the check and returns the process exit code together with any
+// operational error. It writes the human-readable report to out. Codes:
+// 0 = clean, 1 = gating drift found, 2 = operational failure — in which case a
+// non-nil error is also returned, which realMain prints before exiting 2.
 func run(opts options, out io.Writer) (int, error) {
 	root := opts.root
 	if root == "" {
