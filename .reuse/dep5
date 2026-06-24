@@ -53,6 +53,10 @@ Files: glx/defaults/*
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
+Files: glx/web/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+
 Files: NOTICE
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
