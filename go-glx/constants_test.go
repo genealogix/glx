@@ -226,3 +226,27 @@ func TestArchiveDirVocabulariesNotAnEntityType(t *testing.T) {
 	assert.Equal(t, "vocabularies", ArchiveDirVocabularies)
 	assert.False(t, IsValidEntityType(ArchiveDirVocabularies))
 }
+
+// TestStandardSourceTypesMatchVocabulary pins standardSourceTypes to the
+// embedded source-types.glx standard vocabulary so the two cannot drift: a
+// type added to the vocabulary without a matching entry here would silently
+// downgrade to "other" on GEDCOM re-import (#1005), and a stale entry here
+// would resurrect a removed type.
+func TestStandardSourceTypesMatchVocabulary(t *testing.T) {
+	glx := &GLXFile{}
+	require.NoError(t, LoadStandardVocabulariesIntoGLX(glx))
+	require.NotEmpty(t, glx.SourceTypes)
+
+	vocabKeys := make([]string, 0, len(glx.SourceTypes))
+	for key := range glx.SourceTypes {
+		vocabKeys = append(vocabKeys, key)
+	}
+
+	setKeys := make([]string, 0, len(standardSourceTypes))
+	for key := range standardSourceTypes {
+		setKeys = append(setKeys, key)
+	}
+
+	assert.ElementsMatch(t, vocabKeys, setKeys,
+		"standardSourceTypes must stay in step with the source-types.glx vocabulary")
+}
