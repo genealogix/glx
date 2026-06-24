@@ -8,6 +8,10 @@ dist/
 # Stray CLI binary from building inside the source dir (e.g. `cd glx && go build`).
 # Canonical output is bin/glx (see Makefile); this prevents re-committing the binary.
 /glx/glx
+# Stray tool binaries from `go build ./tools/<name>` at the repo root (named after
+# the package dir). The Makefile uses `go run`, so these are never wanted.
+/memcheck
+/driftcheck
 
 # Go profiling, coverage, and benchmarks
 coverage/

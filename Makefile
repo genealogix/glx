@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec changelog changelog-check
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec changelog changelog-check
 
 .DEFAULT_GOAL := help
 
@@ -32,7 +32,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	lefthook install
 
 ## Verification
-check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -155,6 +155,9 @@ check-drift-allowlist: ## Validate .claude/drift-allowlist.yaml against its sche
 
 check-code-drift: ## Deterministically detect go-glx type vs JSON-schema drift
 	@go run ./tools/driftcheck
+
+check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the repo
+	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts (spec-schema parser + schema-compat classifier)
 	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs

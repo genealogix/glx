@@ -1,5 +1,22 @@
 ---
 description: Release-time pass that folds self-cancelling and follow-up changie entries in the freshly-batched version section and verifies reference integrity
+allowed-tools:
+  - Read
+  - Edit
+  - Write
+  - Bash(changie:*)
+  - Bash(git fetch:*)
+  - Bash(git tag:*)
+  - Bash(cp:*)
+  - Bash(cat:*)
+  - Bash(grep:*)
+  - Bash(head:*)
+  - Bash(sort:*)
+  - Bash(comm:*)
+  - Bash(printf:*)
+model: claude-opus-4-8
+disable-model-invocation: true
+argument-hint: "[target-version]"
 ---
 
 Consolidate the changelog section that `changie batch` just produced. Since the move to file-per-change fragments (#858), changes are authored as `.changes/unreleased/*.yaml` fragments and assembled by `changie batch <version>` into a single per-version file `.changes/<version>.md` (then `changie merge` regenerates `CHANGELOG.md`). changie concatenates each fragment as its own bullet under its kind — it does **no** semantic merging — so this command is the **once-per-release** pass that does the semantic work changie cannot: removing self-cancelling pairs, folding follow-up entries into the change they refine, and verifying that no issue/PR reference is dropped, swapped, or invented in the process.
