@@ -15,15 +15,23 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
 // testRepo builds a repo whose existence check is backed by an in-memory set,
 // so scan tests are pure (no filesystem). modulePath/orgPrefix mirror this repo.
 func testRepo(existing, targets []string) repo {
-	ex := make(map[string]bool, len(existing))
+	// A trailing slash in `existing` marks a directory entry; everything else is
+	// a regular file. This lets tests exercise the file-vs-directory kind check.
+	dirs := make(map[string]bool, len(existing))
+	files := make(map[string]bool, len(existing))
 	for _, e := range existing {
-		ex[e] = true
+		if strings.HasSuffix(e, "/") {
+			dirs[strings.TrimRight(e, "/")] = true
+		} else {
+			files[e] = true
+		}
 	}
 	tg := make(map[string]bool, len(targets))
 	for _, t := range targets {
@@ -34,7 +42,13 @@ func testRepo(existing, targets []string) repo {
 		makeTargets: tg,
 		modulePath:  "github.com/genealogix/glx",
 		orgPrefix:   "github.com/genealogix/",
-		exists:      func(p string) bool { return ex[p] },
+		exists: func(p string) (found, isDir bool) {
+			if dirs[p] {
+				return true, true
+			}
+
+			return files[p], false
+		},
 	}
 }
 
@@ -209,6 +223,59 @@ func TestMakeTargetGrammar(t *testing.T) {
 	}
 }
 
+// TestScanFileChainedMakeInFence confirms a `make` after a shell separator
+// (`&&`, `;`, `|`) inside a fenced block is still checked, not just a `make` at
+// line start.
+func TestScanFileChainedMakeInFence(t *testing.T) {
+	content := "```bash\n" +
+		"cd glx && make oldtarget\n" + // chained, unknown -> finding
+		"go test ./... ; make build\n" + // chained, known -> ok
+		"```\n"
+	r := testRepo(nil, []string{"build"})
+
+	got := scanFile("CLAUDE.md", content, r)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 chained-make finding, got %d: %+v", len(got), got)
+	}
+	if got[0].Kind != kindMakeTarget || got[0].Token != "make oldtarget" {
+		t.Errorf("finding = %+v", got[0])
+	}
+}
+
+// TestScanFileDirTypeMismatch confirms a directory claim is satisfied only by a
+// real directory, and a file claim only by a real file — a same-named entry of
+// the wrong kind does not mask the drift.
+func TestScanFileDirTypeMismatch(t *testing.T) {
+	// `docs/cli` exists on disk as a FILE; the directory claim `docs/cli/` must
+	// still be reported as missing.
+	r := testRepo([]string{"docs/cli"}, nil)
+	if got := scanFile("CLAUDE.md", "see `docs/cli/`\n", r); len(got) != 1 || got[0].Token != "docs/cli/" {
+		t.Fatalf("dir claim over a file should be flagged, got %+v", got)
+	}
+	// A real directory resolves it.
+	rd := testRepo([]string{"docs/cli/"}, nil)
+	if got := scanFile("CLAUDE.md", "see `docs/cli/`\n", rd); len(got) != 0 {
+		t.Fatalf("dir claim over a directory should resolve, got %+v", got)
+	}
+	// Symmetric: a file claim resolving to a directory of the same name is flagged.
+	if got := scanFile("CLAUDE.md", "see `docs/cli.go`\n", testRepo([]string{"docs/cli.go/"}, nil)); len(got) != 1 {
+		t.Fatalf("file claim over a directory should be flagged, got %+v", got)
+	}
+}
+
+// TestPathFindingTokenNormalized confirms a quoted path reference is reported
+// (and thus allowlist-matched) with the surrounding quotes stripped, so the
+// natural verbatim allowlist entry suppresses it.
+func TestPathFindingTokenNormalized(t *testing.T) {
+	got := scanFile("CLAUDE.md", "see `\"go-glx/types.go\"` (quoted)\n", testRepo(nil, nil))
+	if len(got) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %+v", len(got), got)
+	}
+	if got[0].Token != "go-glx/types.go" {
+		t.Errorf("Token = %q, want quotes stripped to go-glx/types.go", got[0].Token)
+	}
+}
+
 // TestImportFindings covers the rename-detection contract: a same-org *import
 // path* (with a subpackage segment) must be prefixed by the module, while
 // third-party imports, web URLs, and bare sibling-repo slugs are left alone.
@@ -232,6 +299,13 @@ func TestImportFindings(t *testing.T) {
 		// A non-HTTP scheme URL is a link too, even though the match is preceded
 		// by `git@` rather than `://`.
 		{"ssh clone url", "clone `ssh://git@github.com/genealogix/glx-core/pkg`", clean, 0},
+		// A same-org GitHub *web* link with a route verb is a link, not an
+		// import — even when written without a scheme.
+		{"sibling repo web path, no scheme", "see `github.com/genealogix/glx-website/tree/main`", clean, 0},
+		// ...but a genuine stale import glued right after an unrelated link must
+		// still be caught: the link's `://` is followed by its own path, so it
+		// does not mask this import.
+		{"import glued after unrelated link", "[d](https://ex.com/x)`github.com/genealogix/glx-old/pkg`", clean, 1},
 		// A longer hostname must not match on its `github.com/...` suffix —
 		// neither a prefix label nor a subdomain of github.com.
 		{"hostname prefix label", "see `notgithub.com/genealogix/glx-core/pkg`", clean, 0},
@@ -239,12 +313,12 @@ func TestImportFindings(t *testing.T) {
 		{
 			"go.mod renamed, doc stale",
 			"import `github.com/genealogix/glx/go-glx`",
-			repo{modulePath: "github.com/genealogix/glx-core", orgPrefix: "github.com/genealogix/", exists: func(string) bool { return false }},
+			repo{modulePath: "github.com/genealogix/glx-core", orgPrefix: "github.com/genealogix/", exists: func(string) (bool, bool) { return false, false }},
 			1,
 		},
 	}
 	for _, tt := range cases {
-		got := importFindings("CLAUDE.md", tt.content, tt.r)
+		got := importFindings("CLAUDE.md", strings.Split(tt.content, "\n"), tt.r)
 		if len(got) != tt.want {
 			t.Errorf("%s: got %d findings, want %d: %+v", tt.name, len(got), tt.want, got)
 		}

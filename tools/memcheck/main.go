@@ -152,10 +152,13 @@ func newRepo(root string) (repo, error) {
 		return repo{}, err
 	}
 
-	exists := func(repoRel string) bool {
-		_, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(repoRel)))
+	exists := func(repoRel string) (found, isDir bool) {
+		info, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(repoRel)))
+		if statErr != nil {
+			return false, false
+		}
 
-		return statErr == nil
+		return true, info.IsDir()
 	}
 
 	return repo{

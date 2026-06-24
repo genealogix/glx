@@ -32,9 +32,11 @@ type repo struct {
 	// "github.com/genealogix/". Only references under this prefix are treated as
 	// claims about this module (third-party imports are left alone).
 	orgPrefix string
-	// exists reports whether a repo-relative path (forward slashes) resolves to a
-	// file or directory on disk. Injected so the scan core stays pure/testable.
-	exists func(repoRel string) bool
+	// exists reports whether a repo-relative path (forward slashes) resolves on
+	// disk, and if so whether it is a directory. Returning the kind lets a
+	// directory claim (`docs/cli/`) reject a same-named regular file and vice
+	// versa. Injected so the scan core stays pure/testable.
+	exists func(repoRel string) (found, isDir bool)
 }
 
 // pathMeta are glob / regex / shell metacharacters. A token containing any of
@@ -66,11 +68,14 @@ var (
 	// prose words like "make it"/"make an" from masquerading as targets; every
 	// real target in this repo is >= 3 chars.
 	makeRe = regexp.MustCompile(`\bmake\s+([A-Za-z][A-Za-z0-9_-]{2,})`)
-	// makeLineRe matches a `make <target>` invocation in command position at the
-	// start of a fenced-block line (after optional indentation and a `$`/`>`
-	// prompt). Anchoring here keeps a shell comment such as `# make sure to
-	// rebuild` from being read as the target "sure".
-	makeLineRe = regexp.MustCompile(`^\s*(?:[$>]\s+)?make\s+([A-Za-z][A-Za-z0-9_-]{2,})`)
+	// makeLineRe matches a `make <target>` invocation in command position inside a
+	// fenced block: at the start of the line (after optional indentation and a
+	// `$`/`>` prompt) OR right after a shell command separator (`&&`, `||`, `;`,
+	// `|`), so a chained command like `cd glx && make build` is checked too.
+	// Requiring a line-start/separator boundary keeps a shell comment such as
+	// `# make sure to rebuild` (preceded by `# `, not a separator) from being read
+	// as the target "sure". FindAllStringSubmatch returns every match on the line.
+	makeLineRe = regexp.MustCompile(`(?:^|[;&|])\s*(?:[$>]\s+)?make\s+([A-Za-z][A-Za-z0-9_-]{2,})`)
 	// importRe matches a github.com import/module path, captured in group 1. The
 	// host is anchored on its left by `(?:^|[^A-Za-z0-9.-])` — start-of-line or a
 	// non-hostname character — so a longer hostname can never match on its
@@ -93,8 +98,9 @@ func scanFile(memPath, content string, r repo) []finding {
 	var out []finding
 	memDir := slashDir(memPath)
 
+	lines := strings.Split(content, "\n")
 	inFence := false
-	for idx, line := range strings.Split(content, "\n") {
+	for idx, line := range lines {
 		lineNo := idx + 1
 		if isFenceDelimiter(line) {
 			inFence = !inFence
@@ -122,8 +128,8 @@ func scanFile(memPath, content string, r repo) []finding {
 
 	// Import paths are matched anywhere (the regex is specific enough that
 	// backtick/fence context is irrelevant) so a module rename is caught even
-	// when the path is quoted in prose.
-	out = append(out, importFindings(memPath, content, r)...)
+	// when the path is quoted in prose. Reuse the already-split lines.
+	out = append(out, importFindings(memPath, lines, r)...)
 
 	return out
 }
@@ -158,7 +164,7 @@ func pathFindings(file, memDir string, line int, span string, r repo) []finding 
 	if !isFile && !isDir {
 		return nil
 	}
-	if pathExists(candidate, memDir, r) {
+	if pathExists(candidate, memDir, isDir, r) {
 		return nil
 	}
 
@@ -170,25 +176,32 @@ func pathFindings(file, memDir string, line int, span string, r repo) []finding 
 	if memDir != "" {
 		checkedAgainst = "the repo root and " + memDir + "/"
 	}
+	// Report (and match the allowlist on) the reference with surrounding
+	// whitespace/quotes stripped — the same normalization classifyPathClaim
+	// applied — so `"go-glx/types.go"` is suppressed by the natural allowlist
+	// entry `token: go-glx/types.go`, not only by a quote-wrapped form that an
+	// exact-match allowlist would otherwise demand. The trailing slash on a
+	// directory claim is kept, since it is shown verbatim and signals the kind.
+	token := strings.Trim(strings.TrimSpace(span), `"'`)
 
 	return []finding{{
 		File:     file,
 		Line:     line,
 		Kind:     kindPath,
 		Severity: severityMajor,
-		Token:    span,
+		Token:    token,
 		Message: fmt.Sprintf(
 			"references %s `%s`, which does not exist (checked relative to %s)",
-			noun, span, checkedAgainst),
+			noun, token, checkedAgainst),
 	}}
 }
 
 // importFindings flags any github.com path under the module's own org whose
 // prefix no longer matches the go.mod module line — the signal that go.mod was
 // renamed but the memory file was not updated.
-func importFindings(file, content string, r repo) []finding {
+func importFindings(file string, lines []string, r repo) []finding {
 	var out []finding
-	for idx, line := range strings.Split(content, "\n") {
+	for idx, line := range lines {
 		for _, loc := range importRe.FindAllStringSubmatchIndex(line, -1) {
 			start := loc[2] // group 1: the github.com path, sans any boundary char
 			tok := strings.TrimRight(line[start:loc[3]], "./-")
@@ -209,6 +222,16 @@ func importFindings(file, content string, r repo) []finding {
 			if strings.Count(tok, "/") < 3 {
 				continue
 			}
+			// A GitHub *web* link to a same-org repo (e.g.
+			// `github.com/genealogix/glx-website/tree/main`) also has >= three
+			// slashes but is not a Go import. Such links are not always written
+			// with a scheme, so withinSchemeToken alone misses the bare form;
+			// recognize them structurally by the route verb (`tree`, `blob`, …)
+			// that follows the repo segment. A Go subpackage is never named after
+			// one of these GitHub routes.
+			if isGitHubWebPath(tok, r.orgPrefix) {
+				continue
+			}
 			if tok == r.modulePath || strings.HasPrefix(tok, r.modulePath+"/") {
 				continue
 			}
@@ -226,19 +249,50 @@ func importFindings(file, content string, r repo) []finding {
 	return out
 }
 
-// withinSchemeToken reports whether the match at index start sits inside a
-// `scheme://…` URL token — i.e. a `://` appears between the match and the
-// nearest preceding whitespace (or the line start). Looking at the whole token
-// rather than only the three characters before the match catches ssh/git URL
-// forms like `ssh://git@github.com/org/repo`, where the match is preceded by
-// `git@` rather than `://`, and would otherwise be misread as an import path.
+// gitHubWebRoutes are the path segments that mark a `github.com/<org>/<repo>/…`
+// token as a link into the GitHub web UI rather than a Go import path: in an
+// import the segment after the repo is a package directory, whereas in a web
+// link it is one of these route verbs. The set is GitHub's (stable) route
+// vocabulary, not an open-ended per-repo allowlist.
+var gitHubWebRoutes = map[string]bool{
+	"tree": true, "blob": true, "raw": true, "blame": true,
+	"commit": true, "commits": true, "compare": true, "actions": true,
+	"pull": true, "pulls": true, "issues": true, "discussions": true,
+	"releases": true, "tags": true, "branches": true, "wiki": true,
+	"security": true, "archive": true, "milestone": true, "milestones": true,
+}
+
+// isGitHubWebPath reports whether tok is a github.com web link (under orgPrefix)
+// whose segment immediately after the repo is a known GitHub route verb.
+func isGitHubWebPath(tok, orgPrefix string) bool {
+	rest := strings.TrimPrefix(tok, orgPrefix) // "<repo>/<route>/…"
+	segs := strings.Split(rest, "/")
+
+	return len(segs) >= 2 && gitHubWebRoutes[segs[1]]
+}
+
+// withinSchemeToken reports whether the github.com match at index start is the
+// host of a `scheme://…` URL — i.e. a `://` precedes it with only optional
+// userinfo (`user[:pass]@`, no `/`) in between. This recognizes the host of
+// `https://github.com/…` and `ssh://git@github.com/…` (where the match is
+// preceded by `git@`, not `://`), while NOT skipping a stale import merely glued
+// after an unrelated link such as a markdown "](https://ex.com/x)" immediately
+// followed by an import in a code span — there the nearest `://` belongs to the
+// other URL and is followed by that URL's own `/path`, so it does not govern
+// this match. Tying the scheme to the host (rather than to any `://` anywhere in
+// the whitespace token) is what avoids that false negative.
 func withinSchemeToken(line string, start int) bool {
 	prefix := line[:start]
 	if i := strings.LastIndexAny(prefix, " \t"); i >= 0 {
 		prefix = prefix[i+1:]
 	}
-
-	return strings.Contains(prefix, "://")
+	scheme := strings.LastIndex(prefix, "://")
+	if scheme < 0 {
+		return false
+	}
+	// Only userinfo may sit between `://` and the host; a `/` there means the
+	// preceding URL already had its own path and this match is a separate token.
+	return !strings.Contains(prefix[scheme+len("://"):], "/")
 }
 
 // classifyPathClaim decides whether an inline-code token asserts a concrete repo
@@ -263,7 +317,8 @@ func classifyPathClaim(tok string) (candidate string, isFile, isDir bool) {
 	if strings.HasPrefix(tok, "-") || strings.HasPrefix(tok, "/") || strings.HasPrefix(tok, "~") {
 		return "", false, false // flag, absolute path / route, or home-relative path
 	}
-	if strings.Contains(tok, "://") || strings.ContainsAny(tok, "@:=") {
+	// Any ':' already covers a URL's `://`, so one ContainsAny suffices.
+	if strings.ContainsAny(tok, "@:=") {
 		return "", false, false // URL, ref@version, key:value, assignment
 	}
 	if strings.HasPrefix(tok, "github.com/") {
@@ -320,13 +375,16 @@ func pathExt(tok string) string {
 
 // pathExists resolves candidate against the repo root first, then against the
 // memory file's own directory, so both repo-root-relative and file-relative
-// reference styles are accepted.
-func pathExists(candidate, memDir string, r repo) bool {
-	if r.exists(candidate) {
+// reference styles are accepted. It is satisfied only when the on-disk kind
+// matches the claim: wantDir requires a directory, otherwise a regular file.
+func pathExists(candidate, memDir string, wantDir bool, r repo) bool {
+	if found, isDir := r.exists(candidate); found && isDir == wantDir {
 		return true
 	}
-	if memDir != "" && r.exists(path.Join(memDir, candidate)) {
-		return true
+	if memDir != "" {
+		if found, isDir := r.exists(path.Join(memDir, candidate)); found && isDir == wantDir {
+			return true
+		}
 	}
 
 	return false
