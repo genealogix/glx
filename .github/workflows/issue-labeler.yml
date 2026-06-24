@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout repo (for .github/issue-areas.yml)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Ensure needs-triage label exists
         env:
