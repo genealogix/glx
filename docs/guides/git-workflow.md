@@ -24,7 +24,7 @@ git add .
 git commit -m "Initial archive structure"
 ```
 
-Two settings are worth pinning before the first collaborator arrives:
+One setting is worth pinning before the first collaborator arrives:
 
 ```bash
 # .gitattributes — pin line endings so Windows and Unix collaborators
@@ -39,7 +39,7 @@ Entity filenames are derived from entity IDs and lowercased at serialize time, s
 
 ### Remote Backup
 
-Mirroring an archive is one command:
+Mirroring an archive takes two commands — add the remote, then push:
 
 ```bash
 git remote add origin git@github.com:yourname/my-family-archive.git
@@ -111,8 +111,12 @@ git checkout -b research/thomas-smith-paternity
 # relationships/relationship-thomas-john-smith.glx
 relationships:
   relationship-thomas-john-smith:
-    type: parent-child
-    persons: [person-thomas-smith, person-john-smith]
+    type: parent_child
+    participants:
+      - person: person-thomas-smith
+        role: parent
+      - person: person-john-smith
+        role: child
 
 # assertions/assertion-thomas-paternity.glx
 assertions:
@@ -120,7 +124,7 @@ assertions:
     subject:
       relationship: relationship-thomas-john-smith
     property: type
-    value: parent-child
+    value: parent_child
     citations: [citation-1841-census-pudsey]
     confidence: medium
     status: speculative   # the branch IS the hypothesis
@@ -145,7 +149,7 @@ assertions:
     subject:
       relationship: relationship-thomas-john-smith
     property: type
-    value: parent-child
+    value: parent_child
     citations: [citation-1841-census-pudsey, citation-thomas-burial-1838]
     confidence: high
     status: disproven
@@ -207,10 +211,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - name: Install and verify glx
+        run: |
+          # Verify the published checksum before running the binary — never pipe
+          # an unverified download straight into a shell. For full reproducibility,
+          # replace "latest/download" with a pinned "download/vX.Y.Z".
           mkdir -p .bin
-          curl -sL https://github.com/genealogix/glx/releases/latest/download/glx_Linux_x86_64.tar.gz | tar -xz -C .bin glx
-          ./.bin/glx validate
+          base="https://github.com/genealogix/glx/releases/latest/download"
+          curl -fsSL -o glx.tar.gz "$base/glx_Linux_x86_64.tar.gz"
+          curl -fsSL -o checksums.txt "$base/checksums.txt"
+          grep ' glx_Linux_x86_64.tar.gz$' checksums.txt | sha256sum -c -
+          tar -xzf glx.tar.gz -C .bin glx
+      - run: ./.bin/glx validate
+```
 
 For shared archives, also agree on vocabulary governance — who may add custom event or relationship types, and how. See [Best Practices — Vocabulary Governance](/guides/best-practices#vocabulary-governance).
 
