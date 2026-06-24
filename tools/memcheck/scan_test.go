@@ -229,6 +229,9 @@ func TestImportFindings(t *testing.T) {
 		{"sibling repo slug", "see `github.com/genealogix/glx-archive-westeros`", clean, 0},
 		{"sibling repo url", "clone https://github.com/genealogix/homebrew-tap here", clean, 0},
 		{"sibling repo url subpath", "[site](https://github.com/genealogix/glx-website/tree/main)", clean, 0},
+		// A non-HTTP scheme URL is a link too, even though the match is preceded
+		// by `git@` rather than `://`.
+		{"ssh clone url", "clone `ssh://git@github.com/genealogix/glx-core/pkg`", clean, 0},
 		// A longer hostname must not match on its `github.com/...` suffix —
 		// neither a prefix label nor a subdomain of github.com.
 		{"hostname prefix label", "see `notgithub.com/genealogix/glx-core/pkg`", clean, 0},

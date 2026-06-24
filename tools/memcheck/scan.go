@@ -195,9 +195,11 @@ func importFindings(file, content string, r repo) []finding {
 			if !strings.HasPrefix(tok, r.orgPrefix) {
 				continue // third-party (or different-org) import: not our concern
 			}
-			// A web URL to a same-org repo (`https://github.com/genealogix/...`)
-			// is a link, not a Go import — leave it alone.
-			if start >= len("://") && line[start-len("://"):start] == "://" {
+			// A URL to a same-org repo is a link, not a Go import — leave it
+			// alone. This covers not just `https://github.com/genealogix/...` but
+			// scheme forms where the match is not immediately preceded by `://`,
+			// e.g. `ssh://git@github.com/genealogix/...` (preceded by `git@`).
+			if withinSchemeToken(line, start) {
 				continue
 			}
 			// A bare `host/org/repo` slug (two slashes) is a sibling-repo
@@ -222,6 +224,21 @@ func importFindings(file, content string, r repo) []finding {
 	}
 
 	return out
+}
+
+// withinSchemeToken reports whether the match at index start sits inside a
+// `scheme://…` URL token — i.e. a `://` appears between the match and the
+// nearest preceding whitespace (or the line start). Looking at the whole token
+// rather than only the three characters before the match catches ssh/git URL
+// forms like `ssh://git@github.com/org/repo`, where the match is preceded by
+// `git@` rather than `://`, and would otherwise be misread as an import path.
+func withinSchemeToken(line string, start int) bool {
+	prefix := line[:start]
+	if i := strings.LastIndexAny(prefix, " \t"); i >= 0 {
+		prefix = prefix[i+1:]
+	}
+
+	return strings.Contains(prefix, "://")
 }
 
 // classifyPathClaim decides whether an inline-code token asserts a concrete repo
