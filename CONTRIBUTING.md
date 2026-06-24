@@ -225,6 +225,7 @@ Every PR runs these checks automatically:
 | **Validate Specification / validate-schemas** | JSON schema validation |
 | **Validate Specification / validate-examples** | All example archives pass `glx validate` |
 | **Lint Markdown / markdownlint-cli2** | Structural markdown validation for `specification/`, `docs/`, root `*.md` |
+| **Lint Website / eslint** | eslint over `website/.vitepress` JS/Vue (the website half of `make lint`) |
 | **Security** | gosec, govulncheck, and npm audit |
 | **lint-pr-title** | PR title follows conventional commits format |
 | **dependency-review** | Blocks PRs introducing vulnerable dependencies |

@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck changelog changelog-check
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec changelog changelog-check
 
 .DEFAULT_GOAL := help
 
@@ -32,7 +32,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	lefthook install
 
 ## Verification
-check: tidy-check ci-tools-tidy-check lint test check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -72,6 +72,20 @@ lint-fix: ## Run linters with automatic fixes
 	golangci-lint run --fix ./...
 	@echo "Fixing website..."
 	cd website && npm run lint:fix
+
+# hmarr/codeowners is pinned via the tool directive in ci-tools/go.mod (same
+# pattern as govulncheck). The CLI walks the working tree, not the git index,
+# so gitignored artifacts (bin/, website/node_modules/, ...) are scanned too --
+# harmless while the catch-all rule owns everything, just slower locally than
+# in CI. It always exits 0, hence the explicit empty-output check.
+lint-codeowners: ## Verify every file is matched by a .github/CODEOWNERS rule
+	@unowned="$$(go tool -modfile=ci-tools/go.mod codeowners --unowned)"; \
+	if [ -n "$$unowned" ]; then \
+		echo "ERROR: files with no CODEOWNERS owner:"; \
+		echo "$$unowned"; \
+		exit 1; \
+	fi; \
+	echo "CODEOWNERS coverage OK"
 
 fix: ## Run Go 1.26 modernizers on codebase
 	go fix ./...
@@ -122,10 +136,15 @@ ci-tools-tidy-check: ## Verify ci-tools/go.mod and ci-tools/go.sum are tidy
 # truth, shared with .github/workflows/security.yml); -modfile keeps its graph out
 # of the main module. gosec is intentionally NOT here — its autofix package drags in
 # a heavy Cloud-SDK/grpc/otel tree, so CI keeps it on a version-pinned `go install`
-# (see ci-tools/README.md). Run gosec ad hoc with:
-#   go run github.com/securego/gosec/v2/cmd/gosec@v2.22.4 -quiet ./...
+# (see ci-tools/README.md). Its pin lives in .gosec-version (single source of truth,
+# shared with .github/workflows/security.yml).
 vulncheck: ## Run govulncheck against the Go vulnerability DB (pinned via ci-tools/go.mod)
 	go tool -modfile=ci-tools/go.mod govulncheck ./...
+
+gosec: ## Run gosec static security analysis (pinned via .gosec-version)
+	@v="$$(tr -d '[:space:]' < .gosec-version)"; \
+	printf '%s' "$$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "invalid .gosec-version: $$v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }; \
+	go run "github.com/securego/gosec/v2/cmd/gosec@$$v" -quiet ./...
 
 ## Specification
 check-schemas: ## Validate JSON schema files

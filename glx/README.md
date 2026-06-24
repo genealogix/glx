@@ -19,16 +19,19 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔎 **Query** - Filter and list entities from an archive by name, date, type, source, and more
 - 👤 **Vitals** - Display vital records (birth, death, burial) for a person
 - 📅 **Timeline** - Show chronological events for a person, including family events
+- 🧭 **Migrations** - Trace a person's geographic movement over time and find others with the same migration pattern
 - 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
 - 🔗 **Cluster** - FAN club analysis identifying associates through census, events, and place overlap
 - 🔗 **Path** - Find the shortest relationship path between two people using BFS
 - 🔬 **Analyze** - Research gap analysis: evidence gaps, quality issues, chronological inconsistencies, and suggestions
+- ⚖️ **Proof** - Compile evidence for a research question into a structured proof summary following the Genealogical Proof Standard (GPS)
 - 📋 **Census Import** - Generate GLX entities from structured census templates with person matching, assertions, and dry-run preview
 - 🔗 **Link** - Create a FamilySearch citation (and repository/source scaffolding) from an ARK URL, offline
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
+- 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
 - ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting
@@ -201,7 +204,7 @@ glx check-schemas
 
 The `glx` CLI groups its commands into archive management, import/export, exploration, data entry, and analysis. The full per-command reference (flags, examples, aliases) is regenerated on demand by `make docs-cli` from the live Cobra command tree, and CI fails on any drift between the source and the committed pages:
 
-- Browse online: <https://genealogix.dev/cli/>
+- Browse online: <https://genealogix.io/cli>
 - Read in this repo: [`docs/cli/glx.md`](https://github.com/genealogix/glx/blob/main/docs/cli/glx.md)
 - Regenerate locally: `make docs-cli`
 
@@ -323,4 +326,3 @@ Apache License 2.0 - See [LICENSE](https://github.com/genealogix/glx/blob/main/L
 - 💡 [Examples](/examples/)
 - 🐛 [Issue Tracker](https://github.com/genealogix/glx/issues)
 - 💬 [Discussions](https://github.com/genealogix/glx/discussions)
-

@@ -113,6 +113,7 @@ func init() {
 	rootCmd.AddCommand(descendantsCmd)
 	rootCmd.AddCommand(summaryCmd)
 	rootCmd.AddCommand(timelineCmd)
+	rootCmd.AddCommand(migrationsCmd)
 	rootCmd.AddCommand(vitalsCmd)
 	rootCmd.AddCommand(evidenceCmd)
 	rootCmd.AddCommand(censusCmd)
@@ -121,6 +122,7 @@ func init() {
 	rootCmd.AddCommand(duplicatesCmd)
 	rootCmd.AddCommand(coverageCmd)
 	rootCmd.AddCommand(analyzeCmd)
+	rootCmd.AddCommand(proofCmd)
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(renameCmd)
@@ -129,6 +131,7 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(cacheCmd)
 	rootCmd.AddCommand(docsCmd)
 }
@@ -930,6 +933,90 @@ func runTimeline(_ *cobra.Command, args []string) error {
 }
 
 // ============================================================================
+// Migrations Command
+// ============================================================================
+
+var (
+	migrationsArchive string
+	migrationsPattern string
+	migrationsFamily  bool
+	migrationsFormat  string
+)
+
+var migrationsCmd = &cobra.Command{
+	Use:   "migrations [person]",
+	Short: "Track a person's geographic movement over time",
+	Long: `Trace a person's geographic movement over time by collecting every dated
+place observation: events they participated in (birth, census, marriage, ...),
+their children's birth events (a child's birthplace is evidence of the
+parent's residence), and residence property values.
+
+Observations are sorted chronologically and each change of region is reported
+as a movement (e.g. "Florida → Wisconsin"). Regions compare at the
+state/region level of the place hierarchy, and pre-statehood territories
+match their successor states ("Florida Territory" equals "Florida").
+
+With --pattern, searches all persons in the archive for a migration pattern
+instead: a comma-separated list of places that must appear in chronological
+order in a person's region sequence. Knowing who else made the same move
+narrows the search for a person's family.
+
+The person argument can be an exact entity ID (e.g., person-jane-webb) or a
+name to search for (e.g., "Jane Miller"). If the name matches multiple
+persons, all matches are listed for disambiguation.
+
+Use --family to also show the timelines of the person's immediate family
+(spouses, parents, children). Use --format json for machine-readable output.
+
+Not to be confused with "glx migrate", which upgrades archive data to newer
+spec conventions.`,
+	Example: `  # Migration timeline by person ID
+  glx migrations person-jane-webb
+
+  # Find everyone who moved from Florida to Wisconsin
+  glx migrations --pattern "Florida,Wisconsin"
+
+  # Include immediate family timelines
+  glx migrations "Jane Miller" --family
+
+  # Machine-readable output
+  glx migrations person-jane-webb --format json`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runMigrations,
+}
+
+func init() {
+	migrationsCmd.Flags().StringVarP(&migrationsArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	migrationsCmd.Flags().StringVar(&migrationsPattern, "pattern", "", "Find persons matching a migration pattern (comma-separated places, in order)")
+	migrationsCmd.Flags().BoolVar(&migrationsFamily, "family", false, "Also show timelines for the person's immediate family")
+	migrationsCmd.Flags().StringVar(&migrationsFormat, "format", migrationsFormatText, "Output format: text or json")
+}
+
+func runMigrations(_ *cobra.Command, args []string) error {
+	return migrationsCommand(args, migrationsArchive, migrationsPattern, migrationsFamily, migrationsFormat)
+}
+
+// migrationsCommand validates the person/pattern flag combination before
+// delegating to showMigrations.
+func migrationsCommand(args []string, archive, pattern string, family bool, format string) error {
+	person := ""
+	if len(args) > 0 {
+		person = args[0]
+	}
+
+	switch {
+	case person == "" && pattern == "":
+		return ErrMigrationsPersonOrPattern
+	case person != "" && pattern != "":
+		return ErrMigrationsPersonAndPattern
+	case family && pattern != "":
+		return ErrMigrationsFamilyWithPattern
+	}
+
+	return showMigrations(SystemIOStreams(), archive, person, pattern, family, format)
+}
+
+// ============================================================================
 // Vitals Command
 // ============================================================================
 
@@ -1208,6 +1295,7 @@ var duplicatesCmd = &cobra.Command{
 
 Compares all persons using a weighted scoring model based on:
   - Name similarity (Levenshtein distance, nickname matching, initials)
+  - Phonetic matching (Soundex — catches Schneider/Snider, Mueller/Miller, etc.)
   - Birth/death year proximity
   - Birth/death place match
   - Shared relationships and events
@@ -1361,6 +1449,64 @@ func runAnalyze(_ *cobra.Command, args []string) error {
 	}
 
 	return showAnalysis(analyzeArchive, person, analyzeCheck, analyzeFormat)
+}
+
+// ============================================================================
+// Proof Command
+// ============================================================================
+
+var (
+	proofArchive  string
+	proofQuestion string
+	proofFormat   string
+)
+
+var proofCmd = &cobra.Command{
+	Use:   "proof <person>",
+	Short: "Compile evidence into a structured proof summary for a research question",
+	Long: `Assemble the evidence bearing on a specific research question about a person
+into a structured proof argument, following the BCG Genealogical Proof Standard
+(GPS).
+
+The proof gathers every assertion relevant to the question (including assertions
+on the person's events and relationships), resolves their citations and sources,
+surfaces evidence gaps from the coverage checklist, flags conflicting assertions
+(and whether they have been resolved via the assertion ` + "`status`" + ` field), lists any
+logged searches that document a reasonably exhaustive search, and ends with a
+conclusion: PROVEN, PROBABLE, POSSIBLE, INSUFFICIENT EVIDENCE, or CONFLICTED.
+
+Supported research questions:
+  parentage   Who are the person's parents?
+  birth       When and where was the person born?
+  death       When and where did the person die?
+  marriage    Whom did the person marry?
+  identity    Who was the person (name)?
+
+The person argument can be an exact entity ID or a name substring.`,
+	Example: `  # Proof summary for a person's parentage
+  glx proof person-jane-webb --question parentage
+
+  # Proof for a death, by name
+  glx proof "Robert Webb" --question death
+
+  # Machine-readable output
+  glx proof person-jane-webb --question parentage --format json
+
+  # Markdown for a research report
+  glx proof person-jane-webb --question parentage --format markdown`,
+	Args: cobra.ExactArgs(1),
+	RunE: runProof,
+}
+
+func init() {
+	proofCmd.Flags().StringVarP(&proofArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	proofCmd.Flags().StringVar(&proofQuestion, "question", "", "Research question (parentage, birth, death, marriage, identity)")
+	proofCmd.Flags().StringVarP(&proofFormat, "format", "f", "", "Output format (text, json, markdown)")
+	_ = proofCmd.MarkFlagRequired("question")
+}
+
+func runProof(_ *cobra.Command, args []string) error {
+	return showProof(SystemIOStreams(), proofArchive, args[0], proofQuestion, proofFormat)
 }
 
 // ============================================================================
@@ -1685,6 +1831,65 @@ func runLink(_ *cobra.Command, args []string) error {
 }
 
 // ============================================================================
+// Serve Command
+// ============================================================================
+
+var (
+	serveHost string
+	servePort int
+)
+
+var serveCmd = &cobra.Command{
+	Use:   "serve [path]",
+	Short: "Serve a local browser-based viewer for a GLX archive (prints a URL to open)",
+	Long: `Serve a read-only, browser-based viewer for a GENEALOGIX archive.
+
+Starts a small local web server and prints a URL to open in your browser
+(it does not open the browser for you). The viewer is interactive and shows:
+  - Dashboard: entity counts, assertion confidence, and coverage
+  - Person profiles: names, vitals, event timeline, assertions with evidence
+  - Family tree: interactive pedigree and descendancy charts
+  - Sources: every source with its citations and locators
+
+The server binds to localhost by default so the archive stays on your machine.
+The archive is loaded once at startup; restart the server to pick up external
+edits made by the CLI or a text editor.
+
+Accepts either a multi-file directory or a single .glx file.
+If no path is given, the current directory is used.`,
+	Example: `  # Serve the current directory on the default port
+  glx serve
+
+  # Serve a specific archive
+  glx serve my-family-archive
+
+  # Serve a single-file archive on a custom port
+  glx serve family.glx --port 9000
+
+  # Pick any free port (printed on startup)
+  glx serve --port 0`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runServe,
+}
+
+func init() {
+	serveCmd.Flags().StringVar(&serveHost, "host", serveDefaultHost, "Host/interface to bind (use 127.0.0.1 to keep the viewer local)")
+	serveCmd.Flags().IntVarP(&servePort, "port", "p", serveDefaultPort, "Port to listen on (0 picks any free port)")
+}
+
+func runServe(_ *cobra.Command, args []string) error {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	return serveArchive(SystemIOStreams(), serveOptions{
+		ArchivePath: path,
+		Host:        serveHost,
+		Port:        servePort,
+	})
+}
+
 // Cache Command
 // ============================================================================
 

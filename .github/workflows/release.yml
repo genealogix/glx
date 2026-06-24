@@ -6,7 +6,12 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-beta*'
 
-permissions: read-all
+# Default for any future job that doesn't declare its own block: contents read,
+# every unlisted scope none (read-all granted read on all scopes). The release
+# job re-declares the write scopes it needs at job level, which fully overrides
+# this default, so it is unaffected. (#1012)
+permissions:
+  contents: read
 
 env:
   GIT_CONFIG_COUNT: 2

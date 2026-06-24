@@ -6,7 +6,7 @@
 // speaks draft-07, so import the 2020-12 dialect class explicitly.
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import yaml from "js-yaml";
+import { load as loadYAML } from "js-yaml";
 import { readFileSync, readdirSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -131,7 +131,7 @@ for (const glxName of readdirSync(VOCAB_GLX_DIR).filter((f) => f.endsWith(".glx"
   }
   let data;
   try {
-    data = yaml.load(readFileSync(join(VOCAB_GLX_DIR, glxName), "utf8"));
+    data = loadYAML(readFileSync(join(VOCAB_GLX_DIR, glxName), "utf8"));
   } catch (e) {
     console.error(`${glxName} INVALID: YAML parse failed: ${formatError(e)}`);
     errors++;

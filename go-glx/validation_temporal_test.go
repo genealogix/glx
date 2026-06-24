@@ -540,6 +540,157 @@ func TestValidateMarriageBeforeBirth_NilEvent(t *testing.T) {
 	}
 }
 
+// relationshipEventOrderFixture builds an archive with a marriage relationship
+// whose start and end events carry the given dates.
+func relationshipEventOrderFixture(startDate, endDate string) *GLXFile {
+	return &GLXFile{
+		Persons: map[string]*Person{
+			"person-1": {Properties: map[string]any{}},
+			"person-2": {Properties: map[string]any{}},
+		},
+		Events: map[string]*Event{
+			"event-start": {
+				Type: EventTypeMarriage, Date: DateString(startDate),
+				Participants: []Participant{{Person: "person-1", Role: "spouse"}},
+			},
+			"event-end": {
+				Type: EventTypeDivorce, Date: DateString(endDate),
+				Participants: []Participant{{Person: "person-1", Role: "spouse"}},
+			},
+		},
+		Relationships: map[string]*Relationship{
+			"rel-1": {
+				Type: RelationshipTypeMarriage,
+				Participants: []Participant{
+					{Person: "person-1", Role: "spouse"},
+					{Person: "person-2", Role: "spouse"},
+				},
+				StartEvent: "event-start",
+				EndEvent:   "event-end",
+			},
+		},
+	}
+}
+
+func TestValidateRelationshipEventOrder(t *testing.T) {
+	glx := relationshipEventOrderFixture("1880", "1850")
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got %d", len(result.Warnings))
+	}
+	warning := result.Warnings[0]
+	if !strings.Contains(warning.Message, "end event event-end year (1850) is before start event event-start year (1880)") {
+		t.Errorf("Unexpected message: %s", warning.Message)
+	}
+	if warning.SourceType != EntityTypeRelationships {
+		t.Errorf("Warning should have source type 'relationships', got: %s", warning.SourceType)
+	}
+	if warning.SourceID != "rel-1" {
+		t.Errorf("Warning should have source ID 'rel-1', got: %s", warning.SourceID)
+	}
+	if warning.Field != "end_event" {
+		t.Errorf("Warning field should be 'end_event', got: %s", warning.Field)
+	}
+}
+
+func TestValidateRelationshipEventOrder_NoWarningWhenValid(t *testing.T) {
+	glx := relationshipEventOrderFixture("1850", "1880")
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipEventOrder_NoWarningWhenSameYear(t *testing.T) {
+	// A relationship that starts and ends in the same year (e.g. shared
+	// boundary events) is plausible and must not warn.
+	glx := relationshipEventOrderFixture("1850", "1850")
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipEventOrder_SkipsMissingDate(t *testing.T) {
+	glx := relationshipEventOrderFixture("1880", "")
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings when a date is missing, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipEventOrder_SkipsUnparseableDate(t *testing.T) {
+	glx := relationshipEventOrderFixture("1880", "sometime later")
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for unparseable date, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipEventOrder_SkipsDanglingEventReference(t *testing.T) {
+	// Broken event references are reported by reference validation, not here.
+	glx := relationshipEventOrderFixture("1880", "1850")
+	glx.Relationships["rel-1"].EndEvent = "event-missing"
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for dangling event reference, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipEventOrder_SkipsWhenOnlyStartEvent(t *testing.T) {
+	glx := relationshipEventOrderFixture("1880", "1850")
+	glx.Relationships["rel-1"].EndEvent = ""
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings when end_event is unset, got %d: %v", len(result.Warnings), result.Warnings)
+	}
+}
+
+func TestValidateRelationshipEventOrder_NilRelationship(t *testing.T) {
+	glx := &GLXFile{
+		Relationships: map[string]*Relationship{
+			"rel-1": nil,
+		},
+	}
+	result := &ValidationResult{}
+	glx.validateRelationshipEventOrder(result)
+
+	if len(result.Warnings) != 0 {
+		t.Errorf("Expected 0 warnings for nil relationship, got %d", len(result.Warnings))
+	}
+}
+
+func TestValidateRelationshipEventOrder_WiredIntoValidate(t *testing.T) {
+	glx := relationshipEventOrderFixture("1880", "1850")
+	result := glx.Validate()
+
+	hasOrderWarning := false
+	for _, w := range result.Warnings {
+		if strings.Contains(w.Message, "is before start event") {
+			hasOrderWarning = true
+
+			break
+		}
+	}
+	if !hasOrderWarning {
+		t.Error("Validate() should warn when a relationship's end event precedes its start event")
+	}
+}
+
 func TestValidateTemporalConsistency_WiredIntoValidate(t *testing.T) {
 	glx := &GLXFile{
 		Persons: map[string]*Person{
