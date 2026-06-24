@@ -20,6 +20,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 🔎 **Query** - Filter and list entities from an archive by name, date, type, source, and more
 - 👤 **Vitals** - Display vital records (birth, death, burial) for a person
 - 📅 **Timeline** - Show chronological events for a person, including family events
+- 🧭 **Migrations** - Trace a person's geographic movement over time and find others with the same migration pattern
 - 📝 **Summary** - Comprehensive person profile with auto-generated life history narrative
 - 🌳 **Ancestors/Descendants** - Display ancestor and descendant trees with box-drawing characters
 - 📎 **Cite** - Generate formatted citation text from structured citation data
