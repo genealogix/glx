@@ -46,6 +46,13 @@ var (
 	errNoModule = errors.New("no module line in go.mod")
 )
 
+// The agent-memory filenames memcheck scans. AGENTS.md is included for when the
+// repo adopts it; it is harmless to look for before then.
+const (
+	memoryFileClaude = "CLAUDE.md"
+	memoryFileAgents = "AGENTS.md"
+)
+
 func main() {
 	os.Exit(realMain())
 }
@@ -239,7 +246,7 @@ func discoverMemoryFiles(root string) ([]string, error) {
 
 			return nil
 		}
-		if d.Name() == "CLAUDE.md" || d.Name() == "AGENTS.md" {
+		if d.Name() == memoryFileClaude || d.Name() == memoryFileAgents {
 			rel, relErr := filepath.Rel(root, p)
 			if relErr != nil {
 				return relErr
