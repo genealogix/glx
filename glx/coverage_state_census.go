@@ -27,7 +27,7 @@ import (
 // Note: some state census years overlap with federal census years (e.g.,
 // Mississippi 1860). The matching logic requires a state-specific signal
 // to avoid confusing state and federal censuses.
-var stateCensusYears = map[string][]int{
+var stateCensusYears = map[string][]int{ //nolint:goconst // state names are data entries, not magic strings
 	"Wisconsin":     {1855, 1865, 1875, 1885, 1895, 1905},
 	"New York":      {1825, 1835, 1845, 1855, 1865, 1875, 1892, 1905, 1915, 1925},
 	"Iowa":          {1856, 1885, 1895, 1905, 1915, 1925},
