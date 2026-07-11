@@ -636,7 +636,7 @@ func TestValidateTemporalPropertyReferences(t *testing.T) {
 				"place-2": {Name: "City B"},
 			},
 			PersonProperties: map[string]*PropertyDefinition{
-				"residence": {ReferenceType: "places", Temporal: new(true)},
+				"residence": {ReferenceType: "places", Temporal: boolPtr(true)},
 			},
 		}
 		result := archive.Validate()
@@ -659,7 +659,7 @@ func TestValidateTemporalPropertyReferences(t *testing.T) {
 				"place-1": {Name: "City A"},
 			},
 			PersonProperties: map[string]*PropertyDefinition{
-				"residence": {ReferenceType: "places", Temporal: new(true)},
+				"residence": {ReferenceType: "places", Temporal: boolPtr(true)},
 			},
 		}
 		result := archive.Validate()
@@ -972,7 +972,7 @@ func TestValidateMultiValueReferenceProperties(t *testing.T) {
 			},
 			Persons: map[string]*Person{"person-1": {}, "person-2": {}},
 			MediaProperties: map[string]*PropertyDefinition{
-				"subjects": {ReferenceType: "persons", MultiValue: new(true)},
+				"subjects": {ReferenceType: "persons", MultiValue: boolPtr(true)},
 			},
 		}
 		result := archive.Validate()
@@ -988,7 +988,7 @@ func TestValidateMultiValueReferenceProperties(t *testing.T) {
 			},
 			Persons: map[string]*Person{"person-1": {}},
 			MediaProperties: map[string]*PropertyDefinition{
-				"subjects": {ReferenceType: "persons", MultiValue: new(true)},
+				"subjects": {ReferenceType: "persons", MultiValue: boolPtr(true)},
 			},
 		}
 		result := archive.Validate()
@@ -1062,7 +1062,7 @@ func TestValidateStructuredPropertyValue(t *testing.T) {
 				}},
 			},
 			PersonProperties: map[string]*PropertyDefinition{
-				"external_ids": {ValueType: "string", MultiValue: new(true)},
+				"external_ids": {ValueType: "string", MultiValue: boolPtr(true)},
 			},
 		}
 		result := archive.Validate()
@@ -1073,7 +1073,7 @@ func TestValidateStructuredPropertyValue(t *testing.T) {
 
 // Helper function for test readability
 func boolPtr(b bool) *bool {
-	return new(b)
+	return &b
 }
 
 func TestValidateSuggestReferenceKey(t *testing.T) {
@@ -1372,7 +1372,7 @@ func TestValidatePropertyVocabularyValue(t *testing.T) {
 				"female": {Label: "Female"},
 			},
 			PersonProperties: map[string]*PropertyDefinition{
-				"gender": {Label: "Gender", VocabularyType: "gender_types", MultiValue: new(true)},
+				"gender": {Label: "Gender", VocabularyType: "gender_types", MultiValue: boolPtr(true)},
 			},
 		}
 		result := archive.Validate()

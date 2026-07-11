@@ -39,7 +39,7 @@ func TestValidatePropertyValue_NonTemporalWithList(t *testing.T) {
 		Label:       "Gender",
 		Description: "Gender identity",
 		ValueType:   "string",
-		Temporal:    new(false), // Non-temporal
+		Temporal:    boolPtr(false), // Non-temporal
 	}
 
 	result := &ValidationResult{}
@@ -86,7 +86,7 @@ func TestValidatePropertyValue_TemporalListMissingValue(t *testing.T) {
 		Label:       "Name",
 		Description: "Person's name",
 		ValueType:   "string",
-		Temporal:    new(true),
+		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
@@ -132,7 +132,7 @@ func TestValidatePropertyValue_TemporalListNotObject(t *testing.T) {
 		Label:       "Name",
 		Description: "Person's name",
 		ValueType:   "string",
-		Temporal:    new(true),
+		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
@@ -177,7 +177,7 @@ func TestValidatePropertyValue_TemporalListMissingDate(t *testing.T) {
 		Label:       "Occupation",
 		Description: "Occupation",
 		ValueType:   "string",
-		Temporal:    new(true),
+		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
@@ -207,7 +207,7 @@ func TestValidatePropertyValue_TemporalSimpleValue(t *testing.T) {
 		Label:       "Name",
 		Description: "Person's name",
 		ValueType:   "string",
-		Temporal:    new(true),
+		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
@@ -246,7 +246,7 @@ func TestValidatePropertyValue_TemporalValidList(t *testing.T) {
 		Label:       "Occupation",
 		Description: "Occupation",
 		ValueType:   "string",
-		Temporal:    new(true),
+		Temporal:    boolPtr(true),
 	}
 
 	result := &ValidationResult{}
@@ -276,7 +276,7 @@ func TestValidatePropertyValue_TemporalSimpleValueTypeMismatch(t *testing.T) {
 	propDef := &PropertyDefinition{
 		Label:     "Birth Year",
 		ValueType: "integer",
-		Temporal:  new(true),
+		Temporal:  boolPtr(true), //nolint:modernize // keep helper style consistent in tests
 	}
 
 	result := &ValidationResult{}
@@ -314,7 +314,7 @@ func TestValidatePropertyValue_TemporalSingleObjectValueTypeMismatch(t *testing.
 	propDef := &PropertyDefinition{
 		Label:     "Birth Year",
 		ValueType: "integer",
-		Temporal:  new(true),
+		Temporal:  boolPtr(true), //nolint:modernize // keep helper style consistent in tests
 	}
 
 	result := &ValidationResult{}
@@ -355,7 +355,7 @@ func TestValidatePropertyValue_TemporalListItemValueTypeMismatch(t *testing.T) {
 	propDef := &PropertyDefinition{
 		Label:     "Birth Year",
 		ValueType: "integer",
-		Temporal:  new(true),
+		Temporal:  boolPtr(true), //nolint:modernize // keep helper style consistent in tests
 	}
 
 	result := &ValidationResult{}
