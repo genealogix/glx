@@ -22,8 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func intPtr(v int) *int { return &v }
-
 func TestBuildCensusEntities_Minimal(t *testing.T) {
 	tpl := &CensusTemplate{
 		Census: CensusData{
@@ -31,7 +29,7 @@ func TestBuildCensusEntities_Minimal(t *testing.T) {
 			Location: CensusLocation{Place: "Marion County, Florida"},
 			Household: CensusHousehold{
 				Members: []CensusHouseholdMember{
-					{Name: "Daniel Lane", Age: intPtr(30), Sex: "male"},
+					{Name: "Daniel Lane", Age: new(30), Sex: "male"},
 				},
 			},
 		},
@@ -76,9 +74,9 @@ func TestBuildCensusEntities_MultipleMembers(t *testing.T) {
 			Location: CensusLocation{Place: "Sumter County, Florida"},
 			Household: CensusHousehold{
 				Members: []CensusHouseholdMember{
-					{Name: "William Clark", Age: intPtr(45), Sex: "male", Occupation: "Farmer", Birthplace: "Virginia"},
-					{Name: "Mary Clark", Age: intPtr(38), Sex: "female", Birthplace: "Virginia"},
-					{Name: "John Clark", Age: intPtr(12), Sex: "male", Birthplace: "Florida"},
+					{Name: "William Clark", Age: new(45), Sex: "male", Occupation: "Farmer", Birthplace: "Virginia"},
+					{Name: "Mary Clark", Age: new(38), Sex: "female", Birthplace: "Virginia"},
+					{Name: "John Clark", Age: new(12), Sex: "male", Birthplace: "Florida"},
 				},
 			},
 		},
@@ -338,7 +336,7 @@ func TestBuildCensusEntities_Assertions(t *testing.T) {
 				Members: []CensusHouseholdMember{
 					{
 						Name:       "Daniel Lane",
-						Age:        intPtr(30),
+						Age:        new(30),
 						Sex:        "male",
 						Birthplace: "Virginia",
 						Occupation: "Farmer",
@@ -409,7 +407,7 @@ func TestBuildCensusEntities_MemberWithExplicitPersonID(t *testing.T) {
 			Location: CensusLocation{Place: "Marion County, Florida"},
 			Household: CensusHousehold{
 				Members: []CensusHouseholdMember{
-					{Name: "Daniel Lane", PersonID: "person-d-lane", Age: intPtr(30)},
+					{Name: "Daniel Lane", PersonID: "person-d-lane", Age: new(30)},
 				},
 			},
 		},
@@ -495,7 +493,7 @@ func TestBuildCensusEntities_NameMatchUsesResolvedIDInAssertions(t *testing.T) {
 			Location: CensusLocation{Place: "Marion County"},
 			Household: CensusHousehold{
 				Members: []CensusHouseholdMember{
-					{Name: "Daniel Lane", Age: intPtr(30)},
+					{Name: "Daniel Lane", Age: new(30)},
 				},
 			},
 		},
@@ -530,7 +528,7 @@ func TestBuildCensusEntities_ParticipantAge(t *testing.T) {
 			Location: CensusLocation{Place: "Marion County"},
 			Household: CensusHousehold{
 				Members: []CensusHouseholdMember{
-					{Name: "Daniel Lane", Age: intPtr(30)},
+					{Name: "Daniel Lane", Age: new(30)},
 				},
 			},
 		},
@@ -608,7 +606,6 @@ func TestValidateCensusTemplate_MemberMissingName(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "name")
 }
-
 
 func TestBuildCensusEntities_CustomEventTitle(t *testing.T) {
 	tpl := &CensusTemplate{
@@ -697,8 +694,8 @@ func TestBuildCensusEntities_DuplicateNamesInBatch(t *testing.T) {
 			Location: CensusLocation{Place: "Ironton, Ohio"},
 			Household: CensusHousehold{
 				Members: []CensusHouseholdMember{
-					{Name: "John Smith", Age: intPtr(40), Sex: "male"},
-					{Name: "John Smith", Age: intPtr(12), Sex: "male"},
+					{Name: "John Smith", Age: new(40), Sex: "male"},
+					{Name: "John Smith", Age: new(12), Sex: "male"},
 				},
 			},
 		},

@@ -46,6 +46,7 @@ func formatGEDCOMDate(date DateString) string {
 		escape := calendarToGEDCOMEscape(calendar)
 		bodyStr := strings.TrimSpace(string(body))
 		gedcomBody := formatGEDCOMDateBody(bodyStr)
+
 		return escape + " " + gedcomBody
 	}
 
@@ -78,8 +79,8 @@ func formatGEDCOMDateBody(s string) string {
 	}
 
 	// Handle open-ended FROM
-	if strings.HasPrefix(s, "FROM ") {
-		dateStr := strings.TrimPrefix(s, "FROM ")
+	if after, ok := strings.CutPrefix(s, "FROM "); ok {
+		dateStr := after
 
 		return "FROM " + convertSingleDate(strings.TrimSpace(dateStr))
 	}
@@ -87,8 +88,8 @@ func formatGEDCOMDateBody(s string) string {
 	// Handle qualifiers: ABT, BEF, AFT, CAL
 	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
 	for _, qual := range qualifiers {
-		if strings.HasPrefix(s, qual) {
-			dateStr := strings.TrimPrefix(s, qual)
+		if after, ok := strings.CutPrefix(s, qual); ok {
+			dateStr := after
 
 			return qual + convertSingleDate(strings.TrimSpace(dateStr))
 		}

@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	glxlib "github.com/genealogix/glx/go-glx"
@@ -27,21 +28,21 @@ import (
 // Mississippi 1860). The matching logic requires a state-specific signal
 // to avoid confusing state and federal censuses.
 var stateCensusYears = map[string][]int{
-	"Wisconsin":    {1855, 1865, 1875, 1885, 1895, 1905},
-	"New York":     {1825, 1835, 1845, 1855, 1865, 1875, 1892, 1905, 1915, 1925},
-	"Iowa":         {1856, 1885, 1895, 1905, 1915, 1925},
+	"Wisconsin":     {1855, 1865, 1875, 1885, 1895, 1905},
+	"New York":      {1825, 1835, 1845, 1855, 1865, 1875, 1892, 1905, 1915, 1925},
+	"Iowa":          {1856, 1885, 1895, 1905, 1915, 1925},
 	"Massachusetts": {1855, 1865},
-	"New Jersey":   {1855, 1865, 1875, 1885, 1895, 1905, 1915},
-	"Minnesota":    {1857, 1865, 1875, 1885, 1895, 1905},
-	"Kansas":       {1855, 1865, 1875, 1885, 1895, 1905, 1915, 1925},
-	"Rhode Island": {1865, 1875, 1885, 1905, 1915, 1925, 1935},
-	"Mississippi":  {1853, 1860, 1866},
-	"Colorado":     {1885},
-	"Florida":      {1855, 1867, 1885, 1895, 1935, 1945},
-	"Nebraska":     {1885},
-	"North Dakota": {1885, 1915, 1925},
-	"South Dakota": {1885, 1895, 1905, 1915, 1925, 1935, 1945},
-	"Oregon":       {1845, 1849, 1853, 1855, 1856, 1857, 1858, 1859, 1865, 1875, 1885, 1895, 1905},
+	"New Jersey":    {1855, 1865, 1875, 1885, 1895, 1905, 1915},
+	"Minnesota":     {1857, 1865, 1875, 1885, 1895, 1905},
+	"Kansas":        {1855, 1865, 1875, 1885, 1895, 1905, 1915, 1925},
+	"Rhode Island":  {1865, 1875, 1885, 1905, 1915, 1925, 1935},
+	"Mississippi":   {1853, 1860, 1866},
+	"Colorado":      {1885},
+	"Florida":       {1855, 1867, 1885, 1895, 1935, 1945},
+	"Nebraska":      {1885},
+	"North Dakota":  {1885, 1915, 1925},
+	"South Dakota":  {1885, 1895, 1905, 1915, 1925, 1935, 1945},
+	"Oregon":        {1845, 1849, 1853, 1855, 1856, 1857, 1858, 1859, 1865, 1875, 1885, 1895, 1905},
 }
 
 // resolveStateFromPlace walks the place hierarchy to find the US state name.
@@ -78,6 +79,7 @@ func placeRefsFromProperty(v any) []string {
 	for ref := range refs {
 		result = append(result, ref)
 	}
+
 	return result
 }
 
@@ -101,13 +103,14 @@ func collectPersonStates(person *glxlib.Person, archive *glxlib.GLXFile, events 
 		states = append(states, s)
 	}
 	sort.Strings(states)
+
 	return states
 }
 
 // buildStateCensusRecords generates expected state census records based on
 // the person's associated states and birth/death years. The archive parameter
 // is used for place-based matching of events; pass nil if not available.
-func buildStateCensusRecords(birthYear, deathYear int, states []string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) []coverageRecord {
+func buildStateCensusRecords(birthYear, deathYear int, states []string, sources, events []personSourceInfo, archive *glxlib.GLXFile) []coverageRecord {
 	if birthYear == 0 {
 		return nil
 	}
@@ -183,7 +186,7 @@ func isAlpha(b byte) bool {
 // exists in events or sources. Requires a state-specific signal to avoid
 // confusing state and federal censuses on overlapping years: the title must
 // mention the state name, or the event's place must resolve to the target state.
-func findStateCensusMatch(year int, state string, sources []personSourceInfo, events []personSourceInfo, archive *glxlib.GLXFile) string {
+func findStateCensusMatch(year int, state string, sources, events []personSourceInfo, archive *glxlib.GLXFile) string {
 	// Check events — require census type + year + state-specific signal
 	for _, e := range events {
 		if e.EventType != glxlib.EventTypeCensus || e.Year != year {
@@ -211,7 +214,7 @@ func findStateCensusMatch(year int, state string, sources []personSourceInfo, ev
 			return s.Ref
 		}
 		// Fallback: title explicitly mentions both state and year
-		if titleMatchesState(s.Title, state) && strings.Contains(s.Title, fmt.Sprintf("%d", year)) {
+		if titleMatchesState(s.Title, state) && strings.Contains(s.Title, strconv.Itoa(year)) {
 			return s.Ref
 		}
 	}

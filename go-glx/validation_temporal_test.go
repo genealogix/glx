@@ -39,7 +39,7 @@ func TestValidatePropertyValue_NonTemporalWithList(t *testing.T) {
 		Label:       "Gender",
 		Description: "Gender identity",
 		ValueType:   "string",
-		Temporal:    boolPtr(false), // Non-temporal
+		Temporal:    new(false), // Non-temporal
 	}
 
 	result := &ValidationResult{}
@@ -86,7 +86,7 @@ func TestValidatePropertyValue_TemporalListMissingValue(t *testing.T) {
 		Label:       "Name",
 		Description: "Person's name",
 		ValueType:   "string",
-		Temporal:    boolPtr(true),
+		Temporal:    new(true),
 	}
 
 	result := &ValidationResult{}
@@ -132,7 +132,7 @@ func TestValidatePropertyValue_TemporalListNotObject(t *testing.T) {
 		Label:       "Name",
 		Description: "Person's name",
 		ValueType:   "string",
-		Temporal:    boolPtr(true),
+		Temporal:    new(true),
 	}
 
 	result := &ValidationResult{}
@@ -177,7 +177,7 @@ func TestValidatePropertyValue_TemporalListMissingDate(t *testing.T) {
 		Label:       "Occupation",
 		Description: "Occupation",
 		ValueType:   "string",
-		Temporal:    boolPtr(true),
+		Temporal:    new(true),
 	}
 
 	result := &ValidationResult{}
@@ -207,7 +207,7 @@ func TestValidatePropertyValue_TemporalSimpleValue(t *testing.T) {
 		Label:       "Name",
 		Description: "Person's name",
 		ValueType:   "string",
-		Temporal:    boolPtr(true),
+		Temporal:    new(true),
 	}
 
 	result := &ValidationResult{}
@@ -246,7 +246,7 @@ func TestValidatePropertyValue_TemporalValidList(t *testing.T) {
 		Label:       "Occupation",
 		Description: "Occupation",
 		ValueType:   "string",
-		Temporal:    boolPtr(true),
+		Temporal:    new(true),
 	}
 
 	result := &ValidationResult{}
@@ -713,6 +713,7 @@ func TestValidateTemporalConsistency_WiredIntoValidate(t *testing.T) {
 	for _, w := range result.Warnings {
 		if strings.Contains(w.Message, "death year") {
 			hasTemporalWarning = true
+
 			break
 		}
 	}
