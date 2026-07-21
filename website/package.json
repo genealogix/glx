@@ -22,7 +22,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.0",
     "eslint": "^10.6.0",
-    "eslint-plugin-vue": "^10.9.2",
+    "eslint-plugin-vue": "^10.10.0",
     "globals": "^17.7.0",
     "prettier": "^3.9.4",
     "vitepress": "^2.0.0-alpha.18"
