@@ -27,12 +27,15 @@ jobs:
           go-version: '1.26'
           cache: true
 
+      # GOBIN names the install dir instead of deriving it from `go env GOPATH`
+      # — GOPATH is a list, so "$(go env GOPATH)/bin" builds a bogus path
+      # ("/path/one:/path/two/bin") whenever it holds more than one entry.
       - name: Install changie
-        run: go install github.com/miniscruff/changie@v1.24.0
+        run: GOBIN="$RUNNER_TEMP/gobin" go install github.com/miniscruff/changie@v1.24.0
 
       - name: Validate fragments parse and carry a reference
         run: |
-          export PATH="$(go env GOPATH)/bin:$PATH"
+          export PATH="$RUNNER_TEMP/gobin:$PATH"
           bash scripts/check-changelog-fragments.sh
 
       - name: Require a changelog fragment (unless 'no-changelog' label)
