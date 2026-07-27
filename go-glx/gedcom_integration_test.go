@@ -1460,6 +1460,93 @@ func TestMediaImport_URLsNotTracked(t *testing.T) {
 	}
 }
 
+func TestMediaImport_OriginalFilenameStamped(t *testing.T) {
+	// Relative FILE refs record their source basename in original_filename,
+	// pre-canonicalization (#1121). The backslash variant checks that Windows
+	// path separators are normalized before the basename is taken.
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE photos/portrait.jpg\n1 FORM jpeg\n" +
+		"0 @M2@ OBJE\n1 FILE scans\\census.png\n1 FORM png\n" +
+		"0 TRLR\n"
+
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	want := map[string]string{
+		"media/files/portrait.jpg": "portrait.jpg",
+		"media/files/census.png":   "census.png",
+	}
+	for uri, wantName := range want {
+		media := findMediaByURI(t, glx, uri)
+		if got := media.Properties["original_filename"]; got != wantName {
+			t.Errorf("media %s: original_filename = %v, want %q", uri, got, wantName)
+		}
+	}
+}
+
+func TestMediaImport_OriginalFilenameSurvivesCollisionRename(t *testing.T) {
+	// Two FILE refs with the same basename: the second is renamed to photo-2.jpg
+	// in the archive, but both must record photo.jpg as the original filename —
+	// the exact case the property's "before import or renaming" description
+	// exists for (#1121).
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE photos/photo.jpg\n1 FORM jpeg\n" +
+		"0 @M2@ OBJE\n1 FILE backup/photo.jpg\n1 FORM jpeg\n" +
+		"0 TRLR\n"
+
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	for _, uri := range []string{"media/files/photo.jpg", "media/files/photo-2.jpg"} {
+		media := findMediaByURI(t, glx, uri)
+		if got := media.Properties["original_filename"]; got != "photo.jpg" {
+			t.Errorf("media %s: original_filename = %v, want %q", uri, got, "photo.jpg")
+		}
+	}
+}
+
+func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
+	// URLs and absolute paths keep their URI verbatim (nothing is renamed), and
+	// a BLOB has no source filename at all — none of them get original_filename.
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE http://example.com/photo.jpg\n1 FORM jpeg\n" +
+		"0 @M2@ OBJE\n1 FILE /home/user/photo.jpg\n1 FORM jpeg\n" +
+		"0 @M3@ OBJE\n1 TITL Flower\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n" +
+		"0 TRLR\n"
+
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(glx.Media) != 3 {
+		t.Fatalf("Expected 3 media entities, got %d", len(glx.Media))
+	}
+	for id, media := range glx.Media {
+		if got, ok := media.Properties["original_filename"]; ok {
+			t.Errorf("media %s (uri %q): unexpected original_filename %v", id, media.URI, got)
+		}
+	}
+}
+
+// findMediaByURI returns the media entity with the given URI, failing the test
+// if no entity matches.
+func findMediaByURI(t *testing.T, glx *GLXFile, uri string) *Media {
+	t.Helper()
+	for _, media := range glx.Media {
+		if media.URI == uri {
+			return media
+		}
+	}
+	t.Fatalf("no media entity with URI %q", uri)
+
+	return nil
+}
+
 func TestDuplicateSourceRefsDeduped(t *testing.T) {
 	// Issue #12: GEDCOM records referencing the same source multiple times
 	// should not produce duplicate entries in assertion evidence refs.

@@ -196,6 +196,32 @@ func TestImportGEDZIP_CopiesBundledMedia(t *testing.T) {
 	require.Equal(t, wantBytes, gotBytes, "media file contents should match the source bytes")
 }
 
+func TestImportGEDZIP_StampsOriginalFilename(t *testing.T) {
+	// Bundled media imported from a GEDZIP records the zip entry's basename in
+	// properties.original_filename (#1121). The entry is referenced from
+	// gedcom.ged by its relative path, so this flows through the same
+	// convertMediaCommon path as plain GEDCOM imports.
+	gdz := buildGEDZIP(t, map[string][]byte{
+		"gedcom.ged":      []byte(gedcom7WithMedia),
+		"media/photo.jpg": []byte("jpeg-bytes"),
+	})
+	outPath := filepath.Join(t.TempDir(), "out.glx")
+
+	err := importGEDCOM(gdz, outPath, FormatSingle, true, false, defaultShowFirstErrors)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Clean(outPath))
+	require.NoError(t, err)
+
+	var glx glxlib.GLXFile
+	require.NoError(t, yaml.Unmarshal(data, &glx))
+	require.Len(t, glx.Media, 1)
+	for _, media := range glx.Media {
+		require.Equal(t, "media/files/photo.jpg", media.URI)
+		require.Equal(t, "photo.jpg", media.Properties["original_filename"])
+	}
+}
+
 func TestImportGEDZIP_MissingGedcomEntry(t *testing.T) {
 	gdz := buildGEDZIP(t, map[string][]byte{
 		"other.ged": []byte(minimalGEDCOM7),

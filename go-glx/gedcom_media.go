@@ -154,8 +154,9 @@ func appendMediaID(props map[string]any, mediaID string) {
 
 // convertMediaCommon contains the shared logic for converting GEDCOM OBJE records to GLX Media entities.
 // It processes FILE, FORM, TITL, CROP, NOTE, and BLOB subrecords.
-// When a relative FILE path is found, it creates a MediaFileSource entry and rewrites
-// the URI to point to media/files/<filename>. BLOB data is also captured for the CLI to write.
+// When a relative FILE path is found, it creates a MediaFileSource entry, rewrites
+// the URI to point to media/files/<filename>, and records the source basename in the
+// original_filename property. BLOB data is also captured for the CLI to write.
 //
 //nolint:gocognit,gocyclo // GEDCOM conversion has inherent branching complexity
 func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *ConversionContext) *Media {
@@ -229,7 +230,7 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 			// GEDCOM 5.5.1 BLOB data (deprecated binary embedding)
 			blobText = extractTextWithContinuation(sub)
 			if blobText != "" {
-				media.Properties["blob_size"] = len(blobText)
+				media.Properties[MediaPropertyBlobSize] = len(blobText)
 			}
 		}
 	}
@@ -260,6 +261,13 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 			TargetFilename: targetName,
 		})
 		media.URI = MediaFilesDir + "/" + targetName
+		// Record the pre-rename basename: a collision rename (photo.jpg →
+		// photo-2.jpg) puts only the renamed form in the URI, which would
+		// otherwise lose the source filename entirely. A value already carried
+		// by the source is never overwritten.
+		if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
+			media.Properties[MediaPropertyOriginalFilename] = basename
+		}
 	} else {
 		// URL, absolute path, or empty — leave as-is
 		media.URI = fileRef
