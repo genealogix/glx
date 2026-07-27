@@ -1,0 +1,57 @@
+name: gosec Pin Currency
+
+# Deliberately its own workflow rather than a job in security.yml: this check is
+# *designed* to fail whenever upstream cuts a gosec release, and security.yml is
+# the Code Scanning setup for the gosec and govulncheck tools. A failing run of
+# that workflow — for any reason, including a job that uploads no SARIF — marks
+# both Go tools as "reporting errors" on the code scanning tool status page and
+# raises a spurious "Code scanning configuration error" on the Security tab.
+# Keeping the notification here means a stale pin shows up as a red workflow of
+# its own, which is what it actually is. See #1145.
+
+on:
+  schedule:
+    # Run weekly on Monday at 06:00 UTC (matches security.yml)
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gosec-pin-currency-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  GIT_CONFIG_KEY_1: advice.detachedHead
+  GIT_CONFIG_VALUE_1: "false"
+
+jobs:
+  gosec-pin-currency:
+    name: gosec Pin Currency
+    # gosec's pin is invisible to Dependabot (deliberately not in ci-tools/go.mod —
+    # see the Install gosec comment in security.yml — and the github-actions
+    # ecosystem doesn't parse `go install ...@vX.Y.Z` run lines), so without this
+    # check the hand-managed .gosec-version pin rots silently. Failing the weekly
+    # scheduled run notifies maintainers; it never runs on a PR, so an upstream
+    # gosec release never blocks unrelated PRs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare .gosec-version against the latest gosec release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pinned="$(tr -d '[:space:]' < .gosec-version)"
+          printf '%s' "$pinned" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error file=.gosec-version::invalid .gosec-version: $pinned (expected vMAJOR.MINOR.PATCH)"; exit 1; }
+          latest="$(gh api repos/securego/gosec/releases/latest --jq .tag_name)" || { echo "::error::could not query the latest securego/gosec release from the GitHub API"; exit 1; }
+          if [ "$pinned" != "$latest" ]; then
+            echo "::error file=.gosec-version::pinned gosec $pinned is behind the latest release $latest — bump .gosec-version (and re-run gosec locally with 'make gosec' to catch findings from new analyzers)"
+            exit 1
+          fi
+          echo "gosec pin $pinned is current"

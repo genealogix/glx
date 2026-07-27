@@ -68,6 +68,30 @@ file. The summary:
 
 Full guide: <https://github.blog/security/vulnerability-research/how-to-catch-github-actions-workflow-injections-before-attackers-do/>
 
+## `security.yml` holds SARIF-uploading jobs and nothing else
+
+GitHub treats `security.yml` as the Code Scanning **setup** for the `gosec` and
+`govulncheck` tools, and the tool status page attributes the conclusion of the
+whole *workflow run* to every tool that setup configures — not the conclusion of
+the job that actually uploaded the SARIF.
+
+So any failing job in `security.yml`, even one that touches no scanning at all,
+puts a red error on both Go tools and raises
+
+> Code scanning configuration error: Golang security checks by gosec and
+> govulncheck are reporting errors.
+
+on the Security tab — while `code-scanning/analyses` reports `error: ""` for
+every upload, because the uploads were fine. That misdirection cost a debugging
+session in #1145; the two offenders (`gosec Pin Currency`, `npm Audit`) now live
+in `gosec-pin-currency.yml` and `npm-audit.yml`.
+
+**Never add a job to `security.yml` unless it uploads code-scanning results.**
+Auxiliary security checks get their own workflow file. Confirm the mechanism at
+`/security/code-scanning/tools/<tool>/status` — compare against `Scorecard`,
+which reports no scanned-files summary either yet stays green because its
+workflow passes.
+
 ## Release workflow specifics
 
 - Tag patterns that trigger `release.yml`: `v[0-9]+.[0-9]+.[0-9]+` and
