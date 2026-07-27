@@ -10,6 +10,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - 📥 **GEDCOM Import** - Import GEDCOM 5.5.1 and 7.0 files (and GEDZIP `.gdz` archives with bundled media) to GLX format
 - 📤 **GEDCOM Export** - Export GLX archives back to GEDCOM 5.5.1 or 7.0 format
 - 🌐 **JSON-LD Export** - Export GLX archives as Schema.org-aligned JSON-LD for linked-data interop
+- 🌐 **Publish** - Generate a self-contained static HTML site (person profiles, timelines, family links, source/place indexes, client-side search) for sharing with non-technical family
 - 🔍 **Validate Files** - Structural and referential integrity validation
 - 🔄 **Split/Join** - Convert between single-file and multi-file formats
 - 🔀 **Merge** - Combine two GLX archives with duplicate detection and dry-run support
@@ -32,6 +33,7 @@ The official command-line tool for working with GENEALOGIX (GLX) family archives
 - ➕ **Add** - Create person, place, event, repository, source, citation, relationship, or assertion entities from CLI flags with vocabulary and reference validation
 - 🔄 **Migrate** - Convert deprecated person properties to birth/death events
 - 🔌 **Plugins** - Discover and run third-party `glx-<name>` executables from PATH (git-style fallback); list with `glx --plugins`
+- 🖥️ **Serve** - Run a local web server with a browser-based read-only viewer (dashboard, person profiles, family tree, sources)
 - ⚡ **Cache** - Build a binary archive cache (`.glx/cache.bin`) so repeated commands skip the YAML parse; transparently used by read commands, with git + filesystem staleness detection
 - 📋 **Schema Validation** - Verify JSON schemas have required metadata
 - 🧪 **Test Suite** - Comprehensive test fixtures with coverage reporting

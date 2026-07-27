@@ -1,0 +1,340 @@
+// Copyright 2025 Oracynth, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	glxlib "github.com/genealogix/glx/go-glx"
+)
+
+func TestRenderSite_WritesAllFiles(t *testing.T) {
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{Title: "Smith Family"})
+	out := t.TempDir()
+
+	if err := renderSite(model, out); err != nil {
+		t.Fatalf("renderSite: %v", err)
+	}
+
+	wantFiles := []string{
+		"index.html",
+		"search.html",
+		"sources/index.html",
+		"places/index.html",
+		"css/style.css",
+		"js/search.js",
+		"js/theme.js",
+		"js/search-index.js",
+		"persons/person-john-smith.html",
+		"persons/person-jane-doe.html",
+	}
+	for _, rel := range wantFiles {
+		if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("expected file %q: %v", rel, err)
+		}
+	}
+
+	index := readFile(t, filepath.Join(out, "index.html"))
+	if !strings.Contains(index, "Smith Family") {
+		t.Error("index.html missing site title")
+	}
+	if !strings.Contains(index, "persons/person-john-smith.html") {
+		t.Error("index.html missing link to John's profile")
+	}
+
+	john := readFile(t, filepath.Join(out, "persons", "person-john-smith.html"))
+	for _, want := range []string{"John Smith", "1850–1920", "Boston, Massachusetts, United States", "1880 US Census", "Jane Doe"} {
+		if !strings.Contains(john, want) {
+			t.Errorf("John's profile missing %q", want)
+		}
+	}
+	if !strings.Contains(john, `<a href="../index.html" class="active">People</a>`) {
+		t.Error("person profile nav does not highlight the People section")
+	}
+
+	searchIdx := readFile(t, filepath.Join(out, "js", "search-index.js"))
+	if !strings.HasPrefix(searchIdx, "window.GLX_SEARCH_INDEX =") {
+		t.Error("search-index.js missing global assignment")
+	}
+}
+
+func TestRenderSite_EscapesHTML(t *testing.T) {
+	archive := &glxlib.GLXFile{
+		Persons: map[string]*glxlib.Person{
+			"person-evil": {Properties: map[string]any{"name": "<script>alert(1)</script>"}},
+		},
+	}
+	model := buildSiteModel(archive, siteModelOptions{})
+	out := t.TempDir()
+	if err := renderSite(model, out); err != nil {
+		t.Fatalf("renderSite: %v", err)
+	}
+
+	page := readFile(t, filepath.Join(out, "persons", "person-evil.html"))
+	if strings.Contains(page, "<script>alert(1)</script>") {
+		t.Error("person name was not HTML-escaped")
+	}
+	if !strings.Contains(page, "&lt;script&gt;") {
+		t.Error("expected escaped script tag in output")
+	}
+}
+
+func TestMediaURL(t *testing.T) {
+	cases := []struct {
+		src  string
+		want string
+	}{
+		// The three generator-produced forms pass through unchanged.
+		{"../media/portrait.jpg", "../media/portrait.jpg"},
+		{"../media/photo-2.jpg", "../media/photo-2.jpg"},
+		{"data:image/jpeg;base64,aGVsbG8=", "data:image/jpeg;base64,aGVsbG8="},
+		{"data:application/octet-stream;base64,", "data:application/octet-stream;base64,"},
+		{"https://example.org/photo.jpg", "https://example.org/photo.jpg"},
+		{"http://example.org/photo.jpg?raw=1", "http://example.org/photo.jpg?raw=1"},
+		// Everything else renders as the inert about:invalid URL.
+		{"", string(rejectedMediaURL)},
+		{"javascript:alert(1)", string(rejectedMediaURL)},
+		{"media/photo.jpg", string(rejectedMediaURL)},                    // wrong prefix
+		{"../media/../../etc/passwd", string(rejectedMediaURL)},          // traversal
+		{"../media/.hidden", string(rejectedMediaURL)},                   // dotfile
+		{"../media/UPPER.JPG", string(rejectedMediaURL)},                 // generator only emits lowercase
+		{"data:text/html;base64,PHNjcmlwdD4=", string(rejectedMediaURL)}, // active document
+		{`data:image/png" onerror="x;base64,`, string(rejectedMediaURL)}, // injected media type
+		{"https://example.org/%zz", string(rejectedMediaURL)},            // unparseable URL
+	}
+	for _, tc := range cases {
+		if got := string(mediaURL(tc.src)); got != tc.want {
+			t.Errorf("mediaURL(%q) = %q, want %q", tc.src, got, tc.want)
+		}
+	}
+}
+
+func TestMediaURL_NormalizesHostileHTTPURL(t *testing.T) {
+	// An archive-supplied http(s) URL with attribute-breaking characters must
+	// come back percent-encoded, never verbatim.
+	got := string(mediaURL(`https://example.org/x.jpg" onerror="alert(1)`))
+	if strings.ContainsAny(got, "\"'<> ") {
+		t.Errorf("normalized URL still contains attribute-breaking characters: %q", got)
+	}
+	if !strings.HasPrefix(got, "https://example.org/x.jpg%22") {
+		t.Errorf("unexpected normalization: %q", got)
+	}
+}
+
+func TestResolveSiteMedia_CopyMode(t *testing.T) {
+	base := t.TempDir()
+	writeFile(t, filepath.Join(base, "portrait.jpg"), []byte("\xff\xd8\xff\xe0JFIF-fake"))
+
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
+	out := t.TempDir()
+
+	copied, err := resolveSiteMedia(model, base, out, false)
+	if err != nil {
+		t.Fatalf("resolveSiteMedia: %v", err)
+	}
+	if copied != 1 {
+		t.Fatalf("copied = %d, want 1", copied)
+	}
+
+	item := johnMedia(t, model)
+	if item.Src != "../media/portrait.jpg" {
+		t.Errorf("Src = %q, want ../media/portrait.jpg", item.Src)
+	}
+	if _, err := os.Stat(filepath.Join(out, "media", "portrait.jpg")); err != nil {
+		t.Errorf("copied media file missing: %v", err)
+	}
+}
+
+func TestResolveSiteMedia_EmbedMode(t *testing.T) {
+	base := t.TempDir()
+	writeFile(t, filepath.Join(base, "portrait.jpg"), []byte("fake-image-bytes"))
+
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
+	out := t.TempDir()
+
+	copied, err := resolveSiteMedia(model, base, out, true)
+	if err != nil {
+		t.Fatalf("resolveSiteMedia: %v", err)
+	}
+	if copied != 0 {
+		t.Errorf("copied = %d, want 0 in embed mode", copied)
+	}
+
+	item := johnMedia(t, model)
+	if !strings.HasPrefix(item.Src, "data:image/jpeg;base64,") {
+		t.Errorf("embedded Src = %q, want data: URI", item.Src)
+	}
+	if _, err := os.Stat(filepath.Join(out, "media")); !os.IsNotExist(err) {
+		t.Error("embed mode should not create a media directory")
+	}
+
+	// The data URI must survive template rendering (html/template would
+	// otherwise neutralize a data: src to #ZgotmplZ without mediaURL).
+	if err := renderSite(model, out); err != nil {
+		t.Fatalf("renderSite: %v", err)
+	}
+	page := readFile(t, filepath.Join(out, "persons", "person-john-smith.html"))
+	if !strings.Contains(page, "data:image/jpeg;base64,") {
+		t.Error("embedded data URI did not survive rendering")
+	}
+	if strings.Contains(page, "#ZgotmplZ") {
+		t.Error("media src was neutralized by html/template sanitization")
+	}
+}
+
+func TestResolveSiteMedia_MissingFile(t *testing.T) {
+	base := t.TempDir() // portrait.jpg deliberately absent
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
+
+	if _, err := resolveSiteMedia(model, base, t.TempDir(), false); err != nil {
+		t.Fatalf("resolveSiteMedia: %v", err)
+	}
+
+	item := johnMedia(t, model)
+	if !item.Missing {
+		t.Error("expected Missing=true for absent media file")
+	}
+}
+
+func TestGeneratePublish_EndToEnd(t *testing.T) {
+	requireExample(t)
+	out := filepath.Join(t.TempDir(), "site")
+	streams, outBuf, _ := TestIOStreams()
+
+	err := generateSite(streams, publishOptions{
+		ArchivePath: exampleArchive,
+		OutputDir:   out,
+		Title:       "Chen Family",
+	})
+	if err != nil {
+		t.Fatalf("generateSite: %v", err)
+	}
+
+	if !strings.Contains(outBuf.String(), "Generated static site") {
+		t.Errorf("summary not printed: %q", outBuf.String())
+	}
+
+	index := readFile(t, filepath.Join(out, "index.html"))
+	if !strings.Contains(index, "Chen Family") || !strings.Contains(index, "Robert Chen") {
+		t.Error("index.html missing expected content")
+	}
+	if _, err := os.Stat(filepath.Join(out, "persons", "person-robert-chen.html")); err != nil {
+		t.Errorf("Robert's profile not generated: %v", err)
+	}
+}
+
+func TestGeneratePublish_DirectoryArchive(t *testing.T) {
+	const dirArchive = "testdata/valid/minimal-example"
+	if _, err := os.Stat(dirArchive); err != nil {
+		t.Skipf("directory archive fixture not available: %v", err)
+	}
+	out := filepath.Join(t.TempDir(), "site")
+	streams, _, _ := TestIOStreams()
+
+	// Exercises the directory-load path and archiveMediaBaseDir's dir branch.
+	if err := generateSite(streams, publishOptions{ArchivePath: dirArchive, OutputDir: out}); err != nil {
+		t.Fatalf("generateSite: %v", err)
+	}
+	for _, rel := range []string{"index.html", "sources/index.html", "places/index.html", "search.html"} {
+		if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("expected %q: %v", rel, err)
+		}
+	}
+}
+
+func TestGeneratePublish_Living(t *testing.T) {
+	requireExample(t)
+	out := filepath.Join(t.TempDir(), "site")
+	streams, outBuf, _ := TestIOStreams()
+
+	err := generateSite(streams, publishOptions{
+		ArchivePath: exampleArchive,
+		OutputDir:   out,
+		Living:      true,
+	})
+	if err != nil {
+		t.Fatalf("generateSite: %v", err)
+	}
+
+	if !strings.Contains(outBuf.String(), "Privatized") {
+		t.Errorf("expected privatization notice, got %q", outBuf.String())
+	}
+
+	index := readFile(t, filepath.Join(out, "index.html"))
+	if strings.Contains(index, "Robert Chen") {
+		t.Error("living person's real name leaked into output")
+	}
+	if !strings.Contains(index, "Living") {
+		t.Error("expected redacted 'Living' label in output")
+	}
+}
+
+func TestRunPublish(t *testing.T) {
+	requireExample(t)
+	out := filepath.Join(t.TempDir(), "site")
+
+	// Drive the cobra wrapper through its package-level flag vars, restoring
+	// them afterward so other tests are unaffected.
+	prevArchive, prevOutput, prevTitle := publishArchive, publishOutput, publishTitle
+	prevEmbed, prevLiving := publishEmbedMedia, publishLiving
+	t.Cleanup(func() {
+		publishArchive, publishOutput, publishTitle = prevArchive, prevOutput, prevTitle
+		publishEmbedMedia, publishLiving = prevEmbed, prevLiving
+	})
+	publishArchive, publishOutput, publishTitle = exampleArchive, out, "Test Family"
+	publishEmbedMedia, publishLiving = false, false
+
+	if err := runPublish(nil, nil); err != nil {
+		t.Fatalf("runPublish: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "index.html")); err != nil {
+		t.Errorf("index not generated: %v", err)
+	}
+}
+
+// --- helpers ---
+
+func johnMedia(t *testing.T, model *siteModel) *mediaItem {
+	t.Helper()
+
+	return personMediaItem(t, model, "person-john-smith")
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path) //nolint:gosec // test-controlled path
+	if err != nil {
+		t.Fatalf("read %q: %v", path, err)
+	}
+
+	return string(data)
+}
+
+func writeFile(t *testing.T, path string, data []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatalf("write %q: %v", path, err)
+	}
+}
+
+func requireExample(t *testing.T) {
+	t.Helper()
+	if _, err := os.Stat(exampleArchive); err != nil {
+		t.Skipf("example archive not available: %v", err)
+	}
+}
