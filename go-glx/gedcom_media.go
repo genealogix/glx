@@ -263,8 +263,9 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		media.URI = MediaFilesDir + "/" + targetName
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
-		// otherwise lose the source filename entirely. A value already carried
-		// by the source is never overwritten.
+		// otherwise lose the source filename entirely. The existence guard is
+		// defensive: no current tag maps to this key, but a future mapping
+		// would write properties before this branch runs and must win.
 		if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
 			media.Properties[MediaPropertyOriginalFilename] = basename
 		}
