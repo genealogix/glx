@@ -257,11 +257,14 @@ func parsePathExt(pathExt string, isWindows bool) []string {
 // writes a diagnostic to stderr and returns exitPluginStartFailure, matching
 // the shell convention for "command not found / not executable".
 func runPlugin(ctx context.Context, p Plugin, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	// #nosec G204 -- plugin dispatch is the entire purpose of this function (#95
-	// Phase 1, git/kubectl model). p.Path was resolved by discoverPlugins from a
-	// PATH directory and always contains a separator, so exec.LookPath/PATH-routed
+	// #nosec G204 G702 -- plugin dispatch is the entire purpose of this function
+	// (#95 Phase 1, git/kubectl model). p.Path was resolved by discoverPlugins from
+	// a PATH directory and always contains a separator, so exec.LookPath/PATH-routed
 	// resolution does not occur; args are user input forwarded as a string slice
 	// (no shell). Trust model is "user controls PATH", documented in the PR.
+	// G702 (taint analysis) is listed alongside G204 because gosec reports the
+	// subprocess-with-variable-input pattern under both rule IDs; suppressing only
+	// G204 leaves the taint rule firing on the same line.
 	cmd := exec.CommandContext(ctx, p.Path, args...)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
