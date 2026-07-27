@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -441,6 +442,49 @@ func TestMergeDriver_ConflictWithNewlineInValue_StderrEscaped(t *testing.T) {
 
 			break
 		}
+	}
+}
+
+// TestFormatValue_TruncatesOnRuneBoundary pins the UTF-8 fix from Copilot
+// review on PR #906: the display cap used to slice by byte index, so a value
+// of accented or non-Latin characters — routine in genealogical data — got
+// cut mid-rune and emitted invalid UTF-8 into the conflict summary.
+func TestFormatValue_TruncatesOnRuneBoundary(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+	}{
+		{"2-byte runes", strings.Repeat("ü", 500)},
+		{"3-byte runes", strings.Repeat("漢", 500)},
+		{"4-byte runes", strings.Repeat("𐌰", 500)},
+		{"mixed", strings.Repeat("Müller-漢字-", 100)},
+		// Lands the cut exactly one byte into a multi-byte rune under the
+		// old byte-slicing implementation.
+		{"boundary straddle", strings.Repeat("a", maxConflictValueDisplay-1) + "ü" + "tail"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := formatValue(c.in)
+			if !utf8.ValidString(got) {
+				t.Errorf("formatValue produced invalid UTF-8: %q", got)
+			}
+			if !strings.HasSuffix(got, "…") {
+				t.Errorf("expected truncation ellipsis, got %q", got)
+			}
+			if n := utf8.RuneCountInString(got); n != maxConflictValueDisplay+1 {
+				t.Errorf("expected %d runes + ellipsis, got %d: %q", maxConflictValueDisplay, n, got)
+			}
+			if strings.ContainsRune(got, '�') {
+				t.Errorf("truncation split a rune (U+FFFD in output): %q", got)
+			}
+		})
+	}
+}
+
+func TestFormatValue_ShortValueNotTruncated(t *testing.T) {
+	in := "Märchen für Großmutter"
+	if got := formatValue(in); got != in {
+		t.Errorf("formatValue(%q) = %q, want unchanged", in, got)
 	}
 }
 

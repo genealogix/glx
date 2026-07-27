@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unicode/utf8"
 
 	glxlib "github.com/genealogix/glx/go-glx"
 )
@@ -34,6 +35,9 @@ const mergedFilePerm = 0o644
 
 // maxConflictValueDisplay caps the per-conflict stderr value length so a
 // pathologically large structured value doesn't drown the diagnostic block.
+// Counted in runes, not bytes: genealogical values carry accented names and
+// non-Latin scripts routinely, and a byte cut would split a multi-byte rune
+// and emit invalid UTF-8.
 const maxConflictValueDisplay = 200
 
 // maxMergeInputBytes caps the per-file size the merge driver will parse as
@@ -396,18 +400,37 @@ func safeInlineForStderr(s string) string {
 // line and can't smuggle a fake "  conflict at …" follow-on line into the
 // summary); ANSI escapes and Unicode bidi controls are stripped by the
 // safeForStderr pass so a hostile branch can't inject misleading terminal
-// output.
+// output. Over-long values are trimmed on a rune boundary so the summary
+// stays valid UTF-8 for accented names and non-Latin scripts.
 func formatValue(v any) string {
 	if v == nil {
 		return "<absent>"
 	}
 	s := fmt.Sprintf("%v", v)
 	s = stderrValueEscape.Replace(s)
-	if len(s) > maxConflictValueDisplay {
-		s = s[:maxConflictValueDisplay] + "…"
-	}
+	s = truncateRunes(s, maxConflictValueDisplay)
 
 	return safeForStderr(s)
+}
+
+// truncateRunes trims s to at most max runes, appending an ellipsis when it
+// actually cut something. Cutting by byte index instead would split a
+// multi-byte rune — "Müller" truncated mid-rune emits a lone 0xC3 byte, which
+// renders as garbage and makes the stderr summary invalid UTF-8.
+func truncateRunes(s string, maxRunes int) string {
+	if utf8.RuneCountInString(s) <= maxRunes {
+		return s
+	}
+
+	count := 0
+	for i := range s {
+		if count == maxRunes {
+			return s[:i] + "…"
+		}
+		count++
+	}
+
+	return s
 }
 
 // safeForStderr strips control characters and Unicode bidi marks from a
