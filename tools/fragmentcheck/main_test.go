@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -161,6 +162,79 @@ func TestFragmentFiles_SortedAndBothExtensions(t *testing.T) {
 	want := []string{"a.yml", "b.yaml", "c.yaml"}
 	if strings.Join(names, ",") != strings.Join(want, ",") {
 		t.Errorf("fragmentFiles = %v, want %v", names, want)
+	}
+}
+
+func TestRun(t *testing.T) {
+	good := "kind: Added\nbody: something\ncustom:\n  Issue: \"#123\"\n"
+	bad := "kind: Added\nbody: something\n"
+
+	cases := []struct {
+		name     string
+		files    map[string]string
+		wantCode int
+		wantOut  string
+	}{
+		{"all valid", map[string]string{"a.yaml": good, "b.yml": good}, 0, "All 2 changelog fragment(s) valid."},
+		{"empty dir", map[string]string{}, 0, "No unreleased changelog fragments to validate."},
+		{"one offender", map[string]string{"a.yaml": good, "b.yaml": bad}, 1, "::error file="},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for name, content := range c.files {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+					t.Fatalf("write %s: %v", name, err)
+				}
+			}
+
+			var buf bytes.Buffer
+			if code := run(dir, &buf); code != c.wantCode {
+				t.Errorf("run exit code = %d, want %d (output: %s)", code, c.wantCode, buf.String())
+			}
+			if !strings.Contains(buf.String(), c.wantOut) {
+				t.Errorf("output = %q, want it to contain %q", buf.String(), c.wantOut)
+			}
+		})
+	}
+}
+
+func TestRun_GlobError(t *testing.T) {
+	// An unterminated character class makes filepath.Glob return
+	// ErrBadPattern, which is the only way fragmentFiles fails.
+	var buf bytes.Buffer
+	if code := run(filepath.Join(t.TempDir(), "["), &buf); code != 1 {
+		t.Errorf("run exit code = %d, want 1 for an unreadable fragment dir", code)
+	}
+	if !strings.Contains(buf.String(), "ERROR:") {
+		t.Errorf("output = %q, want it to report the error", buf.String())
+	}
+}
+
+func TestCheckFile_UnreadableFile(t *testing.T) {
+	// A directory is never readable as a file, on any platform.
+	if problem := checkFile(t.TempDir()); !strings.Contains(problem, "cannot read changelog fragment") {
+		t.Errorf("problem = %q, want a read failure", problem)
+	}
+}
+
+// TestRun_AnnotationUsesForwardSlashes pins the GitHub Actions annotation
+// path separator: an annotation with Windows separators does not attach to
+// the PR diff, so a local Windows run must emit the same paths CI does.
+func TestRun_AnnotationUsesForwardSlashes(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "bad.yaml"), []byte("kind: Added\n"), 0o600); err != nil {
+		t.Fatalf("write fragment: %v", err)
+	}
+
+	var buf bytes.Buffer
+	run(dir, &buf)
+	line := buf.String()
+	if !strings.HasPrefix(line, "::error file=") {
+		t.Fatalf("expected an ::error annotation, got %q", line)
+	}
+	if strings.Contains(strings.SplitN(line, "::", 3)[1], `\`) {
+		t.Errorf("annotation path must use forward slashes, got %q", line)
 	}
 }
 

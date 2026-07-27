@@ -30,6 +30,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -50,36 +51,49 @@ type fragment struct {
 	Custom map[string]any `yaml:"custom"`
 }
 
+// defaultFragmentDir is where changie writes fragments (unreleasedDir in
+// .changie.yaml), relative to the repository root.
+const defaultFragmentDir = ".changes/unreleased"
+
 func main() {
-	dir := ".changes/unreleased"
+	dir := defaultFragmentDir
 	if len(os.Args) > 1 {
 		dir = os.Args[1]
 	}
+	os.Exit(run(dir, os.Stdout))
+}
 
+// run validates every fragment in dir, writing findings to out, and returns
+// the process exit code: 0 when every fragment carries a reference, 1
+// otherwise.
+func run(dir string, out io.Writer) int {
 	files, err := fragmentFiles(dir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(out, "ERROR: %v\n", err)
+
+		return 1
 	}
 	if len(files) == 0 {
-		fmt.Println("No unreleased changelog fragments to validate.")
+		fmt.Fprintln(out, "No unreleased changelog fragments to validate.")
 
-		return
+		return 0
 	}
 
 	failed := 0
 	for _, f := range files {
 		if problem := checkFile(f); problem != "" {
 			// GitHub Actions annotation: surfaces inline on the PR diff.
-			fmt.Printf("::error file=%s::%s\n", filepath.ToSlash(f), problem)
+			fmt.Fprintf(out, "::error file=%s::%s\n", filepath.ToSlash(f), problem)
 			failed++
 		}
 	}
 	if failed > 0 {
-		os.Exit(1)
+		return 1
 	}
 
-	fmt.Printf("All %d changelog fragment(s) valid.\n", len(files))
+	fmt.Fprintf(out, "All %d changelog fragment(s) valid.\n", len(files))
+
+	return 0
 }
 
 // fragmentFiles returns the fragment paths in dir, sorted so output order is
@@ -101,7 +115,8 @@ func fragmentFiles(dir string) ([]string, error) {
 // checkFile returns a human-readable problem description, or "" when the
 // fragment carries a usable issue reference.
 func checkFile(path string) string {
-	data, err := os.ReadFile(path) //nolint:gosec // paths come from our own glob of the fragment dir
+	// #nosec G304 -- path comes from our own glob of the fragment dir, not user input.
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Sprintf("cannot read changelog fragment: %v", err)
 	}
