@@ -24,17 +24,29 @@ import (
 var (
 	ErrEmptyBlobData     = errors.New("empty BLOB data")
 	ErrInvalidBlobLength = errors.New("invalid BLOB data length")
-	ErrInvalidBlobChar   = errors.New("invalid BLOB character (must be in range '.' to 'm')")
+	ErrInvalidBlobChar   = errors.New("invalid BLOB character")
+)
+
+// blobWhitespace strips the ASCII whitespace that GEDCOM CONT/CONC line
+// wrapping introduces. Byte-oriented rather than rune-oriented (strings.Map)
+// so that invalid UTF-8 in a malformed BLOB passes through untouched and is
+// reported at its true byte offset instead of as U+FFFD.
+var blobWhitespace = strings.NewReplacer(
+	" ", "", "\t", "", "\n", "", "\v", "", "\f", "", "\r", "",
 )
 
 // DecodeGEDCOMBlob decodes GEDCOM 5.5.1 BLOB-encoded text to raw bytes.
 // GEDCOM BLOB uses a custom encoding where each character's value minus 0x2E ('.')
 // gives a 6-bit value. Groups of 4 characters encode 3 bytes; a trailing group of
-// 2 or 3 characters encodes 1 or 2 bytes. Whitespace and newlines are stripped
-// before decoding.
+// 2 or 3 characters encodes 1 or 2 bytes. ASCII whitespace (spaces, tabs and line
+// breaks) is stripped before decoding.
+//
+// The returned error wraps [ErrEmptyBlobData] when the text holds no encoded
+// characters, [ErrInvalidBlobLength] when the character count cannot encode a
+// whole number of bytes, and [ErrInvalidBlobChar] when a character falls outside
+// the '.' to 'm' range.
 func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
-	// Strip whitespace and newlines
-	cleaned := strings.NewReplacer("\n", "", "\r", "", " ", "").Replace(blobText)
+	cleaned := blobWhitespace.Replace(blobText)
 
 	if len(cleaned) == 0 {
 		return nil, ErrEmptyBlobData
@@ -53,7 +65,7 @@ func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
 		for j := range 4 {
 			char := cleaned[i+j]
 			if char < '.' || char > 'm' {
-				return nil, fmt.Errorf("%w at position %d: %q", ErrInvalidBlobChar, i+j, char)
+				return nil, fmt.Errorf("%w at position %d: %q (must be in range '.' to 'm')", ErrInvalidBlobChar, i+j, char)
 			}
 		}
 
@@ -79,7 +91,7 @@ func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
 		for j := range trailing {
 			char := cleaned[fullGroups+j]
 			if char < '.' || char > 'm' {
-				return nil, fmt.Errorf("%w at position %d: %q", ErrInvalidBlobChar, fullGroups+j, char)
+				return nil, fmt.Errorf("%w at position %d: %q (must be in range '.' to 'm')", ErrInvalidBlobChar, fullGroups+j, char)
 			}
 		}
 

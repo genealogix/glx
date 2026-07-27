@@ -25,6 +25,7 @@ Each entity type uses controlled vocabularies for type-safe property definitions
 This package provides:
 
   - GEDCOM import (5.5.1 and 7.0)
+  - GEDCOM 5.5.1 BLOB decoding ([DecodeGEDCOMBlob])
   - Serialization to single-file and multi-file GLX formats
   - Archive validation with reference integrity checking
   - Standard vocabulary management

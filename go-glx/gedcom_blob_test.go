@@ -86,6 +86,53 @@ func TestDecodeGEDCOMBlob(t *testing.T) {
 	}
 }
 
+// TestDecodeGEDCOMBlobTrailingValues pins the byte values the trailing-group
+// paths produce, not just their length. All-zero and all-ones inputs survive a
+// swapped shift direction, so these use mixed sextets to pin the
+// (b1<<2)|(b2>>4) and (b2<<4)|(b3>>2) splits.
+func TestDecodeGEDCOMBlobTrailingValues(t *testing.T) {
+	cases := []struct {
+		input string
+		want  []byte
+	}{
+		{"mm", []byte{0xFF}},        // 63, 63
+		{"m.", []byte{0xFC}},        // 63, 0  -> 111111|00
+		{".m", []byte{0x03}},        // 0, 63  -> 000000|11
+		{"mmm", []byte{0xFF, 0xFF}}, // 63, 63, 63
+		{"m.m", []byte{0xFC, 0x0F}}, // 63, 0, 63
+		{".m.", []byte{0x03, 0xF0}}, // 0, 63, 0
+	}
+
+	for _, tc := range cases {
+		got, err := DecodeGEDCOMBlob(tc.input)
+		if err != nil {
+			t.Errorf("DecodeGEDCOMBlob(%q) failed: %v", tc.input, err)
+
+			continue
+		}
+		if !bytes.Equal(got, tc.want) {
+			t.Errorf("DecodeGEDCOMBlob(%q) = % X, want % X", tc.input, got, tc.want)
+		}
+	}
+}
+
+// TestDecodeGEDCOMBlobWhitespace verifies every ASCII whitespace byte GEDCOM
+// line wrapping can introduce is stripped before decoding.
+func TestDecodeGEDCOMBlobWhitespace(t *testing.T) {
+	// Same four characters, split by each whitespace byte in turn.
+	for _, ws := range []string{" ", "\t", "\n", "\v", "\f", "\r", "\r\n", " \t "} {
+		got, err := DecodeGEDCOMBlob("mm" + ws + "mm")
+		if err != nil {
+			t.Errorf("DecodeGEDCOMBlob with %q separator failed: %v", ws, err)
+
+			continue
+		}
+		if !bytes.Equal(got, []byte{0xFF, 0xFF, 0xFF}) {
+			t.Errorf("DecodeGEDCOMBlob with %q separator = % X, want FF FF FF", ws, got)
+		}
+	}
+}
+
 func TestDecodeGEDCOMBlobErrors(t *testing.T) {
 	// Empty blob
 	if _, err := DecodeGEDCOMBlob(""); !errors.Is(err, ErrEmptyBlobData) {
@@ -93,7 +140,7 @@ func TestDecodeGEDCOMBlobErrors(t *testing.T) {
 	}
 
 	// Whitespace-only blob cleans to empty
-	if _, err := DecodeGEDCOMBlob(" \n\r "); !errors.Is(err, ErrEmptyBlobData) {
+	if _, err := DecodeGEDCOMBlob(" \t\n\v\f\r "); !errors.Is(err, ErrEmptyBlobData) {
 		t.Errorf("Expected ErrEmptyBlobData for whitespace-only blob, got %v", err)
 	}
 
@@ -115,5 +162,22 @@ func TestDecodeGEDCOMBlobErrors(t *testing.T) {
 	// Out-of-range character in a trailing group
 	if _, err := DecodeGEDCOMBlob("....z."); !errors.Is(err, ErrInvalidBlobChar) {
 		t.Errorf("Expected ErrInvalidBlobChar for out-of-range char in trailing group, got %v", err)
+	}
+
+	// Lower boundary: '-' is 0x2D, exactly one below '.' (0x2E)
+	if _, err := DecodeGEDCOMBlob("-..."); !errors.Is(err, ErrInvalidBlobChar) {
+		t.Errorf("Expected ErrInvalidBlobChar for below-range char in full group, got %v", err)
+	}
+	if _, err := DecodeGEDCOMBlob("....-."); !errors.Is(err, ErrInvalidBlobChar) {
+		t.Errorf("Expected ErrInvalidBlobChar for below-range char in trailing group, got %v", err)
+	}
+
+	// Upper boundary: 'n' is 0x6E, exactly one above 'm' (0x6D). 'm' itself is
+	// accepted — see the "mmmm" case in TestDecodeGEDCOMBlob.
+	if _, err := DecodeGEDCOMBlob("n..."); !errors.Is(err, ErrInvalidBlobChar) {
+		t.Errorf("Expected ErrInvalidBlobChar for 'n' in full group, got %v", err)
+	}
+	if _, err := DecodeGEDCOMBlob("....n."); !errors.Is(err, ErrInvalidBlobChar) {
+		t.Errorf("Expected ErrInvalidBlobChar for 'n' in trailing group, got %v", err)
 	}
 }
