@@ -118,6 +118,8 @@ func ThreeWayMerge(base, ours, theirs *GLXFile) (*GLXFile, []Merge3Conflict) {
 	merged.ResearchLogStatusTypes, conflicts = merge3OpaqueMap("research_log_status_types", base.ResearchLogStatusTypes, ours.ResearchLogStatusTypes, theirs.ResearchLogStatusTypes, conflicts)
 	merged.StudyTypes, conflicts = merge3OpaqueMap("study_types", base.StudyTypes, ours.StudyTypes, theirs.StudyTypes, conflicts)
 	merged.StudyStatuses, conflicts = merge3OpaqueMap("study_statuses", base.StudyStatuses, ours.StudyStatuses, theirs.StudyStatuses, conflicts)
+	merged.SourceNatures, conflicts = merge3OpaqueMap("source_natures", base.SourceNatures, ours.SourceNatures, theirs.SourceNatures, conflicts)
+	merged.InformationTypes, conflicts = merge3OpaqueMap("information_types", base.InformationTypes, ours.InformationTypes, theirs.InformationTypes, conflicts)
 
 	merged.PersonProperties, conflicts = merge3OpaqueMap("person_properties", base.PersonProperties, ours.PersonProperties, theirs.PersonProperties, conflicts)
 	merged.EventProperties, conflicts = merge3OpaqueMap("event_properties", base.EventProperties, ours.EventProperties, theirs.EventProperties, conflicts)

@@ -281,18 +281,18 @@ func execGitMergeFile(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCod
 // alongside the values they have to choose between.
 //
 // All user-controlled strings (entity IDs from YAML, property values, citation
-// IDs, the original path) are passed through safeForStderr before formatting
-// so a malicious branch can't embed ANSI escapes or Unicode bidi marks that
-// would mislead the researcher resolving the merge.
+// IDs, the original path) are passed through safeInlineForStderr before
+// formatting so a malicious branch can't embed ANSI escapes, Unicode bidi
+// marks, or line breaks that would mislead the researcher resolving the merge.
 func printConflictSummary(errOut io.Writer, origPath string, conflicts []glxlib.Merge3Conflict, ours, theirs *glxlib.GLXFile) {
-	fprintf(errOut, "[glx merge-driver] file=%s\n", safeForStderr(origPath))
+	fprintf(errOut, "[glx merge-driver] file=%s\n", safeInlineForStderr(origPath))
 	for i := range conflicts {
 		c := &conflicts[i]
 		if c.AutoResolved {
 			continue
 		}
 		oursMeta, theirsMeta := assertionMetaForConflict(c, ours, theirs)
-		fprintf(errOut, "  conflict at %s\n", safeForStderr(c.Path))
+		fprintf(errOut, "  conflict at %s\n", safeInlineForStderr(c.Path))
 		fprintf(errOut, "    ours    : %s%s\n", formatValue(c.OursValue), oursMeta)
 		fprintf(errOut, "    theirs  : %s%s\n", formatValue(c.TheirsValue), theirsMeta)
 	}
@@ -314,14 +314,14 @@ func printAutoResolvedSummary(errOut io.Writer, origPath string, conflicts []glx
 		return
 	}
 
-	fprintf(errOut, "[glx merge-driver] file=%s — auto-resolved by the driver:\n", safeForStderr(origPath))
+	fprintf(errOut, "[glx merge-driver] file=%s — auto-resolved by the driver:\n", safeInlineForStderr(origPath))
 	for i := range conflicts {
 		c := &conflicts[i]
 		if !c.AutoResolved {
 			continue
 		}
 		fprintf(errOut, "  %s → %s\n    ours   : %s\n    theirs : %s\n",
-			safeForStderr(c.Path), safeForStderr(c.Resolution),
+			safeInlineForStderr(c.Path), safeInlineForStderr(c.Resolution),
 			formatValue(c.OursValue), formatValue(c.TheirsValue))
 	}
 }
@@ -346,13 +346,13 @@ func assertionMetaForConflict(c *glxlib.Merge3Conflict, ours, theirs *glxlib.GLX
 func assertionMetaSuffix(a *glxlib.Assertion) string {
 	var parts []string
 	if a.Confidence != "" {
-		parts = append(parts, "conf="+safeForStderr(a.Confidence))
+		parts = append(parts, "conf="+safeInlineForStderr(a.Confidence))
 	}
 	if len(a.Citations) > 0 {
-		parts = append(parts, "cites=["+safeForStderr(strings.Join(a.Citations, ","))+"]")
+		parts = append(parts, "cites=["+safeInlineForStderr(strings.Join(a.Citations, ","))+"]")
 	}
 	if len(a.Sources) > 0 {
-		parts = append(parts, "sources=["+safeForStderr(strings.Join(a.Sources, ","))+"]")
+		parts = append(parts, "sources=["+safeInlineForStderr(strings.Join(a.Sources, ","))+"]")
 	}
 	if len(parts) == 0 {
 		return ""
@@ -362,16 +362,32 @@ func assertionMetaSuffix(a *glxlib.Assertion) string {
 }
 
 // stderrValueEscape converts whitespace controls that safeForStderr lets
-// through (newline, tab) into visible escape sequences. Those characters are
-// fine inside path/ID call sites — which is why safeForStderr keeps them —
-// but in user-controlled conflict-value display they could be used to
-// inject extra log lines or break the one-conflict-per-line layout
-// (e.g., a YAML note of "foo\n  conflict at /etc/secret"). Anything else
-// safeForStderr already strips downstream.
+// through (newline, tab) into visible escape sequences. They are legitimate
+// inside multi-line file content — which is why safeForStderr keeps them —
+// but every stderr call site here renders one logical field per physical
+// line, so a literal newline could inject extra log lines or break the
+// one-conflict-per-line layout (e.g., a YAML note of
+// "foo\n  conflict at /etc/secret"). Anything else safeForStderr already
+// strips downstream.
 var stderrValueEscape = strings.NewReplacer(
 	"\n", `\n`,
 	"\t", `\t`,
 )
+
+// safeInlineForStderr sanitizes a user-controlled string that is rendered
+// inline in a single-line stderr heading: the original pathname git passes as
+// %P, a conflict's entity/property path, the resolution reason, and the
+// assertion metadata (confidence, citation and source IDs).
+//
+// Every one of those is attacker-influenced — %P is whatever pathname the
+// repository carries, and the driver deserializes with validation disabled so
+// entity IDs (which flow into Merge3Conflict.Path) can be arbitrary YAML keys.
+// safeForStderr alone permits \n and \t, which would let a hostile branch
+// forge additional "  conflict at …" lines in the summary block, so headings
+// get the same escaping formatValue applies to values.
+func safeInlineForStderr(s string) string {
+	return safeForStderr(stderrValueEscape.Replace(s))
+}
 
 // formatValue stringifies a conflict's value for stderr display. Designed
 // for stderr-readability, not round-trippability — long structured values

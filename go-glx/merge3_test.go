@@ -1064,3 +1064,45 @@ func TestThreeWayMerge_VocabularyOneSidedChange(t *testing.T) {
 		t.Errorf("expected medium-high added from ours, got %v", merged.ConfidenceLevels)
 	}
 }
+
+// TestThreeWayMerge_CoversEveryGLXFileMap guards the structural weakness that
+// let source_natures and information_types be silently dropped (Copilot review
+// on PR #906): ThreeWayMerge builds `merged` from scratch field by field, so
+// any GLXFile map it forgets to wire up is data loss on every clean merge
+// rather than a compile error. Reflection over the struct makes a newly added
+// map field fail here instead of silently vanishing from users' archives.
+func TestThreeWayMerge_CoversEveryGLXFileMap(t *testing.T) {
+	ours := &GLXFile{}
+	v := reflect.ValueOf(ours).Elem()
+	typ := v.Type()
+
+	var covered []string
+	for i := range typ.NumField() {
+		f := typ.Field(i)
+		if !f.IsExported() || f.Type.Kind() != reflect.Map {
+			continue
+		}
+		// One entry per map, keyed by the field name so a failure names the
+		// field that got dropped. Elements are freshly allocated zero values.
+		m := reflect.MakeMap(f.Type)
+		m.SetMapIndex(reflect.ValueOf(f.Name), reflect.New(f.Type.Elem().Elem()))
+		v.Field(i).Set(m)
+		covered = append(covered, f.Name)
+	}
+	if len(covered) == 0 {
+		t.Fatal("reflection found no exported map fields on GLXFile")
+	}
+
+	merged, conflicts := ThreeWayMerge(&GLXFile{}, ours, &GLXFile{})
+	if len(conflicts) != 0 {
+		t.Fatalf("one-sided adds must not conflict, got %v", conflicts)
+	}
+
+	mv := reflect.ValueOf(merged).Elem()
+	for _, name := range covered {
+		got := mv.FieldByName(name)
+		if got.IsNil() || got.Len() != 1 {
+			t.Errorf("GLXFile.%s was dropped by ThreeWayMerge — wire it up in the merge (it is not merged today, so any archive using it loses data on a clean merge)", name)
+		}
+	}
+}

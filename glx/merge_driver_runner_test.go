@@ -444,6 +444,82 @@ func TestMergeDriver_ConflictWithNewlineInValue_StderrEscaped(t *testing.T) {
 	}
 }
 
+func TestSafeInlineForStderr(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "hello", "hello"},
+		{"newline escaped", "a\nb", `a\nb`},
+		{"tab escaped", "a\tb", `a\tb`},
+		{"forged summary line", "ok\n  conflict at /etc/secret", `ok\n  conflict at /etc/secret`},
+		{"ANSI still stripped", "1850\x1b[2Jok", "1850\uFFFD[2Jok"},
+		{"bidi RLO still stripped", "alice\u202eevil", "alice\uFFFDevil"},
+		{"unicode letters kept", "Märchen", "Märchen"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := safeInlineForStderr(c.in); got != c.want {
+				t.Errorf("safeInlineForStderr(%q) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
+
+// TestMergeDriver_NewlineInPathAndEntityID_StderrEscaped covers the second
+// half of the log-injection guard raised in Copilot review on PR #906. The
+// value call sites were already escaped; the *heading* call sites were not,
+// so both git's %P (an arbitrary repository pathname) and an entity ID out of
+// YAML the driver parses with validation disabled could forge extra
+// "[glx merge-driver] file=…" / "  conflict at …" lines. Neither smuggled
+// line may appear standalone in the summary.
+func TestMergeDriver_NewlineInPathAndEntityID_StderrEscaped(t *testing.T) {
+	requireGit(t)
+	dst := t.TempDir()
+	// The entity ID carries a newline plus a forged conflict line; %P carries
+	// a newline plus a forged driver header.
+	base := "persons:\n  \"person-john\\n  conflict at /etc/passwd\":\n    properties:\n      note: \"original\"\n"
+	ours := "persons:\n  \"person-john\\n  conflict at /etc/passwd\":\n    properties:\n      note: \"ours-version\"\n"
+	theirs := "persons:\n  \"person-john\\n  conflict at /etc/passwd\":\n    properties:\n      note: \"theirs-version\"\n"
+	for name, content := range map[string]string{"base.glx": base, "ours.glx": ours, "theirs.glx": theirs} {
+		if err := os.WriteFile(filepath.Join(dst, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+	in := mergeDriverInputs{
+		BasePath:   filepath.Join(dst, "base.glx"),
+		OursPath:   filepath.Join(dst, "ours.glx"),
+		TheirsPath: filepath.Join(dst, "theirs.glx"),
+		OrigPath:   "innocent.glx\n[glx merge-driver] file=decoy.glx — auto-resolved by the driver:",
+	}
+	var errBuf bytes.Buffer
+	_ = runMergeDriver(in, &errBuf)
+	out := errBuf.String()
+
+	// Positive: both newlines must have been escaped to a literal \n.
+	if !strings.Contains(out, `innocent.glx\n[glx merge-driver] file=decoy.glx`) {
+		t.Errorf("expected newline in origPath to be escaped to literal \\n, got stderr:\n%s", out)
+	}
+	if !strings.Contains(out, `person-john\n  conflict at /etc/passwd`) {
+		t.Errorf("expected newline in entity ID to be escaped to literal \\n, got stderr:\n%s", out)
+	}
+
+	// Anti-injection: exactly one driver header, and no forged conflict line.
+	headers := 0
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.HasPrefix(line, "[glx merge-driver]") {
+			headers++
+		}
+		if strings.HasPrefix(line, "  conflict at /etc/passwd") {
+			t.Errorf("smuggled '  conflict at /etc/passwd' appeared as a standalone line — escaping failed:\n%s", out)
+		}
+	}
+	if headers != 1 {
+		t.Errorf("expected exactly 1 '[glx merge-driver]' header line, got %d:\n%s", headers, out)
+	}
+}
+
 // TestMergeDriver_ConflictOnAssertion_StderrIncludesEvidence drives an
 // assertion-value conflict with equal confidence on both sides (so neither
 // wins) and citations set on both sides. The stderr summary should include
