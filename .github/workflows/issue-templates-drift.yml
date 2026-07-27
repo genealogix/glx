@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Compare each template's Area dropdown to the canonical list
         # Python + PyYAML are both pre-installed on ubuntu-latest images.

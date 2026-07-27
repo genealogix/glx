@@ -1,5 +1,5 @@
 # GENEALOGIX Makefile
-.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec
+.PHONY: help check build build-cli build-website install-deps install-hooks lint lint-fix lint-codeowners fix fix-diff test test-verbose test-race test-coverage bench mod-tidy mod-verify tidy-check ci-tools-tidy-check clean fmt check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples docs-cli release-snapshot vulncheck gosec license-check
 
 .DEFAULT_GOAL := help
 
@@ -32,7 +32,7 @@ install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
 	lefthook install
 
 ## Verification
-check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-drift-allowlist check-code-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
+check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
 	@echo "All checks passed."
 
 ## Build
@@ -146,6 +146,16 @@ gosec: ## Run gosec static security analysis (pinned via .gosec-version)
 	printf '%s' "$$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "invalid .gosec-version: $$v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }; \
 	go run "github.com/securego/gosec/v2/cmd/gosec@$$v" -quiet ./...
 
+## Licensing
+# go-licenses is intentionally NOT in ci-tools/go.mod — its tree pulls
+# go.opencensus.io, x/net, and licenseclassifier, which would expose
+# dependency-review to advisories in build-time-only code (see ci-tools/README.md).
+# Keep the version and allowlist in sync with .github/workflows/license-compliance.yml.
+# Source-file SPDX compliance is checked separately in CI via `reuse lint`
+# (fsfe/reuse-action); run it locally with: pipx run reuse lint
+license-check: ## Check Go dependency licenses against the Apache-2.0-compatible allowlist
+	go run github.com/google/go-licenses/v2@v2.0.1 check ./... --allowed_licenses=Apache-2.0,MIT,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0
+
 ## Specification
 check-schemas: ## Validate JSON schema files
 	@node specification/validate-schemas.mjs
@@ -155,6 +165,9 @@ check-drift-allowlist: ## Validate .claude/drift-allowlist.yaml against its sche
 
 check-code-drift: ## Deterministically detect go-glx type vs JSON-schema drift
 	@go run ./tools/driftcheck
+
+check-memory-drift: ## Deterministically detect CLAUDE.md/AGENTS.md drift vs the repo
+	@go run ./tools/memcheck
 
 test-scripts: ## Unit-test the Node drift-check scripts (spec-schema parser + schema-compat classifier)
 	@node --test scripts/drift-checks/spec-schema-drift.test.mjs specification/schema-compat.test.mjs

@@ -1,5 +1,21 @@
 ---
 description: Compact the latest changelog entry by merging duplicates, removing self-cancelling changes, and consolidating follow-ups
+allowed-tools:
+  - Read
+  - Edit
+  - Write
+  - Bash(git fetch:*)
+  - Bash(git tag:*)
+  - Bash(git show:*)
+  - Bash(awk:*)
+  - Bash(grep:*)
+  - Bash(head:*)
+  - Bash(sort:*)
+  - Bash(comm:*)
+  - Bash(printf:*)
+model: claude-opus-4-8
+disable-model-invocation: true
+argument-hint: "[target-version]"
 ---
 
 Compact the latest version entry in `CHANGELOG.md`. Read the file, identify the latest `## [version]` section (everything from the first `## [` to the next `## [` or end of file), and apply the following compaction rules:
@@ -111,7 +127,7 @@ The result should read as if the feature was implemented correctly the first tim
 
     **Intentional additions (R_add).** Occasionally an addition is legitimate — most often backfilling a reference the original entry omitted in violation of `CONTRIBUTING.md`. Such additions are never made silently: the agent surfaces each proposed addition and the user must explicitly approve it (the same natural-language override path as the 4c waiver — there is no `--allow-ref-add` flag). Let **R_add** be the set of references the user has approved adding during this run (default empty). Subtract it from the added set to get the invented set deterministically — no manual, error-prone filtering:
 
-       : > "${TMPDIR:-/tmp}/glx-refs.add"                                          # R_add — default: no approved additions
+       printf '' > "${TMPDIR:-/tmp}/glx-refs.add"                                  # R_add — default: no approved additions
        # ...after approving an addition, list each approved reference (one per line) instead, e.g.:
        #   printf '%s\n' '#689' | sort -u > "${TMPDIR:-/tmp}/glx-refs.add"
        comm -23 "${TMPDIR:-/tmp}/glx-refs.added" "${TMPDIR:-/tmp}/glx-refs.add"     # R_invented = (R_post − R_pre) − R_add
