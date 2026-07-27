@@ -781,7 +781,7 @@ func TestImportQUAY_MapsToAssertionConfidence(t *testing.T) {
 				}
 			}
 			require.NotNil(t, dateAssertion, "expected a date assertion")
-			assert.Equal(t, tc.expected, dateAssertion.Confidence,
+			assert.Equalf(t, tc.expected, dateAssertion.Confidence,
 				"assertion confidence should reflect QUAY %s", tc.quay)
 
 			var rawNote string

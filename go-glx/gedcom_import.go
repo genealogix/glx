@@ -281,9 +281,12 @@ func buildGEDCOMIndex(glx *GLXFile) *GEDCOMIndex {
 	}
 
 	// Build QUAY → confidence-level index from the confidence_levels vocabulary (#515).
+	// The vocabulary's gedcom value is trimmed to match the trimming applied to
+	// QUAY values read from the GEDCOM record, so a stray `gedcom: "3 "` in a
+	// vocabulary file still maps rather than silently failing.
 	for key, level := range glx.ConfidenceLevels {
-		if level.GEDCOM != "" {
-			index.ConfidenceLevels[level.GEDCOM] = key
+		if gedcomValue := strings.TrimSpace(level.GEDCOM); gedcomValue != "" {
+			index.ConfidenceLevels[gedcomValue] = key
 		}
 	}
 
