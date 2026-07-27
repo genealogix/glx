@@ -154,7 +154,16 @@ func checkFile(path string) string {
 			"(an unquoted #NNN is a YAML comment — quote it, e.g. Issue: \"#123\")"
 	}
 
-	value := fmt.Sprint(raw)
+	// .changie.yaml declares the field as `type: string`, so hold it to that
+	// rather than stringifying whatever showed up: `Issue: ["#123"]` would
+	// render as "[#123]" and satisfy the pattern while being a shape changie
+	// never promised to handle.
+	value, ok := raw.(string)
+	if !ok {
+		return fmt.Sprintf("changelog fragment's 'custom.Issue' must be a string "+
+			"(.changie.yaml declares type: string), got %T — quote it, e.g. Issue: \"#123\"", raw)
+	}
+
 	if !issueRefPattern.MatchString(value) {
 		return fmt.Sprintf("changelog fragment's 'custom.Issue' (%q) carries no #NNN issue/PR reference", value)
 	}

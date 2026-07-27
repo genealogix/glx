@@ -146,12 +146,28 @@ func TestCheckFile_Rejects(t *testing.T) {
 	}
 }
 
-// TestCheckFile_NonStringIssue pins that a numeric value is reported as a
-// missing reference rather than blowing up the YAML decode for the whole file.
+// TestCheckFile_NonStringIssue pins that a non-string value is rejected as a
+// shape error rather than being stringified. `.changie.yaml` declares the
+// field as `type: string`; stringifying instead would let `Issue: ["#123"]`
+// through as "[#123]", a shape changie never promised to handle. Decoding
+// `custom` as map[string]any (not map[string]string) is what makes this our
+// own diagnostic rather than a decode failure for the whole file.
 func TestCheckFile_NonStringIssue(t *testing.T) {
-	problem := checkFile(writeFragment(t, "kind: Added\nbody: something\ncustom:\n  Issue: 123\n"))
-	if !strings.Contains(problem, "carries no #NNN") {
-		t.Errorf("problem = %q, want it to report a missing #NNN reference", problem)
+	cases := []struct {
+		name    string
+		content string
+	}{
+		{"numeric", "kind: Added\nbody: something\ncustom:\n  Issue: 123\n"},
+		{"list", "kind: Added\nbody: something\ncustom:\n  Issue: [\"#123\"]\n"},
+		{"map", "kind: Added\nbody: something\ncustom:\n  Issue:\n    ref: \"#123\"\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			problem := checkFile(writeFragment(t, c.content))
+			if !strings.Contains(problem, "must be a string") {
+				t.Errorf("problem = %q, want it to report a non-string value", problem)
+			}
+		})
 	}
 }
 
