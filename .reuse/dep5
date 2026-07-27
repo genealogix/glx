@@ -57,6 +57,13 @@ Files: glx/web/*
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
 
+Files: glx/publish/*
+Copyright: 2025 Oracynth, Inc.
+License: Apache-2.0
+Comment: HTML templates, CSS, and JS embedded in the binary and emitted by
+ `glx publish`; none can carry an inline SPDX header without appearing in
+ the generated site output.
+
 Files: NOTICE
 Copyright: 2025 Oracynth, Inc.
 License: Apache-2.0
