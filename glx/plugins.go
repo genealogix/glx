@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -51,9 +52,17 @@ const osWindows = "windows"
 // used for value-bearing parses are derived as `pluginsFlag + "="` /
 // `quietFlag + "="` at the call sites.
 const (
-	pluginsFlag = "--plugins"
-	quietFlag   = "--quiet"
+	pluginsFlag    = "--plugins"
+	quietFlag      = "--quiet"
+	quietShortFlag = "-q"
 )
+
+// quietValuePrefixes are the value-attached spellings pflag accepts for the
+// boolean quiet flag. pflag's short-argument parser checks for an `=` before it
+// falls back to a bool's implicit "true", so `-q=true` and `-q=false` are both
+// valid invocations alongside the long `--quiet=...` forms. Package-level so the
+// list is not rebuilt for every argument scanned.
+var quietValuePrefixes = [...]string{quietFlag + "=", quietShortFlag + "="}
 
 // exitPluginStartFailure is the exit code returned when the plugin executable
 // cannot be started at all (vs. starting and exiting non-zero). 127 matches the
@@ -73,6 +82,12 @@ type Plugin struct {
 	// is always absolute and contains a separator — exec.CommandContext does
 	// NOT route through exec.LookPath/PATH, and Go 1.19+ ErrDot/CWD-resolution
 	// ambiguity does not apply even when PATH had relative entries.
+	//
+	// When the PATH entry is a symlink (a package-manager shim), this is the
+	// link's own path, not the resolved target: exec follows the link itself,
+	// and reporting the PATH location is what `glx --plugins` should show and
+	// what the user can act on. Discovery still validates the link target — see
+	// pluginNameFromEntry.
 	Path string
 }
 
@@ -129,7 +144,7 @@ func discoverPlugins(pathEnv, pathExt string) []Plugin {
 		}
 		best := make(map[string]cand)
 		for _, e := range entries {
-			name, extIdx, ok := pluginNameFromEntry(e, exts, isWindows)
+			name, extIdx, ok := pluginNameFromEntry(dir, e, exts, isWindows)
 			if !ok {
 				continue
 			}
@@ -169,19 +184,34 @@ func findPlugin(name, pathEnv, pathExt string) (Plugin, bool) {
 	return Plugin{}, false
 }
 
-// pluginNameFromEntry extracts a plugin's logical name from a directory entry.
-// Returns ok=false unless the entry is a regular file (not a directory) with the
-// glx- prefix and is executable on the target platform. When isWindows is true,
-// the entry's extension must be in exts; the returned extIdx is the matched
-// extension's index in exts (lower = higher PATHEXT priority) and is used by
-// discoverPlugins to pick the right file when several extensions co-exist.
-// Otherwise the file must have at least one executable permission bit set;
-// extIdx is always 0.
+// pluginNameFromEntry extracts a plugin's logical name from an entry in the PATH
+// directory dir. Returns ok=false unless the entry resolves to a regular file
+// with the glx- prefix that is executable on the target platform. The
+// regular-file requirement is enforced on both platform branches: directories,
+// devices, sockets, and FIFOs are never exec'd as plugins, so such an entry
+// falls through to cobra's normal "unknown command" error rather than producing
+// a plugin start failure.
+//
+// Symlinks are resolved and their target is what must satisfy the
+// regular-file/executable test. PATH shims (e.g. /usr/local/bin/glx-foo →
+// /opt/foo/bin/glx-foo) are how package managers such as Homebrew, npm, and asdf
+// install executables, and git/kubectl dispatch through them, so rejecting
+// symlinks outright would make the most common installation style
+// undiscoverable. Requiring the *target* to be a regular file keeps
+// symlinks-to-directories, dangling links, and link cycles rejected. dir is
+// needed to perform that resolution because os.DirEntry carries only a base name.
+//
+// When isWindows is true, the entry's extension must be in exts; the returned
+// extIdx is the matched extension's index in exts (lower = higher PATHEXT
+// priority) and is used by discoverPlugins to pick the right file when several
+// extensions co-exist. PATHEXT membership is what makes a file executable on
+// Windows, so no permission bit is consulted there. Otherwise the file must have
+// at least one executable permission bit set; extIdx is always 0.
 //
 // isWindows is taken as a parameter (rather than read from runtime.GOOS inside
 // the function) so both platform branches are exercised by unit tests on any
 // host.
-func pluginNameFromEntry(e os.DirEntry, exts []string, isWindows bool) (name string, extIdx int, ok bool) {
+func pluginNameFromEntry(dir string, e os.DirEntry, exts []string, isWindows bool) (name string, extIdx int, ok bool) {
 	if e.IsDir() {
 		return "", 0, false
 	}
@@ -191,6 +221,10 @@ func pluginNameFromEntry(e os.DirEntry, exts []string, isWindows bool) (name str
 		matchName = strings.ToLower(fn)
 	}
 	if !strings.HasPrefix(matchName, pluginPrefix) {
+		return "", 0, false
+	}
+	info, isFile := resolveRegularFile(dir, e)
+	if !isFile {
 		return "", 0, false
 	}
 	if isWindows {
@@ -207,14 +241,7 @@ func pluginNameFromEntry(e os.DirEntry, exts []string, isWindows bool) (name str
 
 		return "", 0, false
 	}
-	info, err := e.Info()
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
-		// Reject directories (already filtered above via e.IsDir(), but defense
-		// in depth), symlinks (e.Info() reports the link's own mode, which is
-		// not regular), and devices/sockets — none of these are safe to exec
-		// as a plugin even if their mode bits happen to include execute. A
-		// symlink that points to a legitimate executable falls under the same
-		// rule; supporting that is a deliberate Phase-2 follow-up if needed.
+	if info.Mode()&0o111 == 0 {
 		return "", 0, false
 	}
 	stem := strings.TrimPrefix(fn, pluginPrefix)
@@ -223,6 +250,34 @@ func pluginNameFromEntry(e os.DirEntry, exts []string, isWindows bool) (name str
 	}
 
 	return stem, 0, true
+}
+
+// resolveRegularFile returns the FileInfo that governs whether e (an entry in
+// dir) may be exec'd as a plugin, following symlinks to do so.
+//
+// os.DirEntry.Info reports the link's own metadata (lstat semantics), so a
+// symlink needs an explicit os.Stat of the joined path to inspect what it points
+// at. os.Stat walks the whole link chain and returns an error for dangling links
+// and cycles, so both are rejected here. Anything that is not ultimately a
+// regular file — a directory, device, socket, or FIFO, whether named directly or
+// reached through a link — is rejected as well.
+func resolveRegularFile(dir string, e os.DirEntry) (fs.FileInfo, bool) {
+	info, err := e.Info()
+	if err != nil {
+		return nil, false
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		target, err := os.Stat(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return nil, false
+		}
+		info = target
+	}
+	if !info.Mode().IsRegular() {
+		return nil, false
+	}
+
+	return info, true
 }
 
 // parsePathExt splits a Windows PATHEXT value into a lowercased extension list
@@ -398,16 +453,25 @@ func pluginsFlagRequested(args []string) bool {
 	return false
 }
 
-// quietFlagRequested reports whether `-q`, `--quiet`, or a truthy
-// `--quiet=true|1|t|...` was passed in args. Used by Execute() to honor the
-// established `--quiet` contract for the `glx --plugins` listing path, which
-// runs before cobra parses flags into the package-level quietOutput variable.
+// quietFlagRequested reports whether `-q`, `--quiet`, or a truthy value-attached
+// form (`--quiet=true|1|t|...`, `-q=true|1|t|...`) was passed in args. Both the
+// long and shorthand value-attached spellings are recognized because pflag
+// accepts both; matching only the long one would make `glx -q=true --plugins`
+// print the empty-case notice that `-q` is supposed to suppress.
+//
+// Used by Execute() to honor the established `--quiet` contract for the
+// `glx --plugins` listing path, which runs before cobra parses flags into the
+// package-level quietOutput variable.
 func quietFlagRequested(args []string) bool {
 	for _, a := range args {
-		if a == "-q" || a == quietFlag {
+		if a == quietShortFlag || a == quietFlag {
 			return true
 		}
-		if rest, ok := strings.CutPrefix(a, quietFlag+"="); ok {
+		for _, prefix := range quietValuePrefixes {
+			rest, ok := strings.CutPrefix(a, prefix)
+			if !ok {
+				continue
+			}
 			if b, err := strconv.ParseBool(rest); err == nil && b {
 				return true
 			}

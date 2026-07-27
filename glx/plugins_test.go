@@ -57,13 +57,24 @@ func (fi fakeFileInfo) ModTime() time.Time { return time.Time{} }
 func (fi fakeFileInfo) IsDir() bool        { return fi.mode.IsDir() }
 func (fi fakeFileInfo) Sys() any           { return nil }
 
+// pluginFileName returns the on-disk filename that discoverPlugins recognizes
+// for a glx-<name> plugin on the current platform: PATHEXT-suffixed on Windows,
+// bare elsewhere.
+func pluginFileName(base string) string {
+	if runtime.GOOS == osWindows {
+		return base + ".bat"
+	}
+
+	return base
+}
+
 // makeFakePluginFile writes an executable file at dir/base that discoverPlugins
 // will recognize on the current platform. On Windows it writes <base>.bat; on
 // Unix it writes <base> with the executable bit set.
 func makeFakePluginFile(t *testing.T, dir, base, body string) {
 	t.Helper()
 	if runtime.GOOS == osWindows {
-		path := filepath.Join(dir, base+".bat")
+		path := filepath.Join(dir, pluginFileName(base))
 		if err := os.WriteFile(path, []byte("@echo off\r\n"+body+"\r\n"), 0o644); err != nil {
 			t.Fatalf("write %s: %v", path, err)
 		}
@@ -234,6 +245,10 @@ func TestPluginNameFromEntry(t *testing.T) {
 		{"win: notglx-foo.exe → rejected (no prefix)", fakeDirEntry{name: "notglx-foo.exe", mode: 0o644}, winExts, true, "", 0, false},
 		{"win: glx-.exe → rejected (empty stem)", fakeDirEntry{name: "glx-.exe", mode: 0o644}, winExts, true, "", 0, false},
 		{"win: directory glx-foo.exe → rejected", fakeDirEntry{name: "glx-foo.exe", isDir: true, mode: fs.ModeDir | 0o755}, winExts, true, "", 0, false},
+		// The Windows branch must enforce the regular-file contract too, not just
+		// the PATHEXT match — a device/socket named glx-foo.exe is not dispatchable.
+		{"win: device glx-foo.exe → rejected (not a regular file)", fakeDirEntry{name: "glx-foo.exe", mode: fs.ModeDevice | 0o755}, winExts, true, "", 0, false},
+		{"win: socket glx-foo.exe → rejected (not a regular file)", fakeDirEntry{name: "glx-foo.exe", mode: fs.ModeSocket | 0o755}, winExts, true, "", 0, false},
 
 		// --- Unix branch ---
 		{"unix: glx-foo (exec bit) → foo", fakeDirEntry{name: "glx-foo", mode: 0o755}, nil, false, "foo", 0, true},
@@ -242,16 +257,88 @@ func TestPluginNameFromEntry(t *testing.T) {
 		{"unix: notglx-foo → rejected", fakeDirEntry{name: "notglx-foo", mode: 0o755}, nil, false, "", 0, false},
 		{"unix: GLX-FOO → rejected (case-sensitive prefix on Unix)", fakeDirEntry{name: "GLX-FOO", mode: 0o755}, nil, false, "", 0, false},
 		{"unix: directory glx-foo → rejected", fakeDirEntry{name: "glx-foo", isDir: true, mode: fs.ModeDir | 0o755}, nil, false, "", 0, false},
-		{"unix: symlink glx-foo → rejected (non-regular file)", fakeDirEntry{name: "glx-foo", mode: fs.ModeSymlink | 0o777}, nil, false, "", 0, false},
+		{"unix: device glx-foo → rejected (not a regular file)", fakeDirEntry{name: "glx-foo", mode: fs.ModeDevice | 0o755}, nil, false, "", 0, false},
+		// A symlink is resolved against the containing directory; these fakes use
+		// the empty dir, so the target cannot be stat'd and the entry is rejected
+		// — the same path a dangling link takes. Symlinks that DO resolve are
+		// covered against a real filesystem in TestDiscoverPlugins_Symlinks.
+		{"unix: symlink glx-foo with unresolvable target → rejected", fakeDirEntry{name: "glx-foo", mode: fs.ModeSymlink | 0o777}, nil, false, "", 0, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotName, gotIdx, gotOk := pluginNameFromEntry(tt.entry, tt.exts, tt.isWindows)
+			gotName, gotIdx, gotOk := pluginNameFromEntry("", tt.entry, tt.exts, tt.isWindows)
 			if gotOk != tt.wantOk || gotName != tt.wantName || gotIdx != tt.wantIdx {
 				t.Errorf("pluginNameFromEntry = (%q, %d, %v); want (%q, %d, %v)",
 					gotName, gotIdx, gotOk, tt.wantName, tt.wantIdx, tt.wantOk)
 			}
 		})
+	}
+}
+
+// TestDiscoverPlugins_Symlinks exercises the symlink policy against a real
+// filesystem, which the fakeDirEntry table above cannot do. A PATH entry that
+// is a symlink to an executable regular file IS discovered — package managers
+// (Homebrew, npm, asdf) install executables as PATH shims and git/kubectl
+// dispatch through them, so rejecting links would hide the most common
+// installation style. A symlink to a directory and a dangling symlink both stay
+// rejected, since neither resolves to a regular file.
+func TestDiscoverPlugins_Symlinks(t *testing.T) {
+	pathDir := t.TempDir()
+	targetDir := t.TempDir()
+
+	// A real executable living outside PATH, reachable only via the shim below.
+	makeFakePluginFile(t, targetDir, "glx-shimmed", "echo shimmed")
+	shim := pluginFileName("glx-shimmed")
+	if err := os.Symlink(filepath.Join(targetDir, shim), filepath.Join(pathDir, shim)); err != nil {
+		// Creating symlinks on Windows requires Developer Mode or elevation.
+		t.Skipf("symlinks unavailable on this host: %v", err)
+	}
+
+	dirTarget := filepath.Join(targetDir, "a-directory")
+	if err := os.Mkdir(dirTarget, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Symlink(dirTarget, filepath.Join(pathDir, pluginFileName("glx-dirlink"))); err != nil {
+		t.Fatalf("symlink to directory: %v", err)
+	}
+
+	if err := os.Symlink(filepath.Join(targetDir, "no-such-file"), filepath.Join(pathDir, pluginFileName("glx-dangling"))); err != nil {
+		t.Fatalf("dangling symlink: %v", err)
+	}
+
+	found := discoverPlugins(pathDir, defaultPathExtForTest())
+	names := make([]string, 0, len(found))
+	for _, p := range found {
+		names = append(names, p.Name)
+	}
+	if !slices.Equal(names, []string{"shimmed"}) {
+		t.Errorf("discoverPlugins names = %v; want [shimmed] — symlink to an executable should be discovered, "+
+			"symlink-to-directory and dangling symlink should be rejected", names)
+	}
+}
+
+// TestRunPlugin_ThroughSymlink verifies the shim is not just discovered but
+// actually dispatchable: exec follows the link, so the target runs.
+func TestRunPlugin_ThroughSymlink(t *testing.T) {
+	pathDir := t.TempDir()
+	targetDir := t.TempDir()
+
+	makeFakePluginFile(t, targetDir, "glx-shimmed", "echo ran-via-shim")
+	shim := pluginFileName("glx-shimmed")
+	if err := os.Symlink(filepath.Join(targetDir, shim), filepath.Join(pathDir, shim)); err != nil {
+		t.Skipf("symlinks unavailable on this host: %v", err)
+	}
+
+	p, ok := findPlugin("shimmed", pathDir, defaultPathExtForTest())
+	if !ok {
+		t.Fatalf("findPlugin(shimmed) ok=false; want true")
+	}
+	var stdout, stderr bytes.Buffer
+	if code := runPlugin(context.Background(), p, nil, nil, &stdout, &stderr); code != 0 {
+		t.Fatalf("runPlugin exit=%d; want 0 (stderr: %s)", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "ran-via-shim") {
+		t.Errorf("stdout = %q; want it to contain %q", stdout.String(), "ran-via-shim")
 	}
 }
 
@@ -338,6 +425,13 @@ func TestQuietFlagRequested(t *testing.T) {
 		{"--quiet=1", []string{"--quiet=1"}, true},
 		{"--quiet=false", []string{"--quiet=false"}, false},
 		{"--quiet=garbage", []string{"--quiet=garbage"}, false},
+		// pflag accepts the value-attached shorthand form for bool flags, so
+		// `-q=true` must be honored here exactly like `--quiet=true`.
+		{"-q=true", []string{"-q=true"}, true},
+		{"-q=1", []string{"-q=1"}, true},
+		{"-q=false", []string{"-q=false"}, false},
+		{"-q=garbage", []string{"-q=garbage"}, false},
+		{"-q=true before --plugins", []string{"-q=true", "--plugins"}, true},
 		{"-q before --plugins", []string{"-q", "--plugins"}, true},
 		{"unrelated", []string{"validate", "/path"}, false},
 	}
