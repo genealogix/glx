@@ -112,9 +112,12 @@ jobs:
         # that graph. See ci-tools/README.md.
         #
         # The pinned version lives in .gosec-version (single source of truth, shared
-        # with `make gosec`). Neither Dependabot ecosystem sees a `go install ...@vX.Y.Z`
-        # pin, so the weekly gosec-pin-currency.yml workflow is what keeps it from
-        # rotting — deliberately a separate workflow, see the header comment.
+        # with `make gosec`). Dependabot cannot propose a bump for it: its gomod
+        # ecosystem only reads go.mod files, where gosec deliberately does not
+        # appear, and its github-actions ecosystem only reads `uses:` references,
+        # not a `go install ...@vX.Y.Z` line in a `run:` block. The weekly
+        # gosec-pin-currency.yml workflow is what keeps the pin from rotting —
+        # deliberately a separate workflow, see the header comment.
         run: |
           v="$(tr -d '[:space:]' < .gosec-version)"
           printf '%s' "$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "invalid .gosec-version: $v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }
