@@ -19,7 +19,7 @@ The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
 
-Use --serve to preview the site locally over HTTP. Use --living to redact
+Use --living to redact
 people who are likely still alive before publishing; it applies the same
 rules as export --privatize-living: a person is treated as living when their
 living: true property is set, or — under the fallback heuristic — when no
@@ -38,9 +38,6 @@ glx publish [flags]
   # Generate a site in ./site
   glx publish --archive . --output ./site
 
-  # Generate and preview locally
-  glx publish --serve
-
   # Redact living people and embed media for sharing
   glx publish --output ./public --living --embed-media
 
@@ -56,8 +53,6 @@ glx publish [flags]
   -h, --help             help for publish
       --living           Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)
   -o, --output string    Output directory for the generated site (default "./site")
-      --port int         Port for --serve (default 8080)
-      --serve            Serve the generated site locally over HTTP
       --title string     Site title (default "GLX Family Archive")
 ```
 

@@ -15,9 +15,6 @@
 package main
 
 import (
-	"context"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -294,41 +291,19 @@ func TestRunPublish(t *testing.T) {
 	// Drive the cobra wrapper through its package-level flag vars, restoring
 	// them afterward so other tests are unaffected.
 	prevArchive, prevOutput, prevTitle := publishArchive, publishOutput, publishTitle
-	prevServe, prevEmbed, prevLiving := publishServe, publishEmbedMedia, publishLiving
+	prevEmbed, prevLiving := publishEmbedMedia, publishLiving
 	t.Cleanup(func() {
 		publishArchive, publishOutput, publishTitle = prevArchive, prevOutput, prevTitle
-		publishServe, publishEmbedMedia, publishLiving = prevServe, prevEmbed, prevLiving
+		publishEmbedMedia, publishLiving = prevEmbed, prevLiving
 	})
 	publishArchive, publishOutput, publishTitle = exampleArchive, out, "Test Family"
-	publishServe, publishEmbedMedia, publishLiving = false, false, false
+	publishEmbedMedia, publishLiving = false, false
 
 	if err := runPublish(nil, nil); err != nil {
 		t.Fatalf("runPublish: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "index.html")); err != nil {
 		t.Errorf("index not generated: %v", err)
-	}
-}
-
-func TestSiteHandler(t *testing.T) {
-	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "index.html"), []byte("<h1>hello</h1>"))
-
-	server := httptest.NewServer(siteHandler(dir))
-	defer server.Close()
-
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/index.html", nil)
-	if err != nil {
-		t.Fatalf("new request: %v", err)
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("GET: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}
 }
 

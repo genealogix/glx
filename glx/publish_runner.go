@@ -27,15 +27,12 @@ type publishOptions struct {
 	ArchivePath string
 	OutputDir   string
 	Title       string
-	Serve       bool
-	Port        int
 	EmbedMedia  bool
 	Living      bool
 }
 
-// generateSite loads the archive, builds the presentation model, writes the
-// static site, and optionally serves it locally. When Serve is set this blocks
-// until interrupted.
+// generateSite loads the archive, builds the presentation model, and writes the
+// static site to disk. Previewing the result is `glx serve`'s job.
 func generateSite(streams *IOStreams, opts publishOptions) error {
 	archive, err := loadGLXArchive(opts.ArchivePath, false)
 	if err != nil {
@@ -62,10 +59,6 @@ func generateSite(streams *IOStreams, opts publishOptions) error {
 	}
 
 	printPublishSummary(streams, model, opts, copied)
-
-	if opts.Serve {
-		return serveSite(streams, opts.OutputDir, opts.Port)
-	}
 
 	return nil
 }
@@ -94,8 +87,6 @@ func printPublishSummary(streams *IOStreams, model *siteModel, opts publishOptio
 	case mediaCopied > 0:
 		streams.Printf("  Media:   %d file(s) copied to %s\n", mediaCopied, filepath.Join(opts.OutputDir, "media"))
 	}
-	if !opts.Serve {
-		streams.Printf("\nOpen %s in a browser, or re-run with --serve to preview locally.\n",
-			filepath.Join(opts.OutputDir, "index.html"))
-	}
+	streams.Printf("\nOpen %s in a browser, or run `glx serve` to browse the archive interactively.\n",
+		filepath.Join(opts.OutputDir, "index.html"))
 }

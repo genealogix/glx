@@ -890,15 +890,10 @@ func runSummary(_ *cobra.Command, args []string) error {
 // Publish Command
 // ============================================================================
 
-// defaultPublishPort is the default port for `glx publish --serve`.
-const defaultPublishPort = 8080
-
 var (
 	publishArchive    string
 	publishOutput     string
 	publishTitle      string
-	publishServe      bool
-	publishPort       int
 	publishEmbedMedia bool
 	publishLiving     bool
 )
@@ -916,7 +911,7 @@ The output is a plain directory of HTML/CSS/JS with no server, database, or
 build tooling required — open index.html directly with file:// or host it
 anywhere (GitHub Pages, S3, Netlify).
 
-Use --serve to preview the site locally over HTTP. Use --living to redact
+Use --living to redact
 people who are likely still alive before publishing; it applies the same
 rules as export --privatize-living: a person is treated as living when their
 living: true property is set, or — under the fallback heuristic — when no
@@ -926,9 +921,6 @@ years ago. Use --embed-media to inline images as base64 for a fully
 self-contained set of pages.`,
 	Example: `  # Generate a site in ./site
   glx publish --archive . --output ./site
-
-  # Generate and preview locally
-  glx publish --serve
 
   # Redact living people and embed media for sharing
   glx publish --output ./public --living --embed-media
@@ -943,8 +935,6 @@ func init() {
 	publishCmd.Flags().StringVarP(&publishArchive, "archive", "a", ".", "Archive path (directory or single file)")
 	publishCmd.Flags().StringVarP(&publishOutput, "output", "o", "./site", "Output directory for the generated site")
 	publishCmd.Flags().StringVar(&publishTitle, "title", "", "Site title (default \"GLX Family Archive\")")
-	publishCmd.Flags().BoolVar(&publishServe, "serve", false, "Serve the generated site locally over HTTP")
-	publishCmd.Flags().IntVar(&publishPort, "port", defaultPublishPort, "Port for --serve")
 	publishCmd.Flags().BoolVar(&publishEmbedMedia, "embed-media", false, "Embed images as base64 for fully self-contained pages")
 	publishCmd.Flags().BoolVar(&publishLiving, "living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
 }
@@ -954,8 +944,6 @@ func runPublish(_ *cobra.Command, _ []string) error {
 		ArchivePath: publishArchive,
 		OutputDir:   publishOutput,
 		Title:       publishTitle,
-		Serve:       publishServe,
-		Port:        publishPort,
 		EmbedMedia:  publishEmbedMedia,
 		Living:      publishLiving,
 	})
