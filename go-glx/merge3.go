@@ -236,7 +236,10 @@ func merge3EntityID[V any](
 
 		return m, sub, true
 	case bOK && !oOK && !tOK:
-		// Triple delete (defensive — unionMapKeys filters this).
+		// Both sides deleted the entity. Reachable and routine:
+		// unionMapKeys unions base's keys too (it only skips nil values), so
+		// a base-only ID is enumerated and lands here. Concurrent identical
+		// deletes agree, so drop it with no conflict.
 		return nil, nil, false
 	default:
 		m, sub := mergeOne(entityType, id, b, o, t)

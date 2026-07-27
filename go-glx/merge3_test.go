@@ -158,6 +158,35 @@ func TestThreeWayMerge_OneSidedDelete_OtherUnchanged(t *testing.T) {
 	}
 }
 
+// TestThreeWayMerge_BothSidesDelete_NoConflict covers the branch whose
+// comment used to claim it was unreachable (Copilot review on PR #906).
+// unionMapKeys unions base's keys as well — it only skips nil values — so a
+// base-only ID is enumerated and both-sides-delete is a routine outcome, not
+// a defensive fallback. Concurrent identical deletes must agree silently.
+func TestThreeWayMerge_BothSidesDelete_NoConflict(t *testing.T) {
+	base := &GLXFile{Persons: map[string]*Person{
+		"p1": {Properties: map[string]any{"name": "Alice"}},
+		"p2": {Properties: map[string]any{"name": "Bob"}},
+	}}
+	ours := &GLXFile{Persons: map[string]*Person{
+		"p2": {Properties: map[string]any{"name": "Bob"}},
+	}}
+	theirs := &GLXFile{Persons: map[string]*Person{
+		"p2": {Properties: map[string]any{"name": "Bob"}},
+	}}
+
+	merged, conflicts := ThreeWayMerge(base, ours, theirs)
+	if len(conflicts) != 0 {
+		t.Fatalf("concurrent identical deletes must not conflict, got %v", conflicts)
+	}
+	if _, ok := merged.Persons["p1"]; ok {
+		t.Errorf("expected p1 deleted on both sides to stay deleted, got %v", merged.Persons)
+	}
+	if _, ok := merged.Persons["p2"]; !ok {
+		t.Errorf("expected untouched p2 to survive, got %v", merged.Persons)
+	}
+}
+
 func TestThreeWayMerge_DeleteVsModify_Conflict(t *testing.T) {
 	base := &GLXFile{Persons: map[string]*Person{
 		"p1": {Properties: map[string]any{"name": "Alice"}},
