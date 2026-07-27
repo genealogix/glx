@@ -36,6 +36,13 @@ inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
   without exposing that tree. Run it locally with `make gosec`. Because neither
   Dependabot ecosystem can see this pin, the weekly `gosec-pin-currency` job in
   `security.yml` fails when `.gosec-version` falls behind the latest gosec release.
+- **go-licenses** stays on a version-pinned
+  `go install github.com/google/go-licenses/v2@v2.0.1` in
+  `.github/workflows/license-compliance.yml` (and a matching `go run` in
+  `make license-check`). Its tree pulls `go.opencensus.io`, `golang.org/x/net`,
+  and `licenseclassifier` — committing that graph here would make
+  `dependency-review` block PRs on advisories in build-time-only code, the
+  same trade-off as gosec.
 - **golangci-lint** is pinned via `.golangci-lint-version` and run through
   `golangci-lint-action` (for `only-new-issues` support — see #272).
 - **goreleaser** runs through `goreleaser-action`.

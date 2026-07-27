@@ -43,6 +43,7 @@ export default defineConfig({
     'docs/gedcom-spec/**',
     'glx/testdata/**',
     'glx/defaults/**',
+    'glx/publish/**',
     'tools/**',
     'scripts/**',
     '.changes/**',
@@ -148,6 +149,7 @@ export default defineConfig({
         items: [
           { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
           { text: 'Best Practices', link: '/guides/best-practices' },
+          { text: 'Git Workflow', link: '/guides/git-workflow' },
           { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
         ]
       },
@@ -333,6 +335,12 @@ export default defineConfig({
           ]
         },
         {
+          text: 'Publishing',
+          items: [
+            { text: 'glx publish', link: '/cli/glx_publish' }
+          ]
+        },
+        {
           text: 'Exploration',
           items: [
             { text: 'glx search', link: '/cli/glx_search' },
@@ -391,6 +399,7 @@ export default defineConfig({
           items: [
             { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
             { text: 'Best Practices', link: '/guides/best-practices' },
+            { text: 'Git Workflow', link: '/guides/git-workflow' },
             { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
           ]
         }

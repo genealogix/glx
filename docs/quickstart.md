@@ -221,6 +221,8 @@ git commit -m "Initial commit: Add John Smith family data
 - All files validated successfully"
 ```
 
+For branching strategies, collaboration patterns, and using branches to isolate research hypotheses, see the [Git Workflow Guide](/guides/git-workflow).
+
 ## Step 10: Customize Vocabularies for Your Research
 
 GLX isn't limited to traditional genealogy! Each archive defines its own [controlled vocabularies](/specification/2-core-concepts#archive-owned-vocabularies) — the types that matter to your research. Vocabulary files can live anywhere in your archive — the examples below use the default `vocabularies/` directory created by `glx init`. See the [Vocabularies specification](/specification/4-entity-types/vocabularies) and [Standard Vocabularies](/specification/5-standard-vocabularies/) for the full reference.
@@ -353,6 +355,7 @@ Your archive has a person, place, event, source, citation, and assertion — the
 - **Explore all entity types** — the [Complete Family](/examples/complete-family/) example shows every entity type working together, or browse the [Entity Types](/specification/4-entity-types/) reference
 - **Read the specification** — the [Introduction](/specification/1-introduction) and [Core Concepts](/specification/2-core-concepts) explain the architecture behind what you just built
 - **Read the Best Practices** — [recommended workflows](/guides/best-practices) for evidence documentation, Git usage, and file organization
+- **Learn the Git workflows** — the [Git Workflow Guide](/guides/git-workflow) covers branching strategies, collaboration patterns, and branch-based research
 
 **Get help:**
 

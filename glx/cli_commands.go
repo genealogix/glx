@@ -131,6 +131,7 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(publishCmd)
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(cacheCmd)
 	rootCmd.AddCommand(docsCmd)
@@ -883,6 +884,69 @@ func init() {
 
 func runSummary(_ *cobra.Command, args []string) error {
 	return showSummary(summaryArchive, args[0])
+}
+
+// ============================================================================
+// Publish Command
+// ============================================================================
+
+var (
+	publishArchive    string
+	publishOutput     string
+	publishTitle      string
+	publishEmbedMedia bool
+	publishLiving     bool
+)
+
+var publishCmd = &cobra.Command{
+	Use:   "publish",
+	Short: "Generate a browsable static HTML site from an archive",
+	Long: `Export a GLX archive as a self-contained static HTML site for sharing
+with family who won't install tools or read YAML.
+
+The site includes a person profile page for everyone in the archive (with
+vital facts, a life timeline, linked family members, supporting sources, and
+a media gallery), plus source and place indexes and a client-side search.
+The output is a plain directory of HTML/CSS/JS with no server, database, or
+build tooling required — open index.html directly with file:// or host it
+anywhere (GitHub Pages, S3, Netlify).
+
+Use --living to redact
+people who are likely still alive before publishing; it applies the same
+rules as export --privatize-living: a person is treated as living when their
+living: true property is set, or — under the fallback heuristic — when no
+recorded death, burial, or cremation event exists (regardless of whether the
+event has a date) and their most recent known birth year is less than 100
+years ago. Use --embed-media to inline images as base64 for a fully
+self-contained set of pages.`,
+	Example: `  # Generate a site in ./site
+  glx publish --archive . --output ./site
+
+  # Redact living people and embed media for sharing
+  glx publish --output ./public --living --embed-media
+
+  # Custom site title
+  glx publish --output ./site --title "The Webb Family Archive"`,
+	Args: cobra.NoArgs,
+	RunE: runPublish,
+}
+
+func init() {
+	publishCmd.Flags().StringVarP(&publishArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	publishCmd.Flags().StringVarP(&publishOutput, "output", "o", "./site", "Output directory for the generated site")
+	publishCmd.Flags().StringVar(&publishTitle, "title", "", "Site title (default \"GLX Family Archive\")")
+	publishCmd.Flags().BoolVar(&publishEmbedMedia, "embed-media", false, "Embed images as base64 for fully self-contained pages")
+	publishCmd.Flags().BoolVar(&publishLiving, "living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
+}
+
+func runPublish(_ *cobra.Command, _ []string) error {
+	return generateSite(SystemIOStreams(), publishOptions{
+		ArchivePath: publishArchive,
+		OutputDir:   publishOutput,
+		Title:       publishTitle,
+		EmbedMedia:  publishEmbedMedia,
+		Living:      publishLiving,
+	})
 }
 
 // ============================================================================
