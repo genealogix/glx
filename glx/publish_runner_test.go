@@ -26,10 +26,8 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-const exampleArchive = "../docs/examples/assertion-workflow/archive.glx"
-
 func TestRenderSite_WritesAllFiles(t *testing.T) {
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{Title: "Smith Family"})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{Title: "Smith Family"})
 	out := t.TempDir()
 
 	if err := renderSite(model, out); err != nil {
@@ -84,7 +82,7 @@ func TestRenderSite_EscapesHTML(t *testing.T) {
 			"person-evil": {Properties: map[string]any{"name": "<script>alert(1)</script>"}},
 		},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 	out := t.TempDir()
 	if err := renderSite(model, out); err != nil {
 		t.Fatalf("renderSite: %v", err)
@@ -145,7 +143,7 @@ func TestResolveSiteMedia_CopyMode(t *testing.T) {
 	base := t.TempDir()
 	writeFile(t, filepath.Join(base, "portrait.jpg"), []byte("\xff\xd8\xff\xe0JFIF-fake"))
 
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 	out := t.TempDir()
 
 	copied, err := resolveSiteMedia(model, base, out, false)
@@ -169,7 +167,7 @@ func TestResolveSiteMedia_EmbedMode(t *testing.T) {
 	base := t.TempDir()
 	writeFile(t, filepath.Join(base, "portrait.jpg"), []byte("fake-image-bytes"))
 
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 	out := t.TempDir()
 
 	copied, err := resolveSiteMedia(model, base, out, true)
@@ -204,7 +202,7 @@ func TestResolveSiteMedia_EmbedMode(t *testing.T) {
 
 func TestResolveSiteMedia_MissingFile(t *testing.T) {
 	base := t.TempDir() // portrait.jpg deliberately absent
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 
 	if _, err := resolveSiteMedia(model, base, t.TempDir(), false); err != nil {
 		t.Fatalf("resolveSiteMedia: %v", err)
@@ -216,18 +214,18 @@ func TestResolveSiteMedia_MissingFile(t *testing.T) {
 	}
 }
 
-func TestGenerateView_EndToEnd(t *testing.T) {
+func TestGeneratePublish_EndToEnd(t *testing.T) {
 	requireExample(t)
 	out := filepath.Join(t.TempDir(), "site")
 	streams, outBuf, _ := TestIOStreams()
 
-	err := generateView(streams, viewOptions{
+	err := generateSite(streams, publishOptions{
 		ArchivePath: exampleArchive,
 		OutputDir:   out,
 		Title:       "Chen Family",
 	})
 	if err != nil {
-		t.Fatalf("generateView: %v", err)
+		t.Fatalf("generateSite: %v", err)
 	}
 
 	if !strings.Contains(outBuf.String(), "Generated static site") {
@@ -243,7 +241,7 @@ func TestGenerateView_EndToEnd(t *testing.T) {
 	}
 }
 
-func TestGenerateView_DirectoryArchive(t *testing.T) {
+func TestGeneratePublish_DirectoryArchive(t *testing.T) {
 	const dirArchive = "testdata/valid/minimal-example"
 	if _, err := os.Stat(dirArchive); err != nil {
 		t.Skipf("directory archive fixture not available: %v", err)
@@ -252,8 +250,8 @@ func TestGenerateView_DirectoryArchive(t *testing.T) {
 	streams, _, _ := TestIOStreams()
 
 	// Exercises the directory-load path and archiveMediaBaseDir's dir branch.
-	if err := generateView(streams, viewOptions{ArchivePath: dirArchive, OutputDir: out}); err != nil {
-		t.Fatalf("generateView: %v", err)
+	if err := generateSite(streams, publishOptions{ArchivePath: dirArchive, OutputDir: out}); err != nil {
+		t.Fatalf("generateSite: %v", err)
 	}
 	for _, rel := range []string{"index.html", "sources/index.html", "places/index.html", "search.html"} {
 		if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(rel))); err != nil {
@@ -262,18 +260,18 @@ func TestGenerateView_DirectoryArchive(t *testing.T) {
 	}
 }
 
-func TestGenerateView_Living(t *testing.T) {
+func TestGeneratePublish_Living(t *testing.T) {
 	requireExample(t)
 	out := filepath.Join(t.TempDir(), "site")
 	streams, outBuf, _ := TestIOStreams()
 
-	err := generateView(streams, viewOptions{
+	err := generateSite(streams, publishOptions{
 		ArchivePath: exampleArchive,
 		OutputDir:   out,
 		Living:      true,
 	})
 	if err != nil {
-		t.Fatalf("generateView: %v", err)
+		t.Fatalf("generateSite: %v", err)
 	}
 
 	if !strings.Contains(outBuf.String(), "Privatized") {
@@ -289,23 +287,23 @@ func TestGenerateView_Living(t *testing.T) {
 	}
 }
 
-func TestRunView(t *testing.T) {
+func TestRunPublish(t *testing.T) {
 	requireExample(t)
 	out := filepath.Join(t.TempDir(), "site")
 
 	// Drive the cobra wrapper through its package-level flag vars, restoring
 	// them afterward so other tests are unaffected.
-	prevArchive, prevOutput, prevTitle := viewArchive, viewOutput, viewTitle
-	prevServe, prevEmbed, prevLiving := viewServe, viewEmbedMedia, viewLiving
+	prevArchive, prevOutput, prevTitle := publishArchive, publishOutput, publishTitle
+	prevServe, prevEmbed, prevLiving := publishServe, publishEmbedMedia, publishLiving
 	t.Cleanup(func() {
-		viewArchive, viewOutput, viewTitle = prevArchive, prevOutput, prevTitle
-		viewServe, viewEmbedMedia, viewLiving = prevServe, prevEmbed, prevLiving
+		publishArchive, publishOutput, publishTitle = prevArchive, prevOutput, prevTitle
+		publishServe, publishEmbedMedia, publishLiving = prevServe, prevEmbed, prevLiving
 	})
-	viewArchive, viewOutput, viewTitle = exampleArchive, out, "Test Family"
-	viewServe, viewEmbedMedia, viewLiving = false, false, false
+	publishArchive, publishOutput, publishTitle = exampleArchive, out, "Test Family"
+	publishServe, publishEmbedMedia, publishLiving = false, false, false
 
-	if err := runView(nil, nil); err != nil {
-		t.Fatalf("runView: %v", err)
+	if err := runPublish(nil, nil); err != nil {
+		t.Fatalf("runPublish: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "index.html")); err != nil {
 		t.Errorf("index not generated: %v", err)

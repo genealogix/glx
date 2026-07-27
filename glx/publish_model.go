@@ -33,8 +33,8 @@ const (
 	searchKindPlace  = "place"
 )
 
-// viewModelOptions controls how the presentation model is built from an archive.
-type viewModelOptions struct {
+// siteModelOptions controls how the presentation model is built from an archive.
+type siteModelOptions struct {
 	Title     string // site title shown in the header and <title>
 	Generated string // pre-formatted generation date; "" omits the footer stamp
 }
@@ -150,7 +150,7 @@ type searchEntry struct {
 }
 
 // mediaItem is a media reference attached to a person. Src/Missing are filled
-// in by the media-resolution stage (view_media.go); the model build only records
+// in by the media-resolution stage (publish_media.go); the model build only records
 // the raw reference and its Kind.
 type mediaItem struct {
 	MediaID  string
@@ -175,7 +175,7 @@ type mediaItem struct {
 // buildSiteModel turns a loaded archive into a fully-resolved presentation
 // model. It performs no I/O — media files are only classified here and resolved
 // to concrete sources later by the media stage.
-func buildSiteModel(archive *glxlib.GLXFile, opts viewModelOptions) *siteModel {
+func buildSiteModel(archive *glxlib.GLXFile, opts siteModelOptions) *siteModel {
 	title := strings.TrimSpace(opts.Title)
 	if title == "" {
 		title = "GLX Family Archive"
@@ -187,7 +187,7 @@ func buildSiteModel(archive *glxlib.GLXFile, opts viewModelOptions) *siteModel {
 		Stats:     buildStats(archive),
 	}
 
-	idx := newViewIndex(archive)
+	idx := newSiteIndex(archive)
 
 	model.Persons = buildPersonPages(archive, idx)
 	model.Sources = buildSourceRows(archive)
@@ -210,8 +210,8 @@ func buildStats(archive *glxlib.GLXFile) siteStats {
 	}
 }
 
-// viewIndex holds derived lookups computed once and shared across page builds.
-type viewIndex struct {
+// siteIndex holds derived lookups computed once and shared across page builds.
+type siteIndex struct {
 	archive  *glxlib.GLXFile
 	parents  map[string][]string // child ID -> parent IDs
 	children map[string][]string // parent ID -> child IDs
@@ -227,9 +227,9 @@ type viewIndex struct {
 	files map[string]string
 }
 
-// newViewIndex precomputes relationship, assertion, place, and filename lookups.
-func newViewIndex(archive *glxlib.GLXFile) *viewIndex {
-	idx := &viewIndex{
+// newSiteIndex precomputes relationship, assertion, place, and filename lookups.
+func newSiteIndex(archive *glxlib.GLXFile) *siteIndex {
+	idx := &siteIndex{
 		archive:            archive,
 		parents:            map[string][]string{},
 		children:           map[string][]string{},
@@ -260,7 +260,7 @@ func newViewIndex(archive *glxlib.GLXFile) *viewIndex {
 }
 
 // indexRelationship records parent/child and spouse edges for one relationship.
-func (idx *viewIndex) indexRelationship(rel *glxlib.Relationship) {
+func (idx *siteIndex) indexRelationship(rel *glxlib.Relationship) {
 	switch {
 	case isParentChildType(rel.Type):
 		var parentIDs, childIDs []string
@@ -296,7 +296,7 @@ func (idx *viewIndex) indexRelationship(rel *glxlib.Relationship) {
 }
 
 // indexAssertion records which persons an assertion references.
-func (idx *viewIndex) indexAssertion(a *glxlib.Assertion) {
+func (idx *siteIndex) indexAssertion(a *glxlib.Assertion) {
 	seen := map[string]bool{}
 	add := func(personID string) {
 		if personID == "" || seen[personID] {
@@ -315,7 +315,7 @@ func (idx *viewIndex) indexAssertion(a *glxlib.Assertion) {
 }
 
 // buildPersonPages builds and alphabetically sorts every person profile page.
-func buildPersonPages(archive *glxlib.GLXFile, idx *viewIndex) []*personPage {
+func buildPersonPages(archive *glxlib.GLXFile, idx *siteIndex) []*personPage {
 	pages := make([]*personPage, 0, len(archive.Persons))
 	for _, id := range sortedKeys(archive.Persons) {
 		person := archive.Persons[id]
@@ -337,7 +337,7 @@ func buildPersonPages(archive *glxlib.GLXFile, idx *viewIndex) []*personPage {
 }
 
 // buildPersonPage resolves a single person into a presentation model.
-func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, idx *viewIndex) *personPage {
+func buildPersonPage(id string, person *glxlib.Person, archive *glxlib.GLXFile, idx *siteIndex) *personPage {
 	names := extractAllNames(person)
 	name := extractPersonName(person) // owns the "(unnamed)" fallback
 	var alt []string
@@ -398,7 +398,7 @@ func buildTimelineRows(personID string, archive *glxlib.GLXFile) []timelineRow {
 
 // buildPersonSources collects the sources/citations supporting a person via
 // the assertions that reference them.
-func buildPersonSources(personID string, archive *glxlib.GLXFile, idx *viewIndex) []personSourceRef {
+func buildPersonSources(personID string, archive *glxlib.GLXFile, idx *siteIndex) []personSourceRef {
 	var refs []personSourceRef
 	seen := map[string]bool{}
 
@@ -519,7 +519,7 @@ func buildSourceRows(archive *glxlib.GLXFile) []sourceRow {
 
 // buildPlaceRows builds the global place index, ordered by full hierarchical
 // name. Anchors are assigned the same way as in buildSourceRows.
-func buildPlaceRows(archive *glxlib.GLXFile, idx *viewIndex) []placeRow {
+func buildPlaceRows(archive *glxlib.GLXFile, idx *siteIndex) []placeRow {
 	rows := make([]placeRow, 0, len(archive.Places))
 	usedAnchors := map[string]bool{}
 	for _, id := range sortedKeys(archive.Places) {
@@ -624,7 +624,7 @@ func personLinks(ids []string, archive *glxlib.GLXFile, files map[string]string)
 }
 
 // siblingIDs returns the other children of this person's parents, excluding self.
-func siblingIDs(personID string, idx *viewIndex) []string {
+func siblingIDs(personID string, idx *siteIndex) []string {
 	var out []string
 	seen := map[string]bool{personID: true}
 	for _, parentID := range idx.parents[personID] {

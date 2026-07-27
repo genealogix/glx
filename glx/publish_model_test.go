@@ -143,7 +143,7 @@ func buildModelTestArchive() *glxlib.GLXFile {
 }
 
 func TestBuildSiteModel_Stats(t *testing.T) {
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 
 	if model.Title != "GLX Family Archive" {
 		t.Errorf("default title = %q, want %q", model.Title, "GLX Family Archive")
@@ -160,7 +160,7 @@ func TestBuildSiteModel_Stats(t *testing.T) {
 }
 
 func TestBuildSiteModel_PersonOrderAndNames(t *testing.T) {
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{Title: "Test"})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{Title: "Test"})
 
 	// Surname-first ordering by sort key: "doe, jane" < "living" <
 	// "smith, john" < "smith, mary".
@@ -184,7 +184,7 @@ func TestBuildSiteModel_PersonOrderAndNames(t *testing.T) {
 }
 
 func TestBuildPersonPage_VitalsAndFamily(t *testing.T) {
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 	john := findPage(t, model, "person-john-smith")
 
 	if john.LifeSpan != "1850–1920" {
@@ -220,7 +220,7 @@ func TestBuildPersonPage_VitalsAndFamily(t *testing.T) {
 }
 
 func TestBuildPersonPage_Sources(t *testing.T) {
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 	john := findPage(t, model, "person-john-smith")
 
 	if len(john.Sources) != 1 {
@@ -239,7 +239,7 @@ func TestBuildPersonPage_Sources(t *testing.T) {
 }
 
 func TestBuildPersonPage_Media(t *testing.T) {
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 	john := findPage(t, model, "person-john-smith")
 
 	if len(john.Media) != 1 {
@@ -255,7 +255,7 @@ func TestBuildPersonPage_Media(t *testing.T) {
 }
 
 func TestBuildSearchIndex(t *testing.T) {
-	model := buildSiteModel(buildModelTestArchive(), viewModelOptions{})
+	model := buildSiteModel(buildModelTestArchive(), siteModelOptions{})
 
 	var persons, sources, places int
 	for _, e := range model.Search {
@@ -293,7 +293,7 @@ func TestBuildRows_AnchorsSanitizedAndUnique(t *testing.T) {
 			"世界":                {Name: "Y"}, // sanitizes to empty -> kind fallback
 		},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 
 	anchorPattern := regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 	sourceAnchors := map[string]bool{}
@@ -445,7 +445,7 @@ func TestVitalEvents_IgnoresWitnessRole(t *testing.T) {
 		},
 		Places: map[string]*glxlib.Place{"place-town": {Name: "Town"}},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 
 	if subj := findPage(t, model, "person-subject"); subj.LifeSpan != "b. 1850" {
 		t.Errorf("subject LifeSpan = %q, want %q", subj.LifeSpan, "b. 1850")

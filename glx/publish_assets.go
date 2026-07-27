@@ -18,22 +18,22 @@ import (
 	"embed"
 )
 
-// viewTemplatesFS holds the HTML templates compiled into the binary so
-// `glx view` has no runtime template dependencies.
+// publishTemplatesFS holds the HTML templates compiled into the binary so
+// `glx publish` has no runtime template dependencies.
 //
-//go:embed view/templates/*.tmpl
-var viewTemplatesFS embed.FS
+//go:embed publish/templates/*.tmpl
+var publishTemplatesFS embed.FS
 
-// viewStaticAssets maps an embedded asset's base name to its output path,
+// publishStaticAssets maps an embedded asset's base name to its output path,
 // relative to the generated site root. Order is irrelevant; the keys are the
-// embedded files under view/assets.
-var viewStaticAssets = map[string]string{
+// embedded files under publish/assets.
+var publishStaticAssets = map[string]string{
 	"style.css": "css/style.css",
 	"search.js": "js/search.js",
 	"theme.js":  "js/theme.js",
 }
 
-// viewAssetsFS holds the CSS and JS assets copied verbatim into the site.
+// publishAssetsFS holds the CSS and JS assets copied verbatim into the site.
 //
-//go:embed view/assets/*
-var viewAssetsFS embed.FS
+//go:embed publish/assets/*
+var publishAssetsFS embed.FS

@@ -42,7 +42,7 @@ func TestRenderSite_EscapesArchiveContentAcrossPages(t *testing.T) {
 			"place-evil": {Name: payload, Type: "city"},
 		},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 	out := t.TempDir()
 	if err := renderSite(model, out); err != nil {
 		t.Fatalf("renderSite: %v", err)
@@ -75,7 +75,7 @@ func TestSearchIndexScriptSafety(t *testing.T) {
 			"person-x": {Properties: map[string]any{"name": `</script><img onerror=alert(1)>`}},
 		},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 	out := t.TempDir()
 	if err := renderSite(model, out); err != nil {
 		t.Fatalf("renderSite: %v", err)
@@ -113,7 +113,7 @@ func TestRenderSite_HostileMediaURLDoesNotInjectAttributes(t *testing.T) {
 			"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-evil"}},
 		},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 	out := t.TempDir()
 	if _, err := resolveSiteMedia(model, t.TempDir(), out, false); err != nil {
 		t.Fatalf("resolveSiteMedia: %v", err)
@@ -153,7 +153,7 @@ func TestActiveDocumentMediaNotPublished(t *testing.T) {
 			"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-svg", "media-html"}},
 		},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 	out := t.TempDir()
 	copied, err := resolveSiteMedia(model, base, out, false)
 	if err != nil {
@@ -190,7 +190,7 @@ func TestRenderSite_PersonFileCollisions(t *testing.T) {
 			"person-a": {Properties: map[string]any{"name": "Beta"}},
 		},
 	}
-	model := buildSiteModel(archive, viewModelOptions{})
+	model := buildSiteModel(archive, siteModelOptions{})
 	out := t.TempDir()
 	if err := renderSite(model, out); err != nil {
 		t.Fatalf("renderSite: %v", err)

@@ -22,8 +22,8 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// viewOptions configures static site generation for `glx view`.
-type viewOptions struct {
+// publishOptions configures static site generation for `glx publish`.
+type publishOptions struct {
 	ArchivePath string
 	OutputDir   string
 	Title       string
@@ -33,10 +33,10 @@ type viewOptions struct {
 	Living      bool
 }
 
-// generateView loads the archive, builds the presentation model, writes the
+// generateSite loads the archive, builds the presentation model, writes the
 // static site, and optionally serves it locally. When Serve is set this blocks
 // until interrupted.
-func generateView(streams *IOStreams, opts viewOptions) error {
+func generateSite(streams *IOStreams, opts publishOptions) error {
 	archive, err := loadGLXArchive(opts.ArchivePath, false)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func generateView(streams *IOStreams, opts viewOptions) error {
 		streams.Printf("Privatized %d living person(s) before publishing.\n", redacted.PersonsRedacted)
 	}
 
-	model := buildSiteModel(archive, viewModelOptions{
+	model := buildSiteModel(archive, siteModelOptions{
 		Title:     opts.Title,
 		Generated: time.Now().Format("January 2, 2006"),
 	})
@@ -61,7 +61,7 @@ func generateView(streams *IOStreams, opts viewOptions) error {
 		return err
 	}
 
-	printViewSummary(streams, model, opts, copied)
+	printPublishSummary(streams, model, opts, copied)
 
 	if opts.Serve {
 		return serveSite(streams, opts.OutputDir, opts.Port)
@@ -82,8 +82,8 @@ func archiveMediaBaseDir(archivePath string) string {
 	return archivePath
 }
 
-// printViewSummary reports what was generated.
-func printViewSummary(streams *IOStreams, model *siteModel, opts viewOptions, mediaCopied int) {
+// printPublishSummary reports what was generated.
+func printPublishSummary(streams *IOStreams, model *siteModel, opts publishOptions, mediaCopied int) {
 	streams.Printf("✓ Generated static site in %s\n", opts.OutputDir)
 	streams.Printf("  Pages:   %d person profile(s) + index, sources, places, search\n", len(model.Persons))
 	streams.Printf("  Sources: %d\n", len(model.Sources))

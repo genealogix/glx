@@ -63,8 +63,8 @@ type renderContext struct {
 	Person     *personPage
 }
 
-// viewTemplateFuncs are the helpers available inside templates.
-var viewTemplateFuncs = template.FuncMap{
+// publishTemplateFuncs are the helpers available inside templates.
+var publishTemplateFuncs = template.FuncMap{
 	"humanize": humanizeToken,
 	"mediaURL": mediaURL,
 }
@@ -240,10 +240,10 @@ func renderPersonPages(model *siteModel, base *renderContext, outputDir string) 
 // loadPageTemplate parses the base layout together with a single page template,
 // yielding a template set whose "base" entry is ready to execute.
 func loadPageTemplate(page string) (*template.Template, error) {
-	tmpl, err := template.New("base").Funcs(viewTemplateFuncs).ParseFS(
-		viewTemplatesFS,
-		"view/templates/base.html.tmpl",
-		"view/templates/"+page,
+	tmpl, err := template.New("base").Funcs(publishTemplateFuncs).ParseFS(
+		publishTemplatesFS,
+		"publish/templates/base.html.tmpl",
+		"publish/templates/"+page,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template %q: %w", page, err)
@@ -268,8 +268,8 @@ func writeRendered(tmpl *template.Template, path string, ctx *renderContext) err
 
 // writeStaticAssets copies the embedded CSS/JS into the site output.
 func writeStaticAssets(outputDir string) error {
-	for name, dest := range viewStaticAssets {
-		data, err := viewAssetsFS.ReadFile("view/assets/" + name)
+	for name, dest := range publishStaticAssets {
+		data, err := publishAssetsFS.ReadFile("publish/assets/" + name)
 		if err != nil {
 			return fmt.Errorf("failed to read embedded asset %q: %w", name, err)
 		}

@@ -40,7 +40,7 @@ export default defineConfig({
     'docs/gedcom-spec/**',
     'glx/testdata/**',
     'glx/defaults/**',
-    'glx/view/**',
+    'glx/publish/**',
     'tools/**',
     'scripts/**',
   ],
@@ -333,7 +333,7 @@ export default defineConfig({
         {
           text: 'Publishing',
           items: [
-            { text: 'glx view', link: '/cli/glx_view' }
+            { text: 'glx publish', link: '/cli/glx_publish' }
           ]
         },
         {

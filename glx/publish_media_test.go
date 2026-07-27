@@ -149,7 +149,7 @@ func TestResolveSiteMedia_RejectsTraversal(t *testing.T) {
 				"assertion-x": {Subject: glxlib.EntityRef{Person: "person-x"}, Media: []string{"media-evil"}},
 			},
 		}
-		model := buildSiteModel(archive, viewModelOptions{})
+		model := buildSiteModel(archive, siteModelOptions{})
 		out := t.TempDir()
 		copied, err := resolveSiteMedia(model, base, out, false)
 		if err != nil {

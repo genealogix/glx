@@ -52,7 +52,7 @@ var rasterImageExtensions = map[string]bool{
 // the assertions (and their citations) that reference them. This is pure — it
 // resolves references and classifies items but performs no I/O. Concrete
 // sources are filled in later by resolveSiteMedia.
-func buildPersonMedia(personID string, archive *glxlib.GLXFile, idx *viewIndex) []*mediaItem {
+func buildPersonMedia(personID string, archive *glxlib.GLXFile, idx *siteIndex) []*mediaItem {
 	var items []*mediaItem
 	seen := map[string]bool{}
 

@@ -131,7 +131,7 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(addCmd)
-	rootCmd.AddCommand(viewCmd)
+	rootCmd.AddCommand(publishCmd)
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(cacheCmd)
 	rootCmd.AddCommand(docsCmd)
@@ -887,24 +887,24 @@ func runSummary(_ *cobra.Command, args []string) error {
 }
 
 // ============================================================================
-// View Command
+// Publish Command
 // ============================================================================
 
-// defaultViewPort is the default port for `glx view --serve`.
-const defaultViewPort = 8080
+// defaultPublishPort is the default port for `glx publish --serve`.
+const defaultPublishPort = 8080
 
 var (
-	viewArchive    string
-	viewOutput     string
-	viewTitle      string
-	viewServe      bool
-	viewPort       int
-	viewEmbedMedia bool
-	viewLiving     bool
+	publishArchive    string
+	publishOutput     string
+	publishTitle      string
+	publishServe      bool
+	publishPort       int
+	publishEmbedMedia bool
+	publishLiving     bool
 )
 
-var viewCmd = &cobra.Command{
-	Use:   "view",
+var publishCmd = &cobra.Command{
+	Use:   "publish",
 	Short: "Generate a browsable static HTML site from an archive",
 	Long: `Export a GLX archive as a self-contained static HTML site for sharing
 with family who won't install tools or read YAML.
@@ -925,39 +925,39 @@ event has a date) and their most recent known birth year is less than 100
 years ago. Use --embed-media to inline images as base64 for a fully
 self-contained set of pages.`,
 	Example: `  # Generate a site in ./site
-  glx view --archive . --output ./site
+  glx publish --archive . --output ./site
 
   # Generate and preview locally
-  glx view --serve
+  glx publish --serve
 
   # Redact living people and embed media for sharing
-  glx view --output ./public --living --embed-media
+  glx publish --output ./public --living --embed-media
 
   # Custom site title
-  glx view --output ./site --title "The Webb Family Archive"`,
+  glx publish --output ./site --title "The Webb Family Archive"`,
 	Args: cobra.NoArgs,
-	RunE: runView,
+	RunE: runPublish,
 }
 
 func init() {
-	viewCmd.Flags().StringVarP(&viewArchive, "archive", "a", ".", "Archive path (directory or single file)")
-	viewCmd.Flags().StringVarP(&viewOutput, "output", "o", "./site", "Output directory for the generated site")
-	viewCmd.Flags().StringVar(&viewTitle, "title", "", "Site title (default \"GLX Family Archive\")")
-	viewCmd.Flags().BoolVar(&viewServe, "serve", false, "Serve the generated site locally over HTTP")
-	viewCmd.Flags().IntVar(&viewPort, "port", defaultViewPort, "Port for --serve")
-	viewCmd.Flags().BoolVar(&viewEmbedMedia, "embed-media", false, "Embed images as base64 for fully self-contained pages")
-	viewCmd.Flags().BoolVar(&viewLiving, "living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
+	publishCmd.Flags().StringVarP(&publishArchive, "archive", "a", ".", "Archive path (directory or single file)")
+	publishCmd.Flags().StringVarP(&publishOutput, "output", "o", "./site", "Output directory for the generated site")
+	publishCmd.Flags().StringVar(&publishTitle, "title", "", "Site title (default \"GLX Family Archive\")")
+	publishCmd.Flags().BoolVar(&publishServe, "serve", false, "Serve the generated site locally over HTTP")
+	publishCmd.Flags().IntVar(&publishPort, "port", defaultPublishPort, "Port for --serve")
+	publishCmd.Flags().BoolVar(&publishEmbedMedia, "embed-media", false, "Embed images as base64 for fully self-contained pages")
+	publishCmd.Flags().BoolVar(&publishLiving, "living", false, "Redact living persons (explicit living: true, or no death/burial/cremation event and born <100 years ago)")
 }
 
-func runView(_ *cobra.Command, _ []string) error {
-	return generateView(SystemIOStreams(), viewOptions{
-		ArchivePath: viewArchive,
-		OutputDir:   viewOutput,
-		Title:       viewTitle,
-		Serve:       viewServe,
-		Port:        viewPort,
-		EmbedMedia:  viewEmbedMedia,
-		Living:      viewLiving,
+func runPublish(_ *cobra.Command, _ []string) error {
+	return generateSite(SystemIOStreams(), publishOptions{
+		ArchivePath: publishArchive,
+		OutputDir:   publishOutput,
+		Title:       publishTitle,
+		Serve:       publishServe,
+		Port:        publishPort,
+		EmbedMedia:  publishEmbedMedia,
+		Living:      publishLiving,
 	})
 }
 
