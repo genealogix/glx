@@ -191,21 +191,40 @@ release-snapshot: ## Build cross-platform binaries locally (no publish)
 # changie version pin — bump alongside any .changie.yaml format changes.
 CHANGIE_VERSION ?= v1.24.0
 
-# Ensure changie is runnable, installing the pinned version on demand, then add
-# the Go bin dir to PATH (mirrors the install-hooks lefthook pattern).
+# Ensure changie is runnable, installing the pinned version on demand, and
+# export its absolute path as $CHANGIE for the recipe and for
+# scripts/check-changelog-fragments.sh (which falls back to a PATH lookup when
+# the variable is unset, e.g. in CI where the workflow installs changie itself).
+#
+# Exporting a path rather than extending PATH is deliberate, and fixes two
+# separate bugs in doing so:
+#
+#   * `go env GOPATH` is a *list*. "$(go env GOPATH)/bin" builds a bogus
+#     directory ("/path/one:/path/two/bin") for anyone with more than one
+#     entry, and the separator is ';' on Windows where the entries themselves
+#     contain ':' — make has no portable way to split it. Naming the
+#     destination via GOBIN on the install sidesteps the question entirely.
+#   * A Windows path cannot go on PATH under git-bash at all: PATH is
+#     colon-separated there, so "C:/repo/bin" splits into "C" and "/repo/bin".
+#
+# The install dir is GOBIN when set, else this repo's ./bin; `go env GOEXE`
+# supplies the .exe suffix on Windows. `make clean` removes ./bin, so a
+# subsequent run reinstalls.
 define ensure_changie
-	if ! command -v changie >/dev/null 2>&1; then \
-		echo "Installing changie $(CHANGIE_VERSION) via 'go install'..."; \
-		go install github.com/miniscruff/changie@$(CHANGIE_VERSION); \
+	CHANGIE="$$(command -v changie || true)"; \
+	if [ -z "$$CHANGIE" ]; then \
+		GO_BIN_DIR="$$(go env GOBIN)"; \
+		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$(CURDIR)/bin"; fi; \
+		echo "Installing changie $(CHANGIE_VERSION) into $$GO_BIN_DIR via 'go install'..."; \
+		GOBIN="$$GO_BIN_DIR" go install github.com/miniscruff/changie@$(CHANGIE_VERSION); \
+		CHANGIE="$$GO_BIN_DIR/changie$$(go env GOEXE)"; \
 	fi; \
-	GO_BIN_DIR="$$(go env GOBIN)"; \
-	if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$$(go env GOPATH)/bin"; fi; \
-	export PATH="$$GO_BIN_DIR:$$PATH";
+	export CHANGIE;
 endef
 
 changelog: ## Add a changelog fragment for a change (interactive `changie new`)
 	@$(ensure_changie) \
-	changie new
+	"$$CHANGIE" new
 
 changelog-check: ## Validate changie fragments parse and carry an issue/PR reference
 	@$(ensure_changie) \
