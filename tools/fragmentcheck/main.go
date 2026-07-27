@@ -29,6 +29,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -127,6 +128,16 @@ func checkFile(path string) string {
 
 	var frag fragment
 	if err := yaml.Unmarshal(data, &frag); err != nil {
+		// Two failures land here and want different advice. A *yaml.TypeError
+		// means the file parsed fine but a field has the wrong shape (`custom`
+		// as a string or a list), which is a fragment-authoring mistake;
+		// anything else is a genuine syntax error.
+		var typeErr *yaml.TypeError
+		if errors.As(err, &typeErr) {
+			return fmt.Sprintf("changelog fragment has a field of the wrong shape "+
+				"('custom' must be a map of fields, e.g. Issue: \"#123\"): %v", err)
+		}
+
 		return fmt.Sprintf("changelog fragment is not valid YAML: %v", err)
 	}
 

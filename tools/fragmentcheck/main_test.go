@@ -120,6 +120,18 @@ func TestCheckFile_Rejects(t *testing.T) {
 			"kind: Added\nbody: [unterminated\n",
 			"not valid YAML",
 		},
+		{
+			// Parses fine; `custom` is just the wrong shape. Reporting this
+			// as a syntax error would send an author hunting for a typo.
+			"custom is a string",
+			"kind: Added\nbody: something\ncustom: \"#123\"\n",
+			"field of the wrong shape",
+		},
+		{
+			"custom is a list",
+			"kind: Added\nbody: something\ncustom:\n  - \"#123\"\n",
+			"field of the wrong shape",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
