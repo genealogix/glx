@@ -40,6 +40,7 @@ export default defineConfig({
     'docs/gedcom-spec/**',
     'glx/testdata/**',
     'glx/defaults/**',
+    'glx/publish/**',
     'tools/**',
     'scripts/**',
   ],
@@ -144,6 +145,7 @@ export default defineConfig({
         items: [
           { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
           { text: 'Best Practices', link: '/guides/best-practices' },
+          { text: 'Git Workflow', link: '/guides/git-workflow' },
           { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
         ]
       },
@@ -329,17 +331,25 @@ export default defineConfig({
           ]
         },
         {
+          text: 'Publishing',
+          items: [
+            { text: 'glx publish', link: '/cli/glx_publish' }
+          ]
+        },
+        {
           text: 'Exploration',
           items: [
             { text: 'glx search', link: '/cli/glx_search' },
             { text: 'glx query', link: '/cli/glx_query' },
             { text: 'glx vitals', link: '/cli/glx_vitals' },
             { text: 'glx timeline', link: '/cli/glx_timeline' },
+            { text: 'glx migrations', link: '/cli/glx_migrations' },
             { text: 'glx summary', link: '/cli/glx_summary' },
             { text: 'glx ancestors', link: '/cli/glx_ancestors' },
             { text: 'glx descendants', link: '/cli/glx_descendants' },
             { text: 'glx cite', link: '/cli/glx_cite' },
-            { text: 'glx path', link: '/cli/glx_path' }
+            { text: 'glx path', link: '/cli/glx_path' },
+            { text: 'glx serve', link: '/cli/glx_serve' }
           ]
         },
         {
@@ -385,6 +395,7 @@ export default defineConfig({
           items: [
             { text: 'Hands-On CLI Guide', link: '/guides/hands-on-cli-guide' },
             { text: 'Best Practices', link: '/guides/best-practices' },
+            { text: 'Git Workflow', link: '/guides/git-workflow' },
             { text: 'Migration from GEDCOM', link: '/guides/migration-from-gedcom' }
           ]
         }

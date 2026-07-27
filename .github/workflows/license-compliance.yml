@@ -1,0 +1,69 @@
+name: License Compliance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: license-compliance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  GIT_CONFIG_KEY_1: advice.detachedHead
+  GIT_CONFIG_VALUE_1: "false"
+
+jobs:
+  reuse-lint:
+    name: REUSE Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run reuse lint
+        # Verifies every version-controlled file has SPDX copyright/license
+        # metadata, either inline or via .reuse/dep5, and that LICENSES/
+        # contains exactly the license texts in use.
+        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
+
+  go-licenses:
+    name: Go Dependency Licenses
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Install go-licenses
+        # go-licenses is NOT in ci-tools/go.mod on purpose: its tree pulls
+        # go.opencensus.io, golang.org/x/net, and licenseclassifier, whose
+        # (build-time-only) advisories would otherwise trip Dependency Review.
+        # A version-pinned `go install` keeps it reproducible without
+        # committing that graph. See ci-tools/README.md. Keep the version in
+        # sync with `make license-check`.
+        run: go install github.com/google/go-licenses/v2@v2.0.1
+
+      - name: Run go-licenses check
+        # The allowlist is the exact set of licenses found in the current
+        # dependency graph, all Apache-2.0-compatible. MPL-2.0 covers the
+        # single transitive dependency github.com/cyphar/filepath-securejoin
+        # (via go-git): MPL-2.0 is file-level copyleft, which is fine for an
+        # Apache-2.0 project consuming the library unmodified from the module
+        # proxy. A new dependency under any other license fails this job and
+        # forces an explicit allowlist (and NOTICE) decision in review.
+        run: go-licenses check ./... --allowed_licenses=Apache-2.0,MIT,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0

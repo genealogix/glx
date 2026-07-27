@@ -44,12 +44,15 @@ Use GLX to initialize new archives, validate files, and ensure data quality.
 * [glx merge](/cli/glx_merge)	 - Merge another archive into the destination archive
 * [glx merge-persons](/cli/glx_merge-persons)	 - Merge two person entities, keeping the first and folding in the second
 * [glx migrate](/cli/glx_migrate)	 - Migrate an archive to the current format
+* [glx migrations](/cli/glx_migrations)	 - Track a person's geographic movement over time
 * [glx path](/cli/glx_path)	 - Find the shortest relationship path between two people
 * [glx places](/cli/glx_places)	 - Analyze places for ambiguity and completeness
 * [glx proof](/cli/glx_proof)	 - Compile evidence into a structured proof summary for a research question
+* [glx publish](/cli/glx_publish)	 - Generate a browsable static HTML site from an archive
 * [glx query](/cli/glx_query)	 - Query entities in a GLX archive
 * [glx rename](/cli/glx_rename)	 - Rename an entity ID and update all references
 * [glx search](/cli/glx_search)	 - Full-text search across all entities
+* [glx serve](/cli/glx_serve)	 - Serve a local browser-based viewer for a GLX archive (prints a URL to open)
 * [glx split](/cli/glx_split)	 - Split a single-file GLX archive into multi-file format
 * [glx stats](/cli/glx_stats)	 - Show summary statistics for a GLX archive
 * [glx summary](/cli/glx_summary)	 - Show a comprehensive profile for a person

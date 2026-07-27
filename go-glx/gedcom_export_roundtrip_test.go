@@ -15,6 +15,7 @@
 package glx
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -136,6 +137,111 @@ func TestRoundtrip_MinimalFamily(t *testing.T) {
 		}
 	}
 	assert.True(t, foundMarriage, "marriage event not found after roundtrip")
+}
+
+// TestRoundtrip_FamilyNCHI verifies the FAM.NCHI (number of children) tag
+// survives an import → export → re-import cycle.
+func TestRoundtrip_FamilyNCHI(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI 5
+0 TRLR
+`
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err, "first import failed")
+
+	exported, _, err := ExportGEDCOM(glx1, GEDCOM551, nil)
+	require.NoError(t, err, "export failed")
+	assert.Contains(t, string(exported), "1 NCHI 5", "exported GEDCOM should contain NCHI")
+
+	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+	require.NoError(t, err, "re-import failed")
+
+	var foundNCHI bool
+	for _, rel := range glx2.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, 5, val, "NCHI value should survive roundtrip as an integer")
+			foundNCHI = true
+		}
+	}
+	assert.True(t, foundNCHI, "NCHI should be present on the relationship after roundtrip")
+}
+
+// assertNCHIRoundtrip imports a 5.5.1 FAM carrying the given NCHI value, exports
+// to the target version, and re-imports — asserting the value survives intact.
+func assertNCHIRoundtrip(t *testing.T, targetVersion GEDCOMVersion, nchi int) {
+	t.Helper()
+
+	gedcom := fmt.Sprintf(`0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NCHI %d
+0 TRLR
+`, nchi)
+
+	glx1, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	require.NoError(t, err, "first import failed")
+
+	exported, _, err := ExportGEDCOM(glx1, targetVersion, nil)
+	require.NoError(t, err, "export failed")
+	assert.Contains(t, string(exported), fmt.Sprintf("1 NCHI %d", nchi), "exported GEDCOM should contain NCHI")
+
+	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
+	require.NoError(t, err, "re-import failed")
+
+	var found bool
+	for _, rel := range glx2.Relationships {
+		if rel.Type != RelationshipTypeMarriage {
+			continue
+		}
+		if val, ok := rel.Properties[RelationshipPropertyNumberOfChildren]; ok {
+			assert.Equal(t, nchi, val, "NCHI value should survive roundtrip as an integer")
+			found = true
+		}
+	}
+	assert.True(t, found, "NCHI should be present on the relationship after roundtrip")
+}
+
+// TestRoundtrip_FamilyNCHI_Zero verifies NCHI 0 (a valid, distinct value)
+// survives the round-trip rather than being dropped as if absent.
+func TestRoundtrip_FamilyNCHI_Zero(t *testing.T) {
+	assertNCHIRoundtrip(t, GEDCOM551, 0)
+}
+
+// TestRoundtrip_FamilyNCHI_GEDCOM70 verifies NCHI round-trips through GEDCOM 7.0
+// export, which supports NCHI with identical semantics to 5.5.1.
+func TestRoundtrip_FamilyNCHI_GEDCOM70(t *testing.T) {
+	assertNCHIRoundtrip(t, GEDCOM70, 3)
 }
 
 // TestRoundtrip_GEDCOM70 tests roundtrip with GEDCOM 7.0 output
@@ -264,29 +370,19 @@ func TestRoundtrip_SourcesAndRepositories(t *testing.T) {
 	assert.Equal(t, len(glx1.Repositories), len(glx2.Repositories), "repository count mismatch")
 }
 
-// TestRoundtrip_NewSourceTypesPreserved verifies that each source type added in
-// #563 survives a GLX -> GEDCOM 7.0 -> GLX round-trip. The exporter writes
-// Source.Type verbatim as the GEDCOM TYPE value and the importer maps it back
-// via mapSourceType; without identity mappings for the canonical keys, types
-// like family_bible / dna_test / social_media would downgrade to "other".
-func TestRoundtrip_NewSourceTypesPreserved(t *testing.T) {
-	cases := []struct {
-		id    string
-		title string
-		typ   string
-	}{
-		{"source-fb", "rt-source-family-bible", SourceTypeFamilyBible},
-		{"source-gs", "rt-source-gravestone", SourceTypeGravestone},
-		{"source-dna", "rt-source-dna", SourceTypeDNATest},
-		{"source-mem", "rt-source-memoir", SourceTypeMemoir},
-		{"source-ms", "rt-source-manuscript", SourceTypeManuscript},
-		{"source-map", "rt-source-map", SourceTypeMap},
-		{"source-sm", "rt-source-social-media", SourceTypeSocialMedia},
-	}
-
-	sources := make(map[string]*Source, len(cases))
-	for _, c := range cases {
-		sources[c.id] = &Source{Title: c.title, Type: c.typ}
+// TestRoundtrip_StandardSourceTypesPreserved verifies that every standard
+// source type survives a GLX -> GEDCOM 7.0 -> GLX round-trip. The exporter
+// writes Source.Type verbatim as the GEDCOM TYPE value and the importer maps
+// it back via mapSourceType; before mapSourceType recognized canonical GLX
+// keys, types whose GEDCOM alias differs from the key (vital_record,
+// church_register, tax_record, ...) or that have no alias at all (immigration,
+// directory, oral_history, correspondence) downgraded to "other" (#563,
+// #1005). Driven from standardSourceTypes so future vocabulary additions stay
+// covered automatically.
+func TestRoundtrip_StandardSourceTypesPreserved(t *testing.T) {
+	sources := make(map[string]*Source, len(standardSourceTypes))
+	for typ := range standardSourceTypes {
+		sources["source-"+typ] = &Source{Title: "rt-source-" + typ, Type: typ}
 	}
 	glx1 := &GLXFile{Sources: sources}
 
@@ -296,15 +392,15 @@ func TestRoundtrip_NewSourceTypesPreserved(t *testing.T) {
 
 	glx2, _, err := ImportGEDCOM(strings.NewReader(string(exported)), nil)
 	require.NoError(t, err)
-	require.Len(t, glx2.Sources, len(cases))
+	require.Len(t, glx2.Sources, len(standardSourceTypes))
 
 	// Source IDs are regenerated on import, so match by the preserved title.
 	gotByTitle := make(map[string]string, len(glx2.Sources))
 	for _, s := range glx2.Sources {
 		gotByTitle[s.Title] = s.Type
 	}
-	for _, c := range cases {
-		assert.Equal(t, c.typ, gotByTitle[c.title], "source %q type must survive GLX->GEDCOM->GLX round-trip", c.title)
+	for typ := range standardSourceTypes {
+		assert.Equal(t, typ, gotByTitle["rt-source-"+typ], "source type %q must survive GLX->GEDCOM->GLX round-trip", typ)
 	}
 }
 
