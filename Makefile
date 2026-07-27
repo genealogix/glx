@@ -191,10 +191,19 @@ release-snapshot: ## Build cross-platform binaries locally (no publish)
 # changie version pin — bump alongside any .changie.yaml format changes.
 CHANGIE_VERSION ?= v1.24.0
 
-# Ensure changie is runnable, installing the pinned version on demand, and
-# export its absolute path as $CHANGIE for the recipe and for
+# Ensure the *pinned* changie is runnable, installing it on demand, and export
+# its absolute path as $CHANGIE for the recipe and for
 # scripts/check-changelog-fragments.sh (which falls back to a PATH lookup when
 # the variable is unset, e.g. in CI where the workflow installs changie itself).
+#
+# A changie already on PATH is only used when it IS $(CHANGIE_VERSION);
+# otherwise the pinned build is installed and used, so `make changelog` renders
+# the same fragments on every machine. The version comes from `go version -m`
+# (the module version recorded in the binary), not `changie --version`: a
+# `go install` build reports "vdev" for the latter, so comparing against it
+# would reinstall on every single run. The first `go version -m` doubles as the
+# probe for Windows, where `command -v changie` resolves to an extension-less
+# path that `go` cannot stat — an empty result means retry with GOEXE appended.
 #
 # Exporting a path rather than extending PATH is deliberate, and fixes two
 # separate bugs in doing so:
@@ -212,7 +221,10 @@ CHANGIE_VERSION ?= v1.24.0
 # subsequent run reinstalls.
 define ensure_changie
 	CHANGIE="$$(command -v changie || true)"; \
-	if [ -z "$$CHANGIE" ]; then \
+	if [ -n "$$CHANGIE" ] && [ -z "$$(go version -m "$$CHANGIE" 2>/dev/null)" ]; then \
+		CHANGIE="$$CHANGIE$$(go env GOEXE)"; \
+	fi; \
+	if [ "$$(go version -m "$$CHANGIE" 2>/dev/null | awk '$$1 == "mod" { print $$3; exit }')" != "$(CHANGIE_VERSION)" ]; then \
 		GO_BIN_DIR="$$(go env GOBIN)"; \
 		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$(CURDIR)/bin"; fi; \
 		echo "Installing changie $(CHANGIE_VERSION) into $$GO_BIN_DIR via 'go install'..."; \

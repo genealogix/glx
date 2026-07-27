@@ -115,7 +115,11 @@ func fragmentFiles(dir string) ([]string, error) {
 // checkFile returns a human-readable problem description, or "" when the
 // fragment carries a usable issue reference.
 func checkFile(path string) string {
-	// #nosec G304 -- path comes from our own glob of the fragment dir, not user input.
+	// #nosec G304 -- the path is a glob hit under the caller-named fragment
+	// directory, and reading those files is precisely this tool's job. The
+	// directory does come from argv, but this is a developer CLI run by the
+	// person who supplied it: there is no privilege boundary to cross, and
+	// nothing is done with the contents beyond reporting on them.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Sprintf("cannot read changelog fragment: %v", err)
