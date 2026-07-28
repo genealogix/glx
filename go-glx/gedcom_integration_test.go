@@ -1486,12 +1486,50 @@ func TestMediaImport_OriginalFilenameStamped(t *testing.T) {
 	}
 }
 
+func TestIsBareDecodedFilename(t *testing.T) {
+	// The rejection classes for percent-decoded GEDCOM 7.0 basenames: anything
+	// that is not a plain single-segment filename keeps the raw encoded form.
+	tests := []struct {
+		name    string
+		decoded string
+		want    bool
+	}{
+		{"plain filename", "photo.jpg", true},
+		{"unicode filename", "CharlotteBrontë.jpg", true},
+		{"filename with spaces", "report final.jpg", true},
+		{"empty", "", false},
+		{"dot", ".", false},
+		{"dot-dot", "..", false},
+		{"slash", "a/b.jpg", false},
+		{"backslash", `a\b.jpg`, false},
+		{"NUL", "x\x00y.jpg", false},
+		{"C0 control", "a\x01b.jpg", false},
+		{"newline", "a\nb.jpg", false},
+		{"tab", "a\tb.jpg", false},
+		{"DEL", "a\x7fb.jpg", false},
+		{"C1 control", "a\u0080b.jpg", false},
+		{"line separator", "a\u2028b.jpg", false},
+		{"paragraph separator", "a\u2029b.jpg", false},
+		{"lone invalid byte", "a\xffb.jpg", false},
+		{"truncated UTF-8 sequence", "a\xc3(b.jpg", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isBareDecodedFilename(tt.decoded); got != tt.want {
+				t.Errorf("isBareDecodedFilename(%q) = %v, want %v", tt.decoded, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMediaImport_OriginalFilenamePercentDecoding(t *testing.T) {
 	// GEDCOM 7.0 FILE payloads are URI references: a percent-encoded basename
 	// names a file the user only has in decoded form (the same resolution
 	// copyMediaFile applies), so the decoded name is stamped. GEDCOM 5.5.1
-	// payloads are plain paths — a literal % must survive untouched — and a
-	// malformed 7.0 encoding falls back to the raw basename.
+	// payloads are plain paths — a literal % must survive untouched. These
+	// rows pin the wiring; the rejection classes live in
+	// TestIsBareDecodedFilename.
 	tests := []struct {
 		name    string
 		version string
@@ -1521,60 +1559,11 @@ func TestMediaImport_OriginalFilenamePercentDecoding(t *testing.T) {
 			want:    "100%.jpg",
 		},
 		{
-			name:    "7.0 encoded separator keeps raw basename",
+			name:    "7.0 unsafe decode keeps raw basename",
 			version: "7.0",
 			fileRef: "media/a%2Fb.jpg",
 			wantURI: "media/files/a%2Fb.jpg",
 			want:    "a%2Fb.jpg",
-		},
-		{
-			name:    "7.0 encoded NUL keeps raw basename",
-			version: "7.0",
-			fileRef: "media/x%00y.jpg",
-			wantURI: "media/files/x%00y.jpg",
-			want:    "x%00y.jpg",
-		},
-		{
-			name:    "7.0 encoded control character keeps raw basename",
-			version: "7.0",
-			fileRef: "media/a%01b.jpg",
-			wantURI: "media/files/a%01b.jpg",
-			want:    "a%01b.jpg",
-		},
-		{
-			name:    "7.0 decode to invalid UTF-8 keeps raw basename",
-			version: "7.0",
-			fileRef: "media/a%FFb.jpg",
-			wantURI: "media/files/a%FFb.jpg",
-			want:    "a%FFb.jpg",
-		},
-		{
-			name:    "7.0 encoded newline keeps raw basename",
-			version: "7.0",
-			fileRef: "media/a%0Ab.jpg",
-			wantURI: "media/files/a%0Ab.jpg",
-			want:    "a%0Ab.jpg",
-		},
-		{
-			name:    "7.0 decode to invalid UTF-8 sequence keeps raw basename",
-			version: "7.0",
-			fileRef: "media/a%C3%28b.jpg",
-			wantURI: "media/files/a%C3%28b.jpg",
-			want:    "a%C3%28b.jpg",
-		},
-		{
-			name:    "7.0 encoded C1 control keeps raw basename",
-			version: "7.0",
-			fileRef: "media/a%C2%80b.jpg",
-			wantURI: "media/files/a%C2%80b.jpg",
-			want:    "a%C2%80b.jpg",
-		},
-		{
-			name:    "7.0 encoded dot-dot keeps raw basename",
-			version: "7.0",
-			fileRef: "media/%2E%2E",
-			wantURI: "media/files/%2E%2E",
-			want:    "%2E%2E",
 		},
 	}
 

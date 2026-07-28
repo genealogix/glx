@@ -270,13 +270,13 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// are URI references, so a percent-encoded basename names a file that
 		// exists only decoded (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg,
 		// matching the copyMediaFile fallback); 5.5.1 payloads are plain paths
-		// where a literal % must survive untouched. Because copyMediaFile tries
-		// the raw path first and decodes only on a miss, the stamped name can
-		// disagree with the file actually copied in the rare case where the
-		// other candidate is what exists on disk — only the CLI knows which
-		// one resolved. The existence guard is defensive: no current tag maps
-		// to this key, but a future mapping would write properties before this
-		// branch runs and must win.
+		// where a literal % must survive untouched. copyMediaFile resolves the
+		// same ambiguity in the opposite order — raw path first, decode only
+		// on a miss — so when the raw-named file is the one on disk, the stamp
+		// names a file that never existed; only the CLI knows which candidate
+		// resolved (#1153). The existence guard is defensive: no current tag
+		// maps to this key, but a future mapping would write properties before
+		// this branch runs and must win.
 		originalName := basename
 		if conv.Version == GEDCOM70 {
 			// A decode that reintroduces a separator, a control character, or
@@ -320,10 +320,11 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 
 // isBareDecodedFilename reports whether a percent-decoded basename is still a
 // bare filename: valid UTF-8, not a dot path (".", ".."), and containing no
-// path separators and no Unicode control characters (C0, DEL, or C1 — a
-// decoded %C2%80 is valid UTF-8 but still a control). Percent-decoding
-// untrusted GEDCOM 7.0 refs is the only way any of these can appear —
-// filepath.Base has already run on the encoded form.
+// path separators, no Unicode control characters (C0, DEL, or C1 — a decoded
+// %C2%80 is valid UTF-8 but still a control), and no U+2028/U+2029 line and
+// paragraph separators, which YAML emitters treat as line breaks.
+// Percent-decoding untrusted GEDCOM 7.0 refs is the only way any of these can
+// appear — filepath.Base has already run on the encoded form.
 func isBareDecodedFilename(decoded string) bool {
 	if decoded == "" || decoded == "." || decoded == ".." {
 		return false
@@ -333,7 +334,7 @@ func isBareDecodedFilename(decoded string) bool {
 	}
 
 	return !strings.ContainsFunc(decoded, func(r rune) bool {
-		return r == '/' || r == '\\' || unicode.IsControl(r)
+		return r == '/' || r == '\\' || r == '\u2028' || r == '\u2029' || unicode.IsControl(r)
 	})
 }
 
