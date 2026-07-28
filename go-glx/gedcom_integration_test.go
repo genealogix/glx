@@ -1486,6 +1486,61 @@ func TestMediaImport_OriginalFilenameStamped(t *testing.T) {
 	}
 }
 
+func TestMediaImport_OriginalFilenamePercentDecoding(t *testing.T) {
+	// GEDCOM 7.0 FILE payloads are URI references: a percent-encoded basename
+	// names a file the user only has in decoded form (the same resolution
+	// copyMediaFile applies), so the decoded name is stamped. GEDCOM 5.5.1
+	// payloads are plain paths — a literal % must survive untouched — and a
+	// malformed 7.0 encoding falls back to the raw basename.
+	tests := []struct {
+		name    string
+		version string
+		fileRef string
+		wantURI string
+		want    string
+	}{
+		{
+			name:    "7.0 percent-encoded basename is decoded",
+			version: "7.0",
+			fileRef: "media/CharlotteBront%C3%AB.jpg",
+			wantURI: "media/files/CharlotteBront%C3%AB.jpg",
+			want:    "CharlotteBrontë.jpg",
+		},
+		{
+			name:    "5.5.1 literal percent is not decoded",
+			version: "5.5.1",
+			fileRef: "scans/report%20final.jpg",
+			wantURI: "media/files/report%20final.jpg",
+			want:    "report%20final.jpg",
+		},
+		{
+			name:    "7.0 malformed encoding keeps raw basename",
+			version: "7.0",
+			fileRef: "media/100%.jpg",
+			wantURI: "media/files/100%.jpg",
+			want:    "100%.jpg",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gedcom := "0 HEAD\n1 GEDC\n2 VERS " + tt.version + "\n" +
+				"0 @M1@ OBJE\n1 FILE " + tt.fileRef + "\n" +
+				"0 TRLR\n"
+
+			glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+			if err != nil {
+				t.Fatalf("Import failed: %v", err)
+			}
+
+			media := findMediaByURI(t, glx, tt.wantURI)
+			if got := media.Properties[MediaPropertyOriginalFilename]; got != tt.want {
+				t.Errorf("original_filename = %v, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMediaImport_OriginalFilenameSurvivesCollisionRename(t *testing.T) {
 	// Two FILE refs with the same basename: the second is renamed to photo-2.jpg
 	// in the archive, but both must record photo.jpg as the original filename —

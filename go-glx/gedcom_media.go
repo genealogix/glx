@@ -16,6 +16,7 @@ package glx
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -263,11 +264,21 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		media.URI = MediaFilesDir + "/" + targetName
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
-		// otherwise lose the source filename entirely. The existence guard is
+		// otherwise lose the source filename entirely. GEDCOM 7.0 FILE payloads
+		// are URI references, so a percent-encoded basename names a file that
+		// exists only decoded (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg,
+		// matching the copyMediaFile fallback); 5.5.1 payloads are plain paths
+		// where a literal % must survive untouched. The existence guard is
 		// defensive: no current tag maps to this key, but a future mapping
 		// would write properties before this branch runs and must win.
+		originalName := basename
+		if conv.Version == GEDCOM70 {
+			if decoded, decErr := url.PathUnescape(basename); decErr == nil {
+				originalName = decoded
+			}
+		}
 		if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
-			media.Properties[MediaPropertyOriginalFilename] = basename
+			media.Properties[MediaPropertyOriginalFilename] = originalName
 		}
 	} else {
 		// URL, absolute path, or empty — leave as-is
