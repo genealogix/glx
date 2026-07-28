@@ -42,7 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
-- **`blob_size` media property description clarified** — The `media-properties.glx` description (rendered on the standard-vocabularies page) now documents the value as the length in bytes of the *encoded* GEDCOM 5.5.1 BLOB text as concatenated from `BLOB`/`CONT` lines, pre-decode — which is what the importer has always stored — instead of implying the decoded binary size. The `MediaPropertyBlobSize` constant comment matches. Description-only; no behavior change. (PR #1135)
+- **`blob_size` media property description clarified** — The `media-properties.glx` description (rendered on the standard-vocabularies page) now documents the value as the length in bytes of the *encoded* GEDCOM 5.5.1 BLOB text as the `BLOB`/`CONT` lines joined with newlines (pre-decode; includes the line separators) — which is what the importer has always stored — instead of implying the decoded binary size. The `MediaPropertyBlobSize` constant comment matches. Description-only; no behavior change. (PR #1135)
 
 - **`/compact-changelog` command gained `allowed-tools`/`model` frontmatter** — `.claude/commands/compact-changelog.md` was the only command in `.claude/` without tool/model frontmatter, unlike its `check-*` siblings. It now declares a minimal `allowed-tools` surface (`Read`, `Edit`, `Write`, `Grep`, and the specific `git` invocations it runs), pins `model: claude-opus-4-8` to match the siblings, sets `disable-model-invocation: true` so a file-mutating command is never auto-fired mid-session, and adds an `argument-hint`. (#854)
 
