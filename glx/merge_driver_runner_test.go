@@ -726,3 +726,171 @@ func TestMergeDriver_RefusesToWriteThroughSymlink(t *testing.T) {
 		t.Errorf("expected symlink-refusal diagnostic in stderr, got:\n%s", errBuf.String())
 	}
 }
+
+// requireUnprivilegedPosix skips tests that depend on directory permission
+// bits actually denying an operation. Windows doesn't model them the same way,
+// and root bypasses them entirely — CI containers frequently run as root, where
+// a "read-only" directory is still writable and the test would fail spuriously.
+func requireUnprivilegedPosix(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX directory permission bits are not modeled on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("running as root; directory permission bits do not deny writes")
+	}
+}
+
+// TestMergeDriver_CleanMerge_ReplacesOursByRename pins the atomic-write
+// behavior added in response to Copilot review on PR #906.
+//
+// It is the direct check of the property Copilot asked for: %A must be
+// replaced by renaming a fully-written temp file over it, never truncated and
+// rewritten in place. A truncating writer (os.WriteFile) leaves a window where
+// %A holds a partial file, so a crash, full disk, or killed process mid-write
+// destroys the researcher's working-tree content even though the driver
+// reports failure and git falls back to the text merge.
+//
+// The observable difference is file identity: os.WriteFile keeps the same
+// inode, a rename installs a new one. Comparing identity discriminates between
+// the two implementations without having to induce a real mid-write failure —
+// which can't be done portably.
+func TestMergeDriver_CleanMerge_ReplacesOursByRename(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// os.Stat on Windows doesn't capture the file index up front; SameFile
+		// resolves it lazily by reopening the path at comparison time. Both
+		// FileInfos here come from the same path, so after the rename they'd
+		// both resolve to the new file and compare equal no matter which
+		// implementation ran. The check is meaningful only where Stat captures
+		// the inode eagerly.
+		t.Skip("os.SameFile resolves identity lazily by path on Windows; cannot observe replacement")
+	}
+
+	in := stageMergeFixture(t, "clean-one-sided")
+
+	beforeInfo, err := os.Stat(in.OursPath)
+	if err != nil {
+		t.Fatalf("stat staged ours: %v", err)
+	}
+
+	var errBuf bytes.Buffer
+	if code := runMergeDriver(in, &errBuf); code != mergeDriverExitClean {
+		t.Fatalf("expected clean exit, got %d (stderr: %s)", code, errBuf.String())
+	}
+
+	afterInfo, err := os.Stat(in.OursPath)
+	if err != nil {
+		t.Fatalf("stat merged ours: %v", err)
+	}
+
+	if os.SameFile(beforeInfo, afterInfo) {
+		t.Error("merged result was written in place — %A must be replaced by renaming a " +
+			"complete temp file over it, so a failed write can never leave a partial file")
+	}
+}
+
+// TestMergeDriver_WriteFailure_LeavesOursIntact covers the other half of the
+// atomic-write contract: when the write fails outright, the driver must report
+// nonzero and leave %A holding the original "ours" content for git's text-merge
+// fallback to work from.
+//
+// The failure is induced by making the staging directory unwritable, which
+// blocks the temp file's creation. Note this is not a truncation scenario —
+// a 0555 directory still permits writing to an existing file, so os.WriteFile
+// would have succeeded here. Truncation safety is covered by
+// TestMergeDriver_CleanMerge_ReplacesOursByRename; this test pins the
+// error-reporting and no-partial-content behavior of the failure path.
+func TestMergeDriver_WriteFailure_LeavesOursIntact(t *testing.T) {
+	requireUnprivilegedPosix(t)
+
+	// clean-one-sided merges cleanly, so the run reaches the write and fails
+	// there rather than diverting to the conflict fallback earlier.
+	in := stageMergeFixture(t, "clean-one-sided")
+
+	before, err := os.ReadFile(in.OursPath)
+	if err != nil {
+		t.Fatalf("read staged ours: %v", err)
+	}
+
+	dir := filepath.Dir(in.OursPath)
+	// r-xr-xr-x: base/ours/theirs stay readable so the merge itself proceeds,
+	// but no new entry (the temp file) can be created.
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatalf("chmod staging dir read-only: %v", err)
+	}
+	// Restore before t.TempDir cleanup, which needs to remove the contents.
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	var errBuf bytes.Buffer
+	code := runMergeDriver(in, &errBuf)
+
+	if code == mergeDriverExitClean {
+		t.Fatalf("expected nonzero exit when the merged write fails, got clean")
+	}
+	if !strings.Contains(errBuf.String(), "write ours") {
+		t.Errorf("expected a write-failure diagnostic in stderr, got:\n%s", errBuf.String())
+	}
+
+	after, err := os.ReadFile(in.OursPath)
+	if err != nil {
+		t.Fatalf("read ours after failed write: %v", err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Errorf("ours was modified by a failed write — must be all-or-nothing\nbefore (%d bytes):\n%s\nafter (%d bytes):\n%s",
+			len(before), before, len(after), after)
+	}
+}
+
+// TestMergeDriver_CleanMerge_PreservesFileMode guards a regression the switch
+// to atomicWriteFile could introduce: it creates a new file and renames it over
+// the target, so unlike os.WriteFile it does not inherit the replaced file's
+// mode. A worktree checked out under a restrictive umask (a 0600 .glx) must not
+// come back world-readable after a structural merge.
+func TestMergeDriver_CleanMerge_PreservesFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not modeled on Windows")
+	}
+
+	in := stageMergeFixture(t, "clean-one-sided")
+
+	const restrictive os.FileMode = 0o600
+	if err := os.Chmod(in.OursPath, restrictive); err != nil {
+		t.Fatalf("chmod ours: %v", err)
+	}
+
+	var errBuf bytes.Buffer
+	if code := runMergeDriver(in, &errBuf); code != mergeDriverExitClean {
+		t.Fatalf("expected clean exit, got %d (stderr: %s)", code, errBuf.String())
+	}
+
+	fi, err := os.Stat(in.OursPath)
+	if err != nil {
+		t.Fatalf("stat merged ours: %v", err)
+	}
+	if got := fi.Mode().Perm(); got != restrictive {
+		t.Errorf("merged file mode = %04o, want %04o (atomic write must not widen permissions)", got, restrictive)
+	}
+}
+
+// TestMergeDriver_CleanMerge_LeavesNoTempFiles checks that the atomic write's
+// temp file is renamed into place rather than left beside %A. A stray
+// .glx-tmp-* in the worktree would show up as an untracked file in the
+// researcher's `git status` right after every merge.
+func TestMergeDriver_CleanMerge_LeavesNoTempFiles(t *testing.T) {
+	in := stageMergeFixture(t, "clean-one-sided")
+
+	var errBuf bytes.Buffer
+	if code := runMergeDriver(in, &errBuf); code != mergeDriverExitClean {
+		t.Fatalf("expected clean exit, got %d (stderr: %s)", code, errBuf.String())
+	}
+
+	entries, err := os.ReadDir(filepath.Dir(in.OursPath))
+	if err != nil {
+		t.Fatalf("read staging dir: %v", err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".glx-tmp-") {
+			t.Errorf("atomic write left a temp file behind: %s", e.Name())
+		}
+	}
+}

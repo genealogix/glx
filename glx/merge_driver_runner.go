@@ -28,9 +28,10 @@ import (
 	glxlib "github.com/genealogix/glx/go-glx"
 )
 
-// mergedFilePerm is the permission bits used when overwriting %A. git owns
-// the file path and re-applies any per-repo umask after the merge driver
-// returns, so the value matches the OS default for regular files.
+// mergedFilePerm is the fallback permission bits used when overwriting %A and
+// the existing file's mode can't be read. git owns the file path and re-applies
+// any per-repo umask after the merge driver returns, so the value matches the
+// OS default for regular files.
 const mergedFilePerm = 0o644
 
 // maxConflictValueDisplay caps the per-conflict stderr value length so a
@@ -90,10 +91,11 @@ func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode 
 	// always hands us a regular-file path inside the worktree; a *.glx
 	// symlink at %A can only come from a hostile branch trying to make the
 	// driver clobber a target outside the repo (e.g. ours -> /etc/passwd).
-	// Both write paths below would follow such a symlink — the structural
-	// merge via os.WriteFile and the text-merge fallback via `git merge-file`
-	// (which writes to its first argv). Reject at function entry so neither
-	// runs. Lstat returning ErrNotExist is fine — git can legitimately
+	// The text-merge fallback would follow such a symlink — `git merge-file`
+	// writes to its first argv — and the structural path would silently
+	// replace the link itself via atomicWriteFile's rename. Reject at
+	// function entry so neither runs, rather than leaving each write path to
+	// fail differently. Lstat returning ErrNotExist is fine — git can legitimately
 	// invoke a driver on a path it has yet to create on disk during
 	// three-way add/add merges.
 	if fi, lerr := os.Lstat(in.OursPath); lerr == nil && fi.Mode()&os.ModeSymlink != 0 {
@@ -150,17 +152,38 @@ func runMergeDriver(in mergeDriverInputs, errOut io.Writer) mergeDriverExitCode 
 	// Only touch OursPath now that we know we have a clean structural merge.
 	// Up to this point OursPath still holds the original "ours" bytes that
 	// git invoked us with, so if anything fails above we hand a pristine
-	// %A off to `git merge-file`. The symlink guard at the top of this
-	// function has already rejected the case where %A is a symlink, so
-	// os.WriteFile here writes to a regular file (or fails if the path
-	// was destroyed mid-merge).
-	if err := os.WriteFile(in.OursPath, mergedBytes, mergedFilePerm); err != nil {
+	// %A off to `git merge-file`.
+	//
+	// atomicWriteFile (temp file in the same directory + rename) rather than
+	// os.WriteFile: os.WriteFile truncates %A before writing, so a failure
+	// mid-write (disk full, killed process) would leave the researcher's
+	// working-tree file half-written — destroying the original "ours" content
+	// even though the driver reports failure and git falls back. With the
+	// temp-file + rename, %A holds either the untouched original or the
+	// complete merged content, never a partial one.
+	if err := atomicWriteFile(in.OursPath, mergedBytes, mergedOutputPerm(in.OursPath)); err != nil {
 		fprintf(errOut, "[glx merge-driver] write ours %q: %v\n", in.OursPath, err)
 
 		return mergeDriverExitConflict
 	}
 
 	return mergeDriverExitClean
+}
+
+// mergedOutputPerm returns the mode to give the merged %A. atomicWriteFile
+// creates a fresh file and renames it into place, so unlike os.WriteFile it
+// does not inherit the mode of the file it replaces — without this, a
+// worktree checked out under a restrictive umask (a 0600 .glx) would come
+// back 0644 after every structural merge. Reuse the existing mode when %A is
+// on disk, and fall back to mergedFilePerm when it isn't (git may invoke the
+// driver on a path it has yet to create) or when it can't be stat'd.
+func mergedOutputPerm(path string) os.FileMode {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return mergedFilePerm
+	}
+
+	return fi.Mode().Perm()
 }
 
 // readAllInputs reads base/ours/theirs from disk, reporting each failure to
