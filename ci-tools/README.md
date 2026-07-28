@@ -33,9 +33,15 @@ inherited by anyone importing `github.com/genealogix/glx/go-glx` as a library.
   and OpenTelemetry. Committing that graph to a scanned `go.mod` would make
   `dependency-review` block PRs whenever any of those (unreachable, build-time-only)
   dependencies picks up a new advisory. `go install` keeps gosec reproducible
-  without exposing that tree. Run it locally with `make gosec`. Because neither
-  Dependabot ecosystem can see this pin, the weekly `gosec-pin-currency` job in
-  `security.yml` fails when `.gosec-version` falls behind the latest gosec release.
+  without exposing that tree. Run it locally with `make gosec`. Dependabot cannot
+  propose a bump for this pin: its `gomod` ecosystem only reads `go.mod` files,
+  where gosec deliberately does not appear, and its `github-actions` ecosystem
+  only reads `uses:` references, not a `go install ...@vX.Y.Z` line in a `run:`
+  block. So the weekly `.github/workflows/gosec-pin-currency.yml` workflow fails
+  when `.gosec-version` falls behind the latest gosec release. It is a standalone
+  workflow rather than a job in `security.yml` on purpose — `security.yml` is the
+  Code Scanning setup for gosec and govulncheck, and any failing job in it marks
+  both tools as "reporting errors" on the tool status page (#1145).
 - **go-licenses** stays on a version-pinned
   `go install github.com/google/go-licenses/v2@v2.0.1` in
   `.github/workflows/license-compliance.yml` (and a matching `go run` in

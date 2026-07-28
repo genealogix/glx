@@ -1,0 +1,54 @@
+name: npm Audit
+
+# Deliberately its own workflow rather than a job in security.yml: this gate
+# fails whenever a new moderate advisory lands in the website's npm tree (see
+# #1030), and security.yml is the Code Scanning setup for the gosec and
+# govulncheck tools. A failing run of that workflow — for any reason, including
+# a job that uploads no SARIF — marks both Go tools as "reporting errors" on the
+# code scanning tool status page and raises a spurious "Code scanning
+# configuration error" on the Security tab. See #1145.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Run weekly on Monday at 06:00 UTC (matches security.yml)
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_CONFIG_COUNT: 2
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  GIT_CONFIG_KEY_1: advice.detachedHead
+  GIT_CONFIG_VALUE_1: "false"
+
+jobs:
+  npm-audit:
+    name: npm Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate

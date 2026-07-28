@@ -1,5 +1,20 @@
 name: Security
 
+# This workflow is the Code Scanning "setup" that GitHub associates with the
+# `gosec` and `govulncheck` tools, so it must contain NOTHING but the jobs that
+# produce and upload their SARIF. GitHub's tool status page attributes the
+# conclusion of the whole *run* to every tool configured by the workflow — not
+# the conclusion of the job that did the upload — so a failure in any unrelated
+# job here marks both Go tools as "reporting errors" and raises a spurious
+# "Code scanning configuration error" on the Security tab, even when both
+# uploads succeeded with an empty `error` field. That is why the pin-currency
+# check and the npm audit live in their own workflows (#1145):
+#
+#   .github/workflows/gosec-pin-currency.yml
+#   .github/workflows/npm-audit.yml
+#
+# Do not add a job here unless it uploads code-scanning results.
+
 on:
   push:
     branches: [main]
@@ -97,8 +112,12 @@ jobs:
         # that graph. See ci-tools/README.md.
         #
         # The pinned version lives in .gosec-version (single source of truth, shared
-        # with `make gosec`). Neither Dependabot ecosystem sees a `go install ...@vX.Y.Z`
-        # pin, so the weekly gosec-pin-currency job below is what keeps it from rotting.
+        # with `make gosec`). Dependabot cannot propose a bump for it: its gomod
+        # ecosystem only reads go.mod files, where gosec deliberately does not
+        # appear, and its github-actions ecosystem only reads `uses:` references,
+        # not a `go install ...@vX.Y.Z` line in a `run:` block. The weekly
+        # gosec-pin-currency.yml workflow is what keeps the pin from rotting —
+        # deliberately a separate workflow, see the header comment.
         run: |
           v="$(tr -d '[:space:]' < .gosec-version)"
           printf '%s' "$v" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "invalid .gosec-version: $v (expected vMAJOR.MINOR.PATCH)" >&2; exit 1; }
@@ -113,52 +132,3 @@ jobs:
         with:
           sarif_file: gosec.sarif
           category: gosec
-
-  gosec-pin-currency:
-    name: gosec Pin Currency
-    # Weekly run only: gosec's pin is invisible to Dependabot (deliberately not in
-    # ci-tools/go.mod — see the Install gosec comment above — and the github-actions
-    # ecosystem doesn't parse `go install ...@vX.Y.Z` run lines), so without this
-    # check the hand-managed .gosec-version pin rots silently. Failing the weekly
-    # scheduled run notifies maintainers; PR runs are unaffected, so an upstream
-    # gosec release never blocks unrelated PRs.
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Compare .gosec-version against the latest gosec release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          pinned="$(tr -d '[:space:]' < .gosec-version)"
-          printf '%s' "$pinned" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error file=.gosec-version::invalid .gosec-version: $pinned (expected vMAJOR.MINOR.PATCH)"; exit 1; }
-          latest="$(gh api repos/securego/gosec/releases/latest --jq .tag_name)" || { echo "::error::could not query the latest securego/gosec release from the GitHub API"; exit 1; }
-          if [ "$pinned" != "$latest" ]; then
-            echo "::error file=.gosec-version::pinned gosec $pinned is behind the latest release $latest — bump .gosec-version (and re-run gosec locally with 'make gosec' to catch findings from new analyzers)"
-            exit 1
-          fi
-          echo "gosec pin $pinned is current"
-
-  npm-audit:
-    name: npm Audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: website
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: website/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run npm audit
-        run: npm audit --audit-level=moderate
