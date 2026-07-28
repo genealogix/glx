@@ -269,14 +269,15 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
 		// otherwise lose the source filename entirely. A ref already pointing
-		// into media/files/ came from a GLX export: its basename is the
-		// canonicalized (possibly collision-renamed) name, not an original,
-		// and stamping it would fabricate provenance on a GLX→GEDCOM→GLX
-		// round trip (path.Clean catches spellings like ./media/files/x that
-		// name the same directory). The existence guard is defensive: no
-		// current tag maps to this key, but a future mapping would write
-		// properties before this branch runs and must win.
-		if !strings.HasPrefix(path.Clean(normalizedRef), MediaFilesDir+"/") {
+		// into media/files/ came from a GLX export, so while its name is
+		// untouched there is no "original" to record and stamping would
+		// fabricate provenance on a GLX→GEDCOM→GLX round trip — but once this
+		// import renames it (merging two exports can collide two canonical
+		// refs), the pre-rename basename is real information and is kept. The
+		// existence guard is defensive: no current tag maps to this key, but
+		// a future mapping would write properties before this branch runs and
+		// must win.
+		if !isCanonicalMediaRef(normalizedRef) || targetName != basename {
 			if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
 				media.Properties[MediaPropertyOriginalFilename] = originalFilenameFor(basename, conv.Version)
 			}
@@ -318,10 +319,10 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 // untouched. A 7.0 encoding that is malformed, or whose decoded form is not a
 // bare filename per isBareDecodedFilename, keeps the raw basename. On that
 // reject path the recorded value is knowingly not the source's decoded name
-// (a legitimate filename containing a Cf rune, e.g. an emoji ZWJ sequence,
-// stays percent-encoded, indistinguishable from a 5.5.1 literal %) — it
-// matches uri and the on-disk name instead; see #1152, which owns the
-// encoded-form question. Note that copyMediaFile resolves the encoded/decoded
+// (a legitimate filename containing a disallowed rune, e.g. a bidi
+// directional mark, stays percent-encoded, indistinguishable from a 5.5.1
+// literal %) — it matches uri and the on-disk name instead; see #1152, which
+// owns the encoded-form question. Note that copyMediaFile resolves the encoded/decoded
 // ambiguity in the opposite order — raw path first, decode only on a miss —
 // so when the raw-named file is the one on disk, the recorded name never
 // existed; only the CLI knows which candidate resolved (#1153).
@@ -337,15 +338,27 @@ func originalFilenameFor(basename string, version GEDCOMVersion) string {
 	return decoded
 }
 
+// isCanonicalMediaRef reports whether a separator-normalized FILE ref already
+// points into the archive's media/files/ directory — the shape a GLX export
+// produces. path.Clean catches spellings like ./media/files/x that name the
+// same directory, and the prefix is compared case-insensitively so
+// case-insensitive filesystems (where Media/Files/ is the same directory)
+// don't defeat the check.
+func isCanonicalMediaRef(normalizedRef string) bool {
+	cleaned := path.Clean(normalizedRef)
+	prefix := MediaFilesDir + "/"
+	if len(cleaned) <= len(prefix) {
+		return false
+	}
+
+	return strings.EqualFold(cleaned[:len(prefix)], prefix)
+}
+
 // isBareDecodedFilename reports whether a percent-decoded basename is still a
 // bare filename: valid UTF-8, not a dot path (".", ".."), and containing no
-// path separators, no Unicode control characters (C0, DEL, or C1 — a decoded
-// %C2%80 is valid UTF-8 but still a control), no U+2028/U+2029 line and
-// paragraph separators (YAML emitters treat them as line breaks), and no Cf
-// format characters (bidi overrides such as U+202E render a filename in
-// reversed order, and zero-width characters and BOM are invisible).
-// Percent-decoding untrusted GEDCOM 7.0 refs is the only way any of these can
-// appear — filepath.Base has already run on the encoded form.
+// rune isDisallowedFilenameRune rejects. Percent-decoding untrusted GEDCOM
+// 7.0 refs is the only way any of these can appear — filepath.Base has
+// already run on the encoded form.
 func isBareDecodedFilename(decoded string) bool {
 	if decoded == "" || decoded == "." || decoded == ".." {
 		return false
@@ -354,10 +367,38 @@ func isBareDecodedFilename(decoded string) bool {
 		return false
 	}
 
-	return !strings.ContainsFunc(decoded, func(r rune) bool {
-		return r == '/' || r == '\\' || r == '\u2028' || r == '\u2029' ||
-			unicode.IsControl(r) || unicode.Is(unicode.Cf, r)
-	})
+	return !strings.ContainsFunc(decoded, isDisallowedFilenameRune)
+}
+
+// isDisallowedFilenameRune rejects runes that make a decoded basename unsafe
+// or misleading as a filename: path separators; Unicode control characters
+// (C0, DEL, or C1 — a decoded %C2%80 is valid UTF-8 but still a control);
+// the U+2028/U+2029 line and paragraph separators (YAML emitters treat them
+// as line breaks); invisible characters (zero-width space U+200B, BOM
+// U+FEFF); and the bidi embedding/override/isolate (U+202A-U+202E,
+// U+2066-U+2069) and directional-mark (U+200E LRM, U+200F RLM, U+061C ALM)
+// characters, which can render a filename in a misleading order (a U+202E
+// override displays photo<RLO>gpj.exe as photoexe.jpg). Format characters
+// that are ordinary orthography are deliberately allowed: ZWNJ (standard in
+// Persian/Arabic spelling) and ZWJ (emoji sequences, several Indic scripts)
+// join glyphs but never reorder or hide text.
+func isDisallowedFilenameRune(r rune) bool {
+	switch {
+	case r == '/' || r == '\\':
+		return true
+	case unicode.IsControl(r):
+		return true
+	case r == '\u2028' || r == '\u2029':
+		return true
+	case r == '\u200b' || r == '\ufeff':
+		return true
+	case r >= '\u202a' && r <= '\u202e', r >= '\u2066' && r <= '\u2069':
+		return true
+	case r == '\u200e' || r == '\u200f' || r == '\u061c':
+		return true
+	}
+
+	return false
 }
 
 // classifyFileRef determines if a GEDCOM FILE reference is a relative path

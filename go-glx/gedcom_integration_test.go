@@ -1513,8 +1513,12 @@ func TestIsBareDecodedFilename(t *testing.T) {
 		{"lone invalid byte", "a\xffb.jpg", false},
 		{"truncated UTF-8 sequence", "a\xc3(b.jpg", false},
 		{"bidi override", "photo\u202egpj.exe", false},
+		{"bidi isolate", "a\u2066b.jpg", false},
+		{"left-to-right mark", "a\u200eb.jpg", false},
 		{"zero-width space", "a\u200bb.jpg", false},
 		{"byte order mark", "\ufeffa.jpg", false},
+		{"zero-width non-joiner (Persian)", "\u062f\u0627\u0646\u0634\u200c\u0622\u0645\u0648\u0632.jpg", true},
+		{"zero-width joiner (emoji)", "family\U0001F469\u200d\U0001F467.jpg", true},
 	}
 
 	for _, tt := range tests {
@@ -1634,18 +1638,15 @@ func TestMediaImport_OriginalFilenameSurvivesCollisionRename(t *testing.T) {
 	}
 }
 
-func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
-	// URLs and absolute paths keep their URI verbatim (nothing is renamed), a
-	// BLOB has no source filename at all, and a ref already pointing into
-	// media/files/ is a re-imported GLX export whose basename is the
-	// canonicalized name, not an original — none of them get original_filename.
+func TestMediaImport_OriginalFilenameCanonicalRefCollision(t *testing.T) {
+	// Merging two GLX exports into one GEDCOM can put two media/files/ refs
+	// with the same basename in one file. The canonical-ref skip applies only
+	// while the name is untouched: the collision-renamed second ref records
+	// its pre-rename basename — the motivating scenario — while the first
+	// stays unstamped.
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
-		"0 @M1@ OBJE\n1 FILE http://example.com/photo.jpg\n1 FORM jpeg\n" +
-		"0 @M2@ OBJE\n1 FILE /home/user/photo.jpg\n1 FORM jpeg\n" +
-		"0 @M3@ OBJE\n1 TITL Flower\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n" +
-		"0 @M4@ OBJE\n1 FILE media/files/photo-2.jpg\n1 FORM jpeg\n" +
-		"0 @M5@ OBJE\n1 FILE ./media/files/photo-3.jpg\n1 FORM jpeg\n" +
-		"0 @M6@ OBJE\n1 FILE media\\files\\photo-4.jpg\n1 FORM jpeg\n" +
+		"0 @M1@ OBJE\n1 FILE media/files/photo.jpg\n1 FORM jpeg\n" +
+		"0 @M2@ OBJE\n1 FILE media/files/photo.jpg\n1 FORM jpeg\n" +
 		"0 TRLR\n"
 
 	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
@@ -1653,8 +1654,40 @@ func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
 		t.Fatalf("Import failed: %v", err)
 	}
 
-	if len(glx.Media) != 6 {
-		t.Fatalf("Expected 6 media entities, got %d", len(glx.Media))
+	first := findMediaByURI(t, glx, "media/files/photo.jpg")
+	if got, ok := first.Properties[MediaPropertyOriginalFilename]; ok {
+		t.Errorf("unrenamed canonical ref: unexpected original_filename %v", got)
+	}
+
+	second := findMediaByURI(t, glx, "media/files/photo-2.jpg")
+	if got := second.Properties[MediaPropertyOriginalFilename]; got != "photo.jpg" {
+		t.Errorf("renamed canonical ref: original_filename = %v, want %q", got, "photo.jpg")
+	}
+}
+
+func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
+	// URLs and absolute paths keep their URI verbatim (nothing is renamed), a
+	// BLOB has no source filename at all, and a ref already pointing into
+	// media/files/ (in any spelling or case) is a re-imported GLX export whose
+	// basename is the canonicalized name, not an original — none of them get
+	// original_filename.
+	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @M1@ OBJE\n1 FILE http://example.com/photo.jpg\n1 FORM jpeg\n" +
+		"0 @M2@ OBJE\n1 FILE /home/user/photo.jpg\n1 FORM jpeg\n" +
+		"0 @M3@ OBJE\n1 TITL Flower\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n" +
+		"0 @M4@ OBJE\n1 FILE media/files/photo-2.jpg\n1 FORM jpeg\n" +
+		"0 @M5@ OBJE\n1 FILE ./media/files/photo-3.jpg\n1 FORM jpeg\n" +
+		"0 @M6@ OBJE\n1 FILE media\\files\\photo-4.jpg\n1 FORM jpeg\n" +
+		"0 @M7@ OBJE\n1 FILE Media/Files/photo-5.jpg\n1 FORM jpeg\n" +
+		"0 TRLR\n"
+
+	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	if len(glx.Media) != 7 {
+		t.Fatalf("Expected 7 media entities, got %d", len(glx.Media))
 	}
 	for id, media := range glx.Media {
 		if got, ok := media.Properties[MediaPropertyOriginalFilename]; ok {
