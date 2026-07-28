@@ -1480,7 +1480,7 @@ func TestMediaImport_OriginalFilenameStamped(t *testing.T) {
 	}
 	for uri, wantName := range want {
 		media := findMediaByURI(t, glx, uri)
-		if got := media.Properties["original_filename"]; got != wantName {
+		if got := media.Properties[MediaPropertyOriginalFilename]; got != wantName {
 			t.Errorf("media %s: original_filename = %v, want %q", uri, got, wantName)
 		}
 	}
@@ -1503,7 +1503,7 @@ func TestMediaImport_OriginalFilenameSurvivesCollisionRename(t *testing.T) {
 
 	for _, uri := range []string{"media/files/photo.jpg", "media/files/photo-2.jpg"} {
 		media := findMediaByURI(t, glx, uri)
-		if got := media.Properties["original_filename"]; got != "photo.jpg" {
+		if got := media.Properties[MediaPropertyOriginalFilename]; got != "photo.jpg" {
 			t.Errorf("media %s: original_filename = %v, want %q", uri, got, "photo.jpg")
 		}
 	}
@@ -1527,7 +1527,7 @@ func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
 		t.Fatalf("Expected 3 media entities, got %d", len(glx.Media))
 	}
 	for id, media := range glx.Media {
-		if got, ok := media.Properties["original_filename"]; ok {
+		if got, ok := media.Properties[MediaPropertyOriginalFilename]; ok {
 			t.Errorf("media %s (uri %q): unexpected original_filename %v", id, media.URI, got)
 		}
 	}

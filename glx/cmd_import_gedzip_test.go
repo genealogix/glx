@@ -218,7 +218,7 @@ func TestImportGEDZIP_StampsOriginalFilename(t *testing.T) {
 	require.Len(t, glx.Media, 1)
 	for _, media := range glx.Media {
 		require.Equal(t, "media/files/photo.jpg", media.URI)
-		require.Equal(t, "photo.jpg", media.Properties["original_filename"])
+		require.Equal(t, "photo.jpg", media.Properties[glxlib.MediaPropertyOriginalFilename])
 	}
 }
 
