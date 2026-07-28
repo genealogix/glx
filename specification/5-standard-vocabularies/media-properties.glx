@@ -81,5 +81,5 @@ media_properties:
 
   blob_size:
     label: "BLOB Size"
-    description: "Length in bytes of the encoded BLOB text imported from GEDCOM 5.5.1 BLOB records (pre-decode, not the decoded file size)"
+    description: "Length in bytes of the encoded BLOB text imported from GEDCOM 5.5.1 BLOB records, as concatenated from BLOB/CONT lines (pre-decode, not the decoded file size)"
     value_type: integer

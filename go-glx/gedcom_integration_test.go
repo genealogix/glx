@@ -1512,12 +1512,37 @@ func TestIsBareDecodedFilename(t *testing.T) {
 		{"paragraph separator", "a\u2029b.jpg", false},
 		{"lone invalid byte", "a\xffb.jpg", false},
 		{"truncated UTF-8 sequence", "a\xc3(b.jpg", false},
+		{"bidi override", "photo\u202egpj.exe", false},
+		{"zero-width space", "a\u200bb.jpg", false},
+		{"byte order mark", "\ufeffa.jpg", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := isBareDecodedFilename(tt.decoded); got != tt.want {
 				t.Errorf("isBareDecodedFilename(%q) = %v, want %v", tt.decoded, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOriginalFilenameFor(t *testing.T) {
+	tests := []struct {
+		name     string
+		basename string
+		version  GEDCOMVersion
+		want     string
+	}{
+		{"5.5.1 verbatim", "report%20final.jpg", GEDCOM551, "report%20final.jpg"},
+		{"7.0 decoded", "CharlotteBront%C3%AB.jpg", GEDCOM70, "CharlotteBrontë.jpg"},
+		{"7.0 malformed encoding", "100%.jpg", GEDCOM70, "100%.jpg"},
+		{"7.0 unsafe decode", "a%2Fb.jpg", GEDCOM70, "a%2Fb.jpg"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := originalFilenameFor(tt.basename, tt.version); got != tt.want {
+				t.Errorf("originalFilenameFor(%q, %v) = %q, want %q", tt.basename, tt.version, got, tt.want)
 			}
 		})
 	}
@@ -1610,12 +1635,15 @@ func TestMediaImport_OriginalFilenameSurvivesCollisionRename(t *testing.T) {
 }
 
 func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
-	// URLs and absolute paths keep their URI verbatim (nothing is renamed), and
-	// a BLOB has no source filename at all — none of them get original_filename.
+	// URLs and absolute paths keep their URI verbatim (nothing is renamed), a
+	// BLOB has no source filename at all, and a ref already pointing into
+	// media/files/ is a re-imported GLX export whose basename is the
+	// canonicalized name, not an original — none of them get original_filename.
 	gedcom := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
 		"0 @M1@ OBJE\n1 FILE http://example.com/photo.jpg\n1 FORM jpeg\n" +
 		"0 @M2@ OBJE\n1 FILE /home/user/photo.jpg\n1 FORM jpeg\n" +
 		"0 @M3@ OBJE\n1 TITL Flower\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n" +
+		"0 @M4@ OBJE\n1 FILE media/files/photo-2.jpg\n1 FORM jpeg\n" +
 		"0 TRLR\n"
 
 	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
@@ -1623,8 +1651,8 @@ func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
 		t.Fatalf("Import failed: %v", err)
 	}
 
-	if len(glx.Media) != 3 {
-		t.Fatalf("Expected 3 media entities, got %d", len(glx.Media))
+	if len(glx.Media) != 4 {
+		t.Fatalf("Expected 4 media entities, got %d", len(glx.Media))
 	}
 	for id, media := range glx.Media {
 		if got, ok := media.Properties[MediaPropertyOriginalFilename]; ok {

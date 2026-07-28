@@ -266,28 +266,17 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		media.URI = MediaFilesDir + "/" + targetName
 		// Record the pre-rename basename: a collision rename (photo.jpg →
 		// photo-2.jpg) puts only the renamed form in the URI, which would
-		// otherwise lose the source filename entirely. GEDCOM 7.0 FILE payloads
-		// are URI references, so a percent-encoded basename names a file that
-		// exists only decoded (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg,
-		// matching the copyMediaFile fallback); 5.5.1 payloads are plain paths
-		// where a literal % must survive untouched. copyMediaFile resolves the
-		// same ambiguity in the opposite order — raw path first, decode only
-		// on a miss — so when the raw-named file is the one on disk, the stamp
-		// names a file that never existed; only the CLI knows which candidate
-		// resolved (#1153). The existence guard is defensive: no current tag
-		// maps to this key, but a future mapping would write properties before
+		// otherwise lose the source filename entirely. A ref already pointing
+		// into media/files/ came from a GLX export: its basename is the
+		// canonicalized (possibly collision-renamed) name, not an original,
+		// and stamping it would fabricate provenance on a GLX→GEDCOM→GLX
+		// round trip. The existence guard is defensive: no current tag maps
+		// to this key, but a future mapping would write properties before
 		// this branch runs and must win.
-		originalName := basename
-		if conv.Version == GEDCOM70 {
-			// A decode that reintroduces a separator, a control character, or
-			// invalid UTF-8 is not a filename; keep the raw basename, as with
-			// a malformed encoding.
-			if decoded, decErr := url.PathUnescape(basename); decErr == nil && isBareDecodedFilename(decoded) {
-				originalName = decoded
+		if !strings.HasPrefix(normalizePathSeparators(fileRef), MediaFilesDir+"/") {
+			if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
+				media.Properties[MediaPropertyOriginalFilename] = originalFilenameFor(basename, conv.Version)
 			}
-		}
-		if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
-			media.Properties[MediaPropertyOriginalFilename] = originalName
 		}
 	} else {
 		// URL, absolute path, or empty — leave as-is
@@ -318,11 +307,36 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	return media
 }
 
+// originalFilenameFor returns the source filename to record for a relative
+// FILE ref's basename. GEDCOM 7.0 FILE payloads are URI references, so a
+// percent-encoded basename names a file that exists only decoded
+// (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg, matching the copyMediaFile
+// fallback); 5.5.1 payloads are plain paths where a literal % must survive
+// untouched. A 7.0 encoding that is malformed, or whose decoded form is not a
+// bare filename per isBareDecodedFilename, keeps the raw basename. Note that
+// copyMediaFile resolves the encoded/decoded ambiguity in the opposite order —
+// raw path first, decode only on a miss — so when the raw-named file is the
+// one on disk, the recorded name never existed; only the CLI knows which
+// candidate resolved (#1153).
+func originalFilenameFor(basename string, version GEDCOMVersion) string {
+	if version != GEDCOM70 {
+		return basename
+	}
+	decoded, err := url.PathUnescape(basename)
+	if err != nil || !isBareDecodedFilename(decoded) {
+		return basename
+	}
+
+	return decoded
+}
+
 // isBareDecodedFilename reports whether a percent-decoded basename is still a
 // bare filename: valid UTF-8, not a dot path (".", ".."), and containing no
 // path separators, no Unicode control characters (C0, DEL, or C1 — a decoded
-// %C2%80 is valid UTF-8 but still a control), and no U+2028/U+2029 line and
-// paragraph separators, which YAML emitters treat as line breaks.
+// %C2%80 is valid UTF-8 but still a control), no U+2028/U+2029 line and
+// paragraph separators (YAML emitters treat them as line breaks), and no Cf
+// format characters (bidi overrides such as U+202E render a filename in
+// reversed order, and zero-width characters and BOM are invisible).
 // Percent-decoding untrusted GEDCOM 7.0 refs is the only way any of these can
 // appear — filepath.Base has already run on the encoded form.
 func isBareDecodedFilename(decoded string) bool {
@@ -334,7 +348,8 @@ func isBareDecodedFilename(decoded string) bool {
 	}
 
 	return !strings.ContainsFunc(decoded, func(r rune) bool {
-		return r == '/' || r == '\\' || r == '\u2028' || r == '\u2029' || unicode.IsControl(r)
+		return r == '/' || r == '\\' || r == '\u2028' || r == '\u2029' ||
+			unicode.IsControl(r) || unicode.Is(unicode.Cf, r)
 	})
 }
 
