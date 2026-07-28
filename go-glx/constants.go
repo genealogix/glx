@@ -136,7 +136,7 @@ const (
 // Standard Media Property Names - commonly used properties on Media entities
 const (
 	MediaPropertyOriginalFilename = "original_filename" // Source filename before import canonicalization or collision renaming
-	MediaPropertyBlobSize         = "blob_size"         // Size in bytes of inline GEDCOM 5.5.1 BLOB data
+	MediaPropertyBlobSize         = "blob_size"         // Length in bytes of the encoded GEDCOM 5.5.1 BLOB text (pre-decode, not the decoded file size)
 )
 
 // Deprecated property constants - these properties have been removed from the spec.

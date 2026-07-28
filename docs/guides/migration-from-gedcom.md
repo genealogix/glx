@@ -140,7 +140,7 @@ Unknown event types fall back to Title Case of the snake_case type (e.g., `milit
 
 The importer handles three types of media references:
 
-- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`), and the source filename is preserved in `media.properties.original_filename`.
+- **Relative file paths**: Copied to `media/files/` in your archive, with paths rewritten automatically. Duplicate filenames are deduplicated (e.g., `photo.jpg` → `photo-2.jpg`), and the source file's basename is preserved in `media.properties.original_filename`.
 - **URLs and absolute paths**: Preserved as-is in the media entity's URI field.
 - **BLOB data** (GEDCOM 5.5.1): Binary data is decoded and written to files in `media/files/`.
 
