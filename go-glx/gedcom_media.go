@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // convertMedia converts a GEDCOM OBJE record to a GLX Media entity
@@ -277,10 +278,10 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// branch runs and must win.
 		originalName := basename
 		if conv.Version == GEDCOM70 {
-			// A decode that reintroduces a separator or control byte is not a
-			// filename; keep the raw basename, as with a malformed encoding.
-			if decoded, decErr := url.PathUnescape(basename); decErr == nil &&
-				!strings.ContainsAny(decoded, "/\\\x00") {
+			// A decode that reintroduces a separator, a control character, or
+			// invalid UTF-8 is not a filename; keep the raw basename, as with
+			// a malformed encoding.
+			if decoded, decErr := url.PathUnescape(basename); decErr == nil && isBareDecodedFilename(decoded) {
 				originalName = decoded
 			}
 		}
@@ -314,6 +315,24 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	}
 
 	return media
+}
+
+// isBareDecodedFilename reports whether a percent-decoded basename is still a
+// bare filename: valid UTF-8 containing no path separators and no control
+// characters (C0 range or DEL). Percent-decoding untrusted GEDCOM 7.0 refs is
+// the only way any of these can appear — filepath.Base has already run on the
+// encoded form.
+func isBareDecodedFilename(decoded string) bool {
+	if !utf8.ValidString(decoded) {
+		return false
+	}
+	if strings.ContainsAny(decoded, `/\`) {
+		return false
+	}
+
+	return !strings.ContainsFunc(decoded, func(r rune) bool {
+		return r < 0x20 || r == 0x7f
+	})
 }
 
 // classifyFileRef determines if a GEDCOM FILE reference is a relative path
