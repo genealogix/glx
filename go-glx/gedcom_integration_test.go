@@ -1644,6 +1644,8 @@ func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
 		"0 @M2@ OBJE\n1 FILE /home/user/photo.jpg\n1 FORM jpeg\n" +
 		"0 @M3@ OBJE\n1 TITL Flower\n1 FORM PICT\n1 BLOB\n2 CONT .HM.......k.1..F\n" +
 		"0 @M4@ OBJE\n1 FILE media/files/photo-2.jpg\n1 FORM jpeg\n" +
+		"0 @M5@ OBJE\n1 FILE ./media/files/photo-3.jpg\n1 FORM jpeg\n" +
+		"0 @M6@ OBJE\n1 FILE media\\files\\photo-4.jpg\n1 FORM jpeg\n" +
 		"0 TRLR\n"
 
 	glx, _, err := ImportGEDCOM(strings.NewReader(gedcom), nil)
@@ -1651,8 +1653,8 @@ func TestMediaImport_OriginalFilenameNotStampedForUncopiedRefs(t *testing.T) {
 		t.Fatalf("Import failed: %v", err)
 	}
 
-	if len(glx.Media) != 4 {
-		t.Fatalf("Expected 4 media entities, got %d", len(glx.Media))
+	if len(glx.Media) != 6 {
+		t.Fatalf("Expected 6 media entities, got %d", len(glx.Media))
 	}
 	for id, media := range glx.Media {
 		if got, ok := media.Properties[MediaPropertyOriginalFilename]; ok {

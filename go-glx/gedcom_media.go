@@ -17,6 +17,7 @@ package glx
 import (
 	"fmt"
 	"net/url"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -255,7 +256,8 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 	// Track file sources for CLI to copy/write
 	if fileRef != "" && classifyFileRef(fileRef) {
 		// Relative path — track for copying and rewrite URI
-		basename := filepath.Base(normalizePathSeparators(fileRef))
+		normalizedRef := normalizePathSeparators(fileRef)
+		basename := filepath.Base(normalizedRef)
 		targetName := deduplicateFilename(basename, conv.MediaFileNames)
 		conv.MediaFileSources = append(conv.MediaFileSources, MediaFileSource{
 			MediaID:        mediaID,
@@ -270,10 +272,11 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// into media/files/ came from a GLX export: its basename is the
 		// canonicalized (possibly collision-renamed) name, not an original,
 		// and stamping it would fabricate provenance on a GLX→GEDCOM→GLX
-		// round trip. The existence guard is defensive: no current tag maps
-		// to this key, but a future mapping would write properties before
-		// this branch runs and must win.
-		if !strings.HasPrefix(normalizePathSeparators(fileRef), MediaFilesDir+"/") {
+		// round trip (path.Clean catches spellings like ./media/files/x that
+		// name the same directory). The existence guard is defensive: no
+		// current tag maps to this key, but a future mapping would write
+		// properties before this branch runs and must win.
+		if !strings.HasPrefix(path.Clean(normalizedRef), MediaFilesDir+"/") {
 			if _, exists := media.Properties[MediaPropertyOriginalFilename]; !exists {
 				media.Properties[MediaPropertyOriginalFilename] = originalFilenameFor(basename, conv.Version)
 			}
@@ -313,11 +316,15 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 // (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg, matching the copyMediaFile
 // fallback); 5.5.1 payloads are plain paths where a literal % must survive
 // untouched. A 7.0 encoding that is malformed, or whose decoded form is not a
-// bare filename per isBareDecodedFilename, keeps the raw basename. Note that
-// copyMediaFile resolves the encoded/decoded ambiguity in the opposite order —
-// raw path first, decode only on a miss — so when the raw-named file is the
-// one on disk, the recorded name never existed; only the CLI knows which
-// candidate resolved (#1153).
+// bare filename per isBareDecodedFilename, keeps the raw basename. On that
+// reject path the recorded value is knowingly not the source's decoded name
+// (a legitimate filename containing a Cf rune, e.g. an emoji ZWJ sequence,
+// stays percent-encoded, indistinguishable from a 5.5.1 literal %) — it
+// matches uri and the on-disk name instead; see #1152, which owns the
+// encoded-form question. Note that copyMediaFile resolves the encoded/decoded
+// ambiguity in the opposite order — raw path first, decode only on a miss —
+// so when the raw-named file is the one on disk, the recorded name never
+// existed; only the CLI knows which candidate resolved (#1153).
 func originalFilenameFor(basename string, version GEDCOMVersion) string {
 	if version != GEDCOM70 {
 		return basename

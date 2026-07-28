@@ -286,7 +286,7 @@ Repositories are automatically deduplicated by name, city, and country. If two G
 
 | GEDCOM Tag | GLX Field | Notes |
 |------------|-----------|-------|
-| `FILE` | `media.uri` | Relative paths rewritten to `media/files/`; source basename kept in `media.properties.original_filename` (percent-decoded for 7.0) |
+| `FILE` | `media.uri` | Relative paths rewritten to `media/files/`; source basename kept in `media.properties.original_filename` (percent-decoded for 7.0; import-only, not emitted on export) |
 | `FILE.FORM` | (MIME inference) | GEDCOM 5.5.1 format |
 | `FILE.MIME` | `media.mime_type` | GEDCOM 7.0 explicit MIME |
 | `FILE.TITL` | `media.title` | |
