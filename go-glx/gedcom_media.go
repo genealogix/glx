@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -318,20 +319,21 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 }
 
 // isBareDecodedFilename reports whether a percent-decoded basename is still a
-// bare filename: valid UTF-8 containing no path separators and no control
-// characters (C0 range or DEL). Percent-decoding untrusted GEDCOM 7.0 refs is
-// the only way any of these can appear — filepath.Base has already run on the
-// encoded form.
+// bare filename: valid UTF-8, not a dot path (".", ".."), and containing no
+// path separators and no Unicode control characters (C0, DEL, or C1 — a
+// decoded %C2%80 is valid UTF-8 but still a control). Percent-decoding
+// untrusted GEDCOM 7.0 refs is the only way any of these can appear —
+// filepath.Base has already run on the encoded form.
 func isBareDecodedFilename(decoded string) bool {
-	if !utf8.ValidString(decoded) {
+	if decoded == "" || decoded == "." || decoded == ".." {
 		return false
 	}
-	if strings.ContainsAny(decoded, `/\`) {
+	if !utf8.ValidString(decoded) {
 		return false
 	}
 
 	return !strings.ContainsFunc(decoded, func(r rune) bool {
-		return r < 0x20 || r == 0x7f
+		return r == '/' || r == '\\' || unicode.IsControl(r)
 	})
 }
 

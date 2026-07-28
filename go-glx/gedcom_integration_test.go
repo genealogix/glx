@@ -1548,6 +1548,34 @@ func TestMediaImport_OriginalFilenamePercentDecoding(t *testing.T) {
 			wantURI: "media/files/a%FFb.jpg",
 			want:    "a%FFb.jpg",
 		},
+		{
+			name:    "7.0 encoded newline keeps raw basename",
+			version: "7.0",
+			fileRef: "media/a%0Ab.jpg",
+			wantURI: "media/files/a%0Ab.jpg",
+			want:    "a%0Ab.jpg",
+		},
+		{
+			name:    "7.0 decode to invalid UTF-8 sequence keeps raw basename",
+			version: "7.0",
+			fileRef: "media/a%C3%28b.jpg",
+			wantURI: "media/files/a%C3%28b.jpg",
+			want:    "a%C3%28b.jpg",
+		},
+		{
+			name:    "7.0 encoded C1 control keeps raw basename",
+			version: "7.0",
+			fileRef: "media/a%C2%80b.jpg",
+			wantURI: "media/files/a%C2%80b.jpg",
+			want:    "a%C2%80b.jpg",
+		},
+		{
+			name:    "7.0 encoded dot-dot keeps raw basename",
+			version: "7.0",
+			fileRef: "media/%2E%2E",
+			wantURI: "media/files/%2E%2E",
+			want:    "%2E%2E",
+		},
 	}
 
 	for _, tt := range tests {
