@@ -268,12 +268,19 @@ func convertMediaCommon(objeRecord *GEDCOMRecord, mediaID string, conv *Conversi
 		// are URI references, so a percent-encoded basename names a file that
 		// exists only decoded (CharlotteBront%C3%AB.jpg → CharlotteBrontë.jpg,
 		// matching the copyMediaFile fallback); 5.5.1 payloads are plain paths
-		// where a literal % must survive untouched. The existence guard is
-		// defensive: no current tag maps to this key, but a future mapping
-		// would write properties before this branch runs and must win.
+		// where a literal % must survive untouched. Because copyMediaFile tries
+		// the raw path first and decodes only on a miss, the stamped name can
+		// disagree with the file actually copied in the rare case where the
+		// other candidate is what exists on disk — only the CLI knows which
+		// one resolved. The existence guard is defensive: no current tag maps
+		// to this key, but a future mapping would write properties before this
+		// branch runs and must win.
 		originalName := basename
 		if conv.Version == GEDCOM70 {
-			if decoded, decErr := url.PathUnescape(basename); decErr == nil {
+			// A decode that reintroduces a separator or control byte is not a
+			// filename; keep the raw basename, as with a malformed encoding.
+			if decoded, decErr := url.PathUnescape(basename); decErr == nil &&
+				!strings.ContainsAny(decoded, "/\\\x00") {
 				originalName = decoded
 			}
 		}

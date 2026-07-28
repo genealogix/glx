@@ -1520,6 +1520,20 @@ func TestMediaImport_OriginalFilenamePercentDecoding(t *testing.T) {
 			wantURI: "media/files/100%.jpg",
 			want:    "100%.jpg",
 		},
+		{
+			name:    "7.0 encoded separator keeps raw basename",
+			version: "7.0",
+			fileRef: "media/a%2Fb.jpg",
+			wantURI: "media/files/a%2Fb.jpg",
+			want:    "a%2Fb.jpg",
+		},
+		{
+			name:    "7.0 encoded NUL keeps raw basename",
+			version: "7.0",
+			fileRef: "media/x%00y.jpg",
+			wantURI: "media/files/x%00y.jpg",
+			want:    "x%00y.jpg",
+		},
 	}
 
 	for _, tt := range tests {
