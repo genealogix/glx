@@ -2222,6 +2222,7 @@ func findIssue(issues []AnalysisIssue, personID, property string) *AnalysisIssue
 			return &issues[i]
 		}
 	}
+
 	return nil
 }
 
@@ -2231,6 +2232,7 @@ func findIssueByMessage(issues []AnalysisIssue, personID, msgSubstr string) *Ana
 			return &issues[i]
 		}
 	}
+
 	return nil
 }
 
@@ -2240,6 +2242,7 @@ func findIssueByEntity(issues []AnalysisIssue, entityID string) *AnalysisIssue {
 			return &issues[i]
 		}
 	}
+
 	return nil
 }
 
@@ -2253,5 +2256,6 @@ func findSubstring(s, substr string) bool {
 			return true
 		}
 	}
+
 	return false
 }

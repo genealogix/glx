@@ -212,6 +212,7 @@ func TestCopyMediaFile_PathTraversal(t *testing.T) {
 		err := copyMediaFile(srcDir, p, destPath)
 		if err == nil {
 			t.Errorf("expected error for traversal path %q, got nil", p)
+
 			continue
 		}
 		if !strings.Contains(err.Error(), "path traversal") {

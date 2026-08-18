@@ -17,9 +17,10 @@ package main
 import (
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 // threeGenArchive builds a small family: grandparent → parent → child.
@@ -34,13 +35,13 @@ func threeGenArchive() *glxlib.GLXFile {
 			"person-adopted": {Properties: map[string]any{"name": "Adopted Child"}},
 		},
 		Events: map[string]*glxlib.Event{
-			"event-birth-grandpa":  {Type: glxlib.EventTypeBirth, Date: "1820", Participants: []glxlib.Participant{{Person: "person-grandpa", Role: "principal"}}},
-			"event-birth-grandma":  {Type: glxlib.EventTypeBirth, Date: "1825", Participants: []glxlib.Participant{{Person: "person-grandma", Role: "principal"}}},
-			"event-birth-father":   {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-father", Role: "principal"}}},
-			"event-death-father":   {Type: glxlib.EventTypeDeath, Date: "1920", Participants: []glxlib.Participant{{Person: "person-father", Role: "principal"}}},
-			"event-birth-mother":   {Type: glxlib.EventTypeBirth, Date: "1855", Participants: []glxlib.Participant{{Person: "person-mother", Role: "principal"}}},
-			"event-birth-child":    {Type: glxlib.EventTypeBirth, Date: "1880", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
-			"event-birth-adopted":  {Type: glxlib.EventTypeBirth, Date: "1885", Participants: []glxlib.Participant{{Person: "person-adopted", Role: "principal"}}},
+			"event-birth-grandpa": {Type: glxlib.EventTypeBirth, Date: "1820", Participants: []glxlib.Participant{{Person: "person-grandpa", Role: "principal"}}},
+			"event-birth-grandma": {Type: glxlib.EventTypeBirth, Date: "1825", Participants: []glxlib.Participant{{Person: "person-grandma", Role: "principal"}}},
+			"event-birth-father":  {Type: glxlib.EventTypeBirth, Date: "1850", Participants: []glxlib.Participant{{Person: "person-father", Role: "principal"}}},
+			"event-death-father":  {Type: glxlib.EventTypeDeath, Date: "1920", Participants: []glxlib.Participant{{Person: "person-father", Role: "principal"}}},
+			"event-birth-mother":  {Type: glxlib.EventTypeBirth, Date: "1855", Participants: []glxlib.Participant{{Person: "person-mother", Role: "principal"}}},
+			"event-birth-child":   {Type: glxlib.EventTypeBirth, Date: "1880", Participants: []glxlib.Participant{{Person: "person-child", Role: "principal"}}},
+			"event-birth-adopted": {Type: glxlib.EventTypeBirth, Date: "1885", Participants: []glxlib.Participant{{Person: "person-adopted", Role: "principal"}}},
 		},
 		Relationships: map[string]*glxlib.Relationship{
 			"rel-gp-father": {
@@ -130,6 +131,7 @@ func TestFindChildren_AdoptiveRelType(t *testing.T) {
 	for _, c := range children {
 		if c.personID == "person-adopted" {
 			assert.Equal(t, "adoptive_parent_child", c.relType)
+
 			return
 		}
 	}
@@ -244,7 +246,7 @@ func TestMakeTreeNode_UnknownPerson(t *testing.T) {
 
 	node := makeTreeNode(archive, "person-nonexistent")
 	assert.Equal(t, "(unknown)", node.Name)
-	assert.Equal(t, "", node.Dates)
+	assert.Empty(t, node.Dates)
 }
 
 func TestFormatRelType(t *testing.T) {
