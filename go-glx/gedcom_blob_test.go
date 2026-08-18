@@ -17,6 +17,7 @@ package glx
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -116,8 +117,9 @@ func TestDecodeGEDCOMBlobTrailingValues(t *testing.T) {
 	}
 }
 
-// TestDecodeGEDCOMBlobWhitespace verifies every ASCII whitespace byte GEDCOM
-// line wrapping can introduce is stripped before decoding.
+// TestDecodeGEDCOMBlobWhitespace verifies every ASCII whitespace byte — the
+// \r and \n of CONT/CONC line wrapping plus the padding lenient exporters
+// insert — is stripped before decoding.
 func TestDecodeGEDCOMBlobWhitespace(t *testing.T) {
 	// Same four characters, split by each whitespace byte in turn.
 	for _, ws := range []string{" ", "\t", "\n", "\v", "\f", "\r", "\r\n", " \t "} {
@@ -135,49 +137,73 @@ func TestDecodeGEDCOMBlobWhitespace(t *testing.T) {
 
 func TestDecodeGEDCOMBlobErrors(t *testing.T) {
 	// Empty blob
-	if _, err := DecodeGEDCOMBlob(""); !errors.Is(err, ErrEmptyBlobData) {
-		t.Errorf("Expected ErrEmptyBlobData for empty blob, got %v", err)
+	if _, err := DecodeGEDCOMBlob(""); !errors.Is(err, ErrGEDCOMBlobEmpty) {
+		t.Errorf("Expected ErrGEDCOMBlobEmpty for empty blob, got %v", err)
 	}
 
 	// Whitespace-only blob cleans to empty
-	if _, err := DecodeGEDCOMBlob(" \t\n\v\f\r "); !errors.Is(err, ErrEmptyBlobData) {
-		t.Errorf("Expected ErrEmptyBlobData for whitespace-only blob, got %v", err)
+	if _, err := DecodeGEDCOMBlob(" \t\n\v\f\r "); !errors.Is(err, ErrGEDCOMBlobEmpty) {
+		t.Errorf("Expected ErrGEDCOMBlobEmpty for whitespace-only blob, got %v", err)
 	}
 
 	// Single char is invalid (not enough bits for a full byte)
-	if _, err := DecodeGEDCOMBlob("."); !errors.Is(err, ErrInvalidBlobLength) {
-		t.Errorf("Expected ErrInvalidBlobLength for single character, got %v", err)
+	if _, err := DecodeGEDCOMBlob("."); !errors.Is(err, ErrGEDCOMBlobLength) {
+		t.Errorf("Expected ErrGEDCOMBlobLength for single character, got %v", err)
 	}
 
 	// 5 chars (4 + 1 trailing) is invalid — trailing single char can't encode a byte
-	if _, err := DecodeGEDCOMBlob("....."); !errors.Is(err, ErrInvalidBlobLength) {
-		t.Errorf("Expected ErrInvalidBlobLength for 5 chars, got %v", err)
+	if _, err := DecodeGEDCOMBlob("....."); !errors.Is(err, ErrGEDCOMBlobLength) {
+		t.Errorf("Expected ErrGEDCOMBlobLength for 5 chars, got %v", err)
 	}
 
 	// Out-of-range character in a full group ('z' > 'm')
-	if _, err := DecodeGEDCOMBlob("..z."); !errors.Is(err, ErrInvalidBlobChar) {
-		t.Errorf("Expected ErrInvalidBlobChar for out-of-range char in full group, got %v", err)
+	if _, err := DecodeGEDCOMBlob("..z."); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for out-of-range char in full group, got %v", err)
 	}
 
 	// Out-of-range character in a trailing group
-	if _, err := DecodeGEDCOMBlob("....z."); !errors.Is(err, ErrInvalidBlobChar) {
-		t.Errorf("Expected ErrInvalidBlobChar for out-of-range char in trailing group, got %v", err)
+	if _, err := DecodeGEDCOMBlob("....z."); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for out-of-range char in trailing group, got %v", err)
 	}
 
 	// Lower boundary: '-' is 0x2D, exactly one below '.' (0x2E)
-	if _, err := DecodeGEDCOMBlob("-..."); !errors.Is(err, ErrInvalidBlobChar) {
-		t.Errorf("Expected ErrInvalidBlobChar for below-range char in full group, got %v", err)
+	if _, err := DecodeGEDCOMBlob("-..."); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for below-range char in full group, got %v", err)
 	}
-	if _, err := DecodeGEDCOMBlob("....-."); !errors.Is(err, ErrInvalidBlobChar) {
-		t.Errorf("Expected ErrInvalidBlobChar for below-range char in trailing group, got %v", err)
+	if _, err := DecodeGEDCOMBlob("....-."); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for below-range char in trailing group, got %v", err)
 	}
 
 	// Upper boundary: 'n' is 0x6E, exactly one above 'm' (0x6D). 'm' itself is
 	// accepted — see the "mmmm" case in TestDecodeGEDCOMBlob.
-	if _, err := DecodeGEDCOMBlob("n..."); !errors.Is(err, ErrInvalidBlobChar) {
-		t.Errorf("Expected ErrInvalidBlobChar for 'n' in full group, got %v", err)
+	if _, err := DecodeGEDCOMBlob("n..."); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for 'n' in full group, got %v", err)
 	}
-	if _, err := DecodeGEDCOMBlob("....n."); !errors.Is(err, ErrInvalidBlobChar) {
-		t.Errorf("Expected ErrInvalidBlobChar for 'n' in trailing group, got %v", err)
+	if _, err := DecodeGEDCOMBlob("....n."); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for 'n' in trailing group, got %v", err)
+	}
+}
+
+// TestDecodeGEDCOMBlobCharErrorReportsByte pins the hex rendering in the
+// invalid-character message. %q formats a byte as a rune, so on its own it
+// reports any byte >= 0x80 as the Latin-1 character with that code point
+// rather than the byte actually in the input; the hex cannot lie.
+func TestDecodeGEDCOMBlobCharErrorReportsByte(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		input string
+	}{
+		{"full group", "..\xFF."},
+		{"trailing group", "....\xFF."},
+	} {
+		_, err := DecodeGEDCOMBlob(tc.input)
+		if err == nil {
+			t.Errorf("%s: expected an error for 0xFF, got nil", tc.name)
+
+			continue
+		}
+		if !strings.Contains(err.Error(), "(0xFF)") {
+			t.Errorf("%s: error %q does not report the offending byte as 0xFF", tc.name, err)
+		}
 	}
 }
