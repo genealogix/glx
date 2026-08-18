@@ -68,6 +68,8 @@ git commit -m "Add 1851 Census evidence for Smith family
 - Source: HO107, Piece 2319, Yorkshire"
 ```
 
+`git add -A` stages everything in the archive, which is what you want when the commit *is* the finding; if you have unrelated work in progress, stage those paths explicitly instead.
+
 A good archive commit message answers three questions: **what changed** (which people/events), **on what evidence** (which source), and **why** (what made you conclude this). The subject line states the finding; the body carries the detail. Six months later, `git log` reads as a research journal.
 
 ::: tip Automate the validation gate
