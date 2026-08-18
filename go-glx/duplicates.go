@@ -969,7 +969,7 @@ func scoreSharedRelationships(idA, idB string, idx *duplicateIndex) (float64, st
 		return 0, "no overlap", true
 	}
 
-	maxPeers := max(len(peersB), len(peersA))
+	maxPeers := max(len(peersA), len(peersB))
 
 	score := float64(common) / float64(maxPeers)
 
@@ -1003,7 +1003,7 @@ func scoreSharedEvents(idA, idB string, idx *duplicateIndex) (float64, string, b
 		return 0, "no overlap", true
 	}
 
-	maxEvents := max(len(eventsB), len(eventsA))
+	maxEvents := max(len(eventsA), len(eventsB))
 
 	score := float64(common) / float64(maxEvents)
 

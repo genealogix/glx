@@ -80,18 +80,14 @@ func formatGEDCOMDateBody(s string) string {
 
 	// Handle open-ended FROM
 	if after, ok := strings.CutPrefix(s, "FROM "); ok {
-		dateStr := after
-
-		return "FROM " + convertSingleDate(strings.TrimSpace(dateStr))
+		return "FROM " + convertSingleDate(strings.TrimSpace(after))
 	}
 
 	// Handle qualifiers: ABT, BEF, AFT, CAL
 	qualifiers := []string{"ABT ", "CAL ", "BEF ", "AFT "}
 	for _, qual := range qualifiers {
 		if after, ok := strings.CutPrefix(s, qual); ok {
-			dateStr := after
-
-			return qual + convertSingleDate(strings.TrimSpace(dateStr))
+			return qual + convertSingleDate(strings.TrimSpace(after))
 		}
 	}
 
