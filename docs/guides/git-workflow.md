@@ -60,13 +60,15 @@ Always validate before committing, so every commit in history is a known-good ar
 
 ```bash
 glx validate
-git add persons/ events/ citations/ sources/
+git add -A
 git commit -m "Add 1851 Census evidence for Smith family
 
 - John Smith: occupation (blacksmith), residence
 - Mary Smith: age, birthplace
 - Source: HO107, Piece 2319, Yorkshire"
 ```
+
+`git add -A` stages everything in the archive, which is what you want when the commit *is* the finding; if you have unrelated work in progress, stage those paths explicitly instead.
 
 A good archive commit message answers three questions: **what changed** (which people/events), **on what evidence** (which source), and **why** (what made you conclude this). The subject line states the finding; the body carries the detail. Six months later, `git log` reads as a research journal.
 
@@ -218,10 +220,10 @@ jobs:
           # replace "latest/download" with a pinned "download/vX.Y.Z".
           mkdir -p .bin
           base="https://github.com/genealogix/glx/releases/latest/download"
-          curl -fsSL -o glx.tar.gz "$base/glx_Linux_x86_64.tar.gz"
+          curl -fsSL -o glx_Linux_x86_64.tar.gz "$base/glx_Linux_x86_64.tar.gz"
           curl -fsSL -o checksums.txt "$base/checksums.txt"
           grep ' glx_Linux_x86_64.tar.gz$' checksums.txt | sha256sum -c -
-          tar -xzf glx.tar.gz -C .bin glx
+          tar -xzf glx_Linux_x86_64.tar.gz -C .bin glx
       - run: ./.bin/glx validate
 ```
 
@@ -249,10 +251,12 @@ A conflict in a `.glx` file looks like any Git conflict:
 ```yaml
 persons:
   person-john-smith:
-    names:
-      - given: John
-        surname: Smith
     properties:
+      name:
+        value: "John Smith"
+        fields:
+          given: "John"
+          surname: "Smith"
 <<<<<<< HEAD
       occupation: Blacksmith
 =======
