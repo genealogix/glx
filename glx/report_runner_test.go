@@ -17,9 +17,10 @@ package main
 import (
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestBuildConfidenceReport_Empty(t *testing.T) {
@@ -178,7 +179,7 @@ func TestBuildConfidenceReport_ParticipantAssertion(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Assertions: map[string]*glxlib.Assertion{
 			"a-participant": {
-				Subject:    glxlib.EntityRef{Event: "event-1"},
+				Subject: glxlib.EntityRef{Event: "event-1"},
 				Participant: &glxlib.Participant{
 					Person: "person-a",
 					Role:   "witness",

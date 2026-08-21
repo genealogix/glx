@@ -58,6 +58,7 @@ func loadArchiveForAnalyze(path string) (*glxlib.GLXFile, error) {
 				fmt.Fprintf(os.Stderr, "  - %s\n", d)
 			}
 		}
+
 		return archive, nil
 	}
 
@@ -121,6 +122,7 @@ func showAnalysis(archivePath, personFilter, checkFilter, format string) error {
 	}
 
 	printAnalysisTerminal(result)
+
 	return nil
 }
 
@@ -134,6 +136,7 @@ func filterByPerson(issues []AnalysisIssue, query string, archive *glxlib.GLXFil
 				filtered = append(filtered, issue)
 			}
 		}
+
 		return filtered
 	}
 
@@ -156,6 +159,7 @@ func filterByPerson(issues []AnalysisIssue, query string, archive *glxlib.GLXFil
 			filtered = append(filtered, issue)
 		}
 	}
+
 	return filtered
 }
 
@@ -171,6 +175,7 @@ func buildSummary(issues []AnalysisIssue) map[string]int {
 	for _, issue := range issues {
 		summary[issue.Category]++
 	}
+
 	return summary
 }
 
@@ -181,6 +186,7 @@ func printAnalysisJSON(result AnalysisResult) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 	fmt.Println(string(data))
+
 	return nil
 }
 
@@ -189,6 +195,7 @@ func printAnalysisTerminal(result AnalysisResult) {
 	total := len(result.Issues)
 	if total == 0 {
 		fmt.Println("No issues found — archive looks good!")
+
 		return
 	}
 
@@ -227,6 +234,7 @@ func filterCategory(issues []AnalysisIssue, category string) []AnalysisIssue {
 			filtered = append(filtered, issue)
 		}
 	}
+
 	return filtered
 }
 
@@ -272,6 +280,7 @@ func sortIssues(issues []AnalysisIssue) {
 			return ri < rj
 		}
 		pi, pj := issues[i].Person+issues[i].Entity, issues[j].Person+issues[j].Entity
+
 		return pi < pj
 	})
 }
@@ -284,6 +293,7 @@ func personName(archive *glxlib.GLXFile, personID string) string {
 			return name
 		}
 	}
+
 	return personID
 }
 
@@ -294,5 +304,6 @@ func sortedPersonIDs(persons map[string]*glxlib.Person) []string {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+
 	return ids
 }
