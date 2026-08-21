@@ -99,6 +99,7 @@ func isPathWithin(child, parent string) bool {
 	if err != nil {
 		return false
 	}
+
 	return !strings.HasPrefix(rel, "..") && rel != "."
 }
 
@@ -168,11 +169,14 @@ func copyFile(src, dst string) error {
 
 	if copyErr != nil {
 		_ = os.Remove(dst) // best-effort cleanup of corrupted file
+
 		return copyErr
 	}
 	if closeErr != nil {
 		_ = os.Remove(dst) // best-effort cleanup of truncated file
+
 		return closeErr
 	}
+
 	return nil
 }
