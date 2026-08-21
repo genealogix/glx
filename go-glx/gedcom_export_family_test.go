@@ -204,11 +204,11 @@ func TestReconstructFamilies_SingleParent(t *testing.T) {
 
 	family := expCtx.Families[0]
 	// Mother is female, so should be WIFE
-	assert.Equal(t, "", family.HusbandID)
+	assert.Empty(t, family.HusbandID)
 	assert.Equal(t, "person-mother", family.WifeID)
 	assert.Len(t, family.ChildIDs, 1)
 	assert.Equal(t, "person-child", family.ChildIDs[0])
-	assert.Equal(t, "", family.RelationshipID) // synthetic family has no marriage relationship
+	assert.Empty(t, family.RelationshipID) // synthetic family has no marriage relationship
 }
 
 // TestReconstructFamilies_SingleParentWithExistingFamily verifies that when a parent
@@ -321,7 +321,7 @@ func TestReconstructFamilies_SingleParentWithExistingFamily(t *testing.T) {
 	// Synthetic family should have the father-only children
 	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other1")
 	assert.Contains(t, syntheticFamily.ChildIDs, "person-child-other2")
-	assert.Equal(t, "", syntheticFamily.RelationshipID)
+	assert.Empty(t, syntheticFamily.RelationshipID)
 }
 
 func TestReconstructFamilies_PedigreeTypes(t *testing.T) {
@@ -414,7 +414,7 @@ func TestReconstructFamilies_PedigreeTypes(t *testing.T) {
 	assert.Equal(t, "birth", family.ChildPedigrees["person-bio-child"])
 	assert.Equal(t, "adopted", family.ChildPedigrees["person-adopted-child"])
 	assert.Equal(t, "foster", family.ChildPedigrees["person-foster-child"])
-	assert.Equal(t, "", family.ChildPedigrees["person-generic-child"])
+	assert.Empty(t, family.ChildPedigrees["person-generic-child"])
 }
 
 // ============================================================================
@@ -893,8 +893,8 @@ func TestExportGEDCOM_FullFamily(t *testing.T) {
 	famIdx := strings.Index(output, "0 @F1@ FAM")
 	trlrIdx := strings.Index(output, "0 TRLR")
 
-	assert.True(t, headIdx < famIdx, "HEAD should come before FAM")
-	assert.True(t, famIdx < trlrIdx, "FAM should come before TRLR")
+	assert.Less(t, headIdx, famIdx, "HEAD should come before FAM")
+	assert.Less(t, famIdx, trlrIdx, "FAM should come before TRLR")
 }
 
 func TestExportGEDCOM_FamilyWithNotes(t *testing.T) {
@@ -1106,8 +1106,8 @@ func TestRelationshipTypeToPedi(t *testing.T) {
 	assert.Equal(t, "birth", relationshipTypeToPedi(RelationshipTypeBiologicalParentChild))
 	assert.Equal(t, "adopted", relationshipTypeToPedi(RelationshipTypeAdoptiveParentChild))
 	assert.Equal(t, "foster", relationshipTypeToPedi(RelationshipTypeFosterParentChild))
-	assert.Equal(t, "", relationshipTypeToPedi(RelationshipTypeParentChild))
-	assert.Equal(t, "", relationshipTypeToPedi(RelationshipTypeMarriage))
+	assert.Empty(t, relationshipTypeToPedi(RelationshipTypeParentChild))
+	assert.Empty(t, relationshipTypeToPedi(RelationshipTypeMarriage))
 }
 
 func TestIsParentChildType(t *testing.T) {

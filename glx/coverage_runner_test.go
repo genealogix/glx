@@ -19,9 +19,10 @@ import (
 	"strings"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func newTestArchiveForCoverage() *glxlib.GLXFile {
@@ -120,8 +121,8 @@ func TestBuildCoverage_BasicPerson(t *testing.T) {
 	assert.Equal(t, "1840", result.BirthDate)
 	assert.Equal(t, "New York, NY", result.BirthPlace)
 	assert.Equal(t, "1910", result.DeathDate)
-	assert.Greater(t, result.Expected, 0)
-	assert.Greater(t, result.Found, 0)
+	assert.Positive(t, result.Expected)
+	assert.Positive(t, result.Found)
 	assert.LessOrEqual(t, result.Found, result.Expected)
 }
 
@@ -149,7 +150,7 @@ func TestBuildCoverage_CensusRecords(t *testing.T) {
 			foundYears[r.Label] = true
 		}
 	}
-	assert.True(t, len(foundYears) >= 2, "should find at least 2 census records (1850, 1860)")
+	assert.GreaterOrEqual(t, len(foundYears), 2, "should find at least 2 census records (1850, 1860)")
 }
 
 func TestBuildCoverage_VitalRecords(t *testing.T) {
@@ -261,7 +262,7 @@ func TestFindCensusMatch(t *testing.T) {
 	assert.Equal(t, "event-census-1850", findCensusMatch(1850, sources, events))
 	assert.Equal(t, "source-1860", findCensusMatch(1860, sources, events))
 	assert.Equal(t, "event-census-1870", findCensusMatch(1870, sources, events))
-	assert.Equal(t, "", findCensusMatch(1880, sources, events))
+	assert.Empty(t, findCensusMatch(1880, sources, events))
 }
 
 func TestCoveragePercent(t *testing.T) {
@@ -274,7 +275,7 @@ func TestCoveragePercent(t *testing.T) {
 
 func TestBoolPriority(t *testing.T) {
 	assert.Equal(t, "high", boolPriority(true, "high"))
-	assert.Equal(t, "", boolPriority(false, "high"))
+	assert.Empty(t, boolPriority(false, "high"))
 }
 
 func TestHasEventType(t *testing.T) {
@@ -338,11 +339,11 @@ func TestBuildCoverage_MaxLifespanCap(t *testing.T) {
 				},
 			},
 		},
-		Relationships:  map[string]*glxlib.Relationship{},
-		Sources:        map[string]*glxlib.Source{},
-		Citations:      map[string]*glxlib.Citation{},
-		Assertions:     map[string]*glxlib.Assertion{},
-		Places:         map[string]*glxlib.Place{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+		Places:        map[string]*glxlib.Place{},
 	}
 
 	result := buildCoverage("person-old", archive.Persons["person-old"], archive)
@@ -395,11 +396,11 @@ func TestBuildCoverage_BurialInfersDeath(t *testing.T) {
 				},
 			},
 		},
-		Relationships:  map[string]*glxlib.Relationship{},
-		Sources:        map[string]*glxlib.Source{},
-		Citations:      map[string]*glxlib.Citation{},
-		Assertions:     map[string]*glxlib.Assertion{},
-		Places:         map[string]*glxlib.Place{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+		Places:        map[string]*glxlib.Place{},
 	}
 
 	result := buildCoverage("person-soldier", archive.Persons["person-soldier"], archive)
@@ -453,11 +454,11 @@ func TestBuildCoverage_1890Note(t *testing.T) {
 				},
 			},
 		},
-		Relationships:  map[string]*glxlib.Relationship{},
-		Sources:        map[string]*glxlib.Source{},
-		Citations:      map[string]*glxlib.Citation{},
-		Assertions:     map[string]*glxlib.Assertion{},
-		Places:         map[string]*glxlib.Place{},
+		Relationships: map[string]*glxlib.Relationship{},
+		Sources:       map[string]*glxlib.Source{},
+		Citations:     map[string]*glxlib.Citation{},
+		Assertions:    map[string]*glxlib.Assertion{},
+		Places:        map[string]*glxlib.Place{},
 	}
 
 	result := buildCoverage("person-1890", archive.Persons["person-1890"], archive)
@@ -465,6 +466,7 @@ func TestBuildCoverage_1890Note(t *testing.T) {
 	for _, r := range result.Records {
 		if r.Category == "census" && len(r.Label) >= 4 && r.Label[:4] == "1890" {
 			assert.Contains(t, r.Description, "destroyed", "1890 census should note destruction")
+
 			return
 		}
 	}
@@ -489,7 +491,7 @@ func TestCoverageResolvePlaceName(t *testing.T) {
 
 	assert.Equal(t, "New York, NY", coverageResolvePlaceName("place-ny", archive))
 	assert.Equal(t, "unknown-place", coverageResolvePlaceName("unknown-place", archive))
-	assert.Equal(t, "", coverageResolvePlaceName("", archive))
+	assert.Empty(t, coverageResolvePlaceName("", archive))
 }
 
 // --- State census tests ---
@@ -506,9 +508,9 @@ func TestResolveStateFromPlace_DirectState(t *testing.T) {
 func TestResolveStateFromPlace_CityWithStateParent(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Places: map[string]*glxlib.Place{
-			"place-madison": {Name: "Madison", Type: glxlib.PlaceTypeCity, ParentID: "place-dane-county"},
+			"place-madison":     {Name: "Madison", Type: glxlib.PlaceTypeCity, ParentID: "place-dane-county"},
 			"place-dane-county": {Name: "Dane County", Type: glxlib.PlaceTypeCounty, ParentID: "place-wi"},
-			"place-wi": {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
+			"place-wi":          {Name: "Wisconsin", Type: glxlib.PlaceTypeState},
 		},
 	}
 	assert.Equal(t, "Wisconsin", resolveStateFromPlace("place-madison", archive))
@@ -518,7 +520,7 @@ func TestResolveStateFromPlace_EmptyRef(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Places: map[string]*glxlib.Place{},
 	}
-	assert.Equal(t, "", resolveStateFromPlace("", archive))
+	assert.Empty(t, resolveStateFromPlace("", archive))
 }
 
 func TestResolveStateFromPlace_NoState(t *testing.T) {
@@ -527,7 +529,7 @@ func TestResolveStateFromPlace_NoState(t *testing.T) {
 			"place-county": {Name: "Dane County", Type: glxlib.PlaceTypeCounty},
 		},
 	}
-	assert.Equal(t, "", resolveStateFromPlace("place-county", archive))
+	assert.Empty(t, resolveStateFromPlace("place-county", archive))
 }
 
 func TestCollectPersonStates_FromBirthplace(t *testing.T) {
@@ -634,6 +636,7 @@ func TestBuildStateCensusRecords_MatchesExistingEvent(t *testing.T) {
 		if strings.Contains(r.Label, "1855") {
 			assert.True(t, r.Found, "1855 state census should be marked found")
 			assert.Equal(t, "event-1855-census", r.SourceRef)
+
 			return
 		}
 	}
@@ -650,6 +653,7 @@ func TestBuildStateCensusRecords_FederalNotConfusedWithState(t *testing.T) {
 	for _, r := range records {
 		if strings.Contains(r.Label, "1860") {
 			assert.False(t, r.Found, "federal 1860 census should NOT match Mississippi state census")
+
 			return
 		}
 	}
@@ -711,7 +715,7 @@ func TestFindStateCensusMatch_PlaceWrongState(t *testing.T) {
 		{Ref: "event-1855", EventType: glxlib.EventTypeCensus, Year: 1855, Title: "1855 Census", PlaceID: "place-nyc"},
 	}
 	ref := findStateCensusMatch(1855, "Wisconsin", nil, events, archive)
-	assert.Equal(t, "", ref, "should not match when place resolves to wrong state")
+	assert.Empty(t, ref, "should not match when place resolves to wrong state")
 }
 
 func TestCollectPersonStates_FromBirthEvent(t *testing.T) {
@@ -788,6 +792,7 @@ func TestBuildCoverage_IncludesStateCensus(t *testing.T) {
 	for _, r := range result.Records {
 		if r.Category == "census" && strings.Contains(r.Label, "State Census") {
 			hasStateCensus = true
+
 			break
 		}
 	}
@@ -849,6 +854,7 @@ func TestBuildOtherRecords_ProbateHighPriority_WithFamilyAndDeath(t *testing.T) 
 		if r.Label == "Probate/will" && !r.Found {
 			assert.Equal(t, "high", r.Priority, "probate should be high priority when person died with family")
 			assert.Contains(t, r.Description, "heirs", "should note probate names heirs")
+
 			return
 		}
 	}
@@ -881,6 +887,7 @@ func TestBuildOtherRecords_ProbateNoPriority_NoDeath(t *testing.T) {
 	for _, r := range result.Records {
 		if r.Label == "Probate/will" {
 			assert.NotEqual(t, "high", r.Priority, "probate should not be high priority without death date")
+
 			return
 		}
 	}
@@ -917,6 +924,7 @@ func TestBuildOtherRecords_ProbateNoPriority_NoFamily(t *testing.T) {
 	for _, r := range result.Records {
 		if r.Label == "Probate/will" {
 			assert.NotEqual(t, "high", r.Priority, "probate should not be high priority without family")
+
 			return
 		}
 	}

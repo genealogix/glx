@@ -68,6 +68,7 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 		if keys[i].personID != keys[j].personID {
 			return keys[i].personID < keys[j].personID
 		}
+
 		return keys[i].property < keys[j].property
 	})
 
@@ -100,6 +101,7 @@ func analyzeConflicts(archive *glxlib.GLXFile) []AnalysisIssue {
 	}
 
 	sortIssues(issues)
+
 	return issues
 }
 
@@ -112,6 +114,7 @@ func resolveConflictValue(value, property string, archive *glxlib.GLXFile) strin
 			return place.Name
 		}
 	}
+
 	return value
 }
 
@@ -135,6 +138,7 @@ func distinctValues(values []conflictValueInfo) []conflictValueInfo {
 	for i, val := range order {
 		result[i] = conflictValueInfo{value: val, confidence: seen[val]}
 	}
+
 	return result
 }
 
