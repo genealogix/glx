@@ -317,7 +317,7 @@ func TestResolvePlaceString_NonexistentPlace(t *testing.T) {
 	}
 
 	result := resolvePlaceString("nonexistent", expCtx)
-	assert.Equal(t, "", result)
+	assert.Empty(t, result)
 }
 
 func TestResolvePlaceString_CacheHit(t *testing.T) {
@@ -1453,10 +1453,10 @@ func TestExportGEDCOM_WithSourcesAndMedia(t *testing.T) {
 	objeIdx := strings.Index(output, "@O1@ OBJE")
 	trlrIdx := strings.Index(output, "0 TRLR")
 
-	assert.True(t, headIdx < repoIdx, "HEAD should come before REPO")
-	assert.True(t, repoIdx < sourIdx, "REPO should come before SOUR")
-	assert.True(t, sourIdx < objeIdx, "SOUR should come before OBJE")
-	assert.True(t, objeIdx < trlrIdx, "OBJE should come before TRLR")
+	assert.Less(t, headIdx, repoIdx, "HEAD should come before REPO")
+	assert.Less(t, repoIdx, sourIdx, "REPO should come before SOUR")
+	assert.Less(t, sourIdx, objeIdx, "SOUR should come before OBJE")
+	assert.Less(t, objeIdx, trlrIdx, "OBJE should come before TRLR")
 }
 
 func TestExportGEDCOM_WithSourcesAndMedia_GEDCOM70(t *testing.T) {
@@ -2433,9 +2433,9 @@ func TestExportGEDCOM_WithPersons(t *testing.T) {
 	indi2Idx := strings.Index(output, "@I2@ INDI")
 	trlrIdx := strings.Index(output, "0 TRLR")
 
-	assert.True(t, headIdx < indi1Idx, "HEAD should come before INDI")
-	assert.True(t, indi1Idx < indi2Idx, "INDI 1 should come before INDI 2")
-	assert.True(t, indi2Idx < trlrIdx, "INDI should come before TRLR")
+	assert.Less(t, headIdx, indi1Idx, "HEAD should come before INDI")
+	assert.Less(t, indi1Idx, indi2Idx, "INDI 1 should come before INDI 2")
+	assert.Less(t, indi2Idx, trlrIdx, "INDI should come before TRLR")
 }
 
 func TestExportPerson_WithMediaAndSources(t *testing.T) {
@@ -2843,6 +2843,7 @@ func TestExportPerson_NameCitationsFromAssertions(t *testing.T) {
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagName {
 			nameRecord = sub
+
 			break
 		}
 	}
@@ -2923,6 +2924,7 @@ func TestExportPerson_PropertyCitationsFromAssertions(t *testing.T) {
 	for _, sub := range record.SubRecords {
 		if sub.Tag == "OCCU" {
 			occuRecord = sub
+
 			break
 		}
 	}
@@ -2997,6 +2999,7 @@ func TestExportPerson_NoteFromProperties(t *testing.T) {
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagNote {
 			noteRecord = sub
+
 			break
 		}
 	}
@@ -3040,6 +3043,7 @@ func TestExportPersonEvent_NoteFromProperties(t *testing.T) {
 	for _, sub := range record.SubRecords {
 		if sub.Tag == GedcomTagNote {
 			noteRecord = sub
+
 			break
 		}
 	}
