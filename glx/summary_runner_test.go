@@ -21,9 +21,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func newTestArchive() *glxlib.GLXFile {
@@ -232,7 +233,7 @@ func TestExtractAllNameVariants_SimpleString(t *testing.T) {
 	variants := extractAllNameVariants(person)
 	require.Len(t, variants, 1)
 	assert.Equal(t, "John Smith", variants[0].Value)
-	assert.Equal(t, "", variants[0].NameType)
+	assert.Empty(t, variants[0].NameType)
 }
 
 func TestExtractAllNameVariants_StructuredMap(t *testing.T) {
@@ -336,7 +337,7 @@ func TestFindEventForPerson_NotFound(t *testing.T) {
 	archive := newTestArchive()
 
 	result := findEventForPerson("person-john", "christening", archive)
-	assert.Equal(t, "", result)
+	assert.Empty(t, result)
 }
 
 func TestFindMarriageEvent(t *testing.T) {
@@ -352,7 +353,7 @@ func TestResolvePlaceName(t *testing.T) {
 
 	assert.Equal(t, "New York, New York", resolvePlaceName("place-ny", archive))
 	assert.Equal(t, "place-unknown", resolvePlaceName("place-unknown", archive))
-	assert.Equal(t, "", resolvePlaceName("", archive))
+	assert.Empty(t, resolvePlaceName("", archive))
 }
 
 // ============================================================================
@@ -658,7 +659,7 @@ func TestPronounFor_TemporalShapes(t *testing.T) {
 }
 
 func TestJoinNames(t *testing.T) {
-	assert.Equal(t, "", joinNames(nil))
+	assert.Empty(t, joinNames(nil))
 	assert.Equal(t, "Alice", joinNames([]string{"Alice"}))
 	assert.Equal(t, "Alice and Bob", joinNames([]string{"Alice", "Bob"}))
 	assert.Equal(t, "Alice, Bob, and Carol", joinNames([]string{"Alice", "Bob", "Carol"}))
@@ -753,7 +754,7 @@ func TestSnakeCaseToTitle(t *testing.T) {
 	assert.Equal(t, "Bar Mitzvah", snakeCaseToTitle("bar_mitzvah"))
 	assert.Equal(t, "Military Service", snakeCaseToTitle("military_service"))
 	assert.Equal(t, "Census", snakeCaseToTitle("census"))
-	assert.Equal(t, "", snakeCaseToTitle(""))
+	assert.Empty(t, snakeCaseToTitle(""))
 }
 
 func TestDisplayOrDash(t *testing.T) {

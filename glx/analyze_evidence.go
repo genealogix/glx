@@ -214,6 +214,7 @@ func sortedAssertionIDs(assertions map[string]*glxlib.Assertion) []string {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+
 	return ids
 }
 
@@ -224,6 +225,7 @@ func sortedCitationIDs(citations map[string]*glxlib.Citation) []string {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+
 	return ids
 }
 
@@ -234,6 +236,7 @@ func sortedSourceIDs(sources map[string]*glxlib.Source) []string {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+
 	return ids
 }
 
@@ -294,5 +297,6 @@ func findAttributionPhrase(notes string) string {
 			return phrase
 		}
 	}
+
 	return ""
 }
