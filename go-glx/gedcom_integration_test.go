@@ -233,12 +233,14 @@ func TestNameSubstructureToFieldsWithType(t *testing.T) {
 				if fields != nil {
 					t.Errorf("expected nil fields, got %v", fields)
 				}
+
 				return
 			}
 			if tt.wantAbsent {
 				if _, exists := fields[NameFieldType]; exists {
 					t.Error("expected type field to be absent from fields map")
 				}
+
 				return
 			}
 			got, _ := fields[NameFieldType].(string)
@@ -264,6 +266,7 @@ func TestNameTypeExtraction(t *testing.T) {
 	var person *Person
 	for _, p := range glxFile.Persons {
 		person = p
+
 		break
 	}
 	if person == nil {
@@ -979,6 +982,7 @@ func TestSourceEXID(t *testing.T) {
 		if exidSlice[1] != "bare-id" {
 			t.Errorf("expected bare 'bare-id', got %v", exidSlice[1])
 		}
+
 		return
 	}
 	t.Error("No source found with external_ids")
