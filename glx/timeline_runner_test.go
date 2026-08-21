@@ -21,9 +21,10 @@ import (
 	"strings"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestDateSortKey(t *testing.T) {
@@ -608,7 +609,7 @@ func TestPrintTimeline_FormatsISODates(t *testing.T) {
 	output := buf.String()
 
 	// ISO date should be formatted as readable
-	assert.True(t, strings.Contains(output, "July 17, 1860"), "ISO date should render as readable: %s", output)
+	assert.Contains(t, output, "July 17, 1860", "ISO date should render as readable: %s", output)
 	// GEDCOM date should pass through
 	assert.Contains(t, output, "ABT 1815")
 	// Undated should show (no date)

@@ -60,8 +60,8 @@ func TestScoreNameSimilarity_SurnameMatchGivenDifferent(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "John Smith"}}
 	b := &Person{Properties: map[string]any{"name": "James Smith"}}
 	score, _, hasData := scoreNameSimilarity(a, b)
-	assert.True(t, score > 0.5, "same surname should give partial credit")
-	assert.True(t, score < 1.0, "different given name should not be perfect")
+	assert.Greater(t, score, 0.5, "same surname should give partial credit")
+	assert.Less(t, score, 1.0, "different given name should not be perfect")
 	assert.True(t, hasData)
 }
 
@@ -69,7 +69,7 @@ func TestScoreNameSimilarity_NicknameVariant(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "William Smith"}}
 	b := &Person{Properties: map[string]any{"name": "Bill Smith"}}
 	score, detail, hasData := scoreNameSimilarity(a, b)
-	assert.True(t, score > 0.8, "nickname variant should score high, got %f", score)
+	assert.Greater(t, score, 0.8, "nickname variant should score high, got %f", score)
 	assert.Contains(t, detail, "surname exact")
 	assert.True(t, hasData)
 }
@@ -78,7 +78,7 @@ func TestScoreNameSimilarity_InitialMatch(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "J. Smith"}}
 	b := &Person{Properties: map[string]any{"name": "John Smith"}}
 	score, _, hasData := scoreNameSimilarity(a, b)
-	assert.True(t, score > 0.7, "initial match should give partial credit, got %f", score)
+	assert.Greater(t, score, 0.7, "initial match should give partial credit, got %f", score)
 	assert.True(t, hasData)
 }
 
@@ -86,7 +86,7 @@ func TestScoreNameSimilarity_CompletelyDifferent(t *testing.T) {
 	a := &Person{Properties: map[string]any{"name": "John Smith"}}
 	b := &Person{Properties: map[string]any{"name": "Mary Johnson"}}
 	score, _, hasData := scoreNameSimilarity(a, b)
-	assert.True(t, score < 0.5, "completely different names should score low, got %f", score)
+	assert.Less(t, score, 0.5, "completely different names should score low, got %f", score)
 	assert.True(t, hasData, "completely-different names were still compared, so the dimension carries data")
 }
 
@@ -113,7 +113,7 @@ func TestScoreNameSimilarity_StructuredFields(t *testing.T) {
 		},
 	}}
 	score, detail, hasData := scoreNameSimilarity(a, b)
-	assert.True(t, score > 0.8, "Rob/Robert Webb should match well, got %f", score)
+	assert.Greater(t, score, 0.8, "Rob/Robert Webb should match well, got %f", score)
 	assert.Contains(t, detail, "surname exact")
 	assert.True(t, hasData)
 }
@@ -381,7 +381,7 @@ func TestScoreSharedRelationships_CommonPeer(t *testing.T) {
 		},
 	}
 	score, detail, hasData := scoreSharedRelationships("person-a", "person-b", idx)
-	assert.True(t, score > 0, "should have positive score for shared peer")
+	assert.Positive(t, score, "should have positive score for shared peer")
 	assert.Contains(t, detail, "1 shared")
 	assert.True(t, hasData)
 }
@@ -407,7 +407,7 @@ func TestScoreSharedEvents_CommonEvent(t *testing.T) {
 		},
 	}
 	score, detail, hasData := scoreSharedEvents("person-a", "person-b", idx)
-	assert.True(t, score > 0, "should have positive score for shared event")
+	assert.Positive(t, score, "should have positive score for shared event")
 	assert.Contains(t, detail, "1 shared")
 	assert.True(t, hasData)
 }
@@ -452,7 +452,7 @@ func TestFindDuplicates_ObviousDuplicate(t *testing.T) {
 	result, err := FindDuplicates(archive, DuplicateOptions{Threshold: 0.5})
 	require.NoError(t, err)
 	require.Len(t, result.Pairs, 1)
-	assert.True(t, result.Pairs[0].Score >= 0.5)
+	assert.GreaterOrEqual(t, result.Pairs[0].Score, 0.5)
 }
 
 func TestFindDuplicates_RelatedPersonsSkipped(t *testing.T) {
@@ -528,7 +528,7 @@ func TestFindDuplicates_SortedByScoreDescending(t *testing.T) {
 	require.NoError(t, err)
 	if len(result.Pairs) > 1 {
 		for i := 1; i < len(result.Pairs); i++ {
-			assert.True(t, result.Pairs[i-1].Score >= result.Pairs[i].Score,
+			assert.GreaterOrEqual(t, result.Pairs[i-1].Score, result.Pairs[i].Score,
 				"pairs should be sorted by score descending")
 		}
 	}
@@ -564,7 +564,7 @@ func TestSplitFullName(t *testing.T) {
 
 	given, surname = splitFullName("Madonna")
 	assert.Equal(t, "Madonna", given)
-	assert.Equal(t, "", surname)
+	assert.Empty(t, surname)
 }
 
 // --- Threshold validation tests ---

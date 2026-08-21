@@ -381,6 +381,7 @@ func handlePersonPropertyTag(personID string, person *Person, tag string, record
 		for _, sub := range record.SubRecords {
 			if sub.Tag == GedcomTagPlac && sub.Value != "" {
 				value = sub.Value
+
 				break
 			}
 		}
@@ -483,6 +484,7 @@ func appendNameProperty(person *Person, nameValue map[string]any) {
 	existing, exists := person.Properties[PersonPropertyName]
 	if !exists {
 		person.Properties[PersonPropertyName] = nameValue
+
 		return
 	}
 	// Convert existing scalar to list and append
@@ -507,6 +509,7 @@ func appendResidence(person *Person, value any) {
 		} else {
 			person.Properties[PersonPropertyResidence] = value
 		}
+
 		return
 	}
 	if existingList, ok := existing.([]any); ok {
@@ -884,6 +887,7 @@ func convertASSOToParticipant(assoRecord *GEDCOMRecord, conv *ConversionContext)
 	if !ok {
 		conv.addWarning(0, GedcomTagAsso,
 			fmt.Sprintf("ASSO references unknown person %s — skipping participant", personRef))
+
 		return nil
 	}
 
