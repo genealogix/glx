@@ -578,6 +578,7 @@ func TestConvertResidence_NoPlacCreatesEvent(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeResidence {
 			residenceEvent = event
+
 			break
 		}
 	}
@@ -616,6 +617,7 @@ func TestConvertResidence_BareRESIYCreatesEvent(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeResidence {
 			residenceEvent = event
+
 			break
 		}
 	}
@@ -731,6 +733,7 @@ func TestImportIndividualEvent_SOURCitationsPreserved(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == "birth" && event.Date == "1900-01-01" {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -920,6 +923,7 @@ func TestImportASSOEvent_WitnessAdded(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeBirth {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -961,6 +965,7 @@ func TestImportASSOEvent_OfficiantRole(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeBirth {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -998,6 +1003,7 @@ func TestImportASSOEvent_VoidSkipped(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeBirth {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -1041,6 +1047,7 @@ func TestImportASSOFamily_MarriageWitness(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeMarriage {
 			marrEvent = event
+
 			break
 		}
 	}
@@ -1081,6 +1088,7 @@ func TestImportASSOEvent_RELAMapping(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeBirth {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -1125,6 +1133,7 @@ func TestImportASSOEvent_MissingPersonWarning(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeBirth {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -1226,6 +1235,7 @@ func TestImportDate_CalendarEscapePreserved(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == "birth" {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -1246,6 +1256,7 @@ func TestImportDate_BCEPreserved(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == "birth" {
 			birthEvent = event
+
 			break
 		}
 	}
@@ -1269,6 +1280,7 @@ func TestImportSingleSpouseFamily_MarriagePreserved(t *testing.T) {
 			foundMarriage = true
 			// Should have at least one participant
 			assert.GreaterOrEqual(t, len(rel.Participants), 1, "Marriage should have at least one participant")
+
 			break
 		}
 	}
@@ -1279,6 +1291,7 @@ func TestImportSingleSpouseFamily_MarriagePreserved(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == "marriage" && event.Date == "1900-01-01" {
 			foundMarriageEvent = true
+
 			break
 		}
 	}
@@ -1672,6 +1685,7 @@ func TestImportCensus_SyntheticSource(t *testing.T) {
 	for _, src := range glxFile.Sources {
 		if src.Type == SourceTypeCensus {
 			censusSource = src
+
 			break
 		}
 	}
@@ -1683,6 +1697,7 @@ func TestImportCensus_SyntheticSource(t *testing.T) {
 	for _, cit := range glxFile.Citations {
 		if !cit.Notes.IsEmpty() {
 			noteCitation = cit
+
 			break
 		}
 	}
@@ -1721,6 +1736,7 @@ func TestImportCensus_WithSOURAndNote(t *testing.T) {
 	for _, cit := range glxFile.Citations {
 		if strings.Contains(cit.Notes.String(), "Boarder") {
 			foundNote = true
+
 			break
 		}
 	}
@@ -1777,6 +1793,7 @@ func TestImportCensus_WithType(t *testing.T) {
 	for _, src := range glxFile.Sources {
 		if src.Type == SourceTypeCensus {
 			censusSource = src
+
 			break
 		}
 	}
@@ -1988,12 +2005,14 @@ func TestImportCensus_WithMedia(t *testing.T) {
 	for _, src := range glxFile.Sources {
 		if len(src.Media) > 0 {
 			mediaLinked = true
+
 			break
 		}
 	}
 	for _, cit := range glxFile.Citations {
 		if len(cit.Media) > 0 {
 			mediaLinked = true
+
 			break
 		}
 	}
@@ -2134,6 +2153,7 @@ func TestImportFamilyEvent_UnmappedTag(t *testing.T) {
 	for _, event := range glxFile.Events {
 		if event.Type == EventTypeGeneric {
 			foundGeneric = true
+
 			break
 		}
 	}
@@ -2162,6 +2182,7 @@ func TestImportOCCU_EmptyValueWithPLACFallback(t *testing.T) {
 			continue
 		}
 		assert.Equal(t, "Vienna, Austria", occ, "Empty OCCU with PLAC sub-record should use place as occupation value")
+
 		return
 	}
 	t.Fatal("expected person with occupation property")

@@ -50,6 +50,7 @@ func generateGEDCOM(approxBytes int, charset string) []byte {
 	}
 
 	buf.WriteString("0 TRLR\r\n")
+
 	return buf.Bytes()
 }
 
@@ -124,7 +125,7 @@ func BenchmarkDecodingReader_CP1252_Streaming(b *testing.B) {
 func BenchmarkConvertANSELToUTF8(b *testing.B) {
 	// ANSEL with combining marks interspersed
 	var sb strings.Builder
-	for i := 0; i < 100_000; i++ {
+	for range 100_000 {
 		sb.WriteString("0 HEAD\n1 NAME \xe2A\xe1E\xe8O test\n")
 	}
 	data := []byte(sb.String())
@@ -206,6 +207,7 @@ func generateGEDCOMWithFamilies(approxBytes int, charset string) []byte {
 	}
 
 	buf.WriteString("0 TRLR\r\n")
+
 	return buf.Bytes()
 }
 
@@ -243,6 +245,7 @@ func BenchmarkImportGEDCOM_RealFiles(b *testing.B) {
 		data, err := os.ReadFile(f.path)
 		if err != nil {
 			b.Logf("skipping %s: %v", f.name, err)
+
 			continue
 		}
 		b.Run(f.name, func(b *testing.B) {
@@ -312,6 +315,7 @@ func BenchmarkImportGEDCOM_Memory_RealFiles(b *testing.B) {
 		data, err := os.ReadFile(f.path)
 		if err != nil {
 			b.Logf("skipping %s: %v", f.name, err)
+
 			continue
 		}
 		b.Run(f.name, func(b *testing.B) {

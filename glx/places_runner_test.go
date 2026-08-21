@@ -19,9 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	glxlib "github.com/genealogix/glx/go-glx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	glxlib "github.com/genealogix/glx/go-glx"
 )
 
 func TestAnalyzePlaces_CompleteFamily(t *testing.T) {
@@ -65,9 +66,9 @@ func TestBuildCanonicalPath(t *testing.T) {
 	lat := 53.8
 	lng := -1.5
 	places := map[string]*glxlib.Place{
-		"place-leeds":      {Name: "Leeds", ParentID: "place-yorkshire", Type: "city", Latitude: &lat, Longitude: &lng},
-		"place-yorkshire":  {Name: "Yorkshire", ParentID: "place-england", Type: "county"},
-		"place-england":    {Name: "England", Type: "country"},
+		"place-leeds":     {Name: "Leeds", ParentID: "place-yorkshire", Type: "city", Latitude: &lat, Longitude: &lng},
+		"place-yorkshire": {Name: "Yorkshire", ParentID: "place-england", Type: "county"},
+		"place-england":   {Name: "England", Type: "country"},
 	}
 
 	path := buildCanonicalPath("place-leeds", places)
@@ -89,8 +90,8 @@ func TestBuildCanonicalPath_CycleProtection(t *testing.T) {
 func TestBuildPlaceAnalysis_DuplicateNames(t *testing.T) {
 	archive := &glxlib.GLXFile{
 		Places: map[string]*glxlib.Place{
-			"place-1": {Name: "Springfield", Type: "city", ParentID: "place-il"},
-			"place-2": {Name: "Springfield", Type: "city", ParentID: "place-mo"},
+			"place-1":  {Name: "Springfield", Type: "city", ParentID: "place-il"},
+			"place-2":  {Name: "Springfield", Type: "city", ParentID: "place-mo"},
 			"place-il": {Name: "Illinois", Type: "state", ParentID: "place-us"},
 			"place-mo": {Name: "Missouri", Type: "state", ParentID: "place-us"},
 			"place-us": {Name: "USA", Type: "country"},
@@ -243,7 +244,7 @@ func TestBuildPlaceAnalysis_AssertionReferencedPlace(t *testing.T) {
 			"place-only-assertion": {Name: "Assertion Place", Type: "city"},
 			"place-unreferenced":   {Name: "Nowhere", Type: "city"},
 		},
-		Events:     map[string]*glxlib.Event{},
+		Events: map[string]*glxlib.Event{},
 		Assertions: map[string]*glxlib.Assertion{
 			"assertion-1": {Subject: glxlib.EntityRef{Place: "place-only-assertion"}},
 		},
