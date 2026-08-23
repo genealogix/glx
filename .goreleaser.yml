@@ -39,6 +39,11 @@ archives:
       - CHANGELOG.md
 checksum:
   name_template: 'checksums.txt'
+release:
+  # auto marks -alpha/-beta/-rc tags as GitHub pre-releases, keeping them out
+  # of /releases/latest and the "Latest" badge. Without this, GoReleaser's
+  # default (false) published every beta as a full release (#1007).
+  prerelease: auto
 signs:
   - cmd: cosign
     artifacts: checksum

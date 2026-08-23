@@ -13,6 +13,15 @@ on:
 permissions:
   contents: read
 
+# Serialize runs per tag: a delete-and-repush of the same tag (the tag-move
+# hotfix flow in .github/CLAUDE.md) or two pushes in quick succession must not
+# race asset uploads, cosign signing, and the Discord announce on one Release.
+# cancel-in-progress MUST stay false — cancelling between asset upload and
+# signing would leave an unsigned/partially-signed release. (#1008)
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   GIT_CONFIG_COUNT: 2
   GIT_CONFIG_KEY_0: init.defaultBranch
@@ -58,7 +67,12 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          version: '~> v2'
+          # Pin the GoReleaser tool to a minor (patch-floating), not '~> v2':
+          # the action SHA pin above does not pin the tool binary it downloads,
+          # and a moved-tag re-run months later must not silently build with a
+          # newer GoReleaser whose defaults differ. Dependabot does NOT manage
+          # this input — bump it deliberately. (#1009)
+          version: '~> v2.17'
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -78,19 +92,23 @@ jobs:
         if: success() && env.DISCORD_WEBHOOK != ''
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        # Build the payload with jq --arg (correct JSON-string escaping) instead
+        # of hand-spliced strings: the -beta* trigger glob admits any non-slash
+        # character, and git permits `"` in a ref name, so a raw ${TAG} splice
+        # could produce malformed JSON. GITHUB_REPOSITORY/GITHUB_REF_NAME are
+        # runner-provided env vars — no ${{ }} interpolation in run:. (#1010)
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG}"
-          curl -sSf -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"GLX ${TAG}\",
-                \"url\": \"${RELEASE_URL}\",
-                \"description\": \"A new version of the GLX CLI has been released.\",
-                \"color\": 5814783,
-                \"fields\": [
-                  {\"name\": \"Release Notes & Downloads\", \"value\": \"[View on GitHub](${RELEASE_URL})\"}
+          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          jq -n --arg tag "$GITHUB_REF_NAME" --arg url "$RELEASE_URL" \
+            '{
+              embeds: [{
+                title: ("GLX " + $tag),
+                url: $url,
+                description: "A new version of the GLX CLI has been released.",
+                color: 5814783,
+                fields: [
+                  {name: "Release Notes & Downloads", value: ("[View on GitHub](" + $url + ")")}
                 ]
               }]
-            }" \
-            "$DISCORD_WEBHOOK"
+            }' \
+          | curl -sSf -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK"
