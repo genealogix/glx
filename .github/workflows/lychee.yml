@@ -114,10 +114,9 @@ jobs:
           ISSUE_NUMBER: ${{ steps.create-issue.outputs.issue-number }}
         run: |
           set -euo pipefail
-          # `gh api graphql --jq` prints the literal string "null" when the
-          # path resolves to JSON null (e.g. missing issue, missing org-level
-          # issue-type access), so reject both empty and "null" results before
-          # treating the value as a valid ID.
+          # jq's `// empty` coerces a JSON null (missing issue, missing
+          # org-level issue-type access) to an empty string; the extra "null"
+          # comparison below is belt-and-braces against a literal string.
           issue_info=$(gh api graphql -f query='
             query($owner:String!, $repo:String!, $n:Int!) {
               repository(owner:$owner, name:$repo) { issue(number:$n) { id issueType { name } } }
