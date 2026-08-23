@@ -8,6 +8,10 @@
 | ------- | ------------------ |
 | 0.x.x   | :white_check_mark: |
 
+GLX is pre-1.0: security fixes target the **latest 0.x release only**. An older
+release stops receiving security updates the moment the next release ships —
+upgrade to the newest release to stay covered.
+
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in GLX, please report it responsibly:

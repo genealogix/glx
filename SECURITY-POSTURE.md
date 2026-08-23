@@ -28,9 +28,17 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 | Control | Status | Evidence |
 |---|---|---|
 | Security contacts documented | ✓ | [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md) — GitHub Security Advisories with a 48-hour acknowledgment SLA |
-| Contribution process explained | ✓ | [CONTRIBUTING.md](https://github.com/genealogix/glx/blob/main/CONTRIBUTING.md) covers setup, branch naming, conventional commits, DCO sign-off, PR template |
+| Contribution process explained (OSPS-GV-03.01) | ✓ | [CONTRIBUTING.md](https://github.com/genealogix/glx/blob/main/CONTRIBUTING.md) covers setup, branch naming, conventional commits, DCO sign-off, PR template |
 | Direct commits to primary branch prevented | ✓ | Maintainer-verified as of 2026-05-07: an active **Main Protection** ruleset on the default branch requires PRs, blocks force-push and deletion, and gates merge on the workflows listed in the row below. The ruleset is org-internal (not in this repo); the workflows it gates are public under [`.github/workflows/`](https://github.com/genealogix/glx/tree/main/.github/workflows) |
 | MFA for sensitive resource access | ✓ | Maintainer-verified as of 2026-05-07: two-factor authentication is enforced organization-wide on the [`genealogix`](https://github.com/genealogix) GitHub organization. Like the branch-protection row, this is a GitHub organization setting and is not visible from the repo contents |
+
+#### Documentation (OSPS-DO)
+
+| Control | Status | Evidence |
+|---|---|---|
+| OSPS-DO-01.01 — user guides for basic functionality | ✓ | [README.md](https://github.com/genealogix/glx/blob/main/README.md) (installation, quick start, CLI overview) and the [specification](https://github.com/genealogix/glx/tree/main/specification) |
+| OSPS-DO-02.01 — guide for reporting defects | ✓ | [.github/SUPPORT.md](https://github.com/genealogix/glx/blob/main/.github/SUPPORT.md) (bug/feature/question routing) and [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md) (vulnerabilities) |
+| OSPS-GV-02.01 — public discussion mechanism | ✓ | [GitHub Discussions](https://github.com/genealogix/glx/discussions) |
 
 ### Level 2 — Operationally Mature
 
@@ -49,6 +57,8 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 | Release artifact signing | ✓ | [`.goreleaser.yml`](https://github.com/genealogix/glx/blob/main/.goreleaser.yml) signs `checksums.txt` with cosign keyless (Sigstore / OIDC), publishing `checksums.txt.sigstore.json`. Signing the checksum manifest transitively covers every release artifact via SHA-256. See [Release signing verification details](#release-signing-verification-details). ([#387](https://github.com/genealogix/glx/issues/387)) |
 | SBOM with compiled releases | ☐ | Tracked in [#269](https://github.com/genealogix/glx/issues/269) — GoReleaser v2 native SBOM via `sboms:` config |
 | Build provenance / SLSA attestations | ✓ | [`release.yml`](https://github.com/genealogix/glx/blob/main/.github/workflows/release.yml) runs `actions/attest` (pinned `v4.1.0`) after GoReleaser with `subject-checksums: ./dist/checksums.txt`, producing a keyless-signed SLSA provenance attestation that covers every release artifact via SHA-256. See [Build-provenance verification details](#build-provenance-verification-details). ([#256](https://github.com/genealogix/glx/issues/256)) |
+| OSPS-DO-04.01 — support scope/duration per release | ✓ | GLX is pre-1.0: only the **latest 0.x release** is supported, per the [Supported Versions table in SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md#supported-versions). No fixed support duration is promised for any individual release; support for a release ends when the next release supersedes it ([#1060](https://github.com/genealogix/glx/issues/1060)) |
+| OSPS-DO-05.01 — end of security updates stated | ✓ | Security fixes target the latest 0.x release only; an older release stops receiving security updates the moment the next release ships. Stated in [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md#supported-versions) ([#1060](https://github.com/genealogix/glx/issues/1060)) |
 
 #### Release signing verification details
 

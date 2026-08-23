@@ -1,39 +1,53 @@
 # .github/ — Claude Guide
 
-## Third-party GitHub Actions: always pin to `vX.Y.Z`, never `@vN`
+## GitHub Actions pinning: SHA-pin third-party, floats only for first-party
 
-**Verify before you push.** Most third-party actions in this repo bumped via
-`@vN` floating tags have broken at some point because the upstream maintainer
-doesn't publish a floating major-version tag. Symptoms:
+<!-- Last reviewed: 2026-08-23 (#1046) -->
 
-- `Unable to resolve action <owner>/<repo>@vN, unable to find version vN`
-  (action only ships `vX.Y.Z`, no floating major)
-- A release run that pulls a stale binary path because the floating tag never
-  moved when a new minor shipped
+**The repo's actual convention (since the #963/#968 SHA-pin sweep):**
 
-Before editing any `uses:` line in `.github/workflows/*.yml`, **check what tags
-the action actually publishes**:
+1. **Third-party actions (the default rule): full-commit-SHA pin plus a
+   trailing `# vX.Y.Z` comment.** This is the OpenSSF Scorecard
+   "pin dependencies" form and what every third-party `uses:` in the repo
+   follows today, e.g.
+
+   ```yaml
+   uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
+   ```
+
+   Do NOT "tidy" a SHA pin down to a bare tag — tags are force-repointable
+   upstream (the tj-actions/changed-files incident, CVE-2025-30066). Dependabot
+   understands the SHA + comment form and bumps both together.
+
+2. **First-party `actions/*` (checkout, setup-go, setup-node, setup-python,
+   upload/download-artifact, cache, attest): floating major tags are the
+   current documented choice**, pending the decision in #1022. Don't SHA-pin
+   these piecemeal.
+
+3. **Exceptions without a floating major** (they only publish `vX.Y.Z`):
+   pin the exact patch tag as the floor, SHA preferred. Each one carries a
+   comment so nobody "tidies" it back to `@vN`, which fails with
+   `Unable to resolve action <owner>/<repo>@vN`:
+
+   | Action | Pin floor | Issue |
+   |---|---|---|
+   | `sigstore/cosign-installer` | `@v4.1.2` exact tag | #938 |
+   | `ossf/scorecard-action` | SHA-pinned since #1019 | #779 (original lesson) |
+
+**Verify before you push.** Before editing any `uses:` line, check what tags
+the action actually publishes:
 
 ```bash
 gh api repos/<owner>/<repo>/tags --jq '.[].name' | head
 ```
 
-If you only see `v4.1.2`, `v4.1.1`, etc. and no bare `v4`, pin to the latest
-patch (`@v4.1.2`). Add a comment explaining why the pin is patch-level so the
-next person (or AI assistant) doesn't "tidy up" the pin back to `@v4`.
+Caveat: a SHA pin is necessary, not sufficient — it does not pin the action's
+transitive `uses:` references, and a pinned action can still fetch a
+re-registrable domain at runtime. See `SECURITY-POSTURE.md` for the posture
+this supports, and the root `CLAUDE.md` / `go-glx/CLAUDE.md` for sibling
+guides.
 
-**Known instances in this repo** — each one cost a failed release pipeline:
-
-| Action | Required pin form | Issue / commit |
-|---|---|---|
-| `ossf/scorecard-action` | `@v2.4.3` (no floating `@v2`) | #779 |
-| `sigstore/cosign-installer` | `@v4.1.2` (no floating `@v4`) | #938 |
-
-The whole project also follows OpenSSF Scorecard "pin dependencies" guidance
-(see `SECURITY-POSTURE.md`), so pinning to a tag is the floor — pinning to a
-commit SHA is acceptable too and arguably preferred.
-
-## Release pipeline: don't push a tag without verifying its workflow YAML
+## Release pipeline: never move a published tag — cut a new patch tag
 
 The `release.yml` workflow triggers on tag push and runs from the workflow
 file **at the commit the tag points to**. Re-running a failed release does
@@ -43,14 +57,39 @@ old YAML.
 If a tag's release workflow fails for a workflow-file reason:
 
 1. Land the fix on `main` via a normal hotfix PR.
-2. Move the release tag forward to the new `main` HEAD that includes the fix
-   (`git tag -d X && git push --delete origin X && git tag X && git push origin X`).
-3. Pushing the moved tag triggers a fresh run that loads the corrected YAML.
+2. Cut a NEW patch tag from hotfixed `main` (e.g. `v1.2.3` → `v1.2.4`).
+   Pushing the new tag triggers a fresh run that loads the corrected YAML.
 
-This is only safe **before the goreleaser run has uploaded assets**. If a
-release already has published binaries, moving the tag would orphan them and
-confuse `cosign verify-blob` against the new artifact set — investigate
-before touching the tag.
+> Do NOT delete-and-recreate the same tag name. The old
+> `git tag -d X && git push --delete origin X && git tag X && git push origin X`
+> recipe is broken-by-design under GitHub Immutable Releases (GA 2025-10-28,
+> tracked for this repo in #931) and under any `v*` tag ruleset with Restrict
+> updates/deletions: recreating the name returns HTTP 422
+> `tag_name was used by an immutable release`, burning the tag name
+> permanently. There is also no operationally useful "safe window before
+> assets upload" — in a normal GoReleaser run that window is seconds.
+>
+> For a safe pre-publish re-run window, prefer GoReleaser
+> `release.draft: true` (assets upload to a still-mutable draft; flip to
+> published only when green) instead of any tag surgery.
+
+## Drift gates that will fail your PR
+
+Three CI gates hard-fail PRs for out-of-sync generated or mirrored content —
+know which one you're about to trip before you push:
+
+- **Edit a CLI command** → run `make docs-cli` and commit the regenerated
+  `docs/cli/**` (`docs-drift.yml`, hard-fail).
+- **Change a JSON schema** → `drift-checks.yml` runs two checks with
+  different teeth: schema backward-compat is HARD-fail (a breaking change
+  invalidates existing archives); spec-schema field parity is WARN-only
+  (#309). A green "spec-schema" job does NOT mean parity is enforced.
+- **Add or rename an issue Area** → edit `.github/issue-areas.yml` first
+  (the single source of truth), create the matching repo label, then update
+  the `Area` dropdown in every `ISSUE_TEMPLATE/*.yml` form (each must keep
+  its `id: area` key) or `issue-templates-drift.yml` hard-fails. The labeler
+  and the drift check read that YAML with deliberately chosen parsers
+  (#947 has the history) — don't swap them casually.
 
 ## Workflow injection: never interpolate untrusted input into `run:`
 
