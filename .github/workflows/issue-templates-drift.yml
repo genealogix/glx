@@ -29,12 +29,20 @@ on:
 permissions:
   contents: read
 
+# Match the repo's other pull_request-triggered workflows: cancel superseded
+# in-flight runs on rapid pushes to the same PR (#950).
+concurrency:
+  group: issue-templates-drift-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-drift:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Compare each template's Area dropdown to the canonical list
         # Python + PyYAML are both pre-installed on ubuntu-latest images.
