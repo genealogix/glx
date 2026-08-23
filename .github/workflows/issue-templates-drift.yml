@@ -145,8 +145,11 @@ jobs:
           areas=$(yq '.areas[]' .github/issue-areas.yml)
           labels=$(gh api "repos/${GITHUB_REPOSITORY}/labels" --paginate --jq '.[].name')
           missing=0
+          # Herestring, not a printf pipeline: under pipefail, grep -q exiting
+          # on first match can SIGPIPE the producer and misreport an existing
+          # label as missing.
           while IFS= read -r area; do
-            if ! printf '%s\n' "$labels" | grep -Fxq "$area"; then
+            if ! grep -Fxq "$area" <<< "$labels"; then
               echo "::error file=.github/issue-areas.yml::area '$area' has no matching repo label — create it (gh label create \"$area\") before merging"
               missing=1
             fi
