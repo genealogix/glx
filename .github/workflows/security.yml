@@ -124,10 +124,17 @@ jobs:
           go install "github.com/securego/gosec/v2/cmd/gosec@${v}"
 
       - name: Run gosec
-        run: gosec -fmt sarif -out gosec.sarif ./...
+        # Staged write + guarded upload, mirroring govulncheck above (#1029):
+        # a gosec build/load failure can leave a missing or partial output
+        # file; writing to a temp name and renaming only on success means a
+        # failed run produces no gosec.sarif, so the hashFiles-guarded upload
+        # below is skipped cleanly instead of erroring on a truncated file.
+        run: |
+          gosec -fmt sarif -out gosec.sarif.tmp ./...
+          mv gosec.sarif.tmp gosec.sarif
 
       - name: Upload SARIF to Code Scanning
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && hashFiles('gosec.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           sarif_file: gosec.sarif
