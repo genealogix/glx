@@ -80,8 +80,17 @@ jobs:
 
           fail = 0
           for tpl in templates:
-              with open(tpl) as f:
-                  doc = yaml.safe_load(f)
+              # A discovered template can be malformed YAML entirely — catch
+              # the parse error and emit the same clean annotation the other
+              # failure modes get, instead of an unformatted traceback.
+              try:
+                  with open(tpl) as f:
+                      doc = yaml.safe_load(f)
+              except yaml.YAMLError as exc:
+                  msg = str(exc).replace('\n', ' ')
+                  print(f'::error file={tpl}::template is not parseable YAML: {msg}')
+                  fail = 1
+                  continue
               if not isinstance(doc, dict):
                   print(f'::error file={tpl}::template root is not a YAML mapping')
                   fail = 1
@@ -129,14 +138,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          labels=$(gh label list --repo "$GITHUB_REPOSITORY" --limit 300 --json name --jq '.[].name')
+          set -euo pipefail
+          # Plain assignments (not process substitution) so a yq or gh failure
+          # fails the step CLOSED instead of silently yielding zero areas to
+          # check; --paginate so the gate inspects every label, not one page.
+          areas=$(yq '.areas[]' .github/issue-areas.yml)
+          labels=$(gh api "repos/${GITHUB_REPOSITORY}/labels" --paginate --jq '.[].name')
           missing=0
           while IFS= read -r area; do
             if ! printf '%s\n' "$labels" | grep -Fxq "$area"; then
               echo "::error file=.github/issue-areas.yml::area '$area' has no matching repo label — create it (gh label create \"$area\") before merging"
               missing=1
             fi
-          done < <(yq '.areas[]' .github/issue-areas.yml)
+          done <<< "$areas"
           if [ "$missing" -eq 0 ]; then
             echo "Every area in issue-areas.yml has a matching repo label."
           fi
