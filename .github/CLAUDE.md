@@ -20,9 +20,11 @@
    understands the SHA + comment form and bumps both together.
 
 2. **First-party `actions/*` (checkout, setup-go, setup-node, setup-python,
-   upload/download-artifact, cache, attest): floating major tags are the
-   current documented choice**, pending the decision in #1022. Don't SHA-pin
-   these piecemeal.
+   upload/download-artifact, cache): floating major tags are the current
+   documented choice**, pending the decision in #1022. Don't SHA-pin these
+   piecemeal — with one standing exception: `actions/attest` in `release.yml`
+   is SHA-pinned already, because it runs inside the privileged release job
+   (id-token: write) where a repointed tag would sit upstream of signing.
 
 3. **Exceptions without a floating major** (they only publish `vX.Y.Z`):
    pin the exact patch tag as the floor, SHA preferred. Each one carries a

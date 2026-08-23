@@ -19,7 +19,7 @@ Most questions are already answered in the docs:
 - [Contributing Guide](/CONTRIBUTING.md) — development setup, testing, submission process
 - [Changelog](/CHANGELOG.md) — recent changes; confirm the bug isn't already fixed on `main`
 
-GLX welcomes AI-assisted work but holds humans accountable, bans autonomous/agent-filed issues and PRs, and caps open PRs at 3 — see [AI-Generated Contributions](https://github.com/genealogix/glx/blob/main/CONTRIBUTING.md#ai-generated-contributions) before filing.
+GLX welcomes AI-assisted work but holds humans accountable, bans autonomous/agent-filed issues and PRs, and caps open PRs at 3 — see [AI-Generated Contributions](/CONTRIBUTING.md#ai-generated-contributions) before filing.
 
 ## Report a bug
 
@@ -37,7 +37,7 @@ Use the [feature request template](https://github.com/genealogix/glx/issues/new?
 
 To suggest an improvement to an existing capability, use the [enhancement template](https://github.com/genealogix/glx/issues/new?template=enhancement.yml) instead.
 
-Changes to the core data model, entity types, validation rules, or file format require a written proposal and community discussion period — see [Proposing Major Changes](https://github.com/genealogix/glx/blob/main/CONTRIBUTING.md#proposing-major-changes) in the Contributing Guide.
+Changes to the core data model, entity types, validation rules, or file format require a written proposal and community discussion period — see [Proposing Major Changes](/CONTRIBUTING.md#proposing-major-changes) in the Contributing Guide.
 
 ## Report a security vulnerability
 
