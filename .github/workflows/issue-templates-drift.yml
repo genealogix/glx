@@ -110,8 +110,10 @@ jobs:
                   continue
               attributes = area_entries[0].get('attributes')
               options = attributes.get('options') if isinstance(attributes, dict) else None
-              if not isinstance(options, list):
-                  print(f'::error file={tpl}::the id: area dropdown has no attributes.options list')
+              # Require a list of strings: a mixed-type list (e.g. [cli, 1])
+              # would make sorted() raise TypeError and traceback.
+              if not isinstance(options, list) or not all(isinstance(o, str) for o in options):
+                  print(f'::error file={tpl}::the id: area dropdown has no attributes.options list of strings')
                   fail = 1
                   continue
               # Deliberately compare sorted() on both sides: the contract is
