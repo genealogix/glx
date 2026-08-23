@@ -9,6 +9,15 @@ updates:
       day: monday
       time: "09:00"
       timezone: America/Chicago
+    # Cooldown (#929): delay version-update PRs until a release has aged,
+    # so a worm-class compromised release (the npm token-stealer pattern) is
+    # likely yanked before Dependabot ever proposes it. Security updates
+    # bypass the cooldown entirely, so known-CVE fixes still land same-day.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -23,6 +32,15 @@ updates:
       day: tuesday
       time: "09:00"
       timezone: America/Chicago
+    # Cooldown (#929): delay version-update PRs until a release has aged,
+    # so a worm-class compromised release (the npm token-stealer pattern) is
+    # likely yanked before Dependabot ever proposes it. Security updates
+    # bypass the cooldown entirely, so known-CVE fixes still land same-day.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     commit-message:
       prefix: "chore(deps)"
     labels:
@@ -35,6 +53,15 @@ updates:
       day: wednesday
       time: "09:00"
       timezone: America/Chicago
+    # Cooldown (#929): delay version-update PRs until a release has aged,
+    # so a worm-class compromised release (the npm token-stealer pattern) is
+    # likely yanked before Dependabot ever proposes it. Security updates
+    # bypass the cooldown entirely, so known-CVE fixes still land same-day.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     commit-message:
       prefix: "chore(deps)"
     labels:
