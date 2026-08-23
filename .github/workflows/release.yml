@@ -95,12 +95,14 @@ jobs:
         # Build the payload with jq --arg (correct JSON-string escaping) instead
         # of hand-spliced strings: the -beta* trigger glob admits any non-slash
         # character, and git permits `"` in a ref name, so a raw ${TAG} splice
-        # could produce malformed JSON. GITHUB_REPOSITORY/GITHUB_REF_NAME are
+        # could produce malformed JSON. The tag is additionally @uri-encoded
+        # when embedded in the URL, so characters like `"` or `)` cannot break
+        # the URL or the Markdown link. GITHUB_REPOSITORY/GITHUB_REF_NAME are
         # runner-provided env vars — no ${{ }} interpolation in run:. (#1010)
         run: |
-          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
-          jq -n --arg tag "$GITHUB_REF_NAME" --arg url "$RELEASE_URL" \
-            '{
+          jq -n --arg tag "$GITHUB_REF_NAME" --arg repo "$GITHUB_REPOSITORY" \
+            '("https://github.com/" + $repo + "/releases/tag/" + ($tag | @uri)) as $url |
+            {
               embeds: [{
                 title: ("GLX " + $tag),
                 url: $url,
