@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  issues: read   # gh label list, for the label-existence check (#946)
 
 jobs:
   check-drift:
@@ -36,20 +37,40 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # PyYAML is NOT preinstalled on the runner image (it's not in the
+      # actions/runner-images manifest, and it's not stdlib), so install it
+      # explicitly into a toolcache interpreter — the system Python is
+      # PEP 668-locked on Ubuntu 24.04 (#947). Python stays the right tool for
+      # THIS file (structural navigation of the template body), while the
+      # labeler's flat .areas[] read moved to the manifest-pinned yq.
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
       - name: Compare each template's Area dropdown to the canonical list
-        # Python + PyYAML are both pre-installed on ubuntu-latest images.
-        # Chosen over yq because (a) yq has multiple incompatible
-        # implementations and isn't guaranteed across runner image revisions,
-        # (b) the stdlib+PyYAML combination is universally present.
         run: |
           python3 <<'PY'
-          import sys, yaml
+          import glob, os, sys, yaml
           SOURCE = '.github/issue-areas.yml'
-          TEMPLATES = [
-              '.github/ISSUE_TEMPLATE/bug_report.yml',
-              '.github/ISSUE_TEMPLATE/feature_request.yml',
-              '.github/ISSUE_TEMPLATE/enhancement.yml',
-          ]
+          # Discover templates from the directory (the workflow trigger already
+          # globs it) instead of a hard-coded list, so a 4th template is
+          # checked the run it lands with no edit here (#949).
+          # config.yml is the chooser config (blank_issues_enabled), not a form.
+          SKIP = {'config.yml'}
+          # Opt-out for forms intentionally shipped without an Area dropdown
+          # (none today; add e.g. 'security.yml' here deliberately).
+          NO_AREA = set()
+          templates = sorted(
+              p for p in glob.glob('.github/ISSUE_TEMPLATE/*.yml')
+              if os.path.basename(p) not in SKIP | NO_AREA
+          )
+          if not templates:
+              print('::error::no issue-form templates found under .github/ISSUE_TEMPLATE/')
+              sys.exit(1)
 
           with open(SOURCE) as f:
               expected = sorted(yaml.safe_load(f).get('areas') or [])
@@ -58,9 +79,13 @@ jobs:
               sys.exit(1)
 
           fail = 0
-          for tpl in TEMPLATES:
+          for tpl in templates:
               with open(tpl) as f:
                   doc = yaml.safe_load(f)
+              if not isinstance(doc, dict):
+                  print(f'::error file={tpl}::template root is not a YAML mapping')
+                  fail = 1
+                  continue
               area_entries = [
                   b for b in (doc.get('body') or [])
                   if isinstance(b, dict) and b.get('id') == 'area'
@@ -69,10 +94,20 @@ jobs:
                   # The drift check locates the Area dropdown by id == "area".
                   # Without exactly one such entry it cannot compare options;
                   # also, future form-aware labeler tooling will require the id.
+                  # For a discovered new template this doubles as the "added a
+                  # form, forgot the Area dropdown" guard.
                   print(f'::error file={tpl}::expected exactly one dropdown with id: area, found {len(area_entries)}')
                   fail = 1
                   continue
-              actual = sorted(area_entries[0]['attributes']['options'])
+              attributes = area_entries[0].get('attributes')
+              options = attributes.get('options') if isinstance(attributes, dict) else None
+              if not isinstance(options, list):
+                  print(f'::error file={tpl}::the id: area dropdown has no attributes.options list')
+                  fail = 1
+                  continue
+              # Deliberately compare sorted() on both sides: the contract is
+              # option SET equality; per-template dropdown order is tolerated.
+              actual = sorted(options)
               if actual != expected:
                   print(f'::error file={tpl}::Area options diverge from {SOURCE}')
                   print(f'  expected (from {SOURCE}): {expected}')
@@ -81,5 +116,28 @@ jobs:
 
           if fail:
               sys.exit(1)
-          print(f"All {len(TEMPLATES)} templates' Area options match {SOURCE}.")
+          print(f"All {len(templates)} templates' Area options match {SOURCE}.")
           PY
+
+      # The option-parity check above ties source <-> templates; this ties
+      # source <-> repo labels. Without it, an area added to the source and
+      # templates but with no matching repo label passes the drift gate, then
+      # the first issue filed with that Area hard-fails the labeler's
+      # `gh issue edit --add-label` (gh does not auto-create labels) and the
+      # issue ends up with NO label at all — worse than needs-triage (#946).
+      - name: Verify a repo label exists for every area
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          labels=$(gh label list --repo "$GITHUB_REPOSITORY" --limit 300 --json name --jq '.[].name')
+          missing=0
+          while IFS= read -r area; do
+            if ! printf '%s\n' "$labels" | grep -Fxq "$area"; then
+              echo "::error file=.github/issue-areas.yml::area '$area' has no matching repo label — create it (gh label create \"$area\") before merging"
+              missing=1
+            fi
+          done < <(yq '.areas[]' .github/issue-areas.yml)
+          if [ "$missing" -eq 0 ]; then
+            echo "Every area in issue-areas.yml has a matching repo label."
+          fi
+          exit "$missing"
