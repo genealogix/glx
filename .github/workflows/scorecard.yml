@@ -1,5 +1,17 @@
 name: OpenSSF Scorecard
 
+# Deliberate choices in this file (#1020) — do not "harmonize" them away:
+#
+# - NO pull_request trigger. publish_results requires id-token: write (OIDC),
+#   which fork PRs cannot safely hold (their GITHUB_TOKEN is capped at read).
+#   Adding PR coverage would break the OIDC publish model. Scorecard runs on
+#   push-to-main, the weekly cron, and manual dispatch only.
+# - publish_results is verified SERVER-SIDE: it requires top-level read-only
+#   permissions and an allowlisted step set. Adding a build or custom step to
+#   this job will fail publishing at runtime — keep this workflow minimal.
+# - This coexists with CodeQL: the SARIF upload below uses category:
+#   scorecard, a distinct tool identity, so it does not collide with CodeQL's
+#   default-setup SARIF handling.
 on:
   push:
     branches: [main]
@@ -31,7 +43,11 @@ jobs:
           persist-credentials: false
 
       - name: Run analysis
-        uses: ossf/scorecard-action@v2.4.4
+        # SHA-pinned (#1019): every other third-party action in this repo is
+        # SHA-pinned with a version comment, and scorecard-action's own
+        # Pinned-Dependencies check scores tag pins lower. The tag-repoint
+        # class this guards against is CVE-2025-30066 (tj-actions).
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
         with:
           results_file: scorecard-results.sarif
           results_format: sarif
@@ -45,7 +61,10 @@ jobs:
           retention-days: 5
 
       - name: Upload SARIF to Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
+        # Same SHA + version-comment pin as security.yml's upload-sarif steps.
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           sarif_file: scorecard-results.sarif
+          # A distinct tool category — does not collide with CodeQL default
+          # setup; compare security.yml's govulncheck/gosec categories.
           category: scorecard
