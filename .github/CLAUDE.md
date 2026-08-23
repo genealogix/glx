@@ -87,11 +87,15 @@ know which one you're about to trip before you push:
   invalidates existing archives); spec-schema field parity is WARN-only
   (#309). A green "spec-schema" job does NOT mean parity is enforced.
 - **Add or rename an issue Area** → edit `.github/issue-areas.yml` first
-  (the single source of truth), create the matching repo label, then update
-  the `Area` dropdown in every `ISSUE_TEMPLATE/*.yml` form (each must keep
-  its `id: area` key) or `issue-templates-drift.yml` hard-fails. The labeler
-  and the drift check read that YAML with deliberately chosen parsers
-  (#947 has the history) — don't swap them casually.
+  (the single source of truth), then update the `Area` dropdown in every
+  `ISSUE_TEMPLATE/*.yml` form (each must keep its `id: area` key) or
+  `issue-templates-drift.yml` hard-fails. Also create the matching repo
+  label: a missing label doesn't trip the drift check today — it surfaces
+  later, as `issue-labeler.yml` hard-failing `--add-label` on the first
+  issue filed with that Area, leaving the issue unlabeled (#946; PR #1183
+  adds a PR-time gate for it). The labeler and the drift check read that
+  YAML with deliberately chosen parsers (#947 has the history) — don't
+  swap them casually.
 
 ## Workflow injection: never interpolate untrusted input into `run:`
 
