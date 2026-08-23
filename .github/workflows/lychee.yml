@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           chmod +x scripts/extract-external-urls.sh
           scripts/extract-external-urls.sh > urls.txt
-          count=$(wc -l < urls.txt)
+          count=$(wc -l < urls.txt | tr -d '[:space:]')
           echo "Extracted $count unique external URLs"
           # The extractor swallows find errors (2>/dev/null, no -e), so a
           # renamed source directory yields zero URLs silently — and an empty
