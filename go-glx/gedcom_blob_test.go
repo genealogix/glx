@@ -156,6 +156,16 @@ func TestDecodeGEDCOMBlobErrors(t *testing.T) {
 		t.Errorf("Expected ErrGEDCOMBlobLength for 5 chars, got %v", err)
 	}
 
+	// An out-of-range character takes precedence over an invalid length: a lone
+	// invalid byte — bare or after full groups — must report ErrGEDCOMBlobChar,
+	// not the trailing-single-character length error.
+	if _, err := DecodeGEDCOMBlob("z"); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for lone out-of-range char, got %v", err)
+	}
+	if _, err := DecodeGEDCOMBlob("....z"); !errors.Is(err, ErrGEDCOMBlobChar) {
+		t.Errorf("Expected ErrGEDCOMBlobChar for out-of-range char in trailing single position, got %v", err)
+	}
+
 	// Out-of-range character in a full group ('z' > 'm')
 	if _, err := DecodeGEDCOMBlob("..z."); !errors.Is(err, ErrGEDCOMBlobChar) {
 		t.Errorf("Expected ErrGEDCOMBlobChar for out-of-range char in full group, got %v", err)

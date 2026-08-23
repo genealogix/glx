@@ -47,7 +47,9 @@ var blobWhitespace = strings.NewReplacer(
 // The returned error matches [ErrGEDCOMBlobEmpty] when the text holds no encoded
 // characters, [ErrGEDCOMBlobLength] when the character count cannot encode a
 // whole number of bytes, and [ErrGEDCOMBlobChar] when a character falls outside
-// the '.' to 'm' range, in each case under [errors.Is].
+// the '.' to 'm' range, in each case under [errors.Is]. When the text contains
+// both an out-of-range character and an invalid length, the character error
+// takes precedence.
 func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
 	cleaned := blobWhitespace.Replace(blobText)
 
@@ -81,19 +83,20 @@ func DecodeGEDCOMBlob(blobText string) ([]byte, error) {
 		)
 	}
 
-	// Handle trailing characters (2 chars → 1 byte, 3 chars → 2 bytes)
+	// Handle trailing characters (2 chars → 1 byte, 3 chars → 2 bytes).
+	// Validate before the length guard so an out-of-range byte is reported as
+	// ErrGEDCOMBlobChar even when the trailing group is also too short to decode.
 	trailing := len(cleaned) - fullGroups
+	for j := range trailing {
+		char := cleaned[fullGroups+j]
+		if char < '.' || char > 'm' {
+			return nil, fmt.Errorf("%w at position %d: %q (0x%02X) (must be in range '.' to 'm')", ErrGEDCOMBlobChar, fullGroups+j, char, char)
+		}
+	}
 	if trailing == 1 {
 		return nil, fmt.Errorf("%w: %d (trailing single character cannot encode a full byte)", ErrGEDCOMBlobLength, len(cleaned))
 	}
 	if trailing >= 2 { //nolint:mnd // trailing group sizes
-		for j := range trailing {
-			char := cleaned[fullGroups+j]
-			if char < '.' || char > 'm' {
-				return nil, fmt.Errorf("%w at position %d: %q (0x%02X) (must be in range '.' to 'm')", ErrGEDCOMBlobChar, fullGroups+j, char, char)
-			}
-		}
-
 		b1 := cleaned[fullGroups] - '.'
 		b2 := cleaned[fullGroups+1] - '.'
 		result = append(result, (b1<<2)|(b2>>4)) //nolint:mnd // well-known base64 bit shifts
