@@ -13,6 +13,7 @@ layout: doc
 [![CI](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml/badge.svg?branch=main)](https://github.com/genealogix/glx/actions/workflows/validate-spec.yml)
 [![codecov](https://codecov.io/gh/genealogix/glx/branch/main/graph/badge.svg)](https://codecov.io/gh/genealogix/glx)
 [![Go Report Card](https://goreportcard.com/badge/github.com/genealogix/glx)](https://goreportcard.com/report/github.com/genealogix/glx)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/genealogix/glx/badge)](https://scorecard.dev/viewer/?uri=github.com/genealogix/glx)
 [![Contributors](https://img.shields.io/github/contributors/genealogix/glx.svg)](https://github.com/genealogix/glx/graphs/contributors)
 
 The official specification for **GENEALOGIX (GLX)** — a portable, extensible archive format for genealogical research and beyond. Built on Git, designed for collaboration, and customizable through archive-owned vocabularies. Your data, your way, forever.
