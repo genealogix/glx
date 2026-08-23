@@ -17,19 +17,20 @@ install-deps: ## Install Go modules and npm packages
 # lefthook version pin — bump alongside any hook-compatibility changes
 LEFTHOOK_VERSION ?= v2.1.8
 
+# Name the install destination and invoke the binary by absolute path (the
+# ensure_changie pattern from #1015) instead of deriving a bin dir from
+# GOPATH: GOPATH is a LIST (':'-separated here, ';' on Windows), so
+# "$(go env GOPATH)/bin" builds a bogus path for multi-entry GOPATHs (#1143).
 install-hooks: ## Install lefthook git pre-commit hooks (run once per clone)
-	@if ! command -v lefthook >/dev/null 2>&1; then \
+	@LEFTHOOK="$$(command -v lefthook || true)"; \
+	if [ -z "$$LEFTHOOK" ]; then \
 		echo "Installing lefthook $(LEFTHOOK_VERSION) via 'go install'..."; \
-		go install github.com/evilmartians/lefthook@$(LEFTHOOK_VERSION); \
 		GO_BIN_DIR="$$(go env GOBIN)"; \
-		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$$(go env GOPATH)/bin"; fi; \
-		export PATH="$$GO_BIN_DIR:$$PATH"; \
+		if [ -z "$$GO_BIN_DIR" ]; then GO_BIN_DIR="$(CURDIR)/bin"; fi; \
+		GOBIN="$$GO_BIN_DIR" go install github.com/evilmartians/lefthook/v2@$(LEFTHOOK_VERSION); \
+		LEFTHOOK="$$GO_BIN_DIR/lefthook$$(go env GOEXE)"; \
 	fi; \
-	if ! command -v lefthook >/dev/null 2>&1; then \
-		echo "ERROR: lefthook is installed but not on PATH. Ensure your Go bin directory is on PATH and re-run 'make install-hooks'."; \
-		exit 1; \
-	fi; \
-	lefthook install
+	"$$LEFTHOOK" install
 
 ## Verification
 check: tidy-check ci-tools-tidy-check lint lint-codeowners test check-schemas check-drift-allowlist check-code-drift check-memory-drift test-scripts check-links validate-examples ## Run all checks (mirrors CI)
