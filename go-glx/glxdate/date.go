@@ -328,7 +328,10 @@ func (d Date) String() string {
 	return d.val().String()
 }
 
-// String renders the payload; see Date.String.
+// String renders the payload; see Date.String. Components are rendered in
+// canonical form only when every component was determined; otherwise the
+// whole body is rendered verbatim, so a preserved date is never half-rewritten
+// ("BET JUL AND SEP 1857" stays as written rather than "BET JUL AND 1857-09").
 func (v *dateValue) String() string {
 	var b strings.Builder
 	if name := v.prefix(); name != "" {
@@ -336,18 +339,24 @@ func (v *dateValue) String() string {
 		b.WriteByte(' ')
 	}
 
+	hasEnd := v.rng == rangeBetween || v.rng == rangeFromTo
+	start, end := v.start.raw, v.end.raw
+	if v.start.exact && (!hasEnd || v.end.exact) {
+		start, end = v.start.String(), v.end.String()
+	}
+
 	switch v.rng {
 	case rangeBetween:
-		b.WriteString("BET " + v.start.String() + " AND " + v.end.String())
+		b.WriteString("BET " + start + " AND " + end)
 	case rangeFromTo:
-		b.WriteString("FROM " + v.start.String() + " TO " + v.end.String())
+		b.WriteString("FROM " + start + " TO " + end)
 	case rangeFrom:
-		b.WriteString("FROM " + v.start.String())
+		b.WriteString("FROM " + start)
 	case rangeNone:
 		if kw := v.qualifier.Keyword(); kw != "" {
 			b.WriteString(kw + " ")
 		}
-		b.WriteString(v.start.String())
+		b.WriteString(start)
 		if v.qualifier == QualifierInterpreted && v.interpreted != "" {
 			b.WriteString(" (" + v.interpreted + ")")
 		}

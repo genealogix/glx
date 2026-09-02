@@ -54,8 +54,13 @@ const (
 )
 
 var (
-	// digitRunRegexp finds maximal runs of ASCII digits.
+	// digitRunRegexp finds maximal runs of ASCII digits, including runs glued
+	// to letters ("APR1828", "1893twin"): a 4-digit run is a year wherever it
+	// sits.
 	digitRunRegexp = regexp.MustCompile(`\d+`)
+	// standaloneNumberRegexp finds runs of digits that form a whole token.
+	// Short numbers glued to letters ("2nd", "10th") are ordinals, never years.
+	standaloneNumberRegexp = regexp.MustCompile(`\b\d+\b`)
 	// dayMonthRegexp matches a day of month followed by a Gregorian month
 	// name or abbreviation, in any case ("15 MAR", "1 January", "3 sept.").
 	dayMonthRegexp = regexp.MustCompile(`(?i)\b\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\b`)
@@ -171,6 +176,12 @@ func (d *dateValue) setRange(kind rangeKind, startTokens, endTokens []string) {
 		if d.valid && !d.end.canonical {
 			d.valid = false
 			d.reason = d.end.reason
+		}
+		// "BET JUL AND SEP 1857": a start with no year of its own shares the
+		// end's year. The range stays invalid, but Year() is still right.
+		if d.start.year == 0 && d.end.year != 0 {
+			d.start.year = d.end.year
+			d.start.precision = PrecisionYear
 		}
 	}
 }
@@ -345,23 +356,20 @@ func checkComponents(p *point) bool {
 }
 
 // heuristicYear extracts a best-effort year from a raw Gregorian/Julian body
-// that did not parse. A 4-digit run is preferred, so a day of month is never
-// mistaken for the year; a lone number is taken as-is; otherwise "DD MONTH"
-// pairs are stripped and the first remaining number of at most four digits is
-// used. It returns 0 when nothing plausible is found.
+// that did not parse. A standalone 4-digit number is preferred, so a day of
+// month is never mistaken for the year; otherwise "DD MONTH" pairs are
+// stripped and the first remaining number of at most four digits is used
+// ("5 JAN 476" → 476, "(10 Aug)" → 0). It returns 0 when nothing plausible
+// is found.
 func heuristicYear(raw string) int {
-	runs := digitRunRegexp.FindAllString(raw, -1)
-	for _, run := range runs {
+	for _, run := range digitRunRegexp.FindAllString(raw, -1) {
 		if len(run) == maxYearDigits {
 			return atoi(run)
 		}
 	}
-	if len(runs) == 1 && len(runs[0]) <= maxYearDigits {
-		return atoi(runs[0])
-	}
 
 	cleaned := dayMonthRegexp.ReplaceAllString(raw, "")
-	for _, run := range digitRunRegexp.FindAllString(cleaned, -1) {
+	for _, run := range standaloneNumberRegexp.FindAllString(cleaned, -1) {
 		if len(run) <= maxYearDigits {
 			return atoi(run)
 		}
@@ -374,7 +382,7 @@ func heuristicYear(raw string) int {
 // the year rule for calendars whose bodies are preserved raw: the year follows
 // the day and month ("15 TSH 5765", "1 VEND 0012").
 func lastNumber(raw string) int {
-	runs := digitRunRegexp.FindAllString(raw, -1)
+	runs := standaloneNumberRegexp.FindAllString(raw, -1)
 	for i := len(runs) - 1; i >= 0; i-- {
 		if len(runs[i]) <= maxRawYearDigits {
 			return atoi(runs[i])

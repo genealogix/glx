@@ -184,6 +184,16 @@ func TestParse_Preserved(t *testing.T) {
 		{"1850 or 1851", 1850},
 		{"BET 1880", 1880},
 		{"FROM 1900 TO", 1900},
+		// A start with no year of its own shares the end's year.
+		{"BET JUL AND SEP 1857", 1857},
+		{"FROM MAR TO MAY 1900", 1900},
+		// Digits glued to letters and day-of-month tokens are never a year.
+		{"(10 Aug)", 0},
+		{"(2nd son)", 0},
+		// A 4-digit run is a year even when glued to letters.
+		{"10 APR1828", 1828},
+		{"(c.1893twin)", 1893},
+		{"2/18/1600or 1601", 1600},
 		{"ABT", 0},
 		{"unknown", 0},
 		{"", 0},
