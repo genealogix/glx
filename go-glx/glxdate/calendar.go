@@ -130,7 +130,8 @@ func calendarForPrefix(prefix string) Calendar {
 // a date body ("APRIL 1688" is a Gregorian date, not an APRIL calendar).
 func isCalendarPrefix(token string) bool {
 	switch token {
-	case "ABT", "BEF", "AFT", "CAL", "BET", "FROM", "INT", "TO", "AND",
+	case keywordAbout, keywordBefore, keywordAfter, keywordCalculated, keywordInterpreted,
+		keywordBetween, keywordAnd, keywordFrom, keywordTo,
 		"GREGORIAN", "EST", "SPRING", "SUMMER", "FALL", "WINTER":
 		return false
 	}

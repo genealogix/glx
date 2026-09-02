@@ -60,13 +60,26 @@ const (
 	QualifierInterpreted           // INT
 )
 
+// GLX date keywords as written in a DateString.
+const (
+	keywordAbout       = "ABT"
+	keywordBefore      = "BEF"
+	keywordAfter       = "AFT"
+	keywordCalculated  = "CAL"
+	keywordInterpreted = "INT"
+	keywordBetween     = "BET"
+	keywordAnd         = "AND"
+	keywordFrom        = "FROM"
+	keywordTo          = "TO"
+)
+
 // qualifierKeywords maps keywords to qualifiers.
 var qualifierKeywords = map[string]Qualifier{
-	"ABT": QualifierAbout,
-	"BEF": QualifierBefore,
-	"AFT": QualifierAfter,
-	"CAL": QualifierCalculated,
-	"INT": QualifierInterpreted,
+	keywordAbout:       QualifierAbout,
+	keywordBefore:      QualifierBefore,
+	keywordAfter:       QualifierAfter,
+	keywordCalculated:  QualifierCalculated,
+	keywordInterpreted: QualifierInterpreted,
 }
 
 // Keyword returns the GLX keyword for the qualifier ("" for QualifierNone).
@@ -75,15 +88,15 @@ func (q Qualifier) Keyword() string {
 	case QualifierNone:
 		return ""
 	case QualifierAbout:
-		return "ABT"
+		return keywordAbout
 	case QualifierBefore:
-		return "BEF"
+		return keywordBefore
 	case QualifierAfter:
-		return "AFT"
+		return keywordAfter
 	case QualifierCalculated:
-		return "CAL"
+		return keywordCalculated
 	case QualifierInterpreted:
-		return "INT"
+		return keywordInterpreted
 	}
 
 	return ""

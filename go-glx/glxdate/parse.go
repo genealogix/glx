@@ -17,6 +17,7 @@ package glxdate
 import (
 	"errors"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -115,8 +116,8 @@ func (d *dateValue) parseBody(tokens []string) {
 	reason := ""
 
 	switch {
-	case kw == "BET":
-		if i := indexKeyword(rest, "AND"); i > 0 && i < len(rest)-1 {
+	case kw == keywordBetween:
+		if i := indexKeyword(rest, keywordAnd); i > 0 && i < len(rest)-1 {
 			d.setRange(rangeBetween, rest[:i], rest[i+1:])
 			d.checkKeyword(tokens[0])
 			d.checkKeyword(rest[i])
@@ -125,8 +126,8 @@ func (d *dateValue) parseBody(tokens []string) {
 		}
 		reason = "BET requires two dates joined by AND"
 
-	case kw == "FROM":
-		i := indexKeyword(rest, "TO")
+	case kw == keywordFrom:
+		i := indexKeyword(rest, keywordTo)
 		switch {
 		case i > 0 && i < len(rest)-1:
 			d.setRange(rangeFromTo, rest[:i], rest[i+1:])
@@ -382,10 +383,9 @@ func heuristicYear(raw string) int {
 // the year rule for calendars whose bodies are preserved raw: the year follows
 // the day and month ("15 TSH 5765", "1 VEND 0012").
 func lastNumber(raw string) int {
-	runs := standaloneNumberRegexp.FindAllString(raw, -1)
-	for i := len(runs) - 1; i >= 0; i-- {
-		if len(runs[i]) <= maxRawYearDigits {
-			return atoi(runs[i])
+	for _, run := range slices.Backward(standaloneNumberRegexp.FindAllString(raw, -1)) {
+		if len(run) <= maxRawYearDigits {
+			return atoi(run)
 		}
 	}
 
