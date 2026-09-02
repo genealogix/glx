@@ -7,7 +7,7 @@
   "devDependencies": {
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "js-yaml": "^5.2.3",
+    "js-yaml": "^5.4.1",
     "json-schema-diff-validator": "^0.4.2"
   }
 }
