@@ -38,8 +38,12 @@ Status legend: ✓ met · ◐ partial · ☐ not yet met
 |---|---|---|
 | OSPS-DO-01.01 — user guides for basic functionality | ✓ | [README.md](https://github.com/genealogix/glx/blob/main/README.md) (installation, quick start, CLI overview) and the [specification](https://github.com/genealogix/glx/tree/main/specification) |
 | OSPS-DO-02.01 — guide for reporting defects | ✓ | [.github/SUPPORT.md](https://github.com/genealogix/glx/blob/main/.github/SUPPORT.md) (bug/feature/question routing) and [SECURITY.md](https://github.com/genealogix/glx/blob/main/SECURITY.md) (vulnerabilities) |
-| OSPS-GV-02.01 — public discussion mechanism | ✓ | [GitHub Discussions](https://github.com/genealogix/glx/discussions) |
 
+#### Governance (OSPS-GV)
+
+| Control | Status | Evidence |
+|---|---|---|
+| OSPS-GV-02.01 — public discussion mechanism | ✓ | [GitHub Discussions](https://github.com/genealogix/glx/discussions) |
 ### Level 2 — Operationally Mature
 
 | Control | Status | Evidence |
