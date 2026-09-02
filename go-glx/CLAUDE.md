@@ -32,6 +32,7 @@ Rationale: testability without filesystem, usable in non-CLI contexts (web serve
 - `gedcom_converter.go` — main GEDCOM conversion orchestrator
 - `serializer.go` — single/multi-file serialization
 - `vocabularies.go` — vocabulary embedding via `go:embed` + `sync.Once` cache
+- `glxdate/` — the single date parser (`glxdate.Parse`). Never add a second date regex or month table: import (`gedcom_date.go`), validation (`validateDateFormat`), and year extraction (`DateString.Year`/`ExtractFirstYear`) all go through it. GEDCOM-specific encoding (calendar escapes, export formatting) stays in `gedcom_*` files.
 
 ## Performance Profiling
 

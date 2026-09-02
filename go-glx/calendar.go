@@ -14,13 +14,17 @@
 
 package glx
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/genealogix/glx/go-glx/glxdate"
+)
 
 // Calendar system constants for non-Gregorian date prefixes.
 const (
-	CalendarJulian  = "JULIAN"
-	CalendarHebrew  = "HEBREW"
-	CalendarFrenchR = "FRENCH_R"
+	CalendarJulian  = glxdate.PrefixJulian
+	CalendarHebrew  = glxdate.PrefixHebrew
+	CalendarFrenchR = glxdate.PrefixFrenchRepublican
 )
 
 // knownCalendars maps GLX calendar prefixes to their GEDCOM escape sequences.
@@ -55,14 +59,11 @@ func extractCalendar(date string) (string, string) {
 	}
 
 	// Find the closing @. Search from after "@#D" (3 chars).
-	rest := trimmed[3:]
-	endIdx := strings.Index(rest, "@")
-	if endIdx == -1 {
+	escapeName, rest, found := strings.Cut(trimmed[3:], "@")
+	if !found {
 		return "", date
 	}
-
-	escapeName := rest[:endIdx]
-	remainder := strings.TrimSpace(rest[endIdx+1:])
+	remainder := strings.TrimSpace(rest)
 
 	calendar, known := gedcomEscapeToCalendar[escapeName]
 	if !known {
@@ -77,6 +78,8 @@ func extractCalendar(date string) (string, string) {
 // ExtractCalendarPrefix extracts a GLX calendar prefix from a DateString.
 // Returns the calendar name and the remaining date without the prefix.
 // Returns ("", original) if no calendar prefix is present.
+// It delegates to glxdate.SplitCalendarPrefix, the single definition of
+// what counts as a calendar prefix.
 //
 // Example:
 //
@@ -84,55 +87,12 @@ func extractCalendar(date string) (string, string) {
 //	ExtractCalendarPrefix("1731-03-15")        → ("", "1731-03-15")
 //	ExtractCalendarPrefix("ABT 1731")          → ("", "ABT 1731")
 func ExtractCalendarPrefix(date DateString) (string, DateString) {
-	s := string(date)
-	if s == "" {
+	prefix, body := glxdate.SplitCalendarPrefix(string(date))
+	if prefix == "" {
 		return "", date
 	}
 
-	spaceIdx := strings.IndexByte(s, ' ')
-	if spaceIdx == -1 {
-		return "", date
-	}
-
-	candidate := s[:spaceIdx]
-
-	// Check if the candidate is a known calendar prefix.
-	if _, ok := knownCalendars[candidate]; ok {
-		return candidate, DateString(s[spaceIdx+1:])
-	}
-
-	// Also check for unknown calendars: all-uppercase, no digits, not a known qualifier.
-	if isCalendarPrefix(candidate) {
-		return candidate, DateString(s[spaceIdx+1:])
-	}
-
-	return "", date
-}
-
-// isCalendarPrefix returns true if the token looks like a calendar prefix
-// (all uppercase letters/underscores, not a date qualifier, range keyword,
-// or other token that could appear at the start of a raw date string).
-func isCalendarPrefix(token string) bool {
-	// Reject known date qualifiers, range keywords, Gregorian (default),
-	// GEDCOM month abbreviations, and seasonal terms.
-	switch token {
-	case "ABT", "BEF", "AFT", "CAL", "BET", "FROM", "INT", "TO", "AND",
-		"GREGORIAN", "EST", "SPRING", "SUMMER", "FALL", "WINTER",
-		"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-		"JUL", "AUG", "SEP", "OCT", "NOV", "DEC":
-		return false
-	}
-
-	// Calendar prefixes are all uppercase letters and underscores, minimum 5 chars.
-	// 5-char minimum excludes 3-letter month abbreviations and short keywords
-	// while accepting all known calendar names (JULIAN=6, HEBREW=6, FRENCH_R=8).
-	for _, r := range token {
-		if r != '_' && (r < 'A' || r > 'Z') {
-			return false
-		}
-	}
-
-	return len(token) >= 5
+	return prefix, DateString(body)
 }
 
 // calendarToGEDCOMEscape converts a GLX calendar prefix to a GEDCOM escape sequence.

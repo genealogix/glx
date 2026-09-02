@@ -15,10 +15,13 @@
 package glx
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
 // Validate performs a comprehensive validation of the archive's cross-references.
@@ -1001,107 +1004,37 @@ func (glx *GLXFile) validatePlaceHierarchyCycles(result *ValidationResult) {
 	}
 }
 
-// validateDateFormat validates a date string against GENEALOGIX date format.
-// GENEALOGIX uses FamilySearch-style keywords (FROM, TO, ABT, BEF, AFT, BET, AND, CAL, INT)
-// combined with ISO 8601-style dates (YYYY, YYYY-MM, YYYY-MM-DD).
+// validateDateFormat validates a date string against the GENEALOGIX date format
+// by parsing it with glxdate, the single definition of a valid GLX date:
+// ISO-style dates (YYYY, YYYY-MM, YYYY-MM-DD) optionally combined with the
+// FamilySearch-style keywords (FROM, TO, ABT, BEF, AFT, BET, CAL, INT) and an
+// optional calendar prefix. Non-canonical dates produce a warning, not an
+// error, so archives with imperfect dates still load.
 func (glx *GLXFile) validateDateFormat(entityType EntityType, entityID, field, dateStr string, result *ValidationResult) {
+	dateStr = strings.TrimSpace(dateStr)
 	if dateStr == "" {
 		return // Empty dates are allowed
 	}
 
-	// Check for FamilySearch-style keywords
-	dateStr = strings.TrimSpace(dateStr)
-
-	// Strip calendar prefix (e.g., "JULIAN 1731-03-15" → "1731-03-15") before validation.
-	// Calendar-prefixed dates are valid — only the date body needs format checking.
-	if cal, body := ExtractCalendarPrefix(DateString(dateStr)); cal != "" {
-		dateStr = strings.TrimSpace(string(body))
+	if _, err := glxdate.Parse(dateStr); err != nil {
+		result.Warnings = append(result.Warnings, ValidationWarning{
+			SourceType: entityType,
+			SourceID:   entityID,
+			Field:      field,
+			Message: fmt.Sprintf("%s[%s].%s: date '%s' should be in format YYYY, YYYY-MM, or YYYY-MM-DD, or use keywords like FROM, TO, ABT, BEF, AFT, BET, CAL, INT: %s",
+				entityType, entityID, field, dateStr, dateReason(err)),
+		})
 	}
-
-	// Valid patterns:
-	// - Simple: YYYY, YYYY-MM, YYYY-MM-DD
-	// - FROM YYYY TO YYYY
-	// - FROM YYYY
-	// - ABT YYYY, BEF YYYY, AFT YYYY
-	// - BET YYYY AND YYYY
-	// - CAL YYYY
-	// - INT YYYY (original)
-
-	// Simple validation: check for known keywords or ISO 8601-ish format
-	hasKeyword := strings.Contains(dateStr, "FROM") ||
-		strings.Contains(dateStr, "TO") ||
-		strings.Contains(dateStr, "ABT") ||
-		strings.Contains(dateStr, "BEF") ||
-		strings.Contains(dateStr, "AFT") ||
-		strings.Contains(dateStr, "BET") ||
-		strings.Contains(dateStr, "AND") ||
-		strings.Contains(dateStr, "CAL") ||
-		strings.Contains(dateStr, "INT")
-
-	// If no keywords, validate as simple ISO 8601-style date
-	if !hasKeyword {
-		if !isValidSimpleDate(dateStr) {
-			result.Warnings = append(result.Warnings, ValidationWarning{
-				SourceType: entityType,
-				SourceID:   entityID,
-				Field:      field,
-				Message: fmt.Sprintf("%s[%s].%s: date '%s' should be in format YYYY, YYYY-MM, or YYYY-MM-DD, or use keywords like FROM, TO, ABT, BEF, AFT, BET, CAL, INT",
-					entityType, entityID, field, dateStr),
-			})
-		}
-	}
-	// If keywords present, assume valid (detailed parsing is complex and deferred)
 }
 
-// isValidSimpleDate checks if a string matches a simple date with a 1-4 digit year:
-// year only (Y to YYYY), year-month (Y-MM to YYYY-MM), or year-month-day (Y-MM-DD to YYYY-MM-DD).
-func isValidSimpleDate(s string) bool {
-	// Find the separator position for year-month and year-month-day forms.
-	// The year portion is everything before the first '-'.
-	dashIdx := strings.Index(s, "-")
-
-	// Year only: 1-4 digits with no dash present.
-	if dashIdx == -1 {
-		if len(s) >= 1 && len(s) <= 4 { //nolint:mnd // year is 1-4 digits
-			return isDigits(s)
-		}
-
-		return false
+// dateReason returns the human-readable reason from a glxdate parse error.
+func dateReason(err error) string {
+	var perr *glxdate.ParseError
+	if errors.As(err, &perr) {
+		return perr.Reason
 	}
 
-	if dashIdx < 1 || dashIdx > 4 { //nolint:mnd // year portion is 1-4 digits
-		return false
-	}
-
-	yearPart := s[:dashIdx]
-	rest := s[dashIdx+1:]
-
-	if !isDigits(yearPart) {
-		return false
-	}
-
-	// YYYY-MM: rest is exactly 2 digits
-	if len(rest) == 2 { //nolint:mnd // MM is 2 digits
-		return isDigits(rest)
-	}
-
-	// YYYY-MM-DD: rest is MM-DD (5 characters)
-	if len(rest) == 5 { //nolint:mnd // MM-DD is 5 characters
-		return rest[2] == '-' && isDigits(rest[0:2]) && isDigits(rest[3:5])
-	}
-
-	return false
-}
-
-// isDigits checks if all characters in a string are digits
-func isDigits(s string) bool {
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-
-	return len(s) > 0
+	return err.Error()
 }
 
 // validateValueType validates a value against its declared value_type
