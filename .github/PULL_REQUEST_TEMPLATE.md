@@ -38,5 +38,6 @@
        git rebase --signoff HEAD~N && git push --force-with-lease — see CONTRIBUTING.md "Developer Certificate of Origin".
      - If AI tools substantially helped, disclose via an `Assisted-by:` commit trailer
        (see CONTRIBUTING.md "AI-Assisted Development"). You remain accountable for the change.
-     - Update CHANGELOG.md for user-facing changes (Added/Changed/Fixed/Removed); every entry
-       needs an issue/PR reference, e.g. (#123) or Fixes #123. -->
+     - For user-facing changes, add a changie fragment (`make changelog` / `changie new`),
+       not a direct CHANGELOG.md edit. Use Keep a Changelog kinds
+       (Added/Changed/Deprecated/Removed/Fixed/Security) and include issue/PR refs. -->

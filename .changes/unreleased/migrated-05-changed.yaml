@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`ssn` person property renamed to `national_id`** — The standard person property had a US-specific label ("Social Security Number") contradicting its generic description ("National identification number"), making GLX read as US-centric for UK/Canada/Australia researchers whose records use NI numbers, SINs, or TFNs. The property key is now `national_id` with label "National Identification Number" and a description listing international examples. GEDCOM compatibility is preserved — the `gedcom: "SSN"` mapping is unchanged, so importing a GEDCOM `SSN` tag now populates `national_id` and exporting `national_id` still emits `SSN` (GEDCOM 7's `SSN` tag is itself defined as US-only). Archives using the old `ssn` key should rename it to `national_id`.
+time: 2026-06-05T12:00:05Z
+custom:
+  Issue: "#532"

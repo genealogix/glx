@@ -1,0 +1,6 @@
+kind: Changed
+body: |-
+  **`validate-examples` CI job now validates each example in a parallel matrix instead of a sequential shell loop** — The `validate-spec` workflow built the CLI and then looped over `docs/examples/*/` with `./bin/glx validate`, which ran sequentially, stopped at the first failure (default `set -e`), and reported every example under one opaque step. It is now three jobs: a `build-cli` job builds the binary once, uploads it as an artifact, and emits the example list as a dynamic matrix (discovered via `find docs/examples` + `jq`, so newly added example directories are picked up with no workflow edit — preserving the loop's auto-discovery); a `validate-example` matrix job downloads the binary and validates one example per leg with `fail-fast: false`, giving per-example pass/fail in the Actions UI and running them in parallel; and a small `validate-examples` aggregator job keeps that exact status-check name (required by the repo ruleset) stable regardless of how the matrix expands. The matrix value is staged through `env:` before use in `run:` per the repo's workflow-injection guidance.
+time: 2026-06-05T12:00:12Z
+custom:
+  Issue: "#352"

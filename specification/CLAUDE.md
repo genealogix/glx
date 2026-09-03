@@ -19,4 +19,4 @@ Vocabularies are `.glx` YAML files in `5-standard-vocabularies/`. They define co
 4. Add a vocabulary file in `specification/5-standard-vocabularies/` if the type needs controlled values (e.g., `<entity>-types.glx`, `<entity>-properties.glx`)
 5. Add the JSON schema in `specification/schema/v1/<entity>.schema.json` and register it in `specification/schema/v1/glx-file.schema.json`
 6. Add a new entity spec at `specification/4-entity-types/<entity>.md`, add a card to `specification/4-entity-types/README.md`, and link from `specification/6-glossary.md`
-7. Update `CHANGELOG.md` under the Unreleased → `### Added` section with an issue/PR reference
+7. Add a changie fragment for the change (`make changelog`, kind `Added`) with an issue/PR reference — do not hand-edit `CHANGELOG.md` (#858)
