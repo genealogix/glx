@@ -220,10 +220,10 @@ Every PR runs these checks automatically:
 
 | Check | What it does |
 |-------|--------------|
-| **Validate Specification / test-conformance** | Go tests for `glx/` and `go-glx/` packages |
+| **CI / test-conformance** | Go tests for `glx/` and `go-glx/` packages |
 | **codecov/project**, **codecov/patch** | Project coverage may drop by at most 1%; patch coverage (new code) must be ≥80% |
-| **Validate Specification / validate-schemas** | JSON schema validation |
-| **Validate Specification / validate-examples** | All example archives pass `glx validate` |
+| **CI / validate-schemas** | JSON schema validation |
+| **CI / validate-examples** | All example archives pass `glx validate` |
 | **Lint Markdown / markdownlint-cli2** | Structural markdown validation for `specification/`, `docs/`, root `*.md` |
 | **Lint Website / eslint** | eslint over `website/.vitepress` JS/Vue (the website half of `make lint`) |
 | **Security** | gosec, govulncheck, and npm audit |
