@@ -19,7 +19,7 @@ Most questions are already answered in the docs:
 - [Contributing Guide](/CONTRIBUTING.md) — development setup, testing, submission process
 - [Changelog](/CHANGELOG.md) — recent changes; confirm the bug isn't already fixed on `main`
 
-GLX welcomes AI-assisted work but holds humans accountable, bans autonomous/agent-filed issues and PRs, and caps open PRs at 3 — see [AI-Generated Contributions](/CONTRIBUTING.md#ai-generated-contributions) before filing.
+GLX welcomes AI-assisted work but holds humans accountable, bans autonomous/agent-filed issues, PRs, and comments, and caps open PRs at 3 — see [AI-Generated Contributions](/CONTRIBUTING.md#ai-generated-contributions) before filing.
 
 ## Report a bug
 
