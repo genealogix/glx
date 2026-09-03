@@ -28,23 +28,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// updateGolden regenerates the golden file from the current parser output:
+// updateGolden regenerates the golden file from the current output:
 //
 //	go test ./go-glx/glxdate/ -run TestCorpus_Golden -update
 //
 // Review the resulting diff: every changed row is a behavior change.
 var updateGolden = flag.Bool("update", false, "rewrite golden files from current output")
 
-// parseGoldenPath records, for every corpus input, exactly what Parse
-// produces. It lives beside the corpus so the expected outcome of each
-// line is reviewable, not just the invariants in corpus_test.go.
-const parseGoldenPath = "testdata/gedcom_dates.parse.tsv"
+// goldenPath records, for every corpus input, exactly what Parse produces
+// and exactly what the GEDCOM adapter stores and exports. It lives beside
+// the corpus so the expected outcome of each line is reviewable, not just
+// the invariants in corpus_test.go and gedcom_test.go.
+const goldenPath = "testdata/gedcom_dates.golden.tsv"
 
-// parseGoldenHeader names the tab-separated columns of the golden file.
-const parseGoldenHeader = "input\tcanonical\tyear\tprecision\tqualifier\tcalendar\trange\tvalid\treason"
+// goldenHeader names the tab-separated columns of the golden file. The
+// first group describes Parse applied to the raw input; the second group
+// describes the GEDCOM adapter: the GLX string FromGEDCOM stores, what
+// GEDCOM renders for it, and the year and validity of the stored form
+// (which every consumer reads).
+const goldenHeader = "input\tcanonical\tyear\tprecision\tqualifier\tcalendar\trange\tvalid\treason" +
+	"\tstored\texported\tstoredyear\tstoredvalid"
 
-// parseGoldenRow renders one corpus input as a golden row.
-func parseGoldenRow(input string) string {
+// goldenRow renders one corpus input as a golden row.
+func goldenRow(input string) string {
 	d, err := Parse(input)
 	reason := ""
 	var perr *ParseError
@@ -60,6 +66,9 @@ func parseGoldenRow(input string) string {
 		rng = "between"
 	}
 
+	stored := FromGEDCOM(input)
+	sd, serr := Parse(stored)
+
 	return strings.Join([]string{
 		input,
 		d.String(),
@@ -70,36 +79,41 @@ func parseGoldenRow(input string) string {
 		rng,
 		strconv.FormatBool(d.Valid()),
 		reason,
+		stored,
+		sd.GEDCOM(),
+		strconv.Itoa(sd.Year()),
+		strconv.FormatBool(serr == nil),
 	}, "\t")
 }
 
-// renderParseGolden renders the whole golden file.
-func renderParseGolden(t *testing.T, lines []string) []byte {
+// renderGolden renders the whole golden file.
+func renderGolden(t *testing.T, lines []string) []byte {
 	t.Helper()
 
 	var b bytes.Buffer
-	b.WriteString(parseGoldenHeader + "\n")
+	b.WriteString(goldenHeader + "\n")
 	for _, line := range lines {
 		require.NotContains(t, line, "\t", "corpus inputs must not contain tabs")
-		b.WriteString(parseGoldenRow(line) + "\n")
+		b.WriteString(goldenRow(line) + "\n")
 	}
 
 	return b.Bytes()
 }
 
-// TestCorpus_Golden pins the exact Parse result of every corpus line.
+// TestCorpus_Golden pins the exact Parse result and GEDCOM import/export of
+// every corpus line.
 func TestCorpus_Golden(t *testing.T) {
 	lines := corpusLines(t)
-	want := renderParseGolden(t, lines)
+	want := renderGolden(t, lines)
 
 	if *updateGolden {
-		require.NoError(t, os.WriteFile(parseGoldenPath, want, 0o644))
-		t.Logf("rewrote %s", parseGoldenPath)
+		require.NoError(t, os.WriteFile(goldenPath, want, 0o644))
+		t.Logf("rewrote %s", goldenPath)
 
 		return
 	}
 
-	golden, err := os.ReadFile(parseGoldenPath)
+	golden, err := os.ReadFile(goldenPath)
 	require.NoError(t, err, "run with -update to generate the golden file")
 
 	// Compare row by row so a failure names the input that changed.
@@ -109,7 +123,7 @@ func TestCorpus_Golden(t *testing.T) {
 		require.True(t, goldenRows.Scan(), "golden file is shorter than the corpus; run with -update")
 		if wantRows.Text() != goldenRows.Text() {
 			input, _, _ := strings.Cut(wantRows.Text(), "\t")
-			assert.Equal(t, goldenRows.Text(), wantRows.Text(), "Parse(%q) changed; run with -update if intended", input)
+			assert.Equal(t, goldenRows.Text(), wantRows.Text(), "outcome of %q changed; run with -update if intended", input)
 		}
 	}
 	assert.False(t, goldenRows.Scan(), "golden file is longer than the corpus; run with -update")

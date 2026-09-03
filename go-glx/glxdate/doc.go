@@ -44,4 +44,10 @@
 // [Date.Valid] reports whether the input is in canonical GLX form, which is
 // what validation warns about. [Date.String] renders the canonical form
 // whenever the components were determined, and the raw text otherwise.
+//
+// The GEDCOM encoding of the same model lives here as well, so the GLX
+// grammar is never re-implemented by a converter: [FromGEDCOM] turns a
+// GEDCOM DATE payload (calendar escape, any tolerated spelling) into the
+// GLX string an importer stores, via [Canonicalize]; [Date.GEDCOM] renders a
+// Date as a GEDCOM DATE payload.
 package glxdate

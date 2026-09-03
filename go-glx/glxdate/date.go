@@ -346,8 +346,20 @@ func (d Date) String() string {
 // whole body is rendered verbatim, so a preserved date is never half-rewritten
 // ("BET JUL AND SEP 1857" stays as written rather than "BET JUL AND 1857-09").
 func (v *dateValue) String() string {
+	return v.render(false)
+}
+
+// render writes the date in GLX form, or in GEDCOM spelling when gedcom is
+// set (calendar escape instead of prefix, "15 MAR 1850" instead of
+// "1850-03-15"). Exact components are rendered only when every component of
+// the date was determined; otherwise the raw text is used throughout so a
+// preserved body is never half-rewritten.
+func (v *dateValue) render(gedcom bool) string {
 	var b strings.Builder
 	if name := v.prefix(); name != "" {
+		if gedcom {
+			name = gedcomEscape(name)
+		}
 		b.WriteString(name)
 		b.WriteByte(' ')
 	}
@@ -355,7 +367,11 @@ func (v *dateValue) String() string {
 	hasEnd := v.rng == rangeBetween || v.rng == rangeFromTo
 	start, end := v.start.raw, v.end.raw
 	if v.start.exact && (!hasEnd || v.end.exact) {
-		start, end = v.start.String(), v.end.String()
+		if gedcom {
+			start, end = v.start.gedcom(), v.end.gedcom()
+		} else {
+			start, end = v.start.String(), v.end.String()
+		}
 	}
 
 	switch v.rng {

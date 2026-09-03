@@ -15,62 +15,29 @@
 package glx
 
 import (
-	"strings"
-
 	"github.com/genealogix/glx/go-glx/glxdate"
 )
 
-// parseGEDCOMDate converts a GEDCOM date value to a GLX DateString.
-//
-// It is the GEDCOM → GLX adapter: the GEDCOM-specific calendar escape
-// (@#DJULIAN@, @#DHEBREW@, @#DFRENCH R@, @#DGREGORIAN@) is translated to a
-// GLX calendar prefix here, and everything else is delegated to glxdate,
-// which owns the neutral date model. Standard GEDCOM bodies ("15 MAR 1850",
-// "ABT 1850", "BET 1880 AND 1890", "FROM 1900 TO 1950") canonicalize to the
-// GLX form ("1850-03-15", "ABT 1850", …); so do the common dialect variants
-// with full or mixed-case month names and keywords ("1 January 1900",
-// "Bet 1880 and 1890", "ABT. 1850").
-//
-// Anything that cannot be canonicalized without guessing — numeric
-// day/month forms, dual years ("1731/32"), BCE dates, free text — is
-// preserved verbatim so it survives roundtrip; validation later flags it.
+// parseGEDCOMDate converts a GEDCOM DATE value to a GLX DateString. The
+// calendar escape, canonicalization, and preservation rules all live in
+// glxdate.FromGEDCOM; this is only the DateString adapter.
 func parseGEDCOMDate(gedcomDate string) DateString {
-	date := strings.TrimSpace(gedcomDate)
-	if date == "" {
-		return ""
-	}
-
-	calendar, body := extractCalendar(date)
-	body = strings.TrimSpace(body)
-	if body == "" {
-		// Calendar escape with no date body (e.g., "@#DJULIAN@" or "@#DGREGORIAN@").
-		// Preserve the original raw GEDCOM string so roundtrip can re-emit it.
-		return DateString(gedcomDate)
-	}
-
-	full := body
-	if calendar != "" {
-		full = calendar + " " + body
-	}
-
-	return DateString(canonicalizeDate(full))
+	return DateString(glxdate.FromGEDCOM(gedcomDate))
 }
 
-// canonicalizeDate returns the canonical GLX form of a date string when its
-// components can be determined without guessing, and the input unchanged
-// otherwise. A date is only rewritten when its canonical form itself parses
-// as valid, so raw-preserved bodies are never altered.
-func canonicalizeDate(s string) string {
-	d, err := glxdate.Parse(s)
-	if err == nil {
-		return d.String()
-	}
+// formatGEDCOMDate converts a GLX DateString to a GEDCOM DATE value.
+// Examples:
+//
+//	"1850-03-15"          -> "15 MAR 1850"
+//	"1850-03"             -> "MAR 1850"
+//	"ABT 1850-03-15"      -> "ABT 15 MAR 1850"
+//	"JULIAN 1731-03-15"   -> "@#DJULIAN@ 15 MAR 1731"
+//	"BET 1880 AND 1890"   -> "BET 1880 AND 1890"
+//
+// A date that is not in canonical form is rendered as glxdate would render
+// it, so nothing is invented on export that was not understood on import.
+func formatGEDCOMDate(date DateString) string {
+	d, _ := date.Parse()
 
-	if canon := d.String(); canon != s {
-		if _, err := glxdate.Parse(canon); err == nil {
-			return canon
-		}
-	}
-
-	return s
+	return d.GEDCOM()
 }
