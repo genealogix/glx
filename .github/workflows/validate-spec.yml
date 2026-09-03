@@ -1,4 +1,17 @@
-name: Validate Specification
+# The repo's primary CI pipeline: builds bin/glx, runs the only full Go test
+# suite + coverage upload, validates schemas and example archives, and runs the
+# diff-independent drift checks. (Named "Validate Specification" historically —
+# renamed because contributors looking for "where do tests run" won't open a
+# spec-validation workflow, #1041.)
+#
+# Drift-check ownership split (#1043): diff-independent, deterministic drift
+# checks that can run on push AND pull_request live here (check-code-drift,
+# check-memory-drift, check-drift-allowlist, and the drift-script unit tests).
+# PR-diff-based drift gates — which need a base branch to diff against — live
+# in drift-checks.yml (spec-schema-parity #309, schema-compat #311). The unit
+# tests for those scripts run here because the specification npm deps and Node
+# are already set up in validate-schemas.
+name: CI
 
 on:
   push:
@@ -19,8 +32,15 @@ env:
   GIT_CONFIG_KEY_1: advice.detachedHead
   GIT_CONFIG_VALUE_1: "false"
 
+# Job-naming rule (#1042): every job gets a human-readable name: EXCEPT
+# test-conformance, validate-schemas, and validate-examples — their KEYS are
+# the required status-check contexts in the Main Protection ruleset, and a
+# name: changes the displayed context, which would leave the ruleset waiting
+# on checks that never report and deadlock merges. Rename those only in
+# lockstep with a ruleset update.
 jobs:
   validate-mod:
+    name: Go modules tidy
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -74,6 +94,7 @@ jobs:
         run: make check-memory-drift
 
   validate-schemas:
+    # No name: — job key is a required status-check context (see note above).
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -102,6 +123,7 @@ jobs:
         run: make test-scripts
 
   build-cli:
+    name: Build CLI & discover examples
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -137,12 +159,22 @@ jobs:
         run: |
           # Build the matrix dynamically so newly added example directories are
           # validated automatically — no need to edit this workflow.
-          examples=$(find docs/examples -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
-            | sort | jq -Rsc 'split("\n") | map(select(length > 0))')
+          # Guard the directory: under the runner's `bash -eo pipefail`, find's
+          # nonzero exit on a missing path aborts the whole step before the
+          # echo, so a renamed/removed docs/examples would hard-fail discovery
+          # instead of degrading to an empty matrix (#1036). The aggregator
+          # treats an empty matrix with a green build as a pass.
+          if [ -d docs/examples ]; then
+            examples=$(find docs/examples -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+              | sort | jq -Rsc 'split("\n") | map(select(length > 0))')
+          else
+            examples='[]'
+          fi
           echo "examples=$examples" >> "$GITHUB_OUTPUT"
           echo "Discovered examples: $examples"
 
   validate-example:
+    name: Validate example (${{ matrix.example }})
     needs: build-cli
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -175,6 +207,7 @@ jobs:
   # of being misattributed to example validation (validate-example is skipped
   # when build-cli fails, and `skipped` is not `failure`).
   validate-examples:
+    # No name: — job key is a required status-check context (see note above).
     needs: [build-cli, validate-example]
     if: always()
     runs-on: ubuntu-latest
@@ -200,6 +233,7 @@ jobs:
           echo "Example validation passed"
 
   test-conformance:
+    # No name: — job key is a required status-check context (see note above).
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -223,13 +257,27 @@ jobs:
           # tee) guarantees the log is complete before it is inspected; the
           # exit code is captured explicitly so a test failure still fails
           # the step after stderr has been surfaced (#1033).
+          # -coverpkg attributes cross-package coverage: go-glx code driven by
+          # glx CLI tests counts toward go-glx instead of nothing. Without it
+          # each test only measures its own package and the Codecov number is
+          # misattributed. Note the flag also puts test-less packages in the
+          # denominator at 0%, so the headline aggregate may drop — that is
+          # accuracy, not a regression (#1038).
           status=0
-          go test ./glx/... ./go-glx/... ./tools/... -v -timeout 15m -coverprofile=coverage.out 2> /tmp/test-stderr.log || status=$?
+          go test ./glx/... ./go-glx/... ./tools/... -v -timeout 15m \
+            -coverpkg=./glx/...,./go-glx/...,./tools/... \
+            -coverprofile=coverage.out 2> /tmp/test-stderr.log || status=$?
           cat /tmp/test-stderr.log >&2
           if [ "$status" -ne 0 ]; then
             exit "$status"
           fi
-          if grep -qiE '(^|[[:space:]])Warning:' /tmp/test-stderr.log; then
+          # The go tool itself emits "warning: no packages being tested depend
+          # on matches for pattern ..." for any test binary that doesn't import
+          # every -coverpkg pattern (e.g. ./tools/... binaries not importing
+          # go-glx). That's benign tool output, not a test warning — exclude
+          # exactly it before the check.
+          if grep -viE '^warning: no packages being tested depend on matches' /tmp/test-stderr.log \
+            | grep -qiE '(^|[[:space:]])Warning:'; then
             echo "::error::Tests emitted warnings on stderr — see log above"
             exit 1
           fi
